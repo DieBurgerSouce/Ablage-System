@@ -48,24 +48,55 @@ The system consists of multiple layers:
 
 ## Documentation
 
-Comprehensive documentation is available in the `/Claude` directory:
+Comprehensive documentation is available in the `.claude/Docs/` directory:
 
-- [Mission & Overview](Claude/Mission.md)
-- [Tech Stack Details](Claude/TechStack.md)
-- [API Documentation](Claude/API_Documentation.md)
-- [Database Architecture](Claude/Database.md)
-- [Development Setup](Claude/Development-Setup.md)
-- [Deployment Guide](Claude/Deployment-Production.md)
-- [Security & Authentication](Claude/Security&Authentication.md)
-- [Testing Guide](Claude/Testing-Guide.md)
-- [Performance Optimization](Claude/Database_Query_Performance_Optimization.md)
-- [File Storage Management](Claude/File-Storage-Management.md)
-- [Caching Strategy](Claude/Caching-Strategy.md)
-- [Code Quality Standards](Claude/Code-Quality-Standards.md)
-- [Error Handling & Logging](Claude/Error-Handling-Logging.md)
-- [Rate Limiting Guide](Claude/Rate-Limiting-Guide.md)
-- [Scalability Guide](Claude/Scalability-Guide.md)
-- [Backup & Recovery](Claude/Backup-Recovery-Guide.md)
+### Core Documentation
+- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture overview
+- [CHANGELOG.md](CHANGELOG.md) - Version history and changes
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
+- [CONVENTIONS.md](CONVENTIONS.md) - Code and documentation conventions
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Production deployment guide
+- [TESTING.md](TESTING.md) - Testing strategy and guidelines
+- [CLAUDE.md](CLAUDE.md) - Claude Code integration guide
+
+### Detailed Guides
+- [Mission & Overview](.claude/Docs/Guides/Mission.md)
+- [Tech Stack Details](.claude/Docs/Guides/TechStack.md)
+- [API Documentation](.claude/Docs/API/API_Documentation.md)
+- [Frontend Architecture](.claude/Docs/Frontend-Architecture.md)
+- [ML Model Management](.claude/Docs/ML-Model-Management.md)
+
+### Development & Operations
+- [Database Architecture](.claude/Docs/Guides/Database.md)
+- [Development Setup](.claude/Docs/Guides/Development-Setup.md)
+- [Deployment Guide](.claude/Docs/Guides/Deployment-Production.md)
+- [Security & Authentication](.claude/Docs/Guides/Security&Authentication.md)
+- [Testing Guide](.claude/Docs/Guides/Testing-Guide.md)
+- [Error Handling & Logging](.claude/Docs/Guides/Error-Handling-Logging.md)
+
+### Performance & Scaling
+- [Database Performance Optimization](.claude/Docs/Guides/Database_Query_Performance_Optimization.md)
+- [Caching Strategy](.claude/Docs/Guides/Caching-Strategy.md)
+- [Rate Limiting Guide](.claude/Docs/Guides/Rate-Limiting-Guide.md)
+- [Scalability Guide](.claude/Docs/Guides/Scalability-Guide.md)
+
+### Infrastructure & Operations
+- [File Storage Management](.claude/Docs/Guides/File-Storage-Management.md)
+- [Infrastructure as Code](.claude/Docs/Guides/Infrastructure-as-Code.md)
+- [Backup & Recovery](.claude/Docs/Guides/Backup-Recovery-Guide.md)
+- [Disaster Recovery](.claude/Docs/Guides/Disaster-Recovery.md)
+- [Monitoring & Metrics](.claude/Docs/Guides/Metrics-Monitoring-Guide.md)
+- [Troubleshooting Guide](.claude/Docs/Guides/Troubleshooting-Guide.md)
+
+### Advanced Topics
+- [API Client SDK](.claude/Docs/Guides/API-Client-SDK.md)
+- [Webhooks Guide](.claude/Docs/Guides/Webhooks-Guide.md)
+- [Migration Guide](.claude/Docs/Guides/Migration-Guide.md)
+- [Data Pipeline Guide](.claude/Docs/Guides/Data-Pipeline-Guide.md)
+- [Notification System](.claude/Docs/Guides/Notification-System.md)
+- [Background Tasks](.claude/Docs/Guides/Background-Tasks.md)
+
+📚 [Browse all documentation](.claude/Docs/README.md)
 
 ## Quick Start
 
@@ -79,7 +110,7 @@ Comprehensive documentation is available in the `/Claude` directory:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/intelligent-document-processing.git
+git clone https://github.com/DieBurgerSouce/intelligent-document-processing.git
 cd intelligent-document-processing
 
 # Create virtual environment
