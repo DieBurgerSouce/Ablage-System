@@ -1,0 +1,15 @@
+# Dateien und Verzeichnisse, die von Claude ignoriert werden sollen.
+# Die Syntax ist ähnlich der von .gitignore.
+
+# Versionskontrolle & Abhängigkeiten
+.git/
+node_modules/
+
+# Geheime Schlüssel & lokale Konfigurationen
+.env
+*.local
+
+# Logs & temporäre Dateien
+*.log
+tmp/
+temp/

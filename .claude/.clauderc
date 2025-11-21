@@ -1,0 +1,276 @@
+### OCR-Backend-Auswahl-Matrix
+| Dokumenttyp | Engine | Grund |
+|-------------|--------|-------|
+| Komplexe Rechnungen | DeepSeek-Janus-Pro 7B | Höchste Genauigkeit für Tabellen |
+| Standard-Formulare | GOT-OCR 2.0 | Benchmark-Zuverlässigkeit |
+| Technische Dokumentation | Surya + Docling | Layout-Erhaltung |
+| Handschrift | DeepSeek-Janus-Pro | Beste Robustheit |
+
+## Entwicklungsstandards
+
+### Code-Konventionen
+- **Python**: PEP 8, Type Hints erforderlich, Black Formatter
+- **Docstrings**: Google-Stil, vollständig für öffentliche APIs
+- **Testing**: pytest, Mindestabdeckung 85%
+- **Logging**: Strukturiertes Logging (JSON), keine PII in Logs
+
+### Git-Workflow
+- **Branching**: GitFlow (main/develop/feature/hotfix)
+- **Commits**: Conventional Commits (feat/fix/docs/refactor)
+- **Reviews**: Mindestens 1 Approval vor Merge
+- **CI/CD**: Automatische Tests + Linting vor Deployment
+
+### Sicherheitsstandards
+- **Secrets**: Niemals im Code, nur Umgebungsvariablen
+- **API-Keys**: AWS Secrets Manager / HashiCorp Vault
+- **Verschlüsselung**: TLS 1.3 (Transit), AES-256 (Ruhe) 
+- **Audit**: Alle Dokumentenzugriffe geloggt
+- **DSGVO**: 30-Tage-Retention, Anonymisierung vor Verarbeitung
+
+## Deutsche Sprachverarbeitung
+
+### Besonderheiten
+- **Encoding**: UTF-8 obligatorisch (ä, ö, ü, ß-Unterstützung)
+- **Rechtschreibung**: Neue deutsche Rechtschreibung
+- **Regionale Varianten**: 
+  - Deutschland (Standard)
+  - Schweiz (ss statt ß)
+  - Österreich (Besonderheiten dokumentiert)
+- **Frakturschrift**: Historische Dokumente (1600-1938) 
+- **Zusammengesetzte Wörter**: Tokenisierung berücksichtigt Compounds
+
+### OCR-Qualitätsstandards
+- **Mindestgenauigkeit**: 95% für finanzielle Dokumente
+- **Konfidenzwerte**: Bei <0.90 manuelle Prüfung
+- **Validierung**: Checksummen, Plausibilitätsprüfungen
+- **Fehlerbehandlung**: Automatisches Retry mit alternativer Engine
+
+## GPU-Optimierung (RTX 4080)
+
+### CUDA-Konfiguration
+```python
+# Umgebungsvariablen
+CUDA_VISIBLE_DEVICES=0
+PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+CUDA_LAUNCH_BLOCKING=0  # Async für Performance
+
+# GPU-Speicherverwaltung
+gpu_memory_utilization=0.85  # 85% von 16GB = 13.6GB
+max_batch_size=16  # Abhängig von Dokumentgröße
+```
+
+### Performance-Targets
+- **Durchsatz**: 100+ Seiten/Minute (Standard-Dokumente)
+- **Latenz**: <500ms pro Seite (einfache Dokumente)
+- **GPU-Auslastung**: 70-90% (optimaler Bereich)
+- **Warteschlange**: Max. 1000 Dokumente
+
+### Monitoring
+- **Metriken**: GPU-Auslastung, VRAM, Temperatur, Leistung
+- **Alerts**: >85°C, >95% VRAM, <50% Auslastung (Underutilization)
+- **Tools**: nvidia-smi, nvtop, Prometheus nvidia_gpu_exporter
+
+## Befehle
+
+### Entwicklung
+```bash
+# Umgebung einrichten
+conda create -n ablage python=3.11
+conda activate ablage
+pip install -r requirements.txt
+
+# Tests ausführen
+pytest tests/ -v --cov=src --cov-report=html
+
+# Linting
+black src/ tests/
+isort src/ tests/
+flake8 src/ tests/
+mypy src/
+
+# Lokale Entwicklung
+docker-compose up -d
+python src/main.py --dev
+```
+
+### Produktion
+```bash
+# Deployment (Terraform + Ansible)
+cd infrastructure/
+terraform plan -out=tfplan
+terraform apply tfplan
+
+cd ../ansible/
+ansible-playbook -i production deploy.yml
+
+# Monitoring
+kubectl get pods -n ablage-system
+kubectl logs -f deployment/ocr-worker
+
+# Health Check
+curl https://api.ablage-system.internal/health
+```
+
+### OCR-Pipeline
+```bash
+# Einzelnes Dokument verarbeiten
+python cli.py process --input scan.pdf --output result.json --engine deepseeek-janus-pro
+
+# Batch-Verarbeitung
+python cli.py batch --input-dir ./scans/ --output-dir ./results/ --workers 4
+
+# Qualitätsprüfung
+python cli.py validate --input result.json --threshold 0.95
+```
+
+## Kritische Regeln (NIEMALS)
+
+### Sicherheit
+- ❌ API-Keys oder Secrets im Code committen
+- ❌ PII (personenbezogene Daten) in Logs schreiben
+- ❌ Unverschlüsselte Dokumente speichern
+- ❌ Produktionsdatenbank von Entwicklungsmaschine zugreifen
+- ❌ `sudo` in Deployment-Skripten (Container verwenden)
+
+### Code-Qualität
+- ❌ Code ohne Tests committen (85% Coverage Minimum)
+- ❌ Type Hints weglassen in öffentlichen APIs
+- ❌ Hardcodierte Pfade oder URLs
+- ❌ Global State oder Singleton-Pattern missbrauchen
+- ❌ Undokumentierte Breaking Changes
+
+### GPU-Verarbeitung
+- ❌ Synchrone Blocking-Calls (async/await verwenden)
+- ❌ GPU-Speicher nicht freigeben (torch.cuda.empty_cache())
+- ❌ Große Batches ohne Memory-Check (OOM-Risiko)
+- ❌ CPU-Operationen auf GPU-Daten (Overhead)
+
+## DSGVO-Konformität
+
+### Datenverarbeitung
+1. **Einwilligung**: Vor Verarbeitung verifizieren (`verify_consent.py`)
+2. **Anonymisierung**: PII-Erkennung + Entfernung (`anonymize_pii.py`)
+3. **Verarbeitung**: Nur anonymisierte Daten an Claude/OCR
+4. **Verschlüsselung**: Output verschlüsseln (`encrypt_output.py`)
+5. **Audit**: Vollständiger Trail in GDPR-konformen Logs
+
+### Retention-Policy
+- **Rohdokumente**: 7 Tage (verschlüsselt)
+- **Verarbeitete Daten**: 30 Tage (verschlüsselt) 
+- **Audit-Logs**: 6 Jahre (rechtliche Anforderung)
+- **Automatische Löschung**: Cronjob täglich 02:00 UTC
+
+### Technische Maßnahmen
+- **Verschlüsselung at Rest**: AES-256-GCM
+- **Verschlüsselung in Transit**: TLS 1.3 
+- **Zugriffskontrolle**: RBAC mit Audit-Trail
+- **Pseudonymisierung**: UUIDs statt Namen
+- **Recht auf Löschung**: Implementiert via API
+
+## Dokumentation
+
+### Pflichtdokumentation
+- **ARCHITECTURE.md**: Systemdesign, Komponenten, Datenflüsse
+- **DEPLOYMENT.md**: Infrastructure-as-Code, Deployment-Prozess
+- **CONVENTIONS.md**: Code-Standards, Namenskonventionen
+- **FRONTEND.md**: UI/UX-Richtlinien, Komponenten
+- **CLAUDE.md** (dieses Dokument): Claude-spezifische Anweisungen
+
+### API-Dokumentation
+- **OpenAPI Spec**: Automatisch generiert aus FastAPI
+- **Zugriff**: `/docs` (Swagger UI), `/redoc` (ReDoc)
+- **Versionierung**: Semantic Versioning (v1, v2)
+
+## Fehlerbehandlung
+
+### OCR-Fehler
+- **Confidence <0.95**: Automatisches Retry mit alternativer Engine
+- **Complete Failure**: Manuelle Prüfung-Queue + Benachrichtigung
+- **Timeout**: Nach 60s abbrechen, in Retry-Queue
+
+### GPU-Fehler
+- **OOM (Out of Memory)**: Batch-Size reduzieren, Cache leeren
+- **CUDA Error**: Fallback auf CPU, Alert senden
+- **Überhitzung**: Throttling aktivieren, Admins benachrichtigen
+
+### System-Fehler
+- **Disk Full**: Automatische Cleanup-Routine, Alert
+- **Network Error**: Exponential Backoff (1s, 5s, 30s)
+- **DB Connection**: Connection Pool Retry, Circuit Breaker
+
+## Performance-Optimierung
+
+### Caching-Strategie
+- **Redis**: OCR-Ergebnisse (1 Stunde TTL)
+- **CDN**: Statische Assets (Frontend)
+- **Database Query Cache**: Häufige Abfragen (15 Min)
+
+### Skalierung
+- **Horizontal**: Mehrere Worker-Instanzen
+- **Vertikal**: GPU-Ressourcen nach Bedarf
+- **Load Balancing**: NGINX mit Least-Connections
+- **Auto-Scaling**: Basierend auf Warteschlangenlänge
+
+## Kontextgrenzen
+
+### Dateien bearbeiten
+- ✅ `src/` - Application Code
+- ✅ `tests/` - Test Suites
+- ✅ `docs/` - Dokumentation
+- ✅ `scripts/` - Utility Scripts
+- ✅ `infrastructure/` - IaC (mit Vorsicht)
+
+### Dateien NUR lesen
+- 📖 `config/` - Konfigurationsdateien
+- 📖 `.env.example` - Umgebungsvariablen-Template
+- 📖 `requirements.txt` - Dependencies
+
+### Dateien NIEMALS anfassen
+- 🚫 `.env` - Aktuelle Secrets
+- 🚫 `venv/`, `__pycache__/`, `.pytest_cache/` - Build-Artefakte
+- 🚫 `.git/` - Git-Interna
+- 🚫 `data/` - Rohdokumente (DSGVO)
+- 🚫 `secrets/` - Verschlüsselte Credentials
+
+## Team-Kommunikation
+
+### Code Reviews
+- **Checkliste**: Tests, Docs, Security, Performance
+- **Timeframe**: 24 Stunden Response-Zeit
+- **Approval**: Mindestens 1 Senior-Entwickler
+
+### Incident Response
+1. **Erkennung**: Monitoring-Alert
+2. **Eskalation**: On-Call Engineer
+3. **Mitigation**: Sofortige Maßnahmen
+4. **Post-Mortem**: Innerhalb 72 Stunden
+5. **Follow-up**: Präventive Maßnahmen
+
+## Debugging
+
+### Logging-Level
+- **Production**: INFO (strukturiert als JSON)
+- **Staging**: DEBUG (mit Context)
+- **Development**: DEBUG + Verbose
+
+### Debugging-Tools
+```bash
+# GPU-Debugging
+nvidia-smi dmon -s pucvmet -i 0
+nvtop
+
+# Application-Debugging
+python -m pdb src/main.py
+PYTHONBREAKPOINT=ipdb.set_trace python src/main.py
+
+# Performance-Profiling
+python -m cProfile -o profile.stats src/main.py
+snakeviz profile.stats
+```
+
+## Weitere Ressourcen
+
+- **Confluence**: Detaillierte Design-Docs
+- **Jira**: Sprint-Planning, Tickets
+- **Slack**: #ablage-system, #ocr-engineering
+- **GitHub**: Issues, Discussions, Wiki
