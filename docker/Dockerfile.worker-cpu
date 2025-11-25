@@ -1,0 +1,141 @@
+# Dockerfile for CPU-Only Celery Worker
+# For Pre-Processing, Post-Processing, and Non-GPU tasks
+# Priority: P1
+# Created: 2024-11-25
+
+# =============================================================================
+# BASE IMAGE - Standard Python (no CUDA)
+# =============================================================================
+
+FROM python:3.11-slim-bookworm
+
+# Prevent interactive prompts during build
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set working directory
+WORKDIR /app
+
+# =============================================================================
+# SYSTEM DEPENDENCIES
+# =============================================================================
+
+RUN apt-get update && apt-get install -y \
+    # Build tools
+    build-essential \
+    gcc \
+    g++ \
+    # Image processing libraries
+    libpoppler-cpp-dev \
+    poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-deu \
+    libtesseract-dev \
+    # PDF processing
+    ghostscript \
+    # Graphics libraries
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    # NLP libraries
+    libicu-dev \
+    # Utilities
+    wget \
+    curl \
+    git \
+    # Cleanup
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN python3.11 -m pip install --upgrade pip setuptools wheel
+
+# =============================================================================
+# PYTHON DEPENDENCIES
+# =============================================================================
+
+# Copy requirements files
+COPY requirements.txt /app/requirements.txt
+COPY requirements-dev.txt /app/requirements-dev.txt
+
+# Install Python dependencies (CPU-only)
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install PyTorch CPU version (much smaller than GPU version)
+RUN pip install --no-cache-dir \
+    torch==2.1.2+cpu \
+    torchvision==0.16.2+cpu \
+    torchaudio==2.1.2+cpu \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# Install transformers and NLP libraries
+RUN pip install --no-cache-dir \
+    transformers>=4.35.0 \
+    spacy>=3.7.0 \
+    sentencepiece>=0.1.99
+
+# Download German language model for spaCy
+RUN python -m spacy download de_core_news_lg
+
+# =============================================================================
+# APPLICATION CODE
+# =============================================================================
+
+# Copy application code
+COPY app/ /app/app/
+COPY Skills/ /app/Skills/
+COPY alembic/ /app/alembic/
+COPY alembic.ini /app/alembic.ini
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/data /app/temp
+
+# =============================================================================
+# ENVIRONMENT VARIABLES
+# =============================================================================
+
+# Python
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app
+
+# Celery
+ENV CELERY_BROKER_URL=redis://redis:6379/1
+ENV CELERY_RESULT_BACKEND=redis://redis:6379/2
+ENV C_FORCE_ROOT=true
+
+# Application
+ENV LOG_LEVEL=INFO
+ENV WORKERS=4
+ENV CONCURRENCY=4
+ENV POOL=prefork
+
+# =============================================================================
+# HEALTH CHECK
+# =============================================================================
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD celery -A app.workers.celery_app inspect ping || exit 1
+
+# =============================================================================
+# USER & PERMISSIONS
+# =============================================================================
+
+# Create non-root user for security
+RUN useradd -m -u 1000 celery && \
+    chown -R celery:celery /app
+
+# Switch to non-root user
+USER celery
+
+# =============================================================================
+# STARTUP
+# =============================================================================
+
+# Default command: CPU worker for preprocessing/postprocessing
+CMD ["celery", "-A", "app.workers.celery_app", "worker", \
+     "--queues=ocr_cpu,preprocessing.classification,postprocessing.german,default", \
+     "--loglevel=info", \
+     "--concurrency=4", \
+     "--pool=prefork", \
+     "--hostname=cpu-worker@%h", \
+     "--max-tasks-per-child=100", \
+     "--task-events"]

@@ -1,0 +1,297 @@
+/* Extra CSS for Ablage-System Documentation */
+
+/* Custom color scheme enhancements */
+:root {
+  --md-primary-fg-color: #4a9eff;
+  --md-primary-fg-color--light: #6bb0ff;
+  --md-primary-fg-color--dark: #3387e6;
+  --md-accent-fg-color: #26de81;
+}
+
+/* Dark mode adjustments */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #4a9eff;
+  --md-accent-fg-color: #26de81;
+  --md-code-bg-color: #1e1e1e;
+}
+
+/* Custom heading styles */
+h1 {
+  border-bottom: 2px solid var(--md-primary-fg-color);
+  padding-bottom: 0.3em;
+}
+
+h2 {
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  padding-bottom: 0.2em;
+}
+
+/* Code block enhancements */
+.highlight {
+  border-radius: 4px;
+}
+
+code {
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  background-color: var(--md-code-bg-color);
+}
+
+/* Admonition custom styles */
+.admonition.note {
+  border-left-color: #4a9eff;
+}
+
+.admonition.tip {
+  border-left-color: #26de81;
+}
+
+.admonition.warning {
+  border-left-color: #ff9f43;
+}
+
+.admonition.danger {
+  border-left-color: #fc5c65;
+}
+
+/* Table styling */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5em 0;
+}
+
+table th {
+  background-color: var(--md-primary-fg-color);
+  color: white;
+  font-weight: bold;
+  padding: 0.6em 1em;
+  text-align: left;
+}
+
+table td {
+  padding: 0.6em 1em;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+table tr:hover {
+  background-color: var(--md-default-bg-color--light);
+}
+
+/* Card grid for features */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5em;
+  margin: 2em 0;
+}
+
+.grid .card {
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  padding: 1.5em;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.grid .card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Button styling */
+.md-button {
+  border-radius: 4px;
+  padding: 0.5em 1em;
+  transition: background-color 0.2s;
+}
+
+.md-button--primary {
+  background-color: var(--md-primary-fg-color);
+  color: white;
+}
+
+.md-button--primary:hover {
+  background-color: var(--md-primary-fg-color--dark);
+}
+
+/* Badge styles */
+.badge {
+  display: inline-block;
+  padding: 0.2em 0.6em;
+  font-size: 0.75em;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: 3px;
+  margin: 0 0.2em;
+}
+
+.badge-success {
+  background-color: #26de81;
+  color: white;
+}
+
+.badge-warning {
+  background-color: #ff9f43;
+  color: white;
+}
+
+.badge-danger {
+  background-color: #fc5c65;
+  color: white;
+}
+
+.badge-info {
+  background-color: #4a9eff;
+  color: white;
+}
+
+/* Mermaid diagram styling */
+.mermaid {
+  text-align: center;
+  margin: 2em 0;
+}
+
+/* Command prompt styling */
+.command-prompt {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  padding: 1em;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  margin: 1em 0;
+}
+
+.command-prompt::before {
+  content: '$ ';
+  color: #26de81;
+  font-weight: bold;
+}
+
+/* Status indicators */
+.status-indicator {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 0.5em;
+}
+
+.status-indicator.success {
+  background-color: #26de81;
+}
+
+.status-indicator.warning {
+  background-color: #ff9f43;
+}
+
+.status-indicator.error {
+  background-color: #fc5c65;
+}
+
+/* Navigation breadcrumbs enhancement */
+.md-nav__link--active {
+  font-weight: bold;
+  color: var(--md-primary-fg-color);
+}
+
+/* Footer customization */
+.md-footer {
+  border-top: 2px solid var(--md-primary-fg-color);
+}
+
+/* Search result highlighting */
+.md-search-result__article--document:hover {
+  background-color: var(--md-default-bg-color--light);
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  table {
+    font-size: 0.875em;
+  }
+
+  h1 {
+    font-size: 1.75em;
+  }
+
+  h2 {
+    font-size: 1.5em;
+  }
+}
+
+/* Print styles */
+@media print {
+  .md-header,
+  .md-sidebar,
+  .md-footer {
+    display: none;
+  }
+
+  .md-content {
+    max-width: 100%;
+  }
+
+  a[href^="http"]:after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+}
+
+/* Accessibility improvements */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+}
+
+.skip-to-content:focus {
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--md-primary-fg-color);
+  color: white;
+  padding: 1em;
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--md-default-bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--md-primary-fg-color);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--md-primary-fg-color--dark);
+}
+
+/* Loading animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.loading {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

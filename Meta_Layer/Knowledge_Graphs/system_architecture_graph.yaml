@@ -1,0 +1,607 @@
+# System Architecture Knowledge Graph
+
+graph_id: system_architecture_001
+category: architecture
+last_updated: "2025-11-22"
+status: production
+visualization_format: "mermaid"
+
+description: |
+  Visual knowledge graph representing the Ablage-System architecture,
+  component relationships, data flows, and technology dependencies.
+
+# ============================================================================
+# High-Level Architecture Graph
+# ============================================================================
+
+high_level_architecture:
+  mermaid_diagram: |
+    graph TB
+        subgraph "Client Layer"
+            WEB[Web Browser]
+            CLI[CLI Tools]
+            API_CLIENT[API Clients]
+        end
+
+        subgraph "API Gateway"
+            NGINX[NGINX Reverse Proxy]
+        end
+
+        subgraph "Application Layer"
+            FASTAPI[FastAPI Backend]
+            CELERY[Celery Workers]
+        end
+
+        subgraph "Processing Layer"
+            OCR_DEEPSEEK[DeepSeek-Janus-Pro<br/>12GB VRAM]
+            OCR_GOT[GOT-OCR 2.0<br/>10GB VRAM]
+            OCR_SURYA[Surya + Docling<br/>CPU]
+            CLASSIFIER[Document Classifier]
+            EXTRACTOR[Invoice Extractor]
+        end
+
+        subgraph "Data Layer"
+            POSTGRES[(PostgreSQL 16)]
+            REDIS[(Redis 7)]
+            MINIO[(MinIO S3)]
+        end
+
+        subgraph "Infrastructure"
+            GPU[RTX 4080 16GB]
+            DOCKER[Docker Compose]
+        end
+
+        WEB --> NGINX
+        CLI --> NGINX
+        API_CLIENT --> NGINX
+        NGINX --> FASTAPI
+
+        FASTAPI --> POSTGRES
+        FASTAPI --> REDIS
+        FASTAPI --> MINIO
+        FASTAPI --> CELERY
+
+        CELERY --> OCR_DEEPSEEK
+        CELERY --> OCR_GOT
+        CELERY --> OCR_SURYA
+        CELERY --> CLASSIFIER
+        CELERY --> EXTRACTOR
+
+        OCR_DEEPSEEK --> GPU
+        OCR_GOT --> GPU
+
+        CLASSIFIER --> REDIS
+        EXTRACTOR --> POSTGRES
+
+        DOCKER -.-> FASTAPI
+        DOCKER -.-> CELERY
+        DOCKER -.-> POSTGRES
+        DOCKER -.-> REDIS
+        DOCKER -.-> MINIO
+
+  components:
+    - name: "NGINX"
+      type: "reverse_proxy"
+      purpose: "Load balancing, SSL termination, static files"
+      technology: "NGINX 1.24"
+      port: 443
+
+    - name: "FastAPI"
+      type: "web_framework"
+      purpose: "REST API, async request handling"
+      technology: "FastAPI 0.110, Python 3.11"
+      port: 8000
+
+    - name: "Celery Workers"
+      type: "task_queue"
+      purpose: "Async OCR processing, background jobs"
+      technology: "Celery 5.3, Redis broker"
+      workers: 4
+
+    - name: "PostgreSQL"
+      type: "database"
+      purpose: "Persistent data storage"
+      technology: "PostgreSQL 16 with pgvector"
+      port: 5432
+
+    - name: "Redis"
+      type: "cache_queue"
+      purpose: "Caching, job queue, session storage"
+      technology: "Redis 7.2"
+      port: 6379
+
+    - name: "MinIO"
+      type: "object_storage"
+      purpose: "Document file storage (S3-compatible)"
+      technology: "MinIO RELEASE.2024"
+      ports: [9000, 9001]
+
+    - name: "RTX 4080"
+      type: "gpu"
+      purpose: "GPU-accelerated OCR inference"
+      technology: "NVIDIA RTX 4080 16GB VRAM, CUDA 12.x"
+
+# ============================================================================
+# Document Processing Flow Graph
+# ============================================================================
+
+document_processing_flow:
+  mermaid_diagram: |
+    sequenceDiagram
+        participant User
+        participant API as FastAPI API
+        participant Validator
+        participant Redis
+        participant Celery
+        participant Classifier
+        participant Backend as OCR Backend
+        participant GPU
+        participant Extractor
+        participant DB as PostgreSQL
+        participant MinIO
+
+        User->>API: POST /documents (upload)
+        API->>Validator: validate_upload()
+        Validator-->>API: validation_result
+        API->>MinIO: store_file()
+        MinIO-->>API: file_url
+        API->>DB: create_document()
+        DB-->>API: document_id
+
+        API->>Celery: queue_ocr_task(doc_id)
+        Celery-->>API: task_id
+        API-->>User: 202 Accepted {task_id}
+
+        Celery->>Classifier: classify_document()
+        Classifier-->>Celery: category="rechnung"
+
+        Celery->>Celery: select_backend()
+        Celery->>GPU: check_availability()
+        GPU-->>Celery: available, 14GB free
+
+        Celery->>Backend: process_ocr(doc_id)
+        Backend->>GPU: load_model()
+        GPU-->>Backend: model_loaded
+        Backend->>GPU: inference()
+        GPU-->>Backend: extracted_text
+        Backend-->>Celery: ocr_result
+
+        Celery->>Extractor: extract_invoice_data(text)
+        Extractor-->>Celery: invoice_data
+
+        Celery->>DB: update_document(ocr_result)
+        DB-->>Celery: updated
+        Celery->>Redis: cache_result(doc_id)
+        Redis-->>Celery: cached
+
+        Celery-->>User: Webhook: processing_complete
+
+  stages:
+    - stage: 1
+      name: "Upload & Validation"
+      components: ["FastAPI", "Validator", "MinIO"]
+      duration_target: "< 500ms"
+      description: "Validate file type, size, virus scan, store in MinIO"
+
+    - stage: 2
+      name: "Database Record Creation"
+      components: ["PostgreSQL"]
+      duration_target: "< 100ms"
+      description: "Create document record with metadata"
+
+    - stage: 3
+      name: "Task Queueing"
+      components: ["Celery", "Redis"]
+      duration_target: "< 50ms"
+      description: "Queue OCR processing task"
+
+    - stage: 4
+      name: "Document Classification"
+      components: ["Classifier Agent"]
+      duration_target: "< 500ms"
+      description: "Classify into Rechnung/Vertrag/Brief/etc."
+
+    - stage: 5
+      name: "Backend Selection"
+      components: ["OCR Orchestrator"]
+      duration_target: "< 200ms"
+      description: "Select optimal OCR backend based on document and GPU"
+
+    - stage: 6
+      name: "OCR Processing"
+      components: ["DeepSeek/GOT-OCR/Surya", "GPU"]
+      duration_target: "< 2s per page (GPU)"
+      description: "Extract text using selected backend"
+
+    - stage: 7
+      name: "Entity Extraction"
+      components: ["Invoice Extractor"]
+      duration_target: "< 1s"
+      description: "Extract structured data (invoice number, amounts, etc.)"
+
+    - stage: 8
+      name: "Storage & Caching"
+      components: ["PostgreSQL", "Redis"]
+      duration_target: "< 100ms"
+      description: "Store results in DB and cache"
+
+    - stage: 9
+      name: "Notification"
+      components: ["Webhook Service"]
+      duration_target: "< 100ms"
+      description: "Send webhook notification to user"
+
+# ============================================================================
+# Data Flow Graph
+# ============================================================================
+
+data_flows:
+  document_upload:
+    source: "User"
+    destination: "MinIO"
+    data_type: "Binary (PDF, PNG, JPG)"
+    max_size: "50 MB"
+    protocol: "HTTP Multipart"
+    encryption: "TLS 1.3 in transit"
+
+  document_metadata:
+    source: "FastAPI"
+    destination: "PostgreSQL"
+    data_type: "JSON (Pydantic models)"
+    protocol: "asyncpg"
+    includes:
+      - "document_id"
+      - "filename"
+      - "user_id"
+      - "upload_timestamp"
+      - "mime_type"
+      - "file_size"
+
+  ocr_task:
+    source: "FastAPI"
+    destination: "Celery (via Redis)"
+    data_type: "JSON task payload"
+    protocol: "Redis pub/sub"
+    includes:
+      - "task_id"
+      - "document_id"
+      - "backend"
+      - "priority"
+
+  ocr_result:
+    source: "Celery Worker"
+    destination: "PostgreSQL"
+    data_type: "JSON (OCR result)"
+    protocol: "asyncpg"
+    includes:
+      - "extracted_text"
+      - "confidence"
+      - "backend_used"
+      - "processing_time"
+      - "page_count"
+
+  cache_data:
+    source: "FastAPI/Celery"
+    destination: "Redis"
+    data_type: "JSON (serialized)"
+    protocol: "redis-py"
+    ttl: "Variable (1 hour for OCR results)"
+    includes:
+      - "document metadata"
+      - "OCR results"
+      - "user stats"
+      - "session data"
+
+# ============================================================================
+# Component Dependencies Graph
+# ============================================================================
+
+component_dependencies:
+  mermaid_diagram: |
+    graph LR
+        FASTAPI[FastAPI]
+        CELERY[Celery]
+        POSTGRES[PostgreSQL]
+        REDIS[Redis]
+        MINIO[MinIO]
+        GPU[GPU/CUDA]
+
+        FASTAPI -->|asyncpg| POSTGRES
+        FASTAPI -->|redis-py| REDIS
+        FASTAPI -->|boto3| MINIO
+        FASTAPI -->|sends tasks| CELERY
+
+        CELERY -->|reads tasks| REDIS
+        CELERY -->|stores results| POSTGRES
+        CELERY -->|loads models| GPU
+
+        style GPU fill:#ff6b6b
+        style REDIS fill:#ffd93d
+        style POSTGRES fill:#6bcf7f
+        style MINIO fill:#95e1d3
+
+  dependencies:
+    fastapi:
+      depends_on:
+        - "PostgreSQL (required)"
+        - "Redis (required)"
+        - "MinIO (required)"
+      optional:
+        - "Celery (for async tasks)"
+
+    celery:
+      depends_on:
+        - "Redis (broker, required)"
+        - "PostgreSQL (result backend)"
+      optional:
+        - "GPU (for OCR backends)"
+
+    ocr_backends:
+      deepseek:
+        depends_on:
+          - "GPU with 12+ GB VRAM"
+          - "CUDA 12.x"
+          - "PyTorch 2.0+"
+
+      got_ocr:
+        depends_on:
+          - "GPU with 10+ GB VRAM"
+          - "CUDA 12.x"
+          - "Transformers library"
+
+      surya:
+        depends_on:
+          - "CPU (GPU optional)"
+          - "Docling library"
+
+# ============================================================================
+# Technology Stack Graph
+# ============================================================================
+
+technology_stack:
+  layers:
+    presentation:
+      tier: "Layer 1"
+      technologies:
+        - name: "Web Frontend"
+          stack: "To be determined (Vue.js or React)"
+          responsibility: "User interface, document upload, results display"
+
+        - name: "API Documentation"
+          stack: "OpenAPI 3.1 (auto-generated by FastAPI)"
+          responsibility: "Interactive API documentation"
+
+    application:
+      tier: "Layer 2"
+      technologies:
+        - name: "FastAPI"
+          version: "0.110+"
+          language: "Python 3.11"
+          responsibility: "REST API, request routing, validation"
+          features:
+            - "Async/await support"
+            - "Automatic OpenAPI docs"
+            - "Pydantic validation"
+            - "Dependency injection"
+
+        - name: "Celery"
+          version: "5.3+"
+          broker: "Redis"
+          responsibility: "Async task processing, job queue"
+          features:
+            - "Distributed task queue"
+            - "Retry mechanisms"
+            - "Task prioritization"
+            - "Result backend"
+
+    processing:
+      tier: "Layer 3"
+      technologies:
+        - name: "DeepSeek-Janus-Pro"
+          version: "1.3B"
+          framework: "PyTorch"
+          responsibility: "High-accuracy multimodal OCR"
+
+        - name: "GOT-OCR 2.0"
+          version: "600M"
+          framework: "Transformers"
+          responsibility: "Fast general OCR"
+
+        - name: "Surya + Docling"
+          version: "Latest"
+          framework: "Custom"
+          responsibility: "Layout-aware CPU OCR"
+
+    data:
+      tier: "Layer 4"
+      technologies:
+        - name: "PostgreSQL"
+          version: "16"
+          extensions: ["pgvector"]
+          responsibility: "Relational data, OCR results"
+          features:
+            - "ACID compliance"
+            - "JSON support"
+            - "Full-text search"
+            - "Vector similarity (pgvector)"
+
+        - name: "Redis"
+          version: "7.2"
+          modes: ["cache", "queue", "session"]
+          responsibility: "Caching, job queue, sessions"
+          features:
+            - "In-memory speed"
+            - "Pub/sub messaging"
+            - "TTL expiration"
+            - "Atomic operations"
+
+        - name: "MinIO"
+          version: "RELEASE.2024"
+          protocol: "S3-compatible"
+          responsibility: "Object storage for documents"
+          features:
+            - "S3 API compatibility"
+            - "Erasure coding"
+            - "Versioning"
+            - "Encryption at rest"
+
+    infrastructure:
+      tier: "Layer 5"
+      technologies:
+        - name: "Docker & Docker Compose"
+          version: "24.x"
+          responsibility: "Containerization, orchestration"
+
+        - name: "NVIDIA Docker Runtime"
+          version: "Latest"
+          responsibility: "GPU access in containers"
+
+        - name: "Ubuntu Server"
+          version: "22.04 LTS"
+          responsibility: "Host operating system"
+
+        - name: "NVIDIA RTX 4080"
+          specs: "16GB VRAM, CUDA 12.x"
+          responsibility: "GPU acceleration"
+
+# ============================================================================
+# Network Architecture Graph
+# ============================================================================
+
+network_architecture:
+  mermaid_diagram: |
+    graph TB
+        subgraph "Public Internet"
+            USER[Users]
+        end
+
+        subgraph "Edge Layer"
+            LB[Load Balancer<br/>:443]
+            NGINX[NGINX<br/>:443]
+        end
+
+        subgraph "Application Network (ablage-network)"
+            API[FastAPI<br/>:8000]
+            WORKER1[Celery Worker 1<br/>GPU]
+            WORKER2[Celery Worker 2<br/>GPU]
+            WORKER3[Celery Worker 3<br/>CPU]
+        end
+
+        subgraph "Data Network (ablage-data)"
+            PG[PostgreSQL<br/>:5432]
+            RD[Redis<br/>:6379]
+            MINIO[MinIO<br/>:9000,:9001]
+        end
+
+        USER -->|HTTPS| LB
+        LB --> NGINX
+        NGINX -->|HTTP| API
+
+        API -->|asyncpg| PG
+        API -->|redis-py| RD
+        API -->|boto3| MINIO
+
+        WORKER1 -->|read tasks| RD
+        WORKER2 -->|read tasks| RD
+        WORKER3 -->|read tasks| RD
+
+        WORKER1 -->|store results| PG
+        WORKER2 -->|store results| PG
+        WORKER3 -->|store results| PG
+
+        style USER fill:#4a9eff
+        style LB fill:#ff6b6b
+        style NGINX fill:#ffd93d
+        style API fill:#6bcf7f
+        style WORKER1 fill:#ff6b6b
+        style WORKER2 fill:#ff6b6b
+        style WORKER3 fill:#95e1d3
+
+  networks:
+    - name: "ablage-network"
+      type: "bridge"
+      subnet: "172.20.0.0/16"
+      services: ["fastapi", "celery-workers", "nginx"]
+
+    - name: "ablage-data"
+      type: "bridge"
+      subnet: "172.21.0.0/16"
+      services: ["postgres", "redis", "minio"]
+      isolation: "backend only"
+
+# ============================================================================
+# Deployment Architecture
+# ============================================================================
+
+deployment:
+  development:
+    environment: "local"
+    containers:
+      - "fastapi (hot-reload)"
+      - "celery-worker (1 instance)"
+      - "postgres (local)"
+      - "redis (local)"
+      - "minio (local)"
+    gpu_access: true
+    data_persistence: "docker volumes"
+
+  staging:
+    environment: "on-premises server"
+    containers:
+      - "fastapi (2 instances)"
+      - "celery-worker (2 instances)"
+      - "postgres (replicated)"
+      - "redis (sentinel)"
+      - "minio (distributed)"
+    gpu_access: true
+    data_persistence: "NAS storage"
+    monitoring: "Prometheus + Grafana"
+
+  production:
+    environment: "on-premises infrastructure"
+    containers:
+      - "fastapi (4 instances, load balanced)"
+      - "celery-worker (4 instances, 2 GPU + 2 CPU)"
+      - "postgres (primary + replica)"
+      - "redis (sentinel cluster)"
+      - "minio (distributed 4-node)"
+    gpu_access: true
+    data_persistence: "RAID storage + backups"
+    monitoring: "Prometheus + Grafana + AlertManager"
+    backup_strategy: "daily incremental, weekly full"
+
+# ============================================================================
+# Visualization Tools
+# ============================================================================
+
+visualization_tools:
+  recommended:
+    - name: "Mermaid Live Editor"
+      url: "https://mermaid.live/"
+      use_for: "Rendering Mermaid diagrams"
+
+    - name: "draw.io"
+      url: "https://app.diagrams.net/"
+      use_for: "Creating detailed architecture diagrams"
+
+    - name: "PlantUML"
+      url: "https://plantuml.com/"
+      use_for: "UML diagrams, sequence diagrams"
+
+  export_formats:
+    - "SVG (scalable vector graphics)"
+    - "PNG (raster images)"
+    - "PDF (documentation)"
+
+related_files:
+  - "Meta_Layer/MOCs/DEVELOPMENT_MOC.md"
+  - "Meta_Layer/MOCs/OCR_PROCESSING_MOC.md"
+  - "Meta_Layer/Indexes/technical_documentation_index.yaml"
+  - "Static_Knowledge/ADRs/001_rest_api_architecture.md"
+
+tags:
+  - knowledge_graph
+  - architecture
+  - visualization
+  - mermaid
+  - system_design

@@ -1,0 +1,577 @@
+# WORKFLOW: Complete Document Processing
+# Purpose: End-to-end orchestration of OCR document processing
+# Priority: P0 - CRITICAL
+# Created: 2024-11-22
+
+workflow:
+  name: "Complete Document Processing Workflow"
+  id: "wf001"
+  version: "1.0"
+  description: "Full pipeline from upload to validated extraction"
+  priority: "P0"
+  estimated_duration: "1-5 seconds per document"
+
+  metadata:
+    document_types_supported:
+      - "rechnung"
+      - "lieferschein"
+      - "vertrag"
+      - "geschaeftsbrief"
+      - "handschriftlich"
+    backends_used: ["deepseek", "got_ocr", "surya"]
+    compliance: ["§14 UStG", "GDPR Art. 30"]
+
+  steps:
+    - step: 1
+      name: "Upload & File Validation"
+      action: "validate_upload"
+      agent: "file_validation_agent"
+
+      inputs:
+        - name: "file"
+          type: "UploadFile"
+          required: true
+        - name: "user_id"
+          type: "string"
+          required: true
+
+      validations:
+        - check: "file_size"
+          max_size_mb: 50
+          error: "E001_FILE_TOO_LARGE"
+
+        - check: "file_type"
+          allowed: [".pdf", ".png", ".jpg", ".jpeg", ".tiff"]
+          error: "E002_INVALID_FILE_TYPE"
+
+        - check: "malware_scan"
+          enabled: false  # Add in production
+          error: "E003_SECURITY_THREAT"
+
+      outputs:
+        - name: "validated_file"
+          type: "File"
+        - name: "file_metadata"
+          type: "dict"
+          fields:
+            - "filename"
+            - "size_bytes"
+            - "mime_type"
+            - "upload_timestamp"
+
+      error_handling:
+        on_validation_error:
+          action: "reject_upload"
+          response:
+            status_code: 400
+            message_de: "Datei ungültig"
+
+        on_security_error:
+          action: "quarantine_and_alert"
+          response:
+            status_code: 403
+            message_de: "Sicherheitsbedrohung erkannt"
+
+      sla:
+        max_duration_ms: 500
+        timeout_action: "reject_with_timeout_error"
+
+    - step: 2
+      name: "Document Type Classification"
+      action: "classify_document_type"
+      agent: "document_classifier_agent"
+
+      inputs:
+        - "validated_file"
+        - "file_metadata"
+
+      classification_methods:
+        - method: "filename_heuristic"
+          priority: 1
+          patterns:
+            - pattern: ".*rechnung.*"
+              type: "rechnung"
+            - pattern: ".*invoice.*"
+              type: "rechnung"
+            - pattern: ".*lieferschein.*"
+              type: "lieferschein"
+            - pattern: ".*vertrag.*"
+              type: "vertrag"
+
+        - method: "content_preview"
+          priority: 2
+          use_first_page: true
+          keywords:
+            rechnung: ["Rechnung", "Invoice", "Rechnungsnummer"]
+            lieferschein: ["Lieferschein", "Delivery Note"]
+            vertrag: ["Vertrag", "Contract", "Vereinbarung"]
+
+        - method: "ml_classifier"
+          priority: 3
+          enabled: false  # Phase 2
+          model: "document_classifier_v1.pkl"
+
+      outputs:
+        - name: "document_type"
+          type: "string"
+          possible_values: ["rechnung", "lieferschein", "vertrag", "geschaeftsbrief", "handschriftlich", "sonstige"]
+        - name: "classification_confidence"
+          type: "float"
+          range: [0.0, 1.0]
+
+      fallback:
+        if_confidence_low:
+          threshold: 0.7
+          default_type: "sonstige"
+          log_for_review: true
+
+      sla:
+        max_duration_ms: 200
+
+    - step: 3
+      name: "Backend Selection"
+      action: "select_ocr_backend"
+      agent: "backend_selection_agent"
+      decision_tree: "backend_selection_tree"
+
+      inputs:
+        - "document_type"
+        - "file_metadata"
+        - "gpu_vram_available"
+
+      decision_logic:
+        - if_document_type: "rechnung"
+          and_vram: ">= 12GB"
+          then: "deepseek"
+          reason: "Best for complex invoice layouts"
+
+        - if_document_type: "rechnung"
+          and_vram: ">= 10GB"
+          then: "got_ocr"
+          reason: "Good accuracy, faster"
+
+        - if_document_type: "handschriftlich"
+          and_vram: ">= 10GB"
+          then: "got_ocr"
+          reason: "Specialized for handwriting"
+
+        - if_document_type: "sonstige"
+          or_vram: "< 10GB"
+          then: "surya"
+          reason: "CPU fallback"
+
+      outputs:
+        - name: "selected_backend"
+          type: "string"
+          possible_values: ["deepseek", "got_ocr", "surya"]
+        - name: "selection_reason"
+          type: "string"
+        - name: "estimated_processing_time"
+          type: "float"
+          unit: "seconds"
+
+      logging:
+        log_selection: true
+        include_vram_status: true
+        include_decision_tree_path: true
+
+      sla:
+        max_duration_ms: 100
+
+    - step: 4
+      name: "OCR Processing"
+      action: "process_with_ocr"
+      agent: "ocr_processing_agent"
+
+      inputs:
+        - "validated_file"
+        - "selected_backend"
+        - "document_type"
+
+      processing_options:
+        language: "de"
+        detect_layout: true
+        detect_fraktur: false  # Enable for historical documents
+        confidence_threshold: 0.85
+
+      backend_specific_params:
+        deepseek:
+          fp16: true
+          max_batch_size: 16
+          use_tables: true
+
+        got_ocr:
+          fp16: true
+          max_batch_size: 32
+          handwriting_mode: false
+
+        surya:
+          cpu_threads: 4
+          layout_analysis: true
+
+      outputs:
+        - name: "raw_text"
+          type: "string"
+        - name: "confidence_score"
+          type: "float"
+        - name: "processing_metadata"
+          type: "dict"
+          fields:
+            - "backend_used"
+            - "processing_time_seconds"
+            - "vram_peak_gb"
+
+      error_handling:
+        on_gpu_oom:
+          action: "fallback_to_next_backend"
+          fallback_chain: ["deepseek", "got_ocr", "surya"]
+          max_retries: 2
+
+        on_processing_error:
+          action: "retry_with_safe_settings"
+          safe_settings:
+            batch_size: 1
+            fp16: false
+          max_retries: 1
+
+        on_total_failure:
+          action: "mark_for_manual_review"
+          notify: "ops_team"
+
+      quality_gates:
+        - gate: "minimum_confidence"
+          threshold: 0.7
+          action_if_fail: "flag_low_quality"
+
+        - gate: "text_not_empty"
+          action_if_fail: "mark_extraction_failed"
+
+      sla:
+        max_duration_ms: 5000  # 5 seconds
+        timeout_action: "fail_with_timeout"
+
+    - step: 5
+      name: "German Text Normalization"
+      action: "normalize_german_text"
+      agent: "german_text_normalizer"
+      condition: "language == 'de'"
+
+      inputs:
+        - "raw_text"
+
+      normalization_steps:
+        - step: "fix_encoding"
+          description: "Ensure UTF-8 encoding"
+          priority: 1
+
+        - step: "normalize_unicode"
+          description: "NFC normalization"
+          priority: 2
+
+        - step: "convert_fraktur"
+          description: "Fraktur → modern characters"
+          priority: 3
+          enabled: false  # Only for historical docs
+
+        - step: "fix_common_errors"
+          description: "ue → ü, ss → ß"
+          priority: 4
+
+        - step: "validate_umlauts"
+          description: "100% accuracy check"
+          priority: 5
+
+      quality_checks:
+        - check: "umlaut_accuracy"
+          requirement: "100%"
+          action_if_fail: "manual_review"
+
+        - check: "no_garbled_characters"
+          action_if_fail: "retry_with_different_encoding"
+
+      outputs:
+        - name: "normalized_text"
+          type: "string"
+        - name: "normalization_report"
+          type: "dict"
+          fields:
+            - "corrections_made"
+            - "confidence"
+
+      sla:
+        max_duration_ms: 500
+
+    - step: 6
+      name: "Template-Based Extraction"
+      action: "extract_with_template"
+      agent: "template_extraction_agent"
+
+      inputs:
+        - "normalized_text"
+        - "document_type"
+
+      template_selection:
+        rechnung: "Static_Knowledge/Templates/rechnungen_template.json"
+        lieferschein: "Static_Knowledge/Templates/lieferscheine_template.json"
+        vertrag: "Static_Knowledge/Templates/vertraege_template.json"
+        default: "Static_Knowledge/Templates/generic_template.json"
+
+      extraction_methods:
+        - method: "regex_patterns"
+          priority: 1
+          patterns:
+            rechnungsnummer: "Rechnung(?:snummer)?:?\\s*([A-Z0-9-]+)"
+            datum: "(\\d{2}\\.\\d{2}\\.\\d{4})"
+            betrag: "(\\d{1,3}(?:\\.\\d{3})*,\\d{2})\\s*€"
+
+        - method: "keyword_proximity"
+          priority: 2
+          description: "Find values near keywords"
+
+        - method: "ml_extraction"
+          priority: 3
+          enabled: false  # Phase 2
+
+      outputs:
+        - name: "structured_data"
+          type: "dict"
+          schema_ref: "template_schema"
+        - name: "extraction_confidence"
+          type: "dict"
+          description: "Confidence per field"
+
+      quality_gates:
+        - gate: "required_fields_present"
+          action_if_fail: "flag_incomplete_extraction"
+
+      sla:
+        max_duration_ms: 1000
+
+    - step: 7
+      name: "Data Validation"
+      action: "validate_extraction"
+      agent: "data_validation_agent"
+
+      inputs:
+        - "structured_data"
+        - "document_type"
+
+      validation_rules:
+        rechnung:
+          - rule: "§14_ustg_compliance"
+            checks:
+              - "rechnungsnummer_present"
+              - "datum_valid"
+              - "ust_id_or_steuernummer_present"
+              - "betrag_calculations_correct"
+            compliance: "§14 UStG"
+
+          - rule: "math_validation"
+            checks:
+              - formula: "netto + mwst ≈ brutto"
+                tolerance: 0.02
+              - formula: "netto * (mwst_satz/100) ≈ mwst_betrag"
+                tolerance: 0.02
+
+          - rule: "date_logic"
+            checks:
+              - "rechnungsdatum <= today"
+              - "leistungsdatum <= rechnungsdatum + 6 months"
+
+        all_types:
+          - rule: "german_text_quality"
+            checks:
+              - "no_garbled_characters"
+              - "umlauts_valid"
+
+      outputs:
+        - name: "validation_result"
+          type: "dict"
+          fields:
+            - "valid"
+            - "errors"
+            - "warnings"
+        - name: "compliance_status"
+          type: "dict"
+
+      error_handling:
+        on_critical_validation_error:
+          action: "reject_document"
+          notify_user: true
+
+        on_warning:
+          action: "accept_with_flag"
+          manual_review_needed: true
+
+      sla:
+        max_duration_ms: 500
+
+    - step: 8
+      name: "Store Result"
+      action: "store_document_result"
+      agent: "database_storage_agent"
+
+      inputs:
+        - "validated_data"
+        - "file_metadata"
+        - "processing_metadata"
+        - "user_id"
+
+      storage_operations:
+        - operation: "save_to_database"
+          table: "documents"
+          fields:
+            - "document_id"
+            - "user_id"
+            - "document_type"
+            - "structured_data"
+            - "validation_status"
+            - "created_at"
+
+        - operation: "save_original_file"
+          storage: "minio"
+          bucket: "ablage-originals"
+          retention: "7_years"  # Legal requirement
+
+        - operation: "cache_result"
+          cache: "redis"
+          ttl: "1_hour"
+
+      outputs:
+        - name: "document_id"
+          type: "string"
+        - name: "storage_urls"
+          type: "dict"
+
+      error_handling:
+        on_database_error:
+          action: "retry_with_backoff"
+          max_retries: 3
+
+        on_storage_error:
+          action: "store_locally_and_queue_retry"
+
+      sla:
+        max_duration_ms: 1000
+
+    - step: 9
+      name: "GDPR Compliance Logging"
+      action: "log_processing_activity"
+      agent: "gdpr_compliance_agent"
+
+      inputs:
+        - "document_id"
+        - "user_id"
+        - "processing_metadata"
+
+      gdpr_requirements:
+        article_30:
+          purpose: "Document processing for business operations"
+          legal_basis: "Contract fulfillment"
+          data_categories: ["business_documents", "financial_data"]
+          retention_period: "7_years"
+
+      logging_actions:
+        - action: "record_processing"
+          log_table: "gdpr_processing_log"
+          fields:
+            - "timestamp"
+            - "user_id"
+            - "document_id"
+            - "processing_purpose"
+            - "legal_basis"
+
+        - action: "update_data_inventory"
+          include: ["data_subject", "data_categories", "retention_end"]
+
+      outputs:
+        - name: "gdpr_log_id"
+          type: "string"
+        - name: "retention_end_date"
+          type: "datetime"
+
+      sla:
+        max_duration_ms: 200
+
+    - step: 10
+      name: "Return Response"
+      action: "format_and_return_response"
+
+      inputs:
+        - "document_id"
+        - "structured_data"
+        - "validation_result"
+        - "processing_metadata"
+
+      response_format:
+        success:
+          status: 200
+          body:
+            success: true
+            document_id: "{{document_id}}"
+            extracted_data: "{{structured_data}}"
+            validation: "{{validation_result}}"
+            metadata: "{{processing_metadata}}"
+            message_de: "Dokument erfolgreich verarbeitet"
+
+        partial_success:
+          status: 200
+          body:
+            success: true
+            warnings: "{{warnings}}"
+            message_de: "Dokument verarbeitet mit Warnungen"
+
+        failure:
+          status: 400
+          body:
+            success: false
+            errors: "{{errors}}"
+            message_de: "Verarbeitung fehlgeschlagen"
+
+      sla:
+        max_duration_ms: 100
+
+  # Workflow-Level Configuration
+  monitoring:
+    track_metrics:
+      - "total_processing_time"
+      - "backend_used"
+      - "validation_success_rate"
+      - "error_types"
+
+    alerts:
+      - condition: "total_processing_time > 10s"
+        severity: "warning"
+        message: "Slow processing detected"
+
+      - condition: "validation_failure_rate > 20%"
+        severity: "critical"
+        message: "High validation failure rate"
+
+  error_recovery:
+    global_timeout: "30s"
+    global_retry_policy:
+      max_retries: 1
+      backoff: "exponential"
+
+    circuit_breaker:
+      enabled: true
+      failure_threshold: 5
+      timeout: 60  # seconds
+
+  quality_metrics:
+    sla_targets:
+      processing_time_p95: "5s"
+      validation_success_rate: ">95%"
+      extraction_accuracy: ">90%"
+
+  compliance:
+    standards: ["§14 UStG", "GDPR Art. 30"]
+    audit_logging: true
+    data_retention: "7_years"
+
+  version_history:
+    - version: "1.0"
+      date: "2024-11-22"
+      changes: "Initial workflow definition"
+      author: "Architecture Team"

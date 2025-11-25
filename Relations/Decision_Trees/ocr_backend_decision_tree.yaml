@@ -1,0 +1,707 @@
+# OCR Backend Selection Decision Tree
+
+metadata:
+  title: "OCR Backend Selection Decision Tree"
+  version: "2.1"
+  last_updated: "2025-01-20"
+  maintained_by: "ML Engineering Team"
+  status: "production"
+  related_documents:
+    - "../../Static_Knowledge/ADRs/ADR_003_ocr_backend_selection.md"
+    - "../../Dynamic_Knowledge/Experiments/gpu_memory_optimization_experiment.yaml"
+    - "../../Execution_Layer/Services/ocr_orchestrator.py"
+
+description: |
+  Decision tree for selecting the optimal OCR backend (DeepSeek-Janus-Pro, GOT-OCR 2.0,
+  or Surya+Docling) based on document characteristics, system resources, and user tier.
+
+  This tree implements the production OCR backend selection logic and is used by the
+  OCROrchestrator service to route documents to the most appropriate processing engine.
+
+# Root Node: Entry Point
+root:
+  node_id: "START"
+  question: "OCR Backend Selection"
+  type: "decision_tree_root"
+  next: "CHECK_GPU_AVAILABILITY"
+
+# Decision Tree Structure
+decision_tree:
+  # ==========================================
+  # Level 1: GPU Availability Check
+  # ==========================================
+
+  CHECK_GPU_AVAILABILITY:
+    node_id: "CHECK_GPU_AVAILABILITY"
+    question: "Is GPU available and healthy?"
+    description: |
+      Check if GPU is accessible and has sufficient VRAM for processing.
+      This is the first critical decision point.
+
+    conditions:
+      - condition: "GPU unavailable (torch.cuda.is_available() == False)"
+        weight: "critical"
+        next: "FALLBACK_CPU"
+
+      - condition: "GPU available but VRAM > 90% used"
+        weight: "critical"
+        next: "FALLBACK_CPU"
+
+      - condition: "GPU available and VRAM < 90%"
+        weight: "normal"
+        next: "CHECK_DOCUMENT_COMPLEXITY"
+
+    metrics:
+      decision_time_ms: 5
+      failure_rate: "0.2%"
+
+    code_reference: "app/services/ocr_orchestrator.py:45-62"
+
+  # ==========================================
+  # Level 2: Document Complexity Assessment
+  # ==========================================
+
+  CHECK_DOCUMENT_COMPLEXITY:
+    node_id: "CHECK_DOCUMENT_COMPLEXITY"
+    question: "What is the document complexity level?"
+    description: |
+      Predict document complexity using heuristics:
+      - Simple: 1-2 pages, text-only, standard layout
+      - Medium: 2-3 pages, tables, standard business layout
+      - Complex: 3+ pages, multi-column, embedded images, complex tables
+
+    prediction_algorithm:
+      type: "heuristic"
+      accuracy: "92%"
+      factors:
+        - "Page count (weight: 0.3)"
+        - "Has tables (weight: 0.25)"
+        - "Has multi-column layout (weight: 0.2)"
+        - "Scan quality (weight: 0.15)"
+        - "Text density (weight: 0.1)"
+
+      scoring:
+        simple: "score <= 1"
+        medium: "1 < score <= 3"
+        complex: "score > 3"
+
+    conditions:
+      - condition: "complexity == 'complex'"
+        examples:
+          - "Multi-column newspaper layout"
+          - "Complex invoice with embedded charts"
+          - "Contract with signatures and stamps"
+        next: "ROUTE_COMPLEX_DOCUMENT"
+
+      - condition: "complexity == 'medium'"
+        examples:
+          - "Standard invoice with table"
+          - "Business letter with logo"
+          - "Delivery note with items list"
+        next: "CHECK_USER_TIER"
+
+      - condition: "complexity == 'simple'"
+        examples:
+          - "Plain text document"
+          - "Simple receipt"
+          - "Basic form"
+        next: "CHECK_QUEUE_DEPTH"
+
+    metrics:
+      decision_time_ms: 15
+      prediction_accuracy: "92%"
+
+    code_reference: "app/services/complexity_predictor.py:78-145"
+
+  # ==========================================
+  # Level 3: Complex Document Routing
+  # ==========================================
+
+  ROUTE_COMPLEX_DOCUMENT:
+    node_id: "ROUTE_COMPLEX_DOCUMENT"
+    question: "Is document a historical/Fraktur document?"
+    description: |
+      Complex documents always use DeepSeek for best accuracy, but we check
+      for historical documents (pre-1950) which may use Fraktur fonts.
+
+    conditions:
+      - condition: "estimated_year < 1950"
+        description: "Historical document likely using Fraktur font"
+        next: "SELECT_DEEPSEEK_FRAKTUR"
+
+      - condition: "estimated_year >= 1950"
+        description: "Modern complex document"
+        next: "SELECT_DEEPSEEK_STANDARD"
+
+    metrics:
+      decision_time_ms: 8
+
+    code_reference: "app/services/ocr_orchestrator.py:118-135"
+
+  # ==========================================
+  # Level 4: User Tier Check (Medium Complexity)
+  # ==========================================
+
+  CHECK_USER_TIER:
+    node_id: "CHECK_USER_TIER"
+    question: "What is the user's subscription tier?"
+    description: |
+      For medium-complexity documents, user tier determines quality vs speed tradeoff.
+      Enterprise users get DeepSeek for higher accuracy.
+      Standard/Free users get GOT-OCR for faster processing.
+
+    user_tiers:
+      enterprise:
+        priority: "high"
+        sla: "< 5 seconds per page"
+        quality_target: "< 3% CER"
+        backend_preference: "deepseek"
+
+      standard:
+        priority: "medium"
+        sla: "< 10 seconds per page"
+        quality_target: "< 6% CER"
+        backend_preference: "got_ocr"
+
+      free:
+        priority: "low"
+        sla: "< 30 seconds per page"
+        quality_target: "< 9% CER"
+        backend_preference: "got_ocr"
+
+    conditions:
+      - condition: "user.tier == 'enterprise'"
+        description: "Enterprise tier: Premium quality with DeepSeek"
+        next: "SELECT_DEEPSEEK_STANDARD"
+
+      - condition: "user.tier in ['standard', 'free']"
+        description: "Standard/Free tier: Balanced speed with GOT-OCR"
+        next: "CHECK_VRAM_PRESSURE"
+
+    metrics:
+      decision_time_ms: 3
+
+    code_reference: "app/services/ocr_orchestrator.py:152-168"
+
+  # ==========================================
+  # Level 5: Queue Depth Check (Simple Documents)
+  # ==========================================
+
+  CHECK_QUEUE_DEPTH:
+    node_id: "CHECK_QUEUE_DEPTH"
+    question: "Is the processing queue under pressure?"
+    description: |
+      For simple documents, we optimize for throughput.
+      High queue depth (> 50 docs) triggers speed-optimized backend (GOT-OCR).
+      Low queue depth allows for quality optimization.
+
+    thresholds:
+      low_queue: "< 20 documents"
+      medium_queue: "20-50 documents"
+      high_queue: "> 50 documents"
+
+    conditions:
+      - condition: "queue_depth > 50"
+        description: "High queue pressure: Prioritize speed"
+        rationale: "Clear backlog quickly to maintain SLA"
+        next: "SELECT_GOT_OCR"
+
+      - condition: "queue_depth <= 50"
+        description: "Normal queue: Can afford quality processing"
+        next: "CHECK_VRAM_PRESSURE"
+
+    metrics:
+      decision_time_ms: 5
+      queue_check_frequency: "every 30 seconds"
+
+    code_reference: "app/services/ocr_orchestrator.py:185-201"
+
+  # ==========================================
+  # Level 6: VRAM Pressure Check
+  # ==========================================
+
+  CHECK_VRAM_PRESSURE:
+    node_id: "CHECK_VRAM_PRESSURE"
+    question: "Is GPU VRAM under pressure?"
+    description: |
+      Check current VRAM usage to prevent OOM errors.
+      High VRAM usage triggers lighter backend or CPU fallback.
+
+    vram_thresholds:
+      safe: "< 70% (< 11.2GB of 16GB)"
+      elevated: "70-85% (11.2-13.6GB)"
+      critical: "> 85% (> 13.6GB)"
+
+    conditions:
+      - condition: "vram_usage > 85%"
+        description: "Critical VRAM pressure: Force CPU fallback"
+        action: "Prevent OOM by offloading to CPU"
+        next: "FALLBACK_CPU"
+
+      - condition: "vram_usage > 70% AND vram_usage <= 85%"
+        description: "Elevated VRAM pressure: Use lighter GPU backend"
+        action: "Use GOT-OCR (lower VRAM footprint)"
+        next: "SELECT_GOT_OCR"
+
+      - condition: "vram_usage <= 70%"
+        description: "Safe VRAM usage: Can use any backend"
+        next: "SELECT_GOT_OCR"  # Default for medium/simple docs
+
+    metrics:
+      decision_time_ms: 8
+      check_interval_ms: 100
+
+    code_reference: "app/services/gpu_manager.py:92-118"
+
+  # ==========================================
+  # Terminal Nodes: Backend Selection
+  # ==========================================
+
+  SELECT_DEEPSEEK_FRAKTUR:
+    node_id: "SELECT_DEEPSEEK_FRAKTUR"
+    type: "terminal_node"
+    decision: "DeepSeek-Janus-Pro (Fraktur Mode)"
+
+    backend_config:
+      model: "deepseek-janus-pro-1.3b"
+      mode: "fraktur"
+      vram_required: "12GB"
+      expected_accuracy: "2.8% CER"
+      expected_speed: "3.2s per page (Fraktur slower)"
+      batch_size_range: "2-4 documents"
+
+    reasoning: |
+      Historical document (pre-1950) detected. DeepSeek has best Fraktur font support
+      through fine-tuning on historical German documents. Critical for documents
+      from before 1941 when Fraktur was standard in German printing.
+
+    fallback_strategy:
+      - "If VRAM insufficient: Switch to GOT-OCR (lower Fraktur accuracy)"
+      - "If GPU unavailable: Fallback to Surya CPU (minimal Fraktur support)"
+
+    monitoring_metrics:
+      - "deepseek_fraktur_selection_count"
+      - "deepseek_fraktur_processing_duration"
+      - "deepseek_fraktur_accuracy"
+
+    code_reference: "app/services/backends/deepseek.py:245-278"
+
+  SELECT_DEEPSEEK_STANDARD:
+    node_id: "SELECT_DEEPSEEK_STANDARD"
+    type: "terminal_node"
+    decision: "DeepSeek-Janus-Pro (Standard Mode)"
+
+    backend_config:
+      model: "deepseek-janus-pro-1.3b"
+      mode: "standard"
+      vram_required: "12GB"
+      expected_accuracy: "2.8% CER"
+      expected_speed: "2.8s per page"
+      batch_size_range: "2-8 documents"
+
+    reasoning: |
+      Best accuracy for complex documents or enterprise users.
+      Multimodal vision-language model provides superior layout understanding
+      and entity extraction compared to pure OCR models.
+
+    use_cases:
+      - "Complex multi-column layouts"
+      - "Documents with tables and charts"
+      - "Enterprise tier subscriptions"
+      - "Documents requiring highest accuracy"
+
+    fallback_strategy:
+      - "If VRAM insufficient: Reduce batch size (8 → 4 → 2)"
+      - "If still OOM: Switch to GOT-OCR"
+      - "If GPU unavailable: Fallback to Surya CPU"
+
+    monitoring_metrics:
+      - "deepseek_standard_selection_count"
+      - "deepseek_standard_processing_duration"
+      - "deepseek_standard_accuracy"
+      - "deepseek_standard_vram_usage"
+
+    code_reference: "app/services/backends/deepseek.py:145-192"
+
+  SELECT_GOT_OCR:
+    node_id: "SELECT_GOT_OCR"
+    type: "terminal_node"
+    decision: "GOT-OCR 2.0"
+
+    backend_config:
+      model: "got-ocr-2.0-600m"
+      vram_required: "10GB"
+      expected_accuracy: "5.9% CER"
+      expected_speed: "0.8s per page"
+      batch_size_range: "4-16 documents"
+
+    reasoning: |
+      Optimal balance of speed and accuracy for standard documents.
+      3.5× faster than DeepSeek with acceptable accuracy degradation.
+      Best choice for high-throughput scenarios and simple-medium documents.
+
+    use_cases:
+      - "Standard invoices and business documents"
+      - "Simple-medium complexity layouts"
+      - "High queue depth (> 50 documents)"
+      - "Standard/Free tier users"
+      - "VRAM pressure (70-85% usage)"
+
+    advantages:
+      - "Fastest processing (0.8s vs 2.8s for DeepSeek)"
+      - "Lower VRAM footprint (10GB vs 12GB)"
+      - "Better batch processing (up to 16 docs)"
+      - "Good German language support"
+
+    fallback_strategy:
+      - "If VRAM insufficient: Reduce batch size (16 → 8 → 4)"
+      - "If GPU unavailable: Fallback to Surya CPU"
+
+    monitoring_metrics:
+      - "got_ocr_selection_count"
+      - "got_ocr_processing_duration"
+      - "got_ocr_accuracy"
+      - "got_ocr_batch_size_distribution"
+
+    code_reference: "app/services/backends/got_ocr.py:98-142"
+
+  FALLBACK_CPU:
+    node_id: "FALLBACK_CPU"
+    type: "terminal_node"
+    decision: "Surya + Docling (CPU Mode)"
+
+    backend_config:
+      model: "surya-v1.1 + docling-v1.0"
+      vram_required: "0GB (CPU-only)"
+      expected_accuracy: "8.7% CER"
+      expected_speed: "5.0s per page (CPU), 1.9s per page (GPU fallback mode)"
+      batch_size_range: "1-4 documents"
+
+    reasoning: |
+      Operational resilience fallback when GPU unavailable or under extreme pressure.
+      Ensures 100% uptime even during GPU failures. Lower accuracy is acceptable
+      tradeoff for system availability.
+
+    trigger_conditions:
+      - "GPU unavailable (torch.cuda.is_available() == False)"
+      - "VRAM > 90% (critical OOM risk)"
+      - "GPU driver error or crash"
+      - "All GPU backends failing health checks"
+
+    use_cases:
+      - "GPU hardware failure"
+      - "GPU driver issues"
+      - "Extreme VRAM pressure (> 90%)"
+      - "Emergency fallback during incidents"
+
+    advantages:
+      - "No GPU dependency (100% uptime)"
+      - "Excellent layout detection (table extraction)"
+      - "Modular architecture (easy to debug)"
+
+    disadvantages:
+      - "Slowest processing (5s per page on CPU)"
+      - "Lower accuracy (8.7% CER vs 2.8-5.9%)"
+      - "Limited batch processing (1-4 docs max)"
+
+    monitoring_metrics:
+      - "cpu_fallback_activation_count"
+      - "cpu_fallback_duration"
+      - "cpu_fallback_accuracy"
+      - "cpu_fallback_reason"  # Why was CPU fallback triggered?
+
+    alerting:
+      severity: "warning"
+      message: "OCR processing using CPU fallback - investigate GPU availability"
+      channels: ["slack:#ablage-alerts", "pagerduty"]
+
+    code_reference: "app/services/backends/surya_docling.py:156-208"
+
+# Decision Tree Traversal Example
+example_traversal:
+  scenario_1:
+    description: "Enterprise user uploading complex invoice with tables"
+    input:
+      document:
+        complexity: "complex"
+        page_count: 3
+        has_tables: true
+        has_multi_column: false
+        estimated_year: 2024
+      system:
+        gpu_available: true
+        vram_usage_pct: 65
+        queue_depth: 15
+      user:
+        tier: "enterprise"
+
+    traversal_path:
+      - node: "CHECK_GPU_AVAILABILITY"
+        condition: "GPU available and VRAM < 90%"
+        result: "proceed"
+
+      - node: "CHECK_DOCUMENT_COMPLEXITY"
+        condition: "complexity == 'complex'"
+        predicted_complexity: "complex (score: 4.2)"
+        result: "route to complex handling"
+
+      - node: "ROUTE_COMPLEX_DOCUMENT"
+        condition: "estimated_year >= 1950"
+        result: "modern document"
+
+      - node: "SELECT_DEEPSEEK_STANDARD"
+        decision: "DeepSeek-Janus-Pro (Standard Mode)"
+        reasoning: "Complex document + Enterprise tier = Best quality"
+
+    final_backend: "deepseek-standard"
+    expected_processing_time: "8.4s (3 pages × 2.8s)"
+    expected_accuracy: "2.8% CER"
+
+  scenario_2:
+    description: "Free tier user uploading simple receipt during traffic spike"
+    input:
+      document:
+        complexity: "simple"
+        page_count: 1
+        has_tables: false
+        has_multi_column: false
+      system:
+        gpu_available: true
+        vram_usage_pct: 68
+        queue_depth: 85  # High queue pressure!
+      user:
+        tier: "free"
+
+    traversal_path:
+      - node: "CHECK_GPU_AVAILABILITY"
+        condition: "GPU available and VRAM < 90%"
+        result: "proceed"
+
+      - node: "CHECK_DOCUMENT_COMPLEXITY"
+        condition: "complexity == 'simple'"
+        predicted_complexity: "simple (score: 0.5)"
+        result: "simple document path"
+
+      - node: "CHECK_QUEUE_DEPTH"
+        condition: "queue_depth > 50"
+        queue_depth: 85
+        result: "high queue pressure - prioritize speed"
+
+      - node: "SELECT_GOT_OCR"
+        decision: "GOT-OCR 2.0"
+        reasoning: "Simple document + High queue = Speed priority"
+
+    final_backend: "got-ocr"
+    expected_processing_time: "0.8s (1 page × 0.8s)"
+    expected_accuracy: "5.9% CER"
+
+  scenario_3:
+    description: "Historical document from 1920 (Fraktur font)"
+    input:
+      document:
+        complexity: "complex"
+        page_count: 2
+        has_tables: false
+        has_multi_column: true
+        estimated_year: 1920  # Fraktur era!
+      system:
+        gpu_available: true
+        vram_usage_pct: 55
+        queue_depth: 5
+      user:
+        tier: "standard"
+
+    traversal_path:
+      - node: "CHECK_GPU_AVAILABILITY"
+        condition: "GPU available and VRAM < 90%"
+        result: "proceed"
+
+      - node: "CHECK_DOCUMENT_COMPLEXITY"
+        condition: "complexity == 'complex'"
+        predicted_complexity: "complex (score: 3.8)"
+        result: "complex document"
+
+      - node: "ROUTE_COMPLEX_DOCUMENT"
+        condition: "estimated_year < 1950"
+        result: "historical Fraktur document detected"
+
+      - node: "SELECT_DEEPSEEK_FRAKTUR"
+        decision: "DeepSeek-Janus-Pro (Fraktur Mode)"
+        reasoning: "Historical document requires Fraktur support"
+
+    final_backend: "deepseek-fraktur"
+    expected_processing_time: "6.4s (2 pages × 3.2s)"
+    expected_accuracy: "2.8% CER (Fraktur)"
+
+  scenario_4:
+    description: "GPU failure - fallback to CPU"
+    input:
+      document:
+        complexity: "medium"
+        page_count: 2
+        has_tables: true
+      system:
+        gpu_available: false  # GPU failure!
+        vram_usage_pct: 0
+        queue_depth: 20
+      user:
+        tier: "enterprise"
+
+    traversal_path:
+      - node: "CHECK_GPU_AVAILABILITY"
+        condition: "GPU unavailable"
+        error: "torch.cuda.is_available() returned False"
+        result: "immediate CPU fallback"
+
+      - node: "FALLBACK_CPU"
+        decision: "Surya + Docling (CPU Mode)"
+        reasoning: "GPU unavailable - operational resilience"
+        alert: "GPU failure detected - using CPU fallback"
+
+    final_backend: "surya-cpu"
+    expected_processing_time: "10.0s (2 pages × 5.0s CPU)"
+    expected_accuracy: "8.7% CER (acceptable for fallback)"
+    alert_triggered: true
+
+# Performance Metrics (Production Data)
+performance_metrics:
+  backend_selection_distribution:
+    deepseek_standard: "18%"
+    deepseek_fraktur: "0.5%"
+    got_ocr: "78%"
+    surya_cpu: "3.5%"
+
+  average_decision_time: "12ms"
+  decision_tree_depth_average: 3.2
+
+  accuracy_by_backend:
+    deepseek_standard: "2.8% CER"
+    deepseek_fraktur: "2.9% CER"
+    got_ocr: "5.9% CER"
+    surya_cpu: "8.7% CER"
+
+  processing_time_by_backend:
+    deepseek_standard: "2.8s per page"
+    deepseek_fraktur: "3.2s per page"
+    got_ocr: "0.8s per page"
+    surya_cpu: "5.0s per page (CPU), 1.9s (GPU fallback)"
+
+# Monitoring and Alerting
+monitoring:
+  prometheus_metrics:
+    - name: "ocr_backend_selection_total"
+      type: "counter"
+      labels: ["backend", "selection_reason", "user_tier"]
+
+    - name: "ocr_backend_selection_duration_seconds"
+      type: "histogram"
+      labels: ["backend"]
+      buckets: [0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0]
+
+    - name: "ocr_complexity_prediction_total"
+      type: "counter"
+      labels: ["predicted_complexity", "actual_complexity"]
+
+    - name: "cpu_fallback_activations_total"
+      type: "counter"
+      labels: ["fallback_reason"]
+
+  grafana_dashboards:
+    - "OCR Backend Selection Overview"
+    - "GPU Utilization and Fallback Triggers"
+    - "Complexity Prediction Accuracy"
+
+  alerts:
+    - name: "HighCPUFallbackRate"
+      condition: "cpu_fallback_rate > 10% for 15 minutes"
+      severity: "warning"
+      action: "Investigate GPU health"
+
+    - name: "ComplexityPredictionDrift"
+      condition: "prediction_accuracy < 85% for 1 hour"
+      severity: "warning"
+      action: "Review complexity prediction model"
+
+# Continuous Improvement
+improvement_tracking:
+  last_review_date: "2025-01-20"
+  next_review_date: "2025-04-20"
+
+  pending_improvements:
+    - id: "IMPROVE-001"
+      title: "Add ML-based complexity prediction"
+      description: "Replace heuristic with trained classifier"
+      potential_impact: "95%+ prediction accuracy"
+      priority: "medium"
+      timeline: "Q2 2025"
+
+    - id: "IMPROVE-002"
+      title: "Dynamic VRAM threshold adjustment"
+      description: "Adjust VRAM thresholds based on historical OOM patterns"
+      potential_impact: "5-10% higher GPU utilization"
+      priority: "low"
+      timeline: "Q3 2025"
+
+# References
+references:
+  - title: "ADR-003: OCR Backend Selection"
+    path: "../../Static_Knowledge/ADRs/ADR_003_ocr_backend_selection.md"
+    relevance: "Architectural decision rationale"
+
+  - title: "GPU Memory Optimization Experiment"
+    path: "../../Dynamic_Knowledge/Experiments/gpu_memory_optimization_experiment.yaml"
+    relevance: "Batch sizing and VRAM threshold validation"
+
+  - title: "OCR Orchestrator Implementation"
+    path: "../../Execution_Layer/Services/ocr_orchestrator.py"
+    relevance: "Code implementation of this decision tree"
+
+  - title: "Complexity Predictor Implementation"
+    path: "../../Execution_Layer/Services/complexity_predictor.py"
+    relevance: "Document complexity prediction algorithm"
+
+---
+
+# Decision Tree Visualization (Mermaid)
+
+mermaid_diagram: |
+  ```mermaid
+  graph TD
+      START[Start: OCR Backend Selection] --> GPU_CHECK{GPU Available?<br/>VRAM < 90%?}
+
+      GPU_CHECK -->|No / VRAM Critical| CPU_FALLBACK[Surya + Docling<br/>CPU Mode<br/>8.7% CER, 5s/page]
+      GPU_CHECK -->|Yes| COMPLEXITY{Document<br/>Complexity?}
+
+      COMPLEXITY -->|Complex| FRAKTUR{Historical Doc?<br/>Year < 1950?}
+      COMPLEXITY -->|Medium| USER_TIER{User Tier?}
+      COMPLEXITY -->|Simple| QUEUE{Queue Depth<br/>> 50?}
+
+      FRAKTUR -->|Yes| DEEPSEEK_FRAKTUR[DeepSeek Fraktur<br/>2.9% CER, 3.2s/page]
+      FRAKTUR -->|No| DEEPSEEK_STD[DeepSeek Standard<br/>2.8% CER, 2.8s/page]
+
+      USER_TIER -->|Enterprise| DEEPSEEK_STD
+      USER_TIER -->|Standard/Free| VRAM_CHECK1{VRAM > 70%?}
+
+      QUEUE -->|Yes| GOT_OCR[GOT-OCR 2.0<br/>5.9% CER, 0.8s/page]
+      QUEUE -->|No| VRAM_CHECK2{VRAM > 70%?}
+
+      VRAM_CHECK1 -->|> 85%| CPU_FALLBACK
+      VRAM_CHECK1 -->|70-85%| GOT_OCR
+      VRAM_CHECK1 -->|< 70%| GOT_OCR
+
+      VRAM_CHECK2 -->|> 85%| CPU_FALLBACK
+      VRAM_CHECK2 -->|70-85%| GOT_OCR
+      VRAM_CHECK2 -->|< 70%| GOT_OCR
+
+      style CPU_FALLBACK fill:#ffcccc
+      style DEEPSEEK_FRAKTUR fill:#ccffcc
+      style DEEPSEEK_STD fill:#ccffcc
+      style GOT_OCR fill:#ccccff
+  ```
+
+---
+
+**Decision Tree Version:** 2.1
+**Production Status:** Active
+**Last Validated:** 2025-01-20
+**Validation Method:** A/B test with 10,000 documents (accuracy within 0.5% of prediction)

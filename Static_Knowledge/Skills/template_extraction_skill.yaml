@@ -1,0 +1,337 @@
+# Template Extraction Skill
+# Structured Data Extraction from German Documents
+
+metadata:
+  skill_id: "template_extraction"
+  version: "1.0.0"
+  category: "information_extraction"
+  dependencies: ["regex", "spacy", "dateutil"]
+  last_updated: "2025-01-22"
+  status: "referenced_not_yet_implemented"
+
+description: |
+  Template-based field extraction for German business documents. Extracts structured
+  data from invoices, contracts, delivery notes using regex patterns, entity recognition,
+  and validation rules.
+
+capabilities:
+  - Invoice field extraction (§14 UStG compliant)
+  - Entity recognition (companies, addresses, dates, amounts)
+  - Confidence scoring
+  - Validation against business rules
+  - Multi-template matching
+
+supported_templates:
+  rechnung:
+    description: "German invoice (§14 UStG)"
+    compliance: "Umsatzsteuergesetz §14"
+    required_fields:
+      - "Rechnungsnummer"
+      - "Rechnungsdatum"
+      - "Leistungsdatum"
+      - "Rechnungsteller (Name, Adresse)"
+      - "Rechnungsempfänger (Name, Adresse)"
+      - "Steuernummer oder USt-IdNr"
+      - "Nettobetrag"
+      - "Umsatzsteuersatz"
+      - "Umsatzsteuerbetrag"
+      - "Bruttobetrag"
+    optional_fields:
+      - "Zahlungsziel"
+      - "Bankverbindung"
+      - "Skonto"
+      - "Lieferscheinnummer"
+    template_file: "Static_Knowledge/Templates/rechnungen_template.json"
+
+  vertrag:
+    description: "German contract"
+    required_fields:
+      - "Vertragsparteien"
+      - "Vertragsdatum"
+      - "Vertragsgegenstand"
+      - "Laufzeit"
+      - "Unterschriften"
+    optional_fields:
+      - "Kündigungsfristen"
+      - "Zahlungsmodalitäten"
+      - "Haftungsausschlüsse"
+    template_file: "Static_Knowledge/Templates/vertrag_template.json"
+
+  lieferschein:
+    description: "Delivery note"
+    required_fields:
+      - "Lieferscheinnummer"
+      - "Lieferdatum"
+      - "Lieferant"
+      - "Empfänger"
+      - "Positionen (Artikel, Menge)"
+    optional_fields:
+      - "Bestellnummer"
+      - "Lieferadresse"
+      - "Versandart"
+    template_file: "Static_Knowledge/Templates/lieferschein_template.json"
+
+extraction_patterns:
+  rechnungsnummer:
+    description: "Invoice number pattern"
+    patterns:
+      - "Rechnung(?:s)?(?:nummer|nr\\.?)\\s*:?\\s*([A-Z0-9-/]+)"
+      - "Invoice(?:\\s+No\\.?)?\\s*:?\\s*([A-Z0-9-/]+)"
+      - "RG-?\\d{4,}"
+    example_values:
+      - "RG-2024-001"
+      - "Rechnungsnummer: 12345"
+      - "Invoice No. R-2024/001"
+    validation:
+      min_length: 3
+      max_length: 30
+      pattern: "^[A-Z0-9-/]+$"
+
+  datum:
+    description: "German date extraction (DD.MM.YYYY)"
+    patterns:
+      - "\\d{1,2}\\.\\d{1,2}\\.\\d{4}"
+      - "\\d{1,2}\\.\\s*(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\\s*\\d{4}"
+    parsing: |
+      from dateutil import parser
+      from datetime import datetime
+
+      def parse_german_date(date_str: str) -> datetime:
+          # Try DD.MM.YYYY format
+          try:
+              return datetime.strptime(date_str, '%d.%m.%Y')
+          except ValueError:
+              pass
+
+          # Try with month names
+          month_map = {
+              'Januar': '01', 'Februar': '02', 'März': '03',
+              'April': '04', 'Mai': '05', 'Juni': '06',
+              'Juli': '07', 'August': '08', 'September': '09',
+              'Oktober': '10', 'November': '11', 'Dezember': '12'
+          }
+          for month_name, month_num in month_map.items():
+              if month_name in date_str:
+                  date_str = date_str.replace(month_name, month_num)
+                  return datetime.strptime(date_str, '%d. %m %Y')
+
+          raise ValueError(f"Cannot parse date: {date_str}")
+
+  betrag:
+    description: "German currency amount (1.234,56 €)"
+    patterns:
+      - "(\\d{1,3}(?:\\.\\d{3})*,\\d{2})\\s*€?"
+      - "€\\s*(\\d{1,3}(?:\\.\\d{3})*,\\d{2})"
+    parsing: |
+      def parse_german_amount(amount_str: str) -> float:
+          # Remove currency symbol and whitespace
+          cleaned = amount_str.replace('€', '').strip()
+
+          # Replace German decimal separator
+          cleaned = cleaned.replace('.', '').replace(',', '.')
+
+          return float(cleaned)
+
+      # Example:
+      # "1.234,56 €" -> 1234.56
+    validation:
+      min_value: 0.01
+      max_value: 999999999.99
+      precision: 2
+
+  steuernummer:
+    description: "German tax number patterns"
+    patterns:
+      ust_idnr:
+        pattern: "DE\\d{9}"
+        example: "DE123456789"
+        description: "Umsatzsteuer-Identifikationsnummer"
+
+      steuernummer:
+        pattern: "\\d{2,3}/\\d{3}/\\d{5}"
+        example: "19/815/08155"
+        description: "Steuernummer (regional)"
+    code: |
+      import re
+
+      def extract_tax_id(text: str) -> dict:
+          result = {'ust_idnr': None, 'steuernummer': None}
+
+          # USt-IdNr
+          match = re.search(r'DE\d{9}', text)
+          if match:
+              result['ust_idnr'] = match.group(0)
+
+          # Steuernummer
+          match = re.search(r'\d{2,3}/\d{3}/\d{5}', text)
+          if match:
+              result['steuernummer'] = match.group(0)
+
+          return result
+
+  unternehmen:
+    description: "Company name with legal form"
+    patterns:
+      - "([A-ZÄÖÜ][a-zäöüß\\-]+(?:\\s+[A-ZÄÖÜa-zäöüß\\-]+)*\\s+(?:GmbH|AG|KG|GbR|UG|e\\.V\\.|PartG))"
+    example_values:
+      - "Müller GmbH"
+      - "Bäcker und Partner AG"
+      - "Schulze KG"
+    code: |
+      import re
+
+      def extract_company_names(text: str) -> list:
+          legal_forms = r'(?:GmbH|AG|KG|GbR|UG|e\.V\.|PartG)'
+          pattern = f'([A-ZÄÖÜ][a-zäöüß\\-]+(?:\\s+[A-ZÄÖÜa-zäöüß\\-]+)*\\s+{legal_forms})'
+
+          matches = re.findall(pattern, text)
+          return matches
+
+extraction_workflow:
+  step_1_template_detection:
+    description: "Identify document template type"
+    method: "Keyword matching + ML classification"
+    code: |
+      def detect_template(text: str) -> str:
+          keywords = {
+              'rechnung': ['Rechnung', 'Rechnungsnummer', 'Umsatzsteuer'],
+              'vertrag': ['Vertrag', 'Vertragsparteien', 'Laufzeit'],
+              'lieferschein': ['Lieferschein', 'Lieferung', 'Artikel']
+          }
+
+          scores = {}
+          for template_type, kws in keywords.items():
+              score = sum(1 for kw in kws if kw in text)
+              scores[template_type] = score
+
+          return max(scores, key=scores.get)
+
+  step_2_field_extraction:
+    description: "Extract fields using regex patterns"
+    code: |
+      from app.utils.template_extractor import TemplateExtractor
+
+      extractor = TemplateExtractor()
+
+      # Load template
+      template = extractor.load_template('rechnung')
+
+      # Extract fields
+      extracted = extractor.extract_fields(ocr_text, template)
+
+      # Result:
+      # {
+      #   'rechnungsnummer': {'value': 'RG-2024-001', 'confidence': 0.95},
+      #   'datum': {'value': '31.12.2024', 'confidence': 0.98},
+      #   'betrag': {'value': 1234.56, 'confidence': 0.92}
+      # }
+
+  step_3_validation:
+    description: "Validate extracted fields against business rules"
+    validations:
+      rechnung_validation:
+        - "All required fields present (§14 UStG)"
+        - "Netto + MwSt = Brutto (math check)"
+        - "Date is valid and not future"
+        - "Tax ID format correct (DE + 9 digits)"
+        - "Amount > 0"
+    code: |
+      def validate_rechnung(extracted: dict) -> dict:
+          errors = []
+
+          # Required fields
+          required = ['rechnungsnummer', 'datum', 'netto', 'mwst', 'brutto']
+          for field in required:
+              if field not in extracted:
+                  errors.append(f"Missing required field: {field}")
+
+          # Math validation
+          if all(f in extracted for f in ['netto', 'mwst', 'brutto']):
+              calculated_brutto = extracted['netto'] + extracted['mwst']
+              if abs(calculated_brutto - extracted['brutto']) > 0.01:
+                  errors.append(f"Math error: {calculated_brutto} != {extracted['brutto']}")
+
+          return {'valid': len(errors) == 0, 'errors': errors}
+
+  step_4_confidence_scoring:
+    description: "Calculate confidence for each field"
+    factors:
+      - "Pattern match strength"
+      - "Context keywords nearby"
+      - "OCR confidence"
+      - "Validation success"
+    code: |
+      def calculate_confidence(field_value, pattern, ocr_confidence, context):
+          score = 0.0
+
+          # Perfect pattern match: +0.4
+          if re.fullmatch(pattern, field_value):
+              score += 0.4
+
+          # OCR confidence: +0.3
+          score += ocr_confidence * 0.3
+
+          # Context keywords: +0.2
+          if context_keywords_found:
+              score += 0.2
+
+          # Validation passed: +0.1
+          if validation_passed:
+              score += 0.1
+
+          return min(1.0, score)
+
+usage_patterns:
+  extract_invoice:
+    description: "Extract structured data from invoice"
+    code: |
+      from app.services.template_extraction import TemplateExtractionService
+
+      extractor = TemplateExtractionService()
+
+      # Process OCR text
+      result = await extractor.extract(
+          text=ocr_output,
+          template_type="rechnung"
+      )
+
+      # Check quality
+      if result['overall_confidence'] < 0.85:
+          logger.warning("Low extraction confidence, manual review needed")
+
+      # Validate compliance
+      validation = extractor.validate(result, template="rechnung")
+      if not validation['valid']:
+          logger.error(f"Validation errors: {validation['errors']}")
+
+best_practices:
+  - name: "Use template detection before extraction"
+    rationale: "Avoids mismatched patterns, improves accuracy"
+
+  - name: "Always validate extracted amounts mathematically"
+    rationale: "Catches OCR errors in numbers (1→7, 0→8)"
+
+  - name: "Require minimum confidence threshold (0.85)"
+    rationale: "Low confidence indicates manual review needed"
+
+  - name: "Store extraction patterns separately"
+    rationale: "Easy updates without code changes"
+
+common_extraction_errors:
+  - error: "Date extracted as 01.02.2024 vs 01.12.2024"
+    cause: "OCR misread 12 as 02"
+    mitigation: "Context check (is date in future?), fuzzy matching"
+
+  - error: "Amount 1234,56 extracted as 1734,56"
+    cause: "OCR confused 2 with 7"
+    mitigation: "Math validation (netto + mwst = brutto)"
+
+  - error: "Company name incomplete ('Müller' instead of 'Müller GmbH')"
+    cause: "Pattern too restrictive or line break"
+    mitigation: "Wider context window, multi-line matching"
+
+references:
+  - "Static_Knowledge/Templates/rechnungen_template.json - Invoice template"
+  - "app/utils/template_extractor.py - To be implemented"
+  - "§14 UStG (Umsatzsteuergesetz) - Legal requirements"
+  - "tests/fixtures/test_rechnung.txt - Example invoice"

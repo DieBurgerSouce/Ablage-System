@@ -1,0 +1,65 @@
+# Code Review Prompts for AI Assistance
+
+prompts:
+  ocr_implementation_review:
+    prompt: |
+      Review this OCR implementation for:
+      1. GPU memory management (VRAM usage, OOM prevention)
+      2. German text handling (umlaut validation, NFC normalization)
+      3. Error handling and fallback strategies
+      4. Type hints and async/await correctness
+      5. Performance optimization opportunities
+
+      Code to review:
+      {code}
+
+      Provide specific improvements with code examples.
+
+  german_validation_review:
+    prompt: |
+      Review this German text validation code:
+      {code}
+
+      Check for:
+      - 100% umlaut accuracy requirement met
+      - Business term glossary coverage
+      - Regional variant handling (DE vs CH vs AT)
+      - False positive/negative rate
+      - Performance (< 50ms target)
+
+  template_pattern_review:
+    prompt: |
+      Review this regex extraction pattern for German documents:
+      Pattern: {pattern}
+      Field: {field_name}
+      Examples: {examples}
+
+      Evaluate:
+      - Coverage of variations
+      - False match prevention
+      - Performance implications
+      - German-specific character handling
+
+  api_endpoint_review:
+    prompt: |
+      Review this FastAPI endpoint:
+      {code}
+
+      Check:
+      - Input validation (Pydantic)
+      - Error handling with German messages
+      - GDPR compliance logging
+      - Performance (async/await, caching)
+      - Security (auth, rate limiting)
+
+  deployment_script_review:
+    prompt: |
+      Review this deployment script for:
+      {script}
+
+      Validate:
+      - Pre-deployment checks (tests, GPU, migrations)
+      - Rollback strategy
+      - Health check configuration
+      - Error notification
+      - Idempotency

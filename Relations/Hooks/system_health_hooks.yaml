@@ -1,0 +1,747 @@
+# System Health Monitoring Hooks
+
+category: Relations - Hooks
+version: "1.0"
+last_updated: "2025-11-22"
+status: active
+priority: critical
+owner: DevOps Team
+
+description: |
+  Automated health check hooks for system monitoring, auto-recovery, and alert escalation.
+  These hooks integrate with Prometheus/Grafana for observability and trigger automated
+  responses to system health issues.
+
+---
+
+# Health Check Hooks
+
+health_checks:
+  database_health:
+    event: "health_check.database"
+    frequency: "30s"
+    timeout: "5s"
+    priority: critical
+
+    checks:
+      - name: "connection_pool"
+        query: "SELECT 1"
+        expected: "success"
+        failure_action: "alert_critical"
+
+      - name: "response_time"
+        threshold_ms: 100
+        p95_threshold_ms: 500
+        failure_action: "alert_warning"
+
+      - name: "active_connections"
+        query: "SELECT count(*) FROM pg_stat_activity WHERE state = 'active'"
+        warning_threshold: 15
+        critical_threshold: 18
+        max_connections: 20
+        failure_action: "scale_connection_pool"
+
+      - name: "replication_lag"
+        query: "SELECT EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp()))"
+        warning_threshold_seconds: 30
+        critical_threshold_seconds: 60
+        failure_action: "alert_database_team"
+
+    on_failure:
+      - trigger: "alert_database_team"
+        channel: "#ablage-alerts"
+        severity: "critical"
+        message: "Database health check failed: {{error}}"
+
+      - trigger: "attempt_reconnection"
+        max_retries: 3
+        backoff: "exponential"
+
+      - trigger: "log_incident"
+        log_level: "error"
+        include_context: true
+
+      - trigger: "update_health_endpoint"
+        status: "unhealthy"
+        component: "database"
+
+  redis_health:
+    event: "health_check.redis"
+    frequency: "30s"
+    timeout: "2s"
+    priority: high
+
+    checks:
+      - name: "ping"
+        command: "PING"
+        expected: "PONG"
+
+      - name: "memory_usage"
+        command: "INFO memory"
+        warning_threshold_percent: 80
+        critical_threshold_percent: 90
+        max_memory_gb: 2
+
+      - name: "keyspace"
+        command: "INFO keyspace"
+        check_expired_keys: true
+
+      - name: "connected_clients"
+        command: "INFO clients"
+        warning_threshold: 80
+        critical_threshold: 95
+        max_clients: 100
+
+    on_failure:
+      - trigger: "flush_cache"
+        if: "memory_usage > 90%"
+        strategy: "lru"
+
+      - trigger: "alert_devops_team"
+        severity: "warning"
+
+      - trigger: "attempt_reconnection"
+        max_retries: 5
+
+  minio_health:
+    event: "health_check.minio"
+    frequency: "60s"
+    timeout: "5s"
+    priority: high
+
+    checks:
+      - name: "s3_api"
+        endpoint: "http://minio:9000/minio/health/live"
+        expected_status: 200
+
+      - name: "bucket_access"
+        operation: "list_objects"
+        bucket: "ablage-documents"
+        expected: "success"
+
+      - name: "storage_usage"
+        warning_threshold_percent: 80
+        critical_threshold_percent: 90
+
+      - name: "read_write_test"
+        operation: "put_get_delete"
+        test_object: ".health_check_test"
+
+    on_failure:
+      - trigger: "alert_storage_team"
+        severity: "critical"
+
+      - trigger: "enable_read_only_mode"
+        if: "storage_usage > 95%"
+
+      - trigger: "cleanup_temp_files"
+        if: "storage_usage > 85%"
+
+  gpu_health:
+    event: "health_check.gpu"
+    frequency: "15s"
+    timeout: "3s"
+    priority: critical
+
+    checks:
+      - name: "gpu_available"
+        check: "torch.cuda.is_available()"
+        expected: true
+
+      - name: "vram_usage"
+        warning_threshold_percent: 80
+        critical_threshold_percent: 90
+        total_vram_gb: 16
+
+      - name: "gpu_temperature"
+        warning_threshold_celsius: 75
+        critical_threshold_celsius: 85
+
+      - name: "gpu_power"
+        max_power_watts: 320
+        critical_threshold_watts: 330
+
+      - name: "gpu_utilization"
+        min_utilization_percent: 5
+        max_idle_minutes: 10
+
+    on_failure:
+      - trigger: "clear_cuda_cache"
+        if: "vram_usage > 85%"
+
+      - trigger: "reduce_batch_size"
+        if: "vram_usage > 90%"
+        reduction_factor: 0.5
+
+      - trigger: "fallback_to_cpu"
+        if: "gpu_unavailable"
+        backend: "surya"
+
+      - trigger: "restart_gpu_worker"
+        if: "temperature > 85°C"
+        grace_period: "5m"
+
+      - trigger: "alert_ml_team"
+        severity: "critical"
+        if: "gpu_error"
+
+  celery_worker_health:
+    event: "health_check.celery_worker"
+    frequency: "60s"
+    timeout: "10s"
+    priority: high
+
+    checks:
+      - name: "worker_ping"
+        command: "celery inspect ping"
+        expected: "pong"
+
+      - name: "active_tasks"
+        command: "celery inspect active"
+        max_tasks_per_worker: 5
+
+      - name: "queue_length"
+        queues:
+          - name: "urgent"
+            warning_threshold: 50
+            critical_threshold: 100
+          - name: "default"
+            warning_threshold: 500
+            critical_threshold: 1000
+          - name: "batch"
+            warning_threshold: 2000
+            critical_threshold: 5000
+
+      - name: "worker_memory"
+        warning_threshold_gb: 12
+        critical_threshold_gb: 14
+        max_memory_gb: 16
+
+      - name: "task_failure_rate"
+        window_minutes: 5
+        warning_threshold_percent: 5
+        critical_threshold_percent: 10
+
+    on_failure:
+      - trigger: "restart_worker"
+        if: "memory > 14GB OR failures > 10%"
+        grace_period: "2m"
+
+      - trigger: "scale_workers"
+        if: "queue_length.default > 500"
+        target_workers: "+1"
+        max_workers: 4
+
+      - trigger: "pause_queue"
+        if: "failures > 20%"
+        queues: ["batch"]
+        duration: "10m"
+
+      - trigger: "alert_backend_team"
+        severity: "warning"
+
+  api_health:
+    event: "health_check.api"
+    frequency: "30s"
+    timeout: "5s"
+    priority: critical
+
+    checks:
+      - name: "health_endpoint"
+        endpoint: "http://localhost:8000/health"
+        expected_status: 200
+        expected_body_contains: "healthy"
+
+      - name: "response_time_p95"
+        threshold_ms: 500
+        window_minutes: 5
+
+      - name: "error_rate"
+        window_minutes: 5
+        warning_threshold_percent: 1
+        critical_threshold_percent: 5
+
+      - name: "rate_limit_hits"
+        window_minutes: 5
+        threshold_percent: 80
+
+    on_failure:
+      - trigger: "restart_api_server"
+        if: "health_endpoint.status != 200"
+        grace_period: "30s"
+
+      - trigger: "enable_circuit_breaker"
+        if: "error_rate > 5%"
+        duration: "5m"
+
+      - trigger: "scale_api_instances"
+        if: "response_time_p95 > 1000ms"
+        target_instances: "+1"
+
+      - trigger: "alert_sre_team"
+        severity: "critical"
+
+---
+
+# Auto-Recovery Hooks
+
+auto_recovery:
+  database_reconnection:
+    event: "database.connection_lost"
+    enabled: true
+    priority: critical
+
+    actions:
+      - step: "log_incident"
+        log_level: "error"
+        message: "Database connection lost. Attempting recovery..."
+
+      - step: "wait_for_backoff"
+        duration: "5s"
+
+      - step: "attempt_reconnection"
+        max_retries: 5
+        backoff_strategy: "exponential"
+        initial_delay: "2s"
+        max_delay: "60s"
+
+      - step: "notify_if_failed"
+        channel: "#ablage-critical"
+        severity: "critical"
+
+      - step: "fallback_action"
+        if: "all_retries_failed"
+        action: "enable_read_only_mode"
+
+  redis_cache_flush:
+    event: "redis.memory_high"
+    trigger_threshold_percent: 90
+    enabled: true
+    priority: medium
+
+    actions:
+      - step: "log_event"
+        message: "Redis memory high ({{memory_percent}}%). Flushing cache..."
+
+      - step: "flush_expired_keys"
+        scan_batch_size: 1000
+
+      - step: "check_memory_after_flush"
+        acceptable_threshold_percent: 70
+
+      - step: "flush_lru_keys"
+        if: "memory_still_high"
+        count: 10000
+
+      - step: "alert_if_still_high"
+        if: "memory > 85%"
+        severity: "warning"
+
+  gpu_oom_recovery:
+    event: "gpu.out_of_memory"
+    enabled: true
+    priority: critical
+
+    actions:
+      - step: "log_incident"
+        log_level: "error"
+        message: "GPU OOM detected. Initiating recovery..."
+        include_vram_stats: true
+
+      - step: "terminate_current_task"
+        graceful: false
+
+      - step: "clear_cuda_cache"
+        aggressive: true
+
+      - step: "reduce_batch_size"
+        reduction_factor: 0.5
+        min_batch_size: 1
+
+      - step: "retry_task"
+        max_retries: 2
+        delay: "30s"
+
+      - step: "fallback_to_cpu"
+        if: "retries_exhausted"
+        backend: "surya"
+
+      - step: "alert_ml_team"
+        severity: "warning"
+        include_task_details: true
+
+  worker_restart:
+    event: "celery.worker_unresponsive"
+    enabled: true
+    priority: high
+
+    actions:
+      - step: "verify_unresponsive"
+        ping_attempts: 3
+        ping_interval: "10s"
+
+      - step: "log_worker_state"
+        capture_active_tasks: true
+        capture_memory: true
+
+      - step: "graceful_shutdown"
+        timeout: "120s"
+        allow_task_completion: true
+
+      - step: "force_kill"
+        if: "graceful_shutdown_failed"
+
+      - step: "restart_worker"
+        startup_timeout: "30s"
+
+      - step: "verify_restart"
+        health_check: "ping"
+
+      - step: "alert_if_failed"
+        channel: "#ablage-alerts"
+        severity: "critical"
+
+  disk_space_cleanup:
+    event: "disk.space_low"
+    trigger_threshold_percent: 85
+    enabled: true
+    priority: medium
+
+    actions:
+      - step: "log_disk_usage"
+        include_largest_files: true
+
+      - step: "cleanup_temp_files"
+        directories:
+          - "/tmp"
+          - "/var/tmp"
+          - "/opt/ablage/tmp"
+        age_days: 1
+
+      - step: "cleanup_old_logs"
+        directories:
+          - "/var/log/ablage"
+        age_days: 30
+        compress: true
+
+      - step: "cleanup_celery_results"
+        age_days: 7
+
+      - step: "check_space_after_cleanup"
+        acceptable_threshold_percent: 75
+
+      - step: "alert_if_still_low"
+        if: "disk_usage > 80%"
+        severity: "warning"
+        message: "Disk space still low after cleanup. Manual intervention may be required."
+
+---
+
+# Monitoring Integration
+
+prometheus_metrics:
+  health_check_metrics:
+    - name: "ablage_health_check_status"
+      type: "gauge"
+      description: "Health check status (1=healthy, 0=unhealthy)"
+      labels:
+        - component
+        - check_name
+
+    - name: "ablage_health_check_duration_seconds"
+      type: "histogram"
+      description: "Health check duration"
+      labels:
+        - component
+        - check_name
+      buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]
+
+    - name: "ablage_health_check_failures_total"
+      type: "counter"
+      description: "Total health check failures"
+      labels:
+        - component
+        - check_name
+        - severity
+
+    - name: "ablage_auto_recovery_attempts_total"
+      type: "counter"
+      description: "Total auto-recovery attempts"
+      labels:
+        - recovery_type
+        - status
+
+    - name: "ablage_component_availability"
+      type: "gauge"
+      description: "Component availability (uptime %)"
+      labels:
+        - component
+
+  export_config:
+    endpoint: "http://prometheus:9090/api/v1/write"
+    scrape_interval: "15s"
+    scrape_timeout: "10s"
+
+grafana_dashboards:
+  system_health_overview:
+    uid: "ablage-system-health"
+    panels:
+      - title: "Component Health Status"
+        type: "stat"
+        query: "ablage_health_check_status"
+        thresholds:
+          - value: 0
+            color: "red"
+          - value: 1
+            color: "green"
+
+      - title: "Health Check Durations"
+        type: "graph"
+        query: "rate(ablage_health_check_duration_seconds_sum[5m])"
+
+      - title: "Failure Rate"
+        type: "graph"
+        query: "rate(ablage_health_check_failures_total[5m])"
+        alert_threshold: 0.1
+
+      - title: "Auto-Recovery Success Rate"
+        type: "stat"
+        query: |
+          sum(rate(ablage_auto_recovery_attempts_total{status="success"}[5m])) /
+          sum(rate(ablage_auto_recovery_attempts_total[5m])) * 100
+        unit: "percent"
+
+      - title: "Component Availability (24h)"
+        type: "table"
+        query: "avg_over_time(ablage_component_availability[24h])"
+
+  alerts:
+    - alert: "ComponentUnhealthy"
+      expr: "ablage_health_check_status == 0"
+      for: "2m"
+      labels:
+        severity: "critical"
+      annotations:
+        summary: "Component {{ $labels.component }} is unhealthy"
+        description: "Health check {{ $labels.check_name }} has been failing for 2 minutes"
+
+    - alert: "HighHealthCheckFailureRate"
+      expr: "rate(ablage_health_check_failures_total[5m]) > 0.1"
+      for: "5m"
+      labels:
+        severity: "warning"
+      annotations:
+        summary: "High health check failure rate"
+
+    - alert: "AutoRecoveryFailing"
+      expr: "rate(ablage_auto_recovery_attempts_total{status=\"failure\"}[10m]) > 0.5"
+      for: "10m"
+      labels:
+        severity: "critical"
+      annotations:
+        summary: "Auto-recovery frequently failing"
+
+---
+
+# Alert Escalation
+
+escalation_policies:
+  critical_component_failure:
+    severity: "critical"
+    components:
+      - database
+      - gpu
+      - api
+
+    escalation_chain:
+      - level: 1
+        delay: "0m"
+        recipients:
+          - type: "pagerduty"
+            service: "ablage-oncall"
+          - type: "slack"
+            channel: "#ablage-critical"
+          - type: "email"
+            addresses: ["oncall@company.de"]
+
+      - level: 2
+        delay: "15m"
+        condition: "not_acknowledged"
+        recipients:
+          - type: "pagerduty"
+            service: "ablage-oncall"
+            escalate: true
+          - type: "phone"
+            numbers: ["+49-XXX-ONCALL"]
+
+      - level: 3
+        delay: "30m"
+        condition: "not_resolved"
+        recipients:
+          - type: "pagerduty"
+            escalate_to: "engineering-leads"
+          - type: "slack"
+            channel: "#engineering-leadership"
+
+  warning_alerts:
+    severity: "warning"
+    components:
+      - redis
+      - minio
+      - celery_worker
+
+    escalation_chain:
+      - level: 1
+        delay: "0m"
+        recipients:
+          - type: "slack"
+            channel: "#ablage-alerts"
+          - type: "email"
+            addresses: ["devops@company.de"]
+
+      - level: 2
+        delay: "1h"
+        condition: "not_resolved"
+        recipients:
+          - type: "pagerduty"
+            service: "ablage-oncall"
+
+  degraded_performance:
+    severity: "info"
+    triggers:
+      - "response_time_p95 > 1000ms"
+      - "error_rate > 1%"
+      - "queue_length > 500"
+
+    escalation_chain:
+      - level: 1
+        delay: "0m"
+        recipients:
+          - type: "slack"
+            channel: "#ablage-performance"
+          - type: "email"
+            addresses: ["backend-team@company.de"]
+
+      - level: 2
+        delay: "4h"
+        condition: "not_resolved"
+        recipients:
+          - type: "slack"
+            channel: "#ablage-alerts"
+            mention: "@backend-team"
+
+---
+
+# Hook Execution Configuration
+
+execution:
+  async: true
+  max_concurrent_hooks: 10
+  timeout_seconds: 30
+  retry_on_failure: true
+  max_retries: 3
+  backoff_strategy: "exponential"
+
+  logging:
+    log_level: "info"
+    log_hook_execution: true
+    log_hook_failures: true
+    include_context: true
+
+  error_handling:
+    on_hook_failure: "log_and_continue"
+    critical_hook_failure: "alert_and_stop"
+
+  rate_limiting:
+    max_hooks_per_second: 100
+    burst: 200
+
+---
+
+# Testing and Validation
+
+health_check_tests:
+  simulate_database_failure:
+    description: "Simulate database connection loss"
+    steps:
+      - "Stop PostgreSQL service"
+      - "Verify health check detects failure"
+      - "Verify alert is sent"
+      - "Verify auto-recovery attempts reconnection"
+      - "Start PostgreSQL service"
+      - "Verify recovery success"
+    expected_behavior:
+      - "Alert sent within 1 minute"
+      - "Reconnection successful within 5 minutes"
+      - "No data loss"
+
+  simulate_gpu_oom:
+    description: "Simulate GPU out of memory error"
+    steps:
+      - "Process large batch to trigger OOM"
+      - "Verify OOM detection"
+      - "Verify CUDA cache clearing"
+      - "Verify batch size reduction"
+      - "Verify task retry with smaller batch"
+    expected_behavior:
+      - "OOM detected immediately"
+      - "Cache cleared within 5 seconds"
+      - "Task retried successfully"
+      - "Alert sent to ML team"
+
+---
+
+# Related Documentation
+
+references:
+  - "../../Static_Knowledge/Skills/monitoring_observability_skill.yaml"
+  - "../../Static_Knowledge/SOPs/004_security_incident_response.md"
+  - "../../Relations/Playbooks/database_performance_playbook.yaml"
+  - "../../Relations/Playbooks/gpu_troubleshooting_playbook.yaml"
+  - "../../Meta_Layer/MOCs/INFRASTRUCTURE_MOC.md"
+
+external_docs:
+  - name: "Prometheus Best Practices"
+    url: "https://prometheus.io/docs/practices/naming/"
+  - name: "Grafana Alerting"
+    url: "https://grafana.com/docs/grafana/latest/alerting/"
+  - name: "PagerDuty Integration"
+    url: "https://developer.pagerduty.com/docs/ZG9jOjQ1MTg4ODQ0-events-api-v2-overview"
+
+---
+
+# Maintenance
+
+review_frequency: "Quarterly"
+last_review: "2025-11-22"
+next_review: "2026-02-22"
+owner: "DevOps Team"
+contact: "#ablage-devops on Slack"
+
+change_log:
+  - date: "2025-11-22"
+    change: "Initial system health hooks configuration"
+  - date: "2025-11-20"
+    change: "Added GPU health checks"
+  - date: "2025-11-15"
+    change: "Added auto-recovery for GPU OOM"
+
+---
+
+# Notes
+
+operational_notes: |
+  - Health checks run continuously in background
+  - Auto-recovery attempts should be transparent to users
+  - All recovery actions are logged for audit
+  - Critical failures always trigger alerts
+  - Test escalation policies quarterly
+  - Update PagerDuty schedules monthly
+  - Review and tune thresholds based on production metrics
+
+tuning_guidelines: |
+  - Adjust health check frequency based on component criticality
+  - Tune alert thresholds to reduce noise (target < 5 false positives/week)
+  - Monitor auto-recovery success rate (target > 95%)
+  - Review escalation delays based on MTTR (Mean Time To Resolution)
+  - Update dashboards based on team feedback

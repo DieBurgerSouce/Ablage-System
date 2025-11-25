@@ -1,0 +1,444 @@
+# API Endpoints Index
+
+metadata:
+  title: "Complete API Endpoints Reference"
+  version: "1.0"
+  last_updated: "2025-01-22"
+  api_version: "v1"
+  base_url: "https://app.ablage-system.de/api/v1"
+  maintained_by: "Backend Team"
+
+description: |
+  Comprehensive index of all API endpoints in the Ablage-System.
+  Includes authentication requirements, rate limits, request/response formats,
+  and links to implementation code.
+
+authentication:
+  type: "JWT Bearer Token"
+  header: "Authorization: Bearer <token>"
+  token_expiry: "15 minutes (access), 7 days (refresh)"
+  endpoints:
+    login: "POST /api/v1/auth/login"
+    refresh: "POST /api/v1/auth/refresh"
+    logout: "POST /api/v1/auth/logout"
+
+rate_limits:
+  free_tier: "10 requests/minute"
+  standard_tier: "60 requests/minute"
+  enterprise_tier: "300 requests/minute"
+  admin_tier: "1000 requests/minute"
+
+# ============================================================================
+# Authentication Endpoints
+# ============================================================================
+
+authentication_endpoints:
+  - path: "/api/v1/auth/register"
+    method: "POST"
+    auth_required: false
+    rate_limit: "5 requests per 15 minutes per IP"
+    description: "Register new user account"
+    request_body:
+      email: "string (required)"
+      password: "string (required, min 8 chars)"
+      company_name: "string (required)"
+      consent_terms: "boolean (required, must be true)"
+      consent_privacy: "boolean (required, must be true)"
+      consent_marketing: "boolean (optional)"
+    response:
+      status: 201
+      body:
+        user_id: "string"
+        email: "string"
+        tier: "string"
+        created_at: "datetime"
+    errors:
+      400: "Validation error (invalid email, weak password)"
+      409: "Email already exists"
+      429: "Rate limit exceeded"
+    code_reference: "app/api/v1/auth.py:45-89"
+
+  - path: "/api/v1/auth/login"
+    method: "POST"
+    auth_required: false
+    rate_limit: "5 login attempts per 15 minutes per IP"
+    description: "Authenticate user and receive JWT tokens"
+    request_body:
+      email: "string (required)"
+      password: "string (required)"
+    response:
+      status: 200
+      body:
+        access_token: "string (JWT, 15min expiry)"
+        refresh_token: "string (JWT, 7day expiry)"
+        token_type: "Bearer"
+        user_id: "string"
+    errors:
+      401: "Invalid credentials"
+      429: "Rate limit exceeded (too many failed attempts)"
+    code_reference: "app/api/v1/auth.py:112-156"
+
+  - path: "/api/v1/auth/refresh"
+    method: "POST"
+    auth_required: true
+    description: "Refresh access token using refresh token"
+    headers:
+      Authorization: "Bearer <refresh_token>"
+    response:
+      status: 200
+      body:
+        access_token: "string (new JWT)"
+        token_type: "Bearer"
+    errors:
+      401: "Invalid or expired refresh token"
+    code_reference: "app/api/v1/auth.py:178-201"
+
+# ============================================================================
+# Document Endpoints
+# ============================================================================
+
+document_endpoints:
+  - path: "/api/v1/documents"
+    method: "POST"
+    auth_required: true
+    rate_limit: "10 documents per minute per user"
+    description: "Upload document for OCR processing"
+    request_body:
+      file: "multipart/form-data (required, max 50MB)"
+      document_type: "string (optional: invoice, contract, delivery_note, other)"
+      language: "string (optional, default: 'de')"
+      ocr_backend: "string (optional: auto, deepseek, got_ocr, surya)"
+    response:
+      status: 202
+      body:
+        document_id: "string"
+        filename: "string"
+        status: "queued"
+        task_id: "string"
+        status_endpoint: "string (URL)"
+    errors:
+      400: "Invalid file type or size"
+      401: "Unauthorized"
+      413: "File too large (> 50MB)"
+      429: "Rate limit exceeded"
+    code_reference: "app/api/v1/documents.py:89-142"
+
+  - path: "/api/v1/documents/{document_id}"
+    method: "GET"
+    auth_required: true
+    description: "Retrieve document with OCR results"
+    path_parameters:
+      document_id: "string (required)"
+    response:
+      status: 200
+      body:
+        document_id: "string"
+        filename: "string"
+        document_type: "string"
+        status: "queued | processing | valid | validation_failed | failed"
+        entities: "object (extracted entities)"
+        validation: "object (validation results)"
+        created_at: "datetime"
+        processed_at: "datetime"
+    errors:
+      401: "Unauthorized"
+      403: "Forbidden (not document owner)"
+      404: "Document not found"
+    code_reference: "app/api/v1/documents.py:178-219"
+
+  - path: "/api/v1/documents/{document_id}"
+    method: "DELETE"
+    auth_required: true
+    description: "Delete document (subject to retention policy)"
+    path_parameters:
+      document_id: "string (required)"
+    response:
+      status: 200
+      body:
+        message: "Document deleted successfully"
+    errors:
+      401: "Unauthorized"
+      403: "Forbidden (cannot delete invoice within retention period)"
+      404: "Document not found"
+    code_reference: "app/api/v1/documents.py:245-281"
+
+  - path: "/api/v1/documents/{document_id}/download"
+    method: "GET"
+    auth_required: true
+    description: "Download original document file"
+    path_parameters:
+      document_id: "string (required)"
+    response:
+      status: 200
+      headers:
+        Content-Type: "application/pdf | image/png | image/jpeg"
+        Content-Disposition: "attachment; filename=..."
+      body: "Binary file data"
+    errors:
+      401: "Unauthorized"
+      403: "Forbidden"
+      404: "Document not found"
+    code_reference: "app/api/v1/documents.py:302-334"
+
+  - path: "/api/v1/documents/search"
+    method: "GET"
+    auth_required: true
+    description: "Search documents by query"
+    query_parameters:
+      q: "string (search query)"
+      document_type: "string (optional filter)"
+      date_from: "date (optional, YYYY-MM-DD)"
+      date_to: "date (optional, YYYY-MM-DD)"
+      limit: "integer (default: 20, max: 100)"
+      offset: "integer (default: 0)"
+    response:
+      status: 200
+      body:
+        results: "array of documents"
+        total: "integer"
+        limit: "integer"
+        offset: "integer"
+    errors:
+      400: "Invalid query parameters"
+      401: "Unauthorized"
+    code_reference: "app/api/v1/documents.py:359-412"
+
+# ============================================================================
+# User Management Endpoints
+# ============================================================================
+
+user_endpoints:
+  - path: "/api/v1/users/me"
+    method: "GET"
+    auth_required: true
+    description: "Get current user profile"
+    response:
+      status: 200
+      body:
+        user_id: "string"
+        email: "string"
+        company_name: "string"
+        tier: "free | standard | enterprise"
+        created_at: "datetime"
+        consent_marketing: "boolean"
+    errors:
+      401: "Unauthorized"
+    code_reference: "app/api/v1/users.py:56-78"
+
+  - path: "/api/v1/users/me"
+    method: "PATCH"
+    auth_required: true
+    description: "Update user profile"
+    request_body:
+      company_name: "string (optional)"
+      consent_marketing: "boolean (optional)"
+    response:
+      status: 200
+      body:
+        user_id: "string"
+        email: "string"
+        company_name: "string"
+        tier: "string"
+    errors:
+      400: "Validation error"
+      401: "Unauthorized"
+    code_reference: "app/api/v1/users.py:92-124"
+
+  - path: "/api/v1/users/me"
+    method: "DELETE"
+    auth_required: true
+    description: "Delete user account (GDPR Art. 17)"
+    request_body:
+      confirmation: "string (required, must be 'DELETE_MY_ACCOUNT')"
+    response:
+      status: 200
+      body:
+        message: "Account deleted successfully"
+        invoices_anonymized: "integer"
+        documents_deleted: "integer"
+    errors:
+      400: "Invalid confirmation"
+      401: "Unauthorized"
+    code_reference: "app/api/v1/users.py:145-198"
+
+  - path: "/api/v1/users/me/data-export"
+    method: "GET"
+    auth_required: true
+    description: "Export all user data (GDPR Art. 15)"
+    response:
+      status: 200
+      headers:
+        Content-Type: "application/json"
+        Content-Disposition: "attachment; filename=user_data_export.json"
+      body:
+        user_account: "object"
+        consents: "object"
+        documents: "array"
+        processing_history: "array"
+    errors:
+      401: "Unauthorized"
+    code_reference: "app/api/v1/users.py:218-267"
+
+# ============================================================================
+# Health & System Endpoints
+# ============================================================================
+
+system_endpoints:
+  - path: "/health"
+    method: "GET"
+    auth_required: false
+    description: "Health check endpoint"
+    response:
+      status: 200
+      body:
+        status: "healthy | degraded | unhealthy"
+        timestamp: "datetime"
+        checks:
+          database: "boolean"
+          redis: "boolean"
+          gpu: "boolean"
+          storage: "boolean"
+    errors:
+      503: "Service unhealthy"
+    code_reference: "app/api/v1/health.py:23-67"
+
+  - path: "/metrics"
+    method: "GET"
+    auth_required: false
+    description: "Prometheus metrics endpoint"
+    response:
+      status: 200
+      headers:
+        Content-Type: "text/plain"
+      body: "Prometheus exposition format"
+    code_reference: "app/main.py:89-94"
+
+  - path: "/docs"
+    method: "GET"
+    auth_required: false
+    description: "OpenAPI documentation (Swagger UI)"
+    response:
+      status: 200
+      headers:
+        Content-Type: "text/html"
+      body: "Interactive API documentation"
+    code_reference: "Auto-generated by FastAPI"
+
+# ============================================================================
+# Error Response Format
+# ============================================================================
+
+error_response_format:
+  description: "All errors follow consistent format"
+  structure:
+    error_code: "string (machine-readable error code)"
+    message: "string (human-readable message in German)"
+    details: "object (optional, additional error context)"
+    timestamp: "datetime"
+
+  example:
+    error_code: "VALIDATION_ERROR"
+    message: "Dateiname enthält ungültige Zeichen"
+    details:
+      field: "filename"
+      constraint: "no path traversal characters"
+    timestamp: "2025-01-22T10:15:30Z"
+
+# ============================================================================
+# Request/Response Examples
+# ============================================================================
+
+examples:
+  document_upload:
+    request: |
+      POST /api/v1/documents
+      Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      Content-Type: multipart/form-data
+
+      --boundary
+      Content-Disposition: form-data; name="file"; filename="rechnung_2025.pdf"
+      Content-Type: application/pdf
+
+      <binary PDF data>
+      --boundary--
+
+    response: |
+      HTTP/1.1 202 Accepted
+      Content-Type: application/json
+
+      {
+        "document_id": "DOC-2025-00123",
+        "filename": "rechnung_2025.pdf",
+        "status": "queued",
+        "task_id": "abc123-def456",
+        "status_endpoint": "/api/v1/documents/DOC-2025-00123/status"
+      }
+
+  user_data_export:
+    request: |
+      GET /api/v1/users/me/data-export
+      Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    response: |
+      HTTP/1.1 200 OK
+      Content-Type: application/json
+      Content-Disposition: attachment; filename="user_data_export_abc123.json"
+
+      {
+        "user_account": {
+          "email": "user@example.com",
+          "company_name": "Example GmbH",
+          "tier": "standard",
+          "created_at": "2024-10-15T14:32:18Z"
+        },
+        "consents": {
+          "terms_of_service": true,
+          "privacy_policy": true,
+          "marketing": false
+        },
+        "documents": [
+          {
+            "document_id": "DOC-2024-00456",
+            "filename": "invoice_oct.pdf",
+            "document_type": "invoice",
+            "upload_date": "2024-10-20T10:15:32Z"
+          }
+        ]
+      }
+
+# ============================================================================
+# API Versioning Strategy
+# ============================================================================
+
+versioning:
+  current_version: "v1"
+  strategy: "URL path versioning (/api/v1/, /api/v2/)"
+  deprecation_policy: "12 months notice before version sunset"
+  compatibility: "Breaking changes require new major version"
+
+# ============================================================================
+# Related Documentation
+# ============================================================================
+
+references:
+  - title: "OpenAPI Specification"
+    url: "https://app.ablage-system.de/docs"
+    description: "Interactive API documentation (Swagger UI)"
+
+  - title: "API Request Validator"
+    path: "../../Execution_Layer/Validators/api_request_validator.py"
+    description: "Implementation of request validation logic"
+
+  - title: "Authentication Implementation"
+    path: "../../app/core/security.py"
+    description: "JWT authentication and authorization"
+
+  - title: "GDPR Compliance"
+    path: "../MOCs/SECURITY_MOC.md"
+    description: "Data protection and privacy compliance"
+
+---
+
+**Index Version:** 1.0
+**Last API Change:** 2025-01-18 (v1.4.3 - Added document search endpoint)
+**Next API Review:** 2025-04-22 (Quarterly)

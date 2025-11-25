@@ -1,0 +1,551 @@
+# Cache Invalidation Decision Tree
+
+decision_tree_id: cache_invalidation_001
+category: caching_strategy
+last_updated: "2025-11-22"
+status: production
+priority: high
+
+description: |
+  Decision tree for determining when and how to invalidate Redis cache entries
+  in the Ablage-System. Addresses the two hard problems in computer science:
+  cache invalidation, naming things, and off-by-one errors.
+
+# ============================================================================
+# Root Decision: What Changed?
+# ============================================================================
+
+root_decision:
+  question: "What type of data change occurred?"
+  branches:
+    - change_type: "document_uploaded"
+      next: "document_upload_invalidation"
+
+    - change_type: "document_updated"
+      next: "document_update_invalidation"
+
+    - change_type: "document_deleted"
+      next: "document_deletion_invalidation"
+
+    - change_type: "ocr_completed"
+      next: "ocr_completion_invalidation"
+
+    - change_type: "user_updated"
+      next: "user_update_invalidation"
+
+    - change_type: "user_settings_changed"
+      next: "user_settings_invalidation"
+
+    - change_type: "sharing_permissions_changed"
+      next: "permission_invalidation"
+
+    - change_type: "scheduled_invalidation"
+      next: "time_based_invalidation"
+
+# ============================================================================
+# Document Upload Invalidation
+# ============================================================================
+
+document_upload_invalidation:
+  decision_node:
+    question: "Document uploaded - what caches to invalidate?"
+    invalidation_strategy: "Selective invalidation"
+
+    affected_caches:
+      - cache_key: "user:{user_id}:documents"
+        pattern: "List cache"
+        action: "DELETE"
+        reason: "Document list changed"
+        implementation: |
+          async def invalidate_document_list(user_id: str):
+              await redis.delete(f"user:{user_id}:documents")
+              logger.info("cache_invalidated", key="documents_list", user_id=user_id)
+
+      - cache_key: "user:{user_id}:stats"
+        pattern: "Aggregation cache"
+        action: "DELETE"
+        reason: "Document count changed"
+        implementation: |
+          async def invalidate_user_stats(user_id: str):
+              await redis.delete(f"user:{user_id}:stats")
+              logger.info("cache_invalidated", key="user_stats", user_id=user_id)
+
+      - cache_key: "user:{user_id}:quota"
+        pattern: "Quota cache"
+        action: "UPDATE"
+        reason: "Storage quota changed"
+        implementation: |
+          async def update_quota_cache(user_id: str, file_size_bytes: int):
+              quota_key = f"user:{user_id}:quota"
+              current = await redis.get(quota_key)
+              if current:
+                  current_quota = json.loads(current)
+                  current_quota["used_bytes"] += file_size_bytes
+                  current_quota["document_count"] += 1
+                  await redis.setex(quota_key, 3600, json.dumps(current_quota))
+
+    unaffected_caches:
+      - cache_key: "document:{doc_id}:content"
+        reason: "Document doesn't exist yet in cache"
+
+      - cache_key: "ocr_result:{doc_id}"
+        reason: "OCR not yet processed"
+
+# ============================================================================
+# Document Update Invalidation
+# ============================================================================
+
+document_update_invalidation:
+  decision_node:
+    question: "What fields were updated?"
+
+    field_analysis:
+      metadata_only:
+        fields: ["filename", "tags", "folder_id", "description"]
+        invalidation: "Minimal"
+        affected_caches:
+          - cache_key: "document:{doc_id}"
+            action: "DELETE"
+            implementation: |
+              async def invalidate_document_metadata(doc_id: str):
+                  await redis.delete(f"document:{doc_id}")
+
+          - cache_key: "user:{user_id}:documents"
+            action: "DELETE"
+            reason: "List view shows metadata"
+
+      content_changed:
+        fields: ["file_path", "file_hash"]
+        invalidation: "Aggressive"
+        affected_caches:
+          - cache_key: "document:{doc_id}"
+            action: "DELETE"
+
+          - cache_key: "document:{doc_id}:content"
+            action: "DELETE"
+
+          - cache_key: "ocr_result:{doc_id}"
+            action: "DELETE"
+            reason: "OCR results no longer valid"
+
+          - cache_key: "search:*:{doc_id}"
+            action: "DELETE_PATTERN"
+            reason: "Search results affected"
+            implementation: |
+              async def invalidate_search_caches(doc_id: str):
+                  # Delete all search result caches containing this document
+                  pattern = f"search:*"
+                  async for key in redis.scan_iter(match=pattern):
+                      cached = await redis.get(key)
+                      if cached and doc_id in cached:
+                          await redis.delete(key)
+                          logger.info("search_cache_invalidated", key=key)
+
+# ============================================================================
+# Document Deletion Invalidation
+# ============================================================================
+
+document_deletion_invalidation:
+  decision_node:
+    question: "Document deleted - cascade invalidation?"
+    invalidation_strategy: "Cascade delete all related caches"
+
+    affected_caches:
+      - cache_key: "document:{doc_id}"
+        action: "DELETE"
+
+      - cache_key: "document:{doc_id}:content"
+        action: "DELETE"
+
+      - cache_key: "ocr_result:{doc_id}"
+        action: "DELETE"
+
+      - cache_key: "user:{user_id}:documents"
+        action: "DELETE"
+
+      - cache_key: "user:{user_id}:stats"
+        action: "DELETE"
+
+      - cache_key: "user:{user_id}:quota"
+        action: "UPDATE"
+        implementation: |
+          async def update_quota_on_delete(user_id: str, file_size_bytes: int):
+              quota_key = f"user:{user_id}:quota"
+              current = await redis.get(quota_key)
+              if current:
+                  quota = json.loads(current)
+                  quota["used_bytes"] -= file_size_bytes
+                  quota["document_count"] -= 1
+                  await redis.setex(quota_key, 3600, json.dumps(quota))
+
+      - cache_key: "search:*"
+        action: "DELETE_PATTERN"
+        implementation: |
+          async def invalidate_all_search_caches():
+              # Nuclear option: delete all search caches
+              pattern = "search:*"
+              deleted = 0
+              async for key in redis.scan_iter(match=pattern):
+                  await redis.delete(key)
+                  deleted += 1
+              logger.info("search_caches_cleared", count=deleted)
+
+    sharing_check:
+      question: "Was document shared with other users?"
+      if_yes:
+        additional_invalidation:
+          - cache_key: "user:{shared_user_id}:shared_documents"
+            action: "DELETE"
+            reason: "Shared document list changed"
+
+# ============================================================================
+# OCR Completion Invalidation
+# ============================================================================
+
+ocr_completion_invalidation:
+  decision_node:
+    question: "OCR processing completed - update caches?"
+    invalidation_strategy: "Update with new data"
+
+    cache_updates:
+      - cache_key: "document:{doc_id}"
+        action: "UPDATE"
+        field: "ocr_status"
+        implementation: |
+          async def update_document_ocr_status(doc_id: str):
+              doc_key = f"document:{doc_id}"
+              cached_doc = await redis.get(doc_key)
+              if cached_doc:
+                  doc = json.loads(cached_doc)
+                  doc["ocr_status"] = "completed"
+                  doc["ocr_completed_at"] = datetime.utcnow().isoformat()
+                  await redis.setex(doc_key, 3600, json.dumps(doc))
+
+      - cache_key: "ocr_result:{doc_id}"
+        action: "SET"
+        ttl: 3600  # 1 hour
+        implementation: |
+          async def cache_ocr_result(doc_id: str, result: dict):
+              result_key = f"ocr_result:{doc_id}"
+              await redis.setex(
+                  result_key,
+                  3600,
+                  json.dumps({
+                      "text": result["text"],
+                      "confidence": result["confidence"],
+                      "backend": result["backend"],
+                      "processed_at": datetime.utcnow().isoformat()
+                  })
+              )
+
+      - cache_key: "search_index:{doc_id}"
+        action: "UPDATE"
+        reason: "Full-text search index needs updating"
+        implementation: |
+          async def update_search_index(doc_id: str, extracted_text: str):
+              # Invalidate all search caches since new content is searchable
+              await invalidate_all_search_caches()
+
+              # Update document's search index entry
+              search_key = f"search_index:{doc_id}"
+              await redis.setex(
+                  search_key,
+                  86400,  # 24 hours
+                  extracted_text.lower()  # Normalized for searching
+              )
+
+# ============================================================================
+# User Update Invalidation
+# ============================================================================
+
+user_update_invalidation:
+  decision_node:
+    question: "What user data changed?"
+
+    scenarios:
+      profile_update:
+        fields: ["username", "email", "display_name"]
+        invalidation: "User profile caches only"
+        affected_caches:
+          - cache_key: "user:{user_id}"
+            action: "DELETE"
+
+          - cache_key: "user_email:{email}"
+            action: "DELETE"
+
+      quota_update:
+        fields: ["quota_limit", "tier"]
+        invalidation: "Quota and related caches"
+        affected_caches:
+          - cache_key: "user:{user_id}:quota"
+            action: "DELETE"
+
+          - cache_key: "user:{user_id}:tier"
+            action: "DELETE"
+
+      password_change:
+        fields: ["password_hash"]
+        invalidation: "Authentication caches + sessions"
+        affected_caches:
+          - cache_key: "user:{user_id}"
+            action: "DELETE"
+
+          - cache_key: "session:*"
+            action: "DELETE_PATTERN"
+            reason: "Force re-authentication"
+            implementation: |
+              async def invalidate_all_user_sessions(user_id: str):
+                  # Delete all sessions for this user
+                  pattern = f"session:*"
+                  async for key in redis.scan_iter(match=pattern):
+                      session_data = await redis.get(key)
+                      if session_data and user_id in session_data:
+                          await redis.delete(key)
+                          logger.info("session_invalidated", key=key, user_id=user_id)
+
+# ============================================================================
+# Permission Change Invalidation
+# ============================================================================
+
+permission_invalidation:
+  decision_node:
+    question: "Sharing/permission changed - who is affected?"
+    invalidation_strategy: "Multi-user cascade"
+
+    scenarios:
+      document_shared:
+        affected_users: ["owner", "new_shared_user"]
+        invalidation:
+          - cache_key: "user:{new_user_id}:shared_documents"
+            action: "DELETE"
+
+          - cache_key: "document:{doc_id}:permissions"
+            action: "DELETE"
+
+      permission_revoked:
+        affected_users: ["owner", "revoked_user"]
+        invalidation:
+          - cache_key: "user:{revoked_user_id}:shared_documents"
+            action: "DELETE"
+
+          - cache_key: "document:{doc_id}:permissions"
+            action: "DELETE"
+
+          - cache_key: "document:{doc_id}"
+            action: "DELETE"
+            scope: "revoked_user's cache only"
+
+# ============================================================================
+# Time-Based Invalidation
+# ============================================================================
+
+time_based_invalidation:
+  decision_node:
+    question: "What type of scheduled invalidation?"
+
+    strategies:
+      daily_stats_refresh:
+        schedule: "0 0 * * *"  # Midnight daily
+        affected_caches:
+          - pattern: "stats:daily:*"
+            action: "DELETE_PATTERN"
+
+          - pattern: "analytics:*"
+            action: "DELETE_PATTERN"
+
+        implementation: |
+          async def invalidate_daily_stats():
+              patterns = ["stats:daily:*", "analytics:*"]
+              for pattern in patterns:
+                  deleted = 0
+                  async for key in redis.scan_iter(match=pattern):
+                      await redis.delete(key)
+                      deleted += 1
+                  logger.info("scheduled_invalidation", pattern=pattern, count=deleted)
+
+      weekly_quota_reset:
+        schedule: "0 0 * * 1"  # Monday midnight
+        affected_caches:
+          - pattern: "user:*:quota"
+            action: "DELETE_PATTERN"
+
+      session_cleanup:
+        schedule: "*/30 * * * *"  # Every 30 minutes
+        affected_caches:
+          - pattern: "session:*"
+            action: "DELETE_IF_EXPIRED"
+            implementation: |
+              async def cleanup_expired_sessions():
+                  pattern = "session:*"
+                  now = datetime.utcnow()
+                  deleted = 0
+
+                  async for key in redis.scan_iter(match=pattern):
+                      session_data = await redis.get(key)
+                      if session_data:
+                          session = json.loads(session_data)
+                          expires_at = datetime.fromisoformat(session["expires_at"])
+                          if expires_at < now:
+                              await redis.delete(key)
+                              deleted += 1
+
+                  logger.info("expired_sessions_cleaned", count=deleted)
+
+# ============================================================================
+# Invalidation Strategies
+# ============================================================================
+
+invalidation_strategies:
+  immediate:
+    description: "Invalidate cache immediately after data change"
+    use_when:
+      - "Data change is critical (user auth, permissions)"
+      - "Stale data would cause errors"
+      - "Low cache regeneration cost"
+    implementation: |
+      async def immediate_invalidation(cache_key: str):
+          await redis.delete(cache_key)
+          logger.info("cache_invalidated_immediate", key=cache_key)
+
+  lazy:
+    description: "Invalidate on next access (set flag, regenerate on read)"
+    use_when:
+      - "High cache regeneration cost"
+      - "Eventual consistency acceptable"
+      - "Low read frequency"
+    implementation: |
+      async def lazy_invalidation(cache_key: str):
+          # Set invalidation flag
+          await redis.setex(f"{cache_key}:stale", 300, "1")
+
+      async def get_with_lazy_check(cache_key: str):
+          is_stale = await redis.get(f"{cache_key}:stale")
+          if is_stale:
+              # Regenerate cache
+              await redis.delete(cache_key)
+              await redis.delete(f"{cache_key}:stale")
+              # ... regenerate logic ...
+
+  write_through:
+    description: "Update cache synchronously with database write"
+    use_when:
+      - "Read-heavy workload"
+      - "Simple data transformation"
+      - "Strong consistency required"
+    implementation: |
+      async def write_through_update(doc_id: str, data: dict):
+          # Update database
+          await db.update_document(doc_id, data)
+
+          # Update cache
+          cache_key = f"document:{doc_id}"
+          await redis.setex(cache_key, 3600, json.dumps(data))
+
+  cache_aside:
+    description: "Application invalidates, regenerates on next read"
+    use_when:
+      - "Complex cache generation"
+      - "Most common pattern"
+      - "Read-heavy workload"
+    implementation: |
+      async def cache_aside_invalidate(cache_key: str):
+          await redis.delete(cache_key)
+
+      async def cache_aside_get(cache_key: str):
+          # Try cache first
+          cached = await redis.get(cache_key)
+          if cached:
+              return json.loads(cached)
+
+          # Cache miss - fetch from DB
+          data = await db.get_data()
+          await redis.setex(cache_key, 3600, json.dumps(data))
+          return data
+
+# ============================================================================
+# Implementation Example
+# ============================================================================
+
+implementation_example:
+  scenario: "User uploads document - complete invalidation flow"
+  code: |
+    from app.services.cache_invalidation import CacheInvalidationService
+
+    async def on_document_uploaded(event: DocumentUploadedEvent):
+        """Handle document upload event with proper cache invalidation."""
+
+        doc_id = event.document_id
+        user_id = event.user_id
+        file_size = event.file_size_bytes
+
+        # Initialize invalidation service
+        cache_service = CacheInvalidationService(redis)
+
+        # Invalidate document list cache
+        await cache_service.invalidate(
+            cache_key=f"user:{user_id}:documents",
+            reason="document_uploaded"
+        )
+
+        # Invalidate user stats cache
+        await cache_service.invalidate(
+            cache_key=f"user:{user_id}:stats",
+            reason="document_count_changed"
+        )
+
+        # Update quota cache (write-through)
+        await cache_service.update_quota(
+            user_id=user_id,
+            delta_bytes=file_size,
+            delta_count=1
+        )
+
+        logger.info(
+            "caches_invalidated_on_upload",
+            document_id=doc_id,
+            user_id=user_id,
+            caches_affected=["documents_list", "user_stats", "quota"]
+        )
+
+# ============================================================================
+# Monitoring
+# ============================================================================
+
+monitoring:
+  metrics:
+    - name: "cache_invalidations_total"
+      type: "counter"
+      labels: ["cache_type", "reason"]
+
+    - name: "cache_invalidation_duration_seconds"
+      type: "histogram"
+      labels: ["cache_type"]
+
+    - name: "stale_cache_reads_total"
+      type: "counter"
+      labels: ["cache_key"]
+
+  alerts:
+    - name: "HighInvalidationRate"
+      condition: "rate(cache_invalidations_total[5m]) > 100"
+      severity: "warning"
+      description: "Excessive cache invalidation may indicate cache thrashing"
+
+    - name: "StaleDataServed"
+      condition: "stale_cache_reads_total > 10"
+      severity: "critical"
+      description: "Serving stale data to users"
+
+related_files:
+  - "Static_Knowledge/Skills/redis_caching_skill.yaml"
+  - "Dynamic_Knowledge/Learnings/redis_performance_optimization.md"
+  - "Relations/Workflows/cache_warming_workflow.yaml"
+  - "Execution_Layer/Agents/cache_manager_agent.py"
+
+tags:
+  - decision_tree
+  - cache
+  - redis
+  - invalidation
+  - consistency
+  - performance

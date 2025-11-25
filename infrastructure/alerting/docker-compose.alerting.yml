@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: ablage-alertmanager
+    restart: unless-stopped
+
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--data.retention=120h'
+      - '--web.external-url=http://alertmanager.ablage-system.local'
+      - '--cluster.listen-address='  # Disable clustering for single instance
+
+    ports:
+      - "9093:9093"
+
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./templates:/etc/alertmanager/templates:ro
+      - alertmanager_data:/alertmanager
+
+    env_file:
+      - .env
+
+    networks:
+      - ablage_network
+
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    labels:
+      - "com.ablage-system.component=alertmanager"
+      - "com.ablage-system.version=0.27.0"
+
+  # Alertmanager webhook receiver (optional - for custom integrations)
+  webhook-receiver:
+    image: python:3.11-slim
+    container_name: ablage-webhook-receiver
+    restart: unless-stopped
+
+    working_dir: /app
+
+    volumes:
+      - ./webhook-receiver:/app
+
+    command: >
+      sh -c "pip install --no-cache-dir flask requests &&
+             python webhook_receiver.py"
+
+    ports:
+      - "5001:5001"
+
+    environment:
+      - FLASK_ENV=production
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-changeme}
+
+    networks:
+      - ablage_network
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    labels:
+      - "com.ablage-system.component=webhook-receiver"
+
+volumes:
+  alertmanager_data:
+    driver: local
+    labels:
+      - "com.ablage-system.volume=alertmanager-data"
+
+networks:
+  ablage_network:
+    external: true
+    name: ablage_network

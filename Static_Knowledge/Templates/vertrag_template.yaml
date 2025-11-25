@@ -1,0 +1,40 @@
+# Vertrag Template (German Contract)
+
+template_id: "vertrag"
+description: "German contract/agreement template"
+version: "1.0.0"
+created: "2025-01-22"
+
+identification:
+  keywords:
+    - "Vertrag"
+    - "Vertragsparteien"
+    - "Vereinbarung"
+  min_keyword_count: 2
+
+required_fields:
+  vertragsparteien:
+    description: "Contract parties"
+    pattern: 'Vertragspart(?:eien|ner)\s*:?\s*(.+?)(?=\n\n|\d\.)'
+    multiline: true
+
+  vertragsdatum:
+    description: "Contract date"
+    pattern: '(?:Vertrag(?:s)?datum|Datum)\s*:?\s*(\d{1,2}\.\d{1,2}\.\d{4})'
+    validation:
+      format: "DD.MM.YYYY"
+
+  vertragsgegenstand:
+    description: "Subject of contract"
+    pattern: 'Gegenstand\s*:?\s*(.+?)(?=\n\n|\d\.)'
+
+  laufzeit:
+    description: "Contract duration"
+    pattern: 'Laufzeit\s*:?\s*(.+?)(?=\n|\.)'
+
+optional_fields:
+  kuendigungsfrist:
+    pattern: 'K[üu]ndigungsfrist\s*:?\s*(.+?)(?=\n|\.)'
+
+  zahlungsmodalitaeten:
+    pattern: 'Zahlung(?:smodalit[äa]ten)?\s*:?\s*(.+?)(?=\n\n)'

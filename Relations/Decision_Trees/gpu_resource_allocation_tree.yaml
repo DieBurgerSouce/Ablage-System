@@ -1,0 +1,744 @@
+# GPU Resource Allocation Decision Tree
+
+category: Relations - Decision Trees
+version: "2.3"
+last_updated: "2025-11-22"
+status: active
+priority: critical
+owner: ML Team + DevOps Team
+
+description: |
+  Decision tree for GPU resource allocation, VRAM management, batch size optimization,
+  and fallback strategies. Optimized for NVIDIA RTX 4080 (16 GB VRAM).
+
+---
+
+# Hardware Context
+
+gpu_hardware:
+  model: "NVIDIA GeForce RTX 4080"
+  vram_total_gb: 16.0
+  vram_usable_gb: 15.8  # After driver overhead
+  cuda_version: "12.2"
+  compute_capability: "8.9"
+
+vram_thresholds:
+  safe_zone: "< 80% (12.8 GB)"
+  warning_zone: "80-90% (12.8-14.2 GB)"
+  danger_zone: "90-95% (14.2-15.0 GB)"
+  critical_zone: "> 95% (15.0 GB+)"
+
+---
+
+# Decision Tree: GPU Availability Check
+
+root_node:
+  id: "check_gpu_available"
+  description: "Is GPU available and accessible?"
+  type: "boolean_check"
+
+  check:
+    command: "torch.cuda.is_available()"
+    fallback_check: "nvidia-smi"
+
+  branches:
+    gpu_available_yes:
+      next_node: "check_gpu_healthy"
+
+    gpu_available_no:
+      decision: "USE_CPU"
+      backend: "surya"
+      reason: "GPU not available"
+      log_level: "warning"
+      alert: true
+      alert_message: "GPU not detected. Falling back to CPU processing."
+
+---
+
+# Node: Check GPU Health
+
+node_check_gpu_healthy:
+  id: "check_gpu_healthy"
+  description: "Is GPU in healthy state?"
+  type: "multi_condition_check"
+
+  health_checks:
+    temperature:
+      command: "nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader"
+      warning_threshold_celsius: 75
+      critical_threshold_celsius: 85
+
+    power:
+      command: "nvidia-smi --query-gpu=power.draw --format=csv,noheader"
+      max_power_watts: 320
+      critical_threshold_watts: 330
+
+    errors:
+      command: "nvidia-smi --query-gpu=ecc.errors.uncorrected.aggregate.total --format=csv,noheader"
+      acceptable: 0
+
+  branches:
+    gpu_healthy_yes:
+      next_node: "check_vram_available"
+
+    gpu_healthy_no:
+      decision: "WAIT_OR_FALLBACK"
+      conditions:
+        if_temperature_high:
+          action: "WAIT"
+          wait_duration: "5m"
+          retry_after: true
+          log_message: "GPU temperature high ({{temperature}}°C). Waiting to cool down."
+
+        if_power_issue:
+          action: "RESTART_GPU"
+          command: "nvidia-smi --gpu-reset"
+          fallback: "USE_CPU"
+
+        if_errors:
+          action: "USE_CPU"
+          reason: "GPU hardware errors detected"
+          alert: true
+          severity: "critical"
+
+---
+
+# Node: Check VRAM Available
+
+node_check_vram_available:
+  id: "check_vram_available"
+  description: "How much VRAM is currently available?"
+  type: "range_check"
+
+  check:
+    command: |
+      import torch
+      total = torch.cuda.get_device_properties(0).total_memory / 1024**3
+      allocated = torch.cuda.memory_allocated() / 1024**3
+      reserved = torch.cuda.memory_reserved() / 1024**3
+      available = total - allocated
+
+    metrics:
+      total_vram_gb: "{{total}}"
+      allocated_vram_gb: "{{allocated}}"
+      reserved_vram_gb: "{{reserved}}"
+      available_vram_gb: "{{available}}"
+      utilization_percent: "{{(allocated / total) * 100}}"
+
+  branches:
+    vram_safe:  # < 80% used (> 3.2 GB available)
+      condition: "available_vram_gb >= 3.2"
+      next_node: "select_ocr_backend"
+      recommendation: "Proceed with GPU processing"
+
+    vram_warning:  # 80-90% used (1.6-3.2 GB available)
+      condition: "1.6 <= available_vram_gb < 3.2"
+      next_node: "optimize_vram_usage"
+      recommendation: "Optimize VRAM usage before proceeding"
+
+    vram_danger:  # 90-95% used (0.8-1.6 GB available)
+      condition: "0.8 <= available_vram_gb < 1.6"
+      next_node: "aggressive_vram_cleanup"
+      recommendation: "Aggressive VRAM cleanup required"
+
+    vram_critical:  # > 95% used (< 0.8 GB available)
+      condition: "available_vram_gb < 0.8"
+      decision: "CLEAR_VRAM_OR_FALLBACK"
+      next_node: "emergency_vram_recovery"
+
+---
+
+# Node: Select OCR Backend
+
+node_select_ocr_backend:
+  id: "select_ocr_backend"
+  description: "Which OCR backend to use based on VRAM and requirements?"
+  type: "decision_table"
+
+  inputs:
+    - available_vram_gb
+    - document_complexity
+    - contains_fraktur
+    - user_tier
+    - processing_priority
+
+  decision_table:
+    - rule: 1
+      conditions:
+        contains_fraktur: true
+      decision: "DEEPSEEK"
+      reason: "Fraktur fonts require DeepSeek"
+      required_vram_gb: 12.0
+      validate: "check_vram_sufficient"
+
+    - rule: 2
+      conditions:
+        user_tier: "enterprise"
+        available_vram_gb: ">= 12.0"
+      decision: "DEEPSEEK"
+      reason: "Enterprise tier gets best accuracy"
+      required_vram_gb: 12.0
+
+    - rule: 3
+      conditions:
+        document_complexity: "complex"
+        available_vram_gb: ">= 12.0"
+      decision: "DEEPSEEK"
+      reason: "Complex documents need DeepSeek"
+      required_vram_gb: 12.0
+
+    - rule: 4
+      conditions:
+        available_vram_gb: ">= 10.0"
+        available_vram_gb: "< 12.0"
+      decision: "GOT_OCR"
+      reason: "Sufficient VRAM for GOT-OCR"
+      required_vram_gb: 10.0
+
+    - rule: 5
+      conditions:
+        available_vram_gb: "< 10.0"
+      decision: "SURYA_CPU"
+      reason: "Insufficient VRAM for GPU backends"
+      required_vram_gb: 0.0
+
+  branches:
+    backend_selected_deepseek:
+      next_node: "calculate_batch_size_deepseek"
+
+    backend_selected_got_ocr:
+      next_node: "calculate_batch_size_got_ocr"
+
+    backend_selected_surya:
+      next_node: "process_with_cpu"
+
+---
+
+# Node: Calculate Batch Size (DeepSeek)
+
+node_calculate_batch_size_deepseek:
+  id: "calculate_batch_size_deepseek"
+  description: "Determine optimal batch size for DeepSeek"
+  type: "calculation"
+
+  model_requirements:
+    base_vram_gb: 11.8  # Model weights
+    vram_per_page_gb: 1.5  # Per page in batch
+
+  calculation:
+    formula: "(available_vram_gb - base_vram_gb) / vram_per_page_gb"
+    safety_factor: 0.85  # Use only 85% of calculated capacity
+    min_batch_size: 1
+    max_batch_size: 8  # Hard limit
+    default_batch_size: 4
+
+  batch_size_logic: |
+    available_for_processing = available_vram_gb - base_vram_gb
+    theoretical_batch_size = floor(available_for_processing / vram_per_page_gb)
+    safe_batch_size = floor(theoretical_batch_size * safety_factor)
+    batch_size = clamp(safe_batch_size, min_batch_size, max_batch_size)
+
+  examples:
+    scenario_1:
+      available_vram_gb: 14.2
+      calculation: "(14.2 - 11.8) / 1.5 = 1.6"
+      safe_batch_size: "floor(1.6 * 0.85) = 1"
+      decision: "batch_size = 1"
+
+    scenario_2:
+      available_vram_gb: 15.8
+      calculation: "(15.8 - 11.8) / 1.5 = 2.67"
+      safe_batch_size: "floor(2.67 * 0.85) = 2"
+      decision: "batch_size = 2"
+
+    scenario_3:
+      available_vram_gb: 16.0  # Fresh GPU
+      calculation: "(16.0 - 11.8) / 1.5 = 2.8"
+      safe_batch_size: "floor(2.8 * 0.85) = 2"
+      decision: "batch_size = 2"
+
+  branches:
+    batch_size_calculated:
+      next_node: "allocate_vram_and_process"
+      pass_variables:
+        - backend: "deepseek"
+        - batch_size
+
+---
+
+# Node: Calculate Batch Size (GOT-OCR)
+
+node_calculate_batch_size_got_ocr:
+  id: "calculate_batch_size_got_ocr"
+  description: "Determine optimal batch size for GOT-OCR"
+  type: "calculation"
+
+  model_requirements:
+    base_vram_gb: 9.8  # Model weights
+    vram_per_page_gb: 0.8  # Per page in batch
+
+  calculation:
+    formula: "(available_vram_gb - base_vram_gb) / vram_per_page_gb"
+    safety_factor: 0.85
+    min_batch_size: 1
+    max_batch_size: 32  # GOT-OCR can handle larger batches
+    default_batch_size: 16
+
+  batch_size_logic: |
+    available_for_processing = available_vram_gb - base_vram_gb
+    theoretical_batch_size = floor(available_for_processing / vram_per_page_gb)
+    safe_batch_size = floor(theoretical_batch_size * safety_factor)
+    batch_size = clamp(safe_batch_size, min_batch_size, max_batch_size)
+
+  examples:
+    scenario_1:
+      available_vram_gb: 14.2
+      calculation: "(14.2 - 9.8) / 0.8 = 5.5"
+      safe_batch_size: "floor(5.5 * 0.85) = 4"
+      decision: "batch_size = 4"
+
+    scenario_2:
+      available_vram_gb: 15.8
+      calculation: "(15.8 - 9.8) / 0.8 = 7.5"
+      safe_batch_size: "floor(7.5 * 0.85) = 6"
+      decision: "batch_size = 6"
+
+    scenario_3:
+      available_vram_gb: 16.0  # Fresh GPU
+      calculation: "(16.0 - 9.8) / 0.8 = 7.75"
+      safe_batch_size: "floor(7.75 * 0.85) = 6"
+      decision: "batch_size = 6"
+
+  branches:
+    batch_size_calculated:
+      next_node: "allocate_vram_and_process"
+      pass_variables:
+        - backend: "got_ocr"
+        - batch_size
+
+---
+
+# Node: Optimize VRAM Usage
+
+node_optimize_vram_usage:
+  id: "optimize_vram_usage"
+  description: "Attempt to free VRAM before processing"
+  type: "action_sequence"
+
+  actions:
+    1_clear_cuda_cache:
+      command: "torch.cuda.empty_cache()"
+      expected_freed_gb: "0.5-1.5"
+      log_message: "Clearing CUDA cache..."
+
+    2_check_vram_after_clear:
+      command: "torch.cuda.memory_allocated() / 1024**3"
+      proceed_if: "vram_freed >= 0.5"
+
+    3_unload_idle_models:
+      description: "Unload models not used in last 5 minutes"
+      candidates:
+        - "deepseek_model (if loaded)"
+        - "got_ocr_model (if loaded)"
+      expected_freed_gb: "9.8-11.8"
+      log_message: "Unloading idle models..."
+
+    4_force_garbage_collection:
+      command: "import gc; gc.collect()"
+      expected_freed_gb: "0.1-0.3"
+
+  branches:
+    vram_freed_sufficient:
+      condition: "available_vram_gb >= 3.2"
+      next_node: "select_ocr_backend"
+
+    vram_still_insufficient:
+      next_node: "aggressive_vram_cleanup"
+
+---
+
+# Node: Aggressive VRAM Cleanup
+
+node_aggressive_vram_cleanup:
+  id: "aggressive_vram_cleanup"
+  description: "Aggressive measures to free VRAM"
+  type: "action_sequence"
+
+  warning:
+    message: "VRAM in danger zone. Aggressive cleanup required."
+    log_level: "warning"
+
+  actions:
+    1_terminate_low_priority_tasks:
+      description: "Kill batch processing tasks"
+      target_queue: "batch"
+      expected_freed_gb: "Variable"
+
+    2_restart_celery_worker:
+      description: "Restart worker to clear memory leaks"
+      command: "systemctl reload ablage-celery-worker"
+      expected_freed_gb: "All VRAM"
+      downtime: "~10 seconds"
+
+    3_wait_for_restart:
+      duration: "15 seconds"
+
+  branches:
+    cleanup_successful:
+      condition: "available_vram_gb >= 3.2"
+      next_node: "select_ocr_backend"
+      log_message: "VRAM successfully freed"
+
+    cleanup_failed:
+      next_node: "emergency_vram_recovery"
+
+---
+
+# Node: Emergency VRAM Recovery
+
+node_emergency_vram_recovery:
+  id: "emergency_vram_recovery"
+  description: "Last resort VRAM recovery or fallback to CPU"
+  type: "emergency_action"
+
+  alert:
+    severity: "critical"
+    message: "GPU VRAM critically low. Emergency recovery initiated."
+    channel: "#ablage-critical"
+
+  actions:
+    1_pause_gpu_processing:
+      description: "Stop accepting new GPU tasks"
+      queues:
+        - "urgent"
+        - "default"
+      duration: "5 minutes"
+
+    2_gpu_reset:
+      description: "Attempt GPU reset (last resort)"
+      command: "sudo nvidia-smi --gpu-reset"
+      risk: "HIGH - may fail current tasks"
+      only_if: "approved_by_ops"
+
+    3_fallback_decision:
+      description: "Decide fallback strategy"
+
+  branches:
+    gpu_reset_successful:
+      condition: "gpu_available AND available_vram_gb >= 3.2"
+      next_node: "select_ocr_backend"
+      log_message: "GPU reset successful. Resuming GPU processing."
+
+    gpu_reset_failed:
+      decision: "FALLBACK_TO_CPU"
+      backend: "surya"
+      reason: "GPU recovery failed"
+      alert: true
+      next_node: "process_with_cpu"
+
+---
+
+# Node: Allocate VRAM and Process
+
+node_allocate_vram_and_process:
+  id: "allocate_vram_and_process"
+  description: "Reserve VRAM and start OCR processing"
+  type: "processing"
+
+  pre_processing:
+    reserve_vram:
+      backend_deepseek:
+        base_gb: 11.8
+        per_page_gb: 1.5
+        total_required: "base_gb + (batch_size * per_page_gb)"
+
+      backend_got_ocr:
+        base_gb: 9.8
+        per_page_gb: 0.8
+        total_required: "base_gb + (batch_size * per_page_gb)"
+
+    load_model:
+      if_not_loaded: true
+      track_loading_time: true
+
+    monitor_vram:
+      track_peak_usage: true
+      alert_if_exceeds: "15.0 GB"
+
+  processing:
+    command: "ocr_backend.process_batch(documents, batch_size)"
+    timeout: "300 seconds per batch"
+
+  post_processing:
+    clear_cache:
+      command: "torch.cuda.empty_cache()"
+
+    log_metrics:
+      - vram_peak_gb
+      - vram_after_gb
+      - processing_time_seconds
+      - batch_size
+      - documents_processed
+
+  error_handling:
+    on_oom_error:
+      action: "REDUCE_BATCH_SIZE_AND_RETRY"
+      next_node: "handle_oom_error"
+
+    on_timeout:
+      action: "RETRY_WITH_SMALLER_BATCH"
+      reduction_factor: 0.5
+
+    on_other_error:
+      action: "FALLBACK_TO_CPU"
+      next_node: "process_with_cpu"
+
+---
+
+# Node: Handle OOM Error
+
+node_handle_oom_error:
+  id: "handle_oom_error"
+  description: "Handle GPU Out of Memory error"
+  type: "error_recovery"
+
+  log:
+    event: "gpu_oom_error"
+    log_level: "error"
+    include_context:
+      - backend
+      - batch_size
+      - vram_at_failure_gb
+
+  recovery_steps:
+    1_clear_cuda_cache:
+      command: "torch.cuda.empty_cache()"
+
+    2_reduce_batch_size:
+      formula: "max(1, batch_size // 2)"
+      min_batch_size: 1
+
+    3_retry:
+      max_retries: 2
+      delay: "30 seconds"
+
+  branches:
+    retry_successful:
+      next_node: "allocate_vram_and_process"
+      log_message: "OOM recovery successful with batch_size={{new_batch_size}}"
+
+    retry_failed:
+      decision: "FALLBACK_TO_CPU"
+      reason: "GPU OOM persists after retries"
+      backend: "surya"
+      next_node: "process_with_cpu"
+
+---
+
+# Node: Process with CPU
+
+node_process_with_cpu:
+  id: "process_with_cpu"
+  description: "Fallback to CPU processing with Surya"
+  type: "fallback_processing"
+
+  backend: "surya"
+  vram_required: 0.0
+  cpu_threads: "auto"  # Use all available cores
+
+  configuration:
+    batch_size: 4  # CPU batch size
+    device: "cpu"
+    enable_layout_analysis: true
+
+  processing:
+    command: "surya_backend.process_batch(documents, batch_size=4)"
+    expected_time_per_page: "1.9 seconds"
+
+  logging:
+    event: "cpu_fallback_processing"
+    log_level: "info"
+    reason: "{{fallback_reason}}"
+
+  monitoring:
+    track_cpu_usage: true
+    track_processing_time: true
+    compare_with_gpu: true
+
+  branches:
+    processing_successful:
+      next_node: "end"
+
+    processing_failed:
+      decision: "FAIL_TASK"
+      notify_user: true
+      alert_support: true
+
+---
+
+# Monitoring and Metrics
+
+prometheus_metrics:
+  vram_allocation:
+    - name: "ablage_gpu_vram_allocated_bytes"
+      type: "gauge"
+      labels: ["backend"]
+
+    - name: "ablage_gpu_vram_available_bytes"
+      type: "gauge"
+
+    - name: "ablage_gpu_temperature_celsius"
+      type: "gauge"
+
+  batch_processing:
+    - name: "ablage_ocr_batch_size"
+      type: "histogram"
+      labels: ["backend"]
+      buckets: [1, 2, 4, 8, 16, 32]
+
+    - name: "ablage_ocr_processing_time_seconds"
+      type: "histogram"
+      labels: ["backend", "batch_size"]
+
+  fallback_metrics:
+    - name: "ablage_cpu_fallback_total"
+      type: "counter"
+      labels: ["reason"]
+
+    - name: "ablage_gpu_oom_errors_total"
+      type: "counter"
+      labels: ["backend", "batch_size"]
+
+grafana_alerts:
+  - alert: "HighGPUVRAMUsage"
+    expr: "ablage_gpu_vram_allocated_bytes / ablage_gpu_vram_total_bytes > 0.90"
+    for: "5m"
+    severity: "warning"
+    action: "Trigger VRAM cleanup"
+
+  - alert: "FrequentGPUOOM"
+    expr: "rate(ablage_gpu_oom_errors_total[10m]) > 0.1"
+    for: "10m"
+    severity: "critical"
+    action: "Page ML team"
+
+  - alert: "HighCPUFallbackRate"
+    expr: "rate(ablage_cpu_fallback_total[15m]) > 0.5"
+    for: "15m"
+    severity: "warning"
+    action: "Investigate GPU health"
+
+---
+
+# Optimization Strategies
+
+dynamic_batch_sizing:
+  description: "Adjust batch size based on historical performance"
+  algorithm: |
+    if last_3_tasks_successful:
+      batch_size = min(batch_size + 1, max_batch_size)
+    elif oom_occurred:
+      batch_size = max(batch_size // 2, min_batch_size)
+    else:
+      batch_size = batch_size  # No change
+
+  metrics_to_track:
+    - success_rate_per_batch_size
+    - oom_rate_per_batch_size
+    - avg_processing_time_per_batch_size
+
+model_caching:
+  description: "Keep models in VRAM with intelligent eviction"
+  strategy: "LRU (Least Recently Used)"
+  max_models_cached: 2  # DeepSeek + GOT-OCR
+  evict_after_idle: "5 minutes"
+
+  eviction_logic: |
+    if vram_usage > 85% AND model_idle_time > 5_minutes:
+      unload_least_recently_used_model()
+
+mixed_precision:
+  description: "Use FP16 to reduce VRAM usage"
+  enabled: true
+  savings: "~40% VRAM"
+  implementation: |
+    model.half()  # Convert to FP16
+    input_tensor = input_tensor.half()
+
+---
+
+# Testing Scenarios
+
+test_scenarios:
+  scenario_1_fresh_gpu:
+    description: "GPU with no prior load"
+    initial_vram_gb: 16.0
+    expected_backend: "deepseek OR got_ocr"
+    expected_batch_size: ">= 4 (GOT-OCR) OR >= 2 (DeepSeek)"
+
+  scenario_2_partial_load:
+    description: "GPU with existing model loaded"
+    initial_vram_gb: 12.0
+    expected_backend: "got_ocr"
+    expected_batch_size: ">= 2"
+
+  scenario_3_high_load:
+    description: "GPU with high VRAM usage"
+    initial_vram_gb: 10.0
+    expected_action: "OPTIMIZE_VRAM_USAGE"
+    expected_backend: "got_ocr OR surya_cpu"
+
+  scenario_4_critical_load:
+    description: "GPU near OOM"
+    initial_vram_gb: 15.5
+    expected_action: "AGGRESSIVE_VRAM_CLEANUP OR EMERGENCY_RECOVERY"
+    expected_backend: "surya_cpu"
+
+  scenario_5_gpu_unavailable:
+    description: "GPU not detected"
+    gpu_available: false
+    expected_backend: "surya_cpu"
+    expected_alert: true
+
+---
+
+# Related Documentation
+
+references:
+  - "../../Static_Knowledge/Skills/gpu_management_skill.yaml"
+  - "../../Static_Knowledge/Skills/ocr_backends_skill.yaml"
+  - "../../Relations/Workflows/ocr_backend_selection_workflow.yaml"
+  - "../../Relations/Playbooks/gpu_troubleshooting_playbook.yaml"
+  - "../../Dynamic_Knowledge/Logs/gpu_metrics_log.jsonl"
+  - "../../Dynamic_Knowledge/Experiments/ocr_backend_comparison.md"
+
+external_docs:
+  - name: "PyTorch CUDA Memory Management"
+    url: "https://pytorch.org/docs/stable/notes/cuda.html#memory-management"
+  - name: "NVIDIA GPU Monitoring"
+    url: "https://developer.nvidia.com/nvidia-system-management-interface"
+
+---
+
+# Maintenance
+
+review_frequency: "Monthly"
+last_review: "2025-11-22"
+next_review: "2025-12-22"
+owner: "ML Team + DevOps Team"
+contact: "#ablage-ml on Slack"
+
+change_log:
+  - date: "2025-11-22"
+    change: "Updated batch size formulas based on production data"
+  - date: "2025-11-15"
+    change: "Added emergency VRAM recovery procedures"
+  - date: "2025-11-01"
+    change: "Optimized VRAM thresholds for RTX 4080"
+
+tuning_notes: |
+  - Monitor OOM rate weekly (target < 0.5%)
+  - Adjust safety_factor if OOM rate too high
+  - Review batch size calculations monthly
+  - Update VRAM requirements when models change
+  - Test fallback paths quarterly

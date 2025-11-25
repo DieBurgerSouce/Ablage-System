@@ -1,0 +1,548 @@
+# PLAYBOOK: Error Response & Recovery
+# Purpose: Systematic responses to common error scenarios
+# Priority: P0 - CRITICAL
+# Created: 2024-11-22
+
+playbook:
+  name: "Error Response Playbook"
+  id: "pb001"
+  version: "1.0"
+  description: "Standard responses for all error scenarios in Ablage-System OCR"
+  priority: "P0"
+
+  metadata:
+    error_categories:
+      - "gpu_errors"
+      - "processing_errors"
+      - "validation_errors"
+      - "storage_errors"
+      - "german_text_errors"
+      - "gdpr_compliance_errors"
+    escalation_levels: ["auto_recovery", "warning", "critical"]
+
+  scenarios:
+    # GPU-Related Errors
+    - scenario_id: "gpu001"
+      scenario: "GPU Out of Memory (OOM)"
+      severity: "high"
+      category: "gpu_errors"
+
+      triggers:
+        - error_type: "torch.cuda.OutOfMemoryError"
+        - log_pattern: "CUDA out of memory"
+        - metric: "vram_usage > 95%"
+
+      symptoms:
+        - "Processing fails mid-document"
+        - "nvidia-smi shows >15.5GB usage"
+        - "Error log: CUDA_ERROR_OUT_OF_MEMORY"
+
+      root_causes:
+        - cause: "Batch size too large for available VRAM"
+          probability: "60%"
+
+        - cause: "VRAM fragmentation from previous processing"
+          probability: "25%"
+
+        - cause: "Memory leak in backend"
+          probability: "10%"
+
+        - cause: "Competing GPU process"
+          probability: "5%"
+
+      response_steps:
+        - step: 1
+          action: "Clear GPU cache immediately"
+          command: "torch.cuda.empty_cache()"
+          expected_result: "VRAM decreases by 1-2GB"
+
+        - step: 2
+          action: "Reduce batch size by 50%"
+          implementation: "batch_size = max(1, batch_size // 2)"
+          expected_result: "Lower VRAM requirements"
+
+        - step: 3
+          action: "Retry with smaller batch"
+          max_retries: 1
+          expected_result: "Processing succeeds"
+
+        - step: 4
+          action: "If still OOM, fallback to next backend"
+          fallback_chain: ["deepseek", "got_ocr", "surya"]
+          expected_result: "Processing continues on CPU if needed"
+
+        - step: 5
+          action: "Log incident for analysis"
+          log_level: "warning"
+          include: ["document_id", "backend", "vram_usage", "batch_size"]
+
+      escalation:
+        condition: "oom_count > 3 in last hour"
+        level: "warning"
+        action: "alert_ops_team"
+        message: "Frequent OOM errors - investigate GPU configuration"
+
+      prevention:
+        - "Monitor VRAM continuously"
+        - "Set batch_size conservatively"
+        - "Keep VRAM <85% target"
+        - "Enable automatic batch size reduction"
+
+      related_docs:
+        - "Static_Knowledge/SOPs/002_handling_gpu_oom_error.md"
+        - "Static_Knowledge/ADRs/002_gpu_fallback_mechanism.md"
+
+    - scenario_id: "gpu002"
+      scenario: "GPU Unavailable"
+      severity: "medium"
+      category: "gpu_errors"
+
+      triggers:
+        - error_type: "RuntimeError"
+        - log_pattern: "CUDA not available"
+        - metric: "torch.cuda.is_available() == False"
+
+      symptoms:
+        - "PyTorch reports no GPU"
+        - "Processing falls back to CPU automatically"
+
+      root_causes:
+        - cause: "PyTorch not installed with CUDA support"
+          probability: "50%"
+
+        - cause: "NVIDIA drivers not installed/updated"
+          probability: "30%"
+
+        - cause: "GPU hardware failure"
+          probability: "10%"
+
+        - cause: "CUDA version mismatch"
+          probability: "10%"
+
+      response_steps:
+        - step: 1
+          action: "Fallback to CPU processing immediately"
+          backend: "surya"
+          expected_result: "Processing continues (slower)"
+
+        - step: 2
+          action: "Check PyTorch CUDA installation"
+          command: "python -c 'import torch; print(torch.cuda.is_available())'"
+          expected_output: "True"
+
+        - step: 3
+          action: "Check NVIDIA drivers"
+          command: "nvidia-smi"
+          expected_output: "GPU information displayed"
+
+        - step: 4
+          action: "If drivers missing, schedule installation"
+          refer_to: "Static_Knowledge/SOPs/001_installing_ocr_backend.md"
+
+      escalation:
+        condition: "gpu_unavailable for > 1 hour"
+        level: "critical"
+        action: "alert_ops_team_urgent"
+        message: "GPU unavailable - significant performance degradation"
+
+      prevention:
+        - "Monitor GPU health daily"
+        - "Keep drivers updated"
+        - "Test CUDA availability on startup"
+
+    # Processing Errors
+    - scenario_id: "proc001"
+      scenario: "OCR Backend Crash"
+      severity: "high"
+      category: "processing_errors"
+
+      triggers:
+        - error_type: "RuntimeError"
+        - log_pattern: "Backend process terminated"
+        - metric: "ocr_processing_failure"
+
+      response_steps:
+        - step: 1
+          action: "Restart backend process"
+          timeout: "30s"
+
+        - step: 2
+          action: "Retry with different backend"
+          fallback_order: ["deepseek", "got_ocr", "surya"]
+
+        - step: 3
+          action: "If all backends fail, mark for manual review"
+          queue: "manual_review_queue"
+
+      escalation:
+        condition: "backend_crashes > 5 in last hour"
+        level: "critical"
+        action: "investigate_root_cause"
+
+    - scenario_id: "proc002"
+      scenario: "Processing Timeout"
+      severity: "medium"
+      category: "processing_errors"
+
+      triggers:
+        - metric: "processing_time > 30s"
+        - log_pattern: "Processing timeout exceeded"
+
+      response_steps:
+        - step: 1
+          action: "Kill stuck process"
+          command: "kill_process(pid)"
+
+        - step: 2
+          action: "Clear GPU/CPU resources"
+          cleanup: true
+
+        - step: 3
+          action: "Retry with timeout = 2x previous"
+          max_timeout: "60s"
+
+        - step: 4
+          action: "If still timeout, use simpler backend"
+          preferred: "surya"
+
+      prevention:
+        - "Set realistic timeouts per document size"
+        - "Monitor processing time distribution"
+        - "Optimize slow backends"
+
+    # German Text Errors
+    - scenario_id: "german001"
+      scenario: "Umlaut Encoding Error"
+      severity: "high"
+      category: "german_text_errors"
+
+      triggers:
+        - error_type: "UnicodeDecodeError"
+        - log_pattern: "umlaut_validation_failed"
+        - metric: "invalid_umlauts_detected"
+
+      symptoms:
+        - "Garbled characters: Ã¼ instead of ü"
+        - "Validation fails for German text"
+        - "Business terms not recognized"
+
+      root_causes:
+        - cause: "OCR output not in UTF-8"
+          probability: "70%"
+
+        - cause: "Latin-1 encoding misinterpreted as UTF-8"
+          probability: "20%"
+
+        - cause: "Fraktur characters not converted"
+          probability: "10%"
+
+      response_steps:
+        - step: 1
+          action: "Detect actual encoding"
+          library: "chardet"
+          code: "detected = chardet.detect(raw_bytes)"
+
+        - step: 2
+          action: "Decode with detected encoding"
+          fallbacks: ["utf-8", "latin-1", "cp1252"]
+
+        - step: 3
+          action: "Apply German normalization"
+          normalizer: "Static_Knowledge/Skills/text_processing/german_normalizer.py"
+
+        - step: 4
+          action: "Validate umlauts 100%"
+          validator: "app/german_validator.py"
+
+        - step: 5
+          action: "If still invalid, flag for manual correction"
+          priority: "high"
+
+      escalation:
+        condition: "umlaut_errors > 10% of documents"
+        level: "critical"
+        action: "review_ocr_backend_configuration"
+
+      prevention:
+        - "Always specify encoding='utf-8' in OCR backends"
+        - "Validate encoding before normalization"
+        - "Test with German text samples"
+
+    - scenario_id: "german002"
+      scenario: "Business Term Not Recognized"
+      severity: "low"
+      category: "german_text_errors"
+
+      triggers:
+        - metric: "unknown_business_term_detected"
+        - log_pattern: "Legal form not in glossar"
+
+      response_steps:
+        - step: 1
+          action: "Check glossar for variants"
+          glossar: "Static_Knowledge/Glossar/business_terms_de.yaml"
+
+        - step: 2
+          action: "Try fuzzy matching"
+          threshold: 0.85
+          library: "fuzzywuzzy"
+
+        - step: 3
+          action: "If still not found, add to review queue"
+          queue: "glossar_update_queue"
+
+        - step: 4
+          action: "Continue processing without term"
+          flag: "unknown_term_present"
+
+      prevention:
+        - "Regularly update glossar with new variants"
+        - "Analyze unknown term patterns"
+
+    # Validation Errors
+    - scenario_id: "val001"
+      scenario: "Invoice Missing Required Field (§14 UStG)"
+      severity: "high"
+      category: "validation_errors"
+
+      triggers:
+        - validation: "§14_ustg_compliance_failed"
+        - log_pattern: "Required field missing"
+
+      symptoms:
+        - "Invoice lacks Rechnungsnummer"
+        - "Missing Steuernummer or USt-IdNr"
+        - "No MwSt calculation"
+
+      response_steps:
+        - step: 1
+          action: "Identify missing fields"
+          check_against: "Static_Knowledge/Templates/rechnungen_template.json"
+
+        - step: 2
+          action: "Attempt re-extraction with stricter patterns"
+          use_fallback_patterns: true
+
+        - step: 3
+          action: "If still missing, check if OCR missed region"
+          re_ocr_suspicious_areas: true
+
+        - step: 4
+          action: "Mark document as non-compliant"
+          status: "requires_manual_review"
+          reason_de: "Pflichtangaben gemäß §14 UStG fehlen"
+
+        - step: 5
+          action: "Notify user with specific missing fields"
+          include: ["list_of_missing_fields", "legal_reference"]
+
+      escalation:
+        condition: "§14_compliance_failures > 20%"
+        level: "warning"
+        action: "review_invoice_template"
+
+      prevention:
+        - "Improve extraction patterns for required fields"
+        - "Add pre-validation step before OCR"
+
+    - scenario_id: "val002"
+      scenario: "Math Validation Failed (Invoice Totals)"
+      severity: "medium"
+      category: "validation_errors"
+
+      triggers:
+        - validation: "math_validation_failed"
+        - log_pattern: "Netto + MwSt ≠ Brutto"
+
+      response_steps:
+        - step: 1
+          action: "Re-extract numerical values with higher precision"
+          precision: "2_decimal_places"
+
+        - step: 2
+          action: "Check for formatting issues (. vs , as decimal separator)"
+          normalize_currency: true
+
+        - step: 3
+          action: "Calculate expected values"
+          formulas:
+            - "expected_brutto = netto * (1 + mwst_satz/100)"
+            - "expected_mwst = netto * (mwst_satz/100)"
+
+        - step: 4
+          action: "If difference < 1 cent, accept with warning"
+          tolerance: 0.01
+
+        - step: 5
+          action: "If difference > 1 cent, flag for review"
+          flag: "math_error"
+          user_message_de: "Rechnungsbeträge stimmen nicht überein"
+
+      prevention:
+        - "Improve OCR accuracy for currency amounts"
+        - "Add currency amount validation to extraction"
+
+    # Storage Errors
+    - scenario_id: "stor001"
+      scenario: "Database Connection Lost"
+      severity: "critical"
+      category: "storage_errors"
+
+      triggers:
+        - error_type: "DatabaseConnectionError"
+        - log_pattern: "Connection to database lost"
+
+      response_steps:
+        - step: 1
+          action: "Queue document for retry"
+          queue: "db_retry_queue"
+          max_queue_size: 1000
+
+        - step: 2
+          action: "Attempt reconnection"
+          retry_strategy: "exponential_backoff"
+          max_retries: 3
+
+        - step: 3
+          action: "If reconnection fails, store locally"
+          local_storage: "temp/pending_documents/"
+          create_sync_job: true
+
+        - step: 4
+          action: "Alert ops team"
+          severity: "critical"
+          message: "Database unavailable"
+
+      escalation:
+        immediate: true
+        level: "critical"
+        action: "page_on_call_engineer"
+
+    # GDPR Compliance Errors
+    - scenario_id: "gdpr001"
+      scenario: "Sensitive Data Detected Unexpectedly"
+      severity: "high"
+      category: "gdpr_compliance_errors"
+
+      triggers:
+        - detection: "sensitive_data_pattern_match"
+        - patterns: ["SSN", "health_data", "biometric_data"]
+
+      response_steps:
+        - step: 1
+          action: "Halt processing immediately"
+          preserve_state: true
+
+        - step: 2
+          action: "Anonymize sensitive data"
+          anonymizer: "app/core/gdpr.py → anonymize_sensitive_data()"
+
+        - step: 3
+          action: "Log GDPR processing activity"
+          compliance: "Art. 30 DSGVO"
+
+        - step: 4
+          action: "Notify data protection officer"
+          if_configured: true
+
+        - step: 5
+          action: "Obtain user consent if needed"
+          legal_basis_check: true
+
+      escalation:
+        condition: "sensitive_data_without_consent"
+        level: "critical"
+        action: "halt_and_review"
+
+      prevention:
+        - "Pre-scan documents for sensitive data"
+        - "Configure data protection policies"
+        - "Train staff on GDPR requirements"
+
+    - scenario_id: "gdpr002"
+      scenario: "Data Deletion Request (Art. 17 DSGVO)"
+      severity: "high"
+      category: "gdpr_compliance_errors"
+
+      triggers:
+        - api_call: "/gdpr/request-deletion"
+        - user_request: "right_to_erasure"
+
+      response_steps:
+        - step: 1
+          action: "Verify request authenticity"
+          authentication_required: true
+
+        - step: 2
+          action: "Locate all data for subject"
+          search_tables:
+            - "documents"
+            - "processing_logs"
+            - "gdpr_activity_log"
+          search_storage:
+            - "minio/ablage-originals"
+
+        - step: 3
+          action: "Delete personal data within 30 days"
+          deadline_calculation: "request_date + 30 days"
+          retention_check: true
+
+        - step: 4
+          action: "Confirm deletion to user"
+          confirmation_de: "Ihre Daten wurden gelöscht"
+
+        - step: 5
+          action: "Log deletion in compliance log"
+          compliance: "Art. 17 DSGVO"
+
+      sla:
+        deadline: "30_days"
+        reminder: "7_days_before_deadline"
+
+  # Global Error Handling Configuration
+  global_config:
+    default_retry_policy:
+      max_retries: 3
+      backoff: "exponential"
+      backoff_factor: 2
+      max_backoff: 60  # seconds
+
+    logging:
+      log_all_errors: true
+      include_stack_trace: true
+      include_context: true
+      log_level_default: "error"
+
+    notifications:
+      email_on: ["critical"]
+      slack_on: ["critical", "warning"]
+      pagerduty_on: ["critical"]
+
+    monitoring:
+      track_error_rates: true
+      alert_thresholds:
+        error_rate_warning: "5%"
+        error_rate_critical: "15%"
+
+  # Escalation Matrix
+  escalation_matrix:
+    auto_recovery:
+      description: "System handles automatically"
+      notify: []
+      response_time: "immediate"
+
+    warning:
+      description: "Ops team notified, non-urgent"
+      notify: ["ops_team_slack"]
+      response_time: "within_1_hour"
+
+    critical:
+      description: "Immediate attention required"
+      notify: ["ops_team_slack", "ops_team_email", "pagerduty"]
+      response_time: "within_15_minutes"
+
+  version_history:
+    - version: "1.0"
+      date: "2024-11-22"
+      changes: "Initial playbook with 12 scenarios"
+      author: "Architecture Team"

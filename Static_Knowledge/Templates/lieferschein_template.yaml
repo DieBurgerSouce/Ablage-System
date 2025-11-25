@@ -1,0 +1,39 @@
+# Lieferschein Template (Delivery Note)
+
+template_id: "lieferschein"
+description: "German delivery note template"
+version: "1.0.0"
+
+identification:
+  keywords:
+    - "Lieferschein"
+    - "Lieferung"
+    - "Artikel"
+  min_keyword_count: 2
+
+required_fields:
+  lieferschein_nr:
+    pattern: 'Lieferschein(?:nummer|nr\.?)?\s*:?\s*([A-Z]{2}-\d{4}-\d{3})'
+    validation:
+      min_length: 5
+      max_length: 20
+
+  lieferdatum:
+    pattern: '(?:Liefer)?datum\s*:?\s*(\d{1,2}\.\d{1,2}\.\d{4})'
+    validation:
+      format: "DD.MM.YYYY"
+      not_future: true
+
+  lieferant:
+    pattern: '(?:Lieferant|Von)\s*:?\s*([A-ZÄÖÜ][a-zäöüß\-]+(?:\s+[A-ZÄÖÜa-zäöüß\-&]+)*\s+(?:GmbH|AG|KG))'
+
+  empfaenger:
+    pattern: '(?:Empf[äa]nger|An)\s*:?\s*([A-ZÄÖÜ][a-zäöüß\-]+(?:\s+[A-ZÄÖÜa-zäöüß\-&]+)*\s+(?:GmbH|AG|KG))'
+
+optional_fields:
+  bestellnummer:
+    pattern: 'Bestellung(?:snummer|nr\.?)?\s*:?\s*([A-Z0-9-/]+)'
+
+  lieferadresse:
+    pattern: '(?:Lieferadresse|Anschrift)\s*:?\s*(.+?)(?=\n\n|\n[A-Z])'
+    multiline: true

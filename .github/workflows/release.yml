@@ -1,0 +1,280 @@
+# Release Automation - Ablage-System OCR
+# Automated semantic versioning and release creation
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      prerelease:
+        description: 'Create as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Read Current Version
+        id: current_version
+        run: |
+          CURRENT_VERSION=$(cat VERSION | tr -d '\n' | sed 's/-dev//')
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+
+      - name: Calculate New Version
+        id: new_version
+        run: |
+          CURRENT="${{ steps.current_version.outputs.current }}"
+          BUMP_TYPE="${{ github.event.inputs.version_bump }}"
+
+          # Parse semantic version
+          IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT"
+          MAJOR="${VERSION_PARTS[0]}"
+          MINOR="${VERSION_PARTS[1]}"
+          PATCH="${VERSION_PARTS[2]}"
+
+          # Bump version
+          case $BUMP_TYPE in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          CURRENT_VERSION="${{ steps.current_version.outputs.current }}"
+          NEW_VERSION="${{ steps.new_version.outputs.new }}"
+
+          echo "Generating changelog from v$CURRENT_VERSION to v$NEW_VERSION..."
+
+          # Get commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [ -z "$LAST_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+
+          # Categorize commits
+          FEATURES=$(echo "$COMMITS" | grep -i "^- feat" || echo "")
+          FIXES=$(echo "$COMMITS" | grep -i "^- fix" || echo "")
+          DOCS=$(echo "$COMMITS" | grep -i "^- docs" || echo "")
+          OTHERS=$(echo "$COMMITS" | grep -vi "^- feat\|^- fix\|^- docs" || echo "")
+
+          # Build changelog
+          CHANGELOG="## Release v$NEW_VERSION
+
+**Release Date:** $(date +%Y-%m-%d)
+
+"
+
+          if [ -n "$FEATURES" ]; then
+            CHANGELOG+="### ✨ New Features
+
+$FEATURES
+
+"
+          fi
+
+          if [ -n "$FIXES" ]; then
+            CHANGELOG+="### 🐛 Bug Fixes
+
+$FIXES
+
+"
+          fi
+
+          if [ -n "$DOCS" ]; then
+            CHANGELOG+="### 📚 Documentation
+
+$DOCS
+
+"
+          fi
+
+          if [ -n "$OTHERS" ]; then
+            CHANGELOG+="### 🔧 Other Changes
+
+$OTHERS
+
+"
+          fi
+
+          # Save to file
+          echo "$CHANGELOG" > RELEASE_NOTES.md
+
+          # Save to output (escape newlines for GitHub Actions)
+          CHANGELOG_ESCAPED="${CHANGELOG//'%'/'%25'}"
+          CHANGELOG_ESCAPED="${CHANGELOG_ESCAPED//$'\n'/'%0A'}"
+          CHANGELOG_ESCAPED="${CHANGELOG_ESCAPED//$'\r'/'%0D'}"
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Update VERSION file
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new }}"
+          echo "$NEW_VERSION" > VERSION
+          git add VERSION
+
+      - name: Update CHANGELOG.md
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new }}"
+
+          # Prepend to existing CHANGELOG.md
+          if [ -f CHANGELOG.md ]; then
+            cat RELEASE_NOTES.md CHANGELOG.md > CHANGELOG.tmp
+            mv CHANGELOG.tmp CHANGELOG.md
+          else
+            cp RELEASE_NOTES.md CHANGELOG.md
+          fi
+
+          git add CHANGELOG.md
+
+      - name: Commit Version Bump
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new }}"
+          git commit -m "chore: bump version to $NEW_VERSION"
+          git push origin main
+
+      - name: Create Git Tag
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new }}"
+          git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
+          git push origin "v$NEW_VERSION"
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.new_version.outputs.new }}
+          release_name: Release v${{ steps.new_version.outputs.new }}
+          body: ${{ steps.changelog.outputs.notes }}
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease }}
+
+      - name: Update Development Version
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new }}"
+
+          # Parse version for next dev version
+          IFS='.' read -r -a VERSION_PARTS <<< "$NEW_VERSION"
+          MAJOR="${VERSION_PARTS[0]}"
+          MINOR="${VERSION_PARTS[1]}"
+          PATCH="${VERSION_PARTS[2]}"
+
+          # Increment patch for dev version
+          PATCH=$((PATCH + 1))
+          DEV_VERSION="$MAJOR.$MINOR.$PATCH-dev"
+
+          echo "$DEV_VERSION" > VERSION
+          git add VERSION
+          git commit -m "chore: set development version to $DEV_VERSION"
+          git push origin main
+
+      - name: Build Release Artifacts
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new }}"
+
+          # Create release archive
+          mkdir -p release
+
+          # Archive source
+          git archive --format=tar.gz --prefix=ablage-system-$NEW_VERSION/ \
+            -o release/ablage-system-$NEW_VERSION.tar.gz v$NEW_VERSION
+
+          # Generate checksums
+          cd release
+          sha256sum *.tar.gz > checksums.txt
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.new_version.outputs.new }}
+          files: |
+            release/*.tar.gz
+            release/checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger Docker Build
+        run: |
+          # Trigger docker.yml workflow for the new tag
+          gh workflow run docker.yml --ref v${{ steps.new_version.outputs.new }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release Summary
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new }}"
+
+          echo "## 🎉 Release Created: v$NEW_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.changelog.outputs.notes }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Release Assets" >> $GITHUB_STEP_SUMMARY
+          echo "- Source archive: \`ablage-system-$NEW_VERSION.tar.gz\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker images: Building..." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Docker images will be built automatically" >> $GITHUB_STEP_SUMMARY
+          echo "2. Deploy to staging: \`gh workflow run deploy.yml -f environment=staging -f version=v$NEW_VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. After staging verification, deploy to production" >> $GITHUB_STEP_SUMMARY
+
+  # Notify stakeholders
+  notify-release:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: create-release
+
+    steps:
+      - name: Send Notifications
+        run: |
+          echo "📢 Sending release notifications..."
+          # Implement notification logic:
+          # - Slack webhook
+          # - Email notification
+          # - Discord webhook
+          # - etc.

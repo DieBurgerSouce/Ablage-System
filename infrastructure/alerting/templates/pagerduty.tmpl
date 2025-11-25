@@ -1,0 +1,26 @@
+{{ define "pagerduty.description" }}
+{{ range .Alerts }}
+[{{ .Labels.severity | toUpper }}] {{ .Labels.alertname }} on {{ .Labels.service }}
+{{ if .Labels.instance }}Instance: {{ .Labels.instance }}{{ end }}
+
+{{ .Annotations.summary }}
+
+{{ if .Annotations.description }}
+Details: {{ .Annotations.description }}
+{{ end }}
+
+{{ if eq .Status "firing" }}
+Started: {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+{{ else }}
+Resolved: {{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}
+Duration: {{ .EndsAt.Sub .StartsAt }}
+{{ end }}
+
+{{ if .Annotations.runbook_url }}
+Runbook: {{ .Annotations.runbook_url }}
+{{ end }}
+{{ if .GeneratorURL }}
+Grafana: {{ .GeneratorURL }}
+{{ end }}
+{{ end }}
+{{ end }}

@@ -1,0 +1,33 @@
+# Skill Dependencies Graph
+
+skills:
+  gpu_management:
+    depends_on: []
+    required_by: [backend_selection, ocr_processing]
+
+  backend_selection:
+    depends_on: [gpu_management]
+    required_by: [ocr_processing]
+
+  german_text_processing:
+    depends_on: []
+    required_by: [template_extraction, ocr_processing]
+
+  template_extraction:
+    depends_on: [german_text_processing]
+    required_by: [ocr_processing]
+
+  error_recovery:
+    depends_on: [gpu_management]
+    required_by: [ocr_processing, backend_selection]
+
+  image_preprocessing:
+    depends_on: []
+    required_by: [ocr_processing]
+
+execution_flow:
+  1: image_preprocessing
+  2: backend_selection (uses gpu_management)
+  3: ocr_processing (uses error_recovery)
+  4: german_text_processing
+  5: template_extraction

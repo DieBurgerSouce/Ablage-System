@@ -1,0 +1,177 @@
+# OCR Backend Skills Configuration
+# Central routing intelligence for Ablage-System OCR
+# Priority: P0 - CRITICAL
+
+backends:
+  deepseek:
+    name: "DeepSeek-Janus-Pro 1.0"
+    type: "multimodal_vlm"
+    vram_required_gb: 12.0
+    vram_optimal_gb: 14.0
+    capabilities:
+      - structured_extraction
+      - table_recognition
+      - handwriting_recognition
+      - multi_column_layout
+      - complex_formatting
+      - fraktur_fonts
+    strengths:
+      - "Best for invoices with tables"
+      - "Excellent for complex layouts"
+      - "Superior German text accuracy"
+      - "Handles Fraktur/Gothic fonts"
+    weaknesses:
+      - "High VRAM requirement (12GB)"
+      - "Slower processing (~2-3 pages/sec)"
+      - "Requires GPU"
+    optimal_for:
+      - invoices
+      - contracts
+      - financial_statements
+      - complex_tables
+    language_support:
+      - de  # German (primary)
+      - en  # English
+    priority: 1  # Highest priority if VRAM available
+
+  got_ocr:
+    name: "GOT-OCR 2.0"
+    type: "transformer_ocr"
+    vram_required_gb: 10.0
+    vram_optimal_gb: 12.0
+    capabilities:
+      - general_ocr
+      - handwriting_recognition
+      - low_quality_documents
+      - multi_language
+    strengths:
+      - "Fast processing (~5-7 pages/sec)"
+      - "Good accuracy on standard docs"
+      - "Handles degraded documents"
+      - "Lower VRAM than DeepSeek"
+    weaknesses:
+      - "Struggles with complex tables"
+      - "Less accurate for Fraktur fonts"
+      - "Moderate VRAM requirement (10GB)"
+    optimal_for:
+      - delivery_notes
+      - simple_letters
+      - handwritten_notes
+      - low_quality_scans
+    language_support:
+      - de
+      - en
+      - multi
+    priority: 2  # Second choice if available
+
+  surya:
+    name: "Surya + Docling"
+    type: "cpu_pipeline"
+    vram_required_gb: 0.0
+    vram_optimal_gb: 0.0
+    capabilities:
+      - layout_analysis
+      - basic_ocr
+      - document_structure
+      - cpu_processing
+    strengths:
+      - "No GPU required (CPU only)"
+      - "Good layout detection"
+      - "Always available fallback"
+      - "Low resource usage"
+    weaknesses:
+      - "Slower processing (~1-2 pages/sec)"
+      - "Lower accuracy than GPU backends"
+      - "Limited complex table support"
+    optimal_for:
+      - simple_documents
+      - fallback_processing
+      - layout_analysis
+      - resource_constrained
+    language_support:
+      - de
+      - en
+    priority: 3  # Fallback only
+
+# Document type routing rules
+document_routing:
+  rechnung:  # Invoice
+    primary: deepseek
+    fallback: [got_ocr, surya]
+    reason: "Complex tables and structured data require DeepSeek"
+
+  vertrag:  # Contract
+    primary: deepseek
+    fallback: [got_ocr, surya]
+    reason: "Legal text and complex formatting needs highest accuracy"
+
+  lieferschein:  # Delivery note
+    primary: got_ocr
+    fallback: [deepseek, surya]
+    reason: "Simpler format, GOT-OCR speed advantage"
+
+  behoerdenschreiben:  # Official letter
+    primary: got_ocr
+    fallback: [deepseek, surya]
+    reason: "Standard layout, speed priority"
+
+  handschrift:  # Handwritten
+    primary: got_ocr
+    fallback: [deepseek, surya]
+    reason: "GOT-OCR specialized for handwriting"
+
+  niedrige_qualitaet:  # Low quality scan
+    primary: got_ocr
+    fallback: [deepseek, surya]
+    reason: "GOT-OCR robust for degraded documents"
+
+  unknown:  # Unknown document type
+    primary: deepseek
+    fallback: [got_ocr, surya]
+    reason: "Use most capable backend for classification"
+
+# GPU resource management
+gpu_allocation:
+  max_vram_percent: 85  # Never exceed 85% of 16GB
+  safety_buffer_gb: 2.4  # 15% safety margin
+  batch_sizes:
+    deepseek:
+      small: 1   # Conservative
+      medium: 2  # Balanced
+      large: 4   # Aggressive (risky)
+    got_ocr:
+      small: 2
+      medium: 4
+      large: 8
+    surya:
+      small: 4   # CPU only, different constraints
+      medium: 8
+      large: 16
+
+# Quality thresholds
+quality_gates:
+  min_confidence_score: 0.85  # Minimum OCR confidence
+  german_umlaut_accuracy: 1.0  # 100% required
+  retry_on_low_confidence: true
+  max_retries: 2
+
+# Performance targets (95th percentile)
+performance_targets:
+  deepseek_ms_per_page: 500   # 2 pages/sec
+  got_ocr_ms_per_page: 150    # 6.7 pages/sec
+  surya_ms_per_page: 750      # 1.3 pages/sec
+
+# German language specifics
+german_processing:
+  umlaut_validation: mandatory
+  eszett_handling: preserve  # Keep ß, don't convert to ss
+  fraktur_support: deepseek_only
+  compound_word_splitting: optional
+
+# Monitoring
+monitoring:
+  track_backend_usage: true
+  track_processing_time: true
+  track_error_rate: true
+  track_gpu_memory: true
+  alert_on_high_error_rate: 0.15  # 15%

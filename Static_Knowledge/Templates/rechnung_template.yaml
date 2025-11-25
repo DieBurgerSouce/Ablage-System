@@ -1,0 +1,302 @@
+# German Invoice Template (Rechnung)
+
+template_id: rechnung_001
+document_type: rechnung
+language: de
+priority: critical
+compliance: "§14 UStG (German VAT Act)"
+
+description: |
+  Template for extracting fields from German invoices (Rechnungen).
+  Complies with §14 UStG mandatory requirements for tax-deductible invoices.
+
+required_fields_ustg_14:
+  # § 14 Abs. 4 UStG - Mandatory fields
+
+  rechnungsnummer:
+    description: "Invoice number (must be unique and sequential)"
+    pattern: 'Rechnung(?:snummer|sNr\.?|#)?\s*:?\s*([A-Z]{0,3}\d{4,10})'
+    examples:
+      - "Rechnung Nr. 2024-0001"
+      - "Rechnungsnummer: RE2024/123"
+      - "Rechnung #12345"
+    validation:
+      type: "alphanumeric"
+      min_length: 4
+      max_length: 20
+    required: true
+
+  rechnungsdatum:
+    description: "Invoice date"
+    pattern: 'Datum\s*:?\s*(\d{1,2}\.\d{1,2}\.\d{4})'
+    examples:
+      - "Datum: 15.01.2024"
+      - "Rechnungsdatum: 22.11.2025"
+    validation:
+      format: "DD.MM.YYYY"
+      range: "not_future"
+    required: true
+
+  leistungsdatum:
+    description: "Date of service/delivery"
+    pattern: 'Leistungsdatum\s*:?\s*(\d{1,2}\.\d{1,2}\.\d{4})'
+    alternative_patterns:
+      - 'Lieferdatum\s*:?\s*(\d{1,2}\.\d{1,2}\.\d{4})'
+      - 'Leistungszeitraum\s*:?\s*(.+?)(?:\n|$)'
+    examples:
+      - "Leistungsdatum: 10.01.2024"
+      - "Leistungszeitraum: 01.01.2024 - 31.01.2024"
+    required: true
+
+  rechnungssteller:
+    description: "Seller information"
+    sub_fields:
+      name:
+        pattern: '^(.+?GmbH|.+?AG|.+?KG|.+?UG|.+?e\.V\.)'
+        required: true
+
+      adresse:
+        pattern: '(\d{5}\s+[A-ZÄÖÜ][a-zäöüß]+(?:-[A-ZÄÖÜ][a-zäöüß]+)?)'
+        required: true
+
+      steuernummer:
+        pattern: 'Steuernummer\s*:?\s*(\d{2,3}/\d{3}/\d{5})'
+        alternative: 'St\.?-?Nr\.?\s*:?\s*(\d{2,3}/\d{3}/\d{5})'
+        required: true
+
+      ust_idnr:
+        pattern: 'USt-IdNr\.?\s*:?\s*(DE\d{9})'
+        alternative: 'Umsatzsteuer-ID\s*:?\s*(DE\d{9})'
+        required_if: "EU-Geschäft"
+
+  rechnungsempfaenger:
+    description: "Buyer information"
+    sub_fields:
+      name:
+        pattern: 'Rechnungsempfänger\s*:?\s*(.+?)(?:\n|(?=\d{5}))'
+        required: true
+
+      adresse:
+        pattern: '(\d{5}\s+[A-ZÄÖÜ][a-zäöüß]+(?:-[A-ZÄÖÜ][a-zäöüß]+)?)'
+        context: "after recipient name"
+        required: true
+
+optional_fields:
+  bestellnummer:
+    description: "Purchase order number"
+    pattern: 'Bestellung(?:snummer|sNr\.?)?\s*:?\s*([A-Z0-9-]+)'
+    examples:
+      - "Bestellnummer: PO-2024-001"
+
+  kundennummer:
+    description: "Customer number"
+    pattern: 'Kunden(?:nummer|Nr\.?)?\s*:?\s*([A-Z0-9-]+)'
+
+  zahlungsbedingungen:
+    description: "Payment terms"
+    pattern: 'Zahlungsziel\s*:?\s*(\d{1,2})\s*Tage'
+    alternatives:
+      - 'Zahlbar innerhalb\s+(\d{1,2})\s*Tagen'
+      - 'Zahlung bis\s+(\d{1,2}\.\d{1,2}\.\d{4})'
+
+  bankverbindung:
+    description: "Bank details"
+    sub_fields:
+      iban:
+        pattern: 'IBAN\s*:?\s*([A-Z]{2}\d{2}(?:\s?\d{4}){4,5})'
+        validation: "IBAN checksum"
+
+      bic:
+        pattern: 'BIC\s*:?\s*([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)'
+
+      bank_name:
+        pattern: 'Bank\s*:?\s*(.+?)(?:\n|$)'
+
+line_items_section:
+  table_detection:
+    headers:
+      - "Pos\\.?"
+      - "Artikelnummer"
+      - "Bezeichnung"
+      - "Menge"
+      - "Einheit"
+      - "Einzelpreis"
+      - "Gesamt(?:preis)?"
+
+  line_item_fields:
+    position:
+      pattern: '^\d{1,3}'
+
+    artikelnummer:
+      pattern: '[A-Z]{2,3}-\d{4,6}'
+
+    bezeichnung:
+      pattern: '.{3,100}'
+
+    menge:
+      pattern: '\d{1,6}(?:,\d{1,3})?'
+
+    einzelpreis:
+      pattern: '\d{1,10},\d{2}\s*€?'
+      format: "german_currency"
+
+    gesamtpreis:
+      pattern: '\d{1,10},\d{2}\s*€?'
+      format: "german_currency"
+      validation: "menge * einzelpreis = gesamtpreis"
+
+totals_section:
+  nettobetrag:
+    description: "Net amount (without VAT)"
+    pattern: 'Netto(?:betrag|summe)?\s*:?\s*(\d{1,10},\d{2})\s*€?'
+    required: true
+
+  umsatzsteuer:
+    description: "VAT amount and rate"
+    pattern: 'Umsatzsteuer\s+(\d{1,2})%\s*:?\s*(\d{1,10},\d{2})\s*€?'
+    alternatives:
+      - 'MwSt\.?\s+(\d{1,2})%\s*:?\s*(\d{1,10},\d{2})\s*€?'
+      - '(\d{1,2})%\s+USt\.?\s*:?\s*(\d{1,10},\d{2})\s*€?'
+    common_rates: [19, 7, 0]
+    required: true
+
+  bruttobetrag:
+    description: "Gross amount (including VAT)"
+    pattern: 'Brutto(?:betrag|summe)?\s*:?\s*(\d{1,10},\d{2})\s*€?'
+    alternatives:
+      - 'Gesamt(?:betrag|summe)?\s*:?\s*(\d{1,10},\d{2})\s*€?'
+      - 'Rechnungsbetrag\s*:?\s*(\d{1,10},\d{2})\s*€?'
+    required: true
+    validation: "netto + umsatzsteuer = brutto"
+
+validation_rules:
+  ustg_14_compliance:
+    - check: "all_required_fields_present"
+      error: "Missing mandatory fields per §14 UStG"
+
+    - check: "rechnungsnummer_unique"
+      error: "Duplicate invoice number detected"
+
+    - check: "ust_rate_valid"
+      allowed_values: [0, 7, 19]
+      error: "Invalid VAT rate for Germany"
+
+    - check: "calculations_correct"
+      verify: "netto + ust = brutto"
+      tolerance: 0.01
+      error: "Calculation mismatch in totals"
+
+    - check: "date_logic"
+      verify: "leistungsdatum <= rechnungsdatum"
+      error: "Service date cannot be after invoice date"
+
+    - check: "tax_id_format"
+      verify: "DE\d{9} or \d{2,3}/\d{3}/\d{5}"
+      error: "Invalid German tax ID format"
+
+post_processing:
+  text_normalization:
+    - "Convert all numbers to German format (1.234,56)"
+    - "Normalize whitespace"
+    - "Validate umlaut characters (ä, ö, ü, ß)"
+
+  semantic_validation:
+    - "Check company name exists in German business register"
+    - "Validate IBAN checksum"
+    - "Verify VAT ID through EU VIES system (optional)"
+
+  field_enrichment:
+    - "Extract company form (GmbH, AG, etc.)"
+    - "Calculate payment due date from terms"
+    - "Categorize by industry based on items"
+
+extraction_confidence:
+  high_confidence: "> 95%"
+  medium_confidence: "85-95%"
+  low_confidence: "< 85%"
+
+  confidence_factors:
+    - "OCR quality score"
+    - "Pattern match strength"
+    - "Field validation passed"
+    - "Cross-field consistency"
+
+output_format:
+  json_schema:
+    type: object
+    properties:
+      document_type: {const: "rechnung"}
+      extracted_fields:
+        type: object
+        required:
+          - rechnungsnummer
+          - rechnungsdatum
+          - leistungsdatum
+          - rechnungssteller
+          - nettobetrag
+          - umsatzsteuer
+          - bruttobetrag
+      line_items:
+        type: array
+        items:
+          type: object
+      validation_status:
+        type: object
+        properties:
+          ustg_14_compliant: {type: boolean}
+          errors: {type: array}
+          warnings: {type: array}
+      confidence_score: {type: number, minimum: 0, maximum: 100}
+
+example_output: |
+  {
+    "document_type": "rechnung",
+    "extracted_fields": {
+      "rechnungsnummer": "RE-2024-001",
+      "rechnungsdatum": "22.11.2025",
+      "leistungsdatum": "15.11.2025",
+      "rechnungssteller": {
+        "name": "Musterfirma GmbH",
+        "adresse": "12345 Musterstadt",
+        "steuernummer": "123/456/78901",
+        "ust_idnr": "DE123456789"
+      },
+      "rechnungsempfaenger": {
+        "name": "Beispiel AG",
+        "adresse": "54321 Beispielstadt"
+      },
+      "nettobetrag": "1000.00",
+      "umsatzsteuer": {"rate": 19, "amount": "190.00"},
+      "bruttobetrag": "1190.00"
+    },
+    "line_items": [
+      {
+        "position": 1,
+        "bezeichnung": "Consulting Services",
+        "menge": 10,
+        "einzelpreis": "100.00",
+        "gesamtpreis": "1000.00"
+      }
+    ],
+    "validation_status": {
+      "ustg_14_compliant": true,
+      "errors": [],
+      "warnings": []
+    },
+    "confidence_score": 97.5
+  }
+
+related_files:
+  - "Static_Knowledge/Templates/vertrag_template.yaml"
+  - "Static_Knowledge/Skills/template_extraction_skill.yaml"
+  - "Execution_Layer/Validators/compliance_validator.py"
+  - "Static_Knowledge/Glossar/business_terms_de.yaml"
+
+tags:
+  - invoice
+  - rechnung
+  - ustg
+  - compliance
+  - german
+  - template
+  - extraction

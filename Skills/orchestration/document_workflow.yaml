@@ -1,0 +1,68 @@
+# Document Processing Workflow Skill
+# Complete end-to-end document processing orchestration
+
+name: document_workflow
+version: 1.0
+category: orchestration
+description: |
+  Complete document processing workflow orchestrator.
+  Phases: Classification → Pre-Processing → OCR → Post-Processing → QA → Storage
+
+# Handler
+handler: app.agents.orchestration.document_orchestrator:DocumentProcessingOrchestrator
+async_execution: true
+
+# Parameters
+parameters:
+  - name: document_id
+    type: str
+    required: true
+    description: Unique document identifier
+
+  - name: file_path
+    type: str
+    required: true
+    description: Path to uploaded document file
+
+  - name: priority
+    type: int
+    required: false
+    default: 0
+    description: Processing priority (0=normal, 1=high, 2=critical)
+
+  - name: options
+    type: dict
+    required: false
+    default: {}
+    description: Additional processing options
+
+# Hooks
+pre_hooks:
+  - validation_hook
+  - authentication_hook
+
+post_hooks:
+  - notification_hook
+  - metrics_hook
+  - logging_hook
+
+error_hooks:
+  - error_logging_hook
+  - alerting_hook
+  - cleanup_hook
+
+# Resource Requirements
+gpu_required: false  # Orchestrator delegates to GPU agents
+vram_gb: 0
+
+dependencies:
+  - redis>=4.5.0
+  - celery>=5.3.0
+
+# Metadata
+author: Ablage-System Team
+tags:
+  - orchestration
+  - workflow
+  - document-processing
+enabled: true

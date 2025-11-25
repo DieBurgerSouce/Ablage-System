@@ -1,0 +1,520 @@
+# Database Performance Optimization Playbook
+
+playbook_id: db_performance_001
+category: infrastructure
+last_updated: "2025-11-22"
+status: production
+priority: critical
+
+description: |
+  Operational playbook for diagnosing and resolving PostgreSQL performance
+  issues in the Ablage-System. Covers query optimization, index management,
+  connection pooling, and VACUUM maintenance.
+
+# ============================================================================
+# Slow Query Investigation
+# ============================================================================
+
+slow_query_playbook:
+  symptom: "API endpoints timeout or respond slowly (> 1s)"
+  impact: "High - affects user experience"
+  runbook:
+    step_1_identify_slow_queries:
+      description: "Identify which queries are slow"
+      commands:
+        - name: "Check pg_stat_statements for slow queries"
+          command: |
+            psql -U postgres -d ablage -c "
+            SELECT
+              query,
+              calls,
+              mean_exec_time,
+              max_exec_time,
+              total_exec_time,
+              (total_exec_time / sum(total_exec_time) OVER ()) * 100 AS pct_total_time
+            FROM pg_stat_statements
+            WHERE mean_exec_time > 100  -- Queries averaging > 100ms
+            ORDER BY mean_exec_time DESC
+            LIMIT 20;
+            "
+          interpretation: |
+            - Focus on queries with high mean_exec_time
+            - Consider total_exec_time to prioritize optimization impact
+            - Check 'calls' to see frequency
+
+        - name: "Enable query logging temporarily"
+          command: |
+            psql -U postgres -d ablage -c "
+            ALTER SYSTEM SET log_min_duration_statement = 500;  -- Log queries > 500ms
+            SELECT pg_reload_conf();
+            "
+          warning: "Remember to disable after investigation to reduce log volume"
+
+        - name: "Check current active queries"
+          command: |
+            psql -U postgres -d ablage -c "
+            SELECT
+              pid,
+              now() - query_start AS duration,
+              state,
+              query
+            FROM pg_stat_activity
+            WHERE state != 'idle'
+              AND query NOT LIKE '%pg_stat_activity%'
+            ORDER BY duration DESC;
+            "
+
+    step_2_analyze_query_execution_plan:
+      description: "Use EXPLAIN ANALYZE to understand query performance"
+      commands:
+        - name: "Get execution plan for slow query"
+          command: |
+            psql -U postgres -d ablage -c "
+            EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
+            SELECT d.*, u.username, COUNT(o.id) as ocr_count
+            FROM documents d
+            JOIN users u ON d.user_id = u.id
+            LEFT JOIN ocr_results o ON d.id = o.document_id
+            WHERE d.created_at > NOW() - INTERVAL '30 days'
+            GROUP BY d.id, u.username
+            ORDER BY d.created_at DESC;
+            "
+          interpretation: |
+            Look for:
+            - **Seq Scan** on large tables (add index)
+            - **High cost** operations (> 10000)
+            - **Actual time** significantly higher than planned
+            - **Rows removed by filter** (improve WHERE clause)
+            - **Buffers** showing many disk reads (shared read)
+
+        - name: "Visualize EXPLAIN output"
+          command: |
+            # Copy EXPLAIN output and paste at https://explain.depesz.com/
+            # Provides visual breakdown of query execution
+          notes: "Use explain.depesz.com for easier analysis"
+
+    step_3_apply_optimization:
+      description: "Apply appropriate optimization strategy"
+      strategies:
+        - symptom: "Sequential scan on large table"
+          solution:
+            - name: "Create index"
+              command: |
+                psql -U postgres -d ablage -c "
+                CREATE INDEX CONCURRENTLY idx_documents_created_at
+                ON documents (created_at DESC);
+                "
+              notes: "CONCURRENTLY avoids table lock during index creation"
+
+            - name: "Verify index is used"
+              command: |
+                psql -U postgres -d ablage -c "
+                EXPLAIN
+                SELECT * FROM documents WHERE created_at > NOW() - INTERVAL '30 days';
+                "
+              expected: "Should show 'Index Scan using idx_documents_created_at'"
+
+        - symptom: "High cost join operations"
+          solution:
+            - name: "Add composite index for join columns"
+              command: |
+                psql -U postgres -d ablage -c "
+                CREATE INDEX CONCURRENTLY idx_documents_user_created
+                ON documents (user_id, created_at DESC);
+                "
+
+            - name: "Consider materialized view for complex aggregations"
+              command: |
+                psql -U postgres -d ablage -c "
+                CREATE MATERIALIZED VIEW mv_user_document_stats AS
+                SELECT
+                  u.id AS user_id,
+                  u.username,
+                  COUNT(d.id) AS document_count,
+                  COUNT(o.id) AS ocr_count,
+                  MAX(d.created_at) AS last_upload
+                FROM users u
+                LEFT JOIN documents d ON u.id = d.user_id
+                LEFT JOIN ocr_results o ON d.id = o.document_id
+                GROUP BY u.id, u.username;
+
+                CREATE UNIQUE INDEX ON mv_user_document_stats (user_id);
+                "
+              notes: "Refresh materialized view periodically (e.g., every hour)"
+
+            - name: "Setup automatic refresh"
+              command: |
+                # Add to cron or use pg_cron extension
+                psql -U postgres -d ablage -c "
+                SELECT cron.schedule(
+                  'refresh_user_stats',
+                  '*/30 * * * *',  -- Every 30 minutes
+                  $$REFRESH MATERIALIZED VIEW CONCURRENTLY mv_user_document_stats$$
+                );
+                "
+
+        - symptom: "N+1 query problem (many small queries)"
+          solution:
+            - name: "Use SQLAlchemy eager loading"
+              code: |
+                # ❌ WRONG: N+1 queries
+                users = await db.execute(select(User))
+                for user in users:
+                    documents = await db.execute(
+                        select(Document).where(Document.user_id == user.id)
+                    )
+
+                # ✅ CORRECT: Single query with join
+                from sqlalchemy.orm import selectinload
+
+                users = await db.execute(
+                    select(User).options(selectinload(User.documents))
+                )
+
+    step_4_verify_improvement:
+      description: "Measure performance improvement"
+      commands:
+        - name: "Re-run EXPLAIN ANALYZE"
+          command: |
+            psql -U postgres -d ablage -c "
+            EXPLAIN (ANALYZE, BUFFERS)
+            [PASTE_OPTIMIZED_QUERY_HERE]
+            "
+          success_criteria:
+            - "Execution time reduced by > 50%"
+            - "Cost reduced significantly"
+            - "Using index scans instead of seq scans"
+
+        - name: "Monitor query performance over time"
+          command: |
+            # Reset pg_stat_statements to get fresh data
+            psql -U postgres -d ablage -c "SELECT pg_stat_statements_reset();"
+
+            # Wait 1 hour, then check again
+            psql -U postgres -d ablage -c "
+            SELECT query, calls, mean_exec_time
+            FROM pg_stat_statements
+            WHERE query LIKE '%documents%'
+            ORDER BY mean_exec_time DESC;
+            "
+
+# ============================================================================
+# Connection Pool Exhaustion
+# ============================================================================
+
+connection_pool_playbook:
+  symptom: "Errors: 'remaining connection slots are reserved' or 'connection timeout'"
+  impact: "Critical - prevents new requests"
+  runbook:
+    step_1_diagnose:
+      commands:
+        - name: "Check current connections"
+          command: |
+            psql -U postgres -d ablage -c "
+            SELECT
+              count(*) AS total_connections,
+              state,
+              application_name
+            FROM pg_stat_activity
+            GROUP BY state, application_name
+            ORDER BY count(*) DESC;
+            "
+
+        - name: "Check max_connections setting"
+          command: |
+            psql -U postgres -d ablage -c "
+            SHOW max_connections;
+            "
+          typical_value: "100 (default)"
+
+        - name: "Identify connection leaks"
+          command: |
+            psql -U postgres -d ablage -c "
+            SELECT
+              application_name,
+              state,
+              COUNT(*),
+              MAX(now() - state_change) AS max_idle_time
+            FROM pg_stat_activity
+            WHERE state = 'idle'
+            GROUP BY application_name, state
+            ORDER BY count(*) DESC;
+            "
+          red_flag: "Many 'idle' connections from same app (connection leak)"
+
+    step_2_immediate_fix:
+      commands:
+        - name: "Kill idle connections (emergency)"
+          command: |
+            psql -U postgres -d ablage -c "
+            SELECT pg_terminate_backend(pid)
+            FROM pg_stat_activity
+            WHERE state = 'idle'
+              AND now() - state_change > INTERVAL '10 minutes'
+              AND application_name = 'ablage-backend';
+            "
+          warning: "Only use in emergency - may interrupt active sessions"
+
+    step_3_permanent_fix:
+      solutions:
+        - name: "Increase connection pool size"
+          configuration: |
+            # PostgreSQL (postgresql.conf)
+            max_connections = 200
+
+            # SQLAlchemy (app/core/config.py)
+            engine = create_async_engine(
+                DATABASE_URL,
+                pool_size=20,          # Increase from 5
+                max_overflow=40,        # Increase from 10
+                pool_timeout=30,        # Wait 30s for connection
+                pool_recycle=3600,      # Recycle connections after 1 hour
+                pool_pre_ping=True      # Verify connections before use
+            )
+
+        - name: "Enable statement timeout"
+          command: |
+            psql -U postgres -d ablage -c "
+            ALTER DATABASE ablage SET statement_timeout = '30s';
+            "
+          notes: "Prevents runaway queries from holding connections"
+
+        - name: "Setup pgBouncer connection pooler"
+          implementation: |
+            # Install pgBouncer
+            apt-get install pgbouncer
+
+            # Configure /etc/pgbouncer/pgbouncer.ini
+            [databases]
+            ablage = host=localhost port=5432 dbname=ablage
+
+            [pgbouncer]
+            listen_addr = *
+            listen_port = 6432
+            pool_mode = transaction
+            max_client_conn = 1000
+            default_pool_size = 25
+
+            # Update application DATABASE_URL
+            # From: postgresql://user:pass@localhost:5432/ablage
+            # To:   postgresql://user:pass@localhost:6432/ablage
+
+# ============================================================================
+# VACUUM and Table Bloat
+# ============================================================================
+
+vacuum_maintenance_playbook:
+  symptom: "Database size growing, queries slowing over time"
+  impact: "Medium - gradual performance degradation"
+  runbook:
+    step_1_check_bloat:
+      commands:
+        - name: "Identify bloated tables"
+          command: |
+            psql -U postgres -d ablage -c "
+            SELECT
+              schemaname,
+              tablename,
+              pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size,
+              n_dead_tup AS dead_tuples,
+              n_live_tup AS live_tuples,
+              ROUND(n_dead_tup * 100.0 / NULLIF(n_live_tup, 0), 2) AS dead_pct
+            FROM pg_stat_user_tables
+            WHERE n_dead_tup > 1000
+            ORDER BY dead_pct DESC
+            LIMIT 20;
+            "
+          red_flag: "dead_pct > 10% indicates need for VACUUM"
+
+        - name: "Check last VACUUM/ANALYZE"
+          command: |
+            psql -U postgres -d ablage -c "
+            SELECT
+              schemaname,
+              tablename,
+              last_vacuum,
+              last_autovacuum,
+              last_analyze,
+              last_autoanalyze
+            FROM pg_stat_user_tables
+            ORDER BY last_autovacuum NULLS FIRST;
+            "
+
+    step_2_run_maintenance:
+      commands:
+        - name: "VACUUM ANALYZE specific table"
+          command: |
+            psql -U postgres -d ablage -c "
+            VACUUM (ANALYZE, VERBOSE) documents;
+            "
+          when: "dead_pct > 10% for specific table"
+
+        - name: "VACUUM FULL (reclaim space)"
+          command: |
+            psql -U postgres -d ablage -c "
+            VACUUM FULL documents;
+            "
+          warning: "Locks table - run during maintenance window only"
+          when: "Table bloat > 50%, space reclamation critical"
+
+        - name: "Reindex to fix index bloat"
+          command: |
+            psql -U postgres -d ablage -c "
+            REINDEX INDEX CONCURRENTLY idx_documents_created_at;
+            "
+
+    step_3_configure_autovacuum:
+      commands:
+        - name: "Tune autovacuum settings"
+          command: |
+            psql -U postgres -d ablage -c "
+            ALTER TABLE documents SET (
+              autovacuum_vacuum_scale_factor = 0.05,  -- Vacuum at 5% dead tuples
+              autovacuum_analyze_scale_factor = 0.02, -- Analyze at 2% changes
+              autovacuum_vacuum_cost_delay = 10       -- More aggressive
+            );
+            "
+
+# ============================================================================
+# High CPU/Disk I/O
+# ============================================================================
+
+resource_utilization_playbook:
+  symptom: "High CPU or disk I/O on database server"
+  impact: "High - affects all queries"
+  runbook:
+    step_1_identify_expensive_queries:
+      commands:
+        - name: "Find CPU-intensive queries"
+          command: |
+            psql -U postgres -d ablage -c "
+            SELECT
+              query,
+              calls,
+              total_exec_time,
+              mean_exec_time,
+              (total_exec_time / sum(total_exec_time) OVER ()) * 100 AS cpu_pct
+            FROM pg_stat_statements
+            ORDER BY total_exec_time DESC
+            LIMIT 20;
+            "
+
+        - name: "Check disk I/O by table"
+          command: |
+            psql -U postgres -d ablage -c "
+            SELECT
+              schemaname,
+              tablename,
+              heap_blks_read AS disk_reads,
+              heap_blks_hit AS cache_hits,
+              ROUND(
+                heap_blks_hit::numeric / NULLIF(heap_blks_hit + heap_blks_read, 0) * 100,
+                2
+              ) AS cache_hit_ratio
+            FROM pg_statio_user_tables
+            ORDER BY heap_blks_read DESC
+            LIMIT 20;
+            "
+          target: "cache_hit_ratio > 95%"
+
+    step_2_optimize:
+      solutions:
+        - name: "Increase shared_buffers (PostgreSQL cache)"
+          command: |
+            # Edit postgresql.conf
+            shared_buffers = 4GB  # 25% of RAM
+
+            # Restart PostgreSQL
+            systemctl restart postgresql
+
+        - name: "Increase work_mem for complex queries"
+          command: |
+            psql -U postgres -d ablage -c "
+            ALTER DATABASE ablage SET work_mem = '64MB';
+            "
+          notes: "Per-query memory for sorts and joins"
+
+# ============================================================================
+# Monitoring Checklist
+# ============================================================================
+
+monitoring_checklist:
+  daily:
+    - Check slow query log
+    - Verify autovacuum is running
+    - Check connection count
+    - Monitor disk space
+
+  weekly:
+    - Review pg_stat_statements top queries
+    - Check for table bloat
+    - Verify index usage
+    - Review backup completion
+
+  monthly:
+    - Analyze query patterns for optimization opportunities
+    - Review and prune unused indexes
+    - Capacity planning (disk, connections, CPU)
+    - Test restore procedure
+
+# ============================================================================
+# Quick Reference Commands
+# ============================================================================
+
+quick_reference:
+  connection_info:
+    command: "psql -U postgres -d ablage -c 'SELECT version(); SELECT current_database();'"
+
+  database_size:
+    command: "psql -U postgres -d ablage -c \"SELECT pg_size_pretty(pg_database_size('ablage'));\""
+
+  table_sizes:
+    command: |
+      psql -U postgres -d ablage -c "
+      SELECT
+        tablename,
+        pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS total_size
+      FROM pg_tables
+      WHERE schemaname = 'public'
+      ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
+      LIMIT 10;
+      "
+
+  active_locks:
+    command: |
+      psql -U postgres -d ablage -c "
+      SELECT
+        locktype,
+        relation::regclass,
+        mode,
+        granted,
+        pid
+      FROM pg_locks
+      WHERE NOT granted
+      ORDER BY relation;
+      "
+
+  cache_hit_ratio:
+    command: |
+      psql -U postgres -d ablage -c "
+      SELECT
+        sum(heap_blks_read) as heap_read,
+        sum(heap_blks_hit) as heap_hit,
+        sum(heap_blks_hit) / (sum(heap_blks_hit) + sum(heap_blks_read)) AS ratio
+      FROM pg_statio_user_tables;
+      "
+    target: "> 0.95 (95%)"
+
+related_files:
+  - "Static_Knowledge/Skills/database_optimization_skill.yaml"
+  - "Static_Knowledge/Prompts/optimization_prompts.yaml"
+  - "Dynamic_Knowledge/Learnings/postgres_optimization_lessons.md"
+  - "Relations/Workflows/database_migration_workflow.yaml"
+
+tags:
+  - playbook
+  - database
+  - postgresql
+  - performance
+  - optimization
+  - troubleshooting

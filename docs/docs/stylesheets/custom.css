@@ -1,0 +1,422 @@
+/* Custom CSS for Ablage-System specific styling */
+
+/* Logo and branding */
+.md-header__title {
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+/* German language specific adjustments */
+html[lang="de"] {
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  -ms-hyphens: auto;
+}
+
+/* OCR result preview styling */
+.ocr-preview {
+  background: var(--md-code-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 4px;
+  padding: 1em;
+  margin: 1em 0;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* GPU status indicator */
+.gpu-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5em 1em;
+  border-radius: 20px;
+  font-size: 0.875em;
+  font-weight: 600;
+}
+
+.gpu-status.available {
+  background-color: rgba(38, 222, 129, 0.1);
+  color: #26de81;
+  border: 1px solid #26de81;
+}
+
+.gpu-status.unavailable {
+  background-color: rgba(252, 92, 101, 0.1);
+  color: #fc5c65;
+  border: 1px solid #fc5c65;
+}
+
+.gpu-status::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.5em;
+  background-color: currentColor;
+}
+
+/* Performance metrics display */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1em;
+  margin: 1.5em 0;
+}
+
+.metric-card {
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  padding: 1.5em;
+  text-align: center;
+}
+
+.metric-value {
+  font-size: 2em;
+  font-weight: bold;
+  color: var(--md-primary-fg-color);
+  margin: 0.2em 0;
+}
+
+.metric-label {
+  font-size: 0.875em;
+  color: var(--md-default-fg-color--light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* API endpoint documentation */
+.api-endpoint {
+  background: var(--md-code-bg-color);
+  border-left: 4px solid var(--md-primary-fg-color);
+  padding: 1em;
+  margin: 1em 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.api-method {
+  display: inline-block;
+  padding: 0.2em 0.6em;
+  border-radius: 3px;
+  font-weight: bold;
+  font-size: 0.875em;
+  margin-right: 0.5em;
+}
+
+.api-method.get {
+  background-color: #4a9eff;
+  color: white;
+}
+
+.api-method.post {
+  background-color: #26de81;
+  color: white;
+}
+
+.api-method.put {
+  background-color: #ff9f43;
+  color: white;
+}
+
+.api-method.delete {
+  background-color: #fc5c65;
+  color: white;
+}
+
+.api-path {
+  font-family: monospace;
+  font-size: 1.1em;
+}
+
+/* Command line examples */
+.cli-example {
+  position: relative;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 1em;
+  border-radius: 4px;
+  margin: 1em 0;
+}
+
+.cli-example::before {
+  content: attr(data-title);
+  display: block;
+  background: #2d2d2d;
+  margin: -1em -1em 1em -1em;
+  padding: 0.5em 1em;
+  border-radius: 4px 4px 0 0;
+  font-weight: bold;
+  font-size: 0.875em;
+  color: #26de81;
+}
+
+/* Architecture diagram enhancements */
+.architecture-diagram {
+  background: var(--md-default-bg-color);
+  border: 2px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  padding: 2em;
+  margin: 2em 0;
+  text-align: center;
+}
+
+/* Feature comparison table */
+.comparison-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  margin: 2em 0;
+}
+
+.comparison-table th {
+  background: var(--md-primary-fg-color);
+  color: white;
+  padding: 1em;
+  text-align: center;
+  font-weight: bold;
+}
+
+.comparison-table td {
+  padding: 0.8em 1em;
+  text-align: center;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.comparison-table tr:hover {
+  background-color: var(--md-default-bg-color--light);
+}
+
+.comparison-table .feature-name {
+  text-align: left;
+  font-weight: 600;
+}
+
+/* Check mark and X mark for comparisons */
+.check {
+  color: #26de81;
+  font-weight: bold;
+}
+
+.check::before {
+  content: '✓';
+}
+
+.cross {
+  color: #fc5c65;
+  font-weight: bold;
+}
+
+.cross::before {
+  content: '✗';
+}
+
+/* Timeline for changelog */
+.timeline {
+  position: relative;
+  padding-left: 2em;
+  margin: 2em 0;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--md-primary-fg-color);
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 2em;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -2.5em;
+  top: 0.3em;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--md-primary-fg-color);
+  border: 2px solid var(--md-default-bg-color);
+}
+
+.timeline-date {
+  font-weight: bold;
+  color: var(--md-primary-fg-color);
+  margin-bottom: 0.5em;
+}
+
+/* Display mode showcase */
+.display-mode-demo {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5em;
+  margin: 2em 0;
+}
+
+.display-mode-card {
+  border: 2px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  padding: 1em;
+  text-align: center;
+}
+
+.display-mode-card.dark {
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border-color: #4a9eff;
+}
+
+.display-mode-card.light {
+  background: #ffffff;
+  color: #1a1a1a;
+  border-color: #0066cc;
+}
+
+.display-mode-card.whitescreen {
+  background: #ffffff;
+  color: #000000;
+  border: 2px solid #0000ff;
+}
+
+.display-mode-card.blackscreen {
+  background: #000000;
+  color: #ffffff;
+  border: 2px solid #00ff00;
+}
+
+/* Version badge */
+.version-badge {
+  display: inline-block;
+  padding: 0.25em 0.75em;
+  background: var(--md-primary-fg-color);
+  color: white;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: bold;
+  margin-left: 0.5em;
+}
+
+/* Progress indicator */
+.progress-bar {
+  background: var(--md-default-fg-color--lightest);
+  border-radius: 10px;
+  height: 20px;
+  overflow: hidden;
+  margin: 1em 0;
+}
+
+.progress-fill {
+  background: var(--md-primary-fg-color);
+  height: 100%;
+  transition: width 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.75em;
+  font-weight: bold;
+}
+
+/* Icon styles */
+.icon {
+  display: inline-block;
+  width: 1.5em;
+  height: 1.5em;
+  vertical-align: middle;
+  margin-right: 0.5em;
+}
+
+/* Copy code button enhancement */
+.md-clipboard {
+  border-radius: 4px;
+}
+
+.md-clipboard:hover {
+  background-color: var(--md-primary-fg-color);
+}
+
+/* Footnote styling */
+.footnote {
+  font-size: 0.875em;
+  color: var(--md-default-fg-color--light);
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  margin-top: 2em;
+  padding-top: 1em;
+}
+
+/* Responsive utilities */
+@media screen and (max-width: 768px) {
+  .display-mode-demo {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hide-mobile {
+    display: none;
+  }
+}
+
+@media screen and (min-width: 769px) {
+  .hide-desktop {
+    display: none;
+  }
+}
+
+/* Dark mode specific adjustments */
+[data-md-color-scheme="slate"] .ocr-preview {
+  background: #2d2d2d;
+  border-color: #404040;
+}
+
+[data-md-color-scheme="slate"] .metric-card {
+  background: #2d2d2d;
+  border-color: #404040;
+}
+
+[data-md-color-scheme="slate"] .display-mode-card {
+  border-color: #404040;
+}
+
+/* Accessibility: Focus indicators */
+a:focus,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 2px;
+}
+
+/* High contrast mode adjustments */
+@media (prefers-contrast: high) {
+  .badge,
+  .api-method,
+  .gpu-status {
+    border-width: 2px;
+  }
+
+  table {
+    border: 2px solid var(--md-default-fg-color);
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

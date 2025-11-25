@@ -1,0 +1,529 @@
+# Document Processing Event Hooks
+
+hook_collection_id: document_hooks_001
+category: automation
+last_updated: "2025-11-22"
+status: production
+priority: high
+
+description: |
+  Event-driven automation hooks for the document processing lifecycle.
+  These hooks trigger actions based on document events (upload, processing, completion, errors).
+
+# ============================================================================
+# Document Lifecycle Hooks
+# ============================================================================
+
+document_lifecycle:
+  on_upload:
+    event: "document.uploaded"
+    triggers:
+      - name: "virus_scan"
+        service: "clamav"
+        priority: critical
+        timeout_seconds: 30
+        failure_action: "reject_document"
+        description: "Scan uploaded document for malware"
+        implementation: |
+          async def on_document_uploaded(event: DocumentUploadedEvent):
+              scan_result = await clamav.scan_file(event.document_path)
+              if scan_result.is_infected:
+                  await quarantine_document(event.document_id)
+                  await notify_user(event.user_id, "VIRUS_DETECTED")
+                  raise SecurityException("Virus detected")
+
+      - name: "extract_metadata"
+        service: "metadata_service"
+        priority: high
+        timeout_seconds: 10
+        failure_action: "log_and_continue"
+        description: "Extract basic metadata (size, type, page count)"
+        implementation: |
+          async def extract_metadata(event: DocumentUploadedEvent):
+              metadata = {
+                  "file_size_bytes": event.file_size,
+                  "mime_type": event.mime_type,
+                  "page_count": await count_pages(event.document_path),
+                  "upload_timestamp": event.timestamp
+              }
+              await db.update_document(event.document_id, metadata=metadata)
+
+      - name: "queue_ocr_processing"
+        service: "celery"
+        priority: medium
+        timeout_seconds: 5
+        failure_action: "retry_3_times"
+        description: "Queue document for OCR processing"
+        implementation: |
+          async def queue_for_ocr(event: DocumentUploadedEvent):
+              task = await celery.send_task(
+                  'process_document_ocr',
+                  args=[event.document_id],
+                  kwargs={'backend': 'auto'}
+              )
+              await db.update_document(
+                  event.document_id,
+                  task_id=task.id,
+                  status="queued"
+              )
+
+      - name: "send_webhook_notification"
+        service: "webhook_service"
+        priority: low
+        timeout_seconds: 5
+        failure_action: "log_failure"
+        description: "Notify external systems of upload"
+        implementation: |
+          async def send_upload_webhook(event: DocumentUploadedEvent):
+              webhook_config = await get_user_webhook_config(event.user_id)
+              if webhook_config and "document.uploaded" in webhook_config.events:
+                  await http_client.post(
+                      webhook_config.url,
+                      json={
+                          "event": "document.uploaded",
+                          "document_id": event.document_id,
+                          "timestamp": event.timestamp.isoformat()
+                      },
+                      headers={"X-Webhook-Signature": sign_payload(payload)}
+                  )
+
+  on_processing_started:
+    event: "document.processing_started"
+    triggers:
+      - name: "update_status"
+        service: "document_service"
+        priority: high
+        description: "Update document status to processing"
+        implementation: |
+          async def update_status(event: ProcessingStartedEvent):
+              await db.update_document(
+                  event.document_id,
+                  status="processing",
+                  processing_started_at=event.timestamp,
+                  ocr_backend=event.backend
+              )
+
+      - name: "log_processing_start"
+        service: "logging"
+        priority: medium
+        description: "Log processing metrics"
+        implementation: |
+          async def log_processing(event: ProcessingStartedEvent):
+              logger.info(
+                  "document_processing_started",
+                  document_id=event.document_id,
+                  backend=event.backend,
+                  queue_time_seconds=(event.timestamp - event.queued_at).total_seconds(),
+                  user_id=event.user_id
+              )
+
+  on_processing_completed:
+    event: "document.processing_completed"
+    triggers:
+      - name: "extract_business_entities"
+        service: "nlp_service"
+        priority: high
+        timeout_seconds: 30
+        description: "Extract German business entities (invoice data, company names, etc.)"
+        implementation: |
+          async def extract_entities(event: ProcessingCompletedEvent):
+              text = event.extracted_text
+              entities = {
+                  "company_names": extract_company_names(text),
+                  "invoice_numbers": extract_invoice_numbers(text),
+                  "dates": extract_dates_german_format(text),
+                  "amounts": extract_currency_amounts(text),
+                  "tax_ids": extract_german_tax_ids(text)  # USt-IdNr.
+              }
+              await db.update_document(event.document_id, entities=entities)
+
+      - name: "validate_german_text"
+        service: "german_validator"
+        priority: medium
+        timeout_seconds: 15
+        description: "Validate German text quality (umlauts, grammar)"
+        implementation: |
+          async def validate_text(event: ProcessingCompletedEvent):
+              validation = GermanTextValidator().validate(event.extracted_text)
+              if validation.umlaut_accuracy < 0.95:
+                  logger.warning(
+                      "low_umlaut_accuracy",
+                      document_id=event.document_id,
+                      accuracy=validation.umlaut_accuracy
+                  )
+                  # Maybe flag for manual review
+                  await flag_for_review(event.document_id, reason="low_umlaut_accuracy")
+
+      - name: "cache_results"
+        service: "redis"
+        priority: medium
+        timeout_seconds: 5
+        description: "Cache OCR results for fast retrieval"
+        implementation: |
+          async def cache_ocr_results(event: ProcessingCompletedEvent):
+              cache_key = f"ocr_result:{event.document_id}"
+              await redis.setex(
+                  cache_key,
+                  3600,  # 1 hour TTL
+                  json.dumps({
+                      "text": event.extracted_text,
+                      "confidence": event.confidence,
+                      "backend": event.backend,
+                      "processed_at": event.timestamp.isoformat()
+                  })
+              )
+
+      - name: "send_completion_webhook"
+        service: "webhook_service"
+        priority: low
+        timeout_seconds: 5
+        description: "Notify external systems of completion"
+        implementation: |
+          async def send_completion_webhook(event: ProcessingCompletedEvent):
+              webhook_config = await get_user_webhook_config(event.user_id)
+              if webhook_config and "document.processed" in webhook_config.events:
+                  await http_client.post(
+                      webhook_config.url,
+                      json={
+                          "event": "document.processed",
+                          "document_id": event.document_id,
+                          "status": "success",
+                          "confidence": event.confidence,
+                          "processing_time_seconds": event.processing_time,
+                          "timestamp": event.timestamp.isoformat()
+                      }
+                  )
+
+      - name: "update_user_quota"
+        service: "billing_service"
+        priority: low
+        timeout_seconds: 10
+        description: "Update user's OCR processing quota"
+        implementation: |
+          async def update_quota(event: ProcessingCompletedEvent):
+              await billing_service.increment_usage(
+                  user_id=event.user_id,
+                  metric="ocr_pages_processed",
+                  amount=event.page_count
+              )
+
+  on_processing_failed:
+    event: "document.processing_failed"
+    triggers:
+      - name: "log_error"
+        service: "logging"
+        priority: critical
+        description: "Log detailed error information"
+        implementation: |
+          async def log_processing_error(event: ProcessingFailedEvent):
+              logger.error(
+                  "document_processing_failed",
+                  document_id=event.document_id,
+                  backend=event.backend,
+                  error_type=event.error_type,
+                  error_message=event.error_message,
+                  retry_count=event.retry_count,
+                  user_id=event.user_id
+              )
+
+      - name: "attempt_fallback"
+        service: "ocr_orchestrator"
+        priority: high
+        timeout_seconds: 5
+        description: "Try fallback OCR backend if available"
+        implementation: |
+          async def fallback_backend(event: ProcessingFailedEvent):
+              if event.retry_count < 3:
+                  # Try different backend
+                  fallback_map = {
+                      "deepseek": "got_ocr",
+                      "got_ocr": "surya",
+                      "surya": None  # No fallback
+                  }
+                  fallback = fallback_map.get(event.backend)
+                  if fallback:
+                      logger.info(
+                          "attempting_fallback",
+                          document_id=event.document_id,
+                          from_backend=event.backend,
+                          to_backend=fallback
+                      )
+                      await celery.send_task(
+                          'process_document_ocr',
+                          args=[event.document_id],
+                          kwargs={'backend': fallback}
+                      )
+              else:
+                  # All retries exhausted
+                  await db.update_document(
+                      event.document_id,
+                      status="failed",
+                      error_message=event.error_message
+                  )
+
+      - name: "notify_user_of_failure"
+        service: "notification_service"
+        priority: medium
+        timeout_seconds: 10
+        description: "Notify user of processing failure"
+        implementation: |
+          async def notify_failure(event: ProcessingFailedEvent):
+              if event.retry_count >= 3:  # Final failure
+                  await notification_service.send(
+                      user_id=event.user_id,
+                      type="email",
+                      template="document_processing_failed",
+                      context={
+                          "document_id": event.document_id,
+                          "filename": event.filename,
+                          "error_message": event.error_message
+                      }
+                  )
+
+      - name: "send_failure_webhook"
+        service: "webhook_service"
+        priority: low
+        description: "Notify external systems of failure"
+        implementation: |
+          async def send_failure_webhook(event: ProcessingFailedEvent):
+              webhook_config = await get_user_webhook_config(event.user_id)
+              if webhook_config and "document.failed" in webhook_config.events:
+                  await http_client.post(
+                      webhook_config.url,
+                      json={
+                          "event": "document.failed",
+                          "document_id": event.document_id,
+                          "error": event.error_message,
+                          "retry_count": event.retry_count,
+                          "timestamp": event.timestamp.isoformat()
+                      }
+                  )
+
+# ============================================================================
+# GPU Resource Hooks
+# ============================================================================
+
+gpu_resource_hooks:
+  on_gpu_memory_high:
+    event: "gpu.memory_high"
+    threshold: "85%"
+    triggers:
+      - name: "clear_cuda_cache"
+        service: "gpu_manager"
+        priority: critical
+        description: "Clear PyTorch CUDA cache"
+        implementation: |
+          async def clear_gpu_cache(event: GPUMemoryHighEvent):
+              import torch
+              torch.cuda.empty_cache()
+              logger.warning(
+                  "gpu_cache_cleared",
+                  memory_before_gb=event.memory_before,
+                  memory_after_gb=torch.cuda.memory_allocated() / 1024**3
+              )
+
+      - name: "reduce_batch_size"
+        service: "gpu_manager"
+        priority: high
+        description: "Reduce batch size for next processing"
+        implementation: |
+          async def reduce_batch(event: GPUMemoryHighEvent):
+              global optimal_batch_size
+              optimal_batch_size = max(1, optimal_batch_size // 2)
+              logger.warning(
+                  "batch_size_reduced",
+                  new_batch_size=optimal_batch_size
+              )
+
+      - name: "pause_new_tasks"
+        service: "celery"
+        priority: medium
+        description: "Pause accepting new GPU tasks temporarily"
+        implementation: |
+          async def pause_gpu_tasks(event: GPUMemoryHighEvent):
+              await redis.setex("gpu_tasks_paused", 300, "1")  # 5 min pause
+              logger.warning("gpu_tasks_paused_temporarily")
+
+  on_gpu_oom:
+    event: "gpu.out_of_memory"
+    triggers:
+      - name: "fallback_to_cpu"
+        service: "ocr_orchestrator"
+        priority: critical
+        description: "Fallback to CPU-based OCR"
+        implementation: |
+          async def fallback_cpu(event: GPUOOMEvent):
+              logger.error(
+                  "gpu_oom_fallback_cpu",
+                  document_id=event.document_id,
+                  backend=event.backend
+              )
+              await celery.send_task(
+                  'process_document_ocr',
+                  args=[event.document_id],
+                  kwargs={'backend': 'surya', 'use_gpu': False}
+              )
+
+      - name: "alert_ops_team"
+        service: "alerting"
+        priority: high
+        description: "Alert operations team of GPU issue"
+        implementation: |
+          async def alert_gpu_oom(event: GPUOOMEvent):
+              await alerting.send(
+                  severity="critical",
+                  title="GPU OOM Error",
+                  message=f"GPU out of memory processing document {event.document_id}",
+                  tags=["gpu", "oom", "production"]
+              )
+
+# ============================================================================
+# User Activity Hooks
+# ============================================================================
+
+user_activity_hooks:
+  on_user_registered:
+    event: "user.registered"
+    triggers:
+      - name: "send_welcome_email"
+        service: "email_service"
+        priority: medium
+        description: "Send German welcome email"
+        implementation: |
+          async def send_welcome(event: UserRegisteredEvent):
+              await email_service.send(
+                  to=event.email,
+                  template="welcome_de",
+                  context={
+                      "name": event.username,
+                      "api_docs_url": "https://ablage.company.de/api/docs"
+                  }
+              )
+
+      - name: "create_default_folders"
+        service: "document_service"
+        priority: low
+        description: "Create default document folders"
+        implementation: |
+          async def create_folders(event: UserRegisteredEvent):
+              default_folders = [
+                  "Rechnungen",
+                  "Verträge",
+                  "Korrespondenz",
+                  "Sonstiges"
+              ]
+              for folder_name in default_folders:
+                  await db.create_folder(
+                      user_id=event.user_id,
+                      name=folder_name
+                  )
+
+  on_user_quota_exceeded:
+    event: "user.quota_exceeded"
+    triggers:
+      - name: "notify_user"
+        service: "notification_service"
+        priority: high
+        description: "Notify user of quota limit"
+        implementation: |
+          async def notify_quota(event: QuotaExceededEvent):
+              await notification_service.send(
+                  user_id=event.user_id,
+                  type="email",
+                  template="quota_exceeded_de",
+                  context={
+                      "current_usage": event.current_usage,
+                      "quota_limit": event.quota_limit,
+                      "upgrade_url": "https://ablage.company.de/upgrade"
+                  }
+              )
+
+      - name: "pause_processing"
+        service: "document_service"
+        priority: high
+        description: "Pause OCR processing for user"
+        implementation: |
+          async def pause_user_processing(event: QuotaExceededEvent):
+              await redis.setex(
+                  f"user:{event.user_id}:processing_paused",
+                  86400,  # 24 hours
+                  "quota_exceeded"
+              )
+
+# ============================================================================
+# GDPR Compliance Hooks
+# ============================================================================
+
+gdpr_hooks:
+  on_data_deletion_request:
+    event: "gdpr.deletion_requested"
+    triggers:
+      - name: "cascade_delete_user_data"
+        service: "gdpr_service"
+        priority: critical
+        timeout_seconds: 300
+        description: "Delete all user data (GDPR Art. 17)"
+        implementation: |
+          async def cascade_delete(event: DeletionRequestedEvent):
+              # Delete documents from MinIO
+              await minio.delete_prefix(f"users/{event.user_id}/")
+
+              # Delete database records
+              await db.delete_user_documents(event.user_id)
+              await db.delete_user_ocr_results(event.user_id)
+              await db.delete_user_audit_logs(event.user_id)
+              await db.delete_user_account(event.user_id)
+
+              # Clear Redis cache
+              await redis.delete_pattern(f"user:{event.user_id}:*")
+
+              logger.info(
+                  "gdpr_user_data_deleted",
+                  user_id=event.user_id,
+                  request_id=event.request_id
+              )
+
+      - name: "log_deletion_audit"
+        service: "audit_logging"
+        priority: critical
+        description: "Log GDPR deletion for compliance"
+        implementation: |
+          async def log_gdpr_deletion(event: DeletionRequestedEvent):
+              await audit_log(
+                  event_type="gdpr_deletion",
+                  user_id=event.user_id,
+                  request_id=event.request_id,
+                  timestamp=event.timestamp,
+                  data_deleted={
+                      "documents": event.document_count,
+                      "ocr_results": event.ocr_result_count,
+                      "storage_bytes": event.storage_bytes
+                  },
+                  retention_days=2555  # 7 years (German law)
+              )
+
+hook_configuration:
+  execution_strategy: "async"
+  error_handling: "log_and_continue"
+  retry_policy:
+    max_retries: 3
+    backoff_strategy: "exponential"
+    initial_delay_seconds: 1
+  monitoring:
+    prometheus_metrics: true
+    log_execution_time: true
+    alert_on_failures: true
+
+related_files:
+  - "Relations/Workflows/document_processing_workflow.yaml"
+  - "Static_Knowledge/SOPs/003_incident_response.md"
+  - "Execution_Layer/Agents/monitoring_agent.py"
+  - "Dynamic_Knowledge/Logs/event_log.jsonl"
+
+tags:
+  - hooks
+  - automation
+  - events
+  - document_processing
+  - gdpr
+  - gpu

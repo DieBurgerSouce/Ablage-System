@@ -1,0 +1,58 @@
+[Unit]
+Description=Ablage-System OCR - Backend API
+Documentation=https://github.com/org/ablage-system
+After=docker.service ablage-postgres.service ablage-redis.service
+Requires=docker.service
+Wants=ablage-postgres.service ablage-redis.service
+PartOf=ablage-system.target
+
+[Service]
+Type=notify
+WorkingDirectory=/opt/ablage-system
+EnvironmentFile=/opt/ablage-system/.env
+NotifyAccess=all
+
+# Pre-start checks
+ExecStartPre=/usr/bin/docker pull ghcr.io/org/ablage-system-backend:latest
+ExecStartPre=/usr/bin/bash -c 'until docker exec ablage-postgres pg_isready; do sleep 1; done'
+ExecStartPre=/usr/bin/bash -c 'until docker exec ablage-redis redis-cli ping; do sleep 1; done'
+
+# Start container
+ExecStart=/usr/bin/docker run --rm --name ablage-backend \
+    --network ablage_network \
+    --env-file /opt/ablage-system/.env \
+    -p 8000:8000 \
+    -v /opt/ablage-system/logs:/app/logs \
+    ghcr.io/org/ablage-system-backend:latest
+
+# Stop container
+ExecStop=/usr/bin/docker stop -t 30 ablage-backend
+
+# Health check
+ExecReload=/usr/bin/curl -f http://localhost:8000/health || exit 1
+
+# Restart policy
+Restart=always
+RestartSec=10s
+TimeoutStartSec=120s
+TimeoutStopSec=30s
+
+# Security
+User=ablage
+Group=ablage
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Resource limits
+CPUQuota=200%
+MemoryLimit=4G
+TasksMax=256
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ablage-backend
+
+[Install]
+WantedBy=multi-user.target
+WantedBy=ablage-system.target

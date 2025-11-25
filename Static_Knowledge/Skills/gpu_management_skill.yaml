@@ -1,0 +1,180 @@
+# GPU Management Skill
+# VRAM Monitoring, OOM Recovery, Batch Optimization für RTX 4080
+
+metadata:
+  skill_id: "gpu_management"
+  version: "1.0.0"
+  category: "infrastructure"
+  dependencies: ["torch", "nvidia-smi"]
+  hardware_requirement: "NVIDIA RTX 4080 16GB"
+  last_updated: "2025-01-22"
+
+description: |
+  Comprehensive GPU resource management for OCR workloads on RTX 4080.
+  Handles VRAM allocation, OOM detection/recovery, and dynamic batch sizing.
+
+capabilities:
+  - VRAM monitoring and allocation
+  - Out-of-memory detection and recovery
+  - Dynamic batch size optimization
+  - GPU → CPU fallback orchestration
+  - Multi-model memory management
+  - CUDA kernel warmup and caching
+
+configuration:
+  hardware:
+    gpu_model: "NVIDIA RTX 4080"
+    total_vram_gb: 16
+    safe_vram_threshold_gb: 13.6  # 85% of 16GB
+    warning_threshold_gb: 12.8    # 80% of 16GB
+
+  backends:
+    deepseek:
+      required_vram_gb: 12
+      optimal_batch_size: 8
+      max_batch_size: 16
+    got_ocr:
+      required_vram_gb: 10
+      optimal_batch_size: 16
+      max_batch_size: 32
+    surya:
+      required_vram_gb: 0  # CPU fallback
+      optimal_batch_size: 4
+      max_batch_size: 8
+
+usage_patterns:
+  vram_monitoring:
+    description: "Real-time VRAM usage tracking"
+    code_reference: "app/gpu_manager.py:GPUManager.get_memory_info()"
+    example: |
+      from app.gpu_manager import GPUManager
+
+      gpu = GPUManager()
+      memory_info = gpu.get_memory_info()
+      print(f"Used: {memory_info['used_gb']:.2f} GB")
+      print(f"Free: {memory_info['free_gb']:.2f} GB")
+      print(f"Utilization: {memory_info['utilization_percent']:.1f}%")
+
+  oom_detection:
+    description: "Detect and recover from OOM errors"
+    code_reference: "app/gpu_manager.py:GPUManager.handle_oom()"
+    example: |
+      import torch
+      from app.gpu_manager import GPUManager
+
+      gpu = GPUManager()
+
+      try:
+          result = model.process_batch(images, batch_size=32)
+      except torch.cuda.OutOfMemoryError:
+          # Automatic recovery
+          torch.cuda.empty_cache()
+          result = gpu.retry_with_smaller_batch(
+              model.process_batch,
+              images,
+              initial_batch_size=32
+          )
+
+  dynamic_batch_sizing:
+    description: "Optimize batch size based on available VRAM"
+    code_reference: "app/gpu_manager.py:GPUManager.calculate_optimal_batch_size()"
+    example: |
+      gpu = GPUManager()
+
+      # Automatically determine optimal batch size
+      optimal_batch = gpu.calculate_optimal_batch_size(
+          model_name="deepseek",
+          image_size_mb=2.5,
+          safety_margin=0.15  # 15% safety buffer
+      )
+
+      print(f"Optimal batch size: {optimal_batch}")
+
+  gpu_fallback:
+    description: "Graceful degradation from GPU to CPU"
+    code_reference: "app/services/ocr_service.py:OCRService.process_with_fallback()"
+    example: |
+      from app.services.ocr_service import OCRService
+
+      ocr = OCRService()
+
+      # Automatic GPU → CPU fallback on OOM
+      result = await ocr.process_with_fallback(
+          document_id="abc123",
+          preferred_backend="deepseek",
+          enable_cpu_fallback=True
+      )
+
+best_practices:
+  - name: "Always monitor VRAM before loading models"
+    rationale: "Prevents OOM crashes and enables proactive fallback"
+
+  - name: "Use context managers for GPU memory"
+    rationale: "Ensures cleanup even on exceptions"
+    code: |
+      with gpu.memory_guard(threshold_gb=13.6):
+          result = model.process(data)
+
+  - name: "Warm up CUDA kernels on startup"
+    rationale: "First inference compiles kernels (~5s delay)"
+    code: |
+      # Warm-up with dummy input
+      with torch.no_grad():
+          dummy_input = torch.randn(1, 3, 224, 224).cuda()
+          _ = model(dummy_input)
+
+  - name: "Clear cache between large batches"
+    rationale: "Prevents fragmentation and OOM"
+    code: |
+      torch.cuda.empty_cache()
+      torch.cuda.synchronize()
+
+error_scenarios:
+  - error: "torch.cuda.OutOfMemoryError"
+    cause: "Batch size too large or model already in VRAM"
+    solution: "Reduce batch size by 50%, retry; if fails, fallback to CPU"
+    recovery_time: "5-15 seconds"
+
+  - error: "CUDA driver version mismatch"
+    cause: "PyTorch compiled for different CUDA version"
+    solution: "Reinstall PyTorch with correct CUDA version"
+    command: "pip install torch --index-url https://download.pytorch.org/whl/cu121"
+
+  - error: "GPU not detected (torch.cuda.is_available() = False)"
+    cause: "NVIDIA drivers not installed or Docker missing --gpus flag"
+    solution: "Install nvidia-docker2, add --gpus all to docker run"
+
+performance_benchmarks:
+  deepseek_janus_pro:
+    pages_per_second: "2-3"
+    vram_usage_gb: "12.5"
+    batch_size: 8
+
+  got_ocr_2:
+    pages_per_second: "5-7"
+    vram_usage_gb: "9.8"
+    batch_size: 16
+
+  surya_docling:
+    pages_per_second: "1-2"
+    vram_usage_gb: "0 (CPU)"
+    batch_size: 4
+
+monitoring_commands:
+  check_gpu_status:
+    command: "nvidia-smi"
+    description: "Show GPU utilization, memory, temperature"
+
+  watch_gpu_realtime:
+    command: "watch -n 1 nvidia-smi"
+    description: "Monitor GPU every second"
+
+  check_cuda_in_python:
+    command: 'python -c "import torch; print(f\"CUDA: {torch.cuda.is_available()}, GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"N/A\"}\""'
+    description: "Verify CUDA availability"
+
+references:
+  - "app/gpu_manager.py:318 lines - Complete implementation"
+  - "app/main.py - GPU health check endpoint"
+  - "Relations/Playbooks/error_response_playbook.yaml - OOM recovery"
+  - "Static_Knowledge/SOPs/002_handling_gpu_oom_error.md"

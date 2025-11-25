@@ -1,0 +1,200 @@
+# Alertmanager Configuration - Ablage-System OCR
+# Multi-channel alerting with routing and escalation
+
+global:
+  resolve_timeout: 5m
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+  opsgenie_api_url: 'https://api.opsgenie.com/'
+
+# Templates for alert messages
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Routing tree
+route:
+  receiver: 'default'
+  group_by: ['alertname', 'cluster', 'service', 'severity']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+
+  # Child routes based on severity and service
+  routes:
+    # Critical alerts - page immediately
+    - match:
+        severity: critical
+      receiver: 'pagerduty-critical'
+      group_wait: 5s
+      repeat_interval: 5m
+      continue: true  # Also send to other receivers
+
+    - match:
+        severity: critical
+      receiver: 'opsgenie-critical'
+      group_wait: 5s
+      continue: true
+
+    - match:
+        severity: critical
+      receiver: 'slack-critical'
+      group_wait: 5s
+
+    # High severity - alert but don't page off-hours
+    - match:
+        severity: high
+      receiver: 'slack-high'
+      group_wait: 1m
+      repeat_interval: 1h
+      continue: false
+
+    # Warning severity - slack only
+    - match:
+        severity: warning
+      receiver: 'slack-warnings'
+      group_wait: 5m
+      repeat_interval: 4h
+
+    # GPU alerts - special handling
+    - match_re:
+        alertname: GPU.*
+      receiver: 'slack-gpu'
+      group_wait: 1m
+      repeat_interval: 30m
+
+    # Database alerts
+    - match_re:
+        service: postgres|database
+      receiver: 'slack-database'
+      group_wait: 1m
+      repeat_interval: 2h
+
+# Alert receivers
+receivers:
+  # Default receiver (catch-all)
+  - name: 'default'
+    webhook_configs:
+      - url: 'http://backend:8000/api/v1/alerts/webhook'
+        send_resolved: true
+
+  # PagerDuty - Critical alerts
+  - name: 'pagerduty-critical'
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+        severity: 'critical'
+        description: '{{ template "pagerduty.description" . }}'
+        details:
+          cluster: '{{ .GroupLabels.cluster }}'
+          service: '{{ .GroupLabels.service }}'
+          alertname: '{{ .GroupLabels.alertname }}'
+          summary: '{{ .CommonAnnotations.summary }}'
+        send_resolved: true
+
+  # OpsGenie - Critical alerts
+  - name: 'opsgenie-critical'
+    opsgenie_configs:
+      - api_key: '${OPSGENIE_API_KEY}'
+        priority: 'P1'
+        message: '{{ template "opsgenie.message" . }}'
+        description: '{{ template "opsgenie.description" . }}'
+        tags: 'ablage-system,critical,{{ .GroupLabels.service }}'
+        send_resolved: true
+
+  # Slack - Critical alerts
+  - name: 'slack-critical'
+    slack_configs:
+      - channel: '#alerts-critical'
+        username: 'Alertmanager'
+        icon_emoji: ':rotating_light:'
+        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: '{{ template "slack.critical.text" . }}'
+        color: 'danger'
+        send_resolved: true
+        actions:
+          - type: button
+            text: 'View in Grafana :chart_with_upwards_trend:'
+            url: '{{ .GeneratorURL }}'
+          - type: button
+            text: 'Runbook :notebook:'
+            url: 'https://wiki.ablage-system.local/runbooks/{{ .GroupLabels.alertname }}'
+
+  # Slack - High severity
+  - name: 'slack-high'
+    slack_configs:
+      - channel: '#alerts-high'
+        username: 'Alertmanager'
+        icon_emoji: ':warning:'
+        title: '⚠️  HIGH: {{ .GroupLabels.alertname }}'
+        text: '{{ template "slack.high.text" . }}'
+        color: 'warning'
+        send_resolved: true
+
+  # Slack - Warnings
+  - name: 'slack-warnings'
+    slack_configs:
+      - channel: '#alerts-warnings'
+        username: 'Alertmanager'
+        icon_emoji: ':information_source:'
+        title: 'ℹ️  WARNING: {{ .GroupLabels.alertname }}'
+        text: '{{ template "slack.warning.text" . }}'
+        color: '#FFCC00'
+        send_resolved: true
+
+  # Slack - GPU alerts
+  - name: 'slack-gpu'
+    slack_configs:
+      - channel: '#alerts-gpu'
+        username: 'Alertmanager'
+        icon_emoji: ':video_game:'
+        title: '🎮 GPU Alert: {{ .GroupLabels.alertname }}'
+        text: '{{ template "slack.gpu.text" . }}'
+        color: '#00BFFF'
+        send_resolved: true
+
+  # Slack - Database alerts
+  - name: 'slack-database'
+    slack_configs:
+      - channel: '#alerts-database'
+        username: 'Alertmanager'
+        icon_emoji: ':floppy_disk:'
+        title: '💾 Database Alert: {{ .GroupLabels.alertname }}'
+        text: '{{ template "slack.database.text" . }}'
+        color: '#FF6600'
+        send_resolved: true
+
+  # Email notifications (backup channel)
+  - name: 'email-critical'
+    email_configs:
+      - to: '${ALERT_EMAIL_TO}'
+        from: '${ALERT_EMAIL_FROM}'
+        smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+        auth_username: '${SMTP_USERNAME}'
+        auth_password: '${SMTP_PASSWORD}'
+        require_tls: true
+        headers:
+          Subject: '[Ablage-System] CRITICAL: {{ .GroupLabels.alertname }}'
+        html: '{{ template "email.html" . }}'
+        send_resolved: true
+
+# Inhibition rules (suppress less severe alerts when more severe are firing)
+inhibit_rules:
+  # Critical alerts suppress warnings
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+
+  # High alerts suppress warnings
+  - source_match:
+      severity: 'high'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+
+  # Service down suppresses all other alerts for that service
+  - source_match_re:
+      alertname: '.*Down'
+    target_match_re:
+      alertname: '.*'
+    equal: ['service']

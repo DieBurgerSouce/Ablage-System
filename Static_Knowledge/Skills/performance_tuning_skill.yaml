@@ -1,0 +1,461 @@
+# Performance Tuning Skill
+
+skill_id: performance_tuning_001
+category: optimization
+priority: high
+status: production_ready
+
+description: |
+  Comprehensive performance tuning strategies for Ablage-System.
+  Covers database optimization, caching, GPU utilization, and API performance.
+
+performance_targets:
+  api_endpoints:
+    document_upload: "< 500ms (p95)"
+    ocr_processing: "< 2s per page (GPU), < 10s (CPU)"
+    document_retrieval: "< 100ms (cached), < 300ms (DB)"
+    search_query: "< 500ms"
+
+  throughput:
+    concurrent_users: "> 100"
+    documents_per_hour: "> 500 (GPU), > 100 (CPU)"
+    api_requests_per_second: "> 1000"
+
+  resource_utilization:
+    cpu_usage: "< 70% average"
+    memory_usage: "< 80%"
+    gpu_vram_usage: "< 85%"
+    database_connections: "< 80% of pool"
+
+# ============================================================================
+# Database Performance Optimization
+# ============================================================================
+
+database_optimization:
+  indexing_strategy:
+    essential_indexes:
+      - table: "documents"
+        columns: ["user_id", "created_at"]
+        type: "btree"
+        reason: "Frequent user document queries"
+
+      - table: "documents"
+        columns: ["status", "created_at"]
+        type: "btree"
+        reason: "Status-based filtering with time range"
+
+      - table: "ocr_results"
+        columns: ["document_id", "backend"]
+        type: "btree"
+        reason: "Lookup OCR results by document and backend"
+
+      - table: "ocr_results"
+        columns: ["extracted_text"]
+        type: "gin"
+        reason: "Full-text search on extracted text"
+
+    composite_indexes:
+      - table: "documents"
+        columns: ["user_id", "status", "created_at DESC"]
+        type: "btree"
+        reason: "User's documents by status with newest first"
+
+    index_maintenance:
+      frequency: "weekly"
+      commands:
+        - "REINDEX DATABASE ablage_system;"
+        - "VACUUM ANALYZE;"
+
+  query_optimization:
+    slow_query_threshold: "100ms"
+
+    optimization_techniques:
+      - name: "Use EXPLAIN ANALYZE"
+        command: "EXPLAIN ANALYZE SELECT ..."
+        look_for:
+          - "Seq Scan (bad - add index)"
+          - "Index Scan (good)"
+          - "Nested Loop (check join conditions)"
+
+      - name: "Avoid SELECT *"
+        bad: "SELECT * FROM documents"
+        good: "SELECT id, filename, created_at FROM documents"
+        reason: "Reduces data transfer, enables covering indexes"
+
+      - name: "Use LIMIT for pagination"
+        bad: "SELECT * FROM documents ORDER BY created_at DESC"
+        good: "SELECT * FROM documents ORDER BY created_at DESC LIMIT 20 OFFSET 0"
+        reason: "Prevents loading entire result set"
+
+      - name: "Use connection pooling"
+        configuration:
+          pool_size: 20
+          max_overflow: 40
+          pool_recycle: 3600  # 1 hour
+
+  query_caching:
+    strategies:
+      - name: "Materialized views for complex queries"
+        example: |
+          CREATE MATERIALIZED VIEW user_document_stats AS
+          SELECT user_id, COUNT(*) as doc_count, MAX(created_at) as last_upload
+          FROM documents
+          GROUP BY user_id;
+
+          -- Refresh periodically
+          REFRESH MATERIALIZED VIEW user_document_stats;
+
+      - name: "Application-level query result caching"
+        ttl: 300  # 5 minutes
+        cache_key_pattern: "query:{sql_hash}:{params_hash}"
+
+  connection_pooling:
+    best_practices:
+      - "Use async connection pools (asyncpg)"
+      - "Set appropriate pool size (20-50)"
+      - "Configure connection timeout (30s)"
+      - "Enable connection health checks"
+      - "Monitor pool utilization"
+
+# ============================================================================
+# Caching Optimization
+# ============================================================================
+
+caching_optimization:
+  cache_hierarchy:
+    - level: "L1 - Application Memory"
+      ttl: "60s"
+      use_for: "Hot data, frequently accessed in single request"
+      example: "LRU cache for user session data"
+
+    - level: "L2 - Redis Cache"
+      ttl: "1-24 hours"
+      use_for: "Shared data across workers, OCR results"
+      example: "Document metadata, OCR results"
+
+    - level: "L3 - Database"
+      ttl: "permanent"
+      use_for: "Persistent data"
+
+  cache_strategies:
+    cache_aside:
+      description: "Application checks cache, falls back to DB"
+      use_for: "Read-heavy workloads"
+      implementation: |
+        result = await cache.get(key)
+        if not result:
+            result = await db.query(...)
+            await cache.set(key, result, ttl=3600)
+        return result
+
+    write_through:
+      description: "Write to cache and DB simultaneously"
+      use_for: "Strong consistency required"
+      implementation: |
+        await db.update(...)
+        await cache.set(key, value, ttl=3600)
+
+    cache_warming:
+      description: "Pre-populate cache on startup"
+      use_for: "Frequently accessed static data"
+      when: "Application startup, after deployment"
+
+  cache_invalidation:
+    strategies:
+      - name: "TTL-based expiration"
+        pros: "Simple, automatic"
+        cons: "May serve stale data"
+
+      - name: "Event-based invalidation"
+        pros: "Always fresh data"
+        cons: "More complex, requires event system"
+        example: |
+          # When document is updated
+          await db.update_document(doc_id, ...)
+          await cache.delete(f"doc:{doc_id}")
+          await cache.delete(f"doc:meta:{doc_id}")
+
+      - name: "Pattern-based invalidation"
+        example: |
+          # Invalidate all user's cached data
+          pattern = f"user:{user_id}:*"
+          keys = await cache.scan(match=pattern)
+          if keys:
+              await cache.delete(*keys)
+
+  cache_performance_monitoring:
+    metrics:
+      - "Cache hit rate (target: > 80%)"
+      - "Cache latency (target: < 5ms)"
+      - "Cache memory usage (target: < 85%)"
+      - "Eviction rate (target: < 1% per hour)"
+
+# ============================================================================
+# GPU Performance Optimization
+# ============================================================================
+
+gpu_optimization:
+  vram_management:
+    techniques:
+      - name: "Dynamic batch sizing"
+        description: "Adjust batch size based on available VRAM"
+        implementation: |
+          available_vram = get_available_vram_gb()
+          batch_size = int(available_vram / 0.5)  # 500MB per image
+          batch_size = min(batch_size, MAX_BATCH_SIZE)
+
+      - name: "Lazy model loading"
+        description: "Load models only when needed"
+        benefit: "Save VRAM when model not in use"
+
+      - name: "Model unloading after idle"
+        description: "Unload models after 10 minutes of inactivity"
+        implementation: |
+          if time_since_last_inference > 600:  # 10 minutes
+              del model
+              torch.cuda.empty_cache()
+
+      - name: "Mixed precision inference"
+        description: "Use FP16 instead of FP32"
+        benefit: "50% VRAM reduction, faster inference"
+        implementation: |
+          model.half()  # Convert to FP16
+          with torch.cuda.amp.autocast():
+              result = model(input)
+
+  inference_optimization:
+    techniques:
+      - name: "Batch processing"
+        optimal_batch_sizes:
+          deepseek: 8
+          got_ocr: 16
+          surya: 4
+
+      - name: "CUDA graph optimization"
+        description: "Capture and replay CUDA operations"
+        benefit: "Reduce CPU overhead"
+
+      - name: "Model compilation"
+        description: "JIT compile models with torch.compile()"
+        benefit: "10-30% faster inference"
+        implementation: |
+          model = torch.compile(model, mode="reduce-overhead")
+
+      - name: "Asynchronous data transfer"
+        description: "Overlap data transfer with computation"
+        implementation: |
+          # Use non_blocking=True
+          input_gpu = input_cpu.cuda(non_blocking=True)
+
+  gpu_utilization_monitoring:
+    target_utilization: "> 70%"
+    monitoring_command: "nvidia-smi dmon -s u"
+    low_utilization_causes:
+      - "Batch size too small"
+      - "CPU preprocessing bottleneck"
+      - "Data loading bottleneck"
+      - "Insufficient workload"
+
+# ============================================================================
+# API Performance Optimization
+# ============================================================================
+
+api_optimization:
+  async_patterns:
+    best_practices:
+      - "Use async/await throughout stack"
+      - "Avoid blocking I/O in async functions"
+      - "Use asyncio.gather() for parallel operations"
+      - "Set appropriate timeouts"
+
+    example: |
+      # Good: Parallel database queries
+      results = await asyncio.gather(
+          db.get_user(user_id),
+          db.get_documents(user_id),
+          cache.get_user_stats(user_id)
+      )
+
+      # Bad: Sequential queries
+      user = await db.get_user(user_id)
+      docs = await db.get_documents(user_id)
+      stats = await cache.get_user_stats(user_id)
+
+  response_compression:
+    enabled: true
+    types: ["application/json", "text/html", "text/plain"]
+    min_size: 1024  # bytes
+    compression_level: 6  # gzip level (1-9)
+
+  pagination:
+    default_page_size: 20
+    max_page_size: 100
+    cursor_based_pagination:
+      use_for: "Large datasets, real-time data"
+      example: |
+        # Cursor = last item's timestamp
+        SELECT * FROM documents
+        WHERE created_at < :cursor
+        ORDER BY created_at DESC
+        LIMIT 20
+
+  rate_limiting:
+    strategies:
+      - algorithm: "Token bucket"
+        limits:
+          default: "100/minute"
+          ocr_processing: "10/hour"
+          document_upload: "50/hour"
+
+  response_caching:
+    cache_control_headers:
+      static_content: "public, max-age=86400"  # 24 hours
+      api_responses: "private, max-age=300"  # 5 minutes
+      no_cache: "no-store, must-revalidate"
+
+# ============================================================================
+# Network Performance
+# ============================================================================
+
+network_optimization:
+  http2_support:
+    enabled: true
+    benefits:
+      - "Multiplexing (multiple requests over single connection)"
+      - "Header compression"
+      - "Server push (if applicable)"
+
+  cdn_strategy:
+    use_for:
+      - "Static assets (JS, CSS, images)"
+      - "Frequently accessed documents"
+    providers: ["CloudFlare", "AWS CloudFront"]
+
+  keepalive_connections:
+    enabled: true
+    timeout: 65  # seconds
+    max_requests: 100
+
+  request_size_limits:
+    max_upload_size: "50MB"
+    max_json_payload: "10MB"
+    max_form_data: "100MB"
+
+# ============================================================================
+# Background Job Optimization
+# ============================================================================
+
+background_job_optimization:
+  celery_tuning:
+    worker_concurrency: 4  # per worker
+    worker_prefetch_multiplier: 1  # tasks to prefetch
+    task_acks_late: true  # acknowledge after execution
+    worker_max_tasks_per_child: 100  # prevent memory leaks
+
+    task_priorities:
+      high: 9  # Critical OCR tasks
+      normal: 5  # Regular processing
+      low: 1  # Background cleanup
+
+  task_routing:
+    queues:
+      - name: "gpu_tasks"
+        priority: "high"
+        workers: "GPU workers"
+
+      - name: "cpu_tasks"
+        priority: "normal"
+        workers: "CPU workers"
+
+      - name: "scheduled_tasks"
+        priority: "low"
+        workers: "Dedicated scheduler workers"
+
+# ============================================================================
+# Monitoring & Profiling
+# ============================================================================
+
+performance_monitoring:
+  apm_tools:
+    - tool: "Prometheus + Grafana"
+      use_for: "Metrics, dashboards, alerts"
+
+    - tool: "Python profiling"
+      use_for: "CPU profiling"
+      command: "python -m cProfile -o output.prof app.py"
+
+    - tool: "Memory profiling"
+      use_for: "Memory leak detection"
+      library: "memory_profiler"
+
+  key_metrics:
+    - "Request latency (p50, p95, p99)"
+    - "Throughput (requests/second)"
+    - "Error rate (%)"
+    - "Resource utilization (CPU, memory, GPU)"
+    - "Database query time"
+    - "Cache hit rate"
+
+  performance_testing:
+    load_testing:
+      tool: "Locust"
+      scenarios:
+        - "Normal load: 50 concurrent users"
+        - "Peak load: 200 concurrent users"
+        - "Stress test: 500+ concurrent users"
+
+    benchmarking:
+      frequency: "After each deployment"
+      baseline: "Compare against previous version"
+      regression_threshold: "> 10% slower = investigate"
+
+# ============================================================================
+# Performance Checklist
+# ============================================================================
+
+performance_checklist:
+  database:
+    - "[ ] Indexes created for all frequently queried columns"
+    - "[ ] No N+1 query problems"
+    - "[ ] Connection pool properly sized"
+    - "[ ] Slow queries identified and optimized"
+    - "[ ] VACUUM and ANALYZE scheduled"
+
+  caching:
+    - "[ ] Cache hit rate > 80%"
+    - "[ ] Appropriate TTLs set"
+    - "[ ] Cache invalidation strategy defined"
+    - "[ ] Cache warming on startup"
+
+  api:
+    - "[ ] Async/await used throughout"
+    - "[ ] Response compression enabled"
+    - "[ ] Rate limiting configured"
+    - "[ ] Pagination implemented"
+
+  gpu:
+    - "[ ] VRAM usage < 85%"
+    - "[ ] Optimal batch sizes configured"
+    - "[ ] Dynamic batch sizing implemented"
+    - "[ ] GPU utilization > 70%"
+
+  monitoring:
+    - "[ ] APM tools configured"
+    - "[ ] Alerts set for performance regressions"
+    - "[ ] Regular performance testing scheduled"
+    - "[ ] Profiling performed for slow endpoints"
+
+related_files:
+  - "Dynamic_Knowledge/Learnings/redis_performance_optimization.md"
+  - "Static_Knowledge/Skills/gpu_management_skill.yaml"
+  - "Static_Knowledge/Snippets/redis_caching_patterns.py"
+  - "Static_Knowledge/Skills/monitoring_observability_skill.yaml"
+
+tags:
+  - performance
+  - optimization
+  - tuning
+  - database
+  - caching
+  - gpu
+  - api

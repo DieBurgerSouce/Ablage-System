@@ -1,0 +1,919 @@
+# Infrastructure Dependencies Graph - Ablage-System
+# Complete infrastructure dependency mapping with version requirements
+# Version: 1.0.0
+# Last Updated: 2025-11-22
+
+metadata:
+  title: "Ablage-System Infrastructure Dependencies Graph"
+  description: "Complete infrastructure dependency mapping with version constraints and relationships"
+  version: "1.0.0"
+  last_updated: "2025-11-22"
+  owner: "Operations Team"
+  review_cycle: "monthly"
+
+# ============================================================================
+# Infrastructure Overview Diagram
+# ============================================================================
+
+infrastructure_diagram: |
+  ```mermaid
+  graph TB
+      subgraph Host_System
+          Ubuntu[Ubuntu 22.04 LTS]
+          SystemD[systemd]
+          NVIDIA_Driver[NVIDIA Driver 535+]
+      end
+
+      subgraph Docker_Runtime
+          Docker[Docker 24.x]
+          Docker_Compose[Docker Compose 2.x]
+          NVIDIA_Toolkit[NVIDIA Container Toolkit]
+      end
+
+      subgraph Application_Containers
+          Backend[ablage-backend<br/>FastAPI]
+          Worker[ablage-worker<br/>Celery]
+          Frontend[ablage-frontend]
+      end
+
+      subgraph Data_Containers
+          PostgreSQL[postgres:16]
+          Redis[redis:7.2]
+          MinIO[minio:latest]
+      end
+
+      subgraph Monitoring_Containers
+          Prometheus[prometheus:2.45+]
+          Grafana[grafana:10.x]
+          Node_Exporter[node-exporter]
+      end
+
+      subgraph Network
+          Bridge[Docker Bridge Network]
+          Host_Network[Host Network]
+      end
+
+      subgraph Storage
+          Volumes[Docker Volumes]
+          Bind_Mounts[Bind Mounts]
+      end
+
+      Ubuntu --> SystemD
+      Ubuntu --> NVIDIA_Driver
+      Ubuntu --> Docker
+
+      Docker --> Docker_Compose
+      Docker --> NVIDIA_Toolkit
+
+      NVIDIA_Driver --> NVIDIA_Toolkit
+
+      Docker_Compose --> Backend
+      Docker_Compose --> Worker
+      Docker_Compose --> Frontend
+      Docker_Compose --> PostgreSQL
+      Docker_Compose --> Redis
+      Docker_Compose --> MinIO
+      Docker_Compose --> Prometheus
+      Docker_Compose --> Grafana
+
+      Backend --> Bridge
+      Worker --> Bridge
+      Frontend --> Bridge
+      PostgreSQL --> Bridge
+      Redis --> Bridge
+      MinIO --> Bridge
+
+      Prometheus --> Host_Network
+      Node_Exporter --> Host_Network
+
+      Backend --> Volumes
+      PostgreSQL --> Volumes
+      Redis --> Volumes
+      MinIO --> Volumes
+
+      Worker --> NVIDIA_Toolkit
+  ```
+
+# ============================================================================
+# 1. Host System Dependencies
+# ============================================================================
+
+host_system:
+  operating_system:
+    name: "Ubuntu Server"
+    version: "22.04 LTS"
+    codename: "Jammy Jellyfish"
+    kernel: "5.15+"
+    architecture: "x86_64"
+    eol_date: "2027-04"
+    required_features:
+      - "cgroups v2"
+      - "overlay2 filesystem"
+      - "iptables/nftables"
+    reference: "https://ubuntu.com/server"
+
+  system_packages:
+    essential:
+      - name: "python3.11"
+        purpose: "Application runtime"
+        apt_package: "python3.11 python3.11-venv python3.11-dev"
+      - name: "postgresql-client"
+        version: "16"
+        purpose: "Database client tools (pg_dump, psql)"
+        apt_package: "postgresql-client-16"
+      - name: "redis-tools"
+        purpose: "Redis CLI for debugging"
+        apt_package: "redis-tools"
+      - name: "curl"
+        purpose: "HTTP requests, health checks"
+        apt_package: "curl"
+      - name: "jq"
+        purpose: "JSON processing in scripts"
+        apt_package: "jq"
+
+    build_dependencies:
+      - name: "build-essential"
+        purpose: "C/C++ compiler for Python packages"
+        apt_package: "build-essential"
+      - name: "pkg-config"
+        purpose: "Compile-time library detection"
+        apt_package: "pkg-config"
+      - name: "libpq-dev"
+        purpose: "PostgreSQL development headers"
+        apt_package: "libpq-dev"
+
+  nvidia_dependencies:
+    driver:
+      name: "NVIDIA Driver"
+      version_min: "535.0"
+      version_recommended: "545.0"
+      installation: "ubuntu-drivers autoinstall"
+      verification: "nvidia-smi"
+      required_for:
+        - "CUDA runtime"
+        - "GPU-accelerated OCR"
+
+    cuda:
+      name: "CUDA Toolkit"
+      version: "12.2"
+      installation_method: "NVIDIA CUDA repo"
+      components:
+        - "CUDA Runtime"
+        - "cuDNN 8.9+"
+        - "cuBLAS"
+      verification: "nvcc --version"
+
+    container_toolkit:
+      name: "NVIDIA Container Toolkit"
+      version: "1.14+"
+      purpose: "GPU access in Docker containers"
+      installation: |
+        curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | apt-key add -
+        distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+        curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
+          tee /etc/apt/sources.list.d/nvidia-docker.list
+        apt-get update && apt-get install -y nvidia-container-toolkit
+      verification: "docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi"
+
+  system_services:
+    - name: "systemd"
+      version: "249+"
+      purpose: "Service management"
+      managed_services:
+        - "docker.service"
+        - "ablage-backend.service"
+        - "ablage-worker.service"
+
+    - name: "cron"
+      purpose: "Scheduled tasks (backups, cleanup)"
+      scheduled_jobs:
+        - "Daily database backup (02:00)"
+        - "Weekly log rotation (00:00 Sunday)"
+        - "Monthly security updates (00:00 1st)"
+
+# ============================================================================
+# 2. Docker Infrastructure
+# ============================================================================
+
+docker_infrastructure:
+  docker_engine:
+    name: "Docker Engine"
+    version: "24.0+"
+    installation_method: "Docker official repository"
+    configuration:
+      data_root: "/var/lib/docker"
+      storage_driver: "overlay2"
+      log_driver: "json-file"
+      log_opts:
+        max_size: "10m"
+        max_file: "3"
+      default_ulimits:
+        nofile:
+          soft: 65536
+          hard: 65536
+    daemon_config_path: "/etc/docker/daemon.json"
+    reference: "https://docs.docker.com/engine/install/ubuntu/"
+
+  docker_compose:
+    name: "Docker Compose"
+    version: "2.x"
+    installation: "Docker plugin (docker compose)"
+    compose_file: "docker-compose.yml"
+    features_used:
+      - "Service dependencies (depends_on)"
+      - "Health checks"
+      - "GPU device reservation"
+      - "Volume management"
+      - "Network isolation"
+      - "Environment variables"
+
+  networks:
+    application_network:
+      name: "ablage_network"
+      driver: "bridge"
+      subnet: "172.20.0.0/16"
+      gateway: "172.20.0.1"
+      ipam:
+        driver: "default"
+      purpose: "Isolate application containers"
+
+    monitoring_network:
+      name: "monitoring_network"
+      driver: "bridge"
+      purpose: "Isolate monitoring stack"
+
+  volumes:
+    postgres_data:
+      name: "postgres_data"
+      driver: "local"
+      mount_point: "/var/lib/docker/volumes/postgres_data/_data"
+      size: "~50GB (production)"
+      backup_strategy: "Daily pg_dump + volume snapshot"
+
+    redis_data:
+      name: "redis_data"
+      driver: "local"
+      persistence: "RDB + AOF"
+      size: "~5GB"
+      backup_strategy: "Included in Redis persistence"
+
+    minio_data:
+      name: "minio_data"
+      driver: "local"
+      size: "~500GB (scalable)"
+      backup_strategy: "Replication + versioning"
+
+    prometheus_data:
+      name: "prometheus_data"
+      driver: "local"
+      size: "~10GB (15 days retention)"
+      backup_strategy: "Remote write to long-term storage (planned)"
+
+  bind_mounts:
+    application_code:
+      host_path: "./app"
+      container_path: "/app"
+      mode: "ro (production), rw (development)"
+      purpose: "Application source code"
+
+    configuration:
+      host_path: "./config"
+      container_path: "/config"
+      mode: "ro"
+      purpose: "Configuration files"
+
+    logs:
+      host_path: "/var/log/ablage"
+      container_path: "/var/log"
+      mode: "rw"
+      purpose: "Persistent logging"
+
+# ============================================================================
+# 3. Container Dependencies
+# ============================================================================
+
+containers:
+  # --------------------------------------------------------------------------
+  # Backend Container
+  # --------------------------------------------------------------------------
+  backend:
+    image: "ablage/backend:latest"
+    base_image: "python:3.11-slim"
+    build_context: "."
+    dockerfile: "docker/Dockerfile.backend"
+
+    dependencies:
+      runtime:
+        - "Python 3.11"
+        - "FastAPI 0.110+"
+        - "uvicorn"
+        - "asyncpg"
+        - "redis-py"
+        - "boto3 (MinIO client)"
+
+      system:
+        - "libpq5 (PostgreSQL client library)"
+        - "curl (health checks)"
+
+      services:
+        - postgresql
+        - redis
+        - minio
+
+    environment_variables:
+      required:
+        - DATABASE_URL
+        - REDIS_URL
+        - MINIO_ENDPOINT
+        - MINIO_ACCESS_KEY
+        - MINIO_SECRET_KEY
+        - JWT_SECRET_KEY
+      optional:
+        - DEBUG
+        - LOG_LEVEL
+        - SENTRY_DSN
+
+    ports:
+      - "8000:8000 (HTTP API)"
+
+    health_check:
+      test: "curl -f http://localhost:8000/health || exit 1"
+      interval: "30s"
+      timeout: "10s"
+      retries: 3
+      start_period: "40s"
+
+    resource_limits:
+      memory: "2GB"
+      cpus: "2.0"
+
+  # --------------------------------------------------------------------------
+  # Worker Container
+  # --------------------------------------------------------------------------
+  worker:
+    image: "ablage/worker:latest"
+    base_image: "nvidia/cuda:12.0-cudnn8-runtime-ubuntu22.04"
+    build_context: "."
+    dockerfile: "docker/Dockerfile.worker"
+
+    dependencies:
+      runtime:
+        - "Python 3.11"
+        - "Celery 5.3+"
+        - "PyTorch 2.1+ (CUDA 12.1)"
+        - "DeepSeek-Janus-Pro 1.0"
+        - "GOT-OCR 2.0"
+        - "Surya + Docling"
+
+      system:
+        - "CUDA Runtime 12.2"
+        - "cuDNN 8.9+"
+        - "libpq5"
+
+      services:
+        - redis
+        - postgresql
+        - minio
+
+    gpu_requirements:
+      count: 1
+      device_ids: [0]
+      capabilities: ["gpu", "compute", "utility"]
+      driver: "nvidia"
+
+    environment_variables:
+      required:
+        - CELERY_BROKER_URL
+        - CELERY_RESULT_BACKEND
+        - DATABASE_URL
+        - MINIO_ENDPOINT
+        - CUDA_VISIBLE_DEVICES
+      optional:
+        - CELERY_CONCURRENCY
+        - GPU_MEMORY_FRACTION
+
+    resource_limits:
+      memory: "8GB"
+      cpus: "4.0"
+      gpu_memory: "16GB (RTX 4080)"
+
+  # --------------------------------------------------------------------------
+  # PostgreSQL Container
+  # --------------------------------------------------------------------------
+  postgresql:
+    image: "postgres:16"
+    official_image: true
+    registry: "Docker Hub"
+
+    dependencies:
+      extensions:
+        - pgvector: "0.5+"
+
+      clients:
+        - "backend (asyncpg)"
+        - "worker (psycopg2)"
+
+    environment_variables:
+      required:
+        - POSTGRES_DB
+        - POSTGRES_USER
+        - POSTGRES_PASSWORD
+      optional:
+        - POSTGRES_INITDB_ARGS
+        - PGDATA
+
+    volumes:
+      - "postgres_data:/var/lib/postgresql/data"
+
+    ports:
+      - "5432:5432 (internal only)"
+
+    configuration:
+      max_connections: 100
+      shared_buffers: "256MB"
+      effective_cache_size: "1GB"
+      maintenance_work_mem: "64MB"
+      checkpoint_completion_target: 0.9
+      wal_buffers: "16MB"
+      default_statistics_target: 100
+      random_page_cost: 1.1
+      effective_io_concurrency: 200
+      work_mem: "4MB"
+      min_wal_size: "1GB"
+      max_wal_size: "4GB"
+
+    health_check:
+      test: "pg_isready -U postgres"
+      interval: "10s"
+      timeout: "5s"
+      retries: 5
+
+    resource_limits:
+      memory: "1GB"
+      cpus: "2.0"
+
+  # --------------------------------------------------------------------------
+  # Redis Container
+  # --------------------------------------------------------------------------
+  redis:
+    image: "redis:7.2"
+    official_image: true
+    registry: "Docker Hub"
+
+    dependencies:
+      clients:
+        - "backend (redis-py)"
+        - "worker (celery)"
+
+    volumes:
+      - "redis_data:/data"
+
+    ports:
+      - "6379:6379 (internal only)"
+
+    configuration:
+      maxmemory: "2gb"
+      maxmemory_policy: "allkeys-lru"
+      save: "900 1 300 10 60 10000"
+      appendonly: "yes"
+      appendfsync: "everysec"
+
+    command: |
+      redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru
+
+    health_check:
+      test: "redis-cli ping || exit 1"
+      interval: "10s"
+      timeout: "5s"
+      retries: 5
+
+    resource_limits:
+      memory: "2.5GB"
+      cpus: "1.0"
+
+  # --------------------------------------------------------------------------
+  # MinIO Container
+  # --------------------------------------------------------------------------
+  minio:
+    image: "minio/minio:latest"
+    official_image: true
+    registry: "Docker Hub"
+
+    dependencies:
+      clients:
+        - "backend (boto3)"
+        - "worker (boto3)"
+
+    volumes:
+      - "minio_data:/data"
+
+    ports:
+      - "9000:9000 (S3 API)"
+      - "9001:9001 (Console)"
+
+    environment_variables:
+      required:
+        - MINIO_ROOT_USER
+        - MINIO_ROOT_PASSWORD
+
+    command: "server /data --console-address :9001"
+
+    health_check:
+      test: "curl -f http://localhost:9000/minio/health/live || exit 1"
+      interval: "30s"
+      timeout: "20s"
+      retries: 3
+
+    resource_limits:
+      memory: "1GB"
+      cpus: "1.0"
+
+  # --------------------------------------------------------------------------
+  # Prometheus Container
+  # --------------------------------------------------------------------------
+  prometheus:
+    image: "prom/prometheus:2.45+"
+    official_image: true
+    registry: "Docker Hub"
+
+    dependencies:
+      exporters:
+        - "node_exporter"
+        - "postgres_exporter"
+        - "redis_exporter"
+        - "nvidia_gpu_exporter"
+
+      scrape_targets:
+        - backend
+        - postgresql
+        - redis
+
+    volumes:
+      - "prometheus_data:/prometheus"
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+
+    ports:
+      - "9090:9090"
+
+    command: |
+      --config.file=/etc/prometheus/prometheus.yml
+      --storage.tsdb.path=/prometheus
+      --storage.tsdb.retention.time=15d
+
+    health_check:
+      test: "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1"
+      interval: "30s"
+      timeout: "10s"
+      retries: 3
+
+    resource_limits:
+      memory: "1GB"
+      cpus: "1.0"
+
+  # --------------------------------------------------------------------------
+  # Grafana Container
+  # --------------------------------------------------------------------------
+  grafana:
+    image: "grafana/grafana:10.x"
+    official_image: true
+    registry: "Docker Hub"
+
+    dependencies:
+      datasources:
+        - prometheus
+
+    volumes:
+      - "grafana_data:/var/lib/grafana"
+
+    ports:
+      - "3000:3000"
+
+    environment_variables:
+      required:
+        - GF_SECURITY_ADMIN_USER
+        - GF_SECURITY_ADMIN_PASSWORD
+      optional:
+        - GF_SERVER_ROOT_URL
+        - GF_AUTH_ANONYMOUS_ENABLED
+
+    health_check:
+      test: "curl -f http://localhost:3000/api/health || exit 1"
+      interval: "30s"
+      timeout: "10s"
+      retries: 3
+
+    resource_limits:
+      memory: "512MB"
+      cpus: "0.5"
+
+# ============================================================================
+# 4. Network Dependencies
+# ============================================================================
+
+network_topology:
+  external_access:
+    - service: "frontend"
+      port: 80
+      protocol: "HTTP"
+      public: true
+
+    - service: "backend"
+      port: 8000
+      protocol: "HTTP"
+      public: true (via reverse proxy)
+
+    - service: "grafana"
+      port: 3000
+      protocol: "HTTP"
+      public: true (authenticated)
+
+  internal_communication:
+    backend_to_postgresql:
+      protocol: "PostgreSQL wire protocol"
+      port: 5432
+      encryption: "TLS 1.3"
+
+    backend_to_redis:
+      protocol: "Redis protocol (RESP)"
+      port: 6379
+      encryption: "none (internal network)"
+
+    backend_to_minio:
+      protocol: "S3 (HTTP)"
+      port: 9000
+      encryption: "TLS 1.3"
+
+    worker_to_postgresql:
+      protocol: "PostgreSQL wire protocol"
+      port: 5432
+      encryption: "TLS 1.3"
+
+    worker_to_redis:
+      protocol: "Redis protocol (RESP)"
+      port: 6379
+      encryption: "none (internal network)"
+
+    worker_to_minio:
+      protocol: "S3 (HTTP)"
+      port: 9000
+      encryption: "TLS 1.3"
+
+    prometheus_to_targets:
+      protocol: "HTTP (metrics endpoint)"
+      ports: [8000, 9100, 9187, 9121]
+      encryption: "none (internal network)"
+
+  dns_resolution:
+    strategy: "Docker DNS"
+    resolution_method: "Container name as hostname"
+    examples:
+      - "backend resolves to backend container IP"
+      - "postgres resolves to PostgreSQL container IP"
+
+# ============================================================================
+# 5. Storage Dependencies
+# ============================================================================
+
+storage_layout:
+  host_storage:
+    root: "/var/lib/docker"
+    volumes: "/var/lib/docker/volumes"
+    containers: "/var/lib/docker/containers"
+    images: "/var/lib/docker/overlay2"
+
+    disk_requirements:
+      minimum: "200GB"
+      recommended: "500GB"
+      production: "1TB+"
+
+    monitoring:
+      alert_threshold: "80% usage"
+      cleanup_strategy: "docker system prune --volumes -f"
+
+  volume_management:
+    backup_volumes:
+      - postgres_data
+      - minio_data
+      - prometheus_data (optional)
+
+    backup_location: "/var/backups/ablage"
+    backup_retention: "30 days"
+
+    backup_schedule:
+      postgres_data: "Daily 02:00"
+      minio_data: "Weekly Sunday 03:00"
+
+# ============================================================================
+# 6. Infrastructure as Code (IaC) Dependencies
+# ============================================================================
+
+iac_dependencies:
+  terraform:
+    version: "1.6+"
+    providers:
+      docker:
+        source: "kreuzwerker/docker"
+        version: "~> 3.0"
+
+      postgresql:
+        source: "cyrilgdn/postgresql"
+        version: "~> 1.20"
+
+      local:
+        source: "hashicorp/local"
+        version: "~> 2.4"
+
+    modules:
+      network:
+        purpose: "Docker network creation"
+        resources:
+          - "docker_network.ablage_network"
+
+      storage:
+        purpose: "Volume provisioning"
+        resources:
+          - "docker_volume.postgres_data"
+          - "docker_volume.redis_data"
+          - "docker_volume.minio_data"
+
+      database:
+        purpose: "Database initialization"
+        resources:
+          - "postgresql_database.ablage"
+          - "postgresql_role.ablage_app"
+          - "postgresql_extension.pgvector"
+
+    state_backend:
+      type: "local"
+      path: "terraform.tfstate"
+      planned: "S3 backend for production"
+
+  ansible:
+    version: "2.15+"
+    inventory:
+      development: "inventory/dev.yml"
+      staging: "inventory/staging.yml"
+      production: "inventory/prod.yml"
+
+    playbooks:
+      initial_setup:
+        file: "playbooks/initial_setup.yml"
+        purpose: "System preparation"
+        tasks:
+          - "Install Docker"
+          - "Install NVIDIA drivers"
+          - "Configure firewall"
+          - "Setup monitoring"
+
+      deploy_application:
+        file: "playbooks/deploy.yml"
+        purpose: "Application deployment"
+        tasks:
+          - "Pull Docker images"
+          - "Run database migrations"
+          - "Start containers"
+          - "Verify health checks"
+
+      backup:
+        file: "playbooks/backup.yml"
+        purpose: "Backup execution"
+        tasks:
+          - "Create PostgreSQL dump"
+          - "Copy to backup location"
+          - "Verify backup integrity"
+
+    roles:
+      - name: "docker"
+        purpose: "Docker installation and configuration"
+
+      - name: "nvidia"
+        purpose: "NVIDIA driver and CUDA setup"
+
+      - name: "monitoring"
+        purpose: "Prometheus and Grafana setup"
+
+# ============================================================================
+# 7. Dependency Versions Matrix
+# ============================================================================
+
+version_matrix:
+  host_system:
+    ubuntu: "22.04 LTS"
+    kernel: "5.15+"
+    python: "3.11+"
+    nvidia_driver: "535+"
+    cuda: "12.2"
+
+  docker:
+    docker_engine: "24.0+"
+    docker_compose: "2.0+"
+    nvidia_container_toolkit: "1.14+"
+
+  containers:
+    postgres: "16"
+    redis: "7.2"
+    minio: "latest"
+    prometheus: "2.45+"
+    grafana: "10.x"
+
+  python_packages:
+    fastapi: "0.110+"
+    celery: "5.3+"
+    sqlalchemy: "2.0+"
+    pydantic: "2.x"
+    pytorch: "2.1+"
+
+  infrastructure:
+    terraform: "1.6+"
+    ansible: "2.15+"
+
+# ============================================================================
+# 8. Dependency Update Strategy
+# ============================================================================
+
+update_strategy:
+  host_system:
+    security_updates: "automatic (unattended-upgrades)"
+    kernel_updates: "manual (after testing)"
+    nvidia_driver_updates: "quarterly (if stable)"
+
+  docker:
+    docker_engine: "monthly (minor versions)"
+    docker_compose: "monthly (minor versions)"
+
+  containers:
+    base_images: "monthly rebuild"
+    official_images: "weekly check, monthly update"
+    security_patches: "immediate (within 24h)"
+
+  python_packages:
+    dependencies: "monthly (requirements.txt update)"
+    security_patches: "immediate (pip-audit)"
+
+# ============================================================================
+# 9. Troubleshooting Guide
+# ============================================================================
+
+troubleshooting:
+  docker_issues:
+    - symptom: "Cannot connect to Docker daemon"
+      solution: "sudo systemctl start docker"
+      reference: "Meta_Layer/Indexes/troubleshooting_index.yaml#docker_errors"
+
+    - symptom: "GPU not available in container"
+      solution: "Install nvidia-container-toolkit and restart Docker"
+      reference: "Meta_Layer/Indexes/troubleshooting_index.yaml#gpu_passthrough_failed"
+
+  networking_issues:
+    - symptom: "Container cannot resolve hostname"
+      solution: "Check docker network: docker network inspect ablage_network"
+
+    - symptom: "Port already in use"
+      solution: "Check port bindings: netstat -tulpn | grep <port>"
+
+  storage_issues:
+    - symptom: "No space left on device"
+      solution: "Clean up: docker system prune --volumes -f"
+
+    - symptom: "Volume not mounting"
+      solution: "Check volume: docker volume inspect <volume_name>"
+
+# ============================================================================
+# 10. Related Documentation
+# ============================================================================
+
+related_documentation:
+  guides:
+    - "CLAUDE.md - Project overview"
+    - "Meta_Layer/MOCs/SECURITY_MOC.md"
+    - "Meta_Layer/Knowledge_Graphs/technology_stack_graph.yaml"
+
+  troubleshooting:
+    - "Meta_Layer/Indexes/troubleshooting_index.yaml"
+
+  operations:
+    - "Static_Knowledge/SOPs/005_database_backup_restore.md"
+    - "Execution_Layer/Runners/data_migration_runner.py"
+
+# ============================================================================
+# Revision History
+# ============================================================================
+
+revision_history:
+  - version: "1.0.0"
+    date: "2025-11-22"
+    changes: "Initial infrastructure dependencies graph creation"
+    author: "Operations Team"
+
+# ============================================================================
+# Metadata
+# ============================================================================
+
+graph_statistics:
+  total_containers: 7
+  total_volumes: 5
+  total_networks: 2
+  host_dependencies: 15
+  iac_tools: 2
+  last_reviewed: "2025-11-22"
+  next_review: "2025-12-22"

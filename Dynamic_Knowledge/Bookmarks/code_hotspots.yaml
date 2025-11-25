@@ -1,0 +1,330 @@
+# Code Hotspots - Critical Files and Functions
+# Quick reference for frequently accessed code locations
+
+metadata:
+  last_updated: "2025-01-22"
+  purpose: "Fast navigation to critical code sections"
+  categories: ["api", "gpu", "german", "ocr", "database", "monitoring"]
+
+# ============================================================================
+# API Endpoints
+# ============================================================================
+api_endpoints:
+  main_application:
+    file: "app/main.py"
+    lines: "1-452"
+    description: "FastAPI application entry point with 10+ endpoints"
+    key_endpoints:
+      - "/health - System health check"
+      - "/api/v1/ocr/process/{document_id} - OCR processing"
+      - "/api/v1/ocr/batch - Batch processing"
+      - "/api/v1/german/validate - German text validation"
+      - "/api/v1/gpu/status - GPU monitoring"
+      - "/api/v1/gdpr/delete - GDPR deletion"
+
+  ocr_endpoints:
+    file: "app/api/v1/ocr.py"
+    description: "OCR-specific API routes (if separated)"
+    note: "Currently in main.py, may be extracted later"
+
+# ============================================================================
+# GPU Management
+# ============================================================================
+gpu_management:
+  gpu_manager_class:
+    file: "app/gpu_manager.py"
+    lines: "1-318"
+    class: "GPUManager"
+    critical_methods:
+      - "get_memory_info() - VRAM monitoring (line ~45)"
+      - "check_availability() - GPU detection (line ~78)"
+      - "handle_oom() - OOM recovery (line ~125)"
+      - "calculate_optimal_batch_size() - Dynamic sizing (line ~165)"
+      - "get_detailed_status() - Full GPU status (line ~245)"
+
+  oom_handling:
+    file: "app/gpu_manager.py"
+    function: "handle_oom"
+    lines: "125-180"
+    description: "GPU Out-of-Memory error recovery logic"
+    importance: "Critical - handles most common GPU failure"
+
+  batch_optimization:
+    file: "app/gpu_manager.py"
+    function: "calculate_optimal_batch_size"
+    lines: "165-210"
+    description: "Calculates safe batch size based on available VRAM"
+    formula: "usable_vram * 0.85 / vram_per_item"
+
+# ============================================================================
+# German Text Processing
+# ============================================================================
+german_processing:
+  german_validator_class:
+    file: "app/german_validator.py"
+    lines: "1-342"
+    class: "GermanValidator"
+    critical_methods:
+      - "validate_umlauts() - Umlaut detection (line ~58)"
+      - "extract_business_terms() - Business term extraction (line ~120)"
+      - "validate_date_format() - German date validation (line ~185)"
+      - "validate_currency_format() - Currency validation (line ~230)"
+      - "fuzzy_match_term() - Fuzzy business term matching (line ~280)"
+
+  business_glossary:
+    file: "Static_Knowledge/Glossar/business_terms_de.yaml"
+    description: "35+ German business terms with OCR variants"
+    usage: "GermanValidator.BUSINESS_GLOSSARY"
+
+  normalization_function:
+    file: "app/utils/german_text.py"
+    function: "normalize_german_text"
+    description: "NFC normalization + Fraktur mapping"
+    note: "Referenced but not yet implemented - TODO"
+
+# ============================================================================
+# OCR Services
+# ============================================================================
+ocr_services:
+  ocr_service_class:
+    file: "app/services/ocr_service.py"
+    lines: "1-220"
+    class: "OCRService"
+    status: "Mock implementation (real backends not integrated yet)"
+    critical_methods:
+      - "process() - Main OCR processing (line ~45)"
+      - "select_backend() - Backend selection logic (line ~95)"
+      - "process_with_fallback() - GPU→CPU fallback (line ~140)"
+
+  backend_selection:
+    file: "app/services/ocr_service.py"
+    function: "select_backend"
+    lines: "95-135"
+    decision_tree: "See Static_Knowledge/ADRs/001_backend_selection_strategy.md"
+
+  template_extractor:
+    file: "app/utils/template_extractor.py"
+    status: "Referenced but not yet implemented"
+    description: "Template-based field extraction"
+    design: "See Static_Knowledge/ADRs/004_template_extraction_strategy.md"
+
+# ============================================================================
+# Database
+# ============================================================================
+database:
+  models:
+    file: "app/db/models.py"
+    description: "SQLAlchemy database models"
+    models:
+      - "Document - Document metadata"
+      - "OCRResult - OCR processing results"
+      - "User - User accounts"
+      - "GDPRLog - GDPR compliance logging"
+
+  database_connection:
+    file: "app/db/database.py"
+    function: "get_db"
+    description: "Async database session dependency"
+
+# ============================================================================
+# GDPR Compliance
+# ============================================================================
+gdpr:
+  gdpr_logger:
+    file: "app/core/gdpr.py"
+    class: "GDPRLogger"
+    description: "GDPR Art. 17, 20, 30 compliance"
+    critical_methods:
+      - "log_deletion() - Art. 17 deletion logging"
+      - "log_export() - Art. 20 data portability"
+      - "log_access() - Art. 30 processing records"
+
+# ============================================================================
+# Exception Handling
+# ============================================================================
+exceptions:
+  exception_hierarchy:
+    file: "app/core/exceptions.py"
+    description: "Custom exception classes with German error messages"
+    exceptions:
+      - "OCRProcessingError - General OCR failures"
+      - "GPUOutOfMemoryError - GPU OOM"
+      - "DocumentNotFoundError - Missing documents"
+      - "ValidationError - Field validation failures"
+      - "GDPRComplianceError - GDPR violations"
+
+# ============================================================================
+# Monitoring
+# ============================================================================
+monitoring:
+  system_monitor:
+    file: "app/core/monitoring.py"
+    class: "SystemMonitor"
+    metrics:
+      - "GPU usage (VRAM, utilization, temperature)"
+      - "API response times"
+      - "OCR processing times"
+      - "Error rates"
+      - "Cache hit rates"
+
+  performance_decorator:
+    file: "app/core/monitoring.py"
+    function: "monitor_performance"
+    lines: "~45-75"
+    usage: "@monitor_performance('ocr_process')"
+
+# ============================================================================
+# Testing
+# ============================================================================
+testing:
+  basic_tests:
+    file: "tests/test_basic.py"
+    description: "7 smoke tests for core functionality"
+    tests:
+      - "test_health_check"
+      - "test_gpu_detection"
+      - "test_german_validation"
+      - "test_umlaut_detection"
+      - "test_business_term_extraction"
+      - "test_ocr_process_endpoint"
+      - "test_gdpr_logging"
+
+  test_fixtures:
+    file: "tests/fixtures/test_rechnung.txt"
+    description: "Sample German invoice for testing"
+
+# ============================================================================
+# Configuration
+# ============================================================================
+configuration:
+  environment_variables:
+    file: ".env.example"
+    description: "Environment variable template"
+    critical_vars:
+      - "DATABASE_URL - PostgreSQL connection"
+      - "REDIS_URL - Redis connection"
+      - "MINIO_ENDPOINT - Object storage"
+      - "GPU_DEVICE_ID - GPU selection"
+      - "LOG_LEVEL - Logging verbosity"
+
+  dependencies:
+    file: "requirements.txt"
+    description: "50+ Python dependencies"
+    critical:
+      - "fastapi - API framework"
+      - "torch - PyTorch + CUDA"
+      - "transformers - HuggingFace models"
+      - "sqlalchemy - Database ORM"
+      - "celery - Task queue"
+
+# ============================================================================
+# Documentation
+# ============================================================================
+documentation:
+  main_context:
+    file: "CLAUDE.md"
+    lines: "1500+"
+    description: "Comprehensive project context for AI"
+
+  knowledge_architecture:
+    file: "Meta_Layer/MOCs/KNOWLEDGE_ARCHITECTURE.md"
+    lines: "1319"
+    description: "5-layer knowledge system blueprint"
+
+  guides:
+    directory: ".claude/Docs/Guides/"
+    count: 36
+    topics:
+      - "API development"
+      - "Database management"
+      - "GPU optimization"
+      - "German text processing"
+      - "Deployment procedures"
+
+# ============================================================================
+# Quick Commands
+# ============================================================================
+quick_commands:
+  check_gpu_status:
+    command: "nvidia-smi"
+    description: "Show GPU utilization and VRAM usage"
+
+  check_cuda_in_python:
+    command: 'python -c "import torch; print(f\"CUDA: {torch.cuda.is_available()}, GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \'N/A\'}\")"'
+    description: "Verify CUDA availability in Python"
+
+  run_tests:
+    command: "pytest tests/test_basic.py -v"
+    description: "Run all basic tests"
+
+  start_api_server:
+    command: "python app/main.py"
+    description: "Start FastAPI server (development)"
+
+  start_celery_worker:
+    command: "celery -A app.celery worker --loglevel=info"
+    description: "Start Celery worker for async tasks"
+
+# ============================================================================
+# Performance Benchmarks
+# ============================================================================
+performance_targets:
+  api_response_time_p95:
+    target: "< 2000ms"
+    current: "1850ms"
+    file: "Dynamic_Knowledge/Logs/performance_log.jsonl"
+
+  ocr_processing_time:
+    deepseek: "450ms per page"
+    got_ocr: "180ms per page"
+    surya: "850ms per page"
+
+  template_extraction:
+    target: "< 100ms"
+    current: "85ms"
+
+  german_validation:
+    target: "< 50ms"
+    current: "42ms"
+
+# ============================================================================
+# Common Debugging Locations
+# ============================================================================
+debugging:
+  oom_error_recovery:
+    file: "app/gpu_manager.py"
+    lines: "125-180"
+    description: "First place to check for GPU OOM issues"
+
+  umlaut_validation:
+    file: "app/german_validator.py"
+    lines: "58-115"
+    description: "Debug German umlaut detection problems"
+
+  backend_selection:
+    file: "app/services/ocr_service.py"
+    lines: "95-135"
+    description: "Understand why specific OCR backend was chosen"
+
+  error_logging:
+    file: "Dynamic_Knowledge/Logs/error_log.jsonl"
+    description: "Check recent errors with solutions"
+
+# ============================================================================
+# Related Resources
+# ============================================================================
+related_resources:
+  skills:
+    - "Static_Knowledge/Skills/gpu_management_skill.yaml"
+    - "Static_Knowledge/Skills/german_text_processing_skill.yaml"
+    - "Static_Knowledge/Skills/backend_selection_skill.yaml"
+
+  adrs:
+    - "Static_Knowledge/ADRs/001_backend_selection_strategy.md"
+    - "Static_Knowledge/ADRs/002_gpu_fallback_mechanism.md"
+    - "Static_Knowledge/ADRs/003_german_text_normalization.md"
+
+  sops:
+    - "Static_Knowledge/SOPs/001_installing_ocr_backends.md"
+    - "Static_Knowledge/SOPs/002_handling_gpu_oom_error.md"
+    - "Static_Knowledge/SOPs/003_adding_new_document_template.md"

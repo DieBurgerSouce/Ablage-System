@@ -1,0 +1,422 @@
+# ML Model Registry - Current State
+
+registry_id: ml_models_001
+last_updated: "2025-11-22T10:00:00Z"
+status: production
+
+description: |
+  Central registry tracking all ML/OCR models deployed in Ablage-System.
+  Includes model metadata, performance metrics, and deployment status.
+
+# ============================================================================
+# OCR Backend Models
+# ============================================================================
+
+models:
+  deepseek_janus_pro:
+    model_id: deepseek-janus-pro-1.0
+    type: multimodal_vision_language
+    backend: deepseek
+    status: production
+
+    metadata:
+      provider: DeepSeek
+      version: "1.0"
+      release_date: "2024-12-15"
+      parameters: "1.3B"
+      architecture: "Vision Transformer + LLM"
+      modalities: ["image", "text"]
+
+    hardware_requirements:
+      gpu_required: true
+      min_vram_gb: 12
+      recommended_vram_gb: 16
+      min_ram_gb: 32
+      cuda_version: "12.1+"
+
+    model_files:
+      location: "/models/deepseek-janus-pro"
+      total_size_gb: 11.8
+      files:
+        - name: "model.safetensors"
+          size_gb: 10.2
+        - name: "config.json"
+          size_kb: 4
+        - name: "tokenizer.json"
+          size_mb: 2.1
+        - name: "preprocessor_config.json"
+          size_kb: 2
+
+    performance:
+      avg_inference_time_ms: 450
+      throughput_pages_per_second: 2.2
+      batch_size_optimal: 8
+      vram_usage_per_image_mb: 450
+
+      accuracy:
+        german_text: 0.985
+        german_umlauts: 0.995
+        handwriting: 0.92
+        tables: 0.88
+        fraktur_fonts: 0.85
+
+    use_cases:
+      - complex_layouts
+      - handwritten_text
+      - mixed_content_documents
+      - historical_documents
+      - forms_with_tables
+
+    last_benchmark: "2025-01-20"
+    deployment_date: "2025-01-18"
+
+  got_ocr_2:
+    model_id: got-ocr-2.0
+    type: transformer_ocr
+    backend: got_ocr
+    status: production
+
+    metadata:
+      provider: UCLab
+      version: "2.0"
+      release_date: "2024-11-30"
+      parameters: "600M"
+      architecture: "Transformer Encoder-Decoder"
+      modalities: ["image"]
+
+    hardware_requirements:
+      gpu_required: true
+      min_vram_gb: 10
+      recommended_vram_gb: 12
+      min_ram_gb: 16
+      cuda_version: "12.0+"
+
+    model_files:
+      location: "/models/got-ocr-2.0"
+      total_size_gb: 9.2
+      files:
+        - name: "pytorch_model.bin"
+          size_gb: 8.5
+        - name: "config.json"
+          size_kb: 3
+        - name: "vocab.txt"
+          size_mb: 1.2
+
+    performance:
+      avg_inference_time_ms: 180
+      throughput_pages_per_second: 5.5
+      batch_size_optimal: 16
+      vram_usage_per_image_mb: 280
+
+      accuracy:
+        german_text: 0.975
+        german_umlauts: 0.990
+        handwriting: 0.75
+        tables: 0.82
+        fraktur_fonts: 0.65
+
+    use_cases:
+      - clean_printed_text
+      - invoices
+      - contracts
+      - standard_documents
+      - batch_processing
+
+    last_benchmark: "2025-01-20"
+    deployment_date: "2025-01-18"
+
+  surya_docling:
+    model_id: surya-docling-v1.1
+    type: layout_aware_ocr_pipeline
+    backend: surya
+    status: production
+
+    metadata:
+      provider: "VikParuchuri (Surya) + IBM (Docling)"
+      version: "1.1"
+      release_date: "2024-10-15"
+      parameters: "Multi-stage pipeline"
+      architecture: "Layout Detection + OCR + Parsing"
+      modalities: ["image", "pdf"]
+
+    hardware_requirements:
+      gpu_required: false
+      cpu_fallback: true
+      min_vram_gb: 0
+      recommended_vram_gb: 4
+      min_ram_gb: 8
+
+    model_files:
+      location: "/models/surya-docling"
+      total_size_gb: 3.2
+      files:
+        - name: "surya_layout.pt"
+          size_gb: 1.8
+        - name: "surya_ocr.pt"
+          size_gb: 1.2
+        - name: "docling_parser.pkl"
+          size_mb: 150
+
+    performance:
+      avg_inference_time_ms: 850
+      throughput_pages_per_second: 1.2
+      batch_size_optimal: 4
+      vram_usage_per_image_mb: 120
+      cpu_inference: true
+
+      accuracy:
+        german_text: 0.955
+        german_umlauts: 0.980
+        handwriting: 0.40
+        tables: 0.92
+        fraktur_fonts: 0.50
+        layout_preservation: 0.95
+
+    use_cases:
+      - structured_documents
+      - table_heavy_documents
+      - cpu_only_environments
+      - layout_extraction
+      - pdf_conversion
+
+    last_benchmark: "2025-01-20"
+    deployment_date: "2025-01-18"
+
+# ============================================================================
+# German Language Processing Models
+# ============================================================================
+
+  spacy_de:
+    model_id: de_core_news_lg
+    type: nlp_pipeline
+    backend: spacy
+    status: production
+
+    metadata:
+      provider: "spaCy / Explosion AI"
+      version: "3.7.2"
+      release_date: "2024-09-10"
+      parameters: "560M"
+      architecture: "Transformer (BERT-based)"
+      language: "German"
+
+    hardware_requirements:
+      gpu_required: false
+      cpu_optimized: true
+      min_ram_gb: 4
+
+    model_files:
+      location: "/models/spacy/de_core_news_lg"
+      total_size_gb: 0.56
+
+    performance:
+      avg_inference_time_ms: 15
+      throughput_docs_per_second: 65
+
+      capabilities:
+        - tokenization
+        - pos_tagging
+        - dependency_parsing
+        - named_entity_recognition
+        - lemmatization
+
+    use_cases:
+      - text_preprocessing
+      - entity_extraction
+      - german_text_analysis
+      - validation_assistance
+
+    last_benchmark: "2025-01-15"
+    deployment_date: "2025-01-10"
+
+# ============================================================================
+# Model Selection Logic
+# ============================================================================
+
+selection_criteria:
+  deepseek_janus_pro:
+    triggers:
+      - condition: "has_handwriting == true"
+        priority: 1
+      - condition: "has_complex_layout == true"
+        priority: 1
+      - condition: "has_tables AND has_images"
+        priority: 2
+      - condition: "document_age > 50_years"
+        priority: 1
+
+    requirements:
+      - "available_vram_gb >= 12"
+      - "gpu_available == true"
+
+  got_ocr_2:
+    triggers:
+      - condition: "is_standard_invoice == true"
+        priority: 1
+      - condition: "is_contract == true"
+        priority: 2
+      - condition: "clean_printed_text == true"
+        priority: 1
+      - condition: "batch_processing == true"
+        priority: 1
+
+    requirements:
+      - "available_vram_gb >= 10"
+      - "gpu_available == true"
+
+  surya_docling:
+    triggers:
+      - condition: "has_complex_tables == true"
+        priority: 1
+      - condition: "layout_extraction_required == true"
+        priority: 1
+      - condition: "gpu_unavailable == true"
+        priority: 1
+      - condition: "cpu_only_mode == true"
+        priority: 1
+
+    requirements:
+      - "min_ram_gb >= 8"
+
+# ============================================================================
+# Performance Benchmarks
+# ============================================================================
+
+benchmarks:
+  dataset: "german_business_documents_2025"
+  document_count: 500
+  date: "2025-01-20"
+
+  results:
+    deepseek_janus_pro:
+      accuracy: 0.985
+      avg_time_ms: 450
+      throughput: 2.2
+      vram_peak_gb: 14.2
+      errors: 2
+
+    got_ocr_2:
+      accuracy: 0.975
+      avg_time_ms: 180
+      throughput: 5.5
+      vram_peak_gb: 11.8
+      errors: 5
+
+    surya_docling:
+      accuracy: 0.955
+      avg_time_ms: 850
+      throughput: 1.2
+      vram_peak_gb: 0.0
+      ram_peak_gb: 6.5
+      errors: 8
+
+# ============================================================================
+# Model Versioning & Rollback
+# ============================================================================
+
+version_history:
+  deepseek_janus_pro:
+    current: "1.0"
+    previous:
+      - version: "0.9-beta"
+        decommissioned: "2025-01-15"
+        reason: "Upgraded to stable release"
+
+  got_ocr_2:
+    current: "2.0"
+    previous:
+      - version: "1.0"
+        decommissioned: "2024-12-01"
+        reason: "Improved accuracy by 15%"
+
+rollback_procedures:
+  enabled: true
+  max_rollback_versions: 2
+  rollback_triggers:
+    - "accuracy_drop > 5%"
+    - "error_rate_increase > 3x"
+    - "critical_bug_detected"
+
+# ============================================================================
+# Model Health Monitoring
+# ============================================================================
+
+health_checks:
+  frequency: "every_hour"
+
+  checks:
+    - check: "model_accuracy_baseline"
+      threshold: "> 95%"
+      action: "alert_if_below"
+
+    - check: "inference_time_regression"
+      threshold: "< 2x_baseline"
+      action: "alert_if_above"
+
+    - check: "gpu_oom_rate"
+      threshold: "< 1%"
+      action: "alert_if_above"
+
+    - check: "model_files_integrity"
+      method: "checksum_validation"
+      action: "alert_if_corrupted"
+
+# ============================================================================
+# Deployment Configuration
+# ============================================================================
+
+deployment:
+  strategy: "canary"
+  canary_traffic_percent: 10
+  rollout_duration: "7_days"
+
+  environments:
+    production:
+      models_loaded: ["deepseek_janus_pro", "got_ocr_2", "surya_docling"]
+      auto_scaling: true
+      max_replicas: 5
+
+    staging:
+      models_loaded: ["deepseek_janus_pro", "got_ocr_2"]
+      auto_scaling: false
+
+    development:
+      models_loaded: ["got_ocr_2"]
+      auto_scaling: false
+
+# ============================================================================
+# Future Models (Planned)
+# ============================================================================
+
+roadmap:
+  q1_2025:
+    - model: "llama_vision_3"
+      reason: "Better multimodal understanding"
+      eta: "2025-03-01"
+
+  q2_2025:
+    - model: "custom_german_fraktur_model"
+      reason: "Improved historical document processing"
+      eta: "2025-05-01"
+
+    - model: "fine_tuned_got_ocr"
+      reason: "Domain-specific invoice optimization"
+      eta: "2025-06-01"
+
+# ============================================================================
+# Related Files
+# ============================================================================
+
+related_files:
+  - "Static_Knowledge/Skills/backend_selection_skill.yaml"
+  - "Relations/Decision_Trees/backend_selection_tree.yaml"
+  - "Dynamic_Knowledge/Logs/performance_log.jsonl"
+  - "Execution_Layer/Agents/ocr_processing_agent.py"
+
+tags:
+  - ml_models
+  - ocr
+  - model_registry
+  - deployment
+  - performance
+  - german

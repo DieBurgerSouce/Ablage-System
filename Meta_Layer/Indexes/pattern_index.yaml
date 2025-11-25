@@ -1,0 +1,32 @@
+# Code Pattern Index
+
+by_use_case:
+  ocr_processing:
+    - "Snippets/fastapi_patterns.md - OCR endpoint pattern"
+    - "Skills/backend_selection_skill.yaml - Backend selection"
+    - "Agents/ocr_processing_agent.py - End-to-end processing"
+
+  german_validation:
+    - "Snippets/german_validation_snippets.py - Umlaut validation"
+    - "Skills/german_text_processing_skill.yaml - Text normalization"
+    - "app/german_validator.py:342 - Full implementation"
+
+  gpu_management:
+    - "Snippets/gpu_memory_patterns.py - Memory management"
+    - "Skills/gpu_management_skill.yaml - VRAM monitoring"
+    - "app/gpu_manager.py:318 - GPU manager class"
+
+  error_handling:
+    - "Snippets/fastapi_patterns.md - Error handling pattern"
+    - "Skills/error_recovery_skill.yaml - Recovery strategies"
+    - "Decision_Trees/error_handling_tree.yaml - Error routing"
+
+  gdpr_compliance:
+    - "Snippets/gdpr_logging_patterns.py - GDPR logging"
+    - "app/core/gdpr.py - GDPRLogger class"
+
+by_technology:
+  fastapi: "Snippets/fastapi_patterns.md"
+  pytorch: "Snippets/gpu_memory_patterns.py"
+  german: "Snippets/german_validation_snippets.py"
+  pydantic: "Snippets/fastapi_patterns.md#request-validation"

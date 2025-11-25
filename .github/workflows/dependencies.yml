@@ -1,0 +1,186 @@
+# Dependency Updates - Ablage-System OCR
+# Automated dependency scanning and update PRs
+
+name: Dependencies
+
+on:
+  schedule:
+    # Run every Monday at 9:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  # Check for Python dependency updates
+  python-dependencies:
+    name: Python Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pip-tools
+        run: pip install pip-tools
+
+      - name: Check for Updates
+        id: check_updates
+        run: |
+          # Compile requirements to see what would update
+          pip-compile requirements.in --upgrade --output-file requirements-new.txt || true
+
+          if [ -f requirements-new.txt ]; then
+            if ! diff -q requirements.txt requirements-new.txt > /dev/null; then
+              echo "updates_available=true" >> $GITHUB_OUTPUT
+              echo "✅ Updates available"
+            else
+              echo "updates_available=false" >> $GITHUB_OUTPUT
+              echo "✅ No updates available"
+            fi
+          fi
+
+      - name: Generate Update Report
+        if: steps.check_updates.outputs.updates_available == 'true'
+        run: |
+          echo "## Python Dependency Updates Available" > update_report.md
+          echo "" >> update_report.md
+          echo "\`\`\`diff" >> update_report.md
+          diff requirements.txt requirements-new.txt || true
+          echo "\`\`\`" >> update_report.md
+
+      - name: Create Pull Request
+        if: steps.check_updates.outputs.updates_available == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(deps): update Python dependencies"
+          title: "chore(deps): Update Python dependencies"
+          body-path: update_report.md
+          branch: deps/python-updates
+          delete-branch: true
+          labels: dependencies,python
+
+  # Check for security vulnerabilities
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Safety
+        run: pip install safety
+
+      - name: Run Safety Check
+        id: safety
+        run: |
+          safety check --file requirements.txt --json --output safety-report.json || true
+          safety check --file requirements.txt || true
+
+          if [ -s safety-report.json ]; then
+            VULN_COUNT=$(cat safety-report.json | jq '.vulnerabilities | length')
+            echo "vulnerabilities=$VULN_COUNT" >> $GITHUB_OUTPUT
+
+            if [ "$VULN_COUNT" -gt 0 ]; then
+              echo "⚠️  Found $VULN_COUNT vulnerabilities"
+            fi
+          fi
+
+      - name: Upload Safety Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: safety-security-report
+          path: safety-report.json
+
+      - name: Create Security Issue
+        if: steps.safety.outputs.vulnerabilities > 0
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('safety-report.json', 'utf8'));
+
+            let body = '## 🔒 Security Vulnerabilities Detected\n\n';
+            body += `Found ${report.vulnerabilities.length} vulnerabilities:\n\n`;
+
+            report.vulnerabilities.forEach(vuln => {
+              body += `### ${vuln.package_name} ${vuln.vulnerable_versions}\n`;
+              body += `- **Severity:** ${vuln.severity}\n`;
+              body += `- **Description:** ${vuln.description}\n`;
+              body += `- **Fixed in:** ${vuln.fixed_versions}\n\n`;
+            });
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔒 Security: Dependency vulnerabilities detected',
+              body: body,
+              labels: ['security', 'dependencies']
+            });
+
+  # Check Docker base images
+  docker-updates:
+    name: Docker Base Images
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        dockerfile:
+          - docker/Dockerfile.backend
+          - docker/Dockerfile.worker
+          - docker/Dockerfile.frontend
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Check for Base Image Updates
+        run: |
+          DOCKERFILE="${{ matrix.dockerfile }}"
+
+          if [ ! -f "$DOCKERFILE" ]; then
+            echo "Dockerfile not found: $DOCKERFILE"
+            exit 0
+          fi
+
+          # Extract base image
+          BASE_IMAGE=$(grep "^FROM" "$DOCKERFILE" | head -1 | awk '{print $2}')
+          echo "Base image: $BASE_IMAGE"
+
+          # Pull latest
+          docker pull "$BASE_IMAGE"
+
+          # Check if there are updates
+          # (This is a simplified check - in production, use a tool like Renovate)
+          echo "✅ Base image check complete"
+
+  # Dependency summary
+  dependency-summary:
+    name: Dependency Summary
+    runs-on: ubuntu-latest
+    needs: [python-dependencies, security-audit, docker-updates]
+    if: always()
+
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## Dependency Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Python Dependencies | ${{ needs.python-dependencies.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Audit | ${{ needs.security-audit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Images | ${{ needs.docker-updates.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Last Run:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY

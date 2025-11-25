@@ -1,0 +1,62 @@
+# OCR Model Dependencies
+
+models:
+  deepseek_janus_pro:
+    vram_requirement_gb: 12
+    dependencies:
+      python_packages:
+        - torch>=2.1.0
+        - transformers>=4.36.0
+        - accelerate>=0.25.0
+        - sentencepiece>=0.1.99
+      system:
+        - CUDA 12.1+
+        - cuDNN 8.9+
+        - NVIDIA driver 535+
+    model_files:
+      - "deepseek-ai/deepseek-janus-pro-1.0 (~12GB)"
+    performance:
+      pages_per_second: "2-3"
+      batch_size_optimal: 8
+
+  got_ocr_2:
+    vram_requirement_gb: 10
+    dependencies:
+      python_packages:
+        - torch>=2.1.0
+        - transformers
+        - timm
+        - tiktoken
+      system:
+        - CUDA 12.1+
+        - cuDNN 8.9+
+    model_files:
+      - "stepfun-ai/GOT-OCR2_0 (~10GB)"
+    performance:
+      pages_per_second: "5-7"
+      batch_size_optimal: 16
+
+  surya_docling:
+    vram_requirement_gb: 0
+    cpu_only: true
+    dependencies:
+      python_packages:
+        - surya-ocr>=1.1.0
+        - docling>=1.0.0
+      system:
+        - "None (CPU only)"
+    performance:
+      pages_per_second: "1-2"
+      batch_size_optimal: 4
+
+shared_dependencies:
+  - pillow>=10.1.0
+  - numpy>=1.24.0
+  - opencv-python>=4.8.0
+
+vram_budget_rtx_4080:
+  total_vram_gb: 16
+  allocation_strategy: |
+    DeepSeek model: 12GB (75%)
+    Batch processing: 2.5GB (16%)
+    Safety buffer: 1.5GB (9%)

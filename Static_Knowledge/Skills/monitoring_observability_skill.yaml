@@ -1,0 +1,304 @@
+# Monitoring & Observability Skill
+
+skill_id: monitoring_observability_001
+category: operations
+priority: high
+status: production_ready
+
+description: |
+  Comprehensive monitoring and observability for the Ablage-System OCR platform.
+  Covers metrics collection, logging, alerting, and performance tracking.
+
+key_capabilities:
+  - prometheus_metrics_collection
+  - structured_logging_with_structlog
+  - distributed_tracing
+  - gpu_performance_monitoring
+  - application_performance_monitoring
+  - error_tracking_and_alerting
+
+metrics_to_track:
+  application_metrics:
+    - name: ocr_requests_total
+      type: counter
+      labels: [backend, status, document_type]
+      description: "Total OCR processing requests"
+
+    - name: ocr_processing_duration_seconds
+      type: histogram
+      labels: [backend]
+      buckets: [0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
+      description: "OCR processing time distribution"
+
+    - name: document_queue_length
+      type: gauge
+      description: "Number of documents in processing queue"
+
+    - name: active_workers
+      type: gauge
+      description: "Number of active Celery workers"
+
+  gpu_metrics:
+    - name: gpu_memory_usage_bytes
+      type: gauge
+      description: "Current GPU memory usage"
+
+    - name: gpu_utilization_percent
+      type: gauge
+      description: "GPU utilization percentage"
+
+    - name: gpu_temperature_celsius
+      type: gauge
+      description: "GPU temperature"
+
+    - name: gpu_oom_errors_total
+      type: counter
+      description: "Total GPU OOM errors encountered"
+
+  business_metrics:
+    - name: documents_processed_total
+      type: counter
+      labels: [document_type, language]
+      description: "Total documents successfully processed"
+
+    - name: extraction_accuracy_percent
+      type: gauge
+      labels: [template_type]
+      description: "Field extraction accuracy by template"
+
+    - name: german_validation_errors_total
+      type: counter
+      labels: [error_type]
+      description: "German text validation errors"
+
+logging_strategy:
+  structured_logging:
+    format: json
+    library: structlog
+    minimum_level: INFO
+
+  log_levels:
+    development: DEBUG
+    staging: INFO
+    production: WARNING
+
+  context_fields:
+    always_include:
+      - timestamp
+      - level
+      - logger_name
+      - request_id
+      - user_id
+      - document_id
+
+    never_log:
+      - document_content
+      - api_keys
+      - passwords
+      - personal_identifiable_information
+
+  log_aggregation:
+    tool: elasticsearch
+    retention_days: 90
+    indices:
+      - application_logs
+      - error_logs
+      - audit_logs
+
+alerting_rules:
+  critical_alerts:
+    - name: gpu_oom_threshold
+      condition: "rate(gpu_oom_errors_total[5m]) > 0.5"
+      severity: critical
+      notification: ["email", "slack"]
+      message: "GPU OOM errors spiking - check batch sizes"
+
+    - name: high_error_rate
+      condition: "rate(ocr_requests_total{status='error'}[5m]) > 0.1"
+      severity: critical
+      notification: ["email", "slack", "pagerduty"]
+
+    - name: database_connection_pool_exhausted
+      condition: "db_connection_pool_available == 0"
+      severity: critical
+      notification: ["email", "slack", "pagerduty"]
+
+  warning_alerts:
+    - name: slow_processing
+      condition: "ocr_processing_duration_seconds{quantile='0.95'} > 5"
+      severity: warning
+      notification: ["slack"]
+      message: "OCR processing slower than expected"
+
+    - name: queue_buildup
+      condition: "document_queue_length > 100"
+      severity: warning
+      notification: ["slack"]
+
+    - name: gpu_temperature_high
+      condition: "gpu_temperature_celsius > 80"
+      severity: warning
+      notification: ["slack"]
+
+dashboards:
+  operations_dashboard:
+    panels:
+      - title: "Request Rate"
+        query: "rate(ocr_requests_total[5m])"
+        visualization: graph
+
+      - title: "Error Rate"
+        query: "rate(ocr_requests_total{status='error'}[5m])"
+        visualization: graph
+
+      - title: "Processing Duration (p95)"
+        query: "histogram_quantile(0.95, ocr_processing_duration_seconds)"
+        visualization: graph
+
+      - title: "GPU Memory Usage"
+        query: "gpu_memory_usage_bytes / 1024^3"
+        visualization: gauge
+        unit: GB
+
+      - title: "Active Workers"
+        query: "active_workers"
+        visualization: stat
+
+  business_dashboard:
+    panels:
+      - title: "Documents Processed Today"
+        query: "increase(documents_processed_total[24h])"
+        visualization: stat
+
+      - title: "Extraction Accuracy by Template"
+        query: "extraction_accuracy_percent"
+        visualization: bar_chart
+
+      - title: "Processing by Document Type"
+        query: "rate(documents_processed_total[1h])"
+        visualization: pie_chart
+
+health_checks:
+  endpoints:
+    - path: /health
+      checks:
+        - database_connection
+        - redis_connection
+        - minio_connection
+        - gpu_availability
+        - disk_space
+      timeout: 5s
+      interval: 30s
+
+    - path: /health/ready
+      checks:
+        - all_services_ready
+        - migrations_applied
+        - models_loaded
+      timeout: 10s
+      interval: 60s
+
+performance_tracking:
+  apm_tool: prometheus + grafana
+  trace_sampling: 0.1  # 10% of requests
+
+  slow_query_threshold_ms: 100
+  slow_request_threshold_ms: 1000
+
+  tracked_operations:
+    - database_queries
+    - redis_operations
+    - minio_uploads_downloads
+    - ocr_processing
+    - image_preprocessing
+    - validation_operations
+
+implementation_example: |
+  # Python implementation with structlog and prometheus
+
+  import structlog
+  from prometheus_client import Counter, Histogram, Gauge
+
+  # Setup structured logging
+  structlog.configure(
+      processors=[
+          structlog.stdlib.filter_by_level,
+          structlog.stdlib.add_logger_name,
+          structlog.stdlib.add_log_level,
+          structlog.stdlib.PositionalArgumentsFormatter(),
+          structlog.processors.TimeStamper(fmt="iso"),
+          structlog.processors.StackInfoRenderer(),
+          structlog.processors.format_exc_info,
+          structlog.processors.UnicodeDecoder(),
+          structlog.processors.JSONRenderer()
+      ],
+      wrapper_class=structlog.stdlib.BoundLogger,
+      logger_factory=structlog.stdlib.LoggerFactory(),
+  )
+
+  logger = structlog.get_logger(__name__)
+
+  # Define metrics
+  ocr_requests = Counter(
+      'ocr_requests_total',
+      'Total OCR requests',
+      ['backend', 'status']
+  )
+
+  ocr_duration = Histogram(
+      'ocr_processing_duration_seconds',
+      'OCR processing duration',
+      ['backend'],
+      buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
+  )
+
+  gpu_memory = Gauge(
+      'gpu_memory_usage_bytes',
+      'GPU memory usage'
+  )
+
+  # Usage in code
+  @ocr_duration.labels(backend='deepseek').time()
+  async def process_document(document_id: str):
+      logger.info(
+          "processing_started",
+          document_id=document_id,
+          backend="deepseek"
+      )
+
+      try:
+          result = await ocr_backend.process(document_id)
+          ocr_requests.labels(backend='deepseek', status='success').inc()
+
+          logger.info(
+              "processing_completed",
+              document_id=document_id,
+              duration_ms=result.duration
+          )
+
+          return result
+
+      except Exception as e:
+          ocr_requests.labels(backend='deepseek', status='error').inc()
+
+          logger.error(
+              "processing_failed",
+              document_id=document_id,
+              error=str(e),
+              exc_info=True
+          )
+          raise
+
+related_files:
+  - "Dynamic_Knowledge/Logs/performance_log.jsonl"
+  - "Relations/Playbooks/error_response_playbook.yaml"
+  - "Static_Knowledge/SOPs/002_handling_gpu_oom_error.md"
+
+tags:
+  - monitoring
+  - observability
+  - prometheus
+  - grafana
+  - logging
+  - alerting
+  - performance

@@ -1,0 +1,120 @@
+# Terraform Variables - Ablage-System OCR
+# Copy this file to terraform.tfvars and customize
+
+# ============================================
+# General Configuration
+# ============================================
+
+environment = "production"
+
+# ============================================
+# Proxmox Configuration
+# ============================================
+
+proxmox_api_url      = "https://proxmox.example.com:8006/api2/json"
+proxmox_user         = "root@pam"
+proxmox_password     = "your_proxmox_password"
+proxmox_tls_insecure = false
+
+# ============================================
+# Networking
+# ============================================
+
+network_cidr        = "10.0.0.0/16"
+public_subnet_cidr  = "10.0.1.0/24"
+private_subnet_cidr = "10.0.2.0/24"
+
+# Restrict SSH access to your IP
+allowed_ssh_cidrs = ["203.0.113.0/24"]
+
+# ============================================
+# SSH Configuration
+# ============================================
+
+# Your SSH public key for VM access
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC... your-email@example.com"
+
+# ============================================
+# VM Configuration
+# ============================================
+
+# Backend VMs
+backend_vm_count  = 2
+backend_vm_cores  = 4
+backend_vm_memory = 8192   # 8 GB
+backend_vm_disk   = 100    # 100 GB
+
+# Worker VMs (with GPU)
+worker_vm_count  = 2
+worker_vm_cores  = 8
+worker_vm_memory = 32768   # 32 GB
+worker_vm_disk   = 200     # 200 GB
+worker_gpu_type  = "nvidia-rtx-4080"
+worker_gpu_count = 1
+
+# ============================================
+# Database Configuration
+# ============================================
+
+postgres_version         = "16"
+postgres_vm_cores        = 4
+postgres_vm_memory       = 16384  # 16 GB
+postgres_max_connections = 200
+postgres_shared_buffers  = "4GB"
+
+# Backup configuration
+postgres_backup_enabled   = true
+postgres_backup_schedule  = "0 2 * * *"  # Daily at 2 AM
+
+# ============================================
+# Storage Configuration
+# ============================================
+
+minio_storage_size_gb      = 500   # 500 GB for documents
+postgres_storage_size_gb   = 200   # 200 GB for database
+backup_storage_size_gb     = 1000  # 1 TB for backups
+prometheus_storage_size_gb = 100   # 100 GB for metrics
+
+backup_retention_days = 30
+
+# ============================================
+# Load Balancer Configuration
+# ============================================
+
+lb_vm_cores  = 2
+lb_vm_memory = 4096  # 4 GB
+
+# SSL/TLS
+enable_ssl    = true
+ssl_cert_path = "/path/to/cert.pem"
+ssl_key_path  = "/path/to/key.pem"
+domain_name   = "ablage-system.example.com"
+
+# ============================================
+# Monitoring Configuration
+# ============================================
+
+monitoring_vm_cores  = 4
+monitoring_vm_memory = 8192  # 8 GB
+monitoring_vm_disk   = 100   # 100 GB
+
+prometheus_retention_days = 30
+grafana_admin_password    = "secure_grafana_password"
+
+alertmanager_enabled = true
+
+# Alert webhook URLs
+alert_webhooks = {
+  slack      = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+  pagerduty  = "https://events.pagerduty.com/v2/YOUR_KEY"
+}
+
+# ============================================
+# Additional Tags
+# ============================================
+
+additional_tags = {
+  Team        = "Platform"
+  CostCenter  = "Engineering"
+  Compliance  = "GDPR"
+}

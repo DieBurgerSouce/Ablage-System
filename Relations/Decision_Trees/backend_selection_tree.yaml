@@ -1,0 +1,46 @@
+# Backend Selection Decision Tree
+# Routes documents to optimal OCR backend
+
+decision_tree:
+  root:
+    question: "What type of document is this?"
+    branches:
+      - condition: "has_handwriting == true"
+        action: check_vram_for_deepseek
+
+      - condition: "has_fraktur == true OR year < 1950"
+        action: check_vram_for_deepseek
+
+      - condition: "complexity_score >= 7"
+        action: check_vram_for_deepseek
+
+      - condition: "document_type == 'rechnung' AND complexity_score < 5"
+        action: check_vram_for_got_ocr
+
+      - condition: "default"
+        action: check_vram_for_got_ocr
+
+  check_vram_for_deepseek:
+    question: "Is 12GB VRAM available?"
+    branches:
+      - condition: "available_vram_gb >= 12"
+        result: {backend: "deepseek", reason: "Complex document, sufficient VRAM"}
+
+      - condition: "available_vram_gb < 12"
+        result: {backend: "surya", reason: "Complex document but insufficient VRAM, CPU fallback"}
+
+  check_vram_for_got_ocr:
+    question: "Is 10GB VRAM available?"
+    branches:
+      - condition: "available_vram_gb >= 10"
+        result: {backend: "got_ocr", reason: "Standard document, optimal performance"}
+
+      - condition: "available_vram_gb < 10"
+        result: {backend: "surya", reason: "Insufficient VRAM, CPU fallback"}
+
+usage_example: |
+  from app.services.ocr_service import OCRService
+
+  ocr = OCRService()
+  backend = ocr.select_backend(document)
+  # Follows this decision tree automatically

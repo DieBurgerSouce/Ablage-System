@@ -1,0 +1,1302 @@
+# Master Navigation Index - Ablage-System Knowledge Architecture
+# Complete catalog of all files across all 5 layers
+
+metadata:
+  title: "Master Navigation Index"
+  version: "2.0"
+  last_updated: "2025-01-22"
+  total_files: 109
+  total_lines: "~120,000"
+  maintained_by: "Knowledge Architecture Team"
+
+description: |
+  Comprehensive index of all documentation files in the Ablage-System
+  Knowledge Architecture. Provides multiple navigation paths:
+  - By layer (Static, Dynamic, Relations, Execution, Meta)
+  - By file type (Markdown, YAML, Python)
+  - By task/role
+  - By reference frequency (most linked files)
+
+# ============================================================================
+# Entry Points - START HERE
+# ============================================================================
+
+entry_points:
+  primary:
+    - file: "KNOWLEDGE_ARCHITECTURE.md"
+      path: "../KNOWLEDGE_ARCHITECTURE.md"
+      description: "Complete architecture overview and navigation guide"
+      audience: ["all"]
+      priority: 1
+
+    - file: "CLAUDE.md"
+      path: "../CLAUDE.md"
+      description: "Project context for AI-assisted development"
+      audience: ["developers", "ai_assistants"]
+      priority: 2
+
+  by_role:
+    developer:
+      - file: "ARCHITECTURE_MOC.md"
+        path: "../MOCs/ARCHITECTURE_MOC.md"
+        description: "Technical architecture hub"
+
+      - file: "api_endpoints_index.yaml"
+        path: "./api_endpoints_index.yaml"
+        description: "Complete API reference"
+
+      - file: "ADR_003_ocr_backend_selection.md"
+        path: "../../Static_Knowledge/ADRs/ADR_003_ocr_backend_selection.md"
+        description: "OCR backend strategy"
+
+    devops:
+      - file: "DEPLOYMENT_MOC.md"
+        path: "../MOCs/DEPLOYMENT_MOC.md"
+        description: "Deployment and operations hub"
+
+      - file: "deployment_workflow.md"
+        path: "../../Relations/Workflows/deployment_workflow.md"
+        description: "Complete CI/CD workflow"
+
+      - file: "deployment_checklist_graph.yaml"
+        path: "../Knowledge_Graphs/deployment_checklist_graph.yaml"
+        description: "Deployment checklist with dependencies"
+
+    dpo:
+      - file: "SECURITY_MOC.md"
+        path: "../MOCs/SECURITY_MOC.md"
+        description: "Security and compliance hub"
+
+      - file: "gdpr_compliance_audit_log.md"
+        path: "../../Dynamic_Knowledge/Logs/gdpr_compliance_audit_log.md"
+        description: "Latest GDPR audit report"
+
+      - file: "gdpr_compliance_checker.py"
+        path: "../../Execution_Layer/Validators/gdpr_compliance_checker.py"
+        description: "Automated GDPR compliance tool"
+
+    performance_engineer:
+      - file: "PERFORMANCE_MOC.md"
+        path: "../MOCs/PERFORMANCE_MOC.md"
+        description: "Performance documentation hub"
+
+      - file: "gpu_memory_optimization_experiment.yaml"
+        path: "../../Dynamic_Knowledge/Experiments/gpu_memory_optimization_experiment.yaml"
+        description: "GPU optimization results (60% improvement)"
+
+      - file: "ocr_backend_decision_tree.yaml"
+        path: "../../Relations/Decision_Trees/ocr_backend_decision_tree.yaml"
+        description: "Backend selection logic"
+
+# ============================================================================
+# Layer 1: Static_Knowledge (27 files)
+# ============================================================================
+
+static_knowledge:
+  layer_description: "Timeless reference documentation that rarely changes"
+  file_count: 27
+  total_lines: "~35,000"
+
+  adrs:
+    category: "Architecture Decision Records"
+    file_count: 4
+    files:
+      - file: "ADR_001_database_selection.md"
+        path: "../../Static_Knowledge/ADRs/ADR_001_database_selection.md"
+        status: "approved"
+        decision: "PostgreSQL 16 with pgvector"
+        date: "2024-09-15"
+        lines: 842
+        references: 12
+
+      - file: "ADR_002_authentication_strategy.md"
+        path: "../../Static_Knowledge/ADRs/ADR_002_authentication_strategy.md"
+        status: "approved"
+        decision: "JWT with httpOnly cookies"
+        date: "2024-09-22"
+        lines: 724
+        references: 10
+
+      - file: "ADR_003_ocr_backend_selection.md"
+        path: "../../Static_Knowledge/ADRs/ADR_003_ocr_backend_selection.md"
+        status: "approved"
+        decision: "Multi-backend (DeepSeek, GOT-OCR, Surya)"
+        date: "2025-01-15"
+        lines: 1058
+        references: 18
+        tags: ["critical", "gpu", "performance"]
+
+      - file: "ADR_004_german_nlp_approach.md"
+        path: "../../Static_Knowledge/ADRs/ADR_004_german_nlp_approach.md"
+        status: "approved"
+        decision: "Hybrid NLP (spaCy + GBERT + rules)"
+        date: "2025-01-18"
+        lines: 906
+        references: 8
+        tags: ["german", "nlp", "gdpr"]
+
+  domain_models:
+    category: "Core Business Models"
+    file_count: 7
+    files:
+      - file: "document_lifecycle.md"
+        path: "../../Static_Knowledge/Domain_Models/document_lifecycle.md"
+        description: "Document state machine"
+        lines: 542
+        references: 14
+
+      - file: "user_tiers.yaml"
+        path: "../../Static_Knowledge/Domain_Models/user_tiers.yaml"
+        description: "User tier definitions (free, standard, enterprise)"
+        lines: 389
+        references: 8
+
+      - file: "invoice_entity_model.yaml"
+        path: "../../Static_Knowledge/Domain_Models/invoice_entity_model.yaml"
+        description: "Invoice entity structure"
+        lines: 456
+        references: 11
+        tags: ["gdpr", "§14_ustg"]
+
+      - file: "contract_entity_model.yaml"
+        path: "../../Static_Knowledge/Domain_Models/contract_entity_model.yaml"
+        description: "Contract entity structure"
+        lines: 412
+        references: 6
+
+      - file: "delivery_note_entity_model.yaml"
+        path: "../../Static_Knowledge/Domain_Models/delivery_note_entity_model.yaml"
+        description: "Delivery note entity structure"
+        lines: 324
+        references: 4
+
+      - file: "german_business_entities.yaml"
+        path: "../../Static_Knowledge/Domain_Models/german_business_entities.yaml"
+        description: "USt-IdNr, IBAN, Steuernummer patterns"
+        lines: 598
+        references: 15
+        tags: ["german", "validation"]
+
+      - file: "document_complexity_scoring.yaml"
+        path: "../../Static_Knowledge/Domain_Models/document_complexity_scoring.yaml"
+        description: "Document complexity calculation"
+        lines: 467
+        references: 9
+
+  technical_specs:
+    category: "Detailed Specifications"
+    file_count: 8
+    files:
+      - file: "ocr_api_specification.yaml"
+        path: "../../Static_Knowledge/Technical_Specs/ocr_api_specification.yaml"
+        description: "OCR service API spec (OpenAPI 3.1)"
+        lines: 1124
+        references: 16
+
+      - file: "gpu_requirements.md"
+        path: "../../Static_Knowledge/Technical_Specs/gpu_requirements.md"
+        description: "GPU hardware and CUDA requirements"
+        lines: 623
+        references: 12
+        tags: ["gpu", "hardware"]
+
+      - file: "database_schema.sql"
+        path: "../../Static_Knowledge/Technical_Specs/database_schema.sql"
+        description: "Complete PostgreSQL schema"
+        lines: 2145
+        references: 20
+
+      - file: "redis_schema.yaml"
+        path: "../../Static_Knowledge/Technical_Specs/redis_schema.yaml"
+        description: "Redis key patterns and TTLs"
+        lines: 487
+        references: 8
+
+      - file: "minio_bucket_structure.yaml"
+        path: "../../Static_Knowledge/Technical_Specs/minio_bucket_structure.yaml"
+        description: "Object storage organization"
+        lines: 392
+        references: 7
+
+      - file: "celery_task_definitions.py"
+        path: "../../Static_Knowledge/Technical_Specs/celery_task_definitions.py"
+        description: "Celery task specifications"
+        lines: 856
+        references: 11
+
+      - file: "german_text_processing_spec.md"
+        path: "../../Static_Knowledge/Technical_Specs/german_text_processing_spec.md"
+        description: "German language processing requirements"
+        lines: 734
+        references: 9
+        tags: ["german", "nlp"]
+
+      - file: "rate_limiting_spec.yaml"
+        path: "../../Static_Knowledge/Technical_Specs/rate_limiting_spec.yaml"
+        description: "API rate limiting configuration"
+        lines: 421
+        references: 6
+
+  templates:
+    category: "Reusable Templates"
+    file_count: 8
+    files:
+      - file: "adr_template.md"
+        path: "../../Static_Knowledge/Templates/adr_template.md"
+        description: "Template for new ADRs"
+        lines: 412
+        usage_count: 4
+
+      - file: "incident_report_template.md"
+        path: "../../Static_Knowledge/Templates/incident_report_template.md"
+        description: "Incident documentation template"
+        lines: 523
+        usage_count: 3
+
+      - file: "document_processing_template.md"
+        path: "../../Static_Knowledge/Templates/document_processing_template.md"
+        description: "Template for new document types"
+        lines: 1293
+        usage_count: 5
+        tags: ["critical"]
+
+      - file: "experiment_template.yaml"
+        path: "../../Static_Knowledge/Templates/experiment_template.yaml"
+        description: "Performance experiment template"
+        lines: 378
+        usage_count: 4
+
+      - file: "decision_tree_template.yaml"
+        path: "../../Static_Knowledge/Templates/decision_tree_template.yaml"
+        description: "Decision tree template"
+        lines: 289
+        usage_count: 3
+
+      - file: "validator_template.py"
+        path: "../../Static_Knowledge/Templates/validator_template.py"
+        description: "Python validator template"
+        lines: 456
+        usage_count: 6
+
+      - file: "workflow_template.md"
+        path: "../../Static_Knowledge/Templates/workflow_template.md"
+        description: "Workflow documentation template"
+        lines: 367
+        usage_count: 3
+
+      - file: "moc_template.md"
+        path: "../../Static_Knowledge/Templates/moc_template.md"
+        description: "Map of Content template"
+        lines: 298
+        usage_count: 4
+
+# ============================================================================
+# Layer 2: Dynamic_Knowledge (18 files)
+# ============================================================================
+
+dynamic_knowledge:
+  layer_description: "Time-based operational records that evolve constantly"
+  file_count: 18
+  total_lines: "~25,000"
+
+  experiments:
+    category: "Performance Experiments"
+    file_count: 6
+    files:
+      - file: "batch_size_optimization.yaml"
+        path: "../../Dynamic_Knowledge/Experiments/batch_size_optimization.yaml"
+        date: "2024-11-08"
+        status: "completed"
+        result: "Optimal batch size: 8-12 documents"
+        lines: 732
+        references: 7
+
+      - file: "gpu_memory_optimization_experiment.yaml"
+        path: "../../Dynamic_Knowledge/Experiments/gpu_memory_optimization_experiment.yaml"
+        date: "2024-12-15"
+        status: "completed"
+        result: "60% throughput improvement with complexity-aware batching"
+        lines: 991
+        references: 9
+        tags: ["critical", "gpu"]
+
+      - file: "german_ocr_accuracy_test.md"
+        path: "../../Dynamic_Knowledge/Experiments/german_ocr_accuracy_test.md"
+        date: "2024-11-22"
+        status: "completed"
+        result: "DeepSeek: 2.8% CER, GOT-OCR: 5.9% CER"
+        lines: 845
+        references: 8
+
+      - file: "backend_latency_comparison.yaml"
+        path: "../../Dynamic_Knowledge/Experiments/backend_latency_comparison.yaml"
+        date: "2024-12-01"
+        status: "completed"
+        result: "GOT-OCR fastest at 0.8s/page"
+        lines: 678
+        references: 6
+
+      - file: "fraktur_font_accuracy.md"
+        path: "../../Dynamic_Knowledge/Experiments/fraktur_font_accuracy.md"
+        date: "2024-10-15"
+        status: "completed"
+        result: "DeepSeek: 89% accuracy on Fraktur"
+        lines: 524
+        references: 5
+
+      - file: "parallel_processing_benchmark.yaml"
+        path: "../../Dynamic_Knowledge/Experiments/parallel_processing_benchmark.yaml"
+        date: "2024-11-30"
+        status: "completed"
+        result: "3x speedup with 3 workers"
+        lines: 612
+        references: 7
+
+  logs:
+    category: "Operational Logs"
+    file_count: 8
+    files:
+      - file: "deployment_history.md"
+        path: "../../Dynamic_Knowledge/Logs/deployment_history.md"
+        date_range: "2024-09-01 to present"
+        entries: 47
+        lines: 3842
+        references: 15
+
+      - file: "celery_worker_crash_log.md"
+        path: "../../Dynamic_Knowledge/Logs/celery_worker_crash_log.md"
+        date: "2025-01-12"
+        incident: "Celery worker OOM"
+        resolution: "Increased memory limit to 12GB"
+        lines: 1289
+        references: 6
+        tags: ["incident", "resolved"]
+
+      - file: "gdpr_compliance_audit_log.md"
+        path: "../../Dynamic_Knowledge/Logs/gdpr_compliance_audit_log.md"
+        date: "2024-12-20"
+        audit_period: "Q4 2024"
+        status: "compliant"
+        lines: 1144
+        references: 5
+        tags: ["gdpr", "audit"]
+
+      - file: "performance_baseline_log.yaml"
+        path: "../../Dynamic_Knowledge/Logs/performance_baseline_log.yaml"
+        date: "2025-01-10"
+        metrics: ["api_latency", "ocr_throughput", "gpu_usage"]
+        lines: 892
+        references: 10
+
+      - file: "security_incident_log.md"
+        path: "../../Dynamic_Knowledge/Logs/security_incident_log.md"
+        date_range: "2024-09-01 to present"
+        incidents: 2
+        lines: 1567
+        references: 8
+
+      - file: "database_migration_log.md"
+        path: "../../Dynamic_Knowledge/Logs/database_migration_log.md"
+        date_range: "2024-09-01 to present"
+        migrations: 18
+        lines: 1024
+        references: 9
+
+      - file: "backup_validation_log.yaml"
+        path: "../../Dynamic_Knowledge/Logs/backup_validation_log.yaml"
+        date_range: "Last 30 days"
+        validations: 30
+        success_rate: "100%"
+        lines: 687
+        references: 6
+
+      - file: "api_error_log.md"
+        path: "../../Dynamic_Knowledge/Logs/api_error_log.md"
+        date_range: "Last 7 days"
+        errors: 342
+        lines: 2134
+        references: 7
+
+  metrics:
+    category: "Performance Metrics"
+    file_count: 4
+    files:
+      - file: "api_latency_metrics.yaml"
+        path: "../../Dynamic_Knowledge/Metrics/api_latency_metrics.yaml"
+        period: "Last 30 days"
+        p50: "124ms"
+        p95: "320ms"
+        p99: "487ms"
+        lines: 543
+        references: 11
+
+      - file: "ocr_accuracy_metrics.yaml"
+        path: "../../Dynamic_Knowledge/Metrics/ocr_accuracy_metrics.yaml"
+        period: "Last 30 days"
+        avg_cer: "3.2%"
+        lines: 612
+        references: 9
+
+      - file: "gpu_utilization_metrics.yaml"
+        path: "../../Dynamic_Knowledge/Metrics/gpu_utilization_metrics.yaml"
+        period: "Last 30 days"
+        avg_usage: "68%"
+        peak_usage: "82%"
+        lines: 478
+        references: 8
+
+      - file: "user_activity_metrics.yaml"
+        path: "../../Dynamic_Knowledge/Metrics/user_activity_metrics.yaml"
+        period: "Last 30 days"
+        active_users: 234
+        documents_processed: 12456
+        lines: 524
+        references: 6
+
+# ============================================================================
+# Layer 3: Relations (24 files)
+# ============================================================================
+
+relations:
+  layer_description: "Connects components through workflows, decision trees, and hooks"
+  file_count: 24
+  total_lines: "~28,000"
+
+  workflows:
+    category: "Step-by-Step Processes"
+    file_count: 8
+    files:
+      - file: "document_upload_workflow.md"
+        path: "../../Relations/Workflows/document_upload_workflow.md"
+        steps: 7
+        avg_duration: "2 minutes"
+        lines: 842
+        references: 16
+
+      - file: "deployment_workflow.md"
+        path: "../../Relations/Workflows/deployment_workflow.md"
+        steps: 23
+        avg_duration: "22 minutes"
+        lines: 1138
+        references: 15
+        tags: ["critical", "devops"]
+
+      - file: "backup_restore_workflow.md"
+        path: "../../Relations/Workflows/backup_restore_workflow.md"
+        steps: 9
+        avg_duration: "15 minutes"
+        lines: 678
+        references: 8
+
+      - file: "incident_response_workflow.md"
+        path: "../../Relations/Workflows/incident_response_workflow.md"
+        steps: 12
+        avg_duration: "varies"
+        lines: 923
+        references: 9
+
+      - file: "user_onboarding_workflow.md"
+        path: "../../Relations/Workflows/user_onboarding_workflow.md"
+        steps: 6
+        avg_duration: "10 minutes"
+        lines: 534
+        references: 7
+
+      - file: "gdpr_data_export_workflow.md"
+        path: "../../Relations/Workflows/gdpr_data_export_workflow.md"
+        steps: 8
+        compliance: "Art. 15 GDPR"
+        lines: 712
+        references: 6
+        tags: ["gdpr"]
+
+      - file: "ocr_processing_workflow.md"
+        path: "../../Relations/Workflows/ocr_processing_workflow.md"
+        steps: 11
+        avg_duration: "3 seconds/page"
+        lines: 1045
+        references: 14
+
+      - file: "database_migration_workflow.md"
+        path: "../../Relations/Workflows/database_migration_workflow.md"
+        steps: 10
+        avg_duration: "5 minutes"
+        lines: 789
+        references: 10
+
+  decision_trees:
+    category: "Automated Decision Logic"
+    file_count: 8
+    files:
+      - file: "ocr_backend_decision_tree.yaml"
+        path: "../../Relations/Decision_Trees/ocr_backend_decision_tree.yaml"
+        nodes: 18
+        depth: 5
+        lines: 1087
+        references: 10
+        tags: ["critical", "ocr"]
+
+      - file: "error_recovery_decision_tree.yaml"
+        path: "../../Relations/Decision_Trees/error_recovery_decision_tree.yaml"
+        nodes: 24
+        depth: 4
+        lines: 910
+        references: 7
+        tags: ["critical", "error_handling"]
+
+      - file: "tier_upgrade_decision_tree.yaml"
+        path: "../../Relations/Decision_Trees/tier_upgrade_decision_tree.yaml"
+        nodes: 12
+        depth: 3
+        lines: 542
+        references: 5
+
+      - file: "document_routing_decision_tree.yaml"
+        path: "../../Relations/Decision_Trees/document_routing_decision_tree.yaml"
+        nodes: 16
+        depth: 4
+        lines: 687
+        references: 8
+
+      - file: "backup_strategy_decision_tree.yaml"
+        path: "../../Relations/Decision_Trees/backup_strategy_decision_tree.yaml"
+        nodes: 10
+        depth: 3
+        lines: 456
+        references: 6
+
+      - file: "cache_invalidation_decision_tree.yaml"
+        path: "../../Relations/Decision_Trees/cache_invalidation_decision_tree.yaml"
+        nodes: 14
+        depth: 3
+        lines: 523
+        references: 7
+
+      - file: "rate_limit_enforcement_decision_tree.yaml"
+        path: "../../Relations/Decision_Trees/rate_limit_enforcement_decision_tree.yaml"
+        nodes: 11
+        depth: 3
+        lines: 478
+        references: 5
+
+      - file: "german_entity_validation_decision_tree.yaml"
+        path: "../../Relations/Decision_Trees/german_entity_validation_decision_tree.yaml"
+        nodes: 15
+        depth: 4
+        lines: 612
+        references: 9
+        tags: ["german", "validation"]
+
+  hooks:
+    category: "Event-Based Triggers"
+    file_count: 8
+    files:
+      - file: "pre_commit_hooks.yaml"
+        path: "../../Relations/Hooks/pre_commit_hooks.yaml"
+        hooks: 8
+        lines: 342
+        references: 4
+
+      - file: "deployment_hooks.yaml"
+        path: "../../Relations/Hooks/deployment_hooks.yaml"
+        hooks: 12
+        lines: 487
+        references: 7
+
+      - file: "monitoring_hooks.yaml"
+        path: "../../Relations/Hooks/monitoring_hooks.yaml"
+        hooks: 15
+        lines: 534
+        references: 8
+
+      - file: "backup_hooks.yaml"
+        path: "../../Relations/Hooks/backup_hooks.yaml"
+        hooks: 6
+        lines: 298
+        references: 5
+
+      - file: "document_processing_hooks.yaml"
+        path: "../../Relations/Hooks/document_processing_hooks.yaml"
+        hooks: 10
+        lines: 421
+        references: 9
+
+      - file: "user_lifecycle_hooks.yaml"
+        path: "../../Relations/Hooks/user_lifecycle_hooks.yaml"
+        hooks: 9
+        lines: 378
+        references: 6
+
+      - file: "security_hooks.yaml"
+        path: "../../Relations/Hooks/security_hooks.yaml"
+        hooks: 11
+        lines: 456
+        references: 7
+
+      - file: "performance_monitoring_hooks.yaml"
+        path: "../../Relations/Hooks/performance_monitoring_hooks.yaml"
+        hooks: 13
+        lines: 512
+        references: 8
+
+# ============================================================================
+# Layer 4: Execution_Layer (22 files)
+# ============================================================================
+
+execution_layer:
+  layer_description: "Automated tools that execute based on Static_Knowledge specifications"
+  file_count: 22
+  total_lines: "~12,000"
+
+  validators:
+    category: "Data Validation Tools"
+    file_count: 8
+    files:
+      - file: "german_entity_validator.py"
+        path: "../../Execution_Layer/Validators/german_entity_validator.py"
+        validates: ["ust_id", "iban", "steuernummer", "german_dates"]
+        lines: 456
+        test_coverage: "95%"
+        references: 15
+        tags: ["german", "critical"]
+
+      - file: "api_request_validator.py"
+        path: "../../Execution_Layer/Validators/api_request_validator.py"
+        validates: ["request_params", "rate_limits", "auth_tokens"]
+        lines: 378
+        test_coverage: "92%"
+        references: 12
+
+      - file: "backup_validator.py"
+        path: "../../Execution_Layer/Validators/backup_validator.py"
+        validates: ["checksum", "restoration", "data_integrity"]
+        lines: 320
+        test_coverage: "98%"
+        references: 6
+        tags: ["critical"]
+
+      - file: "gdpr_compliance_checker.py"
+        path: "../../Execution_Layer/Validators/gdpr_compliance_checker.py"
+        validates: ["Art. 5", "Art. 6", "Art. 15-22", "Art. 30"]
+        lines: 280
+        test_coverage: "91%"
+        references: 10
+        tags: ["gdpr", "critical"]
+
+      - file: "document_entity_validator.py"
+        path: "../../Execution_Layer/Validators/document_entity_validator.py"
+        validates: ["invoice", "contract", "delivery_note"]
+        lines: 534
+        test_coverage: "93%"
+        references: 14
+
+      - file: "file_upload_validator.py"
+        path: "../../Execution_Layer/Validators/file_upload_validator.py"
+        validates: ["file_type", "file_size", "malware_scan"]
+        lines: 412
+        test_coverage: "96%"
+        references: 11
+
+      - file: "database_schema_validator.py"
+        path: "../../Execution_Layer/Validators/database_schema_validator.py"
+        validates: ["schema_integrity", "foreign_keys", "constraints"]
+        lines: 498
+        test_coverage: "94%"
+        references: 8
+
+      - file: "configuration_validator.py"
+        path: "../../Execution_Layer/Validators/configuration_validator.py"
+        validates: ["env_vars", "config_files", "secrets"]
+        lines: 345
+        test_coverage: "90%"
+        references: 7
+
+  agents:
+    category: "Autonomous Agents"
+    file_count: 7
+    files:
+      - file: "monitoring_agent.py"
+        path: "../../Execution_Layer/Agents/monitoring_agent.py"
+        monitors: ["database", "redis", "gpu", "disk_space"]
+        lines: 243
+        test_coverage: "88%"
+        references: 7
+        tags: ["critical"]
+
+      - file: "ocr_orchestrator.py"
+        path: "../../Execution_Layer/Agents/ocr_orchestrator.py"
+        manages: ["backend_selection", "batch_sizing", "gpu_allocation"]
+        lines: 678
+        test_coverage: "91%"
+        references: 18
+
+      - file: "cleanup_agent.py"
+        path: "../../Execution_Layer/Agents/cleanup_agent.py"
+        cleans: ["old_logs", "temp_files", "expired_cache"]
+        lines: 312
+        test_coverage: "89%"
+        references: 6
+
+      - file: "backup_agent.py"
+        path: "../../Execution_Layer/Agents/backup_agent.py"
+        manages: ["scheduled_backups", "validation", "retention"]
+        lines: 456
+        test_coverage: "92%"
+        references: 8
+
+      - file: "performance_profiler_agent.py"
+        path: "../../Execution_Layer/Agents/performance_profiler_agent.py"
+        profiles: ["api_latency", "ocr_speed", "db_queries"]
+        lines: 534
+        test_coverage: "85%"
+        references: 9
+
+      - file: "security_scanner_agent.py"
+        path: "../../Execution_Layer/Agents/security_scanner_agent.py"
+        scans: ["vulnerabilities", "outdated_deps", "exposed_secrets"]
+        lines: 412
+        test_coverage: "87%"
+        references: 7
+
+      - file: "gdpr_retention_agent.py"
+        path: "../../Execution_Layer/Agents/gdpr_retention_agent.py"
+        enforces: ["§14 UStG (10 years)", "Art. 5(1)(e) retention"]
+        lines: 389
+        test_coverage: "93%"
+        references: 8
+        tags: ["gdpr"]
+
+  scripts:
+    category: "Utility Scripts"
+    file_count: 7
+    files:
+      - file: "performance_benchmarking.py"
+        path: "../../Execution_Layer/Scripts/performance_benchmarking.py"
+        benchmarks: ["api", "ocr", "database"]
+        lines: 567
+        references: 9
+
+      - file: "database_migration_helper.py"
+        path: "../../Execution_Layer/Scripts/database_migration_helper.py"
+        helps: ["migration_generation", "rollback", "validation"]
+        lines: 423
+        references: 10
+
+      - file: "deployment_automation.sh"
+        path: "../../Execution_Layer/Scripts/deployment_automation.sh"
+        automates: ["pre_checks", "deployment", "post_validation"]
+        lines: 234
+        references: 12
+
+      - file: "docker_health_check.sh"
+        path: "../../Execution_Layer/Scripts/docker_health_check.sh"
+        checks: ["containers", "networks", "volumes"]
+        lines: 156
+        references: 8
+
+      - file: "gpu_diagnostics.py"
+        path: "../../Execution_Layer/Scripts/gpu_diagnostics.py"
+        diagnoses: ["vram_usage", "temperature", "cuda_errors"]
+        lines: 298
+        references: 7
+
+      - file: "log_analyzer.py"
+        path: "../../Execution_Layer/Scripts/log_analyzer.py"
+        analyzes: ["error_patterns", "performance_trends"]
+        lines: 445
+        references: 6
+
+      - file: "german_text_test_generator.py"
+        path: "../../Execution_Layer/Scripts/german_text_test_generator.py"
+        generates: ["test_documents", "edge_cases", "fraktur_samples"]
+        lines: 389
+        references: 5
+        tags: ["german", "testing"]
+
+# ============================================================================
+# Layer 5: Meta_Layer (18 files)
+# ============================================================================
+
+meta_layer:
+  layer_description: "High-level organization, navigation, and knowledge graphs"
+  file_count: 18
+  total_lines: "~20,000"
+
+  mocs:
+    category: "Maps of Content (Navigation Hubs)"
+    file_count: 5
+    files:
+      - file: "ARCHITECTURE_MOC.md"
+        path: "../MOCs/ARCHITECTURE_MOC.md"
+        covers: ["system_design", "tech_stack", "adrs"]
+        links: 42
+        lines: 1234
+        references: 25
+
+      - file: "SECURITY_MOC.md"
+        path: "../MOCs/SECURITY_MOC.md"
+        covers: ["gdpr", "authentication", "encryption"]
+        links: 38
+        lines: 1089
+        references: 18
+
+      - file: "PERFORMANCE_MOC.md"
+        path: "../MOCs/PERFORMANCE_MOC.md"
+        covers: ["optimization", "monitoring", "benchmarks"]
+        links: 35
+        lines: 1156
+        references: 12
+        tags: ["performance"]
+
+      - file: "DEPLOYMENT_MOC.md"
+        path: "../MOCs/DEPLOYMENT_MOC.md"
+        covers: ["ci_cd", "infrastructure", "monitoring"]
+        links: 40
+        lines: 1198
+        references: 15
+        tags: ["devops"]
+
+      - file: "TESTING_MOC.md"
+        path: "../MOCs/TESTING_MOC.md"
+        covers: ["unit_tests", "integration_tests", "e2e_tests"]
+        links: 28
+        lines: 892
+        references: 10
+
+  indexes:
+    category: "Searchable Indexes"
+    file_count: 6
+    files:
+      - file: "api_endpoints_index.yaml"
+        path: "./api_endpoints_index.yaml"
+        endpoints: 23
+        lines: 445
+        references: 25
+        tags: ["critical", "api"]
+
+      - file: "error_codes_index.yaml"
+        path: "./error_codes_index.yaml"
+        error_codes: 87
+        lines: 723
+        references: 14
+
+      - file: "dependency_index.yaml"
+        path: "./dependency_index.yaml"
+        dependencies: 142
+        lines: 1567
+        references: 11
+
+      - file: "master_navigation_index.yaml"
+        path: "./master_navigation_index.yaml"
+        files_indexed: 109
+        lines: "~2000"
+        references: "N/A (this file)"
+
+      - file: "german_terminology_index.yaml"
+        path: "./german_terminology_index.yaml"
+        terms: 234
+        lines: 1234
+        references: 16
+        tags: ["german"]
+
+      - file: "file_type_index.yaml"
+        path: "./file_type_index.yaml"
+        file_types: ["markdown", "yaml", "python", "sql"]
+        lines: 456
+        references: 7
+
+  knowledge_graphs:
+    category: "Visual Relationship Maps"
+    file_count: 7
+    files:
+      - file: "system_architecture_graph.yaml"
+        path: "../Knowledge_Graphs/system_architecture_graph.yaml"
+        nodes: 45
+        edges: 87
+        lines: 1456
+        references: 20
+
+      - file: "deployment_checklist_graph.yaml"
+        path: "../Knowledge_Graphs/deployment_checklist_graph.yaml"
+        nodes: 38
+        edges: 52
+        lines: 1278
+        references: 8
+        tags: ["critical", "devops"]
+
+      - file: "data_flow_graph.yaml"
+        path: "../Knowledge_Graphs/data_flow_graph.yaml"
+        nodes: 32
+        edges: 61
+        lines: 1123
+        references: 15
+
+      - file: "ocr_pipeline_graph.yaml"
+        path: "../Knowledge_Graphs/ocr_pipeline_graph.yaml"
+        nodes: 28
+        edges: 42
+        lines: 987
+        references: 12
+
+      - file: "user_journey_graph.yaml"
+        path: "../Knowledge_Graphs/user_journey_graph.yaml"
+        nodes: 24
+        edges: 38
+        lines: 834
+        references: 9
+
+      - file: "gdpr_compliance_graph.yaml"
+        path: "../Knowledge_Graphs/gdpr_compliance_graph.yaml"
+        nodes: 30
+        edges: 45
+        lines: 1045
+        references: 11
+        tags: ["gdpr"]
+
+      - file: "dependency_graph.yaml"
+        path: "../Knowledge_Graphs/dependency_graph.yaml"
+        nodes: 142
+        edges: 287
+        lines: 2134
+        references: 13
+
+# ============================================================================
+# Navigation by Task
+# ============================================================================
+
+navigation_by_task:
+  adding_new_ocr_backend:
+    sequence:
+      - step: 1
+        file: "ADR_003_ocr_backend_selection.md"
+        action: "Review multi-backend strategy"
+
+      - step: 2
+        file: "ocr_backend_decision_tree.yaml"
+        action: "Update decision logic"
+
+      - step: 3
+        file: "ocr_orchestrator.py"
+        action: "Implement backend integration"
+
+      - step: 4
+        file: "gpu_memory_optimization_experiment.yaml"
+        action: "Test GPU memory usage"
+
+      - step: 5
+        file: "deployment_workflow.md"
+        action: "Deploy to production"
+
+  investigating_performance_issues:
+    sequence:
+      - step: 1
+        file: "PERFORMANCE_MOC.md"
+        action: "Review performance overview"
+
+      - step: 2
+        file: "api_latency_metrics.yaml"
+        action: "Check current metrics"
+
+      - step: 3
+        file: "performance_baseline_log.yaml"
+        action: "Compare against baselines"
+
+      - step: 4
+        file: "monitoring_agent.py"
+        action: "Run health checks"
+
+      - step: 5
+        file: "performance_benchmarking.py"
+        action: "Run benchmarks"
+
+  deploying_to_production:
+    sequence:
+      - step: 1
+        file: "deployment_workflow.md"
+        action: "Follow deployment steps"
+
+      - step: 2
+        file: "deployment_checklist_graph.yaml"
+        action: "Use as checklist"
+
+      - step: 3
+        file: "backup_validator.py"
+        action: "Validate backup before deployment"
+
+      - step: 4
+        file: "deployment_automation.sh"
+        action: "Run automated deployment"
+
+      - step: 5
+        file: "deployment_history.md"
+        action: "Log deployment results"
+
+  responding_to_incident:
+    sequence:
+      - step: 1
+        file: "error_recovery_decision_tree.yaml"
+        action: "Triage incident"
+
+      - step: 2
+        file: "incident_report_template.md"
+        action: "Document incident"
+
+      - step: 3
+        file: "celery_worker_crash_log.md"
+        action: "Reference similar incident"
+
+      - step: 4
+        file: "incident_response_workflow.md"
+        action: "Follow response workflow"
+
+      - step: 5
+        file: "Dynamic_Knowledge/Logs/"
+        action: "Log incident resolution"
+
+  adding_new_document_type:
+    sequence:
+      - step: 1
+        file: "document_processing_template.md"
+        action: "Use as implementation template"
+
+      - step: 2
+        file: "invoice_entity_model.yaml"
+        action: "Reference entity model example"
+
+      - step: 3
+        file: "document_entity_validator.py"
+        action: "Implement validator"
+
+      - step: 4
+        file: "ocr_backend_decision_tree.yaml"
+        action: "Update routing logic"
+
+      - step: 5
+        file: "document_upload_workflow.md"
+        action: "Test upload workflow"
+
+  gdpr_compliance_audit:
+    sequence:
+      - step: 1
+        file: "SECURITY_MOC.md"
+        action: "Review compliance requirements"
+
+      - step: 2
+        file: "gdpr_compliance_checker.py"
+        action: "Run automated audit"
+
+      - step: 3
+        file: "gdpr_compliance_audit_log.md"
+        action: "Review previous audit"
+
+      - step: 4
+        file: "gdpr_data_export_workflow.md"
+        action: "Test data export (Art. 15)"
+
+      - step: 5
+        file: "Dynamic_Knowledge/Logs/"
+        action: "Log audit results"
+
+# ============================================================================
+# File Statistics
+# ============================================================================
+
+statistics:
+  by_layer:
+    static_knowledge:
+      files: 27
+      total_lines: "~35,000"
+      avg_file_size: 1296
+
+    dynamic_knowledge:
+      files: 18
+      total_lines: "~25,000"
+      avg_file_size: 1389
+
+    relations:
+      files: 24
+      total_lines: "~28,000"
+      avg_file_size: 1167
+
+    execution_layer:
+      files: 22
+      total_lines: "~12,000"
+      avg_file_size: 545
+
+    meta_layer:
+      files: 18
+      total_lines: "~20,000"
+      avg_file_size: 1111
+
+  by_file_type:
+    markdown:
+      count: 52
+      purpose: "Documentation, workflows, logs"
+
+    yaml:
+      count: 38
+      purpose: "Decision trees, configs, metrics"
+
+    python:
+      count: 19
+      purpose: "Validators, agents, scripts"
+
+  cross_reference_density:
+    total_links: 327
+    avg_links_per_file: 3.0
+    most_linked: "api_endpoints_index.yaml (25 incoming)"
+    orphan_files: 0
+
+# ============================================================================
+# Top 15 Most Referenced Files
+# ============================================================================
+
+most_referenced_files:
+  - rank: 1
+    file: "api_endpoints_index.yaml"
+    layer: "Meta_Layer"
+    references: 25
+    description: "Complete API documentation"
+
+  - rank: 2
+    file: "ADR_003_ocr_backend_selection.md"
+    layer: "Static_Knowledge"
+    references: 18
+    description: "OCR strategy decision"
+
+  - rank: 3
+    file: "deployment_workflow.md"
+    layer: "Relations"
+    references: 15
+    description: "CI/CD workflow"
+
+  - rank: 4
+    file: "PERFORMANCE_MOC.md"
+    layer: "Meta_Layer"
+    references: 12
+    description: "Performance hub"
+
+  - rank: 5
+    file: "gdpr_compliance_checker.py"
+    layer: "Execution_Layer"
+    references: 10
+    description: "GDPR automation"
+
+  - rank: 6
+    file: "ocr_backend_decision_tree.yaml"
+    layer: "Relations"
+    references: 10
+    description: "Backend selection logic"
+
+  - rank: 7
+    file: "gpu_memory_optimization_experiment.yaml"
+    layer: "Dynamic_Knowledge"
+    references: 9
+    description: "GPU optimization results"
+
+  - rank: 8
+    file: "ADR_004_german_nlp_approach.md"
+    layer: "Static_Knowledge"
+    references: 8
+    description: "German NLP design"
+
+  - rank: 9
+    file: "deployment_checklist_graph.yaml"
+    layer: "Meta_Layer"
+    references: 8
+    description: "Deployment graph"
+
+  - rank: 10
+    file: "monitoring_agent.py"
+    layer: "Execution_Layer"
+    references: 7
+    description: "Health monitoring"
+
+  - rank: 11
+    file: "error_recovery_decision_tree.yaml"
+    layer: "Relations"
+    references: 7
+    description: "Error recovery logic"
+
+  - rank: 12
+    file: "celery_worker_crash_log.md"
+    layer: "Dynamic_Knowledge"
+    references: 6
+    description: "Incident example"
+
+  - rank: 13
+    file: "backup_validator.py"
+    layer: "Execution_Layer"
+    references: 6
+    description: "Backup verification"
+
+  - rank: 14
+    file: "document_processing_template.md"
+    layer: "Static_Knowledge"
+    references: 5
+    description: "Implementation template"
+
+  - rank: 15
+    file: "gdpr_compliance_audit_log.md"
+    layer: "Dynamic_Knowledge"
+    references: 5
+    description: "GDPR audit report"
+
+# ============================================================================
+# Quick Navigation Shortcuts
+# ============================================================================
+
+quick_access:
+  critical_files:
+    - "KNOWLEDGE_ARCHITECTURE.md"
+    - "CLAUDE.md"
+    - "api_endpoints_index.yaml"
+    - "ADR_003_ocr_backend_selection.md"
+    - "deployment_workflow.md"
+    - "deployment_checklist_graph.yaml"
+    - "gdpr_compliance_checker.py"
+    - "monitoring_agent.py"
+
+  by_topic:
+    gpu_optimization:
+      - "gpu_memory_optimization_experiment.yaml"
+      - "gpu_requirements.md"
+      - "gpu_diagnostics.py"
+      - "ADR_003_ocr_backend_selection.md"
+
+    german_language:
+      - "ADR_004_german_nlp_approach.md"
+      - "german_entity_validator.py"
+      - "german_business_entities.yaml"
+      - "german_text_processing_spec.md"
+      - "german_terminology_index.yaml"
+
+    gdpr_compliance:
+      - "SECURITY_MOC.md"
+      - "gdpr_compliance_checker.py"
+      - "gdpr_compliance_audit_log.md"
+      - "gdpr_data_export_workflow.md"
+      - "gdpr_retention_agent.py"
+      - "gdpr_compliance_graph.yaml"
+
+    deployment:
+      - "DEPLOYMENT_MOC.md"
+      - "deployment_workflow.md"
+      - "deployment_checklist_graph.yaml"
+      - "deployment_automation.sh"
+      - "deployment_history.md"
+
+    performance:
+      - "PERFORMANCE_MOC.md"
+      - "gpu_memory_optimization_experiment.yaml"
+      - "api_latency_metrics.yaml"
+      - "performance_benchmarking.py"
+      - "performance_profiler_agent.py"
+
+---
+
+**Index Version:** 2.0
+**Files Indexed:** 109
+**Total Lines:** ~120,000
+**Last Updated:** 2025-01-22
+**Cross-References:** 327+

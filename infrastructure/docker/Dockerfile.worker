@@ -1,0 +1,40 @@
+# Dockerfile - Celery Worker (GPU-Accelerated)
+# Optimized for OCR processing with NVIDIA GPU
+# Created: 2024-11-22
+
+FROM nvidia/cuda:12.0.0-cudnn8-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Berlin
+
+# System dependencies
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3-pip \
+    git \
+    libpq-dev \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python 3.11
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
+
+# Upgrade pip
+RUN python -m pip install --no-cache-dir --upgrade pip
+
+WORKDIR /app
+
+# Copy requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY app/ ./app/
+COPY Static_Knowledge/ ./Static_Knowledge/
+
+# Create directories
+RUN mkdir -p Dynamic_Knowledge/Logs /tmp/celery
+
+# Celery worker
+CMD ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info", "--concurrency=1", "--pool=solo"]

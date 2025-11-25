@@ -1,0 +1,532 @@
+# Development Tools Bookmarks
+
+bookmark_collection_id: dev_tools_001
+category: development
+last_updated: "2025-11-22"
+status: active
+
+description: |
+  Curated collection of essential development tools, libraries, and resources
+  for working on the Ablage-System.
+
+# ============================================================================
+# Python Development
+# ============================================================================
+
+python_tools:
+  language_documentation:
+    - name: "Python Official Docs"
+      url: "https://docs.python.org/3.11/"
+      description: "Python 3.11 documentation"
+      use_for: "Language reference, standard library"
+      rating: 5
+
+    - name: "Python Developer's Guide"
+      url: "https://devguide.python.org/"
+      description: "Contributing to CPython"
+      use_for: "Advanced Python internals"
+      rating: 4
+
+  package_management:
+    - name: "PyPI"
+      url: "https://pypi.org/"
+      description: "Python Package Index"
+      use_for: "Finding packages, checking versions"
+      rating: 5
+
+    - name: "Poetry"
+      url: "https://python-poetry.org/"
+      description: "Dependency management and packaging"
+      use_for: "Alternative to pip + requirements.txt"
+      rating: 4
+
+  code_quality:
+    - name: "Ruff Documentation"
+      url: "https://docs.astral.sh/ruff/"
+      description: "Fast Python linter and formatter"
+      use_for: "Linting, formatting, import sorting"
+      rating: 5
+
+    - name: "mypy Documentation"
+      url: "https://mypy.readthedocs.io/"
+      description: "Static type checker for Python"
+      use_for: "Type checking, strict mode configuration"
+      rating: 5
+
+    - name: "Bandit"
+      url: "https://bandit.readthedocs.io/"
+      description: "Security linter for Python"
+      use_for: "Finding security issues in code"
+      rating: 4
+
+  testing:
+    - name: "pytest Documentation"
+      url: "https://docs.pytest.org/"
+      description: "Python testing framework"
+      use_for: "Writing and running tests"
+      rating: 5
+
+    - name: "pytest-asyncio"
+      url: "https://pytest-asyncio.readthedocs.io/"
+      description: "Async support for pytest"
+      use_for: "Testing async code"
+      rating: 5
+
+    - name: "pytest-cov"
+      url: "https://pytest-cov.readthedocs.io/"
+      description: "Coverage plugin for pytest"
+      use_for: "Measuring test coverage"
+      rating: 4
+
+    - name: "Locust Documentation"
+      url: "https://docs.locust.io/"
+      description: "Load testing tool"
+      use_for: "Performance and load testing"
+      rating: 4
+
+# ============================================================================
+# FastAPI & Web Development
+# ============================================================================
+
+fastapi_resources:
+  official:
+    - name: "FastAPI Documentation"
+      url: "https://fastapi.tiangolo.com/"
+      description: "Official FastAPI docs (excellent!)"
+      use_for: "Everything FastAPI"
+      rating: 5
+      notes: "Best API framework docs we've seen"
+
+    - name: "FastAPI Tutorial"
+      url: "https://fastapi.tiangolo.com/tutorial/"
+      description: "Step-by-step FastAPI tutorial"
+      use_for: "Learning FastAPI from scratch"
+      rating: 5
+
+    - name: "FastAPI Advanced User Guide"
+      url: "https://fastapi.tiangolo.com/advanced/"
+      description: "Advanced FastAPI features"
+      use_for: "Dependencies, middleware, testing"
+      rating: 5
+
+  related:
+    - name: "Pydantic Documentation"
+      url: "https://docs.pydantic.dev/"
+      description: "Data validation using Python type annotations"
+      use_for: "Schema validation, serialization"
+      rating: 5
+
+    - name: "Starlette Documentation"
+      url: "https://www.starlette.io/"
+      description: "ASGI framework (FastAPI is built on this)"
+      use_for: "Understanding low-level async web concepts"
+      rating: 4
+
+    - name: "Uvicorn Documentation"
+      url: "https://www.uvicorn.org/"
+      description: "ASGI server"
+      use_for: "Running FastAPI in production"
+      rating: 4
+
+# ============================================================================
+# Database & ORM
+# ============================================================================
+
+database_resources:
+  postgresql:
+    - name: "PostgreSQL Documentation"
+      url: "https://www.postgresql.org/docs/16/"
+      description: "PostgreSQL 16 official docs"
+      use_for: "SQL reference, performance tuning"
+      rating: 5
+
+    - name: "PostgreSQL Performance Optimization"
+      url: "https://www.postgresql.org/docs/16/performance-tips.html"
+      description: "Official performance tips"
+      use_for: "Query optimization, indexing"
+      rating: 5
+
+    - name: "EXPLAIN Visualizer"
+      url: "https://explain.depesz.com/"
+      description: "Visualize PostgreSQL EXPLAIN plans"
+      use_for: "Understanding query performance"
+      rating: 5
+      notes: "Essential for debugging slow queries"
+
+  sqlalchemy:
+    - name: "SQLAlchemy 2.0 Documentation"
+      url: "https://docs.sqlalchemy.org/en/20/"
+      description: "SQLAlchemy ORM docs"
+      use_for: "ORM, async queries, migrations"
+      rating: 5
+
+    - name: "SQLAlchemy 2.0 Tutorial"
+      url: "https://docs.sqlalchemy.org/en/20/tutorial/"
+      description: "Unified tutorial for SQLAlchemy 2.0"
+      use_for: "Learning new SQLAlchemy API"
+      rating: 5
+
+    - name: "Alembic Documentation"
+      url: "https://alembic.sqlalchemy.org/"
+      description: "Database migration tool"
+      use_for: "Schema migrations"
+      rating: 4
+
+  redis:
+    - name: "Redis Documentation"
+      url: "https://redis.io/documentation"
+      description: "Redis official docs"
+      use_for: "Commands reference, data structures"
+      rating: 5
+
+    - name: "redis-py Documentation"
+      url: "https://redis-py.readthedocs.io/"
+      description: "Python Redis client"
+      use_for: "Using Redis from Python"
+      rating: 4
+
+    - name: "Redis Best Practices"
+      url: "https://redis.io/docs/manual/patterns/"
+      description: "Common Redis patterns"
+      use_for: "Caching strategies, pub/sub patterns"
+      rating: 5
+
+# ============================================================================
+# Machine Learning & OCR
+# ============================================================================
+
+ml_ocr_resources:
+  pytorch:
+    - name: "PyTorch Documentation"
+      url: "https://pytorch.org/docs/stable/"
+      description: "PyTorch official docs"
+      use_for: "Deep learning, GPU operations"
+      rating: 5
+
+    - name: "PyTorch Performance Tuning Guide"
+      url: "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
+      description: "Optimize PyTorch performance"
+      use_for: "GPU optimization, faster training/inference"
+      rating: 5
+
+    - name: "PyTorch CUDA Semantics"
+      url: "https://pytorch.org/docs/stable/notes/cuda.html"
+      description: "GPU/CUDA usage in PyTorch"
+      use_for: "Understanding GPU memory management"
+      rating: 5
+      notes: "Essential for debugging OOM errors"
+
+  transformers:
+    - name: "Hugging Face Transformers"
+      url: "https://huggingface.co/docs/transformers/"
+      description: "Transformers library documentation"
+      use_for: "Loading pre-trained models"
+      rating: 5
+
+    - name: "Hugging Face Model Hub"
+      url: "https://huggingface.co/models"
+      description: "Pre-trained model repository"
+      use_for: "Finding OCR and NLP models"
+      rating: 5
+
+  ocr_specific:
+    - name: "GOT-OCR 2.0 Repository"
+      url: "https://github.com/ucaslcl/GOT-OCR2.0"
+      description: "General OCR Theory model"
+      use_for: "OCR backend implementation"
+      rating: 4
+
+    - name: "Surya Repository"
+      url: "https://github.com/VikParuchuri/surya"
+      description: "Multilingual OCR toolkit"
+      use_for: "Layout-aware OCR"
+      rating: 4
+
+    - name: "Docling Repository"
+      url: "https://github.com/DS4SD/docling"
+      description: "Document parsing library"
+      use_for: "Structured document extraction"
+      rating: 4
+
+  spacy:
+    - name: "spaCy Documentation"
+      url: "https://spacy.io/usage"
+      description: "Industrial-strength NLP library"
+      use_for: "German text processing, NER"
+      rating: 5
+
+    - name: "spaCy Models for German"
+      url: "https://spacy.io/models/de"
+      description: "Pre-trained German language models"
+      use_for: "German NLP tasks"
+      rating: 5
+
+# ============================================================================
+# DevOps & Infrastructure
+# ============================================================================
+
+devops_resources:
+  docker:
+    - name: "Docker Documentation"
+      url: "https://docs.docker.com/"
+      description: "Docker official docs"
+      use_for: "Containerization, Dockerfile best practices"
+      rating: 5
+
+    - name: "Docker Compose Reference"
+      url: "https://docs.docker.com/compose/compose-file/"
+      description: "Compose file specification"
+      use_for: "Multi-container applications"
+      rating: 5
+
+    - name: "NVIDIA Container Toolkit"
+      url: "https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/"
+      description: "GPU support for Docker"
+      use_for: "Running GPU workloads in containers"
+      rating: 5
+      notes: "Essential for our GPU workers"
+
+  terraform:
+    - name: "Terraform Documentation"
+      url: "https://www.terraform.io/docs"
+      description: "Infrastructure as Code"
+      use_for: "Provisioning infrastructure"
+      rating: 4
+
+    - name: "Terraform Registry"
+      url: "https://registry.terraform.io/"
+      description: "Terraform providers and modules"
+      use_for: "Finding reusable modules"
+      rating: 4
+
+  ansible:
+    - name: "Ansible Documentation"
+      url: "https://docs.ansible.com/"
+      description: "Configuration management and automation"
+      use_for: "Server configuration, deployments"
+      rating: 4
+
+  monitoring:
+    - name: "Prometheus Documentation"
+      url: "https://prometheus.io/docs/"
+      description: "Monitoring and alerting toolkit"
+      use_for: "Metrics collection, alerting"
+      rating: 5
+
+    - name: "Grafana Documentation"
+      url: "https://grafana.com/docs/"
+      description: "Visualization and dashboards"
+      use_for: "Creating dashboards, alerts"
+      rating: 5
+
+    - name: "structlog Documentation"
+      url: "https://www.structlog.org/"
+      description: "Structured logging for Python"
+      use_for: "JSON logging, log enrichment"
+      rating: 4
+
+# ============================================================================
+# German Language & GDPR
+# ============================================================================
+
+german_gdpr_resources:
+  german_language:
+    - name: "German Grammar Reference"
+      url: "https://www.duden.de/"
+      description: "Duden - German language authority"
+      use_for: "German grammar, spelling, business terms"
+      rating: 5
+
+    - name: "Unicode German Characters"
+      url: "https://unicode.org/charts/PDF/U0080.pdf"
+      description: "Latin-1 Supplement (includes umlauts)"
+      use_for: "Understanding German character encoding"
+      rating: 3
+
+  gdpr_compliance:
+    - name: "GDPR Official Text"
+      url: "https://gdpr-info.eu/"
+      description: "Full GDPR text with annotations"
+      use_for: "Understanding GDPR requirements"
+      rating: 5
+
+    - name: "German Federal Data Protection Act"
+      url: "https://www.gesetze-im-internet.de/bdsg_2018/"
+      description: "BDSG (Bundesdatenschutzgesetz)"
+      use_for: "German-specific data protection"
+      rating: 4
+
+    - name: "BSI IT-Grundschutz"
+      url: "https://www.bsi.bund.de/EN/Topics/ITGrundschutz/"
+      description: "German IT security standards"
+      use_for: "Security best practices for Germany"
+      rating: 4
+
+# ============================================================================
+# Learning Resources
+# ============================================================================
+
+learning_resources:
+  async_python:
+    - name: "asyncio Documentation"
+      url: "https://docs.python.org/3/library/asyncio.html"
+      description: "Python async/await reference"
+      use_for: "Understanding async programming"
+      rating: 5
+
+    - name: "Real Python - Async IO"
+      url: "https://realpython.com/async-io-python/"
+      description: "Comprehensive async tutorial"
+      use_for: "Learning async from scratch"
+      rating: 5
+
+  api_design:
+    - name: "API Design Guidelines (Microsoft)"
+      url: "https://github.com/microsoft/api-guidelines"
+      description: "Microsoft REST API guidelines"
+      use_for: "API design best practices"
+      rating: 4
+
+    - name: "OpenAPI Specification"
+      url: "https://swagger.io/specification/"
+      description: "API documentation standard"
+      use_for: "Writing API specs"
+      rating: 4
+
+  system_design:
+    - name: "The Twelve-Factor App"
+      url: "https://12factor.net/"
+      description: "Methodology for building SaaS apps"
+      use_for: "Application architecture"
+      rating: 5
+
+    - name: "System Design Primer"
+      url: "https://github.com/donnemartin/system-design-primer"
+      description: "Learning system design"
+      use_for: "Scalability, architecture patterns"
+      rating: 5
+
+# ============================================================================
+# Online Tools
+# ============================================================================
+
+online_tools:
+  json_tools:
+    - name: "JSONLint"
+      url: "https://jsonlint.com/"
+      description: "JSON validator and formatter"
+      use_for: "Validating JSON"
+      rating: 4
+
+    - name: "jq play"
+      url: "https://jqplay.org/"
+      description: "Online jq playground"
+      use_for: "Testing jq queries"
+      rating: 4
+
+  regex_tools:
+    - name: "regex101"
+      url: "https://regex101.com/"
+      description: "Regex tester with explanation"
+      use_for: "Building and testing regexes"
+      rating: 5
+      notes: "Supports Python regex flavor"
+
+  api_testing:
+    - name: "Postman"
+      url: "https://www.postman.com/"
+      description: "API development environment"
+      use_for: "Testing APIs"
+      rating: 4
+
+    - name: "httpie"
+      url: "https://httpie.io/"
+      description: "User-friendly HTTP CLI"
+      use_for: "Command-line API testing"
+      rating: 4
+
+  code_sharing:
+    - name: "Carbon"
+      url: "https://carbon.now.sh/"
+      description: "Create beautiful code screenshots"
+      use_for: "Sharing code snippets"
+      rating: 4
+
+  database_tools:
+    - name: "pgAdmin"
+      url: "https://www.pgadmin.org/"
+      description: "PostgreSQL administration GUI"
+      use_for: "Database management"
+      rating: 4
+
+    - name: "RedisInsight"
+      url: "https://redis.com/redis-enterprise/redis-insight/"
+      description: "Redis GUI and CLI"
+      use_for: "Redis debugging and monitoring"
+      rating: 4
+
+# ============================================================================
+# Community & Forums
+# ============================================================================
+
+community_resources:
+  - name: "Stack Overflow"
+    url: "https://stackoverflow.com/"
+    description: "Q&A for developers"
+    tags: ["python", "fastapi", "postgresql", "docker"]
+    rating: 5
+
+  - name: "Reddit - r/Python"
+    url: "https://www.reddit.com/r/Python/"
+    description: "Python community"
+    rating: 4
+
+  - name: "FastAPI Discussions"
+    url: "https://github.com/tiangolo/fastapi/discussions"
+    description: "Official FastAPI community"
+    rating: 4
+
+  - name: "PostgreSQL Mailing Lists"
+    url: "https://www.postgresql.org/list/"
+    description: "PostgreSQL community support"
+    rating: 3
+
+# ============================================================================
+# Newsletters & Blogs
+# ============================================================================
+
+newsletters:
+  - name: "Python Weekly"
+    url: "https://www.pythonweekly.com/"
+    description: "Weekly Python newsletter"
+    frequency: "weekly"
+    rating: 5
+
+  - name: "Real Python"
+    url: "https://realpython.com/"
+    description: "Python tutorials and articles"
+    frequency: "irregular"
+    rating: 5
+
+  - name: "PyCoders Weekly"
+    url: "https://pycoders.com/"
+    description: "Weekly Python newsletter"
+    frequency: "weekly"
+    rating: 4
+
+usage_notes:
+  - "All URLs checked as of 2025-11-22"
+  - "Ratings: 5 = Essential, 4 = Highly Recommended, 3 = Useful"
+  - "Add new bookmarks as you discover useful resources"
+
+related_files:
+  - "Static_Knowledge/Prompts/code_review_prompts.yaml"
+  - "Meta_Layer/MOCs/DEVELOPMENT_MOC.md"
+  - "Dynamic_Knowledge/Bookmarks/external_resources.yaml"
+
+tags:
+  - bookmarks
+  - resources
+  - documentation
+  - tools
+  - learning

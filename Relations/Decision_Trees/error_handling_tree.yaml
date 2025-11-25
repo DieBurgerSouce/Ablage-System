@@ -1,0 +1,58 @@
+# Error Handling Decision Tree
+
+decision_tree:
+  root:
+    question: "What error occurred?"
+    branches:
+      - condition: "error_type == 'torch.cuda.OutOfMemoryError'"
+        action: handle_oom
+
+      - condition: "error_type == 'ConnectionError'"
+        action: handle_connection_error
+
+      - condition: "error_type == 'ValidationError'"
+        action: handle_validation_error
+
+      - condition: "error_type == 'FileNotFoundError'"
+        action: handle_file_not_found
+
+      - condition: "default"
+        action: handle_generic_error
+
+  handle_oom:
+    steps:
+      - "Clear CUDA cache: torch.cuda.empty_cache()"
+      - "Reduce batch size by 50%"
+      - "Retry processing"
+    fallback:
+      condition: "Still OOM after retry"
+      action: "Switch to CPU backend (Surya)"
+
+  handle_connection_error:
+    question: "Which service is unreachable?"
+    branches:
+      - condition: "service == 'database'"
+        action: queue_for_later
+      - condition: "service == 'redis'"
+        action: skip_cache_use_direct
+      - condition: "service == 'minio'"
+        action: use_local_storage_temp
+
+  handle_validation_error:
+    steps:
+      - "Log validation errors"
+      - "Return HTTP 422 with details"
+      - "Do NOT retry (permanent error)"
+
+  handle_file_not_found:
+    steps:
+      - "Check if document was deleted"
+      - "Return HTTP 404"
+      - "Clean up related records"
+
+  handle_generic_error:
+    steps:
+      - "Log error with full context"
+      - "Return HTTP 500"
+      - "Alert monitoring system"
+      - "Do NOT expose internal error details to user"

@@ -1,0 +1,56 @@
+{
+  "name": "ablage-system-ocr",
+  "version": "1.0.0",
+  "description": "Enterprise-grade German document processing with GPU-accelerated OCR",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "release": "semantic-release",
+    "release:dry-run": "semantic-release --dry-run",
+    "release:ci": "semantic-release --ci",
+    "prepare": "husky install || true"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ablage-system/ablage-system-ocr.git"
+  },
+  "keywords": [
+    "ocr",
+    "german",
+    "document-processing",
+    "gpu-acceleration",
+    "deepseek",
+    "got-ocr",
+    "surya",
+    "fastapi",
+    "docker",
+    "enterprise"
+  ],
+  "author": "Ablage-System Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ablage-system/ablage-system-ocr/issues"
+  },
+  "homepage": "https://docs.ablage-system.local",
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^11.1.0",
+    "@semantic-release/exec": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^9.2.6",
+    "@semantic-release/npm": "^11.0.2",
+    "@semantic-release/release-notes-generator": "^12.1.0",
+    "conventional-changelog-conventionalcommits": "^7.0.2",
+    "husky": "^8.0.3",
+    "semantic-release": "^22.0.12"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  }
+}

@@ -1,0 +1,60 @@
+# Deployment Hooks
+
+hooks:
+  pre_deployment:
+    - name: run_tests
+      command: "pytest tests/ -v"
+      fail_on_error: true
+
+    - name: type_check
+      command: "mypy app/"
+      fail_on_error: true
+
+    - name: lint_check
+      command: "ruff check ."
+      fail_on_error: false  # Warning only
+
+    - name: check_gpu_drivers
+      command: "nvidia-smi"
+      fail_on_error: true
+
+    - name: backup_database
+      command: "pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql"
+      fail_on_error: true
+
+  post_deployment:
+    - name: run_migrations
+      command: "alembic upgrade head"
+      fail_on_error: true
+
+    - name: health_check
+      command: "curl -f http://localhost:8000/health"
+      retry_count: 5
+      retry_delay_seconds: 10
+
+    - name: verify_gpu_access
+      command: 'python -c "import torch; assert torch.cuda.is_available()"'
+      fail_on_error: true
+
+    - name: smoke_tests
+      command: "pytest tests/test_basic.py -v"
+      fail_on_error: true
+
+    - name: restart_services
+      command: "sudo systemctl restart ablage-backend ablage-worker"
+      fail_on_error: true
+
+  on_deployment_failure:
+    - name: rollback
+      command: "git checkout $PREVIOUS_VERSION && docker-compose up -d"
+    - name: restore_database
+      command: "psql $DATABASE_URL < backup_latest.sql"
+    - name: notify_team
+      command: "send_alert 'Deployment failed, rolled back'"
+
+  health_checks:
+    - endpoint: "/health"
+      interval_seconds: 30
+      timeout_seconds: 5
+      healthy_threshold: 2
+      unhealthy_threshold: 3

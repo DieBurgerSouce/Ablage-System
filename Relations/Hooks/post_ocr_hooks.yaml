@@ -1,0 +1,70 @@
+# Post-OCR Processing Hooks
+
+hooks:
+  on_ocr_complete:
+    triggers:
+      - "OCR processing finished successfully"
+    actions:
+      - hook: validate_german_text
+        priority: 1
+        description: "Validate umlauts and business terms"
+
+      - hook: extract_template_fields
+        priority: 2
+        description: "Extract structured data using template"
+
+      - hook: validate_compliance
+        priority: 3
+        description: "Check §14 UStG compliance for invoices"
+
+      - hook: store_results
+        priority: 4
+        description: "Save to database and MinIO"
+
+      - hook: clear_gpu_cache
+        priority: 5
+        description: "Free GPU memory"
+
+      - hook: log_gdpr_access
+        priority: 6
+        description: "GDPR Art. 30 logging"
+
+  on_ocr_failure:
+    triggers:
+      - "OCR processing failed"
+    actions:
+      - hook: log_error
+        priority: 1
+      - hook: attempt_fallback
+        priority: 2
+      - hook: notify_user
+        priority: 3
+      - hook: cleanup_temp_files
+        priority: 4
+
+  on_template_extraction_complete:
+    triggers:
+      - "Template extraction finished"
+    actions:
+      - hook: validate_required_fields
+        condition: "template.required_fields exist"
+      - hook: validate_math
+        condition: "template.type == 'rechnung'"
+      - hook: flag_low_confidence
+        condition: "overall_confidence < 0.85"
+
+  on_validation_failure:
+    triggers:
+      - "Field validation failed"
+    actions:
+      - hook: queue_for_manual_review
+      - hook: log_validation_errors
+      - hook: notify_admin
+
+implementation_example: |
+  from app.hooks import HookManager
+
+  @hook_manager.on("ocr_complete")
+  async def my_custom_hook(result):
+      # Custom processing
+      logger.info("OCR complete", doc_id=result.document_id)

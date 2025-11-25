@@ -1,0 +1,852 @@
+# Technology Stack Graph - Ablage-System
+# Complete technology stack visualization with relationships and versions
+# Version: 1.0.0
+# Last Updated: 2025-11-22
+
+metadata:
+  title: "Ablage-System Technology Stack Graph"
+  description: "Complete technology stack with relationships, versions, and dependency information"
+  version: "1.0.0"
+  last_updated: "2025-11-22"
+  owner: "Architecture Team"
+  review_cycle: "quarterly"
+
+# ============================================================================
+# Technology Stack Visualization (Mermaid)
+# ============================================================================
+
+architecture_diagram: |
+  ```mermaid
+  graph TB
+      subgraph Client_Layer
+          Frontend[Frontend<br/>Vue/React]
+          CLI[CLI Tools]
+      end
+
+      subgraph API_Layer
+          FastAPI[FastAPI 0.110+<br/>Python 3.11]
+          Auth[JWT Auth<br/>bcrypt]
+          Validator[Request Validators<br/>Pydantic v2]
+      end
+
+      subgraph Processing_Layer
+          Celery[Celery 5.3+<br/>Task Queue]
+          OCR_Orchestrator[OCR Orchestrator]
+
+          subgraph OCR_Backends
+              DeepSeek[DeepSeek-Janus-Pro<br/>1.3B params<br/>12GB VRAM]
+              GOT[GOT-OCR 2.0<br/>600M params<br/>10GB VRAM]
+              Surya[Surya + Docling<br/>CPU/GPU<br/>0GB VRAM]
+          end
+      end
+
+      subgraph Data_Layer
+          PostgreSQL[PostgreSQL 16<br/>pgvector]
+          Redis[Redis 7.2<br/>Cache + Broker]
+          MinIO[MinIO<br/>S3-compatible Storage]
+      end
+
+      subgraph GPU_Layer
+          RTX4080[NVIDIA RTX 4080<br/>16GB VRAM<br/>CUDA 12.2]
+          CUDA[CUDA Toolkit 12.2<br/>cuDNN 8.9+]
+      end
+
+      subgraph Infrastructure_Layer
+          Docker[Docker 24.x<br/>Compose]
+          Terraform[Terraform 1.6+<br/>IaC]
+          Ansible[Ansible 2.15+<br/>Config Mgmt]
+          Prometheus[Prometheus<br/>Metrics]
+          Grafana[Grafana<br/>Dashboards]
+      end
+
+      Frontend --> FastAPI
+      CLI --> FastAPI
+      FastAPI --> Auth
+      FastAPI --> Validator
+      FastAPI --> Celery
+      FastAPI --> PostgreSQL
+      FastAPI --> Redis
+
+      Celery --> Redis
+      Celery --> OCR_Orchestrator
+
+      OCR_Orchestrator --> DeepSeek
+      OCR_Orchestrator --> GOT
+      OCR_Orchestrator --> Surya
+
+      DeepSeek --> RTX4080
+      GOT --> RTX4080
+      Surya --> RTX4080
+
+      RTX4080 --> CUDA
+
+      DeepSeek --> MinIO
+      GOT --> MinIO
+      Surya --> MinIO
+
+      FastAPI --> MinIO
+
+      Prometheus --> FastAPI
+      Prometheus --> PostgreSQL
+      Prometheus --> Redis
+      Grafana --> Prometheus
+
+      Docker --> FastAPI
+      Docker --> Celery
+      Docker --> PostgreSQL
+      Docker --> Redis
+      Docker --> MinIO
+  ```
+
+# ============================================================================
+# Technology Stack by Layer
+# ============================================================================
+
+technology_layers:
+  # --------------------------------------------------------------------------
+  # 1. Client Layer
+  # --------------------------------------------------------------------------
+  client_layer:
+    description: "User-facing interfaces and tools"
+    technologies:
+      frontend_framework:
+        name: "Frontend Framework"
+        options:
+          - name: "Vue.js"
+            version: "3.x"
+            status: "evaluated"
+            pros:
+              - "Lightweight and fast"
+              - "Good TypeScript support"
+              - "Easy to learn"
+            cons:
+              - "Smaller ecosystem than React"
+          - name: "React"
+            version: "18.x"
+            status: "evaluated"
+            pros:
+              - "Large ecosystem"
+              - "Strong TypeScript support"
+              - "Popular and well-documented"
+            cons:
+              - "Steeper learning curve"
+        decision: "To be confirmed based on repository analysis"
+
+      display_modes:
+        name: "Display Mode System"
+        version: "custom"
+        modes:
+          - "Dark Mode (default)"
+          - "Light Mode"
+          - "Whitescreen Mode (high contrast)"
+          - "Blackscreen Mode (inverted)"
+        accessibility: "WCAG 2.1 AA compliant"
+
+      cli_tools:
+        name: "CLI Tools"
+        technologies:
+          - name: "Python Click"
+            version: "8.x"
+            purpose: "CLI interface"
+          - name: "Rich"
+            version: "13.x"
+            purpose: "Terminal formatting"
+
+    dependencies:
+      - "API Layer (REST)"
+      - "WebSocket support for real-time updates"
+
+  # --------------------------------------------------------------------------
+  # 2. API Layer
+  # --------------------------------------------------------------------------
+  api_layer:
+    description: "REST API and request handling"
+    technologies:
+      web_framework:
+        name: "FastAPI"
+        version: "0.110+"
+        language: "Python 3.11+"
+        key_features:
+          - "Async/await support (asyncio)"
+          - "Automatic OpenAPI documentation"
+          - "Type hints with Pydantic"
+          - "High performance (Starlette + Uvicorn)"
+        performance:
+          requests_per_second: "1000+"
+          latency_p95: "< 500ms"
+
+      validation:
+        name: "Pydantic"
+        version: "2.x"
+        purpose: "Request/response validation"
+        models:
+          - "DocumentUploadRequest"
+          - "GermanBusinessDataRequest"
+          - "SearchRequest"
+        custom_validators:
+          - "IBAN validation (mod 97 checksum)"
+          - "USt-IdNr validation (DE + 9 digits)"
+          - "German phone number validation"
+          - "German postal code validation"
+        reference: "Execution_Layer/Validators/api_request_validator.py"
+
+      authentication:
+        name: "JWT + bcrypt"
+        jwt_library: "PyJWT"
+        version: "2.x"
+        token_types:
+          access_token:
+            lifetime: "15 minutes"
+            algorithm: "HS256"
+            storage: "httpOnly cookie"
+          refresh_token:
+            lifetime: "7 days"
+            rotation: true
+        password_hashing:
+          algorithm: "bcrypt"
+          cost_factor: 12
+
+      rate_limiting:
+        name: "Redis-based Rate Limiter"
+        implementation: "Custom (api_request_validator.py:389)"
+        strategy: "Sliding window"
+        tiers:
+          free: "10 req/min"
+          standard: "60 req/min"
+          enterprise: "300 req/min"
+          admin: "1000 req/min"
+
+      cors:
+        middleware: "FastAPI CORS"
+        allowed_origins:
+          - "https://app.ablage.company.de"
+          - "https://admin.ablage.company.de"
+        allowed_methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
+
+    dependencies:
+      - "PostgreSQL (database)"
+      - "Redis (rate limiting + sessions)"
+      - "Celery (task queue)"
+      - "MinIO (file storage)"
+
+  # --------------------------------------------------------------------------
+  # 3. Processing Layer
+  # --------------------------------------------------------------------------
+  processing_layer:
+    description: "Async task processing and OCR"
+    technologies:
+      task_queue:
+        name: "Celery"
+        version: "5.3+"
+        broker: "Redis"
+        result_backend: "Redis"
+        pool_type: "solo (for GPU tasks)"
+        configuration:
+          task_serializer: "json"
+          result_serializer: "json"
+          accept_content: ["json"]
+          timezone: "Europe/Berlin"
+          enable_utc: true
+        monitoring:
+          tool: "Flower"
+          version: "2.x"
+          port: 5555
+        reference: "Dynamic_Knowledge/Learnings/celery_task_optimization.md"
+
+      ocr_orchestrator:
+        name: "OCR Backend Orchestrator"
+        purpose: "Context-dependent backend selection"
+        strategy:
+          - "DeepSeek: Complex layouts, tables, Fraktur fonts"
+          - "GOT-OCR: Fast processing, simple documents"
+          - "Surya: CPU fallback, layout analysis"
+        selection_factors:
+          - "Document complexity"
+          - "Language (German-specific)"
+          - "GPU availability"
+          - "Performance requirements"
+        reference: "Dynamic_Knowledge/Experiments/ocr_backend_comparison.md"
+
+      ocr_backends:
+        deepseek_janus_pro:
+          name: "DeepSeek-Janus-Pro"
+          version: "1.0"
+          parameters: "1.3B"
+          vram_required: "12GB"
+          performance:
+            accuracy_cer: "2.8%"
+            speed: "2.8s per page"
+            german_business_entities: "98.3%"
+          strengths:
+            - "Best accuracy for German documents"
+            - "Excellent table extraction"
+            - "Fraktur font support"
+          weaknesses:
+            - "Highest VRAM usage"
+            - "Slower than GOT-OCR"
+
+        got_ocr_2_0:
+          name: "GOT-OCR 2.0"
+          version: "2.0"
+          parameters: "600M"
+          vram_required: "10GB"
+          performance:
+            accuracy_cer: "5.9%"
+            speed: "0.8s per page"
+            german_business_entities: "94.4%"
+          strengths:
+            - "Fastest processing"
+            - "Lower VRAM usage"
+            - "Good for simple documents"
+          weaknesses:
+            - "Lower accuracy than DeepSeek"
+            - "Struggles with Fraktur"
+
+        surya_docling:
+          name: "Surya + Docling"
+          version: "Surya v1.1 + Docling v1.0"
+          parameters: "Variable"
+          vram_required: "0GB (CPU fallback available)"
+          performance:
+            accuracy_cer: "8.7%"
+            speed: "1.9s per page"
+            german_business_entities: "89.0%"
+          strengths:
+            - "CPU fallback available"
+            - "Excellent layout analysis"
+            - "Works without GPU"
+          weaknesses:
+            - "Lowest accuracy"
+            - "Slower on CPU"
+
+      german_nlp:
+        name: "German NLP Tools"
+        spacy:
+          model: "de_core_news_lg"
+          size: "546MB"
+          accuracy: "85.43% NER"
+          purpose: "Entity extraction"
+        transformers:
+          model: "deepset/gbert-large"
+          parameters: "335M"
+          f1_score: "87.4"
+          purpose: "Text classification"
+        reference: "Dynamic_Knowledge/Bookmarks/german_nlp_resources.yaml"
+
+    dependencies:
+      - "Redis (broker + result backend)"
+      - "MinIO (document storage)"
+      - "PostgreSQL (task metadata)"
+      - "NVIDIA RTX 4080 (GPU)"
+
+  # --------------------------------------------------------------------------
+  # 4. Data Layer
+  # --------------------------------------------------------------------------
+  data_layer:
+    description: "Data persistence and caching"
+    technologies:
+      database:
+        name: "PostgreSQL"
+        version: "16"
+        extensions:
+          - name: "pgvector"
+            version: "0.5+"
+            purpose: "Vector embeddings for semantic search"
+        connection:
+          driver: "asyncpg"
+          pool_size: 20
+          max_overflow: 40
+          statement_timeout: "30s"
+          idle_timeout: "60s"
+        features:
+          - "PITR (Point-in-Time Recovery)"
+          - "WAL archiving"
+          - "Replication (planned)"
+        security:
+          ssl: "required"
+          ssl_min_version: "TLSv1.3"
+          password_encryption: "scram-sha-256"
+        reference: "Static_Knowledge/SOPs/005_database_backup_restore.md"
+
+      orm:
+        name: "SQLAlchemy"
+        version: "2.0+"
+        mode: "async"
+        features:
+          - "Async queries with asyncpg"
+          - "Connection pooling"
+          - "Query result caching"
+          - "Relationship eager loading"
+
+      migrations:
+        name: "Alembic"
+        version: "1.12+"
+        features:
+          - "Automatic migration generation"
+          - "Rollback support"
+          - "Branching support"
+        reference: "Execution_Layer/Runners/data_migration_runner.py"
+
+      cache:
+        name: "Redis"
+        version: "7.2"
+        persistence: "RDB + AOF"
+        eviction_policy: "allkeys-lru"
+        max_memory: "2GB"
+        use_cases:
+          - "Session storage"
+          - "Rate limiting counters"
+          - "Celery broker"
+          - "API response caching"
+          - "OCR result caching (1 hour TTL)"
+
+      object_storage:
+        name: "MinIO"
+        version: "Latest"
+        protocol: "S3-compatible"
+        features:
+          - "Server-side encryption (SSE-C, AES-256)"
+          - "Versioning"
+          - "Bucket policies"
+          - "Erasure coding"
+        storage_classes:
+          documents: "Standard (immediate access)"
+          backups: "Archive (reduced redundancy)"
+        reference: "Meta_Layer/MOCs/SECURITY_MOC.md#data-encryption"
+
+    dependencies:
+      - "Docker (containerization)"
+      - "Terraform (provisioning)"
+
+  # --------------------------------------------------------------------------
+  # 5. GPU Layer
+  # --------------------------------------------------------------------------
+  gpu_layer:
+    description: "GPU acceleration for OCR"
+    technologies:
+      gpu_hardware:
+        name: "NVIDIA RTX 4080"
+        vram: "16GB GDDR6X"
+        cuda_cores: 9728
+        tensor_cores: "304 (4th gen)"
+        performance:
+          fp32: "48.7 TFLOPS"
+          fp16: "97.4 TFLOPS"
+          int8: "194.8 TOPS"
+        tdp: "320W"
+
+      cuda:
+        name: "CUDA Toolkit"
+        version: "12.2"
+        components:
+          - "CUDA Driver"
+          - "cuDNN 8.9+"
+          - "cuBLAS"
+          - "NCCL (multi-GPU, future)"
+
+      pytorch:
+        name: "PyTorch"
+        version: "2.1+"
+        cuda_version: "12.1"
+        features:
+          - "GPU memory management"
+          - "Mixed precision (FP16/FP32)"
+          - "CUDA graph optimization"
+          - "Distributed training (future)"
+
+      gpu_management:
+        monitoring:
+          tool: "nvidia-smi"
+          metrics:
+            - "VRAM usage"
+            - "GPU utilization"
+            - "Temperature"
+            - "Power consumption"
+        batch_sizing:
+          strategy: "Dynamic based on available VRAM"
+          max_batch_size: 8
+          min_batch_size: 1
+          safety_factor: 0.85
+        reference: "Relations/Decision_Trees/gpu_resource_allocation_tree.yaml"
+
+    dependencies:
+      - "NVIDIA Drivers (535+)"
+      - "Docker with GPU support (nvidia-container-toolkit)"
+
+  # --------------------------------------------------------------------------
+  # 6. Infrastructure Layer
+  # --------------------------------------------------------------------------
+  infrastructure_layer:
+    description: "Deployment and operations"
+    technologies:
+      containerization:
+        name: "Docker"
+        version: "24.x"
+        docker_compose_version: "2.x"
+        features:
+          - "GPU passthrough (--gpus all)"
+          - "Multi-stage builds"
+          - "Health checks"
+          - "Resource limits"
+        security:
+          - "Non-root user"
+          - "Read-only root filesystem"
+          - "Capability dropping"
+          - "Security scanning (Trivy)"
+        reference: "Meta_Layer/MOCs/SECURITY_MOC.md#container-security"
+
+      orchestration:
+        name: "Docker Compose"
+        version: "2.x"
+        services:
+          - "backend (FastAPI)"
+          - "worker (Celery)"
+          - "postgres"
+          - "redis"
+          - "minio"
+          - "prometheus"
+          - "grafana"
+        planned: "Kubernetes migration"
+
+      iac:
+        name: "Terraform"
+        version: "1.6+"
+        providers:
+          - "Docker"
+          - "PostgreSQL"
+          - "Local (for development)"
+        state_backend: "Local (S3 for production planned)"
+        modules:
+          - "Network configuration"
+          - "Database provisioning"
+          - "Storage setup"
+
+      configuration_management:
+        name: "Ansible"
+        version: "2.15+"
+        playbooks:
+          - "Initial server setup"
+          - "Application deployment"
+          - "Database backup"
+          - "SSL certificate renewal"
+        inventory:
+          development: "localhost"
+          staging: "staging.ablage.company.de"
+          production: "prod.ablage.company.de"
+
+      monitoring:
+        prometheus:
+          name: "Prometheus"
+          version: "2.45+"
+          scrape_interval: "15s"
+          retention: "15 days"
+          exporters:
+            - "node_exporter (system metrics)"
+            - "postgres_exporter"
+            - "redis_exporter"
+            - "nvidia_gpu_exporter"
+
+        grafana:
+          name: "Grafana"
+          version: "10.x"
+          dashboards:
+            - "GPU Utilization"
+            - "API Performance"
+            - "Database Health"
+            - "OCR Processing Queue"
+            - "Security Events"
+          alerting:
+            channels:
+              - "Email"
+              - "Slack"
+              - "PagerDuty (critical)"
+
+      logging:
+        name: "Structured Logging"
+        library: "structlog"
+        format: "JSON"
+        outputs:
+          - "stdout (Docker logs)"
+          - "File (/var/log/ablage/)"
+        aggregation: "Planned (ELK/Loki)"
+
+    dependencies:
+      - "Linux (Ubuntu 22.04 LTS)"
+      - "systemd (service management)"
+
+# ============================================================================
+# Technology Dependencies Graph
+# ============================================================================
+
+dependency_graph: |
+  ```mermaid
+  graph LR
+      Python[Python 3.11] --> FastAPI
+      Python --> Celery
+      Python --> Pydantic
+      Python --> SQLAlchemy
+      Python --> asyncpg
+
+      FastAPI --> Starlette
+      FastAPI --> Uvicorn
+
+      Celery --> Redis
+
+      SQLAlchemy --> PostgreSQL
+      asyncpg --> PostgreSQL
+
+      PyTorch --> CUDA
+      CUDA --> RTX4080[RTX 4080]
+
+      DeepSeek[DeepSeek] --> PyTorch
+      GOT[GOT-OCR] --> PyTorch
+      Surya --> PyTorch
+
+      Docker --> PostgreSQL
+      Docker --> Redis
+      Docker --> MinIO
+      Docker --> FastAPI
+      Docker --> Celery
+
+      Terraform --> Docker
+      Ansible --> Docker
+
+      Prometheus --> Grafana
+      Prometheus --> FastAPI
+      Prometheus --> PostgreSQL
+      Prometheus --> Redis
+  ```
+
+# ============================================================================
+# Version Matrix
+# ============================================================================
+
+version_matrix:
+  language:
+    name: "Python"
+    version: "3.11+"
+    eol_date: "2027-10"
+    justification: "Required for performance improvements and latest async features"
+
+  web_framework:
+    name: "FastAPI"
+    version: "0.110+"
+    latest_stable: "0.110.0"
+    update_frequency: "Monthly security patches"
+
+  database:
+    name: "PostgreSQL"
+    version: "16"
+    eol_date: "2028-11"
+    extensions:
+      pgvector: "0.5.1"
+
+  cache:
+    name: "Redis"
+    version: "7.2"
+    eol_date: "TBD"
+
+  task_queue:
+    name: "Celery"
+    version: "5.3+"
+    broker: "Redis 7.2"
+
+  gpu:
+    cuda: "12.2"
+    cudnn: "8.9+"
+    pytorch: "2.1+"
+
+  infrastructure:
+    docker: "24.x"
+    docker_compose: "2.x"
+    terraform: "1.6+"
+    ansible: "2.15+"
+
+  monitoring:
+    prometheus: "2.45+"
+    grafana: "10.x"
+
+# ============================================================================
+# Technology Selection Criteria
+# ============================================================================
+
+selection_criteria:
+  performance:
+    priority: "high"
+    requirements:
+      - "API response time p95 < 500ms"
+      - "OCR processing < 3s per page (GPU)"
+      - "Database queries < 100ms"
+      - "GPU VRAM efficiency > 85%"
+
+  security:
+    priority: "critical"
+    requirements:
+      - "No known CVEs with CVSS > 7.0"
+      - "Active security maintenance"
+      - "GDPR compliance support"
+      - "TLS 1.3 support"
+
+  maintainability:
+    priority: "high"
+    requirements:
+      - "Active development (commits in last 3 months)"
+      - "LTS version available"
+      - "Good documentation"
+      - "Large community"
+
+  german_support:
+    priority: "critical"
+    requirements:
+      - "UTF-8 support (umlaut compatibility)"
+      - "German NLP libraries available"
+      - "Date/number format support (DD.MM.YYYY, 1.234,56)"
+      - "Fraktur font support (OCR)"
+
+# ============================================================================
+# Upgrade Path
+# ============================================================================
+
+upgrade_strategy:
+  minor_versions:
+    frequency: "monthly"
+    process:
+      - "Review changelog"
+      - "Test in development"
+      - "Deploy to staging"
+      - "Monitor for 48 hours"
+      - "Deploy to production"
+
+  major_versions:
+    frequency: "quarterly (if needed)"
+    process:
+      - "Comprehensive testing"
+      - "Migration plan"
+      - "Rollback plan"
+      - "User communication"
+      - "Staged rollout"
+
+  security_patches:
+    frequency: "immediate (within 24h)"
+    process:
+      - "Assess severity"
+      - "Apply patch"
+      - "Quick smoke test"
+      - "Deploy to production"
+      - "Monitor"
+
+# ============================================================================
+# Alternative Technologies (Evaluated but Not Selected)
+# ============================================================================
+
+alternatives:
+  web_framework:
+    - name: "Django"
+      pros: ["Batteries included", "ORM", "Admin interface"]
+      cons: ["Heavier", "Less async-friendly", "Slower than FastAPI"]
+      rejected_reason: "FastAPI better suited for async OCR processing"
+
+    - name: "Flask"
+      pros: ["Lightweight", "Flexible", "Large ecosystem"]
+      cons: ["No async by default", "Less type safety", "Manual setup"]
+      rejected_reason: "Lacks built-in async and type safety of FastAPI"
+
+  database:
+    - name: "MySQL"
+      pros: ["Popular", "Good performance", "Replication"]
+      cons: ["Weaker JSONB support", "Less advanced features"]
+      rejected_reason: "PostgreSQL better for complex queries and pgvector"
+
+    - name: "MongoDB"
+      pros: ["Flexible schema", "Horizontal scaling"]
+      cons: ["Eventual consistency", "No ACID by default", "Overkill"]
+      rejected_reason: "Document structure well-defined, ACID required"
+
+  task_queue:
+    - name: "RQ (Redis Queue)"
+      pros: ["Simple", "Redis-based", "Easy setup"]
+      cons: ["Less features", "No rate limiting", "Limited monitoring"]
+      rejected_reason: "Celery more feature-rich for complex workflows"
+
+  object_storage:
+    - name: "AWS S3"
+      pros: ["Highly reliable", "Global CDN", "Feature-rich"]
+      cons: ["Cloud dependency", "Costs", "Data residency"]
+      rejected_reason: "On-premises requirement, GDPR data residency"
+
+# ============================================================================
+# Performance Benchmarks
+# ============================================================================
+
+performance_benchmarks:
+  api_layer:
+    endpoint_latency:
+      p50: "< 200ms"
+      p95: "< 500ms"
+      p99: "< 2s"
+    throughput: "1000+ req/s"
+
+  processing_layer:
+    ocr_speed:
+      deepseek: "2.8s per page"
+      got_ocr: "0.8s per page"
+      surya: "1.9s per page (GPU), 5s (CPU)"
+    batch_efficiency: "6x faster than sequential"
+
+  data_layer:
+    database_queries:
+      simple_select: "< 10ms"
+      complex_join: "< 100ms"
+      full_text_search: "< 200ms"
+    cache_hit_ratio: "> 80%"
+
+  gpu_layer:
+    vram_efficiency: "85% utilization target"
+    batch_processing: "8 documents parallel (max)"
+    memory_overhead: "~500MB per image"
+
+# ============================================================================
+# Related Documentation
+# ============================================================================
+
+related_documentation:
+  architecture:
+    - "CLAUDE.md - Project overview and standards"
+    - "Meta_Layer/MOCs/SECURITY_MOC.md"
+
+  implementation:
+    - "Execution_Layer/Validators/api_request_validator.py"
+    - "Execution_Layer/Runners/data_migration_runner.py"
+
+  learnings:
+    - "Dynamic_Knowledge/Learnings/celery_task_optimization.md"
+    - "Dynamic_Knowledge/Experiments/ocr_backend_comparison.md"
+
+  resources:
+    - "Dynamic_Knowledge/Bookmarks/german_nlp_resources.yaml"
+
+  decision_trees:
+    - "Relations/Decision_Trees/gpu_resource_allocation_tree.yaml"
+
+# ============================================================================
+# Revision History
+# ============================================================================
+
+revision_history:
+  - version: "1.0.0"
+    date: "2025-11-22"
+    changes: "Initial technology stack graph creation"
+    author: "Architecture Team"
+
+# ============================================================================
+# Metadata
+# ============================================================================
+
+graph_statistics:
+  total_technologies: 45
+  layers: 6
+  primary_language: "Python 3.11"
+  deployment_platform: "Docker + Docker Compose"
+  cloud_strategy: "On-premises only (GDPR compliance)"
+  last_reviewed: "2025-11-22"
+  next_review: "2026-02-22"

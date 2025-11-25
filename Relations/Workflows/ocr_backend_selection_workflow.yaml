@@ -1,0 +1,560 @@
+# OCR Backend Selection Workflow
+
+workflow_id: ocr_backend_selection_001
+category: document_processing
+last_updated: "2025-11-22"
+status: production
+priority: high
+
+description: |
+  Intelligent workflow for selecting the optimal OCR backend based on document
+  characteristics, GPU availability, and performance requirements.
+
+  Available backends:
+  - DeepSeek-Janus-Pro (best for complex layouts, multimodal)
+  - GOT-OCR 2.0 (best for speed, general documents)
+  - Surya + Docling (best for layout analysis, CPU fallback)
+
+# ============================================================================
+# Main Selection Workflow
+# ============================================================================
+
+workflow_steps:
+  step_1_analyze_document:
+    name: "Analyze Document Characteristics"
+    description: "Extract document metadata to inform backend selection"
+    input:
+      - document_id: string
+      - document_path: string
+      - user_preferences: object
+    operations:
+      - name: "detect_document_type"
+        implementation: |
+          async def detect_document_type(document_path: str) -> str:
+              """Detect document type (invoice, contract, letter, etc.)."""
+              mime_type = magic.from_file(document_path, mime=True)
+              if mime_type == "application/pdf":
+                  # Analyze PDF structure
+                  with open(document_path, 'rb') as f:
+                      pdf = PdfReader(f)
+                      page_count = len(pdf.pages)
+                      first_page_text = pdf.pages[0].extract_text()
+
+                      # Classify based on content patterns
+                      if re.search(r"Rechnung|Invoice|Faktura", first_page_text, re.I):
+                          return "invoice"
+                      elif re.search(r"Vertrag|Contract|Agreement", first_page_text, re.I):
+                          return "contract"
+                      elif re.search(r"Brief|Letter|Anschreiben", first_page_text, re.I):
+                          return "letter"
+                      else:
+                          return "general"
+              elif mime_type.startswith("image/"):
+                  return "scanned_document"
+              else:
+                  return "unknown"
+
+      - name: "analyze_complexity"
+        implementation: |
+          async def analyze_complexity(document_path: str) -> dict:
+              """Analyze document complexity for backend selection."""
+              complexity = {
+                  "has_tables": False,
+                  "has_images": False,
+                  "has_handwriting": False,
+                  "layout_complexity": "simple",  # simple, medium, complex
+                  "language": "de",
+                  "is_fraktur": False,
+                  "estimated_pages": 1
+              }
+
+              # Image-based analysis
+              if document_path.endswith(('.png', '.jpg', '.jpeg', '.tiff')):
+                  from PIL import Image
+                  import numpy as np
+
+                  img = Image.open(document_path)
+                  img_array = np.array(img)
+
+                  # Detect tables (horizontal/vertical lines)
+                  edges = cv2.Canny(img_array, 50, 150)
+                  lines = cv2.HoughLinesP(edges, 1, np.pi/180, 100, minLineLength=100)
+                  complexity["has_tables"] = len(lines) > 20 if lines is not None else False
+
+                  # Detect images (color variations)
+                  color_variance = np.var(img_array)
+                  complexity["has_images"] = color_variance > 1000
+
+                  # Detect Fraktur (check for specific Unicode ranges after quick OCR)
+                  quick_text = tesseract.image_to_string(img, lang='deu_frak')
+                  complexity["is_fraktur"] = len(quick_text) > 10  # Heuristic
+
+              elif document_path.endswith('.pdf'):
+                  # PDF-based analysis
+                  with open(document_path, 'rb') as f:
+                      pdf = PdfReader(f)
+                      complexity["estimated_pages"] = len(pdf.pages)
+
+                      # Check for embedded images
+                      for page in pdf.pages[:3]:  # Sample first 3 pages
+                          if '/XObject' in page['/Resources']:
+                              xobjects = page['/Resources']['/XObject'].get_object()
+                              for obj in xobjects:
+                                  if xobjects[obj]['/Subtype'] == '/Image':
+                                      complexity["has_images"] = True
+                                      break
+
+                      # Layout complexity (columns, sections)
+                      text = pdf.pages[0].extract_text()
+                      if '\t' in text or '  ' * 5 in text:  # Multi-column heuristic
+                          complexity["layout_complexity"] = "complex"
+
+              return complexity
+
+    output:
+      document_type: string
+      complexity: object
+
+  step_2_check_gpu_availability:
+    name: "Check GPU Resources"
+    description: "Verify GPU availability and current VRAM usage"
+    input:
+      - required_vram_gb: float
+    operations:
+      - name: "check_gpu_status"
+        implementation: |
+          async def check_gpu_status() -> dict:
+              """Check current GPU availability and memory."""
+              if not torch.cuda.is_available():
+                  return {
+                      "available": False,
+                      "reason": "CUDA not available",
+                      "fallback_required": True
+                  }
+
+              gpu_props = torch.cuda.get_device_properties(0)
+              total_memory = gpu_props.total_memory / 1024**3  # GB
+              allocated_memory = torch.cuda.memory_allocated(0) / 1024**3
+              cached_memory = torch.cuda.memory_reserved(0) / 1024**3
+              available_memory = total_memory - allocated_memory
+
+              return {
+                  "available": True,
+                  "total_memory_gb": total_memory,
+                  "allocated_memory_gb": allocated_memory,
+                  "cached_memory_gb": cached_memory,
+                  "available_memory_gb": available_memory,
+                  "utilization_percent": (allocated_memory / total_memory) * 100
+              }
+
+      - name: "estimate_required_vram"
+        implementation: |
+          def estimate_required_vram(backend: str, page_count: int) -> float:
+              """Estimate VRAM required for processing."""
+              vram_per_page = {
+                  "deepseek": 1.5,  # GB per page (multimodal model)
+                  "got_ocr": 0.8,   # GB per page (transformer model)
+                  "surya": 0.0      # CPU-based, no GPU needed
+              }
+              base_vram = {
+                  "deepseek": 12.0,  # Model loading
+                  "got_ocr": 10.0,
+                  "surya": 0.0
+              }
+
+              return base_vram[backend] + (vram_per_page[backend] * page_count)
+
+    output:
+      gpu_status: object
+      sufficient_vram: boolean
+
+  step_3_apply_selection_rules:
+    name: "Apply Backend Selection Rules"
+    description: "Select optimal backend based on document and GPU analysis"
+    input:
+      - document_type: string
+      - complexity: object
+      - gpu_status: object
+      - user_preferences: object
+    decision_tree:
+      rules:
+        - condition: "complexity.is_fraktur == True"
+          backend: "deepseek"
+          reason: "Fraktur fonts require multimodal OCR"
+          confidence: 0.95
+
+        - condition: "complexity.has_tables == True AND complexity.has_images == True"
+          backend: "deepseek"
+          reason: "Complex layout with tables and images"
+          confidence: 0.90
+
+        - condition: "document_type == 'invoice' AND complexity.layout_complexity == 'complex'"
+          backend: "deepseek"
+          reason: "Complex invoice layout requires advanced OCR"
+          confidence: 0.85
+
+        - condition: "gpu_status.available == False"
+          backend: "surya"
+          reason: "GPU not available, fallback to CPU"
+          confidence: 1.0
+
+        - condition: "gpu_status.available_memory_gb < 10.0"
+          backend: "surya"
+          reason: "Insufficient VRAM for GPU backends"
+          confidence: 0.95
+
+        - condition: "user_preferences.priority == 'speed' AND gpu_status.available == True"
+          backend: "got_ocr"
+          reason: "User prefers speed, GPU available"
+          confidence: 0.80
+
+        - condition: "user_preferences.priority == 'accuracy'"
+          backend: "deepseek"
+          reason: "User prefers accuracy over speed"
+          confidence: 0.85
+
+        - condition: "complexity.estimated_pages > 20"
+          backend: "got_ocr"
+          reason: "Large document, prioritize throughput"
+          confidence: 0.75
+
+        - condition: "document_type == 'general' AND complexity.layout_complexity == 'simple'"
+          backend: "got_ocr"
+          reason: "Simple document, standard OCR sufficient"
+          confidence: 0.70
+
+        - condition: "default"
+          backend: "got_ocr"
+          reason: "Default choice for balanced performance"
+          confidence: 0.60
+
+    implementation: |
+      async def select_backend(
+          document_type: str,
+          complexity: dict,
+          gpu_status: dict,
+          user_preferences: dict
+      ) -> tuple[str, str, float]:
+          """Select optimal OCR backend using rule engine."""
+
+          # Evaluate rules in priority order
+          for rule in SELECTION_RULES:
+              if rule["condition"] == "default":
+                  return (rule["backend"], rule["reason"], rule["confidence"])
+
+              # Evaluate condition (simplified - would use proper expression evaluator)
+              if evaluate_condition(rule["condition"], {
+                  "complexity": complexity,
+                  "gpu_status": gpu_status,
+                  "document_type": document_type,
+                  "user_preferences": user_preferences
+              }):
+                  logger.info(
+                      "backend_selected",
+                      backend=rule["backend"],
+                      reason=rule["reason"],
+                      confidence=rule["confidence"]
+                  )
+                  return (rule["backend"], rule["reason"], rule["confidence"])
+
+          # Should never reach here
+          return ("got_ocr", "Fallback to default", 0.5)
+
+    output:
+      selected_backend: string
+      selection_reason: string
+      confidence: float
+
+  step_4_validate_selection:
+    name: "Validate Backend Selection"
+    description: "Ensure selected backend is available and ready"
+    input:
+      - selected_backend: string
+      - gpu_status: object
+    operations:
+      - name: "verify_backend_availability"
+        implementation: |
+          async def verify_backend(backend: str, gpu_status: dict) -> dict:
+              """Verify backend is loaded and ready."""
+
+              if backend in ["deepseek", "got_ocr"] and not gpu_status["available"]:
+                  return {
+                      "available": False,
+                      "reason": "Backend requires GPU but GPU not available",
+                      "fallback_backend": "surya"
+                  }
+
+              # Check if model is loaded
+              model_manager = ModelManager()
+              try:
+                  model = model_manager.get_model(backend)
+                  if model is None:
+                      return {
+                          "available": False,
+                          "reason": f"Model {backend} not loaded",
+                          "fallback_backend": "surya"
+                      }
+
+                  # Warm-up check
+                  if backend in ["deepseek", "got_ocr"]:
+                      # Quick inference test
+                      with torch.no_grad():
+                          dummy = torch.randn(1, 3, 224, 224).cuda()
+                          _ = model(dummy)
+
+                  return {
+                      "available": True,
+                      "backend": backend,
+                      "reason": "Backend ready"
+                  }
+
+              except Exception as e:
+                  logger.error(f"Backend verification failed: {e}")
+                  return {
+                      "available": False,
+                      "reason": str(e),
+                      "fallback_backend": "surya"
+                  }
+
+    output:
+      backend_verified: boolean
+      final_backend: string
+      fallback_used: boolean
+
+  step_5_queue_processing:
+    name: "Queue Document for Processing"
+    description: "Submit document to Celery queue with selected backend"
+    input:
+      - document_id: string
+      - final_backend: string
+      - priority: string
+    operations:
+      - name: "submit_to_queue"
+        implementation: |
+          async def queue_document(
+              document_id: str,
+              backend: str,
+              priority: str = "normal"
+          ) -> str:
+              """Queue document for OCR processing."""
+
+              priority_map = {
+                  "urgent": 9,
+                  "high": 7,
+                  "normal": 5,
+                  "low": 3
+              }
+
+              task = await celery.send_task(
+                  'process_document_ocr',
+                  args=[document_id],
+                  kwargs={
+                      'backend': backend,
+                      'priority': priority_map[priority]
+                  },
+                  priority=priority_map[priority]
+              )
+
+              await db.update_document(
+                  document_id,
+                  task_id=task.id,
+                  ocr_backend=backend,
+                  status="queued",
+                  queued_at=datetime.utcnow()
+              )
+
+              logger.info(
+                  "document_queued",
+                  document_id=document_id,
+                  task_id=task.id,
+                  backend=backend,
+                  priority=priority
+              )
+
+              return task.id
+
+    output:
+      task_id: string
+      queue_position: integer
+
+# ============================================================================
+# Complete Workflow Execution
+# ============================================================================
+
+workflow_execution:
+  name: "Execute OCR Backend Selection Workflow"
+  implementation: |
+    async def execute_backend_selection_workflow(
+        document_id: str,
+        document_path: str,
+        user_preferences: dict = None
+    ) -> dict:
+        """Execute complete backend selection workflow."""
+
+        user_preferences = user_preferences or {"priority": "balanced"}
+
+        # Step 1: Analyze document
+        document_type = await detect_document_type(document_path)
+        complexity = await analyze_complexity(document_path)
+
+        logger.info(
+            "document_analyzed",
+            document_id=document_id,
+            document_type=document_type,
+            complexity=complexity
+        )
+
+        # Step 2: Check GPU
+        gpu_status = await check_gpu_status()
+
+        # Step 3: Select backend
+        selected_backend, reason, confidence = await select_backend(
+            document_type=document_type,
+            complexity=complexity,
+            gpu_status=gpu_status,
+            user_preferences=user_preferences
+        )
+
+        logger.info(
+            "backend_selected",
+            document_id=document_id,
+            backend=selected_backend,
+            reason=reason,
+            confidence=confidence
+        )
+
+        # Step 4: Validate
+        validation = await verify_backend(selected_backend, gpu_status)
+
+        if not validation["available"]:
+            logger.warning(
+                "backend_unavailable_using_fallback",
+                requested_backend=selected_backend,
+                fallback_backend=validation["fallback_backend"],
+                reason=validation["reason"]
+            )
+            selected_backend = validation["fallback_backend"]
+
+        # Step 5: Queue
+        task_id = await queue_document(
+            document_id=document_id,
+            backend=selected_backend,
+            priority=user_preferences.get("priority", "normal")
+        )
+
+        return {
+            "task_id": task_id,
+            "backend": selected_backend,
+            "selection_reason": reason,
+            "confidence": confidence,
+            "document_type": document_type,
+            "complexity": complexity,
+            "gpu_used": selected_backend in ["deepseek", "got_ocr"]
+        }
+
+# ============================================================================
+# Performance Metrics
+# ============================================================================
+
+performance_metrics:
+  execution_time:
+    target_p95_ms: 200
+    target_p99_ms: 500
+
+  backend_selection_accuracy:
+    target: 0.90
+    measurement: "User satisfaction with OCR results"
+
+  gpu_utilization:
+    target_range: "60-85%"
+    measurement: "Optimal GPU usage without OOM"
+
+# ============================================================================
+# Monitoring
+# ============================================================================
+
+monitoring:
+  prometheus_metrics:
+    - name: "ocr_backend_selections_total"
+      type: "counter"
+      labels: ["backend", "document_type", "selection_reason"]
+
+    - name: "ocr_backend_selection_confidence"
+      type: "histogram"
+      labels: ["backend"]
+
+    - name: "ocr_workflow_execution_seconds"
+      type: "histogram"
+      labels: ["step"]
+
+    - name: "ocr_backend_fallbacks_total"
+      type: "counter"
+      labels: ["from_backend", "to_backend", "reason"]
+
+  alerts:
+    - name: "HighBackendFallbackRate"
+      condition: "rate(ocr_backend_fallbacks_total[5m]) > 0.1"
+      severity: "warning"
+      description: "More than 10% of backend selections requiring fallback"
+
+    - name: "SlowBackendSelection"
+      condition: "histogram_quantile(0.95, ocr_workflow_execution_seconds) > 0.5"
+      severity: "warning"
+      description: "Backend selection taking > 500ms (p95)"
+
+# ============================================================================
+# Testing
+# ============================================================================
+
+test_cases:
+  - name: "Fraktur document selects DeepSeek"
+    input:
+      document_type: "historical"
+      complexity:
+        is_fraktur: true
+        layout_complexity: "complex"
+      gpu_status:
+        available: true
+        available_memory_gb: 14.0
+    expected_output:
+      backend: "deepseek"
+      confidence: ">= 0.95"
+
+  - name: "GPU unavailable selects Surya"
+    input:
+      document_type: "invoice"
+      complexity:
+        layout_complexity: "simple"
+      gpu_status:
+        available: false
+    expected_output:
+      backend: "surya"
+      confidence: "1.0"
+
+  - name: "Simple document selects GOT-OCR"
+    input:
+      document_type: "general"
+      complexity:
+        layout_complexity: "simple"
+        has_tables: false
+        has_images: false
+      gpu_status:
+        available: true
+        available_memory_gb: 12.0
+    expected_output:
+      backend: "got_ocr"
+      confidence: ">= 0.70"
+
+related_files:
+  - "Relations/Hooks/document_processing_hooks.yaml"
+  - "Relations/Decision_Trees/gpu_resource_allocation_tree.yaml"
+  - "Static_Knowledge/Skills/gpu_management_skill.yaml"
+  - "Execution_Layer/Agents/ocr_orchestrator_agent.py"
+
+tags:
+  - workflow
+  - ocr
+  - backend_selection
+  - gpu
+  - automation
+  - decision_logic

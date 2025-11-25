@@ -1,0 +1,28 @@
+# Command Index
+
+gpu:
+  check_status: "nvidia-smi"
+  check_cuda: 'python -c "import torch; print(torch.cuda.is_available())"'
+  monitor: "watch -n 1 nvidia-smi"
+
+testing:
+  run_all: "pytest tests/ -v"
+  run_basic: "pytest tests/test_basic.py -v"
+  with_coverage: "pytest --cov=app --cov-report=html"
+
+development:
+  start_api: "python app/main.py"
+  start_celery: "celery -A app.celery worker --loglevel=info"
+  lint: "ruff check ."
+  type_check: "mypy app/"
+
+database:
+  migrate: "alembic upgrade head"
+  create_migration: 'alembic revision --autogenerate -m "description"'
+  connect: "psql $DATABASE_URL"
+
+docker:
+  build: "docker-compose build"
+  up: "docker-compose up -d"
+  logs: "docker-compose logs -f"
+  down: "docker-compose down"

@@ -1,0 +1,265 @@
+# Image Preprocessing Skill
+# Noise Reduction, Contrast Enhancement, Skew Correction
+
+metadata:
+  skill_id: "image_preprocessing"
+  version: "1.0.0"
+  category: "computer_vision"
+  dependencies: ["opencv-python", "pillow", "numpy", "scikit-image"]
+  last_updated: "2025-01-22"
+  status: "referenced_not_yet_implemented"
+
+description: |
+  Image preprocessing pipeline to improve OCR accuracy. Handles noise reduction,
+  contrast enhancement, skew correction, and quality validation for scanned documents.
+
+capabilities:
+  - Noise reduction (Gaussian, median, bilateral filtering)
+  - Contrast enhancement (CLAHE, histogram equalization)
+  - Skew detection and correction
+  - Binarization (Otsu, adaptive thresholding)
+  - Quality assessment and validation
+  - DPI normalization (target: 300 DPI)
+
+preprocessing_pipeline:
+  step_1_quality_check:
+    description: "Validate input image quality"
+    checks:
+      - "Minimum resolution: 1024x768"
+      - "Minimum DPI: 150"
+      - "File format: PNG, JPEG, TIFF"
+      - "Color depth: >= 8-bit grayscale"
+    action_on_fail: "Warn user, attempt upscaling if < 150 DPI"
+
+  step_2_dpi_normalization:
+    description: "Normalize to 300 DPI for consistent OCR"
+    target_dpi: 300
+    method: "Bicubic interpolation"
+    code: |
+      from PIL import Image
+
+      def normalize_dpi(image_path: str, target_dpi: int = 300) -> Image.Image:
+          img = Image.open(image_path)
+
+          # Get current DPI
+          current_dpi = img.info.get('dpi', (72, 72))[0]
+
+          if current_dpi != target_dpi:
+              scale_factor = target_dpi / current_dpi
+              new_size = (
+                  int(img.width * scale_factor),
+                  int(img.height * scale_factor)
+              )
+              img = img.resize(new_size, Image.BICUBIC)
+
+          return img
+
+  step_3_grayscale_conversion:
+    description: "Convert to grayscale for processing"
+    method: "Luminosity method (0.299R + 0.587G + 0.114B)"
+    code: |
+      import cv2
+
+      gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+  step_4_noise_reduction:
+    description: "Remove noise while preserving text edges"
+    methods:
+      gaussian:
+        use_case: "Light noise, fast processing"
+        kernel_size: "(3, 3)"
+        code: |
+          denoised = cv2.GaussianBlur(gray, (3, 3), 0)
+
+      median:
+        use_case: "Salt-and-pepper noise"
+        kernel_size: "5"
+        code: |
+          denoised = cv2.medianBlur(gray, 5)
+
+      bilateral:
+        use_case: "Preserve edges while removing noise (best for OCR)"
+        parameters: "d=9, sigmaColor=75, sigmaSpace=75"
+        code: |
+          denoised = cv2.bilateralFilter(gray, 9, 75, 75)
+
+  step_5_contrast_enhancement:
+    description: "Improve text visibility"
+    methods:
+      clahe:
+        use_case: "Adaptive contrast (best for documents)"
+        code: |
+          clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+          enhanced = clahe.apply(denoised)
+
+      histogram_equalization:
+        use_case: "Global contrast improvement"
+        code: |
+          enhanced = cv2.equalizeHist(denoised)
+
+  step_6_skew_correction:
+    description: "Detect and correct page rotation"
+    method: "Hough line transform"
+    code: |
+      import numpy as np
+      from scipy.ndimage import rotate
+
+      def detect_skew(image):
+          # Edge detection
+          edges = cv2.Canny(image, 50, 150, apertureSize=3)
+
+          # Hough line detection
+          lines = cv2.HoughLines(edges, 1, np.pi/180, 200)
+
+          # Calculate dominant angle
+          angles = []
+          for line in lines:
+              rho, theta = line[0]
+              angle = np.degrees(theta) - 90
+              angles.append(angle)
+
+          # Median angle
+          skew_angle = np.median(angles)
+          return skew_angle
+
+      def correct_skew(image):
+          angle = detect_skew(image)
+          if abs(angle) > 0.5:  # Threshold for correction
+              corrected = rotate(image, angle, reshape=False, mode='nearest')
+              return corrected
+          return image
+
+  step_7_binarization:
+    description: "Convert to black/white for OCR"
+    methods:
+      otsu:
+        use_case: "Bimodal histogram (clear text/background separation)"
+        code: |
+          _, binary = cv2.threshold(
+              enhanced, 0, 255,
+              cv2.THRESH_BINARY + cv2.THRESH_OTSU
+          )
+
+      adaptive:
+        use_case: "Varying lighting conditions"
+        code: |
+          binary = cv2.adaptiveThreshold(
+              enhanced, 255,
+              cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+              cv2.THRESH_BINARY, 11, 2
+          )
+
+quality_metrics:
+  sharpness:
+    description: "Laplacian variance (higher = sharper)"
+    threshold: "> 100 for good quality"
+    code: |
+      def calculate_sharpness(image):
+          laplacian = cv2.Laplacian(image, cv2.CV_64F)
+          return laplacian.var()
+
+  contrast:
+    description: "Standard deviation of pixel values"
+    threshold: "> 50 for sufficient contrast"
+    code: |
+      contrast = image.std()
+
+  brightness:
+    description: "Mean pixel value"
+    ideal_range: "100-180 (for grayscale 0-255)"
+    code: |
+      brightness = image.mean()
+
+usage_patterns:
+  full_pipeline:
+    description: "Complete preprocessing for OCR"
+    code: |
+      from app.utils.image_preprocessing import ImagePreprocessor
+
+      preprocessor = ImagePreprocessor()
+
+      # Load and preprocess
+      processed = preprocessor.preprocess(
+          image_path="document.jpg",
+          target_dpi=300,
+          enhance_contrast=True,
+          correct_skew=True,
+          denoise_method="bilateral"
+      )
+
+      # Quality check
+      quality = preprocessor.assess_quality(processed)
+      if quality['sharpness'] < 100:
+          logger.warning("Low image sharpness, OCR accuracy may suffer")
+
+  selective_preprocessing:
+    description: "Apply only needed steps"
+    code: |
+      # High-quality scan: minimal preprocessing
+      if quality_score > 0.9:
+          processed = preprocessor.normalize_dpi(image)
+
+      # Medium quality: denoise + contrast
+      elif quality_score > 0.7:
+          processed = preprocessor.denoise(image, method="bilateral")
+          processed = preprocessor.enhance_contrast(processed)
+
+      # Low quality: full pipeline
+      else:
+          processed = preprocessor.preprocess(image, all_steps=True)
+
+best_practices:
+  - name: "Always normalize DPI to 300"
+    rationale: "Consistent input for OCR models"
+
+  - name: "Use bilateral filtering for noise reduction"
+    rationale: "Preserves text edges better than Gaussian"
+
+  - name: "Apply CLAHE for contrast enhancement"
+    rationale: "Adaptive, works well with varying lighting"
+
+  - name: "Correct skew > 0.5 degrees"
+    rationale: "Improves line detection and text alignment"
+
+  - name: "Assess quality before/after preprocessing"
+    rationale: "Verify improvements, detect over-processing"
+
+common_issues:
+  over_sharpening:
+    symptom: "Noise amplification, artifacts"
+    cause: "Excessive contrast enhancement"
+    solution: "Reduce CLAHE clipLimit to 1.5 or use histogram eq"
+
+  text_degradation:
+    symptom: "Thin characters become broken"
+    cause: "Aggressive binarization"
+    solution: "Use adaptive thresholding with larger block size (15-21)"
+
+  skew_overcorrection:
+    symptom: "Text tilted in wrong direction"
+    cause: "Incorrect Hough line detection"
+    solution: "Filter lines by length, use median angle instead of mean"
+
+integration_points:
+  ocr_input:
+    description: "Preprocessed image to OCR backend"
+    format: "NumPy array or PIL Image"
+    code: |
+      preprocessed_image = preprocessor.preprocess(raw_image)
+      ocr_result = await ocr_backend.process(preprocessed_image)
+
+  quality_gate:
+    description: "Reject low-quality images before OCR"
+    threshold: "sharpness > 100, contrast > 50"
+    action: "Request better scan or warn user"
+
+future_enhancements:
+  - "AI-based image quality assessment"
+  - "Automatic parameter tuning per document type"
+  - "Super-resolution for low-DPI images"
+  - "Dewarping for curved pages (book scans)"
+
+references:
+  - "app/utils/image_preprocessing.py - To be implemented"
+  - "OpenCV Documentation: https://docs.opencv.org/"
+  - "Tesseract OCR Image Preprocessing: https://tesseract-ocr.github.io/tessdoc/ImproveQuality.html"

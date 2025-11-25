@@ -1,0 +1,597 @@
+# Error Handling Skill
+
+skill_id: error_handling_001
+category: development
+last_updated: "2025-11-22"
+difficulty: intermediate
+estimated_time: "2-3 hours to master"
+
+description: |
+  Comprehensive error handling patterns for the Ablage-System FastAPI backend.
+  Covers exception hierarchies, error responses, logging, and recovery strategies.
+
+# ============================================================================
+# Exception Hierarchy
+# ============================================================================
+
+exception_hierarchy:
+  base_exception:
+    class_name: "AblageException"
+    inherits_from: "Exception"
+    purpose: "Base exception for all Ablage-specific errors"
+    implementation: |
+      class AblageException(Exception):
+          """Base exception for all Ablage-System errors."""
+
+          def __init__(
+              self,
+              message: str,
+              error_code: str,
+              status_code: int = 500,
+              details: Optional[Dict] = None
+          ):
+              self.message = message
+              self.error_code = error_code
+              self.status_code = status_code
+              self.details = details or {}
+              super().__init__(self.message)
+
+  client_errors:
+    - class_name: "ValidationError"
+      status_code: 400
+      error_code: "VALIDATION_ERROR"
+      german_message: "Ungültige Eingabedaten"
+      when_to_use: "Input validation failures"
+
+    - class_name: "AuthenticationError"
+      status_code: 401
+      error_code: "AUTHENTICATION_FAILED"
+      german_message: "Authentifizierung fehlgeschlagen"
+      when_to_use: "Invalid credentials, expired tokens"
+
+    - class_name: "AuthorizationError"
+      status_code: 403
+      error_code: "INSUFFICIENT_PERMISSIONS"
+      german_message: "Unzureichende Berechtigungen"
+      when_to_use: "User lacks required permissions"
+
+    - class_name: "ResourceNotFoundError"
+      status_code: 404
+      error_code: "RESOURCE_NOT_FOUND"
+      german_message: "Ressource nicht gefunden"
+      when_to_use: "Document, user, or other resource doesn't exist"
+
+    - class_name: "ConflictError"
+      status_code: 409
+      error_code: "RESOURCE_CONFLICT"
+      german_message: "Ressourcenkonflikt"
+      when_to_use: "Duplicate document, concurrent modification"
+
+    - class_name: "RateLimitExceededError"
+      status_code: 429
+      error_code: "RATE_LIMIT_EXCEEDED"
+      german_message: "Zu viele Anfragen"
+      when_to_use: "User exceeds rate limits"
+
+  server_errors:
+    - class_name: "OCRProcessingError"
+      status_code: 500
+      error_code: "OCR_PROCESSING_FAILED"
+      german_message: "OCR-Verarbeitung fehlgeschlagen"
+      when_to_use: "OCR backend failures"
+
+    - class_name: "GPUOutOfMemoryError"
+      status_code: 503
+      error_code: "GPU_OOM"
+      german_message: "Unzureichender GPU-Speicher"
+      when_to_use: "GPU VRAM exhausted"
+
+    - class_name: "DatabaseError"
+      status_code: 500
+      error_code: "DATABASE_ERROR"
+      german_message: "Datenbankfehler"
+      when_to_use: "Database query failures, connection issues"
+
+    - class_name: "ExternalServiceError"
+      status_code: 502
+      error_code: "EXTERNAL_SERVICE_UNAVAILABLE"
+      german_message: "Externer Dienst nicht verfügbar"
+      when_to_use: "Third-party API failures"
+
+# ============================================================================
+# Error Response Format
+# ============================================================================
+
+error_response_format:
+  standard_format:
+    description: "Consistent error response structure"
+    schema: |
+      {
+        "error": {
+          "code": "ERROR_CODE",
+          "message": "Human-readable German message",
+          "details": "Additional context or field-specific errors",
+          "documentation_url": "https://docs.ablage.company.de/errors#ERROR_CODE",
+          "timestamp": "2025-11-22T14:30:00Z"
+        },
+        "request_id": "req_abc123def456",
+        "status": 400
+      }
+
+  implementation: |
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+    from datetime import datetime
+    import uuid
+
+    class ErrorResponse:
+        """Standard error response builder."""
+
+        @staticmethod
+        def build(
+            error_code: str,
+            message: str,
+            status_code: int,
+            details: Optional[Dict] = None,
+            request_id: Optional[str] = None
+        ) -> JSONResponse:
+            """Build standard error response."""
+
+            return JSONResponse(
+                status_code=status_code,
+                content={
+                    "error": {
+                        "code": error_code,
+                        "message": message,
+                        "details": details or {},
+                        "documentation_url": f"https://docs.ablage.company.de/errors#{error_code}",
+                        "timestamp": datetime.utcnow().isoformat() + "Z"
+                    },
+                    "request_id": request_id or str(uuid.uuid4()),
+                    "status": status_code
+                }
+            )
+
+# ============================================================================
+# FastAPI Exception Handlers
+# ============================================================================
+
+exception_handlers:
+  global_handler:
+    description: "Catch-all exception handler"
+    implementation: |
+      from fastapi import FastAPI, Request
+      from fastapi.responses import JSONResponse
+      import structlog
+
+      logger = structlog.get_logger(__name__)
+
+      app = FastAPI()
+
+      @app.exception_handler(AblageException)
+      async def ablage_exception_handler(
+          request: Request,
+          exc: AblageException
+      ) -> JSONResponse:
+          """Handle all Ablage-specific exceptions."""
+
+          logger.error(
+              "ablage_exception",
+              error_code=exc.error_code,
+              message=exc.message,
+              path=request.url.path,
+              method=request.method,
+              status_code=exc.status_code
+          )
+
+          return ErrorResponse.build(
+              error_code=exc.error_code,
+              message=exc.message,
+              status_code=exc.status_code,
+              details=exc.details,
+              request_id=request.state.request_id
+          )
+
+      @app.exception_handler(Exception)
+      async def generic_exception_handler(
+          request: Request,
+          exc: Exception
+      ) -> JSONResponse:
+          """Handle unexpected exceptions."""
+
+          logger.exception(
+              "unexpected_exception",
+              error=str(exc),
+              path=request.url.path,
+              method=request.method
+          )
+
+          # Don't expose internal error details in production
+          return ErrorResponse.build(
+              error_code="INTERNAL_SERVER_ERROR",
+              message="Ein unerwarteter Fehler ist aufgetreten",
+              status_code=500,
+              details={"error_type": type(exc).__name__},
+              request_id=request.state.request_id
+          )
+
+  validation_handler:
+    description: "Handle Pydantic validation errors"
+    implementation: |
+      from fastapi.exceptions import RequestValidationError
+      from pydantic import ValidationError
+
+      @app.exception_handler(RequestValidationError)
+      async def validation_exception_handler(
+          request: Request,
+          exc: RequestValidationError
+      ) -> JSONResponse:
+          """Handle request validation errors."""
+
+          # Format validation errors in German
+          errors = []
+          for error in exc.errors():
+              field = " -> ".join(str(loc) for loc in error["loc"])
+              errors.append({
+                  "field": field,
+                  "message": translate_validation_error(error["msg"]),
+                  "type": error["type"]
+              })
+
+          return ErrorResponse.build(
+              error_code="VALIDATION_ERROR",
+              message="Ungültige Eingabedaten",
+              status_code=400,
+              details={"validation_errors": errors},
+              request_id=request.state.request_id
+          )
+
+      def translate_validation_error(msg: str) -> str:
+          """Translate Pydantic error messages to German."""
+          translations = {
+              "field required": "Feld erforderlich",
+              "value is not a valid email address": "Ungültige E-Mail-Adresse",
+              "ensure this value is greater than": "Wert muss größer sein als",
+              "string too short": "Text zu kurz",
+              "string too long": "Text zu lang",
+          }
+
+          for en, de in translations.items():
+              if en in msg.lower():
+                  return de
+
+          return msg  # Fallback to English if no translation
+
+# ============================================================================
+# Retry Strategies
+# ============================================================================
+
+retry_strategies:
+  exponential_backoff:
+    description: "Retry with exponential backoff for transient failures"
+    use_cases:
+      - "External API calls"
+      - "Database connection issues"
+      - "GPU resource contention"
+
+    implementation: |
+      import asyncio
+      from typing import TypeVar, Callable
+      from functools import wraps
+
+      T = TypeVar('T')
+
+      def retry_with_backoff(
+          max_retries: int = 3,
+          initial_delay: float = 1.0,
+          backoff_factor: float = 2.0,
+          exceptions: tuple = (Exception,)
+      ):
+          """Decorator for exponential backoff retry."""
+
+          def decorator(func: Callable) -> Callable:
+              @wraps(func)
+              async def wrapper(*args, **kwargs):
+                  delay = initial_delay
+
+                  for attempt in range(max_retries):
+                      try:
+                          return await func(*args, **kwargs)
+                      except exceptions as e:
+                          if attempt == max_retries - 1:
+                              # Last attempt failed, raise
+                              logger.error(
+                                  "retry_exhausted",
+                                  function=func.__name__,
+                                  attempts=max_retries,
+                                  error=str(e)
+                              )
+                              raise
+
+                          logger.warning(
+                              "retry_attempt",
+                              function=func.__name__,
+                              attempt=attempt + 1,
+                              max_retries=max_retries,
+                              delay_seconds=delay,
+                              error=str(e)
+                          )
+
+                          await asyncio.sleep(delay)
+                          delay *= backoff_factor
+
+              return wrapper
+          return decorator
+
+    usage_example: |
+      @retry_with_backoff(
+          max_retries=3,
+          initial_delay=1.0,
+          exceptions=(DatabaseError, ExternalServiceError)
+      )
+      async def fetch_external_data(url: str) -> Dict:
+          async with httpx.AsyncClient() as client:
+              response = await client.get(url)
+              response.raise_for_status()
+              return response.json()
+
+  circuit_breaker:
+    description: "Prevent cascading failures with circuit breaker pattern"
+    states: ["CLOSED", "OPEN", "HALF_OPEN"]
+
+    implementation: |
+      from datetime import datetime, timedelta
+      from enum import Enum
+
+      class CircuitState(Enum):
+          CLOSED = "closed"      # Normal operation
+          OPEN = "open"          # Failures detected, reject requests
+          HALF_OPEN = "half_open"  # Testing if service recovered
+
+      class CircuitBreaker:
+          """Circuit breaker for external services."""
+
+          def __init__(
+              self,
+              failure_threshold: int = 5,
+              recovery_timeout: int = 60,
+              success_threshold: int = 2
+          ):
+              self.failure_threshold = failure_threshold
+              self.recovery_timeout = recovery_timeout
+              self.success_threshold = success_threshold
+
+              self.failure_count = 0
+              self.success_count = 0
+              self.last_failure_time = None
+              self.state = CircuitState.CLOSED
+
+          async def call(self, func: Callable, *args, **kwargs):
+              """Execute function with circuit breaker protection."""
+
+              if self.state == CircuitState.OPEN:
+                  # Check if recovery timeout elapsed
+                  if datetime.now() - self.last_failure_time > timedelta(seconds=self.recovery_timeout):
+                      self.state = CircuitState.HALF_OPEN
+                      logger.info("circuit_breaker_half_open", service=func.__name__)
+                  else:
+                      raise ExternalServiceError(
+                          "Service unavailable (circuit breaker OPEN)",
+                          "CIRCUIT_BREAKER_OPEN"
+                      )
+
+              try:
+                  result = await func(*args, **kwargs)
+                  self._on_success()
+                  return result
+              except Exception as e:
+                  self._on_failure()
+                  raise
+
+          def _on_success(self):
+              """Handle successful call."""
+              self.failure_count = 0
+
+              if self.state == CircuitState.HALF_OPEN:
+                  self.success_count += 1
+                  if self.success_count >= self.success_threshold:
+                      self.state = CircuitState.CLOSED
+                      self.success_count = 0
+                      logger.info("circuit_breaker_closed")
+
+          def _on_failure(self):
+              """Handle failed call."""
+              self.failure_count += 1
+              self.last_failure_time = datetime.now()
+
+              if self.failure_count >= self.failure_threshold:
+                  self.state = CircuitState.OPEN
+                  logger.error("circuit_breaker_opened", failures=self.failure_count)
+
+# ============================================================================
+# Error Recovery Patterns
+# ============================================================================
+
+error_recovery:
+  graceful_degradation:
+    description: "Continue operation with reduced functionality"
+    examples:
+      - scenario: "GPU unavailable"
+        recovery: "Fallback to CPU-based OCR"
+        implementation: |
+          async def process_ocr(document_id: str) -> OCRResult:
+              try:
+                  # Try GPU backend
+                  return await gpu_ocr.process(document_id)
+              except GPUOutOfMemoryError:
+                  logger.warning("gpu_oom_fallback_cpu", document_id=document_id)
+                  # Fallback to CPU
+                  return await cpu_ocr.process(document_id)
+
+      - scenario: "Primary database unavailable"
+        recovery: "Read from replica (stale data acceptable)"
+        implementation: |
+          async def get_document(doc_id: str) -> Document:
+              try:
+                  # Try primary
+                  return await primary_db.get_document(doc_id)
+              except DatabaseError:
+                  logger.warning("primary_db_unavailable_using_replica")
+                  # Use replica (may be slightly stale)
+                  return await replica_db.get_document(doc_id)
+
+  compensation_transactions:
+    description: "Rollback partial operations on failure"
+    example: |
+      async def upload_document_with_rollback(
+          file: UploadFile,
+          user_id: str
+      ) -> Document:
+          document_id = None
+          minio_uploaded = False
+
+          try:
+              # Step 1: Upload to MinIO
+              file_url = await minio.upload(file)
+              minio_uploaded = True
+
+              # Step 2: Create database record
+              document = await db.create_document(
+                  user_id=user_id,
+                  file_url=file_url,
+                  filename=file.filename
+              )
+              document_id = document.id
+
+              # Step 3: Queue OCR processing
+              await celery.send_task('process_ocr', args=[document_id])
+
+              return document
+
+          except Exception as e:
+              logger.error("upload_failed_rolling_back", error=str(e))
+
+              # Rollback: Delete MinIO file if uploaded
+              if minio_uploaded:
+                  try:
+                      await minio.delete(file_url)
+                      logger.info("rollback_minio_delete_success")
+                  except Exception as rollback_error:
+                      logger.error("rollback_minio_delete_failed", error=str(rollback_error))
+
+              # Rollback: Delete database record if created
+              if document_id:
+                  try:
+                      await db.delete_document(document_id)
+                      logger.info("rollback_db_delete_success")
+                  except Exception as rollback_error:
+                      logger.error("rollback_db_delete_failed", error=str(rollback_error))
+
+              # Re-raise original exception
+              raise
+
+# ============================================================================
+# Logging Best Practices
+# ============================================================================
+
+logging_best_practices:
+  structured_logging:
+    description: "Use structured logging for better analysis"
+    implementation: |
+      import structlog
+
+      logger = structlog.get_logger(__name__)
+
+      # ✅ GOOD: Structured logging
+      logger.error(
+          "document_processing_failed",
+          document_id=doc_id,
+          user_id=user_id,
+          backend="deepseek",
+          error_type="GPUOutOfMemoryError",
+          vram_usage_gb=15.8,
+          retry_count=2
+      )
+
+      # ❌ BAD: String interpolation
+      logger.error(f"Document {doc_id} processing failed for user {user_id}")
+
+  log_levels:
+    DEBUG: "Detailed information for diagnosing problems"
+    INFO: "General informational messages"
+    WARNING: "Warning messages for potentially harmful situations"
+    ERROR: "Error messages for failures requiring attention"
+    CRITICAL: "Critical messages for severe errors"
+
+  what_to_log:
+    always_log:
+      - "All errors with full context"
+      - "Authentication failures"
+      - "GDPR-relevant actions (data export/deletion)"
+      - "Rate limit violations"
+      - "Slow queries (> 1s)"
+
+    never_log:
+      - "Passwords or API keys"
+      - "Personal data (unless GDPR audit log)"
+      - "Document content"
+      - "Credit card numbers"
+
+# ============================================================================
+# Testing Error Handling
+# ============================================================================
+
+testing:
+  unit_tests:
+    description: "Test error handling logic"
+    example: |
+      import pytest
+      from app.exceptions import ValidationError, OCRProcessingError
+
+      @pytest.mark.asyncio
+      async def test_validation_error_response():
+          """Test validation error returns 400 with correct format."""
+
+          # Simulate validation error
+          with pytest.raises(ValidationError) as exc_info:
+              await validate_document_upload(
+                  filename="test.exe",  # Invalid extension
+                  file_size=100 * 1024 * 1024  # Too large
+              )
+
+          error = exc_info.value
+          assert error.status_code == 400
+          assert error.error_code == "VALIDATION_ERROR"
+          assert "Dateityp" in error.message
+
+      @pytest.mark.asyncio
+      async def test_retry_with_backoff():
+          """Test retry logic with exponential backoff."""
+
+          call_count = 0
+
+          @retry_with_backoff(max_retries=3, initial_delay=0.1)
+          async def flaky_function():
+              nonlocal call_count
+              call_count += 1
+              if call_count < 3:
+                  raise DatabaseError("Connection failed", "DB_CONNECTION_ERROR")
+              return "success"
+
+          result = await flaky_function()
+          assert result == "success"
+          assert call_count == 3  # Failed twice, succeeded on third
+
+related_files:
+  - "Static_Knowledge/SOPs/003_incident_response.md"
+  - "Relations/Playbooks/api_error_debugging_playbook.yaml"
+  - "Dynamic_Knowledge/Learnings/api_design_lessons.md"
+  - "Static_Knowledge/Snippets/fastapi_patterns.py"
+
+tags:
+  - error_handling
+  - exceptions
+  - fastapi
+  - logging
+  - retry_strategies
+  - circuit_breaker

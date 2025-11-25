@@ -1,0 +1,297 @@
+# GLOSSAR: Deutsche Geschäftsterminologie
+# Purpose: Zentrale Definition aller deutschen Geschäftsbegriffe
+# Created: 2024-11-22
+# Priority: P0 - Critical for OCR accuracy
+
+terms:
+  # Rechtsformen (Legal Forms)
+  - term: "GmbH"
+    full_name: "Gesellschaft mit beschränkter Haftung"
+    english: "Limited Liability Company"
+    category: "legal_form"
+    legal_basis: "GmbH-Gesetz"
+    ocr_variants: ["GmbH", "G.m.b.H.", "Ges.m.b.H.", "Ges. m. b. H."]
+    extraction_priority: "high"
+    related_terms: ["UG", "AG", "KG"]
+
+  - term: "GbR"
+    full_name: "Gesellschaft bürgerlichen Rechts"
+    english: "Civil Law Partnership"
+    category: "legal_form"
+    legal_basis: "§§ 705-740 BGB"
+    ocr_variants: ["GbR", "G.b.R.", "Ges.b.R."]
+    extraction_priority: "high"
+
+  - term: "AG"
+    full_name: "Aktiengesellschaft"
+    english: "Stock Corporation"
+    category: "legal_form"
+    legal_basis: "AktG"
+    ocr_variants: ["AG", "A.G.", "Aktiengesellschaft"]
+    extraction_priority: "high"
+
+  - term: "KG"
+    full_name: "Kommanditgesellschaft"
+    english: "Limited Partnership"
+    category: "legal_form"
+    legal_basis: "§§ 161-177a HGB"
+    ocr_variants: ["KG", "K.G.", "Kommanditgesellschaft"]
+    extraction_priority: "high"
+
+  - term: "GmbH & Co. KG"
+    full_name: "Gesellschaft mit beschränkter Haftung & Compagnie Kommanditgesellschaft"
+    english: "Limited Partnership with Limited Liability Company as General Partner"
+    category: "legal_form"
+    legal_basis: "GmbHG + HGB"
+    ocr_variants: ["GmbH & Co. KG", "GmbH & Co KG", "GmbH u. Co. KG"]
+    extraction_priority: "high"
+    notes: "Sehr häufige Rechtsform in Deutschland"
+
+  - term: "UG"
+    full_name: "Unternehmergesellschaft (haftungsbeschränkt)"
+    english: "Entrepreneurial Company (limited liability)"
+    category: "legal_form"
+    legal_basis: "§ 5a GmbHG"
+    ocr_variants: ["UG", "UG (haftungsbeschränkt)", "U.G."]
+    extraction_priority: "medium"
+
+  - term: "e.V."
+    full_name: "eingetragener Verein"
+    english: "Registered Association"
+    category: "legal_form"
+    legal_basis: "§§ 21-79 BGB"
+    ocr_variants: ["e.V.", "e. V.", "eingetragener Verein"]
+    extraction_priority: "medium"
+
+  # Dokumenttypen (Document Types)
+  - term: "Rechnung"
+    english: "Invoice"
+    category: "document_type"
+    definition: "Dokument gemäß §14 UStG mit Pflichtangaben für Leistungsabrechnung"
+    compliance: ["§14 UStG", "§14a UStG"]
+    required_fields:
+      - "rechnungsnummer"
+      - "rechnungsdatum"
+      - "leistender"
+      - "leistungsempfaenger"
+      - "leistungsbeschreibung"
+      - "nettobetrag"
+      - "umsatzsteuer"
+      - "bruttobetrag"
+      - "steuernummer_oder_ust_id"
+    ocr_variants: ["Rechnung", "Invoice", "Faktura", "RE"]
+    extraction_priority: "critical"
+    estimated_volume: "65%"
+
+  - term: "Gutschrift"
+    english: "Credit Note"
+    category: "document_type"
+    definition: "Umkehrung der Rechnung - Leistungsempfänger erstellt Dokument"
+    compliance: ["§14 UStG"]
+    ocr_variants: ["Gutschrift", "Credit Note", "GS"]
+    extraction_priority: "high"
+    related_terms: ["Rechnung", "Stornorechnung"]
+
+  - term: "Lieferschein"
+    english: "Delivery Note"
+    category: "document_type"
+    definition: "Begleitdokument für Warenlieferungen"
+    ocr_variants: ["Lieferschein", "Delivery Note", "LS"]
+    extraction_priority: "high"
+    estimated_volume: "15%"
+
+  - term: "Vertrag"
+    english: "Contract"
+    category: "document_type"
+    definition: "Rechtlich bindendes Dokument zwischen Parteien"
+    compliance: ["BGB"]
+    ocr_variants: ["Vertrag", "Contract", "Vereinbarung"]
+    extraction_priority: "high"
+    estimated_volume: "5%"
+
+  - term: "Geschäftsbrief"
+    english: "Business Letter"
+    category: "document_type"
+    definition: "Formelle geschäftliche Korrespondenz"
+    compliance: ["§37a HGB"]
+    ocr_variants: ["Geschäftsbrief", "Brief", "Schreiben"]
+    extraction_priority: "medium"
+    estimated_volume: "10%"
+
+  # Finanzbegriffe (Financial Terms)
+  - term: "Umsatzsteuer"
+    english: "Value Added Tax (VAT)"
+    abbreviation: "USt"
+    category: "financial"
+    legal_basis: "UStG"
+    rates:
+      - rate: "19%"
+        description: "Regelsteuersatz"
+        applies_to: "Meiste Waren und Dienstleistungen"
+      - rate: "7%"
+        description: "Ermäßigter Steuersatz"
+        applies_to: "Lebensmittel, Bücher, etc."
+    ocr_variants: ["Umsatzsteuer", "USt", "MwSt", "Mehrwertsteuer", "VAT"]
+    extraction_priority: "critical"
+
+  - term: "Nettobetrag"
+    english: "Net Amount"
+    category: "financial"
+    definition: "Betrag ohne Umsatzsteuer"
+    ocr_variants: ["Netto", "Nettobetrag", "Net Amount"]
+    extraction_priority: "critical"
+    calculation: "Bruttobetrag / (1 + USt-Satz)"
+
+  - term: "Bruttobetrag"
+    english: "Gross Amount"
+    category: "financial"
+    definition: "Betrag inklusive Umsatzsteuer"
+    ocr_variants: ["Brutto", "Bruttobetrag", "Gross Amount"]
+    extraction_priority: "critical"
+    calculation: "Nettobetrag * (1 + USt-Satz)"
+
+  - term: "Skonto"
+    english: "Cash Discount"
+    category: "financial"
+    definition: "Preisnachlass bei Zahlung innerhalb bestimmter Frist"
+    typical_values: ["2%", "3%"]
+    ocr_variants: ["Skonto", "Cash Discount", "Rabatt bei Sofortzahlung"]
+    extraction_priority: "medium"
+
+  # Datumsformate (Date Formats)
+  - term: "Rechnungsdatum"
+    english: "Invoice Date"
+    category: "date"
+    format: "DD.MM.YYYY"
+    examples: ["22.11.2024", "01.12.2024"]
+    validation_rules:
+      - "Must be in past or today"
+      - "German format: DD.MM.YYYY"
+    ocr_variants: ["Datum", "Rechnungsdatum", "Date"]
+    extraction_priority: "critical"
+
+  - term: "Leistungsdatum"
+    english: "Service Date / Date of Performance"
+    category: "date"
+    format: "DD.MM.YYYY or MM/YYYY"
+    examples: ["22.11.2024", "11/2024", "November 2024"]
+    compliance: ["§14 UStG Abs. 4 Nr. 6"]
+    ocr_variants: ["Leistungsdatum", "Leistungszeitraum"]
+    extraction_priority: "high"
+
+  - term: "Fälligkeitsdatum"
+    english: "Due Date"
+    category: "date"
+    format: "DD.MM.YYYY"
+    calculation: "Rechnungsdatum + Zahlungsziel"
+    ocr_variants: ["Fälligkeitsdatum", "Zahlbar bis", "Due Date"]
+    extraction_priority: "high"
+
+  # Zahlungsbedingungen (Payment Terms)
+  - term: "Zahlungsziel"
+    english: "Payment Terms"
+    category: "payment"
+    typical_values: ["7 Tage", "14 Tage", "30 Tage", "sofort"]
+    ocr_variants: ["Zahlungsziel", "Zahlbar innerhalb", "Payment Terms"]
+    extraction_priority: "high"
+
+  - term: "IBAN"
+    full_name: "International Bank Account Number"
+    category: "payment"
+    format: "DE89370400440532013000"
+    validation_regex: "^DE\\d{2}\\d{8}\\d{10}$"
+    length: 22
+    ocr_variants: ["IBAN", "Bankverbindung", "Kontonummer"]
+    extraction_priority: "high"
+    sensitive_data: true
+    gdpr_category: "financial_data"
+
+  - term: "BIC"
+    full_name: "Bank Identifier Code"
+    english: "SWIFT Code"
+    category: "payment"
+    format: "DEUTDEFF"
+    validation_regex: "^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$"
+    length: [8, 11]
+    ocr_variants: ["BIC", "SWIFT", "Bankleitzahl"]
+    extraction_priority: "medium"
+
+  # Identifikationsnummern (Identification Numbers)
+  - term: "Steuernummer"
+    english: "Tax Number"
+    category: "identification"
+    format: "Varies by Finanzamt"
+    compliance: ["§14 UStG Abs. 4 Nr. 2"]
+    ocr_variants: ["Steuernummer", "St.-Nr.", "Steuer-Nr."]
+    extraction_priority: "critical"
+    sensitive_data: true
+    gdpr_category: "tax_data"
+
+  - term: "Umsatzsteuer-Identifikationsnummer"
+    english: "VAT Identification Number"
+    abbreviation: "USt-IdNr"
+    category: "identification"
+    format: "DE123456789"
+    validation_regex: "^DE\\d{9}$"
+    compliance: ["§14 UStG Abs. 4 Nr. 2"]
+    ocr_variants: ["USt-IdNr", "UID", "VAT-ID", "Ust-ID"]
+    extraction_priority: "critical"
+
+  - term: "Handelsregisternummer"
+    english: "Commercial Register Number"
+    abbreviation: "HRB"
+    category: "identification"
+    format: "HRB 12345"
+    compliance: ["§37a HGB"]
+    ocr_variants: ["HRB", "HR B", "Handelsregister"]
+    extraction_priority: "medium"
+
+  # Allgemeine Begriffe (General Terms)
+  - term: "Geschäftsführer"
+    english: "Managing Director"
+    abbreviation: "GF"
+    category: "role"
+    ocr_variants: ["Geschäftsführer", "GF", "Managing Director"]
+    extraction_priority: "medium"
+
+  - term: "Inhaber"
+    english: "Owner / Proprietor"
+    category: "role"
+    ocr_variants: ["Inhaber", "Inh.", "Proprietor"]
+    extraction_priority: "medium"
+
+  - term: "Vorstand"
+    english: "Board of Directors"
+    category: "role"
+    applies_to: ["AG", "e.V."]
+    ocr_variants: ["Vorstand", "Board"]
+    extraction_priority: "medium"
+
+# Metadata
+metadata:
+  total_terms: 35
+  categories:
+    - "legal_form"
+    - "document_type"
+    - "financial"
+    - "date"
+    - "payment"
+    - "identification"
+    - "role"
+
+  extraction_priorities:
+    critical: 15
+    high: 12
+    medium: 8
+
+  gdpr_sensitive_terms: 2
+
+  last_updated: "2024-11-22"
+  version: "1.0"
+
+# Usage Instructions
+usage:
+  ocr_backend: "Use ocr_variants for fuzzy matching"
+  validation: "Apply validation_rules and compliance checks"
+  extraction: "Prioritize based on extraction_priority"
+  normalization: "Normalize all variants to canonical 'term'"

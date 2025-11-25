@@ -1,0 +1,277 @@
+# Backend Selection Skill
+# Smart OCR Engine Routing: DeepSeek, GOT-OCR, Surya+Docling
+
+metadata:
+  skill_id: "backend_selection"
+  version: "1.0.0"
+  category: "orchestration"
+  dependencies: ["gpu_management", "document_classification"]
+  last_updated: "2025-01-22"
+
+description: |
+  Intelligent OCR backend selection based on document characteristics,
+  GPU availability, and performance requirements. Routes documents to
+  optimal processing engine.
+
+capabilities:
+  - Document type classification
+  - Complexity assessment (tables, images, handwriting)
+  - VRAM availability checking
+  - Performance requirement matching
+  - Automatic fallback routing
+
+backends:
+  deepseek_janus_pro:
+    description: "Multimodal vision-language model for complex documents"
+    strengths:
+      - Complex layouts (tables + images + text)
+      - Handwritten German text
+      - Fraktur fonts (historical documents)
+      - Multi-column documents
+    weaknesses:
+      - High VRAM requirement (12GB)
+      - Slower processing (2-3 pages/sec)
+    requirements:
+      vram_gb: 12
+      gpu_required: true
+    performance:
+      pages_per_second: "2-3"
+      accuracy_german: "97-99%"
+      accuracy_fraktur: "85-90%"
+    use_cases:
+      - "Verträge mit komplexem Layout"
+      - "Handschriftliche Notizen"
+      - "Historische Dokumente (Fraktur)"
+      - "Formulare mit Tabellen"
+
+  got_ocr_2:
+    description: "600M parameter transformer for standard documents"
+    strengths:
+      - Fast processing (5-7 pages/sec)
+      - Good German accuracy (95-97%)
+      - Medium VRAM requirement (10GB)
+      - Reliable for standard layouts
+    weaknesses:
+      - Struggles with handwriting
+      - Poor Fraktur performance
+      - Limited table understanding
+    requirements:
+      vram_gb: 10
+      gpu_required: true
+    performance:
+      pages_per_second: "5-7"
+      accuracy_german: "95-97%"
+      accuracy_fraktur: "60-70%"
+    use_cases:
+      - "Rechnungen (Standard-Layout)"
+      - "Geschäftsbriefe"
+      - "Lieferscheine"
+      - "Einfache Formulare"
+
+  surya_docling:
+    description: "Layout-aware pipeline with CPU fallback"
+    strengths:
+      - No GPU required (CPU processing)
+      - Layout analysis and structure preservation
+      - Good for simple documents
+      - Reliable fallback option
+    weaknesses:
+      - Slow processing (1-2 pages/sec)
+      - Lower accuracy (90-92%)
+      - Limited German optimization
+    requirements:
+      vram_gb: 0
+      gpu_required: false
+    performance:
+      pages_per_second: "1-2"
+      accuracy_german: "90-92%"
+      accuracy_fraktur: "50-60%"
+    use_cases:
+      - "GPU unavailable (fallback)"
+      - "Simple documents"
+      - "Low-priority batch processing"
+      - "Development/testing without GPU"
+
+selection_algorithm:
+  step_1_document_classification:
+    description: "Classify document type and complexity"
+    inputs:
+      - "File extension"
+      - "Image analysis (OCR preview)"
+      - "Metadata (if available)"
+    outputs:
+      - "document_type: [rechnung, vertrag, brief, formular, handschrift]"
+      - "has_tables: boolean"
+      - "has_handwriting: boolean"
+      - "has_fraktur: boolean"
+      - "complexity_score: 0-10"
+
+  step_2_vram_check:
+    description: "Check available GPU memory"
+    code: |
+      from app.gpu_manager import GPUManager
+
+      gpu = GPUManager()
+      memory_info = gpu.get_memory_info()
+
+      available_vram = memory_info['free_gb']
+    outputs:
+      - "available_vram_gb: float"
+      - "gpu_available: boolean"
+
+  step_3_backend_selection:
+    description: "Select optimal backend based on rules"
+    decision_tree: |
+      IF has_handwriting OR has_fraktur OR complexity_score >= 7:
+          IF available_vram >= 12:
+              RETURN "deepseek"
+          ELSE:
+              RETURN "surya"  # Fallback for complex docs
+
+      ELIF document_type == "rechnung" AND complexity_score < 5:
+          IF available_vram >= 10:
+              RETURN "got_ocr"
+          ELSE:
+              RETURN "surya"
+
+      ELSE:
+          IF available_vram >= 10:
+              RETURN "got_ocr"  # Default for standard docs
+          ELSE:
+              RETURN "surya"
+
+  step_4_validation:
+    description: "Validate backend availability"
+    checks:
+      - "Backend model loaded"
+      - "VRAM sufficient"
+      - "No active OOM errors"
+
+usage_patterns:
+  automatic_selection:
+    description: "Let system choose best backend"
+    code_reference: "app/services/ocr_service.py:OCRService.select_backend()"
+    example: |
+      from app.services.ocr_service import OCRService
+
+      ocr = OCRService()
+
+      # Automatic selection
+      result = await ocr.process(
+          document_id="abc123",
+          backend="auto"  # System decides
+      )
+
+      print(f"Used backend: {result.backend_used}")
+      print(f"Selection reason: {result.selection_reason}")
+
+  manual_override:
+    description: "Force specific backend"
+    example: |
+      # Force DeepSeek for complex document
+      result = await ocr.process(
+          document_id="abc123",
+          backend="deepseek",
+          force=True
+      )
+
+  fallback_on_error:
+    description: "Automatic fallback on OOM"
+    code_reference: "Relations/Playbooks/error_response_playbook.yaml"
+    example: |
+      try:
+          result = await ocr.process(doc_id, backend="deepseek")
+      except torch.cuda.OutOfMemoryError:
+          # Automatic fallback
+          logger.warning("OOM on DeepSeek, falling back to GOT-OCR")
+          result = await ocr.process(doc_id, backend="got_ocr")
+
+selection_matrix:
+  rechnung_simple:
+    document_type: "Rechnung (Standard-Layout)"
+    complexity: "low (2-3)"
+    recommended: "got_ocr"
+    reason: "Fast, accurate for standard invoices"
+
+  rechnung_complex:
+    document_type: "Rechnung mit Tabellen"
+    complexity: "medium (5-6)"
+    recommended: "deepseek"
+    reason: "Better table understanding"
+
+  vertrag_modern:
+    document_type: "Vertrag (modern, gedruckt)"
+    complexity: "medium (4-5)"
+    recommended: "got_ocr"
+    reason: "Good accuracy, fast processing"
+
+  vertrag_handwritten:
+    document_type: "Vertrag (handschriftlich)"
+    complexity: "high (8-9)"
+    recommended: "deepseek"
+    reason: "Best handwriting recognition"
+
+  historical_fraktur:
+    document_type: "Historisches Dokument (Fraktur)"
+    complexity: "very high (9-10)"
+    recommended: "deepseek"
+    reason: "Only backend with Fraktur support"
+
+  lieferschein:
+    document_type: "Lieferschein"
+    complexity: "low (2-3)"
+    recommended: "got_ocr"
+    reason: "Simple layout, fast processing needed"
+
+performance_optimization:
+  batch_processing:
+    description: "Group similar documents for same backend"
+    benefit: "Reduces model switching overhead"
+    code: |
+      # Group by recommended backend
+      docs_by_backend = defaultdict(list)
+      for doc in documents:
+          backend = ocr.select_backend(doc)
+          docs_by_backend[backend].append(doc)
+
+      # Process in batches
+      for backend, docs in docs_by_backend.items():
+          results = await ocr.process_batch(docs, backend=backend)
+
+  model_preloading:
+    description: "Preload frequently used backends"
+    benefit: "Eliminates cold start latency"
+    code: |
+      # Preload on startup
+      from app.services.model_manager import ModelManager
+
+      manager = ModelManager()
+      await manager.preload("got_ocr")  # Most common
+      await manager.preload("deepseek")  # For complex docs
+
+monitoring:
+  metrics:
+    - "backend_usage_count (deepseek, got_ocr, surya)"
+    - "selection_accuracy (did backend succeed?)"
+    - "average_processing_time_per_backend"
+    - "oom_fallback_rate"
+    - "manual_override_rate"
+
+best_practices:
+  - name: "Trust automatic selection for 95% of documents"
+    rationale: "Algorithm optimized for performance + accuracy"
+
+  - name: "Monitor backend success rates"
+    rationale: "Identify if selection algorithm needs tuning"
+
+  - name: "Preload common backends on startup"
+    rationale: "Reduces latency for first request"
+
+  - name: "Use batch processing for similar documents"
+    rationale: "Amortizes model loading overhead"
+
+references:
+  - "app/services/ocr_service.py - Backend selection implementation"
+  - "Static_Knowledge/ADRs/001_backend_selection_strategy.md"
+  - "Relations/Decision_Trees/backend_selection_tree.yaml"
+  - "app/gpu_manager.py - VRAM availability checking"

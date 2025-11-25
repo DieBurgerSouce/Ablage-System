@@ -1,0 +1,61 @@
+# Debugging Prompts
+
+prompts:
+  gpu_oom_diagnosis:
+    prompt: |
+      Analyze this GPU OOM error:
+
+      Error: {error_message}
+      Batch size: {batch_size}
+      Model: {model_name}
+      Available VRAM: {vram_gb} GB
+
+      Provide:
+      1. Root cause analysis
+      2. Immediate fix (reduce batch size by X%)
+      3. Long-term optimization
+      4. Reference: Dynamic_Knowledge/Learnings/gpu_oom_learnings.md
+
+  german_ocr_error_diagnosis:
+    prompt: |
+      Diagnose this German OCR error:
+
+      Expected: {expected_text}
+      Got: {actual_text}
+      Confidence: {confidence}
+
+      Analyze:
+      1. Umlaut errors (ü→ii, ä→ae, etc.)
+      2. Business term misrecognition
+      3. Fraktur character issues
+      4. Backend recommendation
+      5. Reference: Dynamic_Knowledge/Learnings/german_ocr_challenges.md
+
+  template_extraction_failure:
+    prompt: |
+      Template extraction failed:
+
+      Template: {template_id}
+      Missing fields: {missing_fields}
+      Confidence: {confidence}
+      Text sample: {text_preview}
+
+      Investigate:
+      1. Pattern matching issues
+      2. OCR quality problems
+      3. Template vs document mismatch
+      4. Suggest pattern improvements
+
+  deployment_failure_diagnosis:
+    prompt: |
+      Deployment failed at step: {failed_step}
+
+      Error: {error_message}
+      Environment: {environment}
+
+      Check:
+      1. Pre-deployment checklist completion
+      2. Dependency versions
+      3. GPU/CUDA availability
+      4. Reference: Dynamic_Knowledge/Learnings/deployment_gotchas.md
+      5. Rollback procedure

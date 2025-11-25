@@ -1,0 +1,239 @@
+{{ define "email.html" }}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .header.critical {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+        }
+        .header.high {
+            background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+        }
+        .header.warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        .alert {
+            background: #f9fafb;
+            border-left: 4px solid #6366f1;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .alert.critical {
+            border-left-color: #dc2626;
+            background: #fef2f2;
+        }
+        .alert.high {
+            border-left-color: #ea580c;
+            background: #fff7ed;
+        }
+        .alert.warning {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+        }
+        .alert.resolved {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+        .label {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 2px;
+        }
+        .label.critical { background: #fecaca; color: #991b1b; }
+        .label.high { background: #fed7aa; color: #c2410c; }
+        .label.warning { background: #fde68a; color: #92400e; }
+        .label.info { background: #dbeafe; color: #1e40af; }
+        .details {
+            margin: 10px 0;
+        }
+        .details dt {
+            font-weight: bold;
+            display: inline-block;
+            width: 150px;
+        }
+        .details dd {
+            display: inline;
+            margin: 0;
+        }
+        .code {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #6366f1;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        .button.critical {
+            background: #dc2626;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 12px;
+        }
+        .summary {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header {{ .GroupLabels.severity }}">
+        <h1>🚨 Ablage-System Alert</h1>
+        <h2>{{ .GroupLabels.alertname }}</h2>
+        <p>{{ .GroupLabels.service | title }} - {{ .GroupLabels.cluster | default "default" }}</p>
+    </div>
+
+    <div class="summary">
+        <strong>Alert Summary:</strong><br>
+        Total Alerts: {{ len .Alerts }} |
+        Firing: <span style="color: #dc2626;">{{ len .Alerts.Firing }}</span> |
+        Resolved: <span style="color: #10b981;">{{ len .Alerts.Resolved }}</span>
+    </div>
+
+    {{ range .Alerts }}
+    <div class="alert {{ .Labels.severity }} {{ .Status }}">
+        <h3>
+            {{ if eq .Status "firing" }}🔴{{ else }}✅{{ end }}
+            {{ .Labels.alertname }}
+            <span class="label {{ .Labels.severity }}">{{ .Labels.severity | upper }}</span>
+            <span class="label {{ .Status }}">{{ .Status | upper }}</span>
+        </h3>
+
+        <dl class="details">
+            <dt>Service:</dt>
+            <dd>{{ .Labels.service }}</dd><br>
+
+            {{ if .Labels.instance }}
+            <dt>Instance:</dt>
+            <dd>{{ .Labels.instance }}</dd><br>
+            {{ end }}
+
+            {{ if .Labels.job }}
+            <dt>Job:</dt>
+            <dd>{{ .Labels.job }}</dd><br>
+            {{ end }}
+
+            <dt>Status:</dt>
+            <dd>{{ .Status }}</dd><br>
+
+            {{ if eq .Status "firing" }}
+            <dt>Started:</dt>
+            <dd>{{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}</dd><br>
+            {{ else }}
+            <dt>Resolved:</dt>
+            <dd>{{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}</dd><br>
+            <dt>Duration:</dt>
+            <dd>{{ .EndsAt.Sub .StartsAt }}</dd><br>
+            {{ end }}
+        </dl>
+
+        <h4>Beschreibung:</h4>
+        <p>{{ .Annotations.summary }}</p>
+
+        {{ if .Annotations.description }}
+        <h4>Details:</h4>
+        <p>{{ .Annotations.description }}</p>
+        {{ end }}
+
+        {{ if .Annotations.impact }}
+        <h4>Impact:</h4>
+        <p>{{ .Annotations.impact }}</p>
+        {{ end }}
+
+        {{ if .Annotations.action }}
+        <h4>Empfohlene Maßnahmen:</h4>
+        <p>{{ .Annotations.action }}</p>
+        {{ end }}
+
+        {{ if .Annotations.query }}
+        <h4>Query:</h4>
+        <div class="code">{{ .Annotations.query }}</div>
+        {{ end }}
+
+        {{ if .Annotations.current_value }}
+        <h4>Aktueller Wert:</h4>
+        <p><strong>{{ .Annotations.current_value }}</strong>
+        {{ if .Annotations.threshold }}(Schwellenwert: {{ .Annotations.threshold }}){{ end }}
+        </p>
+        {{ end }}
+
+        <div style="margin-top: 15px;">
+            {{ if .GeneratorURL }}
+            <a href="{{ .GeneratorURL }}" class="button">📊 View in Grafana</a>
+            {{ end }}
+
+            {{ if .Annotations.runbook_url }}
+            <a href="{{ .Annotations.runbook_url }}" class="button">📖 Runbook</a>
+            {{ end }}
+
+            {{ if .Annotations.dashboard_url }}
+            <a href="{{ .Annotations.dashboard_url }}" class="button">📈 Dashboard</a>
+            {{ end }}
+
+            {{ if .Annotations.logs_url }}
+            <a href="{{ .Annotations.logs_url }}" class="button">📝 Logs</a>
+            {{ end }}
+        </div>
+
+        {{ if .Labels }}
+        <details style="margin-top: 15px;">
+            <summary style="cursor: pointer; font-weight: bold;">All Labels</summary>
+            <ul style="margin: 10px 0;">
+            {{ range .Labels.SortedPairs }}
+                <li><strong>{{ .Name }}:</strong> {{ .Value }}</li>
+            {{ end }}
+            </ul>
+        </details>
+        {{ end }}
+    </div>
+    {{ end }}
+
+    <div class="footer">
+        <p>
+            <strong>Ablage-System OCR - Alertmanager</strong><br>
+            Generated: {{ now.Format "2006-01-02 15:04:05 MST" }}<br>
+            Alert Group: {{ .GroupLabels.alertname }}<br>
+        </p>
+        <p style="color: #9ca3af; font-size: 11px;">
+            This is an automated alert from Ablage-System monitoring infrastructure.
+            Do not reply to this email.
+        </p>
+    </div>
+</body>
+</html>
+{{ end }}

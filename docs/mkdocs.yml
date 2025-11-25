@@ -1,0 +1,385 @@
+# MkDocs Configuration - Ablage-System OCR
+
+# Site Information
+site_name: Ablage-System OCR
+site_description: Enterprise-grade German document processing with GPU-accelerated OCR
+site_author: Ablage-System Team
+site_url: https://docs.ablage-system.local
+
+# Repository
+repo_name: ablage-system/ablage-system-ocr
+repo_url: https://github.com/ablage-system/ablage-system-ocr
+edit_uri: edit/main/docs/
+
+# Copyright
+copyright: Copyright &copy; 2025 Ablage-System Team
+
+# Theme Configuration
+theme:
+  name: material
+  language: de
+  favicon: assets/favicon.png
+  logo: assets/logo.png
+
+  # Color Scheme
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+  # Features
+  features:
+    - navigation.instant        # Instant loading
+    - navigation.tracking       # URL updates on scroll
+    - navigation.tabs           # Top-level sections as tabs
+    - navigation.tabs.sticky    # Tabs always visible
+    - navigation.sections       # Expand sections in sidebar
+    - navigation.expand         # Expand all sections by default
+    - navigation.indexes        # Section index pages
+    - navigation.top            # Back to top button
+    - search.suggest            # Search suggestions
+    - search.highlight          # Highlight search terms
+    - search.share              # Share search results
+    - toc.follow                # TOC follows scroll
+    - toc.integrate             # TOC integrated into sidebar
+    - content.code.copy         # Copy button for code blocks
+    - content.code.annotate     # Code annotations
+    - content.tabs.link         # Link content tabs
+
+  # Icons
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+
+# Plugins
+plugins:
+  - search:
+      lang:
+        - de
+        - en
+      separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
+
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+      htmlmin_opts:
+        remove_comments: true
+      cache_safe: true
+
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago
+      timezone: Europe/Berlin
+      locale: de
+
+  - awesome-pages
+
+  - macros:
+      include_dir: docs/snippets
+
+  - tags:
+      tags_file: tags.md
+
+# Extensions
+markdown_extensions:
+  # Python Markdown
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - meta
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: Link zu diesem Abschnitt
+      toc_depth: 3
+
+  # Python Markdown Extensions
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: ablage-system
+      repo: ablage-system-ocr
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      check_paths: true
+      base_path: docs/snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+      clickable_checkbox: false
+
+# Extra CSS and JavaScript
+extra_css:
+  - stylesheets/extra.css
+  - stylesheets/custom.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  - javascripts/custom.js
+
+# Extra Configuration
+extra:
+  # Version
+  version:
+    provider: mike
+    default: stable
+
+  # Social Links
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ablage-system
+      name: GitHub
+    - icon: fontawesome/brands/docker
+      link: https://hub.docker.com/r/ablagesystem
+      name: Docker Hub
+    - icon: fontawesome/solid/envelope
+      link: mailto:info@ablage-system.local
+      name: Email
+
+  # Alternate Languages
+  alternate:
+    - name: Deutsch
+      link: /de/
+      lang: de
+    - name: English
+      link: /en/
+      lang: en
+
+  # Analytics (optional)
+  # analytics:
+  #   provider: google
+  #   property: G-XXXXXXXXXX
+
+  # Consent (GDPR)
+  consent:
+    title: Cookie-Einwilligung
+    description: >
+      Wir verwenden Cookies, um die Dokumentation zu verbessern und die Nutzung zu analysieren.
+      Mit Ihrer Einwilligung helfen Sie uns, die Dokumentation weiter zu optimieren.
+    actions:
+      - accept
+      - reject
+      - manage
+
+  # Status
+  status:
+    new: Neu hinzugefügt
+    deprecated: Veraltet
+
+# Navigation Structure
+nav:
+  - Home:
+    - Übersicht: index.md
+    - Schnellstart: getting-started.md
+    - FAQ: faq.md
+    - Changelog: changelog.md
+    - Roadmap: roadmap.md
+
+  - Architektur:
+    - Überblick: architecture/overview.md
+    - Systemarchitektur: architecture/system-architecture.md
+    - Datenfluss: architecture/data-flow.md
+    - OCR-Backends: architecture/ocr-backends.md
+    - GPU-Management: architecture/gpu-management.md
+    - Sicherheit: architecture/security.md
+    - Skalierbarkeit: architecture/scalability.md
+
+  - Installation:
+    - Voraussetzungen: installation/prerequisites.md
+    - Docker Installation: installation/docker.md
+    - Lokale Entwicklung: installation/local-development.md
+    - Produktion: installation/production.md
+    - GPU-Setup: installation/gpu-setup.md
+    - Konfiguration: installation/configuration.md
+
+  - Benutzerhandbuch:
+    - Dokumente hochladen: user-guide/upload-documents.md
+    - OCR-Verarbeitung: user-guide/ocr-processing.md
+    - Ergebnisse anzeigen: user-guide/view-results.md
+    - Suche: user-guide/search.md
+    - Export: user-guide/export.md
+    - Anzeigemodi: user-guide/display-modes.md
+
+  - Entwicklung:
+    - Entwicklungsumgebung: development/environment.md
+    - Code-Struktur: development/code-structure.md
+    - API-Entwicklung: development/api-development.md
+    - Frontend-Entwicklung: development/frontend-development.md
+    - Testing: development/testing.md
+    - Debugging: development/debugging.md
+    - Code-Standards: development/code-standards.md
+    - Git-Workflow: development/git-workflow.md
+
+  - API-Referenz:
+    - Übersicht: api/overview.md
+    - Authentifizierung: api/authentication.md
+    - Dokumente: api/documents.md
+    - OCR: api/ocr.md
+    - Suche: api/search.md
+    - Benutzer: api/users.md
+    - Fehlerbehandlung: api/error-handling.md
+    - Rate Limiting: api/rate-limiting.md
+
+  - Infrastruktur:
+    - Übersicht: infrastructure/overview.md
+    - Docker:
+      - Docker Compose: infrastructure/docker/docker-compose.md
+      - Dockerfiles: infrastructure/docker/dockerfiles.md
+      - Best Practices: infrastructure/docker/best-practices.md
+    - Terraform:
+      - Übersicht: infrastructure/terraform/overview.md
+      - Module: infrastructure/terraform/modules.md
+      - Deployment: infrastructure/terraform/deployment.md
+    - Ansible:
+      - Übersicht: infrastructure/ansible/overview.md
+      - Playbooks: infrastructure/ansible/playbooks.md
+      - Inventories: infrastructure/ansible/inventories.md
+    - Vault:
+      - Secret Management: infrastructure/vault/secret-management.md
+      - Setup: infrastructure/vault/setup.md
+      - Policies: infrastructure/vault/policies.md
+    - Monitoring:
+      - Prometheus: infrastructure/monitoring/prometheus.md
+      - Grafana: infrastructure/monitoring/grafana.md
+      - Alertmanager: infrastructure/monitoring/alertmanager.md
+      - Sentry: infrastructure/monitoring/sentry.md
+    - Backup: infrastructure/backup.md
+    - Disaster Recovery: infrastructure/disaster-recovery.md
+
+  - Deployment:
+    - Übersicht: deployment/overview.md
+    - Entwicklungsumgebung: deployment/development.md
+    - Staging: deployment/staging.md
+    - Produktion: deployment/production.md
+    - Rollback: deployment/rollback.md
+    - Blue-Green Deployment: deployment/blue-green.md
+    - CI/CD:
+      - GitHub Actions: deployment/cicd/github-actions.md
+      - GitLab CI: deployment/cicd/gitlab-ci.md
+
+  - Betrieb:
+    - Überwachung: operations/monitoring.md
+    - Logging: operations/logging.md
+    - Wartung: operations/maintenance.md
+    - Backup & Restore: operations/backup-restore.md
+    - Skalierung: operations/scaling.md
+    - Troubleshooting: operations/troubleshooting.md
+    - Performance-Tuning: operations/performance-tuning.md
+    - Incident Response: operations/incident-response.md
+
+  - OCR-Engines:
+    - Übersicht: ocr-engines/overview.md
+    - DeepSeek-Janus-Pro: ocr-engines/deepseek.md
+    - GOT-OCR 2.0: ocr-engines/got-ocr.md
+    - Surya + Docling: ocr-engines/surya-docling.md
+    - Vergleich: ocr-engines/comparison.md
+    - Custom Engines: ocr-engines/custom-engines.md
+
+  - Sicherheit:
+    - Sicherheitsübersicht: security/overview.md
+    - Authentifizierung: security/authentication.md
+    - Autorisierung: security/authorization.md
+    - Datenschutz: security/data-privacy.md
+    - Verschlüsselung: security/encryption.md
+    - Audit-Logging: security/audit-logging.md
+    - Best Practices: security/best-practices.md
+    - Compliance: security/compliance.md
+    - Penetration Testing: security/pentesting.md
+
+  - Performance:
+    - Übersicht: performance/overview.md
+    - GPU-Optimierung: performance/gpu-optimization.md
+    - Batch-Verarbeitung: performance/batch-processing.md
+    - Caching: performance/caching.md
+    - Datenbank-Optimierung: performance/database-optimization.md
+    - Profiling: performance/profiling.md
+    - Benchmarks: performance/benchmarks.md
+
+  - Tutorials:
+    - Erstes Dokument verarbeiten: tutorials/first-document.md
+    - Eigene OCR-Engine hinzufügen: tutorials/add-ocr-engine.md
+    - Custom Preprocessing: tutorials/custom-preprocessing.md
+    - Webhook Integration: tutorials/webhook-integration.md
+    - Multi-Tenant Setup: tutorials/multi-tenant.md
+    - GPU Cluster Setup: tutorials/gpu-cluster.md
+
+  - Referenz:
+    - Konfiguration: reference/configuration.md
+    - Umgebungsvariablen: reference/environment-variables.md
+    - CLI-Befehle: reference/cli-commands.md
+    - Datenbank-Schema: reference/database-schema.md
+    - Metriken: reference/metrics.md
+    - Glossar: reference/glossary.md
+
+  - Beitragen:
+    - Contributing Guide: contributing/guide.md
+    - Code of Conduct: contributing/code-of-conduct.md
+    - Pull Requests: contributing/pull-requests.md
+    - Issues: contributing/issues.md
+    - Dokumentation: contributing/documentation.md
+
+  - Support:
+    - Hilfe: support/help.md
+    - Community: support/community.md
+    - Professioneller Support: support/professional.md
+    - Training: support/training.md
+
+# Validation
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    absolute_links: warn
+    unrecognized_links: warn
+
+# Hooks
+hooks:
+  - hooks/redirects.py
+  - hooks/diagrams.py

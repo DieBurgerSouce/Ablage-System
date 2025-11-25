@@ -1,0 +1,74 @@
+# DeepSeek OCR Skill Definition
+# Multimodal OCR for complex German documents
+
+name: deepseek_ocr
+version: 1.0
+category: ocr
+description: |
+  DeepSeek-Janus-Pro multimodal OCR agent for complex German documents.
+  Best for: tables, handwriting, Fraktur fonts, complex layouts.
+
+# Handler (Python path to agent class)
+handler: app.agents.ocr.deepseek_agent:DeepSeekAgent
+async_execution: true
+
+# Parameters
+parameters:
+  - name: document_id
+    type: str
+    required: true
+    description: Unique document identifier
+
+  - name: image_path
+    type: str
+    required: true
+    description: Path to document image file
+
+  - name: language
+    type: str
+    required: false
+    default: de
+    description: Document language (de, en, multi)
+
+  - name: detect_fraktur
+    type: bool
+    required: false
+    default: true
+    description: Enable Fraktur font detection
+
+  - name: extract_tables
+    type: bool
+    required: false
+    default: true
+    description: Extract table structures
+
+# Hooks
+pre_hooks:
+  - validation_hook
+  - gpu_allocation_hook
+
+post_hooks:
+  - metrics_hook
+  - logging_hook
+
+error_hooks:
+  - error_logging_hook
+  - alerting_hook
+
+# Resource Requirements
+gpu_required: true
+vram_gb: 12
+
+dependencies:
+  - torch>=2.0.0
+  - transformers>=4.30.0
+  - pillow>=10.0.0
+
+# Metadata
+author: Ablage-System Team
+tags:
+  - ocr
+  - gpu
+  - german
+  - multimodal
+enabled: true

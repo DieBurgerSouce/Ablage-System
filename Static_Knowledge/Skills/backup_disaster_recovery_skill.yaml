@@ -1,0 +1,316 @@
+# Backup & Disaster Recovery Skill
+
+skill_id: backup_recovery_001
+category: operations
+priority: critical
+status: production_ready
+
+description: |
+  Comprehensive backup and disaster recovery strategy for Ablage-System.
+  Ensures data integrity, business continuity, and GDPR compliance.
+
+backup_strategy:
+  rpo: "1 hour"  # Recovery Point Objective
+  rto: "4 hours"  # Recovery Time Objective
+
+  backup_types:
+    - full_backup_weekly
+    - incremental_backup_daily
+    - continuous_replication_for_critical_data
+
+data_tiers:
+  tier_1_critical:
+    description: "PostgreSQL database, user data, audit logs"
+    backup_frequency: "Every 6 hours"
+    retention: "90 days"
+    storage_locations:
+      - primary: "on_premises_nas"
+      - secondary: "off_site_backup_server"
+    encryption: "AES-256"
+
+  tier_2_important:
+    description: "Processed documents in MinIO, extracted text"
+    backup_frequency: "Daily"
+    retention: "60 days"
+    storage_locations:
+      - primary: "on_premises_storage"
+      - secondary: "off_site_backup"
+    encryption: "AES-256"
+
+  tier_3_normal:
+    description: "Application logs, temporary files"
+    backup_frequency: "Weekly"
+    retention: "30 days"
+    storage_locations:
+      - primary: "on_premises_storage"
+    compression: true
+
+backup_procedures:
+  postgresql_backup:
+    method: "pg_dump with WAL archiving"
+    script: |
+      #!/bin/bash
+      # PostgreSQL backup script
+
+      BACKUP_DIR="/backups/postgresql"
+      TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+      DB_NAME="ablage_system"
+
+      # Full backup
+      pg_dump -U postgres -Fc $DB_NAME > \
+        $BACKUP_DIR/ablage_${TIMESTAMP}.dump
+
+      # Verify backup integrity
+      pg_restore --list $BACKUP_DIR/ablage_${TIMESTAMP}.dump > /dev/null
+
+      if [ $? -eq 0 ]; then
+        echo "Backup successful: ablage_${TIMESTAMP}.dump"
+      else
+        echo "Backup verification failed!" >&2
+        exit 1
+      fi
+
+      # Encrypt backup
+      gpg --encrypt --recipient backup@company.de \
+        $BACKUP_DIR/ablage_${TIMESTAMP}.dump
+
+      # Upload to off-site
+      rsync -avz --progress \
+        $BACKUP_DIR/ablage_${TIMESTAMP}.dump.gpg \
+        backup-server:/backups/postgresql/
+
+      # Cleanup old backups (keep 90 days)
+      find $BACKUP_DIR -name "*.dump.gpg" -mtime +90 -delete
+
+    schedule: "0 */6 * * *"  # Every 6 hours
+
+  minio_backup:
+    method: "MinIO mirror with mc client"
+    script: |
+      #!/bin/bash
+      # MinIO backup script
+
+      SOURCE="local/documents"
+      DEST="backup/documents"
+
+      # Mirror bucket to backup location
+      mc mirror --preserve $SOURCE $DEST
+
+      # Verify backup
+      mc diff $SOURCE $DEST
+
+      if [ $? -eq 0 ]; then
+        echo "MinIO backup synchronized successfully"
+      else
+        echo "MinIO backup verification failed!" >&2
+        exit 1
+      fi
+
+    schedule: "0 2 * * *"  # Daily at 2 AM
+
+  redis_backup:
+    method: "RDB snapshots + AOF"
+    configuration: |
+      # redis.conf
+      save 900 1      # Save after 900s if 1 key changed
+      save 300 10     # Save after 300s if 10 keys changed
+      save 60 10000   # Save after 60s if 10000 keys changed
+
+      appendonly yes
+      appendfsync everysec
+
+      dir /data/redis/backups
+
+    schedule: "Automatic based on redis.conf"
+
+disaster_recovery_scenarios:
+  scenario_1_database_corruption:
+    impact: "Critical - All data access lost"
+    detection:
+      - "Database connection failures"
+      - "Data integrity errors"
+      - "Application errors"
+
+    recovery_steps:
+      - step: "Assess corruption extent"
+        command: "pg_dump --schema-only to check structure"
+
+      - step: "Stop all services"
+        command: "docker-compose down"
+
+      - step: "Restore latest backup"
+        command: |
+          pg_restore -U postgres -d ablage_system_new \
+            /backups/postgresql/ablage_latest.dump
+
+      - step: "Verify data integrity"
+        command: "SELECT COUNT(*) FROM documents; -- Check counts"
+
+      - step: "Switch to restored database"
+        command: "Update DATABASE_URL in .env"
+
+      - step: "Restart services"
+        command: "docker-compose up -d"
+
+      - step: "Validate operations"
+        command: "Run smoke tests"
+
+    estimated_rto: "2-4 hours"
+
+  scenario_2_minio_data_loss:
+    impact: "High - Document files lost"
+    detection:
+      - "Missing file errors"
+      - "404 errors from MinIO"
+      - "Bucket listing failures"
+
+    recovery_steps:
+      - step: "Stop document uploads"
+        command: "Disable /upload endpoint"
+
+      - step: "Restore from backup"
+        command: "mc mirror backup/documents local/documents"
+
+      - step: "Verify file integrity"
+        command: "Compare checksums with database records"
+
+      - step: "Re-enable uploads"
+        command: "Enable /upload endpoint"
+
+    estimated_rto: "1-2 hours"
+
+  scenario_3_complete_server_failure:
+    impact: "Critical - Total system unavailable"
+    detection:
+      - "Server unreachable"
+      - "All services down"
+      - "Hardware failure alerts"
+
+    recovery_steps:
+      - step: "Provision new server"
+        duration: "1 hour"
+
+      - step: "Install dependencies"
+        command: "Ansible playbook: infrastructure/ansible/playbooks/setup.yml"
+        duration: "30 minutes"
+
+      - step: "Restore PostgreSQL"
+        command: "pg_restore from off-site backup"
+        duration: "1 hour"
+
+      - step: "Restore MinIO"
+        command: "mc mirror from off-site backup"
+        duration: "2 hours"
+
+      - step: "Deploy application"
+        command: "docker-compose up -d"
+        duration: "15 minutes"
+
+      - step: "Validate full functionality"
+        command: "Run integration tests"
+        duration: "30 minutes"
+
+    estimated_rto: "5-6 hours"
+
+backup_testing:
+  test_frequency: "Monthly"
+
+  test_procedures:
+    - name: "Restore Test"
+      description: "Full restoration to test environment"
+      steps:
+        - "Select random backup from last month"
+        - "Restore to test database"
+        - "Run validation queries"
+        - "Test application functionality"
+        - "Document results"
+
+    - name: "Disaster Recovery Drill"
+      description: "Simulate complete failure"
+      frequency: "Quarterly"
+      steps:
+        - "Schedule maintenance window"
+        - "Simulate server failure"
+        - "Execute recovery procedures"
+        - "Measure actual RTO"
+        - "Update procedures based on learnings"
+
+gdpr_compliance:
+  right_to_erasure:
+    process: |
+      When user requests data deletion (GDPR Art. 17):
+      1. Mark user data for deletion in database
+      2. Stop all backup jobs
+      3. Purge from live databases
+      4. Remove from MinIO storage
+      5. Delete from Redis cache
+      6. Schedule backup purge (next backup cycle)
+      7. Document deletion in audit log
+      8. Confirm deletion to user within 30 days
+
+  backup_retention_limits:
+    personal_data: "90 days maximum"
+    audit_logs: "7 years (legal requirement)"
+    anonymized_metrics: "Indefinite"
+
+monitoring:
+  backup_monitoring:
+    - metric: "backup_success_rate"
+      threshold: "> 99%"
+      alert_on_failure: true
+
+    - metric: "backup_duration"
+      threshold: "< 2 hours"
+      alert_on_threshold: true
+
+    - metric: "backup_size_gb"
+      track_growth: true
+      alert_on_anomaly: true
+
+    - metric: "last_successful_backup_age"
+      threshold: "< 7 hours"
+      alert_critical: true
+
+automation:
+  backup_scheduler: "cron + systemd timers"
+  verification: "Automated integrity checks"
+  alerting: "Prometheus + Alertmanager"
+
+  backup_rotation:
+    daily: "Keep 7 days"
+    weekly: "Keep 4 weeks"
+    monthly: "Keep 12 months"
+    yearly: "Keep 7 years (audit logs only)"
+
+documentation:
+  runbooks:
+    - "DR-001: Database Recovery Procedure"
+    - "DR-002: MinIO Restoration Procedure"
+    - "DR-003: Complete System Recovery"
+    - "DR-004: Backup Verification Process"
+
+  contact_list:
+    - role: "Primary DBA"
+      contact: "dba@company.de"
+      phone: "+49-xxx-xxxxxxx"
+
+    - role: "System Administrator"
+      contact: "sysadmin@company.de"
+      phone: "+49-xxx-xxxxxxx"
+
+    - role: "Backup Service Provider"
+      contact: "support@backup-provider.de"
+      phone: "+49-xxx-xxxxxxx"
+
+related_files:
+  - "Static_Knowledge/SOPs/004_disaster_recovery_procedure.md"
+  - "Relations/Playbooks/error_response_playbook.yaml"
+  - "Static_Knowledge/Snippets/gdpr_logging_patterns.py"
+
+tags:
+  - backup
+  - disaster_recovery
+  - gdpr
+  - compliance
+  - business_continuity
+  - data_protection

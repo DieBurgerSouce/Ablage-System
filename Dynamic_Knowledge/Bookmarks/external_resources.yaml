@@ -1,0 +1,337 @@
+# External Resources - Documentation, Tools, Communities
+# Curated links for Ablage-System development
+
+metadata:
+  last_updated: "2025-01-22"
+  purpose: "Quick access to external documentation and tools"
+  categories: ["documentation", "tools", "communities", "apis", "models"]
+
+# ============================================================================
+# Official Documentation
+# ============================================================================
+documentation:
+  python:
+    url: "https://docs.python.org/3.11/"
+    description: "Python 3.11 official documentation"
+    topics: ["Language Reference", "Standard Library", "Tutorial"]
+
+  fastapi:
+    url: "https://fastapi.tiangolo.com/"
+    description: "FastAPI web framework documentation"
+    key_sections:
+      - "Tutorial: https://fastapi.tiangolo.com/tutorial/"
+      - "Async: https://fastapi.tiangolo.com/async/"
+      - "Dependencies: https://fastapi.tiangolo.com/tutorial/dependencies/"
+      - "Background Tasks: https://fastapi.tiangolo.com/tutorial/background-tasks/"
+
+  pytorch:
+    url: "https://pytorch.org/docs/stable/index.html"
+    description: "PyTorch deep learning framework"
+    critical_docs:
+      - "CUDA Semantics: https://pytorch.org/docs/stable/notes/cuda.html"
+      - "Memory Management: https://pytorch.org/docs/stable/notes/cuda.html#memory-management"
+      - "Autograd: https://pytorch.org/docs/stable/notes/autograd.html"
+
+  sqlalchemy:
+    url: "https://docs.sqlalchemy.org/en/20/"
+    description: "SQLAlchemy 2.0 ORM documentation"
+    key_sections:
+      - "Async ORM: https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html"
+      - "Relationships: https://docs.sqlalchemy.org/en/20/orm/basic_relationships.html"
+
+  celery:
+    url: "https://docs.celeryq.dev/en/stable/"
+    description: "Celery distributed task queue"
+    important:
+      - "First Steps: https://docs.celeryq.dev/en/stable/getting-started/first-steps-with-celery.html"
+      - "Redis Broker: https://docs.celeryq.dev/en/stable/getting-started/backends-and-brokers/redis.html"
+
+  pydantic:
+    url: "https://docs.pydantic.dev/latest/"
+    description: "Pydantic data validation"
+    version: "v2"
+
+  docker:
+    url: "https://docs.docker.com/"
+    description: "Docker containerization documentation"
+    critical_sections:
+      - "Best Practices: https://docs.docker.com/develop/dev-best-practices/"
+      - "Multi-stage Builds: https://docs.docker.com/build/building/multi-stage/"
+      - "GPU Support: https://docs.docker.com/config/containers/resource_constraints/#gpu"
+
+# ============================================================================
+# OCR and AI Models
+# ============================================================================
+models:
+  deepseek_janus_pro:
+    github: "https://github.com/deepseek-ai/DeepSeek-Janus"
+    huggingface: "https://huggingface.co/deepseek-ai/deepseek-janus-pro-1.0"
+    description: "Multimodal vision-language model for complex OCR"
+    paper: "https://arxiv.org/abs/2501.xxxxx"
+    vram_requirement: "12GB"
+    performance: "2-3 pages/sec (A4, 300 DPI)"
+
+  got_ocr_2:
+    github: "https://github.com/ucaslcl/GOT-OCR2.0"
+    huggingface: "https://huggingface.co/stepfun-ai/GOT-OCR2_0"
+    description: "600M parameter transformer OCR model"
+    paper: "https://arxiv.org/abs/2409.01704"
+    vram_requirement: "10GB"
+    performance: "5-7 pages/sec"
+
+  surya:
+    github: "https://github.com/VikParuchuri/surya"
+    description: "Multilingual OCR with layout analysis (CPU)"
+    docs: "https://github.com/VikParuchuri/surya#readme"
+    performance: "1-2 pages/sec (CPU)"
+
+  docling:
+    github: "https://github.com/DS4SD/docling"
+    description: "Document layout analysis and structure extraction"
+    docs: "https://ds4sd.github.io/docling/"
+
+# ============================================================================
+# NVIDIA and CUDA
+# ============================================================================
+nvidia:
+  cuda_toolkit:
+    url: "https://developer.nvidia.com/cuda-toolkit"
+    description: "CUDA parallel computing platform"
+    downloads: "https://developer.nvidia.com/cuda-downloads"
+    version_used: "12.1"
+
+  cudnn:
+    url: "https://developer.nvidia.com/cudnn"
+    description: "CUDA Deep Neural Network library"
+    version_used: "8.9"
+
+  nvidia_docker:
+    url: "https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html"
+    description: "NVIDIA Container Toolkit for GPU in Docker"
+    critical: "Required for GPU passthrough to containers"
+
+  nvidia_smi:
+    docs: "https://developer.nvidia.com/nvidia-system-management-interface"
+    description: "NVIDIA System Management Interface documentation"
+    cheatsheet: "https://www.microway.com/hpc-tech-tips/nvidia-smi_control-your-gpus/"
+
+# ============================================================================
+# Infrastructure and Databases
+# ============================================================================
+infrastructure:
+  postgresql:
+    url: "https://www.postgresql.org/docs/16/"
+    description: "PostgreSQL 16 documentation"
+    version_used: "16"
+    extensions:
+      - "pgvector: https://github.com/pgvector/pgvector (embeddings)"
+
+  redis:
+    url: "https://redis.io/docs/"
+    description: "Redis in-memory data store"
+    version_used: "7.x"
+    use_cases: ["Cache", "Celery broker", "Session storage"]
+
+  minio:
+    url: "https://min.io/docs/minio/linux/index.html"
+    description: "MinIO S3-compatible object storage"
+    api_reference: "https://min.io/docs/minio/linux/developers/python/API.html"
+
+  terraform:
+    url: "https://www.terraform.io/docs"
+    description: "Infrastructure as Code"
+    registry: "https://registry.terraform.io/"
+
+  ansible:
+    url: "https://docs.ansible.com/"
+    description: "Configuration management and automation"
+    galaxy: "https://galaxy.ansible.com/"
+
+# ============================================================================
+# German Language Resources
+# ============================================================================
+german:
+  unicode_normalization:
+    url: "https://unicode.org/reports/tr15/"
+    description: "Unicode Normalization Forms (NFC/NFD)"
+    importance: "Critical for German umlaut handling"
+
+  german_orthography:
+    url: "https://www.duden.de/sprachwissen/rechtschreibregeln"
+    description: "Official German spelling rules (Duden)"
+
+  swiss_german:
+    url: "https://www.bk.admin.ch/bk/de/home/dokumentation/sprachen/hilfsmittel-textredaktion/schreibweisungen.html"
+    description: "Swiss German spelling conventions (no ß)"
+
+  ust_gesetz:
+    url: "https://www.gesetze-im-internet.de/ustg_1980/"
+    description: "German VAT Act (§14 invoice requirements)"
+    critical_section: "§14 UStG - Rechnung"
+
+# ============================================================================
+# Development Tools
+# ============================================================================
+tools:
+  regex_testing:
+    url: "https://regex101.com/"
+    description: "Interactive regex tester with explanations"
+    use_case: "Test extraction patterns before deployment"
+
+  json_path:
+    url: "https://jsonpath.com/"
+    description: "JSONPath expression tester"
+    use_case: "Test dashboard property extraction"
+
+  huggingface:
+    url: "https://huggingface.co/"
+    description: "Model hub and datasets"
+    models_page: "https://huggingface.co/models?pipeline_tag=image-to-text&sort=downloads"
+
+  pytest_docs:
+    url: "https://docs.pytest.org/en/stable/"
+    description: "pytest testing framework"
+    plugins:
+      - "pytest-asyncio: https://pytest-asyncio.readthedocs.io/"
+      - "pytest-cov: https://pytest-cov.readthedocs.io/"
+
+  ruff:
+    url: "https://docs.astral.sh/ruff/"
+    description: "Fast Python linter (replaces Black + isort + flake8)"
+
+  mypy:
+    url: "https://mypy.readthedocs.io/"
+    description: "Static type checker for Python"
+    config: "Use --strict mode"
+
+  structlog:
+    url: "https://www.structlog.org/"
+    description: "Structured logging for Python"
+
+  grafana:
+    url: "https://grafana.com/docs/"
+    description: "Monitoring and observability platform"
+
+  prometheus:
+    url: "https://prometheus.io/docs/introduction/overview/"
+    description: "Monitoring system and time series database"
+
+# ============================================================================
+# Learning Resources
+# ============================================================================
+learning:
+  fastapi_full_stack:
+    url: "https://github.com/tiangolo/full-stack-fastapi-postgresql"
+    description: "Full-stack FastAPI + PostgreSQL template"
+
+  pytorch_tutorials:
+    url: "https://pytorch.org/tutorials/"
+    description: "Official PyTorch tutorials"
+    recommended:
+      - "Deep Learning with PyTorch"
+      - "CUDA Semantics"
+
+  async_python:
+    url: "https://realpython.com/async-io-python/"
+    description: "Async IO in Python: A Complete Walkthrough"
+
+  sqlalchemy_tutorial:
+    url: "https://docs.sqlalchemy.org/en/20/tutorial/"
+    description: "SQLAlchemy 2.0 unified tutorial"
+
+# ============================================================================
+# Communities and Support
+# ============================================================================
+communities:
+  fastapi_discussions:
+    url: "https://github.com/tiangolo/fastapi/discussions"
+    description: "FastAPI community discussions"
+
+  pytorch_forums:
+    url: "https://discuss.pytorch.org/"
+    description: "PyTorch community forums"
+
+  huggingface_forums:
+    url: "https://discuss.huggingface.co/"
+    description: "Hugging Face community forums"
+
+  stackoverflow:
+    tags:
+      - "fastapi: https://stackoverflow.com/questions/tagged/fastapi"
+      - "pytorch: https://stackoverflow.com/questions/tagged/pytorch"
+      - "sqlalchemy: https://stackoverflow.com/questions/tagged/sqlalchemy"
+      - "docker: https://stackoverflow.com/questions/tagged/docker"
+
+# ============================================================================
+# API References
+# ============================================================================
+api_references:
+  openapi_spec:
+    url: "https://spec.openapis.org/oas/latest.html"
+    description: "OpenAPI 3.1 Specification"
+
+  rest_api_best_practices:
+    url: "https://restfulapi.net/"
+    description: "REST API design best practices"
+
+  http_status_codes:
+    url: "https://httpstatuses.com/"
+    description: "HTTP status codes reference"
+
+# ============================================================================
+# Security and GDPR
+# ============================================================================
+security:
+  gdpr_full_text:
+    url: "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
+    description: "GDPR (General Data Protection Regulation) full text"
+    critical_articles:
+      - "Art. 17: Right to Erasure"
+      - "Art. 20: Right to Data Portability"
+      - "Art. 30: Records of Processing Activities"
+
+  owasp_top_10:
+    url: "https://owasp.org/www-project-top-ten/"
+    description: "OWASP Top 10 security risks"
+
+  python_security:
+    url: "https://bandit.readthedocs.io/"
+    description: "Bandit - Python security linter"
+
+# ============================================================================
+# Performance and Optimization
+# ============================================================================
+performance:
+  fastapi_performance:
+    url: "https://fastapi.tiangolo.com/deployment/concepts/"
+    description: "FastAPI deployment and performance optimization"
+
+  pytorch_performance:
+    url: "https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html"
+    description: "PyTorch performance tuning guide"
+
+  sql_performance:
+    url: "https://use-the-index-luke.com/"
+    description: "SQL indexing and performance optimization"
+
+# ============================================================================
+# Quick Links (Most Frequently Used)
+# ============================================================================
+quick_links:
+  daily_use:
+    - "Regex Testing: https://regex101.com/"
+    - "FastAPI Docs: https://fastapi.tiangolo.com/"
+    - "PyTorch CUDA: https://pytorch.org/docs/stable/notes/cuda.html"
+    - "HuggingFace Models: https://huggingface.co/models"
+    - "§14 UStG: https://www.gesetze-im-internet.de/ustg_1980/__14.html"
+
+  troubleshooting:
+    - "PyTorch Forums: https://discuss.pytorch.org/"
+    - "FastAPI Discussions: https://github.com/tiangolo/fastapi/discussions"
+    - "NVIDIA Docker: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/"
+    - "Stack Overflow (PyTorch): https://stackoverflow.com/questions/tagged/pytorch"
+
+  reference:
+    - "HTTP Status Codes: https://httpstatuses.com/"
+    - "Unicode Normalization: https://unicode.org/reports/tr15/"
+    - "GDPR Text: https://eur-lex.europa.eu/eli/reg/2016/679/oj"

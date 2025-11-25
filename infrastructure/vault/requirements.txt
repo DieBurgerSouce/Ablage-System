@@ -1,0 +1,7 @@
+# Vault Client Dependencies
+
+# HashiCorp Vault client
+hvac==2.1.0
+
+# For async support (optional)
+# aiohttp>=3.9.0

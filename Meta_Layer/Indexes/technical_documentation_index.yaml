@@ -1,0 +1,584 @@
+# Technical Documentation Index
+
+index_id: technical_docs_index_001
+category: meta_knowledge
+last_updated: "2025-11-22"
+status: active
+version: "1.0"
+
+description: |
+  Comprehensive index of all technical documentation in the Ablage-System.
+  Organized by topic, document type, and audience. Use this index to quickly
+  find relevant documentation for any technical task.
+
+# ============================================================================
+# By Topic
+# ============================================================================
+
+by_topic:
+  architecture:
+    description: "System architecture, design decisions, component diagrams"
+    documents:
+      - path: "Static_Knowledge/ADRs/001_rest_api_architecture.md"
+        type: "ADR"
+        summary: "Decision to use REST API with FastAPI"
+        audience: ["developers", "architects"]
+        tags: ["architecture", "api", "fastapi"]
+
+      - path: "Static_Knowledge/ADRs/002_ocr_backend_selection.md"
+        type: "ADR"
+        summary: "Multi-backend OCR strategy decision"
+        audience: ["developers", "ml_engineers"]
+        tags: ["ocr", "machine_learning", "architecture"]
+
+      - path: "Static_Knowledge/ADRs/005_api_versioning_strategy.md"
+        type: "ADR"
+        summary: "URL path versioning for API"
+        audience: ["developers", "product"]
+        tags: ["api", "versioning"]
+
+      - path: "Meta_Layer/Knowledge_Graphs/system_architecture_graph.yaml"
+        type: "Knowledge Graph"
+        summary: "Visual representation of system components"
+        audience: ["architects", "new_developers"]
+        tags: ["architecture", "visualization"]
+
+  api_development:
+    description: "REST API design, versioning, best practices"
+    documents:
+      - path: "Dynamic_Knowledge/Learnings/api_design_lessons.md"
+        type: "Lessons Learned"
+        summary: "Mistakes and solutions from 12 months of API development"
+        audience: ["developers"]
+        tags: ["api", "lessons_learned", "best_practices"]
+        highlights:
+          - "Always version APIs from day one"
+          - "Pagination is not optional"
+          - "Async processing with webhooks"
+          - "Rate limiting prevents abuse"
+
+      - path: "Static_Knowledge/Skills/api_design_skill.yaml"
+        type: "Skill"
+        summary: "API design best practices and patterns"
+        audience: ["developers"]
+        tags: ["api", "rest", "design_patterns"]
+
+  ocr_processing:
+    description: "OCR backends, processing pipeline, optimization"
+    documents:
+      - path: "Meta_Layer/MOCs/OCR_PROCESSING_MOC.md"
+        type: "MOC"
+        summary: "Complete map of OCR processing resources"
+        audience: ["developers", "ml_engineers", "operations"]
+        tags: ["ocr", "map_of_content", "overview"]
+        recommended_start: true
+
+      - path: "Static_Knowledge/Skills/ocr_backends_skill.yaml"
+        type: "Skill"
+        summary: "DeepSeek, GOT-OCR, Surya backend documentation"
+        audience: ["developers", "ml_engineers"]
+        tags: ["ocr", "deepseek", "got_ocr", "surya"]
+
+      - path: "Execution_Layer/Agents/document_classifier_agent.py"
+        type: "Code"
+        summary: "Agent for document classification"
+        audience: ["developers"]
+        tags: ["ocr", "ml", "classification"]
+
+      - path: "Execution_Layer/Sub_Agents/invoice_data_extractor.py"
+        type: "Code"
+        summary: "Extract structured data from German invoices"
+        audience: ["developers"]
+        tags: ["ocr", "invoices", "german", "extraction"]
+
+  database:
+    description: "PostgreSQL optimization, query tuning, migrations"
+    documents:
+      - path: "Relations/Playbooks/database_performance_playbook.yaml"
+        type: "Playbook"
+        summary: "Operational runbook for database performance issues"
+        audience: ["operations", "developers"]
+        tags: ["database", "postgresql", "performance", "troubleshooting"]
+
+      - path: "Static_Knowledge/Skills/database_optimization_skill.yaml"
+        type: "Skill"
+        summary: "Database optimization techniques"
+        audience: ["developers", "dba"]
+        tags: ["database", "optimization", "indexing"]
+
+  caching:
+    description: "Redis caching strategies, invalidation patterns"
+    documents:
+      - path: "Relations/Decision_Trees/cache_invalidation_tree.yaml"
+        type: "Decision Tree"
+        summary: "Decision logic for cache invalidation scenarios"
+        audience: ["developers"]
+        tags: ["caching", "redis", "invalidation"]
+
+      - path: "Static_Knowledge/Skills/redis_caching_skill.yaml"
+        type: "Skill"
+        summary: "Redis caching patterns and best practices"
+        audience: ["developers"]
+        tags: ["redis", "caching", "performance"]
+
+      - path: "Dynamic_Knowledge/Learnings/redis_performance_optimization.md"
+        type: "Lessons Learned"
+        summary: "Redis optimization experiences"
+        audience: ["developers", "operations"]
+        tags: ["redis", "performance", "lessons_learned"]
+
+  gpu_management:
+    description: "GPU resource management, VRAM optimization, CUDA"
+    documents:
+      - path: "Static_Knowledge/Skills/gpu_management_skill.yaml"
+        type: "Skill"
+        summary: "Managing RTX 4080 for OCR processing"
+        audience: ["ml_engineers", "operations"]
+        tags: ["gpu", "cuda", "vram", "optimization"]
+
+      - path: "Static_Knowledge/Prompts/optimization_prompts.yaml"
+        type: "Prompts"
+        summary: "AI prompts for GPU optimization"
+        section: "gpu_optimization"
+        audience: ["ml_engineers"]
+        tags: ["gpu", "optimization", "ai_prompts"]
+
+  german_language:
+    description: "German text processing, umlauts, business documents"
+    documents:
+      - path: "Static_Knowledge/Skills/german_language_processing_skill.yaml"
+        type: "Skill"
+        summary: "German text normalization, validation, entity extraction"
+        audience: ["developers", "ml_engineers"]
+        tags: ["german", "language_processing", "umlauts"]
+
+      - path: "Static_Knowledge/Snippets/german_text_patterns.yaml"
+        type: "Code Snippets"
+        summary: "Regex patterns for German business documents"
+        audience: ["developers"]
+        tags: ["german", "regex", "patterns"]
+
+  security:
+    description: "Security best practices, GDPR, incident response"
+    documents:
+      - path: "Meta_Layer/MOCs/SECURITY_MOC.md"
+        type: "MOC"
+        summary: "Security overview and resources"
+        audience: ["security", "operations", "developers"]
+        tags: ["security", "gdpr", "compliance"]
+
+      - path: "Static_Knowledge/SOPs/004_security_incident_response.md"
+        type: "SOP"
+        summary: "Security incident response procedures"
+        audience: ["security", "operations"]
+        tags: ["security", "incident_response", "sop"]
+        priority: "critical"
+
+      - path: "Relations/Workflows/gdpr_data_deletion_workflow.yaml"
+        type: "Workflow"
+        summary: "GDPR data deletion process"
+        audience: ["security", "developers"]
+        tags: ["gdpr", "compliance", "data_deletion"]
+
+  testing:
+    description: "Testing strategies, fixtures, coverage"
+    documents:
+      - path: "Static_Knowledge/Skills/testing_strategy_skill.yaml"
+        type: "Skill"
+        summary: "Unit, integration, and GPU testing approaches"
+        audience: ["developers"]
+        tags: ["testing", "pytest", "quality_assurance"]
+
+  deployment:
+    description: "Docker, CI/CD, infrastructure provisioning"
+    documents:
+      - path: "Static_Knowledge/SOPs/001_deployment_procedure.md"
+        type: "SOP"
+        summary: "Production deployment checklist and steps"
+        audience: ["operations", "developers"]
+        tags: ["deployment", "production", "sop"]
+
+      - path: "Static_Knowledge/SOPs/002_rollback_procedure.md"
+        type: "SOP"
+        summary: "Emergency rollback procedures"
+        audience: ["operations"]
+        tags: ["deployment", "rollback", "emergency"]
+        priority: "high"
+
+      - path: "Relations/Workflows/ci_cd_pipeline.yaml"
+        type: "Workflow"
+        summary: "Continuous integration and deployment pipeline"
+        audience: ["operations", "developers"]
+        tags: ["ci_cd", "automation", "github_actions"]
+
+  monitoring:
+    description: "Prometheus, Grafana, logging, alerting"
+    documents:
+      - path: "Static_Knowledge/Skills/monitoring_observability_skill.yaml"
+        type: "Skill"
+        summary: "Monitoring and observability setup"
+        audience: ["operations", "developers"]
+        tags: ["monitoring", "prometheus", "grafana", "logging"]
+
+# ============================================================================
+# By Document Type
+# ============================================================================
+
+by_document_type:
+  ADRs:
+    description: "Architecture Decision Records"
+    total_count: 5
+    documents:
+      - "Static_Knowledge/ADRs/001_rest_api_architecture.md"
+      - "Static_Knowledge/ADRs/002_ocr_backend_selection.md"
+      - "Static_Knowledge/ADRs/003_german_text_normalization.md"
+      - "Static_Knowledge/ADRs/004_gdpr_compliance_strategy.md"
+      - "Static_Knowledge/ADRs/005_api_versioning_strategy.md"
+
+  Skills:
+    description: "Procedural knowledge for specific tasks"
+    total_count: 12
+    documents:
+      - "Static_Knowledge/Skills/api_design_skill.yaml"
+      - "Static_Knowledge/Skills/database_optimization_skill.yaml"
+      - "Static_Knowledge/Skills/redis_caching_skill.yaml"
+      - "Static_Knowledge/Skills/gpu_management_skill.yaml"
+      - "Static_Knowledge/Skills/german_language_processing_skill.yaml"
+      - "Static_Knowledge/Skills/ocr_backends_skill.yaml"
+      - "Static_Knowledge/Skills/testing_strategy_skill.yaml"
+      - "Static_Knowledge/Skills/monitoring_observability_skill.yaml"
+      - "Static_Knowledge/Skills/security_best_practices_skill.yaml"
+      - "Static_Knowledge/Skills/docker_containerization_skill.yaml"
+      - "Static_Knowledge/Skills/performance_tuning_skill.yaml"
+      - "Static_Knowledge/Skills/backup_disaster_recovery_skill.yaml"
+
+  SOPs:
+    description: "Standard Operating Procedures"
+    total_count: 4
+    documents:
+      - "Static_Knowledge/SOPs/001_deployment_procedure.md"
+      - "Static_Knowledge/SOPs/002_rollback_procedure.md"
+      - "Static_Knowledge/SOPs/003_incident_response.md"
+      - "Static_Knowledge/SOPs/004_security_incident_response.md"
+
+  Prompts:
+    description: "AI-assisted development prompts"
+    total_count: 3
+    documents:
+      - "Static_Knowledge/Prompts/code_review_prompts.yaml"
+      - "Static_Knowledge/Prompts/debugging_prompts.yaml"
+      - "Static_Knowledge/Prompts/optimization_prompts.yaml"
+
+  Snippets:
+    description: "Reusable code snippets"
+    total_count: 5
+    documents:
+      - "Static_Knowledge/Snippets/fastapi_patterns.py"
+      - "Static_Knowledge/Snippets/sqlalchemy_patterns.py"
+      - "Static_Knowledge/Snippets/redis_caching_patterns.py"
+      - "Static_Knowledge/Snippets/german_text_patterns.yaml"
+      - "Static_Knowledge/Snippets/gdpr_logging_patterns.py"
+
+  Templates:
+    description: "Document and code templates"
+    total_count: 3
+    documents:
+      - "Static_Knowledge/Templates/api_endpoint_template.py"
+      - "Static_Knowledge/Templates/celery_task_template.py"
+      - "Static_Knowledge/Templates/rechnung_template.yaml"
+
+  Logs:
+    description: "System and application logs"
+    total_count: 4
+    documents:
+      - "Dynamic_Knowledge/Logs/api_access_log.jsonl"
+      - "Dynamic_Knowledge/Logs/security_audit_log.jsonl"
+      - "Dynamic_Knowledge/Logs/performance_metrics_log.jsonl"
+      - "Dynamic_Knowledge/Logs/event_log.jsonl"
+
+  Learnings:
+    description: "Lessons learned from development"
+    total_count: 5
+    documents:
+      - "Dynamic_Knowledge/Learnings/api_design_lessons.md"
+      - "Dynamic_Knowledge/Learnings/redis_performance_optimization.md"
+      - "Dynamic_Knowledge/Learnings/postgres_optimization_lessons.md"
+      - "Dynamic_Knowledge/Learnings/gpu_memory_management_lessons.md"
+      - "Dynamic_Knowledge/Learnings/ocr_accuracy_improvement.md"
+
+  Bookmarks:
+    description: "External resources and tools"
+    total_count: 3
+    documents:
+      - "Dynamic_Knowledge/Bookmarks/development_tools.yaml"
+      - "Dynamic_Knowledge/Bookmarks/ml_ocr_resources.yaml"
+      - "Dynamic_Knowledge/Bookmarks/external_resources.yaml"
+
+  Hooks:
+    description: "Event-driven automation hooks"
+    total_count: 3
+    documents:
+      - "Relations/Hooks/document_processing_hooks.yaml"
+      - "Relations/Hooks/user_activity_hooks.yaml"
+      - "Relations/Hooks/system_health_hooks.yaml"
+
+  Workflows:
+    description: "Multi-step process workflows"
+    total_count: 5
+    documents:
+      - "Relations/Workflows/document_processing_workflow.yaml"
+      - "Relations/Workflows/ocr_backend_selection_workflow.yaml"
+      - "Relations/Workflows/ci_cd_pipeline.yaml"
+      - "Relations/Workflows/gdpr_data_deletion_workflow.yaml"
+      - "Relations/Workflows/cache_warming_workflow.yaml"
+
+  Playbooks:
+    description: "Operational troubleshooting guides"
+    total_count: 4
+    documents:
+      - "Relations/Playbooks/database_performance_playbook.yaml"
+      - "Relations/Playbooks/gpu_troubleshooting_playbook.yaml"
+      - "Relations/Playbooks/api_error_debugging_playbook.yaml"
+      - "Relations/Playbooks/error_response_playbook.yaml"
+
+  Decision_Trees:
+    description: "Decision logic trees"
+    total_count: 3
+    documents:
+      - "Relations/Decision_Trees/cache_invalidation_tree.yaml"
+      - "Relations/Decision_Trees/gpu_resource_allocation_tree.yaml"
+      - "Relations/Decision_Trees/security_incident_response_tree.yaml"
+
+  Agents:
+    description: "Autonomous processing agents"
+    total_count: 3
+    documents:
+      - "Execution_Layer/Agents/document_classifier_agent.py"
+      - "Execution_Layer/Agents/monitoring_agent.py"
+      - "Execution_Layer/Agents/cache_manager_agent.py"
+
+  Sub_Agents:
+    description: "Specialized sub-agents"
+    total_count: 2
+    documents:
+      - "Execution_Layer/Sub_Agents/invoice_data_extractor.py"
+      - "Execution_Layer/Sub_Agents/german_entity_extractor.py"
+
+  Validators:
+    description: "Data validation logic"
+    total_count: 3
+    documents:
+      - "Execution_Layer/Validators/document_upload_validator.py"
+      - "Execution_Layer/Validators/german_text_validator.py"
+      - "Execution_Layer/Validators/api_request_validator.py"
+
+  Runners:
+    description: "Execution scripts"
+    total_count: 2
+    documents:
+      - "Execution_Layer/Runners/batch_ocr_runner.py"
+      - "Execution_Layer/Runners/data_migration_runner.py"
+
+  MOCs:
+    description: "Maps of Content (overview documents)"
+    total_count: 5
+    documents:
+      - "Meta_Layer/MOCs/DEVELOPMENT_MOC.md"
+      - "Meta_Layer/MOCs/OCR_PROCESSING_MOC.md"
+      - "Meta_Layer/MOCs/SECURITY_MOC.md"
+      - "Meta_Layer/MOCs/INFRASTRUCTURE_MOC.md"
+      - "Meta_Layer/MOCs/API_MOC.md"
+
+  Indexes:
+    description: "Resource indexes"
+    total_count: 2
+    documents:
+      - "Meta_Layer/Indexes/technical_documentation_index.yaml"
+      - "Meta_Layer/Indexes/troubleshooting_index.yaml"
+
+  Knowledge_Graphs:
+    description: "Visual relationship graphs"
+    total_count: 3
+    documents:
+      - "Meta_Layer/Knowledge_Graphs/system_architecture_graph.yaml"
+      - "Meta_Layer/Knowledge_Graphs/technology_stack_graph.yaml"
+      - "Meta_Layer/Knowledge_Graphs/infrastructure_dependencies.yaml"
+
+# ============================================================================
+# By Audience
+# ============================================================================
+
+by_audience:
+  developers:
+    description: "Documentation for software developers"
+    priority_documents:
+      - "Meta_Layer/MOCs/DEVELOPMENT_MOC.md"
+      - "Meta_Layer/MOCs/OCR_PROCESSING_MOC.md"
+      - "Static_Knowledge/Skills/api_design_skill.yaml"
+      - "Dynamic_Knowledge/Learnings/api_design_lessons.md"
+      - "Relations/Playbooks/database_performance_playbook.yaml"
+    total_documents: 45
+
+  ml_engineers:
+    description: "Documentation for ML/OCR engineers"
+    priority_documents:
+      - "Meta_Layer/MOCs/OCR_PROCESSING_MOC.md"
+      - "Static_Knowledge/Skills/ocr_backends_skill.yaml"
+      - "Static_Knowledge/Skills/gpu_management_skill.yaml"
+      - "Execution_Layer/Agents/document_classifier_agent.py"
+      - "Execution_Layer/Sub_Agents/invoice_data_extractor.py"
+    total_documents: 18
+
+  operations:
+    description: "Documentation for operations/DevOps"
+    priority_documents:
+      - "Static_Knowledge/SOPs/001_deployment_procedure.md"
+      - "Static_Knowledge/SOPs/002_rollback_procedure.md"
+      - "Relations/Playbooks/database_performance_playbook.yaml"
+      - "Relations/Playbooks/gpu_troubleshooting_playbook.yaml"
+      - "Static_Knowledge/Skills/monitoring_observability_skill.yaml"
+    total_documents: 25
+
+  security:
+    description: "Documentation for security team"
+    priority_documents:
+      - "Meta_Layer/MOCs/SECURITY_MOC.md"
+      - "Static_Knowledge/SOPs/004_security_incident_response.md"
+      - "Relations/Workflows/gdpr_data_deletion_workflow.yaml"
+      - "Static_Knowledge/Skills/security_best_practices_skill.yaml"
+    total_documents: 12
+
+  product:
+    description: "Documentation for product team"
+    priority_documents:
+      - "Static_Knowledge/ADRs/005_api_versioning_strategy.md"
+      - "Dynamic_Knowledge/Learnings/api_design_lessons.md"
+      - "Meta_Layer/MOCs/API_MOC.md"
+    total_documents: 8
+
+  new_developers:
+    description: "Onboarding documentation for new team members"
+    recommended_reading_order:
+      1: "Meta_Layer/MOCs/DEVELOPMENT_MOC.md"
+      2: "Meta_Layer/Knowledge_Graphs/system_architecture_graph.yaml"
+      3: "Meta_Layer/MOCs/OCR_PROCESSING_MOC.md"
+      4: "Static_Knowledge/Skills/api_design_skill.yaml"
+      5: "Dynamic_Knowledge/Learnings/api_design_lessons.md"
+    total_documents: 20
+
+# ============================================================================
+# Quick Reference
+# ============================================================================
+
+quick_reference:
+  most_used_documents:
+    - path: "Meta_Layer/MOCs/DEVELOPMENT_MOC.md"
+      usage_count: 250
+      last_accessed: "2025-11-22"
+
+    - path: "Meta_Layer/MOCs/OCR_PROCESSING_MOC.md"
+      usage_count: 180
+      last_accessed: "2025-11-22"
+
+    - path: "Relations/Playbooks/database_performance_playbook.yaml"
+      usage_count: 95
+      last_accessed: "2025-11-21"
+
+    - path: "Dynamic_Knowledge/Learnings/api_design_lessons.md"
+      usage_count: 87
+      last_accessed: "2025-11-20"
+
+    - path: "Static_Knowledge/Skills/gpu_management_skill.yaml"
+      usage_count: 72
+      last_accessed: "2025-11-22"
+
+  recently_updated:
+    - path: "Static_Knowledge/ADRs/005_api_versioning_strategy.md"
+      updated: "2025-11-22"
+
+    - path: "Dynamic_Knowledge/Learnings/api_design_lessons.md"
+      updated: "2025-11-22"
+
+    - path: "Relations/Hooks/document_processing_hooks.yaml"
+      updated: "2025-11-22"
+
+  critical_documents:
+    - path: "Static_Knowledge/SOPs/004_security_incident_response.md"
+      reason: "Security incident response procedures"
+      priority: "critical"
+
+    - path: "Static_Knowledge/SOPs/002_rollback_procedure.md"
+      reason: "Emergency rollback procedures"
+      priority: "critical"
+
+    - path: "Meta_Layer/MOCs/SECURITY_MOC.md"
+      reason: "Security overview and compliance"
+      priority: "critical"
+
+# ============================================================================
+# Statistics
+# ============================================================================
+
+statistics:
+  total_documents: 88
+  last_indexed: "2025-11-22T14:30:00Z"
+  document_types:
+    ADRs: 5
+    Skills: 12
+    SOPs: 4
+    Prompts: 3
+    Snippets: 5
+    Templates: 3
+    Logs: 4
+    Learnings: 5
+    Bookmarks: 3
+    Hooks: 3
+    Workflows: 5
+    Playbooks: 4
+    Decision_Trees: 3
+    Agents: 3
+    Sub_Agents: 2
+    Validators: 3
+    Runners: 2
+    MOCs: 5
+    Indexes: 2
+    Knowledge_Graphs: 3
+
+  coverage_by_topic:
+    architecture: "excellent"
+    api_development: "excellent"
+    ocr_processing: "excellent"
+    database: "good"
+    caching: "good"
+    gpu_management: "excellent"
+    german_language: "good"
+    security: "excellent"
+    testing: "good"
+    deployment: "excellent"
+    monitoring: "good"
+
+  health_score: 0.92  # 92% documentation coverage
+
+# ============================================================================
+# Maintenance
+# ============================================================================
+
+maintenance:
+  update_frequency: "weekly"
+  next_review: "2025-11-29"
+  responsible_team: "Backend Team"
+
+  stale_documents:
+    threshold_days: 90
+    check_command: "find . -name '*.md' -mtime +90"
+
+  missing_documentation:
+    - "Frontend development guide"
+    - "Mobile app integration"
+    - "Terraform modules documentation"
+
+tags:
+  - index
+  - documentation
+  - meta
+  - knowledge_management

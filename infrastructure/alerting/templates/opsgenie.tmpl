@@ -1,0 +1,84 @@
+{{ define "opsgenie.message" }}
+{{ .GroupLabels.alertname }} - {{ .GroupLabels.service }}
+{{ end }}
+
+{{ define "opsgenie.description" }}
+*Alert Group:* {{ .GroupLabels.alertname }}
+*Service:* {{ .GroupLabels.service }}
+*Cluster:* {{ .GroupLabels.cluster | default "default" }}
+*Severity:* {{ .GroupLabels.severity }}
+
+---
+
+{{ range .Alerts }}
+**Alert Details:**
+- Name: {{ .Labels.alertname }}
+- Severity: {{ .Labels.severity }}
+- Service: {{ .Labels.service }}
+{{ if .Labels.instance }}- Instance: {{ .Labels.instance }}{{ end }}
+{{ if .Labels.job }}- Job: {{ .Labels.job }}{{ end }}
+
+**Description:**
+{{ .Annotations.summary }}
+
+{{ if .Annotations.description }}
+**Detailed Information:**
+{{ .Annotations.description }}
+{{ end }}
+
+{{ if .Annotations.impact }}
+**Impact:**
+{{ .Annotations.impact }}
+{{ end }}
+
+{{ if .Annotations.action }}
+**Recommended Action:**
+{{ .Annotations.action }}
+{{ end }}
+
+**Status:** {{ .Status }}
+{{ if eq .Status "firing" }}
+**Started At:** {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+{{ else }}
+**Resolved At:** {{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}
+**Duration:** {{ .EndsAt.Sub .StartsAt }}
+{{ end }}
+
+{{ if .Labels }}
+**Labels:**
+{{ range .Labels.SortedPairs }}  - {{ .Name }}: {{ .Value }}
+{{ end }}
+{{ end }}
+
+{{ if .Annotations.runbook_url }}
+**Runbook:** {{ .Annotations.runbook_url }}
+{{ end }}
+
+{{ if .GeneratorURL }}
+**Grafana Dashboard:** {{ .GeneratorURL }}
+{{ end }}
+
+{{ if .Annotations.logs_url }}
+**Logs:** {{ .Annotations.logs_url }}
+{{ end }}
+
+---
+{{ end }}
+
+**Summary:**
+- Total Alerts: {{ len .Alerts }}
+- Firing: {{ len .Alerts.Firing }}
+- Resolved: {{ len .Alerts.Resolved }}
+
+{{ if gt (len .Alerts.Firing) 0 }}
+**Firing Alerts:**
+{{ range .Alerts.Firing }}  - {{ .Labels.alertname }} ({{ .Labels.severity }})
+{{ end }}
+{{ end }}
+
+{{ if gt (len .Alerts.Resolved) 0 }}
+**Resolved Alerts:**
+{{ range .Alerts.Resolved }}  - {{ .Labels.alertname }} (resolved after {{ .EndsAt.Sub .StartsAt }})
+{{ end }}
+{{ end }}
+{{ end }}

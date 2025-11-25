@@ -1,0 +1,278 @@
+{
+  "name": "Ablage-System OCR Development",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+
+  // Configure tool-specific properties
+  "customizations": {
+    "vscode": {
+      // Extensions to install on container creation
+      "extensions": [
+        // Python
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+
+        // Docker
+        "ms-azuretools.vscode-docker",
+
+        // Git
+        "eamodio.gitlens",
+        "mhutchie.git-graph",
+
+        // Database
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+
+        // YAML/JSON
+        "redhat.vscode-yaml",
+        "esbenp.prettier-vscode",
+
+        // Markdown
+        "yzhang.markdown-all-in-one",
+        "DavidAnson.vscode-markdownlint",
+
+        // Testing
+        "littlefoxteam.vscode-python-test-adapter",
+        "hbenl.vscode-test-explorer",
+
+        // Code Quality
+        "ms-python.isort",
+        "tamasfe.even-better-toml",
+        "streetsidesoftware.code-spell-checker",
+        "streetsidesoftware.code-spell-checker-german",
+
+        // Debugging
+        "ms-python.debugpy",
+
+        // REST Client
+        "humao.rest-client",
+
+        // Jupyter
+        "ms-toolsai.jupyter",
+        "ms-toolsai.jupyter-keymap",
+        "ms-toolsai.jupyter-renderers",
+
+        // AI
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+
+        // Theme (optional)
+        "PKief.material-icon-theme"
+      ],
+
+      // Settings
+      "settings": {
+        // Python
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": false,
+        "python.linting.ruffEnabled": true,
+        "python.formatting.provider": "none",
+        "python.formatting.blackProvider": "black",
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit",
+            "source.fixAll": "explicit"
+          }
+        },
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "python.testing.pytestArgs": [
+          "tests"
+        ],
+
+        // MyPy
+        "mypy-type-checker.args": [
+          "--ignore-missing-imports",
+          "--show-error-codes",
+          "--strict"
+        ],
+
+        // Ruff
+        "ruff.lint.args": [
+          "--config=pyproject.toml"
+        ],
+
+        // Editor
+        "editor.rulers": [100],
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.trimAutoWhitespace": true,
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "files.encoding": "utf8",
+        "files.eol": "\n",
+
+        // Git
+        "git.autofetch": true,
+        "git.confirmSync": false,
+        "git.enableSmartCommit": true,
+
+        // Terminal
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.fontSize": 14,
+
+        // Files
+        "files.exclude": {
+          "**/__pycache__": true,
+          "**/.pytest_cache": true,
+          "**/.mypy_cache": true,
+          "**/.ruff_cache": true,
+          "**/*.pyc": true
+        },
+
+        // Search
+        "search.exclude": {
+          "**/__pycache__": true,
+          "**/.pytest_cache": true,
+          "**/.mypy_cache": true,
+          "**/.ruff_cache": true,
+          "**/venv": true,
+          "**/node_modules": true
+        },
+
+        // Spell Checker
+        "cSpell.language": "en,de",
+        "cSpell.words": [
+          "ablage",
+          "deepseek",
+          "docling",
+          "fastapi",
+          "VRAM",
+          "umlaut",
+          "umlauts",
+          "fraktur",
+          "alembic",
+          "sqlalchemy",
+          "pydantic",
+          "pytest",
+          "ruff",
+          "mypy",
+          "structlog",
+          "celery",
+          "minio",
+          "pgvector"
+        ],
+
+        // SQL Tools
+        "sqltools.connections": [
+          {
+            "name": "PostgreSQL - Ablage",
+            "driver": "PostgreSQL",
+            "server": "postgres",
+            "port": 5432,
+            "database": "ablage_ocr",
+            "username": "postgres",
+            "password": "postgres"
+          }
+        ],
+
+        // REST Client
+        "rest-client.environmentVariables": {
+          "$shared": {
+            "api_base": "http://localhost:8000"
+          }
+        }
+      }
+    }
+  },
+
+  // Features to add to the dev container
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    },
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "installOhMyZsh": true,
+      "upgradePackages": true
+    }
+  },
+
+  // Forward ports
+  "forwardPorts": [
+    8000,  // FastAPI
+    5432,  // PostgreSQL
+    6379,  // Redis
+    9000,  // MinIO API
+    9001,  // MinIO Console
+    5555,  // Flower (Celery)
+    8081,  // Redis Commander
+    5050   // pgAdmin
+  ],
+
+  // Port attributes
+  "portsAttributes": {
+    "8000": {
+      "label": "FastAPI API",
+      "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    },
+    "6379": {
+      "label": "Redis",
+      "onAutoForward": "silent"
+    },
+    "9000": {
+      "label": "MinIO API",
+      "onAutoForward": "silent"
+    },
+    "9001": {
+      "label": "MinIO Console",
+      "onAutoForward": "openBrowser"
+    },
+    "5555": {
+      "label": "Flower (Celery Monitor)",
+      "onAutoForward": "openBrowser"
+    }
+  },
+
+  // Set *default* container specific settings.json values on container create
+  "remoteUser": "vscode",
+
+  // Use 'postCreateCommand' to run commands after the container is created
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+
+  // Use 'postStartCommand' to run commands after the container starts
+  "postStartCommand": "git config --global --add safe.directory /workspace",
+
+  // Mount the workspace folder
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker-host.sock,type=bind",
+    "source=${localWorkspaceFolder}/.git,target=/workspace/.git,type=bind,consistency=cached"
+  ],
+
+  // Run arguments
+  "runArgs": [
+    "--name=ablage-devcontainer",
+    "--hostname=ablage-dev"
+  ],
+
+  // Override command
+  "overrideCommand": false,
+
+  // Environment variables
+  "remoteEnv": {
+    "PYTHONUNBUFFERED": "1",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PIP_NO_CACHE_DIR": "1",
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+    "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@postgres:5432/ablage_ocr",
+    "REDIS_URL": "redis://redis:6379/0",
+    "MINIO_ENDPOINT": "minio:9000",
+    "MINIO_ACCESS_KEY": "minioadmin",
+    "MINIO_SECRET_KEY": "minioadmin",
+    "ENVIRONMENT": "development"
+  }
+}

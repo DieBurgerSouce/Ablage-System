@@ -1,0 +1,128 @@
+#!/bin/bash
+# Git Pre-Push Hook - Ablage-System
+# Runs tests before allowing push to remote
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+echo -e "${YELLOW}🧪 Running pre-push checks...${NC}\n"
+
+# Check if we're in the repo root
+if [ ! -f "pyproject.toml" ]; then
+    echo -e "${RED}❌ Error: Must be in repository root${NC}"
+    exit 1
+fi
+
+# Activate virtual environment if it exists
+if [ -d "venv" ]; then
+    source venv/bin/activate 2>/dev/null || source venv/Scripts/activate 2>/dev/null || true
+fi
+
+# Get the branch being pushed
+current_branch=$(git symbolic-ref --short HEAD)
+echo -e "${YELLOW}Branch: ${current_branch}${NC}\n"
+
+# Skip checks for specific branches (optional)
+SKIP_BRANCHES=("docs" "documentation")
+for branch in "${SKIP_BRANCHES[@]}"; do
+    if [ "$current_branch" = "$branch" ]; then
+        echo -e "${YELLOW}⏭️  Skipping tests for branch: $branch${NC}"
+        exit 0
+    fi
+done
+
+# 1. Run linting first (fast check)
+echo -e "${YELLOW}1. Quick lint check...${NC}"
+if ! ruff check app/ --quiet; then
+    echo -e "${RED}❌ Linting failed!${NC}"
+    echo -e "${YELLOW}💡 Run: ./scripts/lint.sh --fix${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✅ Linting passed${NC}\n"
+
+# 2. Run type checking
+echo -e "${YELLOW}2. Type checking...${NC}"
+if ! mypy app/ --no-error-summary; then
+    echo -e "${RED}❌ Type checking failed!${NC}"
+    echo -e "${YELLOW}💡 Fix type errors before pushing${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✅ Type checking passed${NC}\n"
+
+# 3. Run unit tests (fast tests only)
+echo -e "${YELLOW}3. Running unit tests...${NC}"
+if ! pytest tests/ -m "not integration and not gpu" -q --tb=short; then
+    echo -e "${RED}❌ Unit tests failed!${NC}"
+    echo -e "${YELLOW}💡 Fix failing tests before pushing${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✅ Unit tests passed${NC}\n"
+
+# 4. Check test coverage (warn only, don't fail)
+echo -e "${YELLOW}4. Checking test coverage...${NC}"
+coverage=$(pytest tests/ -m "not integration and not gpu" --cov=app --cov-report=term-missing --cov-report=json -q 2>/dev/null || true)
+if [ -f "coverage.json" ]; then
+    total_coverage=$(python3 -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered'])" 2>/dev/null || echo "0")
+    if (( $(echo "$total_coverage < 80" | bc -l) )); then
+        echo -e "${YELLOW}⚠️  Coverage below 80% (${total_coverage}%)${NC}"
+        echo -e "${YELLOW}💡 Consider adding more tests${NC}"
+    else
+        echo -e "${GREEN}✅ Coverage: ${total_coverage}%${NC}"
+    fi
+    rm -f coverage.json .coverage
+else
+    echo -e "${YELLOW}⚠️  Could not determine coverage${NC}"
+fi
+echo ""
+
+# 5. Check for unresolved merge conflicts
+echo -e "${YELLOW}5. Checking for merge conflicts...${NC}"
+if git diff --cached --name-only | xargs grep -l "^<<<<<<< " 2>/dev/null; then
+    echo -e "${RED}❌ Unresolved merge conflicts found!${NC}"
+    echo -e "${YELLOW}💡 Resolve conflicts before pushing${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✅ No merge conflicts${NC}\n"
+
+# 6. Check for large files
+echo -e "${YELLOW}6. Checking for large files...${NC}"
+MAX_SIZE=10485760  # 10MB in bytes
+large_files=$(git diff --cached --name-only | while read file; do
+    if [ -f "$file" ]; then
+        size=$(wc -c < "$file" 2>/dev/null || echo "0")
+        if [ "$size" -gt "$MAX_SIZE" ]; then
+            echo "$file ($(($size / 1024 / 1024))MB)"
+        fi
+    fi
+done)
+
+if [ -n "$large_files" ]; then
+    echo -e "${RED}❌ Large files detected:${NC}"
+    echo "$large_files" | sed 's/^/  - /'
+    echo -e "${YELLOW}💡 Consider using Git LFS for large files${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✅ No large files${NC}\n"
+
+# 7. Protect main/master branch
+if [ "$current_branch" = "main" ] || [ "$current_branch" = "master" ]; then
+    echo -e "${YELLOW}⚠️  Pushing to $current_branch${NC}"
+    echo -e "${YELLOW}Are you sure? This should usually be done via PR.${NC}"
+    read -p "Continue? (yes/no): " -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]es$ ]]; then
+        echo -e "${YELLOW}Push cancelled${NC}"
+        exit 1
+    fi
+fi
+
+# All checks passed!
+echo -e "${GREEN}✅ All pre-push checks passed!${NC}"
+echo -e "${GREEN}🚀 Ready to push${NC}"
+
+exit 0

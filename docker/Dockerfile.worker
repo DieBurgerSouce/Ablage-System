@@ -1,0 +1,160 @@
+# Dockerfile for Celery Worker with GPU Support
+# Ablage-System OCR Multi-Agent Worker
+# Priority: P1
+# Created: 2024-11-25
+
+# =============================================================================
+# BASE IMAGE - NVIDIA CUDA for GPU support
+# =============================================================================
+
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
+
+# Prevent interactive prompts during build
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set working directory
+WORKDIR /app
+
+# =============================================================================
+# SYSTEM DEPENDENCIES
+# =============================================================================
+
+RUN apt-get update && apt-get install -y \
+    # Python 3.11
+    python3.11 \
+    python3.11-dev \
+    python3-pip \
+    # Build tools
+    build-essential \
+    gcc \
+    g++ \
+    # Image processing libraries
+    libpoppler-cpp-dev \
+    poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-deu \
+    libtesseract-dev \
+    # PDF processing
+    ghostscript \
+    # Graphics libraries
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    # Utilities
+    wget \
+    curl \
+    git \
+    # Cleanup
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN python3.11 -m pip install --upgrade pip setuptools wheel
+
+# =============================================================================
+# PYTHON DEPENDENCIES
+# =============================================================================
+
+# Copy requirements files
+COPY requirements.txt /app/requirements.txt
+COPY requirements-dev.txt /app/requirements-dev.txt
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install PyTorch with CUDA support (specific version for RTX 4080)
+RUN pip install --no-cache-dir \
+    torch==2.1.2+cu121 \
+    torchvision==0.16.2+cu121 \
+    torchaudio==2.1.2+cu121 \
+    --index-url https://download.pytorch.org/whl/cu121
+
+# Install transformers and additional ML libraries
+RUN pip install --no-cache-dir \
+    transformers>=4.35.0 \
+    accelerate>=0.25.0 \
+    bitsandbytes>=0.41.0 \
+    sentencepiece>=0.1.99 \
+    protobuf>=4.25.0
+
+# =============================================================================
+# APPLICATION CODE
+# =============================================================================
+
+# Copy application code
+COPY app/ /app/app/
+COPY Skills/ /app/Skills/
+COPY alembic/ /app/alembic/
+COPY alembic.ini /app/alembic.ini
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/data /app/models /app/temp
+
+# =============================================================================
+# ENVIRONMENT VARIABLES
+# =============================================================================
+
+# Python
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app
+
+# CUDA
+ENV CUDA_VISIBLE_DEVICES=0
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Celery
+ENV CELERY_BROKER_URL=redis://redis:6379/1
+ENV CELERY_RESULT_BACKEND=redis://redis:6379/2
+ENV C_FORCE_ROOT=true
+
+# Application
+ENV LOG_LEVEL=INFO
+ENV WORKERS=1
+ENV CONCURRENCY=1
+ENV POOL=solo
+
+# =============================================================================
+# GPU OPTIMIZATION
+# =============================================================================
+
+# Set GPU memory fraction (prevent OOM)
+ENV CUDA_MEM_FRACTION=0.85
+
+# Enable TensorFloat-32 for performance on Ampere GPUs (RTX 4080)
+ENV NVIDIA_TF32_OVERRIDE=1
+
+# cuDNN optimization
+ENV CUDNN_BENCHMARK=1
+
+# =============================================================================
+# HEALTH CHECK
+# =============================================================================
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD celery -A app.workers.celery_app inspect ping || exit 1
+
+# =============================================================================
+# USER & PERMISSIONS
+# =============================================================================
+
+# Create non-root user for security
+RUN useradd -m -u 1000 celery && \
+    chown -R celery:celery /app
+
+# Switch to non-root user
+USER celery
+
+# =============================================================================
+# STARTUP
+# =============================================================================
+
+# Default command: GPU worker for OCR tasks
+CMD ["celery", "-A", "app.workers.celery_app", "worker", \
+     "--queues=ocr_gpu,ocr.deepseek,ocr.got_ocr,ocr.hybrid", \
+     "--loglevel=info", \
+     "--concurrency=1", \
+     "--pool=solo", \
+     "--hostname=gpu-worker@%h", \
+     "--max-tasks-per-child=10", \
+     "--task-events"]

@@ -1,0 +1,526 @@
+# Technical Terms - German/English Glossary
+
+glossar_id: technical_terms_de_001
+category: technical_vocabulary
+language: bilingual
+last_updated: "2025-11-22"
+
+description: |
+  Comprehensive German-English technical glossary for the Ablage-System.
+  Essential for consistent translation, documentation, and communication.
+
+# ============================================================================
+# OCR & Document Processing Terms
+# ============================================================================
+
+ocr_terms:
+  OCR:
+    de: "Optische Zeichenerkennung"
+    en: "Optical Character Recognition"
+    abbreviation: "OCR"
+
+  Texterkennung:
+    de: "Texterkennung"
+    en: "text recognition"
+    context: "Process of identifying text in images"
+
+  Vorverarbeitung:
+    de: "Vorverarbeitung"
+    en: "preprocessing"
+    context: "Image preparation before OCR"
+
+  Nachverarbeitung:
+    de: "Nachverarbeitung"
+    en: "post-processing"
+    context: "Text refinement after OCR"
+
+  Genauigkeit:
+    de: "Genauigkeit"
+    en: "accuracy"
+    measurement: "percentage (0-100%)"
+
+  Konfidenz:
+    de: "Konfidenz / Vertrauenswert"
+    en: "confidence"
+    measurement: "score (0.0-1.0)"
+
+  Stapelverarbeitung:
+    de: "Stapelverarbeitung"
+    en: "batch processing"
+
+  Echtzeit-Verarbeitung:
+    de: "Echtzeit-Verarbeitung"
+    en: "real-time processing"
+
+  Layouterkennung:
+    de: "Layouterkennung"
+    en: "layout detection"
+    context: "Identifying document structure"
+
+  Tabellenextraktion:
+    de: "Tabellenextraktion"
+    en: "table extraction"
+
+  Handschrifterkennung:
+    de: "Handschrifterkennung"
+    en: "handwriting recognition"
+    abbreviation: "HWR"
+
+# ============================================================================
+# GPU & Hardware Terms
+# ============================================================================
+
+gpu_terms:
+  GPU:
+    de: "Grafikprozessor / Grafikeinheit"
+    en: "Graphics Processing Unit"
+    abbreviation: "GPU"
+
+  VRAM:
+    de: "Grafikspeicher / Videospeicher"
+    en: "Video Random Access Memory"
+    abbreviation: "VRAM"
+    measurement: "GB (Gigabyte)"
+
+  Speicherüberlauf:
+    de: "Speicherüberlauf"
+    en: "out of memory"
+    abbreviation: "OOM"
+    context: "GPU memory exhaustion error"
+
+  CUDA:
+    de: "CUDA (NVIDIA Parallel-Computing-Plattform)"
+    en: "Compute Unified Device Architecture"
+    abbreviation: "CUDA"
+    vendor: "NVIDIA"
+
+  Auslastung:
+    de: "Auslastung"
+    en: "utilization"
+    measurement: "percentage (0-100%)"
+
+  Batch-Größe:
+    de: "Batch-Größe / Stapelgröße"
+    en: "batch size"
+    context: "Number of items processed together"
+
+  Inferenz:
+    de: "Inferenz"
+    en: "inference"
+    context: "Running model on data (not training)"
+
+  Modellgewichte:
+    de: "Modellgewichte"
+    en: "model weights"
+    context: "Trained neural network parameters"
+
+# ============================================================================
+# German Business Document Terms
+# ============================================================================
+
+document_types:
+  Rechnung:
+    de: "Rechnung"
+    en: "invoice"
+    plural_de: "Rechnungen"
+    plural_en: "invoices"
+
+  Lieferschein:
+    de: "Lieferschein"
+    en: "delivery note / packing slip"
+    plural_de: "Lieferscheine"
+
+  Vertrag:
+    de: "Vertrag"
+    en: "contract"
+    plural_de: "Verträge"
+    plural_en: "contracts"
+
+  Angebot:
+    de: "Angebot"
+    en: "quotation / offer"
+    plural_de: "Angebote"
+
+  Bestellung:
+    de: "Bestellung"
+    en: "purchase order"
+    plural_de: "Bestellungen"
+    abbreviation: "PO"
+
+  Gutschrift:
+    de: "Gutschrift"
+    en: "credit note"
+    plural_de: "Gutschriften"
+
+  Mahnung:
+    de: "Mahnung"
+    en: "payment reminder / dunning letter"
+    plural_de: "Mahnungen"
+
+invoice_fields:
+  Rechnungsnummer:
+    de: "Rechnungsnummer"
+    en: "invoice number"
+    field_type: "alphanumeric_identifier"
+
+  Rechnungsdatum:
+    de: "Rechnungsdatum"
+    en: "invoice date"
+    field_type: "date"
+    format: "DD.MM.YYYY"
+
+  Leistungsdatum:
+    de: "Leistungsdatum"
+    en: "date of service / performance date"
+    field_type: "date"
+
+  Zahlungsziel:
+    de: "Zahlungsziel"
+    en: "payment terms / payment deadline"
+    alternatives:
+      - "Zahlungsbedingungen"
+      - "Zahlungsfrist"
+
+  Nettobetrag:
+    de: "Nettobetrag / Nettosumme"
+    en: "net amount"
+    context: "Amount before tax"
+
+  Bruttobetrag:
+    de: "Bruttobetrag / Bruttosumme"
+    en: "gross amount"
+    context: "Amount including tax"
+
+  Umsatzsteuer:
+    de: "Umsatzsteuer"
+    en: "value-added tax"
+    abbreviation_de: "USt"
+    abbreviation_en: "VAT"
+    common_rates: [19, 7, 0]
+
+  Mehrwertsteuer:
+    de: "Mehrwertsteuer"
+    en: "value-added tax"
+    abbreviation: "MwSt"
+    note: "Synonym for Umsatzsteuer"
+
+company_identifiers:
+  Steuernummer:
+    de: "Steuernummer"
+    en: "tax number"
+    abbreviation: "St.-Nr."
+    format: "XX/XXX/XXXXX"
+    issuer: "Finanzamt (tax office)"
+
+  Umsatzsteuer-Identifikationsnummer:
+    de: "Umsatzsteuer-Identifikationsnummer"
+    en: "VAT identification number"
+    abbreviation: "USt-IdNr"
+    format: "DEXXXXXXXXX"
+    validation: "VIES EU system"
+
+  Handelsregisternummer:
+    de: "Handelsregisternummer"
+    en: "commercial register number"
+    abbreviation: "HRB"
+    format: "HRB XXXXX"
+
+# ============================================================================
+# Software Architecture Terms
+# ============================================================================
+
+architecture_terms:
+  Microservice:
+    de: "Microservice / Mikrodienst"
+    en: "microservice"
+    plural: "Microservices / Mikrodienste"
+
+  API:
+    de: "API / Programmierschnittstelle"
+    en: "Application Programming Interface"
+    abbreviation: "API"
+
+  Endpunkt:
+    de: "Endpunkt"
+    en: "endpoint"
+    context: "API route/URL"
+
+  Datenbank:
+    de: "Datenbank"
+    en: "database"
+    abbreviation: "DB"
+
+  Warteschlange:
+    de: "Warteschlange"
+    en: "queue"
+    context: "Task queue for async processing"
+
+  Worker:
+    de: "Worker / Arbeitsprozess"
+    en: "worker"
+    context: "Background processing unit"
+
+  Container:
+    de: "Container"
+    en: "container"
+    technology: "Docker"
+
+  Orchestrierung:
+    de: "Orchestrierung"
+    en: "orchestration"
+
+  Skalierung:
+    de: "Skalierung"
+    en: "scaling"
+    types:
+      - "horizontal / horizontal scaling"
+      - "vertikal / vertical scaling"
+
+  Ausfallsicherheit:
+    de: "Ausfallsicherheit"
+    en: "fault tolerance / resilience"
+
+  Lastausgleich:
+    de: "Lastausgleich"
+    en: "load balancing"
+
+  Cache:
+    de: "Cache / Zwischenspeicher"
+    en: "cache"
+
+  Sitzung:
+    de: "Sitzung"
+    en: "session"
+
+# ============================================================================
+# GDPR & Compliance Terms
+# ============================================================================
+
+gdpr_terms:
+  DSGVO:
+    de: "Datenschutz-Grundverordnung"
+    en: "General Data Protection Regulation"
+    abbreviation_de: "DSGVO"
+    abbreviation_en: "GDPR"
+    effective_date: "2018-05-25"
+
+  Personenbezogene_Daten:
+    de: "personenbezogene Daten"
+    en: "personal data / personally identifiable information"
+    abbreviation_en: "PII"
+
+  Verantwortlicher:
+    de: "Verantwortlicher"
+    en: "data controller"
+    context: "Entity determining processing purposes"
+
+  Auftragsverarbeiter:
+    de: "Auftragsverarbeiter"
+    en: "data processor"
+    context: "Entity processing data on behalf of controller"
+
+  Recht_auf_Löschung:
+    de: "Recht auf Löschung"
+    en: "right to erasure / right to be forgotten"
+    article: "Art. 17 DSGVO"
+
+  Datenportabilität:
+    de: "Datenportabilität"
+    en: "data portability"
+    article: "Art. 20 DSGVO"
+
+  Verarbeitungsverzeichnis:
+    de: "Verzeichnis von Verarbeitungstätigkeiten"
+    en: "record of processing activities"
+    article: "Art. 30 DSGVO"
+
+  Datenschutzverletzung:
+    de: "Datenschutzverletzung"
+    en: "data breach"
+    reporting_deadline: "72 hours"
+
+# ============================================================================
+# Operations & DevOps Terms
+# ============================================================================
+
+devops_terms:
+  Bereitstellung:
+    de: "Bereitstellung"
+    en: "deployment"
+
+  Rollback:
+    de: "Rollback / Zurückrollen"
+    en: "rollback"
+    context: "Reverting to previous version"
+
+  Überwachung:
+    de: "Überwachung / Monitoring"
+    en: "monitoring"
+
+  Protokollierung:
+    de: "Protokollierung / Logging"
+    en: "logging"
+
+  Alarmierung:
+    de: "Alarmierung / Alerting"
+    en: "alerting"
+
+  Wiederherstellung:
+    de: "Wiederherstellung"
+    en: "recovery / restoration"
+
+  Sicherung:
+    de: "Sicherung / Backup"
+    en: "backup"
+
+  Hochverfügbarkeit:
+    de: "Hochverfügbarkeit"
+    en: "high availability"
+    abbreviation: "HA"
+
+  Katastrophenwiederherstellung:
+    de: "Katastrophenwiederherstellung"
+    en: "disaster recovery"
+    abbreviation: "DR"
+
+  RTO:
+    de: "Recovery Time Objective / Wiederherstellungszeit-Ziel"
+    en: "Recovery Time Objective"
+    abbreviation: "RTO"
+
+  RPO:
+    de: "Recovery Point Objective / Wiederherstellungspunkt-Ziel"
+    en: "Recovery Point Objective"
+    abbreviation: "RPO"
+
+# ============================================================================
+# Error Messages & Status
+# ============================================================================
+
+status_terms:
+  erfolgreich:
+    de: "erfolgreich"
+    en: "successful"
+    http_status: 200
+
+  fehlgeschlagen:
+    de: "fehlgeschlagen"
+    en: "failed"
+    http_status: 500
+
+  in_Bearbeitung:
+    de: "in Bearbeitung"
+    en: "processing / in progress"
+    http_status: 202
+
+  ausstehend:
+    de: "ausstehend / wartend"
+    en: "pending"
+
+  abgeschlossen:
+    de: "abgeschlossen"
+    en: "completed"
+
+  abgebrochen:
+    de: "abgebrochen"
+    en: "cancelled / aborted"
+
+  ungültig:
+    de: "ungültig"
+    en: "invalid"
+    http_status: 400
+
+  nicht_gefunden:
+    de: "nicht gefunden"
+    en: "not found"
+    http_status: 404
+
+  nicht_autorisiert:
+    de: "nicht autorisiert"
+    en: "unauthorized"
+    http_status: 401
+
+  verboten:
+    de: "verboten"
+    en: "forbidden"
+    http_status: 403
+
+# ============================================================================
+# Common Actions / Verbs
+# ============================================================================
+
+actions:
+  hochladen:
+    de: "hochladen"
+    en: "upload"
+
+  herunterladen:
+    de: "herunterladen"
+    en: "download"
+
+  verarbeiten:
+    de: "verarbeiten"
+    en: "process"
+
+  validieren:
+    de: "validieren / überprüfen"
+    en: "validate"
+
+  extrahieren:
+    de: "extrahieren"
+    en: "extract"
+
+  löschen:
+    de: "löschen"
+    en: "delete"
+
+  aktualisieren:
+    de: "aktualisieren"
+    en: "update"
+
+  erstellen:
+    de: "erstellen"
+    en: "create"
+
+  abrufen:
+    de: "abrufen"
+    en: "retrieve / fetch"
+
+  speichern:
+    de: "speichern"
+    en: "save / store"
+
+usage_notes: |
+  Translation Guidelines:
+
+  1. User-Facing Content: ALWAYS use German terms
+     - Error messages: "Dokument nicht gefunden"
+     - Button labels: "Hochladen", "Löschen"
+     - Status messages: "Verarbeitung erfolgreich"
+
+  2. Code & Technical Docs: Use English
+     - Variable names: document_id, processing_status
+     - Function names: process_document(), validate_invoice()
+     - API endpoints: /api/v1/documents
+
+  3. Mixed Contexts: Prioritize clarity
+     - Log messages: "Processing failed for document {doc_id}: Validierung fehlgeschlagen"
+     - Comments: Technical terms in English, explanations in German
+
+  4. Acronyms: Keep original abbreviations
+     - GDPR (not DSGVO in code)
+     - API (not Schnittstelle)
+     - GPU (not Grafikprozessor)
+
+related_files:
+  - "Static_Knowledge/Glossar/business_terms_de.yaml"
+  - "Static_Knowledge/Skills/german_text_processing_skill.yaml"
+  - "Static_Knowledge/Templates/rechnung_template.yaml"
+
+tags:
+  - glossary
+  - translation
+  - terminology
+  - german
+  - bilingual
+  - documentation

@@ -1,0 +1,53 @@
+# Ablage-System OCR - Core Dependencies
+# Python 3.11+ required
+
+# Core Framework
+fastapi==0.110.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.9
+
+# GPU/ML Processing
+torch==2.1.2+cu121  # CUDA 12.1 for RTX 4080
+torchvision==0.16.2+cu121
+transformers==4.36.2
+accelerate==0.25.0
+
+# Database & ORM
+sqlalchemy==2.0.25
+alembic==1.13.1
+asyncpg==0.29.0
+
+# Task Queue
+celery==5.3.4
+redis==5.0.1
+
+# Data Validation
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Storage
+minio==7.2.3
+pillow==10.2.0
+
+# German Text Processing
+spacy==3.7.2
+# Run after install: python -m spacy download de_core_news_sm
+
+# Testing
+pytest==7.4.4
+pytest-asyncio==0.23.3
+pytest-cov==4.1.0
+httpx==0.26.0
+
+# Development Tools
+ipython==8.19.0
+rich==13.7.0
+
+# Monitoring & Logging
+psutil==5.9.7
+prometheus-client==0.19.0
+structlog==24.1.0
+
+# Utilities
+python-dotenv==1.0.0
+pyyaml==6.0.1

@@ -1,0 +1,712 @@
+# German NLP Resources - Curated Bookmarks
+
+category: Dynamic Knowledge - Bookmarks
+last_updated: "2025-11-22"
+maintainer: ML Team
+purpose: "Curated collection of German language processing tools, libraries, and resources for OCR and NLP tasks"
+
+---
+
+# German Language Models
+
+spacy_models:
+  - name: "de_core_news_lg"
+    url: "https://spacy.io/models/de#de_core_news_lg"
+    version: "3.7.0"
+    size: "546 MB"
+    description: "Large German model with word vectors, POS tagging, dependency parsing, NER"
+    components:
+      - tok2vec
+      - morphologizer
+      - parser
+      - lemmatizer
+      - attribute_ruler
+      - ner
+    entities:
+      - PER (Person)
+      - LOC (Location)
+      - ORG (Organization)
+      - MISC (Miscellaneous)
+    performance:
+      ner_accuracy: 85.43
+      pos_accuracy: 98.27
+      dep_accuracy: 91.05
+    usage: |
+      import spacy
+      nlp = spacy.load("de_core_news_lg")
+      doc = nlp("Apple ist ein Technologieunternehmen aus Cupertino.")
+      for ent in doc.ents:
+          print(ent.text, ent.label_)
+    rating: 5
+    used_in_production: true
+    notes: "Our primary NER model for German documents. Handles umlauts well."
+
+  - name: "de_core_news_md"
+    url: "https://spacy.io/models/de#de_core_news_md"
+    version: "3.7.0"
+    size: "43 MB"
+    description: "Medium German model (smaller, faster than lg)"
+    performance:
+      ner_accuracy: 84.12
+      pos_accuracy: 97.85
+    rating: 4
+    used_in_production: false
+    notes: "Good for resource-constrained environments. Slightly lower accuracy."
+
+  - name: "de_core_news_sm"
+    url: "https://spacy.io/models/de#de_core_news_sm"
+    version: "3.7.0"
+    size: "14 MB"
+    description: "Small German model (no word vectors)"
+    performance:
+      ner_accuracy: 80.23
+    rating: 3
+    used_in_production: false
+    notes: "Too small for our accuracy requirements. Use only for development."
+
+transformers_models:
+  - name: "deepset/gbert-large"
+    url: "https://huggingface.co/deepset/gbert-large"
+    model_type: "BERT"
+    parameters: "335M"
+    description: "German BERT by deepset, trained on German Wikipedia, OpenLegalData, news articles"
+    tasks:
+      - text_classification
+      - token_classification
+      - question_answering
+    performance_benchmark:
+      dataset: "GermEval 2018"
+      f1_score: 87.4
+    usage: |
+      from transformers import AutoTokenizer, AutoModel
+      tokenizer = AutoTokenizer.from_pretrained("deepset/gbert-large")
+      model = AutoModel.from_pretrained("deepset/gbert-large")
+    rating: 5
+    used_in_production: true
+    notes: "Best German BERT model. Use for classification tasks."
+
+  - name: "bert-base-german-cased"
+    url: "https://huggingface.co/bert-base-german-cased"
+    model_type: "BERT"
+    parameters: "110M"
+    description: "Google's German BERT base model"
+    rating: 4
+    used_in_production: false
+    notes: "Good general-purpose model. deepset/gbert-large performs better."
+
+  - name: "distilbert-base-german-cased"
+    url: "https://huggingface.co/distilbert-base-german-cased"
+    model_type: "DistilBERT"
+    parameters: "66M"
+    description: "Distilled German BERT (40% smaller, 60% faster)"
+    rating: 4
+    used_in_production: true
+    notes: "Use for real-time inference where speed is critical."
+
+---
+
+# Named Entity Recognition (NER)
+
+german_ner_tools:
+  - name: "Flair NER (German)"
+    url: "https://github.com/flairNLP/flair"
+    description: "State-of-the-art NER library with pre-trained German models"
+    models:
+      - "flair/ner-german-large" (4-class NER)
+      - "flair/ner-german" (standard)
+    performance:
+      conll_2003_f1: 92.31
+    usage: |
+      from flair.data import Sentence
+      from flair.models import SequenceTagger
+
+      tagger = SequenceTagger.load("flair/ner-german-large")
+      sentence = Sentence("George Washington ging nach Washington.")
+      tagger.predict(sentence)
+
+      for entity in sentence.get_spans('ner'):
+          print(entity.text, entity.tag, entity.score)
+    rating: 5
+    used_in_production: true
+    notes: "Best German NER accuracy. Slower than spaCy but more accurate."
+
+  - name: "GermaNER"
+    url: "https://github.com/tudarmstadt-lt/GermaNER"
+    description: "German NER with CRF (TU Darmstadt)"
+    features:
+      - "Rule-based + statistical"
+      - "Handles compound nouns"
+      - "German-specific features"
+    rating: 3
+    used_in_production: false
+    notes: "Outdated. Flair and spaCy are better."
+
+business_entity_extraction:
+  - name: "Custom Invoice Entity Extractor"
+    url: "../../Execution_Layer/Sub_Agents/invoice_data_extractor.py"
+    description: "Our custom extractor for German business documents"
+    entities_extracted:
+      - Rechnungsnummer (Invoice Number)
+      - Rechnungsdatum (Invoice Date)
+      - USt-IdNr (VAT ID)
+      - Steuernummer (Tax Number)
+      - IBAN
+      - BIC
+      - Company names
+      - Addresses
+    rating: 5
+    used_in_production: true
+    notes: "Production system. Handles German business terms perfectly."
+
+  - name: "§14 UStG Validator"
+    url: "https://www.bzst.de/DE/Unternehmen/Umsatzsteuer/umsatzsteuer_node.html"
+    description: "Official German VAT regulations for invoice requirements"
+    validation_rules:
+      - "Name and address of supplier"
+      - "Name and address of recipient"
+      - "Tax ID or VAT ID"
+      - "Invoice date"
+      - "Invoice number (unique, sequential)"
+      - "Quantity and type of goods/services"
+      - "Date of delivery"
+      - "Net amount by tax rate"
+      - "VAT amount by rate"
+      - "Gross amount"
+    rating: 5
+    required_by_law: true
+    notes: "Legal requirement for German invoices. All extractions must validate against this."
+
+---
+
+# Fraktur Font Handling
+
+fraktur_libraries:
+  - name: "Tesseract OCR (Fraktur)"
+    url: "https://github.com/tesseract-ocr/tesseract"
+    description: "Open-source OCR with Fraktur support"
+    language_data: "deu_frak.traineddata"
+    installation: |
+      # Ubuntu
+      sudo apt-get install tesseract-ocr tesseract-ocr-deu
+      sudo apt-get install tesseract-ocr-script-frak
+    usage: |
+      import pytesseract
+      from PIL import Image
+
+      # Configure for Fraktur
+      custom_config = r'--oem 3 --psm 6 -l deu_frak'
+      image = Image.open('historical_document.jpg')
+      text = pytesseract.image_to_string(image, config=custom_config)
+    rating: 4
+    used_in_production: false
+    notes: "Good for pure Fraktur. Our DeepSeek model handles mixed Fraktur/Antiqua better."
+
+  - name: "Kraken OCR"
+    url: "https://github.com/mittagessen/kraken"
+    description: "OCR system specialized in historical documents"
+    features:
+      - "Layout analysis"
+      - "Fraktur recognition"
+      - "Custom model training"
+    models:
+      - "fraktur.mlmodel" (German Fraktur)
+    usage: |
+      from kraken import binarization, pageseg, rpred
+      from PIL import Image
+
+      im = Image.open('fraktur.jpg')
+      # Binarize and segment
+      im = binarization.nlbin(im)
+      seg = pageseg.segment(im)
+      # Recognize with Fraktur model
+      model = rpred.load_model('fraktur.mlmodel')
+      pred = rpred.rpred(model, im, seg)
+    rating: 4
+    used_in_production: false
+    notes: "Excellent for pure historical documents. Overkill for modern mixed documents."
+
+fraktur_fonts:
+  - name: "UnifrakturMaguntia"
+    url: "https://fonts.google.com/specimen/UnifrakturMaguntia"
+    description: "OpenType Fraktur font with full Unicode coverage"
+    license: "SIL Open Font License"
+    use_case: "Rendering Fraktur text in UI"
+    rating: 5
+    notes: "Beautiful Fraktur font. Use for displaying historical documents."
+
+  - name: "Fette Fraktur"
+    url: "https://fonts.google.com/specimen/Fette+Fraktur"
+    description: "Bold Fraktur display font"
+    license: "SIL Open Font License"
+    rating: 4
+
+fraktur_character_mappings:
+  description: "Fraktur to modern German character mappings"
+  unicode_ranges:
+    - "U+1E9E: Latin Capital Letter Sharp S (ẞ)"
+    - "U+00DF: Latin Small Letter Sharp S (ß)"
+  common_mappings:
+    ſ: "s"  # Long s
+    ẞ: "ß"  # Capital eszett
+    Æ: "Ä"  # Sometimes used for Ä in Fraktur
+  reference_implementation: "../../app/utils/german_text.py:normalize_german_text()"
+  notes: "Our normalize_german_text() handles all these mappings automatically."
+
+---
+
+# German Tokenization
+
+tokenizers:
+  - name: "spaCy Tokenizer"
+    url: "https://spacy.io/api/tokenizer"
+    description: "Rule-based tokenizer with German-specific rules"
+    features:
+      - "Handles German compound words"
+      - "Umlauts preserved"
+      - "Abbreviation detection (z.B., u.a., etc.)"
+    usage: |
+      import spacy
+      nlp = spacy.load("de_core_news_lg")
+      doc = nlp("Das ist ein Beispiel-Satz mit Bindestrichen.")
+      tokens = [token.text for token in doc]
+    rating: 5
+    used_in_production: true
+
+  - name: "SoMaJo"
+    url: "https://github.com/tsproisl/SoMaJo"
+    description: "State-of-the-art German tokenizer"
+    features:
+      - "Sentence splitting"
+      - "Tokenization"
+      - "Abbreviation handling"
+      - "URL/email detection"
+    usage: |
+      from somajo import SoMaJo
+
+      tokenizer = SoMaJo("de_CMC", xml_sentences=False)
+      text = "Das ist ein Satz. Und hier kommt der nächste!"
+      sentences = tokenizer.tokenize_text([text])
+
+      for sentence in sentences:
+          for token in sentence:
+              print(token.text)
+    rating: 4
+    used_in_production: false
+    notes: "More accurate than spaCy for edge cases. Slower."
+
+compound_word_splitting:
+  - name: "CharSplit"
+    url: "https://github.com/dtuggener/CharSplit"
+    description: "German compound word splitter"
+    examples:
+      - "Donaudampfschifffahrtskapitän → Donau dampf schiff fahrt kapitän"
+      - "Rindfleischetikettierungsüberwachungsaufgabenübertragungsgesetz → ..."
+    usage: |
+      from charsplit import Splitter
+
+      splitter = Splitter()
+      print(splitter.split_compound("Bundeskanzler"))
+      # ['Bundes', 'kanzler']
+    rating: 4
+    used_in_production: false
+    notes: "Useful for search. Not needed for OCR."
+
+---
+
+# German Lemmatization & Morphology
+
+lemmatizers:
+  - name: "spaCy Lemmatizer"
+    url: "https://spacy.io/api/lemmatizer"
+    description: "Rule-based + lookup lemmatization"
+    usage: |
+      import spacy
+      nlp = spacy.load("de_core_news_lg")
+      doc = nlp("Die Katzen liefen schnell.")
+      for token in doc:
+          print(token.text, "->", token.lemma_)
+      # Katzen -> Katze
+      # liefen -> laufen
+    rating: 5
+    used_in_production: true
+
+  - name: "IWNLP"
+    url: "https://github.com/Liebeck/IWNLP"
+    description: "German lemmatizer based on Wiktionary"
+    coverage: "280,000+ lemmas"
+    rating: 4
+    used_in_production: false
+    notes: "Good coverage. spaCy is sufficient for our needs."
+
+morphology_tools:
+  - name: "HanTa"
+    url: "https://github.com/wartaal/HanTa"
+    description: "German lemmatizer and POS tagger"
+    features:
+      - "Lemmatization"
+      - "POS tagging"
+      - "Handles historical German"
+    rating: 3
+    used_in_production: false
+
+---
+
+# German Spell Checking
+
+spell_checkers:
+  - name: "pyspellchecker (German)"
+    url: "https://github.com/barrust/pyspellchecker"
+    description: "Pure Python spell checker with German dictionary"
+    usage: |
+      from spellchecker import SpellChecker
+
+      spell = SpellChecker(language='de')
+
+      # Find misspelled words
+      misspelled = spell.unknown(['Hallo', 'Welt', 'Fehller'])
+      # {'Fehller'}
+
+      # Get correction
+      print(spell.correction('Fehller'))
+      # 'Fehler'
+
+      # Get candidates
+      print(spell.candidates('Fehller'))
+      # {'Fehler', 'Fühler'}
+    rating: 4
+    used_in_production: true
+    notes: "Good for post-OCR spell checking. Fast."
+
+  - name: "LanguageTool"
+    url: "https://languagetool.org/"
+    description: "Open-source grammar and spell checker"
+    features:
+      - "Spell checking"
+      - "Grammar checking"
+      - "Style suggestions"
+      - "German-specific rules (1000+)"
+    api_usage: |
+      import language_tool_python
+
+      tool = language_tool_python.LanguageTool('de-DE')
+      text = "Das ist ein Fehler Satz."
+      matches = tool.check(text)
+
+      for match in matches:
+          print(match.message)
+          print(match.replacements)
+    rating: 5
+    used_in_production: false
+    notes: "Excellent but slow. Consider for batch processing."
+
+  - name: "hunspell (German)"
+    url: "http://hunspell.github.io/"
+    description: "LibreOffice spell checker"
+    dictionaries:
+      - "de_DE.dic" (German Germany)
+      - "de_AT.dic" (German Austria)
+      - "de_CH.dic" (German Switzerland)
+    rating: 4
+    used_in_production: false
+    notes: "Very comprehensive dictionary. C++ library (harder to integrate)."
+
+---
+
+# German Business Term Dictionaries
+
+business_dictionaries:
+  - name: "Gabler Wirtschaftslexikon"
+    url: "https://wirtschaftslexikon.gabler.de/"
+    description: "Comprehensive German business dictionary"
+    terms: "25,000+ business terms"
+    categories:
+      - Rechnungswesen (Accounting)
+      - Steuern (Taxes)
+      - Recht (Law)
+      - Volkswirtschaft (Economics)
+    use_case: "Validate extracted business terms"
+    rating: 5
+    notes: "Gold standard for German business terminology."
+
+  - name: "Custom Business Term List"
+    url: "../../Static_Knowledge/Templates/german_business_terms.yaml"
+    description: "Our curated list of German business terms"
+    terms_count: 850
+    categories:
+      - Invoice terms (Rechnung, Netto, Brutto, MwSt)
+      - Contract terms (Vertrag, Kündigungsfrist)
+      - Tax terms (USt-IdNr, Steuernummer, §14 UStG)
+      - Payment terms (IBAN, BIC, SEPA)
+      - Legal entities (GmbH, AG, UG, KG)
+    rating: 5
+    used_in_production: true
+    notes: "Production dictionary. Update quarterly."
+
+german_legal_terms:
+  - name: "dejure.org"
+    url: "https://dejure.org/"
+    description: "German legal information portal"
+    content:
+      - Full text of German laws (BGB, UStG, HGB, etc.)
+      - Case law
+      - Legal definitions
+    use_case: "Validate legal references in contracts"
+    rating: 5
+    notes: "Essential for contract processing."
+
+---
+
+# Date and Number Formatting
+
+german_date_formats:
+  description: "German date format handling"
+  standard_format: "DD.MM.YYYY"
+  examples:
+    - "22.11.2025"
+    - "1.1.2025" (single digit ok)
+    - "22. November 2025" (month name)
+  library: |
+    from datetime import datetime
+    import locale
+
+    # Set German locale
+    locale.setlocale(locale.LC_TIME, 'de_DE.UTF-8')
+
+    # Parse German date
+    date_str = "22. November 2025"
+    date = datetime.strptime(date_str, "%d. %B %Y")
+  notes: "Always use DD.MM.YYYY format in output. Parse all variants in input."
+
+german_number_formats:
+  description: "German number format handling"
+  decimal_separator: ","
+  thousands_separator: "."
+  examples:
+    - "1.234,56 €" (one thousand two hundred thirty-four euros and fifty-six cents)
+    - "1.234.567,89" (million)
+  library: |
+    import locale
+
+    # Set German locale
+    locale.setlocale(locale.LC_NUMERIC, 'de_DE.UTF-8')
+
+    # Format number
+    amount = 1234.56
+    formatted = locale.format_string("%.2f €", amount, grouping=True)
+    # '1.234,56 €'
+
+    # Parse German number
+    german_str = "1.234,56"
+    # Replace . with nothing, , with .
+    number = float(german_str.replace('.', '').replace(',', '.'))
+  notes: "Critical for invoice amounts. Test thoroughly."
+
+---
+
+# German Corpora and Training Data
+
+text_corpora:
+  - name: "German Wikipedia Dump"
+    url: "https://dumps.wikimedia.org/dewiki/"
+    description: "Complete German Wikipedia"
+    size: "~25 GB compressed"
+    articles: "2.8 million+"
+    use_case: "Pre-training language models"
+    rating: 5
+
+  - name: "Common Crawl (German)"
+    url: "https://commoncrawl.org/"
+    description: "Web crawl data filtered for German"
+    size: "~100 GB"
+    use_case: "Large-scale pre-training"
+    rating: 4
+
+  - name: "Leipzig Corpora Collection"
+    url: "https://wortschatz.uni-leipzig.de/en/download/German"
+    description: "German text corpora from newspapers, web, Wikipedia"
+    sizes:
+      - "10K sentences"
+      - "100K sentences"
+      - "1M sentences"
+      - "10M sentences"
+    format: "Plain text, one sentence per line"
+    use_case: "Training custom models"
+    rating: 5
+    notes: "Excellent for research and training."
+
+ner_training_data:
+  - name: "GermEval 2014 NER"
+    url: "https://sites.google.com/site/germeval2014ner/"
+    description: "German NER shared task dataset"
+    sentences: "31,000 training, 4,900 test"
+    entities:
+      - PER (Person)
+      - LOC (Location)
+      - ORG (Organization)
+      - OTH (Other)
+    format: "CoNLL"
+    rating: 5
+    notes: "Standard benchmark for German NER."
+
+  - name: "CoNLL-2003 (German)"
+    url: "https://www.clips.uantwerpen.be/conll2003/ner/"
+    description: "Classic NER benchmark"
+    source: "Reuters news articles"
+    rating: 4
+
+---
+
+# German Text Preprocessing
+
+preprocessing_libraries:
+  - name: "custom german_text.py"
+    url: "../../app/utils/german_text.py"
+    description: "Our custom German text preprocessing"
+    functions:
+      - normalize_german_text() - NFC normalization, Fraktur mapping, ß handling
+      - validate_umlauts() - Check umlaut accuracy
+      - normalize_spaces() - Clean whitespace
+      - remove_hyphenation() - Fix line breaks
+    rating: 5
+    used_in_production: true
+    notes: "Core preprocessing pipeline. Battle-tested."
+
+  - name: "text-unidecode"
+    url: "https://github.com/kmike/text-unidecode"
+    description: "Transliterate Unicode to ASCII"
+    usage: |
+      from text_unidecode import unidecode
+
+      # Convert umlauts to ae, oe, ue
+      unidecode("Müller") # 'Muller' (loses umlaut!)
+    rating: 2
+    used_in_production: false
+    notes: "DO NOT USE for German! Destroys umlauts. Only for ASCII-only systems."
+
+unicode_normalization:
+  description: "Unicode normalization for German text"
+  forms:
+    NFC: "Canonical composition (use this)"
+    NFD: "Canonical decomposition (ä = a + ̈)"
+    NFKC: "Compatibility composition"
+    NFKD: "Compatibility decomposition"
+  recommendation: "Always use NFC for German text"
+  usage: |
+    import unicodedata
+
+    text = "Müller"  # Might be NFD (decomposed)
+    normalized = unicodedata.normalize('NFC', text)
+  reference: "https://unicode.org/reports/tr15/"
+  rating: 5
+  notes: "Critical for consistent text comparison."
+
+---
+
+# Benchmarks and Evaluation
+
+german_nlp_benchmarks:
+  - name: "GNAD10"
+    url: "https://github.com/thefux/GNAD10"
+    description: "German News Articles Dataset for classification"
+    classes: 10
+    articles: "10,000"
+    use_case: "Text classification benchmark"
+    rating: 4
+
+  - name: "GermanQuAD"
+    url: "https://www.deepset.ai/germanquad"
+    description: "German Question Answering Dataset"
+    questions: "13,722"
+    use_case: "QA model evaluation"
+    rating: 5
+
+  - name: "MLSUM (German)"
+    url: "https://huggingface.co/datasets/mlsum"
+    description: "German news summarization dataset"
+    articles: "220,000+"
+    use_case: "Summarization evaluation"
+    rating: 4
+
+evaluation_metrics:
+  ner_metrics:
+    - precision
+    - recall
+    - f1_score
+    - exact_match
+  classification_metrics:
+    - accuracy
+    - macro_f1
+    - weighted_f1
+  reference: "scikit-learn.metrics"
+
+---
+
+# Community and Support
+
+forums:
+  - name: "spaCy Discussions"
+    url: "https://github.com/explosion/spaCy/discussions"
+    description: "Official spaCy forum"
+    rating: 5
+
+  - name: "Hugging Face Forums"
+    url: "https://discuss.huggingface.co/"
+    description: "Transformers and datasets discussions"
+    rating: 5
+
+  - name: "r/LanguageTechnology"
+    url: "https://www.reddit.com/r/LanguageTechnology/"
+    description: "NLP community on Reddit"
+    rating: 4
+
+german_nlp_community:
+  - name: "German-NLP Awesome List"
+    url: "https://github.com/adbar/German-NLP"
+    description: "Curated list of German NLP resources"
+    rating: 5
+    notes: "Comprehensive! Check for new tools quarterly."
+
+---
+
+# Related Documentation
+
+internal_docs:
+  - "../../Static_Knowledge/Skills/ocr_backends_skill.yaml"
+  - "../../Meta_Layer/MOCs/OCR_PROCESSING_MOC.md"
+  - "../../app/utils/german_text.py"
+  - "../../Execution_Layer/Sub_Agents/invoice_data_extractor.py"
+
+external_resources:
+  - "https://spacy.io/models/de"
+  - "https://huggingface.co/models?language=de"
+  - "https://github.com/adbar/German-NLP"
+
+---
+
+# Maintenance
+
+update_frequency: "Quarterly"
+last_review: "2025-11-22"
+next_review: "2026-02-22"
+owner: "ML Team"
+contact: "#ablage-ml on Slack"
+
+change_log:
+  - date: "2025-11-22"
+    change: "Initial curated list"
+  - date: "2025-10-15"
+    change: "Added Flair NER"
+  - date: "2025-09-01"
+    change: "Added DeepSeek Fraktur model"
+
+notes: |
+  This is a living document. When you find a useful German NLP resource:
+  1. Add it here with rating and notes
+  2. Test it on sample data
+  3. Share in #ablage-ml
+  4. Update production code if it improves results
+
+  Priority: Tools that improve our core metrics:
+  - Umlaut accuracy (target: 100%)
+  - Invoice extraction accuracy (target: > 98%)
+  - OCR confidence (target: > 95%)

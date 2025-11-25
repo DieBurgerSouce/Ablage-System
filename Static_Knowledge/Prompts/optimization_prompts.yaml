@@ -1,0 +1,446 @@
+# Optimization Prompts for AI-Assisted Development
+
+prompt_collection_id: optimization_prompts_001
+category: performance_optimization
+last_updated: "2025-11-22"
+use_case: "AI-assisted code optimization and performance tuning"
+
+description: |
+  Collection of prompts for using AI (Claude, ChatGPT, etc.) to optimize
+  various aspects of the Ablage-System codebase.
+
+# ============================================================================
+# Database Query Optimization
+# ============================================================================
+
+database_optimization:
+  optimize_slow_query:
+    prompt: |
+      I have a slow PostgreSQL query in my Python FastAPI application:
+
+      ```python
+      {PASTE_QUERY_HERE}
+      ```
+
+      Context:
+      - Table size: {APPROXIMATE_ROWS} rows
+      - Current execution time: {CURRENT_TIME}ms
+      - Target execution time: < {TARGET_TIME}ms
+      - Database: PostgreSQL 16
+      - ORM: SQLAlchemy 2.0 (async)
+
+      The query is executed {FREQUENCY} (e.g., "100 times per minute").
+
+      Please analyze and suggest optimizations including:
+      1. Index recommendations
+      2. Query rewrite suggestions
+      3. SQLAlchemy-specific optimizations
+      4. Caching opportunities
+
+      Show EXPLAIN ANALYZE output interpretation if helpful.
+
+    example_usage:
+      query: |
+        SELECT d.*, u.username, COUNT(o.id) as ocr_count
+        FROM documents d
+        JOIN users u ON d.user_id = u.id
+        LEFT JOIN ocr_results o ON d.id = o.document_id
+        WHERE d.created_at > NOW() - INTERVAL '30 days'
+        GROUP BY d.id, u.username
+        ORDER BY d.created_at DESC
+      rows: "50,000"
+      current_time: "850ms"
+      target_time: "100ms"
+
+  n_plus_one_detection:
+    prompt: |
+      Review this Python SQLAlchemy code for N+1 query problems:
+
+      ```python
+      {PASTE_CODE_HERE}
+      ```
+
+      Context:
+      - Framework: FastAPI
+      - ORM: SQLAlchemy 2.0 (async)
+      - Database: PostgreSQL
+
+      Please:
+      1. Identify any N+1 query issues
+      2. Suggest eager loading strategies (selectinload, joinedload, etc.)
+      3. Provide optimized code
+      4. Estimate performance improvement
+
+    example_usage:
+      code: |
+        async def get_users_with_documents(db: AsyncSession):
+            result = await db.execute(select(User))
+            users = result.scalars().all()
+
+            for user in users:
+                # This creates N queries!
+                result = await db.execute(
+                    select(Document).where(Document.user_id == user.id)
+                )
+                user.documents = result.scalars().all()
+
+            return users
+
+# ============================================================================
+# Caching Optimization
+# ============================================================================
+
+caching_optimization:
+  implement_caching_strategy:
+    prompt: |
+      I need to implement caching for this function in my Python FastAPI app:
+
+      ```python
+      {PASTE_FUNCTION_HERE}
+      ```
+
+      Context:
+      - Cache backend: Redis
+      - Expected call frequency: {FREQUENCY}
+      - Data volatility: {VOLATILITY} (e.g., "changes every 5 minutes")
+      - Current response time: {CURRENT_TIME}ms
+      - Target response time: < {TARGET_TIME}ms
+
+      Please suggest:
+      1. Appropriate cache key strategy
+      2. Optimal TTL
+      3. Cache invalidation strategy
+      4. Redis data structure to use
+      5. Complete implementation with error handling
+
+    example_usage:
+      function: |
+        async def get_user_document_stats(user_id: str, db: AsyncSession):
+            result = await db.execute(
+                select(func.count(Document.id))
+                .where(Document.user_id == user_id)
+            )
+            return {"doc_count": result.scalar()}
+      frequency: "1000 calls/hour"
+      volatility: "changes when user uploads/deletes documents"
+      current_time: "45ms"
+      target_time: "5ms"
+
+  cache_stampede_prevention:
+    prompt: |
+      This endpoint experiences cache stampedes during peak load:
+
+      ```python
+      {PASTE_CODE_HERE}
+      ```
+
+      Context:
+      - Cache: Redis
+      - Peak concurrent requests: {CONCURRENT_REQUESTS}
+      - Cache miss triggers: {TRIGGER} expensive database queries
+
+      Please implement stampede prevention using:
+      1. Distributed locking (Redis locks)
+      2. Probabilistic early expiration
+      3. Stale-while-revalidate pattern
+
+      Provide complete code with async/await support.
+
+# ============================================================================
+# GPU & ML Optimization
+# ============================================================================
+
+gpu_optimization:
+  optimize_vram_usage:
+    prompt: |
+      My GPU is running out of VRAM during OCR processing:
+
+      ```python
+      {PASTE_CODE_HERE}
+      ```
+
+      Context:
+      - GPU: NVIDIA RTX 4080 (16GB VRAM)
+      - Model: {MODEL_NAME}
+      - Current batch size: {BATCH_SIZE}
+      - VRAM usage: {VRAM_USAGE}GB
+      - Error: {ERROR_MESSAGE}
+
+      Please suggest:
+      1. Dynamic batch sizing implementation
+      2. Memory optimization techniques (mixed precision, gradient checkpointing, etc.)
+      3. Model unloading strategies
+      4. Monitoring and alerting for VRAM usage
+
+    example_usage:
+      model: "DeepSeek-Janus-Pro 1.3B"
+      batch_size: 16
+      vram_usage: "15.8GB"
+      error: "torch.cuda.OutOfMemoryError"
+
+  optimize_inference_speed:
+    prompt: |
+      Optimize this PyTorch inference code for faster processing:
+
+      ```python
+      {PASTE_CODE_HERE}
+      ```
+
+      Context:
+      - Model: {MODEL_NAME}
+      - Current throughput: {CURRENT_THROUGHPUT} images/second
+      - Target throughput: {TARGET_THROUGHPUT} images/second
+      - Hardware: {GPU_MODEL}
+
+      Please suggest:
+      1. Batch processing optimizations
+      2. Model compilation (torch.compile)
+      3. Mixed precision inference
+      4. Asynchronous data loading
+      5. CUDA graph optimization (if applicable)
+
+# ============================================================================
+# API Performance Optimization
+# ============================================================================
+
+api_optimization:
+  optimize_endpoint_latency:
+    prompt: |
+      This FastAPI endpoint is too slow:
+
+      ```python
+      {PASTE_ENDPOINT_CODE}
+      ```
+
+      Context:
+      - Current p95 latency: {CURRENT_LATENCY}ms
+      - Target p95 latency: < {TARGET_LATENCY}ms
+      - Request rate: {REQUEST_RATE} req/min
+      - Bottleneck: {SUSPECTED_BOTTLENECK}
+
+      Please analyze and optimize:
+      1. Identify performance bottlenecks
+      2. Suggest async/await improvements
+      3. Database query optimization
+      4. Caching opportunities
+      5. Parallel execution opportunities (asyncio.gather)
+
+    example_usage:
+      current_latency: "850ms"
+      target_latency: "200ms"
+      request_rate: "500"
+      suspected_bottleneck: "Multiple sequential database queries"
+
+  implement_pagination:
+    prompt: |
+      Add efficient cursor-based pagination to this endpoint:
+
+      ```python
+      {PASTE_ENDPOINT_CODE}
+      ```
+
+      Context:
+      - Total records: {TOTAL_RECORDS}
+      - Expected page size: {PAGE_SIZE}
+      - Sort field: {SORT_FIELD}
+
+      Please implement:
+      1. Cursor-based pagination (not offset-based)
+      2. Proper SQLAlchemy query with cursor
+      3. Response schema with pagination metadata
+      4. Next/previous cursor logic
+
+# ============================================================================
+# Code Refactoring for Performance
+# ============================================================================
+
+refactoring_for_performance:
+  async_refactoring:
+    prompt: |
+      Refactor this synchronous code to async/await for better performance:
+
+      ```python
+      {PASTE_SYNC_CODE}
+      ```
+
+      Context:
+      - Framework: FastAPI
+      - Database: PostgreSQL (asyncpg)
+      - Redis: redis.asyncio
+
+      Please:
+      1. Convert to async/await
+      2. Identify opportunities for concurrent execution (asyncio.gather)
+      3. Update database queries to async SQLAlchemy
+      4. Handle errors appropriately in async context
+      5. Estimate performance improvement
+
+  eliminate_blocking_operations:
+    prompt: |
+      Find and eliminate blocking operations in this async code:
+
+      ```python
+      {PASTE_ASYNC_CODE}
+      ```
+
+      Context:
+      - Framework: FastAPI (async)
+      - This code is called {FREQUENCY}
+
+      Please identify:
+      1. Any blocking I/O operations (file ops, sync DB calls, etc.)
+      2. CPU-intensive operations that should use run_in_executor
+      3. Missing await statements
+      4. Provide refactored async-safe code
+
+# ============================================================================
+# Algorithm Optimization
+# ============================================================================
+
+algorithm_optimization:
+  optimize_algorithm_complexity:
+    prompt: |
+      Optimize the time/space complexity of this algorithm:
+
+      ```python
+      {PASTE_ALGORITHM_CODE}
+      ```
+
+      Context:
+      - Current input size: {CURRENT_SIZE}
+      - Expected input size: {EXPECTED_SIZE}
+      - Current time complexity: O({CURRENT_COMPLEXITY})
+      - Performance issue: {ISSUE_DESCRIPTION}
+
+      Please:
+      1. Analyze current time/space complexity
+      2. Suggest algorithmic improvements
+      3. Provide optimized implementation
+      4. Explain complexity improvement
+      5. Add time/space complexity comments
+
+    example_usage:
+      current_size: "1,000 items"
+      expected_size: "100,000 items"
+      current_complexity: "n²"
+      issue: "Checking duplicates across large lists"
+
+# ============================================================================
+# Memory Optimization
+# ============================================================================
+
+memory_optimization:
+  reduce_memory_usage:
+    prompt: |
+      This code is using too much memory:
+
+      ```python
+      {PASTE_CODE}
+      ```
+
+      Context:
+      - Current memory usage: {CURRENT_MEMORY}MB
+      - Target memory usage: < {TARGET_MEMORY}MB
+      - Data size: {DATA_SIZE}
+
+      Please suggest:
+      1. Memory-efficient data structures
+      2. Generator-based processing (avoid loading all in memory)
+      3. Chunking strategies for large datasets
+      4. Memory profiling recommendations
+
+  detect_memory_leaks:
+    prompt: |
+      I suspect a memory leak in this code:
+
+      ```python
+      {PASTE_CODE}
+      ```
+
+      Context:
+      - Memory grows by {GROWTH_RATE}MB per hour
+      - Process runs for {RUNTIME} hours
+      - Expected steady-state memory: {EXPECTED_MEMORY}MB
+
+      Please:
+      1. Identify potential memory leak sources
+      2. Check for circular references
+      3. Verify proper cleanup (context managers, close() calls)
+      4. Suggest memory profiling approach (memory_profiler, tracemalloc)
+      5. Provide fixed code
+
+# ============================================================================
+# German Text Processing Optimization
+# ============================================================================
+
+german_text_optimization:
+  optimize_umlaut_processing:
+    prompt: |
+      Optimize this German text processing for better performance and accuracy:
+
+      ```python
+      {PASTE_CODE}
+      ```
+
+      Context:
+      - Processing volume: {VOLUME} documents/hour
+      - Each document: ~{PAGES} pages
+      - Current accuracy: {ACCURACY}%
+      - Target accuracy: > {TARGET_ACCURACY}%
+
+      Please suggest:
+      1. Faster German umlaut detection/correction
+      2. Efficient pattern matching for German terms
+      3. Caching opportunities for frequently processed terms
+      4. Batch processing strategies
+
+# ============================================================================
+# Testing for Performance
+# ============================================================================
+
+performance_testing:
+  create_load_test:
+    prompt: |
+      Create a load test for this endpoint using Locust:
+
+      Endpoint: {METHOD} {PATH}
+      Request body: {REQUEST_BODY_EXAMPLE}
+
+      Test scenarios:
+      - Normal load: {NORMAL_USERS} concurrent users
+      - Peak load: {PEAK_USERS} concurrent users
+      - Stress test: {STRESS_USERS} concurrent users
+
+      Please generate:
+      1. Complete Locust test file
+      2. Realistic user behavior simulation
+      3. Performance assertions (response time thresholds)
+      4. Instructions to run the test
+
+usage_guidelines:
+  how_to_use:
+    - "Copy the relevant prompt"
+    - "Replace placeholders {LIKE_THIS} with your actual values"
+    - "Paste your code where indicated"
+    - "Run through AI assistant (Claude, ChatGPT, etc.)"
+    - "Review and adapt suggestions to your specific use case"
+
+  best_practices:
+    - "Provide context (table sizes, request rates, etc.)"
+    - "Include actual code, not pseudocode"
+    - "Specify performance targets (current vs target)"
+    - "Ask for explanations, not just code"
+    - "Validate suggestions before applying to production"
+
+related_files:
+  - "Static_Knowledge/Skills/performance_tuning_skill.yaml"
+  - "Static_Knowledge/Prompts/code_review_prompts.yaml"
+  - "Dynamic_Knowledge/Learnings/redis_performance_optimization.md"
+  - "Static_Knowledge/Skills/gpu_management_skill.yaml"
+
+tags:
+  - optimization
+  - performance
+  - ai_prompts
+  - code_review
+  - prompts

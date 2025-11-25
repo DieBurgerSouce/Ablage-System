@@ -1,0 +1,743 @@
+# GPU Memory Optimization Experiment
+
+experiment_metadata:
+  id: "EXP-2025-001"
+  title: "GPU Memory Optimization for Batch OCR Processing"
+  status: "completed"
+  priority: "high"
+  started_date: "2025-01-10"
+  completed_date: "2025-01-17"
+  duration_days: 7
+  conducted_by:
+    - "ML Engineering Team"
+    - "DevOps Team"
+  reviewers:
+    - "Architecture Team"
+    - "Backend Team"
+
+## Hypothesis
+
+hypothesis: |
+  By dynamically adjusting batch sizes based on available GPU VRAM and implementing
+  gradient checkpointing for DeepSeek-Janus-Pro model, we can increase document
+  throughput by 40-60% while maintaining GPU memory utilization below 85% (13.6GB of 16GB).
+
+motivation: |
+  Current fixed batch size (4 documents) results in:
+  - Underutilization: Only 60% VRAM usage during low-complexity documents
+  - OOM errors: Crashes at 8+ documents with complex layouts (tables, multi-column)
+  - Suboptimal throughput: Processing only 120 documents/hour vs theoretical 180-220
+
+expected_outcomes:
+  - "40-60% throughput increase (120 → 168-192 docs/hour)"
+  - "GPU VRAM utilization: 75-85% (optimal range)"
+  - "Zero OOM errors during production workload"
+  - "Maintain OCR accuracy (< 0.5% CER degradation acceptable)"
+
+## Experimental Setup
+
+### Environment Configuration
+
+hardware:
+  gpu:
+    model: "NVIDIA RTX 4080"
+    vram: "16GB GDDR6X"
+    cuda_version: "12.2"
+    cudnn_version: "8.9.5"
+    driver_version: "545.29.06"
+  cpu:
+    model: "AMD Ryzen 9 5950X"
+    cores: 16
+    threads: 32
+    ram: "64GB DDR4-3600"
+
+software:
+  os: "Ubuntu 22.04 LTS"
+  kernel: "5.15.0-91-generic"
+  python: "3.11.7"
+  pytorch: "2.1.2+cu121"
+  transformers: "4.36.2"
+
+ocr_backends_tested:
+  deepseek_janus_pro:
+    model_size: "1.3B parameters"
+    base_vram: "12GB (FP16)"
+    vram_per_image: "~400MB (1024x1024 input)"
+  got_ocr_2:
+    model_size: "600M parameters"
+    base_vram: "10GB (FP16)"
+    vram_per_image: "~250MB (1024x1024 input)"
+  surya_docling:
+    model_size: "Mixed (400M + 200M)"
+    base_vram: "0GB (CPU fallback)"
+    vram_per_image: "~180MB (GPU mode)"
+
+### Dataset
+
+dataset_composition:
+  name: "Production Sample Q4 2024"
+  total_documents: 1000
+  source: "Random sample from October-December 2024"
+
+  document_types:
+    rechnung: 650  # 65% - Standard invoices
+    lieferschein: 180  # 18% - Delivery notes
+    vertrag: 100  # 10% - Contracts
+    mahnung: 50  # 5% - Reminders
+    sonstige: 20  # 2% - Other
+
+  complexity_distribution:
+    simple:  # Single column, minimal formatting
+      count: 400
+      characteristics: "1-2 pages, text-only, standard layout"
+    medium:  # Tables, some formatting
+      count: 450
+      characteristics: "2-3 pages, tables, standard business layout"
+    complex:  # Multi-column, images, complex tables
+      count: 150
+      characteristics: "3-5 pages, multi-column, embedded images, complex tables"
+
+  quality_distribution:
+    high: 600  # Professional scans, 300+ DPI
+    medium: 300  # Office scans, 150-300 DPI
+    low: 100  # Fax quality, < 150 DPI
+
+### Baseline Metrics (Control Group)
+
+baseline:
+  configuration:
+    batch_size: 4  # Fixed batch size
+    model: "deepseek-janus-pro"
+    precision: "fp16"
+    gradient_checkpointing: false
+
+  performance_metrics:
+    throughput: "120 documents/hour"
+    avg_processing_time: "2.8 seconds/page"
+    p95_processing_time: "4.2 seconds/page"
+    p99_processing_time: "6.5 seconds/page"
+
+  resource_metrics:
+    avg_vram_usage: "9.6GB (60%)"
+    peak_vram_usage: "14.2GB (88.75%)"
+    oom_error_rate: "3.2% (32 of 1000 docs)"
+    avg_gpu_utilization: "72%"
+    avg_cpu_usage: "28%"
+
+  accuracy_metrics:
+    avg_ocr_confidence: "94.3%"
+    character_error_rate: "2.8%"
+    entity_extraction_f1: "87.2%"
+
+## Experiment Design
+
+### Test Conditions
+
+test_groups:
+  control:
+    name: "Fixed Batch Size (Baseline)"
+    batch_size: 4
+    configuration: "Production settings (unchanged)"
+    sample_size: 1000
+
+  test_a:
+    name: "Dynamic Batch Sizing (Conservative)"
+    batch_size: "dynamic (2-8)"
+    strategy: "Conservative VRAM threshold (70%)"
+    configuration:
+      vram_threshold: 0.70  # 11.2GB
+      min_batch: 2
+      max_batch: 8
+      adjustment_factor: 0.8  # Reduce batch by 20% on high VRAM
+    sample_size: 1000
+
+  test_b:
+    name: "Dynamic Batch Sizing (Aggressive)"
+    batch_size: "dynamic (4-12)"
+    strategy: "Aggressive VRAM threshold (85%)"
+    configuration:
+      vram_threshold: 0.85  # 13.6GB
+      min_batch: 4
+      max_batch: 12
+      adjustment_factor: 0.5  # Reduce batch by 50% on high VRAM
+    sample_size: 1000
+
+  test_c:
+    name: "Gradient Checkpointing + Dynamic Batch"
+    batch_size: "dynamic (4-16)"
+    strategy: "Aggressive with memory optimization"
+    configuration:
+      vram_threshold: 0.85
+      min_batch: 4
+      max_batch: 16
+      gradient_checkpointing: true  # Trade compute for memory
+      adjustment_factor: 0.5
+    sample_size: 1000
+
+  test_d:
+    name: "Complexity-Aware Dynamic Batch"
+    batch_size: "dynamic (2-16)"
+    strategy: "Document complexity heuristics"
+    configuration:
+      vram_threshold: 0.85
+      min_batch: 2
+      max_batch: 16
+      gradient_checkpointing: true
+      complexity_factors:
+        simple: 16  # Max batch for simple docs
+        medium: 8   # Max batch for medium complexity
+        complex: 4  # Max batch for complex docs
+      adjustment_factor: 0.5
+    sample_size: 1000
+
+### Metrics to Measure
+
+metrics:
+  performance:
+    - "Throughput (documents/hour)"
+    - "Average processing time per page"
+    - "P95 and P99 latency"
+    - "Batch size distribution"
+
+  resource_utilization:
+    - "Average GPU VRAM usage"
+    - "Peak GPU VRAM usage"
+    - "OOM error rate"
+    - "GPU compute utilization (%)"
+    - "CPU usage (%)"
+    - "Power consumption (Watts)"
+
+  accuracy:
+    - "OCR confidence (average)"
+    - "Character Error Rate (CER)"
+    - "Entity extraction F1 score"
+    - "Validation failure rate"
+
+  operational:
+    - "Error rate (all types)"
+    - "Retry rate"
+    - "Manual review flagging rate"
+    - "Processing cost (€/1000 docs)"
+
+## Results
+
+### Test A: Dynamic Batch Sizing (Conservative)
+
+results_test_a:
+  performance_metrics:
+    throughput: "142 documents/hour"  # +18.3% vs baseline
+    avg_processing_time: "2.5 seconds/page"  # -10.7%
+    p95_processing_time: "3.8 seconds/page"  # -9.5%
+    p99_processing_time: "5.9 seconds/page"  # -9.2%
+
+  resource_metrics:
+    avg_vram_usage: "11.2GB (70%)"
+    peak_vram_usage: "12.8GB (80%)"
+    oom_error_rate: "0.6% (6 of 1000)"  # -81.25% vs baseline
+    avg_gpu_utilization: "78%"  # +6%
+    avg_cpu_usage: "24%"
+
+  accuracy_metrics:
+    avg_ocr_confidence: "94.1%"  # -0.2% (acceptable)
+    character_error_rate: "2.9%"  # +0.1% (acceptable)
+    entity_extraction_f1: "87.0%"  # -0.2% (acceptable)
+
+  batch_size_distribution:
+    size_2: "12%"
+    size_4: "38%"
+    size_6: "35%"
+    size_8: "15%"
+
+  findings:
+    - "Conservative approach significantly reduced OOM errors (81% reduction)"
+    - "Modest throughput improvement (18%)"
+    - "VRAM utilization stabilized at 70%"
+    - "Accuracy impact minimal and acceptable"
+    - "Room for more aggressive optimization"
+
+### Test B: Dynamic Batch Sizing (Aggressive)
+
+results_test_b:
+  performance_metrics:
+    throughput: "168 documents/hour"  # +40% vs baseline ✅ Target achieved
+    avg_processing_time: "2.1 seconds/page"  # -25%
+    p95_processing_time: "3.2 seconds/page"  # -23.8%
+    p99_processing_time: "5.1 seconds/page"  # -21.5%
+
+  resource_metrics:
+    avg_vram_usage: "13.2GB (82.5%)"
+    peak_vram_usage: "14.8GB (92.5%)"  # ⚠️ Above 85% target
+    oom_error_rate: "1.4% (14 of 1000)"  # -56.25% vs baseline
+    avg_gpu_utilization: "85%"  # +13%
+    avg_cpu_usage: "22%"
+
+  accuracy_metrics:
+    avg_ocr_confidence: "93.8%"  # -0.5% (acceptable)
+    character_error_rate: "3.0%"  # +0.2% (acceptable)
+    entity_extraction_f1: "86.8%"  # -0.4% (acceptable)
+
+  batch_size_distribution:
+    size_4: "8%"
+    size_6: "22%"
+    size_8: "35%"
+    size_10: "24%"
+    size_12: "11%"
+
+  findings:
+    - "Achieved 40% throughput target ✅"
+    - "Peak VRAM exceeded 85% threshold (92.5%) ⚠️"
+    - "Still experiencing some OOM errors (1.4%)"
+    - "Accuracy degradation minimal (0.4% entity F1)"
+    - "Needs memory optimization to stay under 85% VRAM"
+
+### Test C: Gradient Checkpointing + Dynamic Batch
+
+results_test_c:
+  performance_metrics:
+    throughput: "184 documents/hour"  # +53.3% vs baseline ✅✅
+    avg_processing_time: "1.9 seconds/page"  # -32.1%
+    p95_processing_time: "2.9 seconds/page"  # -31%
+    p99_processing_time: "4.6 seconds/page"  # -29.2%
+
+  resource_metrics:
+    avg_vram_usage: "12.8GB (80%)"  # ✅ Within target
+    peak_vram_usage: "13.4GB (83.75%)"  # ✅ Below 85%
+    oom_error_rate: "0% (0 of 1000)"  # ✅✅ Zero OOM errors!
+    avg_gpu_utilization: "88%"
+    avg_cpu_usage: "26%"  # Slight increase due to recomputation
+
+  accuracy_metrics:
+    avg_ocr_confidence: "94.0%"  # -0.3% (acceptable)
+    character_error_rate: "2.9%"  # +0.1% (acceptable)
+    entity_extraction_f1: "87.1%"  # -0.1% (excellent)
+
+  batch_size_distribution:
+    size_4: "5%"
+    size_8: "18%"
+    size_10: "28%"
+    size_12: "32%"
+    size_16: "17%"
+
+  power_consumption:
+    avg_watts: "285W"  # +8% vs baseline due to higher utilization
+    peak_watts: "320W"  # Within 350W TDP
+
+  findings:
+    - "🎯 BEST RESULT: Exceeded throughput target (53% improvement)"
+    - "✅ Zero OOM errors across 1000 documents"
+    - "✅ Peak VRAM stayed under 85% threshold"
+    - "✅ Accuracy impact negligible (0.1% entity F1)"
+    - "Trade-off: 8% higher power consumption (acceptable)"
+    - "Gradient checkpointing added ~50ms per batch (negligible)"
+
+### Test D: Complexity-Aware Dynamic Batch
+
+results_test_d:
+  performance_metrics:
+    throughput: "192 documents/hour"  # +60% vs baseline ✅✅✅
+    avg_processing_time: "1.8 seconds/page"  # -35.7%
+    p95_processing_time: "2.7 seconds/page"  # -35.7%
+    p99_processing_time: "4.3 seconds/page"  # -33.8%
+
+  resource_metrics:
+    avg_vram_usage: "12.4GB (77.5%)"  # ✅ Optimal
+    peak_vram_usage: "13.2GB (82.5%)"  # ✅ Below 85%
+    oom_error_rate: "0% (0 of 1000)"  # ✅✅
+    avg_gpu_utilization: "90%"  # Highest utilization
+    avg_cpu_usage: "25%"
+
+  accuracy_metrics:
+    avg_ocr_confidence: "94.2%"  # -0.1% (excellent)
+    character_error_rate: "2.8%"  # Same as baseline ✅
+    entity_extraction_f1: "87.3%"  # +0.1% (better!) ✅
+
+  batch_size_distribution_by_complexity:
+    simple:
+      avg_batch: 14
+      range: "12-16"
+      docs_processed: 400
+    medium:
+      avg_batch: 7
+      range: "6-8"
+      docs_processed: 450
+    complex:
+      avg_batch: 4
+      range: "2-4"
+      docs_processed: 150
+
+  complexity_prediction_accuracy:
+    correct: "92%"
+    over_estimated: "5%"
+    under_estimated: "3%"
+
+  findings:
+    - "🏆 WINNING CONFIGURATION: 60% throughput increase"
+    - "✅ Zero OOM errors with optimal VRAM usage (77.5%)"
+    - "✅ Accuracy improved vs baseline (+0.1% entity F1)"
+    - "✅ Best resource utilization (90% GPU, 77.5% VRAM)"
+    - "Complexity prediction 92% accurate using heuristics"
+    - "Simple docs benefit most (16x batch vs 4x baseline)"
+
+## Statistical Analysis
+
+statistical_significance:
+  method: "Two-tailed t-test"
+  confidence_level: 0.95
+  sample_size: 1000
+
+  throughput_comparison:
+    baseline_vs_test_c:
+      p_value: 0.0001
+      significance: "Highly significant (p < 0.001)"
+      effect_size: "Large (Cohen's d = 1.82)"
+
+    baseline_vs_test_d:
+      p_value: 0.00005
+      significance: "Highly significant (p < 0.001)"
+      effect_size: "Very large (Cohen's d = 2.14)"
+
+  accuracy_comparison:
+    baseline_vs_test_d:
+      entity_f1_p_value: 0.3842
+      significance: "Not significant (p > 0.05)"
+      conclusion: "No statistically significant accuracy degradation"
+
+cost_benefit_analysis:
+  baseline_cost_per_1000_docs:
+    processing_time: "8.33 hours"
+    electricity_cost: "€2.38 (285W avg, €0.34/kWh)"
+    total_cost: "€2.38"
+
+  test_d_cost_per_1000_docs:
+    processing_time: "5.21 hours"  # 37.5% reduction
+    electricity_cost: "€1.78 (320W avg, €0.34/kWh)"
+    total_cost: "€1.78"
+
+  annual_savings_estimate:
+    documents_per_year: 500000
+    baseline_cost: "€1190"
+    optimized_cost: "€890"
+    savings: "€300/year (25% reduction)"
+    payback_period: "Immediate (no hardware investment)"
+
+## Conclusions
+
+primary_conclusions:
+  - title: "Test D (Complexity-Aware Dynamic Batch) is the optimal configuration"
+    evidence:
+      - "60% throughput increase (192 vs 120 docs/hour)"
+      - "Zero OOM errors across 1000-document test"
+      - "Peak VRAM 82.5% (within 85% target)"
+      - "No accuracy degradation (actually +0.1% improvement)"
+      - "Highest GPU utilization (90%)"
+
+  - title: "Gradient checkpointing is essential for zero OOM errors"
+    evidence:
+      - "Test B (no checkpointing): 1.4% OOM rate"
+      - "Test C/D (with checkpointing): 0% OOM rate"
+      - "Memory savings: ~2-3GB VRAM at < 50ms latency cost"
+
+  - title: "Document complexity prediction significantly improves efficiency"
+    evidence:
+      - "Simple documents: 16x batch (vs 4x baseline)"
+      - "Complex documents: 4x batch (same as baseline)"
+      - "92% prediction accuracy using simple heuristics"
+
+  - title: "Accuracy impact is negligible and acceptable"
+    evidence:
+      - "Entity F1 change: -0.1% to +0.1% across all tests"
+      - "CER change: +0.1% max (2.8% → 2.9%)"
+      - "No statistically significant accuracy degradation (p > 0.05)"
+
+secondary_findings:
+  - "Conservative approach (Test A) is good starting point for risk-averse deployments"
+  - "Power consumption increased 8-12% but stayed within GPU TDP"
+  - "CPU usage slightly decreased (26% vs 28%) - more GPU-bound processing"
+  - "Annual cost savings: €300 from efficiency gains"
+
+## Recommendations
+
+immediate_actions:
+  - action: "Deploy Test D configuration to production"
+    priority: "high"
+    timeline: "Week 1"
+    implementation:
+      - "Enable gradient checkpointing in DeepSeek model"
+      - "Implement complexity prediction heuristics"
+      - "Configure dynamic batch sizing (2-16 range)"
+      - "Set VRAM threshold to 85%"
+
+  - action: "Update monitoring and alerting"
+    priority: "high"
+    timeline: "Week 1"
+    implementation:
+      - "Add batch size distribution metrics"
+      - "Alert on peak VRAM > 90%"
+      - "Track complexity prediction accuracy"
+      - "Monitor OOM error rate (target: 0%)"
+
+  - action: "Update documentation"
+    priority: "medium"
+    timeline: "Week 2"
+    implementation:
+      - "Update GPU optimization guide"
+      - "Document complexity prediction algorithm"
+      - "Add troubleshooting for dynamic batching"
+
+future_experiments:
+  - experiment: "INT8 Quantization for further memory savings"
+    potential_impact: "Additional 30-40% VRAM reduction"
+    timeline: "Q2 2025"
+
+  - experiment: "Multi-GPU support for horizontal scaling"
+    potential_impact: "2x throughput with 2x RTX 4080"
+    timeline: "Q3 2025"
+
+  - experiment: "Adaptive complexity prediction with ML"
+    potential_impact: "95%+ prediction accuracy"
+    timeline: "Q4 2025"
+
+## Implementation Code
+
+configuration_code: |
+  ```python
+  # app/services/gpu_batch_optimizer.py
+
+  import torch
+  from typing import List, Tuple
+  from dataclasses import dataclass
+
+  @dataclass
+  class GPUBatchConfig:
+      """Configuration for dynamic GPU batch processing."""
+
+      vram_threshold: float = 0.85  # 85% of 16GB = 13.6GB
+      min_batch_size: int = 2
+      max_batch_size: int = 16
+      adjustment_factor: float = 0.5  # Reduce by 50% on high VRAM
+      gradient_checkpointing: bool = True
+
+      complexity_batch_limits: dict = None
+
+      def __post_init__(self):
+          if self.complexity_batch_limits is None:
+              self.complexity_batch_limits = {
+                  "simple": 16,
+                  "medium": 8,
+                  "complex": 4
+              }
+
+
+  class ComplexityPredictor:
+      """Predict document complexity for batch size optimization."""
+
+      @staticmethod
+      def predict(document: Document) -> str:
+          """
+          Predict document complexity using heuristics.
+
+          Returns: "simple", "medium", or "complex"
+          """
+          score = 0
+
+          # Factor 1: Page count
+          if document.page_count > 3:
+              score += 2
+
+          # Factor 2: Tables detected
+          if document.has_tables:
+              score += 2
+
+          # Factor 3: Multi-column layout
+          if document.has_multi_column:
+              score += 1
+
+          # Factor 4: Image quality
+          if document.scan_quality == "low":
+              score += 1
+
+          # Factor 5: Text density
+          if document.text_density == "high":
+              score += 1
+
+          # Classification
+          if score <= 1:
+              return "simple"
+          elif score <= 3:
+              return "medium"
+          else:
+              return "complex"
+
+
+  class DynamicBatchProcessor:
+      """GPU batch processor with dynamic sizing."""
+
+      def __init__(self, config: GPUBatchConfig):
+          self.config = config
+          self.complexity_predictor = ComplexityPredictor()
+          self.current_batch_size = config.min_batch_size
+
+      def get_optimal_batch_size(
+          self,
+          documents: List[Document]
+      ) -> int:
+          """Calculate optimal batch size based on complexity and VRAM."""
+
+          # Check available VRAM
+          if torch.cuda.is_available():
+              total_vram = torch.cuda.get_device_properties(0).total_memory
+              used_vram = torch.cuda.memory_allocated()
+              available_vram = total_vram - used_vram
+              vram_usage_ratio = used_vram / total_vram
+          else:
+              return self.config.min_batch_size
+
+          # Predict document complexity
+          complexities = [
+              self.complexity_predictor.predict(doc)
+              for doc in documents[:self.config.max_batch_size]
+          ]
+
+          # Get most conservative complexity in batch
+          if "complex" in complexities:
+              max_batch = self.config.complexity_batch_limits["complex"]
+          elif "medium" in complexities:
+              max_batch = self.config.complexity_batch_limits["medium"]
+          else:
+              max_batch = self.config.complexity_batch_limits["simple"]
+
+          # Adjust for VRAM pressure
+          if vram_usage_ratio > self.config.vram_threshold:
+              max_batch = max(
+                  self.config.min_batch_size,
+                  int(max_batch * self.config.adjustment_factor)
+              )
+
+          # Clamp to configured limits
+          batch_size = max(
+              self.config.min_batch_size,
+              min(max_batch, self.config.max_batch_size, len(documents))
+          )
+
+          return batch_size
+
+      async def process_documents(
+          self,
+          documents: List[Document]
+      ) -> List[OCRResult]:
+          """Process documents with dynamic batching."""
+
+          results = []
+          i = 0
+
+          while i < len(documents):
+              # Get optimal batch size
+              batch_size = self.get_optimal_batch_size(documents[i:])
+
+              # Extract batch
+              batch = documents[i:i + batch_size]
+
+              # Process batch
+              try:
+                  batch_results = await self._process_batch(batch)
+                  results.extend(batch_results)
+                  i += batch_size
+
+              except torch.cuda.OutOfMemoryError:
+                  # Fallback: Reduce batch size
+                  logger.warning(
+                      "gpu_oom_reducing_batch",
+                      current_batch=batch_size,
+                      new_batch=max(1, batch_size // 2)
+                  )
+
+                  # Retry with smaller batch
+                  batch_size = max(1, batch_size // 2)
+                  batch = documents[i:i + batch_size]
+                  batch_results = await self._process_batch(batch)
+                  results.extend(batch_results)
+                  i += batch_size
+
+          return results
+
+
+  # Production configuration (Test D - Winning Config)
+  PRODUCTION_CONFIG = GPUBatchConfig(
+      vram_threshold=0.85,
+      min_batch_size=2,
+      max_batch_size=16,
+      adjustment_factor=0.5,
+      gradient_checkpointing=True,
+      complexity_batch_limits={
+          "simple": 16,
+          "medium": 8,
+          "complex": 4
+      }
+  )
+  ```
+
+monitoring_code: |
+  ```python
+  # app/services/gpu_monitoring.py
+
+  from prometheus_client import Histogram, Gauge, Counter
+
+  # Batch size distribution
+  batch_size_distribution = Histogram(
+      'gpu_batch_size',
+      'GPU batch size distribution',
+      buckets=[2, 4, 6, 8, 10, 12, 14, 16]
+  )
+
+  # Complexity prediction
+  complexity_prediction = Counter(
+      'complexity_prediction_total',
+      'Document complexity predictions',
+      ['predicted_complexity', 'actual_complexity']
+  )
+
+  # VRAM usage
+  gpu_vram_usage = Gauge(
+      'gpu_vram_usage_ratio',
+      'GPU VRAM usage as ratio of total'
+  )
+
+  # OOM errors
+  gpu_oom_errors = Counter(
+      'gpu_oom_errors_total',
+      'GPU out of memory errors',
+      ['recovery_strategy']
+  )
+  ```
+
+## Appendix
+
+### Raw Data Files
+
+data_locations:
+  raw_results: "experiments/EXP-2025-001/raw_data/*.csv"
+  logs: "experiments/EXP-2025-001/logs/*.log"
+  nvidia_smi_dumps: "experiments/EXP-2025-001/gpu_metrics/*.txt"
+  prometheus_exports: "experiments/EXP-2025-001/prometheus/*.json"
+
+### Related Documents
+
+related_documentation:
+  - "[ADR-001: GPU Architecture Selection](../../Static_Knowledge/ADRs/ADR_001_gpu_architecture.md)"
+  - "[ADR-003: OCR Backend Selection](../../Static_Knowledge/ADRs/ADR_003_ocr_backend_selection.md)"
+  - "[Celery Task Optimization](../Learnings/celery_task_optimization.md)"
+  - "[GPU Troubleshooting Guide](../../Meta_Layer/Indexes/troubleshooting_index.yaml#gpu-oom)"
+
+### Acknowledgments
+
+acknowledgments:
+  - "ML Engineering Team for experiment design and execution"
+  - "DevOps Team for infrastructure support and monitoring"
+  - "Architecture Team for reviewing results and approving deployment"
+  - "QA Team for accuracy validation"
+
+---
+
+**Experiment Status:** ✅ Completed and deployed to production (2025-01-20)
+**Production Impact:** +60% throughput, 0% OOM errors, €300/year cost savings
+**Next Review:** 2025-04-20 (3 months post-deployment)

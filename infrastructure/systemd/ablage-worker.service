@@ -1,0 +1,55 @@
+[Unit]
+Description=Ablage-System OCR - Celery Worker (GPU-accelerated)
+Documentation=https://github.com/org/ablage-system
+After=docker.service ablage-backend.service ablage-redis.service
+Requires=docker.service
+Wants=ablage-backend.service ablage-redis.service
+PartOf=ablage-system.target
+
+[Service]
+Type=notify
+WorkingDirectory=/opt/ablage-system
+EnvironmentFile=/opt/ablage-system/.env
+NotifyAccess=all
+
+# Pre-start checks
+ExecStartPre=/usr/bin/docker pull ghcr.io/org/ablage-system-worker:latest
+ExecStartPre=/usr/bin/bash -c 'until docker exec ablage-redis redis-cli ping; do sleep 1; done'
+ExecStartPre=/usr/bin/nvidia-smi || echo "Warning: No GPU detected"
+
+# Start container with GPU support
+ExecStart=/usr/bin/docker run --rm --name ablage-worker \
+    --network ablage_network \
+    --env-file /opt/ablage-system/.env \
+    --gpus all \
+    -v /opt/ablage-system/logs:/app/logs \
+    ghcr.io/org/ablage-system-worker:latest
+
+# Stop container
+ExecStop=/usr/bin/docker stop -t 60 ablage-worker
+
+# Restart policy
+Restart=always
+RestartSec=15s
+TimeoutStartSec=180s
+TimeoutStopSec=60s
+
+# Security
+User=ablage
+Group=ablage
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Resource limits (GPU workload)
+CPUQuota=400%
+MemoryLimit=16G
+TasksMax=512
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ablage-worker
+
+[Install]
+WantedBy=multi-user.target
+WantedBy=ablage-system.target

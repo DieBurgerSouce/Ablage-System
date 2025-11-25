@@ -1,0 +1,1277 @@
+# Deployment Checklist Knowledge Graph
+# Ablage-System Production Deployment Workflow
+
+metadata:
+  title: "Deployment Checklist Knowledge Graph"
+  version: "2.0"
+  last_updated: "2025-01-22"
+  maintained_by: "DevOps Team"
+  deployment_frequency: "Weekly (regular), Daily (hotfix)"
+  average_deployment_time: "15 minutes (regular), 5 minutes (hotfix)"
+
+description: |
+  Visual knowledge graph representing the complete deployment workflow
+  for the Ablage-System. Shows dependencies between deployment steps,
+  validation checkpoints, and rollback procedures.
+
+  This graph ensures:
+  - No step is missed during deployment
+  - Dependencies are respected
+  - Validation gates prevent bad deployments
+  - Rollback path is always available
+
+# ============================================================================
+# Node Definitions
+# ============================================================================
+
+nodes:
+  # -------------------------
+  # Pre-Deployment Checks
+  # -------------------------
+
+  - id: "PRE_001"
+    name: "Backup Database"
+    type: "pre_deployment_check"
+    category: "data_safety"
+    required: true
+    estimated_duration: "3 minutes"
+    description: "Create PostgreSQL backup before any changes"
+    command: |
+      docker exec ablage-postgres pg_dump -U postgres ablage \
+        | gzip > backups/ablage_$(date +%Y%m%d_%H%M%S).sql.gz
+    validation:
+      - "Backup file exists"
+      - "Backup file size > 100MB (reasonable minimum)"
+      - "Checksum file created"
+    dependencies: []
+    failure_action: "STOP - Cannot proceed without backup"
+    documentation: "Relations/Workflows/deployment_workflow.md#backup-strategy"
+
+  - id: "PRE_002"
+    name: "Verify Backup Validity"
+    type: "pre_deployment_check"
+    category: "data_safety"
+    required: true
+    estimated_duration: "2 minutes"
+    description: "Validate backup can be restored"
+    command: |
+      python Execution_Layer/Validators/backup_validator.py \
+        --backup backups/latest.sql.gz --dry-run
+    validation:
+      - "Checksum verified"
+      - "Backup age < 1 hour"
+      - "Dry-run restoration successful"
+    dependencies: ["PRE_001"]
+    failure_action: "STOP - Create new backup"
+    documentation: "Execution_Layer/Validators/backup_validator.py"
+
+  - id: "PRE_003"
+    name: "Run Test Suite"
+    type: "pre_deployment_check"
+    category: "quality_assurance"
+    required: true
+    estimated_duration: "5 minutes"
+    description: "Execute complete test suite on staging"
+    command: |
+      pytest tests/ -v --cov=app --cov-report=term \
+        --cov-fail-under=80
+    validation:
+      - "All tests pass"
+      - "Coverage >= 80%"
+      - "No new critical vulnerabilities (Snyk)"
+    dependencies: []
+    failure_action: "STOP - Fix failing tests"
+    documentation: "tests/README.md"
+
+  - id: "PRE_004"
+    name: "Type Check & Lint"
+    type: "pre_deployment_check"
+    category: "quality_assurance"
+    required: true
+    estimated_duration: "1 minute"
+    description: "Verify code quality standards"
+    command: |
+      mypy app/ && ruff check . && ruff format --check .
+    validation:
+      - "No mypy errors"
+      - "No ruff violations"
+      - "Code formatted correctly"
+    dependencies: []
+    failure_action: "STOP - Fix linting errors"
+    documentation: "CONVENTIONS.md#code-quality"
+
+  - id: "PRE_005"
+    name: "Check Staging Environment"
+    type: "pre_deployment_check"
+    category: "infrastructure"
+    required: true
+    estimated_duration: "2 minutes"
+    description: "Verify staging matches production configuration"
+    command: |
+      curl -f https://staging.ablage-system.de/health
+      python scripts/compare_env.py staging production
+    validation:
+      - "Staging health check passes"
+      - "Configuration drift < 5%"
+      - "Same Docker image versions"
+    dependencies: []
+    failure_action: "WARN - Review configuration differences"
+    documentation: "infrastructure/README.md#staging"
+
+  - id: "PRE_006"
+    name: "Verify GPU Availability"
+    type: "pre_deployment_check"
+    category: "infrastructure"
+    required: true
+    estimated_duration: "30 seconds"
+    description: "Ensure GPU is accessible and healthy"
+    command: |
+      nvidia-smi --query-gpu=name,memory.total,memory.free \
+        --format=csv,noheader
+      docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
+    validation:
+      - "GPU detected (RTX 4080)"
+      - "VRAM available >= 8GB"
+      - "GPU temperature < 80°C"
+      - "Docker GPU passthrough working"
+    dependencies: []
+    failure_action: "STOP - GPU required for production"
+    documentation: "CLAUDE.md#gpu-optimization"
+
+  - id: "PRE_007"
+    name: "Check Disk Space"
+    type: "pre_deployment_check"
+    category: "infrastructure"
+    required: true
+    estimated_duration: "10 seconds"
+    description: "Verify sufficient storage for deployment"
+    command: |
+      df -h / | awk 'NR==2 {print $5}' | sed 's/%//'
+    validation:
+      - "Root partition < 80% full"
+      - "MinIO volume < 75% full"
+      - "Docker volume < 80% full"
+    dependencies: []
+    failure_action: "STOP - Clean up disk space"
+    documentation: "infrastructure/monitoring/disk_space.md"
+
+  - id: "PRE_008"
+    name: "Verify Database Migrations"
+    type: "pre_deployment_check"
+    category: "database"
+    required: true
+    estimated_duration: "1 minute"
+    description: "Check migration status and plan"
+    command: |
+      alembic current
+      alembic history
+      alembic check
+    validation:
+      - "Current revision matches codebase"
+      - "No pending migrations on production"
+      - "Migration files exist for new revision"
+    dependencies: []
+    failure_action: "STOP - Resolve migration conflicts"
+    documentation: "migrations/README.md"
+
+  - id: "PRE_009"
+    name: "Review Rollback Plan"
+    type: "pre_deployment_check"
+    category: "safety"
+    required: true
+    estimated_duration: "2 minutes"
+    description: "Ensure rollback procedure is ready"
+    validation:
+      - "Previous Docker images available"
+      - "Rollback script tested in staging"
+      - "Database migration downgrade reviewed"
+      - "Rollback communication template ready"
+    dependencies: ["PRE_001", "PRE_002"]
+    failure_action: "WARN - Document rollback procedure"
+    documentation: "Relations/Workflows/deployment_workflow.md#rollback"
+
+  - id: "PRE_010"
+    name: "Notify Stakeholders"
+    type: "pre_deployment_check"
+    category: "communication"
+    required: false
+    estimated_duration: "1 minute"
+    description: "Send deployment notification"
+    command: |
+      python scripts/send_notification.py \
+        --type deployment_start \
+        --recipients ops-team,dev-team
+    validation:
+      - "Notification sent successfully"
+      - "Maintenance window communicated (if applicable)"
+    dependencies: []
+    failure_action: "WARN - Manual notification required"
+    documentation: "scripts/notifications/README.md"
+
+  # -------------------------
+  # Deployment Steps
+  # -------------------------
+
+  - id: "DEPLOY_001"
+    name: "Stop Celery Workers"
+    type: "deployment_step"
+    category: "service_management"
+    required: true
+    estimated_duration: "30 seconds"
+    description: "Gracefully stop Celery workers"
+    command: |
+      docker-compose stop worker-1 worker-2 worker-3
+    validation:
+      - "All worker containers stopped"
+      - "No active OCR tasks (checked via Redis)"
+      - "Task queue preserved"
+    dependencies: [
+      "PRE_001", "PRE_002", "PRE_003", "PRE_004",
+      "PRE_005", "PRE_006", "PRE_007", "PRE_008", "PRE_009"
+    ]
+    failure_action: "RETRY - Wait for tasks to complete"
+    rollback_command: "docker-compose start worker-1 worker-2 worker-3"
+    documentation: "app/workers/README.md"
+
+  - id: "DEPLOY_002"
+    name: "Pull New Docker Images"
+    type: "deployment_step"
+    category: "artifact_retrieval"
+    required: true
+    estimated_duration: "2 minutes"
+    description: "Pull latest Docker images from registry"
+    command: |
+      docker-compose pull backend worker frontend
+    validation:
+      - "All images pulled successfully"
+      - "Image tags match release version"
+      - "Image signatures verified"
+    dependencies: ["DEPLOY_001"]
+    failure_action: "STOP - Check registry connectivity"
+    rollback_command: "docker-compose pull backend:previous worker:previous"
+    documentation: "docker/README.md#image-management"
+
+  - id: "DEPLOY_003"
+    name: "Apply Database Migrations"
+    type: "deployment_step"
+    category: "database"
+    required: true
+    estimated_duration: "1 minute"
+    description: "Run Alembic migrations"
+    command: |
+      docker-compose run --rm backend alembic upgrade head
+    validation:
+      - "Migration completes without errors"
+      - "Database schema version updated"
+      - "No data loss (row count checks)"
+    dependencies: ["DEPLOY_001", "DEPLOY_002"]
+    failure_action: "STOP & ROLLBACK - Database migration failed"
+    rollback_command: "docker-compose run --rm backend alembic downgrade -1"
+    documentation: "migrations/README.md#applying-migrations"
+
+  - id: "DEPLOY_004"
+    name: "Update Backend Service (Rolling)"
+    type: "deployment_step"
+    category: "service_management"
+    required: true
+    estimated_duration: "3 minutes"
+    description: "Rolling update of backend containers"
+    command: |
+      # Update backend-1
+      docker-compose stop backend-1
+      docker-compose up -d backend-1
+      sleep 15
+      curl -f https://app.ablage-system.de/health
+
+      # Update backend-2 (if healthy)
+      docker-compose stop backend-2
+      docker-compose up -d backend-2
+      sleep 15
+      curl -f https://app.ablage-system.de/health
+    validation:
+      - "Health check passes after each update"
+      - "Response time < 500ms"
+      - "No 5xx errors in logs"
+      - "Database connection pool healthy"
+    dependencies: ["DEPLOY_003"]
+    failure_action: "STOP & ROLLBACK - Backend unhealthy"
+    rollback_command: |
+      docker-compose stop backend-1 backend-2
+      docker tag ablage-backend:current ablage-backend:rollback
+      docker-compose up -d backend-1 backend-2
+    documentation: "Relations/Workflows/deployment_workflow.md#rolling-update"
+
+  - id: "DEPLOY_005"
+    name: "Update Celery Workers (Rolling)"
+    type: "deployment_step"
+    category: "service_management"
+    required: true
+    estimated_duration: "2 minutes"
+    description: "Update Celery workers with new code"
+    command: |
+      # Update worker-1
+      docker-compose up -d worker-1
+      sleep 10
+
+      # Update worker-2
+      docker-compose up -d worker-2
+      sleep 10
+
+      # Update worker-3
+      docker-compose up -d worker-3
+    validation:
+      - "All workers registered with Celery"
+      - "GPU accessible from workers"
+      - "Workers processing test tasks"
+    dependencies: ["DEPLOY_004"]
+    failure_action: "STOP & ROLLBACK - Workers not processing"
+    rollback_command: "docker-compose down worker-1 worker-2 worker-3 && docker-compose up -d"
+    documentation: "app/workers/README.md#deployment"
+
+  - id: "DEPLOY_006"
+    name: "Update Frontend"
+    type: "deployment_step"
+    category: "service_management"
+    required: true
+    estimated_duration: "1 minute"
+    description: "Deploy new frontend build"
+    command: |
+      docker-compose stop frontend
+      docker-compose up -d frontend
+      sleep 10
+    validation:
+      - "Frontend container healthy"
+      - "Static assets loading"
+      - "API connectivity verified"
+    dependencies: ["DEPLOY_004"]
+    failure_action: "STOP & ROLLBACK - Frontend broken"
+    rollback_command: "docker-compose stop frontend && docker-compose up -d frontend:previous"
+    documentation: "frontend/README.md#deployment"
+
+  - id: "DEPLOY_007"
+    name: "Clear Application Caches"
+    type: "deployment_step"
+    category: "cache_management"
+    required: true
+    estimated_duration: "30 seconds"
+    description: "Invalidate Redis caches for new version"
+    command: |
+      docker exec ablage-redis redis-cli FLUSHDB
+    validation:
+      - "Cache cleared successfully"
+      - "No stale data served"
+    dependencies: ["DEPLOY_004", "DEPLOY_005", "DEPLOY_006"]
+    failure_action: "WARN - Manual cache clear required"
+    rollback_command: "N/A - Cache automatically repopulates"
+    documentation: "app/services/cache_service.py"
+
+  - id: "DEPLOY_008"
+    name: "Restart Load Balancer (if needed)"
+    type: "deployment_step"
+    category: "infrastructure"
+    required: false
+    estimated_duration: "1 minute"
+    description: "Reload Nginx/HAProxy configuration"
+    command: |
+      sudo systemctl reload nginx
+    validation:
+      - "Load balancer config valid"
+      - "All backend targets healthy"
+    dependencies: ["DEPLOY_004", "DEPLOY_005", "DEPLOY_006"]
+    failure_action: "STOP - Load balancer misconfigured"
+    rollback_command: "sudo systemctl reload nginx"
+    documentation: "infrastructure/load_balancer/README.md"
+
+  # -------------------------
+  # Post-Deployment Validation
+  # -------------------------
+
+  - id: "POST_001"
+    name: "Health Check - All Services"
+    type: "post_deployment_validation"
+    category: "service_health"
+    required: true
+    estimated_duration: "1 minute"
+    description: "Verify all services are healthy"
+    command: |
+      curl -f https://app.ablage-system.de/health
+      python Execution_Layer/Agents/monitoring_agent.py --check-all
+    validation:
+      - "API health check returns 200"
+      - "Database connection healthy"
+      - "Redis connection healthy"
+      - "MinIO connection healthy"
+      - "GPU accessible"
+    dependencies: ["DEPLOY_004", "DEPLOY_005", "DEPLOY_006", "DEPLOY_007"]
+    failure_action: "ROLLBACK - Critical service unhealthy"
+    documentation: "Execution_Layer/Agents/monitoring_agent.py"
+
+  - id: "POST_002"
+    name: "Smoke Tests - Critical Paths"
+    type: "post_deployment_validation"
+    category: "functionality"
+    required: true
+    estimated_duration: "3 minutes"
+    description: "Execute smoke tests for critical workflows"
+    command: |
+      pytest tests/smoke/ -v --tb=short
+    validation:
+      - "User login works"
+      - "Document upload works"
+      - "OCR processing works (test document)"
+      - "Document retrieval works"
+    dependencies: ["POST_001"]
+    failure_action: "ROLLBACK - Critical functionality broken"
+    documentation: "tests/smoke/README.md"
+
+  - id: "POST_003"
+    name: "Performance Baseline Check"
+    type: "post_deployment_validation"
+    category: "performance"
+    required: true
+    estimated_duration: "2 minutes"
+    description: "Verify performance hasn't regressed"
+    command: |
+      python scripts/performance_check.py \
+        --baseline performance_baseline.json \
+        --threshold 1.2
+    validation:
+      - "API response time < 500ms (P95)"
+      - "OCR processing time < 3s/page"
+      - "No significant regression (< 20%)"
+    dependencies: ["POST_001", "POST_002"]
+    failure_action: "WARN & INVESTIGATE - Performance regression"
+    documentation: "Meta_Layer/MOCs/PERFORMANCE_MOC.md"
+
+  - id: "POST_004"
+    name: "Verify Database Integrity"
+    type: "post_deployment_validation"
+    category: "data_integrity"
+    required: true
+    estimated_duration: "1 minute"
+    description: "Check database consistency after migration"
+    command: |
+      python Execution_Layer/Validators/backup_validator.py \
+        --validate-integrity
+    validation:
+      - "No orphaned records"
+      - "Foreign key constraints valid"
+      - "Row counts match expectations"
+    dependencies: ["DEPLOY_003", "POST_001"]
+    failure_action: "STOP & INVESTIGATE - Data integrity issue"
+    documentation: "Execution_Layer/Validators/backup_validator.py"
+
+  - id: "POST_005"
+    name: "GDPR Compliance Check"
+    type: "post_deployment_validation"
+    category: "compliance"
+    required: true
+    estimated_duration: "2 minutes"
+    description: "Verify GDPR compliance maintained"
+    command: |
+      python Execution_Layer/Validators/gdpr_compliance_checker.py
+    validation:
+      - "Data retention policies enforced"
+      - "Consent records valid"
+      - "Data subject rights functional"
+      - "Audit logs working"
+    dependencies: ["POST_001"]
+    failure_action: "STOP & FIX - GDPR non-compliance"
+    documentation: "Execution_Layer/Validators/gdpr_compliance_checker.py"
+
+  - id: "POST_006"
+    name: "Monitor Error Rates"
+    type: "post_deployment_validation"
+    category: "observability"
+    required: true
+    estimated_duration: "5 minutes"
+    description: "Watch error rates for anomalies"
+    command: |
+      python scripts/monitor_errors.py --duration 300
+    validation:
+      - "5xx error rate < 0.1%"
+      - "4xx error rate stable"
+      - "No new exception types"
+    dependencies: ["POST_001", "POST_002"]
+    failure_action: "WARN & INVESTIGATE - Elevated errors"
+    documentation: "infrastructure/monitoring/README.md"
+
+  - id: "POST_007"
+    name: "Verify GPU Processing"
+    type: "post_deployment_validation"
+    category: "functionality"
+    required: true
+    estimated_duration: "2 minutes"
+    description: "Test GPU-accelerated OCR pipeline"
+    command: |
+      python tests/integration/test_gpu_ocr.py
+    validation:
+      - "GPU detected and used"
+      - "VRAM usage reasonable (< 85%)"
+      - "OCR accuracy maintained"
+      - "Processing speed acceptable"
+    dependencies: ["POST_001", "POST_002"]
+    failure_action: "INVESTIGATE - GPU processing degraded"
+    documentation: "tests/integration/test_gpu_ocr.py"
+
+  - id: "POST_008"
+    name: "Check Queue Processing"
+    type: "post_deployment_validation"
+    category: "functionality"
+    required: true
+    estimated_duration: "2 minutes"
+    description: "Verify Celery task queue processing"
+    command: |
+      python scripts/check_celery_queue.py
+    validation:
+      - "Tasks being processed"
+      - "No stuck tasks"
+      - "Worker utilization normal"
+      - "Queue depth reasonable"
+    dependencies: ["POST_001", "DEPLOY_005"]
+    failure_action: "INVESTIGATE - Queue processing issues"
+    documentation: "app/workers/README.md#monitoring"
+
+  - id: "POST_009"
+    name: "Review Deployment Logs"
+    type: "post_deployment_validation"
+    category: "observability"
+    required: true
+    estimated_duration: "3 minutes"
+    description: "Check logs for errors or warnings"
+    command: |
+      docker-compose logs --tail=500 backend worker | grep -i error
+      docker-compose logs --tail=500 backend worker | grep -i warning
+    validation:
+      - "No critical errors"
+      - "Warnings reviewed and understood"
+      - "No security-related log entries"
+    dependencies: ["POST_001"]
+    failure_action: "INVESTIGATE - Unexpected log entries"
+    documentation: "infrastructure/logging/README.md"
+
+  - id: "POST_010"
+    name: "Update Deployment Record"
+    type: "post_deployment_validation"
+    category: "documentation"
+    required: true
+    estimated_duration: "2 minutes"
+    description: "Document deployment in audit log"
+    command: |
+      python scripts/log_deployment.py \
+        --version $(git describe --tags) \
+        --status success \
+        --duration $DEPLOYMENT_DURATION
+    validation:
+      - "Deployment logged"
+      - "Metrics recorded"
+      - "Notes documented"
+    dependencies: ["POST_001", "POST_002", "POST_003"]
+    failure_action: "WARN - Manual documentation required"
+    documentation: "Dynamic_Knowledge/Logs/deployment_history.md"
+
+  - id: "POST_011"
+    name: "Notify Stakeholders - Success"
+    type: "post_deployment_validation"
+    category: "communication"
+    required: false
+    estimated_duration: "1 minute"
+    description: "Send deployment success notification"
+    command: |
+      python scripts/send_notification.py \
+        --type deployment_success \
+        --recipients ops-team,dev-team
+    validation:
+      - "Notification sent"
+    dependencies: ["POST_001", "POST_002"]
+    failure_action: "WARN - Manual notification"
+    documentation: "scripts/notifications/README.md"
+
+  # -------------------------
+  # Rollback Steps
+  # -------------------------
+
+  - id: "ROLLBACK_001"
+    name: "Stop All Services"
+    type: "rollback_step"
+    category: "service_management"
+    required: true
+    estimated_duration: "1 minute"
+    description: "Stop all containers for clean rollback"
+    command: |
+      docker-compose stop backend-1 backend-2 worker-1 worker-2 worker-3 frontend
+    validation:
+      - "All services stopped"
+    dependencies: []
+    failure_action: "FORCE STOP - docker-compose kill"
+    documentation: "Relations/Workflows/deployment_workflow.md#rollback"
+
+  - id: "ROLLBACK_002"
+    name: "Rollback Database Migration"
+    type: "rollback_step"
+    category: "database"
+    required: true
+    estimated_duration: "2 minutes"
+    description: "Revert database schema to previous version"
+    command: |
+      docker-compose run --rm backend alembic downgrade -1
+    validation:
+      - "Migration rollback successful"
+      - "Database schema matches previous version"
+      - "Data integrity maintained"
+    dependencies: ["ROLLBACK_001"]
+    failure_action: "CRITICAL - Restore from backup"
+    documentation: "migrations/README.md#rollback"
+
+  - id: "ROLLBACK_003"
+    name: "Restore Previous Docker Images"
+    type: "rollback_step"
+    category: "artifact_management"
+    required: true
+    estimated_duration: "1 minute"
+    description: "Revert to previous Docker image tags"
+    command: |
+      docker tag ablage-backend:current ablage-backend:failed
+      docker tag ablage-backend:previous ablage-backend:current
+      docker tag ablage-worker:previous ablage-worker:current
+      docker tag ablage-frontend:previous ablage-frontend:current
+    validation:
+      - "Image tags updated"
+      - "Previous images available"
+    dependencies: ["ROLLBACK_001"]
+    failure_action: "CRITICAL - Pull previous images from registry"
+    documentation: "docker/README.md#rollback"
+
+  - id: "ROLLBACK_004"
+    name: "Restart Services with Previous Version"
+    type: "rollback_step"
+    category: "service_management"
+    required: true
+    estimated_duration: "3 minutes"
+    description: "Start all services with rolled-back version"
+    command: |
+      docker-compose up -d backend-1 backend-2 worker-1 worker-2 worker-3 frontend
+      sleep 30
+    validation:
+      - "All services started"
+      - "Health checks passing"
+      - "No immediate errors"
+    dependencies: ["ROLLBACK_002", "ROLLBACK_003"]
+    failure_action: "CRITICAL - Consider database restore"
+    documentation: "Relations/Workflows/deployment_workflow.md#rollback"
+
+  - id: "ROLLBACK_005"
+    name: "Verify Rollback Success"
+    type: "rollback_step"
+    category: "validation"
+    required: true
+    estimated_duration: "3 minutes"
+    description: "Run smoke tests after rollback"
+    command: |
+      pytest tests/smoke/ -v
+      curl -f https://app.ablage-system.de/health
+    validation:
+      - "Smoke tests pass"
+      - "Health check returns 200"
+      - "Critical functionality works"
+    dependencies: ["ROLLBACK_004"]
+    failure_action: "CRITICAL - Incident escalation"
+    documentation: "tests/smoke/README.md"
+
+  - id: "ROLLBACK_006"
+    name: "Restore Database from Backup (if needed)"
+    type: "rollback_step"
+    category: "database"
+    required: false
+    estimated_duration: "10 minutes"
+    description: "Full database restore as last resort"
+    command: |
+      docker-compose stop backend-1 backend-2 worker-1 worker-2 worker-3
+      docker exec ablage-postgres psql -U postgres -c "DROP DATABASE ablage;"
+      docker exec ablage-postgres psql -U postgres -c "CREATE DATABASE ablage;"
+      gunzip -c backups/latest.sql.gz | docker exec -i ablage-postgres psql -U postgres -d ablage
+    validation:
+      - "Database restored"
+      - "Row counts match backup"
+      - "Foreign keys valid"
+    dependencies: ["ROLLBACK_001"]
+    failure_action: "CRITICAL - Contact DBA team"
+    documentation: "infrastructure/database/disaster_recovery.md"
+
+  - id: "ROLLBACK_007"
+    name: "Notify Stakeholders - Rollback"
+    type: "rollback_step"
+    category: "communication"
+    required: true
+    estimated_duration: "2 minutes"
+    description: "Communicate rollback to team"
+    command: |
+      python scripts/send_notification.py \
+        --type deployment_rollback \
+        --recipients ops-team,dev-team,management \
+        --severity high
+    validation:
+      - "Notification sent"
+      - "Incident ticket created"
+    dependencies: ["ROLLBACK_005"]
+    failure_action: "MANUAL - Phone/Slack notification"
+    documentation: "scripts/notifications/README.md#incidents"
+
+# ============================================================================
+# Edges (Dependencies)
+# ============================================================================
+
+edges:
+  # Pre-deployment dependencies
+  - from: "START"
+    to: ["PRE_001", "PRE_003", "PRE_004", "PRE_005", "PRE_006", "PRE_007", "PRE_008", "PRE_010"]
+    type: "initiates"
+
+  - from: "PRE_001"
+    to: "PRE_002"
+    type: "enables"
+    condition: "backup_created"
+
+  - from: "PRE_002"
+    to: "PRE_009"
+    type: "enables"
+    condition: "backup_validated"
+
+  # All pre-checks must pass before deployment
+  - from: ["PRE_001", "PRE_002", "PRE_003", "PRE_004", "PRE_005", "PRE_006", "PRE_007", "PRE_008", "PRE_009"]
+    to: "DEPLOY_001"
+    type: "gates"
+    condition: "all_checks_pass"
+
+  # Deployment sequence
+  - from: "DEPLOY_001"
+    to: "DEPLOY_002"
+    type: "sequence"
+
+  - from: "DEPLOY_002"
+    to: "DEPLOY_003"
+    type: "sequence"
+
+  - from: "DEPLOY_003"
+    to: "DEPLOY_004"
+    type: "sequence"
+
+  - from: "DEPLOY_004"
+    to: ["DEPLOY_005", "DEPLOY_006"]
+    type: "parallel"
+
+  - from: ["DEPLOY_004", "DEPLOY_005", "DEPLOY_006"]
+    to: "DEPLOY_007"
+    type: "converge"
+
+  - from: "DEPLOY_007"
+    to: "DEPLOY_008"
+    type: "optional"
+
+  # Post-deployment validation
+  - from: ["DEPLOY_004", "DEPLOY_005", "DEPLOY_006", "DEPLOY_007"]
+    to: "POST_001"
+    type: "triggers"
+
+  - from: "POST_001"
+    to: "POST_002"
+    type: "sequence"
+
+  - from: "POST_002"
+    to: ["POST_003", "POST_004", "POST_005", "POST_006", "POST_007", "POST_008"]
+    type: "parallel"
+
+  - from: "POST_001"
+    to: "POST_009"
+    type: "parallel"
+
+  - from: ["POST_001", "POST_002", "POST_003"]
+    to: "POST_010"
+    type: "converge"
+
+  - from: ["POST_001", "POST_002"]
+    to: "POST_011"
+    type: "triggers"
+
+  # Rollback triggers
+  - from: ["DEPLOY_003", "DEPLOY_004", "DEPLOY_005", "DEPLOY_006"]
+    to: "ROLLBACK_001"
+    type: "failure_path"
+    condition: "deployment_failed"
+
+  - from: ["POST_001", "POST_002"]
+    to: "ROLLBACK_001"
+    type: "failure_path"
+    condition: "validation_failed"
+
+  # Rollback sequence
+  - from: "ROLLBACK_001"
+    to: ["ROLLBACK_002", "ROLLBACK_003"]
+    type: "parallel"
+
+  - from: ["ROLLBACK_002", "ROLLBACK_003"]
+    to: "ROLLBACK_004"
+    type: "converge"
+
+  - from: "ROLLBACK_004"
+    to: "ROLLBACK_005"
+    type: "sequence"
+
+  - from: "ROLLBACK_005"
+    to: "ROLLBACK_007"
+    type: "sequence"
+
+  # Emergency database restore
+  - from: "ROLLBACK_001"
+    to: "ROLLBACK_006"
+    type: "emergency_path"
+    condition: "migration_rollback_failed"
+
+  - from: "ROLLBACK_006"
+    to: "ROLLBACK_004"
+    type: "recovery_path"
+
+# ============================================================================
+# Critical Paths
+# ============================================================================
+
+critical_paths:
+  - name: "Happy Path - Regular Deployment"
+    description: "Standard successful deployment with all checks passing"
+    path:
+      - "PRE_001"  # Backup
+      - "PRE_002"  # Verify backup
+      - "PRE_003"  # Tests
+      - "PRE_004"  # Lint
+      - "PRE_005"  # Staging check
+      - "PRE_006"  # GPU check
+      - "PRE_007"  # Disk space
+      - "PRE_008"  # Migration check
+      - "PRE_009"  # Rollback plan
+      - "DEPLOY_001"  # Stop workers
+      - "DEPLOY_002"  # Pull images
+      - "DEPLOY_003"  # Migrate DB
+      - "DEPLOY_004"  # Update backend
+      - "DEPLOY_005"  # Update workers
+      - "DEPLOY_006"  # Update frontend
+      - "DEPLOY_007"  # Clear cache
+      - "POST_001"  # Health check
+      - "POST_002"  # Smoke tests
+      - "POST_010"  # Update record
+      - "POST_011"  # Notify success
+    estimated_total_duration: "25 minutes"
+    success_rate: "92%"
+
+  - name: "Rollback Path - Failed Deployment"
+    description: "Rollback triggered by deployment or validation failure"
+    path:
+      - "DEPLOY_004"  # Backend update fails
+      - "ROLLBACK_001"  # Stop all
+      - "ROLLBACK_002"  # Rollback migration
+      - "ROLLBACK_003"  # Restore images
+      - "ROLLBACK_004"  # Restart services
+      - "ROLLBACK_005"  # Verify rollback
+      - "ROLLBACK_007"  # Notify team
+    estimated_total_duration: "12 minutes"
+    occurrence_rate: "8% of deployments"
+
+  - name: "Emergency Path - Database Restore"
+    description: "Full database restore as last resort"
+    path:
+      - "POST_002"  # Smoke tests fail
+      - "ROLLBACK_001"  # Stop all
+      - "ROLLBACK_006"  # Restore DB from backup
+      - "ROLLBACK_003"  # Restore images
+      - "ROLLBACK_004"  # Restart services
+      - "ROLLBACK_005"  # Verify rollback
+      - "ROLLBACK_007"  # Escalate incident
+    estimated_total_duration: "20 minutes"
+    occurrence_rate: "< 1% of deployments"
+
+  - name: "Hotfix Path - Minimal Deployment"
+    description: "Fast deployment for critical fixes"
+    path:
+      - "PRE_001"  # Backup (required)
+      - "PRE_002"  # Verify backup (required)
+      - "PRE_003"  # Tests (required)
+      - "PRE_006"  # GPU check (required)
+      - "DEPLOY_001"  # Stop workers
+      - "DEPLOY_002"  # Pull images
+      - "DEPLOY_004"  # Update backend only
+      - "POST_001"  # Health check
+      - "POST_002"  # Smoke tests
+    estimated_total_duration: "8 minutes"
+    success_rate: "95%"
+
+# ============================================================================
+# Deployment Types & Configurations
+# ============================================================================
+
+deployment_types:
+  - type: "regular"
+    name: "Regular Weekly Deployment"
+    frequency: "Weekly (Thursday 10:00 UTC)"
+    maintenance_window: "None (zero-downtime)"
+    required_checks: ["all_pre_checks", "all_post_checks"]
+    rollback_threshold: "Any validation failure"
+    notification_required: true
+    estimated_duration: "25 minutes"
+
+  - type: "hotfix"
+    name: "Emergency Hotfix"
+    frequency: "As needed"
+    maintenance_window: "None (zero-downtime)"
+    required_checks: ["PRE_001", "PRE_002", "PRE_003", "PRE_006", "POST_001", "POST_002"]
+    rollback_threshold: "Critical functionality broken"
+    notification_required: true
+    estimated_duration: "8 minutes"
+
+  - type: "major"
+    name: "Major Version Update"
+    frequency: "Quarterly"
+    maintenance_window: "10 minutes (scheduled)"
+    required_checks: ["all_pre_checks", "all_post_checks", "extended_soak_test"]
+    rollback_threshold: "Any validation failure"
+    notification_required: true
+    notification_advance: "48 hours"
+    estimated_duration: "45 minutes"
+
+  - type: "infrastructure"
+    name: "Infrastructure Update"
+    frequency: "As needed"
+    maintenance_window: "30 minutes (scheduled)"
+    required_checks: ["all_pre_checks", "infrastructure_validation", "all_post_checks"]
+    rollback_threshold: "Service degradation"
+    notification_required: true
+    notification_advance: "72 hours"
+    estimated_duration: "60 minutes"
+
+# ============================================================================
+# Monitoring & Alerting
+# ============================================================================
+
+monitoring:
+  during_deployment:
+    - metric: "api_response_time_p95"
+      threshold: "500ms"
+      alert_on: "sustained_above"
+      action: "Consider rollback"
+
+    - metric: "error_rate_5xx"
+      threshold: "0.5%"
+      alert_on: "spike"
+      action: "Immediate rollback"
+
+    - metric: "database_connection_pool_exhaustion"
+      threshold: "90%"
+      alert_on: "above"
+      action: "Investigate, consider rollback"
+
+    - metric: "celery_worker_availability"
+      threshold: "2 workers minimum"
+      alert_on: "below"
+      action: "Pause deployment, investigate"
+
+    - metric: "gpu_vram_usage"
+      threshold: "85%"
+      alert_on: "sustained_above"
+      action: "Monitor closely, may need config adjustment"
+
+  post_deployment:
+    - metric: "error_rate_baseline"
+      threshold: "+20% from baseline"
+      alert_on: "elevated"
+      action: "Investigate, prepare rollback"
+
+    - metric: "response_time_regression"
+      threshold: "+50ms P95"
+      alert_on: "sustained"
+      action: "Performance investigation"
+
+    - metric: "ocr_processing_success_rate"
+      threshold: "95%"
+      alert_on: "below"
+      action: "Immediate investigation"
+
+# ============================================================================
+# Mermaid Visualizations
+# ============================================================================
+
+visualizations:
+  deployment_flow:
+    type: "mermaid"
+    title: "Complete Deployment Flow"
+    diagram: |
+      graph TB
+          START([Start Deployment]) --> PRE_CHECKS{All Pre-Checks<br/>Pass?}
+
+          PRE_CHECKS -->|No| FIX_ISSUES[Fix Issues]
+          FIX_ISSUES --> PRE_CHECKS
+
+          PRE_CHECKS -->|Yes| BACKUP[PRE_001: Backup Database]
+          BACKUP --> VERIFY[PRE_002: Verify Backup]
+          VERIFY --> TESTS[PRE_003-009: Run All Checks]
+
+          TESTS --> DEPLOY_START[DEPLOY_001: Stop Workers]
+          DEPLOY_START --> PULL[DEPLOY_002: Pull Images]
+          PULL --> MIGRATE[DEPLOY_003: Migrate DB]
+
+          MIGRATE -->|Success| UPDATE_BACKEND[DEPLOY_004: Update Backend]
+          MIGRATE -->|Fail| ROLLBACK_START
+
+          UPDATE_BACKEND -->|Success| UPDATE_SERVICES[DEPLOY_005-006: Update Workers/Frontend]
+          UPDATE_BACKEND -->|Fail| ROLLBACK_START
+
+          UPDATE_SERVICES --> CLEAR_CACHE[DEPLOY_007: Clear Cache]
+          CLEAR_CACHE --> POST_HEALTH[POST_001: Health Check]
+
+          POST_HEALTH -->|Pass| POST_SMOKE[POST_002: Smoke Tests]
+          POST_HEALTH -->|Fail| ROLLBACK_START
+
+          POST_SMOKE -->|Pass| POST_VALIDATE[POST_003-009: Validation Suite]
+          POST_SMOKE -->|Fail| ROLLBACK_START
+
+          POST_VALIDATE -->|Pass| MONITOR[POST_006: Monitor 5 Min]
+          MONITOR -->|Stable| SUCCESS([Deployment Success])
+          MONITOR -->|Issues| ROLLBACK_START
+
+          ROLLBACK_START[ROLLBACK_001: Stop All] --> ROLLBACK_DB[ROLLBACK_002: Rollback Migration]
+          ROLLBACK_DB --> ROLLBACK_IMG[ROLLBACK_003: Restore Images]
+          ROLLBACK_IMG --> ROLLBACK_RESTART[ROLLBACK_004: Restart Services]
+          ROLLBACK_RESTART --> ROLLBACK_VERIFY[ROLLBACK_005: Verify]
+
+          ROLLBACK_VERIFY -->|Success| ROLLBACK_NOTIFY[ROLLBACK_007: Notify Team]
+          ROLLBACK_VERIFY -->|Fail| EMERGENCY[ROLLBACK_006: Emergency DB Restore]
+          EMERGENCY --> INCIDENT([Escalate Incident])
+
+          ROLLBACK_NOTIFY --> FAILED([Deployment Rolled Back])
+
+          SUCCESS --> DOCUMENT[POST_010: Update Records]
+          DOCUMENT --> NOTIFY_SUCCESS[POST_011: Notify Success]
+          NOTIFY_SUCCESS --> COMPLETE([Complete])
+
+          style START fill:#90EE90
+          style SUCCESS fill:#90EE90
+          style COMPLETE fill:#90EE90
+          style ROLLBACK_START fill:#FFB6C1
+          style FAILED fill:#FFB6C1
+          style INCIDENT fill:#FF6B6B
+          style EMERGENCY fill:#FF6B6B
+
+  rollback_decision:
+    type: "mermaid"
+    title: "Rollback Decision Tree"
+    diagram: |
+      graph TD
+          FAILURE{Failure<br/>Detected} --> TYPE{Failure<br/>Type?}
+
+          TYPE -->|Health Check Failed| CRITICAL{Critical<br/>Service?}
+          TYPE -->|Smoke Test Failed| CRITICAL
+          TYPE -->|Performance Regression| SEVERITY{How Severe?}
+          TYPE -->|Error Rate Spike| RATE{Error<br/>Rate?}
+
+          CRITICAL -->|Yes| IMMEDIATE[Immediate Rollback]
+          CRITICAL -->|No| INVESTIGATE[Investigate 5 Min]
+
+          SEVERITY -->|> 50% Slower| IMMEDIATE
+          SEVERITY -->|20-50% Slower| MONITOR[Monitor & Decide]
+          SEVERITY -->|< 20% Slower| ACCEPT[Accept & Monitor]
+
+          RATE -->|> 1%| IMMEDIATE
+          RATE -->|0.5-1%| MONITOR
+          RATE -->|< 0.5%| INVESTIGATE
+
+          INVESTIGATE --> RESOLVED{Issue<br/>Resolved?}
+          RESOLVED -->|Yes| CONTINUE[Continue Deployment]
+          RESOLVED -->|No| ROLLBACK[Initiate Rollback]
+
+          MONITOR --> IMPROVING{Improving?}
+          IMPROVING -->|Yes| CONTINUE
+          IMPROVING -->|No| ROLLBACK
+
+          IMMEDIATE --> ROLLBACK
+          ROLLBACK --> EXECUTE[Execute Rollback Path]
+
+          style IMMEDIATE fill:#FF6B6B
+          style ROLLBACK fill:#FFB6C1
+          style CONTINUE fill:#90EE90
+          style ACCEPT fill:#90EE90
+
+  pre_deployment_checks:
+    type: "mermaid"
+    title: "Pre-Deployment Checks Flowchart"
+    diagram: |
+      graph LR
+          START([Pre-Deployment]) --> BACKUP[PRE_001<br/>Backup DB]
+
+          START --> TESTS[PRE_003<br/>Run Tests]
+          START --> LINT[PRE_004<br/>Type Check & Lint]
+          START --> STAGING[PRE_005<br/>Staging Check]
+          START --> GPU[PRE_006<br/>GPU Check]
+          START --> DISK[PRE_007<br/>Disk Space]
+          START --> MIGRATIONS[PRE_008<br/>Migration Check]
+
+          BACKUP --> VERIFY[PRE_002<br/>Verify Backup]
+          VERIFY --> ROLLBACK_PLAN[PRE_009<br/>Rollback Plan]
+
+          TESTS --> GATE{All Checks<br/>Pass?}
+          LINT --> GATE
+          STAGING --> GATE
+          GPU --> GATE
+          DISK --> GATE
+          MIGRATIONS --> GATE
+          ROLLBACK_PLAN --> GATE
+
+          GATE -->|Yes| PROCEED([Proceed to Deployment])
+          GATE -->|No| STOP([Stop - Fix Issues])
+
+          style PROCEED fill:#90EE90
+          style STOP fill:#FF6B6B
+
+# ============================================================================
+# Best Practices & Lessons Learned
+# ============================================================================
+
+best_practices:
+  - category: "Pre-Deployment"
+    practices:
+      - "Always verify backup before starting"
+      - "Run full test suite on staging with production-like data"
+      - "Check GPU availability and temperature"
+      - "Ensure disk space > 20% free"
+      - "Review database migration plan for large tables"
+
+  - category: "During Deployment"
+    practices:
+      - "Update workers first (less critical than backend)"
+      - "Use rolling updates for zero downtime"
+      - "Monitor error rates continuously"
+      - "Keep deployment window < 30 minutes"
+      - "Have rollback plan ready and tested"
+
+  - category: "Post-Deployment"
+    practices:
+      - "Wait 5 minutes before declaring success"
+      - "Monitor error rates for 30 minutes"
+      - "Run smoke tests immediately"
+      - "Check performance metrics against baseline"
+      - "Document any issues or anomalies"
+
+  - category: "Rollback"
+    practices:
+      - "Don't hesitate to rollback if uncertain"
+      - "Database migration rollback is riskiest step"
+      - "Test rollback procedure in staging monthly"
+      - "Communicate rollback decision quickly"
+      - "Conduct post-mortem after rollback"
+
+lessons_learned:
+  - date: "2024-12-05"
+    incident: "Celery worker OOM during deployment"
+    lesson: "Always check worker memory limits match requirements"
+    action_taken: "Added PRE_006 check for container resources"
+    reference: "Dynamic_Knowledge/Logs/celery_worker_crash_log.md"
+
+  - date: "2024-11-18"
+    incident: "Database migration timeout on invoices table"
+    lesson: "Large table migrations need extended timeout"
+    action_taken: "Added migration size check to PRE_008"
+    reference: "migrations/README.md#large-migrations"
+
+  - date: "2024-10-22"
+    incident: "Frontend served stale JS after backend update"
+    lesson: "Cache clear must happen after all services updated"
+    action_taken: "Moved DEPLOY_007 after all service updates"
+    reference: "frontend/README.md#cache-busting"
+
+  - date: "2024-09-30"
+    incident: "GPU not accessible after worker restart"
+    lesson: "Docker GPU passthrough requires --gpus flag"
+    action_taken: "Updated docker-compose.yml and added POST_007 check"
+    reference: "docker/docker-compose.yml#gpu-config"
+
+# ============================================================================
+# Related Documentation
+# ============================================================================
+
+related_documentation:
+  workflows:
+    - title: "Complete Deployment Workflow"
+      path: "../../Relations/Workflows/deployment_workflow.md"
+      description: "Detailed deployment procedures and rollback strategies"
+
+  decision_trees:
+    - title: "Error Recovery Decision Tree"
+      path: "../../Relations/Decision_Trees/error_recovery_decision_tree.yaml"
+      description: "Automated error recovery procedures"
+
+  validators:
+    - title: "Backup Validator"
+      path: "../../Execution_Layer/Validators/backup_validator.py"
+      description: "Automated backup validation tool"
+
+    - title: "GDPR Compliance Checker"
+      path: "../../Execution_Layer/Validators/gdpr_compliance_checker.py"
+      description: "GDPR compliance validation"
+
+  agents:
+    - title: "Monitoring Agent"
+      path: "../../Execution_Layer/Agents/monitoring_agent.py"
+      description: "Automated health monitoring"
+
+  logs:
+    - title: "Deployment History"
+      path: "../../Dynamic_Knowledge/Logs/deployment_history.md"
+      description: "Historical deployment records"
+
+    - title: "Celery Worker Crash Log"
+      path: "../../Dynamic_Knowledge/Logs/celery_worker_crash_log.md"
+      description: "Example incident response"
+
+  mocs:
+    - title: "Performance MOC"
+      path: "../MOCs/PERFORMANCE_MOC.md"
+      description: "Performance monitoring and optimization"
+
+    - title: "Security MOC"
+      path: "../MOCs/SECURITY_MOC.md"
+      description: "Security practices and compliance"
+
+# ============================================================================
+# Deployment Metrics
+# ============================================================================
+
+metrics:
+  deployment_frequency:
+    regular: "Weekly (Thursday 10:00 UTC)"
+    hotfix: "As needed (average 1 per month)"
+    major: "Quarterly"
+
+  success_rates:
+    regular_deployment: "92%"
+    hotfix_deployment: "95%"
+    rollback_success: "100%"
+
+  timing:
+    average_deployment_duration: "22 minutes"
+    fastest_deployment: "18 minutes"
+    slowest_deployment: "35 minutes"
+    average_rollback_duration: "12 minutes"
+
+  failure_reasons:
+    smoke_test_failures: "4%"
+    performance_regression: "2%"
+    database_migration_issues: "1%"
+    unexpected_errors: "1%"
+
+  impact:
+    zero_downtime_deployments: "92%"
+    average_downtime_when_occurred: "3 minutes"
+    data_loss_incidents: "0"
+
+---
+
+**Graph Version:** 2.0
+**Last Deployment:** 2025-01-20 (v1.4.3 - Weekly Release)
+**Next Scheduled Deployment:** 2025-01-27 10:00 UTC
+**Rollback Count (Last 3 Months):** 2 (8%)

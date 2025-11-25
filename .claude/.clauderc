@@ -1,276 +1,680 @@
-### OCR-Backend-Auswahl-Matrix
-| Dokumenttyp | Engine | Grund |
-|-------------|--------|-------|
-| Komplexe Rechnungen | DeepSeek-Janus-Pro 7B | Höchste Genauigkeit für Tabellen |
-| Standard-Formulare | GOT-OCR 2.0 | Benchmark-Zuverlässigkeit |
-| Technische Dokumentation | Surya + Docling | Layout-Erhaltung |
-| Handschrift | DeepSeek-Janus-Pro | Beste Robustheit |
+# Ablage-System Claude Code Context
+# Version: 2.0
+# Last Updated: 2025-11-24
+# Philosophy: "Feinpoliert und durchdacht"
 
-## Entwicklungsstandards
+## 🚀 Quick Start Reference
 
-### Code-Konventionen
-- **Python**: PEP 8, Type Hints erforderlich, Black Formatter
-- **Docstrings**: Google-Stil, vollständig für öffentliche APIs
-- **Testing**: pytest, Mindestabdeckung 85%
-- **Logging**: Strukturiertes Logging (JSON), keine PII in Logs
+### Essential Commands (Use these!)
+```bash
+# Development
+make dev              # Start full dev environment with hot reload
+make test             # Run all tests
+make lint             # Code quality checks
+make logs             # Follow all logs
 
-### Git-Workflow
-- **Branching**: GitFlow (main/develop/feature/hotfix)
-- **Commits**: Conventional Commits (feat/fix/docs/refactor)
-- **Reviews**: Mindestens 1 Approval vor Merge
-- **CI/CD**: Automatische Tests + Linting vor Deployment
+# Or use scripts directly:
+./scripts/dev.sh      # Start development server
+./scripts/test.sh     # Run tests
+./scripts/lint.sh     # Lint code
+./scripts/build.sh    # Full build pipeline
+```
 
-### Sicherheitsstandards
-- **Secrets**: Niemals im Code, nur Umgebungsvariablen
-- **API-Keys**: AWS Secrets Manager / HashiCorp Vault
-- **Verschlüsselung**: TLS 1.3 (Transit), AES-256 (Ruhe) 
-- **Audit**: Alle Dokumentenzugriffe geloggt
-- **DSGVO**: 30-Tage-Retention, Anonymisierung vor Verarbeitung
+### Slash Commands Available
+- `/quick-test` - Test current file
+- `/implement-agent` - Generate full agent from skeleton
+- `/debug-gpu` - Diagnose GPU problems
+- `/review-pr` - Comprehensive code review
+- `/ocr-benchmark` - Run OCR quality benchmarks
+- `/setup-dev` - Complete dev environment setup
+- `/add-feature` - Structured feature development
+- `/find-doc` - Quick documentation discovery
 
-## Deutsche Sprachverarbeitung
+### Service URLs (Development)
+- API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+- MinIO Console: http://localhost:9001 (dev/devpassword)
+- pgAdmin: http://localhost:5050 (dev@ablage.local/devpassword)
+- Redis Commander: http://localhost:8081
+- Flower (Celery): http://localhost:5555
 
-### Besonderheiten
-- **Encoding**: UTF-8 obligatorisch (ä, ö, ü, ß-Unterstützung)
-- **Rechtschreibung**: Neue deutsche Rechtschreibung
-- **Regionale Varianten**: 
-  - Deutschland (Standard)
-  - Schweiz (ss statt ß)
-  - Österreich (Besonderheiten dokumentiert)
-- **Frakturschrift**: Historische Dokumente (1600-1938) 
-- **Zusammengesetzte Wörter**: Tokenisierung berücksichtigt Compounds
+## 📚 Documentation Navigation
 
-### OCR-Qualitätsstandards
-- **Mindestgenauigkeit**: 95% für finanzielle Dokumente
-- **Konfidenzwerte**: Bei <0.90 manuelle Prüfung
-- **Validierung**: Checksummen, Plausibilitätsprüfungen
-- **Fehlerbehandlung**: Automatisches Retry mit alternativer Engine
+### Critical Documentation (READ THESE FIRST)
+1. **[CLAUDE.md](../CLAUDE.md)** - Main project instructions (THIS FILE'S PARENT)
+2. **[GETTING_STARTED.md](../GETTING_STARTED.md)** - Onboarding guide
+3. **[KNOWLEDGE_ARCHITECTURE.md](../KNOWLEDGE_ARCHITECTURE.md)** - Documentation system
 
-## GPU-Optimierung (RTX 4080)
+### Documentation Indexes (USE THESE TO FIND FILES)
+- **[documentation_index.md](../Meta_Layer/Indexes/documentation_index.md)** - All documentation with tags
+- **[code_index.md](../Meta_Layer/Indexes/code_index.md)** - All code files with status
+- **[tag_system.md](../Meta_Layer/Tags/tag_system.md)** - Tag-based navigation system
 
-### CUDA-Konfiguration
+### Implementation Guides
+- **[agent_implementation_roadmap.md](../Static_Knowledge/Implementation_Guides/agent_implementation_roadmap.md)** - 202-hour implementation plan (4 phases)
+- **[agent_implementation_patterns.md](../Static_Knowledge/Architecture/agent_implementation_patterns.md)** - How to build agents
+- **[async_patterns.md](../Static_Knowledge/Patterns/async_patterns.md)** - Async/await best practices
+
+### Troubleshooting Guides
+- **[gpu_troubleshooting_guide.md](../Execution_Layer/Troubleshooting/gpu_troubleshooting_guide.md)** - GPU issues and solutions
+- **[ocr_quality_troubleshooting.md](../Execution_Layer/Troubleshooting/ocr_quality_troubleshooting.md)** - OCR accuracy problems
+
+### Architecture & Integration
+- **[component_integration_map.md](../Relations/Integration_Maps/component_integration_map.md)** - System architecture overview
+- **[code_review_checklist.md](../Static_Knowledge/Checklists/code_review_checklist.md)** - Review standards
+
+## 🏗️ Project Structure
+
+### Directory Organization
+```
+Ablage_System/
+├── .claude/              # Claude Code configuration
+│   ├── commands/         # Custom slash commands (8 files)
+│   ├── Docs/            # Additional context docs
+│   ├── memory/          # Conversation memory
+│   ├── settings.json    # Claude settings (MAX_OUTPUT_TOKENS=64000)
+│   └── .clauderc        # This file!
+│
+├── .vscode/             # VSCode integration
+│   ├── tasks.json       # 20+ predefined tasks
+│   ├── launch.json      # Debug configurations (11 configs)
+│   ├── settings.json    # Project settings (Ruff, MyPy, Python)
+│   ├── extensions.json  # Recommended extensions
+│   └── python.json      # Code snippets (12 snippets)
+│
+├── .githooks/           # Git hooks (version controlled)
+│   ├── pre-commit       # Lint, format, type check, secret scan
+│   └── pre-push         # Tests, coverage, conflict check
+│
+├── app/                 # Main application code
+│   ├── main.py          # FastAPI entry point
+│   ├── api/             # API routes
+│   ├── core/            # Core functionality
+│   ├── db/              # Database models/schemas
+│   ├── services/        # Business logic
+│   ├── workers/         # Celery tasks
+│   └── utils/           # Utilities
+│
+├── Static_Knowledge/    # Permanent reference docs
+│   ├── Architecture/    # System design patterns
+│   ├── Patterns/        # Code patterns
+│   ├── Checklists/      # Quality checklists
+│   └── Implementation_Guides/  # Step-by-step guides
+│
+├── Dynamic_Knowledge/   # Generated/evolving docs
+│   ├── Decision_Logs/   # ADRs (Architecture Decision Records)
+│   └── Learning_Notes/  # Insights from development
+│
+├── Meta_Layer/          # Documentation metadata
+│   ├── Indexes/         # Master indexes
+│   └── Tags/            # Tagging system
+│
+├── Relations/           # Cross-reference documentation
+│   └── Integration_Maps/  # Component relationships
+│
+├── Execution_Layer/     # Operational guides
+│   └── Troubleshooting/ # Problem-solving guides
+│
+├── scripts/             # Development automation
+│   ├── dev.sh           # Start dev server
+│   ├── test.sh          # Test runner
+│   ├── lint.sh          # Linting
+│   ├── build.sh         # Build pipeline
+│   ├── db-reset.sh      # Database reset
+│   └── setup-hooks.sh   # Install Git hooks
+│
+├── tests/               # Test suites
+│   ├── unit/            # Unit tests
+│   ├── integration/     # Integration tests
+│   └── fixtures/        # Test data
+│
+├── infrastructure/      # Infrastructure as Code
+│   ├── docker/          # Dockerfiles
+│   ├── terraform/       # Infrastructure provisioning
+│   └── ansible/         # Configuration management
+│
+├── docker-compose.yml       # Production stack
+├── docker-compose.dev.yml   # Development overrides
+├── Makefile                 # Quick commands (40+ targets)
+├── .dockerignore            # Docker build optimization
+└── requirements.txt         # Python dependencies
+```
+
+## 🛠️ Technology Stack (CURRENT)
+
+### Backend
+- **Framework**: FastAPI 0.110+ (async/await)
+- **Python**: 3.11+ (required)
+- **ORM**: SQLAlchemy 2.0+ (async)
+- **Database**: PostgreSQL 16
+- **Cache/Queue**: Redis 7.x
+- **Storage**: MinIO (S3-compatible)
+- **Task Queue**: Celery 5.3+
+
+### OCR Engines
+- **DeepSeek-Janus-Pro 1.0**: Multimodal, best accuracy
+- **GOT-OCR 2.0**: Transformer-based, 600M params
+- **Surya v1.1 + Docling v1.0**: Layout-aware pipeline
+
+### Development Tools
+- **Linting**: Ruff (replaces Black + isort + flake8)
+- **Type Checking**: MyPy --strict
+- **Testing**: pytest + pytest-asyncio + pytest-cov
+- **Containerization**: Docker 24.x, Docker Compose
+- **GPU**: NVIDIA RTX 4080 (16GB VRAM, CUDA 12.x)
+
+### Frontend (TBD)
+- Framework: Vue.js or React (to be confirmed)
+- Display Modes: Dark, Light, Whitescreen, Blackscreen
+
+## 🎯 Development Workflow
+
+### Step-by-Step for New Features
+1. **Find Documentation**: Use `/find-doc` or search indexes
+2. **Plan**: Check [component_integration_map.md](../Relations/Integration_Maps/component_integration_map.md)
+3. **Branch**: `git checkout -b feature/TICKET-123-description`
+4. **Develop**:
+   - Use VSCode snippets (`agent`, `router`, `test`)
+   - Follow [async_patterns.md](../Static_Knowledge/Patterns/async_patterns.md)
+   - Run `make lint` frequently
+5. **Test**:
+   - `make test` or `/quick-test`
+   - Minimum 80% coverage required
+6. **Review**:
+   - `/review-pr` for self-review
+   - Use [code_review_checklist.md](../Static_Knowledge/Checklists/code_review_checklist.md)
+7. **Commit**:
+   - Git hooks run automatically (lint, type check, secret scan)
+   - Use Conventional Commits: `feat(ocr): add DeepSeek backend`
+8. **Push**:
+   - Git hooks run tests before push
+   - Create PR on GitHub
+
+### VSCode Keyboard Shortcuts
+- `Ctrl+Shift+B`: Run build task (default: Build All)
+- `Ctrl+Shift+T`: Run test task (default: Run Tests)
+- `F5`: Start debugging (see launch.json configs)
+- `Ctrl+Shift+P` → "Tasks: Run Task": Access all 20+ tasks
+
+### Common Development Tasks
+
+#### Start Development
+```bash
+# Option 1: Using Makefile (recommended)
+make dev              # Starts all services with hot reload
+
+# Option 2: Using script
+./scripts/dev.sh
+
+# Option 3: Manual Docker
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
+
+#### Run Tests
+```bash
+# All tests
+make test
+# or
+./scripts/test.sh
+
+# With coverage
+make test-cov
+# or
+./scripts/test.sh --coverage
+
+# Only GPU tests
+make test-gpu
+# or
+./scripts/test.sh --gpu
+
+# Only unit tests (fast)
+./scripts/test.sh --unit
+```
+
+#### Code Quality
+```bash
+# Check code quality
+make lint
+# or
+./scripts/lint.sh
+
+# Auto-fix issues
+make lint-fix
+# or
+./scripts/lint.sh --fix
+
+# Format code
+make format
+```
+
+#### Database Operations
+```bash
+# Run migrations
+make db-migrate
+
+# Create new migration
+make db-migrate-create MSG="add user table"
+
+# Reset database (WARNING: destroys data)
+make db-reset
+# or
+./scripts/db-reset.sh
+
+# Open database shell
+make db-shell
+
+# Backup database
+make db-backup
+```
+
+## 🔍 Finding Information Quickly
+
+### Using Tag-Based Search
+```bash
+# Find all GPU-related docs
+grep "#gpu" Meta_Layer/Indexes/documentation_index.md
+
+# Find all critical code files
+grep "#critical" Meta_Layer/Indexes/code_index.md
+
+# Find all developer guides
+grep "#developer" Meta_Layer/Indexes/documentation_index.md
+```
+
+### Common Search Patterns
+```bash
+# Find all agent implementations
+find app/ -name "*agent*.py"
+
+# Find all tests for a module
+find tests/ -name "test_ocr*.py"
+
+# Search for specific function
+grep -r "def process_document" app/
+```
+
+### Using Slash Commands
+- **Documentation**: `/find-doc` → Ask "GPU problems" → Get gpu_troubleshooting_guide.md
+- **Agent creation**: `/implement-agent` → Generates complete agent with tests
+- **Debugging**: `/debug-gpu` → Runs diagnostics and suggests solutions
+
+## 🚨 Critical Rules (NEVER DO THIS)
+
+### Security (ABSOLUTE REQUIREMENTS)
+- ❌ **NEVER** log sensitive document content, API keys, or PII
+- ❌ **NEVER** commit secrets to Git (.env, credentials.json)
+- ❌ **NEVER** use hardcoded passwords or API keys
+- ❌ **NEVER** skip input validation for user data
+- ❌ **NEVER** disable HTTPS in production
+
+### Code Quality (MANDATORY)
+- ❌ **NEVER** use `Any` type in Python (use proper type hints)
+- ❌ **NEVER** commit code without passing tests
+- ❌ **NEVER** skip pre-commit hooks with --no-verify (unless emergency)
+- ❌ **NEVER** use `print()` for logging (use structlog)
+- ❌ **NEVER** create TODO comments without tickets
+
+### GPU Management (CRITICAL)
+- ❌ **NEVER** exceed 85% VRAM usage (13.6GB on RTX 4080)
+- ❌ **NEVER** forget to call `torch.cuda.empty_cache()` after processing
+- ❌ **NEVER** use synchronous blocking calls in async code
+- ❌ **NEVER** process batches without memory checks
+
+### German Language (REQUIRED)
+- ❌ **NEVER** use English for user-facing messages
+- ❌ **NEVER** forget UTF-8 encoding (ä, ö, ü, ß must work)
+- ❌ **NEVER** ignore umlaut accuracy in OCR (<95% is failure)
+
+### On-Premises Deployment (MANDATORY)
+- ❌ **NEVER** use cloud services (AWS, GCP, Azure)
+- ❌ **NEVER** send data outside local infrastructure
+- ❌ **NEVER** use SaaS logging services
+
+## 📐 Coding Standards
+
+### Python Style (PEP 8 + Project Enhancements)
+
+#### Type Hints (MANDATORY)
 ```python
-# Umgebungsvariablen
-CUDA_VISIBLE_DEVICES=0
-PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
-CUDA_LAUNCH_BLOCKING=0  # Async für Performance
+# ✅ CORRECT: Full type annotations
+from typing import Optional, List, Dict
+import asyncio
 
-# GPU-Speicherverwaltung
-gpu_memory_utilization=0.85  # 85% von 16GB = 13.6GB
-max_batch_size=16  # Abhängig von Dokumentgröße
+async def process_document(
+    document_id: str,
+    ocr_backend: str = "deepseek",
+    enable_cache: bool = True
+) -> Dict[str, any]:
+    """Process document with specified OCR backend.
+
+    Args:
+        document_id: Unique document identifier
+        ocr_backend: OCR engine to use
+        enable_cache: Whether to cache results
+
+    Returns:
+        Dictionary with extracted text and metadata
+
+    Raises:
+        DocumentNotFoundError: If document doesn't exist
+    """
+    pass
+
+# ❌ WRONG: Missing type hints
+async def process_document(document_id, ocr_backend="deepseek"):
+    pass
 ```
 
-### Performance-Targets
-- **Durchsatz**: 100+ Seiten/Minute (Standard-Dokumente)
-- **Latenz**: <500ms pro Seite (einfache Dokumente)
-- **GPU-Auslastung**: 70-90% (optimaler Bereich)
-- **Warteschlange**: Max. 1000 Dokumente
+#### Logging (Structured with Context)
+```python
+import structlog
 
-### Monitoring
-- **Metriken**: GPU-Auslastung, VRAM, Temperatur, Leistung
-- **Alerts**: >85°C, >95% VRAM, <50% Auslastung (Underutilization)
-- **Tools**: nvidia-smi, nvtop, Prometheus nvidia_gpu_exporter
+logger = structlog.get_logger(__name__)
 
-## Befehle
+# ✅ CORRECT: Structured logging with context
+logger.info(
+    "ocr_processing_started",
+    document_id=doc_id,
+    backend=backend_name,
+    file_size_mb=file_size / 1024 / 1024,
+    gpu_available=torch.cuda.is_available()
+)
 
-### Entwicklung
-```bash
-# Umgebung einrichten
-conda create -n ablage python=3.11
-conda activate ablage
-pip install -r requirements.txt
-
-# Tests ausführen
-pytest tests/ -v --cov=src --cov-report=html
-
-# Linting
-black src/ tests/
-isort src/ tests/
-flake8 src/ tests/
-mypy src/
-
-# Lokale Entwicklung
-docker-compose up -d
-python src/main.py --dev
+# ❌ WRONG: String concatenation or f-strings
+logger.info(f"Processing document {doc_id} with {backend_name}")
 ```
 
-### Produktion
+#### Error Handling
+```python
+# ✅ CORRECT: Specific exceptions with context
+from app.core.exceptions import OCRProcessingError, GPUOutOfMemoryError
+
+try:
+    result = await ocr_service.process(image)
+except torch.cuda.OutOfMemoryError as e:
+    logger.error(f"GPU OOM processing document {doc_id}", exc_info=True)
+    raise GPUOutOfMemoryError(f"Insufficient GPU memory for {doc_id}") from e
+except Exception as e:
+    logger.exception(f"Unexpected error processing {doc_id}")
+    raise OCRProcessingError(f"Failed to process {doc_id}") from e
+
+# ❌ WRONG: Bare except or generic exceptions
+try:
+    result = ocr_service.process(image)
+except:
+    print("Error occurred")
+```
+
+### Testing Standards
+
+#### Test Structure (AAA Pattern)
+```python
+import pytest
+
+@pytest.mark.asyncio
+async def test_ocr_processes_document_successfully():
+    """OCR sollte Dokument erfolgreich verarbeiten."""  # German description
+    # Arrange
+    document = create_test_document()
+    ocr_service = OCRService()
+
+    # Act
+    result = await ocr_service.process(document)
+
+    # Assert
+    assert result.success is True
+    assert result.text is not None
+    assert len(result.text) > 0
+```
+
+#### Coverage Requirements
+- **Minimum**: 80% overall
+- **Critical paths**: 95%+ (OCR pipeline, authentication, data persistence)
+- **New code**: 100% coverage required before merge
+
+### Git Commit Convention
 ```bash
-# Deployment (Terraform + Ansible)
-cd infrastructure/
+# Format: <type>(<scope>): <description>
+#
+# Types: feat, fix, docs, style, refactor, test, chore
+# Scope: ocr, api, db, gpu, frontend, infra
+
+# Examples:
+feat(ocr): add DeepSeek-Janus-Pro backend integration
+fix(api): prevent race condition in document upload
+docs(readme): update deployment instructions
+test(ocr): add GPU memory stress tests
+refactor(db): migrate to async SQLAlchemy
+chore(deps): upgrade FastAPI to 0.110.0
+```
+
+## 🐳 Docker Development
+
+### Quick Reference
+```bash
+# Start dev environment
+make dev                    # Full stack with hot reload
+
+# View logs
+make logs                   # All services
+make logs-backend           # Backend only
+make logs-worker            # Worker only
+
+# Shell access
+make shell-backend          # Backend container bash
+make shell-worker           # Worker container bash
+make shell-redis            # Redis CLI
+
+# Rebuild
+make dev-build              # Rebuild and start
+make recreate               # Complete recreation
+
+# Cleanup
+make clean                  # Remove containers, volumes, cache
+make clean-volumes          # Remove volumes (destroys data!)
+```
+
+### Debug in Docker
+Debugpy is configured on ports:
+- Backend: `localhost:5678`
+- Worker: `localhost:5679`
+
+VSCode launch configurations available:
+- "Attach to Container: Backend"
+- "Attach to Container: Worker"
+
+## 🎨 Display Modes (Frontend)
+
+All UI components MUST support:
+1. **Dark Mode** (default): #1a1a1a bg, #e0e0e0 text
+2. **Light Mode**: #ffffff bg, #1a1a1a text
+3. **Whitescreen** (High Contrast): #ffffff bg, #000000 text, WCAG AAA
+4. **Blackscreen** (Inverted): #000000 bg, #ffffff text, #00ff00 accents
+
+## 🔒 Security Checklist
+
+Before ANY commit:
+- [ ] No secrets in code (use .env)
+- [ ] No PII in logs
+- [ ] Input validation present
+- [ ] SQL injection prevented (use parameterized queries)
+- [ ] XSS prevented (sanitize user input)
+- [ ] CSRF protection enabled
+- [ ] Rate limiting configured
+- [ ] Authentication required for sensitive endpoints
+
+## 📊 Performance Targets
+
+### Response Time (95th percentile)
+- API Health Check: < 50ms
+- Document Upload: < 500ms
+- OCR Processing (single page): < 2s (GPU), < 10s (CPU)
+- Document Retrieval: < 100ms (cached), < 300ms (DB)
+- Search Query: < 500ms
+
+### Throughput
+- Concurrent Users: 100+
+- Documents per Hour: 500+ (GPU), 100+ (CPU)
+- API Requests per Second: 1000+
+
+### Resource Limits
+- Max Document Size: 50 MB
+- Max Batch Size: 32 documents (GPU), 8 (CPU)
+- Database Connection Pool: 20 connections
+- Redis Max Memory: 2 GB
+
+## 🧪 Testing Strategy
+
+### Test Types
+```bash
+# Unit tests (fast, no external dependencies)
+pytest -m "not integration and not gpu"
+
+# Integration tests (database, Redis, MinIO)
+pytest -m integration
+
+# GPU tests (requires RTX 4080)
+pytest -m gpu
+
+# All tests with coverage
+pytest --cov=app --cov-report=html --cov-report=term
+```
+
+### Test Markers
+- `@pytest.mark.unit`: Unit test
+- `@pytest.mark.integration`: Integration test
+- `@pytest.mark.gpu`: Requires GPU
+- `@pytest.mark.slow`: Long-running test
+- `@pytest.mark.asyncio`: Async test
+
+## 🚀 Deployment
+
+### Environment-Specific Configuration
+```bash
+# Development
+ENV=development make dev
+
+# Staging
+ENV=staging docker-compose up -d
+
+# Production
+ENV=production docker-compose up -d
+```
+
+### Infrastructure as Code
+```bash
+# Terraform (infrastructure provisioning)
+cd infrastructure/terraform
 terraform plan -out=tfplan
 terraform apply tfplan
 
-cd ../ansible/
-ansible-playbook -i production deploy.yml
-
-# Monitoring
-kubectl get pods -n ablage-system
-kubectl logs -f deployment/ocr-worker
-
-# Health Check
-curl https://api.ablage-system.internal/health
+# Ansible (configuration management)
+cd infrastructure/ansible
+ansible-playbook -i inventory/production playbooks/deploy.yml
 ```
 
-### OCR-Pipeline
+## 🐛 Debugging Tips
+
+### GPU Issues
 ```bash
-# Einzelnes Dokument verarbeiten
-python cli.py process --input scan.pdf --output result.json --engine deepseeek-janus-pro
+# Check GPU status
+nvidia-smi
+# or
+make gpu-status
 
-# Batch-Verarbeitung
-python cli.py batch --input-dir ./scans/ --output-dir ./results/ --workers 4
+# Monitor GPU real-time
+watch -n 1 nvidia-smi
+# or
+make gpu-logs
 
-# Qualitätsprüfung
-python cli.py validate --input result.json --threshold 0.95
+# Test GPU in container
+make gpu-test
 ```
 
-## Kritische Regeln (NIEMALS)
-
-### Sicherheit
-- ❌ API-Keys oder Secrets im Code committen
-- ❌ PII (personenbezogene Daten) in Logs schreiben
-- ❌ Unverschlüsselte Dokumente speichern
-- ❌ Produktionsdatenbank von Entwicklungsmaschine zugreifen
-- ❌ `sudo` in Deployment-Skripten (Container verwenden)
-
-### Code-Qualität
-- ❌ Code ohne Tests committen (85% Coverage Minimum)
-- ❌ Type Hints weglassen in öffentlichen APIs
-- ❌ Hardcodierte Pfade oder URLs
-- ❌ Global State oder Singleton-Pattern missbrauchen
-- ❌ Undokumentierte Breaking Changes
-
-### GPU-Verarbeitung
-- ❌ Synchrone Blocking-Calls (async/await verwenden)
-- ❌ GPU-Speicher nicht freigeben (torch.cuda.empty_cache())
-- ❌ Große Batches ohne Memory-Check (OOM-Risiko)
-- ❌ CPU-Operationen auf GPU-Daten (Overhead)
-
-## DSGVO-Konformität
-
-### Datenverarbeitung
-1. **Einwilligung**: Vor Verarbeitung verifizieren (`verify_consent.py`)
-2. **Anonymisierung**: PII-Erkennung + Entfernung (`anonymize_pii.py`)
-3. **Verarbeitung**: Nur anonymisierte Daten an Claude/OCR
-4. **Verschlüsselung**: Output verschlüsseln (`encrypt_output.py`)
-5. **Audit**: Vollständiger Trail in GDPR-konformen Logs
-
-### Retention-Policy
-- **Rohdokumente**: 7 Tage (verschlüsselt)
-- **Verarbeitete Daten**: 30 Tage (verschlüsselt) 
-- **Audit-Logs**: 6 Jahre (rechtliche Anforderung)
-- **Automatische Löschung**: Cronjob täglich 02:00 UTC
-
-### Technische Maßnahmen
-- **Verschlüsselung at Rest**: AES-256-GCM
-- **Verschlüsselung in Transit**: TLS 1.3 
-- **Zugriffskontrolle**: RBAC mit Audit-Trail
-- **Pseudonymisierung**: UUIDs statt Namen
-- **Recht auf Löschung**: Implementiert via API
-
-## Dokumentation
-
-### Pflichtdokumentation
-- **ARCHITECTURE.md**: Systemdesign, Komponenten, Datenflüsse
-- **DEPLOYMENT.md**: Infrastructure-as-Code, Deployment-Prozess
-- **CONVENTIONS.md**: Code-Standards, Namenskonventionen
-- **FRONTEND.md**: UI/UX-Richtlinien, Komponenten
-- **CLAUDE.md** (dieses Dokument): Claude-spezifische Anweisungen
-
-### API-Dokumentation
-- **OpenAPI Spec**: Automatisch generiert aus FastAPI
-- **Zugriff**: `/docs` (Swagger UI), `/redoc` (ReDoc)
-- **Versionierung**: Semantic Versioning (v1, v2)
-
-## Fehlerbehandlung
-
-### OCR-Fehler
-- **Confidence <0.95**: Automatisches Retry mit alternativer Engine
-- **Complete Failure**: Manuelle Prüfung-Queue + Benachrichtigung
-- **Timeout**: Nach 60s abbrechen, in Retry-Queue
-
-### GPU-Fehler
-- **OOM (Out of Memory)**: Batch-Size reduzieren, Cache leeren
-- **CUDA Error**: Fallback auf CPU, Alert senden
-- **Überhitzung**: Throttling aktivieren, Admins benachrichtigen
-
-### System-Fehler
-- **Disk Full**: Automatische Cleanup-Routine, Alert
-- **Network Error**: Exponential Backoff (1s, 5s, 30s)
-- **DB Connection**: Connection Pool Retry, Circuit Breaker
-
-## Performance-Optimierung
-
-### Caching-Strategie
-- **Redis**: OCR-Ergebnisse (1 Stunde TTL)
-- **CDN**: Statische Assets (Frontend)
-- **Database Query Cache**: Häufige Abfragen (15 Min)
-
-### Skalierung
-- **Horizontal**: Mehrere Worker-Instanzen
-- **Vertikal**: GPU-Ressourcen nach Bedarf
-- **Load Balancing**: NGINX mit Least-Connections
-- **Auto-Scaling**: Basierend auf Warteschlangenlänge
-
-## Kontextgrenzen
-
-### Dateien bearbeiten
-- ✅ `src/` - Application Code
-- ✅ `tests/` - Test Suites
-- ✅ `docs/` - Dokumentation
-- ✅ `scripts/` - Utility Scripts
-- ✅ `infrastructure/` - IaC (mit Vorsicht)
-
-### Dateien NUR lesen
-- 📖 `config/` - Konfigurationsdateien
-- 📖 `.env.example` - Umgebungsvariablen-Template
-- 📖 `requirements.txt` - Dependencies
-
-### Dateien NIEMALS anfassen
-- 🚫 `.env` - Aktuelle Secrets
-- 🚫 `venv/`, `__pycache__/`, `.pytest_cache/` - Build-Artefakte
-- 🚫 `.git/` - Git-Interna
-- 🚫 `data/` - Rohdokumente (DSGVO)
-- 🚫 `secrets/` - Verschlüsselte Credentials
-
-## Team-Kommunikation
-
-### Code Reviews
-- **Checkliste**: Tests, Docs, Security, Performance
-- **Timeframe**: 24 Stunden Response-Zeit
-- **Approval**: Mindestens 1 Senior-Entwickler
-
-### Incident Response
-1. **Erkennung**: Monitoring-Alert
-2. **Eskalation**: On-Call Engineer
-3. **Mitigation**: Sofortige Maßnahmen
-4. **Post-Mortem**: Innerhalb 72 Stunden
-5. **Follow-up**: Präventive Maßnahmen
-
-## Debugging
-
-### Logging-Level
-- **Production**: INFO (strukturiert als JSON)
-- **Staging**: DEBUG (mit Context)
-- **Development**: DEBUG + Verbose
-
-### Debugging-Tools
+### Application Issues
 ```bash
-# GPU-Debugging
-nvidia-smi dmon -s pucvmet -i 0
-nvtop
+# Check service health
+make health
 
-# Application-Debugging
-python -m pdb src/main.py
-PYTHONBREAKPOINT=ipdb.set_trace python src/main.py
+# View all service URLs
+make urls
 
-# Performance-Profiling
-python -m cProfile -o profile.stats src/main.py
-snakeviz profile.stats
+# Follow specific service logs
+make logs-backend
+make logs-worker
+make logs-db
 ```
 
-## Weitere Ressourcen
+### Database Issues
+```bash
+# Open database shell
+make db-shell
 
-- **Confluence**: Detaillierte Design-Docs
-- **Jira**: Sprint-Planning, Tickets
-- **Slack**: #ablage-system, #ocr-engineering
-- **GitHub**: Issues, Discussions, Wiki
+# Check connections
+docker exec ablage-postgres-dev psql -U postgres -d ablage_ocr -c "SELECT * FROM pg_stat_activity;"
+
+# View slow queries
+docker exec ablage-postgres-dev psql -U postgres -d ablage_ocr -c "SELECT * FROM pg_stat_statements ORDER BY mean_time DESC LIMIT 10;"
+```
+
+## 📚 Learning Resources
+
+### Internal Documentation
+- All guides in `Static_Knowledge/`
+- Troubleshooting in `Execution_Layer/Troubleshooting/`
+- Architecture in `Relations/Integration_Maps/`
+
+### External Resources
+- FastAPI: https://fastapi.tiangolo.com/
+- SQLAlchemy 2.0: https://docs.sqlalchemy.org/en/20/
+- Celery: https://docs.celeryq.dev/
+- PostgreSQL: https://www.postgresql.org/docs/16/
+- MinIO: https://min.io/docs/
+- Ruff: https://docs.astral.sh/ruff/
+
+## 🎯 Current Project Status
+
+### Completed (Phase 0 & 1)
+- [x] Basic project structure
+- [x] Core documentation (12,000+ lines)
+- [x] Tag-based navigation system
+- [x] Custom slash commands (8 commands)
+- [x] Development scripts (5 scripts)
+- [x] VSCode integration (tasks, debug, snippets)
+- [x] Git hooks (pre-commit, pre-push)
+- [x] Docker development setup
+- [x] Makefile with 40+ commands
+
+### In Progress
+- [ ] Agent implementation (Phase 1: Core Agents)
+- [ ] OCR backend integration
+- [ ] Frontend development
+- [ ] Testing infrastructure
+
+### Upcoming (Phase 2-4)
+- [ ] Advanced features
+- [ ] Production deployment
+- [ ] Monitoring and observability
+- [ ] Performance optimization
+
+See [agent_implementation_roadmap.md](../Static_Knowledge/Implementation_Guides/agent_implementation_roadmap.md) for full 202-hour plan.
+
+## 🆘 Getting Help
+
+### Documentation Search
+1. Use `/find-doc` slash command
+2. Search tag system: `grep "#yourtag" Meta_Layer/Indexes/documentation_index.md`
+3. Check indexes: documentation_index.md, code_index.md
+4. Read troubleshooting guides in `Execution_Layer/Troubleshooting/`
+
+### Common Questions
+- **"How do I implement an agent?"** → `/implement-agent` or read [agent_implementation_patterns.md](../Static_Knowledge/Architecture/agent_implementation_patterns.md)
+- **"GPU not working?"** → `/debug-gpu` or read [gpu_troubleshooting_guide.md](../Execution_Layer/Troubleshooting/gpu_troubleshooting_guide.md)
+- **"OCR quality issues?"** → Read [ocr_quality_troubleshooting.md](../Execution_Layer/Troubleshooting/ocr_quality_troubleshooting.md)
+- **"Code review?"** → `/review-pr` or read [code_review_checklist.md](../Static_Knowledge/Checklists/code_review_checklist.md)
+
+---
+
+**Remember**: This is an enterprise-grade system requiring production-ready code. Every line matters. Every test counts. Security is paramount. German language accuracy is non-negotiable. GPU efficiency is critical.
+
+**Philosophy**: "Feinpoliert und durchdacht" - Polished and well-thought-out.

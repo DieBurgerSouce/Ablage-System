@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  vault:
+    image: hashicorp/vault:1.15.4
+    container_name: ablage-vault
+    restart: unless-stopped
+
+    command: server
+
+    ports:
+      - "8200:8200"
+
+    volumes:
+      - ./config:/vault/config
+      - vault_data:/vault/data
+      - vault_logs:/vault/logs
+
+    environment:
+      VAULT_ADDR: 'http://0.0.0.0:8200'
+      VAULT_API_ADDR: 'http://0.0.0.0:8200'
+      VAULT_ADDRESS: 'http://0.0.0.0:8200'
+
+    cap_add:
+      - IPC_LOCK
+
+    networks:
+      - ablage_network
+
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    labels:
+      - "com.ablage-system.component=vault"
+      - "com.ablage-system.version=1.15.4"
+
+  # Vault UI (optional - for development)
+  vault-ui:
+    image: djenriquez/vault-ui:latest
+    container_name: ablage-vault-ui
+    restart: unless-stopped
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      VAULT_URL_DEFAULT: http://vault:8200
+      VAULT_AUTH_DEFAULT: TOKEN
+
+    depends_on:
+      - vault
+
+    networks:
+      - ablage_network
+
+    labels:
+      - "com.ablage-system.component=vault-ui"
+
+volumes:
+  vault_data:
+    driver: local
+    labels:
+      - "com.ablage-system.volume=vault-data"
+
+  vault_logs:
+    driver: local
+    labels:
+      - "com.ablage-system.volume=vault-logs"
+
+networks:
+  ablage_network:
+    external: true
+    name: ablage_network

@@ -1,0 +1,548 @@
+# CI/CD Pipeline Workflow
+
+workflow_id: ci_cd_pipeline_001
+category: devops
+priority: high
+status: production_ready
+
+description: |
+  Complete CI/CD pipeline for Ablage-System, from code commit to production deployment.
+  Includes automated testing, security scanning, and staged rollout.
+
+# ============================================================================
+# Pipeline Trigger Events
+# ============================================================================
+
+triggers:
+  on_commit:
+    branches:
+      - "main"
+      - "develop"
+      - "feature/*"
+      - "hotfix/*"
+    actions:
+      - lint_and_format
+      - run_unit_tests
+      - run_integration_tests
+
+  on_pull_request:
+    target_branches:
+      - "main"
+      - "develop"
+    actions:
+      - lint_and_format
+      - run_all_tests
+      - security_scan
+      - build_docker_images
+      - require_approval
+
+  on_tag:
+    pattern: "v*.*.*"
+    actions:
+      - full_pipeline
+      - deploy_to_staging
+      - deploy_to_production
+
+  manual_trigger:
+    allowed_for:
+      - "DevOps Team"
+      - "Tech Lead"
+    actions:
+      - "Any pipeline stage"
+
+# ============================================================================
+# Stage 1: Code Quality & Linting
+# ============================================================================
+
+stage_lint_and_format:
+  duration_target: "< 2 minutes"
+
+  steps:
+    - name: "Ruff Linting"
+      command: "ruff check ."
+      allow_failure: false
+      artifacts:
+        - "lint_report.txt"
+
+    - name: "Ruff Formatting Check"
+      command: "ruff format --check ."
+      allow_failure: false
+
+    - name: "MyPy Type Checking"
+      command: "mypy app/ --strict"
+      allow_failure: false
+      artifacts:
+        - "type_check_report.txt"
+
+    - name: "Import Sorting Check"
+      command: "ruff check --select I ."
+      allow_failure: false
+
+  on_failure:
+    action: "block_pipeline"
+    notification:
+      - "Commit author"
+      - "#dev-notifications Slack channel"
+
+# ============================================================================
+# Stage 2: Testing
+# ============================================================================
+
+stage_testing:
+  duration_target: "< 10 minutes"
+
+  parallel_jobs:
+    - job: unit_tests
+      command: "pytest tests/unit/ -v --cov=app --cov-report=xml --cov-report=html"
+      coverage_threshold: 80
+      allow_failure: false
+
+    - job: integration_tests
+      command: "pytest tests/integration/ -v -m integration"
+      requires:
+        - "docker-compose up -d postgres redis minio"
+      cleanup:
+        - "docker-compose down"
+      allow_failure: false
+
+    - job: gpu_tests
+      command: "pytest tests/gpu/ -v -m gpu"
+      requires:
+        - "GPU available"
+      allow_failure: true
+      skip_if: "no_gpu_available"
+
+  artifacts:
+    - "coverage.xml"
+    - "htmlcov/"
+    - "test_results.xml"
+
+  on_failure:
+    action: "block_pipeline"
+    notification:
+      - "Commit author"
+      - "QA team"
+
+# ============================================================================
+# Stage 3: Security Scanning
+# ============================================================================
+
+stage_security:
+  duration_target: "< 5 minutes"
+
+  parallel_jobs:
+    - job: dependency_scan
+      tool: "safety"
+      command: "safety check --json"
+      allow_failure: false
+
+    - job: secret_scan
+      tool: "gitleaks"
+      command: "gitleaks detect --source . --report-path gitleaks-report.json"
+      allow_failure: false
+
+    - job: sast_scan
+      tool: "bandit"
+      command: "bandit -r app/ -f json -o bandit-report.json"
+      severity_threshold: "medium"
+      allow_failure: false
+
+    - job: docker_image_scan
+      tool: "trivy"
+      command: "trivy image --severity HIGH,CRITICAL ablage-backend:latest"
+      allow_failure: false
+      skip_if: "no_docker_build_yet"
+
+  artifacts:
+    - "safety-report.json"
+    - "gitleaks-report.json"
+    - "bandit-report.json"
+    - "trivy-report.json"
+
+  on_critical_vulnerability:
+    action: "block_pipeline"
+    notification:
+      - "Security team"
+      - "Tech lead"
+      - "#security-alerts Slack channel"
+
+# ============================================================================
+# Stage 4: Build
+# ============================================================================
+
+stage_build:
+  duration_target: "< 8 minutes"
+
+  steps:
+    - name: "Build Backend Docker Image"
+      command: |
+        docker build \
+          -t ablage-backend:${GIT_COMMIT_SHA} \
+          -t ablage-backend:latest \
+          -f docker/Dockerfile.backend .
+      cache:
+        enabled: true
+        key: "backend-${GIT_BRANCH}"
+
+    - name: "Build Worker Docker Image"
+      command: |
+        docker build \
+          -t ablage-worker:${GIT_COMMIT_SHA} \
+          -t ablage-worker:latest \
+          -f docker/Dockerfile.worker .
+      cache:
+        enabled: true
+        key: "worker-${GIT_BRANCH}"
+
+    - name: "Build Frontend Docker Image"
+      command: |
+        docker build \
+          -t ablage-frontend:${GIT_COMMIT_SHA} \
+          -t ablage-frontend:latest \
+          -f docker/Dockerfile.frontend .
+      cache:
+        enabled: true
+        key: "frontend-${GIT_BRANCH}"
+
+    - name: "Tag Images with Version"
+      command: |
+        docker tag ablage-backend:latest registry.company.de/ablage-backend:${VERSION}
+        docker tag ablage-worker:latest registry.company.de/ablage-worker:${VERSION}
+        docker tag ablage-frontend:latest registry.company.de/ablage-frontend:${VERSION}
+      condition: "if_tag_push"
+
+    - name: "Push to Registry"
+      command: |
+        docker push registry.company.de/ablage-backend:${VERSION}
+        docker push registry.company.de/ablage-worker:${VERSION}
+        docker push registry.company.de/ablage-frontend:${VERSION}
+      condition: "if_main_or_tag"
+
+  artifacts:
+    - "docker-build.log"
+    - "image-manifest.json"
+
+# ============================================================================
+# Stage 5: Deploy to Staging
+# ============================================================================
+
+stage_deploy_staging:
+  duration_target: "< 5 minutes"
+  environment: "staging"
+  requires_approval: false
+  condition: "if_main_branch_or_tag"
+
+  steps:
+    - name: "Pull Latest Images"
+      command: |
+        ssh staging-server "cd /opt/ablage && docker-compose pull"
+
+    - name: "Database Migrations"
+      command: |
+        ssh staging-server "cd /opt/ablage && docker-compose run --rm backend alembic upgrade head"
+      allow_failure: false
+
+    - name: "Rolling Update Backend"
+      command: |
+        ssh staging-server "cd /opt/ablage && docker-compose up -d --no-deps backend"
+      strategy: "rolling"
+      max_unavailable: 0
+
+    - name: "Rolling Update Workers"
+      command: |
+        ssh staging-server "cd /opt/ablage && docker-compose up -d --no-deps worker"
+      strategy: "rolling"
+      max_unavailable: 1
+
+    - name: "Update Frontend"
+      command: |
+        ssh staging-server "cd /opt/ablage && docker-compose up -d --no-deps frontend"
+
+    - name: "Health Check"
+      command: |
+        curl -f https://staging.ablage.company.de/health || exit 1
+      retries: 5
+      retry_delay: 10
+
+    - name: "Smoke Tests"
+      command: "pytest tests/smoke/ --env=staging"
+      allow_failure: false
+
+  on_failure:
+    action: "rollback_to_previous_version"
+    notification:
+      - "DevOps team"
+      - "#deployment-alerts Slack channel"
+
+  on_success:
+    notification:
+      - "#deployment-success Slack channel"
+    message: "Staging deployment successful. Version: ${VERSION}"
+
+# ============================================================================
+# Stage 6: Deploy to Production
+# ============================================================================
+
+stage_deploy_production:
+  duration_target: "< 15 minutes"
+  environment: "production"
+  requires_approval: true
+  approvers:
+    - "Tech Lead"
+    - "DevOps Lead"
+  condition: "if_tag_push"
+
+  pre_deployment_checks:
+    - name: "Verify Staging Health"
+      command: "curl -f https://staging.ablage.company.de/health"
+      required: true
+
+    - name: "Check Staging Error Rate"
+      query: "rate(http_requests_total{status='5xx',env='staging'}[1h])"
+      threshold: "< 0.01"
+      required: true
+
+    - name: "Verify Database Backup"
+      command: "check_backup_age.sh production"
+      max_age_hours: 6
+      required: true
+
+    - name: "Check Production Capacity"
+      metrics:
+        - cpu_usage: "< 70%"
+        - memory_usage: "< 80%"
+        - disk_usage: "< 85%"
+      required: true
+
+  deployment_strategy: "blue_green"
+
+  steps:
+    - name: "Create Backup (Blue Environment)"
+      command: |
+        ansible-playbook -i inventory/production playbooks/backup.yml
+      required: true
+
+    - name: "Deploy to Green Environment"
+      command: |
+        ansible-playbook -i inventory/production playbooks/deploy_green.yml \
+          --extra-vars "version=${VERSION}"
+      required: true
+
+    - name: "Run Database Migrations (Green)"
+      command: |
+        ansible-playbook -i inventory/production playbooks/migrate_green.yml
+      required: true
+      allow_failure: false
+
+    - name: "Warm Up Green Environment"
+      command: |
+        # Pre-load ML models
+        curl -X POST https://green.ablage.company.de/internal/warmup
+      duration: "2 minutes"
+
+    - name: "Health Check (Green)"
+      command: |
+        curl -f https://green.ablage.company.de/health
+      retries: 10
+      retry_delay: 10
+      required: true
+
+    - name: "Run Smoke Tests (Green)"
+      command: "pytest tests/smoke/ --env=production-green"
+      required: true
+      allow_failure: false
+
+    - name: "Canary Traffic (10%)"
+      command: |
+        ansible-playbook -i inventory/production playbooks/traffic_shift.yml \
+          --extra-vars "green_traffic=10"
+      duration: "10 minutes"
+      monitoring:
+        - "Watch error rates"
+        - "Watch response times"
+        - "Watch GPU memory"
+
+    - name: "Evaluate Canary Metrics"
+      checks:
+        - error_rate: "< 2x_baseline"
+        - p95_latency: "< 1.5x_baseline"
+        - gpu_oom_rate: "< 0.01"
+      action_if_failed: "rollback"
+
+    - name: "Shift Traffic to Green (100%)"
+      command: |
+        ansible-playbook -i inventory/production playbooks/traffic_shift.yml \
+          --extra-vars "green_traffic=100"
+
+    - name: "Monitor for 5 Minutes"
+      duration: "5 minutes"
+      watch:
+        - "Error rates"
+        - "Response times"
+        - "Database connections"
+        - "GPU usage"
+
+    - name: "Shutdown Blue Environment"
+      command: |
+        ansible-playbook -i inventory/production playbooks/shutdown_blue.yml
+      condition: "if_green_stable"
+
+  rollback_procedure:
+    triggers:
+      - "Health check failures"
+      - "Error rate > 2x baseline"
+      - "Manual trigger by approver"
+
+    steps:
+      - name: "Shift Traffic Back to Blue"
+        command: |
+          ansible-playbook -i inventory/production playbooks/traffic_shift.yml \
+            --extra-vars "green_traffic=0"
+        duration: "< 30 seconds"
+
+      - name: "Shutdown Green Environment"
+        command: |
+          ansible-playbook -i inventory/production playbooks/shutdown_green.yml
+
+      - name: "Notify Team"
+        notification:
+          - "All engineers on-call"
+          - "#incident-response Slack channel"
+        message: "Production deployment rolled back. Version: ${VERSION}"
+
+  on_success:
+    actions:
+      - "Tag deployment in monitoring"
+      - "Update deployment tracking"
+      - "Send success notification"
+
+    notifications:
+      - channel: "#deployment-success"
+        message: |
+          🚀 Production Deployment Successful
+
+          Version: ${VERSION}
+          Deployed by: ${DEPLOYER}
+          Duration: ${DURATION}
+
+          Changes: ${CHANGELOG_URL}
+
+      - email: "engineering@company.de"
+        subject: "Production Deployment: ${VERSION}"
+
+  on_failure:
+    actions:
+      - "Create incident"
+      - "Page on-call engineer"
+      - "Preserve logs"
+
+    notifications:
+      - channel: "#incident-response"
+        message: |
+          🚨 Production Deployment Failed
+
+          Version: ${VERSION}
+          Stage: ${FAILED_STAGE}
+          Error: ${ERROR_MESSAGE}
+
+          Incident created: ${INCIDENT_URL}
+
+# ============================================================================
+# Stage 7: Post-Deployment Verification
+# ============================================================================
+
+stage_post_deployment:
+  duration: "30 minutes after deployment"
+
+  checks:
+    - name: "Monitor Error Rates"
+      query: "rate(http_requests_total{status='5xx'}[5m])"
+      threshold: "< 0.01"
+      check_interval: "1 minute"
+
+    - name: "Monitor Response Times"
+      query: "histogram_quantile(0.95, ocr_processing_duration_seconds)"
+      threshold: "< 2000ms"
+      check_interval: "1 minute"
+
+    - name: "Monitor GPU Memory"
+      query: "gpu_memory_usage_bytes / gpu_memory_total_bytes"
+      threshold: "< 0.85"
+      check_interval: "30 seconds"
+
+    - name: "Monitor Database Connections"
+      query: "db_connections_active"
+      threshold: "< 80% of pool"
+      check_interval: "1 minute"
+
+    - name: "Check for New Sentry Errors"
+      tool: "sentry"
+      new_errors_threshold: 0
+      check_interval: "5 minutes"
+
+  on_anomaly_detected:
+    actions:
+      - "Alert on-call engineer"
+      - "Prepare rollback plan"
+      - "Increase monitoring frequency"
+
+# ============================================================================
+# Pipeline Configuration
+# ============================================================================
+
+configuration:
+  max_pipeline_duration: "45 minutes"
+  concurrent_pipelines: 3
+
+  notifications:
+    slack_channels:
+      success: "#deployment-success"
+      failure: "#deployment-failed"
+      critical: "#incident-response"
+
+  artifact_retention:
+    test_results: "90 days"
+    docker_images: "30 days"
+    security_scans: "180 days"
+    logs: "30 days"
+
+  environment_variables:
+    from_secrets:
+      - DOCKER_REGISTRY_TOKEN
+      - SENTRY_DSN
+      - DATABASE_PASSWORD
+      - STAGING_SSH_KEY
+      - PRODUCTION_SSH_KEY
+
+# ============================================================================
+# Metrics & Monitoring
+# ============================================================================
+
+pipeline_metrics:
+  tracked_metrics:
+    - pipeline_duration_seconds
+    - pipeline_success_rate
+    - test_coverage_percent
+    - deployment_frequency
+    - mean_time_to_recovery
+    - change_failure_rate
+
+  targets:
+    deployment_frequency: "> 1 per day"
+    pipeline_success_rate: "> 95%"
+    mean_time_to_recovery: "< 30 minutes"
+    change_failure_rate: "< 5%"
+
+related_files:
+  - "Static_Knowledge/SOPs/001_installing_ocr_backends.md"
+  - "Relations/Playbooks/error_response_playbook.yaml"
+  - "Static_Knowledge/Skills/backup_disaster_recovery_skill.yaml"
+  - "Dynamic_Knowledge/Logs/implementation_log.jsonl"
+
+tags:
+  - ci_cd
+  - deployment
+  - devops
+  - automation
+  - blue_green
+  - testing

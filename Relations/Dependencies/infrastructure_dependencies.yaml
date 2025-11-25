@@ -1,0 +1,498 @@
+# Infrastructure Dependencies Map
+
+dependency_map_id: infrastructure_deps_001
+category: infrastructure
+last_updated: "2025-11-22"
+status: production
+
+description: |
+  Complete infrastructure dependency mapping for Ablage-System.
+  Includes services, external dependencies, network topology, and failure scenarios.
+
+# ============================================================================
+# Service Dependency Graph
+# ============================================================================
+
+services:
+  backend_api:
+    name: "FastAPI Backend"
+    type: "application_server"
+    instances: 3
+    port: 8000
+
+    depends_on:
+      required:
+        - service: postgres
+          connection: "postgresql://postgres:5432/ablage_system"
+          pool_size: 20
+          failure_impact: "critical"
+          fallback: "read_only_mode"
+
+        - service: redis
+          connection: "redis://redis:6379/0"
+          failure_impact: "high"
+          fallback: "no_cache_mode"
+
+        - service: minio
+          connection: "http://minio:9000"
+          failure_impact: "high"
+          fallback: "upload_disabled"
+
+      optional:
+        - service: elasticsearch
+          connection: "http://elasticsearch:9200"
+          failure_impact: "medium"
+          fallback: "no_search"
+
+    resource_requirements:
+      cpu: "2 cores"
+      memory: "4 GB"
+      disk: "10 GB"
+      network: "100 Mbps"
+
+    health_check:
+      endpoint: "/health"
+      interval: 30
+      timeout: 5
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+
+  celery_worker:
+    name: "Celery Worker (GPU)"
+    type: "background_processor"
+    instances: 2
+    gpu_required: true
+
+    depends_on:
+      required:
+        - service: redis
+          connection: "redis://redis:6379/1"  # Different DB for Celery
+          role: "message_broker"
+          failure_impact: "critical"
+          fallback: "none"
+
+        - service: postgres
+          connection: "postgresql://postgres:5432/ablage_system"
+          pool_size: 10
+          failure_impact: "critical"
+          fallback: "none"
+
+        - service: minio
+          connection: "http://minio:9000"
+          failure_impact: "critical"
+          fallback: "none"
+
+        - service: gpu
+          type: "NVIDIA RTX 4080"
+          vram: "16 GB"
+          failure_impact: "critical"
+          fallback: "cpu_processing"
+
+    resource_requirements:
+      cpu: "8 cores"
+      memory: "32 GB"
+      gpu_vram: "16 GB"
+      disk: "50 GB"  # For model storage
+
+  postgres:
+    name: "PostgreSQL Database"
+    type: "database"
+    instances: 1
+    port: 5432
+    version: "16"
+
+    depends_on:
+      required:
+        - service: storage_volume
+          type: "persistent_volume"
+          size: "500 GB"
+          failure_impact: "critical"
+          backup: "required"
+
+    resource_requirements:
+      cpu: "4 cores"
+      memory: "16 GB"
+      disk: "500 GB SSD"
+      iops: "10000"
+
+    backup_strategy:
+      frequency: "every_6_hours"
+      retention: "90_days"
+      location: "offsite_backup_server"
+
+  redis:
+    name: "Redis Cache & Queue"
+    type: "cache_and_message_broker"
+    instances: 1
+    port: 6379
+    version: "7.2"
+
+    depends_on:
+      optional:
+        - service: storage_volume
+          type: "persistent_volume"
+          size: "10 GB"
+          persistence: "aof"
+
+    resource_requirements:
+      cpu: "2 cores"
+      memory: "4 GB"
+      disk: "10 GB"
+
+    configuration:
+      max_memory: "3 GB"
+      max_memory_policy: "allkeys-lru"
+      appendonly: "yes"
+
+  minio:
+    name: "MinIO Object Storage"
+    type: "object_storage"
+    instances: 1
+    ports: [9000, 9001]
+    version: "latest"
+
+    depends_on:
+      required:
+        - service: storage_volume
+          type: "persistent_volume"
+          size: "2 TB"
+          failure_impact: "critical"
+
+    resource_requirements:
+      cpu: "2 cores"
+      memory: "8 GB"
+      disk: "2 TB"
+
+    configuration:
+      encryption: "AES-256"
+      versioning: "enabled"
+
+  nginx:
+    name: "Nginx Reverse Proxy"
+    type: "load_balancer"
+    instances: 2
+    ports: [80, 443]
+
+    depends_on:
+      required:
+        - service: backend_api
+          connection: "http://backend:8000"
+          load_balancing: "round_robin"
+
+        - service: frontend
+          connection: "http://frontend:3000"
+
+      optional:
+        - service: prometheus
+          connection: "http://prometheus:9090"
+          access: "admin_only"
+
+    resource_requirements:
+      cpu: "1 core"
+      memory: "1 GB"
+      disk: "5 GB"
+
+    ssl_configuration:
+      certificate: "Let's Encrypt"
+      auto_renewal: true
+      tls_version: "1.3"
+
+# ============================================================================
+# External Dependencies
+# ============================================================================
+
+external_dependencies:
+  nvidia_drivers:
+    name: "NVIDIA GPU Drivers"
+    version: "535.129.03"
+    required_for:
+      - celery_worker
+    failure_impact: "critical"
+    fallback: "cpu_only_mode"
+
+  cuda:
+    name: "CUDA Toolkit"
+    version: "12.1"
+    required_for:
+      - celery_worker
+    depends_on:
+      - nvidia_drivers
+
+  python:
+    name: "Python Runtime"
+    version: "3.11.7"
+    required_for:
+      - backend_api
+      - celery_worker
+
+  docker:
+    name: "Docker Engine"
+    version: "24.0.7"
+    required_for: "all_services"
+
+  docker_compose:
+    name: "Docker Compose"
+    version: "2.23.0"
+    required_for: "orchestration"
+
+  ml_models:
+    deepseek_janus_pro:
+      size: "11.8 GB"
+      location: "/models/deepseek-janus-pro"
+      required_for: "ocr_processing"
+      download_url: "https://huggingface.co/deepseek/janus-pro"
+
+    got_ocr_2:
+      size: "9.2 GB"
+      location: "/models/got-ocr-2.0"
+      required_for: "ocr_processing"
+      download_url: "https://huggingface.co/ucaslcl/GOT-OCR2_0"
+
+    surya_docling:
+      size: "3.2 GB"
+      location: "/models/surya-docling"
+      required_for: "ocr_processing"
+      download_url: "https://github.com/VikParuchuri/surya"
+
+# ============================================================================
+# Network Topology
+# ============================================================================
+
+network_topology:
+  networks:
+    frontend_network:
+      subnet: "172.20.0.0/24"
+      gateway: "172.20.0.1"
+      services:
+        - nginx
+        - frontend
+
+    backend_network:
+      subnet: "172.21.0.0/24"
+      gateway: "172.21.0.1"
+      services:
+        - backend_api
+        - celery_worker
+
+    data_network:
+      subnet: "172.22.0.0/24"
+      gateway: "172.22.0.1"
+      services:
+        - postgres
+        - redis
+        - minio
+
+  firewall_rules:
+    - name: "Allow HTTP/HTTPS"
+      source: "0.0.0.0/0"
+      destination: "nginx"
+      ports: [80, 443]
+      protocol: "tcp"
+
+    - name: "Allow Backend API"
+      source: "nginx"
+      destination: "backend_api"
+      ports: [8000]
+      protocol: "tcp"
+
+    - name: "Block Direct Database Access"
+      source: "0.0.0.0/0"
+      destination: "postgres"
+      ports: [5432]
+      action: "deny"
+
+    - name: "Allow Internal Database Access"
+      source: ["backend_api", "celery_worker"]
+      destination: "postgres"
+      ports: [5432]
+      protocol: "tcp"
+
+# ============================================================================
+# Failure Scenarios & Impact Analysis
+# ============================================================================
+
+failure_scenarios:
+  postgres_failure:
+    probability: "low"
+    impact: "critical"
+    affected_services:
+      - backend_api: "read_only_mode"
+      - celery_worker: "stop_processing"
+
+    immediate_actions:
+      - "Switch to read-only mode"
+      - "Serve cached data via Redis"
+      - "Alert DBA team"
+      - "Begin restoration procedure"
+
+    recovery_time_objective: "2 hours"
+    recovery_point_objective: "6 hours"
+
+    recovery_procedure:
+      - "Restore from latest backup"
+      - "Replay WAL logs"
+      - "Verify data integrity"
+      - "Switch back to read-write mode"
+
+  redis_failure:
+    probability: "medium"
+    impact: "high"
+    affected_services:
+      - backend_api: "no_cache_degraded_performance"
+      - celery_worker: "queue_unavailable"
+
+    immediate_actions:
+      - "Disable caching in backend"
+      - "Direct database queries (slower)"
+      - "Stop enqueueing new tasks"
+      - "Restart Redis from AOF"
+
+    recovery_time_objective: "30 minutes"
+
+  minio_failure:
+    probability: "low"
+    impact: "high"
+    affected_services:
+      - backend_api: "upload_disabled"
+      - celery_worker: "cannot_access_documents"
+
+    immediate_actions:
+      - "Disable document upload endpoint"
+      - "Serve documents from cache if available"
+      - "Alert storage team"
+      - "Begin restoration"
+
+    recovery_time_objective: "1 hour"
+
+  gpu_failure:
+    probability: "medium"
+    impact: "high"
+    affected_services:
+      - celery_worker: "fallback_to_cpu"
+
+    immediate_actions:
+      - "Switch to CPU-only OCR backend (Surya)"
+      - "Reduce throughput expectations"
+      - "Monitor CPU usage"
+      - "Check GPU hardware status"
+
+    recovery_time_objective: "4 hours"  # Hardware replacement time
+
+    fallback_backend_selection:
+      - "Use Surya+Docling (CPU-only)"
+      - "Process at reduced speed (1.2 pages/s vs 5.5 pages/s)"
+      - "Queue builds up, process overnight"
+
+  network_partition:
+    probability: "low"
+    impact: "critical"
+    scenarios:
+      - name: "Backend isolated from Database"
+        impact: "complete_outage"
+        mitigation: "none"
+
+      - name: "Worker isolated from Queue"
+        impact: "processing_halted"
+        mitigation: "manual_processing_via_api"
+
+  complete_server_failure:
+    probability: "very_low"
+    impact: "critical"
+    affected_services: "all"
+
+    recovery_procedure:
+      - "Provision new server (1 hour)"
+      - "Restore PostgreSQL from offsite backup (1 hour)"
+      - "Restore MinIO from offsite backup (2 hours)"
+      - "Deploy application (30 minutes)"
+      - "Verify functionality (30 minutes)"
+
+    recovery_time_objective: "5 hours"
+    recovery_point_objective: "6 hours"
+
+# ============================================================================
+# Dependency Health Monitoring
+# ============================================================================
+
+monitoring:
+  health_checks:
+    frequency: "every_30_seconds"
+
+    checks:
+      - service: postgres
+        query: "SELECT 1"
+        timeout: 5
+
+      - service: redis
+        command: "PING"
+        timeout: 2
+
+      - service: minio
+        endpoint: "http://minio:9000/minio/health/live"
+        timeout: 5
+
+      - service: backend_api
+        endpoint: "http://backend:8000/health"
+        timeout: 3
+
+  alerts:
+    - name: "Service Down"
+      condition: "health_check_failed"
+      severity: "critical"
+      notification: ["pagerduty", "slack"]
+
+    - name: "Dependency Degraded"
+      condition: "response_time > 2x baseline"
+      severity: "warning"
+      notification: ["slack"]
+
+    - name: "Cascading Failure Detected"
+      condition: "multiple_services_failing"
+      severity: "critical"
+      notification: ["pagerduty", "phone", "slack"]
+
+# ============================================================================
+# Capacity Planning
+# ============================================================================
+
+capacity:
+  current_load:
+    documents_per_day: 500
+    concurrent_users: 20
+    storage_used_gb: 250
+
+  projected_growth:
+    documents_per_day:
+      3_months: 750
+      6_months: 1000
+      1_year: 1500
+
+  scaling_triggers:
+    postgres:
+      trigger: "connections > 80% of pool"
+      action: "increase_pool_size"
+
+    backend_api:
+      trigger: "cpu > 70%"
+      action: "add_instance"
+
+    minio:
+      trigger: "storage > 85%"
+      action: "expand_storage"
+
+    celery_worker:
+      trigger: "queue_length > 100"
+      action: "add_worker_instance"
+
+related_files:
+  - "Static_Knowledge/Skills/backup_disaster_recovery_skill.yaml"
+  - "Static_Knowledge/Skills/monitoring_observability_skill.yaml"
+  - "Relations/Decision_Trees/backend_selection_tree.yaml"
+  - "Relations/Workflows/ci_cd_pipeline.yaml"
+
+tags:
+  - infrastructure
+  - dependencies
+  - monitoring
+  - disaster_recovery
+  - capacity_planning

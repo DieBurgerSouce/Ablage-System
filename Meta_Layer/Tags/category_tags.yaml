@@ -1,0 +1,66 @@
+# Category Tags for Knowledge Organization
+
+tags:
+  by_technology:
+    - pytorch
+    - fastapi
+    - sqlalchemy
+    - celery
+    - redis
+    - postgresql
+    - minio
+    - docker
+    - cuda
+    - transformers
+
+  by_domain:
+    - ocr
+    - german_processing
+    - gpu_management
+    - template_extraction
+    - gdpr_compliance
+    - monitoring
+    - security
+
+  by_phase:
+    - phase_0_foundation
+    - phase_1_core
+    - phase_2_integration
+    - phase_3_production
+
+  by_priority:
+    - critical
+    - high
+    - medium
+    - low
+
+  by_status:
+    - implemented
+    - in_progress
+    - planned
+    - deprecated
+
+tag_mappings:
+  gpu_management:
+    files:
+      - "Static_Knowledge/Skills/gpu_management_skill.yaml"
+      - "Static_Knowledge/Snippets/gpu_memory_patterns.py"
+      - "Static_Knowledge/SOPs/002_handling_gpu_oom_error.md"
+      - "Dynamic_Knowledge/Learnings/gpu_oom_learnings.md"
+      - "app/gpu_manager.py"
+    tags: [pytorch, cuda, gpu_management, critical, implemented]
+
+  german_processing:
+    files:
+      - "Static_Knowledge/Skills/german_text_processing_skill.yaml"
+      - "Static_Knowledge/Snippets/german_validation_snippets.py"
+      - "Static_Knowledge/Glossar/business_terms_de.yaml"
+      - "Dynamic_Knowledge/Learnings/german_ocr_challenges.md"
+      - "app/german_validator.py"
+    tags: [german_processing, ocr, critical, implemented]
+
+  gdpr_compliance:
+    files:
+      - "Static_Knowledge/Snippets/gdpr_logging_patterns.py"
+      - "app/core/gdpr.py"
+    tags: [gdpr_compliance, security, high, implemented]

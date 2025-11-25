@@ -1,0 +1,823 @@
+# Troubleshooting Index - Ablage-System
+# Complete index of all troubleshooting resources organized by category
+# Version: 1.0.0
+# Last Updated: 2025-11-22
+
+metadata:
+  title: "Ablage-System Troubleshooting Index"
+  description: "Central index for all troubleshooting resources, error codes, and recovery procedures"
+  version: "1.0.0"
+  last_updated: "2025-11-22"
+  owner: "Operations Team"
+  review_cycle: "monthly"
+
+# ============================================================================
+# 1. API Errors & HTTP Status Codes
+# ============================================================================
+
+api_errors:
+  authentication_errors:
+    - error_code: "INVALID_TOKEN"
+      http_status: 401
+      description: "JWT token is invalid or malformed"
+      troubleshooting: "Relations/Playbooks/api_error_debugging_playbook.yaml#401-unauthorized"
+      common_causes:
+        - "Token expired (> 15 minutes)"
+        - "Invalid signature"
+        - "Token format incorrect"
+      resolution_steps:
+        - "Check token expiration timestamp"
+        - "Verify JWT_SECRET_KEY matches token generation"
+        - "Request new token via /api/v1/auth/refresh"
+      related:
+        - "Execution_Layer/Validators/api_request_validator.py:477"
+        - "Static_Knowledge/Skills/error_handling_skill.yaml"
+
+    - error_code: "TOKEN_EXPIRED"
+      http_status: 401
+      description: "JWT token has expired"
+      troubleshooting: "Relations/Playbooks/api_error_debugging_playbook.yaml#401-unauthorized"
+      common_causes:
+        - "Token older than 15 minutes"
+        - "System clock skew"
+      resolution_steps:
+        - "Use refresh token to get new access token"
+        - "Check system time synchronization (NTP)"
+        - "Verify token lifetime configuration"
+      auto_recovery: true
+      recovery_action: "Use refresh token endpoint"
+
+    - error_code: "MISSING_TOKEN"
+      http_status: 401
+      description: "No Authorization header provided"
+      troubleshooting: "Relations/Playbooks/api_error_debugging_playbook.yaml#401-unauthorized"
+      common_causes:
+        - "Authorization header not sent"
+        - "Header format incorrect (not 'Bearer <token>')"
+      resolution_steps:
+        - "Add Authorization: Bearer <token> header"
+        - "Check client authentication middleware"
+
+  authorization_errors:
+    - error_code: "PERMISSION_DENIED"
+      http_status: 403
+      description: "User lacks permission for requested resource"
+      troubleshooting: "Relations/Playbooks/api_error_debugging_playbook.yaml#403-forbidden"
+      common_causes:
+        - "Insufficient user role (free vs enterprise vs admin)"
+        - "Document not owned by user"
+        - "Feature requires higher tier"
+      resolution_steps:
+        - "Check user role: GET /api/v1/users/me"
+        - "Verify document ownership"
+        - "Upgrade user tier if needed"
+      related:
+        - "Meta_Layer/MOCs/SECURITY_MOC.md#authorization-rbac"
+
+  validation_errors:
+    - error_code: "VALIDATION_ERROR"
+      http_status: 422
+      description: "Request body failed Pydantic validation"
+      troubleshooting: "Relations/Playbooks/api_error_debugging_playbook.yaml#400-bad-request"
+      common_causes:
+        - "Missing required fields"
+        - "Invalid data types"
+        - "Failed custom validators (IBAN, USt-IdNr, etc.)"
+      resolution_steps:
+        - "Check error.errors[] for specific field failures"
+        - "Validate against Pydantic schema"
+        - "Test with minimal valid payload"
+      related:
+        - "Execution_Layer/Validators/api_request_validator.py:85"
+        - "Static_Knowledge/Skills/error_handling_skill.yaml"
+
+    - error_code: "SUSPICIOUS_CONTENT"
+      http_status: 400
+      description: "Input contains suspicious patterns (XSS, SQLi, etc.)"
+      troubleshooting: "Relations/Playbooks/api_error_debugging_playbook.yaml#400-bad-request"
+      common_causes:
+        - "User input contains HTML/JavaScript"
+        - "SQL keywords detected"
+        - "Path traversal patterns (../)"
+      resolution_steps:
+        - "Sanitize user input"
+        - "Remove special characters"
+        - "Use parameterized queries"
+      severity: "high"
+      auto_block: true
+      related:
+        - "Meta_Layer/MOCs/SECURITY_MOC.md#suspicious-pattern-detection"
+
+  rate_limiting_errors:
+    - error_code: "RATE_LIMIT_EXCEEDED"
+      http_status: 429
+      description: "User exceeded rate limit for their tier"
+      troubleshooting: "Relations/Playbooks/api_error_debugging_playbook.yaml#429-rate-limit"
+      common_causes:
+        - "Too many requests in time window"
+        - "Polling API too frequently"
+        - "Batch operations without delay"
+      resolution_steps:
+        - "Wait for X-RateLimit-Reset timestamp"
+        - "Implement exponential backoff"
+        - "Upgrade to higher tier"
+        - "Use webhooks instead of polling"
+      rate_limits_by_tier:
+        free: "10 req/min"
+        standard: "60 req/min"
+        enterprise: "300 req/min"
+        admin: "1000 req/min"
+      related:
+        - "Execution_Layer/Validators/api_request_validator.py:389"
+        - "Meta_Layer/MOCs/SECURITY_MOC.md#rate-limiting"
+
+  resource_errors:
+    - error_code: "DOCUMENT_NOT_FOUND"
+      http_status: 404
+      description: "Requested document does not exist"
+      troubleshooting: "Relations/Playbooks/api_error_debugging_playbook.yaml#404-not-found"
+      common_causes:
+        - "Invalid document ID"
+        - "Document deleted"
+        - "User lacks access permission"
+      resolution_steps:
+        - "Verify document ID format (uuid)"
+        - "Check document ownership"
+        - "Query document list: GET /api/v1/documents"
+
+    - error_code: "REQUEST_TOO_LARGE"
+      http_status: 413
+      description: "Request body exceeds size limit"
+      troubleshooting: "Relations/Playbooks/api_error_debugging_playbook.yaml#400-bad-request"
+      common_causes:
+        - "File too large for user tier"
+        - "Metadata exceeds limits"
+      resolution_steps:
+        - "Check file size: free=10MB, standard=25MB, enterprise=50MB"
+        - "Compress PDF before upload"
+        - "Split large documents"
+      related:
+        - "Execution_Layer/Validators/api_request_validator.py:360"
+
+# ============================================================================
+# 2. OCR Processing Errors
+# ============================================================================
+
+ocr_errors:
+  gpu_errors:
+    - error_code: "GPU_OOM"
+      description: "GPU out of memory during OCR processing"
+      troubleshooting: "Dynamic_Knowledge/Learnings/celery_task_optimization.md#gpu-oom-handling"
+      symptoms:
+        - "torch.cuda.OutOfMemoryError"
+        - "CUDA error: out of memory"
+        - "Worker crashes mid-processing"
+      common_causes:
+        - "Batch size too large"
+        - "Model not unloaded after processing"
+        - "Memory leak in GPU code"
+        - "Multiple workers using same GPU"
+      resolution_steps:
+        - "Reduce batch size dynamically"
+        - "Clear CUDA cache: torch.cuda.empty_cache()"
+        - "Use --pool=solo for Celery GPU workers"
+        - "Monitor VRAM: nvidia-smi"
+        - "Fallback to CPU processing"
+      auto_recovery: true
+      recovery_action: "Reduce batch size and retry"
+      prevention:
+        - "Set batch_size_reducer in config"
+        - "Monitor VRAM usage: Relations/Hooks/system_health_hooks.yaml"
+        - "Use FP16 mixed precision"
+      related:
+        - "Dynamic_Knowledge/Logs/gpu_metrics_log.jsonl"
+        - "Relations/Decision_Trees/gpu_resource_allocation_tree.yaml"
+
+    - error_code: "GPU_NOT_AVAILABLE"
+      description: "GPU not detected or CUDA not available"
+      troubleshooting: "Relations/Playbooks/api_error_debugging_playbook.yaml#503-service-unavailable"
+      symptoms:
+        - "torch.cuda.is_available() returns False"
+        - "CUDA_VISIBLE_DEVICES not set"
+        - "nvidia-smi fails"
+      common_causes:
+        - "NVIDIA drivers not installed"
+        - "CUDA toolkit mismatch"
+        - "Docker GPU passthrough not configured"
+        - "GPU reserved by another process"
+      resolution_steps:
+        - "Check CUDA: python -c 'import torch; print(torch.cuda.is_available())'"
+        - "Verify drivers: nvidia-smi"
+        - "Check Docker GPU: docker run --gpus all nvidia/cuda:12.0-base nvidia-smi"
+        - "Restart CUDA services"
+        - "Fallback to CPU: set OCR_BACKEND=surya"
+      fallback_available: true
+      fallback_backend: "surya"
+
+  backend_errors:
+    - error_code: "OCR_PROCESSING_FAILED"
+      description: "OCR backend failed to process document"
+      troubleshooting: "Relations/Playbooks/api_error_debugging_playbook.yaml#ocr-processing-failures"
+      common_causes:
+        - "Corrupted PDF"
+        - "Unsupported file format"
+        - "Image quality too low"
+        - "Backend timeout"
+      resolution_steps:
+        - "Validate PDF: pdfinfo <file>"
+        - "Convert to PNG and retry"
+        - "Try different backend: deepseek -> got_ocr -> surya"
+        - "Check Celery worker logs"
+      backend_selection:
+        deepseek: "Best for complex layouts, tables, Fraktur"
+        got_ocr: "Fast, good for simple documents"
+        surya: "CPU fallback, good for layout analysis"
+      related:
+        - "Dynamic_Knowledge/Experiments/ocr_backend_comparison.md"
+
+    - error_code: "BACKEND_TIMEOUT"
+      description: "OCR backend exceeded timeout"
+      troubleshooting: "Dynamic_Knowledge/Learnings/celery_task_optimization.md"
+      symptoms:
+        - "Celery SoftTimeLimitExceeded"
+        - "Task stuck in 'started' state"
+      common_causes:
+        - "Very large document (> 100 pages)"
+        - "High resolution images"
+        - "GPU busy with other tasks"
+      resolution_steps:
+        - "Increase task timeout: @task(time_limit=600)"
+        - "Split document into chunks"
+        - "Use faster backend (got_ocr)"
+        - "Check GPU utilization"
+      timeout_defaults:
+        deepseek: "300s (5 min)"
+        got_ocr: "180s (3 min)"
+        surya: "600s (10 min)"
+
+  quality_errors:
+    - error_code: "LOW_CONFIDENCE_OCR"
+      description: "OCR results have low confidence score"
+      troubleshooting: "Dynamic_Knowledge/Experiments/ocr_backend_comparison.md"
+      symptoms:
+        - "Confidence < 0.7"
+        - "Many gibberish words"
+        - "Missing text sections"
+      common_causes:
+        - "Poor image quality"
+        - "Handwritten text"
+        - "Unusual fonts (Fraktur without proper backend)"
+        - "Skewed or rotated images"
+      resolution_steps:
+        - "Preprocess image: denoise, deskew, enhance contrast"
+        - "Use DeepSeek for Fraktur fonts"
+        - "Increase image resolution (min 300 DPI)"
+        - "Manual review for critical documents"
+      quality_thresholds:
+        acceptable: "> 0.85"
+        review_required: "0.70 - 0.85"
+        reject: "< 0.70"
+
+# ============================================================================
+# 3. Database Errors
+# ============================================================================
+
+database_errors:
+  connection_errors:
+    - error_code: "DATABASE_CONNECTION_FAILED"
+      description: "Unable to connect to PostgreSQL"
+      troubleshooting: "Static_Knowledge/SOPs/005_database_backup_restore.md"
+      symptoms:
+        - "asyncpg.exceptions.CannotConnectNowError"
+        - "Connection refused"
+        - "Timeout connecting to database"
+      common_causes:
+        - "PostgreSQL not running"
+        - "Incorrect connection credentials"
+        - "Network connectivity issue"
+        - "Max connections reached"
+      resolution_steps:
+        - "Check PostgreSQL status: systemctl status postgresql"
+        - "Verify credentials in DATABASE_URL"
+        - "Check connection count: SELECT count(*) FROM pg_stat_activity"
+        - "Increase max_connections if needed"
+        - "Check firewall rules"
+      monitoring:
+        - "Relations/Hooks/system_health_hooks.yaml#database-health"
+
+    - error_code: "CONNECTION_POOL_EXHAUSTED"
+      description: "All database connections in use"
+      troubleshooting: "Static_Knowledge/Skills/error_handling_skill.yaml"
+      symptoms:
+        - "QueuePool limit exceeded"
+        - "Timeout waiting for connection"
+      common_causes:
+        - "Connections not closed properly"
+        - "Pool size too small for load"
+        - "Long-running transactions"
+      resolution_steps:
+        - "Increase pool_size in SQLAlchemy config"
+        - "Check for connection leaks"
+        - "Set statement_timeout in PostgreSQL"
+        - "Review slow queries: pg_stat_statements"
+      recommended_settings:
+        pool_size: 20
+        max_overflow: 40
+        pool_timeout: 30
+        pool_recycle: 3600
+
+  migration_errors:
+    - error_code: "MIGRATION_FAILED"
+      description: "Alembic migration failed"
+      troubleshooting: "Execution_Layer/Runners/data_migration_runner.py"
+      symptoms:
+        - "Alembic command error"
+        - "Schema mismatch"
+        - "Constraint violation"
+      common_causes:
+        - "Incompatible schema changes"
+        - "Missing dependencies between migrations"
+        - "Data conflicts"
+      resolution_steps:
+        - "Run with --dry-run first"
+        - "Check health checks passed"
+        - "Review migration SQL"
+        - "Restore from backup if needed: pg_restore"
+      safety_features:
+        - "Automatic backup before migration"
+        - "Rollback on failure"
+        - "Health checks before execution"
+      related:
+        - "Execution_Layer/Runners/data_migration_runner.py"
+        - "Static_Knowledge/SOPs/005_database_backup_restore.md"
+
+  data_errors:
+    - error_code: "INTEGRITY_ERROR"
+      description: "Database constraint violation"
+      troubleshooting: "Static_Knowledge/Skills/error_handling_skill.yaml"
+      symptoms:
+        - "UniqueViolation"
+        - "ForeignKeyViolation"
+        - "NotNullViolation"
+      common_causes:
+        - "Duplicate key insertion"
+        - "Referenced record doesn't exist"
+        - "Required field null"
+      resolution_steps:
+        - "Check constraint name in error"
+        - "Query existing data for conflicts"
+        - "Use ON CONFLICT for upserts"
+        - "Validate data before insert"
+
+# ============================================================================
+# 4. Redis/Cache Errors
+# ============================================================================
+
+redis_errors:
+  - error_code: "REDIS_CONNECTION_FAILED"
+    description: "Unable to connect to Redis"
+    troubleshooting: "Relations/Hooks/system_health_hooks.yaml#redis-health"
+    symptoms:
+      - "redis.exceptions.ConnectionError"
+      - "Error connecting to Redis server"
+    common_causes:
+      - "Redis not running"
+      - "Incorrect REDIS_URL"
+      - "Network issue"
+      - "Redis maxclients reached"
+    resolution_steps:
+      - "Check Redis status: redis-cli ping"
+      - "Verify REDIS_URL configuration"
+      - "Check Redis logs: /var/log/redis/redis.log"
+      - "Restart Redis if needed"
+    impact: "High (affects caching and Celery)"
+
+  - error_code: "CACHE_MISS"
+    description: "Requested key not found in cache"
+    troubleshooting: "N/A (normal operation)"
+    common_causes:
+      - "Key expired (TTL reached)"
+      - "Key never set"
+      - "Redis restarted (non-persistent)"
+    resolution_steps:
+      - "Fetch from database"
+      - "Repopulate cache"
+    severity: "low"
+    expected: true
+
+# ============================================================================
+# 5. Celery/Task Queue Errors
+# ============================================================================
+
+celery_errors:
+  - error_code: "TASK_TIMEOUT"
+    description: "Celery task exceeded time limit"
+    troubleshooting: "Dynamic_Knowledge/Learnings/celery_task_optimization.md"
+    symptoms:
+      - "SoftTimeLimitExceeded"
+      - "Task stuck in 'started' state"
+    common_causes:
+      - "Long-running OCR processing"
+      - "Slow database queries"
+      - "Network timeouts"
+    resolution_steps:
+      - "Increase time_limit for task"
+      - "Break task into smaller chunks"
+      - "Add progress checkpoints"
+      - "Check worker logs"
+    related:
+      - "Dynamic_Knowledge/Learnings/celery_task_optimization.md#lesson-3-timeout-management"
+
+  - error_code: "WORKER_OFFLINE"
+    description: "No Celery workers available"
+    troubleshooting: "Relations/Hooks/system_health_hooks.yaml#celery-health"
+    symptoms:
+      - "Tasks queued but not processing"
+      - "celery inspect active returns empty"
+    common_causes:
+      - "Worker crashed"
+      - "Worker stopped manually"
+      - "OOM killed worker"
+    resolution_steps:
+      - "Check worker status: celery -A app.celery inspect active"
+      - "Review worker logs"
+      - "Restart worker: systemctl restart celery-worker"
+      - "Check system resources (RAM, CPU)"
+
+  - error_code: "TASK_RETRY_EXCEEDED"
+    description: "Task failed max retry attempts"
+    troubleshooting: "Dynamic_Knowledge/Learnings/celery_task_optimization.md#lesson-2-smart-retry"
+    symptoms:
+      - "Task moved to failed queue"
+      - "Max retries exceeded error"
+    common_causes:
+      - "Persistent error (not transient)"
+      - "Misconfigured retry policy"
+      - "Resource permanently unavailable"
+    resolution_steps:
+      - "Review task error logs"
+      - "Check if error is transient or permanent"
+      - "Adjust retry policy if needed"
+      - "Move to DLQ (dead letter queue) for manual review"
+
+# ============================================================================
+# 6. Infrastructure Errors
+# ============================================================================
+
+infrastructure_errors:
+  docker_errors:
+    - error_code: "CONTAINER_OOM"
+      description: "Docker container killed due to OOM"
+      troubleshooting: "Meta_Layer/MOCs/SECURITY_MOC.md#container-security"
+      symptoms:
+        - "Container exits with code 137"
+        - "dmesg shows OOM killer"
+      common_causes:
+        - "Memory limit too low"
+        - "Memory leak in application"
+        - "Batch processing too large"
+      resolution_steps:
+        - "Increase container memory: --memory=8g"
+        - "Check memory usage: docker stats"
+        - "Profile application for leaks"
+        - "Reduce batch sizes"
+
+    - error_code: "GPU_PASSTHROUGH_FAILED"
+      description: "Docker cannot access GPU"
+      troubleshooting: "CLAUDE.md#gpu-management"
+      symptoms:
+        - "CUDA_VISIBLE_DEVICES not set"
+        - "nvidia-smi not found in container"
+      common_causes:
+        - "NVIDIA Container Toolkit not installed"
+        - "--gpus all flag not used"
+        - "Docker version too old"
+      resolution_steps:
+        - "Install nvidia-container-toolkit"
+        - "Add --gpus all to docker run"
+        - "Verify: docker run --gpus all nvidia/cuda:12.0-base nvidia-smi"
+
+  network_errors:
+    - error_code: "SERVICE_UNAVAILABLE"
+      description: "Dependent service not reachable"
+      troubleshooting: "Relations/Hooks/system_health_hooks.yaml"
+      symptoms:
+        - "Connection refused"
+        - "Timeout connecting"
+      common_causes:
+        - "Service crashed"
+        - "Network misconfiguration"
+        - "Firewall blocking"
+      resolution_steps:
+        - "Check service status"
+        - "Verify network connectivity: ping, telnet"
+        - "Check firewall rules"
+        - "Review service logs"
+
+# ============================================================================
+# 7. GDPR & Compliance Errors
+# ============================================================================
+
+compliance_errors:
+  - error_code: "MISSING_CONSENT"
+    description: "Required GDPR consent not provided"
+    troubleshooting: "Execution_Layer/Validators/api_request_validator.py:556"
+    symptoms:
+      - "400 Bad Request"
+      - "Missing required consents"
+    common_causes:
+      - "privacy_policy consent not checked"
+      - "terms_of_service consent not checked"
+    resolution_steps:
+      - "Present consent form to user"
+      - "Require explicit opt-in"
+      - "Store consent timestamp"
+    required_consents:
+      - privacy_policy
+      - terms_of_service
+    related:
+      - "Relations/Workflows/user_onboarding_workflow.yaml"
+      - "Meta_Layer/MOCs/SECURITY_MOC.md#gdpr-compliance"
+
+  - error_code: "INVALID_RETENTION_PERIOD"
+    description: "Data retention period out of allowed range"
+    troubleshooting: "Execution_Layer/Validators/api_request_validator.py:585"
+    symptoms:
+      - "400 Bad Request"
+      - "Retention period error"
+    common_causes:
+      - "Retention < 1 year"
+      - "Retention > 10 years"
+    resolution_steps:
+      - "Use 7 years for invoices (§14 UStG)"
+      - "Min 1 year, max 10 years"
+      - "Document legal basis for retention"
+
+# ============================================================================
+# 8. Performance Issues
+# ============================================================================
+
+performance_issues:
+  slow_api_response:
+    description: "API endpoints responding slowly (> 2s)"
+    troubleshooting: "Dynamic_Knowledge/Learnings/celery_task_optimization.md"
+    symptoms:
+      - "High response times"
+      - "Timeout errors"
+      - "User complaints"
+    common_causes:
+      - "N+1 query problem"
+      - "Missing database indexes"
+      - "Synchronous I/O in async code"
+      - "Large result sets"
+    resolution_steps:
+      - "Profile with py-spy or cProfile"
+      - "Check database query performance"
+      - "Add indexes to slow queries"
+      - "Implement pagination"
+      - "Use async/await properly"
+      - "Add caching for expensive operations"
+    target_performance:
+      p50: "< 200ms"
+      p95: "< 500ms"
+      p99: "< 2s"
+
+  high_memory_usage:
+    description: "Application consuming excessive memory"
+    troubleshooting: "Relations/Decision_Trees/gpu_resource_allocation_tree.yaml"
+    symptoms:
+      - "Memory usage growing over time"
+      - "OOM killer triggered"
+      - "Swap usage high"
+    common_causes:
+      - "Memory leak"
+      - "Large objects not garbage collected"
+      - "Too many cached items"
+      - "Large batch processing"
+    resolution_steps:
+      - "Profile with memory_profiler"
+      - "Check for circular references"
+      - "Implement LRU cache with maxsize"
+      - "Process data in chunks"
+      - "Restart workers periodically"
+
+  high_cpu_usage:
+    description: "CPU usage consistently high"
+    troubleshooting: "Dynamic_Knowledge/Logs/gpu_metrics_log.jsonl"
+    symptoms:
+      - "CPU > 80% sustained"
+      - "Slow response times"
+      - "Worker lag"
+    common_causes:
+      - "CPU-bound tasks on main thread"
+      - "Tight loops without yield"
+      - "Inefficient algorithms"
+      - "Too many workers"
+    resolution_steps:
+      - "Profile with py-spy"
+      - "Offload to Celery workers"
+      - "Optimize hot code paths"
+      - "Use asyncio.sleep() in loops"
+      - "Reduce worker concurrency"
+
+# ============================================================================
+# 9. Security Incidents
+# ============================================================================
+
+security_incidents:
+  - incident_type: "SUSPICIOUS_ACTIVITY"
+    description: "Pattern of suspicious requests detected"
+    troubleshooting: "Meta_Layer/MOCs/SECURITY_MOC.md#incident-response"
+    indicators:
+      - "Multiple XSS attempts"
+      - "SQL injection patterns"
+      - "Rapid failed login attempts"
+      - "Unusual traffic patterns"
+    response_procedure:
+      - "Alert security team"
+      - "Block source IP temporarily"
+      - "Review logs for scope"
+      - "Document incident"
+      - "Implement additional protections"
+    severity: "high"
+    escalation_required: true
+
+  - incident_type: "DATA_BREACH_SUSPECTED"
+    description: "Potential unauthorized data access"
+    troubleshooting: "Meta_Layer/MOCs/SECURITY_MOC.md#incident-response"
+    response_procedure:
+      - "Immediately notify CISO"
+      - "Isolate affected systems"
+      - "Preserve evidence"
+      - "Begin forensic analysis"
+      - "Prepare breach notification (Art. 33 DSGVO: 72 hours)"
+    severity: "critical"
+    legal_requirements:
+      - "GDPR Art. 33: Notify authority within 72 hours"
+      - "GDPR Art. 34: Notify affected users"
+      - "Document incident for audit"
+
+# ============================================================================
+# 10. Monitoring & Alerting
+# ============================================================================
+
+monitoring:
+  health_check_failed:
+    description: "System health check endpoint failing"
+    troubleshooting: "Relations/Hooks/system_health_hooks.yaml"
+    checks:
+      - database: "PostgreSQL connectivity and pool status"
+      - redis: "Redis connectivity and memory usage"
+      - minio: "Object storage connectivity"
+      - gpu: "GPU availability and VRAM usage"
+      - celery: "Worker status and queue length"
+    alert_conditions:
+      warning: "Single check failed"
+      critical: "Multiple checks failed or database down"
+    auto_recovery_actions:
+      - "Clear caches"
+      - "Restart workers"
+      - "Scale resources"
+      - "Trigger alerts"
+
+  prometheus_metrics:
+    description: "Key metrics for monitoring"
+    metrics:
+      - "ocr_requests_total{backend, status}"
+      - "ocr_processing_duration_seconds{backend}"
+      - "gpu_memory_usage_bytes"
+      - "document_queue_length"
+      - "failed_login_attempts_total"
+      - "rate_limit_exceeded_total"
+    grafana_dashboards:
+      - "GPU Utilization Dashboard"
+      - "API Performance Dashboard"
+      - "Security Events Dashboard"
+    alert_rules:
+      - "GPU VRAM > 90% for 5 minutes"
+      - "Queue length > 1000"
+      - "Error rate > 5% for 10 minutes"
+      - "Failed logins > 10 in 5 minutes"
+
+# ============================================================================
+# 11. Recovery Procedures
+# ============================================================================
+
+recovery_procedures:
+  database_restore:
+    description: "Restore PostgreSQL from backup"
+    procedure: "Static_Knowledge/SOPs/005_database_backup_restore.md"
+    estimated_time: "30 minutes for 100GB"
+    prerequisites:
+      - "Backup file available"
+      - "PostgreSQL installed"
+      - "Sufficient disk space"
+    steps:
+      - "Stop application services"
+      - "Drop existing database (if needed)"
+      - "Run pg_restore with backup file"
+      - "Verify data integrity"
+      - "Start application services"
+    testing: "Monthly restore test required"
+
+  disaster_recovery:
+    description: "Full system recovery from catastrophic failure"
+    procedure: "Meta_Layer/MOCs/SECURITY_MOC.md#disaster-recovery"
+    rto_targets:
+      critical_services: "1 hour"
+      important_services: "4 hours"
+      standard_services: "24 hours"
+    recovery_order:
+      1: "Database restore"
+      2: "Object storage restore"
+      3: "Application deployment"
+      4: "Configuration restore"
+      5: "Verification tests"
+
+# ============================================================================
+# 12. Support Contacts
+# ============================================================================
+
+support_contacts:
+  operations_team:
+    email: "ops@ablage.company.de"
+    slack: "#ops-team"
+    hours: "24/7"
+    scope: "Infrastructure, deployments, monitoring"
+
+  security_team:
+    email: "security@ablage.company.de"
+    emergency: "+49 xxx xxx xxxx"
+    slack: "#security-incidents"
+    scope: "Security incidents, breaches, vulnerabilities"
+
+  development_team:
+    email: "dev@ablage.company.de"
+    slack: "#dev-team"
+    hours: "Mon-Fri 9-17 CET"
+    scope: "Application errors, bug fixes, features"
+
+  external_resources:
+    - name: "BSI (German Federal Office for Information Security)"
+      url: "https://www.bsi.bund.de"
+      contact: "info@bsi.bund.de"
+    - name: "CERT-Bund"
+      url: "https://www.cert-bund.de"
+      contact: "certbund@bsi.bund.de"
+
+# ============================================================================
+# 13. Related Documentation
+# ============================================================================
+
+related_documentation:
+  playbooks:
+    - "Relations/Playbooks/api_error_debugging_playbook.yaml"
+    - "Meta_Layer/MOCs/SECURITY_MOC.md"
+
+  sops:
+    - "Static_Knowledge/SOPs/005_database_backup_restore.md"
+
+  skills:
+    - "Static_Knowledge/Skills/error_handling_skill.yaml"
+
+  learnings:
+    - "Dynamic_Knowledge/Learnings/celery_task_optimization.md"
+
+  experiments:
+    - "Dynamic_Knowledge/Experiments/ocr_backend_comparison.md"
+
+  logs:
+    - "Dynamic_Knowledge/Logs/gpu_metrics_log.jsonl"
+
+  hooks:
+    - "Relations/Hooks/system_health_hooks.yaml"
+
+  decision_trees:
+    - "Relations/Decision_Trees/gpu_resource_allocation_tree.yaml"
+
+  validators:
+    - "Execution_Layer/Validators/api_request_validator.py"
+
+  runners:
+    - "Execution_Layer/Runners/data_migration_runner.py"
+
+# ============================================================================
+# Revision History
+# ============================================================================
+
+revision_history:
+  - version: "1.0.0"
+    date: "2025-11-22"
+    changes: "Initial troubleshooting index creation"
+    author: "Operations Team"
+
+# ============================================================================
+# Index Metadata
+# ============================================================================
+
+index_statistics:
+  total_error_codes: 35
+  categories: 13
+  related_documents: 20
+  last_reviewed: "2025-11-22"
+  next_review: "2025-12-22"

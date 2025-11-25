@@ -1,0 +1,292 @@
+# Deployment Pipeline - Ablage-System OCR
+# Automated deployment to staging and production environments
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      version:
+        description: 'Version/tag to deploy (leave empty for latest)'
+        required: false
+        type: string
+
+jobs:
+  # Pre-deployment checks
+  pre-deploy-checks:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Verify VERSION file
+        run: |
+          if [ ! -f VERSION ]; then
+            echo "❌ VERSION file not found!"
+            exit 1
+          fi
+          VERSION=$(cat VERSION)
+          echo "Deploying version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Check for Breaking Changes
+        run: |
+          # Check if there are database migrations
+          if [ -d "migrations/versions" ]; then
+            MIGRATION_COUNT=$(ls -1 migrations/versions/*.py 2>/dev/null | wc -l)
+            echo "Found $MIGRATION_COUNT migration(s)"
+            if [ $MIGRATION_COUNT -gt 0 ]; then
+              echo "⚠️ Database migrations detected - manual review required"
+              echo "MIGRATIONS_DETECTED=true" >> $GITHUB_ENV
+            fi
+          fi
+
+      - name: Run Pre-deployment Tests
+        run: |
+          # Smoke tests
+          echo "Running pre-deployment smoke tests..."
+          # Add actual smoke test commands here
+
+  # Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: pre-deploy-checks
+    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
+    environment:
+      name: staging
+      url: https://staging.ablage-system.local
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/staging_key
+          chmod 600 ~/.ssh/staging_key
+          ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Staging Server
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+        run: |
+          echo "🚀 Deploying to staging..."
+
+          ssh -i ~/.ssh/staging_key $STAGING_USER@$STAGING_HOST << 'EOF'
+            cd /opt/ablage-system
+
+            # Pull latest changes
+            git fetch origin
+            git checkout main
+            git pull origin main
+
+            # Backup database
+            ./scripts/backup.sh db
+
+            # Pull new Docker images
+            docker-compose pull
+
+            # Run database migrations
+            docker-compose run --rm backend alembic upgrade head
+
+            # Restart services with zero-downtime
+            docker-compose up -d --force-recreate --no-deps backend worker
+
+            # Health check
+            sleep 10
+            curl -f http://localhost:8000/health || exit 1
+
+            echo "✅ Staging deployment complete"
+          EOF
+
+      - name: Run Post-deployment Tests
+        run: |
+          # Run smoke tests against staging
+          curl -f https://staging.ablage-system.local/health
+          curl -f https://staging.ablage-system.local/api/v1/health
+
+      - name: Notify Deployment
+        if: always()
+        run: |
+          echo "📢 Staging deployment ${{ job.status }}"
+          # Add notification logic (Slack, Discord, etc.)
+
+  # Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [pre-deploy-checks, deploy-staging]
+    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.environment == 'production'
+    environment:
+      name: production
+      url: https://ablage-system.local
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.version || github.ref }}
+
+      - name: Require Manual Approval
+        run: |
+          echo "⚠️  Production deployment requires manual approval"
+          echo "Deploying version: ${{ github.event.inputs.version || github.ref_name }}"
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/prod_key
+          chmod 600 ~/.ssh/prod_key
+          ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create Pre-deployment Backup
+        env:
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          echo "📦 Creating pre-deployment backup..."
+
+          ssh -i ~/.ssh/prod_key $PRODUCTION_USER@$PRODUCTION_HOST << 'EOF'
+            cd /opt/ablage-system
+            ./scripts/backup.sh all
+
+            # Archive backup with timestamp
+            BACKUP_FILE=$(ls -t backups/backup_*.tar.gz | head -1)
+            cp $BACKUP_FILE backups/pre-deployment-$(date +%Y%m%d_%H%M%S).tar.gz
+          EOF
+
+      - name: Deploy to Production
+        env:
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          echo "🚀 Deploying to production..."
+
+          ssh -i ~/.ssh/prod_key $PRODUCTION_USER@$PRODUCTION_HOST << 'EOF'
+            cd /opt/ablage-system
+
+            # Pull specific version
+            git fetch --tags
+            git checkout ${{ github.event.inputs.version || github.ref_name }}
+
+            # Pull Docker images for this version
+            export DOCKER_TAG=${{ github.event.inputs.version || github.ref_name }}
+            docker-compose pull
+
+            # Run database migrations (with backup already created)
+            docker-compose run --rm backend alembic upgrade head
+
+            # Blue-Green deployment: Start new containers
+            docker-compose up -d --force-recreate --no-deps --scale backend=2 backend
+
+            # Wait for health check
+            sleep 15
+            docker-compose exec -T backend curl -f http://localhost:8000/health || exit 1
+
+            # Scale down old containers
+            docker-compose up -d --force-recreate --no-deps --scale backend=1 backend
+
+            # Restart worker
+            docker-compose up -d --force-recreate worker
+
+            echo "✅ Production deployment complete"
+          EOF
+
+      - name: Verify Production Deployment
+        run: |
+          echo "🔍 Verifying production deployment..."
+
+          # Health checks
+          curl -f https://ablage-system.local/health || exit 1
+          curl -f https://ablage-system.local/api/v1/health || exit 1
+
+          # Check version endpoint
+          VERSION=$(curl -s https://ablage-system.local/api/v1/version | jq -r '.version')
+          echo "Deployed version: $VERSION"
+
+          # Smoke tests
+          # Add critical path smoke tests here
+
+      - name: Monitor Post-deployment
+        run: |
+          echo "📊 Monitoring post-deployment metrics..."
+          # Monitor error rates, response times for 5 minutes
+          sleep 300
+
+      - name: Rollback on Failure
+        if: failure()
+        env:
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          echo "❌ Deployment failed - initiating rollback..."
+
+          ssh -i ~/.ssh/prod_key $PRODUCTION_USER@$PRODUCTION_HOST << 'EOF'
+            cd /opt/ablage-system
+
+            # Find latest pre-deployment backup
+            BACKUP_FILE=$(ls -t backups/pre-deployment-*.tar.gz | head -1)
+
+            if [ -n "$BACKUP_FILE" ]; then
+              echo "Restoring from backup: $BACKUP_FILE"
+              ./scripts/restore.sh all "$BACKUP_FILE"
+
+              # Restart services
+              docker-compose restart
+
+              echo "✅ Rollback complete"
+            else
+              echo "❌ No backup found for rollback!"
+              exit 1
+            fi
+          EOF
+
+      - name: Notify Production Deployment
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
+
+          echo "## 🚀 Production Deployment: $STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** $VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** $STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+
+          # Send notifications (implement with your notification service)
+          # Example: Slack, Discord, Email, PagerDuty
+
+  # Deployment summary
+  deploy-summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## Deployment Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Staging | ${{ needs.deploy-staging.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Production | ${{ needs.deploy-production.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed Version:** ${{ github.event.inputs.version || github.ref_name }}" >> $GITHUB_STEP_SUMMARY

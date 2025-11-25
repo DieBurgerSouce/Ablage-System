@@ -1,0 +1,994 @@
+# User Onboarding Workflow
+
+category: Relations - Workflows
+version: "2.1"
+last_updated: "2025-11-22"
+status: active
+owner: Product Team
+target_completion_time: "15 minutes"
+success_rate_target: "> 85%"
+
+description: |
+  Complete user onboarding workflow from registration to first document processed.
+  Optimized for German users with GDPR compliance and user-friendly experience.
+
+---
+
+# Workflow Overview
+
+workflow_name: "user_onboarding"
+trigger: "user_registration_initiated"
+total_steps: 12
+estimated_duration: "10-15 minutes"
+can_pause: true
+can_resume: true
+
+steps_summary:
+  1. Registration Form Submission
+  2. Input Validation
+  3. Account Creation
+  4. Email Verification
+  5. Welcome Email
+  6. Profile Setup
+  7. Privacy Settings (GDPR)
+  8. Feature Tour
+  9. First Document Upload
+  10. OCR Processing Demo
+  11. Integration Options
+  12. Onboarding Complete
+
+---
+
+# Step 1: Registration Form Submission
+
+step_1_registration:
+  name: "Registrierungsformular"
+  description: "User submits registration form"
+  type: "user_input"
+  ui_location: "/register"
+  estimated_duration: "2 minutes"
+
+  required_fields:
+    email:
+      type: "email"
+      validation: "RFC 5322 email format"
+      unique: true
+      max_length: 255
+      example: "mueller@beispiel.de"
+      german_label: "E-Mail-Adresse"
+
+    password:
+      type: "password"
+      min_length: 12
+      requirements:
+        - "Mindestens 1 Großbuchstabe"
+        - "Mindestens 1 Kleinbuchstabe"
+        - "Mindestens 1 Zahl"
+        - "Mindestens 1 Sonderzeichen"
+      strength_meter: true
+      german_label: "Passwort"
+
+    password_confirmation:
+      type: "password"
+      must_match: "password"
+      german_label: "Passwort bestätigen"
+
+    company_name:
+      type: "text"
+      required: false
+      max_length: 255
+      example: "Müller GmbH"
+      german_label: "Firmenname (optional)"
+
+    tier:
+      type: "select"
+      options:
+        - value: "free"
+          label: "Kostenlos"
+          limits: "10 Dokumente/Monat"
+        - value: "standard"
+          label: "Standard (€19/Monat)"
+          limits: "500 Dokumente/Monat"
+        - value: "enterprise"
+          label: "Enterprise (€99/Monat)"
+          limits: "Unbegrenzt"
+      default: "free"
+      german_label: "Tarif auswählen"
+
+  optional_fields:
+    phone:
+      type: "tel"
+      format: "E.164"
+      example: "+49 30 123456"
+      german_label: "Telefon (optional)"
+
+    referral_code:
+      type: "text"
+      max_length: 50
+      german_label: "Empfehlungscode (optional)"
+
+  consent_checkboxes:
+    terms_accepted:
+      required: true
+      label_de: "Ich akzeptiere die [AGB](/terms) und [Datenschutzerklärung](/privacy)"
+      label_key: "consent.terms"
+      gdpr_article: "Art. 6 Abs. 1 lit. a DSGVO"
+
+    marketing_consent:
+      required: false
+      label_de: "Ich möchte Produkt-Updates und Angebote per E-Mail erhalten"
+      label_key: "consent.marketing"
+      gdpr_article: "Art. 6 Abs. 1 lit. a DSGVO"
+      can_withdraw: true
+
+  on_submit:
+    endpoint: "POST /api/v1/auth/register"
+    rate_limit: "5 attempts per hour per IP"
+    response_codes:
+      201: "Registration successful, proceed to step 2"
+      400: "Validation error, show errors inline"
+      409: "Email already exists, offer password reset"
+      429: "Rate limit exceeded, show cooldown timer"
+
+  analytics:
+    track_event: "registration_form_submitted"
+    properties:
+      - tier_selected
+      - has_company_name
+      - has_referral_code
+      - marketing_consent
+
+---
+
+# Step 2: Input Validation
+
+step_2_validation:
+  name: "Eingabevalidierung"
+  description: "Validate user input (backend)"
+  type: "automated"
+  estimated_duration: "< 500ms"
+
+  validations:
+    email_validation:
+      - check: "format_valid"
+        regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+      - check: "domain_exists"
+        method: "MX record lookup"
+      - check: "not_disposable"
+        blocklist_source: "https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/master/disposable_email_blocklist.conf"
+      - check: "not_already_registered"
+        query: "SELECT COUNT(*) FROM users WHERE email = ?"
+
+    password_validation:
+      - check: "length_min_12"
+      - check: "contains_uppercase"
+      - check: "contains_lowercase"
+      - check: "contains_digit"
+      - check: "contains_special_char"
+      - check: "not_common_password"
+        blocklist: "top_10000_passwords.txt"
+      - check: "not_in_breach"
+        api: "https://api.pwnedpasswords.com/range/"
+
+    company_name_validation:
+      - check: "no_sql_injection"
+        sanitize: true
+      - check: "max_length_255"
+
+  on_validation_failure:
+    http_status: 400
+    response:
+      error: "validation_failed"
+      message_de: "Bitte überprüfen Sie Ihre Eingaben"
+      details:
+        - field: "email"
+          error_de: "Diese E-Mail-Adresse ist bereits registriert"
+          error_code: "EMAIL_ALREADY_EXISTS"
+
+  on_validation_success:
+    proceed_to: "step_3_account_creation"
+
+---
+
+# Step 3: Account Creation
+
+step_3_account_creation:
+  name: "Account erstellen"
+  description: "Create user account in database"
+  type: "automated"
+  estimated_duration: "< 1s"
+
+  database_operations:
+    - operation: "INSERT INTO users"
+      fields:
+        id: "UUID v4"
+        email: "{{email}}"
+        password_hash: "bcrypt({{password}}, cost=12)"
+        company_name: "{{company_name}}"
+        tier: "{{tier}}"
+        email_verified: false
+        created_at: "NOW()"
+        updated_at: "NOW()"
+
+    - operation: "INSERT INTO user_settings"
+      fields:
+        user_id: "{{user_id}}"
+        language: "de"
+        timezone: "Europe/Berlin"
+        notifications_enabled: true
+
+    - operation: "INSERT INTO user_quotas"
+      fields:
+        user_id: "{{user_id}}"
+        tier: "{{tier}}"
+        documents_per_month: "{{tier_limits[tier].documents}}"
+        documents_used: 0
+        reset_at: "CURRENT_DATE + INTERVAL '1 month'"
+
+  tier_limits:
+    free:
+      documents: 10
+      storage_gb: 1
+      ocr_backend: "got_ocr"
+      support: "community"
+    standard:
+      documents: 500
+      storage_gb: 50
+      ocr_backend: "auto"
+      support: "email"
+    enterprise:
+      documents: -1  # unlimited
+      storage_gb: 500
+      ocr_backend: "deepseek"
+      support: "priority"
+
+  audit_log:
+    event: "user_registered"
+    log_level: "info"
+    include_fields:
+      - user_id
+      - email
+      - tier
+      - ip_address
+      - user_agent
+
+  on_success:
+    proceed_to: "step_4_email_verification"
+
+  on_failure:
+    http_status: 500
+    rollback: true
+    log_level: "error"
+    alert: "critical"
+
+---
+
+# Step 4: Email Verification
+
+step_4_email_verification:
+  name: "E-Mail bestätigen"
+  description: "Send verification email and wait for confirmation"
+  type: "user_action"
+  estimated_duration: "5 minutes"
+
+  verification_token:
+    generation:
+      method: "secrets.token_urlsafe(32)"
+      length: 43  # characters (base64)
+    storage:
+      table: "email_verification_tokens"
+      fields:
+        user_id: "{{user_id}}"
+        token: "{{token}}"
+        expires_at: "NOW() + INTERVAL '24 hours'"
+        created_at: "NOW()"
+    expiration: "24 hours"
+
+  verification_email:
+    template: "email_verification_de"
+    from: "Ablage-System <noreply@ablage.company.de>"
+    to: "{{user.email}}"
+    subject: "Bitte bestätigen Sie Ihre E-Mail-Adresse"
+    variables:
+      user_name: "{{user.email}}"
+      verification_link: "https://ablage.company.de/verify-email?token={{token}}"
+      expiration_hours: 24
+
+    content_preview: |
+      Hallo,
+
+      vielen Dank für Ihre Registrierung bei Ablage-System!
+
+      Bitte bestätigen Sie Ihre E-Mail-Adresse, indem Sie auf den folgenden Link klicken:
+
+      {{verification_link}}
+
+      Dieser Link ist 24 Stunden gültig.
+
+      Falls Sie sich nicht registriert haben, ignorieren Sie diese E-Mail bitte.
+
+      Mit freundlichen Grüßen
+      Das Ablage-Team
+
+  verification_endpoint:
+    method: "GET"
+    path: "/api/v1/auth/verify-email"
+    query_params:
+      token: "{{token}}"
+
+    on_success:
+      - update_user: "SET email_verified = TRUE WHERE id = {{user_id}}"
+      - log_event: "email_verified"
+      - proceed_to: "step_5_welcome_email"
+      - redirect_to: "/onboarding/welcome"
+
+    on_failure:
+      http_status: 400
+      error_codes:
+        TOKEN_EXPIRED: "Ihr Bestätigungslink ist abgelaufen. Bitte fordern Sie einen neuen Link an."
+        TOKEN_INVALID: "Ungültiger Bestätigungslink."
+        ALREADY_VERIFIED: "Ihre E-Mail-Adresse wurde bereits bestätigt."
+
+  resend_verification:
+    endpoint: "POST /api/v1/auth/resend-verification"
+    rate_limit: "3 attempts per hour per user"
+    on_resend:
+      - invalidate_old_tokens: true
+      - generate_new_token: true
+      - send_new_email: true
+
+---
+
+# Step 5: Welcome Email
+
+step_5_welcome_email:
+  name: "Willkommens-E-Mail"
+  description: "Send welcome email with getting started guide"
+  type: "automated"
+  estimated_duration: "< 1s"
+
+  welcome_email:
+    template: "welcome_de"
+    from: "Ablage-System <welcome@ablage.company.de>"
+    to: "{{user.email}}"
+    subject: "Willkommen bei Ablage-System! 🎉"
+
+    content_sections:
+      - section: "greeting"
+        content: "Hallo {{user.email}},\n\nwillkommen bei Ablage-System!"
+
+      - section: "quick_start"
+        title: "So starten Sie:"
+        steps:
+          - "1. Laden Sie Ihr erstes Dokument hoch"
+          - "2. Lassen Sie die KI den Text extrahieren"
+          - "3. Organisieren und durchsuchen Sie Ihre Dokumente"
+
+      - section: "resources"
+        title: "Hilfreiche Ressourcen:"
+        links:
+          - text: "Video-Tutorial ansehen (3 Min.)"
+            url: "https://ablage.company.de/tutorial"
+          - text: "Dokumentation lesen"
+            url: "https://docs.ablage.company.de"
+          - text: "Support kontaktieren"
+            url: "https://support.ablage.company.de"
+
+      - section: "tier_info"
+        content: "Sie nutzen den {{user.tier}} Tarif ({{quota.documents_per_month}} Dokumente/Monat)."
+
+      - section: "cta"
+        button_text: "Jetzt loslegen"
+        button_url: "https://ablage.company.de/dashboard"
+
+  drip_campaign:
+    enabled: true
+    emails:
+      - day: 1
+        template: "tips_day_1"
+        subject: "Tipp: So verbessern Sie die OCR-Genauigkeit"
+      - day: 3
+        template: "tips_day_3"
+        subject: "Organisieren Sie Ihre Dokumente mit Tags"
+      - day: 7
+        template: "tips_day_7"
+        subject: "Erweiterte Suchfunktionen entdecken"
+
+  on_send_failure:
+    log_level: "warning"
+    retry: true
+    max_retries: 3
+    fallback: "queue_for_manual_review"
+
+---
+
+# Step 6: Profile Setup
+
+step_6_profile_setup:
+  name: "Profil vervollständigen"
+  description: "User completes profile information"
+  type: "user_input"
+  ui_location: "/onboarding/profile"
+  estimated_duration: "3 minutes"
+  skippable: true
+
+  profile_fields:
+    first_name:
+      type: "text"
+      required: false
+      max_length: 100
+      label_de: "Vorname"
+
+    last_name:
+      type: "text"
+      required: false
+      max_length: 100
+      label_de: "Nachname"
+
+    company_type:
+      type: "select"
+      required: false
+      options:
+        - value: "gmbh"
+          label_de: "GmbH"
+        - value: "ag"
+          label_de: "AG"
+        - value: "einzelunternehmen"
+          label_de: "Einzelunternehmen"
+        - value: "freiberufler"
+          label_de: "Freiberufler"
+        - value: "sonstiges"
+          label_de: "Sonstiges"
+      label_de: "Unternehmensform"
+
+    industry:
+      type: "select"
+      required: false
+      options:
+        - "Beratung"
+        - "Einzelhandel"
+        - "Gesundheitswesen"
+        - "IT & Software"
+        - "Rechtsberatung"
+        - "Steuerberatung"
+        - "Sonstiges"
+      label_de: "Branche"
+
+    use_case:
+      type: "multiselect"
+      required: false
+      options:
+        - "Rechnungsverarbeitung"
+        - "Vertragsmanagement"
+        - "Archivierung"
+        - "Compliance"
+        - "Sonstiges"
+      label_de: "Hauptanwendung"
+
+  on_submit:
+    endpoint: "PATCH /api/v1/users/{{user_id}}/profile"
+    proceed_to: "step_7_privacy_settings"
+
+  on_skip:
+    log_event: "profile_setup_skipped"
+    proceed_to: "step_7_privacy_settings"
+
+---
+
+# Step 7: Privacy Settings (GDPR)
+
+step_7_privacy_settings:
+  name: "Datenschutzeinstellungen"
+  description: "Configure privacy settings (GDPR compliance)"
+  type: "user_input"
+  ui_location: "/onboarding/privacy"
+  estimated_duration: "2 minutes"
+  skippable: false  # GDPR requires explicit consent
+
+  privacy_options:
+    data_retention:
+      type: "radio"
+      required: true
+      options:
+        - value: "standard"
+          label_de: "Standard (Dokumente 7 Jahre aufbewahren)"
+          description_de: "Empfohlen für Geschäftsdokumente (§14 UStG)"
+        - value: "minimal"
+          label_de: "Minimal (Dokumente nach 1 Jahr löschen)"
+          description_de: "Automatische Löschung nach 1 Jahr"
+      default: "standard"
+      gdpr_article: "Art. 5 Abs. 1 lit. e DSGVO (Speicherbegrenzung)"
+
+    data_processing:
+      type: "checkbox"
+      required: true
+      options:
+        - id: "ocr_processing"
+          label_de: "Ich erlaube die Verarbeitung meiner Dokumente für OCR"
+          required: true
+          gdpr_article: "Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung)"
+
+        - id: "analytics"
+          label_de: "Ich erlaube anonymisierte Nutzungsstatistiken"
+          required: false
+          gdpr_article: "Art. 6 Abs. 1 lit. a DSGVO (Einwilligung)"
+          can_withdraw: true
+
+    data_sharing:
+      type: "checkbox"
+      required: false
+      options:
+        - id: "third_party_ocr"
+          label_de: "Ich erlaube die Nutzung externer OCR-Dienste für bessere Genauigkeit"
+          description_de: "Dokumente können an vertrauenswürdige Partner gesendet werden"
+          required: false
+          can_withdraw: true
+
+  gdpr_information:
+    display: true
+    sections:
+      - title_de: "Ihre Rechte nach DSGVO"
+        rights:
+          - "Recht auf Auskunft (Art. 15)"
+          - "Recht auf Berichtigung (Art. 16)"
+          - "Recht auf Löschung (Art. 17)"
+          - "Recht auf Datenübertragbarkeit (Art. 20)"
+        action_link: "/gdpr/rights"
+
+      - title_de: "Datenschutzbeauftragter"
+        contact:
+          email: "datenschutz@company.de"
+          phone: "+49 30 123456"
+
+  on_submit:
+    endpoint: "POST /api/v1/users/{{user_id}}/privacy-settings"
+    store_consent_record: true
+    consent_record_fields:
+      - user_id
+      - consent_type
+      - consent_given
+      - consent_timestamp
+      - ip_address
+      - user_agent
+    proceed_to: "step_8_feature_tour"
+
+---
+
+# Step 8: Feature Tour
+
+step_8_feature_tour:
+  name: "Funktionsübersicht"
+  description: "Interactive product tour"
+  type: "user_interaction"
+  ui_location: "/onboarding/tour"
+  estimated_duration: "5 minutes"
+  skippable: true
+
+  tour_steps:
+    - step: 1
+      title_de: "Dashboard"
+      description_de: "Hier sehen Sie alle Ihre Dokumente auf einen Blick"
+      highlight_element: "#dashboard"
+      tooltip_position: "right"
+
+    - step: 2
+      title_de: "Dokument hochladen"
+      description_de: "Ziehen Sie Dateien hierher oder klicken Sie zum Auswählen"
+      highlight_element: "#upload-button"
+      tooltip_position: "bottom"
+
+    - step: 3
+      title_de: "OCR-Verarbeitung"
+      description_de: "Unser KI-System extrahiert automatisch den Text"
+      highlight_element: "#ocr-status"
+      tooltip_position: "left"
+
+    - step: 4
+      title_de: "Suche"
+      description_de: "Durchsuchen Sie alle Dokumente in Sekundenschnelle"
+      highlight_element: "#search-bar"
+      tooltip_position: "bottom"
+
+    - step: 5
+      title_de: "Organisieren"
+      description_de: "Nutzen Sie Tags und Ordner für perfekte Organisation"
+      highlight_element: "#tags-panel"
+      tooltip_position: "right"
+
+  tour_library: "intro.js"
+  tour_config:
+    show_progress: true
+    show_bullets: true
+    skip_label_de: "Überspringen"
+    next_label_de: "Weiter"
+    prev_label_de: "Zurück"
+    done_label_de: "Fertig"
+
+  on_complete:
+    log_event: "feature_tour_completed"
+    proceed_to: "step_9_first_document_upload"
+
+  on_skip:
+    log_event: "feature_tour_skipped"
+    proceed_to: "step_9_first_document_upload"
+
+---
+
+# Step 9: First Document Upload
+
+step_9_first_document_upload:
+  name: "Erstes Dokument hochladen"
+  description: "User uploads their first document"
+  type: "user_action"
+  ui_location: "/onboarding/upload"
+  estimated_duration: "2 minutes"
+
+  ui_prompts:
+    headline_de: "Laden Sie Ihr erstes Dokument hoch"
+    description_de: "Wir empfehlen eine Rechnung oder einen Brief für den Anfang"
+    supported_formats: "PDF, PNG, JPG, TIFF"
+    max_file_size: "50 MB"
+
+  upload_options:
+    methods:
+      - "drag_and_drop"
+      - "file_picker"
+      - "sample_document"  # Pre-loaded example
+
+    sample_documents:
+      - name_de: "Beispiel-Rechnung"
+        file: "sample_invoice_de.pdf"
+        description_de: "Eine typische deutsche Rechnung (§14 UStG konform)"
+      - name_de: "Beispiel-Brief"
+        file: "sample_letter_de.pdf"
+        description_de: "Ein Geschäftsbrief"
+
+  on_upload:
+    endpoint: "POST /api/v1/documents"
+    auto_process: true  # Automatically start OCR
+    track_event: "first_document_uploaded"
+    properties:
+      - document_type
+      - file_size_mb
+      - is_sample_document
+
+  on_success:
+    proceed_to: "step_10_ocr_processing_demo"
+    show_message_de: "Dokument wird verarbeitet... Bitte warten Sie einen Moment."
+
+  on_failure:
+    show_error_de: "Upload fehlgeschlagen. Bitte versuchen Sie es erneut."
+    allow_retry: true
+
+---
+
+# Step 10: OCR Processing Demo
+
+step_10_ocr_processing_demo:
+  name: "OCR-Verarbeitung erleben"
+  description: "Show OCR processing in real-time"
+  type: "automated_demo"
+  ui_location: "/onboarding/processing"
+  estimated_duration: "3 seconds"
+
+  ui_display:
+    show_progress_bar: true
+    show_backend_info: true
+    show_confidence_score: true
+
+    processing_stages:
+      - stage: "upload"
+        label_de: "Dokument hochgeladen"
+        icon: "check"
+        duration_ms: 0
+
+      - stage: "validation"
+        label_de: "Validierung..."
+        icon: "spinner"
+        duration_ms: 500
+
+      - stage: "ocr_queued"
+        label_de: "In Warteschlange..."
+        icon: "clock"
+        duration_ms: 1000
+
+      - stage: "ocr_processing"
+        label_de: "Text wird extrahiert..."
+        icon: "spinner"
+        duration_ms: 2000
+
+      - stage: "post_processing"
+        label_de: "Nachbearbeitung..."
+        icon: "spinner"
+        duration_ms: 500
+
+      - stage: "complete"
+        label_de: "Fertig!"
+        icon: "check"
+        duration_ms: 0
+
+  backend_info_display:
+    show: true
+    fields:
+      - label_de: "OCR-Engine"
+        value: "{{ocr_backend}}"
+      - label_de: "Genauigkeit"
+        value: "{{confidence}}%"
+      - label_de: "Seiten"
+        value: "{{page_count}}"
+
+  on_complete:
+    show_results: true
+    show_message_de: "Ihr Dokument wurde erfolgreich verarbeitet!"
+    proceed_to: "step_11_integration_options"
+
+  on_failure:
+    show_error_de: "Die Verarbeitung ist fehlgeschlagen. Unser Team wurde benachrichtigt."
+    offer_support_contact: true
+
+---
+
+# Step 11: Integration Options
+
+step_11_integration_options:
+  name: "Integrationen einrichten"
+  description: "Optional integration setup"
+  type: "user_choice"
+  ui_location: "/onboarding/integrations"
+  estimated_duration: "3 minutes"
+  skippable: true
+
+  available_integrations:
+    webhook:
+      name_de: "Webhooks"
+      description_de: "Erhalten Sie Benachrichtigungen bei Ereignissen"
+      setup_link: "/settings/webhooks"
+      icon: "webhook"
+
+    api:
+      name_de: "REST API"
+      description_de: "Integrieren Sie Ablage in Ihre Anwendung"
+      setup_link: "/settings/api"
+      documentation: "https://api.ablage.company.de/docs"
+      icon: "code"
+
+    zapier:
+      name_de: "Zapier"
+      description_de: "Verbinden Sie 5.000+ Apps"
+      setup_link: "https://zapier.com/apps/ablage/integrations"
+      icon: "zapier"
+
+    datev:
+      name_de: "DATEV"
+      description_de: "Für Steuerberater und Buchhalter"
+      setup_link: "/settings/integrations/datev"
+      tier_required: "enterprise"
+      icon: "datev"
+
+  on_select_integration:
+    log_event: "integration_selected"
+    properties:
+      - integration_name
+
+  on_skip:
+    log_event: "integrations_skipped"
+    proceed_to: "step_12_onboarding_complete"
+
+  on_complete_integration_setup:
+    proceed_to: "step_12_onboarding_complete"
+
+---
+
+# Step 12: Onboarding Complete
+
+step_12_onboarding_complete:
+  name: "Onboarding abgeschlossen"
+  description: "Congratulate user and redirect to dashboard"
+  type: "automated"
+  ui_location: "/onboarding/complete"
+  estimated_duration: "10 seconds"
+
+  completion_tasks:
+    - update_user: "SET onboarding_completed = TRUE, onboarding_completed_at = NOW()"
+    - log_event: "onboarding_completed"
+    - track_analytics:
+        event: "onboarding_completed"
+        properties:
+          - duration_minutes
+          - steps_completed
+          - steps_skipped
+          - documents_uploaded
+
+  success_message:
+    headline_de: "Willkommen bei Ablage! 🎉"
+    message_de: |
+      Sie haben das Onboarding erfolgreich abgeschlossen!
+
+      Ihr Account ist jetzt vollständig eingerichtet und Sie können loslegen.
+
+      Bei Fragen stehen wir Ihnen jederzeit zur Verfügung.
+
+    stats_display:
+      - label_de: "Dokumente verarbeitet"
+        value: "{{documents_processed}}"
+      - label_de: "Verfügbare Dokumente"
+        value: "{{quota.remaining}}/{{quota.total}}"
+      - label_de: "Speicherplatz genutzt"
+        value: "{{storage_used_gb}} GB von {{storage_total_gb}} GB"
+
+    cta_button:
+      text_de: "Zum Dashboard"
+      url: "/dashboard"
+
+  next_steps_suggestions:
+    - text_de: "Weitere Dokumente hochladen"
+      icon: "upload"
+      link: "/documents/upload"
+
+    - text_de: "OCR-Einstellungen anpassen"
+      icon: "settings"
+      link: "/settings/ocr"
+
+    - text_de: "Dokumentation lesen"
+      icon: "book"
+      link: "https://docs.ablage.company.de"
+
+  redirect_after: "5 seconds"
+  redirect_to: "/dashboard"
+
+---
+
+# Analytics and Monitoring
+
+analytics:
+  track_events:
+    - "onboarding_started"
+    - "registration_completed"
+    - "email_verified"
+    - "profile_completed"
+    - "first_document_uploaded"
+    - "onboarding_completed"
+    - "onboarding_abandoned"
+
+  funnel_metrics:
+    - stage: "Registration Form"
+      conversion_target: 90%
+    - stage: "Email Verification"
+      conversion_target: 85%
+    - stage: "First Document Upload"
+      conversion_target: 75%
+    - stage: "Onboarding Complete"
+      conversion_target: 70%
+
+  abandonment_tracking:
+    enabled: true
+    track_stage: true
+    send_recovery_email: true
+    recovery_email_delay: "24 hours"
+    recovery_email_template: "onboarding_reminder_de"
+
+monitoring:
+  success_metrics:
+    - metric: "onboarding_completion_rate"
+      target: "> 70%"
+      alert_threshold: "< 60%"
+
+    - metric: "time_to_complete"
+      target: "< 15 minutes (median)"
+      alert_threshold: "> 20 minutes"
+
+    - metric: "email_verification_rate"
+      target: "> 85%"
+      alert_threshold: "< 75%"
+
+  prometheus_metrics:
+    - name: "ablage_onboarding_started_total"
+      type: "counter"
+
+    - name: "ablage_onboarding_completed_total"
+      type: "counter"
+
+    - name: "ablage_onboarding_duration_seconds"
+      type: "histogram"
+      buckets: [60, 300, 600, 900, 1800]
+
+---
+
+# Error Handling and Recovery
+
+error_scenarios:
+  email_delivery_failure:
+    detection: "Email bounce or delivery failure notification"
+    actions:
+      - log_error: "email_delivery_failed"
+      - mark_email_invalid: true
+      - notify_user_via_dashboard: true
+      - offer_email_correction: true
+
+  verification_token_expired:
+    detection: "User clicks expired verification link"
+    actions:
+      - show_message_de: "Ihr Bestätigungslink ist abgelaufen"
+      - offer_resend_button: true
+      - log_event: "verification_token_expired"
+
+  user_abandonment:
+    detection: "User inactive for 24 hours during onboarding"
+    actions:
+      - send_reminder_email: true
+      - email_template: "onboarding_reminder_de"
+      - track_event: "onboarding_abandoned"
+
+---
+
+# A/B Testing
+
+ab_tests:
+  test_1_welcome_email_timing:
+    hypothesis: "Sending welcome email immediately vs after 1 hour affects completion rate"
+    variants:
+      - name: "immediate"
+        weight: 50
+        send_delay: "0 minutes"
+      - name: "delayed"
+        weight: 50
+        send_delay: "60 minutes"
+    metrics:
+      - onboarding_completion_rate
+      - time_to_first_document
+    duration: "4 weeks"
+
+  test_2_feature_tour_required:
+    hypothesis: "Making feature tour mandatory vs optional affects user engagement"
+    variants:
+      - name: "optional"
+        weight: 50
+        tour_skippable: true
+      - name: "mandatory"
+        weight: 50
+        tour_skippable: false
+    metrics:
+      - onboarding_completion_rate
+      - first_week_retention
+    duration: "2 weeks"
+
+---
+
+# Related Documentation
+
+references:
+  - "../../Static_Knowledge/ADRs/005_api_versioning_strategy.md"
+  - "../../Static_Knowledge/Skills/error_handling_skill.yaml"
+  - "../../Relations/Hooks/document_processing_hooks.yaml"
+  - "../../Dynamic_Knowledge/Learnings/api_design_lessons.md"
+
+external_docs:
+  - name: "GDPR Compliance Guide"
+    url: "https://gdpr.eu/checklist/"
+  - name: "Email Verification Best Practices"
+    url: "https://sendgrid.com/blog/email-verification-best-practices/"
+
+---
+
+# Maintenance
+
+review_frequency: "Monthly"
+last_review: "2025-11-22"
+next_review: "2025-12-22"
+owner: "Product Team"
+contact: "#ablage-product on Slack"
+
+change_log:
+  - date: "2025-11-22"
+    change: "Added GDPR privacy settings step"
+  - date: "2025-11-15"
+    change: "Improved email verification flow"
+  - date: "2025-11-01"
+    change: "Added sample documents for first upload"
+
+optimization_notes: |
+  - Monitor completion rate weekly (target > 70%)
+  - A/B test email timing and content
+  - Reduce friction in email verification
+  - Optimize feature tour for mobile
+  - Improve abandonment recovery emails

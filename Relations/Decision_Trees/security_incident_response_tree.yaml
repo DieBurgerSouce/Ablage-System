@@ -1,0 +1,470 @@
+# Security Incident Response Decision Tree
+
+tree_id: security_incident_response_001
+category: security
+priority: critical
+status: production_ready
+
+description: |
+  Decision tree for responding to security incidents in Ablage-System.
+  Covers detection, classification, response, and recovery procedures.
+
+root:
+  question: "Security incident detected?"
+  branches:
+    - condition: "yes"
+      action: classify_incident_severity
+    - condition: "no"
+      action: continue_normal_operations
+
+# ============================================================================
+# Incident Classification
+# ============================================================================
+
+classify_incident_severity:
+  question: "What type of security incident?"
+  branches:
+    - condition: "unauthorized_access_attempt"
+      action: assess_unauthorized_access
+
+    - condition: "data_breach_suspected"
+      action: assess_data_breach
+      priority: critical
+
+    - condition: "ddos_attack"
+      action: assess_ddos_attack
+      priority: high
+
+    - condition: "malware_detected"
+      action: assess_malware
+      priority: critical
+
+    - condition: "authentication_anomaly"
+      action: assess_auth_anomaly
+      priority: medium
+
+    - condition: "configuration_vulnerability"
+      action: assess_config_vulnerability
+      priority: high
+
+# ============================================================================
+# Unauthorized Access
+# ============================================================================
+
+assess_unauthorized_access:
+  question: "Was unauthorized access successful?"
+  branches:
+    - condition: "access_successful"
+      severity: critical
+      action: handle_successful_breach
+      immediate_actions:
+        - "Lock affected user accounts immediately"
+        - "Terminate all active sessions for affected users"
+        - "Disable compromised API keys"
+        - "Alert security team (PagerDuty)"
+        - "Begin forensic logging"
+
+    - condition: "access_blocked"
+      severity: medium
+      action: handle_blocked_attempt
+      immediate_actions:
+        - "Add IP to blocklist"
+        - "Increment rate limit counter"
+        - "Log attempt with full context"
+        - "Check for pattern (multiple IPs, timing)"
+
+handle_successful_breach:
+  question: "What data was accessed?"
+  branches:
+    - condition: "personal_data_accessed"
+      severity: critical
+      action: initiate_gdpr_breach_protocol
+      timeline:
+        - "0-1 hour: Contain breach, lock accounts"
+        - "1-24 hours: Assess scope, preserve evidence"
+        - "24-72 hours: Notify supervisory authority (GDPR Art. 33)"
+        - "72+ hours: Notify affected individuals if high risk"
+
+    - condition: "system_data_only"
+      severity: high
+      action: assess_system_impact
+      immediate_actions:
+        - "Check for privilege escalation"
+        - "Review audit logs for all accessed resources"
+        - "Rotate all credentials"
+        - "Apply security patches"
+
+initiate_gdpr_breach_protocol:
+  required_information:
+    - "Nature of breach"
+    - "Categories of data affected"
+    - "Approximate number of affected individuals"
+    - "Likely consequences"
+    - "Measures taken to address breach"
+
+  notification_requirements:
+    supervisory_authority:
+      deadline: "72 hours from breach awareness"
+      contact: "data-protection-authority@example.de"
+      method: "Official breach notification form"
+
+    affected_individuals:
+      required_if: "high_risk_to_rights_and_freedoms"
+      method: "Email notification (encrypted)"
+      content:
+        - "Description of breach in clear language"
+        - "Contact point for more information"
+        - "Measures taken and recommended to individuals"
+
+  actions:
+    - "Document everything for breach register (Art. 33(5))"
+    - "Prepare communication for affected users"
+    - "Review and update security measures"
+    - "Conduct post-incident review"
+
+# ============================================================================
+# Data Breach Assessment
+# ============================================================================
+
+assess_data_breach:
+  question: "What is the scope of the data breach?"
+  branches:
+    - condition: "database_compromised"
+      severity: critical
+      action: handle_database_breach
+      immediate_actions:
+        - "Shutdown database access from external networks"
+        - "Create forensic copy of database"
+        - "Check for data exfiltration (network logs)"
+        - "Activate incident commander"
+
+    - condition: "file_storage_compromised"
+      severity: critical
+      action: handle_storage_breach
+      immediate_actions:
+        - "Disable MinIO public access"
+        - "Review access logs for unusual downloads"
+        - "Check file integrity with checksums"
+        - "Rotate MinIO credentials"
+
+    - condition: "backup_compromised"
+      severity: high
+      action: handle_backup_breach
+      immediate_actions:
+        - "Isolate backup server"
+        - "Verify backup integrity"
+        - "Check for ransomware indicators"
+        - "Prepare to restore from offsite backup"
+
+handle_database_breach:
+  investigation_steps:
+    - step: "Identify attack vector"
+      methods:
+        - "Review PostgreSQL logs"
+        - "Check for SQL injection attempts"
+        - "Analyze application logs for anomalies"
+        - "Review firewall rules"
+
+    - step: "Determine data accessed"
+      methods:
+        - "Query audit tables for accessed records"
+        - "Review pg_stat_activity for suspicious queries"
+        - "Check data export logs"
+
+    - step: "Assess ongoing threat"
+      methods:
+        - "Check for backdoors or persistent access"
+        - "Review user accounts for unauthorized additions"
+        - "Scan for malware on database server"
+
+  containment:
+    - "Change all database passwords"
+    - "Revoke all existing sessions"
+    - "Apply database security patches"
+    - "Enable additional logging"
+    - "Implement IP allowlisting for database access"
+
+  recovery:
+    - "Restore from last known good backup if data modified"
+    - "Re-apply security hardening"
+    - "Gradually restore service with enhanced monitoring"
+
+# ============================================================================
+# DDoS Attack
+# ============================================================================
+
+assess_ddos_attack:
+  question: "What is the attack vector?"
+  branches:
+    - condition: "application_layer_attack"
+      severity: high
+      action: handle_application_ddos
+      immediate_actions:
+        - "Enable aggressive rate limiting"
+        - "Block attacking IP ranges"
+        - "Enable CAPTCHA for suspicious traffic"
+        - "Scale up application servers"
+
+    - condition: "network_layer_attack"
+      severity: high
+      action: handle_network_ddos
+      immediate_actions:
+        - "Contact ISP for upstream filtering"
+        - "Enable DDoS mitigation service"
+        - "Implement blackhole routing for attack traffic"
+
+handle_application_ddos:
+  rate_limiting:
+    - endpoint: "/api/v1/documents/upload"
+      normal_limit: "10/hour/user"
+      ddos_limit: "2/hour/user"
+
+    - endpoint: "/api/v1/ocr/process"
+      normal_limit: "20/hour/user"
+      ddos_limit: "5/hour/user"
+
+  traffic_analysis:
+    - "Identify common patterns in attack traffic"
+    - "Create WAF rules to block attack signatures"
+    - "Monitor for distributed attack from multiple IPs"
+
+  scaling_strategy:
+    - "Horizontal scaling: Add more workers"
+    - "Cache static content aggressively"
+    - "Defer non-critical background tasks"
+
+# ============================================================================
+# Malware Detection
+# ============================================================================
+
+assess_malware:
+  question: "Where was malware detected?"
+  branches:
+    - condition: "uploaded_document"
+      severity: medium
+      action: handle_malware_upload
+      immediate_actions:
+        - "Quarantine infected file"
+        - "Delete from MinIO storage"
+        - "Notify uploading user"
+        - "Scan all recent uploads from same user"
+        - "Check if malware executed (unlikely in doc context)"
+
+    - condition: "server_system"
+      severity: critical
+      action: handle_server_infection
+      immediate_actions:
+        - "Isolate affected server from network"
+        - "Shutdown affected services"
+        - "Create forensic image"
+        - "Initiate incident response team"
+        - "Check for lateral movement to other servers"
+
+handle_malware_upload:
+  document_handling:
+    - "Mark document as infected in database"
+    - "Add hash to malware signature database"
+    - "Re-scan all documents with updated signatures"
+
+  user_notification:
+    subject: "Sicherheitswarnung: Schadsoftware in hochgeladenem Dokument"
+    message: |
+      Sehr geehrte/r Nutzer/in,
+
+      In Ihrem hochgeladenen Dokument "{filename}" wurde Schadsoftware
+      erkannt. Das Dokument wurde automatisch gelöscht und kann nicht
+      verarbeitet werden.
+
+      Bitte überprüfen Sie Ihr System auf Viren und laden Sie nur
+      vertrauenswürdige Dokumente hoch.
+
+      Bei Fragen wenden Sie sich an: security@company.de
+
+  follow_up:
+    - "Review antivirus detection rules"
+    - "Consider additional scanning layers"
+    - "Update security awareness training"
+
+# ============================================================================
+# Authentication Anomaly
+# ============================================================================
+
+assess_auth_anomaly:
+  question: "What type of authentication anomaly?"
+  branches:
+    - condition: "brute_force_attempt"
+      severity: medium
+      action: handle_brute_force
+      immediate_actions:
+        - "Temporarily block IP after 5 failed attempts"
+        - "Implement exponential backoff"
+        - "Require CAPTCHA after 3 failed attempts"
+        - "Alert user if their account targeted"
+
+    - condition: "credential_stuffing"
+      severity: high
+      action: handle_credential_stuffing
+      immediate_actions:
+        - "Block known VPN/proxy IPs"
+        - "Require MFA for all logins from new locations"
+        - "Force password reset for affected accounts"
+        - "Check for successful logins with same credentials"
+
+    - condition: "session_hijacking_suspected"
+      severity: critical
+      action: handle_session_hijacking
+      immediate_actions:
+        - "Terminate all sessions for affected user"
+        - "Force re-authentication"
+        - "Review session token generation"
+        - "Check for XSS vulnerabilities"
+
+# ============================================================================
+# Configuration Vulnerability
+# ============================================================================
+
+assess_config_vulnerability:
+  question: "What configuration is vulnerable?"
+  branches:
+    - condition: "exposed_admin_panel"
+      severity: critical
+      action: secure_admin_panel
+      immediate_actions:
+        - "Remove from public internet immediately"
+        - "Add IP allowlist for admin access"
+        - "Enable MFA for all admin accounts"
+        - "Review access logs for unauthorized access"
+
+    - condition: "weak_encryption"
+      severity: high
+      action: upgrade_encryption
+      immediate_actions:
+        - "Disable weak cipher suites"
+        - "Force TLS 1.3"
+        - "Rotate all encryption keys"
+        - "Re-encrypt sensitive data"
+
+    - condition: "default_credentials"
+      severity: critical
+      action: change_default_credentials
+      immediate_actions:
+        - "Force password change"
+        - "Scan for all services with default creds"
+        - "Review password policy"
+
+# ============================================================================
+# Post-Incident Activities
+# ============================================================================
+
+post_incident_review:
+  required_within: "7 days of incident"
+
+  review_topics:
+    - "Timeline of events"
+    - "Effectiveness of response"
+    - "Gaps in detection/response"
+    - "Updated security measures"
+    - "Communication effectiveness"
+
+  deliverables:
+    - "Incident report"
+    - "Lessons learned document"
+    - "Updated security procedures"
+    - "Training materials"
+
+  improvements:
+    - "Update security policies"
+    - "Implement additional monitoring"
+    - "Schedule security audit"
+    - "Conduct team training"
+
+# ============================================================================
+# Escalation Paths
+# ============================================================================
+
+escalation:
+  level_1_analyst:
+    handles:
+      - "Blocked unauthorized access attempts"
+      - "Malware in uploaded documents"
+      - "Minor configuration issues"
+    escalate_if:
+      - "Incident severity >= high"
+      - "Unable to contain within 30 minutes"
+      - "Personal data potentially affected"
+
+  level_2_senior_analyst:
+    handles:
+      - "High severity incidents"
+      - "Data breach assessments"
+      - "DDoS mitigation"
+    escalate_if:
+      - "Incident severity == critical"
+      - "GDPR breach notification required"
+      - "Multiple systems affected"
+
+  level_3_incident_commander:
+    handles:
+      - "Critical incidents"
+      - "GDPR breach coordination"
+      - "Executive communication"
+      - "External authority notification"
+
+# ============================================================================
+# Communication Templates
+# ============================================================================
+
+communication_templates:
+  internal_alert:
+    subject: "[SECURITY] {severity} Incident: {incident_type}"
+    body: |
+      Security Incident Alert
+
+      Severity: {severity}
+      Type: {incident_type}
+      Detection Time: {timestamp}
+      Current Status: {status}
+
+      Initial Assessment:
+      {assessment}
+
+      Immediate Actions Taken:
+      {actions}
+
+      Next Steps:
+      {next_steps}
+
+      Incident Commander: {commander_name}
+      Contact: {commander_contact}
+
+  user_notification:
+    subject: "Sicherheitshinweis zu Ihrem Konto"
+    body: |
+      Sehr geehrte/r Nutzer/in,
+
+      Wir haben eine ungewöhnliche Aktivität in Bezug auf Ihr Konto
+      festgestellt: {incident_summary}
+
+      Aus Sicherheitsgründen haben wir folgende Maßnahmen ergriffen:
+      {actions_taken}
+
+      Bitte führen Sie folgende Schritte durch:
+      {user_actions_required}
+
+      Bei Fragen kontaktieren Sie: security@company.de
+
+      Mit freundlichen Grüßen
+      Ablage-System Security Team
+
+related_files:
+  - "Relations/Playbooks/error_response_playbook.yaml"
+  - "Static_Knowledge/Skills/monitoring_observability_skill.yaml"
+  - "Dynamic_Knowledge/Logs/security_audit_log.jsonl"
+  - "Static_Knowledge/Snippets/gdpr_logging_patterns.py"
+
+tags:
+  - security
+  - incident_response
+  - gdpr
+  - decision_tree
+  - compliance

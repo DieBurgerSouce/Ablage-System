@@ -1,0 +1,139 @@
+{{ define "slack.critical.text" }}
+*Kritischer Alert für {{ .GroupLabels.service | title }}*
+
+{{ range .Alerts }}
+*Alert:* {{ .Labels.alertname }}
+*Severity:* {{ .Labels.severity }}
+*Service:* {{ .Labels.service }}
+{{ if .Labels.instance }}*Instance:* {{ .Labels.instance }}{{ end }}
+
+*Beschreibung:*
+{{ .Annotations.summary }}
+
+{{ if .Annotations.description }}
+*Details:*
+{{ .Annotations.description }}
+{{ end }}
+
+*Status:* {{ .Status }}
+{{ if eq .Status "firing" }}
+*Started:* {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+{{ else }}
+*Resolved:* {{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}
+*Duration:* {{ .EndsAt.Sub .StartsAt }}
+{{ end }}
+
+{{ if .Annotations.runbook_url }}
+*Runbook:* {{ .Annotations.runbook_url }}
+{{ end }}
+---
+{{ end }}
+
+{{ if gt (len .Alerts.Firing) 0 }}
+🔴 *{{ len .Alerts.Firing }} active alert(s)*
+{{ end }}
+{{ if gt (len .Alerts.Resolved) 0 }}
+✅ *{{ len .Alerts.Resolved }} resolved alert(s)*
+{{ end }}
+{{ end }}
+
+{{ define "slack.high.text" }}
+*High Priority Alert für {{ .GroupLabels.service | title }}*
+
+{{ range .Alerts }}
+*Alert:* {{ .Labels.alertname }}
+*Severity:* {{ .Labels.severity }}
+*Service:* {{ .Labels.service }}
+{{ if .Labels.instance }}*Instance:* {{ .Labels.instance }}{{ end }}
+
+*Beschreibung:* {{ .Annotations.summary }}
+
+*Status:* {{ .Status }}
+{{ if eq .Status "firing" }}
+*Started:* {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+{{ else }}
+*Resolved:* {{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}
+{{ end }}
+---
+{{ end }}
+{{ end }}
+
+{{ define "slack.warning.text" }}
+*Warning Alert für {{ .GroupLabels.service | title }}*
+
+{{ range .Alerts }}
+*Alert:* {{ .Labels.alertname }}
+*Service:* {{ .Labels.service }}
+{{ if .Labels.instance }}*Instance:* {{ .Labels.instance }}{{ end }}
+
+*Beschreibung:* {{ .Annotations.summary }}
+
+{{ if eq .Status "firing" }}
+⚠️ *Active since:* {{ .StartsAt.Format "15:04:05" }}
+{{ else }}
+✅ *Resolved at:* {{ .EndsAt.Format "15:04:05" }}
+{{ end }}
+{{ end }}
+{{ end }}
+
+{{ define "slack.gpu.text" }}
+🎮 *GPU Alert für {{ .GroupLabels.service | title }}*
+
+{{ range .Alerts }}
+*Alert:* {{ .Labels.alertname }}
+{{ if .Labels.gpu_id }}*GPU ID:* {{ .Labels.gpu_id }}{{ end }}
+{{ if .Labels.instance }}*Instance:* {{ .Labels.instance }}{{ end }}
+
+*Beschreibung:* {{ .Annotations.summary }}
+
+{{ if .Annotations.current_value }}
+*Aktueller Wert:* {{ .Annotations.current_value }}
+{{ end }}
+{{ if .Annotations.threshold }}
+*Schwellenwert:* {{ .Annotations.threshold }}
+{{ end }}
+
+*Status:* {{ .Status }}
+{{ if eq .Status "firing" }}
+🔴 *Active since:* {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+{{ else }}
+✅ *Resolved:* {{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}
+{{ end }}
+
+{{ if .Annotations.dashboard_url }}
+*Dashboard:* {{ .Annotations.dashboard_url }}
+{{ end }}
+---
+{{ end }}
+{{ end }}
+
+{{ define "slack.database.text" }}
+💾 *Database Alert für {{ .GroupLabels.service | title }}*
+
+{{ range .Alerts }}
+*Alert:* {{ .Labels.alertname }}
+*Database:* {{ .Labels.database | default "postgres" }}
+{{ if .Labels.instance }}*Instance:* {{ .Labels.instance }}{{ end }}
+
+*Beschreibung:* {{ .Annotations.summary }}
+
+{{ if .Annotations.query }}
+*Betroffene Query:*
+```
+{{ .Annotations.query }}
+```
+{{ end }}
+
+{{ if .Annotations.current_value }}
+*Aktueller Wert:* {{ .Annotations.current_value }}
+{{ end }}
+
+*Status:* {{ .Status }}
+{{ if eq .Status "firing" }}
+🔴 *Active since:* {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+{{ else }}
+✅ *Resolved:* {{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}
+{{ end }}
+---
+{{ end }}
+{{ end }}

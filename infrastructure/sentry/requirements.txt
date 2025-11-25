@@ -1,0 +1,6 @@
+# Sentry SDK and integrations
+sentry-sdk[fastapi,sqlalchemy,celery,redis]==1.40.6
+
+# Required for profiling (optional)
+# If you want continuous profiling, uncomment:
+# sentry-sdk[profiling]>=1.40.6

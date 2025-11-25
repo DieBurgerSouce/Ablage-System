@@ -1,0 +1,218 @@
+# Docker Compose Development Override
+# Ablage-System OCR - Development Configuration
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # BACKEND - Development Mode
+  # ============================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.backend
+      target: development  # Use development stage if multi-stage
+    container_name: ablage-backend-dev
+    environment:
+      # Development environment
+      ENV: development
+      DEBUG: "true"
+      LOG_LEVEL: DEBUG
+
+      # Hot reload
+      RELOAD: "true"
+
+      # Debugger
+      DEBUGPY_ENABLED: "true"
+      DEBUGPY_PORT: 5678
+
+      # Disable some production features
+      API_WORKERS: 1  # Single worker for easier debugging
+
+    volumes:
+      # Mount code for hot reload (read-write)
+      - ./app:/app/app
+      - ./tests:/app/tests
+      - ./Static_Knowledge:/app/Static_Knowledge
+      - ./Dynamic_Knowledge:/app/Dynamic_Knowledge
+      - ./Meta_Layer:/app/Meta_Layer
+      - ./Relations:/app/Relations
+
+      # Mount config files
+      - ./.env:/app/.env
+      - ./pyproject.toml:/app/pyproject.toml
+
+    ports:
+      - "8000:8000"  # API
+      - "5678:5678"  # Debugger (debugpy)
+
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/app
+      --log-level debug
+
+  # ============================================================================
+  # WORKER - Development Mode
+  # ============================================================================
+  worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.worker
+      target: development
+    container_name: ablage-worker-dev
+    environment:
+      ENV: development
+      DEBUG: "true"
+      LOG_LEVEL: DEBUG
+
+      # Debugger
+      DEBUGPY_ENABLED: "true"
+      DEBUGPY_PORT: 5679
+
+    volumes:
+      # Mount code for hot reload
+      - ./app:/app/app
+      - ./Static_Knowledge:/app/Static_Knowledge
+      - ./Dynamic_Knowledge:/app/Dynamic_Knowledge
+
+    ports:
+      - "5679:5679"  # Debugger
+
+    # Use watchdog for auto-reload
+    command: >
+      celery -A app.workers.celery_app worker
+      --loglevel=debug
+      --concurrency=1
+      --pool=solo
+
+  # ============================================================================
+  # POSTGRES - Development Tweaks
+  # ============================================================================
+  postgres:
+    container_name: ablage-postgres-dev
+    environment:
+      # More verbose logging
+      POSTGRES_LOG_STATEMENT: all
+      POSTGRES_LOG_MIN_DURATION_STATEMENT: 0
+
+    # Expose port for external tools (pgAdmin, DBeaver)
+    ports:
+      - "5432:5432"
+
+  # ============================================================================
+  # REDIS - Development Tweaks
+  # ============================================================================
+  redis:
+    container_name: ablage-redis-dev
+    # Expose port for redis-cli, RedisInsight
+    ports:
+      - "6379:6379"
+
+  # ============================================================================
+  # MINIO - Development Tweaks
+  # ============================================================================
+  minio:
+    container_name: ablage-minio-dev
+    environment:
+      # Development credentials (not secret)
+      MINIO_ROOT_USER: dev
+      MINIO_ROOT_PASSWORD: devpassword
+
+    # Expose both API and Console
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Console (http://localhost:9001)
+
+  # ============================================================================
+  # DEVELOPMENT TOOLS
+  # ============================================================================
+
+  # Database Admin UI
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ablage-pgadmin-dev
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dev@ablage.local
+      PGADMIN_DEFAULT_PASSWORD: devpassword
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "5050:80"
+    networks:
+      - ablage-network
+    depends_on:
+      - postgres
+
+  # Redis Admin UI
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: ablage-redis-commander-dev
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - ablage-network
+    depends_on:
+      - redis
+
+  # Celery Flower (task monitor)
+  flower:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.backend
+    container_name: ablage-flower-dev
+    restart: unless-stopped
+    command: >
+      celery -A app.workers.celery_app flower
+      --port=5555
+      --broker=redis://redis:6379/1
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    ports:
+      - "5555:5555"
+    networks:
+      - ablage-network
+    depends_on:
+      - redis
+      - worker
+
+  # ============================================================================
+  # TEST DATABASE (separate from dev database)
+  # ============================================================================
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: ablage-postgres-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ablage_ocr_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=de_DE.UTF-8"
+    tmpfs:
+      - /var/lib/postgresql/data  # In-memory for faster tests
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ablage_ocr_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - ablage-network
+
+# ============================================================================
+# VOLUMES (Development)
+# ============================================================================
+volumes:
+  pgadmin_data:
+    driver: local

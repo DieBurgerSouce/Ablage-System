@@ -1,0 +1,952 @@
+# API Error Debugging Playbook
+
+category: Relations - Playbooks
+version: "2.0"
+last_updated: "2025-11-22"
+status: active
+priority: high
+owner: Backend Team
+target_resolution_time: "< 30 minutes"
+
+description: |
+  Operational runbook for debugging and resolving common API errors in Ablage-System.
+  Includes step-by-step procedures, error code reference, and integration troubleshooting.
+
+---
+
+# Quick Reference
+
+common_errors:
+  authentication:
+    - 401 Unauthorized
+    - 403 Forbidden
+  client_errors:
+    - 400 Bad Request
+    - 404 Not Found
+    - 409 Conflict
+    - 413 Payload Too Large
+    - 429 Too Many Requests
+  server_errors:
+    - 500 Internal Server Error
+    - 502 Bad Gateway
+    - 503 Service Unavailable
+    - 504 Gateway Timeout
+
+error_response_format:
+  example: |
+    {
+      "error": {
+        "code": "DOCUMENT_NOT_FOUND",
+        "message": "Dokument nicht gefunden",
+        "details": {
+          "document_id": "doc_123",
+          "user_id": "user_456"
+        },
+        "documentation_url": "https://docs.ablage.company.de/errors#DOCUMENT_NOT_FOUND",
+        "timestamp": "2025-11-22T14:30:00Z"
+      },
+      "request_id": "req_abc123xyz",
+      "status": 404
+    }
+
+---
+
+# Runbook 1: 401 Unauthorized
+
+error_code: 401_UNAUTHORIZED
+severity: medium
+frequency: "Common"
+
+description: |
+  Client request lacks valid authentication credentials or the provided credentials are invalid.
+
+common_causes:
+  - "Missing Authorization header"
+  - "Expired JWT token"
+  - "Invalid API key"
+  - "Token format incorrect"
+  - "User account suspended"
+
+diagnosis:
+  step_1_check_request:
+    description: "Verify request has Authorization header"
+    command: |
+      # Check request headers
+      curl -i https://api.ablage.company.de/api/v1/documents \
+        -H "Authorization: Bearer <token>"
+
+    expected_header: "Authorization: Bearer eyJhbGciOiJIUzI1..."
+
+    if_missing:
+      error_message: "Missing authentication credentials"
+      error_code: "AUTH_MISSING"
+      solution: "Add Authorization header with valid token"
+
+  step_2_verify_token:
+    description: "Decode and verify JWT token"
+    command: |
+      # Decode JWT (Python)
+      import jwt
+      token = "eyJhbGciOiJIUzI1..."
+      decoded = jwt.decode(token, options={"verify_signature": False})
+      print(decoded)
+
+    check_fields:
+      - exp: "Token expiration timestamp"
+      - sub: "User ID"
+      - iat: "Issued at timestamp"
+
+    if_expired:
+      error_message: "Token has expired"
+      error_code: "TOKEN_EXPIRED"
+      solution: "Request new token via /api/v1/auth/refresh"
+
+  step_3_check_token_format:
+    description: "Verify token format is correct"
+    valid_format: "Bearer <JWT_TOKEN>"
+    common_mistakes:
+      - "Bearer missing: Authorization: eyJ..."  # Missing "Bearer "
+      - "Typo in Bearer: Authorization: Barer eyJ..."  # Typo
+      - "Extra Bearer: Authorization: Bearer Bearer eyJ..."  # Duplicate
+
+  step_4_check_user_status:
+    description: "Verify user account is active"
+    query: |
+      SELECT id, email, is_active, is_suspended
+      FROM users
+      WHERE id = '<user_id>';
+
+    if_suspended:
+      error_code: "ACCOUNT_SUSPENDED"
+      solution: "Contact support to reactivate account"
+
+    if_not_active:
+      error_code: "ACCOUNT_NOT_ACTIVATED"
+      solution: "Complete email verification"
+
+resolution_steps:
+  refresh_token:
+    endpoint: "POST /api/v1/auth/refresh"
+    request_body: |
+      {
+        "refresh_token": "<refresh_token>"
+      }
+    response: |
+      {
+        "access_token": "<new_access_token>",
+        "expires_in": 900,
+        "token_type": "Bearer"
+      }
+
+  reactivate_account:
+    action: "Contact support at support@ablage.company.de"
+
+prevention:
+  - "Implement token refresh logic before expiration"
+  - "Handle 401 responses gracefully in client"
+  - "Store tokens securely (never in localStorage)"
+
+---
+
+# Runbook 2: 403 Forbidden
+
+error_code: 403_FORBIDDEN
+severity: medium
+frequency: "Common"
+
+description: |
+  Client is authenticated but lacks permission to access the requested resource.
+
+common_causes:
+  - "Insufficient user permissions"
+  - "Trying to access another user's document"
+  - "API key lacks required scope"
+  - "Rate limit exceeded (429 may be more appropriate)"
+  - "Account tier limitation"
+
+diagnosis:
+  step_1_verify_authentication:
+    description: "Ensure client is authenticated (not 401)"
+    check: "Authorization header present and valid"
+
+  step_2_check_resource_ownership:
+    description: "Verify user owns the requested resource"
+    example_query: |
+      SELECT d.id, d.user_id, u.id AS requester_id
+      FROM documents d
+      JOIN users u ON u.id = '<requester_user_id>'
+      WHERE d.id = '<document_id>';
+
+    if_not_owner:
+      error_code: "DOCUMENT_ACCESS_DENIED"
+      check_sharing: |
+        SELECT * FROM document_shares
+        WHERE document_id = '<document_id>'
+          AND shared_with_user_id = '<requester_user_id>';
+
+  step_3_check_permissions:
+    description: "Verify user has required permission"
+    permission_table: |
+      | Action | Required Permission | Required Tier |
+      |--------|---------------------|---------------|
+      | Upload Document | documents.create | All |
+      | Delete Document | documents.delete | All |
+      | Bulk Operations | documents.bulk | Standard+ |
+      | API Access | api.access | Standard+ |
+      | Webhooks | integrations.webhooks | Enterprise |
+
+    query: |
+      SELECT p.name
+      FROM user_permissions up
+      JOIN permissions p ON p.id = up.permission_id
+      WHERE up.user_id = '<user_id>';
+
+  step_4_check_tier_limits:
+    description: "Check if user has exceeded tier limits"
+    query: |
+      SELECT tier, documents_per_month, documents_used
+      FROM user_quotas
+      WHERE user_id = '<user_id>';
+
+    if_quota_exceeded:
+      error_code: "QUOTA_EXCEEDED"
+      solution: "Upgrade tier or wait for monthly reset"
+
+resolution_steps:
+  grant_access:
+    action: "Share document with user"
+    endpoint: "POST /api/v1/documents/<document_id>/share"
+    request_body: |
+      {
+        "user_email": "other@example.com",
+        "permission": "read"
+      }
+
+  upgrade_tier:
+    action: "Upgrade user to higher tier"
+    endpoint: "POST /api/v1/users/<user_id>/upgrade"
+    request_body: |
+      {
+        "tier": "standard"
+      }
+
+prevention:
+  - "Check permissions before displaying UI elements"
+  - "Show clear upgrade prompts for tier limitations"
+  - "Implement role-based access control (RBAC)"
+
+---
+
+# Runbook 3: 400 Bad Request
+
+error_code: 400_BAD_REQUEST
+severity: low
+frequency: "Very Common"
+
+description: |
+  Client sent a malformed or invalid request. Most common API error.
+
+common_causes:
+  - "Missing required fields"
+  - "Invalid field types"
+  - "Invalid field values"
+  - "Malformed JSON"
+  - "Invalid query parameters"
+
+diagnosis:
+  step_1_check_request_body:
+    description: "Verify JSON is valid and well-formed"
+    command: |
+      # Validate JSON with jq
+      echo '<request_body>' | jq .
+
+    common_json_errors:
+      - "Trailing comma: {..., \"field\": \"value\",}"
+      - "Missing quotes: {field: \"value\"}"
+      - "Single quotes: {'field': 'value'}"
+      - "Unescaped quotes: {\"text\": \"He said \"hello\"\"}"
+
+  step_2_check_required_fields:
+    description: "Verify all required fields are present"
+    example_endpoint: "POST /api/v1/documents"
+    required_fields:
+      - file: "multipart/form-data file upload"
+      - language: "string, one of ['de', 'en']"
+
+    error_response_example: |
+      {
+        "error": {
+          "code": "VALIDATION_ERROR",
+          "message": "Validation failed",
+          "details": {
+            "file": ["This field is required"]
+          }
+        }
+      }
+
+  step_3_check_field_types:
+    description: "Verify field types are correct"
+    type_validation_examples:
+      email:
+        invalid: "not-an-email"
+        valid: "user@example.com"
+      uuid:
+        invalid: "abc123"
+        valid: "550e8400-e29b-41d4-a716-446655440000"
+      date:
+        invalid: "2025/11/22"
+        valid: "2025-11-22"
+      integer:
+        invalid: "123.45"
+        valid: 123
+
+  step_4_check_field_values:
+    description: "Verify field values are within valid range"
+    validation_rules:
+      file_size:
+        max: "50 MB"
+        error_if_exceeded: "FILE_TOO_LARGE"
+      email_length:
+        max: 255
+        error_if_exceeded: "EMAIL_TOO_LONG"
+      page_size:
+        min: 1
+        max: 100
+        default: 20
+
+resolution_steps:
+  fix_json:
+    tools:
+      - name: "JSONLint"
+        url: "https://jsonlint.com/"
+      - name: "jq (CLI)"
+        command: "echo '<json>' | jq ."
+
+  validate_request:
+    example_curl: |
+      curl -X POST https://api.ablage.company.de/api/v1/documents \
+        -H "Authorization: Bearer <token>" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "file": "<base64_encoded_file>",
+          "language": "de"
+        }'
+
+prevention:
+  - "Use API client libraries with built-in validation"
+  - "Validate input on client-side before sending"
+  - "Read API documentation carefully"
+
+---
+
+# Runbook 4: 404 Not Found
+
+error_code: 404_NOT_FOUND
+severity: low
+frequency: "Common"
+
+description: |
+  Requested resource does not exist or user does not have access to it.
+
+common_causes:
+  - "Incorrect resource ID"
+  - "Resource was deleted"
+  - "Typo in endpoint URL"
+  - "Wrong API version"
+  - "Resource belongs to different user"
+
+diagnosis:
+  step_1_verify_url:
+    description: "Check URL for typos"
+    correct_format: "https://api.ablage.company.de/api/v1/documents/<document_id>"
+    common_mistakes:
+      - "Missing /api/v1/: https://api.ablage.company.de/documents/<id>"
+      - "Wrong version: https://api.ablage.company.de/api/v2/documents/<id>"
+      - "Typo: https://api.ablage.company.de/api/v1/documens/<id>"
+
+  step_2_check_resource_exists:
+    description: "Query database to verify resource exists"
+    query: |
+      SELECT id, user_id, deleted_at
+      FROM documents
+      WHERE id = '<document_id>';
+
+    if_not_found:
+      error_code: "DOCUMENT_NOT_FOUND"
+      solution: "Verify document ID is correct"
+
+    if_deleted:
+      error_code: "DOCUMENT_DELETED"
+      solution: "Document was deleted. Cannot be recovered."
+
+  step_3_check_ownership:
+    description: "Verify user has access to resource"
+    query: |
+      SELECT d.id
+      FROM documents d
+      WHERE d.id = '<document_id>'
+        AND (d.user_id = '<user_id>' OR EXISTS (
+          SELECT 1 FROM document_shares ds
+          WHERE ds.document_id = d.id
+            AND ds.shared_with_user_id = '<user_id>'
+        ));
+
+    if_no_access:
+      return_404: true  # Security: Don't reveal existence to unauthorized users
+      error_code: "DOCUMENT_NOT_FOUND"
+
+resolution_steps:
+  list_available_documents:
+    endpoint: "GET /api/v1/documents"
+    response_example: |
+      {
+        "documents": [
+          {
+            "id": "doc_abc123",
+            "name": "Rechnung_2025.pdf",
+            "created_at": "2025-11-22T10:00:00Z"
+          }
+        ],
+        "pagination": {
+          "total": 42,
+          "page": 1,
+          "per_page": 20
+        }
+      }
+
+prevention:
+  - "Store resource IDs returned from creation endpoints"
+  - "Implement proper ID validation before API calls"
+  - "Handle 404 gracefully in UI (show \"not found\" message)"
+
+---
+
+# Runbook 5: 429 Too Many Requests
+
+error_code: 429_TOO_MANY_REQUESTS
+severity: medium
+frequency: "Occasional"
+
+description: |
+  Client has exceeded rate limit. Requests are being throttled.
+
+common_causes:
+  - "Too many requests in short time"
+  - "Infinite loop in client code"
+  - "Aggressive retry logic"
+  - "Shared API key across multiple clients"
+
+diagnosis:
+  step_1_check_rate_limit_headers:
+    description: "Inspect rate limit response headers"
+    headers:
+      X-RateLimit-Limit: "100"  # Requests per window
+      X-RateLimit-Remaining: "0"  # Remaining requests
+      X-RateLimit-Reset: "1700000000"  # Unix timestamp when limit resets
+      Retry-After: "60"  # Seconds until next retry
+
+  step_2_check_user_tier:
+    description: "Verify rate limits for user tier"
+    rate_limits:
+      free:
+        requests_per_minute: 10
+        requests_per_hour: 100
+      standard:
+        requests_per_minute: 60
+        requests_per_hour: 1000
+      enterprise:
+        requests_per_minute: 300
+        requests_per_hour: 10000
+
+  step_3_identify_client:
+    description: "Find which client is causing high request rate"
+    query: |
+      SELECT user_id, ip_address, COUNT(*) AS request_count
+      FROM api_access_logs
+      WHERE timestamp > NOW() - INTERVAL '5 minutes'
+      GROUP BY user_id, ip_address
+      ORDER BY request_count DESC
+      LIMIT 10;
+
+  step_4_check_for_loops:
+    description: "Look for patterns indicating infinite loops"
+    patterns:
+      - "Same request repeated hundreds of times"
+      - "Requests every few milliseconds"
+      - "No variation in request parameters"
+
+resolution_steps:
+  implement_backoff:
+    description: "Add exponential backoff to client code"
+    example_python: |
+      import time
+      import requests
+
+      def api_request_with_backoff(url, max_retries=5):
+          for attempt in range(max_retries):
+              response = requests.get(url)
+
+              if response.status_code != 429:
+                  return response
+
+              # Get retry-after header
+              retry_after = int(response.headers.get('Retry-After', 60))
+
+              # Exponential backoff
+              wait_time = min(retry_after * (2 ** attempt), 300)  # Max 5 minutes
+
+              print(f"Rate limited. Waiting {wait_time}s...")
+              time.sleep(wait_time)
+
+          raise Exception("Max retries exceeded")
+
+  upgrade_tier:
+    description: "Upgrade to higher tier for increased limits"
+    endpoint: "POST /api/v1/users/<user_id>/upgrade"
+
+prevention:
+  - "Implement exponential backoff in all API clients"
+  - "Respect Retry-After header"
+  - "Cache responses when possible"
+  - "Use webhooks instead of polling"
+  - "Monitor rate limit headers proactively"
+
+---
+
+# Runbook 6: 500 Internal Server Error
+
+error_code: 500_INTERNAL_SERVER_ERROR
+severity: critical
+frequency: "Rare (should be < 0.1%)"
+
+description: |
+  Server encountered unexpected error. This should be rare in production.
+
+common_causes:
+  - "Unhandled exception in application code"
+  - "Database connection failure"
+  - "Out of memory"
+  - "Disk full"
+  - "Third-party service failure"
+
+diagnosis:
+  step_1_get_request_id:
+    description: "Extract request ID from error response"
+    example_response: |
+      {
+        "error": {
+          "code": "INTERNAL_SERVER_ERROR",
+          "message": "An unexpected error occurred"
+        },
+        "request_id": "req_abc123xyz"
+      }
+
+    use_request_id: "Search logs using this request_id"
+
+  step_2_check_logs:
+    description: "Search application logs for error"
+    command: |
+      # Search logs with request ID
+      grep "req_abc123xyz" /var/log/ablage/app.log
+
+      # Or use log aggregation tool
+      # Loki, Elasticsearch, etc.
+
+    look_for:
+      - "Exception traces"
+      - "Database errors"
+      - "OOM errors"
+
+  step_3_check_system_health:
+    description: "Verify system resources"
+    checks:
+      database:
+        command: "pg_isready -h localhost -p 5432"
+        expected: "accepting connections"
+
+      disk_space:
+        command: "df -h"
+        alert_if: "< 10% free"
+
+      memory:
+        command: "free -m"
+        alert_if: "< 1 GB available"
+
+      gpu:
+        command: "nvidia-smi"
+        check: "GPU accessible and not hanging"
+
+  step_4_check_recent_deployments:
+    description: "Check if error started after deployment"
+    query: |
+      SELECT version, deployed_at
+      FROM deployments
+      WHERE deployed_at > NOW() - INTERVAL '24 hours'
+      ORDER BY deployed_at DESC;
+
+resolution_steps:
+  immediate_action:
+    - "Check if error is widespread (affects all users)"
+    - "If yes, rollback deployment immediately"
+    - "If no, investigate specific user/request pattern"
+
+  rollback_deployment:
+    command: |
+      # Rollback to previous version
+      kubectl rollout undo deployment/ablage-backend
+
+      # Or Docker Compose
+      docker-compose down
+      git checkout <previous_commit>
+      docker-compose up -d
+
+  restart_services:
+    database:
+      command: "systemctl restart postgresql"
+    application:
+      command: "systemctl restart ablage-backend"
+    workers:
+      command: "systemctl restart ablage-worker"
+
+  emergency_contacts:
+    - "On-call engineer: +49-XXX-ONCALL"
+    - "Slack: #ablage-critical"
+    - "PagerDuty: Escalate to Engineering Lead"
+
+prevention:
+  - "Comprehensive error handling in all code paths"
+  - "Proper exception logging with context"
+  - "Health checks and monitoring"
+  - "Gradual rollout of new deployments"
+  - "Automated alerting on error rate spike"
+
+---
+
+# Runbook 7: 503 Service Unavailable
+
+error_code: 503_SERVICE_UNAVAILABLE
+severity: high
+frequency: "Rare"
+
+description: |
+  Service temporarily unavailable. Usually due to maintenance or overload.
+
+common_causes:
+  - "Planned maintenance"
+  - "Deployment in progress"
+  - "Database migration running"
+  - "System overload"
+  - "Dependency failure"
+
+diagnosis:
+  step_1_check_maintenance_window:
+    description: "Verify if maintenance is scheduled"
+    command: |
+      # Check maintenance schedule
+      curl https://status.ablage.company.de/api/scheduled-maintenances
+
+  step_2_check_load:
+    description: "Check system load and queue lengths"
+    metrics:
+      - "CPU usage > 90%"
+      - "Memory usage > 95%"
+      - "Celery queue > 5000 tasks"
+      - "Database connections > 95%"
+
+  step_3_check_dependencies:
+    description: "Verify all dependencies are healthy"
+    dependencies:
+      - PostgreSQL: "pg_isready"
+      - Redis: "redis-cli PING"
+      - MinIO: "curl http://minio:9000/minio/health/live"
+      - GPU: "nvidia-smi"
+
+resolution_steps:
+  if_maintenance:
+    action: "Wait for maintenance to complete"
+    check_status: "https://status.ablage.company.de"
+
+  if_overload:
+    immediate_actions:
+      - "Enable circuit breaker to shed load"
+      - "Scale up workers if possible"
+      - "Increase database connection pool"
+      - "Enable read-only mode if necessary"
+
+  if_dependency_failure:
+    action: "Check dependency-specific runbook"
+    examples:
+      - "Database down → Runbook: Database Recovery"
+      - "Redis down → Runbook: Cache Recovery"
+      - "GPU OOM → Runbook: GPU Troubleshooting"
+
+prevention:
+  - "Scheduled maintenance announcements 48h in advance"
+  - "Gradual rollout to prevent thundering herd"
+  - "Auto-scaling policies"
+  - "Circuit breaker for dependencies"
+
+---
+
+# Runbook 8: OCR Processing Failures
+
+error_code: OCR_PROCESSING_FAILED
+severity: medium
+frequency: "Occasional"
+
+description: |
+  Document OCR processing failed. May be due to various reasons.
+
+common_causes:
+  - "Unsupported file format"
+  - "Corrupted file"
+  - "GPU out of memory"
+  - "Document too large"
+  - "OCR backend unavailable"
+
+diagnosis:
+  step_1_check_document:
+    description: "Verify document is valid"
+    checks:
+      file_format:
+        supported: ["PDF", "PNG", "JPG", "JPEG", "TIFF"]
+        command: "file <document_path>"
+
+      file_size:
+        max: "50 MB"
+        command: "ls -lh <document_path>"
+
+      file_integrity:
+        pdf_check: "pdfinfo <document_path>"
+        image_check: "identify <document_path>"
+
+  step_2_check_ocr_logs:
+    description: "Check OCR processing logs"
+    command: |
+      # Search for document ID in logs
+      grep "<document_id>" /var/log/ablage/ocr.log
+
+    common_errors:
+      - "torch.cuda.OutOfMemoryError → GPU OOM"
+      - "PIL.UnidentifiedImageError → Corrupted image"
+      - "pypdf.errors.PdfReadError → Corrupted PDF"
+
+  step_3_check_backend_health:
+    description: "Verify OCR backend is healthy"
+    checks:
+      gpu_available:
+        command: "nvidia-smi"
+        expected: "GPU accessible, VRAM available"
+
+      model_loaded:
+        query: |
+          SELECT backend, status
+          FROM ocr_backend_status
+          WHERE status = 'ready';
+
+      worker_status:
+        command: "celery -A app.celery inspect active"
+
+resolution_steps:
+  retry_with_different_backend:
+    description: "Try different OCR backend"
+    endpoints:
+      - "POST /api/v1/ocr/<document_id>/process?backend=got_ocr"
+      - "POST /api/v1/ocr/<document_id>/process?backend=surya"
+
+  manual_intervention:
+    description: "Process document manually"
+    steps:
+      - "Download document"
+      - "Check if readable by human"
+      - "If corrupted, notify user"
+      - "If ok, escalate to ML team"
+
+prevention:
+  - "Validate files before accepting upload"
+  - "Implement GPU OOM recovery"
+  - "Add file corruption detection"
+  - "Clear error messages to users"
+
+---
+
+# Integration Troubleshooting
+
+webhook_issues:
+  symptom: "Webhooks not being received"
+
+  diagnosis:
+    - check: "Verify webhook URL is reachable"
+      command: "curl -X POST <webhook_url> -d '{}'"
+
+    - check: "Check webhook logs"
+      query: |
+        SELECT * FROM webhook_deliveries
+        WHERE webhook_id = '<webhook_id>'
+        ORDER BY created_at DESC
+        LIMIT 10;
+
+    - check: "Verify webhook signature"
+      description: "Ensure receiving server validates HMAC signature"
+
+  solutions:
+    - "Whitelist Ablage IP addresses in firewall"
+    - "Verify webhook URL uses HTTPS"
+    - "Check webhook endpoint returns 200 OK"
+    - "Implement exponential backoff for retries"
+
+api_key_issues:
+  symptom: "API key not working"
+
+  diagnosis:
+    - check: "Verify API key format"
+      format: "ablage_live_<32_chars> or ablage_test_<32_chars>"
+
+    - check: "Check API key status"
+      query: |
+        SELECT id, key_prefix, is_active, expires_at
+        FROM api_keys
+        WHERE key_hash = SHA256('<api_key>');
+
+    - check: "Verify API key scopes"
+      query: |
+        SELECT scope
+        FROM api_key_scopes
+        WHERE api_key_id = '<api_key_id>';
+
+  solutions:
+    - "Regenerate API key if compromised"
+    - "Check key hasn't expired"
+    - "Verify key has required scopes"
+    - "Use environment variable, not hardcode"
+
+---
+
+# Error Code Reference
+
+error_codes:
+  authentication:
+    AUTH_MISSING:
+      status: 401
+      message_de: "Authentifizierung erforderlich"
+      solution: "Add Authorization header"
+
+    TOKEN_EXPIRED:
+      status: 401
+      message_de: "Token abgelaufen"
+      solution: "Refresh token"
+
+    TOKEN_INVALID:
+      status: 401
+      message_de: "Ungültiges Token"
+      solution: "Obtain new token"
+
+  authorization:
+    DOCUMENT_ACCESS_DENIED:
+      status: 403
+      message_de: "Zugriff verweigert"
+      solution: "Request document share access"
+
+    QUOTA_EXCEEDED:
+      status: 403
+      message_de: "Kontingent überschritten"
+      solution: "Upgrade tier or wait for reset"
+
+  validation:
+    VALIDATION_ERROR:
+      status: 400
+      message_de: "Validierungsfehler"
+      solution: "Check request body"
+
+    FILE_TOO_LARGE:
+      status: 413
+      message_de: "Datei zu groß"
+      solution: "Compress file or split into smaller parts"
+
+  resources:
+    DOCUMENT_NOT_FOUND:
+      status: 404
+      message_de: "Dokument nicht gefunden"
+      solution: "Verify document ID"
+
+    USER_NOT_FOUND:
+      status: 404
+      message_de: "Benutzer nicht gefunden"
+      solution: "Verify user exists"
+
+  processing:
+    OCR_PROCESSING_FAILED:
+      status: 500
+      message_de: "OCR-Verarbeitung fehlgeschlagen"
+      solution: "Retry or contact support"
+
+    GPU_OUT_OF_MEMORY:
+      status: 503
+      message_de: "GPU-Speicher voll"
+      solution: "Retry later or use CPU backend"
+
+---
+
+# Monitoring and Alerting
+
+prometheus_alerts:
+  - alert: "HighErrorRate"
+    expr: "rate(http_requests_total{status=~\"5..\"}[5m]) > 0.05"
+    for: "5m"
+    severity: "critical"
+    action: "Page on-call engineer"
+
+  - alert: "AuthenticationFailureSpike"
+    expr: "rate(http_requests_total{status=\"401\"}[5m]) > 1.0"
+    for: "10m"
+    severity: "warning"
+    action: "Check for attack or misconfiguration"
+
+grafana_dashboards:
+  api_errors:
+    panels:
+      - "Error rate by status code"
+      - "Top 10 error endpoints"
+      - "Error rate by user tier"
+      - "Mean time to resolution"
+
+---
+
+# Related Documentation
+
+references:
+  - "../../Static_Knowledge/Skills/error_handling_skill.yaml"
+  - "../../Static_Knowledge/ADRs/005_api_versioning_strategy.md"
+  - "../../Dynamic_Knowledge/Learnings/api_design_lessons.md"
+  - "../../Relations/Playbooks/database_performance_playbook.yaml"
+  - "../../Relations/Playbooks/gpu_troubleshooting_playbook.yaml"
+
+external_docs:
+  - name: "HTTP Status Codes"
+    url: "https://httpstatuses.com/"
+  - name: "REST API Best Practices"
+    url: "https://restfulapi.net/"
+
+---
+
+# Maintenance
+
+review_frequency: "Quarterly"
+last_review: "2025-11-22"
+next_review: "2026-02-22"
+owner: "Backend Team"
+contact: "#ablage-backend on Slack"
+
+change_log:
+  - date: "2025-11-22"
+    change: "Added OCR processing failure runbook"
+  - date: "2025-11-15"
+    change: "Updated rate limit values for new tiers"
+  - date: "2025-11-01"
+    change: "Added webhook troubleshooting section"
+
+notes: |
+  - Update this playbook when new error patterns emerge
+  - Run monthly drills to practice runbooks
+  - Measure MTTR (Mean Time To Resolution) for each error type
+  - Goal: < 30 minutes MTTR for common errors

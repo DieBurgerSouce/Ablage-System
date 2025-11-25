@@ -1,0 +1,21 @@
+Rechnung Nr. 2024-001
+
+Müller GmbH & Co. KG
+Musterstraße 123
+12345 München
+
+Datum: 22.11.2024
+Kunde: Test AG
+
+Positionen:
+- Dienstleistung A    500,00 €
+- Dienstleistung B    734,56 €
+
+Summe Netto:        1.234,56 €
+MwSt. 19%:            234,57 €
+Summe Brutto:       1.469,13 €
+
+Zahlbar innerhalb 14 Tagen.
+
+Mit freundlichen Grüßen
+Müller GmbH

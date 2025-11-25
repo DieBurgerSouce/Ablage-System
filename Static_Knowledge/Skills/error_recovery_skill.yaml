@@ -1,0 +1,354 @@
+# Error Recovery Skill
+# Retry Logic, Fallback Strategies, Circuit Breakers
+
+metadata:
+  skill_id: "error_recovery"
+  version: "1.0.0"
+  category: "reliability"
+  dependencies: ["tenacity", "circuitbreaker"]
+  last_updated: "2025-01-22"
+
+description: |
+  Comprehensive error handling and recovery strategies for the OCR pipeline.
+  Implements retry logic, fallback mechanisms, circuit breakers, and graceful degradation.
+
+capabilities:
+  - Exponential backoff retry
+  - GPU → CPU fallback
+  - Circuit breaker for external services
+  - Graceful degradation strategies
+  - Error classification and routing
+  - Dead letter queue handling
+
+error_classification:
+  transient_errors:
+    description: "Temporary errors that may succeed on retry"
+    examples:
+      - "torch.cuda.OutOfMemoryError"
+      - "ConnectionError (network timeout)"
+      - "Database connection pool exhausted"
+      - "Redis cache miss"
+    strategy: "Retry with exponential backoff"
+    max_retries: 3
+    backoff_factor: 2
+
+  permanent_errors:
+    description: "Errors that won't resolve with retry"
+    examples:
+      - "FileNotFoundError (document missing)"
+      - "Invalid file format (corrupted PDF)"
+      - "Authentication failure (invalid API key)"
+      - "Validation error (missing required fields)"
+    strategy: "Fail immediately, log, notify"
+    max_retries: 0
+
+  degradable_errors:
+    description: "Errors that can use fallback strategy"
+    examples:
+      - "GPU OOM → CPU fallback"
+      - "DeepSeek unavailable → GOT-OCR"
+      - "PostgreSQL down → Queue for later"
+      - "MinIO unreachable → Local storage"
+    strategy: "Fallback to alternative, log degradation"
+
+retry_strategies:
+  exponential_backoff:
+    description: "Standard retry with exponential delays"
+    use_cases:
+      - "Network requests"
+      - "Database operations"
+      - "External API calls"
+    configuration:
+      max_attempts: 3
+      base_delay: 1  # seconds
+      max_delay: 60
+      backoff_factor: 2
+    code: |
+      from tenacity import (
+          retry,
+          stop_after_attempt,
+          wait_exponential,
+          retry_if_exception_type
+      )
+
+      @retry(
+          stop=stop_after_attempt(3),
+          wait=wait_exponential(multiplier=1, max=60),
+          retry=retry_if_exception_type((ConnectionError, TimeoutError))
+      )
+      async def fetch_document(doc_id: str):
+          async with httpx.AsyncClient() as client:
+              response = await client.get(f"/documents/{doc_id}")
+              response.raise_for_status()
+              return response.json()
+
+  gpu_oom_retry:
+    description: "Retry with progressively smaller batch sizes"
+    use_cases:
+      - "GPU out of memory errors"
+      - "Batch processing failures"
+    configuration:
+      initial_batch_size: 32
+      min_batch_size: 1
+      reduction_factor: 0.5
+    code: |
+      import torch
+      from app.gpu_manager import GPUManager
+
+      async def process_with_oom_retry(documents: list, initial_batch_size: int = 32):
+          batch_size = initial_batch_size
+          gpu = GPUManager()
+
+          while batch_size >= 1:
+              try:
+                  return await ocr_backend.process_batch(
+                      documents,
+                      batch_size=batch_size
+                  )
+              except torch.cuda.OutOfMemoryError:
+                  logger.warning(
+                      "oom_retry",
+                      batch_size=batch_size,
+                      next_batch_size=int(batch_size * 0.5)
+                  )
+                  torch.cuda.empty_cache()
+                  batch_size = int(batch_size * 0.5)
+
+          # Final fallback: CPU processing
+          logger.error("gpu_retry_exhausted_falling_back_to_cpu")
+          return await cpu_backend.process(documents)
+
+fallback_strategies:
+  gpu_to_cpu:
+    description: "Graceful degradation from GPU to CPU processing"
+    trigger: "torch.cuda.OutOfMemoryError or GPU unavailable"
+    performance_impact: "~5-10x slower"
+    code: |
+      from app.services.ocr_service import OCRService
+
+      async def process_with_gpu_fallback(doc_id: str):
+          ocr = OCRService()
+
+          try:
+              # Try GPU backend (DeepSeek or GOT-OCR)
+              result = await ocr.process(
+                  doc_id,
+                  backend="auto",
+                  use_gpu=True
+              )
+          except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
+              logger.warning("gpu_error_falling_back_to_cpu", error=str(e))
+
+              # Fallback to CPU backend (Surya)
+              result = await ocr.process(
+                  doc_id,
+                  backend="surya",
+                  use_gpu=False
+              )
+
+              # Tag result with degraded flag
+              result.metadata['degraded'] = True
+              result.metadata['fallback_reason'] = 'gpu_unavailable'
+
+          return result
+
+  backend_cascade:
+    description: "Try backends in priority order"
+    cascade_order:
+      1: "deepseek (best accuracy, highest VRAM)"
+      2: "got_ocr (good accuracy, medium VRAM)"
+      3: "surya (fallback, CPU only)"
+    code: |
+      async def process_with_cascade(doc_id: str):
+          backends = ['deepseek', 'got_ocr', 'surya']
+          last_error = None
+
+          for backend in backends:
+              try:
+                  logger.info("trying_backend", backend=backend)
+                  result = await ocr.process(doc_id, backend=backend)
+                  return result
+              except Exception as e:
+                  logger.warning(
+                      "backend_failed_trying_next",
+                      backend=backend,
+                      error=str(e)
+                  )
+                  last_error = e
+                  continue
+
+          # All backends failed
+          raise OCRProcessingError(
+              f"All backends failed for {doc_id}"
+          ) from last_error
+
+  database_queue_fallback:
+    description: "Queue for later if database unavailable"
+    trigger: "PostgreSQL connection error"
+    code: |
+      from app.workers.celery_app import celery_app
+
+      async def save_document_with_fallback(document_data: dict):
+          try:
+              # Try immediate save to PostgreSQL
+              async with get_db() as db:
+                  doc = await db_service.create_document(db, document_data)
+                  return doc
+          except ConnectionError as e:
+              logger.error("database_unavailable_queuing", error=str(e))
+
+              # Queue for later processing
+              celery_app.send_task(
+                  'save_document_when_db_available',
+                  args=[document_data],
+                  countdown=60  # Retry in 60 seconds
+              )
+
+              # Return temporary ID
+              return {'id': f"temp_{uuid.uuid4()}", 'queued': True}
+
+circuit_breaker_pattern:
+  description: "Prevent cascading failures for external services"
+  states:
+    closed: "Normal operation, requests pass through"
+    open: "Too many failures, reject requests immediately"
+    half_open: "Test if service recovered"
+  configuration:
+    failure_threshold: 5  # Open circuit after 5 failures
+    recovery_timeout: 60  # Try again after 60 seconds
+    success_threshold: 2  # Close circuit after 2 successes
+  code: |
+    from circuitbreaker import circuit
+
+    @circuit(
+        failure_threshold=5,
+        recovery_timeout=60,
+        expected_exception=ConnectionError
+    )
+    async def call_external_ocr_api(document_data):
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                EXTERNAL_API_URL,
+                json=document_data,
+                timeout=30.0
+            )
+            response.raise_for_status()
+            return response.json()
+
+    # Usage:
+    try:
+        result = await call_external_ocr_api(doc_data)
+    except CircuitBreakerError:
+        logger.error("circuit_breaker_open_service_unavailable")
+        # Use fallback
+        result = await local_ocr_backend.process(doc_data)
+
+dead_letter_queue:
+  description: "Handle permanently failed tasks"
+  use_cases:
+    - "Document that failed all retry attempts"
+    - "Corrupted files that can't be processed"
+    - "Tasks that consistently timeout"
+  implementation: |
+    # Celery configuration
+    CELERY_TASK_ROUTES = {
+        'app.workers.ocr_tasks.process_document': {
+            'queue': 'ocr_processing'
+        }
+    }
+
+    # Dead letter queue task
+    @celery_app.task(bind=True, max_retries=0)
+    def handle_dead_letter(self, task_id, document_id, error):
+        logger.error(
+            "task_moved_to_dlq",
+            task_id=task_id,
+            document_id=document_id,
+            error=error
+        )
+
+        # Store in DLQ table
+        with get_db() as db:
+            db_service.create_dlq_entry(
+                db,
+                task_id=task_id,
+                document_id=document_id,
+                error=str(error),
+                timestamp=datetime.utcnow()
+            )
+
+        # Notify admin
+        send_admin_notification(
+            subject="Document processing failed permanently",
+            body=f"Document {document_id} moved to DLQ"
+        )
+
+error_handling_workflow:
+  step_1_classify:
+    description: "Determine error type (transient, permanent, degradable)"
+
+  step_2_apply_strategy:
+    description: "Execute appropriate recovery strategy"
+    decision_tree: |
+      IF error is GPU OOM:
+          → Retry with smaller batch
+          → If still fails, fallback to CPU
+
+      ELIF error is network timeout:
+          → Retry with exponential backoff (3 attempts)
+          → If still fails, queue for later
+
+      ELIF error is invalid file format:
+          → No retry, log error, notify user
+
+      ELIF error is database connection:
+          → Check circuit breaker state
+          → If open, queue for later
+          → Else retry once
+
+  step_3_log_and_monitor:
+    description: "Record error metrics for monitoring"
+    metrics:
+      - "error_count (by type)"
+      - "retry_success_rate"
+      - "fallback_usage_rate"
+      - "circuit_breaker_opens"
+
+best_practices:
+  - name: "Classify errors before applying strategy"
+    rationale: "Avoids wasteful retries on permanent errors"
+
+  - name: "Use exponential backoff for retries"
+    rationale: "Prevents overwhelming failing service"
+
+  - name: "Implement circuit breakers for external services"
+    rationale: "Protects system from cascading failures"
+
+  - name: "Always have a CPU fallback for GPU errors"
+    rationale: "Ensures processing continues even without GPU"
+
+  - name: "Monitor retry rates and fallback usage"
+    rationale: "High rates indicate systemic issues"
+
+monitoring_alerts:
+  high_retry_rate:
+    condition: "retry_rate > 10% of requests"
+    severity: "warning"
+    action: "Investigate transient error sources"
+
+  circuit_breaker_open:
+    condition: "circuit_breaker_state == 'open'"
+    severity: "critical"
+    action: "Check external service health"
+
+  gpu_fallback_rate_high:
+    condition: "gpu_fallback_rate > 20%"
+    severity: "warning"
+    action: "Check GPU health, VRAM usage patterns"
+
+references:
+  - "Relations/Playbooks/error_response_playbook.yaml - 12 error scenarios"
+  - "Static_Knowledge/SOPs/002_handling_gpu_oom_error.md"
+  - "app/core/exceptions.py - Custom exception hierarchy"
+  - "Tenacity: https://tenacity.readthedocs.io/"
+  - "Circuit Breaker Pattern: https://martinfowler.com/bliki/CircuitBreaker.html"

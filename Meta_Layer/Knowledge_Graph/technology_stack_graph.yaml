@@ -1,0 +1,593 @@
+# Technology Stack Knowledge Graph
+
+graph_id: tech_stack_001
+category: architecture
+last_updated: "2025-11-22"
+status: production
+
+description: |
+  Knowledge graph showing relationships between technologies, their purposes,
+  dependencies, and interconnections in the Ablage-System stack.
+
+# ============================================================================
+# Nodes (Technologies)
+# ============================================================================
+
+nodes:
+  # Frontend Stack
+  frontend_framework:
+    name: "Frontend Framework"
+    technology: "React / Vue.js"
+    layer: "presentation"
+    purpose: "User interface rendering"
+    version: "TBD"
+
+  # Backend Stack
+  fastapi:
+    name: "FastAPI"
+    technology: "Python Web Framework"
+    layer: "application"
+    purpose: "REST API server, async request handling"
+    version: "0.110+"
+    documentation: "https://fastapi.tiangolo.com/"
+
+  python:
+    name: "Python"
+    technology: "Programming Language"
+    layer: "runtime"
+    purpose: "Application runtime"
+    version: "3.11+"
+    rationale: "Performance improvements, better async support"
+
+  pydantic:
+    name: "Pydantic"
+    technology: "Data Validation"
+    layer: "application"
+    purpose: "Schema validation, serialization"
+    version: "2.0+"
+    used_by:
+      - "Request validation"
+      - "Response serialization"
+      - "Configuration management"
+
+  # Database Stack
+  postgresql:
+    name: "PostgreSQL"
+    technology: "Relational Database"
+    layer: "data"
+    purpose: "Persistent data storage, metadata"
+    version: "16"
+    extensions:
+      - "pgvector (for embeddings)"
+
+  sqlalchemy:
+    name: "SQLAlchemy"
+    technology: "ORM"
+    layer: "data_access"
+    purpose: "Database abstraction, async queries"
+    version: "2.0+"
+    mode: "async"
+
+  alembic:
+    name: "Alembic"
+    technology: "Database Migrations"
+    layer: "data"
+    purpose: "Schema version control"
+    version: "latest"
+
+  # Cache & Queue
+  redis:
+    name: "Redis"
+    technology: "In-Memory Data Store"
+    layer: "cache_and_queue"
+    purpose: "Caching, session storage, message broker"
+    version: "7.2+"
+    use_cases:
+      - "OCR result caching"
+      - "Document metadata caching"
+      - "Celery message broker"
+      - "Rate limiting"
+      - "Session management"
+
+  celery:
+    name: "Celery"
+    technology: "Distributed Task Queue"
+    layer: "background_processing"
+    purpose: "Async OCR processing, background tasks"
+    version: "5.3+"
+    broker: "Redis"
+    result_backend: "Redis"
+
+  # Object Storage
+  minio:
+    name: "MinIO"
+    technology: "Object Storage"
+    layer: "storage"
+    purpose: "Document file storage (S3-compatible)"
+    version: "latest"
+    features:
+      - "Server-side encryption"
+      - "Versioning"
+
+  # GPU & ML Stack
+  pytorch:
+    name: "PyTorch"
+    technology: "ML Framework"
+    layer: "ml"
+    purpose: "Deep learning, GPU acceleration"
+    version: "2.1+"
+    cuda_version: "12.1+"
+
+  cuda:
+    name: "CUDA"
+    technology: "GPU Computing Platform"
+    layer: "hardware"
+    purpose: "GPU acceleration for OCR models"
+    version: "12.1+"
+    required_for:
+      - "DeepSeek-Janus-Pro"
+      - "GOT-OCR 2.0"
+
+  transformers:
+    name: "Hugging Face Transformers"
+    technology: "ML Model Library"
+    layer: "ml"
+    purpose: "Pre-trained model loading"
+    version: "latest"
+    used_for:
+      - "DeepSeek model loading"
+      - "GOT-OCR model loading"
+
+  # OCR Backends
+  deepseek_janus_pro:
+    name: "DeepSeek-Janus-Pro"
+    technology: "Multimodal Vision-Language Model"
+    layer: "ml_model"
+    purpose: "High-accuracy OCR for complex documents"
+    parameters: "1.3B"
+    vram_required: "12 GB"
+    accuracy_german: 0.985
+
+  got_ocr_2:
+    name: "GOT-OCR 2.0"
+    technology: "Transformer OCR"
+    layer: "ml_model"
+    purpose: "Fast OCR for standard documents"
+    parameters: "600M"
+    vram_required: "10 GB"
+    accuracy_german: 0.975
+
+  surya_docling:
+    name: "Surya + Docling"
+    technology: "Layout-Aware OCR Pipeline"
+    layer: "ml_model"
+    purpose: "CPU-fallback OCR, layout extraction"
+    cpu_only: true
+    accuracy_german: 0.955
+
+  # German Language Processing
+  spacy:
+    name: "spaCy"
+    technology: "NLP Library"
+    layer: "nlp"
+    purpose: "German text processing, entity extraction"
+    model: "de_core_news_lg"
+    version: "3.7+"
+
+  # Containerization
+  docker:
+    name: "Docker"
+    technology: "Containerization"
+    layer: "infrastructure"
+    purpose: "Application isolation, deployment"
+    version: "24.0+"
+
+  docker_compose:
+    name: "Docker Compose"
+    technology: "Container Orchestration"
+    layer: "infrastructure"
+    purpose: "Multi-container application management"
+    version: "2.23+"
+
+  # Infrastructure as Code
+  terraform:
+    name: "Terraform"
+    technology: "Infrastructure as Code"
+    layer: "infrastructure"
+    purpose: "Infrastructure provisioning"
+    version: "1.6+"
+
+  ansible:
+    name: "Ansible"
+    technology: "Configuration Management"
+    layer: "infrastructure"
+    purpose: "Server automation, deployment"
+    version: "2.15+"
+
+  # Monitoring & Observability
+  prometheus:
+    name: "Prometheus"
+    technology: "Monitoring & Alerting"
+    layer: "observability"
+    purpose: "Metrics collection, time-series database"
+    version: "latest"
+
+  grafana:
+    name: "Grafana"
+    technology: "Visualization"
+    layer: "observability"
+    purpose: "Metrics dashboards, alerting"
+    version: "latest"
+
+  structlog:
+    name: "structlog"
+    technology: "Structured Logging"
+    layer: "observability"
+    purpose: "JSON-formatted application logs"
+    version: "latest"
+
+  # Testing
+  pytest:
+    name: "pytest"
+    technology: "Testing Framework"
+    layer: "testing"
+    purpose: "Unit, integration, GPU tests"
+    version: "latest"
+    plugins:
+      - "pytest-asyncio"
+      - "pytest-cov"
+
+  # Code Quality
+  ruff:
+    name: "Ruff"
+    technology: "Linter & Formatter"
+    layer: "development"
+    purpose: "Code linting, formatting, import sorting"
+    replaces:
+      - "Black"
+      - "isort"
+      - "flake8"
+
+  mypy:
+    name: "mypy"
+    technology: "Static Type Checker"
+    layer: "development"
+    purpose: "Type checking (--strict mode)"
+    version: "latest"
+
+# ============================================================================
+# Edges (Relationships)
+# ============================================================================
+
+relationships:
+  # Application Dependencies
+  - from: "fastapi"
+    to: "python"
+    type: "runs_on"
+    description: "FastAPI is a Python web framework"
+
+  - from: "fastapi"
+    to: "pydantic"
+    type: "uses"
+    description: "FastAPI uses Pydantic for validation"
+
+  - from: "fastapi"
+    to: "postgresql"
+    type: "connects_to"
+    description: "FastAPI connects to PostgreSQL for data"
+
+  - from: "fastapi"
+    to: "redis"
+    type: "connects_to"
+    description: "FastAPI uses Redis for caching"
+
+  - from: "fastapi"
+    to: "minio"
+    type: "connects_to"
+    description: "FastAPI stores files in MinIO"
+
+  # ORM Layer
+  - from: "sqlalchemy"
+    to: "postgresql"
+    type: "abstracts"
+    description: "SQLAlchemy provides ORM for PostgreSQL"
+
+  - from: "fastapi"
+    to: "sqlalchemy"
+    type: "uses"
+    description: "FastAPI uses SQLAlchemy for database access"
+
+  - from: "alembic"
+    to: "sqlalchemy"
+    type: "uses"
+    description: "Alembic uses SQLAlchemy for migrations"
+
+  - from: "alembic"
+    to: "postgresql"
+    type: "migrates"
+    description: "Alembic manages PostgreSQL schema versions"
+
+  # Task Queue
+  - from: "celery"
+    to: "redis"
+    type: "uses_as_broker"
+    description: "Celery uses Redis as message broker"
+
+  - from: "celery"
+    to: "python"
+    type: "runs_on"
+    description: "Celery is a Python library"
+
+  - from: "fastapi"
+    to: "celery"
+    type: "enqueues_tasks"
+    description: "FastAPI enqueues OCR tasks to Celery"
+
+  # ML Stack
+  - from: "pytorch"
+    to: "cuda"
+    type: "requires"
+    description: "PyTorch requires CUDA for GPU acceleration"
+
+  - from: "deepseek_janus_pro"
+    to: "pytorch"
+    type: "built_with"
+    description: "DeepSeek model uses PyTorch"
+
+  - from: "got_ocr_2"
+    to: "pytorch"
+    type: "built_with"
+    description: "GOT-OCR uses PyTorch"
+
+  - from: "surya_docling"
+    to: "pytorch"
+    type: "built_with"
+    description: "Surya uses PyTorch (CPU mode)"
+
+  - from: "deepseek_janus_pro"
+    to: "transformers"
+    type: "loaded_via"
+    description: "DeepSeek loaded via Hugging Face Transformers"
+
+  - from: "got_ocr_2"
+    to: "transformers"
+    type: "loaded_via"
+    description: "GOT-OCR loaded via Hugging Face Transformers"
+
+  - from: "celery"
+    to: "deepseek_janus_pro"
+    type: "executes"
+    description: "Celery workers run DeepSeek OCR"
+
+  - from: "celery"
+    to: "got_ocr_2"
+    type: "executes"
+    description: "Celery workers run GOT-OCR"
+
+  - from: "celery"
+    to: "surya_docling"
+    type: "executes"
+    description: "Celery workers run Surya (CPU fallback)"
+
+  # German Language Processing
+  - from: "spacy"
+    to: "python"
+    type: "runs_on"
+    description: "spaCy is a Python library"
+
+  - from: "fastapi"
+    to: "spacy"
+    type: "uses"
+    description: "FastAPI uses spaCy for German text processing"
+
+  # Containerization
+  - from: "fastapi"
+    to: "docker"
+    type: "containerized_in"
+    description: "FastAPI runs in Docker container"
+
+  - from: "celery"
+    to: "docker"
+    type: "containerized_in"
+    description: "Celery workers run in Docker container"
+
+  - from: "postgresql"
+    to: "docker"
+    type: "containerized_in"
+    description: "PostgreSQL runs in Docker container"
+
+  - from: "redis"
+    to: "docker"
+    type: "containerized_in"
+    description: "Redis runs in Docker container"
+
+  - from: "minio"
+    to: "docker"
+    type: "containerized_in"
+    description: "MinIO runs in Docker container"
+
+  - from: "docker_compose"
+    to: "docker"
+    type: "orchestrates"
+    description: "Docker Compose manages Docker containers"
+
+  # Infrastructure Management
+  - from: "terraform"
+    to: "docker"
+    type: "provisions"
+    description: "Terraform provisions Docker infrastructure"
+
+  - from: "ansible"
+    to: "docker"
+    type: "configures"
+    description: "Ansible configures Docker deployments"
+
+  # Monitoring
+  - from: "fastapi"
+    to: "prometheus"
+    type: "exports_metrics_to"
+    description: "FastAPI exports metrics to Prometheus"
+
+  - from: "celery"
+    to: "prometheus"
+    type: "exports_metrics_to"
+    description: "Celery exports metrics to Prometheus"
+
+  - from: "grafana"
+    to: "prometheus"
+    type: "visualizes"
+    description: "Grafana visualizes Prometheus metrics"
+
+  - from: "fastapi"
+    to: "structlog"
+    type: "logs_with"
+    description: "FastAPI uses structlog for logging"
+
+  # Testing
+  - from: "pytest"
+    to: "python"
+    type: "tests"
+    description: "pytest tests Python code"
+
+  - from: "pytest"
+    to: "fastapi"
+    type: "tests"
+    description: "pytest tests FastAPI endpoints"
+
+  - from: "pytest"
+    to: "celery"
+    type: "tests"
+    description: "pytest tests Celery tasks"
+
+  # Code Quality
+  - from: "ruff"
+    to: "python"
+    type: "lints"
+    description: "Ruff lints Python code"
+
+  - from: "mypy"
+    to: "python"
+    type: "type_checks"
+    description: "mypy validates Python type hints"
+
+# ============================================================================
+# Technology Clusters
+# ============================================================================
+
+clusters:
+  frontend_stack:
+    name: "Frontend Stack"
+    technologies:
+      - "frontend_framework"
+    color: "#61DAFB"
+
+  backend_stack:
+    name: "Backend Stack"
+    technologies:
+      - "fastapi"
+      - "pydantic"
+      - "python"
+    color: "#009688"
+
+  data_stack:
+    name: "Data Stack"
+    technologies:
+      - "postgresql"
+      - "sqlalchemy"
+      - "alembic"
+      - "redis"
+      - "minio"
+    color: "#336791"
+
+  ml_stack:
+    name: "ML/OCR Stack"
+    technologies:
+      - "pytorch"
+      - "cuda"
+      - "transformers"
+      - "deepseek_janus_pro"
+      - "got_ocr_2"
+      - "surya_docling"
+    color: "#EE4C2C"
+
+  task_processing:
+    name: "Task Processing"
+    technologies:
+      - "celery"
+      - "redis"
+    color: "#37814A"
+
+  infrastructure:
+    name: "Infrastructure"
+    technologies:
+      - "docker"
+      - "docker_compose"
+      - "terraform"
+      - "ansible"
+    color: "#2496ED"
+
+  observability:
+    name: "Observability"
+    technologies:
+      - "prometheus"
+      - "grafana"
+      - "structlog"
+    color: "#E6522C"
+
+  development_tools:
+    name: "Development Tools"
+    technologies:
+      - "pytest"
+      - "ruff"
+      - "mypy"
+    color: "#0A9EDC"
+
+# ============================================================================
+# Technology Decisions & Rationale
+# ============================================================================
+
+decisions:
+  why_fastapi:
+    reason: "Async/await support, automatic OpenAPI docs, high performance"
+    alternatives_considered: ["Flask", "Django"]
+
+  why_postgresql:
+    reason: "ACID compliance, pgvector for embeddings, proven reliability"
+    alternatives_considered: ["MySQL", "MongoDB"]
+
+  why_redis:
+    reason: "High-performance caching, message broker for Celery, session storage"
+    alternatives_considered: ["Memcached", "RabbitMQ"]
+
+  why_minio:
+    reason: "S3-compatible, on-premises, encryption support"
+    alternatives_considered: ["AWS S3", "Local filesystem"]
+
+  why_pytorch:
+    reason: "Industry standard for ML, excellent GPU support, model ecosystem"
+    alternatives_considered: ["TensorFlow", "JAX"]
+
+  why_docker:
+    reason: "Consistent environments, easy deployment, GPU passthrough support"
+    alternatives_considered: ["Podman", "Native deployment"]
+
+  why_ruff:
+    reason: "10-100x faster than alternatives, replaces multiple tools"
+    alternatives_considered: ["Black + isort + flake8"]
+
+# ============================================================================
+# Related Resources
+# ============================================================================
+
+related_files:
+  - "Relations/Dependencies/infrastructure_dependencies.yaml"
+  - "Relations/Dependencies/model_dependencies.yaml"
+  - "Static_Knowledge/ADRs/001_architecture_decisions.md"
+  - "Dynamic_Knowledge/Context/ml_model_registry.yaml"
+
+tags:
+  - technology_stack
+  - architecture
+  - dependencies
+  - knowledge_graph
+  - infrastructure

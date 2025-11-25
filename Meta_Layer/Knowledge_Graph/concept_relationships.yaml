@@ -1,0 +1,38 @@
+# Concept Relationships
+
+concepts:
+  ocr:
+    is_a: "text_extraction"
+    requires: [gpu, backend, document]
+    produces: [text, confidence_score]
+    related_to: [german_validation, template_extraction]
+
+  backend:
+    types: [deepseek, got_ocr, surya]
+    selected_by: backend_selection_skill
+    depends_on: [vram_availability, document_complexity]
+
+  gpu:
+    manages: vram
+    monitored_by: gpu_manager
+    issues: [oom, unavailable]
+    fallback: cpu
+
+  german_validation:
+    validates: [umlauts, business_terms, dates, currency]
+    requires: [ocr_text]
+    uses: [glossary, fuzzy_matching]
+
+  template_extraction:
+    extracts: [structured_fields]
+    from: ocr_text
+    using: [regex_patterns, validation_rules]
+    validates_with: [compliance_validator]
+
+relationships:
+  - [ocr, requires, gpu]
+  - [ocr, produces, text]
+  - [backend, selected_by, decision_tree]
+  - [gpu, manages, vram]
+  - [german_validation, validates, ocr_text]
+  - [template_extraction, uses, ocr_text]

@@ -1,0 +1,56 @@
+# Service Dependencies Map
+
+services:
+  backend_api:
+    depends_on:
+      - postgres
+      - redis
+      - minio
+    optional_dependencies:
+      - celery_worker
+    port: 8000
+    health_check: "/health"
+
+  celery_worker:
+    depends_on:
+      - redis
+      - postgres
+      - minio
+    runtime_dependencies:
+      - gpu (for DeepSeek, GOT-OCR)
+
+  postgres:
+    port: 5432
+    data_volume: postgres_data
+    required_for:
+      - Document storage
+      - User management
+      - GDPR logging
+
+  redis:
+    port: 6379
+    required_for:
+      - Celery broker
+      - Cache layer
+      - Session storage
+
+  minio:
+    ports: [9000, 9001]
+    data_volume: minio_data
+    required_for:
+      - Document file storage
+      - OCR result storage
+
+startup_order:
+  1: [postgres, redis, minio]
+  2: [backend_api]
+  3: [celery_worker]
+
+dependency_graph: |
+  backend_api → postgres
+  backend_api → redis
+  backend_api → minio
+  celery_worker → redis (broker)
+  celery_worker → postgres
+  celery_worker → minio
+  celery_worker → GPU (optional, falls back to CPU)
