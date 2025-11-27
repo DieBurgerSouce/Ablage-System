@@ -77,10 +77,9 @@ class TestGPUManager:
     )
     def test_backend_vram_requirements(self, backend: str, expected_min_gb: int):
         """Test that backend VRAM requirements are correctly defined."""
-        from gpu_manager import GPU_REQUIREMENTS
-
-        assert backend in GPU_REQUIREMENTS
-        assert GPU_REQUIREMENTS[backend] == expected_min_gb
+        # Backend requirements are stored as instance attribute, not module-level constant
+        assert backend in self.gpu_manager.backend_requirements
+        assert self.gpu_manager.backend_requirements[backend] == expected_min_gb
 
     def test_allocate_multiple_backends(self):
         """Test allocating multiple backends simultaneously."""

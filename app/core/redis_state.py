@@ -12,14 +12,15 @@ Manages:
 
 import asyncio
 import json
+import logging
 import os
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import redis.asyncio as aioredis
-import structlog
 
-logger = structlog.get_logger(__name__)
+# Use standard logging for POC (no structlog dependency)
+logger = logging.getLogger(__name__)
 
 
 class RedisStateManager:
@@ -55,7 +56,7 @@ class RedisStateManager:
                 decode_responses=True,
                 max_connections=50,
             )
-            logger.info("redis_connected", url=self.redis_url.split("@")[-1])
+            logger.info(f"redis_connected - url={self.redis_url.split('@')[-1]}")
 
     async def disconnect(self) -> None:
         """Close Redis connection."""
@@ -72,7 +73,7 @@ class RedisStateManager:
                 return True
             return False
         except Exception as e:
-            logger.error("redis_ping_failed", error=str(e))
+            logger.error(f"redis_ping_failed - error={str(e)}")
             return False
 
     async def _ensure_connection(self) -> None:
@@ -110,7 +111,7 @@ class RedisStateManager:
             json.dumps(data),
         )
 
-        logger.debug("agent_status_set", agent_id=agent_id, status=status)
+        logger.debug(f"agent_status_set - agent_id={agent_id} status={status}")
 
     async def get_agent_status(self, agent_id: str) -> Optional[Dict]:
         """Get agent status."""
@@ -287,10 +288,7 @@ class RedisStateManager:
         subscribers = await self._redis.publish(channel, json.dumps(event))
 
         logger.debug(
-            "event_published",
-            event_type=event_type,
-            channel=channel,
-            subscribers=subscribers,
+            f"event_published - event_type={event_type} channel={channel} subscribers={subscribers}"
         )
 
         return subscribers
@@ -312,7 +310,7 @@ class RedisStateManager:
         for pattern in patterns:
             await self._pubsub.psubscribe(pattern)
 
-        logger.info("subscribed_to_events", patterns=patterns)
+        logger.info(f"subscribed_to_events - patterns={patterns}")
 
         # Listen for messages
         async for message in self._pubsub.listen():

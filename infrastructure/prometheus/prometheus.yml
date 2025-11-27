@@ -1,0 +1,93 @@
+# Prometheus Configuration for Ablage-System OCR
+# GPU-beschleunigte Dokumentenverarbeitung
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'ablage-system'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+          # - alertmanager:9093
+
+# Rule files
+rule_files:
+  # - "alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Ablage-System Backend API
+  - job_name: 'ablage-backend'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['backend:8000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'ablage-api'
+
+  # Celery Worker Metrics
+  - job_name: 'ablage-worker'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['worker:8001']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'ablage-worker'
+
+  # PostgreSQL Metrics (via pg_exporter if configured)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'postgres'
+
+  # Redis Metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'redis'
+
+  # MinIO Metrics
+  - job_name: 'minio'
+    metrics_path: '/minio/v2/metrics/cluster'
+    static_configs:
+      - targets: ['minio:9000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'minio'
+
+  # Node Exporter (if running on host)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['host.docker.internal:9100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'host'
+
+  # NVIDIA GPU Metrics (via dcgm-exporter or nvidia_gpu_prometheus_exporter)
+  - job_name: 'nvidia-gpu'
+    static_configs:
+      - targets: ['host.docker.internal:9400']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'rtx4080'

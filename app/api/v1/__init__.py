@@ -2,10 +2,13 @@
 API v1 - Version 1 of the API.
 
 Available routers:
-- agents: Agent management and execution
+- auth: Authentication endpoints
+- tasks: Task management endpoints
 - metrics: Prometheus metrics and monitoring
+- agents: Agent management and execution (requires Celery)
 """
 
-from . import agents, metrics
+# Lazy imports - only import when explicitly needed
+# from . import auth, tasks, metrics, agents
 
-__all__ = ["agents", "metrics"]
+__all__ = ["auth", "tasks", "metrics", "agents"]

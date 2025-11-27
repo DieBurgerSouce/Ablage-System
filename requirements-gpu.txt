@@ -1,0 +1,20 @@
+# GPU-specific requirements for Ablage-System
+
+# GPU monitoring and management
+nvidia-ml-py3>=7.352.0
+gputil>=1.4.0
+py3nvml>=0.2.7
+
+# GPU-accelerated image processing
+opencv-python-headless>=4.8.0
+albumentations>=1.3.1
+
+# CUDA-optimized libraries
+cupy-cuda12x>=12.2.0
+
+# Memory management
+psutil>=5.9.5
+
+# Profiling tools
+torch-tb-profiler>=0.4.3
+nvidia-dali-cuda120>=1.32.0

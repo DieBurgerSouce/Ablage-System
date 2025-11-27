@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ablage-System OCR - GPU-beschleunigt</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body data-mode="dark">
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-content">
+                <h1>📄 Ablage-System OCR</h1>
+
+                <!-- Display Mode Switcher -->
+                <div class="display-mode-switcher">
+                    <button class="mode-btn" data-mode="dark" title="Dunkler Modus" aria-label="Dunkler Modus">🌙</button>
+                    <button class="mode-btn" data-mode="light" title="Heller Modus" aria-label="Heller Modus">☀️</button>
+                    <button class="mode-btn" data-mode="whitescreen" title="Hoher Kontrast" aria-label="Hoher Kontrast">⚪</button>
+                    <button class="mode-btn" data-mode="blackscreen" title="Invertierter Kontrast" aria-label="Invertierter Kontrast">⚫</button>
+                </div>
+
+                <!-- GPU Status -->
+                <div class="gpu-status" id="gpu-status">
+                    <span class="gpu-badge">
+                        <span class="gpu-indicator" id="gpu-indicator"></span>
+                        GPU: <span id="gpu-name">Prüfe...</span>
+                    </span>
+                    <span class="vram-usage">
+                        VRAM: <span id="vram-usage">0.0</span> GB
+                    </span>
+                </div>
+
+                <!-- User Profile (shown when logged in) -->
+                <div class="user-profile" id="user-profile-section" style="display: none;">
+                    <div class="user-info">
+                        <span class="user-name" id="profile-username">User</span>
+                        <span class="user-email" id="profile-email">user@example.com</span>
+                    </div>
+                    <button class="btn-secondary" id="logout-btn" title="Abmelden">
+                        🚪 Abmelden
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Authentication Section -->
+        <section class="auth-section" id="auth-section" style="display: none;">
+            <!-- Login Form -->
+            <div class="auth-container" id="login-container">
+                <div class="auth-card">
+                    <h2>Anmelden</h2>
+                    <p class="auth-subtitle">Melden Sie sich an, um Dokumente zu verarbeiten</p>
+
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label for="login-email">E-Mail</label>
+                            <input
+                                type="email"
+                                id="login-email"
+                                name="email"
+                                required
+                                autocomplete="email"
+                                placeholder="ihre.email@example.com"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="login-password">Passwort</label>
+                            <input
+                                type="password"
+                                id="login-password"
+                                name="password"
+                                required
+                                autocomplete="current-password"
+                                placeholder="••••••••"
+                            >
+                        </div>
+
+                        <button type="submit" class="btn-primary" id="login-btn">
+                            Anmelden
+                        </button>
+                    </form>
+
+                    <div class="auth-footer">
+                        <p>Noch kein Konto?
+                            <a href="#" id="show-register" class="auth-link">Jetzt registrieren</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registration Form -->
+            <div class="auth-container" id="register-container" style="display: none;">
+                <div class="auth-card">
+                    <h2>Registrieren</h2>
+                    <p class="auth-subtitle">Erstellen Sie ein Konto für Ablage-System OCR</p>
+
+                    <form id="register-form">
+                        <div class="form-group">
+                            <label for="register-email">E-Mail</label>
+                            <input
+                                type="email"
+                                id="register-email"
+                                name="email"
+                                required
+                                autocomplete="email"
+                                placeholder="ihre.email@example.com"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="register-username">Benutzername</label>
+                            <input
+                                type="text"
+                                id="register-username"
+                                name="username"
+                                required
+                                autocomplete="username"
+                                placeholder="benutzername"
+                                minlength="3"
+                                maxlength="100"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="register-fullname">Vollständiger Name (optional)</label>
+                            <input
+                                type="text"
+                                id="register-fullname"
+                                name="full_name"
+                                autocomplete="name"
+                                placeholder="Max Mustermann"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="register-password">Passwort</label>
+                            <input
+                                type="password"
+                                id="register-password"
+                                name="password"
+                                required
+                                autocomplete="new-password"
+                                placeholder="••••••••"
+                                minlength="8"
+                            >
+                            <small class="form-help">
+                                Mindestens 8 Zeichen, Groß-/Kleinbuchstaben, Ziffern und Sonderzeichen
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="register-confirm-password">Passwort bestätigen</label>
+                            <input
+                                type="password"
+                                id="register-confirm-password"
+                                name="confirm_password"
+                                required
+                                autocomplete="new-password"
+                                placeholder="••••••••"
+                                minlength="8"
+                            >
+                        </div>
+
+                        <button type="submit" class="btn-primary" id="register-btn">
+                            Registrieren
+                        </button>
+                    </form>
+
+                    <div class="auth-footer">
+                        <p>Bereits ein Konto?
+                            <a href="#" id="show-login" class="auth-link">Jetzt anmelden</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content (shown when logged in) -->
+        <main style="display: none;">
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <div class="upload-container">
+                    <div class="upload-dropzone" id="dropzone">
+                        <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <h3>Dokument hochladen</h3>
+                        <p>Ziehen Sie Dateien hierher oder klicken Sie zum Auswählen</p>
+                        <p class="file-types">Unterstützte Formate: PDF, PNG, JPG, TIFF</p>
+                        <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.bmp" hidden>
+                    </div>
+
+                    <!-- OCR Settings -->
+                    <div class="settings-panel">
+                        <h4>OCR-Einstellungen</h4>
+                        <div class="setting-group">
+                            <label for="backend">Backend:</label>
+                            <select id="backend">
+                                <option value="auto">Auto (Beste Wahl)</option>
+                                <option value="surya_gpu">GPU - Surya (RTX 4080)</option>
+                                <option value="surya">CPU - Surya</option>
+                                <option value="deepseek">DeepSeek-Janus-Pro</option>
+                                <option value="got_ocr">GOT-OCR 2.0</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label for="language">Sprache:</label>
+                            <select id="language">
+                                <option value="de" selected>Deutsch</option>
+                                <option value="en">Englisch</option>
+                                <option value="auto">Auto-Erkennung</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label>
+                                <input type="checkbox" id="detect-layout" checked>
+                                Layout-Erkennung
+                            </label>
+                        </div>
+                        <button id="process-btn" class="process-btn" disabled>
+                            <span id="process-text">Datei auswählen</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- File Queue -->
+            <section class="queue-section" id="queue-section" style="display: none;">
+                <h3>Verarbeitungswarteschlange</h3>
+                <div class="file-queue" id="file-queue"></div>
+            </section>
+
+            <!-- Progress Section -->
+            <section class="progress-section" id="progress-section" style="display: none;">
+                <div class="progress-container">
+                    <div class="progress-header">
+                        <h3>Verarbeitung läuft...</h3>
+                        <span class="processing-time" id="processing-time">0.0s</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <div class="progress-stats">
+                        <span>Dokument: <span id="current-doc">0</span>/<span id="total-docs">0</span></span>
+                        <span>GPU-Auslastung: <span id="gpu-usage">0%</span></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="results-section" style="display: none;">
+                <div class="results-header">
+                    <h3>OCR-Ergebnisse</h3>
+                    <div class="result-actions">
+                        <button class="btn-secondary" id="copy-text" title="In Zwischenablage kopieren">
+                            📋 Kopieren
+                        </button>
+                        <button class="btn-secondary" id="download-text" title="Als Textdatei speichern">
+                            💾 Speichern
+                        </button>
+                        <button class="btn-secondary" id="validate-text" title="Deutschen Text validieren">
+                            ✓ Validieren
+                        </button>
+                    </div>
+                </div>
+
+                <div class="result-tabs">
+                    <button class="tab-btn active" data-tab="text">Extrahierter Text</button>
+                    <button class="tab-btn" data-tab="metadata">Metadaten</button>
+                    <button class="tab-btn" data-tab="stats">Statistiken</button>
+                </div>
+
+                <div class="result-content">
+                    <!-- Text Tab -->
+                    <div class="tab-content active" id="text-tab">
+                        <div class="text-display" id="extracted-text"></div>
+                        <div class="confidence-bar">
+                            <span>Konfidenz: </span>
+                            <div class="confidence-meter">
+                                <div class="confidence-fill" id="confidence-fill"></div>
+                            </div>
+                            <span id="confidence-value">0%</span>
+                        </div>
+                    </div>
+
+                    <!-- Metadata Tab -->
+                    <div class="tab-content" id="metadata-tab">
+                        <div class="metadata-grid" id="metadata-display"></div>
+                    </div>
+
+                    <!-- Statistics Tab -->
+                    <div class="tab-content" id="stats-tab">
+                        <div class="stats-grid" id="stats-display"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Document History Section -->
+            <section class="history-section" id="history-section" style="display: none;">
+                <div class="history-header">
+                    <h3>Dokumentenverlauf</h3>
+                    <button class="btn-secondary" onclick="loadDocumentHistory()">
+                        🔄 Aktualisieren
+                    </button>
+                </div>
+                <div class="document-history" id="document-history">
+                    <p class="no-data">Keine Dokumente verarbeitet</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p>
+                Ablage-System OCR v2.0 | GPU-beschleunigt mit RTX 4080 |
+                <span id="backend-info">Backend: -</span> |
+                <span id="processing-speed">Geschwindigkeit: -</span>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="api.js"></script>
+    <script src="auth.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

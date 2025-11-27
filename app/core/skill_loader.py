@@ -16,7 +16,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 import structlog
 import yaml
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.agents.base import BaseAgent
 from app.core.hooks import BaseHook, HookRegistry, HookType
@@ -38,7 +38,8 @@ class SkillParameterDef(BaseModel):
     default: Union[str, int, float, bool, list, dict, None] = None
     description: str = ""
 
-    @validator("type")
+    @field_validator("type")
+    @classmethod
     def validate_type(cls, v: str) -> str:
         """Validate parameter type."""
         allowed_types = ["str", "int", "float", "bool", "list", "dict", "any"]

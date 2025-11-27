@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 German Text Validator for Ablage-System
 Ensures 100% accuracy for German language processing
@@ -17,14 +18,16 @@ class GermanValidator:
     UMLAUTS = ['ä', 'ö', 'ü', 'ß', 'Ä', 'Ö', 'Ü']
 
     # Common OCR errors to detect
+    # Note: Only multi-character substitutions are reliable indicators of OCR errors
+    # Single character substitutions (a→ä) are too common to flag reliably
     OCR_ERROR_PATTERNS = {
-        'ä': ['ae', 'a', 'à', 'á', 'â'],
-        'ö': ['oe', 'o', 'ò', 'ó', 'ô'],
-        'ü': ['ue', 'u', 'ù', 'ú', 'û'],
-        'ß': ['ss', 'B', 'β', 'b'],
-        'Ä': ['Ae', 'AE', 'A', 'À', 'Á', 'Â'],
-        'Ö': ['Oe', 'OE', 'O', 'Ò', 'Ó', 'Ô'],
-        'Ü': ['Ue', 'UE', 'U', 'Ù', 'Ú', 'Û']
+        'ä': ['ae'],  # Most reliable: ae→ä substitution
+        'ö': ['oe'],  # Most reliable: oe→ö substitution
+        'ü': ['ue'],  # Most reliable: ue→ü substitution
+        'ß': ['ss'],  # Common: ss→ß (context dependent)
+        'Ä': ['Ae', 'AE'],
+        'Ö': ['Oe', 'OE'],
+        'Ü': ['Ue', 'UE']
     }
 
     # German business terminology - COMPREHENSIVE LIST
@@ -188,11 +191,11 @@ class GermanValidator:
 
         # Pattern 2: DD. Month YYYY
         months_pattern = '|'.join(self.GERMAN_MONTHS)
-        pattern2 = rf'\b\d{1,2}\.\s*(?:{months_pattern})\s*\d{4}\b'
+        pattern2 = rf'\b\d{{1,2}}\.\s*(?:{months_pattern})\s*\d{{4}}\b'
         dates_found.extend(re.findall(pattern2, text, re.IGNORECASE))
 
         # Pattern 3: Written out dates (e.g., "ersten Januar 2024")
-        pattern3 = rf'\b(?:ersten?|zweiten?|dritten?|\d{1,2}\.)\s+(?:{months_pattern})\s+\d{4}\b'
+        pattern3 = rf'\b(?:ersten?|zweiten?|dritten?|\d{{1,2}}\.)\s+(?:{months_pattern})\s+\d{{4}}\b'
         dates_found.extend(re.findall(pattern3, text, re.IGNORECASE))
 
         # Remove duplicates while preserving order
@@ -251,7 +254,12 @@ class GermanValidator:
 
         for abbr, full_name in self.BUSINESS_TERMS.items():
             # Use word boundaries for accurate matching
-            pattern = r'\b' + re.escape(abbr) + r'\b'
+            # For terms ending in period, don't require trailing word boundary
+            escaped = re.escape(abbr)
+            if abbr.endswith('.'):
+                pattern = r'\b' + escaped + r'(?=\s|:|$|,)'
+            else:
+                pattern = r'\b' + escaped + r'\b'
             if re.search(pattern, text, re.IGNORECASE):
                 found_terms[abbr] = {
                     "full_name": full_name,

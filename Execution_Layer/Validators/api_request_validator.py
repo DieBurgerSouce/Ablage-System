@@ -23,7 +23,7 @@ from collections import defaultdict
 
 from fastapi import Request, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, Field, validator, ValidationError
+from pydantic import BaseModel, Field, field_validator, ValidationError
 from redis.asyncio import Redis
 import structlog
 
@@ -110,7 +110,8 @@ class DocumentUploadRequest(BaseModel):
         description="Optional metadata für das Dokument"
     )
 
-    @validator("filename")
+    @field_validator("filename")
+    @classmethod
     def validate_filename(cls, v: str) -> str:
         """Validate filename for security issues."""
         # Prevent path traversal
@@ -134,7 +135,8 @@ class DocumentUploadRequest(BaseModel):
 
         return v
 
-    @validator("metadata")
+    @field_validator("metadata")
+    @classmethod
     def validate_metadata(cls, v: Optional[Dict]) -> Optional[Dict]:
         """Validate metadata structure."""
         if v is None:
@@ -197,7 +199,8 @@ class GermanBusinessDataRequest(BaseModel):
         description="Telefonnummer"
     )
 
-    @validator("company_name")
+    @field_validator("company_name")
+    @classmethod
     def validate_company_name(cls, v: str) -> str:
         """Validate German company name."""
         # Check for valid company types
@@ -212,7 +215,8 @@ class GermanBusinessDataRequest(BaseModel):
 
         return v
 
-    @validator("iban")
+    @field_validator("iban")
+    @classmethod
     def validate_iban(cls, v: Optional[str]) -> Optional[str]:
         """Validate German IBAN with checksum."""
         if v is None:
@@ -239,7 +243,8 @@ class GermanBusinessDataRequest(BaseModel):
 
         return v
 
-    @validator("phone")
+    @field_validator("phone")
+    @classmethod
     def validate_phone(cls, v: Optional[str]) -> Optional[str]:
         """Validate German phone number."""
         if v is None:
@@ -287,7 +292,8 @@ class SearchRequest(BaseModel):
         description="Sortierung"
     )
 
-    @validator("query")
+    @field_validator("query")
+    @classmethod
     def validate_query(cls, v: str) -> str:
         """Validate and sanitize search query."""
         # Remove control characters

@@ -11,7 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned Features
 - Multi-tenant support with organization isolation
-- Advanced ML-based document classification
 - Real-time collaboration on document annotations
 - Mobile apps (iOS/Android) with offline support
 - Advanced analytics dashboard with custom reports
@@ -21,9 +20,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.0] - 2025-11-27 (Enterprise Orchestration Release)
+
+### Added
+
+#### ML-Based OCR Router System
+- **XGBoost ML Model** (`app/agents/orchestration/ml_router_model.py`)
+  - 22-dimensionaler Feature-Vektor für Dokumentenanalyse
+  - Unterstützung für 4 Backends: deepseek, got_ocr, surya, hybrid
+  - Konfidenz-basierte Vorhersagen mit Alternativen
+  - Graceful Fallback auf regelbasiertes Routing ohne XGBoost
+
+- **ML Training Pipeline** (`app/agents/orchestration/ml_trainer.py`)
+  - Automatische Trainings-Datensammlung aus Verarbeitungsergebnissen
+  - TrainingDataBuffer mit Disk-Persistenz (10.000 Samples)
+  - Synthetische Daten-Generierung für Bootstrap
+  - Modell-Versionierung und -Evaluierung
+
+#### Document Processing Orchestrator
+- **Redis Workflow State Management**
+  - Atomare State-Transitions
+  - Distributed Locking für Parallelverarbeitung
+  - State-History für Debugging
+
+- **Agent Pipeline Integration**
+  - Preprocessing: Image Enhancement, Document Classification
+  - Postprocessing: German Correction, Entity Extraction, QA Check
+
+#### QA Agent (`app/agents/postprocessing/qa_agent.py`)
+- **Comprehensive Quality Checks**
+  - Textqualität (Gibberish-Erkennung, Zeichenverteilung)
+  - Deutsche Sprachqualität (Umlaute, Encoding)
+  - Entity-Validierung (IBAN-Prüfziffer, USt-IdNr.)
+  - Confidence-Score-Aggregation
+
+- **Quality Levels**: Excellent, Good, Acceptable, Poor, Unacceptable
+- **German Issue Messages** für alle Validierungsfehler
+
+#### Notification Service (`app/services/notification_service.py`)
+- **Multi-Channel Notifications**
+  - EMAIL: SMTP mit HTML/Plain-Text Templates
+  - WEBHOOK: HTTP-Callbacks mit HMAC-SHA256 Signatur
+  - IN_APP: Redis-basierte In-App-Benachrichtigungen
+
+- **Notification Types**
+  - Processing Started/Completed/Failed
+  - OCR Quality Warning
+  - German Validation Warning
+  - Batch Completed
+  - System Alert
+
+- **German Templates** für alle Benachrichtigungstypen
+
+#### Redis Rate Limiting (`app/api/dependencies.py`)
+- **Tiered Rate Limits**
+  - Free: 10 OCR/h, 50/Tag, 5 Batch/h
+  - Premium: 100 OCR/h, 1000/Tag, 50 Batch/h
+  - Admin: 10000 OCR/h (praktisch unlimitiert)
+
+- **Rate Limit Dependencies**
+  - `check_rate_limit()`: Allgemeine API-Limits
+  - `check_ocr_rate_limit()`: OCR-spezifische Limits
+  - `check_batch_rate_limit()`: Batch-Operationen
+  - `get_rate_limit_status()`: Status-Abfrage
+
+#### Task Callbacks Integration (`app/workers/task_callbacks.py`)
+- Automatische Notification-Versendung bei Task-Events
+- Datenbank-Status-Updates
+- Quality Warning Notifications bei niedriger Konfidenz
+
+### Changed
+- OCRBackendRouter erweitert um ML-Routing-Unterstützung
+- Orchestration `__init__.py` mit neuen Exports
+
+### Fixed
+- Path-Handling in MLRouterTrainer (String zu Path Konversion)
+- Encoding-Issues in QA Agent für deutsche Zeichen
+
+### Documentation
+- Neue ARCHITECTURE.md mit vollständiger Systemdokumentation
+- Aktualisierte API-Referenzen für alle neuen Komponenten
+
+---
+
 ## [1.0.0] - 2025-01-15 (Development Release)
 
-### <� Major Milestone - Production Ready
+### <� Major Milestone - Production Ready
 
 This is the first production-ready release of the Ablage System, representing 12 months of development and testing. The system is now ready for enterprise deployment with full GPU acceleration, multi-backend OCR processing, and comprehensive monitoring.
 
@@ -475,7 +557,7 @@ This is the first production-ready release of the Ablage System, representing 12
 - **SQLite Support**
   - PostgreSQL is now required for production deployments
   - Better performance, reliability, and feature set
-  - Migration tool available for SQLite � PostgreSQL
+  - Migration tool available for SQLite � PostgreSQL
 
 - **Tesseract OCR Backend**
   - Replaced by DeepSeek, GOT-OCR, and Surya
@@ -517,7 +599,7 @@ This is the first production-ready release of the Ablage System, representing 12
    - Removed tables: `legacy_ocr_results`
 
 2. **API Changes**
-   - `/api/v1/ocr/process` � `/api/v2/documents/process`
+   - `/api/v1/ocr/process` � `/api/v2/documents/process`
    - Response format changed to include backend information
    - New required header: `X-API-Version: 2.0`
 
@@ -807,7 +889,7 @@ Special thanks to all contributors who made this release possible:
       PATTERNS = {
           'invoice_number': r'Rechnungsnummer:\s*(\S+)',
           'date': r'Datum:\s*(\d{2}\.\d{2}\.\d{4})',
-          'total_amount': r'Gesamtbetrag:\s*�?\s*([\d,.]+)',
+          'total_amount': r'Gesamtbetrag:\s*�?\s*([\d,.]+)',
           'vat_number': r'USt-IdNr\.:\s*(\S+)'
       }
 

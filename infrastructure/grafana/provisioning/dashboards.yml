@@ -1,0 +1,16 @@
+# Grafana Dashboard Provisioning
+# Ablage-System OCR Monitoring
+
+apiVersion: 1
+
+providers:
+  - name: 'Ablage-System Dashboards'
+    orgId: 1
+    folder: 'Ablage-System'
+    folderUid: 'ablage-system'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards

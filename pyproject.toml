@@ -111,6 +111,11 @@ test = [
     "faker>=22.0.0",
     "factory-boy>=3.3.0",
 ]
+ml = [
+    # ML-basiertes OCR-Routing (optional)
+    # System fällt gracefully auf regelbasiertes Routing zurück wenn nicht installiert
+    "xgboost>=2.0.0",
+]
 
 [project.urls]
 Homepage = "https://docs.ablage-system.local"
@@ -250,6 +255,7 @@ module = [
     "redis.*",
     "hvac.*",
     "prometheus_client.*",
+    "xgboost.*",
 ]
 ignore_missing_imports = true
 
@@ -279,20 +285,17 @@ markers = [
 ]
 
 # Addopts - options to always use
+# Note: Coverage options moved to separate invocation to allow running tests without pytest-cov
 addopts = [
     "-ra",
     "--strict-markers",
     "--strict-config",
-    "--cov=app",
-    "--cov-report=term-missing:skip-covered",
-    "--cov-report=html",
-    "--cov-report=xml",
-    "--cov-branch",
-    "--cov-fail-under=80",
     "--maxfail=5",
     "--tb=short",
     "-v",
 ]
+
+# To run with coverage: pytest --cov=app --cov-report=term-missing --cov-branch
 
 # Asyncio configuration
 asyncio_mode = "auto"

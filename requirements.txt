@@ -20,6 +20,12 @@ asyncpg==0.29.0
 # Task Queue
 celery==5.3.4
 redis==5.0.1
+flower==2.0.1  # Celery monitoring tool
+kombu==5.3.4  # Celery messaging library
+
+# Rate Limiting
+slowapi==0.1.9  # Rate limiting for FastAPI
+limits==3.6.0  # Rate limiting library used by SlowAPI
 
 # Data Validation
 pydantic==2.5.3
@@ -28,6 +34,16 @@ pydantic-settings==2.1.0
 # Storage
 minio==7.2.3
 pillow==10.2.0
+
+# OCR Backends
+surya-ocr==0.4.0  # CPU-based OCR, no GPU required
+pypdfium2==4.25.0  # PDF processing for Surya
+docling==1.0.7  # Document structure extraction
+pytesseract==0.3.10  # Python wrapper for Tesseract (fallback)
+
+# Model quantization for large models (DeepSeek, GOT)
+bitsandbytes==0.41.3  # 4-bit and 8-bit quantization
+# Note: GOT-OCR and DeepSeek models are loaded via transformers/HuggingFace
 
 # German Text Processing
 spacy==3.7.2
@@ -48,6 +64,18 @@ psutil==5.9.7
 prometheus-client==0.19.0
 structlog==24.1.0
 
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.9
+bcrypt==4.1.2
+
 # Utilities
 python-dotenv==1.0.0
 pyyaml==6.0.1
+
+# Optional: ML-basiertes OCR-Routing
+# XGBoost ist optional - System fällt gracefully auf regelbasiertes Routing zurück
+# Für ML-Routing: pip install xgboost>=2.0.0
+# Oder: pip install ablage-system-ocr[ml]
+# xgboost>=2.0.0  # Uncomment für ML-Routing

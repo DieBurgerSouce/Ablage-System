@@ -1,70 +1,167 @@
-# Ablage-System OCR - Claude Code Context
+# Ablage-System OCR - Claude Code Kontext
 
-## Project Overview
-Enterprise-grade German document processing system with GPU-accelerated OCR.
-- **Status**: Proof of Concept (4 files implemented)
-- **Hardware**: RTX 4080 16GB VRAM
-- **Language**: German-first (100% umlaut accuracy required)
-- **Philosophy**: "Feinpoliert und durchdacht"
+## WICHTIG: Entwicklungsstruktur
 
-## Essential Commands
+Dieses Projekt verwendet eine **optimierte Claude Code Entwicklungsstruktur**. Beachte diese Ordner:
+
+### `.claude/` Verzeichnis - IMMER NUTZEN!
+
+```
+.claude/
+├── CLAUDE.md              # Detaillierte Projektdokumentation (2000+ Zeilen)
+├── commands/              # Slash Commands - NUTZE DIESE!
+│   ├── check-system.md    # /check-system - Systemgesundheit prüfen
+│   ├── validate-german.md # /validate-german - Deutsche Texte validieren
+│   ├── process-doc.md     # /process-doc - Dokument verarbeiten
+│   ├── debug-gpu.md       # /debug-gpu - GPU-Probleme diagnostizieren
+│   ├── ocr-benchmark.md   # /ocr-benchmark - OCR-Qualität testen
+│   ├── quick-test.md      # /quick-test - Schnelle Tests ausführen
+│   └── ...                # Weitere Commands
+├── hooks/                 # Automatische Validierung
+│   ├── pre-commit.py      # Pre-Commit: Typen, Sicherheit, Deutsche Texte
+│   └── post-ocr-change.py # Nach OCR-Änderungen: Tests, GPU-Validierung
+└── Docs/                  # Zusätzliche Dokumentation
+```
+
+### Wann welchen Command nutzen:
+
+| Situation | Command |
+|-----------|---------|
+| System starten/prüfen | `/check-system` |
+| Deutsche Texte validieren | `/validate-german` |
+| Dokument verarbeiten | `/process-doc <pfad>` |
+| GPU-Probleme | `/debug-gpu` |
+| OCR-Qualität testen | `/ocr-benchmark` |
+| Tests ausführen | `/quick-test` |
+| Code reviewen | `/review-pr` |
+
+---
+
+## Projekt-Übersicht
+
+**Status**: Production-Ready Enterprise Platform
+**Hardware**: RTX 4080 16GB VRAM
+**Sprache**: Deutsch-First (100% Umlaut-Genauigkeit erforderlich)
+**Philosophie**: "Feinpoliert und durchdacht"
+
+### Architektur
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Ablage-System OCR                        │
+├─────────────────────────────────────────────────────────────┤
+│  Frontend (Nginx:80)     │  Grafana (:3000)  │  Prometheus  │
+├──────────────────────────┴───────────────────┴──────────────┤
+│                    FastAPI Backend (:8000)                  │
+├─────────────────────────────────────────────────────────────┤
+│  Celery Workers  │  Redis (:6380)  │  PostgreSQL (:5433)    │
+├─────────────────────────────────────────────────────────────┤
+│  OCR Backends: DeepSeek | GOT-OCR | Surya | Surya-GPU       │
+├─────────────────────────────────────────────────────────────┤
+│                 GPU: NVIDIA RTX 4080 (16GB)                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Wichtige Befehle
+
 ```bash
-# Start API server
-python app/main.py
+# Development starten
+docker-compose up -d
 
-# Run tests
-pytest tests/test_basic.py -v
+# API Server (lokal)
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# Check GPU status
+# Tests ausführen
+pytest tests/unit/ -v
+pytest tests/integration/ -v
+
+# GPU-Status
+nvidia-smi
 python -c "from app.gpu_manager import GPUManager; print(GPUManager().get_detailed_status())"
 
-# Validate German text
-python -c "from app.german_validator import GermanValidator; v = GermanValidator(); print(v.validate_umlauts('Müller GmbH'))"
+# Celery Worker
+celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo
 ```
 
-## Current Structure (Minimal POC)
+---
+
+## Projektstruktur
+
 ```
-app/
-  main.py              # FastAPI application
-  gpu_manager.py       # GPU resource management (CRITICAL)
-  german_validator.py  # German text validation
-tests/
-  test_basic.py        # Smoke tests
-```
-
-## Critical Information
-- **GPU Manager**: Single point of failure - manages RTX 4080
-- **German Validation**: 100% accuracy required for business
-- **Backends**: Not yet implemented (using mock responses)
-
-## Next Steps
-1. [OK] Basic API running
-2. [OK] GPU detection working
-3. [OK] German validation implemented
-4. [ ] Implement first OCR backend (GOT-OCR)
-5. [ ] Process first real document
-
-## Known Issues
-- No actual OCR backends implemented yet
-- Using mock responses for testing
-- Full 131-file structure not created (intentional - POC first)
-
-## Configuration
-```python
-GPU_REQUIREMENTS = {
-    "deepseek": 12,  # GB
-    "got_ocr": 10,   # GB
-    "surya": 0       # CPU only
-}
-
-GERMAN_REQUIREMENTS = {
-    "umlaut_accuracy": 100,  # Percent
-    "date_format": "DD.MM.YYYY",
-    "currency_format": "1.234,56 €"
-}
+Ablage_System/
+├── CLAUDE.md                 # <- DU BIST HIER (Schnellreferenz)
+├── .claude/
+│   ├── CLAUDE.md             # Detaillierte Dokumentation
+│   ├── commands/             # Slash Commands
+│   └── hooks/                # Pre/Post Hooks
+├── app/
+│   ├── main.py               # FastAPI Entry Point
+│   ├── agents/ocr/           # OCR Backends (DeepSeek, GOT, Surya)
+│   ├── api/v1/               # API Endpoints
+│   ├── core/                 # Config, Security, Logging
+│   ├── db/                   # SQLAlchemy Models
+│   ├── services/             # Business Logic
+│   └── workers/              # Celery Tasks
+├── frontend/                 # Web UI (4 Display-Modi)
+├── infrastructure/
+│   ├── grafana/              # Monitoring Dashboards
+│   ├── prometheus/           # Metriken
+│   ├── loki/                 # Log-Aggregation
+│   ├── nginx/                # Reverse Proxy
+│   └── postgres/             # DB Init
+├── tests/
+│   ├── unit/                 # Unit Tests
+│   └── integration/          # Integration Tests
+└── docker-compose.yml        # Container-Orchestrierung
 ```
 
-## References
-- Full documentation: `.claude/Docs/`
-- Implementation plan: `.claude/claude code structure preperation.md`
-- Bootstrap script: `bootstrap_project.py`
+---
+
+## OCR Backends
+
+| Backend | VRAM | GPU | Stärken |
+|---------|------|-----|---------|
+| DeepSeek-Janus-Pro | 12GB | Ja | Beste Umlaut-Genauigkeit, Fraktur, komplexe Layouts |
+| GOT-OCR 2.0 | 10GB | Nein* | Tabellen, Formeln, schnell |
+| Surya + Docling | 0GB | Nein | CPU-Fallback, Layout-Analyse |
+| Surya GPU | 4GB | Ja | Schnelle GPU-Variante |
+
+---
+
+## Kritische Regeln
+
+1. **Deutsche Texte**: ALLE Fehlermeldungen auf Deutsch
+2. **GPU-Management**: VRAM unter 85% halten (max 13.6GB von 16GB)
+3. **Typ-Annotationen**: Pflicht für alle Python-Funktionen
+4. **Sicherheit**: Keine Secrets im Code, keine PII in Logs
+5. **Tests**: Müssen vor Commit bestehen
+
+---
+
+## Bei Änderungen an diesem Projekt
+
+Wenn du Änderungen machst, aktualisiere auch:
+
+1. **`.claude/CLAUDE.md`** - Bei größeren Architekturänderungen
+2. **`.claude/commands/`** - Bei neuen Workflows
+3. **`.claude/hooks/`** - Bei neuen Validierungsregeln
+4. **`tests/`** - Immer Tests hinzufügen/aktualisieren
+
+---
+
+## Monitoring & Debugging
+
+- **Grafana**: http://localhost:3000 (admin/admin123)
+- **Prometheus**: http://localhost:9090
+- **API Docs**: http://localhost:8000/docs
+- **MinIO Console**: http://localhost:9001
+
+---
+
+## Referenzen
+
+- Detaillierte Docs: `.claude/CLAUDE.md`
+- API Dokumentation: `.claude/Docs/`
+- Slash Commands: `.claude/commands/`

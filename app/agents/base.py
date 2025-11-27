@@ -10,10 +10,40 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional
 
-import structlog
-from prometheus_client import Counter, Gauge, Histogram
+import logging
 
-logger = structlog.get_logger(__name__)
+# Use standard logging for POC (no structlog/prometheus dependency)
+_base_logger = logging.getLogger(__name__)
+
+
+class StructlogCompatibleLogger(logging.LoggerAdapter):
+    """
+    Logger adapter that supports both standard logging and structlog-style calls.
+
+    Allows: logger.info("event_name", key1=value1, key2=value2)
+    Converts to: logger.info("event_name - key1=value1 key2=value2")
+    """
+
+    def process(self, msg: str, kwargs: Dict[str, Any]) -> tuple:
+        """Process log message with extra kwargs as structured data."""
+        # Extract extra logging context from kwargs
+        extra_context = {}
+        standard_keys = {'exc_info', 'stack_info', 'stacklevel', 'extra'}
+
+        for key in list(kwargs.keys()):
+            if key not in standard_keys:
+                extra_context[key] = kwargs.pop(key)
+
+        # Append structured data to message if present
+        if extra_context:
+            context_str = " ".join(f"{k}={v}" for k, v in extra_context.items())
+            msg = f"{msg} - {context_str}"
+
+        return msg, kwargs
+
+
+# Create compatible logger instance
+logger = StructlogCompatibleLogger(_base_logger, {})
 
 
 class AgentStatus(str, Enum):
@@ -38,30 +68,7 @@ class AgentCategory(str, Enum):
     INTEGRATION = "integration"
 
 
-# Prometheus Metrics
-agent_tasks_total = Counter(
-    "agent_tasks_total",
-    "Total tasks processed by agent",
-    ["agent_name", "category", "status"],
-)
-
-agent_task_duration = Histogram(
-    "agent_task_duration_seconds",
-    "Agent task processing duration",
-    ["agent_name", "category"],
-)
-
-agent_active_tasks = Gauge(
-    "agent_active_tasks",
-    "Number of currently active tasks",
-    ["agent_name", "category"],
-)
-
-agent_errors_total = Counter(
-    "agent_errors_total",
-    "Total errors encountered by agent",
-    ["agent_name", "category", "error_type"],
-)
+# Prometheus metrics removed for POC - no monitoring dependencies needed
 
 
 class BaseAgent(ABC):
@@ -95,7 +102,7 @@ class BaseAgent(ABC):
         self.category = category
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        self.logger = logger.bind(agent=name, category=category.value)
+        self.logger = logger
 
     @abstractmethod
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -130,15 +137,10 @@ class BaseAgent(ABC):
         task_id = context.get("task_id", "unknown")
         start_time = time.time()
 
-        # Increment active tasks gauge
-        agent_active_tasks.labels(
-            agent_name=self.name, category=self.category.value
-        ).inc()
+        # Metrics tracking removed for POC
 
         self.logger.info(
-            "agent_task_started",
-            task_id=task_id,
-            input_size=len(str(input_data)),
+            f"Agent task started - task_id: {task_id}, input_size: {len(str(input_data))}"
         )
 
         result = None
@@ -158,18 +160,9 @@ class BaseAgent(ABC):
                         # Retry with exponential backoff
                         delay = self.retry_delay * (2**attempt)
                         self.logger.warning(
-                            "agent_task_retry",
-                            task_id=task_id,
-                            attempt=attempt + 1,
-                            max_retries=self.max_retries,
-                            retry_delay=delay,
-                            error=str(e),
+                            f"Agent task retry - task_id: {task_id}, attempt: {attempt + 1}/{self.max_retries}, delay: {delay}s, error: {str(e)}"
                         )
-                        agent_tasks_total.labels(
-                            agent_name=self.name,
-                            category=self.category.value,
-                            status=AgentStatus.RETRYING.value,
-                        ).inc()
+                        # Metrics removed for POC
                         time.sleep(delay)
                     else:
                         # Final retry failed
@@ -181,18 +174,11 @@ class BaseAgent(ABC):
             error_type = type(e).__name__
 
             self.logger.error(
-                "agent_task_failed",
-                task_id=task_id,
-                error=str(e),
-                error_type=error_type,
-                exc_info=True,
+                f"Agent task failed - task_id: {task_id}, error_type: {error_type}, error: {str(e)}",
+                exc_info=True
             )
 
-            agent_errors_total.labels(
-                agent_name=self.name,
-                category=self.category.value,
-                error_type=error_type,
-            ).inc()
+            # Error metrics removed for POC
 
             # Re-raise for upstream handling
             raise
@@ -201,26 +187,10 @@ class BaseAgent(ABC):
             # Record metrics
             duration = time.time() - start_time
 
-            agent_task_duration.labels(
-                agent_name=self.name, category=self.category.value
-            ).observe(duration)
-
-            agent_tasks_total.labels(
-                agent_name=self.name,
-                category=self.category.value,
-                status=status.value,
-            ).inc()
-
-            agent_active_tasks.labels(
-                agent_name=self.name, category=self.category.value
-            ).dec()
+            # Metrics removed for POC
 
             self.logger.info(
-                "agent_task_completed",
-                task_id=task_id,
-                status=status.value,
-                duration_seconds=duration,
-                has_error=error is not None,
+                f"Agent task completed - task_id: {task_id}, status: {status.value}, duration: {duration:.2f}s, has_error: {error is not None}"
             )
 
         # Return result with metadata
@@ -259,6 +229,22 @@ class OCRAgent(BaseAgent):
         super().__init__(name=name, category=AgentCategory.OCR)
         self.gpu_required = gpu_required
         self.vram_gb = vram_gb
+        self._is_initialized = False
+
+    async def cleanup(self):
+        """Clean up resources. Override in subclasses for specific cleanup."""
+        self._is_initialized = False
+        self.logger.info(f"Agent cleanup complete - agent={self.name}")
+
+    def get_status(self) -> Dict[str, Any]:
+        """Get agent status. Override in subclasses for specific status."""
+        return {
+            "name": self.name,
+            "category": self.category.value,
+            "gpu_required": self.gpu_required,
+            "vram_gb": self.vram_gb,
+            "initialized": self._is_initialized,
+        }
 
 
 class PreprocessingAgent(BaseAgent):

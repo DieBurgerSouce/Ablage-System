@@ -7,7 +7,7 @@ import structlog
 from datetime import datetime, timedelta
 from typing import Dict, Optional, List
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 logger = structlog.get_logger(__name__)
@@ -52,8 +52,7 @@ class GDPRLogEntry(BaseModel):
     reason: Optional[str] = None
     metadata: Dict = Field(default_factory=dict)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 def log_gdpr_operation(entry: GDPRLogEntry) -> None:

@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, Tuple
 from decimal import Decimal
 
 import structlog
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.utils.german_text import normalize_german_text, extract_german_date
 
@@ -42,7 +42,8 @@ class InvoiceAmount(BaseModel):
     gross_amount: Optional[Decimal] = Field(None, description="Bruttobetrag")
     currency: str = "EUR"
 
-    @validator("net_amount", "vat_amount", "gross_amount", pre=True)
+    @field_validator("net_amount", "vat_amount", "gross_amount", mode="before")
+    @classmethod
     def parse_decimal(cls, v):
         """Parse German decimal format (1.234,56 -> Decimal)."""
         if v is None or v == "":

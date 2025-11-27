@@ -1,0 +1,29 @@
+"""
+Document Management API Endpoints
+Handles document upload, download, versioning, and storage operations
+Created: 2025-11-26
+"""
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import Form, Path as PathParam, Query
+from fastapi.responses import StreamingResponse
+from typing import List, Optional
+from datetime import datetime, timedelta
+import uuid
+import logging
+from io import BytesIO
+
+from app.db.schemas import (
+    DocumentUploadResponse,
+    DocumentVersionListResponse,
+    DocumentVersionInfo,
+    PresignedUrlResponse,
+    StorageStatsResponse,
+    MessageResponse
+)
+from app.services.storage_service import get_storage_service
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/documents", tags=["documents"])
+

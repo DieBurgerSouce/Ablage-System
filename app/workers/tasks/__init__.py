@@ -1,18 +1,19 @@
-"""
-Celery Tasks for Multi-Agent System.
+"""Celery tasks for async processing."""
 
-Task modules:
-- ocr_tasks: OCR processing tasks (GPU/CPU, batch)
-- monitoring_tasks: Health checks, metrics collection
-- cleanup_tasks: Temporary file cleanup, cache eviction
-- backup_tasks: Database backup, restore
-"""
+from app.workers.tasks.ocr_tasks import (
+    process_document_task,
+    batch_process_task,
+    validate_german_text_task,
+    extract_metadata_task,
+    cleanup_task,
+    update_system_metrics,
+)
 
 __all__ = [
-    "process_document_gpu",
-    "process_document_cpu",
-    "batch_process_documents",
-    "health_check_task",
-    "cleanup_temp_files",
-    "backup_database",
+    "process_document_task",
+    "batch_process_task",
+    "validate_german_text_task",
+    "extract_metadata_task",
+    "cleanup_task",
+    "update_system_metrics",
 ]

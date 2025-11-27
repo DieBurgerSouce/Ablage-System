@@ -3,51 +3,37 @@ Ablage-System OCR API
 Main FastAPI application entry point
 
 Created: 2025-11-22
-Status: Proof of Concept
+Status: Working POC with Surya OCR
 """
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Request
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import sys
 from pathlib import Path
 import logging
+import os
+import json
 
-# Add app directory to path
-sys.path.append(str(Path(__file__).parent))
-
-from gpu_manager import GPUManager
-from german_validator import GermanValidator
-
-# Import API routers
-try:
-    from api.v1 import agents, metrics
-    API_ROUTERS_AVAILABLE = True
-except ImportError as e:
-    API_ROUTERS_AVAILABLE = False
-    logger = logging.getLogger(__name__)
-    logger.warning(f"API routers not available: {e}")
-
-try:
-    from core.exceptions import AblageSystemException
-    from core.monitoring import get_system_monitor, PerformanceTimer
-    from core.gdpr import get_gdpr_manager, DataCategory, ProcessingPurpose
-    MONITORING_AVAILABLE = True
-    GDPR_AVAILABLE = True
-except ImportError:
-    MONITORING_AVAILABLE = False
-    GDPR_AVAILABLE = False
-    logger = logging.getLogger(__name__)
-    logger.warning("Core modules not available")
-
-try:
-    from services.ocr_service import get_ocr_service
-    OCR_SERVICE_AVAILABLE = True
-except ImportError:
-    OCR_SERVICE_AVAILABLE = False
-    logger.warning("OCR service not available")
+# Use absolute imports for production compatibility
+from app.gpu_manager import GPUManager
+from app.german_validator import GermanValidator
+from app.services.ocr_service import OCRService
+from app.core.rate_limiting import (
+    limiter,
+    rate_limit_exceeded_handler_german,
+    get_redis_storage,
+    RateLimitTier
+)
+from app.middleware import RateLimitMiddleware, DevelopmentRateLimitBypass
+from app.core.config import settings
+from app.core.monitoring import get_system_monitor, PerformanceTimer
+from app.core.german_messages import HTTPErrors, StatusMessages
 
 # Configure logging
 logging.basicConfig(
@@ -56,523 +42,478 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Initialize Sentry (if configured)
+try:
+    from infrastructure.sentry.init_sentry import initialize_sentry_for_backend
+    initialize_sentry_for_backend()
+    logger.info("Sentry error tracking initialized")
+except Exception as e:
+    logger.warning(f"Sentry not configured: {e}")
+
+# Global instances
+gpu_manager = None
+german_validator = None
+ocr_service = None
+redis_storage = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifecycle"""
+    global gpu_manager, german_validator, ocr_service, redis_storage
+
+    # Startup
+    logger.info("Starting Ablage-System OCR API...")
+
+    # Initialize managers
+    gpu_manager = GPUManager()
+    german_validator = GermanValidator()
+    ocr_service = OCRService()
+
+    # Initialize rate limiting Redis storage
+    if settings.RATE_LIMIT_ENABLED:
+        redis_storage = await get_redis_storage()
+        logger.info(f"Rate limiting enabled: Redis available = {redis_storage.is_available if redis_storage else False}")
+
+    logger.info(f"Available OCR backends: {ocr_service.backend_manager.get_available_backends()}")
+    logger.info("Ablage-System OCR API started successfully")
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down Ablage-System OCR API...")
+    if ocr_service:
+        await ocr_service.cleanup()
+    if redis_storage:
+        await redis_storage.disconnect()
+    logger.info("Ablage-System OCR API shutdown complete")
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Ablage-System OCR",
     description="Enterprise German Document Processing with GPU Acceleration",
-    version="0.1.0-poc",
+    version="0.2.0-poc",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
-# Initialize managers
-gpu_manager = GPUManager()
-german_validator = GermanValidator()
-system_monitor = get_system_monitor() if MONITORING_AVAILABLE else None
-gdpr_manager = get_gdpr_manager() if GDPR_AVAILABLE else None
-ocr_service = get_ocr_service() if OCR_SERVICE_AVAILABLE else None
+# Add CORS middleware for web interface
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify actual origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Register API routers
-if API_ROUTERS_AVAILABLE:
-    app.include_router(agents.router, prefix="/api/v1", tags=["agents"])
-    app.include_router(metrics.router, prefix="/api/v1", tags=["metrics"])
-    logger.info("Multi-agent API routers registered")
+# Add rate limiting middleware
+if settings.DEBUG:
+    # Bypass rate limiting in development
+    app.add_middleware(DevelopmentRateLimitBypass)
 
-
-# Exception handlers
-if MONITORING_AVAILABLE:
-    @app.exception_handler(AblageSystemException)
-    async def ablage_exception_handler(request: Request, exc: AblageSystemException):
-        """Handle custom Ablage-System exceptions"""
-        logger.error(f"AblageSystemException: {exc.error_code} - {exc.message}")
-        if system_monitor:
-            system_monitor.metrics.record_error(exc.error_code)
-
-        return JSONResponse(
-            status_code=400,
-            content=exc.to_dict()
-        )
-
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle Pydantic validation errors"""
-    logger.warning(f"Validation error: {exc}")
-    return JSONResponse(
-        status_code=422,
-        content={
-            "error_code": "E011",
-            "message": "Validation error",
-            "user_message_de": "Ungültige Eingabedaten",
-            "details": exc.errors()
-        }
+if settings.RATE_LIMIT_ENABLED:
+    # Add rate limiting middleware
+    # Note: redis_storage will be set during startup
+    app.add_middleware(
+        RateLimitMiddleware,
+        redis_storage=None  # Will be set during startup
     )
 
+# Register rate limit exception handler
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler_german)
 
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected exceptions"""
-    logger.exception("Unexpected error")
-    if MONITORING_AVAILABLE and system_monitor:
-        system_monitor.metrics.record_error("E999")
+# Add limiter state to app for SlowAPI decorators
+app.state.limiter = limiter
 
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error_code": "E999",
-            "message": "Internal server error",
-            "user_message_de": "Interner Serverfehler",
-            "details": {"type": type(exc).__name__}
-        }
-    )
+# Include API routers
+from app.api.v1 import auth, tasks, metrics
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize system on startup"""
-    print("[>] Starting Ablage-System OCR...")
+app.include_router(auth.router, prefix="/api/v1")
+app.include_router(tasks.router, prefix="/api/v1")
+app.include_router(metrics.router, prefix="/api/v1")
 
-    # Check GPU
-    gpu_status = gpu_manager.check_availability()
-    if gpu_status["available"]:
-        print(f"[OK] GPU detected: {gpu_status.get('gpu_name', 'Unknown')}")
-        print(f"     Total VRAM: {gpu_status['total_gb']:.1f}GB")
-    else:
-        print("[!] No GPU detected - running in CPU mode")
 
-    # Initialize skills
-    if API_ROUTERS_AVAILABLE:
-        try:
-            from app.core.skill_loader import initialize_skills
-            await initialize_skills()
-            print("[OK] Skills loaded")
-        except Exception as e:
-            print(f"[!] Failed to load skills: {e}")
-
-    print("[OK] System ready!")
+# ==================== Health & Status Endpoints ====================
 
 @app.get("/")
-def root():
-    """Root endpoint with system info"""
+async def root():
+    """Root endpoint with API information"""
     return {
-        "system": "Ablage-System OCR",
+        "name": "Ablage-System OCR",
+        "version": "0.2.0-poc",
         "status": "operational",
-        "philosophy": "Feinpoliert und durchdacht",
-        "documentation": "See /docs for API documentation"
+        "documentation": "/docs",
+        "endpoints": {
+            "health": "/health",
+            "gpu_status": "/gpu/status",
+            "ocr_process": "/ocr/process",
+            "ocr_test": "/ocr/test",
+            "backends": "/ocr/backends"
+        },
+        "authentication": {
+            "register": "/api/v1/auth/register",
+            "login": "/api/v1/auth/login",
+            "refresh": "/api/v1/auth/refresh",
+            "logout": "/api/v1/auth/logout",
+            "me": "/api/v1/auth/me"
+        },
+        "monitoring": {
+            "prometheus": "/api/v1/metrics",
+            "business_metrics": "/api/v1/metrics/business",
+            "system_status": "/monitoring/system",
+            "health_check": "/monitoring/health"
+        }
     }
+
 
 @app.get("/health")
-def health_check():
-    """Health check endpoint"""
-    gpu_status = gpu_manager.check_availability()
+async def health_check():
+    """Comprehensive health check"""
+    gpu_status = gpu_manager.get_detailed_status() if gpu_manager else None
+    ocr_backends = ocr_service.backend_manager.get_available_backends() if ocr_service else []
 
-    response = {
+    health = {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "gpu": {
-            "available": gpu_status["available"],
-            "name": gpu_status.get("gpu_name"),
-            "vram_total_gb": gpu_status.get("total_gb"),
-            "vram_free_gb": gpu_status.get("free_gb")
-        },
-        "backends": {
-            "deepseek": "not_implemented",
-            "got_ocr": "not_implemented",
-            "surya": "not_implemented"
+        "components": {
+            "gpu": {
+                "available": gpu_status is not None and gpu_status.get("available", False),
+                "device": gpu_status.get("device_name") if gpu_status else None
+            },
+            "ocr": {
+                "backends_available": len(ocr_backends),
+                "backends": ocr_backends
+            },
+            "german_validator": {
+                "available": german_validator is not None
+            }
         }
     }
 
-    # Add monitoring data if available
-    if MONITORING_AVAILABLE and system_monitor:
-        response["system_status"] = system_monitor.get_system_status()
-        response["metrics"] = system_monitor.metrics.get_summary()
+    # Determine overall health
+    if not ocr_backends:
+        health["status"] = "degraded"
+        health["message"] = "No OCR backends available"
 
-    return response
+    return health
 
 
-@app.get("/metrics")
-def get_metrics():
-    """Get system metrics and statistics"""
-    if not MONITORING_AVAILABLE or not system_monitor:
-        return {
-            "error": "Monitoring not available",
-            "message": "Install monitoring modules"
-        }
+# ==================== GPU Management Endpoints ====================
 
-    return {
-        "metrics": system_monitor.metrics.get_summary(),
-        "system": system_monitor.get_system_status(),
-        "health": system_monitor.check_health()
-    }
+@app.get("/gpu/status")
+async def get_gpu_status():
+    """Get detailed GPU status"""
+    if not gpu_manager:
+        raise HTTPException(status_code=503, detail=HTTPErrors.GPU_MANAGER_NOT_INITIALIZED)
 
-@app.post("/ocr/test")
-async def test_ocr(text: str = "Müller GmbH & Co. KG"):
-    """Test OCR endpoint with German text validation"""
+    return gpu_manager.get_detailed_status()
 
-    # Validate German text
-    validation_result = german_validator.validate_umlauts(text)
-    date_formats = german_validator.validate_date_format(text)
-    currency_formats = german_validator.validate_currency_format(text)
+
+# ==================== OCR Processing Endpoints ====================
+
+@app.get("/ocr/backends")
+async def get_ocr_backends():
+    """Get available OCR backends and their status"""
+    if not ocr_service:
+        raise HTTPException(status_code=503, detail=HTTPErrors.OCR_SERVICE_NOT_INITIALIZED)
 
     return {
-        "input": text,
-        "mock_output": f"Verarbeitet: {text}",
-        "validation": {
-            "umlauts_valid": validation_result["valid"],
-            "umlauts_found": validation_result["umlauts_found"],
-            "potential_errors": validation_result["potential_errors"],
-            "confidence": validation_result["confidence"]
-        },
-        "extracted": {
-            "dates": date_formats,
-            "amounts": currency_formats
-        },
-        "backend": "mock",
-        "processing_time_ms": 42
+        "available_backends": ocr_service.backend_manager.get_available_backends(),
+        "backend_status": await ocr_service.backend_manager.get_backend_status(),
+        "recommended": "surya"  # CPU-based, always available
     }
+
 
 @app.post("/ocr/process")
 async def process_document(
     file: UploadFile = File(...),
-    backend: Optional[str] = None,
-    language: str = "de",
-    detect_layout: bool = True
+    backend: Optional[str] = Form("auto"),
+    language: Optional[str] = Form("de"),
+    detect_layout: Optional[bool] = Form(True)
 ):
     """
-    Process uploaded document with OCR
+    Process a document with OCR
 
     Args:
-        file: Uploaded image/PDF file
-        backend: OCR backend to use ("auto", "deepseek", "got_ocr", "surya")
-        language: Target language (default: "de")
-        detect_layout: Perform layout detection (default: True)
+        file: Document file (PDF, PNG, JPG, etc.)
+        backend: OCR backend to use (auto, surya, got_ocr, deepseek)
+        language: Target language (de, en)
+        detect_layout: Whether to detect document layout
 
     Returns:
-        OCR result with extracted text and metadata
-
-    TODO: Add proper authentication before production!
+        OCR processing result with extracted text
     """
-    import os
+    if not ocr_service:
+        raise HTTPException(status_code=503, detail=HTTPErrors.OCR_SERVICE_NOT_INITIALIZED)
 
-    # File size limit (50 MB default)
-    MAX_FILE_SIZE = int(os.getenv("MAX_UPLOAD_SIZE_MB", "50")) * 1024 * 1024
-
-    # Allowed file extensions
-    ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp"}
-
-    # Validate file extension
-    file_ext = Path(file.filename).suffix.lower()
-    if file_ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid file type '{file_ext}'. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
-        )
-
-    # Read file with size limit
-    content = bytearray()
-    bytes_read = 0
-    async for chunk in file.stream:
-        bytes_read += len(chunk)
-        if bytes_read > MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=413,
-                detail=f"File too large. Maximum size: {MAX_FILE_SIZE // 1024 // 1024}MB"
-            )
-        content.extend(chunk)
-    if not OCR_SERVICE_AVAILABLE or not ocr_service:
-        # Fallback to mock processing
-        return {
-            "success": True,
-            "filename": file.filename,
-            "text": f"[MOCK] Dokument '{file.filename}' verarbeitet\n\nRechnung Nr. 2024-001\nMüller GmbH\nBetrag: 1.234,56 €",
-            "backend": "mock",
-            "message": "OCR service running with mock processing - install backends for real OCR",
-            "gpu_available": gpu_manager.check_availability()["available"],
-            "file_size_bytes": len(content)
-        }
-
-    # Save uploaded file temporarily
-    import tempfile
-    with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_file:
-        tmp_file.write(content)
-        tmp_path = tmp_file.name
+    # Get system monitor for metrics
+    monitor = get_system_monitor()
 
     try:
-        # Process with OCR service
-        result = await ocr_service.process_document(
-            image_path=tmp_path,
-            backend=backend or "auto",
-            language=language,
-            detect_layout=detect_layout
+        # Validate file type
+        allowed_extensions = ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.bmp']
+        file_ext = Path(file.filename).suffix.lower()
+        if file_ext not in allowed_extensions:
+            raise HTTPException(
+                status_code=400,
+                detail=HTTPErrors.INVALID_FILE_TYPE.format(allowed=", ".join(allowed_extensions))
+            )
+
+        # Save uploaded file
+        file_content = await file.read()
+        saved_path = await ocr_service.save_upload(file_content, file.filename)
+
+        logger.info(f"Processing document: {file.filename}, backend: {backend}, language: {language}")
+
+        # Process with OCR using performance timer
+        with PerformanceTimer("ocr_processing", monitor.metrics) as timer:
+            result = await ocr_service.process_document(
+                image_path=saved_path,
+                backend=backend,
+                language=language,
+                detect_layout=detect_layout
+            )
+
+        # Record metrics
+        success = result.get("success", False)
+        actual_backend = result.get("backend", backend or "auto")
+        monitor.metrics.record_request(
+            duration_ms=timer.duration_ms or 0,
+            backend=actual_backend,
+            success=success
         )
 
-        # Add file info
-        result["file_info"] = {
-            "filename": file.filename,
-            "size_bytes": len(content),
-            "content_type": file.content_type
-        }
+        # Validate German text if language is German
+        if language == "de" and result.get("success") and result.get("text"):
+            validation = await ocr_service.validate_german_text(result["text"])
+            result["german_validation"] = validation
 
         return result
 
-    finally:
-        # Cleanup temp file
-        Path(tmp_path).unlink(missing_ok=True)
+    except Exception as e:
+        logger.error(f"OCR processing failed: {str(e)}")
+        # Record error metric
+        monitor.metrics.record_error("ocr_processing_error")
+        raise HTTPException(
+            status_code=500,
+            detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
+        )
+
 
 @app.post("/ocr/batch")
-async def batch_process_documents(
+async def process_batch(
     files: List[UploadFile] = File(...),
-    backend: Optional[str] = None,
-    language: str = "de"
+    backend: Optional[str] = Form("auto"),
+    language: Optional[str] = Form("de")
 ):
     """
-    Batch process multiple documents
+    Process multiple documents in batch
 
     Args:
-        files: List of uploaded files
-        backend: OCR backend to use for all files
+        files: List of document files
+        backend: OCR backend to use
         language: Target language
 
     Returns:
         List of OCR results
-
-    TODO: Add proper authentication before production!
     """
-    import os
-
-    # Batch size limit
-    MAX_BATCH_SIZE = int(os.getenv("MAX_BATCH_SIZE", "10"))
-    if len(files) > MAX_BATCH_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Batch too large. Maximum {MAX_BATCH_SIZE} files allowed. Received: {len(files)}"
-        )
-
-    # File size limit per file
-    MAX_FILE_SIZE = int(os.getenv("MAX_UPLOAD_SIZE_MB", "50")) * 1024 * 1024
-    ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp"}
-    if not OCR_SERVICE_AVAILABLE or not ocr_service:
-        return {
-            "error": "OCR service not available",
-            "message": "Install OCR backends for batch processing",
-            "mock_mode": True,
-            "files_received": len(files)
-        }
-
-    import tempfile
-    temp_files = []
+    if not ocr_service:
+        raise HTTPException(status_code=503, detail=HTTPErrors.OCR_SERVICE_NOT_INITIALIZED)
 
     try:
-        # Validate and save all files temporarily
+        # Save all files
+        saved_paths = []
         for file in files:
-            # Validate file extension
-            file_ext = Path(file.filename).suffix.lower()
-            if file_ext not in ALLOWED_EXTENSIONS:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid file type in batch: '{file.filename}' ({file_ext})"
-                )
+            file_content = await file.read()
+            saved_path = await ocr_service.save_upload(file_content, file.filename)
+            saved_paths.append(saved_path)
 
-            # Read with size limit
-            content = bytearray()
-            bytes_read = 0
-            async for chunk in file.stream:
-                bytes_read += len(chunk)
-                if bytes_read > MAX_FILE_SIZE:
-                    raise HTTPException(
-                        status_code=413,
-                        detail=f"File '{file.filename}' too large. Max: {MAX_FILE_SIZE // 1024 // 1024}MB"
-                    )
-                content.extend(chunk)
+        logger.info(f"Batch processing {len(files)} documents")
 
-            # Save to temp file
-            tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=file_ext)
-            tmp_file.write(content)
-            tmp_file.close()
-            temp_files.append(tmp_file.name)
-
-        # Batch process
+        # Process batch
         results = await ocr_service.batch_process(
-            image_paths=temp_files,
-            backend=backend or "auto",
+            image_paths=saved_paths,
+            backend=backend,
             language=language
         )
 
-        # Add filenames to results
-        for i, result in enumerate(results):
-            if i < len(files):
-                result["filename"] = files[i].filename
-
         return {
-            "batch_size": len(files),
-            "results": results,
-            "stats": ocr_service.get_stats()
+            "total": len(files),
+            "successful": sum(1 for r in results if r.get("success")),
+            "results": results
         }
 
-    finally:
-        # Cleanup all temp files
-        for tmp_path in temp_files:
-            Path(tmp_path).unlink(missing_ok=True)
+    except Exception as e:
+        logger.error(f"Batch processing failed: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
+        )
 
 
-@app.get("/ocr/stats")
-def get_ocr_stats():
+@app.post("/ocr/test")
+async def test_german_text(text: str):
+    """
+    Test German text validation
+
+    Args:
+        text: Text to validate
+
+    Returns:
+        Validation results with quality metrics
+    """
+    if not german_validator:
+        raise HTTPException(status_code=503, detail=HTTPErrors.GERMAN_VALIDATOR_NOT_INITIALIZED)
+
+    # Validate text
+    has_umlauts = german_validator.validate_umlauts(text)
+    dates = german_validator.validate_date_format(text)
+    amounts = german_validator.validate_currency_format(text)
+    business_terms = german_validator.extract_business_terms(text)
+
+    # Check for IBANs and VAT IDs
+    ibans = []
+    vat_ids = []
+    words = text.split()
+    for word in words:
+        if word.startswith("DE") and len(word) == 22:
+            if german_validator.validate_iban(word):
+                ibans.append(word)
+        elif word.startswith("DE") and len(word) == 11:
+            if german_validator.validate_vat_id(word):
+                vat_ids.append(word)
+
+    return {
+        "valid_german": has_umlauts or len(dates) > 0 or len(amounts) > 0,
+        "has_umlauts": has_umlauts,
+        "dates": dates,
+        "amounts": amounts,
+        "business_terms": business_terms,
+        "ibans": ibans,
+        "vat_ids": vat_ids,
+        "text_length": len(text),
+        "word_count": len(words)
+    }
+
+
+# ==================== Statistics Endpoint ====================
+
+@app.get("/stats")
+async def get_statistics():
     """Get OCR processing statistics"""
-    if not OCR_SERVICE_AVAILABLE or not ocr_service:
-        return {
-            "error": "OCR service not available"
-        }
+    if not ocr_service:
+        raise HTTPException(status_code=503, detail=HTTPErrors.OCR_SERVICE_NOT_INITIALIZED)
 
-    return ocr_service.get_stats()
+    return await ocr_service.get_stats()
 
 
-@app.get("/ocr/backends")
-def list_ocr_backends():
-    """List available OCR backends"""
-    backends = {
-        "deepseek": {
-            "name": "DeepSeek-Janus-Pro 1.0",
-            "type": "multimodal_vlm",
-            "vram_required_gb": 12.0,
-            "performance": "2-3 pages/sec",
-            "best_for": "Complex layouts, tables, images",
-            "installed": False  # Would check actual installation
-        },
-        "got_ocr": {
-            "name": "GOT-OCR 2.0",
-            "type": "transformer_ocr",
-            "vram_required_gb": 10.0,
-            "performance": "5-7 pages/sec",
-            "best_for": "Handwriting, degraded documents",
-            "installed": False
-        },
-        "surya": {
-            "name": "Surya + Docling",
-            "type": "cpu_pipeline",
-            "vram_required_gb": 0,
-            "performance": "1-2 pages/sec",
-            "best_for": "CPU fallback, layout analysis",
-            "installed": False
-        }
-    }
+# ==================== System Monitoring Endpoint ====================
 
-    return {
-        "ocr_service_available": OCR_SERVICE_AVAILABLE,
-        "backends": backends,
-        "gpu_info": gpu_manager.get_detailed_status(),
-        "auto_selection": "Available - automatically selects best backend based on document type and GPU availability"
-    }
-
-
-@app.get("/gpu/status")
-def gpu_status():
-    """Get detailed GPU status"""
-    return gpu_manager.get_detailed_status()
-
-@app.post("/validate/german")
-async def validate_german_text(text: str):
-    """Validate German text for OCR quality"""
-    validation_result = {
-        "umlauts": german_validator.validate_umlauts(text),
-        "dates": german_validator.validate_date_format(text),
-        "currency": german_validator.validate_currency_format(text),
-        "business_terms": german_validator.extract_business_terms(text)
-    }
-
-    # Add GDPR sensitive data check
-    if GDPR_AVAILABLE and gdpr_manager:
-        validation_result["gdpr"] = gdpr_manager.check_sensitive_data(text)
-
-    return validation_result
-
-
-@app.get("/gdpr/compliance")
-def get_gdpr_compliance():
-    """Get GDPR compliance report"""
-    if not GDPR_AVAILABLE or not gdpr_manager:
-        return {
-            "error": "GDPR module not available",
-            "message": "Install GDPR compliance modules"
-        }
-
-    return gdpr_manager.get_compliance_report()
-
-
-@app.post("/gdpr/data-export/{subject_id}")
-def request_data_export(subject_id: str):
-    """Art. 20 DSGVO - Request data export (Right to Data Portability)
-
-    TODO: CRITICAL SECURITY ISSUE!
-          Add authentication + identity verification before production!
-          Must verify that requester owns this subject_id.
-
-    SECURITY RISK: Currently NO AUTHENTICATION - anyone can export anyone's data!
+@app.get("/monitoring/system")
+async def get_system_status():
     """
-    # TODO: Replace with proper auth + identity check
-    # if current_user.subject_id != subject_id and not is_admin(current_user):
-    #     raise HTTPException(403, "Can only export your own data")
+    Get comprehensive system status including CPU, RAM, GPU, and OCR metrics.
 
-    import os
-    if os.getenv("ENVIRONMENT", "development") == "production":
-        raise HTTPException(
-            status_code=403,
-            detail="GDPR endpoints require authentication. Enable auth system first."
-        )
-
-    if not GDPR_AVAILABLE or not gdpr_manager:
-        return {
-            "error": "GDPR module not available"
-        }
-
-    export = gdpr_manager.generate_data_export(subject_id)
-
-    return {
-        "status": "success",
-        "message_de": "Datenexport erfolgreich erstellt",
-        "export": export
-    }
-
-
-@app.post("/gdpr/request-deletion/{subject_id}")
-def request_data_deletion(subject_id: str):
-    """Art. 17 DSGVO - Request data deletion (Right to Erasure)
-
-    TODO: CRITICAL SECURITY ISSUE!
-          Add authentication + identity verification before production!
-          Must verify that requester owns this subject_id.
-
-    SECURITY RISK: Currently NO AUTHENTICATION - anyone can delete anyone's data!
+    Returns:
+        System resource usage, GPU status, and processing metrics
     """
-    # TODO: Replace with proper auth + identity check
-    # if current_user.subject_id != subject_id and not is_admin(current_user):
-    #     raise HTTPException(403, "Can only delete your own data")
-
-    import os
-    if os.getenv("ENVIRONMENT", "development") == "production":
-        raise HTTPException(
-            status_code=403,
-            detail="GDPR endpoints require authentication. Enable auth system first."
-        )
-
-    if not GDPR_AVAILABLE or not gdpr_manager:
-        return {
-            "error": "GDPR module not available"
-        }
-
-    # This would typically be more complex with database cleanup
-    from core.gdpr import DataSubject
-
-    subject = DataSubject(subject_id)
-    deadline = subject.request_deletion()
-
+    monitor = get_system_monitor()
     return {
-        "status": "deletion_requested",
-        "message_de": f"Löschung Ihrer Daten wurde beantragt",
-        "subject_id": subject_id,
-        "deletion_deadline": deadline.isoformat(),
-        "deadline_human_readable_de": f"Innerhalb von 30 Tagen (bis {deadline.strftime('%d.%m.%Y')})"
+        "system": monitor.get_system_status(),
+        "health": monitor.check_health(),
+        "metrics": monitor.metrics.get_summary()
     }
+
+
+@app.get("/monitoring/health")
+async def get_monitoring_health():
+    """
+    Get system health status for monitoring and alerting.
+
+    Returns:
+        Health status of all system components
+    """
+    monitor = get_system_monitor()
+    return monitor.check_health()
+
+
+# ==================== Rate Limit Status Endpoint ====================
+
+@app.get("/ratelimit/status")
+async def get_rate_limit_status():
+    """
+    Get rate limiting status and statistics.
+
+    Returns:
+        Rate limit configuration and statistics
+    """
+    from app.middleware import get_rate_limit_stats
+
+    return get_rate_limit_stats()
+
+
+@app.get("/ratelimit/info")
+async def get_rate_limit_info_endpoint(request: Request):
+    """
+    Get rate limit information for current request.
+
+    Returns:
+        Current user's rate limit information
+    """
+    from app.core.rate_limiting import get_rate_limit_info
+
+    return get_rate_limit_info(request)
+
+
+# ==================== Error Handlers ====================
+
+@app.exception_handler(404)
+async def not_found_handler(request, exc):
+    """Handle 404 errors"""
+    return JSONResponse(
+        status_code=404,
+        content={
+            "fehler": "Nicht gefunden",
+            "nachricht": f"Die angeforderte URL {request.url.path} wurde nicht gefunden",
+            "zeitstempel": datetime.utcnow().isoformat()
+        }
+    )
+
+
+@app.exception_handler(500)
+async def internal_error_handler(request, exc):
+    """Handle 500 errors"""
+    logger.error(f"Internal server error: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "fehler": "Interner Serverfehler",
+            "nachricht": HTTPErrors.INTERNAL_ERROR,
+            "zeitstempel": datetime.utcnow().isoformat()
+        }
+    )
+
+
+# ==================== Main Entry Point ====================
 
 if __name__ == "__main__":
     import uvicorn
-    print("[i] Starting development server...")
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+
+    # Configuration
+    host = os.getenv("API_HOST", "0.0.0.0")
+    port = int(os.getenv("API_PORT", "8000"))
+    reload = os.getenv("API_RELOAD", "true").lower() == "true"
+
+    logger.info(f"Starting server on {host}:{port}")
+    logger.info("Access the API documentation at http://localhost:8000/docs")
+
+    # Run server
+    uvicorn.run(
+        "main:app",
+        host=host,
+        port=port,
+        reload=reload,
+        log_level="info"
+    )
