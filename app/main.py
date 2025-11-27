@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 import sys
 from pathlib import Path
-import logging
+import structlog
 import os
 import json
 
@@ -35,20 +35,15 @@ from app.core.config import settings
 from app.core.monitoring import get_system_monitor, PerformanceTimer
 from app.core.german_messages import HTTPErrors, StatusMessages
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Initialize Sentry (if configured)
 try:
     from infrastructure.sentry.init_sentry import initialize_sentry_for_backend
     initialize_sentry_for_backend()
-    logger.info("Sentry error tracking initialized")
+    logger.info("sentry_initialized")
 except Exception as e:
-    logger.warning(f"Sentry not configured: {e}")
+    logger.warning("sentry_not_configured", error=str(e))
 
 # Global instances
 gpu_manager = None
@@ -63,7 +58,7 @@ async def lifespan(app: FastAPI):
     global gpu_manager, german_validator, ocr_service, redis_storage
 
     # Startup
-    logger.info("Starting Ablage-System OCR API...")
+    logger.info("api_starting")
 
     # Initialize managers
     gpu_manager = GPUManager()
@@ -73,20 +68,20 @@ async def lifespan(app: FastAPI):
     # Initialize rate limiting Redis storage
     if settings.RATE_LIMIT_ENABLED:
         redis_storage = await get_redis_storage()
-        logger.info(f"Rate limiting enabled: Redis available = {redis_storage.is_available if redis_storage else False}")
+        logger.info("rate_limiting_enabled", redis_available=redis_storage.is_available if redis_storage else False)
 
-    logger.info(f"Available OCR backends: {ocr_service.backend_manager.get_available_backends()}")
-    logger.info("Ablage-System OCR API started successfully")
+    logger.info("available_ocr_backends", backends=ocr_service.backend_manager.get_available_backends())
+    logger.info("api_started")
 
     yield
 
     # Shutdown
-    logger.info("Shutting down Ablage-System OCR API...")
+    logger.info("api_shutting_down")
     if ocr_service:
         await ocr_service.cleanup()
     if redis_storage:
         await redis_storage.disconnect()
-    logger.info("Ablage-System OCR API shutdown complete")
+    logger.info("api_shutdown_complete")
 
 
 # Initialize FastAPI app
@@ -266,7 +261,7 @@ async def process_document(
         file_content = await file.read()
         saved_path = await ocr_service.save_upload(file_content, file.filename)
 
-        logger.info(f"Processing document: {file.filename}, backend: {backend}, language: {language}")
+        logger.info("processing_document", filename=file.filename, backend=backend, language=language)
 
         # Process with OCR using performance timer
         with PerformanceTimer("ocr_processing", monitor.metrics) as timer:
@@ -294,7 +289,7 @@ async def process_document(
         return result
 
     except Exception as e:
-        logger.error(f"OCR processing failed: {str(e)}")
+        logger.error("ocr_processing_failed", error=str(e))
         # Record error metric
         monitor.metrics.record_error("ocr_processing_error")
         raise HTTPException(
@@ -331,7 +326,7 @@ async def process_batch(
             saved_path = await ocr_service.save_upload(file_content, file.filename)
             saved_paths.append(saved_path)
 
-        logger.info(f"Batch processing {len(files)} documents")
+        logger.info("batch_processing", document_count=len(files))
 
         # Process batch
         results = await ocr_service.batch_process(
@@ -347,7 +342,7 @@ async def process_batch(
         }
 
     except Exception as e:
-        logger.error(f"Batch processing failed: {str(e)}")
+        logger.error("batch_processing_failed", error=str(e))
         raise HTTPException(
             status_code=500,
             detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
@@ -486,7 +481,7 @@ async def not_found_handler(request, exc):
 @app.exception_handler(500)
 async def internal_error_handler(request, exc):
     """Handle 500 errors"""
-    logger.error(f"Internal server error: {exc}")
+    logger.error("internal_server_error", error=str(exc))
     return JSONResponse(
         status_code=500,
         content={
@@ -507,8 +502,8 @@ if __name__ == "__main__":
     port = int(os.getenv("API_PORT", "8000"))
     reload = os.getenv("API_RELOAD", "true").lower() == "true"
 
-    logger.info(f"Starting server on {host}:{port}")
-    logger.info("Access the API documentation at http://localhost:8000/docs")
+    logger.info("starting_server", host=host, port=port)
+    logger.info("api_docs_available", url="http://localhost:8000/docs")
 
     # Run server
     uvicorn.run(

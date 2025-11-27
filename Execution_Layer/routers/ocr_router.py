@@ -13,10 +13,10 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Protocol
 from pydantic import BaseModel
 import asyncio
-import logging
 
-# Configure logger
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 class BackendType(str, Enum):
@@ -136,9 +136,10 @@ class OCRRouter:
         self.vram_gb = self._get_vram() if self.gpu_available else 0
 
         logger.info(
-            f"OCR Router initialized - GPU: {self.gpu_available}, "
-            f"VRAM: {self.vram_gb:.1f}GB, "
-            f"Backends: {[b.value for b in self.get_available_backends()]}"
+            "ocr_router_initialized",
+            gpu_available=self.gpu_available,
+            vram_gb=round(self.vram_gb, 1),
+            backends=[b.value for b in self.get_available_backends()]
         )
 
     def _check_gpu(self) -> bool:
@@ -199,47 +200,50 @@ class OCRRouter:
             raise RuntimeError("No OCR backends available")
 
         logger.info(
-            f"Selecting backend - Formulas: {analysis.has_formulas}, "
-            f"Tables: {analysis.has_tables}, Complex layout: {analysis.has_complex_layout}, "
-            f"Type: {analysis.document_type}, Languages: {analysis.languages}, "
-            f"Available: {[b.value for b in available_backends]}"
+            "selecting_backend",
+            has_formulas=analysis.has_formulas,
+            has_tables=analysis.has_tables,
+            has_complex_layout=analysis.has_complex_layout,
+            document_type=analysis.document_type,
+            languages=analysis.languages,
+            available_backends=[b.value for b in available_backends]
         )
 
         # Regel 1: Komplexe Formeln/Geometrie → GOT-OCR
         if analysis.has_formulas and BackendType.GOT_OCR in available_backends:
-            logger.info("Selected GOT-OCR for formula extraction")
+            logger.info("backend_selected", backend="got_ocr", reason="formula_extraction")
             return BackendType.GOT_OCR
 
         # Regel 2: Multimodale Analyse benötigt → Janus (wenn genug VRAM)
         if analysis.requires_image_understanding or analysis.has_handwriting or analysis.has_fraktur:
             if BackendType.JANUS_PRO in available_backends:
-                logger.info("Selected Janus-Pro for multimodal analysis")
+                logger.info("backend_selected", backend="janus_pro", reason="multimodal_analysis")
                 return BackendType.JANUS_PRO
             # Fallback to GOT if Janus not available
             if BackendType.GOT_OCR in available_backends:
-                logger.info("Falling back to GOT-OCR for complex document")
+                logger.info("backend_selected", backend="got_ocr", reason="complex_document_fallback")
                 return BackendType.GOT_OCR
 
         # Regel 3: Strukturierte Dokumente (Rechnungen, Verträge) → Surya/Docling
         if analysis.is_structured_pdf or analysis.document_type in ["invoice", "contract", "form"]:
             if BackendType.SURYA_DOCLING in available_backends:
-                logger.info("Selected Surya-Docling for structured document")
+                logger.info("backend_selected", backend="surya_docling", reason="structured_document")
                 return BackendType.SURYA_DOCLING
 
         # Regel 4: Multi-Language oder komplexes Layout → Surya
         if len(analysis.languages) > 1 or analysis.has_complex_layout:
             if BackendType.SURYA_DOCLING in available_backends:
-                logger.info("Selected Surya-Docling for multi-language/layout")
+                logger.info("backend_selected", backend="surya_docling", reason="multi_language_layout")
                 return BackendType.SURYA_DOCLING
 
         # Regel 5: Einfache gescannte Dokumente
         if analysis.is_scanned:
             # Prefer GPU backends for speed
             if BackendType.GOT_OCR in available_backends:
-                logger.info("Selected GOT-OCR for scanned document")
+                logger.info("backend_selected", backend="got_ocr", reason="scanned_document")
                 return BackendType.GOT_OCR
             if BackendType.JANUS_PRO in available_backends:
-                logger.info("Selected Janus-Pro for scanned document")
+                logger.info("backend_selected", backend="janus_pro", reason="scanned_document")
                 return BackendType.JANUS_PRO
 
         # Default fallback chain: Janus → GOT → Surya → Tesseract
@@ -252,7 +256,7 @@ class OCRRouter:
 
         for backend in fallback_order:
             if backend in available_backends:
-                logger.info(f"Selected {backend.value} as default/fallback")
+                logger.info("backend_selected", backend=backend.value, reason="default_fallback")
                 return backend
 
         # Should not reach here if backends are properly configured
@@ -283,7 +287,7 @@ class OCRRouter:
                 continue
 
             try:
-                logger.info(f"Attempting OCR with {backend_type.value}")
+                logger.info("attempting_ocr", backend=backend_type.value)
 
                 # Prepare backend-specific options
                 backend_options = self._prepare_backend_options(
@@ -301,7 +305,9 @@ class OCRRouter:
 
             except Exception as e:
                 logger.error(
-                    f"Backend {backend_type.value} failed: {str(e)}",
+                    "backend_failed",
+                    backend=backend_type.value,
+                    error=str(e),
                     exc_info=True
                 )
                 last_error = e

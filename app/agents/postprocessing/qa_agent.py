@@ -12,15 +12,16 @@ Enterprise-grade quality assurance for OCR output:
 Feinpoliert und durchdacht - Qualitätssicherung für perfekte Ergebnisse.
 """
 
-import logging
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
+import structlog
+
 from app.agents.base import PostprocessingAgent
 from app.german_validator import GermanValidator
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class QualityLevel:

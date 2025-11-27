@@ -13,11 +13,11 @@ Enterprise-grade machine learning model for intelligent OCR backend routing:
 Feinpoliert und durchdacht - Maschinelles Lernen für optimale Backend-Auswahl.
 """
 
-import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
+import structlog
 
 from .model_registry import (
     ModelRegistry,
@@ -25,7 +25,7 @@ from .model_registry import (
     compute_feature_hash,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class OCRRouterFeatures:
@@ -569,7 +569,7 @@ class OCRRouterModel:
         self._registry.set_active(version_info.version)
         self._current_version = version_info
 
-        logger.info(f"Modell gespeichert: v{version_info.version}")
+        logger.info("modell_gespeichert", version=version_info.version)
         return version_info
 
     def load(self, path: Optional[Path] = None, version: Optional[str] = None) -> None:
@@ -600,10 +600,10 @@ class OCRRouterModel:
             self._validation_accuracy = version_info.validation_accuracy
             self._current_version = version_info
 
-            logger.info(f"Modell geladen: v{version_info.version}")
+            logger.info("modell_geladen", version=version_info.version)
 
         except (FileNotFoundError, ValueError) as e:
-            logger.warning(f"Kein Modell in Registry gefunden: {e}")
+            logger.warning("kein_modell_in_registry", error=str(e))
 
     def _load_legacy(self, path: Path) -> None:
         """
@@ -638,7 +638,7 @@ class OCRRouterModel:
             logger.info("Migriere Legacy-Modell zur Registry...")
             self.save(bump_type="major")
 
-        logger.info(f"Legacy-Modell geladen und migriert: {path}")
+        logger.info("legacy_modell_migriert", path=str(path))
 
     def _try_load_from_registry(self) -> None:
         """Versucht das aktive Modell aus der Registry zu laden."""
@@ -647,7 +647,7 @@ class OCRRouterModel:
             if active:
                 self.load(version=active)
         except Exception as e:
-            logger.debug(f"Kein aktives Modell in Registry: {e}")
+            logger.debug("kein_aktives_modell", error=str(e))
 
     def _get_model_version(self) -> str:
         """Get model version string."""
@@ -707,8 +707,8 @@ class OCRRouterModel:
         try:
             self.load(version=version)
             self._registry.set_active(version)
-            logger.info(f"Rollback zu Version v{version} erfolgreich")
+            logger.info("rollback_erfolgreich", version=version)
             return True
         except Exception as e:
-            logger.error(f"Rollback fehlgeschlagen: {e}")
+            logger.error("rollback_fehlgeschlagen", error=str(e))
             return False

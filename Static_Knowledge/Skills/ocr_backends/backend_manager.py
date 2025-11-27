@@ -10,13 +10,14 @@ Responsibilities:
 - Resource allocation (GPU VRAM)
 """
 
-import logging
 from typing import Dict, List, Optional, Any, Tuple
 from enum import Enum
 from pathlib import Path
 import yaml
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 class BackendType(Enum):
@@ -99,16 +100,16 @@ class BackendManager:
             config_path = Path(__file__).parent.parent / "skills_config.yaml"
 
         if not config_path.exists():
-            logger.warning(f"Config not found at {config_path}, using defaults")
+            logger.warning("config_not_found", config_path=str(config_path))
             return self._get_default_config()
 
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = yaml.safe_load(f)
-            logger.info(f"Loaded config from {config_path}")
+            logger.info("config_loaded", config_path=str(config_path))
             return config
         except Exception as e:
-            logger.error(f"Failed to load config: {e}")
+            logger.error("failed_to_load_config", error=str(e))
             return self._get_default_config()
 
     def _get_default_config(self) -> Dict:
@@ -134,7 +135,7 @@ class BackendManager:
             backend_instance: Backend implementation instance
         """
         self.backends[backend_type] = backend_instance
-        logger.info(f"Registered backend: {backend_type.value}")
+        logger.info("backend_registered", backend=backend_type.value)
 
     def select_backend(
         self,
@@ -238,7 +239,7 @@ class BackendManager:
         if backend_type not in self.backends:
             raise ValueError(f"Backend {backend_type.value} not registered")
 
-        logger.info(f"Selected {backend_type.value} backend: {reason}")
+        logger.info("backend_selected", backend=backend_type.value, reason=reason)
 
         # Get backend instance
         backend = self.backends[backend_type]
@@ -279,16 +280,17 @@ class BackendManager:
             )
 
             logger.info(
-                f"OCR completed: {backend_type.value}, "
-                f"{processing_time_ms:.0f}ms, "
-                f"confidence={ocr_result.confidence:.2f}"
+                "ocr_completed",
+                backend=backend_type.value,
+                processing_time_ms=round(processing_time_ms),
+                confidence=round(ocr_result.confidence, 2)
             )
 
             return ocr_result
 
         except Exception as e:
             self.backend_stats[backend_type]["failures"] += 1
-            logger.error(f"Backend {backend_type.value} failed: {e}")
+            logger.error("backend_failed", backend=backend_type.value, error=str(e))
             raise RuntimeError(f"OCR processing failed with {backend_type.value}: {e}") from e
 
     async def _process_with_backend(

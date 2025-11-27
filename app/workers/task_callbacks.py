@@ -482,7 +482,7 @@ def _send_success_notification(document_id: str, result: Dict[str, Any]) -> None
         asyncio.set_event_loop(loop)
         loop.run_until_complete(_send_async())
     except Exception as e:
-        logger.warning(f"Notification loop error: {e}")
+        logger.warning("notification_loop_error", error=str(e))
     finally:
         try:
             loop.close()
@@ -560,7 +560,7 @@ def _send_failure_notification(document_id: str, error_message: str) -> None:
         asyncio.set_event_loop(loop)
         loop.run_until_complete(_send_async())
     except Exception as e:
-        logger.warning(f"Notification loop error: {e}")
+        logger.warning("notification_loop_error", error=str(e))
     finally:
         try:
             loop.close()

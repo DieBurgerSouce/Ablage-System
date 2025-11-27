@@ -11,10 +11,11 @@ Repositories:
 - https://github.com/DS4SD/docling
 """
 
-import logging
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 import time
+
+import structlog
 
 try:
     from PIL import Image
@@ -22,7 +23,7 @@ try:
 except ImportError:
     DEPENDENCIES_AVAILABLE = False
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class SuryaDoclingWrapper:
@@ -72,10 +73,10 @@ class SuryaDoclingWrapper:
             self.is_loaded = True
 
             load_time = time.time() - start_time
-            logger.info(f"Models loaded in {load_time:.2f}s")
+            logger.info("models_loaded", load_time_seconds=round(load_time, 2))
 
         except Exception as e:
-            logger.error(f"Failed to load models: {e}")
+            logger.error("failed_to_load_models", error=str(e))
             raise
 
     def _load_mock_models(self) -> None:
@@ -110,7 +111,7 @@ class SuryaDoclingWrapper:
         if not self.is_loaded:
             self.load_models()
 
-        logger.info(f"Processing: {document_path.name}")
+        logger.info("processing_document", filename=document_path.name)
 
         try:
             # Step 1: Document structure analysis with Docling
@@ -148,7 +149,7 @@ class SuryaDoclingWrapper:
             }
 
         except Exception as e:
-            logger.error(f"Surya+Docling processing failed: {e}")
+            logger.error("surya_docling_processing_failed", error=str(e))
             raise
 
     def _analyze_layout(self, document_path: Path) -> Dict[int, Dict]:
@@ -224,7 +225,7 @@ class SuryaDoclingWrapper:
         Returns:
             Dict with text and confidence
         """
-        logger.info(f"Extracting text (language={language})")
+        logger.info("extracting_text", language=language)
 
         # NOTE: Real implementation:
         # from surya.ocr import run_ocr

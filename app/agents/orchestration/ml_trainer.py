@@ -13,20 +13,20 @@ Feinpoliert und durchdacht - Kontinuierliches Lernen für optimale Ergebnisse.
 
 import asyncio
 import json
-import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import uuid
 
 import numpy as np
+import structlog
 
 from app.agents.orchestration.ml_router_model import (
     OCRRouterFeatures,
     OCRRouterModel,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # Prüfe ob XGBoost verfügbar ist für ML-Routing
@@ -198,7 +198,9 @@ class TrainingDataBuffer:
 
         if len(samples) < min_samples:
             logger.warning(
-                f"Nicht genug Trainingsdaten: {len(samples)}/{min_samples}"
+                "nicht_genug_trainingsdaten",
+                available=len(samples),
+                required=min_samples,
             )
 
         return samples
@@ -231,7 +233,8 @@ class TrainingDataBuffer:
 
         if min_size < min_per_class:
             logger.warning(
-                f"Unbalancierte Daten: kleinste Klasse hat {min_size} Samples"
+                "unbalancierte_daten",
+                min_class_size=min_size,
             )
             # Use all available data
             balanced = []
@@ -265,7 +268,7 @@ class TrainingDataBuffer:
         with open(data_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
-        logger.debug(f"Gespeichert: {len(self.samples)} Trainingssamples")
+        logger.debug("trainingssamples_gespeichert", count=len(self.samples))
 
     def _load_from_disk(self) -> None:
         """Load samples from disk."""
@@ -279,10 +282,10 @@ class TrainingDataBuffer:
                 data = json.load(f)
 
             self.samples = [TrainingSample.from_dict(d) for d in data]
-            logger.info(f"Geladen: {len(self.samples)} Trainingssamples")
+            logger.info("trainingssamples_geladen", count=len(self.samples))
 
         except Exception as e:
-            logger.error(f"Fehler beim Laden der Trainingsdaten: {e}")
+            logger.error("trainingsdaten_laden_fehler", error=str(e))
             self.samples = []
 
     def get_stats(self) -> Dict[str, Any]:
@@ -392,9 +395,9 @@ class MLRouterTrainer:
 
         try:
             self._current_model = OCRRouterModel(model_path=latest_model)
-            logger.info(f"Modell geladen: {latest_model.name}")
+            logger.info("modell_geladen", model_name=latest_model.name)
         except Exception as e:
-            logger.error(f"Fehler beim Laden des Modells: {e}")
+            logger.error("modell_laden_fehler", error=str(e))
 
     @property
     def model(self) -> Optional[OCRRouterModel]:
@@ -500,8 +503,10 @@ class MLRouterTrainer:
         y = np.array(y_list, dtype=np.int32)
 
         logger.info(
-            f"Trainingsdaten vorbereitet: {len(samples)} Samples, "
-            f"Features: {X.shape[1]}, Klassen: {len(set(y))}"
+            "trainingsdaten_vorbereitet",
+            samples=len(samples),
+            features=X.shape[1],
+            classes=len(set(y)),
         )
 
         return X, y
@@ -573,8 +578,9 @@ class MLRouterTrainer:
             # Check if model is good enough
             if training_result["val_accuracy"] < self.MIN_ACCURACY_THRESHOLD:
                 logger.warning(
-                    f"Modellgenauigkeit unter Schwellwert: "
-                    f"{training_result['val_accuracy']:.2%} < {self.MIN_ACCURACY_THRESHOLD:.2%}"
+                    "modellgenauigkeit_unter_schwellwert",
+                    accuracy=training_result["val_accuracy"],
+                    threshold=self.MIN_ACCURACY_THRESHOLD,
                 )
 
             # Save model with timestamp
@@ -603,7 +609,7 @@ class MLRouterTrainer:
             }
 
         except ValueError as e:
-            logger.warning(f"Training fehlgeschlagen: {e}")
+            logger.warning("training_fehlgeschlagen", error=str(e))
             return {
                 "status": "failed",
                 "reason": str(e),
@@ -749,7 +755,7 @@ class MLRouterTrainer:
                         )
 
             except Exception as e:
-                logger.error(f"Fehler im Hintergrund-Training: {e}")
+                logger.error("hintergrund_training_fehler", error=str(e))
 
             # Wait for next check
             await asyncio.sleep(check_interval_hours * 3600)
@@ -767,7 +773,7 @@ class MLRouterTrainer:
         Args:
             num_samples: Number of synthetic samples to generate
         """
-        logger.info(f"Generiere {num_samples} synthetische Trainingssamples")
+        logger.info("generiere_synthetische_samples", count=num_samples)
 
         backends = self.features.BACKENDS
         doc_types = self.features.DOCUMENT_TYPES

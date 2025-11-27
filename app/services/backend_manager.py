@@ -1,6 +1,6 @@
 """Backend Manager - OCR Backend Selection and Management."""
 
-import logging
+import structlog
 import asyncio
 from typing import Dict, Any, Optional, List
 from pathlib import Path
@@ -16,10 +16,8 @@ try:
         from app.agents.ocr.got_ocr_agent import GOTOCRAgent
 except ImportError:
     TORCH_AVAILABLE = False
-    logger = logging.getLogger(__name__)
-    logger.info("PyTorch not available - only CPU backends will be used")
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class BackendManager:
@@ -29,7 +27,7 @@ class BackendManager:
         """Initialize backend manager with available OCR agents."""
         self.backends = {}
         self._initialize_backends()
-        logger.info(f"Backend Manager initialized with {len(self.backends)} backends")
+        logger.info("backend_manager_initialized", backend_count=len(self.backends))
 
     def _initialize_backends(self):
         """Initialize available OCR backends."""
@@ -40,34 +38,34 @@ class BackendManager:
                 from app.agents.ocr.surya_gpu_agent import SuryaGPUAgent
                 self.backends["surya_gpu"] = SuryaGPUAgent()
                 gpu_surya_initialized = True
-                logger.info(f"Surya GPU backend initialized on {torch.cuda.get_device_name(0)}")
+                logger.info("surya_gpu_backend_initialized", device=torch.cuda.get_device_name(0))
             except Exception as e:
-                logger.info(f"Surya GPU backend not available: {e}")
+                logger.info("surya_gpu_backend_unavailable", error=str(e))
 
         # Always initialize CPU Surya as fallback
         try:
             self.backends["surya"] = SuryaDoclingAgent()
-            logger.info("Surya CPU backend initialized")
+            logger.info("surya_cpu_backend_initialized")
         except Exception as e:
-            logger.error(f"Failed to initialize Surya CPU backend: {e}")
+            logger.error("surya_cpu_backend_init_failed", error=str(e))
 
         # Try to initialize GPU-based backends if PyTorch and GPU are available
         if TORCH_AVAILABLE:
             # Initialize DeepSeek (requires GPU)
             try:
                 self.backends["deepseek"] = DeepSeekAgent()
-                logger.info("DeepSeek backend initialized")
+                logger.info("deepseek_backend_initialized")
             except Exception as e:
-                logger.warning(f"DeepSeek backend not available: {e}")
+                logger.warning("deepseek_backend_unavailable", error=str(e))
 
             # Initialize GOT-OCR (requires GPU)
             try:
                 self.backends["got_ocr"] = GOTOCRAgent()
-                logger.info("GOT-OCR backend initialized")
+                logger.info("got_ocr_backend_initialized")
             except Exception as e:
-                logger.warning(f"GOT-OCR backend not available: {e}")
+                logger.warning("got_ocr_backend_unavailable", error=str(e))
         else:
-            logger.info("GPU/PyTorch not available - only CPU backends (Surya) will be used")
+            logger.info("gpu_unavailable_cpu_only")
 
     async def select_backend(
         self,
@@ -101,46 +99,46 @@ class BackendManager:
 
         # Prefer GPU-accelerated Surya if available
         if prefer_gpu and "surya_gpu" in available_backends:
-            logger.info("Selecting GPU-accelerated Surya for maximum performance")
+            logger.info("backend_selected", backend="surya_gpu", reason="gpu_accelerated")
             return "surya_gpu"
 
         # If only CPU Surya is available, use it
         if len(available_backends) == 1 and "surya" in available_backends:
-            logger.info("Only Surya CPU backend available, selecting it")
+            logger.info("backend_selected", backend="surya", reason="only_available")
             return "surya"
 
         # Complex documents with tables/layout → prefer DeepSeek or GOT-OCR
         if detect_layout and prefer_gpu and TORCH_AVAILABLE:
             if "deepseek" in available_backends and file_size_mb > 5:
-                logger.info(f"Selecting DeepSeek for large complex document ({file_size_mb:.1f}MB)")
+                logger.info("backend_selected", backend="deepseek", reason="large_complex_document", file_size_mb=round(file_size_mb, 1))
                 return "deepseek"
             elif "got_ocr" in available_backends:
-                logger.info("Selecting GOT-OCR for layout detection")
+                logger.info("backend_selected", backend="got_ocr", reason="layout_detection")
                 return "got_ocr"
 
         # PDF files → prefer GOT-OCR or Surya
         if is_pdf:
             if "got_ocr" in available_backends:
-                logger.info("Selecting GOT-OCR for PDF processing")
+                logger.info("backend_selected", backend="got_ocr", reason="pdf_processing")
                 return "got_ocr"
             else:
-                logger.info("Selecting Surya for PDF processing")
+                logger.info("backend_selected", backend="surya", reason="pdf_processing")
                 return "surya"
 
         # German text with potential Fraktur → prefer DeepSeek
         if language == "de" and "deepseek" in available_backends:
-            logger.info("Selecting DeepSeek for German text")
+            logger.info("backend_selected", backend="deepseek", reason="german_text")
             return "deepseek"
 
         # Default to fastest available
         if "surya" in available_backends:
-            logger.info("Selecting Surya as default backend")
+            logger.info("backend_selected", backend="surya", reason="default")
             return "surya"
         elif "got_ocr" in available_backends:
-            logger.info("Selecting GOT-OCR as default backend")
+            logger.info("backend_selected", backend="got_ocr", reason="default")
             return "got_ocr"
         else:
-            logger.info(f"Selecting first available backend: {available_backends[0]}")
+            logger.info("backend_selected", backend=available_backends[0], reason="first_available")
             return available_backends[0]
 
     async def process_with_backend(
@@ -169,7 +167,7 @@ class BackendManager:
             raise ValueError(f"Backend '{backend_name}' not available. Available: {available}")
 
         backend = self.backends[backend_name]
-        logger.info(f"Processing with {backend_name} backend")
+        logger.info("processing_with_backend", backend=backend_name)
 
         # Prepare input data
         input_data = {
@@ -185,7 +183,7 @@ class BackendManager:
             result["backend"] = backend_name
             return result
         except Exception as e:
-            logger.error(f"Backend {backend_name} processing failed: {e}")
+            logger.error("backend_processing_failed", backend=backend_name, error=str(e))
             raise
 
     async def get_backend_status(self, backend_name: Optional[str] = None) -> Dict[str, Any]:
@@ -226,6 +224,6 @@ class BackendManager:
         for name, backend in self.backends.items():
             try:
                 await backend.cleanup()
-                logger.info(f"Cleaned up {name} backend")
+                logger.info("backend_cleaned_up", backend=name)
             except Exception as e:
-                logger.error(f"Error cleaning up {name} backend: {e}")
+                logger.error("backend_cleanup_failed", backend=name, error=str(e))

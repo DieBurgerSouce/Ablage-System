@@ -11,14 +11,15 @@ Enterprise-grade OCR backend routing with ML-based selection:
 Feinpoliert und durchdacht - Intelligente Backend-Auswahl für optimale Ergebnisse.
 """
 
-import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+import structlog
 
 from app.agents.base import OrchestrationAgent
 from app.gpu_manager import GPUManager
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class OCRBackendRouter(OrchestrationAgent):
@@ -141,10 +142,10 @@ class OCRBackendRouter(OrchestrationAgent):
                 logger.info("ML-Routing initialisiert - Modell wird trainiert wenn Daten verfügbar")
 
         except ImportError as e:
-            logger.warning(f"ML-Routing nicht verfügbar: {e}")
+            logger.warning("ml_routing_nicht_verfuegbar", error=str(e))
             self.use_ml_routing = False
         except Exception as e:
-            logger.error(f"Fehler bei ML-Routing-Initialisierung: {e}")
+            logger.error("ml_routing_init_fehler", error=str(e))
             self.use_ml_routing = False
 
     def _get_resource_status(self) -> Dict[str, Any]:
@@ -202,7 +203,7 @@ class OCRBackendRouter(OrchestrationAgent):
                 )
                 self._routing_stats["ml_predictions"] += 1
             except Exception as e:
-                logger.warning(f"ML-Routing fehlgeschlagen, Fallback auf Regeln: {e}")
+                logger.warning("ml_routing_failed_fallback", error=str(e))
                 self._routing_stats["rule_fallbacks"] += 1
 
         # Fallback to rule-based selection
@@ -374,7 +375,7 @@ class OCRBackendRouter(OrchestrationAgent):
             # Check GPU availability for GPU backends
             if not resource_status.get("gpu_available"):
                 # GPU not available, use CPU fallback
-                logger.info(f"GPU nicht verfügbar, Fallback von {backend} auf surya")
+                logger.info("gpu_unavailable_fallback", original_backend=backend, fallback_backend="surya")
                 backend = "surya"
                 prediction["reason"] = "GPU nicht verfügbar - CPU-Fallback"
                 prediction["confidence"] *= 0.8
@@ -455,7 +456,7 @@ class OCRBackendRouter(OrchestrationAgent):
                 )
 
         except Exception as e:
-            logger.warning(f"Fehler beim Sammeln von Trainingsfeedback: {e}")
+            logger.warning("training_feedback_collection_failed", error=str(e))
 
     async def train_model(self, force: bool = False) -> Dict[str, Any]:
         """
@@ -495,7 +496,7 @@ class OCRBackendRouter(OrchestrationAgent):
             return
 
         self._ml_trainer.generate_synthetic_training_data(num_samples)
-        logger.info(f"Bootstrap-Daten generiert: {num_samples} Samples")
+        logger.info("bootstrap_data_generated", num_samples=num_samples)
 
     def get_routing_stats(self) -> Dict[str, Any]:
         """

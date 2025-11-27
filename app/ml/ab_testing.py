@@ -13,16 +13,20 @@ Feinpoliert und durchdacht - Datengetriebene Optimierung.
 
 import hashlib
 import json
-import logging
 import random
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-import threading
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
+
+# Thread-Safety für Singleton
+_ab_test_manager_lock = threading.Lock()
 
 
 class ExperimentStatus(str, Enum):
@@ -201,7 +205,7 @@ class Experiment:
         """
         variant = next((v for v in self.variants if v.name == variant_name), None)
         if not variant:
-            logger.warning(f"Unbekannte Variante: {variant_name}")
+            logger.warning("unbekannte_variante", variant_name=variant_name)
             return
 
         with self._lock:
@@ -251,7 +255,7 @@ class Experiment:
                 )
 
         except Exception as e:
-            logger.debug(f"Signifikanz-Test fehlgeschlagen: {e}")
+            logger.debug("signifikanz_test_fehlgeschlagen", error=str(e))
 
     def _two_proportion_z_test(
         self,
@@ -370,13 +374,55 @@ class ABTestManager:
 
         Returns:
             Erstelltes Experiment
+
+        Raises:
+            ValueError: Bei ungültigen Parametern
         """
+        # Input Validation
+        if not name or not name.strip():
+            raise ValueError("Experiment-Name darf nicht leer sein")
+        name = name.strip()
+        if len(name) > 100:
+            raise ValueError("Experiment-Name darf maximal 100 Zeichen haben")
+
+        if not variants or len(variants) < 2:
+            raise ValueError("Mindestens 2 Varianten erforderlich")
+        if len(variants) > 10:
+            raise ValueError("Maximal 10 Varianten erlaubt")
+
+        if min_samples < 10:
+            raise ValueError("min_samples muss mindestens 10 sein")
+        if min_samples > 1_000_000:
+            raise ValueError("min_samples darf maximal 1.000.000 sein")
+
+        if duration_days is not None:
+            if duration_days < 1:
+                raise ValueError("duration_days muss mindestens 1 sein")
+            if duration_days > 365:
+                raise ValueError("duration_days darf maximal 365 sein")
+
+        valid_methods = {"random", "sticky", "round_robin"}
+        if allocation_method not in valid_methods:
+            raise ValueError(f"allocation_method muss einer von {valid_methods} sein")
+
+        # Validate variant structure
+        for i, v in enumerate(variants):
+            if not isinstance(v, dict):
+                raise ValueError(f"Variante {i} muss ein Dictionary sein")
+            if "name" not in v or not v["name"].strip():
+                raise ValueError(f"Variante {i} benötigt einen Namen")
+            if len(v.get("name", "")) > 50:
+                raise ValueError(f"Varianten-Name {i} darf maximal 50 Zeichen haben")
+            weight = v.get("weight", 1.0 / len(variants))
+            if not isinstance(weight, (int, float)) or weight < 0 or weight > 1:
+                raise ValueError(f"Variante {i}: weight muss zwischen 0 und 1 sein")
+
         experiment_id = self._generate_experiment_id(name)
 
         variant_objects = [
             Variant(
-                name=v["name"],
-                description=v.get("description", ""),
+                name=v["name"].strip(),
+                description=v.get("description", "")[:500],  # Max 500 chars
                 weight=v.get("weight", 1.0 / len(variants)),
                 config=v.get("config", {}),
             )
@@ -402,7 +448,7 @@ class ABTestManager:
 
         self._save_experiment(experiment)
 
-        logger.info(f"Experiment erstellt: {experiment_id}")
+        logger.info("experiment_erstellt", experiment_id=experiment_id)
         return experiment
 
     def start_experiment(self, experiment_id: str) -> bool:
@@ -417,18 +463,18 @@ class ABTestManager:
         """
         experiment = self._experiments.get(experiment_id)
         if not experiment:
-            logger.warning(f"Experiment nicht gefunden: {experiment_id}")
+            logger.warning("experiment_nicht_gefunden", experiment_id=experiment_id)
             return False
 
         if experiment.status != ExperimentStatus.DRAFT:
-            logger.warning(f"Experiment kann nicht gestartet werden: {experiment.status}")
+            logger.warning("experiment_start_nicht_moeglich", status=experiment.status.value)
             return False
 
         experiment.status = ExperimentStatus.RUNNING
         experiment.start_time = datetime.now()
         self._save_experiment(experiment)
 
-        logger.info(f"Experiment gestartet: {experiment_id}")
+        logger.info("experiment_gestartet", experiment_id=experiment_id)
         return True
 
     def get_variant(
@@ -598,7 +644,7 @@ class ABTestManager:
                 self._experiments[experiment.experiment_id] = experiment
 
             except Exception as e:
-                logger.warning(f"Fehler beim Laden von {filepath}: {e}")
+                logger.warning("experiment_laden_fehlgeschlagen", filepath=str(filepath), error=str(e))
 
 
 # Singleton instance
@@ -606,10 +652,29 @@ _ab_test_manager: Optional[ABTestManager] = None
 
 
 def get_ab_test_manager() -> ABTestManager:
-    """Hole globale ABTestManager Instanz."""
+    """
+    Hole globale ABTestManager Instanz.
+
+    Thread-safe mit double-checked locking.
+    """
     global _ab_test_manager
-    if _ab_test_manager is None:
-        _ab_test_manager = ABTestManager()
+
+    # Fast path: bereits initialisiert
+    if _ab_test_manager is not None:
+        return _ab_test_manager
+
+    # Slow path: Thread-safe Initialisierung
+    with _ab_test_manager_lock:
+        # Double-check nach Lock-Erwerb
+        if _ab_test_manager is None:
+            logger.info("ab_test_manager_initialisierung")
+            _ab_test_manager = ABTestManager()
+            experiment_count = len(_ab_test_manager._experiments)
+            logger.info(
+                "ab_test_manager_initialisiert",
+                loaded_experiments=experiment_count,
+            )
+
     return _ab_test_manager
 
 

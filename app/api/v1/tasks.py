@@ -8,7 +8,7 @@ Provides REST API and WebSocket endpoints for:
 """
 
 import asyncio
-import logging
+import structlog
 from typing import Optional, List, Dict, Set
 from uuid import UUID
 
@@ -21,8 +21,7 @@ from app.db.models import User
 from app.api.dependencies import get_current_user, get_db
 from app.core.german_messages import StatusMessages, HTTPErrors
 
-# Use standard logging for POC (no structlog dependency)
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 task_service = TaskService()
@@ -59,10 +58,10 @@ class ConnectionManager:
                 if task_id not in self.active_connections:
                     self.active_connections[task_id] = set()
                 self.active_connections[task_id].add(websocket)
-            logger.info(f"websocket_connected - task_id={task_id} connections={len(self.active_connections.get(task_id, []))}")
+            logger.info("websocket_connected", task_id=task_id, connections=len(self.active_connections.get(task_id, [])))
             return True
         except Exception as e:
-            logger.error(f"websocket_connect_error - task_id={task_id} error={str(e)}")
+            logger.error("websocket_connect_error", task_id=task_id, error=str(e))
             return False
 
     async def disconnect(self, task_id: str, websocket: WebSocket):
@@ -77,7 +76,7 @@ class ConnectionManager:
                 self.active_connections[task_id].discard(websocket)
                 if not self.active_connections[task_id]:
                     del self.active_connections[task_id]
-                logger.info(f"websocket_disconnected - task_id={task_id}")
+                logger.info("websocket_disconnected", task_id=task_id)
 
     async def broadcast(self, task_id: str, message: dict):
         """Broadcast update to all connected clients for a task.
@@ -94,7 +93,7 @@ class ConnectionManager:
             try:
                 await websocket.send_json(message)
             except Exception as e:
-                logger.error(f"websocket_broadcast_error - task_id={task_id} error={str(e)}")
+                logger.error("websocket_broadcast_error", task_id=task_id, error=str(e))
                 disconnected.add(websocket)
 
         # Clean up disconnected clients
@@ -116,7 +115,7 @@ class ConnectionManager:
             await websocket.send_json(message)
             return True
         except Exception as e:
-            logger.error(f"websocket_send_error - task_id={task_id} error={str(e)}")
+            logger.error("websocket_send_error", task_id=task_id, error=str(e))
             await self.disconnect(task_id, websocket)
             return False
 
@@ -156,12 +155,12 @@ async def get_task_status(
     try:
         status = task_service.get_task_status(task_id)
 
-        logger.info(f"task_status_retrieved - task_id={task_id} user_id={current_user.id} state={status['state']}")
+        logger.info("task_status_retrieved", task_id=task_id, user_id=str(current_user.id), state=status['state'])
 
         return status
 
     except Exception as e:
-        logger.error(f"task_status_error - task_id={task_id} error={str(e)}")
+        logger.error("task_status_error", task_id=task_id, error=str(e))
         raise HTTPException(
             status_code=500,
             detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
@@ -185,7 +184,7 @@ async def cancel_task(
     try:
         result = task_service.cancel_task(task_id)
 
-        logger.info(f"task_cancellation_requested - task_id={task_id} user_id={current_user.id} cancelled={result['cancelled']}")
+        logger.info("task_cancellation_requested", task_id=task_id, user_id=str(current_user.id), cancelled=result['cancelled'])
 
         if result["cancelled"]:
             return JSONResponse(
@@ -199,7 +198,7 @@ async def cancel_task(
             )
 
     except Exception as e:
-        logger.error(f"task_cancellation_error - task_id={task_id} error={str(e)}")
+        logger.error("task_cancellation_error", task_id=task_id, error=str(e))
         raise HTTPException(
             status_code=500,
             detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
@@ -229,7 +228,7 @@ async def list_user_tasks(
             limit=limit
         )
 
-        logger.info(f"user_tasks_listed - user_id={current_user.id} task_count={len(tasks)}")
+        logger.info("user_tasks_listed", user_id=str(current_user.id), task_count=len(tasks))
 
         return {
             "user_id": str(current_user.id),
@@ -238,7 +237,7 @@ async def list_user_tasks(
         }
 
     except Exception as e:
-        logger.error(f"list_tasks_error - user_id={current_user.id} error={str(e)}")
+        logger.error("list_tasks_error", user_id=str(current_user.id), error=str(e))
         raise HTTPException(
             status_code=500,
             detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
@@ -264,7 +263,7 @@ async def get_task_result(
     try:
         result = task_service.get_task_result(task_id, timeout=timeout)
 
-        logger.info(f"task_result_retrieved - task_id={task_id} user_id={current_user.id}")
+        logger.info("task_result_retrieved", task_id=task_id, user_id=str(current_user.id))
 
         return {
             "task_id": task_id,
@@ -282,7 +281,7 @@ async def get_task_result(
             detail=HTTPErrors.PROCESSING_TIMEOUT
         )
     except Exception as e:
-        logger.error(f"task_result_error - task_id={task_id} error={str(e)}")
+        logger.error("task_result_error", task_id=task_id, error=str(e))
         raise HTTPException(
             status_code=500,
             detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
@@ -364,9 +363,9 @@ async def task_progress_websocket(
             await asyncio.sleep(1)
 
     except WebSocketDisconnect:
-        logger.info(f"websocket_client_disconnected - task_id={task_id}")
+        logger.info("websocket_client_disconnected", task_id=task_id)
     except Exception as e:
-        logger.error(f"websocket_error - task_id={task_id} error={str(e)}")
+        logger.error("websocket_error", task_id=task_id, error=str(e))
         try:
             await websocket.close(code=1011, reason=str(e))
         except Exception:

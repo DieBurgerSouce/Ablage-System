@@ -5,7 +5,7 @@ import io
 import asyncio
 from typing import Any, Dict, List, Optional
 from pathlib import Path
-import logging
+import structlog
 
 from PIL import Image
 import pypdfium2 as pdfium
@@ -20,8 +20,7 @@ from surya.model.recognition.processor import load_processor as load_rec_process
 
 from app.agents.base import OCRAgent
 
-# Configure logging
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class SuryaDoclingAgent(OCRAgent):
@@ -65,7 +64,7 @@ class SuryaDoclingAgent(OCRAgent):
             logger.info("All Surya models loaded successfully")
 
         except Exception as e:
-            logger.error(f"Failed to load Surya models: {e}")
+            logger.error("surya_models_load_failed", error=str(e))
             raise
 
     def _load_image(self, image_path: str) -> List[Image.Image]:
@@ -78,7 +77,7 @@ class SuryaDoclingAgent(OCRAgent):
 
         if path.suffix.lower() == '.pdf':
             # Handle PDF files
-            logger.info(f"Processing PDF file: {image_path}")
+            logger.info("processing_pdf", path=image_path)
             try:
                 pdf = pdfium.PdfDocument(image_path)
                 for page_num in range(len(pdf)):
@@ -86,14 +85,14 @@ class SuryaDoclingAgent(OCRAgent):
                     # Render at 300 DPI for good quality
                     pil_image = page.render(scale=300/72).to_pil()
                     images.append(pil_image)
-                    logger.debug(f"Loaded PDF page {page_num + 1}/{len(pdf)}")
+                    logger.debug("pdf_page_loaded", page=page_num + 1, total=len(pdf))
                 pdf.close()
             except Exception as e:
-                logger.error(f"Failed to load PDF: {e}")
+                logger.error("pdf_load_failed", error=str(e))
                 raise
         else:
             # Handle image files (PNG, JPG, etc.)
-            logger.info(f"Processing image file: {image_path}")
+            logger.info("processing_image", path=image_path)
             try:
                 image = Image.open(image_path)
                 # Convert to RGB if necessary
@@ -101,7 +100,7 @@ class SuryaDoclingAgent(OCRAgent):
                     image = image.convert('RGB')
                 images.append(image)
             except Exception as e:
-                logger.error(f"Failed to load image: {e}")
+                logger.error("image_load_failed", error=str(e))
                 raise
 
         return images
@@ -173,10 +172,10 @@ class SuryaDoclingAgent(OCRAgent):
                         "bbox": [x1, y1, x2, y2]
                     })
                     all_text.append(text)
-                    logger.debug(f"Region {i+1}: '{text}' (conf: {confidence:.2f})")
+                    logger.debug("region_processed", region=i+1, text=text, confidence=round(confidence, 2))
 
             except Exception as e:
-                logger.debug(f"Failed to process region {i+1}: {e}")
+                logger.debug("region_process_failed", region=i+1, error=str(e))
                 continue
 
         return {
@@ -218,7 +217,7 @@ class SuryaDoclingAgent(OCRAgent):
             if not images:
                 raise ValueError(f"No images could be loaded from {image_path}")
 
-            logger.info(f"Loaded {len(images)} page(s) for OCR processing")
+            logger.info("pages_loaded_for_ocr", count=len(images))
 
             # Process each page
             all_text = []
@@ -227,7 +226,7 @@ class SuryaDoclingAgent(OCRAgent):
             total_blocks = 0
 
             for idx, image in enumerate(images):
-                logger.info(f"Processing page {idx + 1}/{len(images)}")
+                logger.info("processing_page", page=idx + 1, total=len(images))
 
                 # Process image
                 result = await asyncio.get_event_loop().run_in_executor(
@@ -259,14 +258,14 @@ class SuryaDoclingAgent(OCRAgent):
             if not full_text:
                 logger.warning("No text extracted from document")
 
-            logger.info(f"OCR completed. Extracted {len(full_text)} characters from {len(images)} page(s)")
+            logger.info("ocr_completed", chars_extracted=len(full_text), pages=len(images))
 
             # Check for German characters if German language was used
             if language == "de" and full_text:
                 german_chars = ['ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü', 'ß']
                 found_chars = [char for char in german_chars if char in full_text]
                 if found_chars:
-                    logger.info(f"German characters detected: {', '.join(found_chars)}")
+                    logger.info("german_chars_detected", chars=found_chars)
 
             return {
                 "text": full_text,
@@ -279,7 +278,7 @@ class SuryaDoclingAgent(OCRAgent):
             }
 
         except Exception as e:
-            logger.error(f"Error in Surya OCR processing: {str(e)}", exc_info=True)
+            logger.error("surya_ocr_processing_error", error=str(e), exc_info=True)
             return {
                 "text": "",
                 "confidence": 0.0,

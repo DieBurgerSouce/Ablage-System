@@ -11,14 +11,21 @@ Bietet REST-Zugriff auf:
 Feinpoliert und durchdacht - ML-Observability per API.
 """
 
-import logging
+import structlog
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Depends, Request
+from pydantic import BaseModel, Field, field_validator
 
-logger = logging.getLogger(__name__)
+from app.api.dependencies import (
+    get_current_active_user,
+    get_current_superuser,
+    check_rate_limit,
+)
+from app.db.models import User
+
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/ml", tags=["ML"])
 
@@ -53,11 +60,30 @@ class DriftReportResponse(BaseModel):
 
 class ExplainRoutingRequest(BaseModel):
     """Request für Routing-Erklärung."""
-    document_id: str
-    features: Dict[str, Any]
-    selected_backend: str
-    confidence: float
-    all_probabilities: Dict[str, float]
+    document_id: str = Field(..., min_length=1, max_length=100, description="Dokument-ID")
+    features: Dict[str, float] = Field(..., description="Feature-Werte für das Dokument")
+    selected_backend: str = Field(..., min_length=1, max_length=50, description="Gewähltes Backend")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Konfidenz der Entscheidung")
+    all_probabilities: Dict[str, float] = Field(..., description="Wahrscheinlichkeiten für alle Backends")
+
+    @field_validator("all_probabilities")
+    @classmethod
+    def validate_probabilities(cls, v: Dict[str, float]) -> Dict[str, float]:
+        """Validiere dass Wahrscheinlichkeiten gültig sind."""
+        for backend, prob in v.items():
+            if not 0.0 <= prob <= 1.0:
+                raise ValueError(f"Wahrscheinlichkeit für {backend} muss zwischen 0 und 1 liegen")
+        return v
+
+
+class FeatureContribution(BaseModel):
+    """Einzelner Feature-Beitrag zur Entscheidung."""
+    feature_name: str
+    feature_value: float
+    shap_value: float
+    contribution_percent: float
+    direction: str
+    explanation: str
 
 
 class RoutingExplanationResponse(BaseModel):
@@ -65,20 +91,42 @@ class RoutingExplanationResponse(BaseModel):
     document_id: str
     selected_backend: str
     confidence: float
-    top_contributions: List[Dict[str, Any]]
-    alternative_backends: List[List[Any]]  # [(backend, probability), ...]
+    top_contributions: List[FeatureContribution]
+    alternative_backends: List[Tuple[str, float]] = Field(
+        ..., description="Alternative Backends mit Wahrscheinlichkeiten [(backend, probability), ...]"
+    )
     decision_summary: str
     counterfactual: Optional[str] = None
 
 
+class VariantConfig(BaseModel):
+    """Konfiguration einer Experiment-Variante."""
+    name: str = Field(..., min_length=1, max_length=50, description="Name der Variante")
+    backend: str = Field(..., min_length=1, max_length=50, description="Backend für diese Variante")
+    weight: float = Field(default=1.0, ge=0.0, le=100.0, description="Gewichtung der Variante")
+    config: Dict[str, float] = Field(default_factory=dict, description="Zusätzliche Konfiguration")
+
+
 class CreateExperimentRequest(BaseModel):
     """Request zum Erstellen eines Experiments."""
-    name: str
-    description: str = ""
-    variants: List[Dict[str, Any]]
-    allocation_method: str = "sticky"
-    min_samples: int = 100
-    duration_days: Optional[int] = None
+    name: str = Field(..., min_length=1, max_length=100, description="Name des Experiments")
+    description: str = Field(default="", max_length=500, description="Beschreibung")
+    variants: List[VariantConfig] = Field(..., min_length=2, max_length=10, description="Varianten")
+    allocation_method: str = Field(
+        default="sticky",
+        description="Allokationsmethode: sticky, round_robin, weighted"
+    )
+    min_samples: int = Field(default=100, ge=10, le=100000, description="Minimale Samples pro Variante")
+    duration_days: Optional[int] = Field(default=None, ge=1, le=365, description="Laufzeit in Tagen")
+
+    @field_validator("allocation_method")
+    @classmethod
+    def validate_allocation_method(cls, v: str) -> str:
+        """Validiere Allokationsmethode."""
+        valid_methods = {"sticky", "round_robin", "weighted"}
+        if v not in valid_methods:
+            raise ValueError(f"Ungültige Allokationsmethode. Erlaubt: {valid_methods}")
+        return v
 
 
 class ExperimentResponse(BaseModel):
@@ -94,10 +142,10 @@ class ExperimentResponse(BaseModel):
 
 class RecordResultRequest(BaseModel):
     """Request zum Erfassen eines Experiment-Ergebnisses."""
-    variant_name: str
-    success: bool
-    latency_ms: float
-    accuracy: Optional[float] = None
+    variant_name: str = Field(..., min_length=1, max_length=50, description="Name der Variante")
+    success: bool = Field(..., description="Ob die Verarbeitung erfolgreich war")
+    latency_ms: float = Field(..., ge=0.0, le=600000.0, description="Latenz in Millisekunden")
+    accuracy: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="OCR-Genauigkeit")
 
 
 class GlobalImportanceResponse(BaseModel):
@@ -118,9 +166,14 @@ class MetricsResponse(BaseModel):
 # =============================================================================
 
 @router.get("/drift/status", response_model=DriftStatusResponse)
-async def get_drift_status() -> DriftStatusResponse:
+async def get_drift_status(
+    request: Request,
+    current_user: User = Depends(check_rate_limit),
+) -> DriftStatusResponse:
     """
     Hole aktuellen Drift-Status.
+
+    Erfordert Authentifizierung.
 
     Returns:
         DriftStatusResponse mit aktuellem Status
@@ -134,14 +187,27 @@ async def get_drift_status() -> DriftStatusResponse:
         return DriftStatusResponse(**status)
 
     except Exception as e:
-        logger.error(f"Fehler beim Abrufen des Drift-Status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "drift_status_fehler",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Drift-Status konnte nicht abgerufen werden. Bitte später erneut versuchen."
+        )
 
 
 @router.post("/drift/detect", response_model=DriftReportResponse)
-async def run_drift_detection() -> DriftReportResponse:
+async def run_drift_detection(
+    request: Request,
+    current_user: User = Depends(check_rate_limit),
+) -> DriftReportResponse:
     """
     Führe Drift-Detection durch.
+
+    Erfordert Authentifizierung.
 
     Returns:
         DriftReportResponse mit Ergebnissen
@@ -151,6 +217,13 @@ async def run_drift_detection() -> DriftReportResponse:
 
         detector = get_drift_detector()
         report = detector.detect_drift()
+
+        logger.info(
+            "drift_detection_durchgefuehrt",
+            user_id=str(current_user.id),
+            drift_score=report.overall_drift_score,
+            severity=report.severity.value,
+        )
 
         return DriftReportResponse(
             report_id=report.report_id,
@@ -174,16 +247,28 @@ async def run_drift_detection() -> DriftReportResponse:
         )
 
     except Exception as e:
-        logger.error(f"Fehler bei Drift-Detection: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "drift_detection_fehler",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Drift-Detection fehlgeschlagen. Bitte später erneut versuchen."
+        )
 
 
 @router.get("/drift/history", response_model=List[DriftReportResponse])
 async def get_drift_history(
+    request: Request,
     limit: int = Query(default=10, ge=1, le=100),
+    current_user: User = Depends(check_rate_limit),
 ) -> List[DriftReportResponse]:
     """
     Hole Drift-History.
+
+    Erfordert Authentifizierung.
 
     Args:
         limit: Maximale Anzahl der Reports
@@ -221,16 +306,28 @@ async def get_drift_history(
         ]
 
     except Exception as e:
-        logger.error(f"Fehler beim Abrufen der Drift-History: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "drift_history_fehler",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Drift-History konnte nicht abgerufen werden. Bitte später erneut versuchen."
+        )
 
 
 @router.post("/drift/reset")
-async def reset_drift_reference() -> Dict[str, str]:
+async def reset_drift_reference(
+    request: Request,
+    admin_user: User = Depends(get_current_superuser),
+) -> Dict[str, str]:
     """
     Setze Drift-Reference zurück.
 
     Verwende nach Modell-Retraining.
+    **Nur für Administratoren.**
 
     Returns:
         Bestätigungsnachricht
@@ -241,11 +338,24 @@ async def reset_drift_reference() -> Dict[str, str]:
         detector = get_drift_detector()
         detector.reset_reference_window()
 
+        logger.info(
+            "drift_reference_zurueckgesetzt",
+            admin_user_id=str(admin_user.id),
+        )
+
         return {"message": "Reference-Fenster erfolgreich zurückgesetzt"}
 
     except Exception as e:
-        logger.error(f"Fehler beim Reset: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "drift_reset_fehler",
+            admin_user_id=str(admin_user.id),
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Drift-Reset fehlgeschlagen. Bitte später erneut versuchen."
+        )
 
 
 # =============================================================================
@@ -254,10 +364,14 @@ async def reset_drift_reference() -> Dict[str, str]:
 
 @router.post("/explain/routing", response_model=RoutingExplanationResponse)
 async def explain_routing_decision(
+    http_request: Request,
     request: ExplainRoutingRequest,
+    current_user: User = Depends(check_rate_limit),
 ) -> RoutingExplanationResponse:
     """
     Erkläre eine Routing-Entscheidung.
+
+    Erfordert Authentifizierung.
 
     Args:
         request: Routing-Details
@@ -282,14 +396,14 @@ async def explain_routing_decision(
             selected_backend=explanation.selected_backend,
             confidence=explanation.confidence,
             top_contributions=[
-                {
-                    "feature_name": fc.feature_name,
-                    "feature_value": fc.feature_value,
-                    "shap_value": fc.shap_value,
-                    "contribution_percent": fc.contribution_percent,
-                    "direction": fc.direction,
-                    "explanation": fc.german_explanation,
-                }
+                FeatureContribution(
+                    feature_name=fc.feature_name,
+                    feature_value=fc.feature_value,
+                    shap_value=fc.shap_value,
+                    contribution_percent=fc.contribution_percent,
+                    direction=fc.direction,
+                    explanation=fc.german_explanation,
+                )
                 for fc in explanation.top_contributions
             ],
             alternative_backends=explanation.alternative_backends,
@@ -298,20 +412,35 @@ async def explain_routing_decision(
         )
 
     except Exception as e:
-        logger.error(f"Fehler bei Routing-Erklärung: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "routing_erklaerung_fehler",
+            user_id=str(current_user.id),
+            document_id=request.document_id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Routing-Erklärung konnte nicht erstellt werden. Bitte später erneut versuchen."
+        )
 
 
-@router.get("/explain/{document_id}", response_model=Optional[RoutingExplanationResponse])
-async def get_routing_explanation(document_id: str) -> Optional[RoutingExplanationResponse]:
+@router.get("/explain/{document_id}", response_model=RoutingExplanationResponse)
+async def get_routing_explanation(
+    request: Request,
+    document_id: str,
+    current_user: User = Depends(check_rate_limit),
+) -> RoutingExplanationResponse:
     """
     Hole gespeicherte Routing-Erklärung.
+
+    Erfordert Authentifizierung.
 
     Args:
         document_id: Dokument-ID
 
     Returns:
-        Gespeicherte Erklärung oder None
+        Gespeicherte Erklärung
     """
     try:
         from app.ml.shap_explainer import get_shap_explainer
@@ -330,14 +459,14 @@ async def get_routing_explanation(document_id: str) -> Optional[RoutingExplanati
             selected_backend=explanation.selected_backend,
             confidence=explanation.confidence,
             top_contributions=[
-                {
-                    "feature_name": fc.feature_name,
-                    "feature_value": fc.feature_value,
-                    "shap_value": fc.shap_value,
-                    "contribution_percent": fc.contribution_percent,
-                    "direction": fc.direction,
-                    "explanation": fc.german_explanation,
-                }
+                FeatureContribution(
+                    feature_name=fc.feature_name,
+                    feature_value=fc.feature_value,
+                    shap_value=fc.shap_value,
+                    contribution_percent=fc.contribution_percent,
+                    direction=fc.direction,
+                    explanation=fc.german_explanation,
+                )
                 for fc in explanation.top_contributions
             ],
             alternative_backends=explanation.alternative_backends,
@@ -348,14 +477,28 @@ async def get_routing_explanation(document_id: str) -> Optional[RoutingExplanati
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Fehler beim Abrufen der Erklärung: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "erklaerung_abruf_fehler",
+            user_id=str(current_user.id),
+            document_id=document_id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Erklärung konnte nicht abgerufen werden. Bitte später erneut versuchen."
+        )
 
 
 @router.get("/explain/importance", response_model=GlobalImportanceResponse)
-async def get_global_feature_importance() -> GlobalImportanceResponse:
+async def get_global_feature_importance(
+    request: Request,
+    current_user: User = Depends(check_rate_limit),
+) -> GlobalImportanceResponse:
     """
     Hole globale Feature Importance.
+
+    Erfordert Authentifizierung.
 
     Returns:
         Feature Importance Scores
@@ -369,8 +512,16 @@ async def get_global_feature_importance() -> GlobalImportanceResponse:
         return GlobalImportanceResponse(features=importance)
 
     except Exception as e:
-        logger.error(f"Fehler beim Abrufen der Feature Importance: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "feature_importance_fehler",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Feature Importance konnte nicht abgerufen werden. Bitte später erneut versuchen."
+        )
 
 
 # =============================================================================
@@ -379,10 +530,14 @@ async def get_global_feature_importance() -> GlobalImportanceResponse:
 
 @router.post("/experiments", response_model=ExperimentResponse)
 async def create_experiment(
+    http_request: Request,
     request: CreateExperimentRequest,
+    current_user: User = Depends(check_rate_limit),
 ) -> ExperimentResponse:
     """
     Erstelle neues A/B Experiment.
+
+    Erfordert Authentifizierung.
 
     Args:
         request: Experiment-Konfiguration
@@ -394,27 +549,62 @@ async def create_experiment(
         from app.ml.ab_testing import get_ab_test_manager
 
         manager = get_ab_test_manager()
+
+        # Konvertiere VariantConfig zu Dict für den Manager
+        variants_dict = [
+            {
+                "name": v.name,
+                "backend": v.backend,
+                "weight": v.weight,
+                "config": v.config,
+            }
+            for v in request.variants
+        ]
+
         experiment = manager.create_experiment(
             name=request.name,
             description=request.description,
-            variants=request.variants,
+            variants=variants_dict,
             allocation_method=request.allocation_method,
             min_samples=request.min_samples,
             duration_days=request.duration_days,
         )
 
+        logger.info(
+            "experiment_erstellt",
+            user_id=str(current_user.id),
+            experiment_name=request.name,
+            variant_count=len(request.variants),
+        )
+
         summary = experiment.get_summary()
         return ExperimentResponse(**summary)
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Fehler beim Erstellen des Experiments: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "experiment_erstellung_fehler",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Experiment konnte nicht erstellt werden. Bitte später erneut versuchen."
+        )
 
 
 @router.post("/experiments/{experiment_id}/start")
-async def start_experiment(experiment_id: str) -> Dict[str, Any]:
+async def start_experiment(
+    request: Request,
+    experiment_id: str,
+    admin_user: User = Depends(get_current_superuser),
+) -> Dict[str, Any]:
     """
     Starte ein Experiment.
+
+    **Nur für Administratoren.**
 
     Args:
         experiment_id: Experiment-ID
@@ -431,22 +621,43 @@ async def start_experiment(experiment_id: str) -> Dict[str, Any]:
         if not success:
             raise HTTPException(
                 status_code=400,
-                detail="Experiment konnte nicht gestartet werden"
+                detail="Experiment konnte nicht gestartet werden. Prüfen Sie den Status."
             )
+
+        logger.info(
+            "experiment_gestartet",
+            admin_user_id=str(admin_user.id),
+            experiment_id=experiment_id,
+        )
 
         return {"message": f"Experiment {experiment_id} gestartet"}
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Fehler beim Starten des Experiments: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "experiment_start_fehler",
+            admin_user_id=str(admin_user.id),
+            experiment_id=experiment_id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Experiment konnte nicht gestartet werden. Bitte später erneut versuchen."
+        )
 
 
 @router.get("/experiments/{experiment_id}", response_model=ExperimentResponse)
-async def get_experiment(experiment_id: str) -> ExperimentResponse:
+async def get_experiment(
+    request: Request,
+    experiment_id: str,
+    current_user: User = Depends(check_rate_limit),
+) -> ExperimentResponse:
     """
     Hole Experiment-Details.
+
+    Erfordert Authentifizierung.
 
     Args:
         experiment_id: Experiment-ID
@@ -472,19 +683,32 @@ async def get_experiment(experiment_id: str) -> ExperimentResponse:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Fehler beim Abrufen des Experiments: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "experiment_abruf_fehler",
+            user_id=str(current_user.id),
+            experiment_id=experiment_id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Experiment konnte nicht abgerufen werden. Bitte später erneut versuchen."
+        )
 
 
 @router.get("/experiments", response_model=List[ExperimentResponse])
 async def list_experiments(
+    request: Request,
     status: Optional[str] = Query(default=None),
+    current_user: User = Depends(check_rate_limit),
 ) -> List[ExperimentResponse]:
     """
     Liste alle Experimente.
 
+    Erfordert Authentifizierung.
+
     Args:
-        status: Optional Filter nach Status
+        status: Optional Filter nach Status (draft, running, completed, stopped)
 
     Returns:
         Liste der Experimente
@@ -499,9 +723,10 @@ async def list_experiments(
             try:
                 status_filter = ExperimentStatus(status)
             except ValueError:
+                valid_statuses = [s.value for s in ExperimentStatus]
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Ungültiger Status: {status}"
+                    detail=f"Ungültiger Status: {status}. Erlaubt: {valid_statuses}"
                 )
 
         experiments = manager.list_experiments(status=status_filter)
@@ -514,17 +739,29 @@ async def list_experiments(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Fehler beim Auflisten der Experimente: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "experiment_liste_fehler",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Experimente konnten nicht aufgelistet werden. Bitte später erneut versuchen."
+        )
 
 
 @router.post("/experiments/{experiment_id}/record")
 async def record_experiment_result(
+    http_request: Request,
     experiment_id: str,
     request: RecordResultRequest,
+    current_user: User = Depends(check_rate_limit),
 ) -> Dict[str, str]:
     """
     Erfasse Experiment-Ergebnis.
+
+    Erfordert Authentifizierung.
 
     Args:
         experiment_id: Experiment-ID
@@ -547,15 +784,32 @@ async def record_experiment_result(
 
         return {"message": "Ergebnis erfasst"}
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Fehler beim Erfassen des Ergebnisses: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "experiment_ergebnis_fehler",
+            user_id=str(current_user.id),
+            experiment_id=experiment_id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Ergebnis konnte nicht erfasst werden. Bitte später erneut versuchen."
+        )
 
 
 @router.post("/experiments/{experiment_id}/conclude")
-async def conclude_experiment(experiment_id: str) -> Dict[str, Any]:
+async def conclude_experiment(
+    request: Request,
+    experiment_id: str,
+    admin_user: User = Depends(get_current_superuser),
+) -> Dict[str, Any]:
     """
     Schließe Experiment ab.
+
+    **Nur für Administratoren.**
 
     Args:
         experiment_id: Experiment-ID
@@ -569,14 +823,32 @@ async def conclude_experiment(experiment_id: str) -> Dict[str, Any]:
         manager = get_ab_test_manager()
         winner = manager.conclude_experiment(experiment_id)
 
+        logger.info(
+            "experiment_abgeschlossen",
+            admin_user_id=str(admin_user.id),
+            experiment_id=experiment_id,
+            winner=winner,
+        )
+
         return {
             "message": f"Experiment {experiment_id} abgeschlossen",
             "winner": winner,
         }
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Fehler beim Abschließen des Experiments: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "experiment_abschluss_fehler",
+            admin_user_id=str(admin_user.id),
+            experiment_id=experiment_id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Experiment konnte nicht abgeschlossen werden. Bitte später erneut versuchen."
+        )
 
 
 # =============================================================================
@@ -584,9 +856,14 @@ async def conclude_experiment(experiment_id: str) -> Dict[str, Any]:
 # =============================================================================
 
 @router.get("/metrics")
-async def get_prometheus_metrics():
+async def get_prometheus_metrics(
+    request: Request,
+    current_user: User = Depends(check_rate_limit),
+):
     """
     Hole Prometheus-Metriken.
+
+    Erfordert Authentifizierung.
 
     Returns:
         Metriken im Prometheus-Format
@@ -606,14 +883,27 @@ async def get_prometheus_metrics():
         )
 
     except Exception as e:
-        logger.error(f"Fehler beim Abrufen der Metriken: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "metriken_abruf_fehler",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Metriken konnten nicht abgerufen werden. Bitte später erneut versuchen."
+        )
 
 
 @router.get("/metrics/summary", response_model=MetricsResponse)
-async def get_metrics_summary() -> MetricsResponse:
+async def get_metrics_summary(
+    request: Request,
+    current_user: User = Depends(check_rate_limit),
+) -> MetricsResponse:
     """
     Hole Metriken-Zusammenfassung.
+
+    Erfordert Authentifizierung.
 
     Returns:
         Zusammenfassung aller ML-Metriken
@@ -656,5 +946,13 @@ async def get_metrics_summary() -> MetricsResponse:
         )
 
     except Exception as e:
-        logger.error(f"Fehler beim Abrufen der Metriken-Zusammenfassung: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "metriken_zusammenfassung_fehler",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Metriken-Zusammenfassung konnte nicht abgerufen werden. Bitte später erneut versuchen."
+        )

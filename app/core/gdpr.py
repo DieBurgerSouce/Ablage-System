@@ -8,10 +8,10 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from enum import Enum
 import hashlib
-import logging
+import structlog
 import json
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class DataCategory(Enum):
@@ -56,7 +56,7 @@ class DataSubject:
         self.deletion_requested = True
         # 30 days to process deletion request
         self.deletion_deadline = datetime.now() + timedelta(days=30)
-        logger.info(f"Deletion requested for subject {self.subject_id}")
+        logger.info("deletion_requested", subject_id=self.subject_id)
         return self.deletion_deadline
 
     def has_valid_consent(self) -> bool:
@@ -101,7 +101,7 @@ class GDPRComplianceManager:
         }
 
         self.processing_activities.append(activity)
-        logger.info(f"Registered processing activity: {activity['id']}")
+        logger.info("processing_activity_registered", activity_id=activity['id'])
 
         return activity
 
@@ -242,9 +242,7 @@ class GDPRComplianceManager:
         self.data_breaches.append(breach)
 
         # Log critical breach
-        logger.critical(
-            f"Data breach detected: {breach_type} affecting {affected_records} records"
-        )
+        logger.critical("data_breach_detected", breach_type=breach_type, affected_records=affected_records)
 
         return breach
 
@@ -265,7 +263,7 @@ class GDPRComplianceManager:
             "notice": "This export contains all personal data we have processed for you"
         }
 
-        logger.info(f"Generated data export for subject {subject_id}")
+        logger.info("data_export_generated", subject_id=subject_id)
 
         return export
 

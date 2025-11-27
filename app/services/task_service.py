@@ -8,7 +8,7 @@ Provides high-level interface for:
 - Priority queue management
 """
 
-import logging
+import structlog
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from uuid import UUID
@@ -29,8 +29,7 @@ from app.db.models import Document, ProcessingJob, ProcessingStatus
 from app.core.config import settings
 from app.core.german_messages import StatusMessages
 
-# Use standard logging for POC (no structlog dependency)
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class TaskService:
@@ -105,7 +104,7 @@ class TaskService:
         job.started_at = datetime.utcnow()
         await session.commit()
 
-        logger.info(f"document_task_submitted - document_id={document_id} task_id={task.id} backend={backend} priority={priority}")
+        logger.info("document_task_submitted", document_id=str(document_id), task_id=task.id, backend=backend, priority=priority)
 
         return {
             "task_id": task.id,
@@ -150,7 +149,7 @@ class TaskService:
             priority=task_priority,
         )
 
-        logger.info(f"batch_task_submitted - task_id={task.id} document_count={len(document_ids)} backend={backend} priority={priority}")
+        logger.info("batch_task_submitted", task_id=task.id, document_count=len(document_ids), backend=backend, priority=priority)
 
         return {
             "task_id": task.id,
@@ -197,7 +196,7 @@ class TaskService:
             elif task_result.failed():
                 status_info["error"] = str(task_result.info)
 
-        logger.debug(f"task_status_checked - task_id={task_id} state={task_result.state}")
+        logger.debug("task_status_checked", task_id=task_id, state=task_result.state)
 
         return status_info
 
@@ -215,7 +214,7 @@ class TaskService:
         if not task_result.ready():
             task_result.revoke(terminate=True)
 
-            logger.warning(f"task_cancelled - task_id={task_id}")
+            logger.warning("task_cancelled", task_id=task_id)
 
             return {
                 "task_id": task_id,
@@ -223,7 +222,7 @@ class TaskService:
                 "message": StatusMessages.CANCELLED,
             }
         else:
-            logger.info(f"task_cancellation_failed_already_completed - task_id={task_id} state={task_result.state}")
+            logger.info("task_cancellation_failed_already_completed", task_id=task_id, state=task_result.state)
 
             return {
                 "task_id": task_id,
@@ -255,7 +254,7 @@ class TaskService:
             else:
                 raise ValueError("Aufgabe noch nicht abgeschlossen")
 
-        logger.info(f"task_result_retrieved - task_id={task_id}")
+        logger.info("task_result_retrieved", task_id=task_id)
 
         return result
 
@@ -308,7 +307,7 @@ class TaskService:
 
             tasks.append(task_info)
 
-        logger.info(f"user_tasks_retrieved - user_id={user_id} task_count={len(tasks)}")
+        logger.info("user_tasks_retrieved", user_id=str(user_id), task_count=len(tasks))
 
         return tasks
 
@@ -358,7 +357,7 @@ class TaskService:
         # Submit cleanup task
         task = cleanup_task.apply_async(args=[hours_old])
 
-        logger.info(f"cleanup_task_submitted - task_id={task.id} hours_old={hours_old}")
+        logger.info("cleanup_task_submitted", task_id=task.id, hours_old=hours_old)
 
         # Wait for result
         result = task.get(timeout=60)

@@ -18,7 +18,7 @@ Feinpoliert und durchdacht - Multilinguale OCR für globale Dokumente.
 """
 
 import asyncio
-import logging
+import structlog
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -28,7 +28,7 @@ from PIL import Image
 from app.agents.base import AgentResourceError, OCRAgent
 from app.gpu_manager import GPUManager
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Check for required dependencies
 TRANSFORMERS_AVAILABLE = False
@@ -215,7 +215,7 @@ class DonutOCRAgent(OCRAgent):
         if self._model_loaded:
             return
 
-        self.logger.info(f"Lade Donut-Modell: {self.model_name}")
+        self.logger.info("lade_donut_modell", model=self.model_name)
 
         # Determine device
         if self.use_gpu and TORCH_AVAILABLE and torch.cuda.is_available():
@@ -254,7 +254,7 @@ class DonutOCRAgent(OCRAgent):
             )
         except Exception as e:
             # Fallback to standard loading
-            logger.warning(f"SafeTensors nicht verfügbar, nutze Standard: {e}")
+            logger.warning("safetensors_unavailable_fallback", error=str(e))
             self.model = VisionEncoderDecoderModel.from_pretrained(
                 self.model_name,
             )
@@ -263,7 +263,7 @@ class DonutOCRAgent(OCRAgent):
         self.model.to(self._device)
         self.model.eval()
 
-        logger.info(f"Donut-Modell geladen auf {self._device}")
+        logger.info("donut_modell_geladen", device=str(self._device))
 
     async def _load_image(self, image_path: Path) -> Image.Image:
         """Load and preprocess image."""
@@ -406,7 +406,7 @@ class DonutOCRAgent(OCRAgent):
             try:
                 await self._ensure_model_loaded()
             except Exception as e:
-                logger.error(f"Donut health check failed: {e}")
+                logger.error("donut_health_check_failed", error=str(e))
                 return False
 
         return self.model is not None and self.processor is not None

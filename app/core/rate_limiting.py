@@ -13,19 +13,19 @@ Features:
 
 from typing import Optional, Callable
 from functools import wraps
-import logging
+from datetime import datetime
 
+import structlog
 from fastapi import Request, Response, HTTPException
 from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import redis.asyncio as aioredis
-from datetime import datetime
 
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # ==================== Rate Limit Key Functions ====================

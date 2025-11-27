@@ -12,15 +12,19 @@ Feinpoliert und durchdacht - Transparente KI-Entscheidungen.
 """
 
 import json
-import logging
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+import structlog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
+
+# Thread-Safety für Singleton
+_shap_explainer_lock = threading.Lock()
 
 # Optional SHAP integration
 SHAP_AVAILABLE = False
@@ -204,7 +208,7 @@ class SHAPExplainer:
             self._shap_explainer = shap.TreeExplainer(self.model)
             logger.info("SHAP TreeExplainer initialisiert")
         except Exception as e:
-            logger.warning(f"SHAP Explainer konnte nicht initialisiert werden: {e}")
+            logger.warning("shap_explainer_init_fehlgeschlagen", error=str(e))
 
     def set_model(self, model: Any, feature_names: List[str]) -> None:
         """
@@ -213,9 +217,25 @@ class SHAPExplainer:
         Args:
             model: Trainiertes ML-Modell
             feature_names: Feature-Namen in korrekter Reihenfolge
+
+        Raises:
+            ValueError: Bei ungültigen Parametern
         """
+        if model is None:
+            raise ValueError("model darf nicht None sein")
+
+        if not feature_names or not isinstance(feature_names, list):
+            raise ValueError("feature_names muss eine nicht-leere Liste sein")
+        if len(feature_names) > 100:
+            raise ValueError("feature_names darf maximal 100 Features haben")
+
+        # Validate feature names are strings
+        for i, name in enumerate(feature_names):
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError(f"feature_names[{i}] muss ein nicht-leerer String sein")
+
         self.model = model
-        self.feature_names = feature_names
+        self.feature_names = [n.strip() for n in feature_names]
         self._global_importance = None
 
         if SHAP_AVAILABLE:
@@ -241,7 +261,32 @@ class SHAPExplainer:
 
         Returns:
             RoutingExplanation mit detaillierter Erklärung
+
+        Raises:
+            ValueError: Bei ungültigen Parametern
         """
+        # Input Validation
+        if not document_id or not isinstance(document_id, str):
+            raise ValueError("document_id muss ein nicht-leerer String sein")
+        document_id = document_id.strip()
+        if len(document_id) > 100:
+            raise ValueError("document_id darf maximal 100 Zeichen haben")
+
+        if not isinstance(features, dict):
+            raise ValueError("features muss ein Dictionary sein")
+
+        if not selected_backend or not isinstance(selected_backend, str):
+            raise ValueError("selected_backend muss ein nicht-leerer String sein")
+        selected_backend = selected_backend.strip()
+
+        if not isinstance(confidence, (int, float)):
+            raise ValueError("confidence muss eine Zahl sein")
+        # Clamp confidence to valid range
+        confidence = max(0.0, min(1.0, float(confidence)))
+
+        if not isinstance(all_probabilities, dict):
+            raise ValueError("all_probabilities muss ein Dictionary sein")
+
         # Calculate contributions
         contributions = self._calculate_contributions(features, selected_backend)
 
@@ -350,7 +395,7 @@ class SHAPExplainer:
                 contributions.append(contribution)
 
         except Exception as e:
-            logger.warning(f"SHAP Berechnung fehlgeschlagen: {e}")
+            logger.warning("shap_berechnung_fehlgeschlagen", error=str(e))
             contributions = self._calculate_heuristic_contributions(
                 features, selected_backend
             )
@@ -563,8 +608,27 @@ _shap_explainer: Optional[SHAPExplainer] = None
 
 
 def get_shap_explainer() -> SHAPExplainer:
-    """Hole globale SHAPExplainer Instanz."""
+    """
+    Hole globale SHAPExplainer Instanz.
+
+    Thread-safe mit double-checked locking.
+    """
     global _shap_explainer
-    if _shap_explainer is None:
-        _shap_explainer = SHAPExplainer()
+
+    # Fast path: bereits initialisiert
+    if _shap_explainer is not None:
+        return _shap_explainer
+
+    # Slow path: Thread-safe Initialisierung
+    with _shap_explainer_lock:
+        # Double-check nach Lock-Erwerb
+        if _shap_explainer is None:
+            logger.info("shap_explainer_initialisierung")
+            _shap_explainer = SHAPExplainer()
+            logger.info(
+                "shap_explainer_initialisiert",
+                shap_available=SHAP_AVAILABLE,
+                model_loaded=_shap_explainer.model is not None,
+            )
+
     return _shap_explainer

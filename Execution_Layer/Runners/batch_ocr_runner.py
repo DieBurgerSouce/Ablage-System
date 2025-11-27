@@ -474,11 +474,13 @@ Examples:
 
 
 if __name__ == "__main__":
-    # Setup logging
-    import logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    # Setup structlog
+    structlog.configure(
+        processors=[
+            structlog.stdlib.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.dev.ConsoleRenderer()
+        ]
     )
 
     # Run

@@ -12,7 +12,7 @@ Feinpoliert und durchdacht - Proaktive Modellüberwachung.
 """
 
 import json
-import logging
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
@@ -21,8 +21,12 @@ from typing import Any, Dict, List, Optional, Tuple
 import hashlib
 
 import numpy as np
+import structlog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
+
+# Thread-Safety für Singleton
+_drift_detector_lock = threading.Lock()
 
 # Optional Evidently integration
 EVIDENTLY_AVAILABLE = False
@@ -167,7 +171,26 @@ class DriftDetector:
             drift_threshold: P-Wert Schwelle für Drift-Erkennung
             min_samples: Minimum Samples für zuverlässige Drift-Erkennung
             storage_path: Pfad für Drift-Reports
+
+        Raises:
+            ValueError: Bei ungültigen Parametern
         """
+        # Input Validation
+        if not isinstance(reference_window_days, int) or reference_window_days < 1:
+            raise ValueError("reference_window_days muss eine positive Ganzzahl sein")
+        if reference_window_days > 365:
+            raise ValueError("reference_window_days darf maximal 365 sein")
+
+        if not isinstance(drift_threshold, (int, float)):
+            raise ValueError("drift_threshold muss eine Zahl sein")
+        if drift_threshold <= 0 or drift_threshold >= 1:
+            raise ValueError("drift_threshold muss zwischen 0 und 1 (exklusiv) sein")
+
+        if not isinstance(min_samples, int) or min_samples < 10:
+            raise ValueError("min_samples muss mindestens 10 sein")
+        if min_samples > 100_000:
+            raise ValueError("min_samples darf maximal 100.000 sein")
+
         self.reference_window_days = reference_window_days
         self.drift_threshold = drift_threshold
         self.min_samples = min_samples
@@ -208,12 +231,37 @@ class DriftDetector:
             features: Feature-Dictionary
             prediction: Modell-Vorhersage (Backend-Name)
             timestamp: Zeitstempel (default: jetzt)
+
+        Raises:
+            ValueError: Bei ungültigen Parametern
         """
+        # Input Validation
+        if not isinstance(features, dict):
+            raise ValueError("features muss ein Dictionary sein")
+        if not features:
+            raise ValueError("features darf nicht leer sein")
+
+        if not prediction or not isinstance(prediction, str):
+            raise ValueError("prediction muss ein nicht-leerer String sein")
+        prediction = prediction.strip()
+        if len(prediction) > 100:
+            raise ValueError("prediction darf maximal 100 Zeichen haben")
+
+        if timestamp is not None and not isinstance(timestamp, datetime):
+            raise ValueError("timestamp muss ein datetime-Objekt sein")
+
         timestamp = timestamp or datetime.now()
+
+        # Sanitize features - only keep known feature names to limit memory
+        sanitized_features = {}
+        all_known_features = set(self.NUMERICAL_FEATURES + self.CATEGORICAL_FEATURES)
+        for key, value in features.items():
+            if key in all_known_features:
+                sanitized_features[key] = value
 
         sample = {
             "timestamp": timestamp,
-            "features": features,
+            "features": sanitized_features,
             "prediction": prediction,
         }
 
@@ -674,8 +722,27 @@ _drift_detector: Optional[DriftDetector] = None
 
 
 def get_drift_detector() -> DriftDetector:
-    """Hole globale DriftDetector Instanz."""
+    """
+    Hole globale DriftDetector Instanz.
+
+    Thread-safe mit double-checked locking.
+    """
     global _drift_detector
-    if _drift_detector is None:
-        _drift_detector = DriftDetector()
+
+    # Fast path: bereits initialisiert
+    if _drift_detector is not None:
+        return _drift_detector
+
+    # Slow path: Thread-safe Initialisierung
+    with _drift_detector_lock:
+        # Double-check nach Lock-Erwerb
+        if _drift_detector is None:
+            logger.info("drift_detector_initialisierung")
+            _drift_detector = DriftDetector()
+            logger.info(
+                "drift_detector_initialisiert",
+                min_samples=_drift_detector.min_samples,
+                drift_threshold=_drift_detector.drift_threshold,
+            )
+
     return _drift_detector

@@ -10,40 +10,9 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional
 
-import logging
+import structlog
 
-# Use standard logging for POC (no structlog/prometheus dependency)
-_base_logger = logging.getLogger(__name__)
-
-
-class StructlogCompatibleLogger(logging.LoggerAdapter):
-    """
-    Logger adapter that supports both standard logging and structlog-style calls.
-
-    Allows: logger.info("event_name", key1=value1, key2=value2)
-    Converts to: logger.info("event_name - key1=value1 key2=value2")
-    """
-
-    def process(self, msg: str, kwargs: Dict[str, Any]) -> tuple:
-        """Process log message with extra kwargs as structured data."""
-        # Extract extra logging context from kwargs
-        extra_context = {}
-        standard_keys = {'exc_info', 'stack_info', 'stacklevel', 'extra'}
-
-        for key in list(kwargs.keys()):
-            if key not in standard_keys:
-                extra_context[key] = kwargs.pop(key)
-
-        # Append structured data to message if present
-        if extra_context:
-            context_str = " ".join(f"{k}={v}" for k, v in extra_context.items())
-            msg = f"{msg} - {context_str}"
-
-        return msg, kwargs
-
-
-# Create compatible logger instance
-logger = StructlogCompatibleLogger(_base_logger, {})
+logger = structlog.get_logger(__name__)
 
 
 class AgentStatus(str, Enum):
@@ -139,9 +108,7 @@ class BaseAgent(ABC):
 
         # Metrics tracking removed for POC
 
-        self.logger.info(
-            f"Agent task started - task_id: {task_id}, input_size: {len(str(input_data))}"
-        )
+        self.logger.info("agent_task_started", task_id=task_id, input_size=len(str(input_data)))
 
         result = None
         status = AgentStatus.FAILED
@@ -159,9 +126,7 @@ class BaseAgent(ABC):
                     if attempt < self.max_retries - 1:
                         # Retry with exponential backoff
                         delay = self.retry_delay * (2**attempt)
-                        self.logger.warning(
-                            f"Agent task retry - task_id: {task_id}, attempt: {attempt + 1}/{self.max_retries}, delay: {delay}s, error: {str(e)}"
-                        )
+                        self.logger.warning("agent_task_retry", task_id=task_id, attempt=attempt + 1, max_retries=self.max_retries, delay_seconds=delay, error=str(e))
                         # Metrics removed for POC
                         time.sleep(delay)
                     else:
@@ -173,10 +138,7 @@ class BaseAgent(ABC):
             status = AgentStatus.FAILED
             error_type = type(e).__name__
 
-            self.logger.error(
-                f"Agent task failed - task_id: {task_id}, error_type: {error_type}, error: {str(e)}",
-                exc_info=True
-            )
+            self.logger.error("agent_task_failed", task_id=task_id, error_type=error_type, error=str(e), exc_info=True)
 
             # Error metrics removed for POC
 
@@ -189,9 +151,7 @@ class BaseAgent(ABC):
 
             # Metrics removed for POC
 
-            self.logger.info(
-                f"Agent task completed - task_id: {task_id}, status: {status.value}, duration: {duration:.2f}s, has_error: {error is not None}"
-            )
+            self.logger.info("agent_task_completed", task_id=task_id, status=status.value, duration_seconds=round(duration, 2), has_error=error is not None)
 
         # Return result with metadata
         return {
@@ -234,7 +194,7 @@ class OCRAgent(BaseAgent):
     async def cleanup(self):
         """Clean up resources. Override in subclasses for specific cleanup."""
         self._is_initialized = False
-        self.logger.info(f"Agent cleanup complete - agent={self.name}")
+        self.logger.info("agent_cleanup_complete", agent=self.name)
 
     def get_status(self) -> Dict[str, Any]:
         """Get agent status. Override in subclasses for specific status."""

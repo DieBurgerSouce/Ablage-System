@@ -5,14 +5,14 @@ Priority: P0 - CRITICAL
 Created: 2024-11-22
 """
 
-import logging
+import structlog
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 from datetime import datetime
 import asyncio
 import os
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Import our backend manager
 from app.services.backend_manager import BackendManager
@@ -37,7 +37,7 @@ class OCRService:
         self.upload_dir = Path("uploads")
         self.upload_dir.mkdir(exist_ok=True)
 
-        logger.info(f"OCR Service initialized with backends: {self.backend_manager.get_available_backends()}")
+        logger.info("ocr_service_initialized", available_backends=self.backend_manager.get_available_backends())
 
     async def process_document(
         self,
@@ -82,7 +82,7 @@ class OCRService:
             else:
                 # Validate requested backend is available
                 if backend not in available_backends:
-                    logger.warning(f"Requested backend '{backend}' not available. Available: {available_backends}")
+                    logger.warning("requested_backend_unavailable", requested=backend, available=available_backends)
                     # Fallback to auto-selection
                     selected_backend = await self.backend_manager.select_backend(
                         image_path=image_path,
@@ -93,12 +93,10 @@ class OCRService:
                     selected_backend = backend
 
             logger.info(
-                f"Processing document with {selected_backend}",
-                extra={
-                    "image": image_path,
-                    "backend": selected_backend,
-                    "language": language
-                }
+                "processing_document",
+                backend=selected_backend,
+                image_path=image_path,
+                language=language
             )
 
             # Process with selected backend
@@ -137,11 +135,11 @@ class OCRService:
 
         except Exception as e:
             self.processing_stats["total_errors"] += 1
-            logger.exception(f"OCR processing failed: {e}")
+            logger.error("ocr_processing_failed", error=str(e), exc_info=True)
 
             # Try fallback to CPU if GPU failed
             if "cuda" in str(e).lower() or "gpu" in str(e).lower():
-                logger.warning("GPU error detected, falling back to Surya (CPU)")
+                logger.warning("gpu_error_fallback_to_cpu")
                 try:
                     # Ensure Surya is available
                     if "surya" in self.backend_manager.get_available_backends():
@@ -166,7 +164,7 @@ class OCRService:
 
                         return result
                 except Exception as fallback_error:
-                    logger.exception(f"Fallback also failed: {fallback_error}")
+                    logger.error("fallback_also_failed", error=str(fallback_error), exc_info=True)
 
             # Return error response
             return {
@@ -197,7 +195,7 @@ class OCRService:
         Returns:
             List of OCR results
         """
-        logger.info(f"Starting batch processing of {len(image_paths)} documents")
+        logger.info("batch_processing_starting", document_count=len(image_paths))
 
         # Create semaphore to limit concurrent processing
         semaphore = asyncio.Semaphore(max_concurrent)
@@ -228,7 +226,7 @@ class OCRService:
                 processed_results.append(result)
 
         successful = sum(1 for r in processed_results if r.get("success", False))
-        logger.info(f"Batch processing complete: {successful}/{len(image_paths)} successful")
+        logger.info("batch_processing_complete", successful=successful, total=len(image_paths))
 
         return processed_results
 
@@ -307,10 +305,10 @@ class OCRService:
         with open(file_path, "wb") as f:
             f.write(file_content)
 
-        logger.info(f"Saved upload: {file_path}")
+        logger.info("upload_saved", file_path=str(file_path))
         return str(file_path)
 
     async def cleanup(self):
         """Clean up resources"""
         await self.backend_manager.cleanup()
-        logger.info("OCR Service cleanup complete")
+        logger.info("ocr_service_cleanup_complete")

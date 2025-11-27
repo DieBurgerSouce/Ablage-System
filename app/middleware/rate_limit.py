@@ -12,9 +12,9 @@ Features:
 """
 
 from typing import Callable, Optional
-import logging
 from datetime import datetime
 
+import structlog
 from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -29,7 +29,7 @@ from app.core.rate_limiting import (
 )
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -138,7 +138,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Skip WebSocket requests
         if self.is_websocket_request(request):
             logger.debug(
-                f"rate_limit_skipped_websocket - path={request.url.path}"
+                "rate_limit_skipped_websocket",
+                path=request.url.path
             )
             return await call_next(request)
 
@@ -147,7 +148,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if ip_whitelist.is_whitelisted(client_ip):
             rate_limit_metrics.record_whitelisted()
             logger.debug(
-                f"rate_limit_whitelisted - ip={client_ip} path={request.url.path}"
+                "rate_limit_whitelisted",
+                ip=client_ip,
+                path=request.url.path
             )
             return await call_next(request)
 
@@ -294,7 +297,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
             except Exception as e:
                 logger.error(
-                    f"rate_limit_check_error - key={rate_limit_key} error={str(e)}"
+                    "rate_limit_check_error",
+                    key=rate_limit_key,
+                    error=str(e)
                 )
                 rate_limit_metrics.record_error()
                 # Fail-open: allow request on error
@@ -302,7 +307,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # If Redis not available, allow request (graceful degradation)
         logger.warning(
-            f"rate_limit_redis_unavailable - path={request.url.path} action=allowing_request"
+            "rate_limit_redis_unavailable",
+            path=request.url.path,
+            action="allowing_request"
         )
         return True, None
 
@@ -326,7 +333,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # Log rate limit violation
         logger.warning(
-            f"rate_limit_exceeded - path={request.url.path} user_id={user_id} ip={get_remote_address(request)} retry_after={retry_after}"
+            "rate_limit_exceeded",
+            path=request.url.path,
+            user_id=user_id,
+            ip=get_remote_address(request),
+            retry_after=retry_after
         )
 
         # Create German error message
@@ -406,7 +417,8 @@ class DevelopmentRateLimitBypass(BaseHTTPMiddleware):
         """
         if settings.DEBUG:
             logger.debug(
-                f"rate_limit_bypassed_development_mode - path={request.url.path}"
+                "rate_limit_bypassed_development_mode",
+                path=request.url.path
             )
 
         return await call_next(request)

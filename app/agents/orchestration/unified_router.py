@@ -18,12 +18,12 @@ Feinpoliert und durchdacht - Intelligente Backend-Auswahl für optimale Ergebnis
 """
 
 import asyncio
-import logging
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol
 
 from pydantic import BaseModel, Field
+import structlog
 
 from app.agents.base import OrchestrationAgent
 from app.gpu_manager import GPUManager
@@ -34,7 +34,7 @@ from .language_detector import (
     ScriptType,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # =============================================================================
@@ -385,10 +385,10 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 logger.info("ML-Routing: Modell nicht trainiert, nutze Regeln")
 
         except ImportError as e:
-            logger.warning(f"ML-Routing nicht verfügbar: {e}")
+            logger.warning("ml_routing_nicht_verfuegbar", error=str(e))
             self.use_ml_routing = False
         except Exception as e:
-            logger.error(f"Fehler bei ML-Routing-Initialisierung: {e}")
+            logger.error("ml_routing_init_fehler", error=str(e))
             self.use_ml_routing = False
 
     def _detect_document_language(
@@ -592,7 +592,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 self._stats["ml_predictions"] += 1
                 return result
             except Exception as e:
-                logger.warning(f"ML-Routing fehlgeschlagen: {e}")
+                logger.warning("ml_routing_fehlgeschlagen", error=str(e))
                 self._stats["rule_fallbacks"] += 1
 
         # Priority 4: Rule-based selection
@@ -795,7 +795,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 continue
 
             try:
-                logger.info(f"Attempting OCR with {backend_type.value}")
+                logger.info("ocr_attempt", backend=backend_type.value)
 
                 # Prepare options
                 backend_options = self._prepare_backend_options(
@@ -816,7 +816,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 return ocr_result
 
             except Exception as e:
-                logger.error(f"Backend {backend_type.value} failed: {e}")
+                logger.error("backend_failed", backend=backend_type.value, error=str(e))
                 last_error = e
                 continue
 
@@ -899,7 +899,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 )
 
         except Exception as e:
-            logger.warning(f"Fehler beim Sammeln von Trainingsfeedback: {e}")
+            logger.warning("training_feedback_fehler", error=str(e))
 
     # =========================================================================
     # INFO & STATS

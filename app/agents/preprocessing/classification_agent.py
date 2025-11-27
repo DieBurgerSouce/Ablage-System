@@ -12,15 +12,16 @@ Enterprise-grade document classification with:
 Feinpoliert und durchdacht - 100% Genauigkeit für deutsche Dokumente.
 """
 
-import logging
 import os
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import structlog
+
 from app.agents.base import PreprocessingAgent
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class DocumentClassificationAgent(PreprocessingAgent):

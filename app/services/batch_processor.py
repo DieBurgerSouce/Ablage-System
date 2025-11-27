@@ -1,14 +1,14 @@
 """Batch Processing Service with GPU optimization."""
 
 import asyncio
-import logging
+import structlog
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 import torch
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class BatchProcessor:
@@ -29,7 +29,7 @@ class BatchProcessor:
         # Thread pool for parallel I/O operations
         self.executor = ThreadPoolExecutor(max_workers=4)
 
-        logger.info(f"BatchProcessor initialized with optimal batch size: {self.optimal_batch_size}")
+        logger.info("batch_processor_initialized", optimal_batch_size=self.optimal_batch_size)
 
     def _calculate_optimal_batch_size(self) -> int:
         """Calculate optimal batch size based on available resources."""
@@ -45,7 +45,7 @@ class BatchProcessor:
 
             # Limit to reasonable range
             optimal = min(max(estimated_batch, 2), self.max_batch_size)
-            logger.info(f"GPU batch optimization: {optimal} documents (based on {available/1024**3:.1f}GB available)")
+            logger.info("gpu_batch_optimization", optimal_batch_size=optimal, available_gb=round(available/1024**3, 1))
             return optimal
         else:
             # CPU only - conservative batch size
@@ -79,14 +79,14 @@ class BatchProcessor:
         results = []
         errors = []
 
-        logger.info(f"Starting batch processing of {total_docs} documents")
+        logger.info("batch_processing_started", total_documents=total_docs)
 
         # Process in optimized chunks
         for i in range(0, total_docs, self.optimal_batch_size):
             chunk = file_paths[i:i + self.optimal_batch_size]
             chunk_size = len(chunk)
 
-            logger.info(f"Processing chunk {i//self.optimal_batch_size + 1}: {chunk_size} documents")
+            logger.info("processing_chunk", chunk_number=i//self.optimal_batch_size + 1, chunk_size=chunk_size)
 
             # Clear GPU cache before chunk
             if torch.cuda.is_available():
@@ -113,7 +113,7 @@ class BatchProcessor:
                     })
 
             except torch.cuda.OutOfMemoryError as e:
-                logger.warning(f"GPU OOM in chunk {i//self.optimal_batch_size + 1}, reducing batch size")
+                logger.warning("gpu_oom_reducing_batch", chunk_number=i//self.optimal_batch_size + 1, new_batch_size=max(1, self.optimal_batch_size // 2))
                 # Reduce batch size and retry
                 self.optimal_batch_size = max(1, self.optimal_batch_size // 2)
 
@@ -123,11 +123,11 @@ class BatchProcessor:
                         result = await self._process_single(file_path, backend, language, **kwargs)
                         results.append(result)
                     except Exception as e:
-                        logger.error(f"Failed to process {file_path}: {e}")
+                        logger.error("single_file_processing_failed", file_path=file_path, error=str(e))
                         errors.append({"file": file_path, "error": str(e)})
 
             except Exception as e:
-                logger.error(f"Chunk processing failed: {e}")
+                logger.error("chunk_processing_failed", error=str(e))
                 # Process remaining documents individually
                 for file_path in chunk:
                     try:
@@ -184,7 +184,7 @@ class BatchProcessor:
         processed_results = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                logger.error(f"Failed to process {file_paths[i]}: {result}")
+                logger.error("parallel_processing_failed", file_path=file_paths[i], error=str(result))
                 processed_results.append({
                     "success": False,
                     "file": file_paths[i],
@@ -227,7 +227,7 @@ class BatchProcessor:
             return result
 
         except Exception as e:
-            logger.error(f"Error processing {file_path}: {e}")
+            logger.error("document_processing_error", file_path=file_path, error=str(e))
             return {
                 "success": False,
                 "file": file_path,
@@ -271,7 +271,7 @@ class BatchProcessor:
                 "total": 0
             }
 
-        logger.info(f"Found {len(files)} files matching {pattern}")
+        logger.info("files_found", count=len(files), pattern=pattern)
 
         # Convert to string paths
         file_paths = [str(f) for f in files]
@@ -284,4 +284,4 @@ class BatchProcessor:
         self.executor.shutdown(wait=True)
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-        logger.info("BatchProcessor cleaned up")
+        logger.info("batch_processor_cleaned_up")

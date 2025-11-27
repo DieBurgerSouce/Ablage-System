@@ -8,10 +8,10 @@ from typing import AsyncGenerator, Optional
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool
 from contextlib import asynccontextmanager
-import logging
+import structlog
 import os
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # ============================================================================
@@ -45,7 +45,7 @@ class DatabaseConfig:
         try:
             return int(value)
         except (ValueError, TypeError):
-            logger.warning(f"Invalid integer value '{value}', using default {default}")
+            logger.warning("invalid_integer_config", value=value, default=default)
             return default
 
     @property
@@ -116,7 +116,7 @@ class DatabaseManager:
             )
 
         except Exception as e:
-            logger.error(f"Failed to initialize database: {e}", exc_info=True)
+            logger.error("database_initialization_failed", error=str(e), exc_info=True)
             raise
 
     @property
@@ -159,7 +159,7 @@ class DatabaseManager:
             }
 
         except Exception as e:
-            logger.error(f"Database health check failed: {e}", exc_info=True)
+            logger.error("database_health_check_failed", error=str(e), exc_info=True)
             return {
                 "status": "unhealthy",
                 "error": str(e)
@@ -174,7 +174,7 @@ class DatabaseManager:
             await session.commit()
         except Exception as e:
             await session.rollback()
-            logger.error(f"Database session error: {e}", exc_info=True)
+            logger.error("database_session_error", error=str(e), exc_info=True)
             raise
         finally:
             await session.close()

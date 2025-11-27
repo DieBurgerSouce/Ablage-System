@@ -206,10 +206,9 @@ import torch
 import psutil
 from typing import Optional, Dict, List
 from datetime import datetime
-import logging
+import structlog
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 class GPUManager:
     """Single RTX 4080 resource manager - CRITICAL COMPONENT"""
@@ -231,7 +230,7 @@ class GPUManager:
         self.allocations = {{}}
         self.allocation_history = []
 
-        logger.info(f"GPU Manager initialized for {{self.device_name}}")
+        logger.info("gpu_manager_initialized", device_name=self.device_name)
 
     def check_availability(self) -> Dict:
         """Check GPU availability and current status"""
@@ -272,7 +271,7 @@ class GPUManager:
             }}
 
         except Exception as e:
-            logger.error(f"GPU check failed: {{e}}")
+            logger.error("gpu_check_failed", error=str(e))
             return {{
                 "available": False,
                 "reason": f"GPU check failed: {{str(e)}}",
@@ -364,7 +363,7 @@ class GPUManager:
             "free_before_gb": free_gb
         }})
 
-        logger.info(f"Allocated {{required_gb}}GB for {{backend}}")
+        logger.info("vram_allocated", required_gb=required_gb, backend=backend)
 
         return {{
             "success": True,
@@ -378,7 +377,7 @@ class GPUManager:
         if backend in self.allocations:
             del self.allocations[backend]
             torch.cuda.empty_cache()
-            logger.info(f"Deallocated {{backend}}")
+            logger.info("backend_deallocated", backend=backend)
             return True
         return False
 
@@ -414,7 +413,7 @@ class GPUManager:
 
     def handle_oom_error(self) -> Dict:
         """Emergency OOM recovery procedure"""
-        logger.error("GPU OOM detected! Initiating recovery...")
+        logger.error("gpu_oom_detected_initiating_recovery")
 
         try:
             # Step 1: Clear all allocations
@@ -432,14 +431,14 @@ class GPUManager:
             status = self.check_availability()
 
             if status["available"] and status["free_gb"] > 4:
-                logger.info("GPU recovery successful")
+                logger.info("gpu_recovery_successful")
                 return {{
                     "recovered": True,
                     "free_gb": status["free_gb"],
                     "message": "GPU memory recovered successfully"
                 }}
             else:
-                logger.error("GPU recovery failed")
+                logger.error("gpu_recovery_failed")
                 return {{
                     "recovered": False,
                     "message": "GPU recovery failed - switch to CPU",
@@ -447,7 +446,7 @@ class GPUManager:
                 }}
 
         except Exception as e:
-            logger.critical(f"Recovery failed catastrophically: {{e}}")
+            logger.critical("recovery_failed_catastrophically", error=str(e))
             return {{
                 "recovered": False,
                 "error": str(e),

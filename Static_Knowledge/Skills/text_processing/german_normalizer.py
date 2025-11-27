@@ -11,12 +11,13 @@ Handles:
 - Historical orthography variants
 """
 
-import logging
 import unicodedata
 import re
 from typing import Dict, List, Tuple, Optional
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 class GermanNormalizer:
@@ -155,7 +156,7 @@ class GermanNormalizer:
             return text
 
         except Exception as e:
-            logger.warning(f"Encoding fix failed: {e}")
+            logger.warning("encoding_fix_failed", error=str(e))
             return text
 
     def _convert_fraktur(self, text: str) -> str:

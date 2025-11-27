@@ -4,14 +4,14 @@ Python client for HashiCorp Vault integration
 """
 
 import os
-import logging
 from typing import Optional, Dict, Any
 from functools import lru_cache
 
 import hvac
 from hvac.exceptions import VaultError, InvalidPath
+import structlog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class VaultClient:
@@ -58,7 +58,7 @@ class VaultClient:
         if not self.client.is_authenticated():
             raise VaultError("Failed to authenticate with Vault")
 
-        logger.info(f"Vault client initialized: {self.url}")
+        logger.info("vault_client_initialized", url=self.url)
 
     @lru_cache(maxsize=128)
     def get_secret(self, path: str, key: Optional[str] = None) -> Any:
@@ -93,10 +93,10 @@ class VaultClient:
             return data
 
         except InvalidPath:
-            logger.error(f"Secret not found: {path}")
+            logger.error("secret_not_found", path=path)
             raise
         except VaultError as e:
-            logger.error(f"Vault error reading {path}: {e}")
+            logger.error("vault_read_error", path=path, error=str(e))
             raise
 
     def set_secret(self, path: str, data: Dict[str, Any]) -> None:
@@ -113,13 +113,13 @@ class VaultClient:
                 secret=data,
                 mount_point=self.mount_point
             )
-            logger.info(f"Secret updated: {path}")
+            logger.info("secret_updated", path=path)
 
             # Invalidate cache for this path
             self.get_secret.cache_clear()
 
         except VaultError as e:
-            logger.error(f"Failed to write secret {path}: {e}")
+            logger.error("secret_write_failed", path=path, error=str(e))
             raise
 
     def delete_secret(self, path: str) -> None:
@@ -134,13 +134,13 @@ class VaultClient:
                 path=path,
                 mount_point=self.mount_point
             )
-            logger.info(f"Secret deleted: {path}")
+            logger.info("secret_deleted", path=path)
 
             # Invalidate cache
             self.get_secret.cache_clear()
 
         except VaultError as e:
-            logger.error(f"Failed to delete secret {path}: {e}")
+            logger.error("secret_delete_failed", path=path, error=str(e))
             raise
 
     def list_secrets(self, path: str = "") -> list[str]:
@@ -163,7 +163,7 @@ class VaultClient:
         except InvalidPath:
             return []
         except VaultError as e:
-            logger.error(f"Failed to list secrets at {path}: {e}")
+            logger.error("secrets_list_failed", path=path, error=str(e))
             raise
 
     def get_database_credentials(self, role: str = "ablage-backend") -> Dict[str, str]:
@@ -188,7 +188,7 @@ class VaultClient:
             }
 
         except VaultError as e:
-            logger.error(f"Failed to generate database credentials: {e}")
+            logger.error("database_credentials_generation_failed", error=str(e))
             raise
 
     def renew_lease(self, lease_id: str, increment: Optional[int] = None) -> None:
@@ -204,10 +204,10 @@ class VaultClient:
                 lease_id=lease_id,
                 increment=increment
             )
-            logger.info(f"Lease renewed: {lease_id}")
+            logger.info("lease_renewed", lease_id=lease_id)
 
         except VaultError as e:
-            logger.error(f"Failed to renew lease {lease_id}: {e}")
+            logger.error("lease_renewal_failed", lease_id=lease_id, error=str(e))
             raise
 
     def revoke_lease(self, lease_id: str) -> None:
@@ -219,10 +219,10 @@ class VaultClient:
         """
         try:
             self.client.sys.revoke_lease(lease_id=lease_id)
-            logger.info(f"Lease revoked: {lease_id}")
+            logger.info("lease_revoked", lease_id=lease_id)
 
         except VaultError as e:
-            logger.error(f"Failed to revoke lease {lease_id}: {e}")
+            logger.error("lease_revocation_failed", lease_id=lease_id, error=str(e))
             raise
 
 

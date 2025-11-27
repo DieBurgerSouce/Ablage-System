@@ -14,14 +14,24 @@ Feinpoliert und durchdacht - Sichere Modellverwaltung.
 
 import hashlib
 import json
-import logging
+import os
 import subprocess
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
+
+# Security Flag für Pickle-Migration
+# WARNUNG: Nur auf True setzen wenn Sie ABSOLUT SICHER sind,
+# dass die pickle-Dateien aus vertrauenswürdiger Quelle stammen!
+# Pickle-Deserialisierung kann beliebigen Code ausführen!
+ALLOW_PICKLE_MIGRATION: bool = os.environ.get(
+    "ABLAGE_ALLOW_PICKLE_MIGRATION", "false"
+).lower() == "true"
 
 
 @dataclass
@@ -144,7 +154,7 @@ class ModelRegistry:
         self._registry_path = self.base_path / self.REGISTRY_FILENAME
         self._registry: Dict[str, Any] = self._load_registry()
 
-        logger.info(f"Model Registry initialisiert: {self.base_path}")
+        logger.info("model_registry_initialisiert", path=str(self.base_path))
 
     def _load_registry(self) -> Dict[str, Any]:
         """Lädt Registry-Index."""
@@ -254,12 +264,10 @@ class ModelRegistry:
         self._save_registry()
 
         logger.info(
-            f"Modell registriert: v{version}",
-            extra={
-                "version": version,
-                "training_samples": training_samples,
-                "validation_accuracy": validation_accuracy,
-            },
+            "modell_registriert",
+            version=version,
+            training_samples=training_samples,
+            validation_accuracy=validation_accuracy,
         )
 
         return version_info
@@ -313,7 +321,7 @@ class ModelRegistry:
         model = model_class()
         model.load_model(str(model_path))
 
-        logger.info(f"Modell geladen: v{version}")
+        logger.info("modell_geladen", version=version)
 
         return model, version_info
 
@@ -330,7 +338,7 @@ class ModelRegistry:
         self._registry["active_version"] = version
         self._save_registry()
 
-        logger.info(f"Aktive Version gesetzt: v{version}")
+        logger.info("aktive_version_gesetzt", version=version)
 
     def get_active_version(self) -> Optional[str]:
         """Gibt die aktive Version zurück."""
@@ -381,7 +389,7 @@ class ModelRegistry:
         self._registry["versions"].remove(version)
         self._save_registry()
 
-        logger.info(f"Version gelöscht: v{version}")
+        logger.info("version_geloescht", version=version)
         return True
 
     def get_version_info(self, version: str) -> Optional[ModelVersion]:
@@ -448,7 +456,7 @@ class ModelRegistry:
                     self.delete_version(version)
                     deleted += 1
                 except Exception as e:
-                    logger.warning(f"Konnte Version {version} nicht löschen: {e}")
+                    logger.warning("version_loeschen_fehlgeschlagen", version=version, error=str(e))
 
         return deleted
 
@@ -458,36 +466,79 @@ def migrate_pickle_to_registry(
     pickle_path: Path,
     registry: ModelRegistry,
     feature_names: List[str],
+    force_allow: bool = False,
 ) -> Optional[ModelVersion]:
     """
     Migriert ein altes pickle-Modell zur neuen Registry.
 
-    WARNUNG: pickle.load ist unsicher! Nur für vertrauenswürdige Dateien verwenden.
+    SICHERHEITSWARNUNG:
+    - pickle.load kann BELIEBIGEN CODE ausführen!
+    - Verwenden Sie diese Funktion NUR für vertrauenswürdige Dateien!
+    - Stellen Sie ABLAGE_ALLOW_PICKLE_MIGRATION=true als Umgebungsvariable
+      oder setzen Sie force_allow=True (nur für einmalige Migrationen!)
 
     Args:
         pickle_path: Pfad zur pickle-Datei
         registry: Ziel-Registry
         feature_names: Feature-Namen für Kompatibilität
+        force_allow: Überschreibt Security Flag (GEFÄHRLICH!)
 
     Returns:
         Neue ModelVersion oder None bei Fehler
+
+    Raises:
+        SecurityError: Wenn pickle-Migration nicht erlaubt ist
     """
+    # Security Check - KRITISCH!
+    if not ALLOW_PICKLE_MIGRATION and not force_allow:
+        logger.error(
+            "pickle_migration_blocked",
+            reason="Security flag not enabled",
+            hint="Set ABLAGE_ALLOW_PICKLE_MIGRATION=true if you trust the source",
+            pickle_path=str(pickle_path),
+        )
+        raise PermissionError(
+            "Pickle-Migration ist aus Sicherheitsgründen deaktiviert. "
+            "Setzen Sie ABLAGE_ALLOW_PICKLE_MIGRATION=true wenn Sie der "
+            "Quelle der pickle-Datei vertrauen. WARNUNG: pickle.load kann "
+            "beliebigen Code ausführen!"
+        )
+
     import pickle
     import warnings
+
+    # Audit Log - wer hat wann eine pickle-Migration durchgeführt?
+    logger.warning(
+        "pickle_migration_started",
+        pickle_path=str(pickle_path),
+        force_allow=force_allow,
+        security_warning="pickle.load kann beliebigen Code ausfuehren!",
+    )
 
     warnings.warn(
         "Migration von pickle-Modell. pickle.load ist unsicher! "
         "Stellen Sie sicher, dass die Datei vertrauenswürdig ist.",
         UserWarning,
+        stacklevel=2,
     )
 
     try:
+        # Validate path exists and is a file
+        if not pickle_path.exists():
+            raise FileNotFoundError(f"Pickle-Datei nicht gefunden: {pickle_path}")
+        if not pickle_path.is_file():
+            raise ValueError(f"Pfad ist keine Datei: {pickle_path}")
+
         with open(pickle_path, "rb") as f:
-            data = pickle.load(f)  # noqa: S301
+            data = pickle.load(f)  # noqa: S301 - Security check above
 
         model = data.get("model")
         if model is None:
-            logger.error("Kein Modell in pickle-Datei gefunden")
+            logger.error(
+                "pickle_migration_failed",
+                reason="No model found in pickle file",
+                pickle_path=str(pickle_path),
+            )
             return None
 
         training_samples = data.get("training_samples", 0)
@@ -498,13 +549,27 @@ def migrate_pickle_to_registry(
             feature_names=feature_names,
             training_samples=training_samples,
             validation_accuracy=0.0,  # Unbekannt
-            metadata={"migrated_from": str(pickle_path)},
+            metadata={
+                "migrated_from": str(pickle_path),
+                "migration_timestamp": datetime.now(timezone.utc).isoformat(),
+                "security_notice": "Migrated from pickle - verify model integrity",
+            },
             bump_type="major",  # Major version für Migration
         )
 
-        logger.info(f"Pickle-Modell migriert zu v{version_info.version}")
+        logger.info(
+            "pickle_migration_completed",
+            version=version_info.version,
+            pickle_path=str(pickle_path),
+        )
         return version_info
 
+    except PermissionError:
+        raise  # Re-raise security errors
     except Exception as e:
-        logger.error(f"Migration fehlgeschlagen: {e}")
+        logger.exception(
+            "pickle_migration_failed",
+            error=str(e),
+            pickle_path=str(pickle_path),
+        )
         return None

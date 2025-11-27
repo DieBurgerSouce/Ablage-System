@@ -12,14 +12,15 @@ KRITISCH: 100% Genauigkeit für deutsche Umlaute erforderlich.
 Feinpoliert und durchdacht - Perfekte deutsche Textverarbeitung.
 """
 
-import logging
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
+
+import structlog
 
 from app.agents.base import PostprocessingAgent
 from app.german_validator import GermanValidator
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class GermanCorrectionAgent(PostprocessingAgent):

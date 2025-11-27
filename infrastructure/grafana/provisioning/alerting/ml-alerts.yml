@@ -57,11 +57,14 @@ groups:
         for: 5m
         annotations:
           summary: Kritischer Drift im ML-Routing erkannt
-          description: Der Drift-Score hat den kritischen Schwellwert ueberschritten. Model-Retraining wird empfohlen.
+          description: Der Drift-Score hat den kritischen Schwellwert (>0.5) ueberschritten. Model-Retraining wird empfohlen.
+          runbook_url: https://wiki.intern/runbooks/ml-routing/drift-critical
+          dashboard_url: /d/ml-routing/ml-routing-overview
         labels:
           severity: critical
           component: ml-routing
           team: platform
+          escalation: pagerduty
 
       # High Drift Warning
       - uid: ml-drift-high
@@ -111,7 +114,9 @@ groups:
         for: 15m
         annotations:
           summary: Hoher Drift im ML-Routing erkannt
-          description: Der Drift-Score ist erhoet. Ueberwachung verstaerken.
+          description: Der Drift-Score ist erhoeht (>0.3). Ueberwachung verstaerken und Ursachenanalyse starten.
+          runbook_url: https://wiki.intern/runbooks/ml-routing/drift-high
+          dashboard_url: /d/ml-routing/ml-routing-overview
         labels:
           severity: warning
           component: ml-routing
@@ -165,7 +170,9 @@ groups:
         for: 10m
         annotations:
           summary: ML-Routing zeigt niedrige Konfidenz
-          description: Die durchschnittliche Routing-Konfidenz ist unter 70% gefallen.
+          description: Die durchschnittliche Routing-Konfidenz ist unter 70% gefallen. Pruefen Sie Feature-Qualitaet und Model-Performance.
+          runbook_url: https://wiki.intern/runbooks/ml-routing/low-confidence
+          dashboard_url: /d/ml-routing/ml-routing-overview
         labels:
           severity: warning
           component: ml-routing
@@ -219,7 +226,9 @@ groups:
         for: 5m
         annotations:
           summary: Hohe ML-Routing-Latenz
-          description: Die p95 Routing-Latenz hat 100ms ueberschritten.
+          description: Die p95 Routing-Latenz hat 100ms ueberschritten. Pruefen Sie CPU-Auslastung und Model-Ladezeit.
+          runbook_url: https://wiki.intern/runbooks/ml-routing/high-latency
+          dashboard_url: /d/ml-routing/ml-routing-overview
         labels:
           severity: warning
           component: ml-routing
@@ -273,11 +282,14 @@ groups:
         for: 2m
         annotations:
           summary: GPU-Speicher fast voll
-          description: Der GPU-Speicher ist zu ueber 90% ausgelastet. OOM-Risiko!
+          description: Der GPU-Speicher ist zu ueber 90% ausgelastet. OOM-Risiko! Sofortige Untersuchung erforderlich.
+          runbook_url: https://wiki.intern/runbooks/ml-routing/gpu-memory-critical
+          dashboard_url: /d/gpu-monitoring/gpu-overview
         labels:
           severity: critical
           component: ml-routing
           team: platform
+          escalation: pagerduty
 
       # Backend Processing Time High
       - uid: ml-backend-slow
@@ -327,7 +339,9 @@ groups:
         for: 5m
         annotations:
           summary: OCR-Backend zu langsam
-          description: Die p95 Verarbeitungszeit eines Backends hat 10 Sekunden ueberschritten.
+          description: Die p95 Verarbeitungszeit eines Backends hat 10 Sekunden ueberschritten. Pruefen Sie GPU-Last und Queue-Tiefe.
+          runbook_url: https://wiki.intern/runbooks/ocr-backend/slow-processing
+          dashboard_url: /d/ocr-backends/ocr-backend-overview
         labels:
           severity: warning
           component: ocr-backend
@@ -381,7 +395,9 @@ groups:
         for: 0s
         annotations:
           summary: A/B Experiment hat Mindest-Samples erreicht
-          description: Ein A/B Experiment hat 1000 Samples erreicht und kann ausgewertet werden.
+          description: Ein A/B Experiment hat 1000 Samples erreicht und kann ausgewertet werden. Ergebnisse im Dashboard pruefen.
+          runbook_url: https://wiki.intern/runbooks/ab-testing/experiment-analysis
+          dashboard_url: /d/ab-testing/ab-test-overview
         labels:
           severity: info
           component: ab-testing

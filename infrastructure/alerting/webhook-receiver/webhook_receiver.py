@@ -6,19 +6,22 @@ Custom webhook endpoint for processing Alertmanager alerts
 
 import os
 import json
-import logging
 from datetime import datetime
 from typing import Dict, List, Any
 
 from flask import Flask, request, jsonify
 import requests
+import structlog
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+structlog.configure(
+    processors=[
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.JSONRenderer()
+    ]
 )
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 app = Flask(__name__)
 
@@ -61,10 +64,10 @@ def store_alert_in_database(alert_data: Dict[str, Any]) -> bool:
             timeout=5
         )
         response.raise_for_status()
-        logger.info(f"Alert stored in database: {alert_data['alert_name']}")
+        logger.info("alert_stored_in_database", alert_name=alert_data['alert_name'])
         return True
     except requests.RequestException as e:
-        logger.error(f"Failed to store alert in database: {e}")
+        logger.error("failed_to_store_alert", error=str(e))
         return False
 
 
@@ -83,7 +86,7 @@ def trigger_custom_action(alert: Dict[str, Any]) -> None:
                 timeout=5
             )
         except requests.RequestException as e:
-            logger.error(f"Failed to trigger auto-scaling: {e}")
+            logger.error("failed_to_trigger_auto_scaling", error=str(e))
 
     # Example: Clear GPU memory on OOM warning
     if 'GPU' in alert_name and 'Memory' in alert_name:
@@ -94,7 +97,7 @@ def trigger_custom_action(alert: Dict[str, Any]) -> None:
                 timeout=5
             )
         except requests.RequestException as e:
-            logger.error(f"Failed to trigger GPU cleanup: {e}")
+            logger.error("failed_to_trigger_gpu_cleanup", error=str(e))
 
 
 @app.route('/health', methods=['GET'])
@@ -128,23 +131,25 @@ def webhook():
     # Verify webhook secret
     secret = request.headers.get('X-Webhook-Secret', '')
     if not verify_webhook_secret(secret):
-        logger.warning(f"Invalid webhook secret from {request.remote_addr}")
+        logger.warning("invalid_webhook_secret", remote_addr=request.remote_addr)
         return jsonify({'error': 'Invalid webhook secret'}), 401
 
     # Parse payload
     try:
         payload = request.get_json()
     except Exception as e:
-        logger.error(f"Failed to parse webhook payload: {e}")
+        logger.error("failed_to_parse_webhook_payload", error=str(e))
         return jsonify({'error': 'Invalid JSON payload'}), 400
 
     if not payload:
         return jsonify({'error': 'Empty payload'}), 400
 
     # Log webhook reception
-    logger.info(f"Received webhook from Alertmanager: "
-                f"status={payload.get('status')}, "
-                f"alerts={len(payload.get('alerts', []))}")
+    logger.info(
+        "received_webhook_from_alertmanager",
+        status=payload.get('status'),
+        alert_count=len(payload.get('alerts', []))
+    )
 
     # Process alerts
     alerts = payload.get('alerts', [])
@@ -167,7 +172,7 @@ def webhook():
                 trigger_custom_action(alert)
 
         except Exception as e:
-            logger.exception(f"Error processing alert: {e}")
+            logger.exception("error_processing_alert", error=str(e))
             failed_count += 1
 
     # Return response
@@ -185,8 +190,8 @@ def webhook_test():
     """Test endpoint for webhook testing."""
     payload = request.get_json()
 
-    logger.info("Received test webhook")
-    logger.info(f"Payload: {json.dumps(payload, indent=2)}")
+    logger.info("received_test_webhook")
+    logger.info("test_webhook_payload", payload=payload)
 
     return jsonify({
         'status': 'success',

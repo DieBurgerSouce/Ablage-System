@@ -12,13 +12,19 @@ Erfasst:
 Feinpoliert und durchdacht - Observability für ML in Produktion.
 """
 
-import logging
+import inspect
+import threading
 import time
 from contextlib import contextmanager
 from functools import wraps
 from typing import Any, Callable, Dict, Optional
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
+
+# Thread-Safety für Singleton
+_ml_metrics_lock = threading.Lock()
 
 # Optional Prometheus integration
 PROMETHEUS_AVAILABLE = False
@@ -391,7 +397,7 @@ class MLMetrics:
             if severity != "none":
                 DRIFT_ALERTS.labels(severity=severity).inc()
         else:
-            logger.info(f"Drift: overall={overall_score:.3f}, severity={severity}")
+            logger.info("drift_score_recorded", overall_score=round(overall_score, 3), severity=severity)
 
     # -------------------------------------------------------------------------
     # A/B Test Metriken
@@ -421,7 +427,7 @@ class MLMetrics:
                     experiment_id=experiment_id, variant=variant
                 ).inc()
         else:
-            logger.debug(f"A/B Sample: {experiment_id}/{variant}, success={success}")
+            logger.debug("ab_sample_recorded", experiment_id=experiment_id, variant=variant, success=success)
 
     def set_active_experiments(self, count: int) -> None:
         """Setze Anzahl aktiver Experimente."""
@@ -501,7 +507,7 @@ class MLMetrics:
         except ImportError:
             pass
         except Exception as e:
-            logger.debug(f"GPU-Metriken Update fehlgeschlagen: {e}")
+            logger.debug("gpu_metriken_update_fehlgeschlagen", error=str(e))
 
     # -------------------------------------------------------------------------
     # Export
@@ -527,10 +533,14 @@ _ml_metrics: Optional[MLMetrics] = None
 
 
 def get_ml_metrics() -> MLMetrics:
-    """Hole globale MLMetrics Instanz."""
+    """Hole globale MLMetrics Instanz (thread-safe)."""
     global _ml_metrics
-    if _ml_metrics is None:
-        _ml_metrics = MLMetrics()
+    if _ml_metrics is not None:
+        return _ml_metrics
+    with _ml_metrics_lock:
+        if _ml_metrics is None:
+            logger.info("ml_metrics_initialisierung")
+            _ml_metrics = MLMetrics()
     return _ml_metrics
 
 

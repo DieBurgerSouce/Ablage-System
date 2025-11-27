@@ -9,7 +9,7 @@ import psutil
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from collections import defaultdict, deque
-import logging
+import structlog
 
 try:
     import torch
@@ -18,7 +18,7 @@ except ImportError:
     TORCH_AVAILABLE = False
     torch = None
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class MetricsCollector:
@@ -264,7 +264,7 @@ class PerformanceTimer:
 
     def __enter__(self):
         self.start_time = time.time()
-        logger.debug(f"Starting timer: {self.name}")
+        logger.debug("timer_started", timer_name=self.name)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -272,9 +272,9 @@ class PerformanceTimer:
         self.duration_ms = (end_time - self.start_time) * 1000
 
         if exc_type is None:
-            logger.info(f"{self.name} completed in {self.duration_ms:.2f}ms")
+            logger.info("timer_completed", timer_name=self.name, duration_ms=round(self.duration_ms, 2))
         else:
-            logger.error(f"{self.name} failed after {self.duration_ms:.2f}ms: {exc_val}")
+            logger.error("timer_failed", timer_name=self.name, duration_ms=round(self.duration_ms, 2), error=str(exc_val))
 
         return False  # Don't suppress exceptions
 

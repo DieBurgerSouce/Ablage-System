@@ -79,7 +79,7 @@ class MLTracker:
             )
 
         except Exception as e:
-            logger.warning(f"ML-Tracking fehlgeschlagen: {e}")
+            logger.warning("ml_tracking_failed", error=str(e))
 
     @staticmethod
     def track_ocr_result(
@@ -139,7 +139,7 @@ class MLTracker:
                     )
 
         except Exception as e:
-            logger.warning(f"OCR-Result-Tracking fehlgeschlagen: {e}")
+            logger.warning("ocr_result_tracking_failed", error=str(e))
 
     @staticmethod
     def get_routing_explanation(
@@ -177,7 +177,7 @@ class MLTracker:
             return explanation.to_dict()
 
         except Exception as e:
-            logger.warning(f"SHAP-Erklärung fehlgeschlagen: {e}")
+            logger.warning("shap_explanation_failed", error=str(e))
             return None
 
 
@@ -190,7 +190,15 @@ ml_tracker = MLTracker()
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="app.workers.tasks.ml_tasks.run_drift_detection"
+    name="app.workers.tasks.ml_tasks.run_drift_detection",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=600,
+    soft_time_limit=300,
+    time_limit=360,
+    acks_late=True,
+    reject_on_worker_lost=True,
 )
 def run_drift_detection(self) -> Dict[str, Any]:
     """
@@ -242,7 +250,15 @@ def run_drift_detection(self) -> Dict[str, Any]:
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="app.workers.tasks.ml_tasks.update_ml_metrics"
+    name="app.workers.tasks.ml_tasks.update_ml_metrics",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 2},
+    retry_backoff=True,
+    retry_backoff_max=30,
+    soft_time_limit=25,
+    time_limit=30,
+    acks_late=True,
+    reject_on_worker_lost=True,
 )
 def update_ml_metrics(self) -> Dict[str, Any]:
     """
@@ -287,14 +303,22 @@ def update_ml_metrics(self) -> Dict[str, Any]:
         return result
 
     except Exception as e:
-        logger.warning(f"ML-Metriken-Update fehlgeschlagen: {e}")
+        logger.warning("ml_metrics_update_failed", error=str(e))
         return {"error": str(e)}
 
 
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="app.workers.tasks.ml_tasks.check_experiment_completion"
+    name="app.workers.tasks.ml_tasks.check_experiment_completion",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=300,
+    soft_time_limit=240,
+    time_limit=300,
+    acks_late=True,
+    reject_on_worker_lost=True,
 )
 def check_experiment_completion(self) -> Dict[str, Any]:
     """
@@ -364,7 +388,15 @@ def check_experiment_completion(self) -> Dict[str, Any]:
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="app.workers.tasks.ml_tasks.trigger_model_retrain"
+    name="app.workers.tasks.ml_tasks.trigger_model_retrain",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=600,
+    soft_time_limit=600,
+    time_limit=720,
+    acks_late=True,
+    reject_on_worker_lost=True,
 )
 def trigger_model_retrain(
     self,
@@ -438,7 +470,15 @@ def trigger_model_retrain(
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="app.workers.tasks.ml_tasks.generate_ml_report"
+    name="app.workers.tasks.ml_tasks.generate_ml_report",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=600,
+    soft_time_limit=300,
+    time_limit=360,
+    acks_late=True,
+    reject_on_worker_lost=True,
 )
 def generate_ml_report(self) -> Dict[str, Any]:
     """

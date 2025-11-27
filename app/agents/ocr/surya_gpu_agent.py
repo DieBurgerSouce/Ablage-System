@@ -5,8 +5,8 @@ import io
 import asyncio
 from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
-import logging
 import torch
+import structlog
 
 from PIL import Image
 import pypdfium2 as pdfium
@@ -21,8 +21,7 @@ from surya.model.recognition.processor import load_processor as load_rec_process
 
 from app.agents.base import OCRAgent
 
-# Configure logging
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class SuryaGPUAgent(OCRAgent):
@@ -58,13 +57,13 @@ class SuryaGPUAgent(OCRAgent):
             # Enable cudNN autotuner for best performance
             torch.backends.cudnn.benchmark = True
 
-            logger.info(f"GPU detected: {torch.cuda.get_device_name(0)}")
-            logger.info(f"CUDA version: {torch.version.cuda}")
-            logger.info(f"Available VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+            logger.info("gpu_detected", device=torch.cuda.get_device_name(0))
+            logger.info("cuda_version", version=torch.version.cuda)
+            logger.info("vram_available", vram_gb=round(torch.cuda.get_device_properties(0).total_memory / 1024**3, 1))
         else:
-            logger.warning("No GPU detected, falling back to CPU mode")
+            logger.warning("no_gpu_detected_cpu_fallback")
 
-        logger.info(f"SuryaGPUAgent initialized on {self.device} with dtype {self.dtype}")
+        logger.info("surya_gpu_agent_initialized", device=str(self.device), dtype=str(self.dtype))
 
     def _load_models(self):
         """Load Surya models with GPU optimization."""
@@ -72,7 +71,7 @@ class SuryaGPUAgent(OCRAgent):
             return
 
         try:
-            logger.info(f"Loading Surya models on {self.device}...")
+            logger.info("loading_surya_models", device=str(self.device))
 
             # Clear GPU cache before loading
             if torch.cuda.is_available():
@@ -81,12 +80,12 @@ class SuryaGPUAgent(OCRAgent):
             # Load detection model (Surya functions don't take device/dtype directly)
             self._det_model = load_det_model()
             self._det_processor = load_det_processor()
-            logger.info(f"Detection model loaded")
+            logger.info("detection_model_loaded")
 
             # Load recognition model
             self._rec_model = load_rec_model()
             self._rec_processor = load_rec_processor()
-            logger.info(f"Recognition model loaded")
+            logger.info("recognition_model_loaded")
 
             # Move models to GPU if available
             if torch.cuda.is_available():
@@ -95,13 +94,13 @@ class SuryaGPUAgent(OCRAgent):
 
                 # Log VRAM usage
                 allocated = torch.cuda.memory_allocated() / 1024**3
-                logger.info(f"Models loaded. VRAM used: {allocated:.1f} GB")
+                logger.info("models_loaded_vram", vram_used_gb=round(allocated, 1))
 
             self._models_loaded = True
             logger.info("All Surya models loaded successfully with GPU optimization")
 
         except Exception as e:
-            logger.error(f"Failed to load Surya models: {e}")
+            logger.error("surya_models_load_failed", error=str(e))
             # Try CPU fallback
             if torch.cuda.is_available():
                 logger.warning("GPU loading failed, falling back to CPU")
@@ -127,7 +126,7 @@ class SuryaGPUAgent(OCRAgent):
             logger.info("Surya models loaded on CPU (fallback mode)")
 
         except Exception as e:
-            logger.error(f"CPU fallback also failed: {e}")
+            logger.error("cpu_fallback_failed", error=str(e))
             raise
 
     def _load_image(self, image_path: str) -> List[Image.Image]:
@@ -140,7 +139,7 @@ class SuryaGPUAgent(OCRAgent):
 
         if path.suffix.lower() == '.pdf':
             # Handle PDF files
-            logger.info(f"Processing PDF file: {image_path}")
+            logger.info("processing_pdf", path=image_path)
             try:
                 pdf = pdfium.PdfDocument(image_path)
                 for page_num in range(len(pdf)):
@@ -148,14 +147,14 @@ class SuryaGPUAgent(OCRAgent):
                     # Render at 300 DPI for good quality
                     pil_image = page.render(scale=300/72).to_pil()
                     images.append(pil_image)
-                    logger.debug(f"Loaded PDF page {page_num + 1}/{len(pdf)}")
+                    logger.debug("pdf_page_loaded", page=page_num + 1, total=len(pdf))
                 pdf.close()
             except Exception as e:
-                logger.error(f"Failed to load PDF: {e}")
+                logger.error("pdf_load_failed", error=str(e))
                 raise
         else:
             # Handle image files (PNG, JPG, etc.)
-            logger.info(f"Processing image file: {image_path}")
+            logger.info("processing_image", path=image_path)
             try:
                 image = Image.open(image_path)
                 # Convert to RGB if necessary
@@ -163,7 +162,7 @@ class SuryaGPUAgent(OCRAgent):
                     image = image.convert('RGB')
                 images.append(image)
             except Exception as e:
-                logger.error(f"Failed to load image: {e}")
+                logger.error("image_load_failed", error=str(e))
                 raise
 
         return images
@@ -225,7 +224,7 @@ class SuryaGPUAgent(OCRAgent):
         if torch.cuda.is_available():
             allocated = torch.cuda.memory_allocated() / 1024**3
             max_allocated = torch.cuda.max_memory_allocated() / 1024**3
-            logger.debug(f"GPU memory: {allocated:.1f}/{max_allocated:.1f} GB (current/peak)")
+            logger.debug("gpu_memory", current_gb=round(allocated, 1), peak_gb=round(max_allocated, 1))
 
         # Combine all text lines
         full_text = "\n".join(text_lines)
@@ -236,7 +235,7 @@ class SuryaGPUAgent(OCRAgent):
         found_german = [char for char in german_chars if char in full_text]
 
         if found_german:
-            logger.info(f"German characters detected: {', '.join(found_german)}")
+            logger.info("german_chars_detected", chars=found_german)
 
         return {
             "text": full_text,
@@ -271,14 +270,14 @@ class SuryaGPUAgent(OCRAgent):
 
             # Load images from file
             images = self._load_image(image_path)
-            logger.info(f"Loaded {len(images)} page(s) for OCR processing")
+            logger.info("pages_loaded_for_ocr", count=len(images))
 
             # Process each page with GPU optimization
             all_text = []
             all_confidences = []
 
             for i, image in enumerate(images):
-                logger.info(f"Processing page {i+1}/{len(images)}")
+                logger.info("processing_page", page=i+1, total=len(images))
 
                 # GPU memory management for multi-page documents
                 if torch.cuda.is_available() and i > 0:
@@ -296,9 +295,9 @@ class SuryaGPUAgent(OCRAgent):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
                 final_memory = torch.cuda.memory_allocated() / 1024**3
-                logger.info(f"Processing complete. Final VRAM usage: {final_memory:.1f} GB")
+                logger.info("processing_complete", final_vram_gb=round(final_memory, 1))
 
-            logger.info(f"OCR completed. Extracted {len(full_text)} characters from {len(images)} page(s)")
+            logger.info("ocr_completed", chars_extracted=len(full_text), pages=len(images))
 
             return {
                 "success": True,
@@ -315,7 +314,7 @@ class SuryaGPUAgent(OCRAgent):
             }
 
         except Exception as e:
-            logger.error(f"OCR processing failed: {e}")
+            logger.error("ocr_processing_failed", error=str(e))
             # GPU memory cleanup on error
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()

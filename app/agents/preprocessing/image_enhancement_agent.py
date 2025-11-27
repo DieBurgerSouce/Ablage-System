@@ -11,16 +11,16 @@ Enterprise-grade image preprocessing for optimal OCR results:
 Feinpoliert und durchdacht - Optimale Bildqualität für deutsche Dokumente.
 """
 
-import logging
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+import structlog
 
 from app.agents.base import PreprocessingAgent
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ImageEnhancementAgent(PreprocessingAgent):

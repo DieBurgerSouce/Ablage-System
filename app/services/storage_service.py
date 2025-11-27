@@ -7,7 +7,7 @@ Created: 2024-11-22
 from typing import Optional, BinaryIO, Dict, Any
 from pathlib import Path
 import os
-import logging
+import structlog
 from datetime import timedelta
 import mimetypes
 import hashlib
@@ -19,7 +19,7 @@ try:
 except ImportError:
     MINIO_AVAILABLE = False
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # ============================================================================
@@ -62,7 +62,7 @@ class StorageService:
                 self._initialize_client()
                 self._ensure_buckets()
             except Exception as e:
-                logger.error(f"Failed to initialize MinIO: {e}")
+                logger.error("minio_init_failed", error=str(e))
                 self.available = False
 
     def _initialize_client(self):
@@ -85,7 +85,7 @@ class StorageService:
             )
 
         except Exception as e:
-            logger.error(f"MinIO initialization failed: {e}", exc_info=True)
+            logger.error("minio_initialization_failed", error=str(e), exc_info=True)
             raise
 
     def _ensure_buckets(self):
@@ -100,9 +100,9 @@ class StorageService:
             try:
                 if not self.client.bucket_exists(bucket):
                     self.client.make_bucket(bucket)
-                    logger.info(f"created_bucket: {bucket}")
+                    logger.info("bucket_created", bucket=bucket)
             except Exception as e:
-                logger.error(f"Failed to create bucket {bucket}: {e}")
+                logger.error("bucket_creation_failed", bucket=bucket, error=str(e))
 
     # ========================================================================
     # UPLOAD OPERATIONS
@@ -179,10 +179,10 @@ class StorageService:
             }
 
         except S3Error as e:
-            logger.error(f"MinIO upload failed: {e}", exc_info=True)
+            logger.error("minio_upload_failed", error=str(e), exc_info=True)
             raise
         except Exception as e:
-            logger.error(f"Upload failed: {e}", exc_info=True)
+            logger.error("upload_failed", error=str(e), exc_info=True)
             raise
 
     async def upload_thumbnail(
@@ -204,11 +204,11 @@ class StorageService:
                 content_type=f"image/{format}"
             )
 
-            logger.info(f"thumbnail_uploaded: {object_key}")
+            logger.info("thumbnail_uploaded", object_key=object_key)
             return object_key
 
         except Exception as e:
-            logger.error(f"Thumbnail upload failed: {e}", exc_info=True)
+            logger.error("thumbnail_upload_failed", error=str(e), exc_info=True)
             raise
 
     # ========================================================================
@@ -230,14 +230,14 @@ class StorageService:
             response.close()
             response.release_conn()
 
-            logger.info(f"document_downloaded: {object_key}, size={len(data)}")
+            logger.info("document_downloaded", object_key=object_key, size=len(data))
             return data
 
         except S3Error as e:
-            logger.error(f"MinIO download failed: {e}", exc_info=True)
+            logger.error("minio_download_failed", error=str(e), exc_info=True)
             raise
         except Exception as e:
-            logger.error(f"Download failed: {e}", exc_info=True)
+            logger.error("download_failed", error=str(e), exc_info=True)
             raise
 
     async def get_presigned_url(
@@ -258,11 +258,11 @@ class StorageService:
                 expires=expiry
             )
 
-            logger.info(f"presigned_url_generated: {object_key}, expiry={expiry}")
+            logger.info("presigned_url_generated", object_key=object_key, expiry=str(expiry))
             return url
 
         except Exception as e:
-            logger.error(f"Presigned URL generation failed: {e}", exc_info=True)
+            logger.error("presigned_url_generation_failed", error=str(e), exc_info=True)
             raise
 
     # ========================================================================
@@ -280,14 +280,14 @@ class StorageService:
                 object_name=object_key
             )
 
-            logger.info(f"document_deleted: {object_key}")
+            logger.info("document_deleted", object_key=object_key)
             return True
 
         except S3Error as e:
-            logger.error(f"MinIO delete failed: {e}", exc_info=True)
+            logger.error("minio_delete_failed", error=str(e), exc_info=True)
             return False
         except Exception as e:
-            logger.error(f"Delete failed: {e}", exc_info=True)
+            logger.error("delete_failed", error=str(e), exc_info=True)
             return False
 
     async def delete_user_documents(self, user_id: str) -> int:
@@ -314,11 +314,11 @@ class StorageService:
                 )
                 deleted_count += 1
 
-            logger.info(f"user_documents_deleted: user={user_id}, count={deleted_count}")
+            logger.info("user_documents_deleted", user_id=user_id, count=deleted_count)
             return deleted_count
 
         except Exception as e:
-            logger.error(f"Batch delete failed: {e}", exc_info=True)
+            logger.error("batch_delete_failed", error=str(e), exc_info=True)
             raise
 
     # ========================================================================
@@ -345,7 +345,7 @@ class StorageService:
             }
 
         except Exception as e:
-            logger.error(f"MinIO health check failed: {e}", exc_info=True)
+            logger.error("minio_health_check_failed", error=str(e), exc_info=True)
             return {
                 "status": "unhealthy",
                 "error": str(e)
@@ -383,7 +383,7 @@ class StorageService:
             return stats
 
         except Exception as e:
-            logger.error(f"Storage stats failed: {e}", exc_info=True)
+            logger.error("storage_stats_failed", error=str(e), exc_info=True)
             return {"error": str(e)}
 
 

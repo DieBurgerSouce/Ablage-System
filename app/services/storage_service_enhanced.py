@@ -8,7 +8,6 @@ Updated: 2025-11-26 - Enhanced with full feature set
 from typing import Optional, BinaryIO, Dict, Any, List, AsyncIterator, Tuple
 from pathlib import Path
 import os
-import logging
 from datetime import timedelta, datetime
 import mimetypes
 import hashlib
@@ -18,6 +17,8 @@ import gzip
 import json
 from contextlib import asynccontextmanager
 
+import structlog
+
 try:
     from minio import Minio
     from minio.error import S3Error
@@ -26,7 +27,7 @@ try:
 except ImportError:
     MINIO_AVAILABLE = False
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # ============================================================================

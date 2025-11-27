@@ -13,7 +13,6 @@ Feinpoliert und durchdacht - Zuverlässige Benachrichtigungen für Benutzer.
 
 import asyncio
 import json
-import logging
 import smtplib
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -212,7 +211,7 @@ Bitte überprüfen Sie das System.
             rendered_body = body.format(**context)
             rendered_subject = subject.format(**context) if "{" in subject else subject
         except KeyError as e:
-            logger.warning(f"Fehlender Template-Kontext: {e}")
+            logger.warning("missing_template_context", missing_key=str(e))
             rendered_body = body
             rendered_subject = subject
 

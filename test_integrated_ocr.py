@@ -4,15 +4,18 @@
 import asyncio
 from pathlib import Path
 import sys
-import logging
+import structlog
 
 # Add app directory to path
 sys.path.append("app")
 
-# Configure logging to see what's happening
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+# Configure structlog for console output
+structlog.configure(
+    processors=[
+        structlog.stdlib.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.dev.ConsoleRenderer()
+    ]
 )
 
 async def test_surya_directly():

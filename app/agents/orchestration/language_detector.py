@@ -15,13 +15,14 @@ Verwendet:
 Feinpoliert und durchdacht - Präzise Spracherkennung für optimales Routing.
 """
 
-import logging
 import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 # =============================================================================
@@ -343,7 +344,7 @@ class LanguageDetector:
                 )
 
         except Exception as e:
-            logger.debug(f"langdetect error: {e}")
+            logger.debug("langdetect_error", error=str(e))
 
         return LanguageDetectionResult(
             primary_language=LanguageCode.UNKNOWN,
@@ -379,7 +380,7 @@ class LanguageDetector:
                 )
 
         except Exception as e:
-            logger.debug(f"lingua error: {e}")
+            logger.debug("lingua_error", error=str(e))
 
         return LanguageDetectionResult(
             primary_language=LanguageCode.UNKNOWN,

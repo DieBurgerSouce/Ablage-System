@@ -5,15 +5,15 @@ Provides automatic logging of all HTTP requests with timing and context.
 """
 import time
 import uuid
-import logging
 from typing import Callable, Optional
 from contextvars import ContextVar
+
+import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-# Use standard logging for POC (no structlog dependency)
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Context variables for request tracking
 correlation_id_var: ContextVar[Optional[str]] = ContextVar('correlation_id', default=None)
@@ -96,9 +96,12 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         client_host = request.client.host if request.client else "unknown"
         user_agent = request.headers.get("User-Agent", "unknown")
         logger.info(
-            f"Eingehende Anfrage - correlation_id={correlation_id} "
-            f"method={request.method} path={request.url.path} "
-            f"client={client_host} user_id={user_id}"
+            "eingehende_anfrage",
+            correlation_id=correlation_id,
+            method=request.method,
+            path=request.url.path,
+            client=client_host,
+            user_id=user_id
         )
 
         # Log request body if enabled and not too large
@@ -108,13 +111,17 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 if int(content_length) < 10000:  # Only log bodies under 10KB
                     body = await request.body()
                     logger.debug(
-                        f"Anfrage Körper - correlation_id={correlation_id} size_bytes={len(body)}"
+                        "anfrage_koerper",
+                        correlation_id=correlation_id,
+                        size_bytes=len(body)
                     )
                     # Reset body for downstream processing
                     request._body = body
             except Exception as e:
                 logger.warning(
-                    f"Fehler beim Lesen des Anfragekörpers - correlation_id={correlation_id} error={str(e)}"
+                    "fehler_beim_lesen_anfrage_koerper",
+                    correlation_id=correlation_id,
+                    error=str(e)
                 )
 
         # Process request
@@ -130,9 +137,12 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
             # Log error
             logger.error(
-                f"Anfrage fehlgeschlagen - correlation_id={correlation_id} "
-                f"method={request.method} path={request.url.path} "
-                f"error={error_message} user_id={user_id}",
+                "anfrage_fehlgeschlagen",
+                correlation_id=correlation_id,
+                method=request.method,
+                path=request.url.path,
+                error=error_message,
+                user_id=user_id,
                 exc_info=True
             )
 
@@ -152,9 +162,13 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                     log_func = logger.error
 
                 log_func(
-                    f"Ausgehende Antwort - correlation_id={correlation_id} "
-                    f"method={request.method} path={request.url.path} "
-                    f"status={response.status_code} duration_ms={duration_ms} user_id={user_id}"
+                    "ausgehende_antwort",
+                    correlation_id=correlation_id,
+                    method=request.method,
+                    path=request.url.path,
+                    status=response.status_code,
+                    duration_ms=duration_ms,
+                    user_id=user_id
                 )
 
                 # Add correlation ID to response headers
@@ -168,19 +182,26 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                             body_size = len(response.body) if response.body else 0
                             if body_size < 10000:  # Under 10KB
                                 logger.debug(
-                                    f"Antwort Körper - correlation_id={correlation_id} size_bytes={body_size}"
+                                    "antwort_koerper",
+                                    correlation_id=correlation_id,
+                                    size_bytes=body_size
                                 )
                     except Exception as e:
                         logger.warning(
-                            f"Fehler beim Lesen des Antwortkörpers - correlation_id={correlation_id} error={str(e)}"
+                            "fehler_beim_lesen_antwort_koerper",
+                            correlation_id=correlation_id,
+                            error=str(e)
                         )
 
             # Log slow requests
             if duration_ms > 5000:
                 logger.warning(
-                    f"Langsame Anfrage erkannt - correlation_id={correlation_id} "
-                    f"method={request.method} path={request.url.path} "
-                    f"duration_ms={duration_ms} threshold_ms=5000"
+                    "langsame_anfrage_erkannt",
+                    correlation_id=correlation_id,
+                    method=request.method,
+                    path=request.url.path,
+                    duration_ms=duration_ms,
+                    threshold_ms=5000
                 )
 
             # Clear context variables
@@ -220,31 +241,46 @@ class ErrorLoggingMiddleware(BaseHTTPMiddleware):
             return response
         except ValueError as e:
             logger.error(
-                f"Validierungsfehler - path={request.url.path} error={str(e)} type=validierung",
+                "validierungsfehler",
+                path=request.url.path,
+                error=str(e),
+                error_type="validierung",
                 exc_info=True
             )
             raise
         except PermissionError as e:
             logger.error(
-                f"Berechtigungsfehler - path={request.url.path} error={str(e)} type=berechtigung",
+                "berechtigungsfehler",
+                path=request.url.path,
+                error=str(e),
+                error_type="berechtigung",
                 exc_info=True
             )
             raise
         except ConnectionError as e:
             logger.error(
-                f"Verbindungsfehler - path={request.url.path} error={str(e)} type=verbindung",
+                "verbindungsfehler",
+                path=request.url.path,
+                error=str(e),
+                error_type="verbindung",
                 exc_info=True
             )
             raise
         except TimeoutError as e:
             logger.error(
-                f"Zeitüberschreitung - path={request.url.path} error={str(e)} type=timeout",
+                "zeitueberschreitung",
+                path=request.url.path,
+                error=str(e),
+                error_type="timeout",
                 exc_info=True
             )
             raise
         except Exception as e:
             logger.critical(
-                f"Unerwarteter Fehler - path={request.url.path} error={str(e)} type=unbekannt",
+                "unerwarteter_fehler",
+                path=request.url.path,
+                error=str(e),
+                error_type="unbekannt",
                 exc_info=True
             )
             raise

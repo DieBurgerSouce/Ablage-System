@@ -1,6 +1,6 @@
 """Celery application configuration for async task processing."""
 
-import logging
+import structlog
 from celery import Celery, Task
 from celery.signals import task_prerun, task_postrun, task_failure, task_retry, task_success
 from contextlib import contextmanager
@@ -10,8 +10,7 @@ import threading
 
 from app.core.config import settings
 
-# Configure logging
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # GPU lock for single GPU task execution
 _gpu_lock = threading.Lock()
@@ -110,9 +109,7 @@ class GPUTask(Task):
 
     def before_start(self, task_id: str, args: tuple, kwargs: dict) -> None:
         """Acquire GPU resources before task execution."""
-        logger.info(
-            f"gpu_task_starting - task_id={task_id} task_name={self.name} args={args} kwargs={kwargs}"
-        )
+        logger.info("gpu_task_starting", task_id=task_id, task_name=self.name)
         # Acquire GPU lock
         _gpu_lock.acquire()
 
@@ -131,9 +128,7 @@ class GPUTask(Task):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
-            logger.info(
-                f"gpu_task_completed - task_id={task_id} task_name={self.name} status={status} has_error={einfo is not None}"
-            )
+            logger.info("gpu_task_completed", task_id=task_id, task_name=self.name, status=status, has_error=einfo is not None)
         finally:
             # Always release GPU lock
             if _gpu_lock.locked():
@@ -148,9 +143,7 @@ class GPUTask(Task):
         einfo: Any
     ) -> None:
         """Handle task retry."""
-        logger.warning(
-            f"gpu_task_retrying - task_id={task_id} task_name={self.name} exception={str(exc)} retry_count={self.request.retries}"
-        )
+        logger.warning("gpu_task_retrying", task_id=task_id, task_name=self.name, exception=str(exc), retry_count=self.request.retries)
         # Clear GPU memory before retry
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -181,9 +174,7 @@ def gpu_memory_guard(threshold_gb: float = 13.6):
         if torch.cuda.is_available():
             current_memory = torch.cuda.memory_allocated() / 1024**3
             if current_memory > threshold_gb:
-                logger.warning(
-                    f"gpu_memory_high - current_gb={current_memory} threshold_gb={threshold_gb}"
-                )
+                logger.warning("gpu_memory_high", current_gb=round(current_memory, 2), threshold_gb=threshold_gb)
                 torch.cuda.empty_cache()
 
 
@@ -199,9 +190,7 @@ def task_prerun_handler(
 ) -> None:
     """Log task start and update database status."""
     task_name = task.name if task else None
-    logger.info(
-        f"task_starting - task_id={task_id} task_name={task_name} args={args} kwargs={kwargs}"
-    )
+    logger.info("task_starting", task_id=task_id, task_name=task_name)
 
 
 @task_postrun.connect
@@ -217,9 +206,7 @@ def task_postrun_handler(
 ) -> None:
     """Log task completion and cleanup GPU memory."""
     task_name = task.name if task else None
-    logger.info(
-        f"task_completed - task_id={task_id} task_name={task_name} state={state}"
-    )
+    logger.info("task_completed", task_id=task_id, task_name=task_name, state=state)
 
     # Clear GPU memory for GPU tasks
     if task and hasattr(task, "__class__") and issubclass(task.__class__, GPUTask):
@@ -240,10 +227,7 @@ def task_failure_handler(
 ) -> None:
     """Log task failure and cleanup resources."""
     task_name = sender.name if sender else None
-    logger.error(
-        f"task_failed - task_id={task_id} task_name={task_name} exception={str(exception)}",
-        exc_info=True
-    )
+    logger.error("task_failed", task_id=task_id, task_name=task_name, exception=str(exception), exc_info=True)
 
     # Clear GPU memory on failure
     if torch.cuda.is_available():
@@ -264,9 +248,7 @@ def task_retry_handler(
 ) -> None:
     """Log task retry attempts."""
     task_name = sender.name if sender else None
-    logger.warning(
-        f"task_retrying - task_id={task_id} task_name={task_name} reason={str(reason)}"
-    )
+    logger.warning("task_retrying", task_id=task_id, task_name=task_name, reason=str(reason))
 
 
 @task_success.connect
@@ -277,4 +259,4 @@ def task_success_handler(
 ) -> None:
     """Log successful task completion."""
     task_name = sender.name if sender else None
-    logger.info(f"task_success - task_name={task_name}")
+    logger.info("task_success", task_name=task_name)

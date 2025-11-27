@@ -264,15 +264,15 @@ async def value_error_handler(request, exc):
 # Example 8: Logging Integration
 # ============================================
 
-import logging
+import structlog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 async def complex_operation():
     """Example with logging integration."""
 
     # Info logs are sent as breadcrumbs
-    logger.info("Starting complex operation")
+    logger.info("starting_complex_operation")
 
     try:
         # Add structured breadcrumb
@@ -292,12 +292,12 @@ async def complex_operation():
 
         result = await step_2(result)
 
-        logger.info("Complex operation completed successfully")
+        logger.info("complex_operation_completed")
         return result
 
     except Exception as e:
         # Error logs are sent as events
-        logger.error(f"Complex operation failed: {e}")
+        logger.error("complex_operation_failed", error=str(e))
 
         # Manually capture with extra context
         capture_exception(e, extra={

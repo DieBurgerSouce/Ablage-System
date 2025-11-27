@@ -13,10 +13,11 @@ GOT-OCR 2.0 Capabilities:
 Repository: https://github.com/ucaslcl/GOT-OCR2.0
 """
 
-import logging
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 import time
+
+import structlog
 
 try:
     import torch
@@ -25,7 +26,7 @@ try:
 except ImportError:
     DEPENDENCIES_AVAILABLE = False
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class GOTOCRWrapper:
@@ -64,7 +65,7 @@ class GOTOCRWrapper:
         self.vram_required_gb = 10.0
         self.vram_optimal_gb = 12.0
 
-        logger.info(f"GOT-OCR wrapper initialized (device={device}, fp16={use_fp16})")
+        logger.info("got_ocr_wrapper_initialized", device=device, fp16=use_fp16)
 
     def load_model(self) -> None:
         """Load GOT-OCR model into memory"""
@@ -95,13 +96,13 @@ class GOTOCRWrapper:
             self.is_loaded = True
 
             load_time = time.time() - start_time
-            logger.info(f"Model loaded in {load_time:.2f}s")
+            logger.info("model_loaded", load_time_seconds=round(load_time, 2))
 
             # Warm-up inference
             self._warmup()
 
         except Exception as e:
-            logger.error(f"Failed to load GOT-OCR model: {e}")
+            logger.error("failed_to_load_got_ocr_model", error=str(e))
             raise
 
     def _load_mock_model(self) -> None:
@@ -139,7 +140,7 @@ class GOTOCRWrapper:
             logger.info("Warmup completed")
 
         except Exception as e:
-            logger.warning(f"Warmup failed (non-critical): {e}")
+            logger.warning("warmup_failed", error=str(e))
 
     async def process(
         self,
@@ -161,7 +162,7 @@ class GOTOCRWrapper:
         if not self.is_loaded:
             self.load_model()
 
-        logger.info(f"Processing: {document_path.name}")
+        logger.info("processing_document", filename=document_path.name)
 
         try:
             # Convert document to images
@@ -194,7 +195,7 @@ class GOTOCRWrapper:
             }
 
         except Exception as e:
-            logger.error(f"GOT-OCR processing failed: {e}")
+            logger.error("got_ocr_processing_failed", error=str(e))
             raise
 
     def _load_document(self, document_path: Path) -> List[Image.Image]:
@@ -252,7 +253,7 @@ class GOTOCRWrapper:
         # text = self.processor.decode(outputs[0], skip_special_tokens=True)
 
         # Mock implementation
-        logger.info(f"Extracting text (language={language})")
+        logger.info("extracting_text", language=language)
 
         # Simulate processing time
         time.sleep(0.15)  # ~150ms per page (realistic for GOT-OCR)
