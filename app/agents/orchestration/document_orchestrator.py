@@ -889,18 +889,242 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         # TODO: Send notification, create review task, etc.
 
     async def _store_and_index(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Phase 6: Store results and index for search."""
+        """
+        Phase 6: Store OCR results and index for search.
+
+        Performs:
+        - Update PostgreSQL document record with extracted text and metadata
+        - Create OCR version for version history
+        - Optionally generate and store searchable PDF in MinIO
+
+        Args:
+            input_data: Dictionary containing:
+                - document_id: Document UUID
+                - text: Extracted and corrected text
+                - metadata: Classification, entities, QA score, etc.
+
+        Returns:
+            Storage result with stored paths and metadata
+        """
         document_id = input_data["document_id"]
         text = input_data["text"]
         metadata = input_data["metadata"]
 
-        # TODO: Implement storage
-        #  - Save to MinIO (searchable PDF)
-        #  - Update PostgreSQL (text + metadata)
-        #  - Index in search engine (if applicable)
-
-        return {
+        storage_result = {
             "document_id": document_id,
             "stored_at": datetime.utcnow().isoformat(),
             "metadata": metadata,
+            "postgresql_updated": False,
+            "version_created": False,
+            "minio_stored": False,
         }
+
+        # Import dependencies
+        from app.api.dependencies import AsyncSessionLocal
+        from app.db.models import Document
+        from sqlalchemy import select, update
+
+        try:
+            # ================================================================
+            # 1. Update PostgreSQL Document Record
+            # ================================================================
+            async with AsyncSessionLocal() as db:
+                # Fetch the document
+                result = await db.execute(
+                    select(Document).where(Document.id == document_id)
+                )
+                document = result.scalar_one_or_none()
+
+                if not document:
+                    self.logger.error(
+                        "document_not_found_for_storage",
+                        document_id=document_id,
+                    )
+                    raise ValueError(f"Dokument nicht gefunden: {document_id}")
+
+                # Update document with OCR results
+                classification = metadata.get("classification", {})
+                entities = metadata.get("entities", [])
+                qa_score = metadata.get("qa_score", 0.0)
+
+                # Calculate processing duration
+                processing_duration_ms = None
+                if hasattr(self, "_processing_start_time"):
+                    processing_duration_ms = int(
+                        (datetime.utcnow() - self._processing_start_time).total_seconds() * 1000
+                    )
+
+                # Update document fields
+                document.extracted_text = text
+                document.status = "completed"
+                document.ocr_confidence = qa_score
+                document.document_type = classification.get("document_type", "other")
+                document.detected_language = classification.get("language", "de")
+                document.has_umlauts = "ä" in text or "ö" in text or "ü" in text or "ß" in text
+                document.processed_date = datetime.utcnow()
+
+                if processing_duration_ms:
+                    document.processing_duration_ms = processing_duration_ms
+
+                # Store entities and metadata in JSONB column
+                document.document_metadata = {
+                    **(document.document_metadata or {}),
+                    "classification": classification,
+                    "entities": [
+                        {"type": e.get("type"), "value": e.get("value"), "confidence": e.get("confidence")}
+                        for e in entities[:100]  # Limit to prevent huge JSONB
+                    ],
+                    "entity_summary": {
+                        "total_count": len(entities),
+                        "dates": sum(1 for e in entities if e.get("type") == "date"),
+                        "amounts": sum(1 for e in entities if e.get("type") == "amount"),
+                        "ibans": sum(1 for e in entities if e.get("type") == "iban"),
+                        "vat_ids": sum(1 for e in entities if e.get("type") == "vat_id"),
+                    },
+                    "qa_score": qa_score,
+                    "ocr_backend": metadata.get("ocr_backend", "unknown"),
+                    "processing_completed_at": datetime.utcnow().isoformat(),
+                }
+
+                await db.commit()
+                storage_result["postgresql_updated"] = True
+
+                self.logger.info(
+                    "postgresql_document_updated",
+                    document_id=document_id,
+                    text_length=len(text),
+                    entity_count=len(entities),
+                )
+
+                # ================================================================
+                # 2. Create OCR Version for Version History
+                # ================================================================
+                try:
+                    from app.services.version_service import get_version_service
+
+                    version_service = get_version_service()
+
+                    # Prepare OCR data for versioning
+                    ocr_data = {
+                        "text": text,
+                        "backend": metadata.get("ocr_backend", "unknown"),
+                        "confidence_score": qa_score,
+                        "metadata": {
+                            "backend_used": metadata.get("ocr_backend", "unknown"),
+                            "language": classification.get("language", "de"),
+                            "timestamp": datetime.utcnow().isoformat(),
+                        },
+                        "detected_dates": [
+                            e.get("value") for e in entities if e.get("type") == "date"
+                        ][:10],
+                        "detected_amounts": [
+                            e.get("value") for e in entities if e.get("type") == "amount"
+                        ][:10],
+                        "ibans": [
+                            e.get("value") for e in entities if e.get("type") == "iban"
+                        ][:10],
+                        "vat_ids": [
+                            e.get("value") for e in entities if e.get("type") == "vat_id"
+                        ][:10],
+                    }
+
+                    # Get user_id from document
+                    user_id = document.owner_id
+
+                    version = await version_service.create_version_from_dict(
+                        db=db,
+                        document_id=document_id,
+                        ocr_data=ocr_data,
+                        user_id=user_id,
+                        version_note=f"Automatische OCR-Verarbeitung mit {metadata.get('ocr_backend', 'unknown')}"
+                    )
+
+                    storage_result["version_created"] = True
+                    storage_result["version_number"] = version.version_number
+
+                    self.logger.info(
+                        "ocr_version_created",
+                        document_id=document_id,
+                        version_number=version.version_number,
+                    )
+
+                except Exception as version_error:
+                    # Version creation is not critical - log and continue
+                    self.logger.warning(
+                        "version_creation_failed",
+                        document_id=document_id,
+                        error=str(version_error),
+                    )
+
+            # ================================================================
+            # 3. Store Searchable Content in MinIO (Optional)
+            # ================================================================
+            try:
+                from app.services.storage_service import get_storage_service
+
+                storage_service = get_storage_service()
+
+                if storage_service.available:
+                    # Create searchable text file
+                    text_content = f"""# OCR Ergebnis für Dokument {document_id}
+# Verarbeitet am: {datetime.utcnow().isoformat()}
+# Backend: {metadata.get('ocr_backend', 'unknown')}
+# Konfidenz: {qa_score:.2%}
+
+{text}
+
+---
+Metadaten:
+- Dokumenttyp: {classification.get('document_type', 'unbekannt')}
+- Sprache: {classification.get('language', 'de')}
+- Entitäten gefunden: {len(entities)}
+""".encode("utf-8")
+
+                    # Upload to MinIO
+                    upload_result = await storage_service.upload_document(
+                        file_data=text_content,
+                        filename=f"{document_id}_ocr_result.txt",
+                        content_type="text/plain; charset=utf-8",
+                        user_id=str(document.owner_id) if document.owner_id else None,
+                        metadata={
+                            "document-id": str(document_id),
+                            "content-type": "ocr-result",
+                            "ocr-backend": metadata.get("ocr_backend", "unknown"),
+                        }
+                    )
+
+                    storage_result["minio_stored"] = True
+                    storage_result["minio_path"] = upload_result.get("storage_path")
+
+                    self.logger.info(
+                        "minio_ocr_result_stored",
+                        document_id=document_id,
+                        storage_path=upload_result.get("storage_path"),
+                    )
+
+            except Exception as minio_error:
+                # MinIO storage is not critical - log and continue
+                self.logger.warning(
+                    "minio_storage_failed",
+                    document_id=document_id,
+                    error=str(minio_error),
+                )
+
+            self.logger.info(
+                "storage_phase_completed",
+                document_id=document_id,
+                postgresql_updated=storage_result["postgresql_updated"],
+                version_created=storage_result["version_created"],
+                minio_stored=storage_result["minio_stored"],
+            )
+
+            return storage_result
+
+        except Exception as e:
+            self.logger.error(
+                "storage_phase_failed",
+                document_id=document_id,
+                error=str(e),
+                exc_info=True,
+            )
+            raise

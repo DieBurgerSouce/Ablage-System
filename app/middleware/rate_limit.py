@@ -474,7 +474,15 @@ class RoleBasedRateLimitChecker:
             }
         }
 
+        # Define time windows for quota types
+        quota_windows = {
+            "ocr_hourly": 3600,      # 1 hour
+            "ocr_daily": 86400,       # 24 hours
+            "batch_hourly": 3600      # 1 hour
+        }
+
         max_quota = quotas.get(tier, {}).get(quota_type, 0)
+        window = quota_windows.get(quota_type, 3600)
 
         if not self.redis_storage or not self.redis_storage.is_available:
             return {
@@ -484,19 +492,122 @@ class RoleBasedRateLimitChecker:
                 "reason": "redis_unavailable"
             }
 
-        # Get current usage from Redis
-        # This is a placeholder - actual implementation would query Redis
-        current_usage = 0  # TODO: Implement Redis query
+        # Build Redis key for quota tracking
+        # Use time-windowed key to auto-expire old quota data
+        window_start = int(datetime.utcnow().timestamp() / window)
+        quota_key = f"quota:{user_id}:{quota_type}:{window_start}"
 
-        remaining = max_quota - current_usage
+        try:
+            # Get current usage from Redis
+            current_usage = await self._get_quota_usage(quota_key)
+            remaining = max(0, max_quota - current_usage)
 
-        return {
-            "allowed": remaining > 0,
-            "remaining": remaining,
-            "limit": max_quota,
-            "used": current_usage,
-            "tier": tier
+            # Calculate reset time
+            current_time = int(datetime.utcnow().timestamp())
+            reset_at = (window_start + 1) * window
+            seconds_until_reset = reset_at - current_time
+
+            return {
+                "allowed": remaining > 0,
+                "remaining": remaining,
+                "limit": max_quota,
+                "used": current_usage,
+                "tier": tier,
+                "reset_in_seconds": seconds_until_reset,
+                "reset_at_timestamp": reset_at
+            }
+
+        except Exception as e:
+            logger.error(
+                "quota_check_failed",
+                user_id=user_id,
+                quota_type=quota_type,
+                error=str(e)
+            )
+            # Fail-open: allow request on error
+            return {
+                "allowed": True,
+                "remaining": max_quota,
+                "limit": max_quota,
+                "reason": "quota_check_error",
+                "error": str(e)
+            }
+
+    async def _get_quota_usage(self, quota_key: str) -> int:
+        """
+        Get current quota usage from Redis.
+
+        Args:
+            quota_key: Redis key for quota tracking
+
+        Returns:
+            Current usage count
+        """
+        if not self.redis_storage or not self.redis_storage.is_available:
+            return 0
+
+        try:
+            # Use the Redis storage's internal connection
+            if self.redis_storage._redis:
+                value = await self.redis_storage._redis.get(quota_key)
+                return int(value) if value else 0
+        except Exception as e:
+            logger.warning(
+                "quota_usage_query_failed",
+                key=quota_key,
+                error=str(e)
+            )
+
+        return 0
+
+    async def increment_quota(
+        self,
+        user_id: str,
+        quota_type: str
+    ) -> bool:
+        """
+        Increment quota usage for a user action.
+
+        Args:
+            user_id: User identifier
+            quota_type: Type of quota (e.g., "ocr_daily", "batch_hourly")
+
+        Returns:
+            True if increment successful
+        """
+        # Define time windows for quota types
+        quota_windows = {
+            "ocr_hourly": 3600,
+            "ocr_daily": 86400,
+            "batch_hourly": 3600
         }
+
+        window = quota_windows.get(quota_type, 3600)
+        window_start = int(datetime.utcnow().timestamp() / window)
+        quota_key = f"quota:{user_id}:{quota_type}:{window_start}"
+
+        if not self.redis_storage or not self.redis_storage.is_available:
+            logger.warning(
+                "quota_increment_skipped",
+                reason="redis_unavailable",
+                user_id=user_id,
+                quota_type=quota_type
+            )
+            return False
+
+        try:
+            # Increment counter with expiry
+            await self.redis_storage.increment(quota_key, window)
+            return True
+
+        except Exception as e:
+            logger.error(
+                "quota_increment_failed",
+                user_id=user_id,
+                quota_type=quota_type,
+                error=str(e)
+            )
+            return False
 
 
 # ==================== Monitoring Functions ====================

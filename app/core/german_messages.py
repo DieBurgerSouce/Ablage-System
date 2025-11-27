@@ -200,6 +200,39 @@ class OCRMessages:
 
 
 # =============================================================================
+# VERSION MESSAGES
+# =============================================================================
+
+class VersionMessages:
+    """German messages for version management."""
+
+    # Success messages
+    VERSION_CREATED = "Version {version} erfolgreich erstellt"
+    ROLLBACK_SUCCESS = "Erfolgreich zu Version {version} zuruckgesetzt. Neue Version: {new_version}"
+
+    # Error messages
+    VERSION_NOT_FOUND = "Version {version} nicht gefunden"
+    DOCUMENT_NOT_FOUND = "Dokument nicht gefunden"
+    COMPARE_ERROR = "Fehler beim Vergleichen der Versionen"
+    ROLLBACK_FAILED = "Rollback zu Version {version} fehlgeschlagen"
+    NO_VERSIONS = "Keine Versionen fur dieses Dokument vorhanden"
+    NO_CURRENT_VERSION = "Keine aktuelle Version gefunden"
+    INVALID_VERSION_NUMBER = "Ungultige Versionsnummer"
+
+    # Info messages
+    VERSION_LIST_EMPTY = "Keine Versionen vorhanden"
+    VERSION_COMPARISON = "Vergleich von Version {a} und Version {b}"
+    ROLLBACK_NOTE_DEFAULT = "Rollback von Version {from_ver} zu Version {to_ver}"
+
+    # Labels
+    CURRENT_VERSION = "Aktuelle Version"
+    ROLLBACK_VERSION = "Rollback-Version"
+    VERSION_HISTORY = "Versionshistorie"
+    VERSION_DETAILS = "Versionsdetails"
+    VERSION_COMPARE = "Versionsvergleich"
+
+
+# =============================================================================
 # SYSTEM MESSAGES
 # =============================================================================
 

@@ -6,7 +6,7 @@ from enum import Enum
 from pathlib import Path
 import uuid
 
-from pydantic import BaseModel, Field, EmailStr, field_validator, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator, ConfigDict
 
 
 # Enums (matching SQLAlchemy models)
@@ -440,3 +440,123 @@ class StorageStatsResponse(BaseModel):
     total_size_bytes: int
     total_count: int
     total_size_mb: float
+
+
+# ============================================================================
+# OCR VERSION SCHEMAS
+# ============================================================================
+
+class OCRVersionBase(BaseModel):
+    """Base schema for OCR version."""
+    version_number: int
+    backend: str
+    confidence_score: Optional[float] = None
+    word_count: Optional[int] = None
+    char_count: Optional[int] = None
+    has_umlauts: bool = False
+    german_validation_score: Optional[float] = None
+    processing_time_ms: Optional[int] = None
+
+
+class OCRVersionCreate(BaseModel):
+    """Schema for creating a new OCR version."""
+    document_id: uuid.UUID
+    version_note: Optional[str] = Field(None, max_length=500)
+
+
+class OCRVersionResponse(OCRVersionBase):
+    """Full OCR version response schema."""
+    id: uuid.UUID
+    document_id: uuid.UUID
+    ocr_result_id: Optional[uuid.UUID] = None
+    is_current: bool
+    is_rollback: bool
+    rollback_from_version: Optional[int] = None
+    extracted_text: Optional[str] = None
+    detected_dates: List[str] = []
+    detected_amounts: List[Dict[str, Any]] = []
+    detected_ibans: List[str] = []
+    detected_vat_ids: List[str] = []
+    business_terms: List[Dict[str, Any]] = []
+    detected_layout: Dict[str, Any] = {}
+    bounding_boxes: List[Dict[str, Any]] = []
+    created_at: datetime
+    created_by_id: Optional[uuid.UUID] = None
+    version_note: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OCRVersionSummary(OCRVersionBase):
+    """Summary schema for version listings (without full text)."""
+    id: uuid.UUID
+    is_current: bool
+    is_rollback: bool
+    rollback_from_version: Optional[int] = None
+    created_at: datetime
+    version_note: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OCRVersionListResponse(BaseModel):
+    """List of OCR versions for a document."""
+    document_id: uuid.UUID
+    document_filename: str
+    current_version: int
+    total_versions: int
+    versions: List[OCRVersionSummary]
+
+
+class OCRVersionCompareRequest(BaseModel):
+    """Request schema for comparing two versions."""
+    version_a: int = Field(..., ge=1, description="Erste Version zum Vergleichen")
+    version_b: int = Field(..., ge=1, description="Zweite Version zum Vergleichen")
+
+    @model_validator(mode='after')
+    def versions_must_differ(self) -> 'OCRVersionCompareRequest':
+        """Validate that version_a and version_b are different."""
+        if self.version_a == self.version_b:
+            raise ValueError("Versionen müssen unterschiedlich sein")
+        return self
+
+
+class OCRVersionDiff(BaseModel):
+    """Structured diff information between versions."""
+    backend_changed: bool
+    text_length_delta: int
+    dates_count_delta: int
+    amounts_count_delta: int
+    ibans_count_delta: int
+    vat_ids_count_delta: int
+    confidence_improved: Optional[bool] = None
+
+
+class OCRVersionCompareResponse(BaseModel):
+    """Response schema for version comparison."""
+    document_id: uuid.UUID
+    version_a: OCRVersionResponse
+    version_b: OCRVersionResponse
+    differences: OCRVersionDiff
+    text_diff_html: Optional[str] = None  # HTML diff for side-by-side view
+    text_diff_unified: Optional[str] = None  # Unified diff like git
+    confidence_delta: Optional[float] = None
+    word_count_delta: Optional[int] = None
+
+
+class OCRVersionRollbackRequest(BaseModel):
+    """Request schema for rollback to a previous version."""
+    target_version: int = Field(..., ge=1, description="Zielversion fur Rollback")
+    rollback_note: Optional[str] = Field(
+        None,
+        max_length=500,
+        description="Optionale Notiz fur diesen Rollback"
+    )
+
+
+class OCRVersionRollbackResponse(BaseModel):
+    """Response schema for rollback result."""
+    success: bool
+    new_version_number: int
+    rolled_back_from: int
+    message: str  # German message

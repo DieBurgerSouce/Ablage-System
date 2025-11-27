@@ -308,6 +308,69 @@ class OCRService:
         logger.info("upload_saved", file_path=str(file_path))
         return str(file_path)
 
+    async def save_ocr_version(
+        self,
+        db: "AsyncSession",
+        document_id: str,
+        ocr_result: Dict[str, Any],
+        user_id: Optional[str] = None,
+        version_note: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Save OCR result as a new version.
+
+        Creates a version entry for the given document with the OCR results.
+        This enables version history tracking, comparison, and rollback.
+
+        Args:
+            db: Database session
+            document_id: Document UUID
+            ocr_result: OCR result dictionary from process_document
+            user_id: User ID who triggered the OCR
+            version_note: Optional note for this version
+
+        Returns:
+            Version info dictionary or None if failed
+        """
+        try:
+            from uuid import UUID
+            from app.services.version_service import get_version_service
+
+            version_service = get_version_service()
+
+            doc_uuid = UUID(document_id) if isinstance(document_id, str) else document_id
+            user_uuid = UUID(user_id) if user_id else None
+
+            version = await version_service.create_version_from_dict(
+                db=db,
+                document_id=doc_uuid,
+                ocr_data=ocr_result,
+                user_id=user_uuid,
+                version_note=version_note
+            )
+
+            logger.info(
+                "ocr_version_saved",
+                document_id=document_id,
+                version_number=version.version_number,
+                backend=version.backend
+            )
+
+            return {
+                "version_id": str(version.id),
+                "version_number": version.version_number,
+                "backend": version.backend,
+                "is_current": version.is_current,
+                "created_at": version.created_at.isoformat() if version.created_at else None
+            }
+
+        except Exception as e:
+            logger.error(
+                "ocr_version_save_failed",
+                document_id=document_id,
+                error=str(e)
+            )
+            return None
+
     async def cleanup(self):
         """Clean up resources"""
         await self.backend_manager.cleanup()

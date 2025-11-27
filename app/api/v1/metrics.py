@@ -2,9 +2,11 @@
 Metrics API Endpoints.
 
 Provides Prometheus metrics scraping and custom business metrics.
+All sensitive endpoints require proper authentication.
 """
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Response, Depends, HTTPException, status
+
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
     CollectorRegistry,
@@ -15,6 +17,8 @@ from prometheus_client import (
 )
 
 from app.core.redis_state import get_redis
+from app.api.dependencies import get_current_superuser, get_current_active_user
+from app.db.models import User
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -121,28 +125,37 @@ async def metrics_health():
 
 
 @router.post("/reset")
-async def reset_metrics():
+async def reset_metrics(
+    current_user: User = Depends(get_current_superuser)
+):
     """
-    Reset all metrics counters (development/testing only).
+    Reset all metrics counters.
 
-    WARNING: This will reset all business metrics!
+    **REQUIRES ADMIN AUTHENTICATION**
 
-    TODO: Add authentication/authorization before production deployment!
-          This endpoint should require admin role or be disabled in production.
+    This endpoint resets all business metrics counters to zero.
+    Only superusers/administrators can perform this action.
 
-    SECURITY RISK: Currently NO AUTHENTICATION - anyone can reset metrics!
+    Args:
+        current_user: Current authenticated superuser (injected via dependency)
+
+    Returns:
+        Success status with reset confirmation
+
+    Raises:
+        HTTPException 401: If not authenticated
+        HTTPException 403: If not a superuser
     """
-    # TODO: Replace with proper auth check
-    # if not await verify_admin_role(current_user):
-    #     raise HTTPException(403, "Admin role required")
+    import structlog
+    logger = structlog.get_logger(__name__)
 
-    import os
-    if os.getenv("ENVIRONMENT", "development") == "production":
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=403,
-            detail="Metrics reset disabled in production. Enable authentication first."
-        )
+    # Log the admin action for audit trail
+    logger.warning(
+        "metrics_reset_initiated",
+        admin_user_id=str(current_user.id),
+        admin_email=current_user.email,
+        action="reset_all_metrics"
+    )
 
     redis = await get_redis()
 
@@ -151,7 +164,13 @@ async def reset_metrics():
     await redis.reset_counter("ocr.documents_failed")
     await redis.reset_counter("gpu.oom_errors")
 
+    logger.info(
+        "metrics_reset_completed",
+        admin_user_id=str(current_user.id)
+    )
+
     return {
-        "status": "success",
-        "message": "All metrics counters reset to 0",
+        "status": "erfolg",  # German: success
+        "nachricht": "Alle Metriken-Zähler wurden auf 0 zurückgesetzt",  # All metrics counters reset to 0
+        "durchgeführt_von": str(current_user.id),  # Performed by
     }

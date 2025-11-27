@@ -311,7 +311,53 @@
                     <p class="no-data">Keine Dokumente verarbeitet</p>
                 </div>
             </section>
+
+            <!-- Version History Section -->
+            <section class="version-section" id="version-section" style="display: none;">
+                <div class="version-header">
+                    <h3>📋 Versionshistorie</h3>
+                    <div class="version-actions-header">
+                        <button class="btn-secondary" id="compare-versions-btn" onclick="VersionManager.toggleCompareMode()">
+                            🔄 Versionen vergleichen
+                        </button>
+                        <button class="btn-secondary" onclick="VersionManager.loadVersions()">
+                            🔄 Aktualisieren
+                        </button>
+                    </div>
+                </div>
+                <div class="version-list" id="version-list">
+                    <p class="no-versions">Keine Versionen vorhanden</p>
+                </div>
+            </section>
         </main>
+
+    <!-- Version Detail Modal -->
+    <div class="modal" id="version-modal" style="display: none;">
+        <div class="modal-backdrop" onclick="VersionManager.closeModal('version-modal')"></div>
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>Versionsdetails</h3>
+                <button class="modal-close" onclick="VersionManager.closeModal('version-modal')">&times;</button>
+            </div>
+            <div class="modal-body" id="version-modal-content">
+                <!-- Content populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Version Compare Modal -->
+    <div class="modal" id="compare-modal" style="display: none;">
+        <div class="modal-backdrop" onclick="VersionManager.closeModal('compare-modal')"></div>
+        <div class="modal-container modal-large">
+            <div class="modal-header">
+                <h3>Versionsvergleich</h3>
+                <button class="modal-close" onclick="VersionManager.closeModal('compare-modal')">&times;</button>
+            </div>
+            <div class="modal-body" id="compare-modal-content">
+                <!-- Content populated by JavaScript -->
+            </div>
+        </div>
+    </div>
 
         <!-- Footer -->
         <footer>
@@ -329,6 +375,7 @@
     <!-- Scripts -->
     <script src="api.js"></script>
     <script src="auth.js"></script>
+    <script src="versions.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

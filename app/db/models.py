@@ -88,12 +88,22 @@ class Document(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    # Version tracking
+    current_version_number = Column(Integer, default=0)
+    total_versions = Column(Integer, default=0)
+
     # Relationships
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     owner = relationship("User", back_populates="documents")
     tags = relationship("Tag", secondary=document_tags, back_populates="documents")
     processing_jobs = relationship("ProcessingJob", back_populates="document", cascade="all, delete-orphan")
     ocr_results = relationship("OCRResult", back_populates="document", cascade="all, delete-orphan")
+    ocr_versions = relationship(
+        "OCRResultVersion",
+        back_populates="document",
+        cascade="all, delete-orphan",
+        order_by="OCRResultVersion.version_number.desc()"
+    )
 
     # Indexes
     __table_args__ = (
@@ -205,6 +215,65 @@ class OCRResult(Base):
     __table_args__ = (
         Index("ix_ocr_results_document_id", "document_id"),
         Index("ix_ocr_results_confidence", "confidence_score"),
+    )
+
+
+class OCRResultVersion(Base):
+    """OCR result version history for document versioning.
+
+    Stores snapshots of OCR results to enable version tracking,
+    comparison, and rollback functionality.
+    """
+    __tablename__ = "ocr_result_versions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    ocr_result_id = Column(UUID(as_uuid=True), ForeignKey("ocr_results.id", ondelete="SET NULL"))
+
+    # Version metadata
+    version_number = Column(Integer, nullable=False)
+    is_current = Column(Boolean, default=False, nullable=False)
+    is_rollback = Column(Boolean, default=False)
+    rollback_from_version = Column(Integer)  # If rollback, from which version
+
+    # OCR data snapshot (copied from OCRResult for historical preservation)
+    backend = Column(String(50), nullable=False)
+    extracted_text = Column(Text)
+    confidence_score = Column(Float)
+    word_count = Column(Integer)
+    char_count = Column(Integer)
+
+    # German-specific data
+    detected_dates = Column(JSONB, default=[])
+    detected_amounts = Column(JSONB, default=[])
+    detected_ibans = Column(JSONB, default=[])
+    detected_vat_ids = Column(JSONB, default=[])
+    business_terms = Column(JSONB, default=[])
+
+    # Layout data
+    detected_layout = Column(JSONB, default={})
+    bounding_boxes = Column(JSONB, default=[])
+
+    # Processing metadata
+    processing_time_ms = Column(Integer)
+    german_validation_score = Column(Float)
+    has_umlauts = Column(Boolean, default=False)
+
+    # Version metadata
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    version_note = Column(String(500))  # Optional user note for this version
+
+    # Relationships
+    document = relationship("Document", back_populates="ocr_versions")
+    created_by = relationship("User")
+
+    # Indexes for efficient queries
+    __table_args__ = (
+        Index("ix_ocr_versions_document_id", "document_id"),
+        Index("ix_ocr_versions_version_number", "document_id", "version_number"),
+        Index("ix_ocr_versions_is_current", "document_id", "is_current"),
+        Index("ix_ocr_versions_created_at", "created_at"),
     )
 
 
