@@ -6,6 +6,7 @@ Specialized agents for different OCR backends:
 - GOTOCRAgent: Fast transformer-based OCR (requires GPU)
 - SuryaDoclingAgent: Layout analysis and preservation (CPU)
 - HybridOCRAgent: Multi-engine fusion for maximum accuracy
+- DonutOCRAgent: Multilingual Document Understanding (100+ Sprachen, Kyrillisch)
 """
 
 # Always available (CPU-based)
@@ -23,4 +24,12 @@ try:
         __all__.extend(["DeepSeekAgent", "GOTOCRAgent", "HybridOCRAgent"])
 except ImportError:
     # PyTorch not available - GPU agents won't be loaded
+    pass
+
+# Donut - kann auf GPU oder CPU laufen
+try:
+    from .donut_agent import DonutOCRAgent, is_donut_available
+    __all__.extend(["DonutOCRAgent", "is_donut_available"])
+except ImportError:
+    # Transformers nicht installiert
     pass

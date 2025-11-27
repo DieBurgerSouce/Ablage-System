@@ -1,0 +1,388 @@
+# Grafana Alerting Rules for ML-Routing
+# Ablage-System OCR - ML Monitoring Alerts
+
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: ML Routing Alerts
+    folder: Ablage-System
+    interval: 1m
+    rules:
+      # Drift Detection Alert
+      - uid: ml-drift-critical
+        title: Kritischer Drift erkannt
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: ml_drift_overall_score
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.5
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: Kritischer Drift im ML-Routing erkannt
+          description: Der Drift-Score hat den kritischen Schwellwert ueberschritten. Model-Retraining wird empfohlen.
+        labels:
+          severity: critical
+          component: ml-routing
+          team: platform
+
+      # High Drift Warning
+      - uid: ml-drift-high
+        title: Hoher Drift erkannt
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: ml_drift_overall_score
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.3
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 15m
+        annotations:
+          summary: Hoher Drift im ML-Routing erkannt
+          description: Der Drift-Score ist erhoet. Ueberwachung verstaerken.
+        labels:
+          severity: warning
+          component: ml-routing
+          team: platform
+
+      # Low Routing Confidence
+      - uid: ml-low-confidence
+        title: Niedrige Routing-Konfidenz
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.5, rate(ml_routing_confidence_bucket[5m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.7
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: avg
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: ML-Routing zeigt niedrige Konfidenz
+          description: Die durchschnittliche Routing-Konfidenz ist unter 70% gefallen.
+        labels:
+          severity: warning
+          component: ml-routing
+          team: platform
+
+      # High Routing Latency
+      - uid: ml-high-latency
+        title: Hohe Routing-Latenz
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.95, rate(ml_routing_latency_seconds_bucket[5m])) * 1000
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 100
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: Hohe ML-Routing-Latenz
+          description: Die p95 Routing-Latenz hat 100ms ueberschritten.
+        labels:
+          severity: warning
+          component: ml-routing
+          team: platform
+
+      # GPU Memory Critical
+      - uid: ml-gpu-memory-critical
+        title: GPU Speicher kritisch
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: (ml_gpu_memory_used_bytes / ml_gpu_memory_total_bytes) * 100
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 90
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: GPU-Speicher fast voll
+          description: Der GPU-Speicher ist zu ueber 90% ausgelastet. OOM-Risiko!
+        labels:
+          severity: critical
+          component: ml-routing
+          team: platform
+
+      # Backend Processing Time High
+      - uid: ml-backend-slow
+        title: OCR-Backend langsam
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.95, rate(ocr_backend_processing_seconds_bucket[5m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 10
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: max
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: OCR-Backend zu langsam
+          description: Die p95 Verarbeitungszeit eines Backends hat 10 Sekunden ueberschritten.
+        labels:
+          severity: warning
+          component: ocr-backend
+          team: platform
+
+      # A/B Experiment Significance Reached
+      - uid: ml-ab-significance
+        title: A/B Test signifikant
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 86400
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum by (experiment_id) (ml_ab_experiment_samples_total)
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1000
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: A/B Experiment hat Mindest-Samples erreicht
+          description: Ein A/B Experiment hat 1000 Samples erreicht und kann ausgewertet werden.
+        labels:
+          severity: info
+          component: ab-testing
+          team: platform

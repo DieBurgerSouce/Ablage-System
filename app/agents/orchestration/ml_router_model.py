@@ -7,16 +7,23 @@ Enterprise-grade machine learning model for intelligent OCR backend routing:
 - Feature engineering for document characteristics
 - Confidence calibration
 - Online learning support
+- Sichere Modell-Persistenz (kein pickle!)
+- Model Registry mit Versionierung
 
 Feinpoliert und durchdacht - Maschinelles Lernen für optimale Backend-Auswahl.
 """
 
 import logging
-import pickle
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import numpy as np
+
+from .model_registry import (
+    ModelRegistry,
+    ModelVersion,
+    compute_feature_hash,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -209,18 +216,29 @@ class OCRRouterModel:
         "random_state": 42,
     }
 
-    def __init__(self, model_path: Optional[Path] = None) -> None:
+    def __init__(
+        self,
+        model_path: Optional[Path] = None,
+        registry_path: Optional[Path] = None,
+    ) -> None:
         """
         Initialize OCR Router Model.
 
         Args:
-            model_path: Optional path to load pre-trained model
+            model_path: Optional path to load pre-trained model (legacy)
+            registry_path: Optional path for Model Registry
         """
         self.features = OCRRouterFeatures()
         self.model = None
         self._xgb = None
         self._is_trained = False
         self._training_samples = 0
+        self._validation_accuracy = 0.0
+        self._current_version: Optional[ModelVersion] = None
+
+        # Model Registry für sichere Persistenz
+        default_registry = Path("models/ocr_router")
+        self._registry = ModelRegistry(registry_path or default_registry)
 
         # Performance tracking
         self._backend_accuracy: Dict[str, List[float]] = {
@@ -230,9 +248,11 @@ class OCRRouterModel:
         # Ensure XGBoost is available
         self._ensure_xgboost()
 
-        # Load model if path provided
+        # Load model from registry or legacy path
         if model_path and model_path.exists():
-            self.load(model_path)
+            self._load_legacy(model_path)
+        else:
+            self._try_load_from_registry()
 
     def _ensure_xgboost(self) -> None:
         """Ensure XGBoost is available."""
@@ -429,6 +449,7 @@ class OCRRouterModel:
 
         self._is_trained = True
         self._training_samples = n_samples
+        self._validation_accuracy = val_accuracy
 
         logger.info(
             "Modelltraining abgeschlossen",
@@ -512,62 +533,182 @@ class OCRRouterModel:
                 }
         return stats
 
-    def save(self, path: Path) -> None:
-        """Save model to disk."""
+    def save(
+        self,
+        path: Optional[Path] = None,
+        bump_type: str = "patch",
+    ) -> ModelVersion:
+        """
+        Speichert Modell sicher in der Registry.
+
+        Args:
+            path: Legacy-Parameter (ignoriert, verwendet Registry)
+            bump_type: Versionstyp ("major", "minor", "patch")
+
+        Returns:
+            ModelVersion mit Versionsinformationen
+        """
         if not self.is_trained:
             raise RuntimeError("Kann untrainiertes Modell nicht speichern")
 
-        path.parent.mkdir(parents=True, exist_ok=True)
+        # Modell in Registry speichern (sicher, kein pickle!)
+        version_info = self._registry.register_model(
+            model=self.model,
+            feature_names=self.features.feature_names,
+            training_samples=self._training_samples,
+            validation_accuracy=self._validation_accuracy,
+            hyperparameters=self.DEFAULT_PARAMS,
+            metadata={
+                "backend_stats": self.get_backend_stats(),
+                "backends": self.features.BACKENDS,
+            },
+            bump_type=bump_type,
+        )
 
-        model_data = {
-            "model": self.model,
-            "is_trained": self._is_trained,
-            "training_samples": self._training_samples,
-            "backend_accuracy": self._backend_accuracy,
-            "version": self._get_model_version(),
-        }
+        # Als aktive Version setzen
+        self._registry.set_active(version_info.version)
+        self._current_version = version_info
 
-        with open(path, "wb") as f:
-            pickle.dump(model_data, f)
+        logger.info(f"Modell gespeichert: v{version_info.version}")
+        return version_info
 
-        logger.info(f"Modell gespeichert: {path}")
+    def load(self, path: Optional[Path] = None, version: Optional[str] = None) -> None:
+        """
+        Lädt Modell aus Registry.
 
-    def load(self, path: Path) -> None:
-        """Load model from disk."""
+        Args:
+            path: Legacy-Parameter (falls angegeben, versucht Migration)
+            version: Spezifische Version oder None für aktive
+        """
+        if path and path.exists() and path.suffix == ".pkl":
+            # Legacy pickle-Datei migrieren
+            self._load_legacy(path)
+            return
+
+        if not self._xgb:
+            raise RuntimeError("XGBoost nicht verfügbar")
+
+        try:
+            model, version_info = self._registry.load_model(
+                version=version,
+                model_class=self._xgb.XGBClassifier,
+            )
+
+            self.model = model
+            self._is_trained = True
+            self._training_samples = version_info.training_samples
+            self._validation_accuracy = version_info.validation_accuracy
+            self._current_version = version_info
+
+            logger.info(f"Modell geladen: v{version_info.version}")
+
+        except (FileNotFoundError, ValueError) as e:
+            logger.warning(f"Kein Modell in Registry gefunden: {e}")
+
+    def _load_legacy(self, path: Path) -> None:
+        """
+        Lädt Legacy pickle-Datei und migriert zur Registry.
+
+        WARNUNG: pickle.load ist unsicher! Nur für eigene Dateien verwenden.
+        """
+        import pickle
+        import warnings
+
+        warnings.warn(
+            "Lade Legacy pickle-Modell. Bitte nach Registry migrieren!",
+            DeprecationWarning,
+        )
+
         if not path.exists():
             raise FileNotFoundError(f"Modelldatei nicht gefunden: {path}")
 
         with open(path, "rb") as f:
-            model_data = pickle.load(f)
+            model_data = pickle.load(f)  # noqa: S301
 
         self.model = model_data["model"]
         self._is_trained = model_data.get("is_trained", True)
         self._training_samples = model_data.get("training_samples", 0)
         self._backend_accuracy = model_data.get(
             "backend_accuracy",
-            {b: [] for b in self.features.BACKENDS}
+            {b: [] for b in self.features.BACKENDS},
         )
 
-        logger.info(f"Modell geladen: {path}")
+        # Automatisch zur Registry migrieren
+        if self.is_trained:
+            logger.info("Migriere Legacy-Modell zur Registry...")
+            self.save(bump_type="major")
+
+        logger.info(f"Legacy-Modell geladen und migriert: {path}")
+
+    def _try_load_from_registry(self) -> None:
+        """Versucht das aktive Modell aus der Registry zu laden."""
+        try:
+            active = self._registry.get_active_version()
+            if active:
+                self.load(version=active)
+        except Exception as e:
+            logger.debug(f"Kein aktives Modell in Registry: {e}")
 
     def _get_model_version(self) -> str:
         """Get model version string."""
-        return f"xgboost-v1.{self._training_samples}"
+        if self._current_version:
+            return f"v{self._current_version.version}"
+        return f"xgboost-unversioned-{self._training_samples}"
 
     def get_model_info(self) -> Dict[str, Any]:
         """Get model information and statistics."""
-        info = {
+        info: Dict[str, Any] = {
             "is_available": self.is_available,
             "is_trained": self.is_trained,
             "training_samples": self._training_samples,
+            "validation_accuracy": self._validation_accuracy,
             "num_features": self.features.num_features,
             "num_classes": self.features.num_classes,
             "backends": self.features.BACKENDS,
             "feature_names": self.features.feature_names,
+            "feature_hash": compute_feature_hash(self.features.feature_names),
         }
 
         if self.is_trained:
             info["backend_stats"] = self.get_backend_stats()
             info["model_version"] = self._get_model_version()
 
+            if self._current_version:
+                info["version_info"] = {
+                    "version": self._current_version.version,
+                    "created_at": self._current_version.created_at,
+                    "git_commit": self._current_version.git_commit,
+                }
+
+        # Registry-Informationen
+        info["registry"] = {
+            "active_version": self._registry.get_active_version(),
+            "available_versions": [
+                v["version"] for v in self._registry.list_versions()
+            ],
+        }
+
         return info
+
+    def list_versions(self) -> List[Dict[str, Any]]:
+        """Listet alle verfügbaren Modellversionen."""
+        return self._registry.list_versions()
+
+    def rollback_to_version(self, version: str) -> bool:
+        """
+        Führt Rollback zu einer früheren Version durch.
+
+        Args:
+            version: Zielversion
+
+        Returns:
+            True wenn erfolgreich
+        """
+        try:
+            self.load(version=version)
+            self._registry.set_active(version)
+            logger.info(f"Rollback zu Version v{version} erfolgreich")
+            return True
+        except Exception as e:
+            logger.error(f"Rollback fehlgeschlagen: {e}")
+            return False
