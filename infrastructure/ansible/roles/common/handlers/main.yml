@@ -1,0 +1,15 @@
+# Ablage-System Common Role - Handlers
+---
+- name: restart cron
+  ansible.builtin.systemd:
+    name: cron
+    state: restarted
+  become: yes
+
+- name: reload sysctl
+  ansible.builtin.command: sysctl --system
+  become: yes
+
+- name: update locale
+  ansible.builtin.command: update-locale
+  become: yes

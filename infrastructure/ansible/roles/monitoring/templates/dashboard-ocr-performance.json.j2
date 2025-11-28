@@ -1,0 +1,263 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 90 },
+              { "color": "green", "value": 95 }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "job:ocr_success_rate:5m",
+          "legendFormat": "Erfolgsrate",
+          "refId": "A"
+        }
+      ],
+      "title": "OCR-Erfolgsrate",
+      "type": "gauge"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 100 }
+            ]
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "expr": "job:celery_queue_length:current{queue=\"ocr\"}",
+          "legendFormat": "Warteschlange",
+          "refId": "A"
+        }
+      ],
+      "title": "OCR-Warteschlange",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 2 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "unit": "s"
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "expr": "job:ocr_duration:avg5m",
+          "legendFormat": "Durchschnitt",
+          "refId": "A"
+        }
+      ],
+      "title": "OCR-Verarbeitungszeit",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "expr": "job:document_throughput:rate1h",
+          "legendFormat": "Dokumente/h",
+          "refId": "A"
+        }
+      ],
+      "title": "Dokumente pro Stunde",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 20, "lineWidth": 2, "stacking": { "mode": "normal" } }
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 5,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "expr": "sum(rate(ocr_processing_total{backend=\"deepseek\"}[5m]))", "legendFormat": "DeepSeek", "refId": "A" },
+        { "expr": "sum(rate(ocr_processing_total{backend=\"got_ocr\"}[5m]))", "legendFormat": "GOT-OCR", "refId": "B" },
+        { "expr": "sum(rate(ocr_processing_total{backend=\"surya\"}[5m]))", "legendFormat": "Surya", "refId": "C" },
+        { "expr": "sum(rate(ocr_processing_total{backend=\"surya_gpu\"}[5m]))", "legendFormat": "Surya-GPU", "refId": "D" }
+      ],
+      "title": "OCR-Verarbeitung nach Backend",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 20, "lineWidth": 2 },
+          "unit": "s"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 6,
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum(rate(ocr_processing_duration_seconds_bucket[5m])) by (le, backend))", "legendFormat": "{{backend}} (P50)", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(ocr_processing_duration_seconds_bucket[5m])) by (le, backend))", "legendFormat": "{{backend}} (P95)", "refId": "B" }
+      ],
+      "title": "OCR-Latenz nach Backend",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 7,
+      "targets": [
+        { "expr": "sum(rate(ocr_processing_success_total[5m]))", "legendFormat": "Erfolgreich", "refId": "A" },
+        { "expr": "sum(rate(ocr_processing_failed_total[5m]))", "legendFormat": "Fehlgeschlagen", "refId": "B" }
+      ],
+      "title": "OCR-Verarbeitungsergebnis",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 8,
+      "targets": [
+        { "expr": "celery_queue_length{queue=\"ocr\"}", "legendFormat": "OCR-Warteschlange", "refId": "A" },
+        { "expr": "celery_active_tasks{queue=\"ocr\"}", "legendFormat": "Aktive Tasks", "refId": "B" }
+      ],
+      "title": "Celery OCR-Queue",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto" } }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
+      "id": 9,
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (document_type) (increase(ocr_processing_total[24h])))",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Top 10 Dokumenttypen (24h)",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true },
+            "renameByName": {
+              "document_type": "Dokumenttyp",
+              "Value": "Anzahl"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["ablage-system", "ocr", "performance"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "Europe/Berlin",
+  "title": "Ablage-System OCR-Performance",
+  "uid": "ablage-ocr",
+  "version": 1
+}

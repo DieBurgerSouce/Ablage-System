@@ -1,0 +1,66 @@
+# Ablage-System SSH Configuration
+# Managed by Ansible - Do not edit manually
+
+# Basic Configuration
+Port {{ ssh_port | default(22) }}
+AddressFamily any
+ListenAddress 0.0.0.0
+ListenAddress ::
+
+# Host Keys
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# Ciphers and Key Exchange
+KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+
+# Authentication
+PermitRootLogin {{ ssh_permit_root_login | default('no') }}
+MaxAuthTries {{ ssh_max_auth_tries | default(3) }}
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+PasswordAuthentication {{ ssh_password_authentication | default('no') }}
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+UsePAM yes
+
+# Session
+LoginGraceTime 60
+ClientAliveInterval {{ ssh_client_alive_interval | default(300) }}
+ClientAliveCountMax {{ ssh_client_alive_count_max | default(2) }}
+MaxSessions 10
+MaxStartups 10:30:60
+
+# Forwarding
+AllowAgentForwarding no
+AllowTcpForwarding no
+X11Forwarding no
+PermitTunnel no
+
+# Misc
+PrintMotd no
+PrintLastLog yes
+TCPKeepAlive yes
+PermitUserEnvironment no
+Compression delayed
+UseDNS no
+
+# Logging
+SyslogFacility AUTH
+LogLevel VERBOSE
+
+# Banner
+{% if security_ssh_banner is defined %}
+Banner /etc/ssh/banner
+{% endif %}
+
+# SFTP
+Subsystem sftp /usr/lib/openssh/sftp-server
+
+# Allow only specific users (if defined)
+{% if security_ssh_allowed_users is defined %}
+AllowUsers {{ security_ssh_allowed_users | join(' ') }}
+{% endif %}

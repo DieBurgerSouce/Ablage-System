@@ -13,7 +13,7 @@ Features:
 
 from typing import Optional, Callable
 from functools import wraps
-from datetime import datetime
+from datetime import datetime, timezone
 
 import structlog
 from fastapi import Request, Response, HTTPException
@@ -106,7 +106,7 @@ class RedisRateLimitStorage:
     async def disconnect(self) -> None:
         """Close Redis connection."""
         if self._redis:
-            await self._redis.close()
+            await self._redis.aclose()
             self._redis = None
             self._available = False
 
@@ -302,7 +302,7 @@ def rate_limit_exceeded_handler_german(request: Request, exc: RateLimitExceeded)
     response_data = {
         "fehler": messages["title"],
         "nachricht": messages["detail"],
-        "zeitstempel": datetime.utcnow().isoformat(),
+        "zeitstempel": datetime.now(timezone.utc).isoformat(),
         "pfad": request.url.path
     }
 
@@ -327,7 +327,7 @@ def rate_limit_exceeded_handler_german(request: Request, exc: RateLimitExceeded)
         content=response_data,
         headers={
             "Retry-After": str(retry_after) if retry_after else "60",
-            "X-RateLimit-Reset": str(int(datetime.utcnow().timestamp()) + (retry_after or 60))
+            "X-RateLimit-Reset": str(int(datetime.now(timezone.utc).timestamp()) + (retry_after or 60))
         }
     )
 
@@ -528,5 +528,5 @@ async def check_rate_limit_budget(
         "available": True,
         "remaining": 100,
         "limit": 100,
-        "reset_at": datetime.utcnow().isoformat()
+        "reset_at": datetime.now(timezone.utc).isoformat()
     }

@@ -1,0 +1,28 @@
+# Ablage-System Security Role - Main Tasks
+---
+- name: Include SSH hardening tasks
+  ansible.builtin.include_tasks: ssh.yml
+  tags:
+    - ssh
+    - security
+
+- name: Include UFW firewall tasks
+  ansible.builtin.include_tasks: ufw.yml
+  when: ufw_enabled | default(true)
+  tags:
+    - ufw
+    - firewall
+    - security
+
+- name: Include fail2ban tasks
+  ansible.builtin.include_tasks: fail2ban.yml
+  when: fail2ban_enabled | default(true)
+  tags:
+    - fail2ban
+    - security
+
+- name: Include audit logging tasks
+  ansible.builtin.include_tasks: audit.yml
+  tags:
+    - audit
+    - security

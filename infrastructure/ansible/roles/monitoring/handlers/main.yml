@@ -1,0 +1,35 @@
+# Ablage-System Monitoring Role - Handlers
+---
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  become: yes
+
+- name: restart node_exporter
+  ansible.builtin.systemd:
+    name: node_exporter
+    state: restarted
+  become: yes
+
+- name: restart nvidia_gpu_exporter
+  ansible.builtin.systemd:
+    name: nvidia_gpu_exporter
+    state: restarted
+  become: yes
+
+- name: reload prometheus
+  ansible.builtin.uri:
+    url: "http://localhost:9090/-/reload"
+    method: POST
+    status_code: [200, 204]
+  failed_when: false
+
+- name: restart grafana
+  community.docker.docker_compose:
+    project_src: "{{ ablage_install_dir }}"
+    services:
+      - grafana
+    state: present
+    restarted: yes
+  become: yes
+  become_user: "{{ ablage_user }}"

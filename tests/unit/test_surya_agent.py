@@ -2,6 +2,8 @@
 Unit tests for Surya OCR agents.
 
 Tests both SuryaDoclingAgent (CPU) and SuryaGPUAgent implementations.
+Updated for surya-ocr 0.17.0 API with Predictor classes.
+
 Focuses on:
 - German text processing with umlauts (100% accuracy required)
 - Image and PDF loading
@@ -47,42 +49,65 @@ Geschäftsführer
 GERMAN_UMLAUTS = ['ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü', 'ß']
 
 
+def create_mock_text_line(text: str, confidence: float = 0.95, bbox: list = None):
+    """Create a mock text line object with text, confidence, and bbox attributes."""
+    mock_line = MagicMock()
+    mock_line.text = text
+    mock_line.confidence = confidence
+    mock_line.bbox = bbox or [10, 10, 200, 50]
+    return mock_line
+
+
+def create_mock_ocr_result(text_lines: List[str], confidences: List[float] = None):
+    """Create a mock OCR result with text_lines attribute."""
+    if confidences is None:
+        confidences = [0.95] * len(text_lines)
+
+    mock_result = MagicMock()
+    mock_result.text_lines = [
+        create_mock_text_line(text, conf)
+        for text, conf in zip(text_lines, confidences)
+    ]
+    return mock_result
+
+
 class TestSuryaDoclingAgent:
     """Unit tests for SuryaDoclingAgent."""
 
     @pytest.fixture
     def mock_surya_models(self):
-        """Mock Surya model components."""
-        with patch('app.agents.ocr.surya_docling_agent.load_det_model') as mock_det_model, \
-             patch('app.agents.ocr.surya_docling_agent.load_det_processor') as mock_det_proc, \
-             patch('app.agents.ocr.surya_docling_agent.load_rec_model') as mock_rec_model, \
-             patch('app.agents.ocr.surya_docling_agent.load_rec_processor') as mock_rec_proc, \
-             patch('app.agents.ocr.surya_docling_agent.batch_text_detection') as mock_detect, \
-             patch('app.agents.ocr.surya_docling_agent.batch_recognition') as mock_recognize:
+        """Mock Surya 0.17.0 model components (Predictor classes at source)."""
+        # Mock at source since imports happen inside _load_models()
+        with patch('surya.detection.DetectionPredictor') as mock_det_pred, \
+             patch('surya.recognition.RecognitionPredictor') as mock_rec_pred, \
+             patch('surya.foundation.FoundationPredictor') as mock_found_pred, \
+             patch('surya.common.surya.schema.TaskNames') as mock_task_names:
 
-            # Configure mock return values
-            mock_det_model.return_value = MagicMock()
-            mock_det_proc.return_value = MagicMock()
-            mock_rec_model.return_value = MagicMock()
-            mock_rec_proc.return_value = MagicMock()
+            # Configure mock predictors
+            mock_det_instance = MagicMock()
+            mock_rec_instance = MagicMock()
+            mock_found_instance = MagicMock()
 
-            # Mock detection results
-            mock_bbox = MagicMock()
-            mock_bbox.bbox = [10, 10, 200, 50]
-            mock_prediction = MagicMock()
-            mock_prediction.bboxes = [mock_bbox]
-            mock_detect.return_value = [mock_prediction]
+            mock_det_pred.return_value = mock_det_instance
+            mock_found_pred.return_value = mock_found_instance
+            mock_rec_pred.return_value = mock_rec_instance
 
-            # Mock recognition results - return German text with umlauts
-            mock_recognize.return_value = (["Müller GmbH, Größe: 100"], [0.95])
+            # Configure TaskNames
+            mock_task_names.ocr_with_boxes = "ocr_with_boxes"
+
+            # Mock recognition predictor call (it's callable)
+            # Return German text with umlauts
+            mock_ocr_result = create_mock_ocr_result(["Müller GmbH, Größe: 100"])
+            mock_rec_instance.return_value = [mock_ocr_result]
 
             yield {
-                'det_model': mock_det_model,
-                'det_proc': mock_det_proc,
-                'rec_model': mock_rec_model,
-                'rec_proc': mock_rec_proc,
-                'detect': mock_detect,
-                'recognize': mock_recognize
+                'det_pred_class': mock_det_pred,
+                'rec_pred_class': mock_rec_pred,
+                'found_pred_class': mock_found_pred,
+                'det_pred': mock_det_instance,
+                'rec_pred': mock_rec_instance,
+                'found_pred': mock_found_instance,
+                'task_names': mock_task_names
             }
 
     @pytest.fixture
@@ -116,8 +141,9 @@ class TestSuryaDoclingAgent:
         agent._load_models()
 
         assert agent._models_loaded == True
-        mock_surya_models['det_model'].assert_called_once()
-        mock_surya_models['rec_model'].assert_called_once()
+        mock_surya_models['det_pred_class'].assert_called_once()
+        mock_surya_models['found_pred_class'].assert_called_once()
+        mock_surya_models['rec_pred_class'].assert_called_once()
 
     @pytest.mark.unit
     def test_model_loading_idempotent(self, agent, mock_surya_models):
@@ -127,8 +153,8 @@ class TestSuryaDoclingAgent:
         agent._load_models()
 
         # Should only be called once
-        assert mock_surya_models['det_model'].call_count == 1
-        assert mock_surya_models['rec_model'].call_count == 1
+        assert mock_surya_models['det_pred_class'].call_count == 1
+        assert mock_surya_models['rec_pred_class'].call_count == 1
 
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -158,7 +184,7 @@ class TestSuryaDoclingAgent:
         assert result["success"] == True
         assert "text" in result
         assert result["language"] == "de"
-        assert result["model"] == "surya-ocr"
+        assert result["model"] == "surya-ocr-0.17.0"
 
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -261,6 +287,7 @@ class TestSuryaGPUAgent:
             mock_torch.cuda.memory_reserved.return_value = 3 * 1024**3
             mock_torch.cuda.empty_cache = MagicMock()
             mock_torch.cuda.synchronize = MagicMock()
+            mock_torch.cuda.reset_peak_memory_stats = MagicMock()
             mock_torch.device.return_value = MagicMock()
             mock_torch.float16 = 'float16'
             mock_torch.float32 = 'float32'
@@ -272,38 +299,35 @@ class TestSuryaGPUAgent:
 
     @pytest.fixture
     def mock_surya_gpu_models(self, mock_torch_cuda):
-        """Mock Surya model components for GPU agent."""
-        with patch('app.agents.ocr.surya_gpu_agent.load_det_model') as mock_det_model, \
-             patch('app.agents.ocr.surya_gpu_agent.load_det_processor') as mock_det_proc, \
-             patch('app.agents.ocr.surya_gpu_agent.load_rec_model') as mock_rec_model, \
-             patch('app.agents.ocr.surya_gpu_agent.load_rec_processor') as mock_rec_proc, \
-             patch('app.agents.ocr.surya_gpu_agent.batch_text_detection') as mock_detect, \
-             patch('app.agents.ocr.surya_gpu_agent.batch_recognition') as mock_recognize:
+        """Mock Surya 0.17.0 model components for GPU agent (at source)."""
+        with patch('surya.detection.DetectionPredictor') as mock_det_pred, \
+             patch('surya.recognition.RecognitionPredictor') as mock_rec_pred, \
+             patch('surya.foundation.FoundationPredictor') as mock_found_pred, \
+             patch('surya.common.surya.schema.TaskNames') as mock_task_names:
 
-            # Configure mock model with to() method
-            mock_model = MagicMock()
-            mock_model.to.return_value = mock_model
-            mock_det_model.return_value = mock_model
-            mock_rec_model.return_value = mock_model
+            # Configure mock predictors
+            mock_det_instance = MagicMock()
+            mock_rec_instance = MagicMock()
+            mock_found_instance = MagicMock()
 
-            mock_det_proc.return_value = MagicMock()
-            mock_rec_proc.return_value = MagicMock()
+            mock_det_pred.return_value = mock_det_instance
+            mock_found_pred.return_value = mock_found_instance
+            mock_rec_pred.return_value = mock_rec_instance
 
-            # Mock detection results
-            mock_bbox = MagicMock()
-            mock_bbox.bbox = [10, 10, 200, 50]
-            mock_prediction = MagicMock()
-            mock_prediction.bboxes = [mock_bbox]
-            mock_detect.return_value = [mock_prediction]
+            # Configure TaskNames
+            mock_task_names.ocr_with_boxes = "ocr_with_boxes"
 
-            # Mock recognition results with German text
-            mock_recognize.return_value = (["Größe der Straße: 100m"], [0.92])
+            # Mock recognition predictor call - return German text
+            mock_ocr_result = create_mock_ocr_result(["Größe der Straße: 100m"])
+            mock_rec_instance.return_value = [mock_ocr_result]
 
             yield {
-                'det_model': mock_det_model,
-                'rec_model': mock_rec_model,
-                'detect': mock_detect,
-                'recognize': mock_recognize,
+                'det_pred_class': mock_det_pred,
+                'rec_pred_class': mock_rec_pred,
+                'found_pred_class': mock_found_pred,
+                'det_pred': mock_det_instance,
+                'rec_pred': mock_rec_instance,
+                'found_pred': mock_found_instance,
                 'torch': mock_torch_cuda
             }
 
@@ -397,8 +421,8 @@ class TestSuryaGPUAgent:
         await gpu_agent.cleanup()  # cleanup is now async
 
         assert gpu_agent._models_loaded == False
-        assert gpu_agent._det_model is None
-        assert gpu_agent._rec_model is None
+        assert gpu_agent._det_predictor is None
+        assert gpu_agent._rec_predictor is None
         mock_surya_gpu_models['torch'].cuda.empty_cache.assert_called()
 
 
@@ -408,23 +432,20 @@ class TestSuryaGermanTextProcessing:
     @pytest.fixture
     def mock_surya_with_german_output(self):
         """Mock Surya to return German text with all umlauts."""
-        with patch('app.agents.ocr.surya_docling_agent.load_det_model'), \
-             patch('app.agents.ocr.surya_docling_agent.load_det_processor'), \
-             patch('app.agents.ocr.surya_docling_agent.load_rec_model'), \
-             patch('app.agents.ocr.surya_docling_agent.load_rec_processor'), \
-             patch('app.agents.ocr.surya_docling_agent.batch_text_detection') as mock_detect, \
-             patch('app.agents.ocr.surya_docling_agent.batch_recognition') as mock_recognize:
+        with patch('surya.detection.DetectionPredictor') as mock_det_pred, \
+             patch('surya.recognition.RecognitionPredictor') as mock_rec_pred, \
+             patch('surya.foundation.FoundationPredictor') as mock_found_pred, \
+             patch('surya.common.surya.schema.TaskNames') as mock_task_names:
 
-            # Create multiple bboxes for multiline German text
-            mock_bboxes = []
-            for i in range(5):
-                mock_bbox = MagicMock()
-                mock_bbox.bbox = [10, 10 + i*30, 400, 40 + i*30]
-                mock_bboxes.append(mock_bbox)
+            mock_det_instance = MagicMock()
+            mock_rec_instance = MagicMock()
+            mock_found_instance = MagicMock()
 
-            mock_prediction = MagicMock()
-            mock_prediction.bboxes = mock_bboxes
-            mock_detect.return_value = [mock_prediction]
+            mock_det_pred.return_value = mock_det_instance
+            mock_found_pred.return_value = mock_found_instance
+            mock_rec_pred.return_value = mock_rec_instance
+
+            mock_task_names.ocr_with_boxes = "ocr_with_boxes"
 
             # Return different German text lines
             german_lines = [
@@ -435,16 +456,11 @@ class TestSuryaGermanTextProcessing:
                 "USt-IdNr.: DE123456789"
             ]
 
-            def recognize_side_effect(images, langs, *args, **kwargs):
-                # Return one line at a time
-                idx = len(recognize_side_effect.calls) % len(german_lines)
-                recognize_side_effect.calls += 1
-                return ([german_lines[idx]], [0.95])
+            # Create mock result with all German text
+            mock_ocr_result = create_mock_ocr_result(german_lines)
+            mock_rec_instance.return_value = [mock_ocr_result]
 
-            recognize_side_effect.calls = 0
-            mock_recognize.side_effect = recognize_side_effect
-
-            yield mock_recognize
+            yield mock_rec_instance
 
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -483,8 +499,8 @@ class TestSuryaGermanTextProcessing:
         from app.agents.ocr.surya_docling_agent import SuryaDoclingAgent
 
         # Override mock to return date
-        mock_surya_with_german_output.side_effect = None
-        mock_surya_with_german_output.return_value = (["Datum: 15.03.2024"], [0.95])
+        mock_ocr_result = create_mock_ocr_result(["Datum: 15.03.2024"])
+        mock_surya_with_german_output.return_value = [mock_ocr_result]
 
         agent = SuryaDoclingAgent()
 
@@ -507,8 +523,8 @@ class TestSuryaGermanTextProcessing:
         from app.agents.ocr.surya_docling_agent import SuryaDoclingAgent
 
         # Override mock to return currency
-        mock_surya_with_german_output.side_effect = None
-        mock_surya_with_german_output.return_value = (["Betrag: 1.234,56 €"], [0.95])
+        mock_ocr_result = create_mock_ocr_result(["Betrag: 1.234,56 €"])
+        mock_surya_with_german_output.return_value = [mock_ocr_result]
 
         agent = SuryaDoclingAgent()
 
@@ -576,7 +592,7 @@ class TestSuryaErrorHandling:
     @pytest.fixture
     def agent_with_model_error(self):
         """Create agent that will fail on model loading."""
-        with patch('app.agents.ocr.surya_docling_agent.load_det_model') as mock_det:
+        with patch('surya.detection.DetectionPredictor') as mock_det:
             mock_det.side_effect = RuntimeError("Model loading failed")
 
             from app.agents.ocr.surya_docling_agent import SuryaDoclingAgent

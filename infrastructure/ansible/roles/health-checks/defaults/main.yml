@@ -1,0 +1,42 @@
+# Ablage-System Health Checks Role - Default Variables
+---
+# Health check settings
+health_check_enabled: true
+health_check_interval: "*/5 * * * *"  # Every 5 minutes (cron format)
+
+# Service endpoints to check
+health_check_endpoints:
+  - name: api
+    url: "http://localhost:{{ ablage_backend_port | default(8000) }}/health"
+    timeout: 10
+    expected_status: 200
+  - name: frontend
+    url: "http://localhost:80"
+    timeout: 5
+    expected_status: 200
+
+# Container health checks
+health_check_containers:
+  - backend
+  - frontend
+  - postgres
+  - redis
+  - minio
+  - prometheus
+  - grafana
+
+# Resource thresholds
+health_check_cpu_threshold: 90
+health_check_memory_threshold: 90
+health_check_disk_threshold: 90
+health_check_gpu_memory_threshold: 90
+health_check_gpu_temperature_threshold: 85
+
+# Alerting settings
+health_check_alert_enabled: true
+health_check_alert_email: "{{ vault_admin_email | default('admin@example.com') }}"
+health_check_alert_webhook: ""
+
+# Report settings
+health_check_report_dir: "{{ ablage_data_dir }}/health-reports"
+health_check_report_retention_days: 7

@@ -1,0 +1,34 @@
+# Ablage-System Deploy Role - Default Variables
+---
+# Deployment options
+deploy_build_images: true
+deploy_create_override: false
+
+# Application settings (defaults - override in inventory)
+log_level: INFO
+debug_mode: false
+api_reload: false
+access_token_expire_minutes: 15
+refresh_token_expire_days: 7
+
+# Database
+postgres_max_connections: 100
+postgres_shared_buffers: 256MB
+
+# Redis
+redis_maxmemory: 2gb
+
+# Rate limiting
+rate_limit_enabled: true
+rate_limit_requests_per_minute: 100
+rate_limit_documents_per_hour: 10
+rate_limit_login_attempts: 5
+rate_limit_login_window: 900
+default_user_daily_quota: 100
+
+# GPU
+cuda_visible_devices: "0"
+
+# Monitoring
+grafana_user: admin
+prometheus_retention_days: 30

@@ -1,0 +1,75 @@
+# Ablage-System NVIDIA Role - Verification
+---
+- name: Verify NVIDIA drivers are working
+  ansible.builtin.command: nvidia-smi
+  register: nvidia_smi_output
+  changed_when: false
+  become: yes
+
+- name: Display NVIDIA GPU information
+  ansible.builtin.debug:
+    msg: "{{ nvidia_smi_output.stdout_lines }}"
+
+- name: Test NVIDIA Container Runtime
+  community.docker.docker_container:
+    name: nvidia-test
+    image: "nvidia/cuda:{{ nvidia_cuda_version }}-base-ubuntu22.04"
+    command: nvidia-smi
+    state: started
+    auto_remove: yes
+    detach: no
+    device_requests:
+      - driver: nvidia
+        count: -1
+        capabilities:
+          - gpu
+  become: yes
+  register: nvidia_container_test
+  ignore_errors: yes
+
+- name: Display container test result
+  ansible.builtin.debug:
+    msg: |
+      NVIDIA Container Test: {{ 'PASSED' if nvidia_container_test is succeeded else 'FAILED' }}
+      {% if nvidia_container_test is succeeded %}
+      Container output:
+      {{ nvidia_container_test.container.Output | default('N/A') }}
+      {% endif %}
+
+- name: Verify GPU memory
+  ansible.builtin.command: nvidia-smi --query-gpu=memory.total,memory.free --format=csv,noheader,nounits
+  register: gpu_memory
+  changed_when: false
+  become: yes
+
+- name: Parse GPU memory information
+  ansible.builtin.set_fact:
+    gpu_total_memory_mb: "{{ gpu_memory.stdout.split(',')[0] | trim }}"
+    gpu_free_memory_mb: "{{ gpu_memory.stdout.split(',')[1] | trim }}"
+
+- name: Display GPU memory status
+  ansible.builtin.debug:
+    msg: |
+      GPU Memory Status:
+      - Total: {{ gpu_total_memory_mb }} MB
+      - Free: {{ gpu_free_memory_mb }} MB
+      - Available for OCR: {{ ((gpu_free_memory_mb | int) * 0.85) | int }} MB (85% threshold)
+
+- name: Fail if GPU has insufficient memory
+  ansible.builtin.fail:
+    msg: "GPU has insufficient memory. Required: {{ nvidia_min_memory_mb | default(8000) }} MB, Available: {{ gpu_free_memory_mb }} MB"
+  when:
+    - nvidia_check_memory | default(false)
+    - gpu_free_memory_mb | int < nvidia_min_memory_mb | default(8000)
+
+- name: NVIDIA setup verification complete
+  ansible.builtin.debug:
+    msg: |
+      ╔══════════════════════════════════════════════════════════════╗
+      ║           NVIDIA GPU Setup Complete                          ║
+      ╠══════════════════════════════════════════════════════════════╣
+      ║ Driver: {{ current_nvidia_version.stdout | default(nvidia_driver_version) }}
+      ║ CUDA: {{ nvidia_cuda_version }}
+      ║ Container Runtime: Configured
+      ║ GPU Memory: {{ gpu_total_memory_mb }} MB total
+      ╚══════════════════════════════════════════════════════════════╝

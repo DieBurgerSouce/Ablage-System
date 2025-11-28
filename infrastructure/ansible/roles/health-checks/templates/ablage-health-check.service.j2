@@ -1,0 +1,16 @@
+[Unit]
+Description=Ablage-System Health Check Service
+Documentation=https://github.com/org/ablage-system
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ablage-health-check
+User=root
+Group=root
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ablage-health-check

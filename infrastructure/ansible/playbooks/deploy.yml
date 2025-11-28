@@ -1,0 +1,87 @@
+# Ablage-System Application Deployment Playbook
+# Usage: ansible-playbook -i inventories/production/hosts.yml playbooks/deploy.yml
+---
+- name: Deploy Ablage-System Application
+  hosts: docker_hosts
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Display deployment information
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║           Ablage-System Deployment                           ║
+          ╠══════════════════════════════════════════════════════════════╣
+          ║ Environment: {{ env_name | default('unknown') }}
+          ║ Target Host: {{ inventory_hostname }}
+          ║ Domain: {{ domain_name | default('localhost') }}
+          ║ GPU Enabled: {{ nvidia_gpu_enabled | default(false) }}
+          ║ Date: {{ ansible_date_time.iso8601 }}
+          ╚══════════════════════════════════════════════════════════════╝
+
+    - name: Verify Docker is available
+      ansible.builtin.command: docker version
+      register: docker_check
+      changed_when: false
+      failed_when: docker_check.rc != 0
+
+    - name: Verify Docker Compose is available
+      ansible.builtin.command: docker compose version
+      register: compose_check
+      changed_when: false
+      failed_when: compose_check.rc != 0
+
+    - name: Check for required vault variables
+      ansible.builtin.assert:
+        that:
+          - vault_db_password is defined
+          - vault_secret_key is defined
+          - vault_minio_root_password is defined
+        fail_msg: |
+          Required vault variables are not defined.
+          Ensure vault.yml is properly configured and decrypted.
+          Required: vault_db_password, vault_secret_key, vault_minio_root_password
+
+  roles:
+    - role: ablage-deploy
+      tags:
+        - deploy
+        - application
+
+    - role: logrotate
+      tags:
+        - logrotate
+        - logging
+
+  post_tasks:
+    - name: Wait for all services to be healthy
+      ansible.builtin.command:
+        cmd: docker compose ps --format {% raw %}"{{.Service}}: {{.Status}}"{% endraw %}
+        chdir: "{{ ablage_install_dir }}"
+      register: final_status
+      changed_when: false
+      become: yes
+
+    - name: Display final deployment status
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║           Deployment Complete                                ║
+          ╠══════════════════════════════════════════════════════════════╣
+          {{ final_status.stdout }}
+          ╠══════════════════════════════════════════════════════════════╣
+          ║ Access URLs:                                                 ║
+          ║ - API: http://{{ ansible_host }}:8000                        ║
+          ║ - API Docs: http://{{ ansible_host }}:8000/docs              ║
+          ║ - Frontend: http://{{ ansible_host }}                        ║
+          ║ - Grafana: http://{{ ansible_host }}:3000                    ║
+          ║ - Prometheus: http://{{ ansible_host }}:9090                 ║
+          ╚══════════════════════════════════════════════════════════════╝
+
+  handlers:
+    - name: Import ablage-deploy handlers
+      ansible.builtin.import_tasks: ../roles/ablage-deploy/handlers/main.yml
+
+    - name: Import logrotate handlers
+      ansible.builtin.import_tasks: ../roles/logrotate/handlers/main.yml

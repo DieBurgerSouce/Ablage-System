@@ -1,0 +1,31 @@
+# Ablage-System Security Role - Default Variables
+---
+# UFW Configuration
+ufw_enabled: true
+ufw_default_incoming: deny
+ufw_default_outgoing: allow
+ufw_logging: low
+
+# Default UFW rules (can be overridden in inventory)
+ufw_rules:
+  - { rule: allow, port: 22, proto: tcp, comment: 'SSH' }
+  - { rule: allow, port: 80, proto: tcp, comment: 'HTTP' }
+  - { rule: allow, port: 443, proto: tcp, comment: 'HTTPS' }
+
+# SSH Configuration
+ssh_port: 22
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"
+ssh_max_auth_tries: 3
+ssh_client_alive_interval: 300
+ssh_client_alive_count_max: 2
+
+# Fail2ban Configuration
+fail2ban_enabled: true
+fail2ban_bantime: 3600  # 1 hour
+fail2ban_findtime: 600  # 10 minutes
+fail2ban_maxretry: 5
+fail2ban_ignoreip: "127.0.0.1/8 ::1"
+
+# Audit Configuration
+security_enable_audit: true

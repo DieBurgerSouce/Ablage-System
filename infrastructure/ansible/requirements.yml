@@ -1,0 +1,32 @@
+# Ablage-System Ansible Galaxy Requirements
+# Install: ansible-galaxy install -r requirements.yml
+---
+collections:
+  # Community General (utilities, systemd, etc.)
+  - name: community.general
+    version: ">=8.0.0"
+
+  # Community Docker (docker_compose, docker_container, etc.)
+  - name: community.docker
+    version: ">=3.4.0"
+
+  # Community Crypto (SSL certificates, DH params)
+  - name: community.crypto
+    version: ">=2.16.0"
+
+  # Community PostgreSQL (pg_* modules)
+  - name: community.postgresql
+    version: ">=3.2.0"
+
+  # Ansible POSIX (synchronize, authorized_key, etc.)
+  - name: ansible.posix
+    version: ">=1.5.0"
+
+roles:
+  # Geerlingguy Docker (optional - we have our own role but good reference)
+  # - name: geerlingguy.docker
+  #   version: "7.1.0"
+
+  # Geerlingguy Security (optional - reference for hardening)
+  # - name: geerlingguy.security
+  #   version: "2.2.0"

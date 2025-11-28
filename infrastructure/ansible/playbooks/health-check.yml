@@ -1,0 +1,309 @@
+# Ablage-System Health Check Playbook
+# Performs comprehensive health checks
+#
+# Usage:
+#   ansible-playbook -i inventory/production playbooks/health-check.yml
+#   ansible-playbook -i inventory/production playbooks/health-check.yml --tags "quick"
+#   ansible-playbook -i inventory/production playbooks/health-check.yml -e "verbose=true"
+---
+- name: Ablage-System Health Check
+  hosts: ablage_servers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    verbose: false
+    check_containers: true
+    check_endpoints: true
+    check_resources: true
+    check_database: true
+    check_gpu: true
+    check_certificates: true
+
+  tasks:
+    - name: Display health check header
+      ansible.builtin.debug:
+        msg: |
+          ═══════════════════════════════════════════════════════════
+           Ablage-System Gesundheitsprüfung
+           Host: {{ inventory_hostname }}
+           Zeit: {{ ansible_date_time.iso8601 }}
+          ═══════════════════════════════════════════════════════════
+      tags: always
+
+    # Container Health Checks
+    - name: Container health checks
+      tags: containers, quick
+      when: check_containers | bool
+      block:
+        - name: Get Docker container status
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose ps --format json
+          register: container_status
+          changed_when: false
+
+        - name: Parse container status
+          ansible.builtin.set_fact:
+            containers: "{{ container_status.stdout | from_json }}"
+          when: container_status.stdout | length > 0
+
+        - name: Check each container status
+          ansible.builtin.debug:
+            msg: |
+              Container-Status:
+              {% if containers is defined %}
+              {% for container in containers if containers is iterable %}
+              - {{ container.Service | default(container.Name) }}: {{ container.State | default('unknown') }}
+              {% endfor %}
+              {% else %}
+              - Keine Container gefunden
+              {% endif %}
+
+    # Endpoint Health Checks
+    - name: Endpoint health checks
+      tags: endpoints, quick
+      when: check_endpoints | bool
+      block:
+        - name: Check API health endpoint
+          ansible.builtin.uri:
+            url: "http://localhost:{{ ablage_backend_port | default(8000) }}/health"
+            return_content: yes
+            timeout: 10
+          register: api_health
+          failed_when: false
+
+        - name: Check API detailed health
+          ansible.builtin.uri:
+            url: "http://localhost:{{ ablage_backend_port | default(8000) }}/health/detailed"
+            return_content: yes
+            timeout: 10
+          register: api_health_detailed
+          failed_when: false
+          when: verbose | bool
+
+        - name: Check Frontend
+          ansible.builtin.uri:
+            url: "http://localhost:80"
+            status_code: [200, 301, 302]
+            timeout: 10
+          register: frontend_health
+          failed_when: false
+
+        - name: Check Grafana
+          ansible.builtin.uri:
+            url: "http://localhost:3000/api/health"
+            timeout: 10
+          register: grafana_health
+          failed_when: false
+
+        - name: Check Prometheus
+          ansible.builtin.uri:
+            url: "http://localhost:9090/-/healthy"
+            timeout: 10
+          register: prometheus_health
+          failed_when: false
+
+        - name: Display endpoint status
+          ansible.builtin.debug:
+            msg: |
+              Endpoint-Status:
+              - API: {{ 'OK' if api_health.status | default(0) == 200 else 'FEHLER (' + (api_health.status | default('N/A') | string) + ')' }}
+              - Frontend: {{ 'OK' if frontend_health.status | default(0) in [200, 301, 302] else 'FEHLER' }}
+              - Grafana: {{ 'OK' if grafana_health.status | default(0) == 200 else 'FEHLER' }}
+              - Prometheus: {{ 'OK' if prometheus_health.status | default(0) == 200 else 'FEHLER' }}
+
+    # Resource Health Checks
+    - name: Resource health checks
+      tags: resources
+      when: check_resources | bool
+      block:
+        - name: Gather system facts
+          ansible.builtin.setup:
+            gather_subset:
+              - hardware
+              - mounts
+
+        - name: Calculate CPU usage
+          ansible.builtin.shell: |
+            top -bn1 | grep "Cpu(s)" | awk '{print 100 - $8}'
+          register: cpu_usage
+          changed_when: false
+
+        - name: Calculate memory usage
+          ansible.builtin.shell: |
+            free | grep Mem | awk '{printf "%.1f", $3/$2 * 100}'
+          register: memory_usage
+          changed_when: false
+
+        - name: Get disk usage
+          ansible.builtin.shell: |
+            df -h / | tail -1 | awk '{print $5}'
+          register: disk_usage
+          changed_when: false
+
+        - name: Get data disk usage
+          ansible.builtin.shell: |
+            df -h {{ ablage_data_dir }} | tail -1 | awk '{print $5}'
+          register: data_disk_usage
+          changed_when: false
+          failed_when: false
+
+        - name: Display resource status
+          ansible.builtin.debug:
+            msg: |
+              Ressourcen-Status:
+              - CPU: {{ cpu_usage.stdout | trim }}% (Schwellwert: {{ health_check_cpu_threshold | default(90) }}%)
+              - Speicher: {{ memory_usage.stdout | trim }}% (Schwellwert: {{ health_check_memory_threshold | default(90) }}%)
+              - Festplatte (/): {{ disk_usage.stdout | trim }} (Schwellwert: {{ health_check_disk_threshold | default(90) }}%)
+              - Datenverzeichnis: {{ data_disk_usage.stdout | default('N/A') | trim }}
+
+    # Database Health Checks
+    - name: Database health checks
+      tags: database
+      when: check_database | bool
+      block:
+        - name: Check PostgreSQL connectivity
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose exec -T postgres pg_isready -U ablage_admin -d ablage_system
+          register: pg_ready
+          changed_when: false
+          failed_when: false
+
+        - name: Get PostgreSQL connection count
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose exec -T postgres psql -U ablage_admin -d ablage_system -t -c "SELECT count(*) FROM pg_stat_activity;"
+          register: pg_connections
+          changed_when: false
+          failed_when: false
+
+        - name: Get PostgreSQL database size
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose exec -T postgres psql -U ablage_admin -d ablage_system -t -c "SELECT pg_size_pretty(pg_database_size('ablage_system'));"
+          register: pg_size
+          changed_when: false
+          failed_when: false
+
+        - name: Check Redis connectivity
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose exec -T redis redis-cli ping
+          register: redis_ping
+          changed_when: false
+          failed_when: false
+
+        - name: Get Redis memory usage
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose exec -T redis redis-cli INFO memory | grep used_memory_human | cut -d: -f2
+          register: redis_memory
+          changed_when: false
+          failed_when: false
+
+        - name: Display database status
+          ansible.builtin.debug:
+            msg: |
+              Datenbank-Status:
+              - PostgreSQL: {{ 'OK' if pg_ready.rc == 0 else 'FEHLER' }}
+              - PG Verbindungen: {{ pg_connections.stdout | default('N/A') | trim }}
+              - PG Größe: {{ pg_size.stdout | default('N/A') | trim }}
+              - Redis: {{ 'OK (PONG)' if redis_ping.stdout | default('') | trim == 'PONG' else 'FEHLER' }}
+              - Redis Speicher: {{ redis_memory.stdout | default('N/A') | trim }}
+
+    # GPU Health Checks
+    - name: GPU health checks
+      tags: gpu
+      when: check_gpu | bool and nvidia_driver_enabled | default(true) | bool
+      block:
+        - name: Check nvidia-smi availability
+          ansible.builtin.command:
+            cmd: which nvidia-smi
+          register: nvidia_smi_check
+          changed_when: false
+          failed_when: false
+
+        - name: Get GPU information
+          ansible.builtin.shell: |
+            nvidia-smi --query-gpu=name,memory.used,memory.total,temperature.gpu,utilization.gpu --format=csv,noheader
+          register: gpu_info
+          changed_when: false
+          when: nvidia_smi_check.rc == 0
+
+        - name: Display GPU status
+          ansible.builtin.debug:
+            msg: |
+              GPU-Status:
+              {% if nvidia_smi_check.rc == 0 and gpu_info.stdout is defined %}
+              {{ gpu_info.stdout }}
+              {% else %}
+              - GPU nicht verfügbar oder nvidia-smi nicht installiert
+              {% endif %}
+          when: nvidia_smi_check.rc == 0
+
+    # Certificate Health Checks
+    - name: Certificate health checks
+      tags: certificates
+      when: check_certificates | bool and ssl_enabled | default(false) | bool
+      block:
+        - name: Check SSL certificate expiration
+          ansible.builtin.shell: |
+            echo | openssl s_client -servername {{ ablage_domain | default('localhost') }} -connect localhost:443 2>/dev/null | openssl x509 -noout -enddate
+          register: cert_expiry
+          changed_when: false
+          failed_when: false
+
+        - name: Calculate days until expiration
+          ansible.builtin.shell: |
+            end_date=$(echo | openssl s_client -servername {{ ablage_domain | default('localhost') }} -connect localhost:443 2>/dev/null | openssl x509 -noout -enddate | cut -d= -f2)
+            end_epoch=$(date -d "$end_date" +%s)
+            now_epoch=$(date +%s)
+            echo $(( (end_epoch - now_epoch) / 86400 ))
+          register: cert_days
+          changed_when: false
+          failed_when: false
+
+        - name: Display certificate status
+          ansible.builtin.debug:
+            msg: |
+              Zertifikat-Status:
+              - Ablaufdatum: {{ cert_expiry.stdout | default('N/A') }}
+              - Tage bis Ablauf: {{ cert_days.stdout | default('N/A') }}
+              {% if cert_days.stdout | default(0) | int < 30 %}
+              - WARNUNG: Zertifikat läuft bald ab!
+              {% endif %}
+
+  post_tasks:
+    - name: Run comprehensive health check script
+      ansible.builtin.command:
+        cmd: /usr/local/bin/ablage-health-check
+      register: health_script_result
+      failed_when: false
+      tags: always
+
+    - name: Set health status
+      ansible.builtin.set_fact:
+        system_healthy: "{{ health_script_result.rc | default(1) == 0 }}"
+      tags: always
+
+    - name: Display final summary
+      ansible.builtin.debug:
+        msg: |
+          ═══════════════════════════════════════════════════════════
+           ZUSAMMENFASSUNG
+          ═══════════════════════════════════════════════════════════
+           Gesamtstatus: {{ 'GESUND ✓' if system_healthy else 'PROBLEME ERKANNT ✗' }}
+
+           Bericht gespeichert unter:
+           {{ health_check_report_dir | default('/var/lib/ablage/health-reports') }}/
+
+          ═══════════════════════════════════════════════════════════
+      tags: always
+
+    - name: Fail if system is unhealthy
+      ansible.builtin.fail:
+        msg: "System-Gesundheitsprüfung fehlgeschlagen. Bitte Protokolle prüfen."
+      when: not system_healthy
+      tags: never  # Only fail if explicitly requested with --tags fail_on_unhealthy

@@ -1,0 +1,23 @@
+# Ablage-System NVIDIA Role - Default Variables
+---
+# NVIDIA driver version (535 series for CUDA 12.1 compatibility)
+nvidia_driver_version: "535"
+
+# CUDA version for container runtime verification
+nvidia_cuda_version: "12.1.0"
+
+# Minimum GPU memory required (in MB)
+nvidia_min_memory_mb: 8000
+
+# Whether to check GPU memory during verification
+nvidia_check_memory: false
+
+# NVIDIA container runtime settings
+nvidia_visible_devices: all
+nvidia_driver_capabilities: compute,utility
+
+# Whether to install CUDA toolkit (not just drivers)
+nvidia_install_cuda_toolkit: false
+
+# CUDA toolkit version (if nvidia_install_cuda_toolkit is true)
+nvidia_cuda_toolkit_version: "12-1"

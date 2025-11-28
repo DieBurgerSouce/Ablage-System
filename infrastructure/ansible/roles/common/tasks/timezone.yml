@@ -1,0 +1,40 @@
+# Ablage-System Common Role - Timezone Configuration
+---
+- name: Set timezone to Europe/Berlin
+  community.general.timezone:
+    name: "{{ common_timezone | default('Europe/Berlin') }}"
+  become: yes
+  notify: restart cron
+
+- name: Ensure NTP is installed and running
+  ansible.builtin.apt:
+    name: chrony
+    state: present
+  become: yes
+
+- name: Start and enable chrony
+  ansible.builtin.systemd:
+    name: chrony
+    state: started
+    enabled: yes
+  become: yes
+
+- name: Configure locale
+  ansible.builtin.locale_gen:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - de_DE.UTF-8
+    - en_US.UTF-8
+  become: yes
+
+- name: Set default locale
+  ansible.builtin.lineinfile:
+    path: /etc/default/locale
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+    create: yes
+  loop:
+    - { key: "LANG", value: "en_US.UTF-8" }
+    - { key: "LC_ALL", value: "en_US.UTF-8" }
+  become: yes

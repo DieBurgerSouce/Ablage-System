@@ -1,0 +1,56 @@
+# Ablage-System Development Environment Variables
+---
+# Environment
+env_name: development
+domain_name: ablage-dev.local
+ssl_admin_email: dev@ablage-system.local
+
+# Installation paths
+ablage_install_dir: /opt/ablage-system
+ablage_log_dir: /var/log/ablage-system
+ablage_backup_dir: /opt/ablage-system/backups
+
+# Docker settings
+docker_log_max_size: "50m"
+docker_log_max_file: "3"
+docker_compose_version: "2.24.0"
+
+# Application settings
+log_level: DEBUG
+debug_mode: true
+api_reload: true
+access_token_expire_minutes: 60
+
+# GPU settings
+cuda_visible_devices: "0"
+
+# Database
+postgres_max_connections: 50
+postgres_shared_buffers: 128MB
+
+# Redis
+redis_maxmemory: 1gb
+
+# Rate Limiting
+rate_limit_enabled: true
+rate_limit_requests_per_minute: 1000
+rate_limit_documents_per_hour: 100
+
+# Backup settings
+backup_enabled: true
+backup_retention_days: 7
+backup_schedule: "0 3 * * *"  # 3 AM daily
+backup_remote_enabled: false
+
+# Monitoring
+grafana_user: admin
+prometheus_retention_days: 7
+prometheus_scrape_interval: 15s
+
+# SSL
+ssl_enabled: false  # Development uses HTTP
+ssl_use_manual_certs: true
+
+# Security (relaxed for development)
+ufw_enabled: false
+fail2ban_enabled: false

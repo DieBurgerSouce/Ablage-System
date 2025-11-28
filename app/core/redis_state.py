@@ -398,6 +398,171 @@ class RedisStateManager:
         await self._redis.set(key, 0)
 
     # =========================================================================
+    # QUEUE LENGTH MONITORING
+    # =========================================================================
+
+    async def get_queue_lengths(
+        self, queue_names: Optional[List[str]] = None
+    ) -> Dict[str, int]:
+        """
+        Get Celery queue lengths for load balancing.
+
+        Args:
+            queue_names: Optional list of queue names to check.
+                        Defaults to OCR-related queues.
+
+        Returns:
+            Dictionary mapping queue name to length
+        """
+        await self._ensure_connection()
+
+        # Default Celery queues used in Ablage-System
+        if queue_names is None:
+            queue_names = [
+                "ocr_high",
+                "ocr_normal",
+                "embedding_high",
+                "embedding_normal",
+                "celery",  # Default queue
+            ]
+
+        lengths = {}
+        for queue_name in queue_names:
+            try:
+                # Celery uses Redis lists for queues
+                length = await self._redis.llen(queue_name)
+                lengths[queue_name] = length
+            except Exception as e:
+                logger.warning(
+                    "queue_length_check_failed",
+                    queue=queue_name,
+                    error=str(e)
+                )
+                lengths[queue_name] = 0
+
+        return lengths
+
+    async def get_total_queue_length(self) -> int:
+        """Get total length of all OCR queues."""
+        lengths = await self.get_queue_lengths()
+        return sum(lengths.values())
+
+    # =========================================================================
+    # HUMAN REVIEW QUEUE
+    # =========================================================================
+
+    async def add_to_review_queue(
+        self,
+        document_id: str,
+        qa_score: float,
+        reasons: List[str],
+        metadata: Optional[Dict] = None
+    ) -> None:
+        """
+        Add document to human review queue.
+
+        Uses Redis sorted set for priority ordering (lower score = higher priority).
+
+        Args:
+            document_id: Document ID
+            qa_score: QA score (lower = higher priority)
+            reasons: List of reasons for review
+            metadata: Optional additional metadata
+        """
+        await self._ensure_connection()
+
+        review_item = {
+            "document_id": document_id,
+            "qa_score": qa_score,
+            "reasons": reasons,
+            "metadata": metadata or {},
+            "added_at": datetime.utcnow().isoformat(),
+        }
+
+        # Use sorted set with QA score as priority (inverted: lower score = higher priority)
+        await self._redis.zadd(
+            "human_review_queue",
+            {json.dumps(review_item): qa_score}
+        )
+
+        # Publish event for notification systems
+        await self.publish_event(
+            event_type="document.needs_review",
+            data=review_item,
+            channel="review_events"
+        )
+
+        logger.info(
+            "document_added_to_review_queue",
+            document_id=document_id,
+            qa_score=qa_score,
+            reasons=reasons
+        )
+
+    async def get_review_queue(
+        self, limit: int = 50
+    ) -> List[Dict]:
+        """
+        Get documents from review queue (highest priority first).
+
+        Args:
+            limit: Maximum number of items to return
+
+        Returns:
+            List of review items ordered by priority
+        """
+        await self._ensure_connection()
+
+        # Get items with lowest scores (highest priority)
+        items = await self._redis.zrange(
+            "human_review_queue",
+            0,
+            limit - 1,
+            withscores=True
+        )
+
+        result = []
+        for item_json, score in items:
+            item = json.loads(item_json)
+            item["priority_score"] = score
+            result.append(item)
+
+        return result
+
+    async def remove_from_review_queue(self, document_id: str) -> bool:
+        """
+        Remove document from review queue.
+
+        Args:
+            document_id: Document ID to remove
+
+        Returns:
+            True if removed, False if not found
+        """
+        await self._ensure_connection()
+
+        # Get all items and find matching document
+        items = await self._redis.zrange("human_review_queue", 0, -1)
+
+        for item_json in items:
+            item = json.loads(item_json)
+            if item.get("document_id") == document_id:
+                removed = await self._redis.zrem("human_review_queue", item_json)
+                if removed:
+                    logger.info(
+                        "document_removed_from_review_queue",
+                        document_id=document_id
+                    )
+                    return True
+
+        return False
+
+    async def get_review_queue_length(self) -> int:
+        """Get number of documents in review queue."""
+        await self._ensure_connection()
+        return await self._redis.zcard("human_review_queue")
+
+    # =========================================================================
     # DISTRIBUTED LOCKS
     # =========================================================================
 

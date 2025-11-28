@@ -149,14 +149,135 @@ class OCRBackendRouter(OrchestrationAgent):
             self.use_ml_routing = False
 
     def _get_resource_status(self) -> Dict[str, Any]:
-        """Get current resource availability status."""
+        """Get current resource availability status (sync, without queue lengths)."""
         gpu_status = self.gpu_manager.check_availability()
 
         return {
             "gpu_available": gpu_status.get("available", False),
             "gpu_memory_available_gb": gpu_status.get("free_memory_gb", 0),
-            "queue_length": 0,  # TODO: Get from Redis queue
+            "queue_length": 0,  # Use _get_resource_status_async for queue lengths
+            "queue_lengths": {},
         }
+
+    async def _get_resource_status_async(self) -> Dict[str, Any]:
+        """Get current resource availability with queue lengths from Redis."""
+        gpu_status = self.gpu_manager.check_availability()
+
+        # Get queue lengths from Redis for load balancing
+        queue_length = 0
+        queue_lengths = {}
+        try:
+            from app.core.redis_state import get_redis
+            redis_manager = await get_redis()
+            queue_lengths = await redis_manager.get_queue_lengths()
+            queue_length = sum(queue_lengths.values())
+        except Exception as e:
+            logger.warning("queue_length_fetch_failed", error=str(e))
+
+        return {
+            "gpu_available": gpu_status.get("available", False),
+            "gpu_memory_available_gb": gpu_status.get("free_memory_gb", 0),
+            "queue_length": queue_length,
+            "queue_lengths": queue_lengths,
+        }
+
+    async def _check_load_balancing(
+        self,
+        resource_status: Dict[str, Any],
+        metadata: Dict[str, Any],
+        sla: Dict[str, Any],
+        preferences: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Check if load balancing should override normal backend selection.
+
+        Returns a routing result if load balancing is needed, None otherwise.
+
+        Load balancing triggers:
+        - Queue length > high threshold: Switch to faster backend
+        - Queue length > critical threshold: Use CPU fallback
+        - GPU unavailable but GPU backend preferred: Use CPU fallback
+
+        Args:
+            resource_status: Current resource status with queue lengths
+            metadata: Document classification results
+            sla: SLA requirements
+            preferences: User preferences
+
+        Returns:
+            Routing result dict if load balancing triggered, None otherwise
+        """
+        from app.core.config import settings
+
+        # Skip if load balancing is disabled
+        if not settings.LOAD_BALANCING_ENABLED:
+            return None
+
+        # Skip if user has strong preference
+        if preferences.get("preferred_backend") in self.BACKEND_CAPABILITIES:
+            return None
+
+        queue_length = resource_status.get("queue_length", 0)
+        queue_lengths = resource_status.get("queue_lengths", {})
+        gpu_available = resource_status.get("gpu_available", False)
+
+        # Critical threshold: Too many jobs queued, use CPU fallback
+        if queue_length >= settings.QUEUE_LENGTH_THRESHOLD_CRITICAL:
+            logger.warning(
+                "load_balancing_critical",
+                queue_length=queue_length,
+                threshold=settings.QUEUE_LENGTH_THRESHOLD_CRITICAL,
+                action="cpu_fallback"
+            )
+            return {
+                "backend": "surya",
+                "reason": f"queue_overload_critical ({queue_length} jobs)",
+                "confidence": 0.7,
+                "alternatives": [],
+                "routing_method": "load_balancing",
+                "load_balanced": True,
+            }
+
+        # High threshold: OCR queues overloaded, switch to faster backend
+        ocr_high_queue = queue_lengths.get("ocr_high", 0)
+        ocr_normal_queue = queue_lengths.get("ocr_normal", 0)
+        total_ocr_queue = ocr_high_queue + ocr_normal_queue
+
+        if total_ocr_queue >= settings.QUEUE_LENGTH_THRESHOLD_HIGH:
+            # Prefer got_ocr for faster throughput when queues are high
+            if gpu_available:
+                logger.info(
+                    "load_balancing_high",
+                    ocr_queue_length=total_ocr_queue,
+                    threshold=settings.QUEUE_LENGTH_THRESHOLD_HIGH,
+                    action="switch_to_fast_gpu"
+                )
+                return {
+                    "backend": "got_ocr",
+                    "reason": f"queue_overload_high ({total_ocr_queue} OCR jobs)",
+                    "confidence": 0.8,
+                    "alternatives": ["surya_gpu", "surya"],
+                    "routing_method": "load_balancing",
+                    "load_balanced": True,
+                }
+            else:
+                logger.info(
+                    "load_balancing_high_cpu",
+                    ocr_queue_length=total_ocr_queue,
+                    threshold=settings.QUEUE_LENGTH_THRESHOLD_HIGH,
+                    action="switch_to_cpu"
+                )
+                return {
+                    "backend": "surya",
+                    "reason": f"queue_overload_high_no_gpu ({total_ocr_queue} OCR jobs)",
+                    "confidence": 0.7,
+                    "alternatives": [],
+                    "routing_method": "load_balancing",
+                    "load_balanced": True,
+                }
+
+        # No load balancing needed
+        return None
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -191,8 +312,16 @@ class OCRBackendRouter(OrchestrationAgent):
             use_ml=self.use_ml_routing,
         )
 
-        # Get resource status for ML model
-        resource_status = self._get_resource_status()
+        # Get resource status with queue lengths (async)
+        resource_status = await self._get_resource_status_async()
+
+        # Check for load balancing before ML/rule-based selection
+        load_balanced_result = await self._check_load_balancing(
+            resource_status, metadata, sla, preferences
+        )
+        if load_balanced_result:
+            self._routing_stats["backend_selections"][load_balanced_result["backend"]] += 1
+            return load_balanced_result
 
         # Try ML-based selection first if enabled
         result = None
@@ -300,11 +429,9 @@ class OCRBackendRouter(OrchestrationAgent):
                 "alternatives": ["surya"],
             }
 
-        # Priority 6: Queue load balancing
-        # TODO: Check queue lengths
-        # queue_lengths = await self.get_queue_lengths()
-        # if queue_lengths.get("deepseek", 0) > 100:
-        #     return "got_ocr"  # Load balancing
+        # Priority 6: Queue load balancing (async resource status needed)
+        # Note: This is called from process() which fetches queue lengths async
+        # For sync fallback, queue length is 0 and load balancing is skipped
 
         # Default: GOT-OCR for standard documents
         return {

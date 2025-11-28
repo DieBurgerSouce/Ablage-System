@@ -85,7 +85,14 @@ class Settings(BaseSettings):
     GPU_MEMORY_FRACTION: float = 0.85  # Max 85% VRAM usage
     ENABLE_GPU: bool = True
     GPU_BATCH_SIZE: int = 32
-    
+
+    # Load Balancing Settings
+    LOAD_BALANCING_ENABLED: bool = True
+    QUEUE_LENGTH_THRESHOLD_HIGH: int = 100  # Switch to faster backend
+    QUEUE_LENGTH_THRESHOLD_CRITICAL: int = 200  # Use CPU fallback
+    QUEUE_CHECK_INTERVAL_SECONDS: int = 30  # How often to check queues
+    LOAD_BALANCE_PREFER_GPU: bool = True  # Prefer GPU when queues similar
+
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_REQUESTS_PER_MINUTE: int = 100
@@ -115,6 +122,34 @@ class Settings(BaseSettings):
     GERMAN_VALIDATION_ENABLED: bool = True
     MINIMUM_GERMAN_VALIDATION_SCORE: float = 0.7
     DETECT_FRAKTUR: bool = True
+
+    # Quality Assurance Settings
+    QA_REVIEW_THRESHOLD: float = 0.7  # Trigger human review below this score
+    QA_CONFIDENCE_THRESHOLD_HIGH: float = 0.9
+    QA_CONFIDENCE_THRESHOLD_MEDIUM: float = 0.75
+    QA_CONFIDENCE_THRESHOLD_LOW: float = 0.6
+
+    # Search and Embedding Settings
+    EMBEDDING_MODEL: str = "intfloat/multilingual-e5-large"
+    EMBEDDING_DIMENSION: int = 1024
+    EMBEDDING_BATCH_SIZE: int = 8  # Conservative for 16GB VRAM
+    EMBEDDING_MAX_LENGTH: int = 512  # Max tokens per text
+    SEARCH_DEFAULT_LIMIT: int = 20
+    SEARCH_MAX_LIMIT: int = 100
+    SEMANTIC_SIMILARITY_THRESHOLD: float = 0.5
+    HYBRID_FTS_WEIGHT: float = 0.3
+    HYBRID_SEMANTIC_WEIGHT: float = 0.7
+
+    # Search Caching Settings
+    SEARCH_CACHE_ENABLED: bool = True
+    SEARCH_CACHE_TTL: int = 3600  # 1 hour for search results
+    SEARCH_EMBEDDING_CACHE_TTL: int = 86400  # 24 hours for query embeddings
+    SEARCH_SIMILAR_CACHE_TTL: int = 1800  # 30 minutes for similar documents
+
+    # Embedding Auto-Generation Settings
+    EMBEDDING_AUTO_GENERATE: bool = True  # Auto-generate after OCR
+    EMBEDDING_TASK_DELAY_SECONDS: int = 5  # Delay before embedding task
+    EMBEDDING_TASK_PRIORITY: int = 9  # Celery priority (0-9, 9=lowest)
     
     # Performance
     WORKER_CONNECTIONS: int = 1000

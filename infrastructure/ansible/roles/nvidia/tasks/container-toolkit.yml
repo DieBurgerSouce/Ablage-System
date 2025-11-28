@@ -1,0 +1,46 @@
+# Ablage-System NVIDIA Role - Container Toolkit Installation
+---
+- name: Add NVIDIA Container Toolkit GPG key
+  ansible.builtin.apt_key:
+    url: https://nvidia.github.io/libnvidia-container/gpgkey
+    state: present
+  become: yes
+
+- name: Add NVIDIA Container Toolkit repository
+  ansible.builtin.apt_repository:
+    repo: "deb https://nvidia.github.io/libnvidia-container/stable/deb/$(ARCH) /"
+    state: present
+    filename: nvidia-container-toolkit
+  become: yes
+
+- name: Install NVIDIA Container Toolkit
+  ansible.builtin.apt:
+    name:
+      - nvidia-container-toolkit
+    state: present
+    update_cache: yes
+  become: yes
+
+- name: Configure NVIDIA Container Runtime
+  ansible.builtin.command: nvidia-ctk runtime configure --runtime=docker
+  become: yes
+  register: nvidia_runtime_configure
+  changed_when: "'already configured' not in nvidia_runtime_configure.stdout"
+  notify: restart docker
+
+- name: Update Docker daemon configuration for NVIDIA
+  ansible.builtin.set_fact:
+    docker_nvidia_runtime: true
+
+- name: Ensure NVIDIA runtime is configured in Docker daemon.json
+  ansible.builtin.template:
+    src: ../docker/templates/daemon.json.j2
+    dest: /etc/docker/daemon.json
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: restart docker
+
+- name: Ensure Docker service is restarted
+  ansible.builtin.meta: flush_handlers

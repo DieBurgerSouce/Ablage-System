@@ -1,0 +1,31 @@
+# Ablage-System Deploy Role - Environment Configuration
+---
+- name: Generate environment file from template
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ ablage_install_dir }}/.env"
+    owner: ablage
+    group: ablage
+    mode: '0600'
+  become: yes
+  notify: restart ablage
+
+- name: Create Docker Compose override for environment
+  ansible.builtin.template:
+    src: docker-compose.override.yml.j2
+    dest: "{{ ablage_install_dir }}/docker-compose.override.yml"
+    owner: ablage
+    group: ablage
+    mode: '0644'
+  become: yes
+  when: deploy_create_override | default(false)
+
+- name: Verify environment file
+  ansible.builtin.stat:
+    path: "{{ ablage_install_dir }}/.env"
+  register: env_file
+
+- name: Fail if environment file not created
+  ansible.builtin.fail:
+    msg: "Environment file was not created at {{ ablage_install_dir }}/.env"
+  when: not env_file.stat.exists

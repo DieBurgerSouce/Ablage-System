@@ -1,0 +1,40 @@
+# Ablage-System Health Checks Role - Alerting Configuration
+---
+- name: Ensure msmtp is installed for email alerts
+  ansible.builtin.apt:
+    name:
+      - msmtp
+      - msmtp-mta
+    state: present
+  become: yes
+  when: health_check_alert_email | length > 0
+
+- name: Configure msmtp for email alerts
+  ansible.builtin.template:
+    src: msmtprc.j2
+    dest: /etc/msmtprc
+    owner: root
+    group: root
+    mode: '0600'
+  become: yes
+  when:
+    - health_check_alert_email | length > 0
+    - vault_smtp_server is defined
+
+- name: Deploy alerting configuration
+  ansible.builtin.template:
+    src: alert-config.yml.j2
+    dest: /etc/ablage/alert-config.yml
+    owner: root
+    group: root
+    mode: '0600'
+  become: yes
+
+- name: Create alerts log directory
+  ansible.builtin.file:
+    path: /var/log/ablage/alerts
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes

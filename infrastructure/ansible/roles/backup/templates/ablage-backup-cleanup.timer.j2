@@ -1,0 +1,10 @@
+[Unit]
+Description=Ablage-System Backup Cleanup Timer
+Documentation=https://github.com/org/ablage-system
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

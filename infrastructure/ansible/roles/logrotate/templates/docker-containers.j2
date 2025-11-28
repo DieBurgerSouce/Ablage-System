@@ -1,0 +1,14 @@
+# Ablage-System Docker Container Log Rotation
+# Managed by Ansible - Do not edit manually
+
+/var/lib/docker/containers/*/*.log {
+    rotate {{ logrotate_docker_rotate | default(7) }}
+    {{ logrotate_docker_frequency | default('daily') }}
+    compress
+    delaycompress
+    missingok
+    copytruncate
+    maxsize {{ logrotate_docker_maxsize | default('100M') }}
+    notifempty
+    create 0640 root root
+}

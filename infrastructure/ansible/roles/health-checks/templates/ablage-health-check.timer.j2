@@ -1,0 +1,12 @@
+[Unit]
+Description=Ablage-System Health Check Timer
+Documentation=https://github.com/org/ablage-system
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30
+Persistent=true
+
+[Install]
+WantedBy=timers.target

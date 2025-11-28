@@ -1,0 +1,41 @@
+# Ablage-System Audit Rules
+# Managed by Ansible - Do not edit manually
+
+# Delete all existing rules
+-D
+
+# Buffer size
+-b 8192
+
+# Failure mode
+-f 1
+
+# Monitor authentication
+-w /etc/passwd -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/sudoers -p wa -k sudoers
+-w /etc/sudoers.d/ -p wa -k sudoers
+
+# Monitor SSH
+-w /etc/ssh/sshd_config -p wa -k sshd
+-w /var/log/auth.log -p wa -k auth_log
+
+# Monitor Docker
+-w /etc/docker/ -p wa -k docker
+-w /var/run/docker.sock -p wa -k docker_socket
+-w /usr/bin/docker -p x -k docker_command
+
+# Monitor Ablage-System directories
+-w {{ ablage_install_dir }} -p wa -k ablage_system
+-w {{ ablage_install_dir }}/.env -p ra -k ablage_env
+
+# Monitor system binaries
+-w /usr/bin/wget -p x -k download
+-w /usr/bin/curl -p x -k download
+
+# System calls for privilege escalation
+-a always,exit -F arch=b64 -S execve -F euid=0 -F auid>=1000 -F auid!=4294967295 -k privileged
+
+# Make the configuration immutable (uncomment in production)
+# -e 2

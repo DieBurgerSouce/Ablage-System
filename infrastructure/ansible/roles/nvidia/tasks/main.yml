@@ -1,0 +1,33 @@
+# Ablage-System NVIDIA Role - Main Tasks
+---
+- name: Check if NVIDIA GPU is present
+  ansible.builtin.shell: lspci | grep -i nvidia
+  register: nvidia_gpu_check
+  changed_when: false
+  failed_when: false
+
+- name: Skip NVIDIA setup if no GPU detected
+  ansible.builtin.debug:
+    msg: "No NVIDIA GPU detected. Skipping NVIDIA setup."
+  when: nvidia_gpu_check.rc != 0
+
+- name: Include driver installation tasks
+  ansible.builtin.include_tasks: drivers.yml
+  when: nvidia_gpu_check.rc == 0
+  tags:
+    - nvidia
+    - drivers
+
+- name: Include Container Toolkit installation tasks
+  ansible.builtin.include_tasks: container-toolkit.yml
+  when: nvidia_gpu_check.rc == 0
+  tags:
+    - nvidia
+    - container-toolkit
+
+- name: Include verification tasks
+  ansible.builtin.include_tasks: verify.yml
+  when: nvidia_gpu_check.rc == 0
+  tags:
+    - nvidia
+    - verify

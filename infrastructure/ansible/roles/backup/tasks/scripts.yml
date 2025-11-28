@@ -1,0 +1,28 @@
+# Ablage-System Backup Role - Script Deployment
+---
+- name: Deploy backup script
+  ansible.builtin.template:
+    src: backup.sh.j2
+    dest: /usr/local/bin/ablage-backup
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+
+- name: Deploy restore script
+  ansible.builtin.template:
+    src: restore.sh.j2
+    dest: /usr/local/bin/ablage-restore
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+
+- name: Deploy backup cleanup script
+  ansible.builtin.template:
+    src: backup-cleanup.sh.j2
+    dest: /usr/local/bin/ablage-backup-cleanup
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes

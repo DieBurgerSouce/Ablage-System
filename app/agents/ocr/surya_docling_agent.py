@@ -1,22 +1,16 @@
-"""Surya-Docling OCR Agent - WORKING implementation with German text support."""
+"""Surya-Docling OCR Agent - CPU-only implementation with German text support.
 
-import os
-import io
+This version uses the new surya-ocr 0.17.0 API with DetectionPredictor,
+FoundationPredictor, and RecognitionPredictor classes.
+"""
+
 import asyncio
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from pathlib import Path
 import structlog
 
 from PIL import Image
 import pypdfium2 as pdfium
-
-# Surya imports - using the working approach
-from surya.detection import batch_text_detection
-from surya.recognition import batch_recognition
-from surya.model.detection.segformer import load_model as load_det_model
-from surya.model.detection.segformer import load_processor as load_det_processor
-from surya.model.recognition.model import load_model as load_rec_model
-from surya.model.recognition.processor import load_processor as load_rec_processor
 
 from app.agents.base import OCRAgent
 
@@ -24,7 +18,7 @@ logger = structlog.get_logger(__name__)
 
 
 class SuryaDoclingAgent(OCRAgent):
-    """Surya OCR agent with working German text recognition."""
+    """Surya OCR agent with working German text recognition (CPU-only)."""
 
     def __init__(self):
         """Initialize Surya OCR models."""
@@ -32,10 +26,10 @@ class SuryaDoclingAgent(OCRAgent):
 
         # Models will be loaded on first use
         self._models_loaded = False
-        self._det_model = None
-        self._det_processor = None
-        self._rec_model = None
-        self._rec_processor = None
+        self._det_predictor = None
+        self._rec_predictor = None
+        self._foundation_predictor = None
+        self._task_name = None
 
         # Language settings - German primary
         self.default_language = "de"
@@ -48,20 +42,31 @@ class SuryaDoclingAgent(OCRAgent):
             return
 
         try:
-            logger.info("Loading Surya models...")
+            logger.info("Loading Surya 0.17.0 models...")
 
-            # Load detection model
-            self._det_model = load_det_model()
-            self._det_processor = load_det_processor()
-            logger.info("Detection model loaded")
+            # Import new surya API
+            from surya.detection import DetectionPredictor
+            from surya.recognition import RecognitionPredictor
+            from surya.foundation import FoundationPredictor
+            from surya.common.surya.schema import TaskNames
 
-            # Load recognition model
-            self._rec_model = load_rec_model()
-            self._rec_processor = load_rec_processor()
-            logger.info("Recognition model loaded")
+            # Store task name for OCR
+            self._task_name = TaskNames.ocr_with_boxes
+
+            # Load foundation predictor (required by recognition)
+            self._foundation_predictor = FoundationPredictor()
+            logger.info("Foundation predictor loaded")
+
+            # Load detection predictor
+            self._det_predictor = DetectionPredictor()
+            logger.info("Detection predictor loaded")
+
+            # Load recognition predictor with foundation
+            self._rec_predictor = RecognitionPredictor(self._foundation_predictor)
+            logger.info("Recognition predictor loaded")
 
             self._models_loaded = True
-            logger.info("All Surya models loaded successfully")
+            logger.info("All Surya 0.17.0 models loaded successfully (CPU mode)")
 
         except Exception as e:
             logger.error("surya_models_load_failed", error=str(e))
@@ -106,82 +111,50 @@ class SuryaDoclingAgent(OCRAgent):
         return images
 
     def _process_single_image(self, image: Image.Image, language: str = None) -> Dict[str, Any]:
-        """Process a single image using the working Surya approach."""
+        """Process a single image using the new Surya 0.17.0 API."""
         if language is None:
             language = self.default_language
 
-        # Step 1: Detect text regions
-        predictions = batch_text_detection([image], self._det_model, self._det_processor)
+        try:
+            # Run OCR using the callable RecognitionPredictor
+            predictions = self._rec_predictor(
+                [image],
+                task_names=[self._task_name],
+                det_predictor=self._det_predictor,
+            )
 
-        if not predictions or len(predictions) == 0:
-            return {"text_blocks": [], "full_text": ""}
+            text_blocks = []
+            all_text = []
 
-        pred = predictions[0]
-        if len(pred.bboxes) == 0:
-            return {"text_blocks": [], "full_text": ""}
+            # Process recognition results
+            if predictions and len(predictions) > 0:
+                pred = predictions[0]
 
-        text_blocks = []
-        all_text = []
+                # Extract text lines from OCRResult
+                if hasattr(pred, 'text_lines'):
+                    for line in pred.text_lines:
+                        text = line.text if hasattr(line, 'text') else str(line)
+                        confidence = line.confidence if hasattr(line, 'confidence') else 0.0
+                        bbox = line.bbox if hasattr(line, 'bbox') else []
 
-        # Step 2: Process each region individually (workaround for Surya batch bug)
-        for i, bbox in enumerate(pred.bboxes):
-            # Get bounding box coordinates
-            x1, y1, x2, y2 = int(bbox.bbox[0]), int(bbox.bbox[1]), int(bbox.bbox[2]), int(bbox.bbox[3])
+                        if text and text.strip():
+                            text_blocks.append({
+                                "text": text,
+                                "confidence": round(float(confidence), 3),
+                                "bbox": list(bbox) if bbox else []
+                            })
+                            all_text.append(text)
 
-            # Ensure coordinates are valid
-            x1, x2 = max(0, x1), min(image.width, x2)
-            y1, y2 = max(0, y1), min(image.height, y2)
+            logger.debug("recognition_complete", text_blocks=len(text_blocks))
 
-            if x2 <= x1 or y2 <= y1:
-                continue
+            return {
+                "text_blocks": text_blocks,
+                "full_text": "\n".join(all_text)
+            }
 
-            # Crop the image to the bounding box
-            cropped = image.crop((x1, y1, x2, y2))
-
-            try:
-                # Process single region with single language code
-                rec_preds, conf_scores = batch_recognition(
-                    [cropped],      # Single image slice
-                    [language],     # Single language code
-                    self._rec_model,
-                    self._rec_processor
-                )
-
-                # Extract text from prediction
-                text = None
-                confidence = 0.0
-
-                if rec_preds and len(rec_preds) > 0:
-                    pred_item = rec_preds[0]
-
-                    # Handle different return formats
-                    if isinstance(pred_item, str):
-                        text = pred_item
-                    elif hasattr(pred_item, 'text'):
-                        text = pred_item.text
-                    else:
-                        text = str(pred_item) if pred_item else None
-
-                    if conf_scores and len(conf_scores) > 0:
-                        confidence = float(conf_scores[0])
-
-                if text and text.strip():
-                    text_blocks.append({
-                        "text": text,
-                        "confidence": round(confidence, 3),
-                        "bbox": [x1, y1, x2, y2]
-                    })
-                    all_text.append(text)
-                    logger.debug("region_processed", region=i+1, text=text, confidence=round(confidence, 2))
-
-            except Exception as e:
-                logger.debug("region_process_failed", region=i+1, error=str(e))
-                continue
-
-        return {
-            "text_blocks": text_blocks,
-            "full_text": "\n".join(all_text)
-        }
+        except Exception as e:
+            logger.error("image_processing_failed", error=str(e))
+            return {"text_blocks": [], "full_text": "", "error": str(e)}
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process document with Surya OCR pipeline.
@@ -273,7 +246,7 @@ class SuryaDoclingAgent(OCRAgent):
                 "pages": pages_data,
                 "page_count": len(images),
                 "language": language,
-                "model": "surya-ocr",
+                "model": "surya-ocr-0.17.0",
                 "success": bool(full_text)
             }
 
@@ -284,12 +257,17 @@ class SuryaDoclingAgent(OCRAgent):
                 "confidence": 0.0,
                 "error": str(e),
                 "success": False,
-                "model": "surya-ocr"
+                "model": "surya-ocr-0.17.0"
             }
 
     async def cleanup(self):
         """Clean up resources."""
-        # Models are kept in memory for reuse
+        # Release model references
+        self._det_predictor = None
+        self._rec_predictor = None
+        self._foundation_predictor = None
+        self._models_loaded = False
+
         await super().cleanup()
         logger.info("SuryaDoclingAgent cleanup called")
 
@@ -301,5 +279,6 @@ class SuryaDoclingAgent(OCRAgent):
             "vram_gb": self.vram_gb,
             "models_loaded": self._models_loaded,
             "default_language": self.default_language,
+            "model_version": "surya-ocr-0.17.0",
             "status": "ready" if self._models_loaded else "not_loaded"
         }

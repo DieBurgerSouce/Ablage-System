@@ -1,0 +1,33 @@
+# Ablage-System Docker Service Override
+# Managed by Ansible - Do not edit manually
+
+[Service]
+# Increase startup timeout for slow systems
+TimeoutStartSec=300
+
+# Increase stop timeout for graceful container shutdown
+TimeoutStopSec=120
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+
+# Environment variables
+{% if http_proxy is defined %}
+Environment="HTTP_PROXY={{ http_proxy }}"
+{% endif %}
+{% if https_proxy is defined %}
+Environment="HTTPS_PROXY={{ https_proxy }}"
+{% endif %}
+{% if no_proxy is defined %}
+Environment="NO_PROXY={{ no_proxy }}"
+{% endif %}
+
+# Increase limits
+LimitNOFILE={{ docker_ulimits_nofile_hard | default(65535) }}
+LimitNPROC={{ docker_ulimits_nofile_hard | default(65535) }}
+LimitCORE=infinity
+TasksMax=infinity
+
+# Memory accounting (for cgroups)
+MemoryAccounting=yes

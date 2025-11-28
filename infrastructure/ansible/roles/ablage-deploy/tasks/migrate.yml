@@ -1,0 +1,28 @@
+# Ablage-System Deploy Role - Database Migrations
+---
+- name: Run database migrations
+  ansible.builtin.command:
+    cmd: docker compose exec -T backend alembic upgrade head
+    chdir: "{{ ablage_install_dir }}"
+  become: yes
+  register: migration_result
+  retries: 3
+  delay: 10
+  until: migration_result.rc == 0
+
+- name: Display migration result
+  ansible.builtin.debug:
+    msg: "{{ migration_result.stdout_lines }}"
+  when: migration_result.stdout_lines | length > 0
+
+- name: Check migration status
+  ansible.builtin.command:
+    cmd: docker compose exec -T backend alembic current
+    chdir: "{{ ablage_install_dir }}"
+  become: yes
+  register: migration_current
+  changed_when: false
+
+- name: Display current migration version
+  ansible.builtin.debug:
+    msg: "Current migration: {{ migration_current.stdout }}"

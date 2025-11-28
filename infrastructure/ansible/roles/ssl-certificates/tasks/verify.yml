@@ -1,0 +1,76 @@
+# Ablage-System SSL Certificates Role - Verification
+---
+- name: Check certificate file exists
+  ansible.builtin.stat:
+    path: "{{ ssl_cert_path | default('/etc/ssl/certs/ablage-system.crt') }}"
+  register: cert_file
+
+- name: Check key file exists
+  ansible.builtin.stat:
+    path: "{{ ssl_key_path | default('/etc/ssl/private/ablage-system.key') }}"
+  register: key_file
+
+- name: Verify certificate validity
+  ansible.builtin.command: >
+    openssl x509 -noout -checkend 2592000
+    -in {{ ssl_cert_path | default('/etc/ssl/certs/ablage-system.crt') }}
+  register: cert_validity
+  changed_when: false
+  failed_when: false
+  when: cert_file.stat.exists
+  become: yes
+
+- name: Get certificate expiration date
+  ansible.builtin.command: >
+    openssl x509 -noout -enddate
+    -in {{ ssl_cert_path | default('/etc/ssl/certs/ablage-system.crt') }}
+  register: cert_expiry
+  changed_when: false
+  when: cert_file.stat.exists
+  become: yes
+
+- name: Get certificate subject
+  ansible.builtin.command: >
+    openssl x509 -noout -subject
+    -in {{ ssl_cert_path | default('/etc/ssl/certs/ablage-system.crt') }}
+  register: cert_subject
+  changed_when: false
+  when: cert_file.stat.exists
+  become: yes
+
+- name: Verify key matches certificate
+  ansible.builtin.shell: |
+    CERT_MD5=$(openssl x509 -noout -modulus -in {{ ssl_cert_path }} | openssl md5)
+    KEY_MD5=$(openssl rsa -noout -modulus -in {{ ssl_key_path }} | openssl md5)
+    [ "$CERT_MD5" = "$KEY_MD5" ]
+  register: key_match
+  changed_when: false
+  failed_when: false
+  when:
+    - cert_file.stat.exists
+    - key_file.stat.exists
+  become: yes
+  vars:
+    ssl_cert_path: "{{ ssl_cert_path | default('/etc/ssl/certs/ablage-system.crt') }}"
+    ssl_key_path: "{{ ssl_key_path | default('/etc/ssl/private/ablage-system.key') }}"
+
+- name: Display SSL verification results
+  ansible.builtin.debug:
+    msg: |
+      SSL Certificate Verification:
+      ─────────────────────────────
+      Certificate: {{ 'EXISTS' if cert_file.stat.exists else 'MISSING' }}
+      Private Key: {{ 'EXISTS' if key_file.stat.exists else 'MISSING' }}
+      {% if cert_file.stat.exists %}
+      Subject: {{ cert_subject.stdout | default('N/A') }}
+      Expiry: {{ cert_expiry.stdout | default('N/A') }}
+      Valid (30+ days): {{ 'YES' if cert_validity.rc == 0 else 'NO - EXPIRES SOON!' }}
+      Key Match: {{ 'YES' if key_match.rc == 0 else 'NO - KEY MISMATCH!' }}
+      {% endif %}
+
+- name: Warn if certificate expires soon
+  ansible.builtin.debug:
+    msg: "WARNING: SSL certificate expires within 30 days!"
+  when:
+    - cert_file.stat.exists
+    - cert_validity.rc != 0

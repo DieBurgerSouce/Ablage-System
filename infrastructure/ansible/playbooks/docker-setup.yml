@@ -1,0 +1,83 @@
+# Ablage-System Docker and GPU Setup Playbook
+# Usage: ansible-playbook -i inventories/production/hosts.yml playbooks/docker-setup.yml
+---
+- name: Setup Docker and NVIDIA GPU support
+  hosts: docker_hosts
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Display setup information
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║           Docker and GPU Setup                               ║
+          ╠══════════════════════════════════════════════════════════════╣
+          ║ Environment: {{ env_name | default('unknown') }}
+          ║ Target Host: {{ inventory_hostname }}
+          ║ GPU Enabled: {{ nvidia_gpu_enabled | default(false) }}
+          ║ Date: {{ ansible_date_time.iso8601 }}
+          ╚══════════════════════════════════════════════════════════════╝
+
+    - name: Check if server has been provisioned
+      ansible.builtin.stat:
+        path: "{{ ablage_install_dir }}"
+      register: install_dir_check
+
+    - name: Warn if server not provisioned
+      ansible.builtin.debug:
+        msg: "WARNING: Server may not be provisioned. Run provision.yml first."
+      when: not install_dir_check.stat.exists
+
+  roles:
+    - role: docker
+      tags:
+        - docker
+
+    - role: nvidia
+      tags:
+        - nvidia
+        - gpu
+      when: nvidia_gpu_enabled | default(false)
+
+  post_tasks:
+    - name: Verify Docker is working
+      ansible.builtin.command: docker version
+      register: docker_version
+      changed_when: false
+
+    - name: Verify Docker Compose is working
+      ansible.builtin.command: docker compose version
+      register: compose_version
+      changed_when: false
+
+    - name: Check GPU status (if enabled)
+      ansible.builtin.command: nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+      register: gpu_status
+      changed_when: false
+      when: nvidia_gpu_enabled | default(false)
+      ignore_errors: yes
+
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║           Docker and GPU Setup Complete                      ║
+          ╠══════════════════════════════════════════════════════════════╣
+          ║ Docker: {{ docker_version.stdout_lines[0] | default('Installed') }}
+          ║ Compose: {{ compose_version.stdout | default('Installed') }}
+          {% if nvidia_gpu_enabled | default(false) %}
+          ║ GPU: {{ gpu_status.stdout | default('Not available') }}
+          {% endif %}
+          ╠══════════════════════════════════════════════════════════════╣
+          ║ Next steps:                                                  ║
+          ║ 1. Run ssl-setup.yml to configure SSL certificates           ║
+          ║ 2. Run deploy.yml to deploy the application                  ║
+          ╚══════════════════════════════════════════════════════════════╝
+
+  handlers:
+    - name: Import docker handlers
+      ansible.builtin.import_tasks: ../roles/docker/handlers/main.yml
+
+    - name: Import nvidia handlers
+      ansible.builtin.import_tasks: ../roles/nvidia/handlers/main.yml

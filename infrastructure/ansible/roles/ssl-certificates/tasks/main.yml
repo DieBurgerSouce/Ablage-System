@@ -1,0 +1,22 @@
+# Ablage-System SSL Certificates Role - Main Tasks
+---
+- name: Include manual certificate tasks
+  ansible.builtin.include_tasks: manual-certs.yml
+  when: ssl_use_manual_certs | default(true)
+  tags:
+    - ssl
+    - certificates
+
+- name: Include DH parameters tasks
+  ansible.builtin.include_tasks: dhparam.yml
+  when: ssl_generate_dhparam | default(true)
+  tags:
+    - ssl
+    - dhparam
+
+- name: Include verification tasks
+  ansible.builtin.include_tasks: verify.yml
+  when: ssl_enabled | default(true)
+  tags:
+    - ssl
+    - verify

@@ -1,0 +1,8 @@
+# Ablage-System SSL Certificates Role - Handlers
+---
+- name: reload nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: reloaded
+  become: yes
+  ignore_errors: yes

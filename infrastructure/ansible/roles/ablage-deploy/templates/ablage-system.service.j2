@@ -1,0 +1,38 @@
+[Unit]
+Description=Ablage-System OCR - Main Application Stack
+Documentation=https://github.com/org/ablage-system
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory={{ ablage_install_dir }}
+EnvironmentFile={{ ablage_install_dir }}/.env
+
+# Start services
+ExecStart=/usr/bin/docker compose up -d
+
+# Stop services
+ExecStop=/usr/bin/docker compose down
+
+# Reload services (graceful restart)
+ExecReload=/usr/bin/docker compose restart
+
+# Restart policy
+Restart=on-failure
+RestartSec=10s
+
+# Security
+User=ablage
+Group=ablage
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ablage-system
+
+[Install]
+WantedBy=multi-user.target

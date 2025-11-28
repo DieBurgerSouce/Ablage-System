@@ -1,0 +1,11 @@
+[Unit]
+Description=Ablage-System Daily Backup Timer
+Documentation=https://github.com/org/ablage-system
+
+[Timer]
+OnCalendar={{ backup_schedule | default('*-*-* 02:00:00') }}
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

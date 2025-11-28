@@ -1,0 +1,61 @@
+# Ablage-System Fail2ban Configuration
+# Managed by Ansible - Do not edit manually
+
+[DEFAULT]
+# Ban settings
+bantime = {{ fail2ban_bantime | default(3600) }}
+findtime = {{ fail2ban_findtime | default(600) }}
+maxretry = {{ fail2ban_maxretry | default(5) }}
+
+# Ignore local addresses
+ignoreip = {{ fail2ban_ignoreip | default('127.0.0.1/8 ::1') }}
+
+# Backend
+backend = auto
+
+# Ban action
+banaction = ufw
+banaction_allports = ufw
+
+# Email notifications (if configured)
+{% if fail2ban_destemail is defined %}
+destemail = {{ fail2ban_destemail }}
+sender = fail2ban@{{ domain_name }}
+mta = sendmail
+action = %(action_mwl)s
+{% endif %}
+
+[sshd]
+enabled = true
+port = {{ ssh_port | default(22) }}
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+bantime = 7200
+
+[sshd-ddos]
+enabled = true
+port = {{ ssh_port | default(22) }}
+filter = sshd-ddos
+logpath = /var/log/auth.log
+maxretry = 10
+bantime = 3600
+
+# Nginx rate limiting
+[nginx-limit-req]
+enabled = {{ 'true' if nginx_installed | default(false) else 'false' }}
+port = http,https
+filter = nginx-limit-req
+logpath = /var/log/nginx/ablage-system-error.log
+maxretry = 10
+bantime = 600
+
+# Ablage-System API protection
+[ablage-api]
+enabled = true
+port = http,https
+filter = ablage-api
+logpath = {{ ablage_log_dir | default('/var/log/ablage-system') }}/api-access.log
+maxretry = 20
+findtime = 60
+bantime = 600

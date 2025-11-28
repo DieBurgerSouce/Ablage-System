@@ -1,0 +1,99 @@
+# Ablage-System Monitoring Role - NVIDIA GPU Exporter Tasks
+---
+- name: Check if nvidia-smi is available
+  ansible.builtin.command: which nvidia-smi
+  register: nvidia_smi_check
+  changed_when: false
+  failed_when: false
+
+- name: Fail if NVIDIA drivers not installed
+  ansible.builtin.fail:
+    msg: "NVIDIA drivers not installed. GPU exporter requires nvidia-smi."
+  when: nvidia_smi_check.rc != 0
+
+- name: Check if NVIDIA GPU Exporter is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/nvidia_gpu_exporter
+  register: nvidia_exporter_binary
+
+- name: Get installed NVIDIA GPU Exporter version
+  ansible.builtin.command: /usr/local/bin/nvidia_gpu_exporter --version
+  register: nvidia_exporter_installed_version
+  changed_when: false
+  failed_when: false
+  when: nvidia_exporter_binary.stat.exists
+
+- name: Download NVIDIA GPU Exporter
+  ansible.builtin.get_url:
+    url: "https://github.com/utkuozdemir/nvidia_gpu_exporter/releases/download/v{{ nvidia_exporter_version }}/nvidia_gpu_exporter_{{ nvidia_exporter_version }}_linux_x86_64.tar.gz"
+    dest: "/tmp/nvidia_gpu_exporter_{{ nvidia_exporter_version }}.tar.gz"
+    mode: '0644'
+  when: not nvidia_exporter_binary.stat.exists or nvidia_exporter_version not in (nvidia_exporter_installed_version.stdout | default(''))
+  become: yes
+
+- name: Create temp directory for extraction
+  ansible.builtin.file:
+    path: /tmp/nvidia_gpu_exporter
+    state: directory
+    mode: '0755'
+  when: not nvidia_exporter_binary.stat.exists or nvidia_exporter_version not in (nvidia_exporter_installed_version.stdout | default(''))
+  become: yes
+
+- name: Extract NVIDIA GPU Exporter
+  ansible.builtin.unarchive:
+    src: "/tmp/nvidia_gpu_exporter_{{ nvidia_exporter_version }}.tar.gz"
+    dest: /tmp/nvidia_gpu_exporter
+    remote_src: yes
+  when: not nvidia_exporter_binary.stat.exists or nvidia_exporter_version not in (nvidia_exporter_installed_version.stdout | default(''))
+  become: yes
+
+- name: Install NVIDIA GPU Exporter binary
+  ansible.builtin.copy:
+    src: /tmp/nvidia_gpu_exporter/nvidia_gpu_exporter
+    dest: /usr/local/bin/nvidia_gpu_exporter
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+  when: not nvidia_exporter_binary.stat.exists or nvidia_exporter_version not in (nvidia_exporter_installed_version.stdout | default(''))
+  become: yes
+  notify: restart nvidia_gpu_exporter
+
+- name: Create NVIDIA GPU Exporter systemd service
+  ansible.builtin.template:
+    src: nvidia_gpu_exporter.service.j2
+    dest: /etc/systemd/system/nvidia_gpu_exporter.service
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify:
+    - reload systemd
+    - restart nvidia_gpu_exporter
+
+- name: Start and enable NVIDIA GPU Exporter
+  ansible.builtin.systemd:
+    name: nvidia_gpu_exporter
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  become: yes
+
+- name: Configure firewall for NVIDIA GPU Exporter
+  community.general.ufw:
+    rule: allow
+    port: "{{ nvidia_exporter_port }}"
+    proto: tcp
+    comment: "NVIDIA GPU Exporter metrics"
+    from_ip: "{{ prometheus_server_ip | default('any') }}"
+  become: yes
+  when: ufw_enabled | default(true) | bool
+
+- name: Clean up NVIDIA GPU Exporter download
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "/tmp/nvidia_gpu_exporter_{{ nvidia_exporter_version }}.tar.gz"
+    - /tmp/nvidia_gpu_exporter
+  become: yes

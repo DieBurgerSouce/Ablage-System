@@ -1,0 +1,69 @@
+# Ablage-System Server Provisioning Playbook
+# Usage: ansible-playbook -i inventories/production/hosts.yml playbooks/provision.yml
+---
+- name: Provision Ablage-System servers
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Display provisioning information
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║           Ablage-System Server Provisioning                  ║
+          ╠══════════════════════════════════════════════════════════════╣
+          ║ Environment: {{ env_name | default('unknown') }}
+          ║ Target Host: {{ inventory_hostname }}
+          ║ Ansible User: {{ ansible_user }}
+          ║ Date: {{ ansible_date_time.iso8601 }}
+          ╚══════════════════════════════════════════════════════════════╝
+
+    - name: Verify minimum OS requirements
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "Ubuntu"
+          - ansible_distribution_major_version | int >= 22
+        fail_msg: "This playbook requires Ubuntu 22.04 or higher"
+        success_msg: "OS requirements met: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+    - name: Check available disk space
+      ansible.builtin.assert:
+        that:
+          - ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first | int > 10737418240
+        fail_msg: "Insufficient disk space. At least 10GB required on /"
+        success_msg: "Disk space check passed"
+
+  roles:
+    - role: common
+      tags:
+        - common
+        - packages
+        - users
+        - directories
+
+    - role: security
+      tags:
+        - security
+        - firewall
+        - ssh
+      when: env_name != 'development' or security_force_in_dev | default(false)
+
+  post_tasks:
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║           Server Provisioning Complete                       ║
+          ╠══════════════════════════════════════════════════════════════╣
+          ║ Next steps:                                                  ║
+          ║ 1. Run docker-setup.yml to install Docker + NVIDIA           ║
+          ║ 2. Run deploy.yml to deploy the application                  ║
+          ╚══════════════════════════════════════════════════════════════╝
+
+  handlers:
+    - name: Import common handlers
+      ansible.builtin.import_tasks: ../roles/common/handlers/main.yml
+
+    - name: Import security handlers
+      ansible.builtin.import_tasks: ../roles/security/handlers/main.yml

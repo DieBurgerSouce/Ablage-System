@@ -1,0 +1,44 @@
+# Ablage-System Application Log Rotation
+# Managed by Ansible - Do not edit manually
+
+{{ ablage_log_dir | default('/var/log/ablage-system') }}/*.log {
+    rotate {{ logrotate_app_rotate | default(14) }}
+    {{ logrotate_app_frequency | default('daily') }}
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 ablage ablage
+    sharedscripts
+    postrotate
+        # Send signal to application to reopen log files
+        docker compose -f {{ ablage_install_dir }}/docker-compose.yml kill -s USR1 backend worker 2>/dev/null || true
+    endscript
+}
+
+{{ ablage_install_dir }}/logs/*.log {
+    rotate {{ logrotate_app_rotate | default(14) }}
+    {{ logrotate_app_frequency | default('daily') }}
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 ablage ablage
+}
+
+# Nginx logs
+/var/log/nginx/*.log {
+    rotate {{ logrotate_nginx_rotate | default(14) }}
+    {{ logrotate_nginx_frequency | default('daily') }}
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 www-data adm
+    sharedscripts
+    postrotate
+        if [ -f /var/run/nginx.pid ]; then
+            kill -USR1 `cat /var/run/nginx.pid`
+        fi
+    endscript
+}

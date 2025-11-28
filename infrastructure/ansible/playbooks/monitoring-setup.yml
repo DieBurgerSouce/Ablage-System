@@ -1,0 +1,151 @@
+# Ablage-System Monitoring Setup Playbook
+# Sets up monitoring stack (exporters, Prometheus, Grafana)
+#
+# Usage:
+#   ansible-playbook -i inventory/production playbooks/monitoring-setup.yml
+#   ansible-playbook -i inventory/production playbooks/monitoring-setup.yml --tags "exporters"
+#   ansible-playbook -i inventory/production playbooks/monitoring-setup.yml --tags "dashboards"
+---
+- name: Ablage-System Monitoring Setup
+  hosts: ablage_servers
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Display monitoring setup parameters
+      ansible.builtin.debug:
+        msg: |
+          === Ablage-System Monitoring Setup ===
+          Node Exporter: {{ node_exporter_enabled | default(true) }}
+          NVIDIA GPU Exporter: {{ nvidia_exporter_enabled | default(true) }}
+          Prometheus Targets: {{ prometheus_targets_enabled | default(true) }}
+          Grafana Dashboards: {{ grafana_dashboards_enabled | default(true) }}
+
+    - name: Create monitoring directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ ablage_user }}"
+        group: "{{ ablage_group }}"
+        mode: '0755'
+      loop:
+        - "{{ ablage_install_dir }}/infrastructure/prometheus/rules"
+        - "{{ ablage_install_dir }}/infrastructure/prometheus/targets"
+        - "{{ ablage_install_dir }}/infrastructure/grafana/dashboards"
+        - "{{ ablage_install_dir }}/infrastructure/grafana/provisioning/dashboards"
+        - "{{ ablage_install_dir }}/infrastructure/grafana/provisioning/datasources"
+      tags: always
+
+  roles:
+    - role: monitoring
+      tags:
+        - monitoring
+        - exporters
+        - dashboards
+
+  tasks:
+    - name: Verify exporters are running
+      tags: verify
+      block:
+        - name: Check Node Exporter
+          ansible.builtin.uri:
+            url: "http://localhost:{{ node_exporter_port | default(9100) }}/metrics"
+            return_content: yes
+          register: node_exporter_check
+          failed_when: false
+          when: node_exporter_enabled | default(true) | bool
+
+        - name: Check NVIDIA GPU Exporter
+          ansible.builtin.uri:
+            url: "http://localhost:{{ nvidia_exporter_port | default(9835) }}/metrics"
+            return_content: yes
+          register: nvidia_exporter_check
+          failed_when: false
+          when: nvidia_exporter_enabled | default(true) | bool
+
+        - name: Display exporter status
+          ansible.builtin.debug:
+            msg: |
+              === Exporter Status ===
+              Node Exporter: {{ 'OK' if node_exporter_check.status | default(0) == 200 else 'NICHT VERFÜGBAR' }}
+              NVIDIA GPU Exporter: {{ 'OK' if nvidia_exporter_check.status | default(0) == 200 else 'NICHT VERFÜGBAR' }}
+
+    - name: Restart Prometheus to load new configuration
+      tags: prometheus
+      block:
+        - name: Reload Prometheus configuration
+          ansible.builtin.uri:
+            url: "http://localhost:9090/-/reload"
+            method: POST
+            status_code: [200, 204]
+          failed_when: false
+          register: prometheus_reload
+
+        - name: Check Prometheus is running
+          ansible.builtin.uri:
+            url: "http://localhost:9090/-/healthy"
+            status_code: 200
+          register: prometheus_health
+          failed_when: false
+
+        - name: Display Prometheus status
+          ansible.builtin.debug:
+            msg: "Prometheus: {{ 'OK' if prometheus_health.status | default(0) == 200 else 'NICHT VERFÜGBAR' }}"
+
+    - name: Verify Grafana dashboards
+      tags: grafana
+      block:
+        - name: Check Grafana is running
+          ansible.builtin.uri:
+            url: "http://localhost:3000/api/health"
+            status_code: 200
+          register: grafana_health
+          failed_when: false
+
+        - name: Display Grafana status
+          ansible.builtin.debug:
+            msg: "Grafana: {{ 'OK' if grafana_health.status | default(0) == 200 else 'NICHT VERFÜGBAR' }}"
+
+        - name: List available dashboards
+          ansible.builtin.find:
+            paths: "{{ ablage_install_dir }}/infrastructure/grafana/dashboards"
+            patterns: "*.json"
+          register: dashboard_files
+
+        - name: Display available dashboards
+          ansible.builtin.debug:
+            msg: |
+              === Verfügbare Dashboards ===
+              {% for dashboard in dashboard_files.files %}
+              - {{ dashboard.path | basename }}
+              {% endfor %}
+
+  post_tasks:
+    - name: Display monitoring setup summary
+      ansible.builtin.debug:
+        msg: |
+          === Monitoring Setup Abgeschlossen ===
+
+          Exporters:
+          - Node Exporter: http://{{ inventory_hostname }}:{{ node_exporter_port | default(9100) }}/metrics
+          - NVIDIA GPU Exporter: http://{{ inventory_hostname }}:{{ nvidia_exporter_port | default(9835) }}/metrics
+
+          Monitoring Stack:
+          - Prometheus: http://{{ inventory_hostname }}:9090
+          - Grafana: http://{{ inventory_hostname }}:3000
+
+          Dashboards:
+          - Ablage-System Übersicht: http://{{ inventory_hostname }}:3000/d/ablage-overview
+          - GPU-Monitoring: http://{{ inventory_hostname }}:3000/d/ablage-gpu
+          - OCR-Performance: http://{{ inventory_hostname }}:3000/d/ablage-ocr
+
+    - name: Create monitoring setup completion marker
+      ansible.builtin.copy:
+        content: |
+          Monitoring setup completed at {{ ansible_date_time.iso8601 }}
+          Node Exporter: {{ node_exporter_enabled | default(true) }}
+          NVIDIA GPU Exporter: {{ nvidia_exporter_enabled | default(true) }}
+        dest: "{{ ablage_install_dir }}/.monitoring-setup-complete"
+        owner: "{{ ablage_user }}"
+        group: "{{ ablage_group }}"
+        mode: '0644'

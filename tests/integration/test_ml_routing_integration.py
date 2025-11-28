@@ -429,7 +429,7 @@ class TestMLAPIIntegration:
 
         # Create detector with test data
         detector = DriftDetector(
-            min_samples=5,
+            min_samples=10,
             storage_path=temp_storage,
         )
 
@@ -562,7 +562,7 @@ class TestEndToEndMLPipeline:
 
             yield {
                 "drift_detector": DriftDetector(
-                    min_samples=5, storage_path=storage / "drift"
+                    min_samples=10, storage_path=storage / "drift"
                 ),
                 "ab_manager": ABTestManager(storage_path=storage / "ab"),
                 "shap_explainer": SHAPExplainer(storage_path=storage / "shap"),

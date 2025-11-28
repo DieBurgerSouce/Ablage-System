@@ -1,0 +1,56 @@
+# Ablage-System Backup Role - Remote Sync Setup
+---
+- name: Create SSH directory for backup user
+  ansible.builtin.file:
+    path: /home/ablage/.ssh
+    state: directory
+    owner: ablage
+    group: ablage
+    mode: '0700'
+  become: yes
+
+- name: Deploy SSH private key for remote backup
+  ansible.builtin.copy:
+    content: "{{ vault_backup_ssh_key }}"
+    dest: /home/ablage/.ssh/backup_key
+    owner: ablage
+    group: ablage
+    mode: '0600'
+  become: yes
+  when: vault_backup_ssh_key is defined and vault_backup_ssh_key | length > 0
+  no_log: true
+
+- name: Add remote host to known_hosts
+  ansible.builtin.known_hosts:
+    path: /home/ablage/.ssh/known_hosts
+    name: "{{ vault_backup_remote_host }}"
+    key: "{{ vault_backup_remote_host_key | default(omit) }}"
+    state: present
+  become: yes
+  become_user: ablage
+  when: vault_backup_remote_host is defined
+  ignore_errors: yes
+
+- name: Test remote backup connection
+  ansible.builtin.command: >
+    ssh -i /home/ablage/.ssh/backup_key
+    -o StrictHostKeyChecking=accept-new
+    -o BatchMode=yes
+    {{ vault_backup_remote_user }}@{{ vault_backup_remote_host }}
+    "echo 'Connection successful'"
+  become: yes
+  become_user: ablage
+  register: remote_test
+  changed_when: false
+  failed_when: false
+  when:
+    - vault_backup_remote_host is defined
+    - vault_backup_ssh_key is defined
+
+- name: Display remote sync status
+  ansible.builtin.debug:
+    msg: |
+      Remote Backup Sync:
+      - Enabled: {{ backup_remote_enabled }}
+      - Host: {{ vault_backup_remote_host | default('Not configured') }}
+      - Connection: {{ 'OK' if remote_test.rc | default(1) == 0 else 'FAILED or not configured' }}

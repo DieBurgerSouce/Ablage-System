@@ -1,0 +1,26 @@
+# Ablage-System Backup Role - Directory Setup
+---
+- name: Create backup directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: ablage
+    group: ablage
+    mode: '0750'
+  loop:
+    - "{{ ablage_backup_dir }}"
+    - "{{ ablage_backup_dir }}/postgres"
+    - "{{ ablage_backup_dir }}/minio"
+    - "{{ ablage_backup_dir }}/redis"
+    - "{{ ablage_backup_dir }}/config"
+    - "{{ ablage_backup_dir }}/logs"
+  become: yes
+
+- name: Create backup log file
+  ansible.builtin.file:
+    path: "{{ ablage_backup_dir }}/logs/backup.log"
+    state: touch
+    owner: ablage
+    group: ablage
+    mode: '0640'
+  become: yes

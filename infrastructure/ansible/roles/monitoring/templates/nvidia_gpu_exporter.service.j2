@@ -1,0 +1,26 @@
+[Unit]
+Description=NVIDIA GPU Exporter for Prometheus
+Documentation=https://github.com/utkuozdemir/nvidia_gpu_exporter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/local/bin/nvidia_gpu_exporter \
+    --web.listen-address={{ nvidia_exporter_web_listen_address }}
+
+Restart=always
+RestartSec=5
+
+# Note: Running as root is required for nvidia-smi access
+# Limited security settings due to GPU access requirements
+NoNewPrivileges=no
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=no
+
+[Install]
+WantedBy=multi-user.target

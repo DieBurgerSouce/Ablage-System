@@ -1,0 +1,24 @@
+# Ablage-System Journald Configuration
+# Managed by Ansible - Do not edit manually
+
+[Journal]
+# Storage settings
+Storage=persistent
+Compress=yes
+
+# Size limits
+SystemMaxUse={{ journald_system_max_use | default('2G') }}
+SystemKeepFree={{ journald_system_keep_free | default('4G') }}
+SystemMaxFileSize={{ journald_system_max_file_size | default('100M') }}
+SystemMaxFiles={{ journald_system_max_files | default(100) }}
+
+# Runtime limits (in-memory)
+RuntimeMaxUse={{ journald_runtime_max_use | default('500M') }}
+RuntimeKeepFree={{ journald_runtime_keep_free | default('1G') }}
+
+# Rate limiting
+RateLimitIntervalSec={{ journald_rate_limit_interval | default('30s') }}
+RateLimitBurst={{ journald_rate_limit_burst | default(10000) }}
+
+# Forward to syslog (optional)
+ForwardToSyslog={{ journald_forward_to_syslog | default('no') }}

@@ -7,6 +7,9 @@ from pathlib import Path
 import os
 
 from app.agents.ocr.surya_docling_agent import SuryaDoclingAgent
+
+# Import A/B testing for backend selection experiments
+from app.ml.ab_testing import get_ab_test_manager
 # GPU-based backends - only import if torch is available
 try:
     import torch
@@ -72,30 +75,63 @@ class BackendManager:
         image_path: str,
         language: str = "de",
         detect_layout: bool = True,
-        prefer_gpu: bool = True
+        prefer_gpu: bool = True,
+        document_id: Optional[str] = None
     ) -> str:
         """
         Select the best backend for processing.
+
+        Checks for active A/B experiments first, then falls back to rule-based selection.
 
         Args:
             image_path: Path to the document
             language: Target language
             detect_layout: Whether layout detection is needed
             prefer_gpu: Whether to prefer GPU backends
+            document_id: Optional document ID for A/B experiment allocation
 
         Returns:
             Name of the selected backend
         """
-        # Check file size and type
-        file_path = Path(image_path)
-        file_size_mb = file_path.stat().st_size / (1024 * 1024)
-        is_pdf = file_path.suffix.lower() == '.pdf'
-
-        # Selection logic
         available_backends = list(self.backends.keys())
 
         if not available_backends:
             raise RuntimeError("No OCR backends available")
+
+        # Check for active A/B experiment first (if document_id provided)
+        if document_id:
+            try:
+                ab_manager = get_ab_test_manager()
+                for experiment in ab_manager.get_active_experiments():
+                    # Check if experiment is for OCR backend testing
+                    variant = ab_manager.get_variant(experiment.experiment_id, document_id)
+                    if variant and "backend" in variant.config:
+                        ab_backend = variant.config["backend"]
+                        # Validate the backend is available
+                        if ab_backend in available_backends:
+                            logger.info(
+                                "backend_selected_ab_test",
+                                backend=ab_backend,
+                                experiment_id=experiment.experiment_id,
+                                variant=variant.name,
+                                document_id=document_id
+                            )
+                            return ab_backend
+                        else:
+                            logger.warning(
+                                "ab_backend_unavailable",
+                                requested=ab_backend,
+                                available=available_backends,
+                                experiment_id=experiment.experiment_id
+                            )
+            except Exception as e:
+                # Don't fail if A/B testing has issues - fall back to normal selection
+                logger.warning("ab_test_check_failed", error=str(e))
+
+        # Check file size and type for rule-based selection
+        file_path = Path(image_path)
+        file_size_mb = file_path.stat().st_size / (1024 * 1024)
+        is_pdf = file_path.suffix.lower() == '.pdf'
 
         # Prefer GPU-accelerated Surya if available
         if prefer_gpu and "surya_gpu" in available_backends:

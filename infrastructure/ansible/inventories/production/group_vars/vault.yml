@@ -1,0 +1,37 @@
+# Ablage-System Production Vault Variables
+# IMPORTANT: Encrypt this file with: ansible-vault encrypt vault.yml
+# Generate secure passwords: openssl rand -hex 32
+---
+# Database
+vault_db_password: "CHANGE_ME_PRODUCTION_DB_PASSWORD"
+
+# JWT Secret - Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+vault_secret_key: "CHANGE_ME_PRODUCTION_SECRET_KEY"
+
+# MinIO
+vault_minio_root_user: "minioadmin"
+vault_minio_root_password: "CHANGE_ME_PRODUCTION_MINIO_PASSWORD"
+
+# Grafana
+vault_grafana_password: "CHANGE_ME_PRODUCTION_GRAFANA_PASSWORD"
+
+# Flower (Celery monitoring)
+vault_flower_user: "admin"
+vault_flower_password: "CHANGE_ME_PRODUCTION_FLOWER_PASSWORD"
+
+# Nginx htpasswd for Prometheus (generate with: htpasswd -nb admin password)
+vault_prometheus_htpasswd: "admin:$apr1$CHANGE_ME"
+
+# Backup remote sync
+vault_backup_remote_user: "backup"
+vault_backup_remote_host: "backup-server.example.com"
+vault_backup_remote_path: "/backups/ablage-system"
+vault_backup_ssh_key: |
+  -----BEGIN OPENSSH PRIVATE KEY-----
+  CHANGE_ME_ADD_YOUR_SSH_PRIVATE_KEY_HERE
+  -----END OPENSSH PRIVATE KEY-----
+
+# Alerting (optional)
+vault_slack_webhook_url: ""
+vault_pagerduty_service_key: ""
+vault_email_smtp_password: ""

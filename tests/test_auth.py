@@ -5,7 +5,7 @@ Tests user registration, login, token refresh, and logout functionality.
 """
 
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -52,7 +52,8 @@ async def client(db_session):
 
     app.dependency_overrides[get_db] = override_get_db
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
     app.dependency_overrides.clear()
@@ -139,12 +140,14 @@ async def test_register_weak_password(client: AsyncClient):
         json={
             "email": "user@example.com",
             "username": "user",
-            "password": "weak",  # Too weak
+            "password": "weak",  # Too weak - less than 8 characters
         }
     )
 
-    assert response.status_code == 400
-    assert "Passwort" in response.json()["detail"]
+    # Pydantic returns 422 for validation errors (min_length=8)
+    assert response.status_code == 422
+    error_detail = response.json()["detail"]
+    assert any("password" in str(err).lower() for err in error_detail)
 
 
 # ==================== Login Tests ====================

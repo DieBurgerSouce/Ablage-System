@@ -1,0 +1,56 @@
+# Ablage-System SSL Certificate Setup Playbook
+# Usage: ansible-playbook -i inventories/production/hosts.yml playbooks/ssl-setup.yml
+---
+- name: Setup SSL Certificates
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Display SSL setup information
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║           SSL Certificate Setup                              ║
+          ╠══════════════════════════════════════════════════════════════╣
+          ║ Environment: {{ env_name | default('unknown') }}
+          ║ Domain: {{ domain_name | default('localhost') }}
+          ║ SSL Mode: {{ 'Manual Certificates' if ssl_use_manual_certs | default(true) else 'Let\'s Encrypt' }}
+          ║ Generate DH Params: {{ ssl_generate_dhparam | default(true) }}
+          ║ DH Param Size: {{ ssl_dhparam_size | default(2048) }} bits
+          ╚══════════════════════════════════════════════════════════════╝
+
+    - name: Check if SSL is enabled
+      ansible.builtin.debug:
+        msg: "SSL is disabled for this environment. Skipping SSL setup."
+      when: not ssl_enabled | default(true)
+
+  roles:
+    - role: ssl-certificates
+      tags:
+        - ssl
+        - certificates
+      when: ssl_enabled | default(true)
+
+  post_tasks:
+    - name: Display SSL configuration summary
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║           SSL Setup Complete                                 ║
+          ╠══════════════════════════════════════════════════════════════╣
+          ║ Certificate: {{ ssl_cert_path | default('/etc/ssl/certs/ablage-system.crt') }}
+          ║ Private Key: {{ ssl_key_path | default('/etc/ssl/private/ablage-system.key') }}
+          ║ DH Params: {{ ssl_dhparam_path | default('/etc/ssl/dhparam.pem') }}
+          ╠══════════════════════════════════════════════════════════════╣
+          ║ IMPORTANT: If using manual certificates, ensure you have     ║
+          ║ copied your certificate files to the server:                 ║
+          ║                                                              ║
+          ║ Certificate: {{ ssl_cert_path | default('/etc/ssl/certs/ablage-system.crt') }}
+          ║ Private Key: {{ ssl_key_path | default('/etc/ssl/private/ablage-system.key') }}
+          ╚══════════════════════════════════════════════════════════════╝
+      when: ssl_enabled | default(true)
+
+  handlers:
+    - name: Import ssl-certificates handlers
+      ansible.builtin.import_tasks: ../roles/ssl-certificates/handlers/main.yml

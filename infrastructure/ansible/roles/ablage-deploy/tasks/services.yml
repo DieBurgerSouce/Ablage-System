@@ -1,0 +1,42 @@
+# Ablage-System Deploy Role - Systemd Service Configuration
+---
+- name: Deploy systemd service file
+  ansible.builtin.template:
+    src: ablage-system.service.j2
+    dest: /etc/systemd/system/ablage-system.service
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify:
+    - reload systemd
+    - restart ablage
+
+- name: Deploy systemd target file
+  ansible.builtin.copy:
+    src: "{{ ablage_install_dir }}/infrastructure/systemd/ablage-system.target"
+    dest: /etc/systemd/system/ablage-system.target
+    owner: root
+    group: root
+    mode: '0644'
+    remote_src: yes
+  become: yes
+  notify: reload systemd
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  become: yes
+
+- name: Enable ablage-system service
+  ansible.builtin.systemd:
+    name: ablage-system
+    enabled: yes
+  become: yes
+
+- name: Start ablage-system service
+  ansible.builtin.systemd:
+    name: ablage-system
+    state: started
+  become: yes
+  ignore_errors: yes  # May already be running from compose up

@@ -1,0 +1,75 @@
+# Ablage-System Health Checks Role - Scripts Deployment
+---
+- name: Create health check scripts directory
+  ansible.builtin.file:
+    path: /usr/local/bin/ablage-health
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+
+- name: Deploy main health check script
+  ansible.builtin.template:
+    src: health-check.sh.j2
+    dest: /usr/local/bin/ablage-health-check
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+
+- name: Deploy container health check script
+  ansible.builtin.template:
+    src: check-containers.sh.j2
+    dest: /usr/local/bin/ablage-health/check-containers.sh
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+
+- name: Deploy endpoint health check script
+  ansible.builtin.template:
+    src: check-endpoints.sh.j2
+    dest: /usr/local/bin/ablage-health/check-endpoints.sh
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+
+- name: Deploy resource health check script
+  ansible.builtin.template:
+    src: check-resources.sh.j2
+    dest: /usr/local/bin/ablage-health/check-resources.sh
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+
+- name: Deploy GPU health check script
+  ansible.builtin.template:
+    src: check-gpu.sh.j2
+    dest: /usr/local/bin/ablage-health/check-gpu.sh
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+  when: nvidia_driver_enabled | default(true) | bool
+
+- name: Deploy database health check script
+  ansible.builtin.template:
+    src: check-database.sh.j2
+    dest: /usr/local/bin/ablage-health/check-database.sh
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+
+- name: Deploy alert script
+  ansible.builtin.template:
+    src: send-alert.sh.j2
+    dest: /usr/local/bin/ablage-health/send-alert.sh
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+  when: health_check_alert_enabled | bool

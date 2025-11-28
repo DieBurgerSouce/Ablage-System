@@ -1,0 +1,72 @@
+# Ablage-System SSL Certificates Role - Manual Certificate Deployment
+---
+- name: Create SSL directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /etc/ssl/certs
+    - /etc/ssl/private
+    - "{{ ablage_install_dir }}/ssl"
+  become: yes
+
+- name: Deploy SSL certificate
+  ansible.builtin.copy:
+    src: "{{ ssl_cert_src }}"
+    dest: "{{ ssl_cert_path | default('/etc/ssl/certs/ablage-system.crt') }}"
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  when: ssl_cert_src is defined
+  notify: reload nginx
+
+- name: Deploy SSL private key
+  ansible.builtin.copy:
+    src: "{{ ssl_key_src }}"
+    dest: "{{ ssl_key_path | default('/etc/ssl/private/ablage-system.key') }}"
+    owner: root
+    group: root
+    mode: '0600'
+  become: yes
+  when: ssl_key_src is defined
+  notify: reload nginx
+
+- name: Deploy SSL certificate chain (if provided)
+  ansible.builtin.copy:
+    src: "{{ ssl_chain_src }}"
+    dest: "{{ ssl_chain_path | default('/etc/ssl/certs/ablage-system-chain.crt') }}"
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  when: ssl_chain_src is defined
+  notify: reload nginx
+
+- name: Create combined certificate + chain file
+  ansible.builtin.shell: |
+    cat {{ ssl_cert_path }} {{ ssl_chain_path }} > {{ ssl_fullchain_path }}
+  args:
+    creates: "{{ ssl_fullchain_path }}"
+  become: yes
+  when:
+    - ssl_cert_src is defined
+    - ssl_chain_src is defined
+  vars:
+    ssl_fullchain_path: "/etc/ssl/certs/ablage-system-fullchain.crt"
+
+- name: Display certificate deployment status
+  ansible.builtin.debug:
+    msg: |
+      SSL Certificate Deployment:
+      - Certificate: {{ ssl_cert_path | default('/etc/ssl/certs/ablage-system.crt') }}
+      - Private Key: {{ ssl_key_path | default('/etc/ssl/private/ablage-system.key') }}
+      - Chain: {{ ssl_chain_path | default('Not configured') }}
+
+      NOTE: If certificates are not yet deployed, copy them to:
+      - Certificate: files/ssl/ablage-system.crt
+      - Key: files/ssl/ablage-system.key
+      - Chain: files/ssl/ablage-system-chain.crt (optional)

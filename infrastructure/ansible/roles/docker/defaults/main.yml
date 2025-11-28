@@ -1,0 +1,38 @@
+# Ablage-System Docker Role - Default Variables
+---
+# Docker daemon configuration
+docker_storage_driver: overlay2
+docker_log_driver: json-file
+docker_log_max_size: "100m"
+docker_log_max_file: "5"
+
+# NVIDIA runtime (set to true when nvidia role is applied)
+docker_nvidia_runtime: false
+
+# Live restore (keep containers running during daemon restart)
+docker_live_restore: true
+
+# Default address pools for Docker networks
+docker_default_address_pools:
+  - base: "172.17.0.0/12"
+    size: 24
+
+# Ulimits
+docker_ulimits_nofile_soft: 65535
+docker_ulimits_nofile_hard: 65535
+
+# DNS (optional - leave empty to use host DNS)
+docker_dns: []
+
+# Insecure registries (for private registries without TLS)
+docker_insecure_registries: []
+
+# Registry mirrors
+docker_registry_mirrors: []
+
+# Preload images (optional)
+docker_preload_images:
+  - postgres:16-alpine
+  - redis:7-alpine
+  - nginx:alpine
+  - minio/minio:latest

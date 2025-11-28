@@ -1,0 +1,17 @@
+# Ablage-System Backup Role - Default Variables
+---
+# Backup settings
+backup_enabled: true
+backup_retention_days: 30
+backup_schedule: "*-*-* 02:00:00"  # 2 AM daily (systemd calendar format)
+
+# Remote sync settings
+backup_remote_enabled: false
+# These should be set in vault.yml:
+# vault_backup_remote_user: backup
+# vault_backup_remote_host: backup-server.example.com
+# vault_backup_remote_path: /backups/ablage-system
+# vault_backup_ssh_key: |
+#   -----BEGIN OPENSSH PRIVATE KEY-----
+#   ...
+#   -----END OPENSSH PRIVATE KEY-----

@@ -319,3 +319,6 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "api: API endpoint tests"
     )
+    config.addinivalue_line(
+        "markers", "performance: Performance tests"
+    )

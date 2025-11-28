@@ -8,7 +8,7 @@ Created: 2024-11-22
 import structlog
 from typing import Optional, Dict, Any, List
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 import os
 
@@ -45,7 +45,8 @@ class OCRService:
         backend: Optional[str] = None,
         language: str = "de",
         detect_layout: bool = True,
-        detect_fraktur: bool = False
+        detect_fraktur: bool = False,
+        document_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Process document with OCR
@@ -56,11 +57,12 @@ class OCRService:
             language: Target language ("de", "en")
             detect_layout: Whether to perform layout detection
             detect_fraktur: Special handling for Fraktur fonts
+            document_id: Optional document ID for A/B experiment allocation
 
         Returns:
             OCR result with extracted text and metadata
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             # Validate file exists
@@ -77,7 +79,8 @@ class OCRService:
                 selected_backend = await self.backend_manager.select_backend(
                     image_path=image_path,
                     language=language,
-                    detect_layout=detect_layout
+                    detect_layout=detect_layout,
+                    document_id=document_id
                 )
             else:
                 # Validate requested backend is available
@@ -87,7 +90,8 @@ class OCRService:
                     selected_backend = await self.backend_manager.select_backend(
                         image_path=image_path,
                         language=language,
-                        detect_layout=detect_layout
+                        detect_layout=detect_layout,
+                        document_id=document_id
                     )
                 else:
                     selected_backend = backend
@@ -109,7 +113,7 @@ class OCRService:
             )
 
             # Add processing metadata
-            processing_time = (datetime.utcnow() - start_time).total_seconds()
+            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
             # Ensure we have a proper result structure
             if "metadata" not in result:
@@ -119,7 +123,7 @@ class OCRService:
                 "backend_used": selected_backend,
                 "processing_time_seconds": round(processing_time, 3),
                 "language": language,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             })
 
             # Update stats
@@ -151,14 +155,14 @@ class OCRService:
                         )
 
                         # Add metadata about fallback
-                        processing_time = (datetime.utcnow() - start_time).total_seconds()
+                        processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
                         if "metadata" not in result:
                             result["metadata"] = {}
                         result["metadata"].update({
                             "backend_used": "surya",
                             "processing_time_seconds": round(processing_time, 3),
                             "language": language,
-                            "timestamp": datetime.utcnow().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                             "fallback_reason": "GPU error"
                         })
 
@@ -171,8 +175,8 @@ class OCRService:
                 "success": False,
                 "error": str(e),
                 "metadata": {
-                    "processing_time_seconds": (datetime.utcnow() - start_time).total_seconds(),
-                    "timestamp": datetime.utcnow().isoformat()
+                    "processing_time_seconds": (datetime.now(timezone.utc) - start_time).total_seconds(),
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }
             }
 
@@ -297,7 +301,7 @@ class OCRService:
             Path to saved file
         """
         # Generate unique filename with timestamp
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         safe_filename = f"{timestamp}_{filename}"
         file_path = self.upload_dir / safe_filename
 

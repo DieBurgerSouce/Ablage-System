@@ -1,0 +1,276 @@
+# Ablage-System Master Site Playbook
+# Complete infrastructure deployment from scratch
+#
+# Usage:
+#   ansible-playbook -i inventory/production playbooks/site.yml
+#   ansible-playbook -i inventory/production playbooks/site.yml --tags "provision"
+#   ansible-playbook -i inventory/production playbooks/site.yml --skip-tags "monitoring"
+#
+# Tags:
+#   - provision: Server provisioning (common, security)
+#   - docker: Docker and NVIDIA setup
+#   - ssl: SSL certificate setup
+#   - deploy: Application deployment
+#   - monitoring: Monitoring setup
+#   - backup: Backup configuration
+#   - health: Health check setup
+---
+- name: Ablage-System Complete Deployment
+  hosts: ablage_servers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    deployment_mode: "full"  # full, provision_only, app_only
+    skip_reboot: false
+
+  pre_tasks:
+    - name: Display deployment banner
+      ansible.builtin.debug:
+        msg: |
+          ╔═══════════════════════════════════════════════════════════════╗
+          ║         ABLAGE-SYSTEM DEPLOYMENT                              ║
+          ╠═══════════════════════════════════════════════════════════════╣
+          ║  Host: {{ inventory_hostname | center(52) }}║
+          ║  Mode: {{ deployment_mode | center(52) }}║
+          ║  Zeit: {{ ansible_date_time.iso8601 | center(52) }}║
+          ╚═══════════════════════════════════════════════════════════════╝
+      tags: always
+
+    - name: Verify Ansible version
+      ansible.builtin.assert:
+        that:
+          - ansible_version.major >= 2
+          - ansible_version.minor >= 15
+        fail_msg: "Ansible 2.15+ wird benötigt. Installierte Version: {{ ansible_version.string }}"
+      tags: always
+
+    - name: Check target OS
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "Ubuntu"
+          - ansible_distribution_major_version | int >= 22
+        fail_msg: "Ubuntu 22.04+ wird benötigt. Erkannt: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+      tags: always
+
+    - name: Display system information
+      ansible.builtin.debug:
+        msg: |
+          System-Information:
+          - OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          - Kernel: {{ ansible_kernel }}
+          - CPU: {{ ansible_processor_vcpus }} vCPUs
+          - RAM: {{ (ansible_memtotal_mb / 1024) | round(1) }} GB
+          - Python: {{ ansible_python_version }}
+      tags: always
+
+#═══════════════════════════════════════════════════════════════════════════════
+# PHASE 1: Server Provisioning
+#═══════════════════════════════════════════════════════════════════════════════
+- name: "Phase 1: Server Provisioning"
+  hosts: ablage_servers
+  become: yes
+  tags:
+    - provision
+    - phase1
+
+  tasks:
+    - name: "Phase 1 Banner"
+      ansible.builtin.debug:
+        msg: |
+          ════════════════════════════════════════════════════
+           PHASE 1: Server-Provisionierung
+          ════════════════════════════════════════════════════
+
+  roles:
+    - role: common
+      tags: common
+    - role: security
+      tags: security
+
+#═══════════════════════════════════════════════════════════════════════════════
+# PHASE 2: Docker and GPU Setup
+#═══════════════════════════════════════════════════════════════════════════════
+- name: "Phase 2: Docker and GPU Setup"
+  hosts: ablage_servers
+  become: yes
+  tags:
+    - docker
+    - phase2
+
+  tasks:
+    - name: "Phase 2 Banner"
+      ansible.builtin.debug:
+        msg: |
+          ════════════════════════════════════════════════════
+           PHASE 2: Docker & GPU Setup
+          ════════════════════════════════════════════════════
+
+  roles:
+    - role: docker
+      tags: docker_install
+    - role: nvidia
+      tags: nvidia
+      when: nvidia_driver_enabled | default(true) | bool
+
+#═══════════════════════════════════════════════════════════════════════════════
+# PHASE 3: SSL Certificate Setup
+#═══════════════════════════════════════════════════════════════════════════════
+- name: "Phase 3: SSL Certificate Setup"
+  hosts: ablage_servers
+  become: yes
+  tags:
+    - ssl
+    - phase3
+
+  tasks:
+    - name: "Phase 3 Banner"
+      ansible.builtin.debug:
+        msg: |
+          ════════════════════════════════════════════════════
+           PHASE 3: SSL-Zertifikat-Setup
+          ════════════════════════════════════════════════════
+
+  roles:
+    - role: ssl-certificates
+      tags: ssl_certs
+      when: ssl_enabled | default(false) | bool
+
+#═══════════════════════════════════════════════════════════════════════════════
+# PHASE 4: Application Deployment
+#═══════════════════════════════════════════════════════════════════════════════
+- name: "Phase 4: Application Deployment"
+  hosts: ablage_servers
+  become: yes
+  tags:
+    - deploy
+    - phase4
+
+  tasks:
+    - name: "Phase 4 Banner"
+      ansible.builtin.debug:
+        msg: |
+          ════════════════════════════════════════════════════
+           PHASE 4: Anwendungs-Deployment
+          ════════════════════════════════════════════════════
+
+  roles:
+    - role: ablage-deploy
+      tags: app_deploy
+    - role: logrotate
+      tags: logrotate
+
+#═══════════════════════════════════════════════════════════════════════════════
+# PHASE 5: Monitoring Setup
+#═══════════════════════════════════════════════════════════════════════════════
+- name: "Phase 5: Monitoring Setup"
+  hosts: ablage_servers
+  become: yes
+  tags:
+    - monitoring
+    - phase5
+
+  tasks:
+    - name: "Phase 5 Banner"
+      ansible.builtin.debug:
+        msg: |
+          ════════════════════════════════════════════════════
+           PHASE 5: Monitoring-Setup
+          ════════════════════════════════════════════════════
+
+  roles:
+    - role: monitoring
+      tags: monitoring_install
+
+#═══════════════════════════════════════════════════════════════════════════════
+# PHASE 6: Backup and Health Checks
+#═══════════════════════════════════════════════════════════════════════════════
+- name: "Phase 6: Backup and Health Checks"
+  hosts: ablage_servers
+  become: yes
+  tags:
+    - backup
+    - health
+    - phase6
+
+  tasks:
+    - name: "Phase 6 Banner"
+      ansible.builtin.debug:
+        msg: |
+          ════════════════════════════════════════════════════
+           PHASE 6: Backup & Gesundheitsprüfungen
+          ════════════════════════════════════════════════════
+
+  roles:
+    - role: backup
+      tags: backup_install
+      when: backup_enabled | default(true) | bool
+    - role: health-checks
+      tags: health_install
+
+#═══════════════════════════════════════════════════════════════════════════════
+# FINAL: Verification and Summary
+#═══════════════════════════════════════════════════════════════════════════════
+- name: "Final: Verification and Summary"
+  hosts: ablage_servers
+  become: yes
+  tags:
+    - verify
+    - final
+
+  tasks:
+    - name: Run comprehensive health check
+      ansible.builtin.command:
+        cmd: /usr/local/bin/ablage-health-check
+      register: final_health_check
+      failed_when: false
+      changed_when: false
+
+    - name: Check all services are running
+      ansible.builtin.shell: |
+        cd {{ ablage_install_dir }}
+        docker compose ps --format json | jq -r '.State' | grep -v running | wc -l
+      register: unhealthy_services
+      changed_when: false
+
+    - name: Display deployment summary
+      ansible.builtin.debug:
+        msg: |
+          ╔═══════════════════════════════════════════════════════════════╗
+          ║              DEPLOYMENT ABGESCHLOSSEN                         ║
+          ╠═══════════════════════════════════════════════════════════════╣
+          ║  Host: {{ inventory_hostname | center(52) }}║
+          ║  Status: {{ ('ERFOLGREICH' if final_health_check.rc == 0 else 'MIT WARNUNGEN') | center(52) }}║
+          ╠═══════════════════════════════════════════════════════════════╣
+          ║  Zugriff:                                                     ║
+          ║  - Frontend: http://{{ inventory_hostname }}                         ║
+          ║  - API: http://{{ inventory_hostname }}:8000/docs                    ║
+          ║  - Grafana: http://{{ inventory_hostname }}:3000                     ║
+          ║  - Prometheus: http://{{ inventory_hostname }}:9090                  ║
+          ╠═══════════════════════════════════════════════════════════════╣
+          ║  Nächste Schritte:                                            ║
+          ║  1. Grafana-Passwort ändern (Standard: admin/admin123)        ║
+          ║  2. SSL-Zertifikate konfigurieren (falls aktiviert)           ║
+          ║  3. Backup-Zeitplan überprüfen                                ║
+          ║  4. Monitoring-Alerts konfigurieren                           ║
+          ╚═══════════════════════════════════════════════════════════════╝
+
+    - name: Create deployment marker
+      ansible.builtin.copy:
+        content: |
+          Deployment completed: {{ ansible_date_time.iso8601 }}
+          Ansible version: {{ ansible_version.string }}
+          Target: {{ inventory_hostname }}
+          Health status: {{ 'healthy' if final_health_check.rc == 0 else 'unhealthy' }}
+        dest: "{{ ablage_install_dir }}/.deployment-complete"
+        owner: "{{ ablage_user }}"
+        group: "{{ ablage_group }}"
+        mode: '0644'
+
+    - name: Warn if health check failed
+      ansible.builtin.debug:
+        msg: |
+          ⚠️  WARNUNG: Gesundheitsprüfung nicht vollständig bestanden.
+          Bitte führen Sie aus:
+            ansible-playbook -i inventory/{{ env_name }} playbooks/health-check.yml
+      when: final_health_check.rc != 0

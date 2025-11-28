@@ -1,0 +1,27 @@
+# Ablage-System System Limits
+# Managed by Ansible - Do not edit manually
+
+# File descriptor limits
+* soft nofile {{ common_nofile_soft }}
+* hard nofile {{ common_nofile_hard }}
+root soft nofile {{ common_nofile_soft }}
+root hard nofile {{ common_nofile_hard }}
+
+# Process limits
+* soft nproc {{ common_nproc_soft }}
+* hard nproc {{ common_nproc_hard }}
+root soft nproc {{ common_nproc_soft }}
+root hard nproc {{ common_nproc_hard }}
+
+# Memory lock (for GPU operations)
+* soft memlock unlimited
+* hard memlock unlimited
+
+# Core dumps (disable in production)
+{% if env_name == 'production' %}
+* soft core 0
+* hard core 0
+{% else %}
+* soft core unlimited
+* hard core unlimited
+{% endif %}

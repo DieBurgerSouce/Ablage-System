@@ -180,4 +180,51 @@ release: pr-check ## Prepare for release
 	@echo "3. Create git tag"
 	@echo "4. Push to repository"
 
+# Ansible Deployment
+ansible-deps: ## Install Ansible Galaxy dependencies
+	cd infrastructure/ansible && ansible-galaxy install -r requirements.yml
+	@echo "$(GREEN)✓ Ansible dependencies installed!$(NC)"
+
+ansible-check: ## Test Ansible connectivity to servers
+	cd infrastructure/ansible && ansible -i inventories/production -m ping all
+
+deploy-full: ## Full deployment with Ansible (site.yml)
+	@echo "$(YELLOW)Starting full Ansible deployment...$(NC)"
+	cd infrastructure/ansible && ansible-playbook -i inventories/production playbooks/site.yml
+	@echo "$(GREEN)✓ Full deployment complete!$(NC)"
+
+deploy-staging: ## Deploy to staging environment
+	cd infrastructure/ansible && ansible-playbook -i inventories/staging playbooks/site.yml
+
+deploy-app: ## Deploy application only (no provisioning)
+	cd infrastructure/ansible && ansible-playbook -i inventories/production playbooks/deploy.yml
+
+rolling-update: ## Zero-downtime rolling update
+	@echo "$(YELLOW)Starting rolling update...$(NC)"
+	cd infrastructure/ansible && ansible-playbook -i inventories/production playbooks/rolling-update.yml
+	@echo "$(GREEN)✓ Rolling update complete!$(NC)"
+
+ansible-backup: ## Create backup via Ansible
+	cd infrastructure/ansible && ansible-playbook -i inventories/production playbooks/backup.yml
+
+ansible-restore: ## Restore from backup (requires BACKUP_DATE)
+	@if [ -z "$(BACKUP_DATE)" ]; then \
+		echo "$(RED)Error: BACKUP_DATE not specified$(NC)"; \
+		echo "Usage: make ansible-restore BACKUP_DATE=20241127"; \
+		exit 1; \
+	fi
+	cd infrastructure/ansible && ansible-playbook -i inventories/production playbooks/restore.yml -e "backup_date=$(BACKUP_DATE)" -e "confirm_restore=true"
+
+monitoring-setup: ## Setup monitoring stack via Ansible
+	cd infrastructure/ansible && ansible-playbook -i inventories/production playbooks/monitoring-setup.yml
+
+maintenance: ## Run system maintenance via Ansible
+	cd infrastructure/ansible && ansible-playbook -i inventories/production playbooks/maintenance.yml
+
+health-full: ## Full health check via Ansible
+	cd infrastructure/ansible && ansible-playbook -i inventories/production playbooks/health-check.yml
+
+ssl-setup: ## Setup SSL certificates via Ansible
+	cd infrastructure/ansible && ansible-playbook -i inventories/production playbooks/ssl-setup.yml
+
 .DEFAULT_GOAL := help

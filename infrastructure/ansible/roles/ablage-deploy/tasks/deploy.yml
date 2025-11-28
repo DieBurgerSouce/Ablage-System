@@ -1,0 +1,64 @@
+# Ablage-System Deploy Role - Docker Compose Deployment
+---
+- name: Pull Docker images
+  ansible.builtin.command:
+    cmd: docker compose pull
+    chdir: "{{ ablage_install_dir }}"
+  become: yes
+  register: docker_pull
+  changed_when: "'Pulling' in docker_pull.stdout or 'Downloaded' in docker_pull.stderr"
+
+- name: Build application images
+  ansible.builtin.command:
+    cmd: docker compose build --no-cache
+    chdir: "{{ ablage_install_dir }}"
+  become: yes
+  register: docker_build
+  when: deploy_build_images | default(true)
+  changed_when: "'Successfully built' in docker_build.stdout"
+
+- name: Start database and cache services first
+  ansible.builtin.command:
+    cmd: docker compose up -d postgres redis minio
+    chdir: "{{ ablage_install_dir }}"
+  become: yes
+  register: db_services
+
+- name: Wait for database to be ready
+  ansible.builtin.command:
+    cmd: docker compose exec -T postgres pg_isready -U ablage_admin -d ablage_system
+    chdir: "{{ ablage_install_dir }}"
+  become: yes
+  register: db_ready
+  until: db_ready.rc == 0
+  retries: 30
+  delay: 5
+
+- name: Wait for Redis to be ready
+  ansible.builtin.command:
+    cmd: docker compose exec -T redis redis-cli ping
+    chdir: "{{ ablage_install_dir }}"
+  become: yes
+  register: redis_ready
+  until: "'PONG' in redis_ready.stdout"
+  retries: 30
+  delay: 2
+
+- name: Start all services
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ ablage_install_dir }}"
+  become: yes
+  register: compose_up
+
+- name: Display running containers
+  ansible.builtin.command:
+    cmd: docker compose ps
+    chdir: "{{ ablage_install_dir }}"
+  become: yes
+  register: compose_ps
+  changed_when: false
+
+- name: Show container status
+  ansible.builtin.debug:
+    msg: "{{ compose_ps.stdout_lines }}"

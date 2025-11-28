@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 import sys
 from pathlib import Path
@@ -123,13 +123,14 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler_german)
 app.state.limiter = limiter
 
 # Include API routers
-from app.api.v1 import auth, tasks, metrics, ml, versions
+from app.api.v1 import auth, tasks, metrics, ml, versions, documents
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
 app.include_router(metrics.router, prefix="/api/v1")
 app.include_router(ml.router, prefix="/api/v1")
 app.include_router(versions.router, prefix="/api/v1")
+app.include_router(documents.router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================
@@ -173,7 +174,7 @@ async def health_check():
 
     health = {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "components": {
             "gpu": {
                 "available": gpu_status is not None and gpu_status.get("available", False),
@@ -474,7 +475,7 @@ async def not_found_handler(request, exc):
         content={
             "fehler": "Nicht gefunden",
             "nachricht": f"Die angeforderte URL {request.url.path} wurde nicht gefunden",
-            "zeitstempel": datetime.utcnow().isoformat()
+            "zeitstempel": datetime.now(timezone.utc).isoformat()
         }
     )
 
@@ -488,7 +489,7 @@ async def internal_error_handler(request, exc):
         content={
             "fehler": "Interner Serverfehler",
             "nachricht": HTTPErrors.INTERNAL_ERROR,
-            "zeitstempel": datetime.utcnow().isoformat()
+            "zeitstempel": datetime.now(timezone.utc).isoformat()
         }
     )
 

@@ -1,0 +1,12 @@
+# Ablage-System Health Checks Role - Handlers
+---
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  become: yes
+
+- name: restart health_check_timer
+  ansible.builtin.systemd:
+    name: ablage-health-check.timer
+    state: restarted
+  become: yes

@@ -1,0 +1,40 @@
+# Ablage-System Monitoring Role - Prometheus Targets Configuration
+---
+- name: Ensure Prometheus targets directory exists
+  ansible.builtin.file:
+    path: "{{ prometheus_targets_dir }}"
+    state: directory
+    owner: "{{ ablage_user }}"
+    group: "{{ ablage_group }}"
+    mode: '0755'
+  become: yes
+
+- name: Deploy Prometheus targets configuration
+  ansible.builtin.template:
+    src: prometheus-targets.yml.j2
+    dest: "{{ prometheus_targets_dir }}/ablage-targets.yml"
+    owner: "{{ ablage_user }}"
+    group: "{{ ablage_group }}"
+    mode: '0644'
+  become: yes
+  notify: reload prometheus
+
+- name: Deploy Prometheus alert rules
+  ansible.builtin.template:
+    src: prometheus-alerts.yml.j2
+    dest: "{{ ablage_install_dir }}/infrastructure/prometheus/rules/ablage-alerts.yml"
+    owner: "{{ ablage_user }}"
+    group: "{{ ablage_group }}"
+    mode: '0644'
+  become: yes
+  notify: reload prometheus
+
+- name: Deploy Prometheus recording rules
+  ansible.builtin.template:
+    src: prometheus-recording-rules.yml.j2
+    dest: "{{ ablage_install_dir }}/infrastructure/prometheus/rules/ablage-recording.yml"
+    owner: "{{ ablage_user }}"
+    group: "{{ ablage_group }}"
+    mode: '0644'
+  become: yes
+  notify: reload prometheus

@@ -1,0 +1,38 @@
+[Unit]
+Description=Prometheus Node Exporter
+Documentation=https://prometheus.io/docs/guides/node-exporter/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ monitoring_user }}
+Group={{ monitoring_group }}
+ExecStart=/usr/local/bin/node_exporter \
+    --web.listen-address={{ node_exporter_web_listen_address }} \
+{% for collector in node_exporter_collectors %}
+    --collector.{{ collector }} \
+{% endfor %}
+    --collector.textfile.directory=/var/lib/node_exporter/textfile_collector
+
+Restart=always
+RestartSec=5
+
+# Security settings
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/node_exporter/textfile_collector
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -12,7 +12,7 @@ Features:
 """
 
 from typing import Callable, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 import structlog
 from fastapi import Request, Response, status
@@ -275,7 +275,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             key_prefix = f"ip:{get_remote_address(request)}"
 
         # Create unique key for endpoint and time window
-        window_start = int(datetime.utcnow().timestamp() / rate_limit["window"])
+        window_start = int(datetime.now(timezone.utc).timestamp() / rate_limit["window"])
         rate_limit_key = f"ratelimit:{key_prefix}:{request.url.path}:{window_start}"
 
         # Check Redis if available
@@ -289,7 +289,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 if current_count > rate_limit["limit"]:
                     # Calculate retry after
                     retry_after = rate_limit["window"] - (
-                        int(datetime.utcnow().timestamp()) % rate_limit["window"]
+                        int(datetime.now(timezone.utc).timestamp()) % rate_limit["window"]
                     )
                     return False, retry_after
 
@@ -352,7 +352,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             "details": {
                 "pfad": request.url.path,
                 "wiederholen_nach_sekunden": retry_after_seconds,
-                "zeitstempel": datetime.utcnow().isoformat()
+                "zeitstempel": datetime.now(timezone.utc).isoformat()
             },
             "hinweis": (
                 "Wenn Sie häufiger auf diese API zugreifen müssen, "
@@ -366,7 +366,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             headers={
                 "Retry-After": str(retry_after_seconds),
                 "X-RateLimit-Reset": str(
-                    int(datetime.utcnow().timestamp()) + retry_after_seconds
+                    int(datetime.now(timezone.utc).timestamp()) + retry_after_seconds
                 ),
                 "Content-Type": "application/json; charset=utf-8"
             }
@@ -494,7 +494,7 @@ class RoleBasedRateLimitChecker:
 
         # Build Redis key for quota tracking
         # Use time-windowed key to auto-expire old quota data
-        window_start = int(datetime.utcnow().timestamp() / window)
+        window_start = int(datetime.now(timezone.utc).timestamp() / window)
         quota_key = f"quota:{user_id}:{quota_type}:{window_start}"
 
         try:
@@ -503,7 +503,7 @@ class RoleBasedRateLimitChecker:
             remaining = max(0, max_quota - current_usage)
 
             # Calculate reset time
-            current_time = int(datetime.utcnow().timestamp())
+            current_time = int(datetime.now(timezone.utc).timestamp())
             reset_at = (window_start + 1) * window
             seconds_until_reset = reset_at - current_time
 
@@ -583,7 +583,7 @@ class RoleBasedRateLimitChecker:
         }
 
         window = quota_windows.get(quota_type, 3600)
-        window_start = int(datetime.utcnow().timestamp() / window)
+        window_start = int(datetime.now(timezone.utc).timestamp() / window)
         quota_key = f"quota:{user_id}:{quota_type}:{window_start}"
 
         if not self.redis_storage or not self.redis_storage.is_available:
@@ -633,5 +633,5 @@ def get_rate_limit_stats() -> dict:
             ),
             "default_limit": settings.RATE_LIMIT_REQUESTS_PER_MINUTE
         },
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }

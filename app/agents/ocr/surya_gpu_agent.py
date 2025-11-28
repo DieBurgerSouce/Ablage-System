@@ -1,23 +1,17 @@
-"""Surya OCR Agent with GPU acceleration for RTX 4080."""
+"""Surya OCR Agent with GPU acceleration for RTX 4080.
 
-import os
-import io
+This version uses the new surya-ocr 0.17.0 API with DetectionPredictor,
+FoundationPredictor, and RecognitionPredictor classes with GPU support.
+"""
+
 import asyncio
 from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
-import torch
 import structlog
 
+import torch
 from PIL import Image
 import pypdfium2 as pdfium
-
-# Surya imports
-from surya.detection import batch_text_detection
-from surya.recognition import batch_recognition
-from surya.model.detection.segformer import load_model as load_det_model
-from surya.model.detection.segformer import load_processor as load_det_processor
-from surya.model.recognition.model import load_model as load_rec_model
-from surya.model.recognition.processor import load_processor as load_rec_processor
 
 from app.agents.base import OCRAgent
 
@@ -41,10 +35,10 @@ class SuryaGPUAgent(OCRAgent):
 
         # Models will be loaded on first use
         self._models_loaded = False
-        self._det_model = None
-        self._det_processor = None
-        self._rec_model = None
-        self._rec_processor = None
+        self._det_predictor = None
+        self._rec_predictor = None
+        self._foundation_predictor = None
+        self._task_name = None
 
         # Language settings - German primary
         self.default_language = "de"
@@ -77,56 +71,38 @@ class SuryaGPUAgent(OCRAgent):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
-            # Load detection model (Surya functions don't take device/dtype directly)
-            self._det_model = load_det_model()
-            self._det_processor = load_det_processor()
-            logger.info("detection_model_loaded")
+            # Import new surya 0.17.0 API
+            from surya.detection import DetectionPredictor
+            from surya.recognition import RecognitionPredictor
+            from surya.foundation import FoundationPredictor
+            from surya.common.surya.schema import TaskNames
 
-            # Load recognition model
-            self._rec_model = load_rec_model()
-            self._rec_processor = load_rec_processor()
-            logger.info("recognition_model_loaded")
+            # Store task name for OCR
+            self._task_name = TaskNames.ocr_with_boxes
 
-            # Move models to GPU if available
+            # Load foundation predictor (required by recognition)
+            # Surya 0.17.0 automatically uses GPU if available
+            self._foundation_predictor = FoundationPredictor()
+            logger.info("foundation_predictor_loaded")
+
+            # Load detection predictor
+            self._det_predictor = DetectionPredictor()
+            logger.info("detection_predictor_loaded")
+
+            # Load recognition predictor with foundation
+            self._rec_predictor = RecognitionPredictor(self._foundation_predictor)
+            logger.info("recognition_predictor_loaded")
+
+            # Log VRAM usage
             if torch.cuda.is_available():
-                self._det_model = self._det_model.to(self.device).to(self.dtype)
-                self._rec_model = self._rec_model.to(self.device).to(self.dtype)
-
-                # Log VRAM usage
                 allocated = torch.cuda.memory_allocated() / 1024**3
                 logger.info("models_loaded_vram", vram_used_gb=round(allocated, 1))
 
             self._models_loaded = True
-            logger.info("All Surya models loaded successfully with GPU optimization")
+            logger.info("All Surya 0.17.0 models loaded successfully with GPU optimization")
 
         except Exception as e:
             logger.error("surya_models_load_failed", error=str(e))
-            # Try CPU fallback
-            if torch.cuda.is_available():
-                logger.warning("GPU loading failed, falling back to CPU")
-                self.device = torch.device("cpu")
-                self.dtype = torch.float32
-                self._load_models_cpu()
-            else:
-                raise
-
-    def _load_models_cpu(self):
-        """Fallback CPU model loading."""
-        try:
-            logger.info("Loading Surya models on CPU (fallback)...")
-
-            # Load models (Surya functions don't take device/dtype directly)
-            self._det_model = load_det_model()
-            self._det_processor = load_det_processor()
-
-            self._rec_model = load_rec_model()
-            self._rec_processor = load_rec_processor()
-
-            self._models_loaded = True
-            logger.info("Surya models loaded on CPU (fallback mode)")
-
-        except Exception as e:
-            logger.error("cpu_fallback_failed", error=str(e))
             raise
 
     def _load_image(self, image_path: str) -> List[Image.Image]:
@@ -176,73 +152,58 @@ class SuryaGPUAgent(OCRAgent):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        # Text detection with GPU acceleration
-        det_predictions = batch_text_detection(
-            [image],
-            self._det_model,
-            self._det_processor
-        )
-
-        # Process each text region INDIVIDUALLY with its own language code
-        # This is the critical fix for the Surya language bug
-        text_lines = []
-        confidences = []
-
-        for bbox in det_predictions[0].bboxes:
-            # Crop the text region
-            x1, y1, x2, y2 = bbox.bbox
-            cropped = image.crop((x1, y1, x2, y2))
-
-            # Recognition for SINGLE region with SINGLE language code
-            # This avoids the AssertionError: len(langs) != len(texts)
-            # batch_recognition returns a tuple: (texts_list, confidences_list)
-            rec_result = batch_recognition(
-                [cropped],      # Single image slice
-                [language],     # Single language code matching the single image
-                self._rec_model,
-                self._rec_processor
+        try:
+            # Run OCR using the callable RecognitionPredictor
+            predictions = self._rec_predictor(
+                [image],
+                task_names=[self._task_name],
+                det_predictor=self._det_predictor,
             )
 
-            # Unpack the tuple
-            if isinstance(rec_result, tuple) and len(rec_result) == 2:
-                rec_preds, conf_scores = rec_result
-            else:
-                # Fallback if format changes
-                rec_preds = rec_result if isinstance(rec_result, list) else [rec_result]
-                conf_scores = []
+            text_lines = []
+            confidences = []
 
-            if rec_preds and len(rec_preds) > 0:
-                # rec_preds[0] is directly a string, not an object with .text
-                text = rec_preds[0] if isinstance(rec_preds[0], str) else str(rec_preds[0])
+            # Process recognition results
+            if predictions and len(predictions) > 0:
+                pred = predictions[0]
 
-                if text:
-                    text_lines.append(text)
-                    if conf_scores and len(conf_scores) > 0:
-                        confidences.append(conf_scores[0])
+                # Extract text lines from OCRResult
+                if hasattr(pred, 'text_lines'):
+                    for line in pred.text_lines:
+                        text = line.text if hasattr(line, 'text') else str(line)
+                        confidence = line.confidence if hasattr(line, 'confidence') else 0.0
 
-        # Log GPU memory usage
-        if torch.cuda.is_available():
-            allocated = torch.cuda.memory_allocated() / 1024**3
-            max_allocated = torch.cuda.max_memory_allocated() / 1024**3
-            logger.debug("gpu_memory", current_gb=round(allocated, 1), peak_gb=round(max_allocated, 1))
+                        if text and text.strip():
+                            text_lines.append(text)
+                            confidences.append(float(confidence))
 
-        # Combine all text lines
-        full_text = "\n".join(text_lines)
-        avg_confidence = sum(confidences) / len(confidences) if confidences else 0
+            # Log GPU memory usage
+            if torch.cuda.is_available():
+                allocated = torch.cuda.memory_allocated() / 1024**3
+                max_allocated = torch.cuda.max_memory_allocated() / 1024**3
+                logger.debug("gpu_memory", current_gb=round(allocated, 1), peak_gb=round(max_allocated, 1))
 
-        # Check for German characters
-        german_chars = ['ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü', 'ß']
-        found_german = [char for char in german_chars if char in full_text]
+            # Combine all text lines
+            full_text = "\n".join(text_lines)
+            avg_confidence = sum(confidences) / len(confidences) if confidences else 0
 
-        if found_german:
-            logger.info("german_chars_detected", chars=found_german)
+            # Check for German characters
+            german_chars = ['ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü', 'ß']
+            found_german = [char for char in german_chars if char in full_text]
 
-        return {
-            "text": full_text,
-            "confidence": avg_confidence,
-            "text_regions": len(text_lines),
-            "german_chars_found": found_german
-        }
+            if found_german:
+                logger.info("german_chars_detected", chars=found_german)
+
+            return {
+                "text": full_text,
+                "confidence": avg_confidence,
+                "text_regions": len(text_lines),
+                "german_chars_found": found_german
+            }
+
+        except Exception as e:
+            logger.error("image_processing_failed", error=str(e))
+            return {"text": "", "confidence": 0.0, "text_regions": 0, "german_chars_found": [], "error": str(e)}
 
     async def process(
         self,
@@ -306,6 +267,7 @@ class SuryaGPUAgent(OCRAgent):
                 "page_count": len(images),
                 "backend": "surya_gpu",
                 "device": str(self.device),
+                "model": "surya-ocr-0.17.0",
                 "metadata": {
                     "language": language,
                     "gpu_accelerated": torch.cuda.is_available(),
@@ -323,12 +285,16 @@ class SuryaGPUAgent(OCRAgent):
                 "success": False,
                 "error": str(e),
                 "backend": "surya_gpu",
-                "device": str(self.device)
+                "device": str(self.device),
+                "model": "surya-ocr-0.17.0"
             }
 
     def get_status(self) -> Dict[str, Any]:
         """Get agent status including GPU information."""
         status = super().get_status()
+
+        # Add version info
+        status["model_version"] = "surya-ocr-0.17.0"
 
         # Add GPU-specific status
         if torch.cuda.is_available():
@@ -351,10 +317,9 @@ class SuryaGPUAgent(OCRAgent):
         logger.info("Cleaning up SuryaGPUAgent resources...")
 
         # Clear model references
-        self._det_model = None
-        self._rec_model = None
-        self._det_processor = None
-        self._rec_processor = None
+        self._det_predictor = None
+        self._rec_predictor = None
+        self._foundation_predictor = None
         self._models_loaded = False
 
         # Force GPU memory cleanup

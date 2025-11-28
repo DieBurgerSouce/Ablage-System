@@ -1,0 +1,54 @@
+# Ablage-System Security Role - UFW Firewall
+---
+- name: Install UFW
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  become: yes
+
+- name: Set UFW default incoming policy
+  community.general.ufw:
+    direction: incoming
+    policy: "{{ ufw_default_incoming | default('deny') }}"
+  become: yes
+
+- name: Set UFW default outgoing policy
+  community.general.ufw:
+    direction: outgoing
+    policy: "{{ ufw_default_outgoing | default('allow') }}"
+  become: yes
+
+- name: Configure UFW rules
+  community.general.ufw:
+    rule: "{{ item.rule | default('allow') }}"
+    port: "{{ item.port }}"
+    proto: "{{ item.proto | default('tcp') }}"
+    from_ip: "{{ item.from | default('any') }}"
+    comment: "{{ item.comment | default('') }}"
+  loop: "{{ ufw_rules | default([]) }}"
+  become: yes
+
+- name: Allow SSH (always)
+  community.general.ufw:
+    rule: allow
+    port: "{{ ssh_port | default(22) }}"
+    proto: tcp
+    comment: 'SSH'
+  become: yes
+
+- name: Allow Docker internal communication
+  community.general.ufw:
+    rule: allow
+    interface: docker0
+    direction: in
+  become: yes
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+  become: yes
+
+- name: Enable UFW logging
+  community.general.ufw:
+    logging: "{{ ufw_logging | default('low') }}"
+  become: yes

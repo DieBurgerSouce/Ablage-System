@@ -560,3 +560,312 @@ class OCRVersionRollbackResponse(BaseModel):
     new_version_number: int
     rolled_back_from: int
     message: str  # German message
+
+
+# ============================================================================
+# SEARCH SCHEMAS
+# ============================================================================
+
+class SearchType(str, Enum):
+    """Search type options."""
+    FTS = "fts"  # Full-text search only
+    SEMANTIC = "semantic"  # Semantic/vector search only
+    HYBRID = "hybrid"  # Combined FTS + semantic
+
+
+class SortField(str, Enum):
+    """Available sort fields for document listing."""
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+    FILENAME = "filename"
+    FILE_SIZE = "file_size"
+    OCR_CONFIDENCE = "ocr_confidence"
+    RELEVANCE = "relevance"  # For search results
+
+
+class SortOrder(str, Enum):
+    """Sort order options."""
+    ASC = "asc"
+    DESC = "desc"
+
+
+class SearchFilters(BaseModel):
+    """Filters for document search and listing."""
+    document_type: Optional[DocumentType] = None
+    status: Optional[ProcessingStatus] = None
+    tags: Optional[List[str]] = Field(None, description="Filter by tag names")
+    date_from: Optional[datetime] = Field(None, description="Filter documents created after this date")
+    date_to: Optional[datetime] = Field(None, description="Filter documents created before this date")
+    confidence_min: Optional[float] = Field(None, ge=0, le=100, description="Minimum OCR confidence score")
+    has_embedding: Optional[bool] = Field(None, description="Filter by embedding availability")
+    language: Optional[str] = Field(None, pattern="^(de|en)$")
+
+
+class PaginationParams(BaseModel):
+    """Pagination parameters."""
+    page: int = Field(1, ge=1, description="Page number (1-based)")
+    per_page: int = Field(20, ge=1, le=100, description="Items per page")
+
+
+class SearchRequest(BaseModel):
+    """Search request schema."""
+    query: str = Field(..., min_length=1, max_length=1000, description="Suchbegriff")
+    search_type: SearchType = Field(SearchType.HYBRID, description="Art der Suche")
+    filters: Optional[SearchFilters] = None
+    page: int = Field(1, ge=1)
+    per_page: int = Field(20, ge=1, le=100)
+    sort_by: SortField = Field(SortField.RELEVANCE)
+    sort_order: SortOrder = Field(SortOrder.DESC)
+    highlight: bool = Field(True, description="Include text highlights in results")
+    similarity_threshold: float = Field(0.5, ge=0, le=1, description="Minimum similarity for semantic search")
+
+
+class SearchResultItem(BaseModel):
+    """Single search result item."""
+    document_id: uuid.UUID
+    filename: str
+    original_filename: str
+    document_type: DocumentType
+    status: ProcessingStatus
+    created_at: datetime
+    updated_at: datetime
+    file_size: int
+    page_count: Optional[int] = None
+    ocr_confidence: Optional[float] = None
+
+    # Search relevance scores
+    score: float = Field(..., description="Combined relevance score (0-1)")
+    fts_rank: Optional[float] = Field(None, description="Full-text search rank")
+    semantic_similarity: Optional[float] = Field(None, description="Semantic similarity score")
+
+    # Text snippets with highlighting
+    highlight: Optional[str] = Field(None, description="Text snippet with search term highlighting")
+    text_preview: Optional[str] = Field(None, max_length=500, description="Preview of extracted text")
+
+    # Metadata
+    tags: List[str] = []
+    owner_id: uuid.UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SearchResponse(BaseModel):
+    """Search response with results and metadata."""
+    query: str
+    search_type: SearchType
+    total: int = Field(..., description="Total number of matching documents")
+    page: int
+    per_page: int
+    total_pages: int
+    results: List[SearchResultItem]
+    took_ms: int = Field(..., description="Query execution time in milliseconds")
+    filters_applied: Dict[str, Any] = {}
+    analytics_id: Optional[uuid.UUID] = Field(None, description="Analytics ID for click tracking")
+
+
+class SimilarDocumentsRequest(BaseModel):
+    """Request for finding similar documents."""
+    limit: int = Field(10, ge=1, le=50, description="Maximum number of similar documents")
+    similarity_threshold: float = Field(0.6, ge=0, le=1, description="Minimum similarity score")
+    exclude_same_type: bool = Field(False, description="Exclude documents of the same type")
+
+
+class SimilarDocumentItem(BaseModel):
+    """Similar document result."""
+    document_id: uuid.UUID
+    filename: str
+    document_type: DocumentType
+    similarity: float
+    created_at: datetime
+    text_preview: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================================
+# BATCH OPERATION SCHEMAS
+# ============================================================================
+
+class TagOperation(str, Enum):
+    """Tag operation types for batch tagging."""
+    ADD = "add"
+    REMOVE = "remove"
+    SET = "set"  # Replace all tags
+
+
+class ExportFormat(str, Enum):
+    """Export format options."""
+    JSON = "json"
+    CSV = "csv"
+    PDF = "pdf"
+    ZIP = "zip"  # Multiple files as ZIP
+
+
+class BatchDeleteRequest(BaseModel):
+    """Request for batch document deletion."""
+    document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
+    confirm: bool = Field(..., description="Bestaetigung erforderlich (muss true sein)")
+
+    @field_validator("confirm")
+    @classmethod
+    def must_confirm(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError("Loeschung muss mit confirm=true bestaetigt werden")
+        return v
+
+
+class BatchTagRequest(BaseModel):
+    """Request for batch tagging documents."""
+    document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
+    tags: List[str] = Field(..., min_length=1, max_length=20)
+    operation: TagOperation = Field(TagOperation.ADD)
+
+
+class BatchExportRequest(BaseModel):
+    """Request for batch document export."""
+    document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
+    format: ExportFormat = Field(ExportFormat.JSON)
+    include_text: bool = Field(True, description="Include extracted text in export")
+    include_metadata: bool = Field(True, description="Include document metadata")
+    include_original_files: bool = Field(False, description="Include original document files")
+
+
+class BatchOperationError(BaseModel):
+    """Error details for a single item in batch operation."""
+    document_id: uuid.UUID
+    error: str
+    error_code: Optional[str] = None
+
+
+class BatchOperationResult(BaseModel):
+    """Result of a batch operation."""
+    success: bool
+    operation: str
+    total_requested: int
+    processed: int
+    failed: int
+    errors: List[BatchOperationError] = []
+    message: str  # German message
+
+
+class BatchExportResult(BatchOperationResult):
+    """Result of batch export operation."""
+    download_url: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    file_size_bytes: Optional[int] = None
+    format: ExportFormat
+
+
+# ============================================================================
+# DOCUMENT CRUD SCHEMAS (Extended)
+# ============================================================================
+
+class DocumentCreateRequest(BaseModel):
+    """Extended document creation request."""
+    document_type: DocumentType = Field(DocumentType.OTHER)
+    language: str = Field("de", pattern="^(de|en)$")
+    tags: List[str] = Field(default_factory=list, max_length=20)
+    metadata: Dict[str, str] = Field(default_factory=dict)
+    ocr_backend: OCRBackend = Field(OCRBackend.AUTO)
+    priority: int = Field(5, ge=1, le=10)
+    generate_embedding: bool = Field(True, description="Generate semantic embedding after OCR")
+
+
+class DocumentUpdateRequest(BaseModel):
+    """Document update request."""
+    document_type: Optional[DocumentType] = None
+    language: Optional[str] = Field(None, pattern="^(de|en)$")
+    tags: Optional[List[str]] = Field(None, max_length=20)
+    metadata: Optional[Dict[str, str]] = None
+
+
+class DocumentDetailResponse(BaseModel):
+    """Detailed document response with all fields."""
+    id: uuid.UUID
+    filename: str
+    original_filename: str
+    file_path: Optional[str] = None
+    file_size: int
+    mime_type: Optional[str] = None
+    checksum: Optional[str] = None
+
+    # Classification
+    document_type: DocumentType
+    status: ProcessingStatus
+    page_count: Optional[int] = None
+
+    # OCR results
+    extracted_text: Optional[str] = None
+    ocr_backend_used: Optional[str] = None
+    ocr_confidence: Optional[float] = None
+    processing_duration_ms: Optional[int] = None
+
+    # German validation
+    has_umlauts: bool = False
+    german_validation_score: Optional[float] = None
+    detected_language: Optional[str] = None
+
+    # Metadata
+    document_metadata: Dict[str, Any] = {}
+    tags: List[TagResponse] = []
+
+    # Timestamps
+    upload_date: Optional[datetime] = None
+    processed_date: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    # Version info
+    current_version_number: int = 0
+    total_versions: int = 0
+
+    # Search/embedding info
+    has_embedding: bool = False
+    embedding_updated_at: Optional[datetime] = None
+    embedding_model: Optional[str] = None
+
+    # Ownership
+    owner_id: uuid.UUID
+
+    # URLs (generated)
+    download_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentSummary(BaseModel):
+    """Compact document summary for listings."""
+    id: uuid.UUID
+    filename: str
+    document_type: DocumentType
+    status: ProcessingStatus
+    file_size: int
+    page_count: Optional[int] = None
+    ocr_confidence: Optional[float] = None
+    created_at: datetime
+    tags: List[str] = []
+    has_embedding: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentListRequest(BaseModel):
+    """Request parameters for document listing."""
+    page: int = Field(1, ge=1)
+    per_page: int = Field(20, ge=1, le=100)
+    filters: Optional[SearchFilters] = None
+    sort_by: SortField = Field(SortField.CREATED_AT)
+    sort_order: SortOrder = Field(SortOrder.DESC)
+
+
+class DocumentListResponseExtended(BaseModel):
+    """Extended document list response with pagination info."""
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool
+    documents: List[DocumentSummary]
+    filters_applied: Dict[str, Any] = {}

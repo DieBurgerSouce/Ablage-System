@@ -1,0 +1,120 @@
+# Ablage-System Backup Playbook
+# Creates a full backup of the Ablage-System
+#
+# Usage:
+#   ansible-playbook -i inventory/production playbooks/backup.yml
+#   ansible-playbook -i inventory/production playbooks/backup.yml -e "backup_type=full"
+#   ansible-playbook -i inventory/production playbooks/backup.yml -e "backup_type=db_only"
+#
+# Options:
+#   backup_type: full (default), db_only, config_only, storage_only
+#   force_remote_sync: false (default), true - Force sync to remote even if disabled
+---
+- name: Ablage-System Backup
+  hosts: ablage_servers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    backup_type: "full"
+    force_remote_sync: false
+
+  pre_tasks:
+    - name: Verify backup role is configured
+      ansible.builtin.assert:
+        that:
+          - backup_enabled | default(true) | bool
+        fail_msg: "Backup ist deaktiviert. Aktivieren Sie es mit backup_enabled: true"
+
+    - name: Display backup parameters
+      ansible.builtin.debug:
+        msg: |
+          === Ablage-System Backup ===
+          Backup-Typ: {{ backup_type }}
+          Zielverzeichnis: {{ ablage_backup_dir | default('/var/backups/ablage') }}
+          Remote-Sync: {{ backup_remote_enabled | default(false) }}
+          Erzwungener Remote-Sync: {{ force_remote_sync }}
+
+  tasks:
+    - name: Ensure backup directory exists
+      ansible.builtin.file:
+        path: "{{ ablage_backup_dir | default('/var/backups/ablage') }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0750'
+
+    - name: Generate backup timestamp
+      ansible.builtin.set_fact:
+        backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+
+    - name: Run full backup
+      ansible.builtin.command:
+        cmd: /usr/local/bin/ablage-backup --full
+      register: backup_result
+      changed_when: backup_result.rc == 0
+      when: backup_type == "full"
+
+    - name: Run database-only backup
+      ansible.builtin.shell: |
+        cd {{ ablage_install_dir }}
+        docker compose exec -T postgres pg_dump -U ablage_admin ablage_system | gzip > "{{ ablage_backup_dir | default('/var/backups/ablage') }}/postgres_{{ backup_timestamp }}.sql.gz"
+      register: db_backup_result
+      changed_when: db_backup_result.rc == 0
+      when: backup_type == "db_only"
+
+    - name: Run config-only backup
+      ansible.builtin.shell: |
+        tar -czf "{{ ablage_backup_dir | default('/var/backups/ablage') }}/config_{{ backup_timestamp }}.tar.gz" \
+          -C {{ ablage_install_dir }} \
+          .env docker-compose.yml docker-compose.override.yml 2>/dev/null || true
+      register: config_backup_result
+      changed_when: config_backup_result.rc == 0
+      when: backup_type == "config_only"
+
+    - name: Run storage-only backup (MinIO)
+      ansible.builtin.shell: |
+        cd {{ ablage_install_dir }}
+        docker compose exec -T minio mc mirror local/documents "{{ ablage_backup_dir | default('/var/backups/ablage') }}/minio_{{ backup_timestamp }}/"
+      register: storage_backup_result
+      changed_when: storage_backup_result.rc == 0
+      when: backup_type == "storage_only"
+
+    - name: Sync to remote if enabled
+      ansible.builtin.shell: |
+        /usr/local/bin/ablage-backup --sync-remote
+      when: (backup_remote_enabled | default(false) | bool) or (force_remote_sync | bool)
+      register: sync_result
+      failed_when: false
+
+    - name: Display sync result
+      ansible.builtin.debug:
+        msg: "Remote-Sync: {{ 'Erfolgreich' if sync_result.rc | default(0) == 0 else 'Fehlgeschlagen' }}"
+      when: (backup_remote_enabled | default(false) | bool) or (force_remote_sync | bool)
+
+  post_tasks:
+    - name: List recent backups
+      ansible.builtin.shell: |
+        ls -lht {{ ablage_backup_dir | default('/var/backups/ablage') }}/ | head -10
+      register: backup_list
+      changed_when: false
+
+    - name: Display backup summary
+      ansible.builtin.debug:
+        msg: |
+          === Backup Abgeschlossen ===
+          Typ: {{ backup_type }}
+          Zeitstempel: {{ backup_timestamp }}
+
+          Letzte Backups:
+          {{ backup_list.stdout }}
+
+    - name: Calculate backup size
+      ansible.builtin.shell: |
+        du -sh {{ ablage_backup_dir | default('/var/backups/ablage') }}/
+      register: backup_size
+      changed_when: false
+
+    - name: Display backup storage usage
+      ansible.builtin.debug:
+        msg: "Speicherverbrauch: {{ backup_size.stdout }}"

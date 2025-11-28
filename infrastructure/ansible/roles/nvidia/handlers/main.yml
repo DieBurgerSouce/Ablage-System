@@ -1,0 +1,21 @@
+# Ablage-System NVIDIA Role - Handlers
+---
+- name: restart docker
+  ansible.builtin.systemd:
+    name: docker
+    state: restarted
+    daemon_reload: yes
+  become: yes
+
+- name: reboot required
+  ansible.builtin.debug:
+    msg: |
+      ╔══════════════════════════════════════════════════════════════╗
+      ║           REBOOT REQUIRED                                    ║
+      ╠══════════════════════════════════════════════════════════════╣
+      ║ NVIDIA drivers have been installed/updated.                  ║
+      ║ A system reboot is required for changes to take effect.      ║
+      ║                                                              ║
+      ║ Run: ansible-playbook playbooks/maintenance.yml -t reboot    ║
+      ╚══════════════════════════════════════════════════════════════╝
+  changed_when: true

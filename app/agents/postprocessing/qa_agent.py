@@ -176,6 +176,11 @@ class QAAgent(PostprocessingAgent):
             "encoding_check": encoding_check,
         }
 
+        # Determine if human review is needed
+        needs_review, review_reasons = self._determine_human_review(
+            quality_level, quality_score, issues, ocr_confidence
+        )
+
         result = {
             "quality_score": round(quality_score, 3),
             "quality_level": quality_level,
@@ -186,6 +191,8 @@ class QAAgent(PostprocessingAgent):
             "suggestions": suggestions,
             "validation_details": validation_details,
             "is_acceptable": is_acceptable,
+            "needs_review": needs_review,
+            "review_reasons": review_reasons,
             "recommendation": self._get_recommendation(quality_level, issues),
         }
 
@@ -713,6 +720,98 @@ class QAAgent(PostprocessingAgent):
             return "Manuelle Korrektur erforderlich. Das OCR-Ergebnis weist mehrere Probleme auf."
 
         return "Das Dokument sollte erneut gescannt und verarbeitet werden. Die Qualität ist unzureichend."
+
+    def _determine_human_review(
+        self,
+        quality_level: str,
+        quality_score: float,
+        issues: List[Dict[str, Any]],
+        ocr_confidence: float,
+    ) -> Tuple[bool, List[str]]:
+        """
+        Determine if human review is needed and why.
+
+        Review is triggered for:
+        - Poor or unacceptable quality levels
+        - Multiple critical issues
+        - Very low confidence scores
+        - Invalid critical entities (IBANs, VAT IDs)
+        - Severe encoding problems
+
+        Args:
+            quality_level: Quality level category
+            quality_score: Overall quality score (0-1)
+            issues: List of identified issues
+            ocr_confidence: Original OCR confidence
+
+        Returns:
+            Tuple of (needs_review: bool, review_reasons: List[str])
+        """
+        needs_review = False
+        review_reasons = []
+
+        # Rule 1: Quality level is poor or unacceptable
+        if quality_level in [QualityLevel.POOR, QualityLevel.UNACCEPTABLE]:
+            needs_review = True
+            review_reasons.append(
+                f"Qualitätsstufe '{self._get_german_quality_level(quality_level)}' "
+                f"(Score: {quality_score:.0%})"
+            )
+
+        # Rule 2: Critical issues (severity > 0.8)
+        critical_issues = [i for i in issues if i.get("severity", 0) > 0.8]
+        if len(critical_issues) >= 2:
+            needs_review = True
+            issue_types = list(set(i.get("type", "unbekannt") for i in critical_issues))
+            review_reasons.append(
+                f"{len(critical_issues)} kritische Probleme: {', '.join(issue_types[:3])}"
+            )
+
+        # Rule 3: Very low OCR confidence
+        if ocr_confidence < self.CONFIDENCE_THRESHOLD_LOW:
+            needs_review = True
+            review_reasons.append(
+                f"Sehr niedrige OCR-Konfidenz: {ocr_confidence:.0%}"
+            )
+
+        # Rule 4: Invalid critical entities (IBAN, VAT ID)
+        critical_entity_issues = [
+            i for i in issues
+            if i.get("type") in [QAIssueType.IBAN_INVALID, QAIssueType.VAT_ID_INVALID]
+        ]
+        if critical_entity_issues:
+            needs_review = True
+            for issue in critical_entity_issues[:2]:
+                review_reasons.append(issue.get("message", "Ungültige kritische Entität"))
+
+        # Rule 5: Severe encoding problems
+        encoding_issues = [
+            i for i in issues
+            if i.get("type") == QAIssueType.ENCODING_ERROR and i.get("severity", 0) > 0.8
+        ]
+        if encoding_issues:
+            needs_review = True
+            review_reasons.append("Schwerwiegende Encoding-Fehler gefunden")
+
+        # Rule 6: Quality score below threshold (configurable)
+        from app.core.config import settings
+        review_threshold = getattr(settings, "QA_REVIEW_THRESHOLD", 0.7)
+        if quality_score < review_threshold and not needs_review:
+            needs_review = True
+            review_reasons.append(
+                f"Qualitätsscore ({quality_score:.0%}) unter Schwellwert ({review_threshold:.0%})"
+            )
+
+        # Log if review needed
+        if needs_review:
+            logger.info(
+                "human_review_triggered",
+                quality_score=quality_score,
+                reason_count=len(review_reasons),
+                reasons=review_reasons[:3],
+            )
+
+        return needs_review, review_reasons
 
     def get_qa_stats(self) -> Dict[str, Any]:
         """Get QA agent statistics."""

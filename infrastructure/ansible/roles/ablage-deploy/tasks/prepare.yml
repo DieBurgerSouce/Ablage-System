@@ -1,0 +1,55 @@
+# Ablage-System Deploy Role - Preparation
+---
+- name: Ensure application directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: ablage
+    group: ablage
+    mode: '0750'
+  loop:
+    - "{{ ablage_install_dir }}"
+    - "{{ ablage_install_dir }}/logs"
+    - "{{ ablage_install_dir }}/data"
+    - "{{ ablage_install_dir }}/backups"
+    - "{{ ablage_install_dir }}/ssl"
+  become: yes
+
+- name: Sync application files to target
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../../../"
+    dest: "{{ ablage_install_dir }}/"
+    delete: yes
+    rsync_opts:
+      - "--exclude=.git"
+      - "--exclude=__pycache__"
+      - "--exclude=*.pyc"
+      - "--exclude=.pytest_cache"
+      - "--exclude=.mypy_cache"
+      - "--exclude=node_modules"
+      - "--exclude=.env"
+      - "--exclude=*.log"
+      - "--exclude=infrastructure/ansible/inventories/*/group_vars/vault.yml"
+      - "--exclude=.venv"
+      - "--exclude=venv"
+  become: yes
+  delegate_to: "{{ inventory_hostname }}"
+
+- name: Set ownership of application directory
+  ansible.builtin.file:
+    path: "{{ ablage_install_dir }}"
+    state: directory
+    owner: ablage
+    group: ablage
+    recurse: yes
+  become: yes
+
+- name: Ensure executable scripts have proper permissions
+  ansible.builtin.file:
+    path: "{{ item }}"
+    mode: '0755'
+  loop:
+    - "{{ ablage_install_dir }}/infrastructure/systemd/install-services.sh"
+    - "{{ ablage_install_dir }}/infrastructure/nginx/setup-nginx.sh"
+  become: yes
+  ignore_errors: yes

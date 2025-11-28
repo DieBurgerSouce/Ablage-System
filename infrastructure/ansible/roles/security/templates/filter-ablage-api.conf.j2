@@ -1,0 +1,12 @@
+# Ablage-System API Fail2ban Filter
+# Managed by Ansible - Do not edit manually
+
+[Definition]
+
+# Failed authentication attempts
+failregex = ^.*"POST /api/v1/auth/login HTTP/.*" (401|403) .* "<HOST>".*$
+            ^.*"POST /api/v1/auth/register HTTP/.*" (400|429) .* "<HOST>".*$
+            ^.*".*" 429 .* "<HOST>".*$
+
+# Ignore successful requests
+ignoreregex = ^.*" (200|201|204) .*$

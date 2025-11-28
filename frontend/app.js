@@ -937,4 +937,5 @@ function hideLoadingState(elementId, text) {
 
 window.AppState = AppState;
 window.showToast = showToast;
+window.escapeHtml = escapeHtml;
 window.removeFile = removeFile;

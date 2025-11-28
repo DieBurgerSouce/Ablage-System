@@ -1,0 +1,30 @@
+# Ablage-System Common Role - Kernel Configuration
+---
+- name: Configure kernel parameters for Docker and GPU
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/99-ablage-system.conf
+    reload: yes
+    state: present
+  loop: "{{ kernel_params | dict2items }}"
+  become: yes
+
+- name: Configure system limits
+  ansible.builtin.template:
+    src: limits.conf.j2
+    dest: /etc/security/limits.d/99-ablage-system.conf
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+
+- name: Load kernel modules for Docker
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+    persistent: present
+  loop:
+    - overlay
+    - br_netfilter
+  become: yes

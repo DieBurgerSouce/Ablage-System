@@ -1,0 +1,205 @@
+# Ablage-System Rolling Update Playbook
+# Performs zero-downtime updates of the Ablage-System
+#
+# Usage:
+#   ansible-playbook -i inventory/production playbooks/rolling-update.yml
+#   ansible-playbook -i inventory/production playbooks/rolling-update.yml -e "update_backend=true"
+#   ansible-playbook -i inventory/production playbooks/rolling-update.yml -e "force_rebuild=true"
+---
+- name: Ablage-System Rolling Update
+  hosts: ablage_servers
+  become: yes
+  gather_facts: yes
+  serial: 1  # One host at a time for rolling updates
+
+  vars:
+    update_backend: true
+    update_frontend: true
+    update_workers: true
+    force_rebuild: false
+    pre_update_backup: true
+    health_check_retries: 30
+    health_check_delay: 10
+
+  pre_tasks:
+    - name: Display update parameters
+      ansible.builtin.debug:
+        msg: |
+          === Ablage-System Rolling Update ===
+          Host: {{ inventory_hostname }}
+          Backend Update: {{ update_backend }}
+          Frontend Update: {{ update_frontend }}
+          Worker Update: {{ update_workers }}
+          Force Rebuild: {{ force_rebuild }}
+          Pre-Update Backup: {{ pre_update_backup }}
+
+    - name: Run health check before update
+      ansible.builtin.uri:
+        url: "http://localhost:{{ ablage_backend_port | default(8000) }}/health"
+        status_code: 200
+      register: pre_health_check
+      failed_when: false
+
+    - name: Fail if system is unhealthy before update
+      ansible.builtin.fail:
+        msg: "System ist vor dem Update nicht gesund. Bitte zuerst Probleme beheben."
+      when: pre_health_check.status | default(0) != 200
+
+    - name: Create pre-update backup
+      ansible.builtin.command:
+        cmd: /usr/local/bin/ablage-backup --full
+      when: pre_update_backup | bool
+      register: backup_result
+      ignore_errors: yes
+
+    - name: Display backup result
+      ansible.builtin.debug:
+        msg: "Pre-Update Backup: {{ 'Erfolgreich' if backup_result.rc | default(1) == 0 else 'Fehlgeschlagen (wird fortgesetzt)' }}"
+      when: pre_update_backup | bool
+
+  tasks:
+    - name: Pull latest code
+      ansible.builtin.git:
+        repo: "{{ ablage_git_repo | default('') }}"
+        dest: "{{ ablage_install_dir }}"
+        version: "{{ ablage_git_branch | default('main') }}"
+        force: yes
+      when: ablage_git_repo is defined and ablage_git_repo | length > 0
+      register: git_pull
+
+    - name: Pull latest Docker images
+      ansible.builtin.shell: |
+        cd {{ ablage_install_dir }}
+        docker compose pull
+      register: docker_pull
+      changed_when: "'Downloaded newer image' in docker_pull.stdout"
+
+    # Update Backend
+    - name: Update backend service
+      when: update_backend | bool
+      block:
+        - name: Drain backend connections (wait for in-flight requests)
+          ansible.builtin.pause:
+            seconds: 5
+            prompt: "Warte auf Abschluss laufender Anfragen..."
+
+        - name: Stop backend service
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose stop backend
+
+        - name: Rebuild backend if needed
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose build --no-cache backend
+          when: force_rebuild | bool
+
+        - name: Start backend service
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose up -d backend
+
+        - name: Wait for backend to be healthy
+          ansible.builtin.uri:
+            url: "http://localhost:{{ ablage_backend_port | default(8000) }}/health"
+            status_code: 200
+          register: backend_health
+          retries: "{{ health_check_retries }}"
+          delay: "{{ health_check_delay }}"
+          until: backend_health.status == 200
+
+    # Update Workers
+    - name: Update worker services
+      when: update_workers | bool
+      block:
+        - name: Get current worker count
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose ps worker --format json | jq -s 'length'
+          register: worker_count
+          changed_when: false
+
+        - name: Stop old workers gracefully (one at a time)
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose stop worker --timeout 60
+
+        - name: Rebuild workers if needed
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose build --no-cache worker
+          when: force_rebuild | bool
+
+        - name: Start workers
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose up -d worker
+
+        - name: Wait for workers to be ready
+          ansible.builtin.pause:
+            seconds: 10
+            prompt: "Warte auf Worker-Start..."
+
+    # Update Frontend
+    - name: Update frontend service
+      when: update_frontend | bool
+      block:
+        - name: Stop frontend service
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose stop frontend
+
+        - name: Rebuild frontend if needed
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose build --no-cache frontend
+          when: force_rebuild | bool
+
+        - name: Start frontend service
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose up -d frontend
+
+        - name: Wait for frontend to be healthy
+          ansible.builtin.uri:
+            url: "http://localhost:80"
+            status_code: [200, 301, 302]
+          register: frontend_health
+          retries: 10
+          delay: 5
+          until: frontend_health.status in [200, 301, 302]
+
+    - name: Run database migrations if needed
+      ansible.builtin.shell: |
+        cd {{ ablage_install_dir }}
+        docker compose exec -T backend alembic upgrade head
+      register: migration_result
+      changed_when: "'Running upgrade' in migration_result.stdout"
+      failed_when: migration_result.rc != 0
+
+  post_tasks:
+    - name: Run comprehensive health check
+      ansible.builtin.command:
+        cmd: /usr/local/bin/ablage-health-check
+      register: final_health_check
+      ignore_errors: yes
+
+    - name: Display update summary
+      ansible.builtin.debug:
+        msg: |
+          === Rolling Update Abgeschlossen ===
+          Host: {{ inventory_hostname }}
+          Backend: {{ 'Aktualisiert' if update_backend else 'Übersprungen' }}
+          Frontend: {{ 'Aktualisiert' if update_frontend else 'Übersprungen' }}
+          Workers: {{ 'Aktualisiert' if update_workers else 'Übersprungen' }}
+          Gesundheitsprüfung: {{ 'OK' if final_health_check.rc == 0 else 'WARNUNG - Bitte manuell prüfen' }}
+
+    - name: Fail if final health check failed
+      ansible.builtin.fail:
+        msg: "Update abgeschlossen, aber Gesundheitsprüfung fehlgeschlagen. Bitte System manuell prüfen."
+      when: final_health_check.rc != 0
+
+  handlers:
+    - name: rollback update
+      ansible.builtin.debug:
+        msg: "Rollback würde hier ausgeführt werden..."

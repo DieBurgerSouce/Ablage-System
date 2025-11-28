@@ -1,0 +1,29 @@
+# Ablage-System SSL Certificates Role - DH Parameters
+---
+- name: Check if DH parameters file exists
+  ansible.builtin.stat:
+    path: "{{ ssl_dhparam_path | default('/etc/ssl/dhparam.pem') }}"
+  register: dhparam_stat
+
+- name: Generate DH parameters (this may take several minutes)
+  community.crypto.openssl_dhparam:
+    path: "{{ ssl_dhparam_path | default('/etc/ssl/dhparam.pem') }}"
+    size: "{{ ssl_dhparam_size | default(2048) }}"
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  when: not dhparam_stat.stat.exists
+  async: 1800  # 30 minute timeout
+  poll: 30     # Check every 30 seconds
+
+- name: Verify DH parameters
+  ansible.builtin.command: openssl dhparam -check -in {{ ssl_dhparam_path | default('/etc/ssl/dhparam.pem') }}
+  register: dhparam_check
+  changed_when: false
+  failed_when: dhparam_check.rc != 0
+  become: yes
+
+- name: Display DH parameters status
+  ansible.builtin.debug:
+    msg: "DH parameters ({{ ssl_dhparam_size | default(2048) }}-bit) ready at {{ ssl_dhparam_path | default('/etc/ssl/dhparam.pem') }}"

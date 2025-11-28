@@ -1,0 +1,25 @@
+# Ablage-System Staging Vault Variables
+# IMPORTANT: Encrypt this file with: ansible-vault encrypt vault.yml
+---
+# Database
+vault_db_password: "CHANGE_ME_STAGING_DB_PASSWORD"
+
+# JWT Secret
+vault_secret_key: "CHANGE_ME_STAGING_SECRET_KEY"
+
+# MinIO
+vault_minio_root_user: "minioadmin"
+vault_minio_root_password: "CHANGE_ME_STAGING_MINIO_PASSWORD"
+
+# Grafana
+vault_grafana_password: "CHANGE_ME_STAGING_GRAFANA_PASSWORD"
+
+# Flower (Celery monitoring)
+vault_flower_user: "admin"
+vault_flower_password: "CHANGE_ME_STAGING_FLOWER_PASSWORD"
+
+# Backup remote (if enabled)
+vault_backup_remote_user: ""
+vault_backup_remote_host: ""
+vault_backup_remote_path: ""
+vault_backup_ssh_key: ""

@@ -345,7 +345,7 @@ class TestDriftHistory:
         with tempfile.TemporaryDirectory() as tmpdir:
             from app.ml.drift_detector import DriftDetector
             yield DriftDetector(
-                min_samples=5,
+                min_samples=10,
                 storage_path=Path(tmpdir),
             )
 
@@ -393,7 +393,7 @@ class TestReferenceReset:
         with tempfile.TemporaryDirectory() as tmpdir:
             from app.ml.drift_detector import DriftDetector
             yield DriftDetector(
-                min_samples=5,
+                min_samples=10,
                 storage_path=Path(tmpdir),
             )
 
@@ -402,7 +402,7 @@ class TestReferenceReset:
         """Test resetting reference window."""
         # Add reference data
         past = datetime.now() - timedelta(days=10)
-        for i in range(5):
+        for i in range(10):
             detector.add_sample(
                 features={"quality_score": 0.9},
                 prediction="deepseek",
@@ -411,7 +411,7 @@ class TestReferenceReset:
 
         # Add current data
         now = datetime.now()
-        for i in range(5):
+        for i in range(10):
             detector.add_sample(
                 features={"quality_score": 0.8},
                 prediction="got_ocr",
@@ -419,13 +419,13 @@ class TestReferenceReset:
             )
 
         status_before = detector.get_current_status()
-        assert status_before["current_samples"] == 5
+        assert status_before["current_samples"] == 10
 
         # Reset
         detector.reset_reference_window()
 
         status_after = detector.get_current_status()
-        assert status_after["reference_samples"] == 5
+        assert status_after["reference_samples"] == 10
         assert status_after["current_samples"] == 0
 
 

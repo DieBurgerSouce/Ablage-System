@@ -1,0 +1,55 @@
+# Ablage-System NVIDIA Role - Driver Installation
+---
+- name: Check if NVIDIA drivers are already installed
+  ansible.builtin.command: nvidia-smi
+  register: nvidia_smi_check
+  changed_when: false
+  failed_when: false
+
+- name: Install NVIDIA drivers if not present
+  block:
+    - name: Add NVIDIA driver PPA
+      ansible.builtin.apt_repository:
+        repo: ppa:graphics-drivers/ppa
+        state: present
+        update_cache: yes
+      become: yes
+
+    - name: Install NVIDIA driver
+      ansible.builtin.apt:
+        name: "nvidia-driver-{{ nvidia_driver_version }}"
+        state: present
+        update_cache: yes
+      become: yes
+      register: nvidia_driver_install
+
+    - name: Install additional NVIDIA packages
+      ansible.builtin.apt:
+        name:
+          - nvidia-utils-{{ nvidia_driver_version }}
+          - libnvidia-compute-{{ nvidia_driver_version }}
+        state: present
+      become: yes
+
+    - name: Set reboot required flag
+      ansible.builtin.set_fact:
+        nvidia_reboot_required: true
+      when: nvidia_driver_install.changed
+
+  when: nvidia_smi_check.rc != 0
+
+- name: Get current NVIDIA driver version
+  ansible.builtin.command: nvidia-smi --query-gpu=driver_version --format=csv,noheader
+  register: current_nvidia_version
+  changed_when: false
+  failed_when: false
+  when: nvidia_smi_check.rc == 0
+
+- name: Display NVIDIA driver status
+  ansible.builtin.debug:
+    msg: |
+      NVIDIA Driver Status:
+      - Installed: {{ 'Yes' if nvidia_smi_check.rc == 0 else 'No (will be installed)' }}
+      - Version: {{ current_nvidia_version.stdout | default('N/A') }}
+      - Target Version: {{ nvidia_driver_version }}
+      - Reboot Required: {{ nvidia_reboot_required | default(false) }}

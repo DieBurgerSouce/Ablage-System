@@ -1,0 +1,270 @@
+# Ablage-System Maintenance Playbook
+# Performs system maintenance tasks
+#
+# Usage:
+#   ansible-playbook -i inventory/production playbooks/maintenance.yml
+#   ansible-playbook -i inventory/production playbooks/maintenance.yml --tags "cleanup"
+#   ansible-playbook -i inventory/production playbooks/maintenance.yml --tags "optimize"
+#   ansible-playbook -i inventory/production playbooks/maintenance.yml -e "enable_maintenance_mode=true"
+---
+- name: Ablage-System Maintenance
+  hosts: ablage_servers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    enable_maintenance_mode: false
+    cleanup_docker: true
+    cleanup_logs: true
+    cleanup_temp: true
+    optimize_database: true
+    optimize_redis: false
+    log_retention_days: 30
+    docker_prune_days: 7
+
+  pre_tasks:
+    - name: Display maintenance parameters
+      ansible.builtin.debug:
+        msg: |
+          === Ablage-System Wartung ===
+          Wartungsmodus: {{ enable_maintenance_mode }}
+          Docker Cleanup: {{ cleanup_docker }}
+          Log Cleanup: {{ cleanup_logs }}
+          Temp Cleanup: {{ cleanup_temp }}
+          Database Optimize: {{ optimize_database }}
+          Redis Optimize: {{ optimize_redis }}
+
+    - name: Enable maintenance mode
+      when: enable_maintenance_mode | bool
+      block:
+        - name: Create maintenance mode flag
+          ansible.builtin.copy:
+            content: |
+              Wartungsmodus aktiviert am {{ ansible_date_time.iso8601 }}
+              Voraussichtliches Ende: {{ ansible_date_time.hour | int + 1 }}:00 Uhr
+            dest: "{{ ablage_install_dir }}/MAINTENANCE"
+            owner: "{{ ablage_user }}"
+            group: "{{ ablage_group }}"
+            mode: '0644'
+
+        - name: Display maintenance notice
+          ansible.builtin.debug:
+            msg: "WARTUNGSMODUS AKTIVIERT - System ist für Benutzer eingeschränkt verfügbar"
+
+  tasks:
+    # Docker Cleanup
+    - name: Docker cleanup tasks
+      tags: cleanup, docker
+      when: cleanup_docker | bool
+      block:
+        - name: Remove stopped containers
+          ansible.builtin.shell: |
+            docker container prune -f --filter "until={{ docker_prune_days * 24 }}h"
+          register: container_prune
+          changed_when: "'Total reclaimed space' in container_prune.stdout"
+
+        - name: Remove unused images
+          ansible.builtin.shell: |
+            docker image prune -af --filter "until={{ docker_prune_days * 24 }}h"
+          register: image_prune
+          changed_when: "'Total reclaimed space' in image_prune.stdout"
+
+        - name: Remove unused volumes
+          ansible.builtin.shell: |
+            docker volume prune -f
+          register: volume_prune
+          changed_when: "'Total reclaimed space' in volume_prune.stdout"
+
+        - name: Remove unused networks
+          ansible.builtin.shell: |
+            docker network prune -f
+          register: network_prune
+          changed_when: "'Total reclaimed space' in network_prune.stdout"
+
+        - name: Display Docker cleanup summary
+          ansible.builtin.debug:
+            msg: |
+              Docker Cleanup:
+              - Container: {{ container_prune.stdout_lines | last | default('Keine Änderung') }}
+              - Images: {{ image_prune.stdout_lines | last | default('Keine Änderung') }}
+              - Volumes: {{ volume_prune.stdout_lines | last | default('Keine Änderung') }}
+
+    # Log Cleanup
+    - name: Log cleanup tasks
+      tags: cleanup, logs
+      when: cleanup_logs | bool
+      block:
+        - name: Find old log files
+          ansible.builtin.find:
+            paths:
+              - /var/log/ablage
+              - "{{ ablage_data_dir }}/logs"
+            patterns: "*.log*"
+            age: "{{ log_retention_days }}d"
+          register: old_logs
+
+        - name: Remove old log files
+          ansible.builtin.file:
+            path: "{{ item.path }}"
+            state: absent
+          loop: "{{ old_logs.files }}"
+          when: old_logs.files | length > 0
+
+        - name: Rotate current logs
+          ansible.builtin.command:
+            cmd: logrotate -f /etc/logrotate.d/ablage-system
+          ignore_errors: yes
+
+        - name: Clear journal logs older than retention
+          ansible.builtin.command:
+            cmd: "journalctl --vacuum-time={{ log_retention_days }}d"
+          register: journal_vacuum
+          changed_when: "'Vacuuming done' in journal_vacuum.stdout"
+
+        - name: Display log cleanup summary
+          ansible.builtin.debug:
+            msg: "Log Cleanup: {{ old_logs.files | length }} alte Dateien entfernt"
+
+    # Temp File Cleanup
+    - name: Temp file cleanup
+      tags: cleanup, temp
+      when: cleanup_temp | bool
+      block:
+        - name: Clean temp directories
+          ansible.builtin.shell: |
+            find /tmp -type f -user {{ ablage_user }} -mtime +7 -delete 2>/dev/null || true
+            find {{ ablage_data_dir }}/tmp -type f -mtime +1 -delete 2>/dev/null || true
+          changed_when: false
+
+        - name: Clean upload temp directory
+          ansible.builtin.find:
+            paths: "{{ ablage_data_dir }}/uploads/temp"
+            age: "1d"
+          register: temp_uploads
+
+        - name: Remove old temp uploads
+          ansible.builtin.file:
+            path: "{{ item.path }}"
+            state: absent
+          loop: "{{ temp_uploads.files }}"
+          when: temp_uploads.files | length > 0
+
+    # Database Optimization
+    - name: Database optimization
+      tags: optimize, database
+      when: optimize_database | bool
+      block:
+        - name: Vacuum PostgreSQL database
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose exec -T postgres psql -U ablage_admin -d ablage_system -c "VACUUM ANALYZE;"
+          register: vacuum_result
+
+        - name: Reindex PostgreSQL database
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose exec -T postgres psql -U ablage_admin -d ablage_system -c "REINDEX DATABASE ablage_system;"
+          register: reindex_result
+
+        - name: Get database statistics
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose exec -T postgres psql -U ablage_admin -d ablage_system -t -c "
+              SELECT pg_size_pretty(pg_database_size('ablage_system')) as db_size;
+            "
+          register: db_stats
+          changed_when: false
+
+        - name: Display database optimization summary
+          ansible.builtin.debug:
+            msg: |
+              Database Optimization:
+              - VACUUM ANALYZE: Abgeschlossen
+              - REINDEX: Abgeschlossen
+              - Datenbankgröße: {{ db_stats.stdout | trim }}
+
+    # Redis Optimization
+    - name: Redis optimization
+      tags: optimize, redis
+      when: optimize_redis | bool
+      block:
+        - name: Trigger Redis background save
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose exec -T redis redis-cli BGSAVE
+          register: redis_bgsave
+
+        - name: Get Redis memory stats
+          ansible.builtin.shell: |
+            cd {{ ablage_install_dir }}
+            docker compose exec -T redis redis-cli INFO memory | grep -E "used_memory_human|maxmemory_human"
+          register: redis_memory
+          changed_when: false
+
+        - name: Display Redis stats
+          ansible.builtin.debug:
+            msg: |
+              Redis Optimization:
+              - Background Save: Ausgelöst
+              {{ redis_memory.stdout }}
+
+    # System Cleanup
+    - name: System cleanup
+      tags: cleanup, system
+      block:
+        - name: Clear APT cache
+          ansible.builtin.apt:
+            autoclean: yes
+            autoremove: yes
+          when: ansible_os_family == "Debian"
+
+        - name: Update package cache
+          ansible.builtin.apt:
+            update_cache: yes
+            cache_valid_time: 3600
+          when: ansible_os_family == "Debian"
+
+  post_tasks:
+    - name: Disable maintenance mode
+      when: enable_maintenance_mode | bool
+      block:
+        - name: Remove maintenance mode flag
+          ansible.builtin.file:
+            path: "{{ ablage_install_dir }}/MAINTENANCE"
+            state: absent
+
+        - name: Display maintenance complete notice
+          ansible.builtin.debug:
+            msg: "WARTUNGSMODUS DEAKTIVIERT - System ist wieder vollständig verfügbar"
+
+    - name: Calculate disk usage
+      ansible.builtin.shell: |
+        df -h / | tail -1 | awk '{print $5}'
+      register: disk_usage
+      changed_when: false
+
+    - name: Display maintenance summary
+      ansible.builtin.debug:
+        msg: |
+          === Wartung Abgeschlossen ===
+          Host: {{ inventory_hostname }}
+          Zeitpunkt: {{ ansible_date_time.iso8601 }}
+
+          Durchgeführte Aktionen:
+          - Docker Cleanup: {{ 'Ja' if cleanup_docker else 'Nein' }}
+          - Log Cleanup: {{ 'Ja' if cleanup_logs else 'Nein' }}
+          - Temp Cleanup: {{ 'Ja' if cleanup_temp else 'Nein' }}
+          - Database Optimize: {{ 'Ja' if optimize_database else 'Nein' }}
+          - Redis Optimize: {{ 'Ja' if optimize_redis else 'Nein' }}
+
+          Festplattennutzung: {{ disk_usage.stdout }}
+
+    - name: Run health check after maintenance
+      ansible.builtin.command:
+        cmd: /usr/local/bin/ablage-health-check
+      register: health_result
+      ignore_errors: yes
+
+    - name: Display health status
+      ansible.builtin.debug:
+        msg: "System-Gesundheit: {{ 'OK' if health_result.rc == 0 else 'WARNUNG - Bitte prüfen' }}"

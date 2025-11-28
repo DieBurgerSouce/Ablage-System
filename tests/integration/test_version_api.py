@@ -14,7 +14,7 @@ Feinpoliert und durchdacht - Vollständige Versionshistorie testen.
 import pytest
 import pytest_asyncio
 from uuid import uuid4, UUID
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import AsyncGenerator
 import sys
 from pathlib import Path
@@ -48,7 +48,7 @@ def sample_ocr_result():
             "backend_used": "surya",
             "processing_time_seconds": 1.5,
             "language": "de",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         },
         "has_umlauts": True,
         "german_validation": {
@@ -73,7 +73,7 @@ def sample_ocr_result_v2():
             "backend_used": "deepseek",
             "processing_time_seconds": 2.1,
             "language": "de",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         },
         "has_umlauts": True,
         "german_validation": {
@@ -247,7 +247,7 @@ class TestVersionSchemaValidation:
                     backend="surya",
                     confidence_score=0.95,
                     word_count=100,
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc)
                 )
             ]
         )

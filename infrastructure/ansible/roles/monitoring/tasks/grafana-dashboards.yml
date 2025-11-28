@@ -1,0 +1,69 @@
+# Ablage-System Monitoring Role - Grafana Dashboards Deployment
+---
+- name: Ensure Grafana dashboards directory exists
+  ansible.builtin.file:
+    path: "{{ grafana_dashboards_dir }}"
+    state: directory
+    owner: "{{ ablage_user }}"
+    group: "{{ ablage_group }}"
+    mode: '0755'
+  become: yes
+
+- name: Ensure Grafana provisioning directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ablage_user }}"
+    group: "{{ ablage_group }}"
+    mode: '0755'
+  loop:
+    - "{{ ablage_install_dir }}/infrastructure/grafana/provisioning/dashboards"
+    - "{{ ablage_install_dir }}/infrastructure/grafana/provisioning/datasources"
+  become: yes
+
+- name: Deploy Grafana datasource configuration
+  ansible.builtin.template:
+    src: grafana-datasources.yml.j2
+    dest: "{{ ablage_install_dir }}/infrastructure/grafana/provisioning/datasources/datasources.yml"
+    owner: "{{ ablage_user }}"
+    group: "{{ ablage_group }}"
+    mode: '0644'
+  become: yes
+  notify: restart grafana
+
+- name: Deploy Grafana dashboard provisioner configuration
+  ansible.builtin.template:
+    src: grafana-dashboard-provider.yml.j2
+    dest: "{{ ablage_install_dir }}/infrastructure/grafana/provisioning/dashboards/default.yml"
+    owner: "{{ ablage_user }}"
+    group: "{{ ablage_group }}"
+    mode: '0644'
+  become: yes
+  notify: restart grafana
+
+- name: Deploy Ablage System Overview dashboard
+  ansible.builtin.template:
+    src: dashboard-system-overview.json.j2
+    dest: "{{ grafana_dashboards_dir }}/ablage-system-overview.json"
+    owner: "{{ ablage_user }}"
+    group: "{{ ablage_group }}"
+    mode: '0644'
+  become: yes
+
+- name: Deploy GPU Monitoring dashboard
+  ansible.builtin.template:
+    src: dashboard-gpu-monitoring.json.j2
+    dest: "{{ grafana_dashboards_dir }}/ablage-gpu-monitoring.json"
+    owner: "{{ ablage_user }}"
+    group: "{{ ablage_group }}"
+    mode: '0644'
+  become: yes
+
+- name: Deploy OCR Performance dashboard
+  ansible.builtin.template:
+    src: dashboard-ocr-performance.json.j2
+    dest: "{{ grafana_dashboards_dir }}/ablage-ocr-performance.json"
+    owner: "{{ ablage_user }}"
+    group: "{{ ablage_group }}"
+    mode: '0644'
+  become: yes

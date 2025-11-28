@@ -1,0 +1,62 @@
+# Ablage-System Docker Role - Configuration
+---
+- name: Create Docker daemon configuration directory
+  ansible.builtin.file:
+    path: /etc/docker
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: Configure Docker daemon
+  ansible.builtin.template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: restart docker
+
+- name: Configure Docker service override
+  ansible.builtin.template:
+    src: docker-override.conf.j2
+    dest: /etc/systemd/system/docker.service.d/override.conf
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify:
+    - reload systemd
+    - restart docker
+
+- name: Start and enable Docker service
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  become: yes
+
+- name: Start and enable containerd service
+  ansible.builtin.systemd:
+    name: containerd
+    state: started
+    enabled: yes
+  become: yes
+
+- name: Configure Docker log rotation
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/docker-containers
+    content: |
+      /var/lib/docker/containers/*/*.log {
+          rotate 7
+          daily
+          compress
+          missingok
+          delaycompress
+          copytruncate
+      }
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes

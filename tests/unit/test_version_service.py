@@ -6,7 +6,7 @@ Tests version creation, listing, comparison, and rollback functionality.
 
 import pytest
 from unittest.mock import Mock, AsyncMock, MagicMock, patch
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4, UUID
 import sys
 from pathlib import Path
@@ -14,7 +14,20 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+# Check if version service dependencies are available
+try:
+    from app.services.version_service import VersionService
+    VERSION_SERVICE_AVAILABLE = True
+except ImportError:
+    VERSION_SERVICE_AVAILABLE = False
 
+requires_version_service = pytest.mark.skipif(
+    not VERSION_SERVICE_AVAILABLE,
+    reason="Version service dependencies not installed (pgvector)"
+)
+
+
+@requires_version_service
 @pytest.mark.unit
 class TestVersionService:
     """Test OCR version service functionality."""
@@ -57,7 +70,7 @@ class TestVersionService:
         version.processing_time_ms = 1500
         version.german_validation_score = 0.85
         version.has_umlauts = True
-        version.created_at = datetime.utcnow()
+        version.created_at = datetime.now(timezone.utc)
         version.created_by_id = self.user_id
         version.version_note = f"OCR mit {backend}"
         return version
@@ -191,7 +204,7 @@ class TestVersionSchemas:
             backend="surya",
             confidence_score=0.95,
             word_count=100,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             version_note="Test version"
         )
 
@@ -223,7 +236,7 @@ class TestVersionSchemas:
             business_terms=[],
             processing_time_ms=1500,
             has_umlauts=True,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             version_note="Test"
         )
 
@@ -249,7 +262,7 @@ class TestVersionSchemas:
                     backend="surya",
                     confidence_score=0.95,
                     word_count=100,
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc)
                 ),
                 OCRVersionSummary(
                     id=uuid4(),
@@ -260,7 +273,7 @@ class TestVersionSchemas:
                     backend="deepseek",
                     confidence_score=0.90,
                     word_count=95,
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc)
                 )
             ]
         )
@@ -346,6 +359,7 @@ class TestVersionMessages:
         assert "nicht gefunden" in message
 
 
+@requires_version_service
 @pytest.mark.unit
 class TestVersionModel:
     """Test OCRResultVersion model."""
@@ -374,6 +388,7 @@ class TestVersionModel:
         assert OCRResultVersion.__tablename__ == "ocr_result_versions"
 
 
+@requires_version_service
 @pytest.mark.unit
 class TestDocumentVersionFields:
     """Test Document model version fields."""
@@ -387,6 +402,7 @@ class TestDocumentVersionFields:
         assert hasattr(Document, "ocr_versions")
 
 
+@requires_version_service
 @pytest.mark.unit
 class TestOCRServiceVersionIntegration:
     """Test OCR service version integration."""
@@ -415,6 +431,7 @@ class TestOCRServiceVersionIntegration:
         assert "version_note" in params
 
 
+@requires_version_service
 @pytest.mark.unit
 class TestVersionServiceSingleton:
     """Test version service singleton pattern."""

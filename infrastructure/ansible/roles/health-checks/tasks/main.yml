@@ -1,0 +1,22 @@
+# Ablage-System Health Checks Role - Main Tasks
+---
+- name: Create health check report directory
+  ansible.builtin.file:
+    path: "{{ health_check_report_dir }}"
+    state: directory
+    owner: "{{ ablage_user }}"
+    group: "{{ ablage_group }}"
+    mode: '0755'
+  become: yes
+
+- name: Include health check scripts deployment
+  ansible.builtin.include_tasks: scripts.yml
+  when: health_check_enabled | bool
+
+- name: Include health check scheduling
+  ansible.builtin.include_tasks: schedule.yml
+  when: health_check_enabled | bool
+
+- name: Include alerting configuration
+  ansible.builtin.include_tasks: alerting.yml
+  when: health_check_alert_enabled | bool

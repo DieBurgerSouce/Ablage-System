@@ -2,6 +2,7 @@
 
 import structlog
 from celery import Celery, Task
+from celery.schedules import crontab
 from celery.signals import task_prerun, task_postrun, task_failure, task_retry, task_success
 from contextlib import contextmanager
 from typing import Any, Optional
@@ -21,7 +22,10 @@ celery_app = Celery(
     "ablage_system",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.workers.tasks.ocr_tasks"]
+    include=[
+        "app.workers.tasks.ocr_tasks",
+        "app.workers.tasks.embedding_tasks"
+    ]
 )
 
 # Celery configuration
@@ -65,16 +69,28 @@ celery_app.conf.update(
             "task": "app.workers.tasks.ocr_tasks.update_system_metrics",
             "schedule": 300.0,  # Every 5 minutes
         },
+        "refresh-search-analytics": {
+            "task": "app.workers.tasks.embedding_tasks.refresh_search_analytics",
+            "schedule": crontab(hour=2, minute=0),  # Daily at 2:00 AM
+        },
     },
 
     # Queue routing
     task_routes={
+        # OCR tasks
         "app.workers.tasks.ocr_tasks.process_document_task": {"queue": "ocr_high", "priority": 9},
         "app.workers.tasks.ocr_tasks.batch_process_task": {"queue": "ocr_normal", "priority": 5},
         "app.workers.tasks.ocr_tasks.validate_german_text_task": {"queue": "validation", "priority": 3},
         "app.workers.tasks.ocr_tasks.extract_metadata_task": {"queue": "metadata", "priority": 3},
         "app.workers.tasks.ocr_tasks.cleanup_task": {"queue": "maintenance", "priority": 1},
         "app.workers.tasks.ocr_tasks.update_system_metrics": {"queue": "metrics", "priority": 1},
+        # Embedding tasks (GPU)
+        "app.workers.tasks.embedding_tasks.generate_document_embedding": {"queue": "embedding_high", "priority": 8},
+        "app.workers.tasks.embedding_tasks.batch_generate_embeddings": {"queue": "embedding_normal", "priority": 5},
+        "app.workers.tasks.embedding_tasks.regenerate_all_embeddings": {"queue": "embedding_low", "priority": 2},
+        "app.workers.tasks.embedding_tasks.check_embedding_coverage": {"queue": "maintenance", "priority": 1},
+        # Search analytics tasks (CPU)
+        "app.workers.tasks.embedding_tasks.refresh_search_analytics": {"queue": "maintenance", "priority": 1},
     },
 
     # Priority settings

@@ -1,0 +1,26 @@
+# Ablage-System Backup Role - Main Tasks
+---
+- name: Include backup directory setup
+  ansible.builtin.include_tasks: directories.yml
+  tags:
+    - backup
+    - setup
+
+- name: Include backup script deployment
+  ansible.builtin.include_tasks: scripts.yml
+  tags:
+    - backup
+    - scripts
+
+- name: Include backup scheduling
+  ansible.builtin.include_tasks: schedule.yml
+  tags:
+    - backup
+    - schedule
+
+- name: Include remote sync setup
+  ansible.builtin.include_tasks: remote-sync.yml
+  when: backup_remote_enabled | default(false)
+  tags:
+    - backup
+    - remote

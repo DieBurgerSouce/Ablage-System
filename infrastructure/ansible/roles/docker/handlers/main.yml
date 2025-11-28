@@ -1,0 +1,25 @@
+# Ablage-System Docker Role - Handlers
+---
+- name: restart docker
+  ansible.builtin.systemd:
+    name: docker
+    state: restarted
+    daemon_reload: yes
+  become: yes
+
+- name: reload docker
+  ansible.builtin.systemd:
+    name: docker
+    state: reloaded
+  become: yes
+
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  become: yes
+
+- name: restart containerd
+  ansible.builtin.systemd:
+    name: containerd
+    state: restarted
+  become: yes

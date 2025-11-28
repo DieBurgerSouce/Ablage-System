@@ -1,0 +1,39 @@
+# Ablage-System Security Role - SSH Hardening
+---
+- name: Configure SSH daemon
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0600'
+    validate: '/usr/sbin/sshd -t -f %s'
+  become: yes
+  notify: restart sshd
+
+- name: Ensure SSH directory exists for deploy user
+  ansible.builtin.file:
+    path: /home/deploy/.ssh
+    state: directory
+    owner: deploy
+    group: deploy
+    mode: '0700'
+  become: yes
+  when: common_create_deploy_user | default(true)
+
+- name: Disable root login via SSH
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin {{ ssh_permit_root_login | default("no") }}'
+  become: yes
+  notify: restart sshd
+
+- name: Disable password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication {{ ssh_password_authentication | default("no") }}'
+  become: yes
+  notify: restart sshd
+  when: env_name == 'production'

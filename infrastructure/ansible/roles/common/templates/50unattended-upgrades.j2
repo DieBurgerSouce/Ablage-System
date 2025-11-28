@@ -1,0 +1,37 @@
+// Ablage-System Unattended Upgrades Configuration
+// Managed by Ansible - Do not edit manually
+
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}";
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+};
+
+// Packages to never update
+Unattended-Upgrade::Package-Blacklist {
+    // Docker - handled manually
+    // "docker-ce";
+    // "docker-ce-cli";
+    // NVIDIA - handled manually
+    // "nvidia-driver-*";
+};
+
+// Auto-remove unused dependencies
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+
+// Auto-remove unused kernel packages
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+
+// Automatic reboot if required (disabled - we handle this manually)
+Unattended-Upgrade::Automatic-Reboot "false";
+
+// Email notifications
+{% if common_admin_email is defined %}
+Unattended-Upgrade::Mail "{{ common_admin_email }}";
+Unattended-Upgrade::MailReport "only-on-error";
+{% endif %}
+
+// Logging
+Unattended-Upgrade::SyslogEnable "true";
+Unattended-Upgrade::SyslogFacility "daemon";

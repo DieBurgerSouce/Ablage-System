@@ -1,0 +1,53 @@
+# Ablage-System Logrotate Role - Main Tasks
+---
+- name: Install logrotate
+  ansible.builtin.apt:
+    name: logrotate
+    state: present
+  become: yes
+
+- name: Configure Docker container log rotation
+  ansible.builtin.template:
+    src: docker-containers.j2
+    dest: /etc/logrotate.d/docker-containers
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+
+- name: Configure Ablage-System application log rotation
+  ansible.builtin.template:
+    src: ablage-system.j2
+    dest: /etc/logrotate.d/ablage-system
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+
+- name: Configure journald settings
+  ansible.builtin.template:
+    src: journald.conf.j2
+    dest: /etc/systemd/journald.conf.d/ablage-system.conf
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: restart journald
+
+- name: Ensure journald directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: Test logrotate configuration
+  ansible.builtin.command: logrotate -d /etc/logrotate.conf
+  register: logrotate_test
+  changed_when: false
+  failed_when: false
+  become: yes
+
+- name: Display logrotate status
+  ansible.builtin.debug:
+    msg: "Logrotate configuration: {{ 'OK' if logrotate_test.rc == 0 else 'Has warnings' }}"

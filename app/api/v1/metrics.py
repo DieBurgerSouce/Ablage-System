@@ -19,6 +19,7 @@ from prometheus_client import (
 from app.core.redis_state import get_redis
 from app.api.dependencies import get_current_superuser, get_current_active_user
 from app.db.models import User
+from app.services.search_metrics import get_search_metrics
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -49,6 +50,38 @@ async def prometheus_metrics():
     return Response(
         content=generate_latest(),
         media_type=CONTENT_TYPE_LATEST,
+    )
+
+
+@router.get("/search", response_class=Response)
+async def search_metrics_prometheus():
+    """
+    Prometheus metrics for search functionality.
+
+    Returns search-specific metrics in Prometheus text format:
+    - search_requests_total: Suchanfragen nach Typ und Status
+    - search_duration_seconds: Suchlatenz
+    - search_results_count: Ergebnismengen
+    - search_zero_results_total: Suchen ohne Ergebnisse
+    - search_cache_operations_total: Cache-Treffer/Miss
+    - search_cache_invalidations_total: Cache-Invalidierungen
+    - search_embedding_generation_seconds: Embedding-Generierung
+    - search_similar_requests_total: Aehnliche-Dokumente-Anfragen
+    - search_filter_usage_total: Filter-Verwendung
+
+    Example Prometheus config:
+    ```yaml
+    scrape_configs:
+      - job_name: 'ablage-search'
+        static_configs:
+          - targets: ['localhost:8000']
+        metrics_path: '/api/v1/metrics/search'
+    ```
+    """
+    metrics = get_search_metrics()
+    return Response(
+        content=metrics.get_metrics(),
+        media_type=metrics.get_content_type(),
     )
 
 

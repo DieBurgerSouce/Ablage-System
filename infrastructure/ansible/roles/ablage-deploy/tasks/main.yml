@@ -1,0 +1,36 @@
+# Ablage-System Deploy Role - Main Tasks
+---
+- name: Include preparation tasks
+  ansible.builtin.include_tasks: prepare.yml
+  tags:
+    - deploy
+    - prepare
+
+- name: Include environment configuration tasks
+  ansible.builtin.include_tasks: environment.yml
+  tags:
+    - deploy
+    - environment
+
+- name: Include deployment tasks
+  ansible.builtin.include_tasks: deploy.yml
+  tags:
+    - deploy
+
+- name: Include migration tasks
+  ansible.builtin.include_tasks: migrate.yml
+  tags:
+    - deploy
+    - migrate
+
+- name: Include service configuration tasks
+  ansible.builtin.include_tasks: services.yml
+  tags:
+    - deploy
+    - services
+
+- name: Include verification tasks
+  ansible.builtin.include_tasks: verify.yml
+  tags:
+    - deploy
+    - verify

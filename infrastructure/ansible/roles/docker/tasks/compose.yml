@@ -1,0 +1,28 @@
+# Ablage-System Docker Role - Docker Compose
+---
+- name: Verify docker compose plugin is installed
+  ansible.builtin.command: docker compose version
+  register: compose_version
+  changed_when: false
+  failed_when: compose_version.rc != 0
+
+- name: Display Docker Compose version
+  ansible.builtin.debug:
+    msg: "Docker Compose version: {{ compose_version.stdout }}"
+
+- name: Create Docker networks for Ablage-System
+  community.docker.docker_network:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - ablage-network
+  become: yes
+
+- name: Pull base images (optional pre-warming)
+  community.docker.docker_image:
+    name: "{{ item }}"
+    source: pull
+  loop: "{{ docker_preload_images | default([]) }}"
+  become: yes
+  when: docker_preload_images is defined
+  ignore_errors: yes

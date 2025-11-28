@@ -545,19 +545,94 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         preprocessing: Dict[str, Any],
         options: Dict[str, Any],
     ) -> str:
-        """Select optimal OCR backend."""
-        # Use recommendation from classification
-        recommended = classification.get("recommended_backend")
+        """
+        Select optimal OCR backend using UnifiedOCRRouter.
 
+        Uses ML-based and rule-based routing with:
+        - Load balancing based on queue lengths
+        - GPU availability checking
+        - Document complexity analysis
+        - A/B test integration
+
+        Args:
+            classification: Document classification results
+            preprocessing: Preprocessing results
+            options: Processing options (can include force_backend)
+
+        Returns:
+            Selected backend name
+        """
         # Allow override from options
         if options.get("force_backend"):
+            self.logger.info(
+                "backend_force_override",
+                forced_backend=options["force_backend"],
+            )
             return options["force_backend"]
 
-        # Use OCR Router agent (TODO: implement)
-        # router = OCRBackendRouter()
-        # return router.select_backend(classification, preprocessing)
+        try:
+            from app.agents.orchestration.unified_router import (
+                UnifiedOCRRouter,
+                DocumentAnalysis,
+                SLARequirements,
+            )
 
-        return recommended or "deepseek"
+            # Initialize router (reuse if available)
+            if not hasattr(self, "_ocr_router"):
+                self._ocr_router = UnifiedOCRRouter(
+                    use_ml_routing=True,
+                    auto_train=True,
+                )
+
+            # Build DocumentAnalysis from classification results
+            analysis = DocumentAnalysis(
+                document_type=classification.get("document_type", "other"),
+                complexity=classification.get("complexity", "medium"),
+                quality_score=classification.get("quality_score", 0.7),
+                has_tables=classification.get("has_tables", False),
+                has_handwriting=classification.get("has_handwriting", False),
+                has_fraktur=classification.get("has_fraktur", False),
+                has_formulas=classification.get("has_formulas", False),
+                has_multi_column=classification.get("has_multi_column", False),
+                page_count=preprocessing.get("segmentation", {}).get("pages", 1),
+                file_size_mb=classification.get("metadata", {}).get("file_info", {}).get("file_size_mb", 1.0),
+                dpi=classification.get("metadata", {}).get("file_info", {}).get("dpi", 300),
+                language=classification.get("language", "de"),
+            )
+
+            # Build SLA requirements from options
+            sla = SLARequirements(
+                max_processing_time_seconds=options.get("max_processing_time", 300),
+                min_accuracy=options.get("min_accuracy", 0.85),
+                is_critical=options.get("priority", 0) >= 2,
+            )
+
+            # Build user preferences
+            preferences = {
+                "preferred_backend": options.get("preferred_backend"),
+            }
+
+            # Get routing decision
+            result = await self._ocr_router.select_backend(analysis, sla, preferences)
+
+            self.logger.info(
+                "ocr_backend_selected_by_router",
+                backend=result.backend.value,
+                reason=result.reason,
+                confidence=result.confidence,
+                method=result.routing_method.value,
+            )
+
+            return result.backend.value
+
+        except Exception as e:
+            self.logger.warning(
+                "router_fallback_to_classification",
+                error=str(e),
+            )
+            # Fallback to classification recommendation
+            recommended = classification.get("recommended_backend")
+            return recommended or "deepseek"
 
     async def _run_ocr(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -859,34 +934,171 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
             return {"entities": [], "entity_count": 0}
 
     async def _quality_check(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Phase 5: Quality assurance check."""
+        """
+        Phase 5: Quality assurance check using QA Agent.
+
+        Performs comprehensive quality validation:
+        - Text quality analysis
+        - German language accuracy
+        - Entity validation
+        - Confidence assessment
+        - Human review determination
+        """
+        from app.agents.postprocessing.qa_agent import QAAgent
+
         postprocessing = input_data["postprocessing"]
+        classification = input_data.get("classification", {})
 
-        # TODO: QA agent implementation
-        score = postprocessing.get("original_confidence", 0.9)
-        needs_review = score < 0.8  # Threshold for human review
+        # Lazy initialization of QA Agent
+        if self._qa_agent is None:
+            self._qa_agent = QAAgent()
 
-        return {
-            "score": score,
-            "needs_review": needs_review,
-            "checks": {
-                "confidence": score >= 0.8,
-                "completeness": True,
-                "formatting": True,
-            },
-        }
+        try:
+            # Prepare QA input
+            qa_input = {
+                "text": postprocessing.get("text", ""),
+                "entities": postprocessing.get("entities", []),
+                "ocr_confidence": postprocessing.get("original_confidence", 0.8),
+                "classification": classification,
+                "correction_result": postprocessing.get("correction_stats", {}),
+            }
+
+            # Run QA Agent
+            qa_result = await self._qa_agent.process(qa_input)
+
+            self.logger.info(
+                "quality_check_completed",
+                quality_score=qa_result.get("quality_score"),
+                quality_level=qa_result.get("quality_level"),
+                needs_review=qa_result.get("needs_review"),
+                issue_count=qa_result.get("issue_count", 0),
+            )
+
+            return {
+                "score": qa_result.get("quality_score", 0.0),
+                "needs_review": qa_result.get("needs_review", False),
+                "review_reasons": qa_result.get("review_reasons", []),
+                "quality_level": qa_result.get("quality_level"),
+                "quality_level_german": qa_result.get("quality_level_german"),
+                "issues": qa_result.get("issues", []),
+                "critical_issues": qa_result.get("critical_issues", []),
+                "suggestions": qa_result.get("suggestions", []),
+                "is_acceptable": qa_result.get("is_acceptable", True),
+                "recommendation": qa_result.get("recommendation"),
+                "checks": {
+                    "text_quality": qa_result.get("validation_details", {}).get("text_quality", {}).get("score", 0),
+                    "german_quality": qa_result.get("validation_details", {}).get("german_quality", {}).get("score", 0),
+                    "entity_quality": qa_result.get("validation_details", {}).get("entity_quality", {}).get("score", 0),
+                },
+            }
+
+        except Exception as e:
+            self.logger.error(
+                "quality_check_failed",
+                error=str(e),
+            )
+            # Fallback to simple confidence-based check
+            score = postprocessing.get("original_confidence", 0.9)
+            needs_review = score < 0.7
+
+            return {
+                "score": score,
+                "needs_review": needs_review,
+                "review_reasons": ["QA-Agent Fehler - manuelle Prüfung empfohlen"] if needs_review else [],
+                "checks": {
+                    "confidence": score >= 0.7,
+                    "qa_error": str(e),
+                },
+            }
 
     async def _trigger_human_review(
         self, document_id: str, qa_result: Dict[str, Any]
     ) -> None:
-        """Trigger human-in-the-loop review."""
+        """
+        Trigger human-in-the-loop review with Redis queue and event publishing.
+
+        This method:
+        1. Adds document to Redis human review queue (sorted by priority)
+        2. Publishes event for real-time notification systems
+        3. Logs review request with all relevant details
+
+        Args:
+            document_id: Document UUID
+            qa_result: QA result containing score, reasons, and issues
+        """
+        qa_score = qa_result.get("score", 0.0)
+        review_reasons = qa_result.get("review_reasons", [])
+        critical_issues = qa_result.get("critical_issues", [])
+
         self.logger.warning(
-            "human_review_required",
+            "human_review_triggered",
             document_id=document_id,
-            qa_score=qa_result.get("score"),
+            qa_score=qa_score,
+            review_reasons=review_reasons,
+            critical_issue_count=len(critical_issues),
         )
 
-        # TODO: Send notification, create review task, etc.
+        try:
+            # Add to Redis human review queue
+            redis = await get_redis()
+
+            # Prepare metadata for the review item
+            review_metadata = {
+                "quality_level": qa_result.get("quality_level"),
+                "quality_level_german": qa_result.get("quality_level_german"),
+                "issue_count": qa_result.get("issue_count", 0),
+                "critical_issues": [
+                    {
+                        "type": issue.get("type"),
+                        "message": issue.get("message"),
+                        "severity": issue.get("severity"),
+                    }
+                    for issue in critical_issues[:5]  # Limit to 5
+                ],
+                "suggestion_count": len(qa_result.get("suggestions", [])),
+                "recommendation": qa_result.get("recommendation"),
+            }
+
+            # Add to priority queue (lower score = higher priority)
+            await redis.add_to_review_queue(
+                document_id=document_id,
+                qa_score=qa_score,
+                reasons=review_reasons,
+                metadata=review_metadata,
+            )
+
+            # Get queue length for logging
+            queue_length = await redis.get_review_queue_length()
+
+            self.logger.info(
+                "human_review_queued",
+                document_id=document_id,
+                queue_position="priority_based",
+                total_queue_length=queue_length,
+            )
+
+            # Publish additional event for notification systems (webhooks, etc.)
+            await redis.publish_event(
+                event_type="review.required",
+                data={
+                    "document_id": document_id,
+                    "qa_score": qa_score,
+                    "reasons": review_reasons,
+                    "quality_level": qa_result.get("quality_level"),
+                    "critical_issue_count": len(critical_issues),
+                    "priority": "high" if qa_score < 0.5 else "normal",
+                },
+                channel="review_events",
+            )
+
+        except Exception as e:
+            self.logger.error(
+                "human_review_queue_failed",
+                document_id=document_id,
+                error=str(e),
+            )
+            # Don't fail the workflow if review queue fails
+            # The document is still processed, just won't be in the review queue
 
     async def _store_and_index(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """

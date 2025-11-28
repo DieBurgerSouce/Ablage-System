@@ -1,0 +1,46 @@
+# Ablage-System Common Role - Package Installation
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: yes
+
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    upgrade: safe
+    autoremove: yes
+  become: yes
+  when: common_upgrade_packages | default(false)
+
+- name: Install common packages
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+  become: yes
+
+- name: Install Python packages for Ansible modules
+  ansible.builtin.pip:
+    name:
+      - docker
+      - docker-compose
+      - PyYAML
+    state: present
+  become: yes
+
+- name: Ensure unattended-upgrades is configured
+  ansible.builtin.apt:
+    name: unattended-upgrades
+    state: present
+  become: yes
+  when: common_enable_unattended_upgrades | default(true)
+
+- name: Configure unattended-upgrades
+  ansible.builtin.template:
+    src: 50unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  when: common_enable_unattended_upgrades | default(true)

@@ -22,7 +22,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 import structlog
 
 from app.agents.base import OrchestrationAgent
@@ -88,6 +88,7 @@ class RoutingMethod(str, Enum):
     USER_PREFERENCE = "user_preference"
     FALLBACK = "fallback"
     LANGUAGE_BASED = "language_based"
+    LOAD_BALANCING = "load_balancing"
 
 
 # =============================================================================
@@ -118,10 +119,7 @@ class DocumentAnalysis(BaseModel):
     is_structured_pdf: bool = False
     page_count: int = 1
 
-    class Config:
-        """Pydantic configuration."""
-
-        extra = "allow"  # Allow additional fields
+    model_config = ConfigDict(extra="allow")
 
     def to_metadata_dict(self) -> Dict[str, Any]:
         """Convert to metadata dict for ML model."""
@@ -486,13 +484,120 @@ class UnifiedOCRRouter(OrchestrationAgent):
         return self._language_detector.detect(text)
 
     def _get_resource_status(self) -> Dict[str, Any]:
-        """Get current resource availability."""
+        """Get current resource availability (sync, without queue lengths)."""
         gpu_status = self.gpu_manager.check_availability()
         return {
             "gpu_available": gpu_status.get("available", False),
             "gpu_memory_available_gb": gpu_status.get("free_memory_gb", 0),
-            "queue_length": 0,  # TODO: Redis integration
+            "queue_length": 0,  # Use _get_resource_status_async for queue lengths
+            "queue_lengths": {},
         }
+
+    async def _get_resource_status_async(self) -> Dict[str, Any]:
+        """Get current resource availability with queue lengths from Redis."""
+        gpu_status = self.gpu_manager.check_availability()
+
+        # Get queue lengths from Redis
+        queue_length = 0
+        queue_lengths = {}
+        try:
+            from app.core.redis_state import get_redis
+            redis_manager = await get_redis()
+            queue_lengths = await redis_manager.get_queue_lengths()
+            queue_length = sum(queue_lengths.values())
+        except Exception as e:
+            logger.warning("queue_length_fetch_failed", error=str(e))
+
+        return {
+            "gpu_available": gpu_status.get("available", False),
+            "gpu_memory_available_gb": gpu_status.get("free_memory_gb", 0),
+            "queue_length": queue_length,
+            "queue_lengths": queue_lengths,
+        }
+
+    async def _check_load_balancing(
+        self,
+        resource_status: Dict[str, Any],
+        analysis: DocumentAnalysis,
+        sla: SLARequirements,
+    ) -> Optional[RoutingResult]:
+        """
+        Check if load balancing should override normal backend selection.
+
+        Returns RoutingResult if load balancing triggered, None otherwise.
+
+        Args:
+            resource_status: Current resource status with queue lengths
+            analysis: Document analysis results
+            sla: SLA requirements
+
+        Returns:
+            RoutingResult if load balancing needed, None otherwise
+        """
+        from app.core.config import settings
+
+        # Skip if load balancing disabled
+        if not settings.LOAD_BALANCING_ENABLED:
+            return None
+
+        queue_length = resource_status.get("queue_length", 0)
+        queue_lengths = resource_status.get("queue_lengths", {})
+        gpu_available = resource_status.get("gpu_available", False)
+
+        # Critical threshold: Total queue overload -> CPU fallback
+        if queue_length >= settings.QUEUE_LENGTH_THRESHOLD_CRITICAL:
+            logger.warning(
+                "load_balancing_critical",
+                queue_length=queue_length,
+                threshold=settings.QUEUE_LENGTH_THRESHOLD_CRITICAL,
+            )
+            self._stats["load_balanced"] = self._stats.get("load_balanced", 0) + 1
+            return RoutingResult(
+                backend=BackendType.SURYA,
+                reason=f"Queue-Überlastung kritisch ({queue_length} Jobs)",
+                confidence=0.7,
+                alternatives=[],
+                routing_method=RoutingMethod.LOAD_BALANCING,
+                fallback_chain=[BackendType.TESSERACT],
+            )
+
+        # High threshold: OCR queues overloaded
+        ocr_high = queue_lengths.get("ocr_high", 0)
+        ocr_normal = queue_lengths.get("ocr_normal", 0)
+        total_ocr = ocr_high + ocr_normal
+
+        if total_ocr >= settings.QUEUE_LENGTH_THRESHOLD_HIGH:
+            self._stats["load_balanced"] = self._stats.get("load_balanced", 0) + 1
+            if gpu_available:
+                logger.info(
+                    "load_balancing_high",
+                    ocr_queue=total_ocr,
+                    threshold=settings.QUEUE_LENGTH_THRESHOLD_HIGH,
+                )
+                return RoutingResult(
+                    backend=BackendType.GOT_OCR,
+                    reason=f"Queue-Überlastung hoch ({total_ocr} OCR Jobs)",
+                    confidence=0.8,
+                    alternatives=[BackendType.SURYA_GPU, BackendType.SURYA],
+                    routing_method=RoutingMethod.LOAD_BALANCING,
+                    fallback_chain=self._get_fallback_chain(BackendType.GOT_OCR),
+                )
+            else:
+                logger.info(
+                    "load_balancing_high_cpu",
+                    ocr_queue=total_ocr,
+                    threshold=settings.QUEUE_LENGTH_THRESHOLD_HIGH,
+                )
+                return RoutingResult(
+                    backend=BackendType.SURYA,
+                    reason=f"Queue-Überlastung hoch, keine GPU ({total_ocr} Jobs)",
+                    confidence=0.7,
+                    alternatives=[],
+                    routing_method=RoutingMethod.LOAD_BALANCING,
+                    fallback_chain=[BackendType.TESSERACT],
+                )
+
+        return None
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -556,7 +661,14 @@ class UnifiedOCRRouter(OrchestrationAgent):
         """
         sla = sla or SLARequirements()
         preferences = preferences or {}
-        resource_status = self._get_resource_status()
+        resource_status = await self._get_resource_status_async()
+
+        # Priority 0: Load balancing (queue overload protection)
+        # Checked before user preferences to prevent system overload
+        if not preferences.get("preferred_backend"):
+            load_balanced = await self._check_load_balancing(resource_status, analysis, sla)
+            if load_balanced:
+                return load_balanced
 
         # Priority 1: User preference
         if preferred := preferences.get("preferred_backend"):

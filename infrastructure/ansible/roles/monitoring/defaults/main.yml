@@ -1,0 +1,46 @@
+# Ablage-System Monitoring Role - Default Variables
+---
+# Node Exporter settings
+node_exporter_enabled: true
+node_exporter_version: "1.7.0"
+node_exporter_port: 9100
+node_exporter_web_listen_address: "0.0.0.0:9100"
+node_exporter_collectors:
+  - cpu
+  - diskstats
+  - filesystem
+  - loadavg
+  - meminfo
+  - netdev
+  - netstat
+  - stat
+  - time
+  - uname
+  - vmstat
+  - systemd
+  - processes
+
+# NVIDIA GPU Exporter settings
+nvidia_exporter_enabled: true
+nvidia_exporter_version: "1.2.0"
+nvidia_exporter_port: 9835
+nvidia_exporter_web_listen_address: "0.0.0.0:9835"
+
+# Prometheus settings (for target configuration)
+prometheus_targets_enabled: true
+prometheus_targets_dir: "{{ ablage_install_dir }}/infrastructure/prometheus/targets"
+
+# Grafana settings
+grafana_dashboards_enabled: true
+grafana_dashboards_dir: "{{ ablage_install_dir }}/infrastructure/grafana/dashboards"
+
+# Alert thresholds
+alert_cpu_threshold: 80
+alert_memory_threshold: 85
+alert_disk_threshold: 85
+alert_gpu_memory_threshold: 85
+alert_gpu_temperature_threshold: 80
+
+# Monitoring user
+monitoring_user: prometheus
+monitoring_group: prometheus

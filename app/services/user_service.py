@@ -5,7 +5,7 @@ Handles user CRUD operations, password management, and authentication logic.
 All error messages in German.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from uuid import UUID
 
@@ -327,7 +327,7 @@ class UserService:
         await db.execute(
             update(User)
             .where(User.id == user_id)
-            .values(last_login=datetime.utcnow())
+            .values(last_login=datetime.now(timezone.utc))
         )
         await db.commit()
 

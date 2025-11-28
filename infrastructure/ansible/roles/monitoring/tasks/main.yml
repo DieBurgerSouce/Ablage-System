@@ -1,0 +1,32 @@
+# Ablage-System Monitoring Role - Main Tasks
+---
+- name: Create monitoring user
+  ansible.builtin.user:
+    name: "{{ monitoring_user }}"
+    group: "{{ monitoring_group }}"
+    system: yes
+    shell: /usr/sbin/nologin
+    create_home: no
+  become: yes
+
+- name: Create monitoring group
+  ansible.builtin.group:
+    name: "{{ monitoring_group }}"
+    system: yes
+  become: yes
+
+- name: Include Node Exporter tasks
+  ansible.builtin.include_tasks: node-exporter.yml
+  when: node_exporter_enabled | bool
+
+- name: Include NVIDIA GPU Exporter tasks
+  ansible.builtin.include_tasks: nvidia-exporter.yml
+  when: nvidia_exporter_enabled | bool and nvidia_driver_enabled | default(true) | bool
+
+- name: Include Prometheus targets configuration
+  ansible.builtin.include_tasks: prometheus-targets.yml
+  when: prometheus_targets_enabled | bool
+
+- name: Include Grafana dashboards deployment
+  ansible.builtin.include_tasks: grafana-dashboards.yml
+  when: grafana_dashboards_enabled | bool

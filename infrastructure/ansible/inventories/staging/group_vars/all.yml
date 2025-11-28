@@ -1,0 +1,58 @@
+# Ablage-System Staging Environment Variables
+---
+# Environment
+env_name: staging
+domain_name: ablage-staging.example.com
+ssl_admin_email: ops@example.com
+
+# Installation paths
+ablage_install_dir: /opt/ablage-system
+ablage_log_dir: /var/log/ablage-system
+ablage_backup_dir: /opt/ablage-system/backups
+
+# Docker settings
+docker_log_max_size: "100m"
+docker_log_max_file: "5"
+docker_compose_version: "2.24.0"
+
+# Application settings
+log_level: INFO
+debug_mode: false
+api_reload: false
+access_token_expire_minutes: 30
+
+# GPU settings
+cuda_visible_devices: "0"
+
+# Database
+postgres_max_connections: 100
+postgres_shared_buffers: 256MB
+
+# Redis
+redis_maxmemory: 2gb
+
+# Rate Limiting
+rate_limit_enabled: true
+rate_limit_requests_per_minute: 200
+rate_limit_documents_per_hour: 50
+
+# Backup settings
+backup_enabled: true
+backup_retention_days: 14
+backup_schedule: "0 2 * * *"  # 2 AM daily
+backup_remote_enabled: false
+
+# Monitoring
+grafana_user: admin
+prometheus_retention_days: 14
+prometheus_scrape_interval: 15s
+
+# SSL
+ssl_enabled: true
+ssl_use_manual_certs: true
+ssl_cert_path: /etc/ssl/certs/ablage-system.crt
+ssl_key_path: /etc/ssl/private/ablage-system.key
+
+# Security
+ufw_enabled: true
+fail2ban_enabled: true

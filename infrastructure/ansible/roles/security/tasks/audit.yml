@@ -1,0 +1,39 @@
+# Ablage-System Security Role - Audit Logging
+---
+- name: Install auditd
+  ansible.builtin.apt:
+    name:
+      - auditd
+      - audispd-plugins
+    state: present
+  become: yes
+  when: security_enable_audit | default(true)
+
+- name: Configure audit rules for Ablage-System
+  ansible.builtin.template:
+    src: audit-ablage.rules.j2
+    dest: /etc/audit/rules.d/ablage-system.rules
+    owner: root
+    group: root
+    mode: '0640'
+  become: yes
+  notify: restart auditd
+  when: security_enable_audit | default(true)
+
+- name: Start and enable auditd
+  ansible.builtin.systemd:
+    name: auditd
+    state: started
+    enabled: yes
+  become: yes
+  when: security_enable_audit | default(true)
+
+- name: Ensure secure permissions on sensitive directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    mode: '0700'
+  loop:
+    - /root
+    - /home/deploy/.ssh
+  become: yes
+  ignore_errors: yes

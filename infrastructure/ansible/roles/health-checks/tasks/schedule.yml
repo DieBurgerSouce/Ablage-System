@@ -1,0 +1,40 @@
+# Ablage-System Health Checks Role - Schedule Configuration
+---
+- name: Deploy health check systemd service
+  ansible.builtin.template:
+    src: ablage-health-check.service.j2
+    dest: /etc/systemd/system/ablage-health-check.service
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: reload systemd
+
+- name: Deploy health check systemd timer
+  ansible.builtin.template:
+    src: ablage-health-check.timer.j2
+    dest: /etc/systemd/system/ablage-health-check.timer
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify:
+    - reload systemd
+    - restart health_check_timer
+
+- name: Enable and start health check timer
+  ansible.builtin.systemd:
+    name: ablage-health-check.timer
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  become: yes
+
+- name: Deploy report cleanup cron job
+  ansible.builtin.cron:
+    name: "Ablage health report cleanup"
+    minute: "0"
+    hour: "6"
+    job: "find {{ health_check_report_dir }} -type f -mtime +{{ health_check_report_retention_days }} -delete"
+    user: root
+  become: yes

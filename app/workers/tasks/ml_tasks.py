@@ -131,6 +131,14 @@ class MLTracker:
                         latency_ms=processing_time_ms,
                         accuracy=accuracy,
                     )
+
+                    # Record Prometheus metrics for A/B sample
+                    metrics.record_ab_sample(
+                        experiment_id=experiment.experiment_id,
+                        variant=variant.name,
+                        success=success,
+                    )
+
                     logger.debug(
                         "ab_result_recorded",
                         experiment_id=experiment.experiment_id,

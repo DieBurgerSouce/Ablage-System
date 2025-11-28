@@ -1,0 +1,31 @@
+# Ablage-System Common Role - Main Tasks
+---
+- name: Include package installation tasks
+  ansible.builtin.include_tasks: packages.yml
+  tags:
+    - packages
+    - common
+
+- name: Include user management tasks
+  ansible.builtin.include_tasks: users.yml
+  tags:
+    - users
+    - common
+
+- name: Include directory setup tasks
+  ansible.builtin.include_tasks: directories.yml
+  tags:
+    - directories
+    - common
+
+- name: Include kernel configuration tasks
+  ansible.builtin.include_tasks: kernel.yml
+  tags:
+    - kernel
+    - common
+
+- name: Include timezone configuration tasks
+  ansible.builtin.include_tasks: timezone.yml
+  tags:
+    - timezone
+    - common

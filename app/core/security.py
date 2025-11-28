@@ -5,19 +5,19 @@ Handles JWT token generation/validation, password hashing, and token blacklistin
 All error messages in German for user-facing responses.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 import secrets
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import HTTPException, status
 
 from app.core.config import settings
 
 
-# Password hashing context with bcrypt (cost factor 12 for security)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
+# Bcrypt cost factor (12 is a good security/performance balance)
+BCRYPT_COST_FACTOR = 12
 
 # Token blacklist (in-memory for now - use Redis in production)
 # Format: {token_jti: expiration_timestamp}
@@ -37,7 +37,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if password matches, False otherwise
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    password_bytes = plain_password.encode("utf-8")
+    hash_bytes = hashed_password.encode("utf-8")
+    return bcrypt.checkpw(password_bytes, hash_bytes)
 
 
 def get_password_hash(password: str) -> str:
@@ -50,7 +52,10 @@ def get_password_hash(password: str) -> str:
     Returns:
         Bcrypt hashed password
     """
-    return pwd_context.hash(password)
+    password_bytes = password.encode("utf-8")
+    salt = bcrypt.gensalt(rounds=BCRYPT_COST_FACTOR)
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode("utf-8")
 
 
 # ==================== JWT Token Generation ====================
@@ -73,14 +78,14 @@ def create_access_token(
 
     # Set expiration time
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     # Add standard JWT claims
     to_encode.update({
         "exp": expire,
-        "iat": datetime.utcnow(),
+        "iat": datetime.now(timezone.utc),
         "type": "access",
         "jti": secrets.token_urlsafe(32)  # Unique token ID for blacklisting
     })
@@ -113,14 +118,14 @@ def create_refresh_token(
 
     # Set expiration time (7 days default)
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
     # Add standard JWT claims
     to_encode.update({
         "exp": expire,
-        "iat": datetime.utcnow(),
+        "iat": datetime.now(timezone.utc),
         "type": "refresh",
         "jti": secrets.token_urlsafe(32)
     })
@@ -231,7 +236,7 @@ def is_token_blacklisted(jti: str) -> bool:
 
     # Check if blacklist entry has expired
     expiration = _token_blacklist[jti]
-    if datetime.utcnow() >= expiration:
+    if datetime.now(timezone.utc) >= expiration:
         # Token expired, remove from blacklist
         del _token_blacklist[jti]
         return False
@@ -244,7 +249,7 @@ def _cleanup_blacklist() -> None:
     Remove expired tokens from blacklist.
     Internal cleanup function to prevent memory growth.
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expired_tokens = [
         jti for jti, exp in _token_blacklist.items()
         if now >= exp

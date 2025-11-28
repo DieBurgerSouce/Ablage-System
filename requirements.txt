@@ -11,11 +11,13 @@ torch==2.1.2+cu121  # CUDA 12.1 for RTX 4080
 torchvision==0.16.2+cu121
 transformers==4.36.2
 accelerate==0.25.0
+sentence-transformers==2.2.2  # For multilingual-e5-large embeddings
 
 # Database & ORM
 sqlalchemy==2.0.25
 alembic==1.13.1
 asyncpg==0.29.0
+pgvector==0.2.4  # PostgreSQL vector extension for semantic search
 
 # Task Queue
 celery==5.3.4
@@ -73,6 +75,9 @@ bcrypt==4.1.2
 # Utilities
 python-dotenv==1.0.0
 pyyaml==6.0.1
+
+# PDF Export
+reportlab==4.0.9  # PDF generation for document export
 
 # Optional: ML-basiertes OCR-Routing
 # XGBoost ist optional - System fällt gracefully auf regelbasiertes Routing zurück

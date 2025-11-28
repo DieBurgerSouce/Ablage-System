@@ -1,0 +1,24 @@
+# Ablage-System Security Role - Handlers
+---
+- name: restart sshd
+  ansible.builtin.systemd:
+    name: sshd
+    state: restarted
+  become: yes
+
+- name: restart fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: restarted
+  become: yes
+
+- name: reload ufw
+  community.general.ufw:
+    state: reloaded
+  become: yes
+
+- name: restart auditd
+  ansible.builtin.systemd:
+    name: auditd
+    state: restarted
+  become: yes

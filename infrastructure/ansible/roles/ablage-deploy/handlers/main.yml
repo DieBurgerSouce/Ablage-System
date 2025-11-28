@@ -1,0 +1,18 @@
+# Ablage-System Deploy Role - Handlers
+---
+- name: restart ablage
+  ansible.builtin.systemd:
+    name: ablage-system
+    state: restarted
+  become: yes
+
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  become: yes
+
+- name: restart docker compose
+  ansible.builtin.command:
+    cmd: docker compose restart
+    chdir: "{{ ablage_install_dir }}"
+  become: yes

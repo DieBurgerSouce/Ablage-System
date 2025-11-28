@@ -1,0 +1,30 @@
+# Ablage-System SSL Certificates Role - Default Variables
+---
+# SSL configuration
+ssl_enabled: true
+ssl_use_manual_certs: true
+
+# Certificate paths (where certs will be deployed)
+ssl_cert_path: /etc/ssl/certs/ablage-system.crt
+ssl_key_path: /etc/ssl/private/ablage-system.key
+ssl_chain_path: /etc/ssl/certs/ablage-system-chain.crt
+
+# Source files (relative to playbook files/ directory)
+# Uncomment and set these to deploy certificates
+# ssl_cert_src: ssl/ablage-system.crt
+# ssl_key_src: ssl/ablage-system.key
+# ssl_chain_src: ssl/ablage-system-chain.crt
+
+# DH parameters
+ssl_generate_dhparam: true
+ssl_dhparam_path: /etc/ssl/dhparam.pem
+ssl_dhparam_size: 2048  # Use 4096 for production
+
+# SSL protocols and ciphers (for Nginx configuration)
+ssl_protocols: "TLSv1.2 TLSv1.3"
+ssl_ciphers: "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384"
+ssl_prefer_server_ciphers: true
+ssl_session_timeout: 1d
+ssl_session_cache: "shared:SSL:50m"
+ssl_stapling: true
+ssl_stapling_verify: true

@@ -142,6 +142,19 @@ class EntityExtractionAgent(PostprocessingAgent):
                         "source": "invoice_field",
                     })
 
+        # Deduplicate entities
+        original_count = len(entities)
+        entities = self._deduplicate_entities(entities)
+        duplicates_removed = original_count - len(entities)
+
+        if duplicates_removed > 0:
+            self.logger.debug(
+                "entities_deduplicated",
+                original_count=original_count,
+                deduplicated_count=len(entities),
+                removed=duplicates_removed,
+            )
+
         # Calculate statistics
         entity_types = {}
         critical_entities = []
@@ -414,6 +427,167 @@ class EntityExtractionAgent(PostprocessingAgent):
     def _extract_invoice_fields(self, text: str) -> Dict[str, Any]:
         """Extract structured invoice fields."""
         return self.validator.extract_invoice_fields(text)
+
+    def _deduplicate_entities(
+        self, entities: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Deduplicate entities intelligently.
+
+        Deduplication strategy:
+        1. Group entities by type
+        2. For each type, find duplicates by normalized value
+        3. Merge duplicates, keeping highest confidence
+        4. Keep additional metadata from all sources
+
+        Args:
+            entities: List of extracted entities
+
+        Returns:
+            Deduplicated list of entities
+        """
+        if not entities:
+            return []
+
+        # Group by type
+        by_type: Dict[str, List[Dict[str, Any]]] = {}
+        for entity in entities:
+            entity_type = entity.get("type", "UNKNOWN")
+            if entity_type not in by_type:
+                by_type[entity_type] = []
+            by_type[entity_type].append(entity)
+
+        deduplicated = []
+
+        for entity_type, type_entities in by_type.items():
+            # Deduplicate within each type
+            seen: Dict[str, Dict[str, Any]] = {}
+
+            for entity in type_entities:
+                # Get normalized key for deduplication
+                key = self._get_entity_key(entity, entity_type)
+
+                if key in seen:
+                    # Merge with existing entity
+                    seen[key] = self._merge_entities(seen[key], entity)
+                else:
+                    seen[key] = entity.copy()
+
+            deduplicated.extend(seen.values())
+
+        # Sort by confidence (highest first) and then by type
+        deduplicated.sort(
+            key=lambda e: (-e.get("confidence", 0), e.get("type", ""))
+        )
+
+        return deduplicated
+
+    def _get_entity_key(self, entity: Dict[str, Any], entity_type: str) -> str:
+        """
+        Get normalized key for entity deduplication.
+
+        Different entity types need different normalization:
+        - IBAN: Remove spaces, uppercase
+        - PHONE: Remove all non-digits
+        - EMAIL: Lowercase
+        - CURRENCY: Numeric value if available
+        - Others: Stripped, lowercase value
+
+        Args:
+            entity: Entity dictionary
+            entity_type: Type of the entity
+
+        Returns:
+            Normalized key string
+        """
+        value = entity.get("value", "")
+
+        if entity_type == "IBAN":
+            # IBANs: Remove spaces, uppercase
+            return value.replace(" ", "").upper()
+
+        elif entity_type == "PHONE":
+            # Phone numbers: Only digits
+            normalized = entity.get("normalized")
+            if normalized:
+                return normalized
+            return re.sub(r"[^\d+]", "", value)
+
+        elif entity_type == "EMAIL":
+            # Emails: Lowercase
+            return value.lower().strip()
+
+        elif entity_type == "CURRENCY":
+            # Currency: Use numeric value if available
+            numeric = entity.get("numeric_value")
+            if numeric is not None:
+                return f"{entity_type}_{numeric:.2f}"
+            return f"{entity_type}_{value.strip()}"
+
+        elif entity_type == "VAT_ID":
+            # VAT IDs: Remove spaces, uppercase
+            return value.replace(" ", "").upper()
+
+        elif entity_type == "POSTAL_CODE":
+            # Postal codes: Just the digits
+            return re.sub(r"[^\d]", "", value)
+
+        else:
+            # Default: Strip and lowercase
+            return f"{entity_type}_{value.strip().lower()}"
+
+    def _merge_entities(
+        self,
+        existing: Dict[str, Any],
+        new: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Merge two duplicate entities.
+
+        Merging strategy:
+        - Keep highest confidence
+        - Preserve validation status if any is True
+        - Merge sources
+        - Keep additional metadata from both
+
+        Args:
+            existing: Existing entity (will be modified)
+            new: New entity to merge
+
+        Returns:
+            Merged entity
+        """
+        merged = existing.copy()
+
+        # Keep highest confidence
+        merged["confidence"] = max(
+            existing.get("confidence", 0),
+            new.get("confidence", 0)
+        )
+
+        # If either is validated, keep True
+        if "validated" in existing or "validated" in new:
+            merged["validated"] = (
+                existing.get("validated", False) or
+                new.get("validated", False)
+            )
+
+        # Merge sources
+        existing_source = existing.get("source", "")
+        new_source = new.get("source", "")
+        if existing_source and new_source and existing_source != new_source:
+            merged["source"] = f"{existing_source}, {new_source}"
+
+        # Track that this was deduplicated
+        merged["deduplicated"] = True
+        merged["duplicate_count"] = existing.get("duplicate_count", 1) + 1
+
+        # Keep additional fields from new if not in existing
+        for key in new:
+            if key not in merged and key not in ["source", "confidence"]:
+                merged[key] = new[key]
+
+        return merged
 
     def get_extraction_stats(self) -> Dict[str, Any]:
         """Get statistics about extraction capabilities."""

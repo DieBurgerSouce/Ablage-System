@@ -29,6 +29,12 @@ from app.db.models import Document, ProcessingJob, OCRResult, ProcessingStatus, 
 from app.services.ocr_service import OCRService
 from app.german_validator import GermanValidator
 
+# Import embedding task for auto-generation after OCR
+from app.workers.tasks.embedding_tasks import generate_document_embedding
+
+# Import ML tracking for A/B testing and metrics
+from app.workers.tasks.ml_tasks import ml_tracker
+
 logger = structlog.get_logger(__name__)
 
 # Database session factory
@@ -207,7 +213,8 @@ def process_document_task(
                     backend=backend,
                     language=language,
                     detect_layout=detect_layout,
-                    detect_fraktur=detect_fraktur
+                    detect_fraktur=detect_fraktur,
+                    document_id=document_id  # For A/B experiment allocation
                 )
 
                 if not ocr_result.get("success"):
@@ -290,6 +297,43 @@ def process_document_task(
                     confidence=document.ocr_confidence
                 )
 
+                # Track OCR result for A/B testing and metrics
+                ml_tracker.track_ocr_result(
+                    document_id=document_id,
+                    backend=document.ocr_backend_used,
+                    success=True,
+                    processing_time_ms=float(processing_ms),
+                    accuracy=document.ocr_confidence,
+                    language=language,
+                    document_type=document.document_type or "unknown",
+                )
+
+                # Queue embedding generation as low-priority background task
+                embedding_task_id = None
+                if settings.EMBEDDING_AUTO_GENERATE and document.extracted_text:
+                    try:
+                        result = generate_document_embedding.apply_async(
+                            args=[document_id],
+                            countdown=settings.EMBEDDING_TASK_DELAY_SECONDS,
+                            priority=settings.EMBEDDING_TASK_PRIORITY,
+                        )
+                        embedding_task_id = result.id
+                        logger.info(
+                            "embedding_task_queued",
+                            task_id=task_id,
+                            document_id=document_id,
+                            embedding_task_id=embedding_task_id,
+                            delay_seconds=settings.EMBEDDING_TASK_DELAY_SECONDS
+                        )
+                    except Exception as e:
+                        # Don't fail OCR if embedding queuing fails
+                        logger.warning(
+                            "embedding_task_queue_failed",
+                            task_id=task_id,
+                            document_id=document_id,
+                            error=str(e)
+                        )
+
                 return {
                     "success": True,
                     "document_id": document_id,
@@ -300,6 +344,7 @@ def process_document_task(
                     "word_count": len(document.extracted_text.split()),
                     "german_validation": validation_result,
                     "completed_at": datetime.utcnow().isoformat(),
+                    "embedding_task_id": embedding_task_id,
                 }
 
             except SoftTimeLimitExceeded:
@@ -319,6 +364,19 @@ def process_document_task(
                     document_id=document_id,
                     error=str(e)
                 )
+
+                # Track failed OCR for A/B testing and metrics
+                processing_time_failed = (datetime.utcnow() - start_time).total_seconds() * 1000
+                ml_tracker.track_ocr_result(
+                    document_id=document_id,
+                    backend=backend,  # Use requested backend since we don't have actual
+                    success=False,
+                    processing_time_ms=float(processing_time_failed),
+                    accuracy=None,
+                    language=language,
+                    document_type="unknown",
+                )
+
                 await update_document_status(
                     session,
                     doc_uuid,

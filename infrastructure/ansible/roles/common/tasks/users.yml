@@ -1,0 +1,53 @@
+# Ablage-System Common Role - User Management
+---
+- name: Create ablage group
+  ansible.builtin.group:
+    name: ablage
+    state: present
+    system: yes
+  become: yes
+
+- name: Create ablage service user
+  ansible.builtin.user:
+    name: ablage
+    group: ablage
+    groups:
+      - docker
+    system: yes
+    shell: /bin/false
+    home: "{{ ablage_install_dir }}"
+    create_home: no
+    comment: "Ablage-System Service User"
+  become: yes
+
+- name: Create deploy user (if not exists)
+  ansible.builtin.user:
+    name: deploy
+    groups:
+      - sudo
+      - docker
+      - ablage
+    shell: /bin/bash
+    create_home: yes
+    state: present
+  become: yes
+  when: common_create_deploy_user | default(true)
+
+- name: Ensure deploy user has passwordless sudo
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/deploy
+    line: 'deploy ALL=(ALL) NOPASSWD:ALL'
+    create: yes
+    mode: '0440'
+    validate: 'visudo -cf %s'
+  become: yes
+  when: common_create_deploy_user | default(true)
+
+- name: Add SSH authorized keys for deploy user
+  ansible.posix.authorized_key:
+    user: deploy
+    state: present
+    key: "{{ item }}"
+  loop: "{{ common_deploy_ssh_keys | default([]) }}"
+  become: yes
+  when: common_deploy_ssh_keys is defined and common_deploy_ssh_keys | length > 0

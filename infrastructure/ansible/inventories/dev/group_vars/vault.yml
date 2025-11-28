@@ -1,0 +1,26 @@
+# Ablage-System Development Vault Variables
+# IMPORTANT: Encrypt this file with: ansible-vault encrypt vault.yml
+# These are EXAMPLE values - replace for actual development use
+---
+# Database
+vault_db_password: "dev-db-password-change-me"
+
+# JWT Secret
+vault_secret_key: "dev-secret-key-change-me-use-openssl-rand-hex-32"
+
+# MinIO
+vault_minio_root_user: "minioadmin"
+vault_minio_root_password: "minioadmin123"
+
+# Grafana
+vault_grafana_password: "admin123"
+
+# Flower (Celery monitoring)
+vault_flower_user: "admin"
+vault_flower_password: "admin"
+
+# Backup remote (if enabled)
+vault_backup_remote_user: ""
+vault_backup_remote_host: ""
+vault_backup_remote_path: ""
+vault_backup_ssh_key: ""
