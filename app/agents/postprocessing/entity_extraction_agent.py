@@ -3,18 +3,24 @@
 Entity Extraction Agent for Ablage-System.
 
 Enterprise-grade business entity extraction from German documents:
-- Date extraction (German formats)
+- Date extraction (German formats, relative dates, date ranges)
 - Currency/amount extraction
 - IBAN validation and extraction
 - VAT ID (USt-IdNr.) extraction
 - Business term recognition
 - Invoice field mapping
+- Address parsing (multi-line German addresses)
+- Contract field extraction
+- spaCy NER for persons and organizations
+- Advanced entity relationship detection
 
 Feinpoliert und durchdacht - Präzise Entitätserkennung für Geschäftsdokumente.
 """
 
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import structlog
 
@@ -22,6 +28,115 @@ from app.agents.base import PostprocessingAgent
 from app.german_validator import GermanValidator
 
 logger = structlog.get_logger(__name__)
+
+# Try to import spaCy (optional dependency for NER)
+try:
+    import spacy
+    from spacy.tokens import Doc
+    SPACY_AVAILABLE = True
+except ImportError:
+    SPACY_AVAILABLE = False
+    spacy = None  # type: ignore
+    Doc = None  # type: ignore
+    logger.info("spacy_not_available", message="spaCy NER deaktiviert")
+
+
+@dataclass
+class GermanAddress:
+    """Structured German address."""
+    street: Optional[str] = None
+    house_number: Optional[str] = None
+    postal_code: Optional[str] = None
+    city: Optional[str] = None
+    country: str = "Deutschland"
+    address_addition: Optional[str] = None
+    confidence: float = 0.8
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "street": self.street,
+            "house_number": self.house_number,
+            "postal_code": self.postal_code,
+            "city": self.city,
+            "country": self.country,
+            "address_addition": self.address_addition,
+            "formatted": self.format(),
+            "confidence": self.confidence,
+        }
+
+    def format(self) -> str:
+        """Format address as single line."""
+        parts = []
+        if self.street:
+            street_part = self.street
+            if self.house_number:
+                street_part += f" {self.house_number}"
+            parts.append(street_part)
+        if self.address_addition:
+            parts.append(self.address_addition)
+        if self.postal_code or self.city:
+            location = f"{self.postal_code or ''} {self.city or ''}".strip()
+            parts.append(location)
+        if self.country and self.country != "Deutschland":
+            parts.append(self.country)
+        return ", ".join(parts)
+
+
+@dataclass
+class ContractField:
+    """Extracted contract field."""
+    field_name: str
+    value: str
+    german_label: str
+    confidence: float = 0.8
+    position: Optional[int] = None
+
+
+# German contract field patterns
+CONTRACT_FIELD_PATTERNS: Dict[str, Dict[str, Any]] = {
+    "contract_date": {
+        "patterns": [
+            r"(?:Vertragsdatum|Datum des Vertrags|Abschlussdatum)[\s:]*(\d{1,2}\.\d{1,2}\.\d{4})",
+            r"(?:geschlossen am|abgeschlossen am)[\s:]*(\d{1,2}\.\d{1,2}\.\d{4})",
+        ],
+        "german_label": "Vertragsdatum",
+    },
+    "start_date": {
+        "patterns": [
+            r"(?:Vertragsbeginn|Beginn|Laufzeitbeginn|ab dem|beginnend am)[\s:]*(\d{1,2}\.\d{1,2}\.\d{4})",
+            r"(?:tritt in Kraft am|wirksam ab)[\s:]*(\d{1,2}\.\d{1,2}\.\d{4})",
+        ],
+        "german_label": "Vertragsbeginn",
+    },
+    "end_date": {
+        "patterns": [
+            r"(?:Vertragsende|Ende|Laufzeitende|bis zum|endet am)[\s:]*(\d{1,2}\.\d{1,2}\.\d{4})",
+            r"(?:befristet bis|gültig bis)[\s:]*(\d{1,2}\.\d{1,2}\.\d{4})",
+        ],
+        "german_label": "Vertragsende",
+    },
+    "notice_period": {
+        "patterns": [
+            r"(?:Kündigungsfrist|Frist)[\s:]*(\d+\s*(?:Tage?|Wochen?|Monate?))",
+            r"(?:mit einer Frist von)[\s:]*(\d+\s*(?:Tagen?|Wochen?|Monaten?))",
+        ],
+        "german_label": "Kündigungsfrist",
+    },
+    "contract_value": {
+        "patterns": [
+            r"(?:Vertragswert|Gesamtwert|Auftragssumme)[\s:]*(\d{1,3}(?:\.\d{3})*(?:,\d{2})?\s*(?:€|EUR|Euro))",
+            r"(?:in Höhe von)[\s:]*(\d{1,3}(?:\.\d{3})*(?:,\d{2})?\s*(?:€|EUR|Euro))",
+        ],
+        "german_label": "Vertragswert",
+    },
+    "parties": {
+        "patterns": [
+            r"(?:zwischen|Vertragspartner|Parteien)[\s:]+([A-ZÄÖÜ][^\n,]+?)(?:\s*(?:und|,|\n))",
+        ],
+        "german_label": "Vertragsparteien",
+    },
+}
 
 
 class EntityExtractionAgent(PostprocessingAgent):
@@ -40,6 +155,8 @@ class EntityExtractionAgent(PostprocessingAgent):
     # Entity types with confidence weights
     ENTITY_TYPES = {
         "DATE": {"confidence_base": 0.9, "critical": True},
+        "DATE_RANGE": {"confidence_base": 0.85, "critical": False},
+        "RELATIVE_DATE": {"confidence_base": 0.8, "critical": False},
         "CURRENCY": {"confidence_base": 0.9, "critical": True},
         "IBAN": {"confidence_base": 0.95, "critical": True},
         "VAT_ID": {"confidence_base": 0.95, "critical": True},
@@ -49,8 +166,47 @@ class EntityExtractionAgent(PostprocessingAgent):
         "EMAIL": {"confidence_base": 0.95, "critical": False},
         "PHONE": {"confidence_base": 0.85, "critical": False},
         "POSTAL_CODE": {"confidence_base": 0.9, "critical": False},
-        "COMPANY_NAME": {"confidence_base": 0.75, "critical": False},
+        "ADDRESS": {"confidence_base": 0.8, "critical": False},
+        "PERSON": {"confidence_base": 0.85, "critical": False},
+        "ORGANIZATION": {"confidence_base": 0.8, "critical": False},
+        "CONTRACT_FIELD": {"confidence_base": 0.85, "critical": True},
     }
+
+    # German street name suffixes
+    STREET_SUFFIXES = {
+        "straße", "strasse", "str.", "str", "weg", "platz", "allee",
+        "ring", "gasse", "damm", "ufer", "chaussee", "steig", "pfad",
+        "hof", "anger", "aue", "berg", "brücke", "graben",
+    }
+
+    # Common German first names for person detection fallback
+    COMMON_FIRST_NAMES: Set[str] = {
+        "alexander", "andreas", "anna", "barbara", "bernd", "birgit",
+        "brigitte", "christian", "christina", "claudia", "daniel",
+        "dieter", "elisabeth", "eva", "frank", "franz", "gabriele",
+        "gerhard", "hans", "heinrich", "helga", "helmut", "herbert",
+        "ingrid", "jürgen", "karl", "karin", "katharina", "klaus",
+        "manfred", "maria", "markus", "martin", "matthias", "michael",
+        "monika", "nicole", "norbert", "peter", "petra", "rainer",
+        "regina", "renate", "robert", "roland", "sabine", "sandra",
+        "stefan", "stephan", "susanne", "thomas", "ulrich", "ursula",
+        "walter", "werner", "wolfgang",
+    }
+
+    # Relative date expressions (German)
+    RELATIVE_DATE_PATTERNS = [
+        (r"\bheute\b", "today", 0),
+        (r"\bmorgen\b", "tomorrow", 1),
+        (r"\bübermorgen\b", "day_after_tomorrow", 2),
+        (r"\bgestern\b", "yesterday", -1),
+        (r"\bvorgestern\b", "day_before_yesterday", -2),
+        (r"\bnächste Woche\b", "next_week", 7),
+        (r"\bletzte Woche\b", "last_week", -7),
+        (r"\bnächsten Monat\b", "next_month", 30),
+        (r"\bletzten Monat\b", "last_month", -30),
+        (r"\bin (\d+) Tagen?\b", "in_n_days", None),
+        (r"\bvor (\d+) Tagen?\b", "n_days_ago", None),
+    ]
 
     # German phone number patterns
     PHONE_PATTERNS = [
@@ -78,10 +234,45 @@ class EntityExtractionAgent(PostprocessingAgent):
         r'(?:Steuer-?Nr\.?)[\s:]*(\d{10,13})',
     ]
 
-    def __init__(self):
-        """Initialize the Entity Extraction Agent."""
+    def __init__(self, enable_spacy: bool = True):
+        """
+        Initialize the Entity Extraction Agent.
+
+        Args:
+            enable_spacy: Enable spaCy NER for person/organization extraction
+        """
         super().__init__(name="entity_extraction_agent")
         self.validator = GermanValidator()
+
+        # Initialize spaCy if available and enabled
+        self._nlp: Optional[Any] = None
+        if enable_spacy and SPACY_AVAILABLE:
+            self._init_spacy()
+
+    def _init_spacy(self) -> None:
+        """Initialize spaCy German model for NER."""
+        try:
+            # Try to load German model (de_core_news_lg preferred, fallback to sm)
+            try:
+                self._nlp = spacy.load("de_core_news_lg")
+                self.logger.info("spacy_initialized", model="de_core_news_lg")
+            except OSError:
+                try:
+                    self._nlp = spacy.load("de_core_news_md")
+                    self.logger.info("spacy_initialized", model="de_core_news_md")
+                except OSError:
+                    try:
+                        self._nlp = spacy.load("de_core_news_sm")
+                        self.logger.info("spacy_initialized", model="de_core_news_sm")
+                    except OSError:
+                        self.logger.warning(
+                            "spacy_model_not_found",
+                            message="Kein deutsches spaCy-Modell gefunden. "
+                                    "Installieren mit: python -m spacy download de_core_news_lg",
+                        )
+        except Exception as e:
+            self.logger.warning("spacy_init_failed", error=str(e))
+            self._nlp = None
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -117,6 +308,8 @@ class EntityExtractionAgent(PostprocessingAgent):
 
         # Extract all entity types
         entities.extend(self._extract_dates(text))
+        entities.extend(self._extract_relative_dates(text))
+        entities.extend(self._extract_date_ranges(text))
         entities.extend(self._extract_currencies(text))
         entities.extend(self._extract_ibans(text))
         entities.extend(self._extract_vat_ids(text))
@@ -124,23 +317,46 @@ class EntityExtractionAgent(PostprocessingAgent):
         entities.extend(self._extract_contact_info(text))
         entities.extend(self._extract_invoice_numbers(text))
         entities.extend(self._extract_tax_numbers(text))
+        entities.extend(self._extract_addresses(text))
+
+        # spaCy NER for persons and organizations
+        if self._nlp:
+            entities.extend(self._extract_named_entities_spacy(text))
+        else:
+            # Fallback to pattern-based extraction
+            entities.extend(self._extract_persons_fallback(text))
+            entities.extend(self._extract_organizations_fallback(text))
 
         # Document-specific extraction
         document_type = classification.get("document_type", "other")
         invoice_data = None
+        contract_data = None
 
         if document_type == "invoice":
             invoice_data = self._extract_invoice_fields(text)
             # Add invoice fields as entities
-            for field, info in invoice_data.items():
+            for field_name, info in invoice_data.items():
                 if info.get("value"):
                     entities.append({
-                        "type": f"INVOICE_{field.upper()}",
+                        "type": f"INVOICE_{field_name.upper()}",
                         "value": info["value"],
                         "german_label": info.get("german_label"),
                         "confidence": info.get("confidence", 0.8),
                         "source": "invoice_field",
                     })
+
+        elif document_type in ("contract", "vertrag"):
+            contract_data = self._extract_contract_fields(text)
+            # Add contract fields as entities
+            for field_info in contract_data:
+                entities.append({
+                    "type": "CONTRACT_FIELD",
+                    "field_name": field_info.field_name,
+                    "value": field_info.value,
+                    "german_label": field_info.german_label,
+                    "confidence": field_info.confidence,
+                    "source": "contract_field",
+                })
 
         # Deduplicate entities
         original_count = len(entities)
@@ -172,10 +388,14 @@ class EntityExtractionAgent(PostprocessingAgent):
             "entity_types": entity_types,
             "critical_entities": critical_entities,
             "critical_count": len(critical_entities),
+            "spacy_enabled": self._nlp is not None,
         }
 
         if invoice_data:
             result["invoice_data"] = invoice_data
+
+        if contract_data:
+            result["contract_data"] = [f.value for f in contract_data]
 
         self.logger.info(
             "entity_extraction_completed",
@@ -589,6 +809,288 @@ class EntityExtractionAgent(PostprocessingAgent):
 
         return merged
 
+    def _extract_relative_dates(self, text: str) -> List[Dict[str, Any]]:
+        """
+        Extract German relative date expressions.
+
+        Handles expressions like "heute", "morgen", "nächste Woche", etc.
+        """
+        entities = []
+        today = datetime.now()
+
+        for pattern, date_type, offset in self.RELATIVE_DATE_PATTERNS:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+
+            for match in matches:
+                if offset is not None:
+                    # Fixed offset
+                    resolved_date = today + timedelta(days=offset)
+                else:
+                    # Variable offset (e.g., "in 5 Tagen")
+                    try:
+                        days = int(match.group(1))
+                        if "vor" in pattern:
+                            days = -days
+                        resolved_date = today + timedelta(days=days)
+                    except (IndexError, ValueError):
+                        resolved_date = None
+
+                entities.append({
+                    "type": "RELATIVE_DATE",
+                    "value": match.group(0),
+                    "date_type": date_type,
+                    "resolved_date": resolved_date.strftime("%d.%m.%Y") if resolved_date else None,
+                    "confidence": 0.8,
+                    "source": "relative_date_extraction",
+                })
+
+        return entities
+
+    def _extract_date_ranges(self, text: str) -> List[Dict[str, Any]]:
+        """
+        Extract date ranges from German text.
+
+        Handles patterns like "vom 01.01.2024 bis 31.12.2024".
+        """
+        entities = []
+
+        # Date range patterns
+        range_patterns = [
+            r"vom?\s*(\d{1,2}\.\d{1,2}\.\d{4})\s*(?:bis|[-–])\s*(?:zum?\s*)?(\d{1,2}\.\d{1,2}\.\d{4})",
+            r"(\d{1,2}\.\d{1,2}\.\d{4})\s*[-–]\s*(\d{1,2}\.\d{1,2}\.\d{4})",
+            r"zwischen\s*(?:dem\s*)?(\d{1,2}\.\d{1,2}\.\d{4})\s*und\s*(?:dem\s*)?(\d{1,2}\.\d{1,2}\.\d{4})",
+        ]
+
+        for pattern in range_patterns:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+
+            for match in matches:
+                start_date = match.group(1)
+                end_date = match.group(2)
+
+                entities.append({
+                    "type": "DATE_RANGE",
+                    "value": match.group(0),
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "confidence": 0.85,
+                    "source": "date_range_extraction",
+                })
+
+        return entities
+
+    def _extract_addresses(self, text: str) -> List[Dict[str, Any]]:
+        """
+        Extract German addresses from text.
+
+        Handles multi-line addresses and various formats.
+        """
+        entities = []
+
+        # Street pattern with house number
+        street_pattern = (
+            r"([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ]?[a-zäöüß]+)*"
+            r"(?:straße|strasse|str\.|weg|platz|allee|ring|gasse|damm|ufer))"
+            r"\s*(\d+\s*[a-zA-Z]?(?:\s*[-/]\s*\d+)?)"
+        )
+
+        # Full address pattern: Street + House Number + Postal Code + City
+        full_address_pattern = (
+            street_pattern + r"(?:\s*,?\s*|\s+)"
+            r"(\d{5})\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ]?[a-zäöüß]+)*)"
+        )
+
+        # Try full address pattern first
+        full_matches = re.finditer(full_address_pattern, text, re.IGNORECASE)
+
+        for match in full_matches:
+            address = GermanAddress(
+                street=match.group(1).strip(),
+                house_number=match.group(2).strip(),
+                postal_code=match.group(3),
+                city=match.group(4).strip(),
+                confidence=0.9,
+            )
+
+            entities.append({
+                "type": "ADDRESS",
+                "value": match.group(0).strip(),
+                "structured": address.to_dict(),
+                "confidence": address.confidence,
+                "source": "address_extraction",
+            })
+
+        # Also try simpler street + house number pattern
+        street_matches = re.finditer(street_pattern, text, re.IGNORECASE)
+
+        for match in street_matches:
+            # Check if already captured in full address
+            full_text = match.group(0)
+            if any(full_text in e["value"] for e in entities):
+                continue
+
+            address = GermanAddress(
+                street=match.group(1).strip(),
+                house_number=match.group(2).strip(),
+                confidence=0.7,
+            )
+
+            entities.append({
+                "type": "ADDRESS",
+                "value": full_text.strip(),
+                "structured": address.to_dict(),
+                "confidence": address.confidence,
+                "source": "address_extraction",
+            })
+
+        return entities
+
+    def _extract_named_entities_spacy(self, text: str) -> List[Dict[str, Any]]:
+        """
+        Extract named entities using spaCy NER.
+
+        Extracts persons (PER) and organizations (ORG) using
+        the German spaCy model.
+        """
+        entities = []
+
+        if not self._nlp:
+            return entities
+
+        try:
+            # Process text with spaCy (limit to reasonable length)
+            doc = self._nlp(text[:100000])  # Limit to ~100k chars
+
+            for ent in doc.ents:
+                if ent.label_ == "PER":
+                    entities.append({
+                        "type": "PERSON",
+                        "value": ent.text,
+                        "start": ent.start_char,
+                        "end": ent.end_char,
+                        "confidence": 0.85,
+                        "source": "spacy_ner",
+                    })
+                elif ent.label_ == "ORG":
+                    entities.append({
+                        "type": "ORGANIZATION",
+                        "value": ent.text,
+                        "start": ent.start_char,
+                        "end": ent.end_char,
+                        "confidence": 0.8,
+                        "source": "spacy_ner",
+                    })
+
+        except Exception as e:
+            self.logger.warning("spacy_ner_error", error=str(e))
+
+        return entities
+
+    def _extract_persons_fallback(self, text: str) -> List[Dict[str, Any]]:
+        """
+        Extract person names using pattern matching (fallback without spaCy).
+
+        Uses common German naming patterns and first name dictionary.
+        """
+        entities = []
+
+        # Pattern: Title + Name (e.g., "Herr Müller", "Frau Dr. Schmidt")
+        title_pattern = (
+            r"\b((?:Herr|Frau|Hr\.|Fr\.)\s*"
+            r"(?:(?:Dr\.|Prof\.|Dipl\.[-\s]?[A-Za-z]+\.?)\s*)?"
+            r"([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?))\b"
+        )
+
+        matches = re.finditer(title_pattern, text)
+        for match in matches:
+            entities.append({
+                "type": "PERSON",
+                "value": match.group(1).strip(),
+                "confidence": 0.8,
+                "source": "pattern_person_extraction",
+            })
+
+        # Pattern: Known first name + Last name
+        for first_name in self.COMMON_FIRST_NAMES:
+            pattern = rf"\b({first_name.capitalize()}\s+[A-ZÄÖÜ][a-zäöüß]+)\b"
+            matches = re.finditer(pattern, text)
+
+            for match in matches:
+                name = match.group(1)
+                # Avoid duplicates
+                if not any(e["value"] == name for e in entities):
+                    entities.append({
+                        "type": "PERSON",
+                        "value": name,
+                        "confidence": 0.75,
+                        "source": "pattern_person_extraction",
+                    })
+
+        return entities
+
+    def _extract_organizations_fallback(self, text: str) -> List[Dict[str, Any]]:
+        """
+        Extract organization names using pattern matching (fallback without spaCy).
+
+        Uses German company suffixes and patterns.
+        """
+        entities = []
+
+        # German company suffixes
+        company_suffixes = (
+            r"(?:GmbH|AG|KG|OHG|GbR|e\.?V\.?|UG|SE|mbH|"
+            r"GmbH\s*&\s*Co\.?\s*KG|"
+            r"Inc\.|Corp\.|Ltd\.?|LLC)"
+        )
+
+        # Company pattern
+        company_pattern = rf"([A-ZÄÖÜ][^\n,;]+?\s*{company_suffixes})"
+
+        matches = re.finditer(company_pattern, text)
+        for match in matches:
+            company = match.group(1).strip()
+            # Clean up
+            company = re.sub(r"\s+", " ", company)
+
+            if len(company) > 3:
+                entities.append({
+                    "type": "ORGANIZATION",
+                    "value": company,
+                    "confidence": 0.8,
+                    "source": "pattern_org_extraction",
+                })
+
+        return entities
+
+    def _extract_contract_fields(self, text: str) -> List[ContractField]:
+        """
+        Extract contract-specific fields from German contracts.
+
+        Uses CONTRACT_FIELD_PATTERNS to find structured data.
+        """
+        fields = []
+
+        for field_name, config in CONTRACT_FIELD_PATTERNS.items():
+            for pattern in config["patterns"]:
+                matches = re.finditer(pattern, text, re.IGNORECASE)
+
+                for match in matches:
+                    value = match.group(1) if match.lastindex >= 1 else match.group(0)
+
+                    field = ContractField(
+                        field_name=field_name,
+                        value=value.strip(),
+                        german_label=config["german_label"],
+                        confidence=0.85,
+                        position=match.start(),
+                    )
+                    fields.append(field)
+
+                    # Only take first match per field type
+                    break
+
+        return fields
+
     def get_extraction_stats(self) -> Dict[str, Any]:
         """Get statistics about extraction capabilities."""
         return {
@@ -600,8 +1102,14 @@ class EntityExtractionAgent(PostprocessingAgent):
                 "DD.MM.YYYY",
                 "DD.MM.YY",
                 "DD. Month YYYY",
+                "Relative dates (heute, morgen, etc.)",
+                "Date ranges (vom...bis)",
             ],
             "supported_currencies": ["EUR", "€", "Euro"],
             "iban_validation": True,
             "vat_validation": True,
+            "spacy_available": SPACY_AVAILABLE,
+            "spacy_enabled": self._nlp is not None,
+            "address_extraction": True,
+            "contract_fields": list(CONTRACT_FIELD_PATTERNS.keys()),
         }

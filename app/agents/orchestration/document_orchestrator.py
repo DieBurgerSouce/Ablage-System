@@ -4,6 +4,12 @@ Document Processing Orchestrator.
 Master orchestrator that coordinates the entire document processing workflow:
 1. Classification → 2. Pre-Processing → 3. OCR → 4. Post-Processing → 5. QA → 6. Storage
 
+Integrated with enterprise-grade error recovery:
+- Circuit breaker pattern for external services
+- Retry strategy with exponential backoff
+- GPU OOM recovery with automatic fallback
+- Partial results handling for graceful degradation
+
 Feinpoliert und durchdacht - Enterprise-grade document processing pipeline.
 """
 
@@ -11,10 +17,44 @@ import asyncio
 import json
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+import structlog
 
 from app.agents.base import OrchestrationAgent
 from app.core.redis_state import get_redis, RedisStateManager
+
+# Import error recovery components
+from app.core.circuit_breaker import (
+    CircuitBreaker,
+    CircuitBreakerManager,
+    CircuitConfig,
+    CircuitOpenError,
+    CircuitState,
+    get_circuit_breaker_manager,
+)
+from app.core.retry_strategy import (
+    RetryConfig,
+    RetryContext,
+    RetryExhaustedError,
+    RetryStrategy,
+    WorkflowPhase as RetryPhase,
+    get_retry_strategy,
+)
+from app.core.gpu_recovery import (
+    GPURecoveryError,
+    GPURecoveryManager,
+    gpu_memory_guard,
+    get_gpu_recovery_manager,
+)
+from app.core.partial_results import (
+    PartialResult,
+    PartialResultHandler,
+    PartialResultStatus,
+    get_partial_result_handler,
+)
+
+logger = structlog.get_logger(__name__)
 
 
 class WorkflowPhase(str, Enum):
@@ -37,6 +77,12 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
 
     Coordinates all agents in the processing pipeline and manages
     workflow state, error handling, and progress tracking.
+
+    Integrates enterprise-grade error recovery:
+    - Circuit breaker for external services (Redis, PostgreSQL, MinIO)
+    - Retry strategy with exponential backoff for transient failures
+    - GPU OOM recovery with automatic CPU fallback
+    - Partial results handling for graceful degradation
     """
 
     def __init__(self):
@@ -48,6 +94,70 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         self._ocr_agents = None
         self._postprocessing_agents = None
         self._qa_agent = None
+        self._page_segmentation_agent = None
+
+        # Error recovery components
+        self._circuit_breaker_manager: Optional[CircuitBreakerManager] = None
+        self._retry_strategy: Optional[RetryStrategy] = None
+        self._gpu_recovery_manager: Optional[GPURecoveryManager] = None
+        self._partial_result_handler: Optional[PartialResultHandler] = None
+
+        # Initialize error recovery
+        self._init_error_recovery()
+
+    def _init_error_recovery(self) -> None:
+        """Initialize error recovery components."""
+        try:
+            # Circuit breaker manager for external services
+            self._circuit_breaker_manager = get_circuit_breaker_manager()
+
+            # Register circuits for external services
+            self._circuit_breaker_manager.register_circuit(
+                "redis",
+                CircuitConfig(
+                    failure_threshold=5,
+                    reset_timeout_seconds=30,
+                    half_open_max_calls=3,
+                )
+            )
+            self._circuit_breaker_manager.register_circuit(
+                "postgresql",
+                CircuitConfig(
+                    failure_threshold=3,
+                    reset_timeout_seconds=60,
+                    half_open_max_calls=2,
+                )
+            )
+            self._circuit_breaker_manager.register_circuit(
+                "minio",
+                CircuitConfig(
+                    failure_threshold=5,
+                    reset_timeout_seconds=45,
+                    half_open_max_calls=3,
+                )
+            )
+
+            # Retry strategy for transient failures
+            self._retry_strategy = get_retry_strategy()
+
+            # GPU recovery manager
+            self._gpu_recovery_manager = get_gpu_recovery_manager()
+
+            # Partial result handler
+            self._partial_result_handler = get_partial_result_handler()
+
+            self.logger.info(
+                "error_recovery_initialized",
+                circuit_breakers=["redis", "postgresql", "minio"],
+                gpu_recovery_enabled=self._gpu_recovery_manager is not None,
+            )
+
+        except Exception as e:
+            self.logger.warning(
+                "error_recovery_init_failed",
+                error=str(e),
+            )
+            # Continue without error recovery - graceful degradation
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -268,11 +378,31 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
     async def _execute_phase(
         self,
         phase: WorkflowPhase,
-        phase_func: callable,
+        phase_func: Callable,
         workflow_state: Dict[str, Any],
         phase_input: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """Execute a workflow phase with state management."""
+        """
+        Execute a workflow phase with comprehensive error recovery.
+
+        Includes:
+        - Retry strategy with exponential backoff
+        - Partial result handling for graceful degradation
+        - Circuit breaker protection for external services
+        - Detailed phase state tracking
+
+        Args:
+            phase: The workflow phase to execute
+            phase_func: Async function to execute
+            workflow_state: Current workflow state
+            phase_input: Input data for the phase
+
+        Returns:
+            Phase result dictionary
+
+        Raises:
+            Various exceptions after retry exhaustion
+        """
         document_id = workflow_state["document_id"]
 
         self.logger.info(
@@ -285,34 +415,181 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
             workflow_state, phase, {"status": "in_progress"}
         )
 
-        try:
-            result = await phase_func(phase_input)
+        # Map workflow phase to retry phase
+        retry_phase_map = {
+            WorkflowPhase.CLASSIFYING: RetryPhase.CLASSIFICATION,
+            WorkflowPhase.PREPROCESSING: RetryPhase.PREPROCESSING,
+            WorkflowPhase.OCR_PROCESSING: RetryPhase.OCR_PROCESSING,
+            WorkflowPhase.POSTPROCESSING: RetryPhase.POSTPROCESSING,
+            WorkflowPhase.QA_CHECK: RetryPhase.QA_CHECK,
+            WorkflowPhase.STORING: RetryPhase.STORAGE,
+        }
+        retry_phase = retry_phase_map.get(phase, RetryPhase.CLASSIFICATION)
 
-            await self._update_workflow_state(
-                workflow_state, phase, {"status": "completed", "result": result}
-            )
+        # Get retry config for this phase
+        retry_config = self._retry_strategy.get_config(retry_phase) if self._retry_strategy else None
 
-            self.logger.info(
-                "phase_completed",
-                document_id=document_id,
-                phase=phase.value,
-            )
+        attempt = 0
+        last_error: Optional[Exception] = None
+        partial_result: Optional[PartialResult] = None
 
-            return result
+        while True:
+            attempt += 1
 
-        except Exception as e:
-            await self._update_workflow_state(
-                workflow_state, phase, {"status": "failed", "error": str(e)}
-            )
+            try:
+                # Execute the phase function
+                result = await phase_func(phase_input)
 
-            self.logger.error(
-                "phase_failed",
-                document_id=document_id,
-                phase=phase.value,
-                error=str(e),
-            )
+                # Update state on success
+                await self._update_workflow_state(
+                    workflow_state, phase, {"status": "completed", "result": result}
+                )
 
-            raise
+                self.logger.info(
+                    "phase_completed",
+                    document_id=document_id,
+                    phase=phase.value,
+                    attempts=attempt,
+                )
+
+                return result
+
+            except CircuitOpenError as e:
+                # Circuit is open - don't retry, fail immediately
+                self.logger.error(
+                    "phase_circuit_open",
+                    document_id=document_id,
+                    phase=phase.value,
+                    circuit=str(e),
+                )
+                await self._update_workflow_state(
+                    workflow_state, phase, {
+                        "status": "failed",
+                        "error": str(e),
+                        "error_type": "circuit_open",
+                    }
+                )
+                raise
+
+            except GPURecoveryError as e:
+                # GPU recovery failed - try partial result or fail
+                self.logger.error(
+                    "phase_gpu_recovery_failed",
+                    document_id=document_id,
+                    phase=phase.value,
+                    error=str(e),
+                )
+
+                # Try to get partial result
+                if self._partial_result_handler:
+                    partial_result = await self._partial_result_handler.create_partial_result(
+                        document_id=document_id,
+                        phase=phase.value,
+                        error=str(e),
+                        partial_data=phase_input,
+                    )
+
+                    if partial_result and partial_result.status == PartialResultStatus.USABLE:
+                        self.logger.warning(
+                            "phase_using_partial_result",
+                            document_id=document_id,
+                            phase=phase.value,
+                        )
+                        await self._update_workflow_state(
+                            workflow_state, phase, {
+                                "status": "partial",
+                                "result": partial_result.data,
+                                "partial_reason": str(e),
+                            }
+                        )
+                        return partial_result.data
+
+                await self._update_workflow_state(
+                    workflow_state, phase, {
+                        "status": "failed",
+                        "error": str(e),
+                        "error_type": "gpu_failure",
+                    }
+                )
+                raise
+
+            except Exception as e:
+                last_error = e
+
+                # Check if we should retry
+                should_retry = False
+                wait_time = 0.0
+
+                if self._retry_strategy and retry_config:
+                    context = RetryContext(
+                        phase=retry_phase,
+                        attempt=attempt,
+                        error=e,
+                        document_id=document_id,
+                    )
+                    should_retry, wait_time = self._retry_strategy.should_retry(context)
+
+                if should_retry and attempt < (retry_config.max_retries if retry_config else 3):
+                    self.logger.warning(
+                        "phase_retry_scheduled",
+                        document_id=document_id,
+                        phase=phase.value,
+                        attempt=attempt,
+                        wait_seconds=wait_time,
+                        error=str(e),
+                    )
+
+                    await self._update_workflow_state(
+                        workflow_state, phase, {
+                            "status": "retrying",
+                            "attempt": attempt,
+                            "next_retry_in": wait_time,
+                        }
+                    )
+
+                    await asyncio.sleep(wait_time)
+                    continue
+
+                # No more retries - try partial result or fail
+                self.logger.error(
+                    "phase_failed",
+                    document_id=document_id,
+                    phase=phase.value,
+                    error=str(e),
+                    attempts=attempt,
+                )
+
+                # Try to create partial result
+                if self._partial_result_handler and phase in [
+                    WorkflowPhase.OCR_PROCESSING,
+                    WorkflowPhase.POSTPROCESSING,
+                ]:
+                    partial_result = await self._partial_result_handler.create_partial_result(
+                        document_id=document_id,
+                        phase=phase.value,
+                        error=str(e),
+                        partial_data=phase_input,
+                    )
+
+                    if partial_result and partial_result.status == PartialResultStatus.USABLE:
+                        self.logger.warning(
+                            "phase_using_partial_result_after_failure",
+                            document_id=document_id,
+                            phase=phase.value,
+                        )
+                        await self._update_workflow_state(
+                            workflow_state, phase, {
+                                "status": "partial",
+                                "result": partial_result.data,
+                                "partial_reason": str(e),
+                            }
+                        )
+                        return partial_result.data
+
+                await self._update_workflow_state(
+                    workflow_state, phase, {"status": "failed", "error": str(e)}
+                )
+                raise
 
     async def _update_workflow_state(
         self, workflow_state: Dict[str, Any], phase: WorkflowPhase, data: Dict[str, Any]
@@ -526,18 +803,70 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         self, file_path: str, classification: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Segment document into pages/regions.
+        Segment document into pages and regions using PageSegmentationAgent.
 
-        For now, returns basic page info. Full segmentation can be
-        added with a dedicated PageSegmentationAgent.
+        Uses the enterprise PageSegmentationAgent for:
+        - Multi-page document handling
+        - Layout analysis (single-column, multi-column, mixed)
+        - Region detection (text, tables, images, headers, footers)
+        - Reading order determination
+
+        Args:
+            file_path: Path to the document
+            classification: Document classification results
+
+        Returns:
+            Segmentation result with pages, regions, and layout info
         """
+        from app.agents.preprocessing.page_segmentation_agent import PageSegmentationAgent
+
+        # Lazy initialization
+        if self._page_segmentation_agent is None:
+            self._page_segmentation_agent = PageSegmentationAgent()
+
         page_count = classification.get("metadata", {}).get("file_info", {}).get("page_count", 1)
 
-        return {
-            "pages": page_count,
-            "regions": [],
-            "needs_segmentation": page_count > 1,
-        }
+        try:
+            # Run page segmentation
+            result = await self._page_segmentation_agent.process({
+                "file_path": file_path,
+                "classification": classification,
+            })
+
+            self.logger.info(
+                "page_segmentation_completed",
+                pages=result.get("page_count", page_count),
+                layout_type=result.get("dominant_layout"),
+                region_count=result.get("total_regions", 0),
+            )
+
+            return {
+                "pages": result.get("page_count", page_count),
+                "page_info": result.get("pages", []),
+                "regions": result.get("all_regions", []),
+                "dominant_layout": result.get("dominant_layout", "single_column"),
+                "has_tables": result.get("has_tables", False),
+                "has_images": result.get("has_images", False),
+                "reading_order": result.get("reading_order", []),
+                "needs_segmentation": page_count > 1 or result.get("complex_layout", False),
+            }
+
+        except Exception as e:
+            self.logger.warning(
+                "page_segmentation_failed",
+                error=str(e),
+            )
+            # Return basic fallback
+            return {
+                "pages": page_count,
+                "page_info": [],
+                "regions": [],
+                "dominant_layout": "single_column",
+                "has_tables": classification.get("has_tables", False),
+                "has_images": False,
+                "reading_order": [],
+                "needs_segmentation": page_count > 1,
+            }
 
     async def _select_ocr_backend(
         self,
@@ -636,7 +965,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
 
     async def _run_ocr(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Phase 3: Run OCR with selected backend.
+        Phase 3: Run OCR with selected backend and GPU recovery.
 
         Supports:
         - DeepSeek-Janus-Pro: Best for complex layouts, Fraktur, handwriting
@@ -644,7 +973,11 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         - Surya + Docling: CPU fallback, layout analysis
         - Surya GPU: Fast GPU-accelerated standard OCR
 
-        Includes automatic fallback to CPU-based Surya if GPU backends fail.
+        Includes:
+        - GPU memory guard (85% VRAM threshold)
+        - Automatic OOM recovery with cache clearing
+        - Automatic fallback to CPU-based Surya if GPU backends fail
+        - Partial result handling for graceful degradation
         """
         backend = input_data["backend"]
         file_path = input_data["file_path"]
@@ -660,6 +993,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
 
         # Lazy load OCR agents
         agent = await self._get_ocr_agent(backend)
+        is_gpu_backend = backend in ["deepseek", "got_ocr", "surya_gpu"]
 
         try:
             # Prepare OCR input
@@ -669,8 +1003,17 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 "language": classification.get("language", "de"),
             }
 
-            # Execute OCR
-            result = await agent.process(ocr_input)
+            # Execute OCR with GPU memory guard for GPU backends
+            if is_gpu_backend and self._gpu_recovery_manager:
+                async with gpu_memory_guard(
+                    threshold_percent=85.0,
+                    recovery_manager=self._gpu_recovery_manager,
+                ):
+                    result = await self._execute_ocr_with_recovery(
+                        agent, ocr_input, backend, document_id, classification
+                    )
+            else:
+                result = await agent.process(ocr_input)
 
             # Extract standardized result
             ocr_result = {
@@ -681,6 +1024,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 "layout": result.get("layout", {}),
                 "pages": result.get("pages", []),
                 "processing_time_ms": result.get("processing_time_ms"),
+                "gpu_recovery_attempts": result.get("recovery_attempts", 0),
             }
 
             self.logger.info(
@@ -688,9 +1032,23 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 backend=backend,
                 text_length=len(ocr_result["text"]),
                 confidence=ocr_result["confidence"],
+                recovery_attempts=ocr_result.get("gpu_recovery_attempts", 0),
             )
 
             return ocr_result
+
+        except GPURecoveryError as e:
+            self.logger.error(
+                "ocr_gpu_recovery_exhausted",
+                backend=backend,
+                error=str(e),
+                document_id=document_id,
+            )
+
+            # GPU recovery failed - try CPU fallback
+            return await self._ocr_cpu_fallback(
+                document_id, file_path, classification, str(e)
+            )
 
         except Exception as e:
             self.logger.error(
@@ -700,37 +1058,16 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 exc_info=True,
             )
 
+            # Check if this is an OOM error
+            error_str = str(e).lower()
+            is_oom = "out of memory" in error_str or "cuda" in error_str
+
             # Attempt fallback to CPU-based Surya if GPU backend failed
             if backend not in ["surya", "surya_docling"]:
-                self.logger.warning(
-                    "ocr_fallback_to_surya",
-                    original_backend=backend,
-                    reason=str(e),
+                return await self._ocr_cpu_fallback(
+                    document_id, file_path, classification,
+                    str(e), is_oom=is_oom
                 )
-
-                try:
-                    fallback_agent = await self._get_ocr_agent("surya")
-                    fallback_result = await fallback_agent.process({
-                        "document_id": document_id,
-                        "image_path": file_path,
-                        "language": classification.get("language", "de"),
-                    })
-
-                    return {
-                        "text": fallback_result.get("text", ""),
-                        "confidence": fallback_result.get("confidence", 0.0),
-                        "backend": "surya_fallback",
-                        "entities": fallback_result.get("entities", []),
-                        "layout": fallback_result.get("layout", {}),
-                        "fallback_reason": str(e),
-                    }
-
-                except Exception as fallback_error:
-                    self.logger.error(
-                        "ocr_fallback_failed",
-                        error=str(fallback_error),
-                    )
-                    raise
 
             raise
 
@@ -744,6 +1081,147 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                         "ocr_cleanup_warning",
                         error=str(cleanup_error),
                     )
+
+            # Clear GPU cache after processing
+            if is_gpu_backend and self._gpu_recovery_manager:
+                try:
+                    await self._gpu_recovery_manager.clear_cache()
+                except Exception:
+                    pass
+
+    async def _execute_ocr_with_recovery(
+        self,
+        agent,
+        ocr_input: Dict[str, Any],
+        backend: str,
+        document_id: str,
+        classification: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Execute OCR with GPU OOM recovery.
+
+        Attempts GPU processing with automatic recovery:
+        1. Clear GPU cache and retry
+        2. Reduce batch size if applicable
+        3. Fall back to CPU after max retries
+
+        Args:
+            agent: OCR agent instance
+            ocr_input: Input data for OCR
+            backend: Backend name
+            document_id: Document ID for logging
+            classification: Document classification
+
+        Returns:
+            OCR result dictionary
+
+        Raises:
+            GPURecoveryError: If all recovery attempts fail
+        """
+        max_recovery_attempts = 3
+        recovery_attempts = 0
+
+        while recovery_attempts < max_recovery_attempts:
+            try:
+                result = await agent.process(ocr_input)
+                result["recovery_attempts"] = recovery_attempts
+                return result
+
+            except Exception as e:
+                error_str = str(e).lower()
+                is_oom = "out of memory" in error_str or "cuda" in error_str
+
+                if not is_oom:
+                    raise
+
+                recovery_attempts += 1
+
+                self.logger.warning(
+                    "ocr_gpu_oom_recovery_attempt",
+                    backend=backend,
+                    document_id=document_id,
+                    attempt=recovery_attempts,
+                    max_attempts=max_recovery_attempts,
+                )
+
+                if self._gpu_recovery_manager:
+                    # Attempt recovery
+                    recovered = await self._gpu_recovery_manager.recover_from_oom(
+                        error=e,
+                        context={
+                            "backend": backend,
+                            "document_id": document_id,
+                            "attempt": recovery_attempts,
+                        }
+                    )
+
+                    if not recovered:
+                        raise GPURecoveryError(
+                            f"GPU recovery failed after {recovery_attempts} attempts: {e}"
+                        )
+
+                    # Wait before retry
+                    await asyncio.sleep(1.0 * recovery_attempts)
+                else:
+                    raise
+
+        raise GPURecoveryError(
+            f"GPU recovery exhausted after {max_recovery_attempts} attempts"
+        )
+
+    async def _ocr_cpu_fallback(
+        self,
+        document_id: str,
+        file_path: str,
+        classification: Dict[str, Any],
+        original_error: str,
+        is_oom: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Fall back to CPU-based Surya OCR.
+
+        Args:
+            document_id: Document ID
+            file_path: Path to document
+            classification: Document classification
+            original_error: Original error message
+            is_oom: Whether the failure was due to OOM
+
+        Returns:
+            OCR result from CPU backend
+        """
+        self.logger.warning(
+            "ocr_fallback_to_cpu",
+            document_id=document_id,
+            reason=original_error,
+            is_oom=is_oom,
+        )
+
+        try:
+            fallback_agent = await self._get_ocr_agent("surya")
+            fallback_result = await fallback_agent.process({
+                "document_id": document_id,
+                "image_path": file_path,
+                "language": classification.get("language", "de"),
+            })
+
+            return {
+                "text": fallback_result.get("text", ""),
+                "confidence": fallback_result.get("confidence", 0.0),
+                "backend": "surya_fallback",
+                "entities": fallback_result.get("entities", []),
+                "layout": fallback_result.get("layout", {}),
+                "fallback_reason": original_error,
+                "fallback_type": "oom_recovery" if is_oom else "error_recovery",
+            }
+
+        except Exception as fallback_error:
+            self.logger.error(
+                "ocr_cpu_fallback_failed",
+                document_id=document_id,
+                error=str(fallback_error),
+            )
+            raise
 
     async def _get_ocr_agent(self, backend: str):
         """
@@ -1340,3 +1818,138 @@ Metadaten:
                 exc_info=True,
             )
             raise
+
+    async def get_health_status(self) -> Dict[str, Any]:
+        """
+        Get comprehensive health status of the orchestrator and all components.
+
+        Returns status of:
+        - Error recovery components (circuit breakers, retry strategy, GPU recovery)
+        - Agent availability
+        - External service health (Redis, PostgreSQL, MinIO)
+
+        Returns:
+            Health status dictionary
+        """
+        health = {
+            "orchestrator": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error_recovery": {},
+            "agents": {},
+            "external_services": {},
+        }
+
+        # Check circuit breakers
+        if self._circuit_breaker_manager:
+            circuit_status = {}
+            for name in ["redis", "postgresql", "minio"]:
+                try:
+                    circuit = self._circuit_breaker_manager.get_circuit(name)
+                    if circuit:
+                        circuit_status[name] = {
+                            "state": circuit.state.value if hasattr(circuit.state, 'value') else str(circuit.state),
+                            "failure_count": circuit.failure_count,
+                            "last_failure": circuit.last_failure_time.isoformat() if circuit.last_failure_time else None,
+                        }
+                except Exception:
+                    circuit_status[name] = {"state": "unknown"}
+            health["error_recovery"]["circuit_breakers"] = circuit_status
+        else:
+            health["error_recovery"]["circuit_breakers"] = "not_initialized"
+
+        # Check retry strategy
+        if self._retry_strategy:
+            health["error_recovery"]["retry_strategy"] = {
+                "enabled": True,
+                "phases_configured": list(self._retry_strategy.configs.keys()) if hasattr(self._retry_strategy, 'configs') else [],
+            }
+        else:
+            health["error_recovery"]["retry_strategy"] = {"enabled": False}
+
+        # Check GPU recovery
+        if self._gpu_recovery_manager:
+            try:
+                gpu_status = await self._gpu_recovery_manager.get_status()
+                health["error_recovery"]["gpu_recovery"] = {
+                    "enabled": True,
+                    "gpu_available": gpu_status.get("gpu_available", False),
+                    "vram_used_percent": gpu_status.get("vram_used_percent", 0),
+                    "recovery_attempts": gpu_status.get("total_recovery_attempts", 0),
+                }
+            except Exception as e:
+                health["error_recovery"]["gpu_recovery"] = {
+                    "enabled": True,
+                    "status": "error",
+                    "error": str(e),
+                }
+        else:
+            health["error_recovery"]["gpu_recovery"] = {"enabled": False}
+
+        # Check partial result handler
+        if self._partial_result_handler:
+            health["error_recovery"]["partial_results"] = {
+                "enabled": True,
+            }
+        else:
+            health["error_recovery"]["partial_results"] = {"enabled": False}
+
+        # Check agent availability
+        health["agents"] = {
+            "classification": self._classification_agent is not None,
+            "preprocessing": self._preprocessing_agents is not None,
+            "page_segmentation": self._page_segmentation_agent is not None,
+            "postprocessing": self._postprocessing_agents is not None,
+            "qa": self._qa_agent is not None,
+        }
+
+        # Check external services
+        try:
+            redis = await get_redis()
+            health["external_services"]["redis"] = {
+                "status": "healthy" if redis else "unavailable",
+            }
+        except Exception as e:
+            health["external_services"]["redis"] = {
+                "status": "error",
+                "error": str(e),
+            }
+
+        return health
+
+    async def get_circuit_breaker_stats(self) -> Dict[str, Any]:
+        """Get detailed circuit breaker statistics."""
+        if not self._circuit_breaker_manager:
+            return {"error": "Circuit breaker manager not initialized"}
+
+        return await self._circuit_breaker_manager.get_all_stats()
+
+    async def reset_circuit_breaker(self, circuit_name: str) -> bool:
+        """
+        Manually reset a circuit breaker.
+
+        Args:
+            circuit_name: Name of the circuit to reset
+
+        Returns:
+            True if reset was successful
+        """
+        if not self._circuit_breaker_manager:
+            return False
+
+        try:
+            circuit = self._circuit_breaker_manager.get_circuit(circuit_name)
+            if circuit:
+                await circuit.reset()
+                self.logger.info(
+                    "circuit_breaker_reset",
+                    circuit=circuit_name,
+                )
+                return True
+        except Exception as e:
+            self.logger.error(
+                "circuit_breaker_reset_failed",
+                circuit=circuit_name,
+                error=str(e),
+            )
+
+        return False
