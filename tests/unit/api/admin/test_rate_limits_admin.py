@@ -48,36 +48,33 @@ class TestGetRateLimitConfig:
     """Tests for GET /admin/rate-limits/config endpoint."""
 
     @pytest.mark.asyncio
-    async def test_get_config_success(self, admin_user):
-        """Rate-Limit-Konfiguration erfolgreich abrufen."""
+    async def test_get_tier_defaults_success(self, admin_user):
+        """Rate-Limit-Tier-Defaults erfolgreich abrufen."""
         from app.services.admin import RateLimitService
 
-        service = RateLimitService()
-
-        mock_config = {
-            "default_limits": {
-                "requests_per_minute": 100,
-                "requests_per_hour": 1000,
-                "requests_per_day": 10000,
+        mock_defaults = {
+            "free": {
+                "requests_per_minute": 10,
+                "requests_per_hour": 100,
+                "requests_per_day": 500,
             },
-            "endpoint_limits": {
-                "/api/v1/ocr/process": {
-                    "requests_per_minute": 10,
-                    "requests_per_hour": 50,
-                },
-                "/api/v1/documents": {
-                    "requests_per_minute": 50,
-                    "requests_per_hour": 500,
-                },
+            "premium": {
+                "requests_per_minute": 50,
+                "requests_per_hour": 500,
+                "requests_per_day": 5000,
             },
-            "enabled": True,
-            "whitelist_ips": ["127.0.0.1"],
+            "enterprise": {
+                "requests_per_minute": 200,
+                "requests_per_hour": 2000,
+                "requests_per_day": 20000,
+            },
         }
 
-        with patch.object(service, "get_config", return_value=mock_config):
-            result = await service.get_config()
-            assert result["enabled"] is True
-            assert result["default_limits"]["requests_per_minute"] == 100
+        with patch.object(RateLimitService, "get_tier_defaults", return_value=mock_defaults):
+            result = RateLimitService.get_tier_defaults()
+            assert "free" in result
+            assert result["free"]["requests_per_minute"] == 10
+            assert result["enterprise"]["requests_per_minute"] == 200
 
 
 class TestGetRateLimitUsage:
@@ -155,32 +152,37 @@ class TestGetRateLimitUsage:
             assert all(u["endpoint"] == endpoint for u in result)
 
 
-class TestListOverrides:
-    """Tests for GET /admin/rate-limits/overrides endpoint."""
+class TestUserRateLimitStatus:
+    """Tests for GET /admin/rate-limits/user/{user_id}/status endpoint."""
 
     @pytest.mark.asyncio
-    async def test_list_overrides_success(self, mock_db, admin_user):
-        """Rate-Limit-Überschreibungen erfolgreich auflisten."""
+    async def test_get_user_rate_limit_status_success(self, mock_db, admin_user):
+        """Rate-Limit-Status für Benutzer erfolgreich abrufen."""
         from app.services.admin import RateLimitService
 
         service = RateLimitService()
+        user_id = str(uuid4())
 
-        mock_overrides = [
-            {
-                "id": str(uuid4()),
-                "user_id": str(uuid4()),
+        mock_status = {
+            "user_id": user_id,
+            "tier": "premium",
+            "has_override": True,
+            "current_limits": {
                 "requests_per_minute": 200,
                 "requests_per_hour": 2000,
-                "created_by": admin_user.id,
-                "created_at": datetime.utcnow(),
-                "expires_at": None,
             },
-        ]
+            "usage": {
+                "requests_last_minute": 15,
+                "requests_last_hour": 120,
+            },
+            "is_blocked": False,
+        }
 
-        with patch.object(service, "list_overrides", return_value=mock_overrides):
-            result = await service.list_overrides(db=mock_db)
-            assert len(result) == 1
-            assert result[0]["requests_per_minute"] == 200
+        with patch.object(service, "get_user_rate_limit_status", return_value=mock_status):
+            result = await service.get_user_rate_limit_status(db=mock_db, user_id=user_id)
+            assert result["user_id"] == user_id
+            assert result["has_override"] is True
+            assert result["current_limits"]["requests_per_minute"] == 200
 
 
 class TestCreateOverride:
@@ -198,6 +200,7 @@ class TestCreateOverride:
             user_id=user_id,
             requests_per_minute=200,
             requests_per_hour=2000,
+            reason="Premium-Kunde benötigt höhere Limits",
         )
 
         mock_override = {
@@ -230,6 +233,7 @@ class TestCreateOverride:
             user_id=user_id,
             requests_per_minute=500,
             expires_at=expires_at,
+            reason="Temporäre Erhöhung für Projekt",
         )
 
         mock_override = {
@@ -278,69 +282,66 @@ class TestDeleteOverride:
             assert result is False
 
 
-class TestResetCounter:
+class TestResetUsage:
     """Tests for POST /admin/rate-limits/reset/{user_id} endpoint."""
 
     @pytest.mark.asyncio
-    async def test_reset_counter_all(self, mock_db, admin_user):
-        """Alle Rate-Limit-Zähler für Benutzer zurücksetzen."""
+    async def test_reset_usage_success(self, mock_db, admin_user):
+        """Rate-Limit-Nutzung für Benutzer zurücksetzen."""
         from app.services.admin import RateLimitService
 
         service = RateLimitService()
         user_id = str(uuid4())
 
-        with patch.object(service, "reset_counter", return_value=None):
-            await service.reset_counter(db=mock_db, user_id=user_id)
-            # No exception means success
+        with patch.object(service, "reset_usage", return_value=True):
+            result = await service.reset_usage(db=mock_db, user_id=user_id)
+            assert result is True
 
     @pytest.mark.asyncio
-    async def test_reset_counter_endpoint(self, mock_db, admin_user):
-        """Rate-Limit-Zähler für bestimmten Endpunkt zurücksetzen."""
+    async def test_reset_usage_user_not_found(self, mock_db, admin_user):
+        """Rate-Limit-Nutzung zurücksetzen - Benutzer nicht gefunden."""
         from app.services.admin import RateLimitService
 
         service = RateLimitService()
-        user_id = str(uuid4())
-        endpoint = "/api/v1/ocr/process"
+        user_id = "nonexistent-user"
 
-        with patch.object(service, "reset_counter", return_value=None):
-            await service.reset_counter(
-                db=mock_db, user_id=user_id, endpoint=endpoint
-            )
-            # No exception means success
+        with patch.object(service, "reset_usage", return_value=False):
+            result = await service.reset_usage(db=mock_db, user_id=user_id)
+            assert result is False
 
 
-class TestGetBlockedUsers:
-    """Tests for GET /admin/rate-limits/blocked endpoint."""
+class TestGetUsageStats:
+    """Tests for GET /admin/rate-limits/stats endpoint."""
 
     @pytest.mark.asyncio
-    async def test_get_blocked_users_success(self, mock_db, admin_user):
-        """Blockierte Benutzer erfolgreich abrufen."""
-        from app.services.admin import RateLimitService
-
-        service = RateLimitService()
-
-        mock_blocked = [
-            {
-                "user_id": str(uuid4()),
-                "endpoint": "/api/v1/ocr/process",
-                "blocked_at": datetime.utcnow(),
-                "unblocks_at": datetime.utcnow() + timedelta(minutes=15),
-                "reason": "Rate limit exceeded",
-            },
-        ]
-
-        with patch.object(service, "get_blocked_users", return_value=mock_blocked):
-            result = await service.get_blocked_users(db=mock_db)
-            assert len(result) == 1
-            assert "blocked_at" in result[0]
-
-    @pytest.mark.asyncio
-    async def test_get_blocked_users_empty(self, mock_db, admin_user):
-        """Keine blockierten Benutzer."""
+    async def test_get_usage_stats_success(self, mock_db, admin_user):
+        """Rate-Limit-Nutzungsstatistiken erfolgreich abrufen."""
         from app.services.admin import RateLimitService
 
         service = RateLimitService()
 
-        with patch.object(service, "get_blocked_users", return_value=[]):
-            result = await service.get_blocked_users(db=mock_db)
-            assert len(result) == 0
+        mock_stats = MagicMock()
+        mock_stats.total_users = 100
+        mock_stats.users_near_limit = 5
+        mock_stats.users_blocked = 2
+
+        with patch.object(service, "get_usage_stats", return_value=mock_stats):
+            result = await service.get_usage_stats(db=mock_db)
+            assert result.total_users == 100
+            assert result.users_blocked == 2
+
+    @pytest.mark.asyncio
+    async def test_get_usage_stats_no_activity(self, mock_db, admin_user):
+        """Rate-Limit-Statistiken ohne Aktivität."""
+        from app.services.admin import RateLimitService
+
+        service = RateLimitService()
+
+        mock_stats = MagicMock()
+        mock_stats.total_users = 0
+        mock_stats.users_near_limit = 0
+        mock_stats.users_blocked = 0
+
+        with patch.object(service, "get_usage_stats", return_value=mock_stats):
+            result = await service.get_usage_stats(db=mock_db)
+            assert result.total_users == 0

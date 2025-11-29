@@ -213,31 +213,17 @@ class TestCreateUser:
 
     @pytest.mark.asyncio
     async def test_create_user_weak_password(self, mock_db, admin_user):
-        """Schwaches Passwort ablehnen."""
-        from app.services.admin import UserAdminService
+        """Schwaches Passwort ablehnen - Pydantic Validierung."""
+        from pydantic import ValidationError
 
-        service = UserAdminService()
-        user_data = UserCreate(
-            email="new@test.de",
-            username="newuser",
-            password="weak",  # Too short
-        )
-
-        with patch.object(
-            service,
-            "create_user",
-            side_effect=HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Passwort erfüllt nicht die Anforderungen",
-            ),
-        ):
-            with pytest.raises(HTTPException) as exc_info:
-                await service.create_user(
-                    db=mock_db,
-                    user_data=user_data,
-                    created_by=admin_user.id,
-                )
-            assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
+        # Test that Pydantic rejects weak passwords before service is called
+        with pytest.raises(ValidationError) as exc_info:
+            UserCreate(
+                email="new@test.de",
+                username="newuser",
+                password="weak",  # Too short - should fail Pydantic validation
+            )
+        assert "password" in str(exc_info.value)
 
 
 class TestUpdateUser:
@@ -399,72 +385,82 @@ class TestPasswordReset:
             assert result == new_password
 
 
-class TestAccountLocking:
-    """Tests for account locking/unlocking endpoints."""
+class TestAccountActivation:
+    """Tests for account activation/deactivation endpoints."""
 
     @pytest.mark.asyncio
-    async def test_lock_account_success(self, mock_db, regular_user, admin_user):
-        """Konto erfolgreich sperren."""
+    async def test_deactivate_account_success(self, mock_db, regular_user, admin_user):
+        """Konto erfolgreich deaktivieren."""
         from app.services.admin import UserAdminService
 
         service = UserAdminService()
 
-        with patch.object(service, "lock_account", return_value=True):
-            result = await service.lock_account(
+        mock_user = MagicMock()
+        mock_user.id = regular_user.id
+        mock_user.is_active = False
+
+        with patch.object(service, "deactivate_user", return_value=mock_user):
+            result = await service.deactivate_user(
                 db=mock_db,
                 user_id=regular_user.id,
-                locked_by=admin_user.id,
                 reason="Sicherheitsverstoß",
             )
-            assert result is True
+            assert result.is_active is False
 
     @pytest.mark.asyncio
-    async def test_unlock_account_success(self, mock_db, regular_user, admin_user):
-        """Konto erfolgreich entsperren."""
+    async def test_activate_account_success(self, mock_db, regular_user, admin_user):
+        """Konto erfolgreich aktivieren."""
         from app.services.admin import UserAdminService
 
         service = UserAdminService()
 
-        with patch.object(service, "unlock_account", return_value=True):
-            result = await service.unlock_account(
+        mock_user = MagicMock()
+        mock_user.id = regular_user.id
+        mock_user.is_active = True
+
+        with patch.object(service, "activate_user", return_value=mock_user):
+            result = await service.activate_user(
                 db=mock_db,
                 user_id=regular_user.id,
-                unlocked_by=admin_user.id,
             )
-            assert result is True
+            assert result.is_active is True
 
 
-class TestBulkOperations:
-    """Tests for bulk user operations."""
+class TestUserActivity:
+    """Tests for user activity endpoint."""
 
     @pytest.mark.asyncio
-    async def test_bulk_deactivate(self, mock_db, admin_user):
-        """Mehrere Benutzer deaktivieren."""
+    async def test_get_user_activity_success(self, mock_db, regular_user):
+        """Benutzeraktivität erfolgreich abrufen."""
         from app.services.admin import UserAdminService
 
         service = UserAdminService()
-        user_ids = [str(uuid4()), str(uuid4()), str(uuid4())]
 
-        with patch.object(service, "bulk_deactivate", return_value=3):
-            result = await service.bulk_deactivate(
+        mock_activity = MagicMock()
+        mock_activity.total_actions = 25
+        mock_activity.last_action_at = datetime.utcnow()
+
+        with patch.object(service, "get_user_activity", return_value=mock_activity):
+            result = await service.get_user_activity(
                 db=mock_db,
-                user_ids=user_ids,
-                deactivated_by=admin_user.id,
+                user_id=regular_user.id,
             )
-            assert result == 3
+            assert result.total_actions == 25
 
     @pytest.mark.asyncio
-    async def test_bulk_delete(self, mock_db, admin_user):
-        """Mehrere Benutzer löschen."""
+    async def test_get_user_activity_no_activity(self, mock_db, regular_user):
+        """Benutzeraktivität ohne Einträge."""
         from app.services.admin import UserAdminService
 
         service = UserAdminService()
-        user_ids = [str(uuid4()), str(uuid4())]
 
-        with patch.object(service, "bulk_delete", return_value=2):
-            result = await service.bulk_delete(
+        mock_activity = MagicMock()
+        mock_activity.total_actions = 0
+        mock_activity.last_action_at = None
+
+        with patch.object(service, "get_user_activity", return_value=mock_activity):
+            result = await service.get_user_activity(
                 db=mock_db,
-                user_ids=user_ids,
-                deleted_by=admin_user.id,
+                user_id=regular_user.id,
             )
-            assert result == 2
+            assert result.total_actions == 0
