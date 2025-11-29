@@ -3,6 +3,8 @@ Authentication and security utilities for Ablage-System.
 
 Handles JWT token generation/validation, password hashing, and token blacklisting.
 All error messages in German for user-facing responses.
+
+Token-Blacklist: Redis-basiert mit In-Memory-Fallback für Skalierbarkeit.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -12,16 +14,189 @@ import secrets
 import bcrypt
 from jose import JWTError, jwt
 from fastapi import HTTPException, status
+import structlog
 
 from app.core.config import settings
 
 
+logger = structlog.get_logger(__name__)
+
 # Bcrypt cost factor (12 is a good security/performance balance)
 BCRYPT_COST_FACTOR = 12
 
-# Token blacklist (in-memory for now - use Redis in production)
+# Redis key prefix for token blacklist
+TOKEN_BLACKLIST_PREFIX = "token:blacklist:"
+
+# In-Memory Fallback Blacklist (used when Redis is unavailable)
 # Format: {token_jti: expiration_timestamp}
-_token_blacklist: Dict[str, datetime] = {}
+_token_blacklist_fallback: Dict[str, datetime] = {}
+
+# Redis client instance (lazy-loaded)
+_redis_client: Optional[Any] = None
+_redis_available: Optional[bool] = None
+
+
+# ==================== Redis Token Blacklist ====================
+
+async def _get_redis_client() -> Optional[Any]:
+    """
+    Get Redis client for token blacklist operations.
+
+    Uses lazy loading and caches availability status.
+
+    Returns:
+        Redis client or None if unavailable
+    """
+    global _redis_client, _redis_available
+
+    # Return cached result if already checked
+    if _redis_available is False:
+        return None
+
+    if _redis_client is not None:
+        return _redis_client
+
+    try:
+        from app.core.redis_state import RedisStateManager
+        manager = RedisStateManager.get_instance()
+        await manager.connect()
+
+        # Test connection
+        if await manager.ping():
+            _redis_client = manager._redis
+            _redis_available = True
+            logger.info("token_blacklist_redis_connected")
+            return _redis_client
+        else:
+            _redis_available = False
+            logger.warning("token_blacklist_redis_ping_failed",
+                          message="Fallback auf In-Memory-Blacklist")
+            return None
+
+    except Exception as e:
+        _redis_available = False
+        logger.warning("token_blacklist_redis_unavailable",
+                      error=str(e),
+                      message="Fallback auf In-Memory-Blacklist")
+        return None
+
+
+async def blacklist_token_redis(jti: str, expires_at: datetime) -> bool:
+    """
+    Add token to Redis blacklist with TTL.
+
+    Args:
+        jti: Token JTI (unique identifier)
+        expires_at: Token expiration time (used for TTL)
+
+    Returns:
+        True if stored in Redis, False if fallback used
+    """
+    redis = await _get_redis_client()
+
+    if redis is not None:
+        try:
+            key = f"{TOKEN_BLACKLIST_PREFIX}{jti}"
+            # Calculate TTL from expiration
+            ttl_seconds = int((expires_at - datetime.now(timezone.utc)).total_seconds())
+
+            if ttl_seconds > 0:
+                await redis.setex(key, ttl_seconds, expires_at.isoformat())
+                logger.debug("token_blacklisted_redis", jti=jti[:8] + "...")
+                return True
+        except Exception as e:
+            logger.warning("token_blacklist_redis_error", error=str(e))
+
+    # Fallback to in-memory
+    _token_blacklist_fallback[jti] = expires_at
+    _cleanup_fallback_blacklist()
+    logger.debug("token_blacklisted_fallback", jti=jti[:8] + "...")
+    return False
+
+
+async def is_token_blacklisted_redis(jti: str) -> bool:
+    """
+    Check if token is blacklisted (Redis + fallback).
+
+    Args:
+        jti: Token JTI to check
+
+    Returns:
+        True if token is blacklisted
+    """
+    redis = await _get_redis_client()
+
+    if redis is not None:
+        try:
+            key = f"{TOKEN_BLACKLIST_PREFIX}{jti}"
+            exists = await redis.exists(key)
+            if exists:
+                return True
+        except Exception as e:
+            logger.warning("token_blacklist_check_redis_error", error=str(e))
+
+    # Also check in-memory fallback (for tokens blacklisted during Redis outage)
+    if jti in _token_blacklist_fallback:
+        expiration = _token_blacklist_fallback[jti]
+        if datetime.now(timezone.utc) < expiration:
+            return True
+        else:
+            # Expired, remove from fallback
+            del _token_blacklist_fallback[jti]
+
+    return False
+
+
+async def get_blacklist_stats() -> Dict[str, Any]:
+    """
+    Get token blacklist statistics for monitoring.
+
+    Returns:
+        Dictionary with blacklist statistics
+    """
+    redis = await _get_redis_client()
+
+    stats = {
+        "redis_available": redis is not None,
+        "fallback_count": len(_token_blacklist_fallback),
+        "storage_type": "redis" if redis else "in-memory"
+    }
+
+    if redis is not None:
+        try:
+            # Count Redis blacklist entries
+            cursor = 0
+            count = 0
+            while True:
+                cursor, keys = await redis.scan(
+                    cursor,
+                    match=f"{TOKEN_BLACKLIST_PREFIX}*",
+                    count=100
+                )
+                count += len(keys)
+                if cursor == 0:
+                    break
+            stats["redis_count"] = count
+        except Exception as e:
+            stats["redis_error"] = str(e)
+
+    return stats
+
+
+def _cleanup_fallback_blacklist() -> int:
+    """
+    Remove expired tokens from fallback blacklist.
+
+    Returns:
+        Number of tokens removed
+    """
+    now = datetime.now(timezone.utc)
+    expired = [jti for jti, exp in _token_blacklist_fallback.items() if now >= exp]
+
+    for jti in expired:
+        del _token_blacklist_fallback[jti]
+
+    return len(expired)
 
 
 # ==================== Password Hashing ====================
@@ -142,9 +317,9 @@ def create_refresh_token(
 
 # ==================== JWT Token Validation ====================
 
-def decode_token(token: str) -> Dict[str, Any]:
+async def decode_token(token: str) -> Dict[str, Any]:
     """
-    Decode and validate a JWT token.
+    Decode and validate a JWT token (async, Redis-backed blacklist).
 
     Args:
         token: JWT token string
@@ -162,9 +337,9 @@ def decode_token(token: str) -> Dict[str, Any]:
             algorithms=[settings.ALGORITHM]
         )
 
-        # Check if token is blacklisted
+        # Check if token is blacklisted (async Redis check)
         jti = payload.get("jti")
-        if jti and is_token_blacklisted(jti):
+        if jti and await is_token_blacklisted(jti):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token wurde widerrufen",  # German: "Token was revoked"
@@ -178,6 +353,47 @@ def decode_token(token: str) -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token ungültig oder abgelaufen",  # German: "Token invalid or expired"
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+def decode_token_sync(token: str) -> Dict[str, Any]:
+    """
+    Synchronous token decode (only checks in-memory blacklist).
+
+    DEPRECATED: Use async decode_token() for full Redis blacklist support.
+
+    Args:
+        token: JWT token string
+
+    Returns:
+        Decoded token payload
+
+    Raises:
+        HTTPException: If token is invalid, expired, or blacklisted
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM]
+        )
+
+        # Check fallback blacklist only (sync)
+        jti = payload.get("jti")
+        if jti and is_token_blacklisted_sync(jti):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token wurde widerrufen",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        return payload
+
+    except JWTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token ungültig oder abgelaufen",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -204,26 +420,23 @@ def verify_token_type(payload: Dict[str, Any], expected_type: str) -> None:
 
 # ==================== Token Blacklisting ====================
 
-def blacklist_token(jti: str, expires_at: datetime) -> None:
+async def blacklist_token(jti: str, expires_at: datetime) -> None:
     """
-    Add a token to the blacklist.
+    Add a token to the blacklist (Redis with In-Memory fallback).
 
-    In production, this should use Redis with expiration.
-    For now, using in-memory dictionary.
+    Uses Redis for persistence and scalability across multiple instances.
+    Falls back to in-memory storage if Redis is unavailable.
 
     Args:
         jti: Token JTI (unique identifier)
         expires_at: Token expiration time
     """
-    _token_blacklist[jti] = expires_at
-
-    # Clean up expired tokens from blacklist (memory optimization)
-    _cleanup_blacklist()
+    await blacklist_token_redis(jti, expires_at)
 
 
-def is_token_blacklisted(jti: str) -> bool:
+async def is_token_blacklisted(jti: str) -> bool:
     """
-    Check if a token is blacklisted.
+    Check if a token is blacklisted (Redis + fallback).
 
     Args:
         jti: Token JTI to check
@@ -231,32 +444,49 @@ def is_token_blacklisted(jti: str) -> bool:
     Returns:
         True if token is blacklisted, False otherwise
     """
-    if jti not in _token_blacklist:
+    return await is_token_blacklisted_redis(jti)
+
+
+# Legacy sync versions for backward compatibility
+def blacklist_token_sync(jti: str, expires_at: datetime) -> None:
+    """
+    Synchronous version of blacklist_token (In-Memory only).
+
+    DEPRECATED: Use async blacklist_token() instead.
+    Only for backward compatibility with sync code paths.
+
+    Args:
+        jti: Token JTI (unique identifier)
+        expires_at: Token expiration time
+    """
+    _token_blacklist_fallback[jti] = expires_at
+    _cleanup_fallback_blacklist()
+    logger.warning("blacklist_token_sync_deprecated",
+                  message="Verwende async blacklist_token() für Redis-Unterstützung")
+
+
+def is_token_blacklisted_sync(jti: str) -> bool:
+    """
+    Synchronous version of is_token_blacklisted (In-Memory only).
+
+    DEPRECATED: Use async is_token_blacklisted() instead.
+    Only checks in-memory fallback, not Redis.
+
+    Args:
+        jti: Token JTI to check
+
+    Returns:
+        True if token is blacklisted in fallback storage
+    """
+    if jti not in _token_blacklist_fallback:
         return False
 
-    # Check if blacklist entry has expired
-    expiration = _token_blacklist[jti]
+    expiration = _token_blacklist_fallback[jti]
     if datetime.now(timezone.utc) >= expiration:
-        # Token expired, remove from blacklist
-        del _token_blacklist[jti]
+        del _token_blacklist_fallback[jti]
         return False
 
     return True
-
-
-def _cleanup_blacklist() -> None:
-    """
-    Remove expired tokens from blacklist.
-    Internal cleanup function to prevent memory growth.
-    """
-    now = datetime.now(timezone.utc)
-    expired_tokens = [
-        jti for jti, exp in _token_blacklist.items()
-        if now >= exp
-    ]
-
-    for jti in expired_tokens:
-        del _token_blacklist[jti]
 
 
 # ==================== Token Utilities ====================
@@ -281,9 +511,9 @@ def create_token_pair(user_data: Dict[str, Any]) -> Dict[str, str]:
     }
 
 
-def extract_user_id_from_token(token: str) -> str:
+async def extract_user_id_from_token(token: str) -> str:
     """
-    Extract user ID from JWT token.
+    Extract user ID from JWT token (async).
 
     Args:
         token: JWT token string
@@ -294,13 +524,32 @@ def extract_user_id_from_token(token: str) -> str:
     Raises:
         HTTPException: If token is invalid or user_id not in payload
     """
-    payload = decode_token(token)
+    payload = await decode_token(token)
     user_id = payload.get("sub")
 
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Ungültiges Token-Format",  # German: "Invalid token format"
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user_id
+
+
+def extract_user_id_from_token_sync(token: str) -> str:
+    """
+    Synchronous version - DEPRECATED.
+
+    Use async extract_user_id_from_token() for Redis blacklist support.
+    """
+    payload = decode_token_sync(token)
+    user_id = payload.get("sub")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Ungültiges Token-Format",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

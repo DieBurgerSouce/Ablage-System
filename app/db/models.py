@@ -93,6 +93,13 @@ class DocumentType(str, Enum):
     OTHER = "other"
 
 
+class UserTier(str, Enum):
+    """User subscription tier for rate limiting."""
+    FREE = "free"
+    PREMIUM = "premium"
+    ADMIN = "admin"
+
+
 class Document(Base):
     """Document model for storing uploaded documents."""
     __tablename__ = "documents"
@@ -180,6 +187,18 @@ class User(Base):
     daily_quota = Column(Integer, default=100)
     documents_processed_today = Column(Integer, default=0)
 
+    # Admin Console: Tier and Rate Limit Management
+    tier = Column(String(20), default=UserTier.FREE)
+    rate_limit_hourly = Column(Integer, nullable=True)  # Custom override
+    rate_limit_daily = Column(Integer, nullable=True)   # Custom override
+
+    # Admin Console: User Management
+    last_activity_at = Column(DateTime(timezone=True))
+    password_reset_required = Column(Boolean, default=False)
+    deactivated_at = Column(DateTime(timezone=True))
+    deactivated_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    notes = Column(Text)  # Admin notes about user
+
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -189,6 +208,7 @@ class User(Base):
     documents = relationship("Document", back_populates="owner")
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user")
+    deactivated_by = relationship("User", remote_side="User.id", foreign_keys=[deactivated_by_id])
 
 
 class ProcessingJob(Base):
@@ -484,4 +504,82 @@ class SearchAnalytics(Base):
         Index("ix_search_analytics_user_id", "user_id"),
         Index("ix_search_analytics_search_type", "search_type"),
         Index("ix_search_analytics_query_pattern", "query", postgresql_ops={"query": "varchar_pattern_ops"}),
+    )
+
+
+# ============================================================================
+# Admin Console Models
+# ============================================================================
+
+class AdminAction(Base):
+    """Track administrative actions for audit trail.
+
+    Records all admin operations for compliance and accountability.
+    Examples: user creation, role changes, password resets, deactivations.
+    """
+    __tablename__ = "admin_actions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    admin_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    target_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+
+    # Action details
+    action = Column(String(100), nullable=False)  # create_user, update_user, reset_password, etc.
+    action_details = Column(CrossDBJSON, default={})  # Specific changes made
+
+    # Request context
+    ip_address = Column(String(45))
+    user_agent = Column(String(255))
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    admin = relationship("User", foreign_keys=[admin_id], backref="admin_actions_performed")
+    target_user = relationship("User", foreign_keys=[target_user_id], backref="admin_actions_received")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_admin_actions_admin_id", "admin_id"),
+        Index("ix_admin_actions_target_user_id", "target_user_id"),
+        Index("ix_admin_actions_created_at", "created_at"),
+        Index("ix_admin_actions_action", "action"),
+    )
+
+
+class RateLimitOverride(Base):
+    """Custom rate limit overrides per user.
+
+    Allows admins to set custom rate limits that override tier defaults.
+    Can be time-limited (valid_until) or permanent.
+    """
+    __tablename__ = "rate_limit_overrides"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+
+    # Rate limit values (null = use tier default)
+    ocr_hourly = Column(Integer, nullable=True)
+    ocr_daily = Column(Integer, nullable=True)
+    batch_hourly = Column(Integer, nullable=True)
+    api_per_minute = Column(Integer, nullable=True)
+
+    # Validity period
+    valid_from = Column(DateTime(timezone=True), server_default=func.now())
+    valid_until = Column(DateTime(timezone=True), nullable=True)  # null = permanent
+
+    # Audit trail
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    reason = Column(String(500))  # Why was this override created?
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id], backref="rate_limit_override")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_rate_limit_overrides_user_id", "user_id"),
+        Index("ix_rate_limit_overrides_valid_until", "valid_until"),
     )

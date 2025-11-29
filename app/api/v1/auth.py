@@ -154,8 +154,8 @@ async def refresh_token(
     ```
     """
     try:
-        # Decode and validate refresh token
-        payload = decode_token(refresh_data.refresh_token)
+        # Decode and validate refresh token (async for Redis blacklist check)
+        payload = await decode_token(refresh_data.refresh_token)
         verify_token_type(payload, "refresh")
 
         # Extract user ID
@@ -227,17 +227,18 @@ async def logout(
 
     **Hinweis:** Nach dem Logout müssen sich Clients erneut anmelden.
     """
-    # Blacklist refresh token if provided
+    # Blacklist refresh token if provided (async Redis-backed)
     if logout_data.refresh_token:
         try:
-            payload = decode_token(logout_data.refresh_token)
+            payload = await decode_token(logout_data.refresh_token)
             jti = payload.get("jti")
             exp = payload.get("exp")
 
             if jti and exp:
-                # Convert exp timestamp to datetime
-                exp_datetime = datetime.fromtimestamp(exp)
-                blacklist_token(jti, exp_datetime)
+                # Convert exp timestamp to datetime (with timezone)
+                from datetime import timezone as tz
+                exp_datetime = datetime.fromtimestamp(exp, tz=tz.utc)
+                await blacklist_token(jti, exp_datetime)
 
         except Exception:
             # Token already invalid, ignore

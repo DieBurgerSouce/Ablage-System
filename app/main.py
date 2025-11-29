@@ -124,6 +124,7 @@ app.state.limiter = limiter
 
 # Include API routers
 from app.api.v1 import auth, tasks, metrics, ml, versions, documents
+from app.api.v1.admin import router as admin_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -131,6 +132,7 @@ app.include_router(metrics.router, prefix="/api/v1")
 app.include_router(ml.router, prefix="/api/v1")
 app.include_router(versions.router, prefix="/api/v1")
 app.include_router(documents.router, prefix="/api/v1")
+app.include_router(admin_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================
@@ -162,6 +164,13 @@ async def root():
             "business_metrics": "/api/v1/metrics/business",
             "system_status": "/monitoring/system",
             "health_check": "/monitoring/health"
+        },
+        "admin": {
+            "users": "/api/v1/admin/users",
+            "system": "/api/v1/admin/system/dashboard",
+            "jobs": "/api/v1/admin/jobs",
+            "rate_limits": "/api/v1/admin/rate-limits",
+            "audit": "/api/v1/admin/audit/logs"
         }
     }
 

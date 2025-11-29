@@ -93,9 +93,9 @@ async def get_current_user(
     """
     token = credentials.credentials
 
-    # Decode and validate token
+    # Decode and validate token (async for Redis blacklist check)
     try:
-        payload = decode_token(token)
+        payload = await decode_token(token)
         verify_token_type(payload, "access")
     except HTTPException:
         raise
@@ -226,7 +226,7 @@ async def get_current_user_optional(
 
     try:
         token = credentials.credentials
-        payload = decode_token(token)
+        payload = await decode_token(token)
         verify_token_type(payload, "access")
 
         user_id_str = payload.get("sub")

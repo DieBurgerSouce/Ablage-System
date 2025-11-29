@@ -869,3 +869,511 @@ class DocumentListResponseExtended(BaseModel):
     has_prev: bool
     documents: List[DocumentSummary]
     filters_applied: Dict[str, Any] = {}
+
+
+# ============================================================================
+# ADMIN CONSOLE SCHEMAS
+# ============================================================================
+
+class UserTier(str, Enum):
+    """User subscription tier."""
+    FREE = "free"
+    PREMIUM = "premium"
+    ADMIN = "admin"
+
+
+class UserRole(str, Enum):
+    """User role options."""
+    USER = "user"
+    ADMIN = "admin"
+    SUPERUSER = "superuser"
+
+
+class UserStatus(str, Enum):
+    """User account status."""
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    DEACTIVATED = "deactivated"
+
+
+# ----- User Admin Schemas -----
+
+class UserAdminView(BaseModel):
+    """Detailed user view for admin console."""
+    id: uuid.UUID
+    email: str
+    username: str
+    full_name: Optional[str] = None
+    is_active: bool
+    is_superuser: bool
+    tier: str = "free"
+    daily_quota: int
+    documents_processed_today: int
+    rate_limit_hourly: Optional[int] = None
+    rate_limit_daily: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+    last_login: Optional[datetime] = None
+    last_activity_at: Optional[datetime] = None
+    password_reset_required: bool = False
+    deactivated_at: Optional[datetime] = None
+    notes: Optional[str] = None
+
+    # Computed fields
+    role: str = "user"  # Computed from is_superuser
+    status: str = "active"  # Computed from is_active + deactivated_at
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_orm_with_computed(cls, user) -> "UserAdminView":
+        """Create instance with computed fields."""
+        role = "superuser" if user.is_superuser else ("admin" if user.tier == "admin" else "user")
+        status = "deactivated" if user.deactivated_at else ("active" if user.is_active else "inactive")
+        return cls(
+            id=user.id,
+            email=user.email,
+            username=user.username,
+            full_name=user.full_name,
+            is_active=user.is_active,
+            is_superuser=user.is_superuser,
+            tier=user.tier or "free",
+            daily_quota=user.daily_quota,
+            documents_processed_today=user.documents_processed_today,
+            rate_limit_hourly=user.rate_limit_hourly,
+            rate_limit_daily=user.rate_limit_daily,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+            last_login=user.last_login,
+            last_activity_at=user.last_activity_at,
+            password_reset_required=user.password_reset_required or False,
+            deactivated_at=user.deactivated_at,
+            notes=user.notes,
+            role=role,
+            status=status,
+        )
+
+
+class UserListFilters(BaseModel):
+    """Filters for user listing."""
+    role: Optional[UserRole] = None
+    status: Optional[UserStatus] = None
+    tier: Optional[UserTier] = None
+    search: Optional[str] = Field(None, max_length=100, description="Suche nach E-Mail, Benutzername, Name")
+    created_from: Optional[datetime] = None
+    created_to: Optional[datetime] = None
+    last_login_from: Optional[datetime] = None
+    last_login_to: Optional[datetime] = None
+
+
+class UserListRequest(BaseModel):
+    """Request for user listing with filters and pagination."""
+    page: int = Field(1, ge=1)
+    per_page: int = Field(20, ge=1, le=100)
+    filters: Optional[UserListFilters] = None
+    sort_by: str = Field("created_at", pattern="^(created_at|email|username|last_login|tier)$")
+    sort_order: SortOrder = Field(SortOrder.DESC)
+
+
+class UserListResponse(BaseModel):
+    """Paginated user list response."""
+    users: List[UserAdminView]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+
+
+class UserAdminCreate(BaseModel):
+    """Admin user creation schema."""
+    email: EmailStr
+    username: str = Field(..., min_length=3, max_length=100)
+    password: str = Field(..., min_length=8)
+    full_name: Optional[str] = None
+    is_superuser: bool = False
+    tier: UserTier = UserTier.FREE
+    daily_quota: int = Field(100, ge=1)
+    notes: Optional[str] = Field(None, max_length=1000)
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v: str) -> str:
+        """Validate username format."""
+        if not v.replace("_", "").replace("-", "").isalnum():
+            raise ValueError("Benutzername darf nur Buchstaben, Zahlen, Unterstrich und Bindestrich enthalten")
+        return v.lower()
+
+
+class UserAdminUpdate(BaseModel):
+    """Admin user update schema."""
+    email: Optional[EmailStr] = None
+    username: Optional[str] = Field(None, min_length=3, max_length=100)
+    full_name: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_superuser: Optional[bool] = None
+    tier: Optional[UserTier] = None
+    daily_quota: Optional[int] = Field(None, ge=1)
+    notes: Optional[str] = Field(None, max_length=1000)
+
+
+class UserRoleChange(BaseModel):
+    """Schema for changing user role."""
+    is_superuser: bool
+
+
+class UserPasswordReset(BaseModel):
+    """Response for password reset."""
+    success: bool
+    temporary_password: str
+    message: str = "Passwort wurde zurueckgesetzt"
+
+
+class UserDeactivate(BaseModel):
+    """Request for user deactivation."""
+    reason: Optional[str] = Field(None, max_length=500)
+
+
+class UserActivityItem(BaseModel):
+    """Single user activity entry."""
+    id: uuid.UUID
+    action: str
+    resource_type: Optional[str] = None
+    resource_id: Optional[uuid.UUID] = None
+    ip_address: Optional[str] = None
+    created_at: datetime
+    details: Dict[str, Any] = {}
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserActivityResponse(BaseModel):
+    """User activity history response."""
+    user_id: uuid.UUID
+    activities: List[UserActivityItem]
+    total: int
+
+
+# ----- Rate Limit Schemas -----
+
+class RateLimitTierDefaults(BaseModel):
+    """Default rate limits per tier."""
+    tier: UserTier
+    ocr_hourly: int
+    ocr_daily: int
+    batch_hourly: int
+    api_per_minute: int
+
+
+class RateLimitOverrideCreate(BaseModel):
+    """Create rate limit override for a user."""
+    ocr_hourly: Optional[int] = Field(None, ge=1)
+    ocr_daily: Optional[int] = Field(None, ge=1)
+    batch_hourly: Optional[int] = Field(None, ge=1)
+    api_per_minute: Optional[int] = Field(None, ge=1)
+    valid_until: Optional[datetime] = None
+    reason: str = Field(..., min_length=1, max_length=500)
+
+
+class RateLimitOverrideResponse(BaseModel):
+    """Rate limit override response."""
+    id: uuid.UUID
+    user_id: uuid.UUID
+    ocr_hourly: Optional[int] = None
+    ocr_daily: Optional[int] = None
+    batch_hourly: Optional[int] = None
+    api_per_minute: Optional[int] = None
+    valid_from: datetime
+    valid_until: Optional[datetime] = None
+    created_by_id: Optional[uuid.UUID] = None
+    created_at: datetime
+    reason: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RateLimitStatus(BaseModel):
+    """Current rate limit status for a user."""
+    user_id: uuid.UUID
+    email: str
+    tier: str
+    effective_limits: Dict[str, int]
+    current_usage: Dict[str, int]
+    has_override: bool
+    override_valid_until: Optional[datetime] = None
+    override_reason: Optional[str] = None
+
+
+class RateLimitUsageStats(BaseModel):
+    """Aggregated rate limit usage statistics."""
+    total_users: int
+    users_at_limit: int
+    users_with_overrides: int
+    usage_by_tier: Dict[str, Dict[str, Any]]
+    top_users_by_usage: List[Dict[str, Any]]
+
+
+# ----- System Dashboard Schemas -----
+
+class GPUStatusAdmin(BaseModel):
+    """Extended GPU status for admin dashboard."""
+    available: bool
+    gpu_name: Optional[str] = None
+    total_gb: float = 0
+    free_gb: float = 0
+    allocated_gb: float = 0
+    utilization_percent: float = 0
+    temperature_celsius: Optional[float] = None
+    memory_usage_percent: float = 0
+    current_allocations: List[str] = []
+    recommendations: List[str] = []
+
+
+class QueueStatus(BaseModel):
+    """Job queue status."""
+    pending_jobs: int
+    processing_jobs: int
+    completed_today: int
+    failed_today: int
+    cancelled_today: int
+    avg_wait_time_seconds: float
+    avg_processing_time_seconds: float
+    queue_by_priority: Dict[int, int] = {}
+    queue_by_backend: Dict[str, int] = {}
+
+
+class BackendHealthStatus(BaseModel):
+    """Health status for a single backend service."""
+    name: str
+    status: str  # healthy, unhealthy, unknown
+    latency_ms: Optional[float] = None
+    message: Optional[str] = None
+    last_check: datetime
+
+
+class SystemHealthStatus(BaseModel):
+    """Overall system health status."""
+    postgresql: BackendHealthStatus
+    redis: BackendHealthStatus
+    minio: BackendHealthStatus
+    celery: BackendHealthStatus
+    overall: str  # healthy, degraded, unhealthy
+
+
+class ProcessingStats(BaseModel):
+    """Processing statistics for dashboard."""
+    documents_processed_today: int
+    documents_processed_hour: int
+    success_rate: float  # 0-100
+    avg_processing_time_ms: float
+    total_documents: int
+    total_pages_processed: int
+    by_backend: Dict[str, Dict[str, Any]] = {}
+    by_document_type: Dict[str, int] = {}
+    hourly_trend: List[Dict[str, Any]] = []  # Last 24 hours
+
+
+class SystemDashboard(BaseModel):
+    """Complete system dashboard data."""
+    gpu: GPUStatusAdmin
+    queue: QueueStatus
+    health: SystemHealthStatus
+    processing: ProcessingStats
+    timestamp: datetime
+
+
+# ----- Job Admin Schemas -----
+
+class JobAdminView(BaseModel):
+    """Job details for admin view."""
+    id: uuid.UUID
+    document_id: uuid.UUID
+    document_filename: Optional[str] = None
+    user_id: Optional[uuid.UUID] = None
+    user_email: Optional[str] = None
+    job_type: str
+    backend: Optional[str] = None
+    status: ProcessingStatus
+    priority: int
+    retry_count: int
+    max_retries: int
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+    worker_id: Optional[str] = None
+    result: Dict[str, Any] = {}
+
+    # Computed fields
+    duration_ms: Optional[int] = None
+    wait_time_ms: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class JobListFilters(BaseModel):
+    """Filters for job listing."""
+    status: Optional[ProcessingStatus] = None
+    backend: Optional[str] = None
+    user_id: Optional[uuid.UUID] = None
+    priority: Optional[int] = Field(None, ge=1, le=10)
+    created_from: Optional[datetime] = None
+    created_to: Optional[datetime] = None
+    has_error: Optional[bool] = None
+
+
+class JobListRequest(BaseModel):
+    """Request for job listing with filters."""
+    page: int = Field(1, ge=1)
+    per_page: int = Field(20, ge=1, le=100)
+    filters: Optional[JobListFilters] = None
+    sort_by: str = Field("created_at", pattern="^(created_at|started_at|priority|status)$")
+    sort_order: SortOrder = Field(SortOrder.DESC)
+
+
+class JobListResponse(BaseModel):
+    """Paginated job list response."""
+    jobs: List[JobAdminView]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+    status_summary: Dict[str, int] = {}
+
+
+class JobCancelRequest(BaseModel):
+    """Request to cancel a job."""
+    reason: Optional[str] = Field(None, max_length=500)
+
+
+class JobRetryRequest(BaseModel):
+    """Request to retry a failed job."""
+    priority: Optional[int] = Field(None, ge=1, le=10)
+    backend: Optional[str] = None
+
+
+class JobActionResponse(BaseModel):
+    """Response for job actions (cancel, retry)."""
+    success: bool
+    job_id: uuid.UUID
+    action: str
+    message: str
+
+
+class QueueClearRequest(BaseModel):
+    """Request to clear pending jobs."""
+    confirm: bool = Field(..., description="Bestaetigung erforderlich")
+    status: ProcessingStatus = Field(ProcessingStatus.PENDING, description="Status der zu loeschenden Jobs")
+
+    @field_validator("confirm")
+    @classmethod
+    def must_confirm(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError("Aktion muss mit confirm=true bestaetigt werden")
+        return v
+
+
+class QueueClearResponse(BaseModel):
+    """Response for queue clear action."""
+    success: bool
+    cleared_count: int
+    message: str
+
+
+# ----- Audit Log Schemas -----
+
+class AuditLogView(BaseModel):
+    """Audit log entry for admin view."""
+    id: uuid.UUID
+    user_id: Optional[uuid.UUID] = None
+    user_email: Optional[str] = None
+    action: str
+    resource_type: Optional[str] = None
+    resource_id: Optional[uuid.UUID] = None
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    request_method: Optional[str] = None
+    request_path: Optional[str] = None
+    metadata: Dict[str, Any] = {}
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AuditLogFilters(BaseModel):
+    """Filters for audit log listing."""
+    user_id: Optional[uuid.UUID] = None
+    action: Optional[str] = None
+    resource_type: Optional[str] = None
+    ip_address: Optional[str] = None
+    date_from: Optional[datetime] = None
+    date_to: Optional[datetime] = None
+    search: Optional[str] = Field(None, max_length=100)
+
+
+class AuditLogListRequest(BaseModel):
+    """Request for audit log listing."""
+    page: int = Field(1, ge=1)
+    per_page: int = Field(50, ge=1, le=500)
+    filters: Optional[AuditLogFilters] = None
+    sort_order: SortOrder = Field(SortOrder.DESC)
+
+
+class AuditLogListResponse(BaseModel):
+    """Paginated audit log response."""
+    logs: List[AuditLogView]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+
+
+class AuditLogExportRequest(BaseModel):
+    """Request for exporting audit logs."""
+    format: ExportFormat = Field(ExportFormat.CSV)
+    filters: Optional[AuditLogFilters] = None
+    max_records: int = Field(10000, ge=1, le=100000)
+
+
+class AuditLogExportResponse(BaseModel):
+    """Response for audit log export."""
+    success: bool
+    download_url: str
+    record_count: int
+    format: ExportFormat
+    expires_at: datetime
+
+
+class AuditSummary(BaseModel):
+    """Aggregated audit activity summary."""
+    total_actions: int
+    unique_users: int
+    actions_by_type: Dict[str, int]
+    actions_by_user: List[Dict[str, Any]]
+    recent_admin_actions: List[AuditLogView]
+    period_start: datetime
+    period_end: datetime
+
+
+# ----- Admin Action Schemas -----
+
+class AdminActionView(BaseModel):
+    """Admin action log entry."""
+    id: uuid.UUID
+    admin_id: Optional[uuid.UUID] = None
+    admin_email: Optional[str] = None
+    target_user_id: Optional[uuid.UUID] = None
+    target_user_email: Optional[str] = None
+    action: str
+    action_details: Dict[str, Any] = {}
+    ip_address: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdminActionListResponse(BaseModel):
+    """List of admin actions."""
+    actions: List[AdminActionView]
+    total: int
+    page: int
+    per_page: int
