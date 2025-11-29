@@ -24,7 +24,8 @@ celery_app = Celery(
     backend=settings.CELERY_RESULT_BACKEND,
     include=[
         "app.workers.tasks.ocr_tasks",
-        "app.workers.tasks.embedding_tasks"
+        "app.workers.tasks.embedding_tasks",
+        "app.workers.tasks.backup_tasks",
     ]
 )
 
@@ -73,6 +74,23 @@ celery_app.conf.update(
             "task": "app.workers.tasks.embedding_tasks.refresh_search_analytics",
             "schedule": crontab(hour=2, minute=0),  # Daily at 2:00 AM
         },
+        # Backup Tasks
+        "backup-full-daily": {
+            "task": "app.workers.tasks.backup_tasks.backup_full_task",
+            "schedule": crontab(hour=2, minute=30),  # Taeglich um 02:30 Uhr
+        },
+        "backup-retention-weekly": {
+            "task": "app.workers.tasks.backup_tasks.apply_retention_task",
+            "schedule": crontab(day_of_week=0, hour=3, minute=0),  # Sonntag 03:00
+        },
+        "backup-remote-sync-daily": {
+            "task": "app.workers.tasks.backup_tasks.sync_to_remote_task",
+            "schedule": crontab(hour=4, minute=0),  # Taeglich um 04:00 Uhr
+        },
+        "backup-metrics-update": {
+            "task": "app.workers.tasks.backup_tasks.update_backup_metrics_task",
+            "schedule": 900.0,  # Alle 15 Minuten
+        },
     },
 
     # Queue routing
@@ -91,6 +109,13 @@ celery_app.conf.update(
         "app.workers.tasks.embedding_tasks.check_embedding_coverage": {"queue": "maintenance", "priority": 1},
         # Search analytics tasks (CPU)
         "app.workers.tasks.embedding_tasks.refresh_search_analytics": {"queue": "maintenance", "priority": 1},
+        # Backup tasks (CPU)
+        "app.workers.tasks.backup_tasks.backup_full_task": {"queue": "backup", "priority": 2},
+        "app.workers.tasks.backup_tasks.backup_postgres_task": {"queue": "backup", "priority": 3},
+        "app.workers.tasks.backup_tasks.backup_redis_task": {"queue": "backup", "priority": 3},
+        "app.workers.tasks.backup_tasks.apply_retention_task": {"queue": "maintenance", "priority": 1},
+        "app.workers.tasks.backup_tasks.sync_to_remote_task": {"queue": "backup", "priority": 2},
+        "app.workers.tasks.backup_tasks.update_backup_metrics_task": {"queue": "metrics", "priority": 1},
     },
 
     # Priority settings

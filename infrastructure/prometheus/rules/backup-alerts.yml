@@ -1,0 +1,101 @@
+# Prometheus Alerting Rules fuer Ablage-System Backup
+# Alle Beschreibungen auf Deutsch fuer Betriebsteam
+
+groups:
+  - name: backup_alerts
+    rules:
+      # Kritisch: Kein Backup in den letzten 26 Stunden
+      - alert: BackupStale
+        expr: time() - max(ablage_backup_last_success_timestamp) > 93600
+        for: 0m
+        labels:
+          severity: critical
+          component: backup
+        annotations:
+          summary: "Backup veraltet - letztes Backup aelter als 26 Stunden"
+          description: "Das letzte erfolgreiche Backup liegt mehr als 26 Stunden zurueck. Sofortige Pruefung des Backup-Systems erforderlich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/backup-stale"
+
+      # Kritisch: Backup fehlgeschlagen in den letzten 24 Stunden
+      - alert: BackupFailed
+        expr: increase(ablage_backup_failure_total[24h]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: backup
+        annotations:
+          summary: "Backup fehlgeschlagen"
+          description: "Mindestens ein Backup ist in den letzten 24 Stunden fehlgeschlagen. Backup-Typ: {{ $labels.backup_type }}"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/backup-failed"
+
+      # Warnung: Speicherplatz unter 20GB
+      - alert: BackupDiskLow
+        expr: ablage_backup_disk_free_bytes < 21474836480
+        for: 10m
+        labels:
+          severity: warning
+          component: backup
+        annotations:
+          summary: "Backup-Speicherplatz niedrig - weniger als 20GB frei"
+          description: "Der verfuegbare Speicherplatz fuer Backups betraegt nur noch {{ humanize $value }}. Bitte alte Backups loeschen oder Speicher erweitern."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/backup-disk-low"
+
+      # Kritisch: Speicherplatz unter 10GB
+      - alert: BackupDiskCritical
+        expr: ablage_backup_disk_free_bytes < 10737418240
+        for: 5m
+        labels:
+          severity: critical
+          component: backup
+        annotations:
+          summary: "KRITISCH: Backup-Speicherplatz unter 10GB"
+          description: "Der verfuegbare Speicherplatz fuer Backups betraegt nur noch {{ humanize $value }}. Sofortige Massnahmen erforderlich!"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/backup-disk-critical"
+
+      # Warnung: Backup-Validierung fehlgeschlagen
+      - alert: BackupValidationFailed
+        expr: increase(ablage_backup_validation_failure_total[24h]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          component: backup
+        annotations:
+          summary: "Backup-Validierung fehlgeschlagen"
+          description: "Die Integritaetspruefung eines Backups ist fehlgeschlagen. Das Backup koennte beschaedigt sein."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/backup-validation-failed"
+
+      # Warnung: Remote-Sync fehlgeschlagen
+      - alert: BackupRemoteSyncFailed
+        expr: increase(ablage_backup_remote_sync_failure_total[24h]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          component: backup
+        annotations:
+          summary: "Remote-Backup-Sync fehlgeschlagen"
+          description: "Die Synchronisierung zum Remote-Backup-Server ist fehlgeschlagen. Off-Site-Backup nicht aktuell."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/backup-remote-sync-failed"
+
+      # Info: Verschluesselung deaktiviert
+      - alert: BackupEncryptionDisabled
+        expr: ablage_backup_encryption_enabled == 0
+        for: 1h
+        labels:
+          severity: info
+          component: backup
+        annotations:
+          summary: "Backup-Verschluesselung deaktiviert"
+          description: "Die Backup-Verschluesselung ist deaktiviert. Backups werden unverschluesselt gespeichert."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/backup-encryption-disabled"
+
+      # Warnung: Hohe Backup-Dauer
+      - alert: BackupSlowDuration
+        expr: ablage_backup_duration_seconds{quantile="0.9"} > 3600
+        for: 0m
+        labels:
+          severity: warning
+          component: backup
+        annotations:
+          summary: "Backup-Dauer ungewoehnlich hoch"
+          description: "Das Backup vom Typ {{ $labels.backup_type }} dauert laenger als 1 Stunde ({{ humanizeDuration $value }}). Moegliche Leistungsprobleme."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/backup-slow"
