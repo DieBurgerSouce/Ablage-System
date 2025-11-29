@@ -12,6 +12,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 from app.core.config import settings
 from app.core.security import decode_token, verify_token_type, extract_user_id_from_token
@@ -99,7 +102,8 @@ async def get_current_user(
         verify_token_type(payload, "access")
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
+        logger.warning("token_validation_failed", error=str(e), error_type=type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentifizierung fehlgeschlagen",  # Authentication failed
@@ -505,15 +509,40 @@ async def get_rate_limit_status(
         "hourly_used": 0,
         "daily_used": 0,
         "batch_used": 0,
+        "hourly_reset_in": 3600,
+        "daily_reset_in": 86400,
+        "batch_reset_in": 3600,
     }
 
     if storage and storage.is_available:
         try:
-            # Get current counts (this is simplified - actual would need GET not INCR)
-            # In production, use separate tracking keys
-            pass
-        except Exception:
-            pass
+            redis = storage._redis
+            user_id = str(current_user.id)
+
+            # Get actual counts using GET (not INCR)
+            hourly_key = f"ocr_rate_limit:{user_id}:hourly"
+            daily_key = f"ocr_rate_limit:{user_id}:daily"
+            batch_key = f"batch_rate_limit:{user_id}:hourly"
+
+            hourly_val = await redis.get(hourly_key)
+            daily_val = await redis.get(daily_key)
+            batch_val = await redis.get(batch_key)
+
+            usage["hourly_used"] = int(hourly_val) if hourly_val else 0
+            usage["daily_used"] = int(daily_val) if daily_val else 0
+            usage["batch_used"] = int(batch_val) if batch_val else 0
+
+            # Get TTLs for reset times
+            hourly_ttl = await redis.ttl(hourly_key)
+            daily_ttl = await redis.ttl(daily_key)
+            batch_ttl = await redis.ttl(batch_key)
+
+            usage["hourly_reset_in"] = max(0, hourly_ttl) if hourly_ttl > 0 else 3600
+            usage["daily_reset_in"] = max(0, daily_ttl) if daily_ttl > 0 else 86400
+            usage["batch_reset_in"] = max(0, batch_ttl) if batch_ttl > 0 else 3600
+
+        except Exception as e:
+            logger.warning("rate_limit_status_error", error=str(e))
 
     return {
         "user_id": str(current_user.id),

@@ -357,7 +357,7 @@ class DocumentService:
         user_id: UUID,
         operation: TagOperation = TagOperation.ADD
     ) -> BatchOperationResult:
-        """Tags fuer mehrere Dokumente setzen."""
+        """Tags fuer mehrere Dokumente setzen - optimiert mit Bulk-Loading."""
         processed = 0
         failed = 0
         errors: List[BatchOperationError] = []
@@ -365,26 +365,31 @@ class DocumentService:
         # Tags vorbereiten (erstellen falls nicht vorhanden)
         tag_objects = await self._ensure_tags_exist(db, tags)
 
-        for doc_id in document_ids:
+        # BULK LOAD: Single query with IN clause instead of N+1 queries
+        query = (
+            select(Document)
+            .options(selectinload(Document.tags))
+            .where(and_(
+                Document.id.in_(document_ids),
+                Document.owner_id == user_id
+            ))
+        )
+        result = await db.execute(query)
+        documents = {doc.id: doc for doc in result.scalars().all()}
+
+        # Track not found documents
+        not_found_ids = set(document_ids) - set(documents.keys())
+        for doc_id in not_found_ids:
+            failed += 1
+            errors.append(BatchOperationError(
+                document_id=doc_id,
+                error="Dokument nicht gefunden oder keine Berechtigung",
+                error_code="NOT_FOUND"
+            ))
+
+        # Process found documents (in-memory, no additional queries)
+        for doc_id, doc in documents.items():
             try:
-                # Dokument laden
-                query = (
-                    select(Document)
-                    .options(selectinload(Document.tags))
-                    .where(and_(Document.id == doc_id, Document.owner_id == user_id))
-                )
-                result = await db.execute(query)
-                doc = result.scalar_one_or_none()
-
-                if not doc:
-                    failed += 1
-                    errors.append(BatchOperationError(
-                        document_id=doc_id,
-                        error="Dokument nicht gefunden oder keine Berechtigung",
-                        error_code="NOT_FOUND"
-                    ))
-                    continue
-
                 # Tags aktualisieren basierend auf Operation
                 if operation == TagOperation.SET:
                     doc.tags = tag_objects

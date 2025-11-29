@@ -4,7 +4,10 @@ S3-compatible object storage for documents
 Priority: P0 - CRITICAL
 Created: 2024-11-22
 """
-from typing import Optional, BinaryIO, Dict, Any
+import asyncio
+from contextlib import contextmanager
+from io import BytesIO
+from typing import Optional, BinaryIO, Dict, Any, Iterator
 from pathlib import Path
 import os
 import structlog
@@ -66,8 +69,18 @@ class StorageConfig:
 # STORAGE SERVICE
 # ============================================================================
 
+@contextmanager
+def _create_bytes_buffer(data: bytes) -> Iterator[BytesIO]:
+    """Create BytesIO with proper cleanup."""
+    buffer = BytesIO(data)
+    try:
+        yield buffer
+    finally:
+        buffer.close()
+
+
 class StorageService:
-    """MinIO object storage manager"""
+    """MinIO object storage manager with async support"""
 
     def __init__(self):
         self.config = StorageConfig()
@@ -81,6 +94,29 @@ class StorageService:
             except Exception as e:
                 logger.error("minio_init_failed", error=str(e))
                 self.available = False
+
+    async def close(self) -> None:
+        """Cleanup MinIO client resources."""
+        if self.client:
+            try:
+                # MinIO Python client uses urllib3 internally
+                # Close the connection pool if accessible
+                if hasattr(self.client, '_http'):
+                    self.client._http.clear()
+                logger.info("minio_client_closed")
+            except Exception as e:
+                logger.warning("minio_close_error", error=str(e))
+            finally:
+                self.client = None
+                self.available = False
+
+    async def __aenter__(self) -> "StorageService":
+        """Async context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Async context manager exit - cleanup resources."""
+        await self.close()
 
     def _initialize_client(self):
         """Initialize MinIO client"""
@@ -168,16 +204,17 @@ class StorageService:
                 **(metadata or {})
             }
 
-            # Upload to MinIO
-            from io import BytesIO
-            self.client.put_object(
-                bucket_name=self.config.DOCUMENTS_BUCKET,
-                object_name=object_key,
-                data=BytesIO(file_data),
-                length=len(file_data),
-                content_type=content_type,
-                metadata=minio_metadata
-            )
+            # Upload to MinIO (async via thread to avoid blocking event loop)
+            with _create_bytes_buffer(file_data) as buffer:
+                await asyncio.to_thread(
+                    self.client.put_object,
+                    bucket_name=self.config.DOCUMENTS_BUCKET,
+                    object_name=object_key,
+                    data=buffer,
+                    length=len(file_data),
+                    content_type=content_type,
+                    metadata=minio_metadata
+                )
 
             logger.info(
                 "document_uploaded",
@@ -212,14 +249,16 @@ class StorageService:
         try:
             object_key = f"{document_id}/thumbnail.{format}"
 
-            from io import BytesIO
-            self.client.put_object(
-                bucket_name=self.config.THUMBNAILS_BUCKET,
-                object_name=object_key,
-                data=BytesIO(thumbnail_data),
-                length=len(thumbnail_data),
-                content_type=f"image/{format}"
-            )
+            # Upload to MinIO (async via thread to avoid blocking event loop)
+            with _create_bytes_buffer(thumbnail_data) as buffer:
+                await asyncio.to_thread(
+                    self.client.put_object,
+                    bucket_name=self.config.THUMBNAILS_BUCKET,
+                    object_name=object_key,
+                    data=buffer,
+                    length=len(thumbnail_data),
+                    content_type=f"image/{format}"
+                )
 
             logger.info("thumbnail_uploaded", object_key=object_key)
             return object_key
@@ -237,15 +276,22 @@ class StorageService:
         if not self.available:
             raise RuntimeError("MinIO not available")
 
-        try:
+        def _download():
+            """Synchronous download helper for thread execution."""
             response = self.client.get_object(
                 bucket_name=self.config.DOCUMENTS_BUCKET,
                 object_name=object_key
             )
+            try:
+                data = response.read()
+                return data
+            finally:
+                response.close()
+                response.release_conn()
 
-            data = response.read()
-            response.close()
-            response.release_conn()
+        try:
+            # Download from MinIO (async via thread to avoid blocking event loop)
+            data = await asyncio.to_thread(_download)
 
             logger.info("document_downloaded", object_key=object_key, size=len(data))
             return data
@@ -269,7 +315,9 @@ class StorageService:
         try:
             expiry = timedelta(hours=expiry_hours or self.config.PRESIGNED_URL_EXPIRY_HOURS)
 
-            url = self.client.presigned_get_object(
+            # Generate URL (async via thread to avoid blocking event loop)
+            url = await asyncio.to_thread(
+                self.client.presigned_get_object,
                 bucket_name=self.config.DOCUMENTS_BUCKET,
                 object_name=object_key,
                 expires=expiry
@@ -292,7 +340,9 @@ class StorageService:
             raise RuntimeError("MinIO not available")
 
         try:
-            self.client.remove_object(
+            # Delete from MinIO (async via thread to avoid blocking event loop)
+            await asyncio.to_thread(
+                self.client.remove_object,
                 bucket_name=self.config.DOCUMENTS_BUCKET,
                 object_name=object_key
             )
@@ -312,7 +362,8 @@ class StorageService:
         if not self.available:
             raise RuntimeError("MinIO not available")
 
-        try:
+        def _delete_all():
+            """Synchronous batch delete helper for thread execution."""
             deleted_count = 0
             prefix = f"{user_id}/"
 
@@ -330,6 +381,12 @@ class StorageService:
                     object_name=obj.object_name
                 )
                 deleted_count += 1
+
+            return deleted_count
+
+        try:
+            # Batch delete (async via thread to avoid blocking event loop)
+            deleted_count = await asyncio.to_thread(_delete_all)
 
             logger.info("user_documents_deleted", user_id=user_id, count=deleted_count)
             return deleted_count
@@ -351,8 +408,8 @@ class StorageService:
                     "error": "MinIO client not initialized"
                 }
 
-            # Try to list buckets
-            buckets = self.client.list_buckets()
+            # Try to list buckets (async via thread to avoid blocking event loop)
+            buckets = await asyncio.to_thread(self.client.list_buckets)
 
             return {
                 "status": "healthy",
@@ -370,10 +427,8 @@ class StorageService:
 
     async def get_storage_stats(self) -> Dict[str, Any]:
         """Get storage usage statistics"""
-        try:
-            if not self.available:
-                return {"error": "MinIO not available"}
-
+        def _collect_stats():
+            """Synchronous stats collection helper for thread execution."""
             stats = {
                 "documents": {"count": 0, "size_bytes": 0},
                 "thumbnails": {"count": 0, "size_bytes": 0},
@@ -394,8 +449,21 @@ class StorageService:
                     stats[bucket_name]["size_bytes"] += obj.size
 
             # Add totals
-            stats["total_size_bytes"] = sum(b["size_bytes"] for b in stats.values() if isinstance(b, dict))
-            stats["total_count"] = sum(b["count"] for b in stats.values() if isinstance(b, dict))
+            stats["total_size_bytes"] = sum(
+                b["size_bytes"] for b in stats.values() if isinstance(b, dict)
+            )
+            stats["total_count"] = sum(
+                b["count"] for b in stats.values() if isinstance(b, dict)
+            )
+
+            return stats
+
+        try:
+            if not self.available:
+                return {"error": "MinIO not available"}
+
+            # Collect stats (async via thread to avoid blocking event loop)
+            stats = await asyncio.to_thread(_collect_stats)
 
             return stats
 
@@ -419,3 +487,12 @@ def get_storage_service() -> StorageService:
         _storage_service = StorageService()
 
     return _storage_service
+
+
+async def cleanup_storage_service() -> None:
+    """Cleanup storage service on application shutdown."""
+    global _storage_service
+    if _storage_service:
+        await _storage_service.close()
+        _storage_service = None
+        logger.info("storage_service_cleanup_complete")

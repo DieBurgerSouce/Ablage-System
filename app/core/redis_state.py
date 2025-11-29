@@ -58,7 +58,10 @@ class RedisStateManager:
             logger.info("redis_connected", url=self.redis_url.split('@')[-1])
 
     async def disconnect(self) -> None:
-        """Close Redis connection."""
+        """Close Redis connection and cleanup subscriptions."""
+        # Cleanup pubsub first
+        await self.unsubscribe_all()
+
         if self._redis:
             await self._redis.close()
             self._redis = None
@@ -293,30 +296,77 @@ class RedisStateManager:
         return subscribers
 
     async def subscribe_to_events(
-        self, patterns: List[str], callback: callable
+        self, patterns: List[str], callback: callable,
+        stop_event: Optional[asyncio.Event] = None
     ) -> None:
         """
-        Subscribe to event patterns.
+        Subscribe to event patterns with cleanup support.
 
         Args:
             patterns: List of channel patterns (e.g., ['events', 'ocr.*'])
             callback: Async callback function(channel, message)
+            stop_event: Optional event to signal subscription stop
         """
-        if not self._pubsub:
-            self._pubsub = self._redis.pubsub()
+        await self._ensure_connection()
 
-        # Subscribe to patterns
-        for pattern in patterns:
-            await self._pubsub.psubscribe(pattern)
+        pubsub = None
+        try:
+            pubsub = self._redis.pubsub()
 
-        logger.info("subscribed_to_events", patterns=patterns)
+            # Subscribe to patterns
+            for pattern in patterns:
+                await pubsub.psubscribe(pattern)
 
-        # Listen for messages
-        async for message in self._pubsub.listen():
-            if message["type"] == "pmessage":
-                channel = message["channel"]
-                data = json.loads(message["data"])
-                await callback(channel, data)
+            logger.info("subscribed_to_events", patterns=patterns)
+
+            # Listen for messages with stop support
+            while True:
+                if stop_event and stop_event.is_set():
+                    logger.info("subscription_stop_requested", patterns=patterns)
+                    break
+
+                message = await pubsub.get_message(
+                    ignore_subscribe_messages=True,
+                    timeout=1.0  # Check stop_event every second
+                )
+
+                if message and message["type"] == "pmessage":
+                    channel = message["channel"]
+                    try:
+                        data = json.loads(message["data"])
+                        await callback(channel, data)
+                    except json.JSONDecodeError as e:
+                        logger.error(
+                            "event_parse_error",
+                            channel=channel,
+                            error=str(e)
+                        )
+                    except Exception as e:
+                        logger.error(
+                            "event_callback_error",
+                            channel=channel,
+                            error=str(e)
+                        )
+        finally:
+            if pubsub:
+                try:
+                    await pubsub.punsubscribe()
+                    await pubsub.close()
+                    logger.info("pubsub_closed", patterns=patterns)
+                except Exception as e:
+                    logger.warning("pubsub_cleanup_error", error=str(e))
+
+    async def unsubscribe_all(self) -> None:
+        """Cleanup all pubsub subscriptions."""
+        if self._pubsub:
+            try:
+                await self._pubsub.punsubscribe()
+                await self._pubsub.close()
+                logger.info("all_pubsub_unsubscribed")
+            except Exception as e:
+                logger.warning("pubsub_cleanup_error", error=str(e))
+            finally:
+                self._pubsub = None
 
     # =========================================================================
     # RESULT CACHING
@@ -345,20 +395,61 @@ class RedisStateManager:
             return json.loads(data)
         return None
 
-    async def invalidate_cache(self, pattern: str) -> int:
+    async def invalidate_cache(self, pattern: str, batch_size: int = 100) -> int:
         """
-        Invalidate cache entries matching pattern.
+        Invalidate cache entries matching pattern using SCAN (non-blocking).
 
         Args:
-            pattern: Pattern to match (e.g., 'cache:document:*')
+            pattern: Pattern to match (e.g., 'document:*')
+            batch_size: Number of keys to process per iteration
 
         Returns:
             Number of keys deleted
         """
-        keys = await self._redis.keys(f"cache:{pattern}")
-        if keys:
-            return await self._redis.delete(*keys)
-        return 0
+        await self._ensure_connection()
+
+        full_pattern = f"cache:{pattern}"
+        deleted_count = 0
+        cursor = "0"
+
+        try:
+            while True:
+                # SCAN is non-blocking and cursor-based (unlike KEYS which blocks)
+                cursor, keys = await self._redis.scan(
+                    cursor=cursor,
+                    match=full_pattern,
+                    count=batch_size
+                )
+
+                if keys:
+                    deleted = await self._redis.delete(*keys)
+                    deleted_count += deleted
+                    logger.debug(
+                        "cache_batch_deleted",
+                        pattern=full_pattern,
+                        batch_deleted=deleted
+                    )
+
+                # cursor returns to "0" when iteration is complete
+                if cursor == "0":
+                    break
+
+        except Exception as e:
+            logger.error(
+                "cache_invalidation_error",
+                pattern=full_pattern,
+                error=str(e)
+            )
+            raise
+
+        if deleted_count > 0:
+            logger.info(
+                "cache_invalidated",
+                pattern=full_pattern,
+                total_deleted=deleted_count
+            )
+
+        return deleted_count
 
     # =========================================================================
     # METRICS COUNTERS
@@ -462,6 +553,7 @@ class RedisStateManager:
         Add document to human review queue.
 
         Uses Redis sorted set for priority ordering (lower score = higher priority).
+        Stores document_id as member (efficient) and data in separate hash.
 
         Args:
             document_id: Document ID
@@ -471,24 +563,32 @@ class RedisStateManager:
         """
         await self._ensure_connection()
 
-        review_item = {
+        # Store data in separate hash for efficient lookups
+        data_key = f"review_item:{document_id}"
+        review_data = {
             "document_id": document_id,
-            "qa_score": qa_score,
-            "reasons": reasons,
-            "metadata": metadata or {},
+            "qa_score": str(qa_score),
+            "reasons": json.dumps(reasons),
+            "metadata": json.dumps(metadata or {}),
             "added_at": datetime.utcnow().isoformat(),
         }
 
-        # Use sorted set with QA score as priority (inverted: lower score = higher priority)
-        await self._redis.zadd(
-            "human_review_queue",
-            {json.dumps(review_item): qa_score}
-        )
+        # Use pipeline for atomicity
+        pipe = self._redis.pipeline()
+        pipe.hset(data_key, mapping=review_data)
+        pipe.expire(data_key, timedelta(days=30))  # Auto-cleanup after 30 days
+        pipe.zadd("human_review_queue", {document_id: qa_score})
+        await pipe.execute()
 
         # Publish event for notification systems
         await self.publish_event(
             event_type="document.needs_review",
-            data=review_item,
+            data={
+                "document_id": document_id,
+                "qa_score": qa_score,
+                "reasons": reasons,
+                "metadata": metadata or {},
+            },
             channel="review_events"
         )
 
@@ -513,7 +613,7 @@ class RedisStateManager:
         """
         await self._ensure_connection()
 
-        # Get items with lowest scores (highest priority)
+        # Get document IDs with scores (lowest scores = highest priority)
         items = await self._redis.zrange(
             "human_review_queue",
             0,
@@ -522,10 +622,30 @@ class RedisStateManager:
         )
 
         result = []
-        for item_json, score in items:
-            item = json.loads(item_json)
-            item["priority_score"] = score
-            result.append(item)
+        for doc_id, score in items:
+            # Fetch data from hash
+            data_key = f"review_item:{doc_id}"
+            data = await self._redis.hgetall(data_key)
+
+            if data:
+                result.append({
+                    "document_id": data.get("document_id", doc_id),
+                    "qa_score": float(data.get("qa_score", score)),
+                    "reasons": json.loads(data.get("reasons", "[]")),
+                    "metadata": json.loads(data.get("metadata", "{}")),
+                    "added_at": data.get("added_at"),
+                    "priority_score": score
+                })
+            else:
+                # Data expired or missing, still return basic info
+                result.append({
+                    "document_id": doc_id,
+                    "qa_score": score,
+                    "reasons": [],
+                    "metadata": {},
+                    "added_at": None,
+                    "priority_score": score
+                })
 
         return result
 
@@ -541,21 +661,20 @@ class RedisStateManager:
         """
         await self._ensure_connection()
 
-        # Get all items and find matching document
-        items = await self._redis.zrange("human_review_queue", 0, -1)
+        # Use pipeline for atomicity
+        pipe = self._redis.pipeline()
+        pipe.zrem("human_review_queue", document_id)
+        pipe.delete(f"review_item:{document_id}")
+        results = await pipe.execute()
 
-        for item_json in items:
-            item = json.loads(item_json)
-            if item.get("document_id") == document_id:
-                removed = await self._redis.zrem("human_review_queue", item_json)
-                if removed:
-                    logger.info(
-                        "document_removed_from_review_queue",
-                        document_id=document_id
-                    )
-                    return True
+        removed = results[0] > 0
+        if removed:
+            logger.info(
+                "document_removed_from_review_queue",
+                document_id=document_id
+            )
 
-        return False
+        return removed
 
     async def get_review_queue_length(self) -> int:
         """Get number of documents in review queue."""
@@ -567,7 +686,8 @@ class RedisStateManager:
     # =========================================================================
 
     async def acquire_lock(
-        self, lock_key: str, timeout: int = 60, blocking: bool = True
+        self, lock_key: str, timeout: int = 60, blocking: bool = True,
+        max_wait: Optional[float] = None
     ) -> bool:
         """
         Acquire distributed lock.
@@ -576,24 +696,51 @@ class RedisStateManager:
             lock_key: Lock key
             timeout: Lock timeout in seconds
             blocking: Wait for lock if True
+            max_wait: Maximum wait time in seconds (default: 2x timeout)
 
         Returns:
-            True if lock acquired
+            True if lock acquired, False if timeout/unavailable
         """
         await self._ensure_connection()
 
         key = f"lock:{lock_key}"
 
+        if max_wait is None:
+            max_wait = timeout * 2  # Default: 2x the lock timeout
+
         if blocking:
-            # Wait for lock
+            # Wait for lock with timeout
+            start_time = asyncio.get_event_loop().time()
+            attempt = 0
+
             while True:
                 acquired = await self._redis.setnx(key, "1")
                 if acquired:
                     await self._redis.expire(key, timedelta(seconds=timeout))
+                    logger.debug(
+                        "lock_acquired",
+                        lock_key=lock_key,
+                        attempts=attempt + 1
+                    )
                     return True
-                await asyncio.sleep(0.1)
+
+                # Check if max_wait exceeded
+                elapsed = asyncio.get_event_loop().time() - start_time
+                if elapsed >= max_wait:
+                    logger.warning(
+                        "lock_acquisition_timeout",
+                        lock_key=lock_key,
+                        elapsed_seconds=elapsed,
+                        attempts=attempt
+                    )
+                    return False
+
+                # Exponential backoff with jitter (cap at 1 second)
+                delay = min(0.1 * (1.5 ** min(attempt, 10)), 1.0)
+                await asyncio.sleep(delay)
+                attempt += 1
         else:
-            # Try once
+            # Try once (non-blocking)
             acquired = await self._redis.setnx(key, "1")
             if acquired:
                 await self._redis.expire(key, timedelta(seconds=timeout))

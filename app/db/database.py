@@ -7,6 +7,7 @@ Created: 2024-11-22
 from typing import AsyncGenerator, Optional
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool
+from sqlalchemy import text
 from contextlib import asynccontextmanager
 import structlog
 import os
@@ -143,7 +144,7 @@ class DatabaseManager:
         """Check database connectivity"""
         try:
             async with self.get_session() as session:
-                await session.execute("SELECT 1")
+                await session.execute(text("SELECT 1"))
 
             # Get pool stats
             pool = self._engine.pool

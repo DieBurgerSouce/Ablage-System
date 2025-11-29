@@ -34,6 +34,7 @@ from app.middleware import RateLimitMiddleware, DevelopmentRateLimitBypass
 from app.core.config import settings
 from app.core.monitoring import get_system_monitor, PerformanceTimer
 from app.core.german_messages import HTTPErrors, StatusMessages
+from app.services.storage_service import cleanup_storage_service
 
 logger = structlog.get_logger(__name__)
 
@@ -81,6 +82,8 @@ async def lifespan(app: FastAPI):
         await ocr_service.cleanup()
     if redis_storage:
         await redis_storage.disconnect()
+    # Cleanup storage service (MinIO client)
+    await cleanup_storage_service()
     logger.info("api_shutdown_complete")
 
 
@@ -97,10 +100,10 @@ app = FastAPI(
 # Add CORS middleware for web interface
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify actual origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+    allow_methods=settings.CORS_ALLOW_METHODS,
+    allow_headers=settings.CORS_ALLOW_HEADERS,
 )
 
 # Add rate limiting middleware
