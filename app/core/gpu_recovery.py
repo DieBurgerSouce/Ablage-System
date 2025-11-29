@@ -45,7 +45,7 @@ BACKEND_CONFIGS: Dict[str, GPUBackendConfig] = {
         default_batch_size=4,
         min_batch_size=1,
         max_batch_size=8,
-        vram_gb=12.0,
+        vram_gb=12.0,  # With 4-bit quantization
         reduction_factor=0.5,
     ),
     "got_ocr": GPUBackendConfig(
@@ -59,7 +59,21 @@ BACKEND_CONFIGS: Dict[str, GPUBackendConfig] = {
         default_batch_size=16,
         min_batch_size=2,
         max_batch_size=32,
-        vram_gb=4.0,
+        vram_gb=8.0,  # Corrected from 4.0 to 8.0
+        reduction_factor=0.5,
+    ),
+    "donut": GPUBackendConfig(
+        default_batch_size=8,
+        min_batch_size=1,
+        max_batch_size=16,
+        vram_gb=8.0,  # Donut vision encoder-decoder
+        reduction_factor=0.5,
+    ),
+    "hybrid": GPUBackendConfig(
+        default_batch_size=2,
+        min_batch_size=1,
+        max_batch_size=4,
+        vram_gb=12.0,  # Uses multiple backends
         reduction_factor=0.5,
     ),
 }

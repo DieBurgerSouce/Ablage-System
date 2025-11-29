@@ -23,21 +23,35 @@ try:
     MINIO_INSTALLED = True
 except ImportError:
     MINIO_INSTALLED = False
+
+    # Define a proper S3Error class matching minio's interface
+    class MockS3Error(Exception):
+        """Mock S3Error class for testing when minio is not installed."""
+
+        def __init__(
+            self,
+            code: str = "",
+            message: str = "",
+            resource: str = "",
+            **kwargs: object
+        ):
+            self.code = code
+            self.message = message
+            self.resource = resource
+            super().__init__(message)
+
     # Mock minio module if not installed
     mock_minio = MagicMock()
     mock_minio.Minio = MagicMock()
-    mock_minio.error = MagicMock()
-    mock_minio.error.S3Error = Exception
+    # Create mock for minio.error with proper S3Error class
+    mock_error = MagicMock()
+    mock_error.S3Error = MockS3Error
     sys.modules["minio"] = mock_minio
-    sys.modules["minio.error"] = mock_minio.error
+    sys.modules["minio.error"] = mock_error
 
 import pytest
 
-# Skip all tests if minio is not installed
-pytestmark = pytest.mark.skipif(
-    not MINIO_INSTALLED,
-    reason="MinIO-Bibliothek nicht installiert - überspringen Storage-Tests"
-)
+# Tests run with mocks when minio is not installed - no skip needed
 from datetime import timedelta
 from typing import Dict, Any
 from unittest.mock import Mock, patch, MagicMock, AsyncMock
@@ -146,7 +160,7 @@ class TestStorageServiceInitialization:
     def test_initialization_success(self, mock_minio_client):
         """Erfolgreiche Initialisierung."""
         # Patch minio.Minio where it's imported from
-        with patch('minio.Minio', return_value=mock_minio_client):
+        with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
             from app.services.storage_service import StorageService
 
             service = StorageService()
@@ -166,7 +180,7 @@ class TestStorageServiceInitialization:
     @patch('app.services.storage_service.MINIO_AVAILABLE', True)
     def test_initialization_connection_failure(self):
         """Initialisierung bei Verbindungsfehler."""
-        with patch('minio.Minio') as MockMinio:
+        with patch('app.services.storage_service.Minio') as MockMinio:
             MockMinio.side_effect = Exception("Connection refused")
 
             from app.services.storage_service import StorageService
@@ -180,7 +194,7 @@ class TestStorageServiceInitialization:
         """Buckets sollten erstellt werden wenn nicht vorhanden."""
         mock_minio_client.bucket_exists.return_value = False
 
-        with patch('minio.Minio', return_value=mock_minio_client):
+        with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
             from app.services.storage_service import StorageService
 
             service = StorageService()
@@ -199,7 +213,7 @@ class TestStorageServiceUpload:
     async def test_upload_document_success(self, mock_minio_client, sample_file_data):
         """Dokument erfolgreich hochladen."""
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -221,7 +235,7 @@ class TestStorageServiceUpload:
     async def test_upload_document_generates_hash(self, mock_minio_client, sample_file_data):
         """Upload sollte SHA256-Hash generieren."""
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -239,7 +253,7 @@ class TestStorageServiceUpload:
     async def test_upload_document_auto_detect_content_type(self, mock_minio_client, sample_pdf_data):
         """Content-Type sollte automatisch erkannt werden."""
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -256,7 +270,7 @@ class TestStorageServiceUpload:
     async def test_upload_document_anonymous_user(self, mock_minio_client, sample_file_data):
         """Upload ohne User-ID sollte 'anonymous' verwenden."""
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -272,7 +286,7 @@ class TestStorageServiceUpload:
     async def test_upload_document_with_metadata(self, mock_minio_client, sample_file_data):
         """Upload mit zusätzlichen Metadaten."""
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -308,7 +322,7 @@ class TestStorageServiceUpload:
     async def test_upload_thumbnail_success(self, mock_minio_client, sample_image_data):
         """Thumbnail erfolgreich hochladen."""
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -339,7 +353,7 @@ class TestStorageServiceDownload:
         mock_minio_client.get_object.return_value = mock_response
 
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -373,7 +387,7 @@ class TestStorageServiceDownload:
         )
 
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -395,7 +409,7 @@ class TestStorageServicePresignedUrl:
         mock_minio_client.presigned_get_object.return_value = expected_url
 
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -409,7 +423,7 @@ class TestStorageServicePresignedUrl:
     async def test_get_presigned_url_custom_expiry(self, mock_minio_client):
         """Presigned URL mit benutzerdefinierter Gültigkeit."""
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -441,7 +455,7 @@ class TestStorageServiceDelete:
     async def test_delete_document_success(self, mock_minio_client):
         """Dokument erfolgreich löschen."""
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -457,7 +471,7 @@ class TestStorageServiceDelete:
         mock_minio_client.remove_object.side_effect = Exception("Delete failed")
 
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -489,7 +503,7 @@ class TestStorageServiceDelete:
         mock_minio_client.list_objects.return_value = [mock_obj1, mock_obj2]
 
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -505,7 +519,7 @@ class TestStorageServiceDelete:
         mock_minio_client.list_objects.return_value = []
 
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -530,7 +544,7 @@ class TestStorageServiceHealthCheck:
         mock_minio_client.list_buckets.return_value = [mock_bucket]
 
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -559,7 +573,7 @@ class TestStorageServiceHealthCheck:
         mock_minio_client.list_buckets.side_effect = Exception("Connection lost")
 
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -588,7 +602,7 @@ class TestStorageServiceStats:
         mock_minio_client.list_objects.return_value = [mock_obj, mock_obj]
 
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -617,7 +631,7 @@ class TestStorageServiceStats:
         mock_minio_client.list_objects.side_effect = Exception("Stats failed")
 
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -660,7 +674,7 @@ class TestStorageServiceEdgeCases:
     async def test_upload_unknown_file_type(self, mock_minio_client):
         """Upload mit unbekanntem Dateityp."""
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -676,7 +690,7 @@ class TestStorageServiceEdgeCases:
     async def test_upload_empty_file(self, mock_minio_client):
         """Upload einer leeren Datei."""
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()
@@ -692,7 +706,7 @@ class TestStorageServiceEdgeCases:
     async def test_upload_with_special_characters_in_filename(self, mock_minio_client, sample_file_data):
         """Upload mit Sonderzeichen im Dateinamen."""
         with patch('app.services.storage_service.MINIO_AVAILABLE', True):
-            with patch('minio.Minio', return_value=mock_minio_client):
+            with patch('app.services.storage_service.Minio', return_value=mock_minio_client):
                 from app.services.storage_service import StorageService
 
                 service = StorageService()

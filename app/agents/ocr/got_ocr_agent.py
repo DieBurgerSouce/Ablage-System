@@ -262,91 +262,100 @@ class GOTOCRAgent(OCRAgent):
         if warmup:
             return {"text": "", "confidence": 0.0, "format": "plain"}
 
-        # Prepare inputs based on output format
-        format_prompts = {
-            "plain": "Extract all text from this image.",
-            "markdown": "Extract text from this image and format it as markdown.",
-            "latex": "Extract text and formulas from this image in LaTeX format."
-        }
+        try:
+            # GOT-OCR 2.0 HF uses a specific input format
+            # The processor expects images directly, not text prompts
 
-        # Special handling for formula extraction
-        if extract_formulas:
-            prompt = "Extract all mathematical formulas and equations from this image in LaTeX format."
-        else:
-            prompt = format_prompts.get(output_format, format_prompts["plain"])
+            # Ensure image is RGB and has reasonable size
+            if image.mode != "RGB":
+                image = image.convert("RGB")
 
-        # Add German-specific instructions
-        if language == "de":
-            prompt = f"{prompt} Pay special attention to German umlauts (ä, ö, ü, ß) and formatting."
+            # Resize if too small (GOT-OCR needs minimum size)
+            min_size = 224
+            if image.width < min_size or image.height < min_size:
+                # Scale up maintaining aspect ratio
+                scale = max(min_size / image.width, min_size / image.height)
+                new_size = (int(image.width * scale), int(image.height * scale))
+                image = image.resize(new_size, Image.Resampling.LANCZOS)
 
-        # Process inputs
-        inputs = self.processor(
-            image,
-            text=prompt,
-            return_tensors="pt",
-            # Enable markdown formatting if requested
-            format_markdown=(output_format == "markdown"),
-        )
+            # Process image with GOT-OCR processor
+            # The processor handles image preprocessing automatically
+            inputs = self.processor(images=image, return_tensors="pt")
 
-        # Move to device
-        inputs = {k: v.to(device) if torch.is_tensor(v) else v
-                 for k, v in inputs.items()}
+            # Move to device
+            inputs = {k: v.to(device) if torch.is_tensor(v) else v
+                     for k, v in inputs.items()}
 
-        # Run inference
-        with torch.no_grad():
-            if hasattr(self.model, 'generate'):
-                # Text generation model
-                outputs = self.model.generate(
-                    **inputs,
-                    max_new_tokens=4096,
-                    do_sample=False,  # Deterministic
-                    temperature=0.1,
-                    pad_token_id=self.processor.tokenizer.eos_token_id if hasattr(self.processor, 'tokenizer') else None,
-                    eos_token_id=self.processor.tokenizer.eos_token_id if hasattr(self.processor, 'tokenizer') else None,
-                )
+            # Run inference
+            with torch.no_grad():
+                if hasattr(self.model, 'generate'):
+                    # Get tokenizer for special tokens
+                    tokenizer = getattr(self.processor, 'tokenizer', None)
 
-                # Decode output
-                if hasattr(self.processor, 'decode'):
-                    text = self.processor.decode(
-                        outputs[0, inputs.get("input_ids", inputs).shape[-1]:] if "input_ids" in inputs else outputs[0],
-                        skip_special_tokens=True
-                    )
-                elif hasattr(self.processor, 'batch_decode'):
-                    text = self.processor.batch_decode(outputs, skip_special_tokens=True)[0]
+                    generate_kwargs = {
+                        "max_new_tokens": 4096,
+                        "do_sample": False,
+                    }
+
+                    # Add token IDs if tokenizer available
+                    if tokenizer is not None:
+                        if hasattr(tokenizer, 'eos_token_id') and tokenizer.eos_token_id is not None:
+                            generate_kwargs["eos_token_id"] = tokenizer.eos_token_id
+                            generate_kwargs["pad_token_id"] = tokenizer.eos_token_id
+
+                    outputs = self.model.generate(**inputs, **generate_kwargs)
+
+                    # Decode output
+                    if hasattr(self.processor, 'batch_decode'):
+                        text = self.processor.batch_decode(outputs, skip_special_tokens=True)[0]
+                    elif tokenizer is not None and hasattr(tokenizer, 'decode'):
+                        text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+                    else:
+                        text = str(outputs)
                 else:
-                    text = str(outputs)
-            else:
-                # Direct prediction model
-                outputs = self.model(**inputs)
-                # Extract text from outputs (model-specific)
-                if hasattr(outputs, 'logits'):
-                    # Decode from logits
-                    predicted_ids = torch.argmax(outputs.logits, dim=-1)
-                    text = self.processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
-                else:
-                    text = str(outputs)
+                    # Direct prediction model (less common)
+                    outputs = self.model(**inputs)
+                    if hasattr(outputs, 'logits'):
+                        predicted_ids = torch.argmax(outputs.logits, dim=-1)
+                        text = self.processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
+                    else:
+                        text = str(outputs)
 
-        # Calculate processing time
-        processing_time_ms = int((time.perf_counter() - start_time) * 1000)
+            # Calculate processing time
+            processing_time_ms = int((time.perf_counter() - start_time) * 1000)
 
-        # Remove prompt from output if present
-        if prompt in text:
-            text = text.replace(prompt, "").strip()
+            # Clean up text
+            text = text.strip()
 
-        # Estimate confidence (GOT-OCR typically has high accuracy on formulas)
-        confidence = 0.92 if text else 0.0
-        if extract_formulas and "$" in text:  # LaTeX formulas detected
-            confidence = 0.95
+            # Estimate confidence (GOT-OCR typically has high accuracy on formulas)
+            confidence = 0.92 if text else 0.0
+            if extract_formulas and "$" in text:  # LaTeX formulas detected
+                confidence = 0.95
 
-        return {
-            "text": text,
-            "confidence": confidence,
-            "format": output_format,
-            "model": self.MODEL_NAME,
-            "device": device,
-            "processing_time_ms": processing_time_ms,
-            "backend": "got-ocr-2.0"
-        }
+            return {
+                "text": text,
+                "confidence": confidence,
+                "format": output_format,
+                "model": self.MODEL_NAME,
+                "device": device,
+                "processing_time_ms": processing_time_ms,
+                "backend": "got-ocr-2.0",
+                "success": True,
+            }
+
+        except Exception as e:
+            self.logger.error("got_ocr_inference_error", error=str(e), exc_info=True)
+            return {
+                "text": "",
+                "confidence": 0.0,
+                "format": output_format,
+                "model": self.MODEL_NAME,
+                "device": device,
+                "processing_time_ms": int((time.perf_counter() - start_time) * 1000),
+                "backend": "got-ocr-2.0",
+                "success": False,
+                "error": str(e),
+            }
 
     async def _postprocess_german(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """Post-process for German language specifics with context-aware correction."""

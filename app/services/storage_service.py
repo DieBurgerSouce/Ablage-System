@@ -18,6 +18,23 @@ try:
     MINIO_AVAILABLE = True
 except ImportError:
     MINIO_AVAILABLE = False
+    Minio = None  # type: ignore
+
+    # Fallback S3Error class for when minio is not installed
+    class S3Error(Exception):  # type: ignore
+        """Fallback S3Error when minio is not installed."""
+
+        def __init__(
+            self,
+            code: str = "",
+            message: str = "",
+            resource: str = "",
+            **kwargs: object
+        ):
+            self.code = code
+            self.message = message
+            self.resource = resource
+            super().__init__(message)
 
 logger = structlog.get_logger(__name__)
 

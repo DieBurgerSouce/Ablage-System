@@ -31,9 +31,12 @@ class GPUManager:
 
         # Backend VRAM requirements (in GB)
         self.backend_requirements = {
-            "deepseek": 12.0,  # DeepSeek-Janus-Pro needs 12GB
-            "got_ocr": 10.0,   # GOT-OCR 2.0 needs 10GB
-            "surya": 0.0       # CPU-only fallback
+            "deepseek": 12.0,   # DeepSeek-Janus-Pro needs 12GB (with 4-bit quantization)
+            "got_ocr": 10.0,    # GOT-OCR 2.0 needs 10GB
+            "surya_gpu": 8.0,   # Surya GPU-accelerated needs 8GB
+            "donut": 8.0,       # Donut OCR needs 8GB
+            "hybrid": 12.0,     # Hybrid uses multiple backends, estimate max
+            "surya": 0.0        # CPU-only fallback
         }
 
         # Track allocations (thread-safe with lock)
@@ -215,10 +218,13 @@ class GPUManager:
         """
         Calculate optimal batch size based on available VRAM
 
-        Heuristics:
-        - DeepSeek: ~1GB per document (complex processing)
-        - GOT-OCR: ~500MB per document (efficient)
-        - Surya: No GPU limit
+        Heuristics per backend (MB per document):
+        - DeepSeek: ~1GB per document (complex multimodal processing)
+        - GOT-OCR: ~500MB per document (efficient transformer)
+        - Surya GPU: ~250MB per document (optimized detection)
+        - Donut: ~400MB per document (vision encoder-decoder)
+        - Hybrid: ~1GB per document (multiple backends)
+        - Surya: No GPU limit (CPU-only)
         """
         status = self.check_availability()
 
@@ -228,13 +234,16 @@ class GPUManager:
         free_gb = status.get("free_gb", 0)
         safe_free_gb = max(0, free_gb - 4)  # Keep 4GB buffer
 
-        if backend == "deepseek":
-            mb_per_doc = 1024  # 1GB per document
-        elif backend == "got_ocr":
-            mb_per_doc = 500   # 500MB per document
-        else:
-            mb_per_doc = 500   # Default
+        # MB per document for each backend
+        mb_per_doc_map = {
+            "deepseek": 1024,   # 1GB per document
+            "got_ocr": 500,     # 500MB per document
+            "surya_gpu": 250,   # 250MB per document
+            "donut": 400,       # 400MB per document
+            "hybrid": 1024,     # 1GB per document (conservative)
+        }
 
+        mb_per_doc = mb_per_doc_map.get(backend, 500)  # Default 500MB
         gb_per_doc = mb_per_doc / 1024
         optimal_batch = int(safe_free_gb / gb_per_doc)
 
@@ -331,10 +340,14 @@ class GPUManager:
         if free_gb < 4:
             recommendations.append("[!] Low VRAM - clear cache recommended")
             recommendations.append("Consider smaller batch sizes")
+        elif free_gb < 8:
+            recommendations.append("Can only run Surya GPU or Donut with minimal batch")
         elif free_gb < 10:
-            recommendations.append("Can run GOT-OCR but not DeepSeek")
+            recommendations.append("Can run Surya GPU, Donut - GOT-OCR marginal")
         elif free_gb < 12:
-            recommendations.append("Sufficient VRAM for GOT-OCR")
+            recommendations.append("Sufficient VRAM for GOT-OCR, Surya GPU, Donut")
+        elif free_gb < 13.6:
+            recommendations.append("Sufficient VRAM for DeepSeek (with 4-bit quantization)")
         else:
             recommendations.append("[OK] Sufficient VRAM for all backends")
 
