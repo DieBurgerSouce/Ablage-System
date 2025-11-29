@@ -1,0 +1,64 @@
+{
+  "timestamp": "2025-11-28T20:34:09.449300",
+  "document_id": "doc_test",
+  "selected_backend": "deepseek",
+  "confidence": 0.85,
+  "top_contributions": [
+    {
+      "feature_name": "complexity",
+      "feature_value": "unbekannt",
+      "shap_value": -0.125,
+      "contribution_percent": 25.0,
+      "direction": "opposes",
+      "explanation": "Komplexität (unbekannt) spricht eher dagegen"
+    },
+    {
+      "feature_name": "detected_language",
+      "feature_value": "unbekannt",
+      "shap_value": -0.1,
+      "contribution_percent": 20.0,
+      "direction": "opposes",
+      "explanation": "Sprache (unbekannt) hat geringen Einfluss"
+    },
+    {
+      "feature_name": "has_tables",
+      "feature_value": "unbekannt",
+      "shap_value": -0.075,
+      "contribution_percent": 15.0,
+      "direction": "opposes",
+      "explanation": "Enthält Tabellen (unbekannt) hat geringen Einfluss"
+    },
+    {
+      "feature_name": "has_formulas",
+      "feature_value": "unbekannt",
+      "shap_value": -0.06,
+      "contribution_percent": 12.0,
+      "direction": "opposes",
+      "explanation": "Enthält Formeln (unbekannt) hat geringen Einfluss"
+    },
+    {
+      "feature_name": "quality_score",
+      "feature_value": 0.9,
+      "shap_value": -0.05,
+      "contribution_percent": 10.0,
+      "direction": "opposes",
+      "explanation": "Bildqualität (0.9 %) hat geringen Einfluss"
+    }
+  ],
+  "alternative_backends": [
+    [
+      "got_ocr",
+      0.3
+    ],
+    [
+      "surya",
+      0.1
+    ]
+  ],
+  "decision_summary": "DeepSeek (beste Genauigkeit für deutsche Dokumente) wurde mit 85% Konfidenz gewählt. Hauptgründe: Komplexität (unbekannt) spricht eher dagegen; Sprache (unbekannt) hat geringen Einfluss.",
+  "counterfactual": null,
+  "metadata": {
+    "shap_available": true,
+    "model_available": false
+  }
+}
