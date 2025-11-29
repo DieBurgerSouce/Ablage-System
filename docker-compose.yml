@@ -169,6 +169,7 @@ services:
       - '--web.enable-lifecycle'
     volumes:
       - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infrastructure/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
@@ -215,6 +216,39 @@ services:
     networks:
       - ablage-network
 
+  # AlertManager for Alert Routing and Notifications
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: ablage-alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--data.retention=120h'
+      - '--web.external-url=http://localhost:9093'
+    environment:
+      # Slack Webhook (optional - set in .env)
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      # PagerDuty (optional)
+      PAGERDUTY_SERVICE_KEY: ${PAGERDUTY_SERVICE_KEY:-}
+      # OpsGenie (optional)
+      OPSGENIE_API_KEY: ${OPSGENIE_API_KEY:-}
+    volumes:
+      - ./infrastructure/alerting/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./infrastructure/alerting/templates:/etc/alertmanager/templates:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "9093:9093"
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - ablage-network
+
 volumes:
   postgres_data:
   redis_data:
@@ -224,6 +258,7 @@ volumes:
   prometheus_data:
   grafana_data:
   loki_data:
+  alertmanager_data:
 
 networks:
   ablage-network:
