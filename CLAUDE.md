@@ -151,12 +151,50 @@ Wenn du Änderungen machst, aktualisiere auch:
 
 ---
 
+## Backup & Disaster Recovery
+
+Das System verfuegt ueber ein vollautomatisches Backup-System:
+
+### Komponenten
+- **PostgreSQL**: pg_dump mit gzip-Komprimierung
+- **Redis**: BGSAVE mit Snapshot
+- **MinIO**: mc mirror fuer Object Storage
+- **Konfiguration**: tar-Archive
+
+### Automatisierung (Celery Beat)
+| Task | Zeitplan |
+|------|----------|
+| Vollstaendiges Backup | Taeglich 02:30 |
+| Retention-Policy | Sonntag 03:00 |
+| Remote-Sync | Taeglich 04:00 |
+| Metriken-Update | Alle 15 Min |
+
+### API Endpoints
+```
+GET  /api/v1/backup/status     # Status abfragen
+GET  /api/v1/backup/list       # Backups auflisten
+POST /api/v1/backup/full       # Vollstaendiges Backup
+POST /api/v1/backup/postgres   # PostgreSQL Backup
+POST /api/v1/backup/retention  # Alte Backups loeschen
+POST /api/v1/backup/sync       # Remote-Synchronisation
+```
+
+### Monitoring
+- **Grafana Dashboard**: `ablage-backup-monitoring`
+- **Prometheus Alerts**: 8 vordefinierte Alerts
+- **Metriken**: `/api/v1/metrics/backup`
+
+Dokumentation: `.claude/Docs/API/Backup_API.md`
+
+---
+
 ## Monitoring & Debugging
 
 - **Grafana**: http://localhost:3000 (admin/admin123)
 - **Prometheus**: http://localhost:9090
 - **API Docs**: http://localhost:8000/docs
 - **MinIO Console**: http://localhost:9001
+- **Backup Dashboard**: http://localhost:3000/d/ablage-backup-monitoring
 
 ---
 
