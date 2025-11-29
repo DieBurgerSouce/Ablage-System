@@ -746,7 +746,7 @@ class GermanValidator:
             cleaned = cleaned.replace('.', '').replace(',', '.')
             try:
                 return float(cleaned)
-            except:
+            except (ValueError, AttributeError):
                 return 0
 
         unique_amounts.sort(key=extract_amount)

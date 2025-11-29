@@ -178,7 +178,7 @@ async def create_test_image(output_path: str):
     # Try to use a font, fallback to default if not available
     try:
         font = ImageFont.truetype("arial.ttf", 16)
-    except:
+    except (OSError, IOError):
         font = ImageFont.load_default()
 
     # Draw text

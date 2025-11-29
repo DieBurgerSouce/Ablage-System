@@ -172,7 +172,7 @@ if invoice_path.exists():
                     if text and text.strip():
                         print(f"    Region {i+1:2d}: '{text}'")
                         invoice_text.append(text)
-            except:
+            except Exception:
                 continue
 
     if invoice_text:

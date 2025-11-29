@@ -24,7 +24,7 @@ try:
     font_large = ImageFont.truetype("arial.ttf", 24)
     font_normal = ImageFont.truetype("arial.ttf", 16)
     font_small = ImageFont.truetype("arial.ttf", 14)
-except:
+except (OSError, IOError):
     # Fallback to default font
     font_large = ImageFont.load_default()
     font_normal = ImageFont.load_default()
