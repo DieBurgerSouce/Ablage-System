@@ -1,0 +1,139 @@
+# Prometheus Alerting Rules fuer PostgreSQL
+# Alle Beschreibungen auf Deutsch fuer Betriebsteam
+
+groups:
+  - name: database_alerts
+    rules:
+      # Kritisch: PostgreSQL nicht erreichbar
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "PostgreSQL nicht erreichbar"
+          description: "Die PostgreSQL-Datenbank ist seit mehr als 1 Minute nicht erreichbar."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/postgres-down"
+
+      # Warnung: Hohe Verbindungsauslastung (>80%)
+      - alert: PostgreSQLHighConnections
+        expr: pg_stat_activity_count / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "PostgreSQL Verbindungen hoch"
+          description: "Mehr als 80% der max. Datenbankverbindungen belegt ({{ $value | humanizePercentage }})."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/postgres-connections"
+
+      # Kritisch: Verbindungsauslastung kritisch (>95%)
+      - alert: PostgreSQLConnectionsCritical
+        expr: pg_stat_activity_count / pg_settings_max_connections > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "KRITISCH: PostgreSQL Verbindungen fast erschoepft"
+          description: "Mehr als 95% der Datenbankverbindungen belegt. Neue Verbindungen koennten abgelehnt werden."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/postgres-connections-critical"
+
+      # Warnung: Viele aktive Queries
+      - alert: PostgreSQLHighActiveQueries
+        expr: pg_stat_activity_count{state="active"} > 50
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Viele aktive Datenbankabfragen"
+          description: "Mehr als 50 aktive Datenbankabfragen gleichzeitig. Moeglicherweise Leistungsprobleme."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/postgres-active-queries"
+
+      # Warnung: Langsame Queries (pg_exporter)
+      - alert: PostgreSQLSlowQueries
+        expr: pg_stat_activity_max_tx_duration > 60
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Langsame Datenbankabfragen"
+          description: "Transaktionen dauern laenger als 60 Sekunden. Moeglicherweise Deadlocks oder ineffiziente Queries."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/postgres-slow-queries"
+
+      # Kritisch: Sehr langsame Queries
+      - alert: PostgreSQLVerySlowQueries
+        expr: pg_stat_activity_max_tx_duration > 300
+        for: 2m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "KRITISCH: Sehr langsame Datenbankabfragen"
+          description: "Transaktionen dauern laenger als 5 Minuten. Sofortige Untersuchung erforderlich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/postgres-very-slow-queries"
+
+      # Warnung: Hohe Deadlock-Rate
+      - alert: PostgreSQLDeadlocks
+        expr: increase(pg_stat_database_deadlocks[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Deadlocks in PostgreSQL erkannt"
+          description: "In den letzten 5 Minuten wurden Deadlocks in der Datenbank erkannt."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/postgres-deadlocks"
+
+      # Warnung: Speicherplatz niedrig
+      - alert: PostgreSQLDiskSpaceLow
+        expr: pg_database_size_bytes > (pg_settings_data_directory_size_bytes * 0.8)
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "PostgreSQL Speicherplatz niedrig"
+          description: "Die Datenbank nutzt mehr als 80% des verfuegbaren Speicherplatzes."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/postgres-disk-low"
+
+      # Warnung: Hohe Cache Miss Rate
+      - alert: PostgreSQLLowCacheHitRatio
+        expr: |
+          pg_stat_database_blks_hit
+          / (pg_stat_database_blks_hit + pg_stat_database_blks_read) < 0.95
+        for: 15m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "PostgreSQL Cache Hit Ratio niedrig"
+          description: "Die Cache Hit Ratio liegt unter 95% ({{ $value | humanizePercentage }}). Moeglicherweise zu wenig Arbeitsspeicher."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/postgres-cache-ratio"
+
+      # Info: Replication Lag (falls Replikation aktiv)
+      - alert: PostgreSQLReplicationLag
+        expr: pg_replication_lag > 30
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "PostgreSQL Replikations-Lag"
+          description: "Die Replikation hinkt mehr als 30 Sekunden hinterher."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/postgres-replication-lag"
+
+      # Warnung: Viele wartende Locks
+      - alert: PostgreSQLHighLockWait
+        expr: pg_stat_activity_count{wait_event_type="Lock"} > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Viele wartende Locks in PostgreSQL"
+          description: "Mehr als 10 Verbindungen warten auf Locks. Moegliche Blockierungen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/postgres-lock-wait"

@@ -1,0 +1,143 @@
+# Prometheus Alerting Rules fuer API
+# Alle Beschreibungen auf Deutsch fuer Betriebsteam
+
+groups:
+  - name: api_alerts
+    rules:
+      # Kritisch: API nicht erreichbar
+      - alert: APIDown
+        expr: up{job="ablage-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "API nicht erreichbar"
+          description: "Die Ablage-System API ist seit mehr als 1 Minute nicht erreichbar."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/api-down"
+
+      # Warnung: Hohe API Latenz (95. Perzentil > 2s)
+      - alert: APIHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "API Latenz hoch"
+          description: "95% der API-Anfragen dauern laenger als 2 Sekunden. Aktuell: {{ $value | humanizeDuration }}"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/api-latency"
+
+      # Kritisch: Sehr hohe API Latenz (95. Perzentil > 5s)
+      - alert: APIVeryHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 5
+        for: 2m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "KRITISCH: API Latenz extrem hoch"
+          description: "95% der API-Anfragen dauern laenger als 5 Sekunden. System stark beeintraechtigt."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/api-latency-critical"
+
+      # Warnung: Hohe Fehlerrate (5xx > 5%)
+      - alert: APIHighErrorRate
+        expr: |
+          rate(http_requests_total{status=~"5.."}[5m])
+          / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Hohe API Fehlerrate (5xx)"
+          description: "Mehr als 5% der API-Anfragen enden mit Serverfehlern. Aktuelle Rate: {{ $value | humanizePercentage }}"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/api-error-rate"
+
+      # Kritisch: Sehr hohe Fehlerrate (5xx > 15%)
+      - alert: APICriticalErrorRate
+        expr: |
+          rate(http_requests_total{status=~"5.."}[5m])
+          / rate(http_requests_total[5m]) > 0.15
+        for: 2m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "KRITISCH: API Fehlerrate ueber 15%"
+          description: "Mehr als 15% der API-Anfragen enden mit Serverfehlern. Sofortige Untersuchung erforderlich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/api-error-critical"
+
+      # Warnung: Hohe Client-Fehlerrate (4xx > 20%)
+      - alert: APIHighClientErrorRate
+        expr: |
+          rate(http_requests_total{status=~"4.."}[5m])
+          / rate(http_requests_total[5m]) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Hohe Client-Fehlerrate (4xx)"
+          description: "Mehr als 20% der API-Anfragen enden mit Client-Fehlern. Moeglicherweise ein API-Missbrauch."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/api-client-errors"
+
+      # Warnung: Rate Limiting ausgeloest
+      - alert: APIRateLimitTriggered
+        expr: increase(http_requests_total{status="429"}[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Rate Limiting haeufig ausgeloest"
+          description: "Rate Limiting wurde in den letzten 5 Minuten mehr als 100 Mal ausgeloest."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/api-rate-limit"
+
+      # Warnung: Wenig API-Traffic (moeglicher Ausfall)
+      - alert: APILowTraffic
+        expr: rate(http_requests_total[15m]) < 1
+        for: 30m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Sehr wenig API-Traffic"
+          description: "Weniger als 1 Anfrage pro Sekunde in den letzten 30 Minuten. Moeglicherweise ein Problem."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/api-low-traffic"
+
+      # Warnung: Celery Worker nicht erreichbar
+      - alert: CeleryWorkerDown
+        expr: up{job="ablage-worker"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: celery
+        annotations:
+          summary: "Celery Worker nicht erreichbar"
+          description: "Der Celery Worker ist seit mehr als 2 Minuten nicht erreichbar. Hintergrundaufgaben betroffen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-worker-down"
+
+      # Kritisch: Celery Worker laenger offline
+      - alert: CeleryWorkerDownLong
+        expr: up{job="ablage-worker"} == 0
+        for: 10m
+        labels:
+          severity: critical
+          component: celery
+        annotations:
+          summary: "KRITISCH: Celery Worker seit 10+ Minuten offline"
+          description: "Der Celery Worker ist seit mehr als 10 Minuten nicht erreichbar. OCR-Verarbeitung gestoert."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-worker-critical"
+
+      # Warnung: Celery Task Queue zu lang
+      - alert: CeleryQueueBacklog
+        expr: celery_queue_length > 500
+        for: 10m
+        labels:
+          severity: warning
+          component: celery
+        annotations:
+          summary: "Celery Task Queue zu lang"
+          description: "Die Celery-Warteschlange hat {{ $value }} wartende Tasks. Verarbeitung verzögert."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-queue-backlog"

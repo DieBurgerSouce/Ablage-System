@@ -1,0 +1,151 @@
+# Prometheus Alerting Rules fuer Redis
+# Alle Beschreibungen auf Deutsch fuer Betriebsteam
+
+groups:
+  - name: redis_alerts
+    rules:
+      # Kritisch: Redis nicht erreichbar
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary: "Redis nicht erreichbar"
+          description: "Der Redis-Cache ist seit mehr als 1 Minute nicht erreichbar."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/redis-down"
+
+      # Warnung: Redis Speicher hoch (>85%)
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Redis Speicher hoch (>85%)"
+          description: "Redis Speicherauslastung bei {{ $value | humanizePercentage }}."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/redis-memory-high"
+
+      # Kritisch: Redis Speicher kritisch (>95%)
+      - alert: RedisMemoryCritical
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary: "KRITISCH: Redis Speicher fast voll"
+          description: "Redis Speicher bei {{ $value | humanizePercentage }}. Evictions oder OOM wahrscheinlich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/redis-memory-critical"
+
+      # Warnung: Hohe Eviction-Rate
+      - alert: RedisHighEvictionRate
+        expr: rate(redis_evicted_keys_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Hohe Redis Eviction-Rate"
+          description: "Redis entfernt mehr als 10 Keys pro Sekunde wegen Speichermangel."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/redis-eviction"
+
+      # Warnung: Viele verbundene Clients
+      - alert: RedisTooManyConnections
+        expr: redis_connected_clients > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Viele Redis-Verbindungen"
+          description: "Mehr als 1000 Clients mit Redis verbunden ({{ $value }})."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/redis-connections"
+
+      # Warnung: Redis blockierte Clients
+      - alert: RedisBlockedClients
+        expr: redis_blocked_clients > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Blockierte Redis-Clients"
+          description: "{{ $value }} Clients warten auf blockierende Operationen (BLPOP, etc.)."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/redis-blocked"
+
+      # Warnung: Niedrige Cache Hit Rate
+      - alert: RedisLowCacheHitRate
+        expr: |
+          redis_keyspace_hits_total
+          / (redis_keyspace_hits_total + redis_keyspace_misses_total) < 0.9
+        for: 15m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Niedrige Redis Cache Hit Rate"
+          description: "Die Cache Hit Rate liegt unter 90% ({{ $value | humanizePercentage }}). Cache-Effizienz pruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/redis-hit-rate"
+
+      # Warnung: Hohe Redis-Latenz
+      - alert: RedisHighLatency
+        expr: redis_slowlog_last_id > redis_slowlog_last_id offset 5m + 10
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Langsame Redis-Befehle erkannt"
+          description: "Mehr als 10 langsame Redis-Befehle in den letzten 5 Minuten."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/redis-latency"
+
+      # Warnung: Redis RDB Snapshot fehlgeschlagen
+      - alert: RedisRDBSnapshotFailed
+        expr: redis_rdb_last_bgsave_status == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Redis RDB Snapshot fehlgeschlagen"
+          description: "Der letzte Redis-Snapshot (BGSAVE) ist fehlgeschlagen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/redis-rdb-failed"
+
+      # Info: Redis AOF Rewrite aktiv
+      - alert: RedisAOFRewriteActive
+        expr: redis_aof_rewrite_in_progress == 1
+        for: 30m
+        labels:
+          severity: info
+          component: redis
+        annotations:
+          summary: "Redis AOF Rewrite laeuft lange"
+          description: "Der Redis AOF-Rewrite laeuft seit mehr als 30 Minuten."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/redis-aof-rewrite"
+
+      # Warnung: Redis Fragmentierung hoch
+      - alert: RedisHighFragmentation
+        expr: redis_memory_used_rss_bytes / redis_memory_used_bytes > 1.5
+        for: 30m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Hohe Redis-Speicherfragmentierung"
+          description: "Die Speicherfragmentierung liegt bei {{ $value | humanize }}. Neustart empfohlen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/redis-fragmentation"
+
+      # Kritisch: Redis Master-Slave Disconnect (falls Replikation)
+      - alert: RedisReplicationBroken
+        expr: redis_connected_slaves < 1
+        for: 5m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary: "Redis Replikation unterbrochen"
+          description: "Keine Slave-Instanzen mit Redis Master verbunden. Replikation pruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/redis-replication"

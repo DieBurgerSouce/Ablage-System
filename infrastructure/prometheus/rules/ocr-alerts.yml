@@ -1,0 +1,129 @@
+# Prometheus Alerting Rules fuer OCR-Verarbeitung
+# Alle Beschreibungen auf Deutsch fuer Betriebsteam
+
+groups:
+  - name: ocr_alerts
+    rules:
+      # Kritisch: OCR Backend nicht erreichbar
+      - alert: OCRBackendDown
+        expr: up{job="ablage-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: ocr
+        annotations:
+          summary: "OCR Backend nicht erreichbar"
+          description: "Das OCR Backend ({{ $labels.instance }}) ist seit mehr als 1 Minute nicht erreichbar."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-backend-down"
+
+      # Warnung: Hohe OCR-Verarbeitungszeit (95. Perzentil > 10s)
+      - alert: OCRProcessingSlowHigh
+        expr: histogram_quantile(0.95, rate(ocr_processing_duration_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: ocr
+        annotations:
+          summary: "OCR Verarbeitung langsam"
+          description: "95% der OCR-Verarbeitungen dauern laenger als 10 Sekunden. Aktuell: {{ $value | humanizeDuration }}"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-slow"
+
+      # Kritisch: Sehr hohe OCR-Verarbeitungszeit (95. Perzentil > 30s)
+      - alert: OCRProcessingVerySlow
+        expr: histogram_quantile(0.95, rate(ocr_processing_duration_seconds_bucket[5m])) > 30
+        for: 5m
+        labels:
+          severity: critical
+          component: ocr
+        annotations:
+          summary: "OCR Verarbeitung extrem langsam"
+          description: "95% der OCR-Verarbeitungen dauern laenger als 30 Sekunden. System stark beeintraechtigt."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-very-slow"
+
+      # Warnung: Hohe OCR Fehlerrate (>10%)
+      - alert: OCRErrorRateHigh
+        expr: |
+          rate(ocr_requests_total{status="error"}[5m])
+          / rate(ocr_requests_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: ocr
+        annotations:
+          summary: "Hohe OCR Fehlerrate"
+          description: "Mehr als 10% der OCR-Anfragen schlagen fehl. Aktuelle Fehlerrate: {{ $value | humanizePercentage }}"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-error-rate"
+
+      # Kritisch: Sehr hohe OCR Fehlerrate (>25%)
+      - alert: OCRErrorRateCritical
+        expr: |
+          rate(ocr_requests_total{status="error"}[5m])
+          / rate(ocr_requests_total[5m]) > 0.25
+        for: 2m
+        labels:
+          severity: critical
+          component: ocr
+        annotations:
+          summary: "KRITISCH: OCR Fehlerrate ueber 25%"
+          description: "Mehr als 25% der OCR-Anfragen schlagen fehl. Sofortige Untersuchung erforderlich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-error-critical"
+
+      # Warnung: GPU Speicher hoch (>85%)
+      - alert: GPUMemoryHigh
+        expr: gpu_memory_usage_bytes / gpu_memory_total_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: gpu
+        annotations:
+          summary: "GPU Speicher hoch (>85%)"
+          description: "GPU Speicherauslastung bei {{ $value | humanizePercentage }}. Moegliche OOM-Gefahr."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-memory-high"
+
+      # Kritisch: GPU Speicher kritisch (>95%)
+      - alert: GPUMemoryCritical
+        expr: gpu_memory_usage_bytes / gpu_memory_total_bytes > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          component: gpu
+        annotations:
+          summary: "KRITISCH: GPU Speicher fast voll (>95%)"
+          description: "GPU Speicher fast erschoepft. OOM-Fehler wahrscheinlich. Sofortige Massnahmen erforderlich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-memory-critical"
+
+      # Warnung: OCR Warteschlange zu lang
+      - alert: OCRQueueBacklog
+        expr: ocr_queue_length > 100
+        for: 10m
+        labels:
+          severity: warning
+          component: ocr
+        annotations:
+          summary: "OCR Warteschlange zu lang"
+          description: "Die OCR-Warteschlange hat {{ $value }} wartende Dokumente. Verarbeitung verzögert."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-queue-backlog"
+
+      # Warnung: Kein OCR-Traffic (moeglicher Ausfall)
+      - alert: OCRNoTraffic
+        expr: rate(ocr_requests_total[15m]) == 0
+        for: 30m
+        labels:
+          severity: warning
+          component: ocr
+        annotations:
+          summary: "Kein OCR-Traffic seit 30 Minuten"
+          description: "Keine OCR-Anfragen in den letzten 30 Minuten. Moeglicherweise ein Systemausfall."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-no-traffic"
+
+      # Info: OCR Backend Fallback aktiv
+      - alert: OCRFallbackActive
+        expr: ocr_fallback_active == 1
+        for: 5m
+        labels:
+          severity: info
+          component: ocr
+        annotations:
+          summary: "OCR verwendet Fallback-Backend"
+          description: "Das primaere OCR-Backend ist nicht verfuegbar. Fallback auf {{ $labels.fallback_backend }} aktiv."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-fallback"
