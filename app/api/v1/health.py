@@ -383,3 +383,153 @@ async def readiness_probe(
         )
 
     return {"status": "ready", "datenbank": db_status.gesund}
+
+
+# =============================================================================
+# OCR Health Endpoints
+# =============================================================================
+
+
+class OCRBackendHealth(BaseModel):
+    """OCR Backend Gesundheitsstatus."""
+
+    gesund: bool = Field(..., description="Ist Backend gesund?")
+    grund: Optional[str] = Field(None, description="Grund falls ungesund")
+    status: Optional[Dict[str, Any]] = Field(None, description="Backend-Status")
+
+
+class OCRHealthResponse(BaseModel):
+    """OCR Gesundheitspruefung."""
+
+    status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    gesamt_gesund: bool = Field(..., description="Mindestens ein Backend gesund")
+    backends: Dict[str, OCRBackendHealth] = Field(..., description="Backend-Status")
+    gesunde_backends: int = Field(..., description="Anzahl gesunder Backends")
+    ungesunde_backends: int = Field(..., description="Anzahl ungesunder Backends")
+    fallback_verfuegbar: bool = Field(..., description="CPU-Fallback verfuegbar")
+    empfohlenes_backend: Optional[str] = Field(None, description="Empfohlenes Backend")
+
+
+@router.get(
+    "/ocr",
+    response_model=OCRHealthResponse,
+    summary="OCR Backend Gesundheitspruefung",
+    description="Prueft alle OCR-Backends auf Verfuegbarkeit und VRAM.",
+)
+async def ocr_health() -> OCRHealthResponse:
+    """
+    Detaillierte Gesundheitspruefung aller OCR-Backends.
+
+    Prueft:
+    - DeepSeek-Janus-Pro (GPU)
+    - GOT-OCR 2.0 (GPU)
+    - Surya GPU (GPU)
+    - Surya CPU (Fallback)
+
+    Gibt Empfehlung fuer optimales Backend zurueck.
+    """
+    from app.services.ocr_service import OCRService
+
+    # Create temporary OCR service instance for health check
+    # In production, this should use a singleton or dependency injection
+    try:
+        ocr_service = OCRService()
+        health_status = await ocr_service.get_health_status()
+
+        # Convert backend health to response format
+        backends = {}
+        for name, health in health_status.get("backends", {}).items():
+            backends[name] = OCRBackendHealth(
+                gesund=health.get("healthy", False),
+                grund=health.get("reason") if not health.get("healthy") else None,
+                status=health.get("status"),
+            )
+
+        # Determine overall status
+        healthy_count = health_status.get("healthy_count", 0)
+        total = health_status.get("total_backends", 0)
+
+        if healthy_count == 0:
+            status = "kritisch"
+        elif healthy_count < total:
+            status = "beeintraechtigt"
+        else:
+            status = "gesund"
+
+        # Get recommended backend
+        recommendation = await ocr_service.get_recommended_backend()
+        empfohlenes_backend = recommendation.get("recommended")
+
+        # Clean up
+        await ocr_service.cleanup()
+
+        logger.info(
+            "ocr_health_check_complete",
+            status=status,
+            healthy_count=healthy_count,
+            total=total,
+            recommended=empfohlenes_backend,
+        )
+
+        return OCRHealthResponse(
+            status=status,
+            zeitstempel=health_status.get("timestamp", datetime.now(timezone.utc).isoformat()),
+            gesamt_gesund=health_status.get("overall_healthy", False),
+            backends=backends,
+            gesunde_backends=healthy_count,
+            ungesunde_backends=health_status.get("unhealthy_count", 0),
+            fallback_verfuegbar=health_status.get("fallback_available", False),
+            empfohlenes_backend=empfohlenes_backend,
+        )
+
+    except Exception as e:
+        logger.error("ocr_health_check_failed", error=str(e))
+        return OCRHealthResponse(
+            status="kritisch",
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            gesamt_gesund=False,
+            backends={},
+            gesunde_backends=0,
+            ungesunde_backends=0,
+            fallback_verfuegbar=False,
+            empfohlenes_backend=None,
+        )
+
+
+@router.get(
+    "/ocr/{backend_name}",
+    response_model=OCRBackendHealth,
+    summary="Einzelnes OCR Backend pruefen",
+    description="Prueft ein spezifisches OCR-Backend.",
+)
+async def ocr_backend_health(backend_name: str) -> OCRBackendHealth:
+    """
+    Gesundheitspruefung fuer ein spezifisches OCR-Backend.
+
+    Args:
+        backend_name: Name des Backends (deepseek, got_ocr, surya, surya_gpu)
+
+    Returns:
+        Gesundheitsstatus des Backends
+    """
+    from app.services.ocr_service import OCRService
+
+    try:
+        ocr_service = OCRService()
+        health = await ocr_service.check_backend_health(backend_name)
+        await ocr_service.cleanup()
+
+        return OCRBackendHealth(
+            gesund=health.get("healthy", False),
+            grund=health.get("reason") if not health.get("healthy") else None,
+            status=health.get("status"),
+        )
+
+    except Exception as e:
+        logger.error("ocr_backend_health_check_failed", backend=backend_name, error=str(e))
+        return OCRBackendHealth(
+            gesund=False,
+            grund=f"Pruefung fehlgeschlagen: {str(e)[:100]}",
+            status=None,
+        )

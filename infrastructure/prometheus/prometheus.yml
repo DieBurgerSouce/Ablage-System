@@ -46,19 +46,19 @@ scrape_configs:
         target_label: instance
         replacement: 'ablage-worker'
 
-  # PostgreSQL Metrics (via pg_exporter if configured)
+  # PostgreSQL Metrics (via postgres_exporter)
   - job_name: 'postgres'
     static_configs:
-      - targets: ['postgres:5432']
+      - targets: ['postgres_exporter:9187']
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
         replacement: 'postgres'
 
-  # Redis Metrics
+  # Redis Metrics (via redis_exporter)
   - job_name: 'redis'
     static_configs:
-      - targets: ['redis:6379']
+      - targets: ['redis_exporter:9121']
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance

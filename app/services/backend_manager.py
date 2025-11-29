@@ -177,22 +177,102 @@ class BackendManager:
             logger.info("backend_selected", backend=available_backends[0], reason="first_available")
             return available_backends[0]
 
+    async def check_backend_health(self, backend_name: str) -> Dict[str, Any]:
+        """
+        Check if a specific backend is healthy and ready for processing.
+
+        Args:
+            backend_name: Name of the backend to check
+
+        Returns:
+            Health status with 'healthy' boolean and details
+        """
+        if backend_name not in self.backends:
+            return {"healthy": False, "reason": "Backend not found"}
+
+        backend = self.backends[backend_name]
+
+        try:
+            # Get backend status
+            status = backend.get_status()
+            if asyncio.iscoroutine(status):
+                status = await status
+
+            # Check GPU availability for GPU backends
+            if status.get("gpu_required", False):
+                gpu_info = status.get("gpu_info", {})
+                if not gpu_info.get("available", True):
+                    return {"healthy": False, "reason": "GPU nicht verfügbar", "status": status}
+
+                # Check VRAM availability (leave 15% headroom)
+                total_gb = gpu_info.get("total_memory_gb", 0)
+                allocated_gb = gpu_info.get("allocated_memory_gb", 0)
+                required_gb = status.get("vram_gb", 0)
+                available_gb = total_gb - allocated_gb
+
+                if available_gb < required_gb * 0.85:
+                    return {
+                        "healthy": False,
+                        "reason": f"Nicht genug VRAM: {available_gb:.1f}GB verfügbar, {required_gb}GB benötigt",
+                        "status": status
+                    }
+
+            return {"healthy": True, "status": status}
+
+        except Exception as e:
+            logger.warning("backend_health_check_failed", backend=backend_name, error=str(e))
+            return {"healthy": False, "reason": str(e)}
+
+    def get_fallback_order(self, preferred_backend: str) -> List[str]:
+        """
+        Get ordered list of backends to try, starting with preferred.
+
+        Args:
+            preferred_backend: The initially preferred backend
+
+        Returns:
+            Ordered list of backend names for fallback chain
+        """
+        available = list(self.backends.keys())
+
+        # Define fallback priority (most capable to least)
+        priority_order = ["deepseek", "got_ocr", "surya_gpu", "surya"]
+
+        # Build fallback chain starting with preferred
+        fallback_chain = []
+        if preferred_backend in available:
+            fallback_chain.append(preferred_backend)
+
+        # Add remaining backends in priority order
+        for backend in priority_order:
+            if backend in available and backend not in fallback_chain:
+                fallback_chain.append(backend)
+
+        # Add any remaining backends not in priority list
+        for backend in available:
+            if backend not in fallback_chain:
+                fallback_chain.append(backend)
+
+        return fallback_chain
+
     async def process_with_backend(
         self,
         backend_name: str,
         image_path: str,
         language: str = "de",
         detect_fraktur: bool = False,
+        enable_fallback: bool = True,
         **kwargs
     ) -> Dict[str, Any]:
         """
-        Process document with specified backend.
+        Process document with specified backend, with automatic fallback on failure.
 
         Args:
             backend_name: Name of the backend to use
             image_path: Path to the document
             language: Target language
             detect_fraktur: Whether to detect Fraktur script
+            enable_fallback: Whether to try fallback backends on failure
             **kwargs: Additional backend-specific parameters
 
         Returns:
@@ -200,27 +280,68 @@ class BackendManager:
         """
         if backend_name not in self.backends:
             available = list(self.backends.keys())
-            raise ValueError(f"Backend '{backend_name}' not available. Available: {available}")
+            raise ValueError(f"Backend '{backend_name}' nicht verfügbar. Verfügbar: {available}")
 
-        backend = self.backends[backend_name]
-        logger.info("processing_with_backend", backend=backend_name)
+        # Get fallback chain
+        fallback_chain = self.get_fallback_order(backend_name) if enable_fallback else [backend_name]
+        last_error = None
 
-        # Prepare input data
-        input_data = {
-            "image_path": image_path,
-            "language": language,
-            "detect_fraktur": detect_fraktur,
-            **kwargs
-        }
+        for current_backend in fallback_chain:
+            # Health check before processing
+            health = await self.check_backend_health(current_backend)
+            if not health["healthy"]:
+                logger.warning(
+                    "backend_unhealthy_skipping",
+                    backend=current_backend,
+                    reason=health.get("reason")
+                )
+                continue
 
-        # Process with backend
-        try:
-            result = await backend.process(input_data)
-            result["backend"] = backend_name
-            return result
-        except Exception as e:
-            logger.error("backend_processing_failed", backend=backend_name, error=str(e))
-            raise
+            backend = self.backends[current_backend]
+            logger.info("processing_with_backend", backend=current_backend)
+
+            # Prepare input data
+            input_data = {
+                "image_path": image_path,
+                "language": language,
+                "detect_fraktur": detect_fraktur,
+                **kwargs
+            }
+
+            # Process with backend
+            try:
+                result = await backend.process(input_data)
+                result["backend"] = current_backend
+                if current_backend != backend_name:
+                    result["fallback_used"] = True
+                    result["original_backend"] = backend_name
+                    logger.info(
+                        "fallback_backend_succeeded",
+                        original=backend_name,
+                        fallback=current_backend
+                    )
+                return result
+
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    "backend_processing_failed_trying_fallback",
+                    backend=current_backend,
+                    error=str(e),
+                    remaining_fallbacks=len(fallback_chain) - fallback_chain.index(current_backend) - 1
+                )
+                continue
+
+        # All backends failed
+        logger.error(
+            "all_backends_failed",
+            tried=fallback_chain,
+            last_error=str(last_error) if last_error else "Unknown"
+        )
+        raise RuntimeError(
+            f"Alle OCR-Backends fehlgeschlagen. Versucht: {fallback_chain}. "
+            f"Letzter Fehler: {last_error}"
+        )
 
     async def get_backend_status(self, backend_name: Optional[str] = None) -> Dict[str, Any]:
         """

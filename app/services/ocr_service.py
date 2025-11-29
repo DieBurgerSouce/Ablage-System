@@ -30,7 +30,13 @@ class OCRService:
         self.processing_stats = {
             "total_processed": 0,
             "total_errors": 0,
-            "by_backend": {}
+            "total_fallbacks": 0,
+            "by_backend": {},
+            "health_checks": {
+                "total": 0,
+                "healthy": 0,
+                "unhealthy": 0
+            }
         }
 
         # Create upload directory if it doesn't exist
@@ -103,12 +109,13 @@ class OCRService:
                 language=language
             )
 
-            # Process with selected backend
+            # Process with selected backend (with automatic fallback enabled)
             result = await self.backend_manager.process_with_backend(
                 backend_name=selected_backend,
                 image_path=image_path,
                 language=language,
                 detect_fraktur=detect_fraktur,
+                enable_fallback=True,  # Enable automatic fallback chain
                 enable_layout=detect_layout
             )
 
@@ -119,8 +126,20 @@ class OCRService:
             if "metadata" not in result:
                 result["metadata"] = {}
 
+            # Track fallback usage
+            actual_backend = result.get("backend", selected_backend)
+            if result.get("fallback_used"):
+                self.processing_stats["total_fallbacks"] += 1
+                logger.info(
+                    "fallback_used",
+                    original=result.get("original_backend"),
+                    actual=actual_backend
+                )
+
             result["metadata"].update({
-                "backend_used": selected_backend,
+                "backend_used": actual_backend,
+                "backend_requested": selected_backend,
+                "fallback_used": result.get("fallback_used", False),
                 "processing_time_seconds": round(processing_time, 3),
                 "language": language,
                 "timestamp": datetime.now(timezone.utc).isoformat()
@@ -128,8 +147,8 @@ class OCRService:
 
             # Update stats
             self.processing_stats["total_processed"] += 1
-            backend_stats = self.processing_stats["by_backend"].get(selected_backend, 0)
-            self.processing_stats["by_backend"][selected_backend] = backend_stats + 1
+            backend_stats = self.processing_stats["by_backend"].get(actual_backend, 0)
+            self.processing_stats["by_backend"][actual_backend] = backend_stats + 1
 
             # Add success flag if not present
             if "success" not in result:
@@ -141,36 +160,7 @@ class OCRService:
             self.processing_stats["total_errors"] += 1
             logger.error("ocr_processing_failed", error=str(e), exc_info=True)
 
-            # Try fallback to CPU if GPU failed
-            if "cuda" in str(e).lower() or "gpu" in str(e).lower():
-                logger.warning("gpu_error_fallback_to_cpu")
-                try:
-                    # Ensure Surya is available
-                    if "surya" in self.backend_manager.get_available_backends():
-                        result = await self.backend_manager.process_with_backend(
-                            backend_name="surya",
-                            image_path=image_path,
-                            language=language,
-                            enable_layout=detect_layout
-                        )
-
-                        # Add metadata about fallback
-                        processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
-                        if "metadata" not in result:
-                            result["metadata"] = {}
-                        result["metadata"].update({
-                            "backend_used": "surya",
-                            "processing_time_seconds": round(processing_time, 3),
-                            "language": language,
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                            "fallback_reason": "GPU error"
-                        })
-
-                        return result
-                except Exception as fallback_error:
-                    logger.error("fallback_also_failed", error=str(fallback_error), exc_info=True)
-
-            # Return error response
+            # Return error response (fallback already attempted by backend_manager)
             return {
                 "success": False,
                 "error": str(e),
@@ -239,13 +229,153 @@ class OCRService:
         return {
             "total_processed": self.processing_stats["total_processed"],
             "total_errors": self.processing_stats["total_errors"],
+            "total_fallbacks": self.processing_stats["total_fallbacks"],
             "success_rate": (
                 self.processing_stats["total_processed"] /
                 max(1, self.processing_stats["total_processed"] + self.processing_stats["total_errors"])
             ),
+            "fallback_rate": (
+                self.processing_stats["total_fallbacks"] /
+                max(1, self.processing_stats["total_processed"])
+            ),
             "by_backend": self.processing_stats["by_backend"],
+            "health_checks": self.processing_stats["health_checks"],
             "available_backends": self.backend_manager.get_available_backends(),
             "backend_status": await self.backend_manager.get_backend_status()
+        }
+
+    async def get_health_status(self) -> Dict[str, Any]:
+        """
+        Get comprehensive health status of all OCR backends.
+
+        Returns:
+            Health status including:
+            - overall_healthy: True if at least one backend is healthy
+            - backends: Dict of backend name -> health status
+            - healthy_count: Number of healthy backends
+            - unhealthy_count: Number of unhealthy backends
+            - fallback_available: True if CPU fallback is available
+        """
+        self.processing_stats["health_checks"]["total"] += 1
+
+        backends = self.backend_manager.get_available_backends()
+        health_results = {}
+        healthy_count = 0
+        unhealthy_count = 0
+
+        for backend_name in backends:
+            health = await self.backend_manager.check_backend_health(backend_name)
+            health_results[backend_name] = health
+
+            if health.get("healthy"):
+                healthy_count += 1
+                self.processing_stats["health_checks"]["healthy"] += 1
+            else:
+                unhealthy_count += 1
+                self.processing_stats["health_checks"]["unhealthy"] += 1
+                logger.warning(
+                    "backend_unhealthy",
+                    backend=backend_name,
+                    reason=health.get("reason")
+                )
+
+        # Check if CPU fallback is available
+        fallback_available = "surya" in backends
+        if fallback_available:
+            surya_health = health_results.get("surya", {})
+            fallback_available = surya_health.get("healthy", False)
+
+        overall_healthy = healthy_count > 0
+
+        if not overall_healthy:
+            logger.error("all_backends_unhealthy", backends=list(health_results.keys()))
+
+        return {
+            "overall_healthy": overall_healthy,
+            "backends": health_results,
+            "healthy_count": healthy_count,
+            "unhealthy_count": unhealthy_count,
+            "total_backends": len(backends),
+            "fallback_available": fallback_available,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+    async def check_backend_health(self, backend_name: str) -> Dict[str, Any]:
+        """
+        Check health of a specific backend.
+
+        Args:
+            backend_name: Name of the backend to check
+
+        Returns:
+            Health status for the specified backend
+        """
+        self.processing_stats["health_checks"]["total"] += 1
+
+        health = await self.backend_manager.check_backend_health(backend_name)
+
+        if health.get("healthy"):
+            self.processing_stats["health_checks"]["healthy"] += 1
+        else:
+            self.processing_stats["health_checks"]["unhealthy"] += 1
+
+        return health
+
+    async def get_recommended_backend(
+        self,
+        image_path: Optional[str] = None,
+        language: str = "de",
+        prefer_gpu: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Get recommended backend based on current health and workload.
+
+        Args:
+            image_path: Optional path to document (for size-based selection)
+            language: Target language
+            prefer_gpu: Whether to prefer GPU backends
+
+        Returns:
+            Recommendation with backend name and reasoning
+        """
+        # Get health status first
+        health_status = await self.get_health_status()
+
+        if not health_status["overall_healthy"]:
+            return {
+                "recommended": None,
+                "reason": "Keine gesunden Backends verfügbar",
+                "health_status": health_status
+            }
+
+        # Find healthy backends
+        healthy_backends = [
+            name for name, health in health_status["backends"].items()
+            if health.get("healthy")
+        ]
+
+        # Priority order based on preferences
+        if prefer_gpu:
+            priority = ["deepseek", "got_ocr", "surya_gpu", "surya"]
+        else:
+            priority = ["surya", "surya_gpu", "got_ocr", "deepseek"]
+
+        # Select first healthy backend in priority order
+        for backend in priority:
+            if backend in healthy_backends:
+                return {
+                    "recommended": backend,
+                    "reason": f"Gesundes Backend mit {'GPU' if prefer_gpu else 'CPU'}-Präferenz",
+                    "healthy_backends": healthy_backends,
+                    "health_status": health_status
+                }
+
+        # Fallback to first available healthy backend
+        return {
+            "recommended": healthy_backends[0] if healthy_backends else None,
+            "reason": "Erstes verfügbares gesundes Backend",
+            "healthy_backends": healthy_backends,
+            "health_status": health_status
         }
 
     async def validate_german_text(self, text: str) -> Dict[str, Any]:

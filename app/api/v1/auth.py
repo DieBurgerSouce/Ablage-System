@@ -10,6 +10,9 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 from app.api.dependencies import (
     get_db,
@@ -198,7 +201,8 @@ async def refresh_token(
 
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
+        logger.warning("refresh_token_failed", error=str(e), error_type=type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Ungültiger oder abgelaufener Refresh Token",  # Invalid or expired refresh token

@@ -448,7 +448,7 @@ class TestBackendProcessing:
         temp_document
     ):
         """Test Fehler bei ungültigem Backend."""
-        with pytest.raises(ValueError, match="not available"):
+        with pytest.raises(ValueError, match="nicht verfügbar"):
             await manager_with_surya.process_with_backend(
                 backend_name="nonexistent",
                 image_path=str(temp_document)
@@ -604,6 +604,444 @@ class TestBackendCleanup:
             await manager.cleanup()
 
             mock_surya_agent.cleanup.assert_called_once()
+
+
+# ========================= Edge Cases =========================
+
+
+# ========================= Health Check Tests =========================
+
+
+class TestBackendHealthCheck:
+    """Tests für Backend-Gesundheitsprüfung."""
+
+    @pytest.fixture
+    def manager_with_gpu_backend(self, mock_surya_agent, mock_deepseek_agent):
+        """Create manager with GPU backend for health tests."""
+        # Configure deepseek as GPU backend with status
+        # VRAM check: available_gb (16-2=14) must be >= vram_gb * 0.85 (12*0.85=10.2)
+        mock_deepseek_agent.get_status = Mock(return_value={
+            "name": "deepseek",
+            "available": True,
+            "gpu_required": True,
+            "vram_gb": 12,
+            "gpu_info": {
+                "available": True,
+                "total_memory_gb": 16.0,
+                "allocated_memory_gb": 2.0  # 14GB available > 10.2GB required
+            }
+        })
+
+        with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
+             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+
+            surya_cls.return_value = mock_surya_agent
+            deepseek_cls.return_value = mock_deepseek_agent
+            got_cls.side_effect = Exception("Not available")
+
+            # Also patch SuryaGPUAgent to prevent real GPU initialization
+            with patch.dict('sys.modules', {'app.agents.ocr.surya_gpu_agent': MagicMock()}):
+                from app.services.backend_manager import BackendManager
+                manager = BackendManager()
+                yield manager
+
+    @pytest.mark.asyncio
+    async def test_check_backend_health_healthy(self, manager_with_gpu_backend):
+        """Test Gesundheitsprüfung für gesundes Backend."""
+        health = await manager_with_gpu_backend.check_backend_health("deepseek")
+
+        assert health["healthy"] is True
+        assert "status" in health
+
+    @pytest.mark.asyncio
+    async def test_check_backend_health_nonexistent(self, manager_with_gpu_backend):
+        """Test Gesundheitsprüfung für nicht existierendes Backend."""
+        health = await manager_with_gpu_backend.check_backend_health("fake_backend")
+
+        assert health["healthy"] is False
+        assert "Backend not found" in health["reason"]
+
+    @pytest.mark.asyncio
+    async def test_check_backend_health_gpu_unavailable(self, mock_surya_agent):
+        """Test Gesundheitsprüfung bei nicht verfügbarer GPU."""
+        mock_gpu_backend = AsyncMock()
+        mock_gpu_backend.get_status = Mock(return_value={
+            "name": "gpu_backend",
+            "gpu_required": True,
+            "vram_gb": 12,
+            "gpu_info": {
+                "available": False
+            }
+        })
+
+        with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
+             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+
+            surya_cls.return_value = mock_surya_agent
+            deepseek_cls.return_value = mock_gpu_backend
+            got_cls.side_effect = Exception("Not available")
+
+            from app.services.backend_manager import BackendManager
+            manager = BackendManager()
+
+            health = await manager.check_backend_health("deepseek")
+
+            assert health["healthy"] is False
+            assert "GPU" in health["reason"]
+
+    @pytest.mark.asyncio
+    async def test_check_backend_health_insufficient_vram(self, mock_surya_agent):
+        """Test Gesundheitsprüfung bei unzureichendem VRAM."""
+        mock_gpu_backend = AsyncMock()
+        mock_gpu_backend.get_status = Mock(return_value={
+            "name": "gpu_backend",
+            "gpu_required": True,
+            "vram_gb": 12,
+            "gpu_info": {
+                "available": True,
+                "total_memory_gb": 16.0,
+                "allocated_memory_gb": 14.0  # Only 2GB free, need 12GB
+            }
+        })
+
+        with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
+             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+
+            surya_cls.return_value = mock_surya_agent
+            deepseek_cls.return_value = mock_gpu_backend
+            got_cls.side_effect = Exception("Not available")
+
+            from app.services.backend_manager import BackendManager
+            manager = BackendManager()
+
+            health = await manager.check_backend_health("deepseek")
+
+            assert health["healthy"] is False
+            assert "VRAM" in health["reason"]
+
+    @pytest.mark.asyncio
+    async def test_check_backend_health_exception_handling(self, mock_surya_agent):
+        """Test Gesundheitsprüfung bei Exception im Backend."""
+        mock_error_backend = AsyncMock()
+        mock_error_backend.get_status = Mock(side_effect=Exception("Status error"))
+
+        with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
+             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+
+            surya_cls.return_value = mock_surya_agent
+            deepseek_cls.return_value = mock_error_backend
+            got_cls.side_effect = Exception("Not available")
+
+            from app.services.backend_manager import BackendManager
+            manager = BackendManager()
+
+            health = await manager.check_backend_health("deepseek")
+
+            assert health["healthy"] is False
+            assert "Status error" in health["reason"]
+
+
+# ========================= Fallback Order Tests =========================
+
+
+class TestFallbackOrder:
+    """Tests für Fallback-Reihenfolge."""
+
+    @pytest.fixture
+    def manager_with_all_backends(
+        self,
+        mock_surya_agent,
+        mock_deepseek_agent,
+        mock_got_ocr_agent,
+        mock_surya_gpu_agent
+    ):
+        """Create manager with all backends for fallback tests."""
+        with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.torch") as mock_torch, \
+             patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
+             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+
+            mock_torch.cuda.is_available.return_value = True
+            mock_torch.cuda.get_device_name.return_value = "RTX 4080"
+
+            surya_cls.return_value = mock_surya_agent
+            deepseek_cls.return_value = mock_deepseek_agent
+            got_cls.return_value = mock_got_ocr_agent
+
+            # Also mock the GPU surya import
+            with patch.dict('sys.modules', {'app.agents.ocr.surya_gpu_agent': MagicMock()}):
+                with patch("app.services.backend_manager.SuryaGPUAgent", create=True) as surya_gpu_cls:
+                    surya_gpu_cls.return_value = mock_surya_gpu_agent
+
+                    from app.services.backend_manager import BackendManager
+                    manager = BackendManager()
+                    # Manually add surya_gpu for testing
+                    manager.backends["surya_gpu"] = mock_surya_gpu_agent
+                    yield manager
+
+    def test_fallback_order_preferred_first(self, manager_with_all_backends):
+        """Test dass bevorzugtes Backend zuerst kommt."""
+        order = manager_with_all_backends.get_fallback_order("got_ocr")
+
+        assert order[0] == "got_ocr"
+
+    def test_fallback_order_priority(self, manager_with_all_backends):
+        """Test Prioritätsreihenfolge der Backends."""
+        order = manager_with_all_backends.get_fallback_order("surya")
+
+        # surya should be first (preferred)
+        assert order[0] == "surya"
+
+        # deepseek should come before got_ocr (priority order)
+        deepseek_idx = order.index("deepseek")
+        got_idx = order.index("got_ocr")
+        assert deepseek_idx < got_idx
+
+    def test_fallback_order_missing_backend(self, mock_surya_agent):
+        """Test Fallback-Reihenfolge wenn bevorzugtes Backend fehlt."""
+        with patch("app.services.backend_manager.TORCH_AVAILABLE", False), \
+             patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls:
+
+            surya_cls.return_value = mock_surya_agent
+
+            from app.services.backend_manager import BackendManager
+            manager = BackendManager()
+
+            order = manager.get_fallback_order("deepseek")
+
+            # deepseek not available, should fallback to surya
+            assert "deepseek" not in order
+            assert "surya" in order
+
+    def test_fallback_order_all_backends_included(self, manager_with_all_backends):
+        """Test dass alle verfügbaren Backends in der Fallback-Kette sind."""
+        order = manager_with_all_backends.get_fallback_order("surya")
+
+        available = manager_with_all_backends.get_available_backends()
+        for backend in available:
+            assert backend in order
+
+
+# ========================= Process with Fallback Tests =========================
+
+
+class TestProcessWithFallback:
+    """Tests für Verarbeitung mit Fallback-Logik."""
+
+    @pytest.fixture
+    def manager_with_fallback_backends(self, mock_surya_agent, mock_deepseek_agent):
+        """Create manager for fallback processing tests."""
+        with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
+             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+
+            surya_cls.return_value = mock_surya_agent
+            deepseek_cls.return_value = mock_deepseek_agent
+            got_cls.side_effect = Exception("Not available")
+
+            from app.services.backend_manager import BackendManager
+            manager = BackendManager()
+            yield manager, mock_surya_agent, mock_deepseek_agent
+
+    @pytest.mark.asyncio
+    async def test_process_with_fallback_success(
+        self,
+        manager_with_fallback_backends,
+        temp_document
+    ):
+        """Test erfolgreiche Verarbeitung ohne Fallback."""
+        manager, mock_surya, mock_deepseek = manager_with_fallback_backends
+
+        result = await manager.process_with_backend(
+            backend_name="surya",
+            image_path=str(temp_document),
+            enable_fallback=True
+        )
+
+        assert result["backend"] == "surya"
+        assert "fallback_used" not in result
+
+    @pytest.mark.asyncio
+    async def test_process_with_fallback_triggered(
+        self,
+        mock_surya_agent
+    ):
+        """Test Fallback bei Fehler im primären Backend."""
+        # Configure first backend to fail, second to succeed
+        mock_failing_backend = AsyncMock()
+        mock_failing_backend.process = AsyncMock(side_effect=Exception("Processing failed"))
+        mock_failing_backend.get_status = Mock(return_value={
+            "name": "deepseek",
+            "gpu_required": False
+        })
+        mock_failing_backend.cleanup = AsyncMock()
+
+        mock_surya_agent.get_status = Mock(return_value={
+            "name": "surya",
+            "gpu_required": False
+        })
+
+        with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
+             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+
+            surya_cls.return_value = mock_surya_agent
+            deepseek_cls.return_value = mock_failing_backend
+            got_cls.side_effect = Exception("Not available")
+
+            from app.services.backend_manager import BackendManager
+            manager = BackendManager()
+
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+                f.write(b"%PDF-1.4 test")
+                temp_path = f.name
+
+            try:
+                result = await manager.process_with_backend(
+                    backend_name="deepseek",
+                    image_path=temp_path,
+                    enable_fallback=True
+                )
+
+                # Should have used fallback
+                assert result["fallback_used"] is True
+                assert result["original_backend"] == "deepseek"
+                assert result["backend"] == "surya"
+            finally:
+                os.unlink(temp_path)
+
+    @pytest.mark.asyncio
+    async def test_process_without_fallback_raises(self, mock_surya_agent):
+        """Test dass ohne Fallback Fehler geworfen wird."""
+        mock_failing_backend = AsyncMock()
+        mock_failing_backend.process = AsyncMock(side_effect=Exception("Processing failed"))
+        mock_failing_backend.get_status = Mock(return_value={
+            "name": "deepseek",
+            "gpu_required": False
+        })
+
+        with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
+             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+
+            surya_cls.return_value = mock_surya_agent
+            deepseek_cls.return_value = mock_failing_backend
+            got_cls.side_effect = Exception("Not available")
+
+            from app.services.backend_manager import BackendManager
+            manager = BackendManager()
+
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+                f.write(b"%PDF-1.4 test")
+                temp_path = f.name
+
+            try:
+                with pytest.raises(RuntimeError, match="Alle OCR-Backends fehlgeschlagen"):
+                    await manager.process_with_backend(
+                        backend_name="deepseek",
+                        image_path=temp_path,
+                        enable_fallback=False
+                    )
+            finally:
+                os.unlink(temp_path)
+
+    @pytest.mark.asyncio
+    async def test_process_skips_unhealthy_backends(self, mock_surya_agent):
+        """Test dass ungesunde Backends übersprungen werden."""
+        # Configure deepseek as unhealthy (GPU not available)
+        mock_unhealthy_backend = AsyncMock()
+        mock_unhealthy_backend.get_status = Mock(return_value={
+            "name": "deepseek",
+            "gpu_required": True,
+            "vram_gb": 12,
+            "gpu_info": {
+                "available": False
+            }
+        })
+
+        mock_surya_agent.get_status = Mock(return_value={
+            "name": "surya",
+            "gpu_required": False
+        })
+
+        with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
+             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+
+            surya_cls.return_value = mock_surya_agent
+            deepseek_cls.return_value = mock_unhealthy_backend
+            got_cls.side_effect = Exception("Not available")
+
+            from app.services.backend_manager import BackendManager
+            manager = BackendManager()
+
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+                f.write(b"%PDF-1.4 test")
+                temp_path = f.name
+
+            try:
+                result = await manager.process_with_backend(
+                    backend_name="deepseek",
+                    image_path=temp_path,
+                    enable_fallback=True
+                )
+
+                # Should skip unhealthy deepseek and use surya
+                assert result["fallback_used"] is True
+                assert result["backend"] == "surya"
+            finally:
+                os.unlink(temp_path)
+
+    @pytest.mark.asyncio
+    async def test_all_backends_fail_raises(self, mock_surya_agent):
+        """Test dass Fehler geworfen wird wenn alle Backends fehlschlagen."""
+        # Both backends fail
+        mock_failing_backend1 = AsyncMock()
+        mock_failing_backend1.process = AsyncMock(side_effect=Exception("Failed 1"))
+        mock_failing_backend1.get_status = Mock(return_value={"gpu_required": False})
+
+        mock_failing_backend2 = AsyncMock()
+        mock_failing_backend2.process = AsyncMock(side_effect=Exception("Failed 2"))
+        mock_failing_backend2.get_status = Mock(return_value={"gpu_required": False})
+
+        with patch("app.services.backend_manager.TORCH_AVAILABLE", True), \
+             patch("app.services.backend_manager.SuryaDoclingAgent") as surya_cls, \
+             patch("app.services.backend_manager.DeepSeekAgent") as deepseek_cls, \
+             patch("app.services.backend_manager.GOTOCRAgent") as got_cls:
+
+            surya_cls.return_value = mock_failing_backend1
+            deepseek_cls.return_value = mock_failing_backend2
+            got_cls.side_effect = Exception("Not available")
+
+            from app.services.backend_manager import BackendManager
+            manager = BackendManager()
+
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+                f.write(b"%PDF-1.4 test")
+                temp_path = f.name
+
+            try:
+                with pytest.raises(RuntimeError, match="Alle OCR-Backends fehlgeschlagen"):
+                    await manager.process_with_backend(
+                        backend_name="surya",
+                        image_path=temp_path,
+                        enable_fallback=True
+                    )
+            finally:
+                os.unlink(temp_path)
 
 
 # ========================= Edge Cases =========================

@@ -127,3 +127,95 @@ groups:
           summary: "OCR verwendet Fallback-Backend"
           description: "Das primaere OCR-Backend ist nicht verfuegbar. Fallback auf {{ $labels.fallback_backend }} aktiv."
           runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-fallback"
+
+      # ===================================================================
+      # Backend Health Alerts
+      # ===================================================================
+
+      # Warnung: Einzelnes OCR Backend ungesund
+      - alert: OCRBackendUnhealthy
+        expr: ocr_backend_healthy{backend!="surya"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: ocr
+        annotations:
+          summary: "OCR Backend {{ $labels.backend }} ungesund"
+          description: "Das OCR-Backend {{ $labels.backend }} ist seit 5 Minuten ungesund. Fallback-Backends werden verwendet."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-backend-unhealthy"
+
+      # Kritisch: Alle GPU-Backends ungesund
+      - alert: AllGPUBackendsUnhealthy
+        expr: sum(ocr_backend_healthy{backend=~"deepseek|got_ocr|surya_gpu"}) == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: ocr
+        annotations:
+          summary: "KRITISCH: Alle GPU-OCR-Backends ungesund"
+          description: "Alle GPU-beschleunigten OCR-Backends sind ungesund. System laeuft nur noch mit CPU-Fallback."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/all-gpu-backends-down"
+
+      # Kritisch: Kein OCR Backend verfuegbar
+      - alert: NoOCRBackendAvailable
+        expr: sum(ocr_backend_healthy) == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: ocr
+        annotations:
+          summary: "KRITISCH: Kein OCR-Backend verfuegbar"
+          description: "KEIN OCR-Backend ist verfuegbar. Dokumentenverarbeitung vollstaendig ausgefallen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/no-ocr-backend"
+
+      # Warnung: Hohe Fallback-Rate
+      - alert: OCRHighFallbackRate
+        expr: |
+          rate(ocr_fallbacks_total[5m])
+          / rate(ocr_requests_total[5m]) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          component: ocr
+        annotations:
+          summary: "Hohe OCR Fallback-Rate"
+          description: "Mehr als 20% der OCR-Verarbeitungen verwenden Fallback-Backends. Aktuelle Rate: {{ $value | humanizePercentage }}"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-high-fallback"
+
+      # Warnung: Haeufige Health-Check-Fehler
+      - alert: OCRHealthCheckFailures
+        expr: |
+          rate(ocr_health_checks_unhealthy_total[5m])
+          / rate(ocr_health_checks_total[5m]) > 0.3
+        for: 5m
+        labels:
+          severity: warning
+          component: ocr
+        annotations:
+          summary: "Haeufige OCR Health-Check-Fehler"
+          description: "Mehr als 30% der OCR Health-Checks schlagen fehl. Backend-Stabilitaet beeintraechtigt."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-health-check-failures"
+
+      # Warnung: CPU Fallback dauerhaft aktiv
+      - alert: OCRCPUFallbackPersistent
+        expr: ocr_backend_healthy{backend="surya"} == 1 and sum(ocr_backend_healthy{backend!="surya"}) == 0
+        for: 30m
+        labels:
+          severity: warning
+          component: ocr
+        annotations:
+          summary: "OCR nur noch auf CPU-Fallback"
+          description: "Das System laeuft seit 30 Minuten nur auf dem CPU-Fallback (Surya). Leistung reduziert."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-cpu-only"
+
+      # Info: DeepSeek VRAM kritisch
+      - alert: DeepSeekVRAMCritical
+        expr: ocr_backend_vram_available_gb{backend="deepseek"} < 4
+        for: 2m
+        labels:
+          severity: warning
+          component: ocr
+        annotations:
+          summary: "DeepSeek VRAM kritisch niedrig"
+          description: "DeepSeek-Backend hat weniger als 4GB VRAM frei. Verfuegbar: {{ $value }}GB"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/deepseek-vram-low"

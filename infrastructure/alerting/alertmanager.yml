@@ -69,6 +69,23 @@ route:
       group_wait: 1m
       repeat_interval: 2h
 
+    # OCR alerts - special handling
+    - match:
+        component: ocr
+      receiver: 'slack-ocr'
+      group_wait: 1m
+      repeat_interval: 1h
+      routes:
+        # OCR Critical (no backends available)
+        - match:
+            alertname: NoOCRBackendAvailable
+          receiver: 'pagerduty-critical'
+          continue: true
+        - match:
+            alertname: NoOCRBackendAvailable
+          receiver: 'slack-critical'
+          group_wait: 5s
+
 # Alert receivers
 receivers:
   # Default receiver (catch-all)
@@ -161,6 +178,30 @@ receivers:
         text: '{{ template "slack.database.text" . }}'
         color: '#FF6600'
         send_resolved: true
+
+  # Slack - OCR alerts
+  - name: 'slack-ocr'
+    slack_configs:
+      - channel: '#alerts-ocr'
+        username: 'Alertmanager'
+        icon_emoji: ':mag:'
+        title: '📄 OCR Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Severity:* {{ .CommonLabels.severity }}
+          *Backend:* {{ .CommonLabels.backend | default "all" }}
+          *Summary:* {{ .CommonAnnotations.summary }}
+          *Description:* {{ .CommonAnnotations.description }}
+          *Runbook:* {{ .CommonAnnotations.runbook_url }}
+        color: '#9B59B6'
+        send_resolved: true
+        actions:
+          - type: button
+            text: 'View Health :health_worker:'
+            url: 'http://localhost:8000/api/v1/health/ocr'
+          - type: button
+            text: 'View Stats :chart_with_upwards_trend:'
+            url: 'http://localhost:3000/d/ocr-dashboard'
 
   # Email notifications (backup channel)
   - name: 'email-critical'
