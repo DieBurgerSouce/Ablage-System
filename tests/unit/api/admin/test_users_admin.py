@@ -40,31 +40,31 @@ def mock_db():
 @pytest.fixture
 def admin_user():
     """Create admin user for testing."""
-    return User(
-        id=str(uuid4()),
-        email="admin@test.de",
-        username="admin",
-        hashed_password="hashed",
-        is_active=True,
-        is_superuser=True,
-        role=UserRole.ADMIN,
-        created_at=datetime.utcnow(),
-    )
+    from unittest.mock import Mock
+    user = Mock(spec=User)
+    user.id = str(uuid4())
+    user.email = "admin@test.de"
+    user.username = "admin"
+    user.is_active = True
+    user.is_superuser = True
+    user.tier = "enterprise"
+    user.created_at = datetime.utcnow()
+    return user
 
 
 @pytest.fixture
 def regular_user():
     """Create regular user for testing."""
-    return User(
-        id=str(uuid4()),
-        email="user@test.de",
-        username="testuser",
-        hashed_password="hashed",
-        is_active=True,
-        is_superuser=False,
-        role=UserRole.USER,
-        created_at=datetime.utcnow(),
-    )
+    from unittest.mock import Mock
+    user = Mock(spec=User)
+    user.id = str(uuid4())
+    user.email = "user@test.de"
+    user.username = "testuser"
+    user.is_active = True
+    user.is_superuser = False
+    user.tier = "free"
+    user.created_at = datetime.utcnow()
+    return user
 
 
 class TestListUsers:
@@ -95,11 +95,11 @@ class TestListUsers:
                 db=mock_db,
                 page=1,
                 page_size=10,
-                role=UserRole.ADMIN,
+                is_superuser=True,
                 is_active=True,
             )
             assert len(result) == 1
-            assert result[0].role == UserRole.ADMIN
+            assert result[0].is_superuser is True
 
     @pytest.mark.asyncio
     async def test_list_users_empty(self, mock_db):
@@ -163,18 +163,17 @@ class TestCreateUser:
             email="new@test.de",
             username="newuser",
             password="SecurePass123!",
-            role=UserRole.USER,
         )
 
-        new_user = User(
-            id=str(uuid4()),
-            email="new@test.de",
-            username="newuser",
-            hashed_password="hashed",
-            is_active=True,
-            role=UserRole.USER,
-            created_at=datetime.utcnow(),
-        )
+        from unittest.mock import Mock
+        new_user = Mock(spec=User)
+        new_user.id = str(uuid4())
+        new_user.email = "new@test.de"
+        new_user.username = "newuser"
+        new_user.is_active = True
+        new_user.is_superuser = False
+        new_user.tier = "free"
+        new_user.created_at = datetime.utcnow()
 
         with patch.object(service, "create_user", return_value=new_user):
             result = await service.create_user(

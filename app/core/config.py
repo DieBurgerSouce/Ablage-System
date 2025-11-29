@@ -1,16 +1,202 @@
-"""Application configuration using Pydantic Settings."""
+"""
+Application configuration using Pydantic Settings.
+
+Supports:
+- Environment variables (.env file)
+- HashiCorp Vault integration for secure secrets management
+- Runtime secret rotation
+
+Feinpoliert und durchdacht - Sichere Konfigurationsverwaltung.
+"""
 
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 import secrets
+import os
 
 from pydantic import Field, field_validator, SecretStr, PostgresDsn, RedisDsn, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import structlog
+
+logger = structlog.get_logger(__name__)
+
+# Try to import hvac for Vault integration
+try:
+    import hvac
+    VAULT_AVAILABLE = True
+except ImportError:
+    VAULT_AVAILABLE = False
+    hvac = None  # type: ignore
+    logger.debug("vault_client_not_available", message="hvac not installed, Vault integration disabled")
+
+
+class VaultClient:
+    """
+    HashiCorp Vault client for secure secrets management.
+
+    Supports:
+    - Token-based authentication
+    - AppRole authentication
+    - Kubernetes authentication
+    - Secret caching with TTL
+    """
+
+    _instance: Optional["VaultClient"] = None
+
+    def __init__(
+        self,
+        vault_addr: Optional[str] = None,
+        vault_token: Optional[str] = None,
+        vault_role_id: Optional[str] = None,
+        vault_secret_id: Optional[str] = None,
+        vault_namespace: Optional[str] = None,
+        verify_ssl: bool = True,
+    ):
+        """
+        Initialize Vault client.
+
+        Args:
+            vault_addr: Vault server address
+            vault_token: Vault token for authentication
+            vault_role_id: AppRole role ID
+            vault_secret_id: AppRole secret ID
+            vault_namespace: Vault namespace (Enterprise)
+            verify_ssl: Verify SSL certificates
+        """
+        self.vault_addr = vault_addr or os.getenv("VAULT_ADDR", "")
+        self.vault_token = vault_token or os.getenv("VAULT_TOKEN", "")
+        self.vault_role_id = vault_role_id or os.getenv("VAULT_ROLE_ID", "")
+        self.vault_secret_id = vault_secret_id or os.getenv("VAULT_SECRET_ID", "")
+        self.vault_namespace = vault_namespace or os.getenv("VAULT_NAMESPACE", "")
+        self.verify_ssl = verify_ssl
+
+        self._client: Optional[hvac.Client] = None
+        self._secret_cache: Dict[str, Dict[str, Any]] = {}
+        self._authenticated = False
+
+    @classmethod
+    def get_instance(cls) -> "VaultClient":
+        """Get singleton instance."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def is_configured(self) -> bool:
+        """Check if Vault is configured."""
+        return bool(self.vault_addr and (self.vault_token or (self.vault_role_id and self.vault_secret_id)))
+
+    def connect(self) -> bool:
+        """
+        Connect to Vault and authenticate.
+
+        Returns:
+            True if connection successful
+        """
+        if not VAULT_AVAILABLE:
+            logger.warning("vault_connect_failed", reason="hvac not installed")
+            return False
+
+        if not self.is_configured():
+            logger.debug("vault_not_configured", message="Vault nicht konfiguriert")
+            return False
+
+        try:
+            self._client = hvac.Client(
+                url=self.vault_addr,
+                token=self.vault_token if self.vault_token else None,
+                namespace=self.vault_namespace if self.vault_namespace else None,
+                verify=self.verify_ssl,
+            )
+
+            # If no token, authenticate with AppRole
+            if not self.vault_token and self.vault_role_id:
+                self._authenticate_approle()
+
+            # Verify authentication
+            if self._client.is_authenticated():
+                self._authenticated = True
+                logger.info("vault_connected", address=self.vault_addr)
+                return True
+            else:
+                logger.warning("vault_authentication_failed")
+                return False
+
+        except Exception as e:
+            logger.error("vault_connection_error", error=str(e))
+            return False
+
+    def _authenticate_approle(self) -> None:
+        """Authenticate using AppRole."""
+        try:
+            response = self._client.auth.approle.login(
+                role_id=self.vault_role_id,
+                secret_id=self.vault_secret_id,
+            )
+            self._client.token = response["auth"]["client_token"]
+            logger.info("vault_approle_authenticated")
+        except Exception as e:
+            logger.error("vault_approle_auth_failed", error=str(e))
+            raise
+
+    def get_secret(
+        self,
+        path: str,
+        key: Optional[str] = None,
+        mount_point: str = "secret",
+        use_cache: bool = True,
+    ) -> Optional[Any]:
+        """
+        Get secret from Vault.
+
+        Args:
+            path: Secret path in Vault
+            key: Specific key within the secret (optional)
+            mount_point: Vault mount point
+            use_cache: Use cached value if available
+
+        Returns:
+            Secret value or None
+        """
+        if not self._authenticated:
+            if not self.connect():
+                return None
+
+        cache_key = f"{mount_point}/{path}"
+
+        # Check cache
+        if use_cache and cache_key in self._secret_cache:
+            cached = self._secret_cache[cache_key]
+            if key:
+                return cached.get("data", {}).get("data", {}).get(key)
+            return cached.get("data", {}).get("data", {})
+
+        try:
+            # Read secret (KV v2)
+            response = self._client.secrets.kv.v2.read_secret_version(
+                path=path,
+                mount_point=mount_point,
+            )
+
+            # Cache the response
+            self._secret_cache[cache_key] = response
+
+            if key:
+                return response.get("data", {}).get("data", {}).get(key)
+            return response.get("data", {}).get("data", {})
+
+        except Exception as e:
+            logger.warning("vault_secret_read_failed", path=path, error=str(e))
+            return None
+
+    def clear_cache(self) -> None:
+        """Clear secret cache."""
+        self._secret_cache.clear()
+        logger.debug("vault_cache_cleared")
 
 
 class Settings(BaseSettings):
-    """Application settings with environment variable support."""
-    
+    """Application settings with environment variable and Vault support."""
+
     # Application
     APP_NAME: str = "Ablage-System OCR"
     APP_VERSION: str = "1.0.0"
@@ -172,7 +358,19 @@ class Settings(BaseSettings):
     
     # Development
     TESTING: bool = False
-    
+
+    # Vault Configuration
+    VAULT_ENABLED: bool = False  # Enable Vault integration
+    VAULT_ADDR: Optional[str] = None  # Vault server address
+    VAULT_TOKEN: Optional[str] = None  # Vault token
+    VAULT_ROLE_ID: Optional[str] = None  # AppRole role ID
+    VAULT_SECRET_ID: Optional[str] = None  # AppRole secret ID
+    VAULT_NAMESPACE: Optional[str] = None  # Vault namespace (Enterprise)
+    VAULT_SECRET_PATH: str = "ablage-system"  # Path to secrets in Vault
+    VAULT_MOUNT_POINT: str = "secret"  # KV mount point
+    VAULT_VERIFY_SSL: bool = True  # Verify Vault SSL
+    VAULT_SECRET_REFRESH_INTERVAL: int = 300  # Refresh secrets every 5 minutes
+
     @model_validator(mode='after')
     def build_computed_urls(self) -> 'Settings':
         """Build database and Redis URLs from components if not provided."""
@@ -238,6 +436,108 @@ class Settings(BaseSettings):
         """Get max upload size in bytes."""
         return self.MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
+    def load_secrets_from_vault(self) -> bool:
+        """
+        Load secrets from HashiCorp Vault if enabled.
+
+        Secrets loaded:
+        - SECRET_KEY
+        - DB_PASSWORD
+        - REDIS_PASSWORD
+        - MINIO_SECRET_KEY
+        - SMTP_PASSWORD
+
+        Returns:
+            True if secrets were loaded successfully
+        """
+        if not self.VAULT_ENABLED:
+            logger.debug("vault_disabled", message="Vault-Integration deaktiviert")
+            return False
+
+        vault = VaultClient(
+            vault_addr=self.VAULT_ADDR,
+            vault_token=self.VAULT_TOKEN,
+            vault_role_id=self.VAULT_ROLE_ID,
+            vault_secret_id=self.VAULT_SECRET_ID,
+            vault_namespace=self.VAULT_NAMESPACE,
+            verify_ssl=self.VAULT_VERIFY_SSL,
+        )
+
+        if not vault.connect():
+            logger.warning("vault_connection_failed", message="Konnte nicht mit Vault verbinden")
+            return False
+
+        secrets_loaded = 0
+        secret_mappings = {
+            "secret_key": ("SECRET_KEY", str),
+            "db_password": ("DB_PASSWORD", SecretStr),
+            "redis_password": ("REDIS_PASSWORD", SecretStr),
+            "minio_secret_key": ("MINIO_SECRET_KEY", SecretStr),
+            "smtp_password": ("SMTP_PASSWORD", SecretStr),
+        }
+
+        for vault_key, (attr_name, attr_type) in secret_mappings.items():
+            value = vault.get_secret(
+                path=self.VAULT_SECRET_PATH,
+                key=vault_key,
+                mount_point=self.VAULT_MOUNT_POINT,
+            )
+            if value is not None:
+                if attr_type == SecretStr:
+                    value = SecretStr(value)
+                object.__setattr__(self, attr_name, value)
+                secrets_loaded += 1
+                logger.debug("vault_secret_loaded", key=vault_key)
+
+        if secrets_loaded > 0:
+            # Rebuild computed URLs with new secrets
+            self.build_computed_urls()
+            logger.info(
+                "vault_secrets_loaded",
+                count=secrets_loaded,
+                path=self.VAULT_SECRET_PATH,
+            )
+
+        return secrets_loaded > 0
+
+    def refresh_secrets(self) -> bool:
+        """
+        Refresh secrets from Vault (for runtime rotation).
+
+        Call this periodically to pick up rotated secrets.
+
+        Returns:
+            True if secrets were refreshed
+        """
+        if not self.VAULT_ENABLED:
+            return False
+
+        vault = VaultClient.get_instance()
+        vault.clear_cache()
+        return self.load_secrets_from_vault()
+
+
+def create_settings() -> Settings:
+    """
+    Create and configure Settings instance.
+
+    Loads secrets from Vault if VAULT_ENABLED is True.
+    """
+    settings_instance = Settings()
+
+    # Try to load secrets from Vault
+    if settings_instance.VAULT_ENABLED:
+        try:
+            settings_instance.load_secrets_from_vault()
+        except Exception as e:
+            logger.error(
+                "vault_initialization_failed",
+                error=str(e),
+                message="Vault-Secrets konnten nicht geladen werden, verwende Umgebungsvariablen",
+            )
+
+    return settings_instance
+
 
 # Create settings instance
-settings = Settings()
+settings = create_settings()

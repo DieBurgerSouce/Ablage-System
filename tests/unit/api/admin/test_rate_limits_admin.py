@@ -32,16 +32,16 @@ def mock_db():
 @pytest.fixture
 def admin_user():
     """Create admin user for testing."""
-    return User(
-        id=str(uuid4()),
-        email="admin@test.de",
-        username="admin",
-        hashed_password="hashed",
-        is_active=True,
-        is_superuser=True,
-        role=UserRole.ADMIN,
-        created_at=datetime.utcnow(),
-    )
+    from unittest.mock import Mock
+    user = Mock(spec=User)
+    user.id = str(uuid4())
+    user.email = "admin@test.de"
+    user.username = "admin"
+    user.is_active = True
+    user.is_superuser = True
+    user.tier = "enterprise"
+    user.created_at = datetime.utcnow()
+    return user
 
 
 class TestGetRateLimitConfig:

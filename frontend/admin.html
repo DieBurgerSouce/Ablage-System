@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ablage-System - Admin-Konsole</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body data-mode="dark">
+    <div class="container admin-container">
+        <!-- Header -->
+        <header>
+            <div class="header-content">
+                <h1>
+                    <a href="index.html" class="header-link">📄 Ablage-System</a>
+                    <span class="admin-badge">Admin</span>
+                </h1>
+
+                <!-- Display Mode Switcher -->
+                <div class="display-mode-switcher">
+                    <button class="mode-btn" data-mode="dark" title="Dunkler Modus">🌙</button>
+                    <button class="mode-btn" data-mode="light" title="Heller Modus">☀️</button>
+                    <button class="mode-btn" data-mode="whitescreen" title="Hoher Kontrast">⚪</button>
+                    <button class="mode-btn" data-mode="blackscreen" title="Invertierter Kontrast">⚫</button>
+                </div>
+
+                <!-- GPU Status -->
+                <div class="gpu-status" id="gpu-status">
+                    <span class="gpu-badge">
+                        <span class="gpu-indicator" id="gpu-indicator"></span>
+                        GPU: <span id="gpu-name">Pruefe...</span>
+                    </span>
+                    <span class="vram-usage">
+                        VRAM: <span id="vram-usage">0.0</span> GB
+                    </span>
+                </div>
+
+                <!-- Admin Profile -->
+                <div class="user-profile" id="admin-profile-section">
+                    <div class="user-info">
+                        <span class="user-name" id="admin-username">Admin</span>
+                        <span class="user-role">Administrator</span>
+                    </div>
+                    <button class="btn-secondary" id="admin-logout-btn" title="Abmelden">
+                        Abmelden
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Admin Navigation -->
+        <nav class="admin-nav">
+            <button class="nav-btn active" data-tab="dashboard">
+                <span class="nav-icon">📊</span>
+                Dashboard
+            </button>
+            <button class="nav-btn" data-tab="users">
+                <span class="nav-icon">👥</span>
+                Benutzer
+            </button>
+            <button class="nav-btn" data-tab="jobs">
+                <span class="nav-icon">📋</span>
+                Auftraege
+            </button>
+            <button class="nav-btn" data-tab="rate-limits">
+                <span class="nav-icon">⏱️</span>
+                Rate Limits
+            </button>
+            <button class="nav-btn" data-tab="audit">
+                <span class="nav-icon">📜</span>
+                Audit-Log
+            </button>
+        </nav>
+
+        <main class="admin-main">
+            <!-- Dashboard Tab -->
+            <section class="admin-tab active" id="dashboard-tab">
+                <h2>System-Dashboard</h2>
+
+                <!-- System Health Overview -->
+                <div class="dashboard-grid">
+                    <!-- GPU Status Card -->
+                    <div class="dashboard-card gpu-card">
+                        <div class="card-header">
+                            <h3>GPU-Status</h3>
+                            <button class="btn-icon" id="clear-gpu-cache-btn" title="GPU-Cache leeren">🧹</button>
+                        </div>
+                        <div class="card-body">
+                            <div class="gpu-info">
+                                <div class="gpu-metric">
+                                    <span class="metric-label">VRAM-Nutzung</span>
+                                    <div class="progress-bar-small">
+                                        <div class="progress-fill-small" id="vram-progress" style="width: 0%"></div>
+                                    </div>
+                                    <span class="metric-value" id="vram-detail">0 / 16 GB</span>
+                                </div>
+                                <div class="gpu-metric">
+                                    <span class="metric-label">GPU-Auslastung</span>
+                                    <span class="metric-value" id="gpu-utilization">0%</span>
+                                </div>
+                                <div class="gpu-metric">
+                                    <span class="metric-label">Temperatur</span>
+                                    <span class="metric-value" id="gpu-temp">-- C</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Queue Status Card -->
+                    <div class="dashboard-card queue-card">
+                        <div class="card-header">
+                            <h3>Warteschlange</h3>
+                            <button class="btn-icon" id="refresh-queue-btn" title="Aktualisieren">🔄</button>
+                        </div>
+                        <div class="card-body">
+                            <div class="queue-stats">
+                                <div class="stat-item">
+                                    <span class="stat-value" id="pending-jobs">0</span>
+                                    <span class="stat-label">Wartend</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-value" id="processing-jobs">0</span>
+                                    <span class="stat-label">In Arbeit</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-value" id="failed-jobs">0</span>
+                                    <span class="stat-label">Fehlerhaft</span>
+                                </div>
+                            </div>
+                            <div class="avg-wait-time">
+                                Durchschn. Wartezeit: <span id="avg-wait-time">-- ms</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Health Status Card -->
+                    <div class="dashboard-card health-card">
+                        <div class="card-header">
+                            <h3>Systemgesundheit</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="health-checks">
+                                <div class="health-item" id="health-postgresql">
+                                    <span class="health-indicator"></span>
+                                    PostgreSQL
+                                </div>
+                                <div class="health-item" id="health-redis">
+                                    <span class="health-indicator"></span>
+                                    Redis
+                                </div>
+                                <div class="health-item" id="health-minio">
+                                    <span class="health-indicator"></span>
+                                    MinIO
+                                </div>
+                                <div class="health-item" id="health-celery">
+                                    <span class="health-indicator"></span>
+                                    Celery Worker
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Processing Stats Card -->
+                    <div class="dashboard-card stats-card">
+                        <div class="card-header">
+                            <h3>Verarbeitungsstatistiken (7 Tage)</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="processing-stats">
+                                <div class="stat-row">
+                                    <span>Verarbeitete Dokumente:</span>
+                                    <span id="docs-processed">0</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span>Erfolgsquote:</span>
+                                    <span id="success-rate">0%</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span>Durchschn. Zeit/Dokument:</span>
+                                    <span id="avg-processing-time">-- ms</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Backend Status -->
+                <div class="dashboard-section">
+                    <h3>OCR-Backend-Status</h3>
+                    <div class="backend-grid" id="backend-grid">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Users Tab -->
+            <section class="admin-tab" id="users-tab">
+                <div class="tab-header">
+                    <h2>Benutzerverwaltung</h2>
+                    <button class="btn-primary" id="create-user-btn">
+                        + Neuer Benutzer
+                    </button>
+                </div>
+
+                <!-- User Filters -->
+                <div class="filter-bar">
+                    <input type="text" id="user-search" placeholder="Benutzer suchen..." class="filter-input">
+                    <select id="user-role-filter" class="filter-select">
+                        <option value="">Alle Rollen</option>
+                        <option value="superuser">Superuser</option>
+                        <option value="admin">Admin</option>
+                        <option value="user">Benutzer</option>
+                    </select>
+                    <select id="user-status-filter" class="filter-select">
+                        <option value="">Alle Status</option>
+                        <option value="active">Aktiv</option>
+                        <option value="inactive">Inaktiv</option>
+                        <option value="deactivated">Deaktiviert</option>
+                    </select>
+                    <select id="user-tier-filter" class="filter-select">
+                        <option value="">Alle Tiers</option>
+                        <option value="free">Free</option>
+                        <option value="premium">Premium</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+
+                <!-- Users Table -->
+                <div class="table-container">
+                    <table class="admin-table" id="users-table">
+                        <thead>
+                            <tr>
+                                <th>E-Mail</th>
+                                <th>Benutzername</th>
+                                <th>Rolle</th>
+                                <th>Tier</th>
+                                <th>Status</th>
+                                <th>Letzter Login</th>
+                                <th>Dok. heute</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination" id="users-pagination">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </section>
+
+            <!-- Jobs Tab -->
+            <section class="admin-tab" id="jobs-tab">
+                <div class="tab-header">
+                    <h2>Auftragsverwaltung</h2>
+                    <div class="tab-actions">
+                        <button class="btn-danger" id="clear-queue-btn">
+                            Warteschlange leeren
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Job Filters -->
+                <div class="filter-bar">
+                    <select id="job-status-filter" class="filter-select">
+                        <option value="">Alle Status</option>
+                        <option value="pending">Wartend</option>
+                        <option value="queued">In Queue</option>
+                        <option value="processing">In Arbeit</option>
+                        <option value="completed">Abgeschlossen</option>
+                        <option value="failed">Fehlgeschlagen</option>
+                        <option value="cancelled">Abgebrochen</option>
+                    </select>
+                    <select id="job-backend-filter" class="filter-select">
+                        <option value="">Alle Backends</option>
+                        <option value="deepseek">DeepSeek</option>
+                        <option value="got_ocr">GOT-OCR</option>
+                        <option value="surya">Surya</option>
+                        <option value="surya_gpu">Surya GPU</option>
+                    </select>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="job-error-filter">
+                        Nur Fehler
+                    </label>
+                </div>
+
+                <!-- Jobs Table -->
+                <div class="table-container">
+                    <table class="admin-table" id="jobs-table">
+                        <thead>
+                            <tr>
+                                <th>Dokument</th>
+                                <th>Backend</th>
+                                <th>Status</th>
+                                <th>Prioritaet</th>
+                                <th>Erstellt</th>
+                                <th>Dauer</th>
+                                <th>Benutzer</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jobs-tbody">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Job Status Summary -->
+                <div class="status-summary" id="job-status-summary">
+                    <!-- Populated by JavaScript -->
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination" id="jobs-pagination">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </section>
+
+            <!-- Rate Limits Tab -->
+            <section class="admin-tab" id="rate-limits-tab">
+                <div class="tab-header">
+                    <h2>Rate Limit Management</h2>
+                </div>
+
+                <!-- Tier Defaults -->
+                <div class="rate-limits-section">
+                    <h3>Standard-Limits nach Tier</h3>
+                    <div class="tier-defaults-grid" id="tier-defaults-grid">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Usage Statistics -->
+                <div class="rate-limits-section">
+                    <h3>Nutzungsstatistiken</h3>
+                    <div class="usage-stats-grid">
+                        <div class="usage-stat">
+                            <span class="stat-label">Benutzer gesamt</span>
+                            <span class="stat-value" id="total-users">0</span>
+                        </div>
+                        <div class="usage-stat">
+                            <span class="stat-label">Am Tageslimit</span>
+                            <span class="stat-value" id="users-at-limit">0</span>
+                        </div>
+                        <div class="usage-stat">
+                            <span class="stat-label">Mit Overrides</span>
+                            <span class="stat-value" id="users-with-overrides">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Users by Usage -->
+                <div class="rate-limits-section">
+                    <h3>Top-Nutzer (heute)</h3>
+                    <div class="top-users-list" id="top-users-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Audit Tab -->
+            <section class="admin-tab" id="audit-tab">
+                <div class="tab-header">
+                    <h2>Audit-Log</h2>
+                    <div class="tab-actions">
+                        <button class="btn-secondary" id="export-audit-btn">
+                            CSV exportieren
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Audit Filters -->
+                <div class="filter-bar">
+                    <input type="text" id="audit-action-filter" placeholder="Aktion filtern..." class="filter-input">
+                    <select id="audit-resource-filter" class="filter-select">
+                        <option value="">Alle Ressourcen</option>
+                        <option value="document">Dokument</option>
+                        <option value="user">Benutzer</option>
+                        <option value="job">Auftrag</option>
+                    </select>
+                    <input type="date" id="audit-from-date" class="filter-input">
+                    <input type="date" id="audit-to-date" class="filter-input">
+                    <label class="filter-checkbox">
+                        <input type="checkbox" id="audit-success-filter">
+                        Nur erfolgreich
+                    </label>
+                </div>
+
+                <!-- Audit Table -->
+                <div class="table-container">
+                    <table class="admin-table" id="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Zeitpunkt</th>
+                                <th>Benutzer</th>
+                                <th>Aktion</th>
+                                <th>Ressource</th>
+                                <th>IP-Adresse</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audit-tbody">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination" id="audit-pagination">
+                    <!-- Populated by JavaScript -->
+                </div>
+
+                <!-- Audit Statistics -->
+                <div class="audit-stats" id="audit-stats">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p>
+                Ablage-System Admin Console v1.0 |
+                <a href="index.html">Zurueck zur Hauptanwendung</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Modals -->
+
+    <!-- User Modal -->
+    <div class="modal" id="user-modal" style="display: none;">
+        <div class="modal-backdrop" onclick="AdminUI.closeModal('user-modal')"></div>
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="user-modal-title">Benutzer</h3>
+                <button class="modal-close" onclick="AdminUI.closeModal('user-modal')">&times;</button>
+            </div>
+            <div class="modal-body" id="user-modal-body">
+                <form id="user-form">
+                    <div class="form-group">
+                        <label for="user-email">E-Mail *</label>
+                        <input type="email" id="user-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-username">Benutzername *</label>
+                        <input type="text" id="user-username" required minlength="3">
+                    </div>
+                    <div class="form-group" id="password-group">
+                        <label for="user-password">Passwort *</label>
+                        <input type="password" id="user-password" minlength="8">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-fullname">Vollstaendiger Name</label>
+                        <input type="text" id="user-fullname">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="user-tier">Tier</label>
+                            <select id="user-tier">
+                                <option value="free">Free</option>
+                                <option value="premium">Premium</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="user-quota">Tages-Quota</label>
+                            <input type="number" id="user-quota" value="50" min="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="user-superuser">
+                            Superuser-Rechte
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-notes">Notizen</label>
+                        <textarea id="user-notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="AdminUI.closeModal('user-modal')">Abbrechen</button>
+                <button class="btn-primary" id="user-submit-btn">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rate Limit Override Modal -->
+    <div class="modal" id="rate-limit-modal" style="display: none;">
+        <div class="modal-backdrop" onclick="AdminUI.closeModal('rate-limit-modal')"></div>
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>Rate Limit Override</h3>
+                <button class="modal-close" onclick="AdminUI.closeModal('rate-limit-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="rate-limit-form">
+                    <input type="hidden" id="rate-limit-user-id">
+                    <p class="modal-info">Override fuer: <strong id="rate-limit-user-email"></strong></p>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ocr-hourly">OCR/Stunde</label>
+                            <input type="number" id="ocr-hourly" min="0" placeholder="Standard: Tier-Default">
+                        </div>
+                        <div class="form-group">
+                            <label for="ocr-daily">OCR/Tag</label>
+                            <input type="number" id="ocr-daily" min="0" placeholder="Standard: Tier-Default">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="batch-hourly">Batch/Stunde</label>
+                            <input type="number" id="batch-hourly" min="0" placeholder="Standard: Tier-Default">
+                        </div>
+                        <div class="form-group">
+                            <label for="api-per-minute">API/Minute</label>
+                            <input type="number" id="api-per-minute" min="0" placeholder="Standard: Tier-Default">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="override-valid-until">Gueltig bis</label>
+                        <input type="datetime-local" id="override-valid-until">
+                    </div>
+                    <div class="form-group">
+                        <label for="override-reason">Grund</label>
+                        <input type="text" id="override-reason" placeholder="z.B. Pilot-Projekt">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="AdminUI.closeModal('rate-limit-modal')">Abbrechen</button>
+                <button class="btn-danger" id="delete-override-btn" style="display: none;">Override loeschen</button>
+                <button class="btn-primary" id="rate-limit-submit-btn">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Dialog -->
+    <div class="modal" id="confirm-modal" style="display: none;">
+        <div class="modal-backdrop"></div>
+        <div class="modal-container modal-small">
+            <div class="modal-header">
+                <h3 id="confirm-title">Bestaetigung</h3>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="confirm-cancel-btn">Abbrechen</button>
+                <button class="btn-danger" id="confirm-ok-btn">Bestaetigen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="api.js"></script>
+    <script src="auth.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
