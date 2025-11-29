@@ -14,6 +14,7 @@ Best for:
 """
 
 import asyncio
+import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -22,10 +23,24 @@ from io import BytesIO
 import numpy as np
 import torch
 from PIL import Image
-from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM
+
+# BitsAndBytes has limited Windows support - import conditionally
+BITSANDBYTES_AVAILABLE = False
+BitsAndBytesConfig = None
+try:
+    from transformers import BitsAndBytesConfig as _BitsAndBytesConfig
+    import bitsandbytes
+    BitsAndBytesConfig = _BitsAndBytesConfig
+    BITSANDBYTES_AVAILABLE = True
+except ImportError:
+    pass
 
 from app.agents.base import AgentResourceError, OCRAgent
 from app.gpu_manager import GPUManager
+
+# Platform detection
+IS_WINDOWS = sys.platform == "win32"
 
 
 class DeepSeekAgent(OCRAgent):
@@ -54,6 +69,7 @@ class DeepSeekAgent(OCRAgent):
         self.model = None
         self.processor = None
         self._model_loaded = False
+        self._quantization_active = False  # Set during model loading
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -168,9 +184,32 @@ class DeepSeekAgent(OCRAgent):
 
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
+            # Determine if quantization can be used
+            # BitsAndBytes has limited Windows support - disable on Windows
+            can_use_quantization = (
+                self.ENABLE_QUANTIZATION
+                and device == "cuda"
+                and BITSANDBYTES_AVAILABLE
+                and not IS_WINDOWS
+            )
+
+            if self.ENABLE_QUANTIZATION and not can_use_quantization:
+                if IS_WINDOWS:
+                    self.logger.warning(
+                        "deepseek_quantization_disabled_windows",
+                        reason="BitsAndBytes nicht auf Windows unterstützt - verwende bfloat16",
+                        hint="Für 4-bit Quantisierung WSL2 oder Docker verwenden"
+                    )
+                elif not BITSANDBYTES_AVAILABLE:
+                    self.logger.warning(
+                        "deepseek_quantization_disabled_missing",
+                        reason="BitsAndBytes nicht installiert - verwende bfloat16",
+                        hint="pip install bitsandbytes"
+                    )
+
             if use_janus_implementation:
                 # Use Janus-specific implementation as per initial-prompt.md
-                if self.ENABLE_QUANTIZATION and device == "cuda":
+                if can_use_quantization:
                     # 4-bit quantization for RTX 4080 16GB
                     quant_config = BitsAndBytesConfig(
                         load_in_4bit=True,
@@ -199,7 +238,7 @@ class DeepSeekAgent(OCRAgent):
                 # Fallback to standard transformers implementation
                 from transformers import AutoModelForCausalLM, AutoProcessor
 
-                if self.ENABLE_QUANTIZATION and device == "cuda":
+                if can_use_quantization:
                     quant_config = BitsAndBytesConfig(
                         load_in_4bit=True,
                         bnb_4bit_compute_dtype=torch.bfloat16,
@@ -225,7 +264,10 @@ class DeepSeekAgent(OCRAgent):
                 )
                 self.tokenizer = None  # Will use processor's tokenizer
 
-            if not self.ENABLE_QUANTIZATION and device == "cuda":
+            # Track whether quantization was actually used
+            self._quantization_active = can_use_quantization
+
+            if not can_use_quantization and device == "cuda":
                 self.model = self.model.cuda()
 
             self.model.eval()  # Inference mode
@@ -239,12 +281,12 @@ class DeepSeekAgent(OCRAgent):
                 torch.cuda.empty_cache()
 
             self._model_loaded = True
-            quantization_status = "4-bit quantized" if self.ENABLE_QUANTIZATION else "full precision"
+            quantization_status = "4-bit quantized" if can_use_quantization else "bfloat16 (full precision)"
             self.logger.info("deepseek_model_loaded", device=device, quantization=quantization_status)
 
         except Exception as e:
             self.logger.error("deepseek_model_load_failed", error=str(e), exc_info=True)
-            raise AgentResourceError(f"Failed to load DeepSeek model: {e}")
+            raise AgentResourceError(f"Fehler beim Laden des DeepSeek-Modells: {e}")
 
     async def _load_image(self, image_path: Path) -> Image.Image:
         """Load and validate image."""
@@ -914,6 +956,9 @@ class DeepSeekAgent(OCRAgent):
             "model_loaded": self._model_loaded,
             "model_name": self.MODEL_NAME,
             "quantization_enabled": self.ENABLE_QUANTIZATION,
+            "quantization_active": self._quantization_active,
+            "bitsandbytes_available": BITSANDBYTES_AVAILABLE,
+            "platform": "windows" if IS_WINDOWS else "linux/other",
         }
 
         # Add GPU info if available
