@@ -15,10 +15,10 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from app.db.models import User, UserRole, JobStatus
+from app.db.models import User
 from app.db.schemas import (
-    JobResponse,
-    JobListResponse,
+    UserRole,
+    ProcessingStatus,
     MessageResponse,
 )
 
@@ -50,7 +50,7 @@ def sample_job():
     return {
         "id": str(uuid4()),
         "task_id": f"celery-task-{uuid4()}",
-        "status": JobStatus.PENDING,
+        "status": ProcessingStatus.PENDING,
         "queue": "ocr",
         "document_id": str(uuid4()),
         "user_id": str(uuid4()),
@@ -74,7 +74,7 @@ class TestListJobs:
         with patch.object(service, "list_jobs", return_value=[sample_job]):
             result = await service.list_jobs(db=mock_db, page=1, page_size=10)
             assert len(result) == 1
-            assert result[0]["status"] == JobStatus.PENDING
+            assert result[0]["status"] == ProcessingStatus.PENDING
 
     @pytest.mark.asyncio
     async def test_list_jobs_by_status(self, mock_db, admin_user, sample_job):
@@ -88,9 +88,9 @@ class TestListJobs:
                 db=mock_db,
                 page=1,
                 page_size=10,
-                status=JobStatus.PENDING,
+                status=ProcessingStatus.PENDING,
             )
-            assert all(j["status"] == JobStatus.PENDING for j in result)
+            assert all(j["status"] == ProcessingStatus.PENDING for j in result)
 
     @pytest.mark.asyncio
     async def test_list_jobs_by_queue(self, mock_db, admin_user, sample_job):
@@ -177,7 +177,7 @@ class TestCancelJob:
         from fastapi import HTTPException, status
 
         service = JobAdminService()
-        sample_job["status"] = JobStatus.COMPLETED
+        sample_job["status"] = ProcessingStatus.COMPLETED
 
         with patch.object(
             service,
@@ -205,7 +205,7 @@ class TestRetryJob:
         from app.services.admin import JobAdminService
 
         service = JobAdminService()
-        sample_job["status"] = JobStatus.FAILED
+        sample_job["status"] = ProcessingStatus.FAILED
         new_job_id = str(uuid4())
 
         with patch.object(service, "retry_job", return_value=new_job_id):
@@ -223,7 +223,7 @@ class TestRetryJob:
         from fastapi import HTTPException, status
 
         service = JobAdminService()
-        sample_job["status"] = JobStatus.RUNNING
+        sample_job["status"] = ProcessingStatus.PROCESSING
 
         with patch.object(
             service,

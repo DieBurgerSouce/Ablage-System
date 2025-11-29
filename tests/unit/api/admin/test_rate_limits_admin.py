@@ -14,12 +14,11 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from app.db.models import User, UserRole
+from app.db.models import User
 from app.db.schemas import (
-    RateLimitConfigResponse,
+    UserRole,
     RateLimitOverrideCreate,
     RateLimitOverrideResponse,
-    RateLimitUsageResponse,
     MessageResponse,
 )
 

@@ -20,13 +20,13 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 
-from app.db.models import User, UserRole
+from app.db.models import User
 from app.db.schemas import (
+    UserRole,
     UserCreate,
     UserUpdate,
     UserResponse,
     UserListResponse,
-    PasswordResetRequest,
     MessageResponse,
 )
 

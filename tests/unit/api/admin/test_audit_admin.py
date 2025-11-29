@@ -14,14 +14,18 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from app.db.models import User, UserRole
+from app.db.models import User
 from app.db.schemas import (
-    AuditLogEntry,
-    AuditLogSearchRequest,
-    AuditLogSearchResponse,
-    AuditLogStatsResponse,
+    UserRole,
+    AuditLogView,
+    AuditLogFilters,
+    AuditLogListRequest,
+    AuditLogListResponse,
     MessageResponse,
 )
+
+# Alias for backward compatibility with tests
+AuditLogSearchRequest = AuditLogListRequest
 
 
 @pytest.fixture
