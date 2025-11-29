@@ -13,7 +13,7 @@ Features:
 
 from typing import Optional, Callable
 from functools import wraps
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import structlog
 from fastapi import Request, Response, HTTPException
@@ -501,32 +501,242 @@ def get_rate_limit_info(request: Request) -> dict:
 
 async def check_rate_limit_budget(
     user_id: str,
-    limit_type: str = "ocr"
+    limit_type: str = "ocr",
+    user_tier: str = "free"
 ) -> dict:
     """
     Check remaining rate limit budget for a user.
 
+    Queries Redis for actual usage and compares against configured limits
+    based on user tier (free, premium, admin).
+
     Args:
         user_id: User identifier
-        limit_type: Type of rate limit to check
+        limit_type: Type of rate limit to check (ocr, batch, api)
+        user_tier: User tier (free, premium, admin)
 
     Returns:
-        Dictionary with budget information
+        Dictionary with budget information including:
+        - available: bool - Whether user has remaining quota
+        - remaining: int - Remaining requests in current window
+        - limit: int - Total limit for current window
+        - used: int - Number of requests used
+        - reset_at: str - ISO timestamp when limit resets
+        - window: str - Current window type (hourly, daily)
     """
     storage = await get_redis_storage()
 
     if not storage or not storage.is_available:
+        logger.warning(
+            "rate_limit_check_redis_unavailable",
+            user_id=user_id,
+            limit_type=limit_type
+        )
         return {
             "available": True,
-            "reason": "rate_limiting_unavailable"
+            "reason": "rate_limiting_unavailable",
+            "remaining": -1,
+            "limit": -1
         }
 
-    # This is a placeholder - actual implementation would query Redis
-    # for current usage and compare against limits
-
-    return {
-        "available": True,
-        "remaining": 100,
-        "limit": 100,
-        "reset_at": datetime.now(timezone.utc).isoformat()
+    # Define limits based on tier and type
+    TIER_LIMITS = {
+        "free": {
+            "ocr": {"hourly": 10, "daily": 50},
+            "batch": {"hourly": 5, "daily": 20},
+            "api": {"minute": 100}
+        },
+        "premium": {
+            "ocr": {"hourly": 100, "daily": 1000},
+            "batch": {"hourly": 50, "daily": 200},
+            "api": {"minute": 500}
+        },
+        "admin": {
+            "ocr": {"hourly": 10000, "daily": 100000},
+            "batch": {"hourly": 1000, "daily": 10000},
+            "api": {"minute": 10000}
+        }
     }
+
+    # Get limits for user tier
+    tier_config = TIER_LIMITS.get(user_tier, TIER_LIMITS["free"])
+    type_config = tier_config.get(limit_type, tier_config.get("api", {"minute": 100}))
+
+    try:
+        # Check hourly limit first (if applicable)
+        if "hourly" in type_config:
+            hourly_limit = type_config["hourly"]
+            hourly_key = f"ratelimit:{user_id}:{limit_type}:hourly:{_get_current_hour_key()}"
+
+            hourly_used = await storage._redis.get(hourly_key)
+            hourly_used = int(hourly_used) if hourly_used else 0
+
+            if hourly_used >= hourly_limit:
+                reset_at = _get_next_hour_reset()
+                return {
+                    "available": False,
+                    "remaining": 0,
+                    "limit": hourly_limit,
+                    "used": hourly_used,
+                    "reset_at": reset_at.isoformat(),
+                    "window": "hourly",
+                    "reason": "hourly_limit_exceeded"
+                }
+
+        # Check daily limit (if applicable)
+        if "daily" in type_config:
+            daily_limit = type_config["daily"]
+            daily_key = f"ratelimit:{user_id}:{limit_type}:daily:{_get_current_day_key()}"
+
+            daily_used = await storage._redis.get(daily_key)
+            daily_used = int(daily_used) if daily_used else 0
+
+            if daily_used >= daily_limit:
+                reset_at = _get_next_day_reset()
+                return {
+                    "available": False,
+                    "remaining": 0,
+                    "limit": daily_limit,
+                    "used": daily_used,
+                    "reset_at": reset_at.isoformat(),
+                    "window": "daily",
+                    "reason": "daily_limit_exceeded"
+                }
+
+            # Calculate remaining (use daily as primary)
+            remaining = daily_limit - daily_used
+            return {
+                "available": True,
+                "remaining": remaining,
+                "limit": daily_limit,
+                "used": daily_used,
+                "reset_at": _get_next_day_reset().isoformat(),
+                "window": "daily"
+            }
+
+        # Check minute limit (for API calls)
+        if "minute" in type_config:
+            minute_limit = type_config["minute"]
+            minute_key = f"ratelimit:{user_id}:{limit_type}:minute:{_get_current_minute_key()}"
+
+            minute_used = await storage._redis.get(minute_key)
+            minute_used = int(minute_used) if minute_used else 0
+
+            remaining = max(0, minute_limit - minute_used)
+            return {
+                "available": minute_used < minute_limit,
+                "remaining": remaining,
+                "limit": minute_limit,
+                "used": minute_used,
+                "reset_at": _get_next_minute_reset().isoformat(),
+                "window": "minute"
+            }
+
+        # Default fallback
+        return {
+            "available": True,
+            "remaining": 100,
+            "limit": 100,
+            "used": 0,
+            "reset_at": datetime.now(timezone.utc).isoformat(),
+            "window": "unknown"
+        }
+
+    except Exception as e:
+        logger.error(
+            "rate_limit_check_failed",
+            user_id=user_id,
+            limit_type=limit_type,
+            error=str(e)
+        )
+        # Fail-open: allow request on error
+        return {
+            "available": True,
+            "reason": "check_failed",
+            "error": str(e)
+        }
+
+
+async def increment_rate_limit_usage(
+    user_id: str,
+    limit_type: str = "ocr"
+) -> bool:
+    """
+    Increment rate limit usage counter for a user.
+
+    Should be called after successful request processing.
+
+    Args:
+        user_id: User identifier
+        limit_type: Type of rate limit
+
+    Returns:
+        True if increment succeeded
+    """
+    storage = await get_redis_storage()
+
+    if not storage or not storage.is_available:
+        return False
+
+    try:
+        # Increment hourly counter (expires in 1 hour)
+        hourly_key = f"ratelimit:{user_id}:{limit_type}:hourly:{_get_current_hour_key()}"
+        await storage.increment(hourly_key, 3600)
+
+        # Increment daily counter (expires in 24 hours)
+        daily_key = f"ratelimit:{user_id}:{limit_type}:daily:{_get_current_day_key()}"
+        await storage.increment(daily_key, 86400)
+
+        # Increment minute counter for API calls (expires in 1 minute)
+        if limit_type == "api":
+            minute_key = f"ratelimit:{user_id}:{limit_type}:minute:{_get_current_minute_key()}"
+            await storage.increment(minute_key, 60)
+
+        logger.debug(
+            "rate_limit_usage_incremented",
+            user_id=user_id,
+            limit_type=limit_type
+        )
+        return True
+
+    except Exception as e:
+        logger.error(
+            "rate_limit_increment_failed",
+            user_id=user_id,
+            limit_type=limit_type,
+            error=str(e)
+        )
+        return False
+
+
+def _get_current_hour_key() -> str:
+    """Get current hour key for Redis (YYYYMMDDHH)."""
+    return datetime.now(timezone.utc).strftime("%Y%m%d%H")
+
+
+def _get_current_day_key() -> str:
+    """Get current day key for Redis (YYYYMMDD)."""
+    return datetime.now(timezone.utc).strftime("%Y%m%d")
+
+
+def _get_current_minute_key() -> str:
+    """Get current minute key for Redis (YYYYMMDDHHmm)."""
+    return datetime.now(timezone.utc).strftime("%Y%m%d%H%M")
+
+
+def _get_next_hour_reset() -> datetime:
+    """Get timestamp for next hour reset."""
+    now = datetime.now(timezone.utc)
+    return now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+
+
+def _get_next_day_reset() -> datetime:
+    """Get timestamp for next day reset (midnight UTC)."""
+    now = datetime.now(timezone.utc)
+    return now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+
+
+def _get_next_minute_reset() -> datetime:
+    """Get timestamp for next minute reset."""
+    now = datetime.now(timezone.utc)
+    return now.replace(second=0, microsecond=0) + timedelta(minutes=1)

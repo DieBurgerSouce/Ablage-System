@@ -431,12 +431,12 @@ class DeepSeekAgent(OCRAgent):
         # Basic text cleaning
         text = text.strip()
 
-        # Extract structured data (placeholder - would use NER, regex)
+        # Extract structured data (IBAN, VAT, dates, phone, email, NER)
         entities = []
         if options.get("extract_entities"):
             entities = self._extract_entities(text)
 
-        # Detect layout structure (placeholder)
+        # Detect layout structure (headers, tables, lists, signatures)
         layout = {}
         if options.get("detect_layout"):
             layout = self._detect_layout(text)

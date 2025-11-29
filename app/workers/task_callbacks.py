@@ -362,29 +362,112 @@ async def send_task_notification(
     document_id: str,
     status: str,
     message: str,
-    email: Optional[str] = None
-) -> None:
-    """Send task completion notification.
+    email: Optional[str] = None,
+    user_id: Optional[str] = None,
+    webhook_url: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None
+) -> Dict[str, bool]:
+    """
+    Send task completion notification via all configured channels.
+
+    Sends notifications through:
+    - Email (if SMTP configured and email provided)
+    - Webhook (if webhook URL configured)
+    - In-app notification (if user_id provided)
 
     Args:
         document_id: Document UUID
-        status: Task status (success, failure, etc.)
+        status: Task status (success, failure, warning)
         message: Notification message
         email: Optional email address for notification
+        user_id: Optional user ID for in-app notifications
+        webhook_url: Optional webhook URL override
+        metadata: Optional additional metadata for notification
 
-    TODO: Implement email/webhook notifications when configured
+    Returns:
+        Dictionary with channel -> success status
     """
-    logger.info(
-        "task_notification",
-        document_id=document_id,
-        status=status,
-        message=message,
-        email=email
+    from app.services.notification_service import (
+        get_notification_service,
+        NotificationType,
+        NotificationPriority,
     )
 
-    # Placeholder for future notification implementation
-    # if settings.SMTP_HOST and email:
-    #     send_email(email, f"Dokumentverarbeitung {status}", message)
+    logger.info(
+        "task_notification_sending",
+        document_id=document_id,
+        status=status,
+        email=email,
+        user_id=user_id
+    )
+
+    try:
+        notification_service = get_notification_service()
+
+        # Map status to notification type
+        notification_type_map = {
+            "success": NotificationType.PROCESSING_COMPLETED,
+            "completed": NotificationType.PROCESSING_COMPLETED,
+            "failure": NotificationType.PROCESSING_FAILED,
+            "failed": NotificationType.PROCESSING_FAILED,
+            "warning": NotificationType.OCR_QUALITY_WARNING,
+            "started": NotificationType.PROCESSING_STARTED,
+        }
+
+        notification_type = notification_type_map.get(
+            status.lower(),
+            NotificationType.SYSTEM_ALERT
+        )
+
+        # Map status to priority
+        priority_map = {
+            "success": NotificationPriority.NORMAL,
+            "completed": NotificationPriority.NORMAL,
+            "failure": NotificationPriority.HIGH,
+            "failed": NotificationPriority.HIGH,
+            "warning": NotificationPriority.HIGH,
+            "started": NotificationPriority.LOW,
+        }
+
+        priority = priority_map.get(status.lower(), NotificationPriority.NORMAL)
+
+        # Build context
+        context = {
+            "document_id": document_id,
+            "status": status,
+            "message": message,
+            "timestamp": datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S"),
+            **(metadata or {})
+        }
+
+        # Send notification
+        results = await notification_service.notify(
+            notification_type=notification_type,
+            context=context,
+            user_id=user_id,
+            email=email,
+            webhook_url=webhook_url,
+            priority=priority,
+        )
+
+        logger.info(
+            "task_notification_sent",
+            document_id=document_id,
+            status=status,
+            results=results
+        )
+
+        return results
+
+    except Exception as e:
+        logger.error(
+            "task_notification_failed",
+            document_id=document_id,
+            status=status,
+            error=str(e),
+            exc_info=True
+        )
+        return {"error": str(e)}
 
 
 def get_german_error_message(exc: Exception) -> str:
