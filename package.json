@@ -5,6 +5,13 @@
   "main": "index.js",
   "private": true,
   "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:display-modes": "playwright test display-modes.spec.ts",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "playwright:install": "playwright install --with-deps",
     "release": "semantic-release",
     "release:dry-run": "semantic-release --dry-run",
     "release:ci": "semantic-release --ci",
@@ -33,6 +40,7 @@
   },
   "homepage": "https://docs.ablage-system.local",
   "devDependencies": {
+    "@playwright/test": "^1.40.0",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^11.1.0",
     "@semantic-release/exec": "^6.0.3",
