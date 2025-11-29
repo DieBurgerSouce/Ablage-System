@@ -251,15 +251,15 @@ class TestUpdateUser:
         service = UserAdminService()
         update_data = UserUpdate(email="updated@test.de")
 
-        updated_user = User(
-            id=regular_user.id,
-            email="updated@test.de",
-            username=regular_user.username,
-            hashed_password=regular_user.hashed_password,
-            is_active=True,
-            role=UserRole.USER,
-            created_at=regular_user.created_at,
-        )
+        from unittest.mock import Mock
+        updated_user = Mock(spec=User)
+        updated_user.id = regular_user.id
+        updated_user.email = "updated@test.de"
+        updated_user.username = regular_user.username
+        updated_user.is_active = True
+        updated_user.is_superuser = False
+        updated_user.tier = "free"
+        updated_user.created_at = regular_user.created_at
 
         with patch.object(service, "update_user", return_value=updated_user):
             result = await service.update_user(
@@ -271,22 +271,22 @@ class TestUpdateUser:
             assert result.email == "updated@test.de"
 
     @pytest.mark.asyncio
-    async def test_update_user_role(self, mock_db, regular_user, admin_user):
-        """Benutzerrolle aktualisieren."""
+    async def test_update_user_tier(self, mock_db, regular_user, admin_user):
+        """Benutzer-Tier aktualisieren."""
         from app.services.admin import UserAdminService
 
         service = UserAdminService()
-        update_data = UserUpdate(role=UserRole.MODERATOR)
+        update_data = UserUpdate(tier="premium")
 
-        updated_user = User(
-            id=regular_user.id,
-            email=regular_user.email,
-            username=regular_user.username,
-            hashed_password=regular_user.hashed_password,
-            is_active=True,
-            role=UserRole.MODERATOR,
-            created_at=regular_user.created_at,
-        )
+        from unittest.mock import Mock
+        updated_user = Mock(spec=User)
+        updated_user.id = regular_user.id
+        updated_user.email = regular_user.email
+        updated_user.username = regular_user.username
+        updated_user.is_active = True
+        updated_user.is_superuser = False
+        updated_user.tier = "premium"
+        updated_user.created_at = regular_user.created_at
 
         with patch.object(service, "update_user", return_value=updated_user):
             result = await service.update_user(
@@ -295,7 +295,7 @@ class TestUpdateUser:
                 update_data=update_data,
                 updated_by=admin_user.id,
             )
-            assert result.role == UserRole.MODERATOR
+            assert result.tier == "premium"
 
 
 class TestDeleteUser:
