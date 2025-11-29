@@ -9,6 +9,13 @@ Tests the execution layer monitoring functionality:
 - Alert generation
 """
 
+import sys
+from unittest.mock import MagicMock
+
+# Mock psycopg before importing the monitoring agent
+sys.modules["psycopg"] = MagicMock()
+sys.modules["psycopg.rows"] = MagicMock()
+
 import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch

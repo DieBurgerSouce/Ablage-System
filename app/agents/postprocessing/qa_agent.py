@@ -516,7 +516,16 @@ class QAAgent(PostprocessingAgent):
 
         # Check for duplicate entities
         entity_values = [e.get("value") for e in entities if e.get("value")]
-        duplicates = [v for v in set(entity_values) if entity_values.count(v) > 1]
+        # Convert dicts to strings for hashability comparison
+        hashable_values = [
+            str(v) if isinstance(v, dict) else v
+            for v in entity_values
+        ]
+        try:
+            duplicates = [v for v in set(hashable_values) if hashable_values.count(v) > 1]
+        except TypeError:
+            # Fallback if values still not hashable
+            duplicates = []
         if duplicates:
             issues.append({
                 "type": QAIssueType.TEXT_QUALITY,

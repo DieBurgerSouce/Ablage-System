@@ -366,7 +366,12 @@ class TestGermanErrorMessages:
         from app.core.rate_limiting import rate_limit_exceeded_handler_german
 
         with patch("app.core.rate_limiting.get_remote_address", return_value="192.168.1.100"):
-            exc = RateLimitExceeded(None)
+            # Create a mock Limit object
+            mock_limit = Mock()
+            mock_limit.error_message = None
+            mock_limit.limit = "10/minute"
+
+            exc = RateLimitExceeded(mock_limit)
             exc.retry_after = 60
 
             response = rate_limit_exceeded_handler_german(mock_request, exc)
@@ -381,7 +386,12 @@ class TestGermanErrorMessages:
         from app.core.rate_limiting import rate_limit_exceeded_handler_german
 
         with patch("app.core.rate_limiting.get_remote_address", return_value="192.168.1.100"):
-            exc = RateLimitExceeded(None)
+            # Create a mock Limit object
+            mock_limit = Mock()
+            mock_limit.error_message = None
+            mock_limit.limit = "10/minute"
+
+            exc = RateLimitExceeded(mock_limit)
             exc.retry_after = 120
 
             response = rate_limit_exceeded_handler_german(mock_request, exc)

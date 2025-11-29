@@ -240,14 +240,17 @@ class TestCertificateValidation:
 
     def test_valid_certificate_parsing(self, self_signed_cert_and_key):
         """Gültiges Zertifikat sollte korrekt geparst werden."""
+        from datetime import timezone
         cert_pem, _ = self_signed_cert_and_key
 
         cert = x509.load_pem_x509_certificate(cert_pem, default_backend())
 
         # Verify basic attributes
         assert cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value == "ablage-system.local"
-        assert cert.not_valid_before_utc <= datetime.utcnow().replace(tzinfo=None)
-        assert cert.not_valid_after_utc > datetime.utcnow().replace(tzinfo=None)
+        # Compare timezone-aware datetimes
+        now_utc = datetime.now(timezone.utc)
+        assert cert.not_valid_before_utc <= now_utc
+        assert cert.not_valid_after_utc > now_utc
 
     def test_expired_certificate_detection(self, expired_cert_and_key):
         """Abgelaufenes Zertifikat sollte erkannt werden."""
@@ -531,6 +534,10 @@ class TestTLSConfigurationValidator:
 class TestCertificateFileHandling:
     """Tests for certificate file handling."""
 
+    @pytest.mark.skipif(
+        __import__("sys").platform == "win32",
+        reason="Unix-Dateirechte nicht auf Windows verfügbar"
+    )
     def test_certificate_file_permissions(self, tmp_path):
         """Zertifikat-Dateien sollten sichere Berechtigungen haben."""
         # Create test certificate file
@@ -539,14 +546,17 @@ class TestCertificateFileHandling:
 
         # On Unix-like systems, check permissions
         import os
-        if hasattr(os, 'chmod'):
-            os.chmod(cert_file, 0o644)  # rw-r--r--
+        os.chmod(cert_file, 0o644)  # rw-r--r--
 
-            mode = oct(os.stat(cert_file).st_mode)[-3:]
+        mode = oct(os.stat(cert_file).st_mode)[-3:]
 
-            # Certificate files should be readable
-            assert mode in ['644', '640', '600'], f"Unsichere Berechtigungen: {mode}"
+        # Certificate files should be readable
+        assert mode in ['644', '640', '600'], f"Unsichere Berechtigungen: {mode}"
 
+    @pytest.mark.skipif(
+        __import__("sys").platform == "win32",
+        reason="Unix-Dateirechte nicht auf Windows verfügbar"
+    )
     def test_private_key_file_permissions(self, tmp_path):
         """Private Schlüssel sollten nur für root lesbar sein."""
         # Create test key file
@@ -554,13 +564,12 @@ class TestCertificateFileHandling:
         key_file.write_text("-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----")
 
         import os
-        if hasattr(os, 'chmod'):
-            os.chmod(key_file, 0o600)  # rw-------
+        os.chmod(key_file, 0o600)  # rw-------
 
-            mode = oct(os.stat(key_file).st_mode)[-3:]
+        mode = oct(os.stat(key_file).st_mode)[-3:]
 
-            # Private key should only be readable by owner
-            assert mode == '600', f"Private Key hat unsichere Berechtigungen: {mode}"
+        # Private key should only be readable by owner
+        assert mode == '600', f"Private Key hat unsichere Berechtigungen: {mode}"
 
     def test_certificate_pem_format(self, self_signed_cert_and_key):
         """Zertifikat sollte gültiges PEM-Format haben."""

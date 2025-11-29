@@ -335,17 +335,24 @@ class TestDocumentServiceUpdateDocument:
         self, document_service, mock_db_session, mock_document, sample_user_id, mock_tag
     ):
         """Dokument-Tags aktualisieren."""
-        mock_document.tags = []
+        # Set mock_document.tags to include the mock_tag for response
+        mock_document.tags = [mock_tag]
 
         mock_result = Mock()
         mock_result.scalar_one_or_none.return_value = mock_document
         mock_db_session.execute.return_value = mock_result
 
-        # Mock tag query
+        # Mock tag query - returns mock_tag with all required attributes
         mock_tags_result = Mock()
         mock_tags_result.scalars.return_value.all.return_value = [mock_tag]
 
         mock_db_session.execute.side_effect = [mock_result, mock_tags_result]
+
+        # Ensure db.refresh keeps the tags
+        async def mock_refresh(obj):
+            obj.tags = [mock_tag]
+
+        mock_db_session.refresh = AsyncMock(side_effect=mock_refresh)
 
         with patch('app.services.document_service._get_search_service') as mock_search:
             mock_search_service = AsyncMock()

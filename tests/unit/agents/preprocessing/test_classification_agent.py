@@ -571,14 +571,15 @@ class TestCacheManagement:
         """Cache sollte bei wiederholten Aufrufen verwendet werden."""
         agent = DocumentClassificationAgent()
 
-        # Pre-populate cache
-        cache_key = "/path/to/file.pdf"
+        # Pre-populate cache - use Path converted to string for correct cache key
+        file_path = Path("/path/to/file.pdf")
+        cache_key = str(file_path)  # Matches what the method uses internally
         cached_text = "Cached text content"
         agent._sample_text_cache[cache_key] = cached_text
 
         file_info = {"extension": ".pdf"}
 
-        result = await agent._extract_sample_text(Path(cache_key), file_info)
+        result = await agent._extract_sample_text(file_path, file_info)
 
         assert result == cached_text
 
