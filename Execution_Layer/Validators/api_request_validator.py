@@ -379,7 +379,7 @@ class SecurityValidator:
             size_mb = int(content_length) / (1024 * 1024)
             if size_mb > max_size_mb:
                 raise HTTPException(
-                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                     detail={
                         "code": "REQUEST_TOO_LARGE",
                         "message": f"Anfrage zu groß: {size_mb:.2f} MB (max {max_size_mb} MB)",
@@ -663,7 +663,7 @@ def validate_request(
             except ValidationError as e:
                 logger.warning("validation_error", errors=e.errors())
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail={
                         "code": "VALIDATION_ERROR",
                         "message": "Validierungsfehler",
