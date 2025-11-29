@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_superuser
+from app.core.german_messages import HTTPErrors
 from app.db.models import User
 from app.db.schemas import (
     GPUStatusAdmin,
@@ -263,7 +264,7 @@ async def restart_service(
     if service not in ["celery"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Dienst '{service}' wird nicht unterstuetzt. Verfuegbar: celery",
+            detail=HTTPErrors.SERVICE_NOT_SUPPORTED.format(service=service),
         )
 
     # In a real implementation, this would trigger a service restart

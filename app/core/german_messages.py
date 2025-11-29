@@ -23,6 +23,9 @@ class HTTPErrors:
     INVALID_REQUEST = "Ungültige Anfrage"
     MISSING_REQUIRED_FIELD = "Pflichtfeld fehlt: {field}"
     INVALID_FORMAT = "Ungültiges Format: {details}"
+    ARRAY_LENGTH_MISMATCH = "document_ids und file_paths müssen dieselbe Länge haben"
+    RESET_COUNTER_FAILED = "Fehler beim Zurücksetzen der Zähler: {details}"
+    SELF_DELETE_PREVENTED = "Eigenes Konto kann nicht gelöscht werden"
 
     # 401 Unauthorized
     INVALID_CREDENTIALS = "Ungültige Anmeldedaten"
@@ -38,9 +41,14 @@ class HTTPErrors:
     # 404 Not Found
     DOCUMENT_NOT_FOUND = "Dokument nicht gefunden"
     USER_NOT_FOUND = "Benutzer nicht gefunden"
-    TASK_NOT_FOUND = "Aufgabe nicht gefunden"
+    TASK_NOT_FOUND = "Aufgabe nicht gefunden: {task_id}"
     AGENT_NOT_FOUND = "Agent nicht gefunden: {agent_id}"
     RESOURCE_NOT_FOUND = "Ressource nicht gefunden"
+    WORKFLOW_NOT_FOUND = "Kein Workflow gefunden für Dokument: {document_id}"
+    WORKFLOW_PHASE_NOT_FOUND = "Phase '{phase}' nicht gefunden für Dokument: {document_id}"
+    OVERRIDE_NOT_FOUND = "Kein Override für diesen Benutzer gefunden"
+    SERVICE_NOT_SUPPORTED = "Dienst '{service}' wird nicht unterstützt"
+    EXPORT_FORMAT_INVALID = "Ungültiges Format. Verwenden Sie 'csv' oder 'json'"
 
     # 409 Conflict
     EMAIL_EXISTS = "E-Mail-Adresse bereits registriert"
@@ -208,16 +216,16 @@ class VersionMessages:
 
     # Success messages
     VERSION_CREATED = "Version {version} erfolgreich erstellt"
-    ROLLBACK_SUCCESS = "Erfolgreich zu Version {version} zuruckgesetzt. Neue Version: {new_version}"
+    ROLLBACK_SUCCESS = "Erfolgreich zu Version {version} zurückgesetzt. Neue Version: {new_version}"
 
     # Error messages
     VERSION_NOT_FOUND = "Version {version} nicht gefunden"
     DOCUMENT_NOT_FOUND = "Dokument nicht gefunden"
     COMPARE_ERROR = "Fehler beim Vergleichen der Versionen"
     ROLLBACK_FAILED = "Rollback zu Version {version} fehlgeschlagen"
-    NO_VERSIONS = "Keine Versionen fur dieses Dokument vorhanden"
+    NO_VERSIONS = "Keine Versionen für dieses Dokument vorhanden"
     NO_CURRENT_VERSION = "Keine aktuelle Version gefunden"
-    INVALID_VERSION_NUMBER = "Ungultige Versionsnummer"
+    INVALID_VERSION_NUMBER = "Ungültige Versionsnummer"
 
     # Info messages
     VERSION_LIST_EMPTY = "Keine Versionen vorhanden"

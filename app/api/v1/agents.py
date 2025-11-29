@@ -15,6 +15,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, field_validator
 
 from app.agents.orchestration import DocumentProcessingOrchestrator, OCRBackendRouter
+from app.core.german_messages import HTTPErrors
 from app.core.redis_state import get_redis
 from app.workers.tasks.ocr_tasks import (
     batch_process_documents,
@@ -162,7 +163,10 @@ async def get_agent_status(agent_id: str):
     status = await redis.get_agent_status(agent_id)
 
     if not status:
-        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+        raise HTTPException(
+            status_code=404,
+            detail=HTTPErrors.AGENT_NOT_FOUND.format(agent_id=agent_id)
+        )
 
     return {
         "agent_id": agent_id,
@@ -220,7 +224,7 @@ async def execute_batch_processing(request: BatchProcessRequest):
     if len(request.document_ids) != len(request.file_paths):
         raise HTTPException(
             status_code=400,
-            detail="document_ids and file_paths must have same length",
+            detail=HTTPErrors.ARRAY_LENGTH_MISMATCH,
         )
 
     # Submit batch task
@@ -295,7 +299,10 @@ async def get_task_status(task_id: str):
     # Get task state
     task_state = await redis.get_task_state(task_id)
     if not task_state:
-        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+        raise HTTPException(
+            status_code=404,
+            detail=HTTPErrors.TASK_NOT_FOUND.format(task_id=task_id)
+        )
 
     # Get progress
     progress = await redis.get_task_progress(task_id)
@@ -394,7 +401,7 @@ async def get_workflow_state(document_id: str):
     if not workflow_state:
         raise HTTPException(
             status_code=404,
-            detail=f"No workflow found for document {document_id}",
+            detail=HTTPErrors.WORKFLOW_NOT_FOUND.format(document_id=document_id),
         )
 
     return {
@@ -421,7 +428,9 @@ async def get_workflow_phase(document_id: str, phase: str):
     if not phase_state:
         raise HTTPException(
             status_code=404,
-            detail=f"Phase {phase} not found for document {document_id}",
+            detail=HTTPErrors.WORKFLOW_PHASE_NOT_FOUND.format(
+                phase=phase, document_id=document_id
+            ),
         )
 
     return {

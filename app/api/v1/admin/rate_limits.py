@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_superuser
+from app.core.german_messages import HTTPErrors
 from app.db.models import User
 from app.db.schemas import (
     RateLimitOverrideCreate,
@@ -197,7 +198,7 @@ async def delete_override(
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Kein Override fuer diesen Benutzer gefunden",
+            detail=HTTPErrors.OVERRIDE_NOT_FOUND,
         )
 
     return MessageResponse(
@@ -293,7 +294,9 @@ async def reset_user_usage(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Zuruecksetzen der Zaehler. Redis moeglicherweise nicht erreichbar.",
+            detail=HTTPErrors.RESET_COUNTER_FAILED.format(
+                details="Redis möglicherweise nicht erreichbar"
+            ),
         )
 
     return MessageResponse(

@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_superuser
+from app.core.german_messages import HTTPErrors
 from app.db.models import User
 from app.db.schemas import (
     AuditLogView,
@@ -231,7 +232,7 @@ async def export_audit_logs(
     if format not in ["csv", "json"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltiges Format. Verwenden Sie 'csv' oder 'json'.",
+            detail=HTTPErrors.EXPORT_FORMAT_INVALID,
         )
 
     filters = AuditLogFilters(
