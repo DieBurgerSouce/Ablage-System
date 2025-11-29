@@ -123,7 +123,7 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler_german)
 app.state.limiter = limiter
 
 # Include API routers
-from app.api.v1 import auth, tasks, metrics, ml, versions, documents, health
+from app.api.v1 import auth, tasks, metrics, ml, versions, documents, health, ocr
 from app.api.v1.admin import router as admin_router
 from app.api.v1.backup import router as backup_router
 
@@ -136,6 +136,7 @@ app.include_router(documents.router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(backup_router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
+app.include_router(ocr.router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================

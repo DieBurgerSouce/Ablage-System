@@ -988,6 +988,521 @@ class BackupService:
 
         return backups
 
+    # -------------------------------------------------------------------------
+    # Restore Methods
+    # -------------------------------------------------------------------------
+
+    async def restore_postgres(
+        self,
+        backup_path: Path,
+        dry_run: bool = False,
+    ) -> BackupResult:
+        """
+        Stelle PostgreSQL aus Backup wieder her.
+
+        Args:
+            backup_path: Pfad zur Backup-Datei (.sql.gz oder .sql.gz.gpg)
+            dry_run: Wenn True, nur Validierung ohne Wiederherstellung
+
+        Returns:
+            BackupResult mit Status
+        """
+        import time
+
+        start_time = time.perf_counter()
+        logger.info(
+            "postgres_restore_gestartet",
+            pfad=str(backup_path),
+            dry_run=dry_run,
+        )
+
+        if not backup_path.exists():
+            return BackupResult(
+                success=False,
+                backup_type="postgres_restore",
+                error=f"Backup-Datei nicht gefunden: {backup_path}",
+            )
+
+        try:
+            # Validiere Backup erst
+            if not await self.validate_backup(backup_path):
+                return BackupResult(
+                    success=False,
+                    backup_type="postgres_restore",
+                    error="Backup-Validierung fehlgeschlagen",
+                )
+
+            if dry_run:
+                duration = time.perf_counter() - start_time
+                logger.info("postgres_restore_dry_run_erfolgreich", pfad=str(backup_path))
+                return BackupResult(
+                    success=True,
+                    backup_type="postgres_restore",
+                    path=backup_path,
+                    validated=True,
+                    duration_seconds=duration,
+                )
+
+            # Arbeite mit temporaerer Datei wenn verschluesselt/komprimiert
+            work_path = backup_path
+            temp_files: List[Path] = []
+
+            # Entschluesseln wenn GPG
+            if backup_path.suffix == ".gpg":
+                decrypted_path = await self._decrypt_backup(backup_path)
+                if decrypted_path is None:
+                    return BackupResult(
+                        success=False,
+                        backup_type="postgres_restore",
+                        error="Entschluesselung fehlgeschlagen",
+                    )
+                work_path = decrypted_path
+                temp_files.append(decrypted_path)
+
+            # Dekomprimieren wenn gzip
+            if work_path.suffix == ".gz":
+                decompressed_path = work_path.with_suffix("")
+                await self._decompress_file(work_path, decompressed_path)
+                if work_path in temp_files:
+                    temp_files.remove(work_path)
+                    work_path.unlink()
+                work_path = decompressed_path
+                temp_files.append(decompressed_path)
+
+            # psql ausfuehren
+            env = os.environ.copy()
+            env["PGPASSWORD"] = self.config.postgres_password
+
+            proc = await run_subprocess(
+                "psql",
+                "-h", self.config.postgres_host,
+                "-p", str(self.config.postgres_port),
+                "-U", self.config.postgres_user,
+                "-d", self.config.postgres_db,
+                "-f", str(work_path),
+                env=env,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+
+            stdout, stderr = await proc.communicate()
+
+            # Aufraeumen temporaere Dateien
+            for temp_file in temp_files:
+                if temp_file.exists():
+                    temp_file.unlink()
+
+            duration = time.perf_counter() - start_time
+
+            if proc.returncode != 0:
+                error_msg = stderr.decode() if stderr else "psql restore fehlgeschlagen"
+                logger.error(
+                    "postgres_restore_fehlgeschlagen",
+                    error=error_msg,
+                    returncode=proc.returncode,
+                )
+                return BackupResult(
+                    success=False,
+                    backup_type="postgres_restore",
+                    error=error_msg[:500],
+                    duration_seconds=duration,
+                )
+
+            logger.info(
+                "postgres_restore_erfolgreich",
+                pfad=str(backup_path),
+                dauer=duration,
+            )
+
+            return BackupResult(
+                success=True,
+                backup_type="postgres_restore",
+                path=backup_path,
+                validated=True,
+                duration_seconds=duration,
+            )
+
+        except Exception as e:
+            logger.exception("postgres_restore_fehler")
+            return BackupResult(
+                success=False,
+                backup_type="postgres_restore",
+                error=str(e)[:500],
+            )
+
+    async def restore_redis(
+        self,
+        backup_path: Path,
+        dry_run: bool = False,
+    ) -> BackupResult:
+        """
+        Stelle Redis aus RDB-Backup wieder her.
+
+        Args:
+            backup_path: Pfad zur RDB-Datei
+            dry_run: Wenn True, nur Validierung ohne Wiederherstellung
+
+        Returns:
+            BackupResult mit Status
+        """
+        import time
+
+        start_time = time.perf_counter()
+        logger.info(
+            "redis_restore_gestartet",
+            pfad=str(backup_path),
+            dry_run=dry_run,
+        )
+
+        if not backup_path.exists():
+            return BackupResult(
+                success=False,
+                backup_type="redis_restore",
+                error=f"Backup-Datei nicht gefunden: {backup_path}",
+            )
+
+        try:
+            # Validiere Backup
+            if not await self.validate_backup(backup_path):
+                return BackupResult(
+                    success=False,
+                    backup_type="redis_restore",
+                    error="Backup-Validierung fehlgeschlagen",
+                )
+
+            if dry_run:
+                duration = time.perf_counter() - start_time
+                logger.info("redis_restore_dry_run_erfolgreich", pfad=str(backup_path))
+                return BackupResult(
+                    success=True,
+                    backup_type="redis_restore",
+                    path=backup_path,
+                    validated=True,
+                    duration_seconds=duration,
+                )
+
+            # Redis SHUTDOWN und RDB kopieren
+            # WARNUNG: Dies erfordert Redis-Neustart!
+            try:
+                import redis.asyncio as redis_client
+
+                client = redis_client.from_url(
+                    f"redis://{self.config.redis_host}:{self.config.redis_port}",
+                    password=self.config.redis_password,
+                )
+
+                # BGSAVE stoppen falls aktiv
+                await client.bgsave()
+                await asyncio.sleep(2)
+
+                # Redis Data Dir ermitteln (CONFIG GET dir)
+                config_result = await client.config_get("dir")
+                redis_dir = config_result.get("dir", "/data")
+
+                # RDB Dateiname ermitteln
+                dbfilename_result = await client.config_get("dbfilename")
+                dbfilename = dbfilename_result.get("dbfilename", "dump.rdb")
+
+                target_path = Path(redis_dir) / dbfilename
+
+                # Alte RDB sichern
+                if target_path.exists():
+                    backup_old = target_path.with_suffix(".rdb.old")
+                    shutil.copy2(target_path, backup_old)
+
+                # Neue RDB kopieren
+                shutil.copy2(backup_path, target_path)
+
+                # Redis DEBUG RELOAD (laedt RDB neu)
+                await client.debug_object("RELOAD")
+
+                await client.close()
+
+            except ImportError:
+                return BackupResult(
+                    success=False,
+                    backup_type="redis_restore",
+                    error="redis-py nicht installiert",
+                )
+
+            duration = time.perf_counter() - start_time
+            logger.info(
+                "redis_restore_erfolgreich",
+                pfad=str(backup_path),
+                dauer=duration,
+            )
+
+            return BackupResult(
+                success=True,
+                backup_type="redis_restore",
+                path=backup_path,
+                validated=True,
+                duration_seconds=duration,
+            )
+
+        except Exception as e:
+            logger.exception("redis_restore_fehler")
+            return BackupResult(
+                success=False,
+                backup_type="redis_restore",
+                error=str(e)[:500],
+            )
+
+    async def restore_minio(
+        self,
+        backup_path: Path,
+        bucket: Optional[str] = None,
+        dry_run: bool = False,
+    ) -> BackupResult:
+        """
+        Stelle MinIO-Buckets aus Backup wieder her.
+
+        Args:
+            backup_path: Pfad zum MinIO-Backup-Verzeichnis
+            bucket: Optionaler einzelner Bucket zum Wiederherstellen
+            dry_run: Wenn True, nur Validierung ohne Wiederherstellung
+
+        Returns:
+            BackupResult mit Status
+        """
+        import time
+
+        start_time = time.perf_counter()
+        logger.info(
+            "minio_restore_gestartet",
+            pfad=str(backup_path),
+            bucket=bucket,
+            dry_run=dry_run,
+        )
+
+        if not backup_path.exists():
+            return BackupResult(
+                success=False,
+                backup_type="minio_restore",
+                error=f"Backup-Verzeichnis nicht gefunden: {backup_path}",
+            )
+
+        try:
+            # Validiere dass es ein Verzeichnis ist
+            if not backup_path.is_dir():
+                return BackupResult(
+                    success=False,
+                    backup_type="minio_restore",
+                    error="Pfad ist kein Verzeichnis",
+                )
+
+            # Buckets zum Wiederherstellen bestimmen
+            if bucket:
+                buckets_to_restore = [bucket]
+            else:
+                buckets_to_restore = [d.name for d in backup_path.iterdir() if d.is_dir()]
+
+            if dry_run:
+                duration = time.perf_counter() - start_time
+                logger.info(
+                    "minio_restore_dry_run_erfolgreich",
+                    buckets=buckets_to_restore,
+                )
+                return BackupResult(
+                    success=True,
+                    backup_type="minio_restore",
+                    path=backup_path,
+                    validated=True,
+                    duration_seconds=duration,
+                )
+
+            # mc mirror fuer jeden Bucket (von Backup zu MinIO)
+            for bucket_name in buckets_to_restore:
+                bucket_source = backup_path / bucket_name
+                if not bucket_source.exists():
+                    logger.warning("minio_bucket_nicht_gefunden", bucket=bucket_name)
+                    continue
+
+                proc = await run_subprocess(
+                    "mc",
+                    "mirror",
+                    "--overwrite",
+                    str(bucket_source),
+                    f"local/{bucket_name}",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+
+                stdout, stderr = await proc.communicate()
+
+                if proc.returncode != 0:
+                    logger.error(
+                        "minio_bucket_restore_fehler",
+                        bucket=bucket_name,
+                        error=stderr.decode(),
+                    )
+
+            duration = time.perf_counter() - start_time
+            logger.info(
+                "minio_restore_erfolgreich",
+                pfad=str(backup_path),
+                buckets=buckets_to_restore,
+                dauer=duration,
+            )
+
+            return BackupResult(
+                success=True,
+                backup_type="minio_restore",
+                path=backup_path,
+                validated=True,
+                duration_seconds=duration,
+            )
+
+        except Exception as e:
+            logger.exception("minio_restore_fehler")
+            return BackupResult(
+                success=False,
+                backup_type="minio_restore",
+                error=str(e)[:500],
+            )
+
+    async def restore_full(
+        self,
+        backup_dir: Path,
+        dry_run: bool = False,
+        components: Optional[List[str]] = None,
+    ) -> List[BackupResult]:
+        """
+        Vollstaendige Wiederherstellung aller Komponenten.
+
+        Args:
+            backup_dir: Verzeichnis mit Backups (muss Unterordner haben)
+            dry_run: Nur Validierung
+            components: Optionale Liste (postgres, redis, minio)
+
+        Returns:
+            Liste von BackupResults
+        """
+        logger.info(
+            "vollstaendige_wiederherstellung_gestartet",
+            verzeichnis=str(backup_dir),
+            dry_run=dry_run,
+            komponenten=components,
+        )
+
+        results: List[BackupResult] = []
+        available_components = components or ["postgres", "redis", "minio"]
+
+        # PostgreSQL zuerst (Datenbank-Schema)
+        if "postgres" in available_components:
+            postgres_dir = backup_dir / "postgres"
+            if postgres_dir.exists():
+                # Neuestes Backup finden
+                postgres_files = sorted(
+                    postgres_dir.glob("*.sql.gz*"),
+                    key=lambda x: x.stat().st_mtime,
+                    reverse=True,
+                )
+                if postgres_files:
+                    result = await self.restore_postgres(postgres_files[0], dry_run=dry_run)
+                    results.append(result)
+                else:
+                    results.append(BackupResult(
+                        success=False,
+                        backup_type="postgres_restore",
+                        error="Keine PostgreSQL-Backups gefunden",
+                    ))
+
+        # Redis
+        if "redis" in available_components:
+            redis_dir = backup_dir / "redis"
+            if redis_dir.exists():
+                redis_files = sorted(
+                    redis_dir.glob("*.rdb*"),
+                    key=lambda x: x.stat().st_mtime,
+                    reverse=True,
+                )
+                if redis_files:
+                    result = await self.restore_redis(redis_files[0], dry_run=dry_run)
+                    results.append(result)
+                else:
+                    results.append(BackupResult(
+                        success=False,
+                        backup_type="redis_restore",
+                        error="Keine Redis-Backups gefunden",
+                    ))
+
+        # MinIO
+        if "minio" in available_components:
+            minio_dir = backup_dir / "minio"
+            if minio_dir.exists():
+                # Neuestes Backup-Verzeichnis finden
+                minio_dirs = sorted(
+                    [d for d in minio_dir.iterdir() if d.is_dir()],
+                    key=lambda x: x.stat().st_mtime,
+                    reverse=True,
+                )
+                if minio_dirs:
+                    result = await self.restore_minio(minio_dirs[0], dry_run=dry_run)
+                    results.append(result)
+                else:
+                    results.append(BackupResult(
+                        success=False,
+                        backup_type="minio_restore",
+                        error="Keine MinIO-Backups gefunden",
+                    ))
+
+        success_count = sum(1 for r in results if r.success)
+        logger.info(
+            "vollstaendige_wiederherstellung_abgeschlossen",
+            erfolgreich=success_count,
+            gesamt=len(results),
+            dry_run=dry_run,
+        )
+
+        return results
+
+    async def _decrypt_backup(self, encrypted_path: Path) -> Optional[Path]:
+        """
+        Entschluessele GPG-verschluesselte Backup-Datei.
+
+        Args:
+            encrypted_path: Pfad zur .gpg Datei
+
+        Returns:
+            Pfad zur entschluesselten Datei oder None bei Fehler
+        """
+        output_path = encrypted_path.with_suffix("")  # Entferne .gpg
+
+        gpg_args = ["--decrypt", "--batch", "--yes", "-o", str(output_path)]
+
+        if self.config.gpg_home:
+            gpg_args = ["--homedir", self.config.gpg_home] + gpg_args
+
+        gpg_args.append(str(encrypted_path))
+
+        proc = await run_subprocess(
+            "gpg",
+            *gpg_args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        stdout, stderr = await proc.communicate()
+
+        if proc.returncode != 0:
+            logger.error("gpg_entschluesselung_fehler", error=stderr.decode())
+            return None
+
+        return output_path
+
+    async def _decompress_file(self, input_path: Path, output_path: Path) -> None:
+        """
+        Dekomprimiere gzip-Datei.
+
+        Args:
+            input_path: Komprimierte Eingabedatei
+            output_path: Dekomprimierte Ausgabedatei
+        """
+        with gzip.open(input_path, "rb") as f_in:
+            with open(output_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
+
 
 # =============================================================================
 # Singleton Instance

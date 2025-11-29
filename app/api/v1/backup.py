@@ -7,6 +7,7 @@ Alle Endpunkte erfordern Admin-Authentifizierung.
 Feinpoliert und durchdacht - Enterprise Backup API.
 """
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import structlog
@@ -112,6 +113,84 @@ class AsyncBackupResponse(BaseModel):
     gestartet: bool = Field(True, description="Wurde Backup gestartet?")
     backup_typ: str = Field(..., description="Gestarteter Backup-Typ")
     nachricht: str = Field(..., description="Info-Nachricht")
+
+
+class RestoreRequest(BaseModel):
+    """Anfrage fuer Restore-Operation."""
+
+    backup_pfad: str = Field(..., description="Pfad zur Backup-Datei")
+    dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
+
+
+class RestoreMinioRequest(BaseModel):
+    """Anfrage fuer MinIO-Restore."""
+
+    backup_pfad: str = Field(..., description="Pfad zur Backup-Datei")
+    bucket: Optional[str] = Field(None, description="Ziel-Bucket (optional)")
+    dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
+
+
+class FullRestoreRequest(BaseModel):
+    """Anfrage fuer vollstaendigen Restore."""
+
+    backup_verzeichnis: str = Field(..., description="Verzeichnis mit Backup-Dateien")
+    komponenten: Optional[List[str]] = Field(
+        None, description="Komponenten: postgres, redis, minio, config"
+    )
+    dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
+
+
+class RestoreResponse(BaseModel):
+    """Antwort fuer Restore-Operation."""
+
+    erfolg: bool = Field(..., description="War Restore erfolgreich?")
+    backup_typ: str = Field(..., description="postgres, redis, minio, config")
+    dry_run: bool = Field(..., description="War es ein Dry-Run?")
+    validiert: bool = Field(False, description="Wurde Backup vor Restore validiert?")
+    fehler: Optional[str] = Field(None, description="Fehlermeldung bei Misserfolg")
+    nachricht: str = Field(..., description="Zusammenfassung")
+
+    @classmethod
+    def from_result(cls, result: BackupResult, dry_run: bool = False) -> "RestoreResponse":
+        """Erstelle Response aus BackupResult."""
+        if result.success:
+            nachricht = f"Restore von {result.backup_type} erfolgreich"
+            if dry_run:
+                nachricht += " (Dry-Run)"
+        else:
+            nachricht = f"Restore von {result.backup_type} fehlgeschlagen"
+
+        return cls(
+            erfolg=result.success,
+            backup_typ=result.backup_type,
+            dry_run=dry_run,
+            validiert=result.validated,
+            fehler=result.error,
+            nachricht=nachricht,
+        )
+
+
+class FullRestoreResponse(BaseModel):
+    """Antwort fuer vollstaendigen Restore."""
+
+    erfolg: bool = Field(..., description="Waren alle Restores erfolgreich?")
+    erfolgreich: int = Field(..., description="Anzahl erfolgreicher Restores")
+    fehlgeschlagen: int = Field(..., description="Anzahl fehlgeschlagener Restores")
+    dry_run: bool = Field(..., description="War es ein Dry-Run?")
+    restores: List[RestoreResponse] = Field(..., description="Details je Restore")
+    nachricht: str = Field(..., description="Zusammenfassung")
+
+
+class ValidateBackupResponse(BaseModel):
+    """Antwort fuer Backup-Validierung."""
+
+    gueltig: bool = Field(..., description="Ist Backup gueltig?")
+    backup_typ: str = Field(..., description="Erkannter Backup-Typ")
+    groesse_bytes: int = Field(..., description="Groesse in Bytes")
+    verschluesselt: bool = Field(..., description="Ist Backup verschluesselt?")
+    komprimiert: bool = Field(..., description="Ist Backup komprimiert?")
+    details: Dict[str, Any] = Field(..., description="Weitere Details")
+    fehler: Optional[str] = Field(None, description="Fehlermeldung bei ungueltigem Backup")
 
 
 # =============================================================================
@@ -439,3 +518,257 @@ async def list_remote_backups(
         "anzahl": len(backups),
         "backups": backups,
     }
+
+
+# =============================================================================
+# Restore Endpoints
+# =============================================================================
+
+
+@router.post(
+    "/restore/postgres",
+    response_model=RestoreResponse,
+    summary="PostgreSQL Restore",
+    description="Stellt PostgreSQL-Datenbank aus Backup wieder her. ACHTUNG: Ueberschreibt aktuelle Daten!",
+)
+async def restore_postgres(
+    request: RestoreRequest,
+    current_user: User = Depends(get_current_superuser),
+) -> RestoreResponse:
+    """Stelle PostgreSQL aus Backup wieder her."""
+    logger.warning(
+        "postgres_restore_angefordert",
+        user_id=str(current_user.id),
+        backup_pfad=request.backup_pfad,
+        dry_run=request.dry_run,
+    )
+
+    backup_path = Path(request.backup_pfad)
+
+    if not backup_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Backup-Datei nicht gefunden: {request.backup_pfad}",
+        )
+
+    service = get_backup_service()
+    result = await service.restore_postgres(backup_path, dry_run=request.dry_run)
+
+    return RestoreResponse.from_result(result, dry_run=request.dry_run)
+
+
+@router.post(
+    "/restore/redis",
+    response_model=RestoreResponse,
+    summary="Redis Restore",
+    description="Stellt Redis-Cache aus Backup wieder her. ACHTUNG: Ueberschreibt aktuelle Daten!",
+)
+async def restore_redis(
+    request: RestoreRequest,
+    current_user: User = Depends(get_current_superuser),
+) -> RestoreResponse:
+    """Stelle Redis aus Backup wieder her."""
+    logger.warning(
+        "redis_restore_angefordert",
+        user_id=str(current_user.id),
+        backup_pfad=request.backup_pfad,
+        dry_run=request.dry_run,
+    )
+
+    backup_path = Path(request.backup_pfad)
+
+    if not backup_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Backup-Datei nicht gefunden: {request.backup_pfad}",
+        )
+
+    service = get_backup_service()
+    result = await service.restore_redis(backup_path, dry_run=request.dry_run)
+
+    return RestoreResponse.from_result(result, dry_run=request.dry_run)
+
+
+@router.post(
+    "/restore/minio",
+    response_model=RestoreResponse,
+    summary="MinIO Restore",
+    description="Stellt MinIO-Bucket aus Backup wieder her. ACHTUNG: Ueberschreibt aktuelle Daten!",
+)
+async def restore_minio(
+    request: RestoreMinioRequest,
+    current_user: User = Depends(get_current_superuser),
+) -> RestoreResponse:
+    """Stelle MinIO aus Backup wieder her."""
+    logger.warning(
+        "minio_restore_angefordert",
+        user_id=str(current_user.id),
+        backup_pfad=request.backup_pfad,
+        bucket=request.bucket,
+        dry_run=request.dry_run,
+    )
+
+    backup_path = Path(request.backup_pfad)
+
+    if not backup_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Backup-Datei nicht gefunden: {request.backup_pfad}",
+        )
+
+    service = get_backup_service()
+    result = await service.restore_minio(
+        backup_path, bucket=request.bucket, dry_run=request.dry_run
+    )
+
+    return RestoreResponse.from_result(result, dry_run=request.dry_run)
+
+
+@router.post(
+    "/restore/full",
+    response_model=FullRestoreResponse,
+    summary="Vollstaendiger Restore",
+    description="Stellt alle Komponenten aus Backup-Verzeichnis wieder her. ACHTUNG: Ueberschreibt alle Daten!",
+)
+async def restore_full(
+    request: FullRestoreRequest,
+    current_user: User = Depends(get_current_superuser),
+) -> FullRestoreResponse:
+    """Stelle alle Komponenten aus Backup wieder her."""
+    logger.warning(
+        "vollstaendiger_restore_angefordert",
+        user_id=str(current_user.id),
+        backup_verzeichnis=request.backup_verzeichnis,
+        komponenten=request.komponenten,
+        dry_run=request.dry_run,
+    )
+
+    backup_dir = Path(request.backup_verzeichnis)
+
+    if not backup_dir.exists() or not backup_dir.is_dir():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Backup-Verzeichnis nicht gefunden: {request.backup_verzeichnis}",
+        )
+
+    service = get_backup_service()
+    results = await service.restore_full(
+        backup_dir, dry_run=request.dry_run, components=request.komponenten
+    )
+
+    success_count = sum(1 for r in results if r.success)
+    failure_count = len(results) - success_count
+    all_success = failure_count == 0
+
+    responses = [RestoreResponse.from_result(r, dry_run=request.dry_run) for r in results]
+
+    if all_success:
+        nachricht = f"Alle {len(results)} Restores erfolgreich"
+        if request.dry_run:
+            nachricht += " (Dry-Run)"
+    else:
+        nachricht = f"{success_count} von {len(results)} Restores erfolgreich. {failure_count} fehlgeschlagen."
+
+    return FullRestoreResponse(
+        erfolg=all_success,
+        erfolgreich=success_count,
+        fehlgeschlagen=failure_count,
+        dry_run=request.dry_run,
+        restores=responses,
+        nachricht=nachricht,
+    )
+
+
+@router.post(
+    "/validate",
+    response_model=ValidateBackupResponse,
+    summary="Backup validieren",
+    description="Validiert eine Backup-Datei ohne Restore durchzufuehren.",
+)
+async def validate_backup(
+    backup_pfad: str,
+    current_user: User = Depends(get_current_superuser),
+) -> ValidateBackupResponse:
+    """Validiere eine Backup-Datei."""
+    logger.info(
+        "backup_validierung_angefordert",
+        user_id=str(current_user.id),
+        backup_pfad=backup_pfad,
+    )
+
+    backup_path = Path(backup_pfad)
+
+    if not backup_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Backup-Datei nicht gefunden: {backup_pfad}",
+        )
+
+    # Backup-Typ erkennen
+    filename = backup_path.name.lower()
+    backup_typ = "unbekannt"
+    verschluesselt = filename.endswith(".gpg")
+    komprimiert = ".gz" in filename or ".tar" in filename
+
+    if "postgres" in filename or "pg_" in filename:
+        backup_typ = "postgres"
+    elif "redis" in filename or "dump.rdb" in filename:
+        backup_typ = "redis"
+    elif "minio" in filename:
+        backup_typ = "minio"
+    elif "config" in filename:
+        backup_typ = "config"
+
+    # Dateigroesse
+    groesse_bytes = backup_path.stat().st_size
+
+    # Validierung
+    gueltig = True
+    fehler = None
+    details: Dict[str, Any] = {
+        "dateiname": backup_path.name,
+        "erstellzeit": backup_path.stat().st_mtime,
+    }
+
+    # Grundlegende Validierung
+    if groesse_bytes == 0:
+        gueltig = False
+        fehler = "Backup-Datei ist leer"
+    elif backup_typ == "unbekannt":
+        gueltig = False
+        fehler = "Backup-Typ konnte nicht erkannt werden"
+
+    # Typ-spezifische Validierung
+    if gueltig and not verschluesselt:
+        try:
+            if backup_typ == "postgres" and filename.endswith(".sql.gz"):
+                import gzip
+
+                with gzip.open(backup_path, "rt") as f:
+                    header = f.read(100)
+                    if "PostgreSQL" not in header and "pg_dump" not in header:
+                        gueltig = False
+                        fehler = "Keine gueltige PostgreSQL-Dump-Datei"
+                    else:
+                        details["format"] = "pg_dump"
+            elif backup_typ == "redis" and filename.endswith(".rdb"):
+                with open(backup_path, "rb") as f:
+                    magic = f.read(5)
+                    if magic != b"REDIS":
+                        gueltig = False
+                        fehler = "Keine gueltige Redis-RDB-Datei"
+                    else:
+                        details["format"] = "RDB"
+        except Exception as e:
+            gueltig = False
+            fehler = f"Validierungsfehler: {str(e)}"
+
+    return ValidateBackupResponse(
+        gueltig=gueltig,
+        backup_typ=backup_typ,
+        groesse_bytes=groesse_bytes,
+        verschluesselt=verschluesselt,
+        komprimiert=komprimiert,
+        details=details,
+        fehler=fehler,
+    )
