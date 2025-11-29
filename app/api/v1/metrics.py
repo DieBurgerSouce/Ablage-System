@@ -20,6 +20,7 @@ from app.core.redis_state import get_redis
 from app.api.dependencies import get_current_superuser, get_current_active_user
 from app.db.models import User
 from app.services.search_metrics import get_search_metrics
+from app.services.backup_metrics_service import get_backup_metrics
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -83,6 +84,56 @@ async def search_metrics_prometheus():
         content=metrics.get_metrics(),
         media_type=metrics.get_content_type(),
     )
+
+
+@router.get("/backup", response_class=Response)
+async def backup_metrics_prometheus():
+    """
+    Prometheus metrics for backup functionality.
+
+    Returns backup-specific metrics in Prometheus text format:
+    - ablage_backup_last_success_timestamp: Letztes erfolgreiches Backup
+    - ablage_backup_last_failure_timestamp: Letztes fehlgeschlagenes Backup
+    - ablage_backup_success_total: Erfolgreiche Backups
+    - ablage_backup_failure_total: Fehlgeschlagene Backups
+    - ablage_backup_duration_seconds: Backup-Dauer
+    - ablage_backup_size_bytes: Backup-Groesse
+    - ablage_backup_validation_success_total: Erfolgreiche Validierungen
+    - ablage_backup_validation_failure_total: Fehlgeschlagene Validierungen
+    - ablage_backup_remote_sync_success_total: Remote-Sync Erfolge
+    - ablage_backup_disk_usage_bytes: Speicherplatz-Nutzung
+    - ablage_backup_disk_free_bytes: Freier Speicherplatz
+
+    Example Prometheus config:
+    ```yaml
+    scrape_configs:
+      - job_name: 'ablage-backup'
+        static_configs:
+          - targets: ['localhost:8000']
+        metrics_path: '/api/v1/metrics/backup'
+    ```
+    """
+    metrics = get_backup_metrics()
+    return Response(
+        content=metrics.get_metrics(),
+        media_type=metrics.get_content_type(),
+    )
+
+
+@router.get("/backup/summary")
+async def backup_metrics_summary():
+    """
+    Backup metrics summary (JSON format).
+
+    Returns backup-specific metrics for dashboards:
+    - Speicherplatz-Nutzung und Verfuegbarkeit
+    - Anzahl Backup-Dateien nach Typ
+    - Prometheus-Status
+
+    Useful for custom dashboards and health monitoring.
+    """
+    metrics = get_backup_metrics()
+    return metrics.get_summary()
 
 
 # =============================================================================

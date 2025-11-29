@@ -1,0 +1,518 @@
+# Grafana Alerting Rules for Backup Monitoring
+# Ablage-System OCR - Backup & Disaster Recovery Alerts
+
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: Backup Alerts
+    folder: Ablage-System
+    interval: 5m
+    rules:
+      # Backup Failed Alert
+      - uid: backup-failed-critical
+        title: Backup fehlgeschlagen
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 86400
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: increase(ablage_backup_failure_total[24h])
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: sum
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: Sicherung fehlgeschlagen
+          description: Mindestens ein Backup ist in den letzten 24 Stunden fehlgeschlagen. Sofortige Pruefung erforderlich!
+          runbook_url: https://wiki.intern/runbooks/backup/failed-backup
+          dashboard_url: /d/ablage-backup-monitoring/backup-monitoring
+        labels:
+          severity: critical
+          component: backup
+          team: platform
+          escalation: pagerduty
+
+      # Backup Stale Alert (>26h since last success)
+      - uid: backup-stale-critical
+        title: Backup veraltet
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: time() - max(ablage_backup_last_success_timestamp)
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 93600
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: Letzte Sicherung aelter als 26 Stunden
+          description: Das letzte erfolgreiche Backup ist laenger als 26 Stunden her. Backup-System pruefen und manuelles Backup ausloesen.
+          runbook_url: https://wiki.intern/runbooks/backup/stale-backup
+          dashboard_url: /d/ablage-backup-monitoring/backup-monitoring
+        labels:
+          severity: critical
+          component: backup
+          team: platform
+          escalation: pagerduty
+
+      # Disk Space Low Warning
+      - uid: backup-disk-low-warning
+        title: Speicherplatz niedrig
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: ablage_backup_disk_free_bytes
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 21474836480
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: Weniger als 20GB Speicherplatz fuer Sicherungen
+          description: Der freie Speicherplatz fuer Backups ist unter 20GB gefallen. Alte Backups loeschen oder Speicher erweitern.
+          runbook_url: https://wiki.intern/runbooks/backup/disk-space-low
+          dashboard_url: /d/ablage-backup-monitoring/backup-monitoring
+        labels:
+          severity: warning
+          component: backup
+          team: platform
+
+      # Disk Space Critical
+      - uid: backup-disk-critical
+        title: Speicherplatz kritisch
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: ablage_backup_disk_free_bytes
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 10737418240
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: Weniger als 10GB Speicherplatz fuer Sicherungen - KRITISCH
+          description: Der freie Speicherplatz fuer Backups ist unter 10GB gefallen. Naechstes Backup wird wahrscheinlich fehlschlagen!
+          runbook_url: https://wiki.intern/runbooks/backup/disk-space-critical
+          dashboard_url: /d/ablage-backup-monitoring/backup-monitoring
+        labels:
+          severity: critical
+          component: backup
+          team: platform
+          escalation: pagerduty
+
+      # Validation Failed Warning
+      - uid: backup-validation-failed
+        title: Validierung fehlgeschlagen
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 86400
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: increase(ablage_backup_validation_failure_total[24h])
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: sum
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: Sicherungs-Validierung fehlgeschlagen
+          description: Die automatische Backup-Validierung ist fehlgeschlagen. Backup-Integritaet manuell pruefen!
+          runbook_url: https://wiki.intern/runbooks/backup/validation-failed
+          dashboard_url: /d/ablage-backup-monitoring/backup-monitoring
+        labels:
+          severity: warning
+          component: backup
+          team: platform
+
+      # Restore Test Failed Warning
+      - uid: backup-restore-test-failed
+        title: Wiederherstellungstest fehlgeschlagen
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 604800
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: increase(ablage_backup_restore_test_failure_total[7d])
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: sum
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: Wochentlicher Wiederherstellungstest fehlgeschlagen
+          description: Der automatische Restore-Test ist fehlgeschlagen. Die Wiederherstellbarkeit der Backups ist nicht garantiert!
+          runbook_url: https://wiki.intern/runbooks/backup/restore-test-failed
+          dashboard_url: /d/ablage-backup-monitoring/backup-monitoring
+        labels:
+          severity: warning
+          component: backup
+          team: platform
+
+      # Remote Sync Failed Multiple Times
+      - uid: backup-remote-sync-failed
+        title: Remote-Synchronisation wiederholt fehlgeschlagen
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 86400
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: increase(ablage_backup_remote_sync_failure_total[24h])
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 2
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: sum
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: Remote-Synchronisation mehrfach fehlgeschlagen
+          description: Die Remote-Backup-Synchronisation ist in den letzten 24 Stunden mehr als 2 mal fehlgeschlagen. Off-Site Backups sind gefaehrdet!
+          runbook_url: https://wiki.intern/runbooks/backup/remote-sync-failed
+          dashboard_url: /d/ablage-backup-monitoring/backup-monitoring
+        labels:
+          severity: warning
+          component: backup
+          team: platform
+
+      # No Backup in Last 24 Hours
+      - uid: backup-no-activity
+        title: Keine Backup-Aktivitaet
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 86400
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(increase(ablage_backup_success_total[24h])) + sum(increase(ablage_backup_failure_total[24h]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: Alerting
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: Keine Backup-Aktivitaet in den letzten 24 Stunden
+          description: Es wurde in den letzten 24 Stunden kein Backup-Versuch (erfolgreich oder fehlgeschlagen) registriert. Backup-Service pruefen!
+          runbook_url: https://wiki.intern/runbooks/backup/no-activity
+          dashboard_url: /d/ablage-backup-monitoring/backup-monitoring
+        labels:
+          severity: critical
+          component: backup
+          team: platform
+          escalation: pagerduty
+
+      # Encryption Disabled Warning
+      - uid: backup-encryption-disabled
+        title: Backup-Verschluesselung deaktiviert
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: ablage_backup_encryption_enabled
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: Backup-Verschluesselung ist deaktiviert
+          description: Die GPG-Verschluesselung fuer Backups ist nicht aktiviert. Backups enthalten sensible Dokumente im Klartext!
+          runbook_url: https://wiki.intern/runbooks/backup/enable-encryption
+          dashboard_url: /d/ablage-backup-monitoring/backup-monitoring
+        labels:
+          severity: info
+          component: backup
+          team: platform

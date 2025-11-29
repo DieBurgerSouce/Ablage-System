@@ -17,7 +17,7 @@ alerting:
 
 # Rule files
 rule_files:
-  # - "alerts/*.yml"
+  - "rules/*.yml"
 
 # Scrape configurations
 scrape_configs:
@@ -91,3 +91,14 @@ scrape_configs:
       - source_labels: [__address__]
         target_label: instance
         replacement: 'rtx4080'
+
+  # Ablage-System Backup Metrics (separate registry)
+  - job_name: 'ablage-backup'
+    metrics_path: '/api/v1/metrics/backup'
+    scrape_interval: 60s
+    static_configs:
+      - targets: ['backend:8000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'ablage-backup'

@@ -1,0 +1,28 @@
+[Unit]
+Description=Ablage-System Wochentlicher Wiederherstellungstest
+Documentation=https://docs.ablage-system.local/backup/restore-testing
+After=network.target docker.service postgresql.service
+
+[Service]
+Type=oneshot
+User={{ ablage_user | default('ablage') }}
+Group={{ ablage_group | default('ablage') }}
+WorkingDirectory={{ ablage_install_dir }}
+
+# Run restore test script
+ExecStart={{ ablage_backup_dir }}/scripts/ablage-restore --test
+
+# Longer timeout for full restore test (30 minutes)
+TimeoutStartSec=1800
+
+# Logging
+StandardOutput=append:{{ ablage_backup_dir }}/logs/restore-test.log
+StandardError=append:{{ ablage_backup_dir }}/logs/restore-test.log
+
+# Security hardening
+NoNewPrivileges=true
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

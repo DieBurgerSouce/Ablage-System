@@ -1,0 +1,18 @@
+[Unit]
+Description=Ablage-System Wochentlicher Wiederherstellungstest Timer
+Documentation=https://docs.ablage-system.local/backup/restore-testing
+
+[Timer]
+# Run weekly on Sunday at 3 AM
+OnCalendar={{ backup_restore_test_schedule | default('Sun *-*-* 03:00:00') }}
+
+# Randomized delay up to 10 minutes
+RandomizedDelaySec=600
+
+# Ensure we run even if system was off at scheduled time
+Persistent=true
+
+Unit=ablage-restore-test.service
+
+[Install]
+WantedBy=timers.target

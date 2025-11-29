@@ -5,8 +5,25 @@ backup_enabled: true
 backup_retention_days: 30
 backup_schedule: "*-*-* 02:00:00"  # 2 AM daily (systemd calendar format)
 
+# Validation settings
+backup_validation_enabled: true
+backup_validation_schedule: "*-*-* 04:00:00"  # 4 AM daily
+backup_restore_test_schedule: "Sun *-*-* 03:00:00"  # Sunday 3 AM weekly
+
+# Encryption settings (GPG)
+backup_encryption_enabled: false
+backup_gpg_key_id: ""  # GPG key ID for encryption (e.g., "backup@ablage-system.local")
+backup_gpg_public_key: ""  # Optional: Public key content for import (base64 encoded)
+# For decryption during restore (from vault.yml):
+# vault_backup_gpg_passphrase: "secure-passphrase"
+
 # Remote sync settings
 backup_remote_enabled: false
+backup_remote_retry_attempts: 3
+backup_remote_retry_delay_base: 60  # seconds (exponential backoff base)
+backup_remote_retry_max_delay: 3600  # max 1 hour between retries
+backup_remote_bandwidth_limit: ""  # e.g., "10m" for 10MB/s limit (rsync --bwlimit)
+backup_remote_compression: true  # Enable compression during transfer
 # These should be set in vault.yml:
 # vault_backup_remote_user: backup
 # vault_backup_remote_host: backup-server.example.com
@@ -15,3 +32,11 @@ backup_remote_enabled: false
 #   -----BEGIN OPENSSH PRIVATE KEY-----
 #   ...
 #   -----END OPENSSH PRIVATE KEY-----
+
+# Metrics settings
+backup_metrics_enabled: true
+backup_metrics_file: "/var/lib/prometheus/node-exporter/ablage_backup.prom"
+
+# Directories
+ablage_backup_dir: "/var/backups/ablage"
+ablage_install_dir: "/opt/ablage-system"

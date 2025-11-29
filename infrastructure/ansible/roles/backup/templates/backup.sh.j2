@@ -11,6 +11,18 @@ INSTALL_DIR="{{ ablage_install_dir }}"
 RETENTION_DAYS={{ backup_retention_days | default(30) }}
 DATE=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="${BACKUP_DIR}/logs/backup.log"
+START_TIME=$(date +%s)
+
+# Metrics configuration
+METRICS_ENABLED="{{ backup_metrics_enabled | default(true) | lower }}"
+METRICS_FILE="{{ backup_metrics_file | default('/var/lib/prometheus/node-exporter/ablage_backup.prom') }}"
+
+# Encryption configuration
+ENCRYPTION_ENABLED="{{ backup_encryption_enabled | default(false) | lower }}"
+{% if backup_encryption_enabled | default(false) %}
+GPG_KEY_ID="{{ backup_gpg_key_id }}"
+GPG_HOME="${BACKUP_DIR}/.gnupg"
+{% endif %}
 
 # Remote sync configuration
 REMOTE_ENABLED="{{ backup_remote_enabled | default(false) | lower }}"
@@ -19,40 +31,258 @@ REMOTE_USER="{{ vault_backup_remote_user }}"
 REMOTE_HOST="{{ vault_backup_remote_host }}"
 REMOTE_PATH="{{ vault_backup_remote_path }}"
 SSH_KEY="/home/ablage/.ssh/backup_key"
+REMOTE_RETRY_ATTEMPTS={{ backup_remote_retry_attempts | default(3) }}
+REMOTE_RETRY_DELAY_BASE={{ backup_remote_retry_delay_base | default(60) }}
+REMOTE_RETRY_MAX_DELAY={{ backup_remote_retry_max_delay | default(3600) }}
+REMOTE_BANDWIDTH_LIMIT="{{ backup_remote_bandwidth_limit | default('') }}"
+REMOTE_COMPRESSION="{{ backup_remote_compression | default(true) | lower }}"
 {% endif %}
 
-# Logging function
+# =============================================================================
+# Logging Functions
+# =============================================================================
+
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
-# Error handling
 error_exit() {
     log "ERROR: $1"
+    emit_backup_failure "$BACKUP_TYPE" "$1"
     exit 1
 }
 
-# Check if Docker is running
-check_docker() {
-    docker info >/dev/null 2>&1 || error_exit "Docker is not running"
+# =============================================================================
+# Metrics Functions (Prometheus textfile collector format)
+# =============================================================================
+
+emit_metrics_header() {
+    if [ "$METRICS_ENABLED" != "true" ]; then
+        return
+    fi
+
+    local temp_file="${METRICS_FILE}.tmp"
+    mkdir -p "$(dirname "$METRICS_FILE")"
+
+    cat > "$temp_file" << 'EOF'
+# HELP ablage_backup_success_total Anzahl erfolgreicher Backups
+# TYPE ablage_backup_success_total counter
+# HELP ablage_backup_failure_total Anzahl fehlgeschlagener Backups
+# TYPE ablage_backup_failure_total counter
+# HELP ablage_backup_last_success_timestamp Unix-Zeitstempel des letzten erfolgreichen Backups
+# TYPE ablage_backup_last_success_timestamp gauge
+# HELP ablage_backup_duration_seconds Dauer des Backups in Sekunden
+# TYPE ablage_backup_duration_seconds gauge
+# HELP ablage_backup_size_bytes Groesse des Backups in Bytes
+# TYPE ablage_backup_size_bytes gauge
+# HELP ablage_backup_disk_free_bytes Freier Speicherplatz fuer Backups in Bytes
+# TYPE ablage_backup_disk_free_bytes gauge
+# HELP ablage_backup_disk_total_bytes Gesamter Speicherplatz fuer Backups in Bytes
+# TYPE ablage_backup_disk_total_bytes gauge
+# HELP ablage_backup_encryption_enabled Verschluesselung aktiviert (1=ja, 0=nein)
+# TYPE ablage_backup_encryption_enabled gauge
+# HELP ablage_backup_remote_sync_success_total Anzahl erfolgreicher Remote-Synchronisationen
+# TYPE ablage_backup_remote_sync_success_total counter
+# HELP ablage_backup_remote_sync_failure_total Anzahl fehlgeschlagener Remote-Synchronisationen
+# TYPE ablage_backup_remote_sync_failure_total counter
+EOF
 }
 
-# Backup PostgreSQL
+emit_backup_success() {
+    if [ "$METRICS_ENABLED" != "true" ]; then
+        return
+    fi
+
+    local backup_type="$1"
+    local size_bytes="$2"
+    local duration_seconds="$3"
+    local temp_file="${METRICS_FILE}.tmp"
+    local timestamp=$(date +%s)
+
+    # Read existing counters or initialize
+    local current_success=0
+    if [ -f "$METRICS_FILE" ]; then
+        current_success=$(grep "ablage_backup_success_total{backup_type=\"${backup_type}\"}" "$METRICS_FILE" 2>/dev/null | awk '{print $2}' || echo "0")
+    fi
+    current_success=$((current_success + 1))
+
+    emit_metrics_header
+
+    cat >> "$temp_file" << EOF
+ablage_backup_success_total{backup_type="${backup_type}"} ${current_success}
+ablage_backup_last_success_timestamp{backup_type="${backup_type}"} ${timestamp}
+ablage_backup_duration_seconds{backup_type="${backup_type}"} ${duration_seconds}
+ablage_backup_size_bytes{backup_type="${backup_type}"} ${size_bytes}
+EOF
+
+    # Add encryption status
+    if [ "$ENCRYPTION_ENABLED" == "true" ]; then
+        echo "ablage_backup_encryption_enabled 1" >> "$temp_file"
+    else
+        echo "ablage_backup_encryption_enabled 0" >> "$temp_file"
+    fi
+
+    # Add disk usage
+    update_disk_metrics "$temp_file"
+
+    mv "$temp_file" "$METRICS_FILE"
+    chmod 644 "$METRICS_FILE"
+
+    log "Metriken aktualisiert: Erfolg (Typ=${backup_type}, Groesse=${size_bytes}B, Dauer=${duration_seconds}s)"
+}
+
+emit_backup_failure() {
+    if [ "$METRICS_ENABLED" != "true" ]; then
+        return
+    fi
+
+    local backup_type="$1"
+    local error_message="$2"
+    local temp_file="${METRICS_FILE}.tmp"
+
+    # Read existing counters or initialize
+    local current_failure=0
+    if [ -f "$METRICS_FILE" ]; then
+        current_failure=$(grep "ablage_backup_failure_total{backup_type=\"${backup_type}\"}" "$METRICS_FILE" 2>/dev/null | awk '{print $2}' || echo "0")
+    fi
+    current_failure=$((current_failure + 1))
+
+    emit_metrics_header
+
+    cat >> "$temp_file" << EOF
+ablage_backup_failure_total{backup_type="${backup_type}"} ${current_failure}
+EOF
+
+    update_disk_metrics "$temp_file"
+
+    mv "$temp_file" "$METRICS_FILE"
+    chmod 644 "$METRICS_FILE"
+
+    log "Metriken aktualisiert: Fehlschlag (Typ=${backup_type}, Fehler=${error_message})"
+}
+
+emit_remote_sync_success() {
+    if [ "$METRICS_ENABLED" != "true" ]; then
+        return
+    fi
+
+    local temp_file="${METRICS_FILE}.tmp"
+
+    local current_success=0
+    if [ -f "$METRICS_FILE" ]; then
+        current_success=$(grep "ablage_backup_remote_sync_success_total" "$METRICS_FILE" 2>/dev/null | awk '{print $2}' || echo "0")
+    fi
+    current_success=$((current_success + 1))
+
+    # Append to existing metrics
+    if [ -f "$METRICS_FILE" ]; then
+        grep -v "ablage_backup_remote_sync_success_total" "$METRICS_FILE" > "$temp_file" 2>/dev/null || true
+    fi
+
+    echo "ablage_backup_remote_sync_success_total ${current_success}" >> "$temp_file"
+
+    mv "$temp_file" "$METRICS_FILE"
+    chmod 644 "$METRICS_FILE"
+}
+
+emit_remote_sync_failure() {
+    if [ "$METRICS_ENABLED" != "true" ]; then
+        return
+    fi
+
+    local temp_file="${METRICS_FILE}.tmp"
+
+    local current_failure=0
+    if [ -f "$METRICS_FILE" ]; then
+        current_failure=$(grep "ablage_backup_remote_sync_failure_total" "$METRICS_FILE" 2>/dev/null | awk '{print $2}' || echo "0")
+    fi
+    current_failure=$((current_failure + 1))
+
+    # Append to existing metrics
+    if [ -f "$METRICS_FILE" ]; then
+        grep -v "ablage_backup_remote_sync_failure_total" "$METRICS_FILE" > "$temp_file" 2>/dev/null || true
+    fi
+
+    echo "ablage_backup_remote_sync_failure_total ${current_failure}" >> "$temp_file"
+
+    mv "$temp_file" "$METRICS_FILE"
+    chmod 644 "$METRICS_FILE"
+}
+
+update_disk_metrics() {
+    local output_file="$1"
+
+    # Get disk usage for backup directory
+    local disk_info=$(df -B1 "$BACKUP_DIR" 2>/dev/null | tail -1)
+    local disk_total=$(echo "$disk_info" | awk '{print $2}')
+    local disk_free=$(echo "$disk_info" | awk '{print $4}')
+
+    if [ -n "$disk_total" ] && [ -n "$disk_free" ]; then
+        echo "ablage_backup_disk_total_bytes ${disk_total}" >> "$output_file"
+        echo "ablage_backup_disk_free_bytes ${disk_free}" >> "$output_file"
+    fi
+}
+
+# =============================================================================
+# Encryption Functions
+# =============================================================================
+
+encrypt_file() {
+    if [ "$ENCRYPTION_ENABLED" != "true" ]; then
+        echo "$1"
+        return
+    fi
+
+    local input_file="$1"
+    local output_file="${input_file}.gpg"
+
+    log "Verschluessele Backup: $(basename "$input_file")"
+
+    gpg --homedir "$GPG_HOME" \
+        --batch \
+        --yes \
+        --trust-model always \
+        --recipient "$GPG_KEY_ID" \
+        --output "$output_file" \
+        --encrypt "$input_file" \
+        || error_exit "GPG-Verschluesselung fehlgeschlagen fuer: $input_file"
+
+    # Remove unencrypted file
+    rm -f "$input_file"
+
+    log "Verschluesselung abgeschlossen: $(basename "$output_file")"
+    echo "$output_file"
+}
+
+# =============================================================================
+# Docker Check
+# =============================================================================
+
+check_docker() {
+    docker info >/dev/null 2>&1 || error_exit "Docker laeuft nicht"
+}
+
+# =============================================================================
+# Backup Functions
+# =============================================================================
+
 backup_postgres() {
-    log "Backing up PostgreSQL database..."
+    log "Sichere PostgreSQL-Datenbank..."
     local backup_file="${BACKUP_DIR}/postgres/ablage_${DATE}.sql.gz"
 
     docker compose -f "${INSTALL_DIR}/docker-compose.yml" exec -T postgres \
         pg_dump -U ablage_admin ablage_system | gzip > "$backup_file" \
-        || error_exit "PostgreSQL backup failed"
+        || error_exit "PostgreSQL-Backup fehlgeschlagen"
 
-    log "PostgreSQL backup saved to: $backup_file"
+    # Encrypt if enabled
+    backup_file=$(encrypt_file "$backup_file")
+
+    log "PostgreSQL-Backup gespeichert: $backup_file"
     echo "$backup_file"
 }
 
-# Backup Redis
 backup_redis() {
-    log "Backing up Redis data..."
+    log "Sichere Redis-Daten..."
     local backup_file="${BACKUP_DIR}/redis/dump_${DATE}.rdb"
 
     # Trigger Redis background save
@@ -65,31 +295,42 @@ backup_redis() {
     # Copy dump file
     docker compose -f "${INSTALL_DIR}/docker-compose.yml" cp \
         redis:/data/dump.rdb "$backup_file" \
-        || log "WARNING: Redis backup may have failed"
+        || log "WARNUNG: Redis-Backup moeglicherweise fehlgeschlagen"
 
-    log "Redis backup saved to: $backup_file"
+    # Encrypt if enabled
+    if [ -f "$backup_file" ]; then
+        backup_file=$(encrypt_file "$backup_file")
+    fi
+
+    log "Redis-Backup gespeichert: $backup_file"
 }
 
-# Backup MinIO (documents)
 backup_minio() {
-    log "Backing up MinIO data..."
+    log "Sichere MinIO-Daten..."
     local backup_dir="${BACKUP_DIR}/minio/${DATE}"
+    local backup_archive="${BACKUP_DIR}/minio/minio_${DATE}.tar.gz"
     mkdir -p "$backup_dir"
 
     # Use mc (MinIO client) if available, otherwise copy volume
     if command -v mc &> /dev/null; then
         mc mirror local/documents "$backup_dir/" --overwrite 2>/dev/null \
-            || log "WARNING: MinIO mirror may have failed"
-    else
-        log "MinIO client not available, skipping document backup"
-    fi
+            || log "WARNUNG: MinIO-Mirror moeglicherweise fehlgeschlagen"
 
-    log "MinIO backup saved to: $backup_dir"
+        # Create compressed archive
+        tar -czf "$backup_archive" -C "${BACKUP_DIR}/minio" "${DATE}"
+        rm -rf "$backup_dir"
+
+        # Encrypt if enabled
+        backup_archive=$(encrypt_file "$backup_archive")
+
+        log "MinIO-Backup gespeichert: $backup_archive"
+    else
+        log "MinIO-Client nicht verfuegbar, ueberspringe Dokumenten-Backup"
+    fi
 }
 
-# Backup configuration
 backup_config() {
-    log "Backing up configuration..."
+    log "Sichere Konfiguration..."
     local backup_file="${BACKUP_DIR}/config/config_${DATE}.tar.gz"
 
     tar -czf "$backup_file" \
@@ -102,61 +343,176 @@ backup_config() {
             .env \
             docker-compose.yml
 
-    log "Configuration backup saved to: $backup_file"
+    # Encrypt if enabled
+    backup_file=$(encrypt_file "$backup_file")
+
+    log "Konfigurations-Backup gespeichert: $backup_file"
 }
 
-# Sync to remote
+# =============================================================================
+# Remote Sync with Retry Logic
+# =============================================================================
+
 sync_remote() {
     if [ "$REMOTE_ENABLED" != "true" ]; then
         return
     fi
 
-    log "Syncing backups to remote storage..."
+    log "Synchronisiere Backups zum Remote-Server..."
 
-    rsync -avz --delete \
-        -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=no" \
-        "${BACKUP_DIR}/" \
-        "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/" \
-        || log "WARNING: Remote sync failed"
+    local attempt=1
+    local delay=$REMOTE_RETRY_DELAY_BASE
+    local success=false
 
-    log "Remote sync completed"
+    # Build rsync options
+    local rsync_opts="-avz --delete"
+
+    if [ "$REMOTE_COMPRESSION" == "true" ]; then
+        rsync_opts="$rsync_opts --compress"
+    fi
+
+    if [ -n "$REMOTE_BANDWIDTH_LIMIT" ]; then
+        rsync_opts="$rsync_opts --bwlimit=$REMOTE_BANDWIDTH_LIMIT"
+    fi
+
+    while [ $attempt -le $REMOTE_RETRY_ATTEMPTS ]; do
+        log "Remote-Synchronisation Versuch $attempt von $REMOTE_RETRY_ATTEMPTS..."
+
+        if rsync $rsync_opts \
+            -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=30" \
+            "${BACKUP_DIR}/" \
+            "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/"; then
+
+            success=true
+            log "Remote-Synchronisation erfolgreich (Versuch $attempt)"
+            emit_remote_sync_success
+            break
+        else
+            log "WARNUNG: Remote-Synchronisation fehlgeschlagen (Versuch $attempt)"
+
+            if [ $attempt -lt $REMOTE_RETRY_ATTEMPTS ]; then
+                log "Warte ${delay} Sekunden vor naechstem Versuch..."
+                sleep $delay
+
+                # Exponential backoff with max limit
+                delay=$((delay * 2))
+                if [ $delay -gt $REMOTE_RETRY_MAX_DELAY ]; then
+                    delay=$REMOTE_RETRY_MAX_DELAY
+                fi
+            fi
+        fi
+
+        attempt=$((attempt + 1))
+    done
+
+    if [ "$success" != "true" ]; then
+        log "FEHLER: Remote-Synchronisation nach $REMOTE_RETRY_ATTEMPTS Versuchen fehlgeschlagen"
+        emit_remote_sync_failure
+    fi
 }
 
-# Main backup function
+# =============================================================================
+# Retention Cleanup
+# =============================================================================
+
+cleanup_old_backups() {
+    log "Bereinige alte Backups (aelter als ${RETENTION_DAYS} Tage)..."
+
+    local deleted_count=0
+
+    # Cleanup PostgreSQL backups
+    find "${BACKUP_DIR}/postgres" -type f -mtime +${RETENTION_DAYS} -delete 2>/dev/null && \
+        deleted_count=$((deleted_count + $(find "${BACKUP_DIR}/postgres" -type f -mtime +${RETENTION_DAYS} 2>/dev/null | wc -l)))
+
+    # Cleanup Redis backups
+    find "${BACKUP_DIR}/redis" -type f -mtime +${RETENTION_DAYS} -delete 2>/dev/null && \
+        deleted_count=$((deleted_count + $(find "${BACKUP_DIR}/redis" -type f -mtime +${RETENTION_DAYS} 2>/dev/null | wc -l)))
+
+    # Cleanup MinIO backups
+    find "${BACKUP_DIR}/minio" -type f -mtime +${RETENTION_DAYS} -delete 2>/dev/null && \
+        deleted_count=$((deleted_count + $(find "${BACKUP_DIR}/minio" -type f -mtime +${RETENTION_DAYS} 2>/dev/null | wc -l)))
+
+    # Cleanup config backups
+    find "${BACKUP_DIR}/config" -type f -mtime +${RETENTION_DAYS} -delete 2>/dev/null && \
+        deleted_count=$((deleted_count + $(find "${BACKUP_DIR}/config" -type f -mtime +${RETENTION_DAYS} 2>/dev/null | wc -l)))
+
+    log "Bereinigung abgeschlossen: $deleted_count alte Dateien geloescht"
+}
+
+# =============================================================================
+# Calculate Backup Size
+# =============================================================================
+
+calculate_backup_size() {
+    local total_size=0
+
+    # Sum up today's backup files
+    for dir in postgres redis minio config; do
+        if [ -d "${BACKUP_DIR}/${dir}" ]; then
+            local dir_size=$(find "${BACKUP_DIR}/${dir}" -maxdepth 1 -name "*${DATE}*" -type f -exec stat -c%s {} + 2>/dev/null | awk '{s+=$1} END {print s}')
+            if [ -n "$dir_size" ]; then
+                total_size=$((total_size + dir_size))
+            fi
+        fi
+    done
+
+    echo "$total_size"
+}
+
+# =============================================================================
+# Main Backup Function
+# =============================================================================
+
 main() {
-    local backup_type="${1:-full}"
+    BACKUP_TYPE="${1:-full}"
+    BACKUP_TYPE="${BACKUP_TYPE#--}"  # Remove leading --
 
     log "=========================================="
-    log "Starting Ablage-System backup (${backup_type})"
+    log "Starte Ablage-System Backup (${BACKUP_TYPE})"
+    log "Verschluesselung: $([ "$ENCRYPTION_ENABLED" == "true" ] && echo "AKTIVIERT" || echo "DEAKTIVIERT")"
     log "=========================================="
 
     check_docker
 
-    case "$backup_type" in
-        --full|full)
+    case "$BACKUP_TYPE" in
+        full)
             backup_postgres
             backup_redis
             backup_minio
             backup_config
             ;;
-        --db-only|db-only)
+        db-only)
             backup_postgres
             backup_redis
             ;;
-        --files-only|files-only)
+        files-only)
             backup_minio
             backup_config
             ;;
         *)
-            echo "Usage: $0 [--full|--db-only|--files-only]"
+            echo "Verwendung: $0 [--full|--db-only|--files-only]"
             exit 1
             ;;
     esac
 
+    # Calculate metrics
+    local end_time=$(date +%s)
+    local duration=$((end_time - START_TIME))
+    local backup_size=$(calculate_backup_size)
+
+    # Emit success metrics
+    emit_backup_success "$BACKUP_TYPE" "$backup_size" "$duration"
+
+    # Sync to remote
     sync_remote
 
+    # Cleanup old backups
+    cleanup_old_backups
+
     log "=========================================="
-    log "Backup completed successfully"
+    log "Backup erfolgreich abgeschlossen"
+    log "Dauer: ${duration} Sekunden"
+    log "Groesse: $(numfmt --to=iec-i --suffix=B $backup_size 2>/dev/null || echo "${backup_size} Bytes")"
     log "=========================================="
 }
 

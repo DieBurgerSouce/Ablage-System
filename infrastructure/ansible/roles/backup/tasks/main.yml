@@ -6,6 +6,13 @@
     - backup
     - setup
 
+- name: Include encryption setup
+  ansible.builtin.include_tasks: encryption.yml
+  when: backup_encryption_enabled | default(false)
+  tags:
+    - backup
+    - encryption
+
 - name: Include backup script deployment
   ansible.builtin.include_tasks: scripts.yml
   tags:

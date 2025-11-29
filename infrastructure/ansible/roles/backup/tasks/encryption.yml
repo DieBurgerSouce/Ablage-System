@@ -1,0 +1,105 @@
+# Ablage-System Backup Role - Encryption Tasks
+# GPG-based backup encryption setup
+---
+- name: Install GnuPG package
+  ansible.builtin.apt:
+    name:
+      - gnupg
+      - gpg-agent
+    state: present
+    update_cache: true
+  become: true
+  tags:
+    - packages
+
+- name: Create GPG home directory
+  ansible.builtin.file:
+    path: "{{ ablage_backup_dir }}/.gnupg"
+    state: directory
+    owner: "{{ ablage_user | default('ablage') }}"
+    group: "{{ ablage_group | default('ablage') }}"
+    mode: '0700'
+  become: true
+
+- name: Configure GPG agent
+  ansible.builtin.template:
+    src: gpg-agent.conf.j2
+    dest: "{{ ablage_backup_dir }}/.gnupg/gpg-agent.conf"
+    owner: "{{ ablage_user | default('ablage') }}"
+    group: "{{ ablage_group | default('ablage') }}"
+    mode: '0600'
+  become: true
+  notify: Reload GPG agent
+
+- name: Import GPG public key (if provided)
+  ansible.builtin.shell: |
+    echo "{{ backup_gpg_public_key | b64decode }}" | gpg --homedir "{{ ablage_backup_dir }}/.gnupg" --import
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: "{{ ablage_user | default('ablage') }}"
+  when:
+    - backup_gpg_public_key is defined
+    - backup_gpg_public_key | length > 0
+  register: gpg_import_result
+  changed_when: "'imported' in gpg_import_result.stderr"
+  failed_when: false
+
+- name: Verify GPG key is available
+  ansible.builtin.shell: |
+    gpg --homedir "{{ ablage_backup_dir }}/.gnupg" --list-keys "{{ backup_gpg_key_id }}" 2>/dev/null
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: "{{ ablage_user | default('ablage') }}"
+  register: gpg_key_check
+  changed_when: false
+  failed_when: false
+  when:
+    - backup_gpg_key_id is defined
+    - backup_gpg_key_id | length > 0
+
+- name: Warn if GPG key not found
+  ansible.builtin.debug:
+    msg: |
+      WARNUNG: GPG-Schluessel '{{ backup_gpg_key_id }}' nicht gefunden!
+      Backup-Verschluesselung wird deaktiviert.
+      Importieren Sie den Schluessel oder setzen Sie backup_encryption_enabled auf false.
+  when:
+    - backup_gpg_key_id is defined
+    - backup_gpg_key_id | length > 0
+    - gpg_key_check.rc != 0
+
+- name: Set GPG key trust level to ultimate
+  ansible.builtin.shell: |
+    echo "{{ backup_gpg_key_id }}:6:" | gpg --homedir "{{ ablage_backup_dir }}/.gnupg" --import-ownertrust
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: "{{ ablage_user | default('ablage') }}"
+  when:
+    - backup_gpg_key_id is defined
+    - backup_gpg_key_id | length > 0
+    - gpg_key_check.rc == 0
+  changed_when: false
+
+- name: Create passphrase file for restore operations
+  ansible.builtin.copy:
+    content: "{{ vault_backup_gpg_passphrase | default('') }}"
+    dest: "{{ ablage_backup_dir }}/.gnupg/passphrase"
+    owner: "{{ ablage_user | default('ablage') }}"
+    group: "{{ ablage_group | default('ablage') }}"
+    mode: '0400'
+  become: true
+  when:
+    - vault_backup_gpg_passphrase is defined
+    - vault_backup_gpg_passphrase | length > 0
+  no_log: true
+
+- name: Set encryption status fact
+  ansible.builtin.set_fact:
+    backup_encryption_active: "{{ backup_encryption_enabled and backup_gpg_key_id | length > 0 and (gpg_key_check.rc | default(1)) == 0 }}"
+
+- name: Log encryption status
+  ansible.builtin.debug:
+    msg: "Backup-Verschluesselung: {{ 'AKTIVIERT' if backup_encryption_active else 'DEAKTIVIERT' }}"

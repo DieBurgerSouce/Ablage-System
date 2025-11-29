@@ -1,0 +1,36 @@
+[Unit]
+Description=Ablage-System Sicherungs-Validierung
+Documentation=https://docs.ablage-system.local/backup/validation
+After=network.target docker.service
+
+[Service]
+Type=oneshot
+User={{ ablage_user | default('ablage') }}
+Group={{ ablage_group | default('ablage') }}
+WorkingDirectory={{ ablage_install_dir }}
+
+# Environment
+Environment="BACKUP_DIR={{ ablage_backup_dir }}"
+Environment="DATABASE_URL=postgresql://ablage_admin:{{ vault_db_password | default('changeme') }}@localhost:5432/ablage_system"
+{% if backup_encryption_enabled | default(false) %}
+Environment="GPG_HOME={{ ablage_backup_dir }}/.gnupg"
+Environment="GPG_PASSPHRASE_FILE={{ ablage_backup_dir }}/.gnupg/passphrase"
+{% endif %}
+
+# Run validation script
+ExecStart=/usr/bin/python3 {{ ablage_install_dir }}/Execution_Layer/Validators/backup_validator.py
+
+# Logging
+StandardOutput=append:{{ ablage_backup_dir }}/logs/validation.log
+StandardError=append:{{ ablage_backup_dir }}/logs/validation.log
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths={{ ablage_backup_dir }}
+ReadWritePaths=/var/lib/prometheus/node-exporter
+
+[Install]
+WantedBy=multi-user.target

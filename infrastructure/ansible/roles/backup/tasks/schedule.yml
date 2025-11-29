@@ -50,3 +50,69 @@
     enabled: yes
   become: yes
   when: backup_enabled | default(true)
+
+# Validation timers
+- name: Deploy backup validation systemd service
+  ansible.builtin.template:
+    src: ablage-backup-validation.service.j2
+    dest: /etc/systemd/system/ablage-backup-validation.service
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: reload systemd
+  when: backup_validation_enabled | default(true)
+
+- name: Deploy backup validation systemd timer
+  ansible.builtin.template:
+    src: ablage-backup-validation.timer.j2
+    dest: /etc/systemd/system/ablage-backup-validation.timer
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: reload systemd
+  when: backup_validation_enabled | default(true)
+
+- name: Enable and start validation timer
+  ansible.builtin.systemd:
+    name: ablage-backup-validation.timer
+    state: started
+    enabled: yes
+  become: yes
+  when:
+    - backup_enabled | default(true)
+    - backup_validation_enabled | default(true)
+
+# Restore test timers
+- name: Deploy restore test systemd service
+  ansible.builtin.template:
+    src: ablage-restore-test.service.j2
+    dest: /etc/systemd/system/ablage-restore-test.service
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: reload systemd
+  when: backup_validation_enabled | default(true)
+
+- name: Deploy restore test systemd timer
+  ansible.builtin.template:
+    src: ablage-restore-test.timer.j2
+    dest: /etc/systemd/system/ablage-restore-test.timer
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: reload systemd
+  when: backup_validation_enabled | default(true)
+
+- name: Enable and start restore test timer
+  ansible.builtin.systemd:
+    name: ablage-restore-test.timer
+    state: started
+    enabled: yes
+  become: yes
+  when:
+    - backup_enabled | default(true)
+    - backup_validation_enabled | default(true)

@@ -1,0 +1,19 @@
+[Unit]
+Description=Ablage-System Sicherungs-Validierung Timer
+Documentation=https://docs.ablage-system.local/backup/validation
+
+[Timer]
+# Run daily at 4 AM (after backup at 2 AM)
+OnCalendar={{ backup_validation_schedule | default('*-*-* 04:00:00') }}
+
+# Randomized delay up to 5 minutes to avoid thundering herd
+RandomizedDelaySec=300
+
+# Ensure we run even if system was off at scheduled time
+Persistent=true
+
+# Don't run immediately if timer was just enabled
+Unit=ablage-backup-validation.service
+
+[Install]
+WantedBy=timers.target

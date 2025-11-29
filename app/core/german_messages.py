@@ -265,6 +265,86 @@ class SystemMessages:
 
 
 # =============================================================================
+# BACKUP MESSAGES
+# =============================================================================
+
+class BackupMessages:
+    """German backup and disaster recovery messages."""
+
+    # Backup operations
+    BACKUP_STARTED = "Sicherung gestartet"
+    BACKUP_COMPLETED = "Sicherung erfolgreich abgeschlossen"
+    BACKUP_FAILED = "Sicherung fehlgeschlagen: {details}"
+    BACKUP_SKIPPED = "Sicherung übersprungen: {reason}"
+    BACKUP_IN_PROGRESS = "Sicherung läuft..."
+
+    # Backup types
+    BACKUP_TYPE_FULL = "Vollständige Sicherung"
+    BACKUP_TYPE_POSTGRES = "Datenbank-Sicherung"
+    BACKUP_TYPE_MINIO = "Dokumenten-Sicherung"
+    BACKUP_TYPE_REDIS = "Cache-Sicherung"
+    BACKUP_TYPE_CONFIG = "Konfigurations-Sicherung"
+
+    # Encryption
+    ENCRYPTION_ENABLED = "Verschlüsselung aktiviert"
+    ENCRYPTION_DISABLED = "Verschlüsselung deaktiviert"
+    ENCRYPTION_SUCCESS = "Sicherung erfolgreich verschlüsselt"
+    ENCRYPTION_FAILED = "Verschlüsselung fehlgeschlagen: {details}"
+    DECRYPTION_SUCCESS = "Sicherung erfolgreich entschlüsselt"
+    DECRYPTION_FAILED = "Entschlüsselung fehlgeschlagen: {details}"
+    GPG_KEY_NOT_FOUND = "GPG-Schlüssel nicht gefunden: {key_id}"
+    GPG_KEY_IMPORTED = "GPG-Schlüssel importiert: {key_id}"
+    GPG_KEY_EXPIRED = "GPG-Schlüssel abgelaufen: {key_id}"
+
+    # Validation
+    VALIDATION_STARTED = "Sicherungs-Validierung gestartet"
+    VALIDATION_SUCCESS = "Sicherungs-Validierung erfolgreich"
+    VALIDATION_FAILED = "Sicherungs-Validierung fehlgeschlagen: {details}"
+    CHECKSUM_VERIFIED = "Prüfsumme verifiziert"
+    CHECKSUM_MISMATCH = "Prüfsummen-Fehler: Sicherung beschädigt"
+
+    # Restore operations
+    RESTORE_STARTED = "Wiederherstellung gestartet"
+    RESTORE_COMPLETED = "Wiederherstellung erfolgreich abgeschlossen"
+    RESTORE_FAILED = "Wiederherstellung fehlgeschlagen: {details}"
+    RESTORE_TEST_STARTED = "Wiederherstellungstest gestartet"
+    RESTORE_TEST_SUCCESS = "Wiederherstellungstest erfolgreich"
+    RESTORE_TEST_FAILED = "Wiederherstellungstest fehlgeschlagen: {details}"
+    RESTORE_CONFIRMATION_REQUIRED = "Bestätigung erforderlich: Diese Aktion überschreibt vorhandene Daten"
+
+    # Remote sync
+    REMOTE_SYNC_STARTED = "Remote-Synchronisation gestartet"
+    REMOTE_SYNC_COMPLETED = "Remote-Synchronisation abgeschlossen"
+    REMOTE_SYNC_FAILED = "Remote-Synchronisation fehlgeschlagen: {details}"
+    REMOTE_SYNC_RETRY = "Remote-Synchronisation wird wiederholt (Versuch {attempt} von {max_attempts})"
+    REMOTE_SYNC_DISABLED = "Remote-Synchronisation deaktiviert"
+    REMOTE_HOST_UNREACHABLE = "Remote-Server nicht erreichbar: {host}"
+
+    # Storage
+    DISK_SPACE_LOW = "Weniger als {gb}GB Speicherplatz verfügbar"
+    DISK_SPACE_CRITICAL = "Kritisch: Weniger als {gb}GB Speicherplatz verfügbar"
+    DISK_SPACE_SUFFICIENT = "Ausreichend Speicherplatz verfügbar: {free_gb}GB frei"
+    BACKUP_SIZE = "Sicherungsgröße: {size_mb}MB"
+    BACKUP_COUNT = "{count} Sicherungsdateien vorhanden"
+
+    # Retention
+    RETENTION_CLEANUP_STARTED = "Bereinigung alter Sicherungen gestartet"
+    RETENTION_CLEANUP_COMPLETED = "Bereinigung abgeschlossen: {count} alte Sicherungen gelöscht"
+    RETENTION_POLICY = "Aufbewahrungsfrist: {days} Tage"
+
+    # Warnings
+    BACKUP_STALE = "Letzte Sicherung älter als {hours} Stunden"
+    NO_RECENT_BACKUP = "Keine aktuelle Sicherung gefunden"
+    BACKUP_OUTDATED = "Sicherung veraltet: {age_days} Tage alt"
+
+    # Reports
+    REPORT_GENERATED = "Sicherungsbericht erstellt: {filename}"
+    DAILY_REPORT = "Täglicher Sicherungsbericht"
+    WEEKLY_REPORT = "Wöchentlicher Sicherungsbericht"
+    MONTHLY_REPORT = "Monatlicher Sicherungsbericht"
+
+
+# =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
 

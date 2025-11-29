@@ -4,3 +4,12 @@
   ansible.builtin.systemd:
     daemon_reload: yes
   become: yes
+
+- name: Reload GPG agent
+  ansible.builtin.shell: |
+    gpgconf --homedir "{{ ablage_backup_dir }}/.gnupg" --reload gpg-agent
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: "{{ ablage_user | default('ablage') }}"
+  ignore_errors: true
