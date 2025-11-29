@@ -1,0 +1,277 @@
+# =============================================================================
+# Kubernetes Deployment Pipeline
+# Ablage-System Infrastructure
+# =============================================================================
+name: Kubernetes Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+      action:
+        description: 'Deployment action'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - deploy
+          - rollback
+          - status
+      version:
+        description: 'Version to deploy (leave empty for latest)'
+        required: false
+        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - 'infrastructure/kubernetes/**'
+      - 'infrastructure/helm/**'
+
+env:
+  KUBECONFIG_SECRET: ${{ secrets.KUBECONFIG }}
+
+jobs:
+  # ===========================================================================
+  # Validate Kubernetes Manifests
+  # ===========================================================================
+  validate:
+    name: Validate Manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.13.0'
+
+      - name: Lint Helm chart
+        run: |
+          helm lint infrastructure/helm/ablage-system
+
+      - name: Template and validate
+        run: |
+          helm template ablage-system infrastructure/helm/ablage-system \
+            -f infrastructure/helm/ablage-system/values.yaml \
+            > /tmp/rendered.yaml
+
+          # Validate with kubectl (dry-run)
+          kubectl apply --dry-run=client -f /tmp/rendered.yaml
+
+      - name: Validate with Kubeconform
+        uses: yannh/kubeconform-action@v0.6.0
+        with:
+          files: infrastructure/kubernetes/**/*.yaml
+          args: -strict -ignore-missing-schemas
+
+  # ===========================================================================
+  # Security Scanning
+  # ===========================================================================
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Kubesec
+        uses: controlplaneio/kubesec-action@v0.0.2
+        with:
+          input: infrastructure/kubernetes/base/
+
+      - name: Run Polaris
+        uses: fairwindsops/polaris@master
+        with:
+          config: infrastructure/.polaris.yaml
+          only-show-failed-tests: true
+
+  # ===========================================================================
+  # Deploy to Environment
+  # ===========================================================================
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'dev' }}
+    runs-on: ubuntu-latest
+    needs: [validate, security]
+    if: github.event.inputs.action == 'deploy' || github.event_name == 'push'
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.13.0'
+
+      - name: Configure Kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Set deployment version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=$(git describe --tags --always)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy with Helm
+        run: |
+          ENV="${{ github.event.inputs.environment || 'dev' }}"
+          VALUES_FILE="values.yaml"
+
+          if [ "$ENV" = "production" ]; then
+            VALUES_FILE="values.yaml,values-production.yaml"
+          fi
+
+          helm upgrade --install ablage-system-${ENV} \
+            infrastructure/helm/ablage-system \
+            --namespace ablage-system-${ENV} \
+            --create-namespace \
+            --values infrastructure/helm/ablage-system/${VALUES_FILE} \
+            --set backend.image.tag=${{ steps.version.outputs.version }} \
+            --set worker.image.tag=${{ steps.version.outputs.version }} \
+            --wait \
+            --timeout 10m
+
+      - name: Verify deployment
+        run: |
+          ENV="${{ github.event.inputs.environment || 'dev' }}"
+          kubectl rollout status deployment/ablage-system-${ENV}-backend \
+            -n ablage-system-${ENV} --timeout=5m
+
+      - name: Run smoke tests
+        run: |
+          ENV="${{ github.event.inputs.environment || 'dev' }}"
+
+          # Wait for backend to be ready
+          kubectl wait --for=condition=ready pod \
+            -l app.kubernetes.io/component=api \
+            -n ablage-system-${ENV} \
+            --timeout=120s
+
+          # Get service URL and run health check
+          BACKEND_POD=$(kubectl get pod \
+            -l app.kubernetes.io/component=api \
+            -n ablage-system-${ENV} \
+            -o jsonpath='{.items[0].metadata.name}')
+
+          kubectl exec ${BACKEND_POD} -n ablage-system-${ENV} -- \
+            curl -sf http://localhost:8000/health
+
+      - name: Notify success
+        if: success()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "Deployment Successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":rocket: *Deployment Successful*\nEnvironment: `${{ github.event.inputs.environment || 'dev' }}`\nVersion: `${{ steps.version.outputs.version }}`\nTriggered by: @${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Notify failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "Deployment Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":x: *Deployment Failed*\nEnvironment: `${{ github.event.inputs.environment || 'dev' }}`\nVersion: `${{ steps.version.outputs.version }}`\nTriggered by: @${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ===========================================================================
+  # Rollback
+  # ===========================================================================
+  rollback:
+    name: Rollback ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'rollback'
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Configure Kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+
+      - name: Rollback Helm release
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          helm rollback ablage-system-${ENV} -n ablage-system-${ENV}
+
+      - name: Verify rollback
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          kubectl rollout status deployment/ablage-system-${ENV}-backend \
+            -n ablage-system-${ENV} --timeout=5m
+
+  # ===========================================================================
+  # Status Check
+  # ===========================================================================
+  status:
+    name: Check Status
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'status'
+
+    steps:
+      - name: Configure Kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Get deployment status
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          echo "=== Pods ==="
+          kubectl get pods -n ablage-system-${ENV} -o wide
+
+          echo "=== Deployments ==="
+          kubectl get deployments -n ablage-system-${ENV}
+
+          echo "=== Services ==="
+          kubectl get svc -n ablage-system-${ENV}
+
+          echo "=== Helm Release ==="
+          helm list -n ablage-system-${ENV}
+
+          echo "=== Recent Events ==="
+          kubectl get events -n ablage-system-${ENV} --sort-by='.lastTimestamp' | tail -20

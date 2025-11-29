@@ -1,0 +1,64 @@
+---
+# =============================================================================
+# ArgoCD ApplicationSet: Multi-Environment Generator
+# Ablage-System GitOps Infrastructure
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: ablage-system-environments
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ablage-system-gitops
+spec:
+  generators:
+    - list:
+        elements:
+          - environment: dev
+            namespace: ablage-system-dev
+            branch: develop
+            host: dev.ablage-system.local
+            replicas: "1"
+            autoSync: "true"
+          - environment: staging
+            namespace: ablage-system-staging
+            branch: main
+            host: staging.ablage-system.local
+            replicas: "2"
+            autoSync: "true"
+          # Production handled separately for manual approval
+
+  template:
+    metadata:
+      name: 'ablage-system-{{environment}}'
+      namespace: argocd
+      labels:
+        app.kubernetes.io/part-of: ablage-system-gitops
+        environment: '{{environment}}'
+    spec:
+      project: ablage-system
+
+      source:
+        repoURL: https://github.com/your-org/ablage-system.git
+        targetRevision: '{{branch}}'
+        path: infrastructure/helm/ablage-system
+        helm:
+          releaseName: 'ablage-system-{{environment}}'
+          valueFiles:
+            - values.yaml
+          parameters:
+            - name: backend.replicaCount
+              value: '{{replicas}}'
+            - name: ingress.hosts[0].host
+              value: '{{host}}'
+
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

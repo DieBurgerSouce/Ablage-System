@@ -1,0 +1,140 @@
+---
+# =============================================================================
+# Internal Communication Network Policies
+# Ablage-System OCR Infrastructure
+# =============================================================================
+
+# Allow DNS queries
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: ablage-system
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# Backend can access PostgreSQL
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-to-postgres
+  namespace: ablage-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ablage-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ablage-backend
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ablage-worker
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+# Backend can access Redis
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-to-redis
+  namespace: ablage-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ablage-redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ablage-backend
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ablage-worker
+      ports:
+        - protocol: TCP
+          port: 6379
+---
+# Backend can access MinIO
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-to-minio
+  namespace: ablage-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ablage-minio
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ablage-backend
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ablage-worker
+      ports:
+        - protocol: TCP
+          port: 9000
+---
+# Frontend can access Backend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend-to-backend
+  namespace: ablage-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ablage-backend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ablage-frontend
+      ports:
+        - protocol: TCP
+          port: 8000
+---
+# Allow egress to external services (for model downloads)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-worker-external
+  namespace: ablage-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ablage-worker
+  policyTypes:
+    - Egress
+  egress:
+    # Allow HTTPS for model downloads
+    - ports:
+        - protocol: TCP
+          port: 443
+    # Allow internal cluster communication
+    - to:
+        - podSelector: {}

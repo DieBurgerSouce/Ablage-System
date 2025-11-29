@@ -1,0 +1,42 @@
+---
+# =============================================================================
+# K3s GPU Node Role - Default Variables
+# Ablage-System OCR Infrastructure
+# =============================================================================
+
+# GPU Configuration
+k3s_gpu_type: "nvidia"
+k3s_gpu_model: "RTX 4080"
+k3s_gpu_vram_gb: 16
+
+# NVIDIA Driver Version
+nvidia_driver_version: "535"
+
+# NVIDIA Container Toolkit
+nvidia_container_toolkit_enabled: true
+
+# GPU node labels
+k3s_gpu_node_labels:
+  - "nvidia.com/gpu.present=true"
+  - "nvidia.com/gpu.product={{ k3s_gpu_model | replace(' ', '-') }}"
+  - "ablage-system.local/gpu-vram={{ k3s_gpu_vram_gb }}Gi"
+  - "ablage-system.local/role=gpu-worker"
+
+# GPU node taints (optional, ensures only GPU workloads run on GPU nodes)
+k3s_gpu_taint_enabled: true
+k3s_gpu_node_taints:
+  - "nvidia.com/gpu=present:NoSchedule"
+
+# Containerd configuration for NVIDIA runtime
+k3s_containerd_nvidia_runtime: true
+
+# MIG (Multi-Instance GPU) configuration (for A100/H100)
+k3s_mig_enabled: false
+k3s_mig_strategy: "none"  # none, single, mixed
+
+# GPU monitoring
+k3s_gpu_monitoring_enabled: true
+k3s_dcgm_exporter_enabled: true
+
+# VRAM limits for Ablage-System workloads
+ablage_gpu_vram_limit_percent: 85  # 85% = 13.6GB of 16GB

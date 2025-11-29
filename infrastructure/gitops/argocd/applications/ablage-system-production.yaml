@@ -1,0 +1,69 @@
+---
+# =============================================================================
+# ArgoCD Application: Ablage-System (Production)
+# Ablage-System GitOps Infrastructure
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ablage-system-production
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ablage-system-gitops
+    environment: production
+  annotations:
+    # Require manual sync for production
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: ablage-system
+
+  source:
+    repoURL: https://github.com/your-org/ablage-system.git
+    # Use specific tag for production
+    targetRevision: v1.0.0
+    path: infrastructure/helm/ablage-system
+
+    helm:
+      releaseName: ablage-system
+      valueFiles:
+        - values.yaml
+        - values-production.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ablage-system
+
+  syncPolicy:
+    # IMPORTANT: No automated sync for production
+    # Manual sync required with approval
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+      jsonPointers:
+        - /spec/minReplicas
+        - /spec/maxReplicas
+    # Ignore secret changes managed externally
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+
+  revisionHistoryLimit: 20

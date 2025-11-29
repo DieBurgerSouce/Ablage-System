@@ -1,0 +1,83 @@
+=============================================================================
+  Ablage-System OCR Platform - Helm Chart
+=============================================================================
+
+Vielen Dank für die Installation von Ablage-System!
+(Thank you for installing Ablage-System!)
+
+{{- if .Values.ingress.enabled }}
+
+Die Anwendung ist erreichbar unter:
+(The application is accessible at:)
+
+{{- range .Values.ingress.hosts }}
+  - http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+
+{{- else }}
+
+Um auf die Anwendung zuzugreifen, führen Sie folgende Befehle aus:
+(To access the application, run the following commands:)
+
+  export POD_NAME=$(kubectl get pods --namespace {{ .Values.namespace.name }} -l "app.kubernetes.io/name={{ include "ablage-system.name" . }},app.kubernetes.io/component=frontend" -o jsonpath="{.items[0].metadata.name}")
+  kubectl --namespace {{ .Values.namespace.name }} port-forward $POD_NAME 8080:80
+
+Dann öffnen Sie: http://localhost:8080
+(Then open: http://localhost:8080)
+
+{{- end }}
+
+=============================================================================
+  Komponenten-Status
+=============================================================================
+
+Überprüfen Sie den Status aller Pods:
+(Check the status of all pods:)
+
+  kubectl get pods -n {{ .Values.namespace.name }}
+
+{{- if .Values.backend.enabled }}
+Backend API:
+  kubectl logs -f -n {{ .Values.namespace.name }} -l app.kubernetes.io/component=api
+{{- end }}
+
+{{- if .Values.worker.enabled }}
+Worker (GPU):
+  kubectl logs -f -n {{ .Values.namespace.name }} -l app.kubernetes.io/component=worker
+{{- end }}
+
+=============================================================================
+  Wichtige Hinweise
+=============================================================================
+
+{{- if .Values.worker.gpu.enabled }}
+GPU-KONFIGURATION:
+Der Worker benötigt GPU-Zugriff. Stellen Sie sicher, dass:
+- NVIDIA Device Plugin installiert ist
+- GPU-Nodes das Label 'nvidia.com/gpu.present=true' haben
+- Die GPU-Tolerations korrekt konfiguriert sind
+
+Überprüfen Sie GPU-Status:
+  kubectl describe node <gpu-node> | grep -A10 nvidia.com/gpu
+{{- end }}
+
+{{- if .Values.secrets.create }}
+SICHERHEITSWARNUNG:
+Die Standard-Secrets sollten für Produktionsumgebungen geändert werden!
+Verwenden Sie externe Secret-Management-Lösungen.
+{{- end }}
+
+DOKUMENTATION:
+- API Docs: {{ if .Values.ingress.enabled }}http{{ if .Values.ingress.tls }}s{{ end }}://{{ (index .Values.ingress.hosts 0).host }}/docs{{ else }}http://localhost:8000/docs (nach Port-Forward){{ end }}
+- OpenAPI: {{ if .Values.ingress.enabled }}http{{ if .Values.ingress.tls }}s{{ end }}://{{ (index .Values.ingress.hosts 0).host }}/openapi.json{{ else }}http://localhost:8000/openapi.json{{ end }}
+
+=============================================================================
+  Support
+=============================================================================
+
+Bei Problemen:
+1. Prüfen Sie die Logs: kubectl logs -n {{ .Values.namespace.name }} <pod-name>
+2. Prüfen Sie Events: kubectl get events -n {{ .Values.namespace.name }}
+3. Konsultieren Sie die Dokumentation
+
+Feinpoliert und durchdacht - Enterprise Document Processing

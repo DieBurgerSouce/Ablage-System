@@ -1,0 +1,21 @@
+---
+# =============================================================================
+# Backend Service
+# Ablage-System OCR Infrastructure
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: ablage-backend
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-backend
+    app.kubernetes.io/component: api
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+  selector:
+    app.kubernetes.io/name: ablage-backend

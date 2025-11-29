@@ -1,0 +1,21 @@
+---
+# =============================================================================
+# Frontend Service
+# Ablage-System OCR Infrastructure
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: ablage-frontend
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-frontend
+    app.kubernetes.io/component: frontend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+  selector:
+    app.kubernetes.io/name: ablage-frontend

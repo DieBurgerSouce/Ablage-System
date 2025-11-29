@@ -1,0 +1,40 @@
+---
+# =============================================================================
+# FluxCD Image Update Automation
+# Ablage-System GitOps Infrastructure
+# =============================================================================
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageUpdateAutomation
+metadata:
+  name: ablage-system
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/part-of: ablage-system-gitops
+spec:
+  interval: 30m
+
+  sourceRef:
+    kind: GitRepository
+    name: ablage-system
+
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        email: flux@ablage-system.local
+        name: Flux Image Automation
+      messageTemplate: |
+        chore(images): Update container images
+
+        Automated image update by FluxCD:
+        {{range .Changed.Changes}}
+        - {{.OldValue}} -> {{.NewValue}}
+        {{end}}
+    push:
+      branch: main
+
+  update:
+    path: ./infrastructure/helm/ablage-system
+    strategy: Setters

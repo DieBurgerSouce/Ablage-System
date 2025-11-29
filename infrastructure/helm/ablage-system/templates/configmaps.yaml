@@ -1,0 +1,80 @@
+{{- if .Values.frontend.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ablage-system.fullname" . }}-frontend-config
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "ablage-system.frontend.labels" . | nindent 4 }}
+data:
+  default.conf: |
+    # Ablage-System Nginx Configuration
+    upstream backend {
+        server {{ include "ablage-system.fullname" . }}-backend:{{ .Values.backend.service.port }};
+        keepalive 32;
+    }
+
+    server {
+        listen 80;
+        server_name _;
+
+        # Security headers
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+
+        # Gzip compression
+        gzip on;
+        gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+        gzip_min_length 1000;
+
+        # Frontend static files
+        location / {
+            root /usr/share/nginx/html;
+            index index.html;
+            try_files $uri $uri/ /index.html;
+        }
+
+        # API proxy
+        location /api/ {
+            proxy_pass http://backend;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header Connection "";
+
+            # Timeouts for long-running OCR operations
+            proxy_connect_timeout 60s;
+            proxy_send_timeout 600s;
+            proxy_read_timeout 600s;
+
+            # File upload size
+            client_max_body_size 100m;
+        }
+
+        # API documentation
+        location /docs {
+            proxy_pass http://backend;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+
+        location /redoc {
+            proxy_pass http://backend;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+
+        # Health check
+        location /health {
+            access_log off;
+            return 200 "OK";
+            add_header Content-Type text/plain;
+        }
+    }
+{{- end }}

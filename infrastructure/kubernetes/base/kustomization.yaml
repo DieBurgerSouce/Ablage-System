@@ -1,0 +1,81 @@
+# =============================================================================
+# Kustomize Base Configuration for Ablage-System
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: ablage-system-base
+
+namespace: ablage-system
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/part-of: ablage-system
+  app.kubernetes.io/managed-by: kustomize
+
+# Resource definitions
+resources:
+  # Namespace and base resources
+  - namespace.yaml
+
+  # Database layer
+  - postgres/statefulset.yaml
+  - postgres/service.yaml
+  - postgres/configmap.yaml
+  - postgres/pvc.yaml
+
+  # Cache layer
+  - redis/statefulset.yaml
+  - redis/service.yaml
+
+  # Object storage
+  - minio/statefulset.yaml
+  - minio/service.yaml
+
+  # Application layer
+  - backend/deployment.yaml
+  - backend/service.yaml
+  - backend/configmap.yaml
+  - backend/hpa.yaml
+
+  # GPU workers
+  - worker/deployment.yaml
+  - worker/configmap.yaml
+
+  # Frontend
+  - frontend/deployment.yaml
+  - frontend/service.yaml
+  - frontend/configmap.yaml
+
+  # Network security
+  - network-policies/default-deny.yaml
+  - network-policies/allow-internal.yaml
+  - network-policies/allow-ingress.yaml
+
+# ConfigMap generators
+configMapGenerator:
+  - name: ablage-common-config
+    literals:
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=production
+      - TZ=Europe/Berlin
+      - LANG=de_DE.UTF-8
+
+# Secret generators (use sealed-secrets in production)
+secretGenerator:
+  - name: ablage-secrets
+    type: Opaque
+    literals:
+      - database-url=postgresql://ablage_admin:changeme@ablage-postgres:5432/ablage_system
+      - redis-url=redis://ablage-redis:6379/0
+      - minio-access-key=admin
+      - minio-secret-key=changeme
+      - app-secret-key=changeme-in-production
+
+# Image configuration
+images:
+  - name: ablage-system/backend
+    newTag: latest
+  - name: ablage-system/worker
+    newTag: latest

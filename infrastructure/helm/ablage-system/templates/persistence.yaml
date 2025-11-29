@@ -1,0 +1,63 @@
+{{- if .Values.persistence.uploads.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ablage-system.fullname" . }}-uploads
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "ablage-system.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.uploads.accessMode }}
+  {{- if .Values.persistence.uploads.storageClass }}
+  storageClassName: {{ .Values.persistence.uploads.storageClass }}
+  {{- else if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.uploads.size }}
+{{- end }}
+---
+{{- if .Values.persistence.outputs.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ablage-system.fullname" . }}-outputs
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "ablage-system.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.outputs.accessMode }}
+  {{- if .Values.persistence.outputs.storageClass }}
+  storageClassName: {{ .Values.persistence.outputs.storageClass }}
+  {{- else if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.outputs.size }}
+{{- end }}
+---
+{{- if .Values.persistence.modelCache.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ablage-system.fullname" . }}-model-cache
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "ablage-system.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.modelCache.accessMode }}
+  {{- if .Values.persistence.modelCache.storageClass }}
+  storageClassName: {{ .Values.persistence.modelCache.storageClass }}
+  {{- else if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.modelCache.size }}
+{{- end }}

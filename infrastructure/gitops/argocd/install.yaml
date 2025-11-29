@@ -1,0 +1,110 @@
+---
+# =============================================================================
+# ArgoCD Installation
+# Ablage-System GitOps Infrastructure
+# =============================================================================
+# This file references the official ArgoCD installation manifest
+# Apply with: kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.9.3/manifests/install.yaml
+#
+# For HA installation use:
+# kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.9.3/manifests/ha/install.yaml
+# =============================================================================
+
+# Custom ArgoCD ConfigMap for Ablage-System
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  # Repository credentials
+  repositories: |
+    - url: https://github.com/your-org/ablage-system.git
+      name: ablage-system
+      type: git
+
+  # Resource customizations
+  resource.customizations: |
+    networking.k8s.io/Ingress:
+      health.lua: |
+        hs = {}
+        hs.status = "Healthy"
+        return hs
+
+    apps/StatefulSet:
+      health.lua: |
+        hs = {}
+        if obj.status ~= nil then
+          if obj.status.readyReplicas ~= nil then
+            if obj.status.readyReplicas == obj.spec.replicas then
+              hs.status = "Healthy"
+              hs.message = "All replicas are ready"
+              return hs
+            end
+          end
+        end
+        hs.status = "Progressing"
+        hs.message = "Waiting for replicas"
+        return hs
+
+  # Helm parameters
+  helm.valuesFileSchemes: secrets+gpg-import, secrets+gpg-import-kubernetes, secrets+age-import, secrets+age-import-kubernetes, secrets
+
+  # Admin password (change in production!)
+  admin.enabled: "true"
+
+  # Dex configuration (optional SSO)
+  dex.config: |
+    connectors: []
+
+---
+# ArgoCD Server Service (LoadBalancer for external access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-server-lb
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
+spec:
+  type: LoadBalancer
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+    - name: https
+      port: 443
+      targetPort: 8080
+  selector:
+    app.kubernetes.io/name: argocd-server
+---
+# ArgoCD Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server-ingress
+  namespace: argocd
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: argocd.ablage-system.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 443
+  tls:
+    - hosts:
+        - argocd.ablage-system.local
+      secretName: argocd-server-tls

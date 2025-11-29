@@ -1,0 +1,32 @@
+# =============================================================================
+# CODEOWNERS
+# Ablage-System
+# =============================================================================
+
+# Default owners for everything
+* @your-org/ablage-maintainers
+
+# Backend code
+/app/ @your-org/backend-team
+/tests/ @your-org/backend-team
+
+# Infrastructure
+/infrastructure/terraform/ @your-org/devops-team
+/infrastructure/ansible/ @your-org/devops-team
+/infrastructure/kubernetes/ @your-org/devops-team
+/infrastructure/helm/ @your-org/devops-team
+/infrastructure/gitops/ @your-org/devops-team
+
+# CI/CD
+/.github/ @your-org/devops-team
+
+# Frontend
+/frontend/ @your-org/frontend-team
+
+# Documentation
+*.md @your-org/tech-writers
+/docs/ @your-org/tech-writers
+
+# Security-sensitive files
+/app/core/security.py @your-org/security-team
+/infrastructure/terraform/backend/ @your-org/security-team @your-org/devops-team

@@ -1,0 +1,248 @@
+---
+# =============================================================================
+# K3s Server Role - Main Tasks
+# Ablage-System OCR Infrastructure
+# =============================================================================
+
+- name: Zeige Installationsinformationen
+  ansible.builtin.debug:
+    msg: |
+      K3s Server Installation
+      ========================
+      Host: {{ inventory_hostname }}
+      Version: {{ k3s_version }}
+      API Server: {{ k3s_api_server_host }}:{{ k3s_api_server_port }}
+      Umgebung: {{ env_name }}
+
+# -----------------------------------------------------------------------------
+# Prerequisites
+# -----------------------------------------------------------------------------
+- name: Prüfe ob K3s bereits installiert ist
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Installiere Abhängigkeiten
+  ansible.builtin.apt:
+    name:
+      - curl
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - open-iscsi
+      - nfs-common
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Aktiviere und starte iscsid
+  ansible.builtin.systemd:
+    name: iscsid
+    state: started
+    enabled: yes
+
+# -----------------------------------------------------------------------------
+# Kernel Configuration
+# -----------------------------------------------------------------------------
+- name: Konfiguriere Kernel-Parameter für Kubernetes
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/99-kubernetes.conf
+    reload: yes
+    state: present
+  loop:
+    - { name: "net.bridge.bridge-nf-call-iptables", value: "1" }
+    - { name: "net.bridge.bridge-nf-call-ip6tables", value: "1" }
+    - { name: "net.ipv4.ip_forward", value: "1" }
+    - { name: "net.ipv6.conf.all.forwarding", value: "1" }
+    - { name: "fs.inotify.max_user_watches", value: "524288" }
+    - { name: "fs.inotify.max_user_instances", value: "512" }
+    - { name: "vm.max_map_count", value: "262144" }
+
+- name: Lade br_netfilter Modul
+  community.general.modprobe:
+    name: br_netfilter
+    state: present
+    persistent: present
+
+# -----------------------------------------------------------------------------
+# Firewall Configuration
+# -----------------------------------------------------------------------------
+- name: Öffne Firewall-Ports für K3s
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "K3s: {{ item.comment }}"
+  loop: "{{ k3s_firewall_ports }}"
+  when: k3s_configure_firewall | default(true)
+
+# -----------------------------------------------------------------------------
+# K3s Installation
+# -----------------------------------------------------------------------------
+- name: Erstelle K3s Konfigurationsverzeichnis
+  ansible.builtin.file:
+    path: "{{ k3s_config_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Erstelle K3s Konfigurationsdatei
+  ansible.builtin.template:
+    src: k3s-config.yaml.j2
+    dest: "{{ k3s_config_dir }}/config.yaml"
+    mode: '0600'
+  notify: restart k3s
+
+- name: Lade K3s Installationsskript herunter
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /tmp/k3s-install.sh
+    mode: '0755'
+  when: not k3s_binary.stat.exists
+
+- name: Installiere K3s Server
+  ansible.builtin.shell: |
+    INSTALL_K3S_VERSION="{{ k3s_version }}" \
+    INSTALL_K3S_CHANNEL="{{ k3s_channel }}" \
+    INSTALL_K3S_EXEC="server" \
+    /tmp/k3s-install.sh
+  args:
+    creates: /usr/local/bin/k3s
+  environment:
+    K3S_TOKEN: "{{ k3s_token }}"
+    INSTALL_K3S_SKIP_START: "false"
+  notify: restart k3s
+
+- name: Warte auf K3s Server Start
+  ansible.builtin.wait_for:
+    path: "{{ k3s_config_dir }}/k3s.yaml"
+    timeout: 120
+
+- name: Warte auf K3s API Server
+  ansible.builtin.wait_for:
+    host: "127.0.0.1"
+    port: "{{ k3s_api_server_port }}"
+    timeout: 120
+
+# -----------------------------------------------------------------------------
+# Kubeconfig Setup
+# -----------------------------------------------------------------------------
+- name: Erstelle .kube Verzeichnis
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.kube"
+    state: directory
+    mode: '0755'
+
+- name: Kopiere kubeconfig
+  ansible.builtin.copy:
+    src: "{{ k3s_config_dir }}/k3s.yaml"
+    dest: "{{ ansible_env.HOME }}/.kube/config"
+    remote_src: yes
+    mode: '0600'
+  notify: update kubeconfig
+
+- name: Aktualisiere kubeconfig Server-Adresse
+  ansible.builtin.replace:
+    path: "{{ ansible_env.HOME }}/.kube/config"
+    regexp: 'server: https://127.0.0.1:6443'
+    replace: 'server: https://{{ k3s_api_server_host }}:{{ k3s_api_server_port }}'
+
+- name: Hole kubeconfig auf lokale Maschine
+  ansible.builtin.fetch:
+    src: "{{ ansible_env.HOME }}/.kube/config"
+    dest: "{{ k3s_kubeconfig_local_path }}"
+    flat: yes
+  when: k3s_fetch_kubeconfig
+
+# -----------------------------------------------------------------------------
+# Node Labels
+# -----------------------------------------------------------------------------
+- name: Warte auf Node Registrierung
+  ansible.builtin.command: kubectl get nodes {{ inventory_hostname }} -o name
+  register: node_check
+  until: node_check.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Setze Node Labels
+  ansible.builtin.command: >
+    kubectl label node {{ inventory_hostname }}
+    {{ item }}
+    --overwrite
+  loop: "{{ k3s_node_labels }}"
+  changed_when: false
+
+# -----------------------------------------------------------------------------
+# Add-ons Installation
+# -----------------------------------------------------------------------------
+- name: Installiere NVIDIA Device Plugin
+  ansible.builtin.shell: |
+    kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/{{ k3s_nvidia_plugin_version }}/nvidia-device-plugin.yml
+  when: k3s_install_nvidia_plugin
+  register: nvidia_plugin
+  changed_when: "'created' in nvidia_plugin.stdout or 'configured' in nvidia_plugin.stdout"
+  failed_when: false
+
+- name: Installiere Metrics Server
+  ansible.builtin.shell: |
+    kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+  when: k3s_install_metrics_server
+  register: metrics_server
+  changed_when: "'created' in metrics_server.stdout or 'configured' in metrics_server.stdout"
+
+- name: Installiere Ingress-NGINX (Helm)
+  block:
+    - name: Füge ingress-nginx Helm Repository hinzu
+      kubernetes.core.helm_repository:
+        name: ingress-nginx
+        repo_url: https://kubernetes.github.io/ingress-nginx
+        state: present
+
+    - name: Installiere ingress-nginx Chart
+      kubernetes.core.helm:
+        name: ingress-nginx
+        chart_ref: ingress-nginx/ingress-nginx
+        chart_version: "{{ k3s_ingress_nginx_version }}"
+        release_namespace: ingress-nginx
+        create_namespace: yes
+        values:
+          controller:
+            kind: DaemonSet
+            hostNetwork: true
+            hostPort:
+              enabled: true
+            service:
+              type: ClusterIP
+            metrics:
+              enabled: true
+        wait: yes
+        timeout: 300s
+  when: k3s_install_ingress_nginx
+
+# -----------------------------------------------------------------------------
+# Verification
+# -----------------------------------------------------------------------------
+- name: Verifiziere K3s Installation
+  ansible.builtin.command: kubectl get nodes -o wide
+  register: k3s_nodes
+  changed_when: false
+
+- name: Zeige Cluster-Status
+  ansible.builtin.debug:
+    msg: |
+      K3s Cluster Status
+      ==================
+      {{ k3s_nodes.stdout }}
+
+- name: Speichere Node-Token für Agents
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_node_token_file
+
+- name: Setze K3s Node Token als Fakt
+  ansible.builtin.set_fact:
+    k3s_node_token: "{{ k3s_node_token_file.content | b64decode | trim }}"
+    cacheable: yes

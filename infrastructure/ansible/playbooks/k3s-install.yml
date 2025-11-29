@@ -1,0 +1,248 @@
+---
+# =============================================================================
+# K3s Cluster Installation Playbook
+# Ablage-System OCR Infrastructure
+# =============================================================================
+#
+# This playbook installs and configures a K3s cluster with GPU support for
+# running the Ablage-System OCR workloads.
+#
+# Prerequisites:
+#   - Ubuntu 22.04 LTS on all nodes
+#   - NVIDIA drivers installed on GPU nodes (use nvidia role)
+#   - Network connectivity between all nodes
+#   - SSH access configured
+#
+# Usage:
+#   ansible-playbook -i inventories/production/hosts.yml playbooks/k3s-install.yml
+#
+# Variables:
+#   - k3s_version: K3s version to install
+#   - k3s_token: Cluster token (set via vault or environment)
+#   - env_name: Environment name (dev, staging, production)
+#
+# =============================================================================
+
+- name: K3s Cluster Installation - Pre-flight Checks
+  hosts: all:&k3s
+  gather_facts: yes
+  become: yes
+  tags: [preflight]
+
+  tasks:
+    - name: Zeige Cluster-Übersicht
+      ansible.builtin.debug:
+        msg: |
+          ╔═══════════════════════════════════════════════════════════╗
+          ║        K3s Cluster Installation - Ablage-System           ║
+          ╠═══════════════════════════════════════════════════════════╣
+          ║  Umgebung: {{ env_name | default('production') | center(45) }}  ║
+          ║  K3s Version: {{ k3s_version | default('v1.28.4+k3s2') | center(41) }}  ║
+          ╚═══════════════════════════════════════════════════════════╝
+      run_once: true
+
+    - name: Prüfe Betriebssystem
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "Ubuntu"
+          - ansible_distribution_version is version('22.04', '>=')
+        fail_msg: "Dieses Playbook erfordert Ubuntu 22.04 oder neuer"
+        success_msg: "Betriebssystem: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+    - name: Prüfe Netzwerk-Konnektivität zu anderen Nodes
+      ansible.builtin.wait_for:
+        host: "{{ hostvars[item].ansible_host }}"
+        port: 22
+        timeout: 10
+      loop: "{{ groups['k3s'] | difference([inventory_hostname]) }}"
+      when: groups['k3s'] | length > 1
+
+    - name: Prüfe verfügbaren Speicherplatz
+      ansible.builtin.assert:
+        that:
+          - ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first | int > 20 * 1024 * 1024 * 1024
+        fail_msg: "Mindestens 20GB freier Speicherplatz erforderlich"
+        success_msg: "Speicherplatz ausreichend"
+
+# -----------------------------------------------------------------------------
+# Install K3s Server (Control Plane)
+# -----------------------------------------------------------------------------
+- name: K3s Server Installation (Control Plane)
+  hosts: k3s_servers
+  become: yes
+  gather_facts: yes
+  serial: 1  # One server at a time for stability
+  tags: [k3s, server]
+
+  pre_tasks:
+    - name: Zeige Server-Installation
+      ansible.builtin.debug:
+        msg: |
+          ┌─────────────────────────────────────────────┐
+          │  Installiere K3s Server auf {{ inventory_hostname | center(15) }}  │
+          └─────────────────────────────────────────────┘
+
+  roles:
+    - role: k3s-server
+      tags: [k3s-server]
+
+  post_tasks:
+    - name: Warte auf Cluster-Bereitschaft
+      ansible.builtin.command: kubectl cluster-info
+      register: cluster_info
+      until: cluster_info.rc == 0
+      retries: 10
+      delay: 10
+      changed_when: false
+
+    - name: Zeige Cluster-Info
+      ansible.builtin.debug:
+        msg: "{{ cluster_info.stdout_lines }}"
+
+# -----------------------------------------------------------------------------
+# Install K3s Agents (Worker Nodes)
+# -----------------------------------------------------------------------------
+- name: K3s Agent Installation (Worker Nodes)
+  hosts: k3s_agents
+  become: yes
+  gather_facts: yes
+  serial: 2  # Two agents at a time
+  tags: [k3s, agent]
+
+  pre_tasks:
+    - name: Zeige Agent-Installation
+      ansible.builtin.debug:
+        msg: |
+          ┌─────────────────────────────────────────────┐
+          │  Installiere K3s Agent auf {{ inventory_hostname | center(15) }}  │
+          └─────────────────────────────────────────────┘
+
+    - name: Warte auf Server-Verfügbarkeit
+      ansible.builtin.wait_for:
+        host: "{{ hostvars[groups['k3s_servers'][0]]['ansible_host'] }}"
+        port: 6443
+        timeout: 300
+
+  roles:
+    - role: k3s-agent
+      tags: [k3s-agent]
+
+# -----------------------------------------------------------------------------
+# Configure GPU Nodes
+# -----------------------------------------------------------------------------
+- name: K3s GPU Node Konfiguration
+  hosts: k3s_gpu_nodes
+  become: yes
+  gather_facts: yes
+  tags: [k3s, gpu]
+
+  pre_tasks:
+    - name: Zeige GPU-Konfiguration
+      ansible.builtin.debug:
+        msg: |
+          ┌─────────────────────────────────────────────┐
+          │  Konfiguriere GPU auf {{ inventory_hostname | center(18) }}  │
+          │  GPU: {{ k3s_gpu_model | default('RTX 4080') | center(36) }}  │
+          └─────────────────────────────────────────────┘
+
+  roles:
+    - role: nvidia
+      tags: [nvidia]
+      when: install_nvidia_driver | default(false)
+
+    - role: k3s-gpu-node
+      tags: [k3s-gpu-node]
+
+# -----------------------------------------------------------------------------
+# Post-Installation Verification
+# -----------------------------------------------------------------------------
+- name: K3s Cluster Verifizierung
+  hosts: k3s_servers[0]
+  become: yes
+  gather_facts: no
+  tags: [verify]
+
+  tasks:
+    - name: Warte auf alle Nodes
+      ansible.builtin.shell: |
+        kubectl get nodes --no-headers | wc -l
+      register: node_count
+      until: node_count.stdout | int >= (groups['k3s'] | length)
+      retries: 30
+      delay: 10
+      changed_when: false
+
+    - name: Hole Cluster-Nodes
+      ansible.builtin.command: kubectl get nodes -o wide
+      register: cluster_nodes
+      changed_when: false
+
+    - name: Hole GPU-Nodes
+      ansible.builtin.command: kubectl get nodes -l nvidia.com/gpu.present=true -o wide
+      register: gpu_nodes
+      changed_when: false
+      failed_when: false
+
+    - name: Hole System-Pods
+      ansible.builtin.command: kubectl get pods -n kube-system
+      register: system_pods
+      changed_when: false
+
+    - name: Zeige Cluster-Übersicht
+      ansible.builtin.debug:
+        msg: |
+          ╔═══════════════════════════════════════════════════════════════════╗
+          ║             K3s Cluster Installation Abgeschlossen                ║
+          ╠═══════════════════════════════════════════════════════════════════╣
+          ║                                                                   ║
+          ║  CLUSTER NODES:                                                   ║
+          {{ cluster_nodes.stdout | indent(10, false) | replace('\n', '\n          ') }}
+          ║                                                                   ║
+          {% if gpu_nodes.stdout | length > 0 %}
+          ║  GPU NODES:                                                       ║
+          {{ gpu_nodes.stdout | indent(10, false) | replace('\n', '\n          ') }}
+          ║                                                                   ║
+          {% endif %}
+          ║  SYSTEM PODS:                                                     ║
+          {{ system_pods.stdout | indent(10, false) | replace('\n', '\n          ') }}
+          ║                                                                   ║
+          ╠═══════════════════════════════════════════════════════════════════╣
+          ║  Nächste Schritte:                                                ║
+          ║  1. Kubeconfig kopieren: scp {{ inventory_hostname }}:~/.kube/config ~/.kube/  ║
+          ║  2. ArgoCD installieren: ansible-playbook playbooks/argocd-bootstrap.yml      ║
+          ║  3. Ablage-System deployen via GitOps                             ║
+          ╚═══════════════════════════════════════════════════════════════════╝
+
+# -----------------------------------------------------------------------------
+# Optional: Save Kubeconfig Locally
+# -----------------------------------------------------------------------------
+- name: Speichere Kubeconfig lokal
+  hosts: k3s_servers[0]
+  become: yes
+  gather_facts: no
+  tags: [kubeconfig]
+
+  tasks:
+    - name: Hole Kubeconfig
+      ansible.builtin.fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "{{ playbook_dir }}/../kubeconfig-{{ env_name | default('production') }}.yaml"
+        flat: yes
+
+    - name: Aktualisiere Server-Adresse in lokalem Kubeconfig
+      delegate_to: localhost
+      become: no
+      ansible.builtin.replace:
+        path: "{{ playbook_dir }}/../kubeconfig-{{ env_name | default('production') }}.yaml"
+        regexp: 'server: https://127.0.0.1:6443'
+        replace: 'server: https://{{ ansible_host }}:6443'
+
+    - name: Zeige Kubeconfig-Pfad
+      ansible.builtin.debug:
+        msg: |
+          Kubeconfig gespeichert unter:
+          {{ playbook_dir }}/../kubeconfig-{{ env_name | default('production') }}.yaml
+
+          Verwendung:
+          export KUBECONFIG={{ playbook_dir }}/../kubeconfig-{{ env_name | default('production') }}.yaml
+          kubectl get nodes

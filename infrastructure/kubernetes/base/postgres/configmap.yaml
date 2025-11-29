@@ -1,0 +1,99 @@
+---
+# =============================================================================
+# PostgreSQL ConfigMap
+# Ablage-System OCR Infrastructure
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-postgres
+    app.kubernetes.io/component: database
+data:
+  POSTGRES_DB: "ablage_system"
+  POSTGRES_USER: "ablage_admin"
+
+  # PostgreSQL performance configuration
+  postgresql.conf: |
+    # Connection settings
+    max_connections = 100
+    superuser_reserved_connections = 3
+
+    # Memory settings (adjust based on container limits)
+    shared_buffers = 2GB
+    effective_cache_size = 6GB
+    maintenance_work_mem = 512MB
+    work_mem = 64MB
+
+    # Write ahead log
+    wal_level = replica
+    max_wal_size = 2GB
+    min_wal_size = 512MB
+    checkpoint_completion_target = 0.9
+
+    # Query planning
+    random_page_cost = 1.1
+    effective_io_concurrency = 200
+
+    # Logging
+    log_destination = 'stderr'
+    logging_collector = off
+    log_statement = 'ddl'
+    log_duration = off
+    log_min_duration_statement = 1000
+
+    # Locale
+    timezone = 'Europe/Berlin'
+    lc_messages = 'de_DE.UTF-8'
+    lc_monetary = 'de_DE.UTF-8'
+    lc_numeric = 'de_DE.UTF-8'
+    lc_time = 'de_DE.UTF-8'
+
+    # Extensions
+    shared_preload_libraries = 'pg_stat_statements'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-scripts
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-postgres
+    app.kubernetes.io/component: database
+data:
+  01-init-extensions.sql: |
+    -- Enable required extensions
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
+
+    -- Note: pgvector needs to be installed in the container
+    -- CREATE EXTENSION IF NOT EXISTS "vector";
+
+  02-init-schema.sql: |
+    -- Create application schema
+    CREATE SCHEMA IF NOT EXISTS ablage;
+
+    -- Grant permissions
+    GRANT ALL PRIVILEGES ON SCHEMA ablage TO ablage_admin;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ablage TO ablage_admin;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA ablage TO ablage_admin;
+
+    -- Set search path
+    ALTER DATABASE ablage_system SET search_path TO ablage, public;
+
+  03-terraform-locks.sql: |
+    -- Terraform State Locking Table (for MinIO backend)
+    CREATE TABLE IF NOT EXISTS public.terraform_locks (
+        id VARCHAR(255) PRIMARY KEY,
+        info JSONB NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP + INTERVAL '1 hour')
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_terraform_locks_expires
+    ON public.terraform_locks(expires_at);
+
+    GRANT ALL PRIVILEGES ON TABLE public.terraform_locks TO ablage_admin;

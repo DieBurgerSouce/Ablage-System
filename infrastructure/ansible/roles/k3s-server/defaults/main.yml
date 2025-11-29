@@ -1,0 +1,76 @@
+---
+# =============================================================================
+# K3s Server Role - Default Variables
+# Ablage-System OCR Infrastructure
+# =============================================================================
+
+# K3s version to install (use 'latest' for most recent stable)
+k3s_version: "v1.28.4+k3s2"
+
+# K3s installation channel
+k3s_channel: "stable"
+
+# K3s token for cluster authentication (required, should be set via vault)
+k3s_token: "{{ lookup('env', 'K3S_TOKEN') | default('changeme-in-vault', true) }}"
+
+# K3s server arguments
+k3s_server_args: >-
+  --disable=traefik
+  --disable=servicelb
+  --write-kubeconfig-mode=644
+  --tls-san={{ ansible_host }}
+  --tls-san={{ k3s_api_server_host | default(ansible_host) }}
+  --cluster-cidr=10.42.0.0/16
+  --service-cidr=10.43.0.0/16
+  --cluster-dns=10.43.0.10
+  --flannel-backend=vxlan
+
+# API server host for external access
+k3s_api_server_host: "{{ ansible_host }}"
+k3s_api_server_port: 6443
+
+# Enable embedded etcd for HA (single node: false, HA: true)
+k3s_etcd_enabled: false
+
+# Fetch kubeconfig to local machine
+k3s_fetch_kubeconfig: true
+k3s_kubeconfig_local_path: "{{ playbook_dir }}/../kubeconfig-{{ env_name | default('production') }}.yaml"
+
+# Install NVIDIA device plugin for GPU support
+k3s_install_nvidia_plugin: true
+k3s_nvidia_plugin_version: "v0.14.3"
+
+# Install metrics server
+k3s_install_metrics_server: true
+
+# Install ingress-nginx
+k3s_install_ingress_nginx: true
+k3s_ingress_nginx_version: "4.9.0"
+
+# Node labels
+k3s_node_labels:
+  - "node.kubernetes.io/role=control-plane"
+  - "ablage-system.local/env={{ env_name | default('production') }}"
+
+# Resource reservations for system
+k3s_kubelet_args: >-
+  --system-reserved=cpu=500m,memory=1Gi
+  --kube-reserved=cpu=500m,memory=1Gi
+  --eviction-hard=memory.available<500Mi,nodefs.available<10%
+
+# Data directory
+k3s_data_dir: "/var/lib/rancher/k3s"
+
+# Configuration directory
+k3s_config_dir: "/etc/rancher/k3s"
+
+# Firewall ports to open
+k3s_firewall_ports:
+  - { port: 6443, proto: tcp, comment: "Kubernetes API" }
+  - { port: 10250, proto: tcp, comment: "Kubelet" }
+  - { port: 8472, proto: udp, comment: "Flannel VXLAN" }
+  - { port: 51820, proto: udp, comment: "Flannel Wireguard" }
+  - { port: 51821, proto: udp, comment: "Flannel Wireguard IPv6" }
+
+# Environment name
+env_name: "{{ lookup('env', 'ENV_NAME') | default('production', true) }}"

@@ -1,0 +1,18 @@
+---
+# =============================================================================
+# K3s Server Role - Handlers
+# Ablage-System OCR Infrastructure
+# =============================================================================
+
+- name: restart k3s
+  ansible.builtin.systemd:
+    name: k3s
+    state: restarted
+    daemon_reload: yes
+  listen: restart k3s
+
+- name: update kubeconfig
+  ansible.builtin.command: >
+    sed -i 's|server: https://127.0.0.1:6443|server: https://{{ k3s_api_server_host }}:{{ k3s_api_server_port }}|'
+    {{ ansible_env.HOME }}/.kube/config
+  listen: update kubeconfig

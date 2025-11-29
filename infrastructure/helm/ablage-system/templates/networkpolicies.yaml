@@ -1,0 +1,179 @@
+{{- if .Values.networkPolicies.enabled }}
+---
+# Default deny all ingress traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ablage-system.fullname" . }}-default-deny
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "ablage-system.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Allow DNS resolution
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ablage-system.fullname" . }}-allow-dns
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "ablage-system.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# Backend network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ablage-system.fullname" . }}-backend
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "ablage-system.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ablage-system.backend.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from frontend
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "ablage-system.frontend.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    # Allow to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: database
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: cache
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow to MinIO
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: storage
+      ports:
+        - protocol: TCP
+          port: 9000
+---
+# Worker network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ablage-system.fullname" . }}-worker
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "ablage-system.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ablage-system.worker.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: database
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: cache
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow to MinIO
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: storage
+      ports:
+        - protocol: TCP
+          port: 9000
+    # Allow to Backend (for API calls)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "ablage-system.backend.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8000
+---
+# Frontend network policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ablage-system.fullname" . }}-frontend
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "ablage-system.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ablage-system.frontend.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 80
+  egress:
+    # Allow to Backend
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "ablage-system.backend.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 8000
+{{- end }}

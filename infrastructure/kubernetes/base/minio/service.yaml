@@ -1,0 +1,24 @@
+---
+# =============================================================================
+# MinIO Services
+# Ablage-System OCR Infrastructure
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: ablage-minio
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-minio
+    app.kubernetes.io/component: storage
+spec:
+  type: ClusterIP
+  ports:
+    - name: api
+      port: 9000
+      targetPort: 9000
+    - name: console
+      port: 9001
+      targetPort: 9001
+  selector:
+    app.kubernetes.io/name: ablage-minio

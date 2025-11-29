@@ -1,0 +1,44 @@
+apiVersion: v2
+name: ablage-system
+description: Enterprise Document Processing Platform with GPU-accelerated OCR
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - ocr
+  - document-processing
+  - gpu
+  - german
+  - fastapi
+  - celery
+
+home: https://github.com/your-org/ablage-system
+sources:
+  - https://github.com/your-org/ablage-system
+
+maintainers:
+  - name: Ablage-System Team
+    email: team@ablage-system.local
+
+# Dependencies (optional - can use external charts)
+dependencies:
+  - name: postgresql
+    version: "~14.0"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.external.enabled
+    alias: postgresqlExternal
+  - name: redis
+    version: "~18.0"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.external.enabled
+    alias: redisExternal
+  - name: minio
+    version: "~13.0"
+    repository: https://charts.bitnami.com/bitnami
+    condition: minio.external.enabled
+    alias: minioExternal
+
+annotations:
+  category: AI/ML
+  licenses: MIT

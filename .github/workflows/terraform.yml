@@ -1,0 +1,244 @@
+# =============================================================================
+# Terraform CI/CD Pipeline
+# Ablage-System Infrastructure
+# =============================================================================
+name: Terraform
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'infrastructure/terraform/**'
+      - '.github/workflows/terraform.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'infrastructure/terraform/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+      action:
+        description: 'Terraform action'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+env:
+  TF_VERSION: '1.6.0'
+  TF_LOG: INFO
+
+jobs:
+  # ===========================================================================
+  # Validate Terraform Code
+  # ===========================================================================
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: infrastructure/terraform
+
+      - name: Terraform Init (validation only)
+        run: terraform init -backend=false
+        working-directory: infrastructure/terraform/proxmox
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: infrastructure/terraform/proxmox
+
+  # ===========================================================================
+  # Security Scanning
+  # ===========================================================================
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: infrastructure/terraform
+          soft_fail: true
+
+      - name: Run checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infrastructure/terraform
+          framework: terraform
+          soft_fail: true
+          output_format: sarif
+          output_file_path: reports/checkov.sarif
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: reports/checkov.sarif
+
+  # ===========================================================================
+  # Terraform Plan
+  # ===========================================================================
+  plan:
+    name: Plan (${{ matrix.environment }})
+    runs-on: ubuntu-latest
+    needs: [validate, security]
+    if: github.event_name == 'pull_request' || github.event.inputs.action == 'plan'
+    strategy:
+      matrix:
+        environment: [dev, staging, production]
+      fail-fast: false
+    env:
+      TF_VAR_environment: ${{ matrix.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure Backend Credentials
+        run: |
+          mkdir -p ~/.aws
+          cat > ~/.aws/credentials << EOF
+          [default]
+          aws_access_key_id = ${{ secrets.MINIO_ACCESS_KEY }}
+          aws_secret_access_key = ${{ secrets.MINIO_SECRET_KEY }}
+          EOF
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="environments/${{ matrix.environment }}/backend.hcl"
+        working-directory: infrastructure/terraform/proxmox
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan \
+            -var-file="environments/${{ matrix.environment }}/terraform.tfvars" \
+            -out=tfplan \
+            -no-color
+        working-directory: infrastructure/terraform/proxmox
+        continue-on-error: true
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ matrix.environment }}
+          path: infrastructure/terraform/proxmox/tfplan
+
+      - name: Comment PR with Plan
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const output = `#### Terraform Plan - ${{ matrix.environment }} 📖\`${{ steps.plan.outcome }}\`
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`terraform
+            ${{ steps.plan.outputs.stdout }}
+            \`\`\`
+
+            </details>
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+  # ===========================================================================
+  # Terraform Apply
+  # ===========================================================================
+  apply:
+    name: Apply (${{ github.event.inputs.environment }})
+    runs-on: ubuntu-latest
+    needs: [validate, security]
+    if: github.event.inputs.action == 'apply'
+    environment: ${{ github.event.inputs.environment }}
+    env:
+      TF_VAR_environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure Backend Credentials
+        run: |
+          mkdir -p ~/.aws
+          cat > ~/.aws/credentials << EOF
+          [default]
+          aws_access_key_id = ${{ secrets.MINIO_ACCESS_KEY }}
+          aws_secret_access_key = ${{ secrets.MINIO_SECRET_KEY }}
+          EOF
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="environments/${{ github.event.inputs.environment }}/backend.hcl"
+        working-directory: infrastructure/terraform/proxmox
+
+      - name: Terraform Apply
+        run: |
+          terraform apply \
+            -var-file="environments/${{ github.event.inputs.environment }}/terraform.tfvars" \
+            -auto-approve
+        working-directory: infrastructure/terraform/proxmox
+
+      - name: Notify Success
+        if: success()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "Terraform Apply Successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":white_check_mark: *Terraform Apply Successful*\nEnvironment: `${{ github.event.inputs.environment }}`\nTriggered by: @${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

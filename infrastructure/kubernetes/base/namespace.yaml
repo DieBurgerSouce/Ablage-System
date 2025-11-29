@@ -1,0 +1,90 @@
+---
+# =============================================================================
+# Ablage-System Namespace and Resource Quota
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-system
+    app.kubernetes.io/part-of: ablage-system
+    app.kubernetes.io/managed-by: kustomize
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ablage-system-quota
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-system
+spec:
+  hard:
+    # CPU limits
+    requests.cpu: "16"
+    limits.cpu: "32"
+    # Memory limits
+    requests.memory: 64Gi
+    limits.memory: 128Gi
+    # GPU limits
+    requests.nvidia.com/gpu: "2"
+    limits.nvidia.com/gpu: "2"
+    # Storage limits
+    persistentvolumeclaims: "20"
+    requests.storage: 2Ti
+    # Object counts
+    pods: "50"
+    services: "20"
+    secrets: "50"
+    configmaps: "50"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: ablage-system-limits
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-system
+spec:
+  limits:
+    # Default container limits
+    - default:
+        cpu: "1"
+        memory: 2Gi
+      defaultRequest:
+        cpu: "100m"
+        memory: 256Mi
+      type: Container
+    # PVC limits
+    - type: PersistentVolumeClaim
+      max:
+        storage: 500Gi
+      min:
+        storage: 1Gi
+---
+# Service Account for Ablage-System components
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ablage-system
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ablage-backend
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-backend
+    app.kubernetes.io/component: api
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ablage-worker
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-worker
+    app.kubernetes.io/component: worker

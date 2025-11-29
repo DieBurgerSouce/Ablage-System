@@ -1,0 +1,37 @@
+---
+# =============================================================================
+# FluxCD Git Repository Source
+# Ablage-System GitOps Infrastructure
+# =============================================================================
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: ablage-system
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/part-of: ablage-system-gitops
+spec:
+  interval: 1m
+  url: https://github.com/your-org/ablage-system.git
+  ref:
+    branch: main
+  secretRef:
+    name: git-credentials
+  ignore: |
+    # Exclude non-essential files
+    *.md
+    !README.md
+    .github/
+    tests/
+    docs/
+---
+# Git credentials secret (create manually or via sealed-secrets)
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: git-credentials
+#   namespace: flux-system
+# type: Opaque
+# stringData:
+#   username: git-user
+#   password: <github-token>

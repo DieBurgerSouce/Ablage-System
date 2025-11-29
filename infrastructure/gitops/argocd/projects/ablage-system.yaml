@@ -1,0 +1,85 @@
+---
+# =============================================================================
+# ArgoCD Project: Ablage-System
+# Ablage-System GitOps Infrastructure
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ablage-system
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ablage-system-gitops
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: "Ablage-System OCR Platform - Enterprise Document Processing"
+
+  # Source repositories
+  sourceRepos:
+    - 'https://github.com/your-org/ablage-system.git'
+    - 'https://charts.bitnami.com/bitnami'
+
+  # Destination clusters and namespaces
+  destinations:
+    - namespace: ablage-system
+      server: https://kubernetes.default.svc
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+
+  # Allowed cluster resources
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: 'networking.k8s.io'
+      kind: NetworkPolicy
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRole
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRoleBinding
+
+  # Namespace resource blacklist (security)
+  namespaceResourceBlacklist:
+    - group: ''
+      kind: ResourceQuota
+    - group: ''
+      kind: LimitRange
+
+  # Orphaned resources monitoring
+  orphanedResources:
+    warn: true
+    ignore:
+      - group: ''
+        kind: ConfigMap
+        name: kube-root-ca.crt
+
+  # Sync windows (optional - restrict sync times)
+  # syncWindows:
+  #   - kind: allow
+  #     schedule: '0 6-22 * * *'
+  #     duration: 16h
+  #     applications:
+  #       - '*'
+  #     namespaces:
+  #       - ablage-system
+
+  # Roles
+  roles:
+    - name: developer
+      description: Developer access to Ablage-System
+      policies:
+        - p, proj:ablage-system:developer, applications, get, ablage-system/*, allow
+        - p, proj:ablage-system:developer, applications, sync, ablage-system/*, allow
+        - p, proj:ablage-system:developer, logs, get, ablage-system/*, allow
+      groups:
+        - developers
+
+    - name: admin
+      description: Admin access to Ablage-System
+      policies:
+        - p, proj:ablage-system:admin, applications, *, ablage-system/*, allow
+        - p, proj:ablage-system:admin, repositories, *, ablage-system/*, allow
+        - p, proj:ablage-system:admin, logs, *, ablage-system/*, allow
+        - p, proj:ablage-system:admin, exec, *, ablage-system/*, allow
+      groups:
+        - admins

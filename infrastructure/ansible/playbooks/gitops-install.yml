@@ -1,0 +1,206 @@
+---
+# =============================================================================
+# GitOps Installation Playbook
+# Ablage-System Infrastructure
+# =============================================================================
+- name: Install GitOps Tools (ArgoCD + FluxCD)
+  hosts: k3s_server
+  become: true
+  vars:
+    argocd_version: "v2.9.3"
+    flux_version: "v2.2.0"
+    kubeconfig: "/etc/rancher/k3s/k3s.yaml"
+
+  tasks:
+    # ==========================================================================
+    # Prerequisites
+    # ==========================================================================
+    - name: Ensure kubectl is available
+      command: which kubectl
+      register: kubectl_check
+      failed_when: kubectl_check.rc != 0
+      changed_when: false
+
+    - name: Set KUBECONFIG environment
+      set_fact:
+        kubeconfig_env:
+          KUBECONFIG: "{{ kubeconfig }}"
+
+    # ==========================================================================
+    # ArgoCD Installation
+    # ==========================================================================
+    - name: Create ArgoCD namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: argocd
+            labels:
+              app.kubernetes.io/name: argocd
+
+    - name: Download ArgoCD installation manifest
+      get_url:
+        url: "https://raw.githubusercontent.com/argoproj/argo-cd/{{ argocd_version }}/manifests/install.yaml"
+        dest: /tmp/argocd-install.yaml
+        mode: '0644'
+
+    - name: Install ArgoCD
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        src: /tmp/argocd-install.yaml
+
+    - name: Wait for ArgoCD server to be ready
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig }}"
+        kind: Deployment
+        name: argocd-server
+        namespace: argocd
+      register: argocd_server
+      until: argocd_server.resources[0].status.readyReplicas | default(0) >= 1
+      retries: 30
+      delay: 10
+
+    - name: Apply ArgoCD custom configuration
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        src: "{{ playbook_dir }}/../gitops/argocd/install.yaml"
+
+    - name: Apply ArgoCD project
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        src: "{{ playbook_dir }}/../gitops/argocd/projects/ablage-system.yaml"
+
+    - name: Get ArgoCD initial admin password
+      shell: |
+        kubectl --kubeconfig={{ kubeconfig }} -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+      register: argocd_password
+      changed_when: false
+      no_log: true
+
+    - name: Display ArgoCD admin password
+      debug:
+        msg: "ArgoCD Admin Password: {{ argocd_password.stdout }}"
+      no_log: true
+
+    # ==========================================================================
+    # FluxCD Installation
+    # ==========================================================================
+    - name: Check if Flux CLI is installed
+      command: which flux
+      register: flux_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install Flux CLI
+      shell: |
+        curl -s https://fluxcd.io/install.sh | bash
+      when: flux_check.rc != 0
+      args:
+        creates: /usr/local/bin/flux
+
+    - name: Create FluxCD namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: flux-system
+            labels:
+              app.kubernetes.io/name: flux
+
+    - name: Bootstrap FluxCD (without GitHub)
+      shell: |
+        flux install \
+          --kubeconfig={{ kubeconfig }} \
+          --namespace=flux-system \
+          --components=source-controller,kustomize-controller,helm-controller,notification-controller,image-reflector-controller,image-automation-controller
+      environment: "{{ kubeconfig_env }}"
+      register: flux_install
+      changed_when: "'installed' in flux_install.stdout"
+
+    - name: Wait for Flux controllers to be ready
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig }}"
+        kind: Deployment
+        namespace: flux-system
+        label_selectors:
+          - app.kubernetes.io/part-of=flux
+      register: flux_deployments
+      until: flux_deployments.resources | selectattr('status.readyReplicas', 'defined') | list | length == flux_deployments.resources | length
+      retries: 30
+      delay: 10
+
+    - name: Apply FluxCD sources
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        src: "{{ item }}"
+      loop:
+        - "{{ playbook_dir }}/../gitops/fluxcd/source/git-repository.yaml"
+        - "{{ playbook_dir }}/../gitops/fluxcd/source/helm-repository.yaml"
+
+    - name: Apply FluxCD image automation
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        src: "{{ item }}"
+      loop:
+        - "{{ playbook_dir }}/../gitops/fluxcd/image-automation/image-repository.yaml"
+        - "{{ playbook_dir }}/../gitops/fluxcd/image-automation/image-policy.yaml"
+        - "{{ playbook_dir }}/../gitops/fluxcd/image-automation/image-update-automation.yaml"
+
+    # ==========================================================================
+    # Verification
+    # ==========================================================================
+    - name: Verify ArgoCD installation
+      shell: |
+        kubectl --kubeconfig={{ kubeconfig }} get pods -n argocd -o wide
+      register: argocd_pods
+      changed_when: false
+
+    - name: Display ArgoCD pods
+      debug:
+        var: argocd_pods.stdout_lines
+
+    - name: Verify FluxCD installation
+      shell: |
+        flux --kubeconfig={{ kubeconfig }} check
+      environment: "{{ kubeconfig_env }}"
+      register: flux_check_result
+      changed_when: false
+
+    - name: Display Flux check result
+      debug:
+        var: flux_check_result.stdout_lines
+
+    - name: Print GitOps installation summary
+      debug:
+        msg: |
+          =====================================================
+          GitOps Installation Complete!
+          =====================================================
+
+          ArgoCD:
+          - URL: https://argocd.ablage-system.local
+          - Username: admin
+          - Password: (see above, change immediately!)
+
+          FluxCD:
+          - Components installed in flux-system namespace
+          - Image automation enabled
+
+          Next Steps:
+          1. Change ArgoCD admin password
+          2. Configure Git repository credentials
+          3. Apply ArgoCD applications
+          4. Configure FluxCD notifications
+
+          =====================================================

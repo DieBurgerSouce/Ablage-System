@@ -1,0 +1,75 @@
+---
+# =============================================================================
+# ArgoCD Application: Ablage-System (Development)
+# Ablage-System GitOps Infrastructure
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ablage-system-dev
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ablage-system-gitops
+    environment: development
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: ablage-system
+
+  source:
+    repoURL: https://github.com/your-org/ablage-system.git
+    targetRevision: develop
+    path: infrastructure/helm/ablage-system
+
+    helm:
+      releaseName: ablage-system-dev
+      valueFiles:
+        - values.yaml
+
+      # Override values for development
+      parameters:
+        - name: backend.replicaCount
+          value: "1"
+        - name: worker.replicaCount
+          value: "1"
+        - name: frontend.replicaCount
+          value: "1"
+        - name: ingress.hosts[0].host
+          value: dev.ablage-system.local
+        - name: backend.autoscaling.enabled
+          value: "false"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ablage-system-dev
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Ignore differences in specific fields
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+      jsonPointers:
+        - /spec/minReplicas
+        - /spec/maxReplicas
+
+  # Health checks
+  revisionHistoryLimit: 10

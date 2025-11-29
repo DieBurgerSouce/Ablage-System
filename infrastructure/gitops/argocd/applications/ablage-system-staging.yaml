@@ -1,0 +1,70 @@
+---
+# =============================================================================
+# ArgoCD Application: Ablage-System (Staging)
+# Ablage-System GitOps Infrastructure
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ablage-system-staging
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ablage-system-gitops
+    environment: staging
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: ablage-system
+
+  source:
+    repoURL: https://github.com/your-org/ablage-system.git
+    targetRevision: main
+    path: infrastructure/helm/ablage-system
+
+    helm:
+      releaseName: ablage-system-staging
+      valueFiles:
+        - values.yaml
+
+      # Override values for staging
+      parameters:
+        - name: backend.replicaCount
+          value: "2"
+        - name: worker.replicaCount
+          value: "1"
+        - name: frontend.replicaCount
+          value: "1"
+        - name: ingress.hosts[0].host
+          value: staging.ablage-system.local
+        - name: postgresql.primary.persistence.size
+          value: "50Gi"
+        - name: minio.persistence.size
+          value: "100Gi"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ablage-system-staging
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+
+  revisionHistoryLimit: 10

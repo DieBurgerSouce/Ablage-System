@@ -1,0 +1,316 @@
+# =============================================================================
+# Ablage-System Helm Chart - Default Values
+# =============================================================================
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: "local-path"
+
+# Namespace configuration
+namespace:
+  create: true
+  name: ablage-system
+
+# =============================================================================
+# Backend (FastAPI)
+# =============================================================================
+backend:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: ablage-system/backend
+    tag: latest
+    pullPolicy: Always
+
+  service:
+    type: ClusterIP
+    port: 8000
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  env:
+    LOG_LEVEL: INFO
+    API_HOST: "0.0.0.0"
+    API_PORT: "8000"
+
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+# =============================================================================
+# Worker (Celery + GPU)
+# =============================================================================
+worker:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: ablage-system/worker
+    tag: latest
+    pullPolicy: Always
+
+  gpu:
+    enabled: true
+    count: 1
+    type: nvidia.com/gpu
+
+  resources:
+    requests:
+      cpu: 2000m
+      memory: 16Gi
+    limits:
+      cpu: 8000m
+      memory: 32Gi
+
+  tolerations:
+    - key: "nvidia.com/gpu"
+      operator: "Exists"
+      effect: "NoSchedule"
+
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+
+  env:
+    CUDA_VISIBLE_DEVICES: "0"
+    OCR_DEFAULT_BACKEND: "deepseek"
+    GPU_MEMORY_LIMIT_PERCENT: "85"
+    LOG_LEVEL: INFO
+
+# =============================================================================
+# Frontend (Nginx)
+# =============================================================================
+frontend:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: nginx
+    tag: 1.25-alpine
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# =============================================================================
+# PostgreSQL
+# =============================================================================
+postgresql:
+  enabled: true
+  external:
+    enabled: false
+
+  image:
+    repository: postgres
+    tag: 16-alpine
+
+  auth:
+    database: ablage_system
+    username: ablage_admin
+    existingSecret: ""
+    secretKeys:
+      adminPasswordKey: postgres-password
+
+  primary:
+    persistence:
+      enabled: true
+      size: 100Gi
+      storageClass: ""
+
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 2000m
+        memory: 8Gi
+
+  metrics:
+    enabled: true
+
+# =============================================================================
+# Redis
+# =============================================================================
+redis:
+  enabled: true
+  external:
+    enabled: false
+
+  image:
+    repository: redis
+    tag: 7-alpine
+
+  architecture: standalone
+
+  auth:
+    enabled: false
+
+  master:
+    persistence:
+      enabled: true
+      size: 10Gi
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+  metrics:
+    enabled: true
+
+# =============================================================================
+# MinIO
+# =============================================================================
+minio:
+  enabled: true
+  external:
+    enabled: false
+
+  image:
+    repository: minio/minio
+    tag: RELEASE.2024-01-01T16-36-33Z
+
+  mode: standalone
+
+  auth:
+    existingSecret: ""
+
+  persistence:
+    enabled: true
+    size: 500Gi
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+# =============================================================================
+# Ingress
+# =============================================================================
+ingress:
+  enabled: true
+  className: nginx
+
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+
+  hosts:
+    - host: ablage-system.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+        - path: /api
+          pathType: Prefix
+          service: backend
+        - path: /docs
+          pathType: Prefix
+          service: backend
+
+  tls: []
+
+# =============================================================================
+# Monitoring
+# =============================================================================
+monitoring:
+  enabled: true
+
+  prometheus:
+    enabled: true
+    scrape: true
+
+  serviceMonitor:
+    enabled: false
+    namespace: monitoring
+
+# =============================================================================
+# Network Policies
+# =============================================================================
+networkPolicies:
+  enabled: true
+
+# =============================================================================
+# Secrets
+# =============================================================================
+secrets:
+  create: true
+  existingSecret: ""
+
+  # These should be overridden in production!
+  postgresPassword: "changeme"
+  minioAccessKey: "admin"
+  minioSecretKey: "changeme"
+  appSecretKey: "changeme-in-production"
+
+# =============================================================================
+# Persistence
+# =============================================================================
+persistence:
+  uploads:
+    enabled: true
+    size: 50Gi
+    accessMode: ReadWriteMany
+    storageClass: ""
+
+  outputs:
+    enabled: true
+    size: 50Gi
+    accessMode: ReadWriteMany
+    storageClass: ""
+
+  modelCache:
+    enabled: true
+    size: 100Gi
+    accessMode: ReadWriteOnce
+    storageClass: ""
+
+# =============================================================================
+# Common Configuration
+# =============================================================================
+commonLabels: {}
+commonAnnotations: {}
+
+timezone: "Europe/Berlin"
+locale: "de_DE.UTF-8"

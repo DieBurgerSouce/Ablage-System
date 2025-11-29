@@ -1,0 +1,40 @@
+---
+# =============================================================================
+# FluxCD Image Repository
+# Ablage-System GitOps Infrastructure
+# =============================================================================
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: ablage-backend
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/part-of: ablage-system-gitops
+spec:
+  image: your-registry/ablage-system/backend
+  interval: 5m
+  # For private registries
+  # secretRef:
+  #   name: registry-credentials
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: ablage-worker
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/part-of: ablage-system-gitops
+spec:
+  image: your-registry/ablage-system/worker
+  interval: 5m
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: ablage-frontend
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/part-of: ablage-system-gitops
+spec:
+  image: your-registry/ablage-system/frontend
+  interval: 5m

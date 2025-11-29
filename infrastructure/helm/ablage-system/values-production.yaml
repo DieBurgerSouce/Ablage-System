@@ -1,0 +1,94 @@
+# =============================================================================
+# Ablage-System Helm Chart - Production Values
+# =============================================================================
+
+# Backend - higher replicas and resources
+backend:
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 4000m
+      memory: 8Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+
+# Worker - 2 GPU workers
+worker:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 4000m
+      memory: 24Gi
+    limits:
+      cpu: 8000m
+      memory: 32Gi
+
+# Frontend
+frontend:
+  replicaCount: 2
+
+# PostgreSQL - larger storage and resources
+postgresql:
+  primary:
+    persistence:
+      size: 500Gi
+    resources:
+      requests:
+        cpu: 2000m
+        memory: 8Gi
+      limits:
+        cpu: 4000m
+        memory: 16Gi
+
+# Redis - larger memory
+redis:
+  master:
+    persistence:
+      size: 20Gi
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+# MinIO - larger storage
+minio:
+  persistence:
+    size: 2000Gi
+
+# Ingress with TLS
+ingress:
+  hosts:
+    - host: ablage-system.company.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+        - path: /api
+          pathType: Prefix
+          service: backend
+  tls:
+    - secretName: ablage-tls
+      hosts:
+        - ablage-system.company.local
+
+# Larger persistence volumes
+persistence:
+  uploads:
+    size: 200Gi
+  outputs:
+    size: 200Gi
+  modelCache:
+    size: 200Gi
+
+# Secrets should come from external secret management
+secrets:
+  create: false
+  existingSecret: "ablage-production-secrets"

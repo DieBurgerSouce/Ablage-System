@@ -1,0 +1,12 @@
+---
+# =============================================================================
+# FluxCD Namespace
+# Ablage-System GitOps Infrastructure
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: flux-system
+  labels:
+    app.kubernetes.io/name: flux
+    app.kubernetes.io/part-of: ablage-system-gitops

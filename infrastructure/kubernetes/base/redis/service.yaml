@@ -1,0 +1,56 @@
+---
+# =============================================================================
+# Redis Service
+# Ablage-System OCR Infrastructure
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: ablage-redis
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-redis
+    app.kubernetes.io/component: cache
+spec:
+  type: ClusterIP
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+    - name: metrics
+      port: 9121
+      targetPort: 9121
+  selector:
+    app.kubernetes.io/name: ablage-redis
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-redis
+data:
+  redis.conf: |
+    # Redis configuration for Ablage-System
+    bind 0.0.0.0
+    port 6379
+    protected-mode no
+
+    # Memory management
+    maxmemory 768mb
+    maxmemory-policy allkeys-lru
+
+    # Persistence
+    save 900 1
+    save 300 10
+    save 60 10000
+    appendonly yes
+    appendfsync everysec
+
+    # Performance
+    tcp-keepalive 300
+    timeout 0
+
+    # Logging
+    loglevel notice

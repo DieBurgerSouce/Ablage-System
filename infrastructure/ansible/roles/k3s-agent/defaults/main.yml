@@ -1,0 +1,47 @@
+---
+# =============================================================================
+# K3s Agent Role - Default Variables
+# Ablage-System OCR Infrastructure
+# =============================================================================
+
+# K3s version (should match server version)
+k3s_version: "v1.28.4+k3s2"
+
+# K3s channel
+k3s_channel: "stable"
+
+# K3s server URL (required)
+k3s_server_url: "https://{{ groups['k3s_servers'][0] }}:6443"
+
+# K3s token (from server or vault)
+k3s_token: "{{ hostvars[groups['k3s_servers'][0]]['k3s_node_token'] | default(lookup('env', 'K3S_TOKEN')) }}"
+
+# Node labels
+k3s_node_labels:
+  - "node.kubernetes.io/role=worker"
+  - "ablage-system.local/env={{ env_name | default('production') }}"
+
+# Node taints (empty by default, GPU nodes add their own)
+k3s_node_taints: []
+
+# Kubelet arguments
+k3s_kubelet_args: >-
+  --system-reserved=cpu=250m,memory=512Mi
+  --kube-reserved=cpu=250m,memory=512Mi
+  --eviction-hard=memory.available<500Mi,nodefs.available<10%
+  --max-pods=110
+
+# Data directory
+k3s_data_dir: "/var/lib/rancher/k3s"
+
+# Configuration directory
+k3s_config_dir: "/etc/rancher/k3s"
+
+# Firewall ports to open
+k3s_firewall_ports:
+  - { port: 10250, proto: tcp, comment: "Kubelet" }
+  - { port: 8472, proto: udp, comment: "Flannel VXLAN" }
+  - { port: 51820, proto: udp, comment: "Flannel Wireguard" }
+
+# Environment name
+env_name: "{{ lookup('env', 'ENV_NAME') | default('production', true) }}"

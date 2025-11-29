@@ -1,0 +1,22 @@
+---
+# =============================================================================
+# PostgreSQL Backup PVC
+# Ablage-System OCR Infrastructure
+# =============================================================================
+# Note: Main data PVC is created by StatefulSet volumeClaimTemplates
+# This PVC is for backup storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-backup
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-postgres
+    app.kubernetes.io/component: database
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 50Gi

@@ -1,0 +1,213 @@
+---
+# =============================================================================
+# K3s GPU Node Role - Main Tasks
+# Ablage-System OCR Infrastructure
+# =============================================================================
+
+- name: Zeige GPU-Konfiguration
+  ansible.builtin.debug:
+    msg: |
+      K3s GPU Node Konfiguration
+      ===========================
+      Host: {{ inventory_hostname }}
+      GPU Typ: {{ k3s_gpu_type }}
+      GPU Modell: {{ k3s_gpu_model }}
+      VRAM: {{ k3s_gpu_vram_gb }}GB
+      Taint aktiviert: {{ k3s_gpu_taint_enabled }}
+
+# -----------------------------------------------------------------------------
+# Verify NVIDIA Driver
+# -----------------------------------------------------------------------------
+- name: Prüfe ob NVIDIA-Treiber installiert ist
+  ansible.builtin.command: nvidia-smi
+  register: nvidia_smi_check
+  changed_when: false
+  failed_when: false
+
+- name: Fehler wenn NVIDIA-Treiber nicht vorhanden
+  ansible.builtin.fail:
+    msg: |
+      NVIDIA-Treiber nicht gefunden!
+      Bitte zuerst die 'nvidia' Rolle ausführen oder Treiber manuell installieren.
+      Erwartete Version: {{ nvidia_driver_version }}
+  when: nvidia_smi_check.rc != 0
+
+- name: Zeige GPU-Status
+  ansible.builtin.debug:
+    msg: "{{ nvidia_smi_check.stdout_lines }}"
+  when: nvidia_smi_check.rc == 0
+
+# -----------------------------------------------------------------------------
+# Install NVIDIA Container Toolkit
+# -----------------------------------------------------------------------------
+- name: Installiere NVIDIA Container Toolkit
+  when: nvidia_container_toolkit_enabled
+  block:
+    - name: Füge NVIDIA Container Toolkit GPG Key hinzu
+      ansible.builtin.apt_key:
+        url: https://nvidia.github.io/libnvidia-container/gpgkey
+        state: present
+
+    - name: Füge NVIDIA Container Toolkit Repository hinzu
+      ansible.builtin.apt_repository:
+        repo: "deb https://nvidia.github.io/libnvidia-container/stable/deb/$(ARCH) /"
+        state: present
+        filename: nvidia-container-toolkit
+      register: nvidia_repo
+
+    - name: Installiere nvidia-container-toolkit
+      ansible.builtin.apt:
+        name: nvidia-container-toolkit
+        state: present
+        update_cache: "{{ nvidia_repo.changed }}"
+
+# -----------------------------------------------------------------------------
+# Configure Containerd for NVIDIA Runtime
+# -----------------------------------------------------------------------------
+- name: Erstelle containerd Konfigurationsverzeichnis für K3s
+  ansible.builtin.file:
+    path: /var/lib/rancher/k3s/agent/etc/containerd
+    state: directory
+    mode: '0755'
+
+- name: Erstelle containerd Template für NVIDIA Runtime
+  ansible.builtin.template:
+    src: config.toml.tmpl.j2
+    dest: /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+    mode: '0644'
+  notify: restart k3s-agent
+
+- name: Konfiguriere nvidia-container-runtime
+  ansible.builtin.command: nvidia-ctk runtime configure --runtime=containerd
+  changed_when: false
+  failed_when: false
+
+# -----------------------------------------------------------------------------
+# Configure K3s for GPU
+# -----------------------------------------------------------------------------
+- name: Prüfe ob K3s Agent läuft
+  ansible.builtin.systemd:
+    name: k3s-agent
+  register: k3s_agent_status
+  failed_when: false
+
+- name: Starte K3s Agent neu für GPU-Konfiguration
+  ansible.builtin.systemd:
+    name: k3s-agent
+    state: restarted
+    daemon_reload: yes
+  when: k3s_agent_status.status.ActiveState == "active"
+
+# -----------------------------------------------------------------------------
+# Node Labels and Taints
+# -----------------------------------------------------------------------------
+- name: Warte auf Node-Verfügbarkeit
+  delegate_to: "{{ groups['k3s_servers'][0] }}"
+  ansible.builtin.command: kubectl get node {{ inventory_hostname }} -o name
+  register: node_check
+  until: node_check.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Setze GPU Node Labels
+  delegate_to: "{{ groups['k3s_servers'][0] }}"
+  ansible.builtin.command: >
+    kubectl label node {{ inventory_hostname }}
+    {{ item }}
+    --overwrite
+  loop: "{{ k3s_gpu_node_labels }}"
+  changed_when: false
+
+- name: Setze GPU Node Taints
+  delegate_to: "{{ groups['k3s_servers'][0] }}"
+  ansible.builtin.command: >
+    kubectl taint node {{ inventory_hostname }}
+    {{ item }}
+    --overwrite
+  loop: "{{ k3s_gpu_node_taints }}"
+  when: k3s_gpu_taint_enabled
+  changed_when: false
+
+# -----------------------------------------------------------------------------
+# GPU Monitoring
+# -----------------------------------------------------------------------------
+- name: Installiere DCGM Exporter für GPU-Monitoring
+  when: k3s_dcgm_exporter_enabled
+  delegate_to: "{{ groups['k3s_servers'][0] }}"
+  block:
+    - name: Erstelle DCGM Exporter DaemonSet
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: DaemonSet
+          metadata:
+            name: dcgm-exporter
+            namespace: kube-system
+            labels:
+              app.kubernetes.io/name: dcgm-exporter
+          spec:
+            selector:
+              matchLabels:
+                app.kubernetes.io/name: dcgm-exporter
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/name: dcgm-exporter
+              spec:
+                nodeSelector:
+                  nvidia.com/gpu.present: "true"
+                tolerations:
+                  - key: "nvidia.com/gpu"
+                    operator: "Exists"
+                    effect: "NoSchedule"
+                containers:
+                  - name: dcgm-exporter
+                    image: nvcr.io/nvidia/k8s/dcgm-exporter:3.2.5-3.1.7-ubuntu22.04
+                    ports:
+                      - name: metrics
+                        containerPort: 9400
+                    securityContext:
+                      runAsNonRoot: false
+                      runAsUser: 0
+                    resources:
+                      requests:
+                        cpu: 100m
+                        memory: 128Mi
+                      limits:
+                        cpu: 200m
+                        memory: 256Mi
+
+# -----------------------------------------------------------------------------
+# Verification
+# -----------------------------------------------------------------------------
+- name: Warte auf GPU-Erkennung in Kubernetes
+  delegate_to: "{{ groups['k3s_servers'][0] }}"
+  ansible.builtin.shell: |
+    kubectl describe node {{ inventory_hostname }} | grep -A5 "Allocatable:" | grep "nvidia.com/gpu"
+  register: gpu_resource
+  until: "'nvidia.com/gpu' in gpu_resource.stdout"
+  retries: 20
+  delay: 15
+  changed_when: false
+
+- name: Zeige GPU-Ressourcen
+  ansible.builtin.debug:
+    msg: |
+      GPU Node Konfiguration abgeschlossen!
+      =====================================
+      Node: {{ inventory_hostname }}
+      GPU erkannt: {{ gpu_resource.stdout }}
+
+      Labels gesetzt:
+      {% for label in k3s_gpu_node_labels %}
+        - {{ label }}
+      {% endfor %}
+
+      {% if k3s_gpu_taint_enabled %}
+      Taints gesetzt:
+      {% for taint in k3s_gpu_node_taints %}
+        - {{ taint }}
+      {% endfor %}
+      {% endif %}

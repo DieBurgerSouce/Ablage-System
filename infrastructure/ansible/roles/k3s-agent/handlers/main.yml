@@ -1,0 +1,12 @@
+---
+# =============================================================================
+# K3s Agent Role - Handlers
+# Ablage-System OCR Infrastructure
+# =============================================================================
+
+- name: restart k3s-agent
+  ansible.builtin.systemd:
+    name: k3s-agent
+    state: restarted
+    daemon_reload: yes
+  listen: restart k3s-agent

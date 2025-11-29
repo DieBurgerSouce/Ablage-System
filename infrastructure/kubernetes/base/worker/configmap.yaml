@@ -1,0 +1,49 @@
+---
+# =============================================================================
+# Worker ConfigMap
+# Ablage-System OCR Infrastructure
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: worker-config
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-worker
+    app.kubernetes.io/component: worker
+data:
+  # OCR Configuration
+  OCR_DEFAULT_BACKEND: "deepseek"
+  OCR_FALLBACK_BACKEND: "surya"
+  GPU_MEMORY_LIMIT_PERCENT: "85"
+
+  # Model paths (relative to cache)
+  DEEPSEEK_MODEL_PATH: "deepseek-ai/Janus-Pro-1B"
+  GOT_OCR_MODEL_PATH: "ucaslcl/GOT-OCR2_0"
+  SURYA_MODEL_PATH: "vikp/surya_line"
+
+  # Processing settings
+  BATCH_SIZE: "4"
+  MAX_CONCURRENT_TASKS: "1"
+  TASK_TIMEOUT_SECONDS: "600"
+
+  # German language settings
+  DEFAULT_LANGUAGE: "de"
+  ENABLE_FRAKTUR_DETECTION: "true"
+  SPELL_CHECK_ENABLED: "true"
+---
+# Model cache PVC for GPU workers
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ablage-model-cache
+  namespace: ablage-system
+  labels:
+    app.kubernetes.io/name: ablage-worker
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 100Gi
