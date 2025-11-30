@@ -1,0 +1,27 @@
+{
+  "filename": "invoice_005.png",
+  "category": "invoices",
+  "source": "synthetic",
+  "expected_text": "RECHNUNG Nr. 2024-2661\n\nGrößmann Consulting\nKönigsallee 1\n39614 Nürnberg\n\nDatum: 30.10.2025\nUSt-IdNr.: DE273958176\n\nPositionen:\n----------------------------------------\nWartungsvertrag                  1.550,08 EUR\nQualitätssicherung                 231,91 EUR\nSystemintegration                1.283,03 EUR\n----------------------------------------\nSumme Netto:                    3.065,02 EUR\nMwSt, 19%:                        582,35 EUR\nSumme Brutto:                   3.647,37 EUR\n\nIBAN: DE42105909809168908083\n\nZahlbar innerhalb 14 Tagen.\n\nMit freundlichen Gruessen\nGrößmann Consulting",
+  "expected_entities": {
+    "invoice_number": [
+      "2024-2661"
+    ],
+    "iban": [
+      "DE42105909809168908083"
+    ],
+    "vat_id": [
+      "DE273958176"
+    ],
+    "date": [
+      "30.10.2025"
+    ],
+    "total_gross": [
+      "3.647,37"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

@@ -1,0 +1,27 @@
+{
+  "filename": "invoice_002.png",
+  "category": "invoices",
+  "source": "synthetic",
+  "expected_text": "RECHNUNG Nr. 2024-3315\n\nMüller GmbH & Co. KG\nKölner Ring 174\n31460 Nürnberg\n\nDatum: 04.10.2025\nUSt-IdNr.: DE857124896\n\nPositionen:\n----------------------------------------\nSystemintegration                1.473,84 EUR\nIT-Beratung                      1.858,99 EUR\nSoftwareentwicklung                727,90 EUR\nDatenbankoptimierung             1.209,08 EUR\nDatenbankoptimierung               347,80 EUR\n----------------------------------------\nSumme Netto:                    5.617,61 EUR\nMwSt, 19%:                      1.067,35 EUR\nSumme Brutto:                   6.684,96 EUR\n\nIBAN: DE36522480176371998298\n\nZahlbar innerhalb 14 Tagen.\n\nMit freundlichen Gruessen\nMüller GmbH & Co. KG",
+  "expected_entities": {
+    "invoice_number": [
+      "2024-3315"
+    ],
+    "iban": [
+      "DE36522480176371998298"
+    ],
+    "vat_id": [
+      "DE857124896"
+    ],
+    "date": [
+      "04.10.2025"
+    ],
+    "total_gross": [
+      "6.684,96"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

@@ -1,0 +1,18 @@
+{
+  "filename": "table_006.png",
+  "category": "tables",
+  "source": "synthetic",
+  "expected_text": "ARTIKELLISTE\n\nArtikelnr.   | Bezeichnung               | Menge    | Einzelpreis  | Gesamt      \n------------------------------------------------------------------------------------\nART-3064     | Systemintegration         | 2        | 383.90       | 767.80      \nART-9679     | Wartungsvertrag           | 5        | 186.95       | 934.75      \nART-6328     | Projektmanagement         | 4        | 86.20        | 344.80      \nART-4553     | Systemintegration         | 7        | 121.66       | 851.62      \nART-7207     | Netzwerkinstallation      | 4        | 463.99       | 1855.96     \nART-5151     | Projektmanagement         | 9        | 400.54       | 3604.86     \nART-1615     | Qualitätssicherung        | 3        | 271.99       | 815.97      \nART-4447     | Qualitätssicherung        | 7        | 412.68       | 2888.76     \n------------------------------------------------------------------------------------\nGesamtsumme: 12064.52 EUR",
+  "expected_entities": {
+    "total": [
+      "12064.52"
+    ],
+    "row_count": [
+      "8"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": true,
+  "language": "de",
+  "license": "CC0"
+}

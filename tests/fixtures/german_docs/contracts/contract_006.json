@@ -1,0 +1,21 @@
+{
+  "filename": "contract_006.png",
+  "category": "contracts",
+  "source": "synthetic",
+  "expected_text": "DIENSTLEISTUNGSVERTRAG\n\nzwischen\n\nJäger Systemtechnik GmbH\nvertreten durch Gisela Zimmermann\n- nachfolgend \"Auftraggeber\" genannt -\n\nund\n\nMüller GmbH & Co. KG\nvertreten durch Peter Schmidt\n- nachfolgend \"Auftragnehmer\" genannt -\n\nwird folgender Vertrag geschlossen:\n\nParagraph 1 - Vertragsgegenstand\nDer Auftragnehmer verpflichtet sich zur Erbringung\nvon IT-Dienstleistungen gemaess Leistungsbeschreibung.\n\nParagraph 2 - Verguetung\nDie Verguetung betraegt 150,00 EUR pro Stunde.\nRechnungsstellung erfolgt monatlich.\n\nParagraph 3 - Laufzeit\nDer Vertrag beginnt am 16.11.2025 und wird auf\nunbestimmte Zeit geschlossen.\n\nParagraph 4 - Kuendigung\nDer Vertrag kann mit einer Frist von 3 Monaten\nzum Monatsende gekuendigt werden.\n\nParagraph 5 - Gerichtsstand\nGerichtsstand ist Muenchen.\n\n\nGisela Zimmermann                               Peter Schmidt\nAuftraggeber                           Auftragnehmer\n\nDatum: 16.11.2025\n",
+  "expected_entities": {
+    "company1": [
+      "Jäger Systemtechnik GmbH"
+    ],
+    "company2": [
+      "Müller GmbH & Co. KG"
+    ],
+    "date": [
+      "16.11.2025"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

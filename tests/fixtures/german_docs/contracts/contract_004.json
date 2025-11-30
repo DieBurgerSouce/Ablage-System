@@ -1,0 +1,21 @@
+{
+  "filename": "contract_004.png",
+  "category": "contracts",
+  "source": "synthetic",
+  "expected_text": "DIENSTLEISTUNGSVERTRAG\n\nzwischen\n\nBöhm Elektrotechnik\nvertreten durch Karl Schwarz\n- nachfolgend \"Auftraggeber\" genannt -\n\nund\n\nLübecker Handelshaus\nvertreten durch Helga Bauer\n- nachfolgend \"Auftragnehmer\" genannt -\n\nwird folgender Vertrag geschlossen:\n\nParagraph 1 - Vertragsgegenstand\nDer Auftragnehmer verpflichtet sich zur Erbringung\nvon IT-Dienstleistungen gemaess Leistungsbeschreibung.\n\nParagraph 2 - Verguetung\nDie Verguetung betraegt 150,00 EUR pro Stunde.\nRechnungsstellung erfolgt monatlich.\n\nParagraph 3 - Laufzeit\nDer Vertrag beginnt am 22.11.2025 und wird auf\nunbestimmte Zeit geschlossen.\n\nParagraph 4 - Kuendigung\nDer Vertrag kann mit einer Frist von 3 Monaten\nzum Monatsende gekuendigt werden.\n\nParagraph 5 - Gerichtsstand\nGerichtsstand ist Muenchen.\n\n\nKarl Schwarz                                      Helga Bauer\nAuftraggeber                           Auftragnehmer\n\nDatum: 22.11.2025\n",
+  "expected_entities": {
+    "company1": [
+      "Böhm Elektrotechnik"
+    ],
+    "company2": [
+      "Lübecker Handelshaus"
+    ],
+    "date": [
+      "22.11.2025"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

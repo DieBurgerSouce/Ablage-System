@@ -1,0 +1,21 @@
+{
+  "filename": "form_001.png",
+  "category": "forms",
+  "source": "synthetic",
+  "expected_text": "ANTRAGSFORMULAR\n\nAntragsteller:\nName: Karl Wagner\nStrasse: Düsseldorfer Allee 131\nPLZ/Ort: 38061 München\n\nAntragsdatum: 25.11.2025\n\nAntragsgrund (bitte ankreuzen):\n[X] Neuantrag\n[ ] Verlaengerung\n[ ] Aenderung\n\nBegruendung:\n_____________________________________________\n_____________________________________________\n_____________________________________________\n\nAnlagen:\n[ ] Personalausweis (Kopie)\n[ ] Einkommensnachweis\n[ ] Meldebescheinigung\n\nUnterschrift: _______________________________\n\nDatum: 25.11.2025\n",
+  "expected_entities": {
+    "name": [
+      "Karl Wagner"
+    ],
+    "date": [
+      "25.11.2025"
+    ],
+    "city": [
+      "München"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

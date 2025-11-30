@@ -1,0 +1,27 @@
+{
+  "filename": "invoice_001.png",
+  "category": "invoices",
+  "source": "synthetic",
+  "expected_text": "RECHNUNG Nr. 2024-5878\n\nBöhm Elektrotechnik\nGoethestraße 22\n93352 Bremen\n\nDatum: 05.09.2025\nUSt-IdNr.: DE621056220\n\nPositionen:\n----------------------------------------\nQualitätssicherung               1.944,31 EUR\nWartungsvertrag                  1.132,92 EUR\n----------------------------------------\nSumme Netto:                    3.077,23 EUR\nMwSt, 19%:                        584,67 EUR\nSumme Brutto:                   3.661,90 EUR\n\nIBAN: DE50154572822408899428\n\nZahlbar innerhalb 14 Tagen.\n\nMit freundlichen Gruessen\nBöhm Elektrotechnik",
+  "expected_entities": {
+    "invoice_number": [
+      "2024-5878"
+    ],
+    "iban": [
+      "DE50154572822408899428"
+    ],
+    "vat_id": [
+      "DE621056220"
+    ],
+    "date": [
+      "05.09.2025"
+    ],
+    "total_gross": [
+      "3.661,90"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

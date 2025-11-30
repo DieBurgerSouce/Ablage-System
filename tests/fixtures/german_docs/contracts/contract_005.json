@@ -1,0 +1,21 @@
+{
+  "filename": "contract_005.png",
+  "category": "contracts",
+  "source": "synthetic",
+  "expected_text": "DIENSTLEISTUNGSVERTRAG\n\nzwischen\n\nGünther & Söhne\nvertreten durch Sabine Koch\n- nachfolgend \"Auftraggeber\" genannt -\n\nund\n\nSchröder Technik AG\nvertreten durch Helga Schäfer\n- nachfolgend \"Auftragnehmer\" genannt -\n\nwird folgender Vertrag geschlossen:\n\nParagraph 1 - Vertragsgegenstand\nDer Auftragnehmer verpflichtet sich zur Erbringung\nvon IT-Dienstleistungen gemaess Leistungsbeschreibung.\n\nParagraph 2 - Verguetung\nDie Verguetung betraegt 150,00 EUR pro Stunde.\nRechnungsstellung erfolgt monatlich.\n\nParagraph 3 - Laufzeit\nDer Vertrag beginnt am 02.11.2025 und wird auf\nunbestimmte Zeit geschlossen.\n\nParagraph 4 - Kuendigung\nDer Vertrag kann mit einer Frist von 3 Monaten\nzum Monatsende gekuendigt werden.\n\nParagraph 5 - Gerichtsstand\nGerichtsstand ist Muenchen.\n\n\nSabine Koch                                     Helga Schäfer\nAuftraggeber                           Auftragnehmer\n\nDatum: 02.11.2025\n",
+  "expected_entities": {
+    "company1": [
+      "Günther & Söhne"
+    ],
+    "company2": [
+      "Schröder Technik AG"
+    ],
+    "date": [
+      "02.11.2025"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

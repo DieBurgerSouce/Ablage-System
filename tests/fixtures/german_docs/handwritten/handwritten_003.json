@@ -1,0 +1,18 @@
+{
+  "filename": "handwritten_003.png",
+  "category": "handwritten",
+  "source": "synthetic",
+  "expected_text": "Frankfurt, den 21.06.2025\n\nLiebe Familie,\n\nvielen Dank fuer euren Brief. Es freut\nmich sehr, von euch zu hoeren.\n\nHier ist alles in Ordnung. Das Wetter\nist schoen und die Arbeit macht Spass.\n\nHerzliche Gruesse\nHelga Schwarz",
+  "expected_entities": {
+    "date": [
+      "21.06.2025"
+    ],
+    "city": [
+      "Frankfurt"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

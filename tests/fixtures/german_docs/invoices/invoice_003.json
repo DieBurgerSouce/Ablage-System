@@ -1,0 +1,27 @@
+{
+  "filename": "invoice_003.png",
+  "category": "invoices",
+  "source": "synthetic",
+  "expected_text": "RECHNUNG Nr. 2024-1483\n\nNürnberger Software Solutions\nHauptstraße 34\n46620 Stuttgart\n\nDatum: 31.10.2025\nUSt-IdNr.: DE579654342\n\nPositionen:\n----------------------------------------\nWartungsvertrag                    935,54 EUR\nHardwarelieferung                1.024,51 EUR\nWartungsvertrag                    732,50 EUR\n----------------------------------------\nSumme Netto:                    2.692,55 EUR\nMwSt, 19%:                        511,58 EUR\nSumme Brutto:                   3.204,13 EUR\n\nIBAN: DE82411891476167172475\n\nZahlbar innerhalb 14 Tagen.\n\nMit freundlichen Gruessen\nNürnberger Software Solutions",
+  "expected_entities": {
+    "invoice_number": [
+      "2024-1483"
+    ],
+    "iban": [
+      "DE82411891476167172475"
+    ],
+    "vat_id": [
+      "DE579654342"
+    ],
+    "date": [
+      "31.10.2025"
+    ],
+    "total_gross": [
+      "3.204,13"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

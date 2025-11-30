@@ -1,0 +1,18 @@
+{
+  "filename": "table_004.png",
+  "category": "tables",
+  "source": "synthetic",
+  "expected_text": "ARTIKELLISTE\n\nArtikelnr.   | Bezeichnung               | Menge    | Einzelpreis  | Gesamt      \n------------------------------------------------------------------------------------\nART-1035     | IT-Beratung               | 7        | 306.14       | 2142.98     \nART-1157     | Softwareentwicklung       | 4        | 113.68       | 454.72      \nART-2604     | IT-Beratung               | 10       | 79.45        | 794.50      \nART-1690     | Systemintegration         | 6        | 312.20       | 1873.20     \nART-7094     | Softwareentwicklung       | 1        | 174.71       | 174.71      \nART-5995     | Projektmanagement         | 10       | 308.60       | 3086.00     \nART-6365     | Softwareentwicklung       | 2        | 138.89       | 277.78      \n------------------------------------------------------------------------------------\nGesamtsumme: 8803.89 EUR",
+  "expected_entities": {
+    "total": [
+      "8803.89"
+    ],
+    "row_count": [
+      "7"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": true,
+  "language": "de",
+  "license": "CC0"
+}

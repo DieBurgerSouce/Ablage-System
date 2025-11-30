@@ -1,0 +1,21 @@
+{
+  "filename": "form_002.png",
+  "category": "forms",
+  "source": "synthetic",
+  "expected_text": "ANTRAGSFORMULAR\n\nAntragsteller:\nName: Kätchen Schäfer\nStrasse: Kölner Ring 190\nPLZ/Ort: 99505 Hamburg\n\nAntragsdatum: 19.11.2025\n\nAntragsgrund (bitte ankreuzen):\n[X] Neuantrag\n[ ] Verlaengerung\n[ ] Aenderung\n\nBegruendung:\n_____________________________________________\n_____________________________________________\n_____________________________________________\n\nAnlagen:\n[ ] Personalausweis (Kopie)\n[ ] Einkommensnachweis\n[ ] Meldebescheinigung\n\nUnterschrift: _______________________________\n\nDatum: 19.11.2025\n",
+  "expected_entities": {
+    "name": [
+      "Kätchen Schäfer"
+    ],
+    "date": [
+      "19.11.2025"
+    ],
+    "city": [
+      "Hamburg"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

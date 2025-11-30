@@ -1,0 +1,18 @@
+{
+  "filename": "table_001.png",
+  "category": "tables",
+  "source": "synthetic",
+  "expected_text": "ARTIKELLISTE\n\nArtikelnr.   | Bezeichnung               | Menge    | Einzelpreis  | Gesamt      \n------------------------------------------------------------------------------------\nART-3743     | IT-Beratung               | 9        | 267.63       | 2408.67     \nART-8881     | IT-Beratung               | 9        | 110.29       | 992.61      \nART-6398     | Softwareentwicklung       | 6        | 238.28       | 1429.68     \nART-8846     | Qualitätssicherung        | 5        | 177.95       | 889.75      \nART-8669     | Qualitätssicherung        | 8        | 95.32        | 762.56      \n------------------------------------------------------------------------------------\nGesamtsumme: 6483.27 EUR",
+  "expected_entities": {
+    "total": [
+      "6483.27"
+    ],
+    "row_count": [
+      "5"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": true,
+  "language": "de",
+  "license": "CC0"
+}

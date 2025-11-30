@@ -1,0 +1,18 @@
+{
+  "filename": "table_005.png",
+  "category": "tables",
+  "source": "synthetic",
+  "expected_text": "ARTIKELLISTE\n\nArtikelnr.   | Bezeichnung               | Menge    | Einzelpreis  | Gesamt      \n------------------------------------------------------------------------------------\nART-9732     | Projektmanagement         | 3        | 195.95       | 587.85      \nART-4744     | Qualitätssicherung        | 10       | 57.00        | 570.00      \nART-6493     | Qualitätssicherung        | 6        | 489.36       | 2936.16     \nART-9880     | Wartungsvertrag           | 3        | 396.35       | 1189.05     \nART-1003     | Qualitätssicherung        | 9        | 369.96       | 3329.64     \n------------------------------------------------------------------------------------\nGesamtsumme: 8612.70 EUR",
+  "expected_entities": {
+    "total": [
+      "8612.70"
+    ],
+    "row_count": [
+      "5"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": true,
+  "language": "de",
+  "license": "CC0"
+}

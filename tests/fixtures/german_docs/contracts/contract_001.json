@@ -1,0 +1,21 @@
+{
+  "filename": "contract_001.png",
+  "category": "contracts",
+  "source": "synthetic",
+  "expected_text": "DIENSTLEISTUNGSVERTRAG\n\nzwischen\n\nJäger Systemtechnik GmbH\nvertreten durch Hans Schulz\n- nachfolgend \"Auftraggeber\" genannt -\n\nund\n\nFrüh Logistik\nvertreten durch Peter Richter\n- nachfolgend \"Auftragnehmer\" genannt -\n\nwird folgender Vertrag geschlossen:\n\nParagraph 1 - Vertragsgegenstand\nDer Auftragnehmer verpflichtet sich zur Erbringung\nvon IT-Dienstleistungen gemaess Leistungsbeschreibung.\n\nParagraph 2 - Verguetung\nDie Verguetung betraegt 150,00 EUR pro Stunde.\nRechnungsstellung erfolgt monatlich.\n\nParagraph 3 - Laufzeit\nDer Vertrag beginnt am 31.10.2025 und wird auf\nunbestimmte Zeit geschlossen.\n\nParagraph 4 - Kuendigung\nDer Vertrag kann mit einer Frist von 3 Monaten\nzum Monatsende gekuendigt werden.\n\nParagraph 5 - Gerichtsstand\nGerichtsstand ist Muenchen.\n\n\nHans Schulz                                     Peter Richter\nAuftraggeber                           Auftragnehmer\n\nDatum: 31.10.2025\n",
+  "expected_entities": {
+    "company1": [
+      "Jäger Systemtechnik GmbH"
+    ],
+    "company2": [
+      "Früh Logistik"
+    ],
+    "date": [
+      "31.10.2025"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

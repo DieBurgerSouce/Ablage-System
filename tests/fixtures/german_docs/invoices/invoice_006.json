@@ -1,0 +1,27 @@
+{
+  "filename": "invoice_006.png",
+  "category": "invoices",
+  "source": "synthetic",
+  "expected_text": "RECHNUNG Nr. 2024-3585\n\nSchröder Technik AG\nGoethestraße 164\n76185 Bonn\n\nDatum: 14.11.2025\nUSt-IdNr.: DE495148736\n\nPositionen:\n----------------------------------------\nSystemintegration                1.638,71 EUR\nQualitätssicherung                 125,59 EUR\n----------------------------------------\nSumme Netto:                    1.764,30 EUR\nMwSt, 19%:                        335,22 EUR\nSumme Brutto:                   2.099,52 EUR\n\nIBAN: DE68513227814089234426\n\nZahlbar innerhalb 14 Tagen.\n\nMit freundlichen Gruessen\nSchröder Technik AG",
+  "expected_entities": {
+    "invoice_number": [
+      "2024-3585"
+    ],
+    "iban": [
+      "DE68513227814089234426"
+    ],
+    "vat_id": [
+      "DE495148736"
+    ],
+    "date": [
+      "14.11.2025"
+    ],
+    "total_gross": [
+      "2.099,52"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

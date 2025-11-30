@@ -1,0 +1,21 @@
+{
+  "filename": "mixed_003.png",
+  "category": "mixed",
+  "source": "synthetic",
+  "expected_text": "GESCHAEFTSBERICHT 2024\n\nSchröder Technik AG\n\nDatum: 30.10.2025\n\n1. Zusammenfassung\n\nDas Geschaeftsjahr 2024 war erfolgreich.\nDer Umsatz stieg um 15% gegenueber dem Vorjahr.\n\n2. Umsatzentwicklung\n\n| Quartal | Umsatz (EUR) | Wachstum |\n|---------|--------------|----------|\n| Q1      | 1.250.000    | +12%     |\n| Q2      | 1.480.000    | +18%     |\n| Q3      | 1.320.000    | +14%     |\n| Q4      | 1.550.000    | +16%     |\n\nGesamtumsatz: 5.600.000 EUR\n\n3. Ausblick\n\nFuer 2025 erwarten wir ein weiteres Wachstum\nvon 10-12%. Neue Maerkte in Oesterreich und\nder Schweiz werden erschlossen.\n\ngez. Geschaeftsfuehrung\n",
+  "expected_entities": {
+    "company": [
+      "Schröder Technik AG"
+    ],
+    "date": [
+      "30.10.2025"
+    ],
+    "total_revenue": [
+      "5.600.000"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": true,
+  "language": "de",
+  "license": "CC0"
+}

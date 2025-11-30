@@ -1,0 +1,18 @@
+{
+  "filename": "handwritten_002.png",
+  "category": "handwritten",
+  "source": "synthetic",
+  "expected_text": "München, den 12.11.2025\n\nLiebe Familie,\n\nvielen Dank fuer euren Brief. Es freut\nmich sehr, von euch zu hoeren.\n\nHier ist alles in Ordnung. Das Wetter\nist schoen und die Arbeit macht Spass.\n\nHerzliche Gruesse\nPetra Meyer",
+  "expected_entities": {
+    "date": [
+      "12.11.2025"
+    ],
+    "city": [
+      "München"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

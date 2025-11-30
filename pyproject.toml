@@ -282,6 +282,9 @@ markers = [
     "database: Tests requiring database",
     "redis: Tests requiring Redis",
     "minio: Tests requiring MinIO",
+    "metrics: Backend metrics tests",
+    "fallback: GPU fallback scenario tests",
+    "windows: Windows-specific tests",
 ]
 
 # Addopts - options to always use

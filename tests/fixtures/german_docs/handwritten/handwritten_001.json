@@ -1,0 +1,18 @@
+{
+  "filename": "handwritten_001.png",
+  "category": "handwritten",
+  "source": "synthetic",
+  "expected_text": "Bonn, 04.07.2025\n\nNotizen vom Meeting:\n- Budget fuer Q4 genehmigt\n- Neue Mitarbeiter ab Januar\n- Projektstart am 15. naechsten Monats\n\nTODO:\n1. Angebot erstellen\n2. Kunden anrufen\n3. Unterlagen vorbereiten\n\nSabine Schröder",
+  "expected_entities": {
+    "date": [
+      "04.07.2025"
+    ],
+    "city": [
+      "Bonn"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

@@ -1,0 +1,21 @@
+{
+  "filename": "contract_003.png",
+  "category": "contracts",
+  "source": "synthetic",
+  "expected_text": "DIENSTLEISTUNGSVERTRAG\n\nzwischen\n\nGünther & Söhne\nvertreten durch Peter Neumann\n- nachfolgend \"Auftraggeber\" genannt -\n\nund\n\nLübecker Handelshaus\nvertreten durch Monika Schneider\n- nachfolgend \"Auftragnehmer\" genannt -\n\nwird folgender Vertrag geschlossen:\n\nParagraph 1 - Vertragsgegenstand\nDer Auftragnehmer verpflichtet sich zur Erbringung\nvon IT-Dienstleistungen gemaess Leistungsbeschreibung.\n\nParagraph 2 - Verguetung\nDie Verguetung betraegt 150,00 EUR pro Stunde.\nRechnungsstellung erfolgt monatlich.\n\nParagraph 3 - Laufzeit\nDer Vertrag beginnt am 12.11.2025 und wird auf\nunbestimmte Zeit geschlossen.\n\nParagraph 4 - Kuendigung\nDer Vertrag kann mit einer Frist von 3 Monaten\nzum Monatsende gekuendigt werden.\n\nParagraph 5 - Gerichtsstand\nGerichtsstand ist Muenchen.\n\n\nPeter Neumann                                Monika Schneider\nAuftraggeber                           Auftragnehmer\n\nDatum: 12.11.2025\n",
+  "expected_entities": {
+    "company1": [
+      "Günther & Söhne"
+    ],
+    "company2": [
+      "Lübecker Handelshaus"
+    ],
+    "date": [
+      "12.11.2025"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

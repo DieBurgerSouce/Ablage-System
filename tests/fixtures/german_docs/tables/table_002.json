@@ -1,0 +1,18 @@
+{
+  "filename": "table_002.png",
+  "category": "tables",
+  "source": "synthetic",
+  "expected_text": "ARTIKELLISTE\n\nArtikelnr.   | Bezeichnung               | Menge    | Einzelpreis  | Gesamt      \n------------------------------------------------------------------------------------\nART-9379     | Systemintegration         | 7        | 410.08       | 2870.56     \nART-5760     | Softwareentwicklung       | 8        | 331.24       | 2649.92     \nART-2698     | Projektmanagement         | 5        | 58.72        | 293.60      \nART-3540     | Softwareentwicklung       | 5        | 420.79       | 2103.95     \n------------------------------------------------------------------------------------\nGesamtsumme: 7918.03 EUR",
+  "expected_entities": {
+    "total": [
+      "7918.03"
+    ],
+    "row_count": [
+      "4"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": true,
+  "language": "de",
+  "license": "CC0"
+}

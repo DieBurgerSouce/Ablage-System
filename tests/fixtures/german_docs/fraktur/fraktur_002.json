@@ -1,0 +1,11 @@
+{
+  "filename": "fraktur_002.png",
+  "category": "fraktur",
+  "source": "synthetic",
+  "expected_text": "Brief an einen Freund\n\nMein theurer Freund!\n\nIch ergreife die Feder, um Dir von den wundersamen\nEreignissen zu berichten, die sich jüngst in unserer\nStadt zugetragen haben.\n\nMit herzlichstem Grusse\nDein ergebener Diener",
+  "expected_entities": {},
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

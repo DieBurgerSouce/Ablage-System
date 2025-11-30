@@ -1,0 +1,11 @@
+{
+  "filename": "fraktur_001.png",
+  "category": "fraktur",
+  "source": "synthetic",
+  "expected_text": "Bekanntmachung\n\nAllen Buergern und Einwohnern dieser Stadt wird\nhiermit kundgethan, dass am kommenden Sonntage\nein grosses Fest stattfinden wird.\n\nDie Obrigkeit ersucht alle Anwohner um ruehige\nTheilnahme an den Feierlichkeiten.",
+  "expected_entities": {},
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

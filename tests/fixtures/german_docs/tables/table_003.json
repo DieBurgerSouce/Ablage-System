@@ -1,0 +1,18 @@
+{
+  "filename": "table_003.png",
+  "category": "tables",
+  "source": "synthetic",
+  "expected_text": "ARTIKELLISTE\n\nArtikelnr.   | Bezeichnung               | Menge    | Einzelpreis  | Gesamt      \n------------------------------------------------------------------------------------\nART-2960     | Projektmanagement         | 10       | 334.29       | 3342.90     \nART-1028     | Datenbankoptimierung      | 6        | 71.35        | 428.10      \nART-1818     | Qualitätssicherung        | 6        | 205.44       | 1232.64     \nART-5387     | Schulungsmaßnahmen        | 4        | 320.35       | 1281.40     \nART-9001     | Wartungsvertrag           | 5        | 339.42       | 1697.10     \n------------------------------------------------------------------------------------\nGesamtsumme: 7982.14 EUR",
+  "expected_entities": {
+    "total": [
+      "7982.14"
+    ],
+    "row_count": [
+      "5"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": true,
+  "language": "de",
+  "license": "CC0"
+}

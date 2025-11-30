@@ -36,6 +36,22 @@ try:
 except ImportError:
     pass
 
+# GPTQ quantization - works on Windows
+GPTQ_AVAILABLE = False
+try:
+    from auto_gptq import AutoGPTQForCausalLM
+    GPTQ_AVAILABLE = True
+except ImportError:
+    AutoGPTQForCausalLM = None
+
+# AWQ quantization - works on Windows
+AWQ_AVAILABLE = False
+try:
+    from awq import AutoAWQForCausalLM
+    AWQ_AVAILABLE = True
+except ImportError:
+    AutoAWQForCausalLM = None
+
 from app.agents.base import AgentResourceError, OCRAgent
 from app.gpu_manager import GPUManager
 
@@ -184,33 +200,40 @@ class DeepSeekAgent(OCRAgent):
 
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
-            # Determine if quantization can be used
-            # BitsAndBytes has limited Windows support - disable on Windows
-            can_use_quantization = (
-                self.ENABLE_QUANTIZATION
-                and device == "cuda"
-                and BITSANDBYTES_AVAILABLE
-                and not IS_WINDOWS
-            )
+            # Determine quantization strategy based on platform
+            # Priority on Windows: GPTQ > AWQ > bfloat16
+            # Priority on Linux: BitsAndBytes > GPTQ > AWQ > bfloat16
+            quantization_method = None
 
-            if self.ENABLE_QUANTIZATION and not can_use_quantization:
-                if IS_WINDOWS:
+            if self.ENABLE_QUANTIZATION and device == "cuda":
+                if not IS_WINDOWS and BITSANDBYTES_AVAILABLE:
+                    quantization_method = "bitsandbytes"
+                elif GPTQ_AVAILABLE:
+                    quantization_method = "gptq"
+                elif AWQ_AVAILABLE:
+                    quantization_method = "awq"
+                else:
+                    # Fall back to bfloat16 with memory optimization
+                    quantization_method = "bfloat16"
                     self.logger.warning(
-                        "deepseek_quantization_disabled_windows",
-                        reason="BitsAndBytes nicht auf Windows unterstützt - verwende bfloat16",
-                        hint="Für 4-bit Quantisierung WSL2 oder Docker verwenden"
+                        "deepseek_no_quantization_available",
+                        platform="Windows" if IS_WINDOWS else "Linux",
+                        bitsandbytes=BITSANDBYTES_AVAILABLE,
+                        gptq=GPTQ_AVAILABLE,
+                        awq=AWQ_AVAILABLE,
+                        fallback="bfloat16 mit Speicheroptimierung"
                     )
-                elif not BITSANDBYTES_AVAILABLE:
-                    self.logger.warning(
-                        "deepseek_quantization_disabled_missing",
-                        reason="BitsAndBytes nicht installiert - verwende bfloat16",
-                        hint="pip install bitsandbytes"
-                    )
+
+            self.logger.info(
+                "deepseek_quantization_strategy",
+                method=quantization_method,
+                platform="Windows" if IS_WINDOWS else "Linux"
+            )
 
             if use_janus_implementation:
                 # Use Janus-specific implementation as per initial-prompt.md
-                if can_use_quantization:
-                    # 4-bit quantization for RTX 4080 16GB
+                if quantization_method == "bitsandbytes":
+                    # 4-bit quantization for RTX 4080 16GB (Linux)
                     quant_config = BitsAndBytesConfig(
                         load_in_4bit=True,
                         bnb_4bit_compute_dtype=torch.bfloat16,
@@ -223,13 +246,58 @@ class DeepSeekAgent(OCRAgent):
                         trust_remote_code=True,
                         device_map="auto"
                     )
+                elif quantization_method == "gptq":
+                    # GPTQ quantization (Windows compatible)
+                    self.logger.info("deepseek_loading_gptq", model=self.MODEL_NAME)
+                    # Note: Requires GPTQ-quantized model variant
+                    gptq_model_name = f"{self.MODEL_NAME}-GPTQ"
+                    try:
+                        self.model = AutoGPTQForCausalLM.from_quantized(
+                            gptq_model_name,
+                            device_map="auto",
+                            trust_remote_code=True,
+                            use_safetensors=True
+                        )
+                    except Exception as gptq_err:
+                        self.logger.warning("deepseek_gptq_failed", error=str(gptq_err))
+                        # Fall back to bfloat16
+                        quantization_method = "bfloat16"
+                        self.model = MultiModalityCausalLM.from_pretrained(
+                            self.MODEL_NAME,
+                            torch_dtype=torch.bfloat16,
+                            trust_remote_code=True,
+                            device_map="auto",
+                            low_cpu_mem_usage=True
+                        )
+                elif quantization_method == "awq":
+                    # AWQ quantization (Windows compatible)
+                    self.logger.info("deepseek_loading_awq", model=self.MODEL_NAME)
+                    awq_model_name = f"{self.MODEL_NAME}-AWQ"
+                    try:
+                        self.model = AutoAWQForCausalLM.from_quantized(
+                            awq_model_name,
+                            device_map="auto",
+                            trust_remote_code=True
+                        )
+                    except Exception as awq_err:
+                        self.logger.warning("deepseek_awq_failed", error=str(awq_err))
+                        quantization_method = "bfloat16"
+                        self.model = MultiModalityCausalLM.from_pretrained(
+                            self.MODEL_NAME,
+                            torch_dtype=torch.bfloat16,
+                            trust_remote_code=True,
+                            device_map="auto",
+                            low_cpu_mem_usage=True
+                        )
                 else:
+                    # bfloat16 with memory optimization
                     self.model = MultiModalityCausalLM.from_pretrained(
                         self.MODEL_NAME,
                         torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32,
                         attn_implementation="flash_attention_2" if device == "cuda" else "eager",
                         trust_remote_code=True,
-                        device_map="auto" if device == "cuda" else None
+                        device_map="auto" if device == "cuda" else None,
+                        low_cpu_mem_usage=True
                     )
 
                 self.processor = VLChatProcessor.from_pretrained(self.MODEL_NAME)
@@ -238,7 +306,7 @@ class DeepSeekAgent(OCRAgent):
                 # Fallback to standard transformers implementation
                 from transformers import AutoModelForCausalLM, AutoProcessor
 
-                if can_use_quantization:
+                if quantization_method == "bitsandbytes":
                     quant_config = BitsAndBytesConfig(
                         load_in_4bit=True,
                         bnb_4bit_compute_dtype=torch.bfloat16,
@@ -251,12 +319,48 @@ class DeepSeekAgent(OCRAgent):
                         trust_remote_code=True,
                         device_map="auto"
                     )
+                elif quantization_method == "gptq":
+                    gptq_model_name = f"{self.MODEL_NAME}-GPTQ"
+                    try:
+                        self.model = AutoGPTQForCausalLM.from_quantized(
+                            gptq_model_name,
+                            device_map="auto",
+                            trust_remote_code=True,
+                            use_safetensors=True
+                        )
+                    except Exception:
+                        quantization_method = "bfloat16"
+                        self.model = AutoModelForCausalLM.from_pretrained(
+                            self.MODEL_NAME,
+                            torch_dtype=torch.bfloat16,
+                            trust_remote_code=True,
+                            device_map="auto",
+                            low_cpu_mem_usage=True
+                        )
+                elif quantization_method == "awq":
+                    awq_model_name = f"{self.MODEL_NAME}-AWQ"
+                    try:
+                        self.model = AutoAWQForCausalLM.from_quantized(
+                            awq_model_name,
+                            device_map="auto",
+                            trust_remote_code=True
+                        )
+                    except Exception:
+                        quantization_method = "bfloat16"
+                        self.model = AutoModelForCausalLM.from_pretrained(
+                            self.MODEL_NAME,
+                            torch_dtype=torch.bfloat16,
+                            trust_remote_code=True,
+                            device_map="auto",
+                            low_cpu_mem_usage=True
+                        )
                 else:
                     self.model = AutoModelForCausalLM.from_pretrained(
                         self.MODEL_NAME,
                         torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32,
                         trust_remote_code=True,
-                        device_map="auto" if device == "cuda" else None
+                        device_map="auto" if device == "cuda" else None,
+                        low_cpu_mem_usage=True
                     )
 
                 self.processor = AutoProcessor.from_pretrained(
@@ -264,11 +368,13 @@ class DeepSeekAgent(OCRAgent):
                 )
                 self.tokenizer = None  # Will use processor's tokenizer
 
-            # Track whether quantization was actually used
-            self._quantization_active = can_use_quantization
+            # Track quantization status
+            self._quantization_active = quantization_method in ["bitsandbytes", "gptq", "awq"]
+            self._quantization_method = quantization_method
 
-            if not can_use_quantization and device == "cuda":
-                self.model = self.model.cuda()
+            if quantization_method == "bfloat16" and device == "cuda":
+                # Clear cache before moving to GPU for bfloat16
+                torch.cuda.empty_cache()
 
             self.model.eval()  # Inference mode
 
@@ -281,8 +387,14 @@ class DeepSeekAgent(OCRAgent):
                 torch.cuda.empty_cache()
 
             self._model_loaded = True
-            quantization_status = "4-bit quantized" if can_use_quantization else "bfloat16 (full precision)"
-            self.logger.info("deepseek_model_loaded", device=device, quantization=quantization_status)
+            quantization_status = f"{quantization_method} quantized" if self._quantization_active else f"{quantization_method} (full precision)"
+            self.logger.info(
+                "deepseek_model_loaded",
+                device=device,
+                quantization=quantization_status,
+                method=quantization_method,
+                platform="Windows" if IS_WINDOWS else "Linux"
+            )
 
         except Exception as e:
             self.logger.error("deepseek_model_load_failed", error=str(e), exc_info=True)
@@ -957,7 +1069,10 @@ class DeepSeekAgent(OCRAgent):
             "model_name": self.MODEL_NAME,
             "quantization_enabled": self.ENABLE_QUANTIZATION,
             "quantization_active": self._quantization_active,
+            "quantization_method": getattr(self, "_quantization_method", None),
             "bitsandbytes_available": BITSANDBYTES_AVAILABLE,
+            "gptq_available": GPTQ_AVAILABLE,
+            "awq_available": AWQ_AVAILABLE,
             "platform": "windows" if IS_WINDOWS else "linux/other",
         }
 

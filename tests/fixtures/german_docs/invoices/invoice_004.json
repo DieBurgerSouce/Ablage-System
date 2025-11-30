@@ -1,0 +1,27 @@
+{
+  "filename": "invoice_004.png",
+  "category": "invoices",
+  "source": "synthetic",
+  "expected_text": "RECHNUNG Nr. 2024-3693\n\nLübecker Handelshaus\nDüsseldorfer Allee 25\n23181 Essen\n\nDatum: 18.11.2025\nUSt-IdNr.: DE134621247\n\nPositionen:\n----------------------------------------\nSchulungsmaßnahmen                 718,19 EUR\nQualitätssicherung                 722,49 EUR\nNetzwerkinstallation               612,32 EUR\n----------------------------------------\nSumme Netto:                    2.053,00 EUR\nMwSt, 19%:                        390,07 EUR\nSumme Brutto:                   2.443,07 EUR\n\nIBAN: DE17190822626837628366\n\nZahlbar innerhalb 14 Tagen.\n\nMit freundlichen Gruessen\nLübecker Handelshaus",
+  "expected_entities": {
+    "invoice_number": [
+      "2024-3693"
+    ],
+    "iban": [
+      "DE17190822626837628366"
+    ],
+    "vat_id": [
+      "DE134621247"
+    ],
+    "date": [
+      "18.11.2025"
+    ],
+    "total_gross": [
+      "2.443,07"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}

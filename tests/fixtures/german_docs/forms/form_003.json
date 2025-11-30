@@ -1,0 +1,21 @@
+{
+  "filename": "form_003.png",
+  "category": "forms",
+  "source": "synthetic",
+  "expected_text": "ANTRAGSFORMULAR\n\nAntragsteller:\nName: Klaus Neumann\nStrasse: Münchner Straße 152\nPLZ/Ort: 55175 Hamburg\n\nAntragsdatum: 05.11.2025\n\nAntragsgrund (bitte ankreuzen):\n[X] Neuantrag\n[ ] Verlaengerung\n[ ] Aenderung\n\nBegruendung:\n_____________________________________________\n_____________________________________________\n_____________________________________________\n\nAnlagen:\n[ ] Personalausweis (Kopie)\n[ ] Einkommensnachweis\n[ ] Meldebescheinigung\n\nUnterschrift: _______________________________\n\nDatum: 05.11.2025\n",
+  "expected_entities": {
+    "name": [
+      "Klaus Neumann"
+    ],
+    "date": [
+      "05.11.2025"
+    ],
+    "city": [
+      "Hamburg"
+    ]
+  },
+  "has_umlauts": true,
+  "has_tables": false,
+  "language": "de",
+  "license": "CC0"
+}
