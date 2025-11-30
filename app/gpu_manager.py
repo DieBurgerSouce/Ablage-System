@@ -355,3 +355,394 @@ class GPUManager:
             recommendations.append("Multiple backends allocated - monitor VRAM")
 
         return recommendations
+
+
+class GPUMemoryGuard:
+    """
+    GPU Memory Guard mit Enforcement für Ablage-System.
+
+    Überwacht VRAM-Nutzung und erzwingt Limits:
+    - Blockiert neue Allocations bei Überschreitung
+    - Automatische Cache-Bereinigung
+    - Threshold-basierte Warnungen
+    - Metriken für Prometheus
+
+    Konfiguration über Umgebungsvariable GPU_MEMORY_LIMIT_GB.
+    """
+
+    # Konfiguration (Defaults für RTX 4080 16GB)
+    DEFAULT_LIMIT_GB = 13.6  # 85% von 16GB
+    WARNING_THRESHOLD = 0.75  # Warnung bei 75%
+    CRITICAL_THRESHOLD = 0.90  # Kritisch bei 90%
+
+    def __init__(
+        self,
+        gpu_manager: Optional['GPUManager'] = None,
+        memory_limit_gb: Optional[float] = None,
+        auto_cleanup: bool = True
+    ):
+        """
+        Initialisiere GPU Memory Guard.
+
+        Args:
+            gpu_manager: Optional GPUManager Instance
+            memory_limit_gb: VRAM Limit in GB (default: 13.6)
+            auto_cleanup: Automatische Cache-Bereinigung bei Warning
+        """
+        self.gpu_manager = gpu_manager or GPUManager()
+        self.auto_cleanup = auto_cleanup
+
+        # Lade Limit aus Environment oder verwende Default
+        import os
+        env_limit = os.environ.get("GPU_MEMORY_LIMIT_GB")
+        if memory_limit_gb is not None:
+            self.memory_limit_gb = memory_limit_gb
+        elif env_limit:
+            try:
+                self.memory_limit_gb = float(env_limit)
+            except ValueError:
+                self.memory_limit_gb = self.DEFAULT_LIMIT_GB
+        else:
+            self.memory_limit_gb = self.DEFAULT_LIMIT_GB
+
+        self.memory_limit_bytes = int(self.memory_limit_gb * 1024 * 1024 * 1024)
+
+        # Metriken
+        self._cleanup_count = 0
+        self._enforcement_count = 0
+        self._warning_count = 0
+        self._critical_count = 0
+
+        logger.info(
+            "gpu_memory_guard_initialized",
+            limit_gb=self.memory_limit_gb,
+            warning_threshold=self.WARNING_THRESHOLD,
+            critical_threshold=self.CRITICAL_THRESHOLD,
+            auto_cleanup=self.auto_cleanup
+        )
+
+    def check_memory_status(self) -> Dict:
+        """
+        Prüfe aktuellen Speicherstatus.
+
+        Returns:
+            Dict mit Speicherinfo und Enforcement-Status
+        """
+        if not TORCH_AVAILABLE or not torch.cuda.is_available():
+            return {
+                "available": False,
+                "enforced": False,
+                "reason": "GPU nicht verfügbar"
+            }
+
+        try:
+            allocated = torch.cuda.memory_allocated(0)
+            reserved = torch.cuda.memory_reserved(0)
+            total = torch.cuda.get_device_properties(0).total_memory
+
+            usage_ratio = allocated / self.memory_limit_bytes
+            is_warning = usage_ratio >= self.WARNING_THRESHOLD
+            is_critical = usage_ratio >= self.CRITICAL_THRESHOLD
+            is_over_limit = allocated >= self.memory_limit_bytes
+
+            status = {
+                "available": True,
+                "allocated_bytes": allocated,
+                "allocated_gb": allocated / (1024**3),
+                "reserved_bytes": reserved,
+                "reserved_gb": reserved / (1024**3),
+                "total_bytes": total,
+                "total_gb": total / (1024**3),
+                "limit_gb": self.memory_limit_gb,
+                "usage_ratio": usage_ratio,
+                "usage_percent": usage_ratio * 100,
+                "status": "critical" if is_critical else "warning" if is_warning else "ok",
+                "is_warning": is_warning,
+                "is_critical": is_critical,
+                "over_limit": is_over_limit,
+                "remaining_gb": max(0, self.memory_limit_gb - (allocated / (1024**3))),
+            }
+
+            # Tracking
+            if is_critical:
+                self._critical_count += 1
+            elif is_warning:
+                self._warning_count += 1
+
+            return status
+
+        except Exception as e:
+            logger.error("gpu_memory_check_failed", error=str(e))
+            return {
+                "available": False,
+                "enforced": False,
+                "error": str(e)
+            }
+
+    def can_allocate(self, required_gb: float) -> Dict:
+        """
+        Prüfe ob Allocation möglich ist.
+
+        Args:
+            required_gb: Benötigter Speicher in GB
+
+        Returns:
+            Dict mit Erlaubnis und Details
+        """
+        status = self.check_memory_status()
+
+        if not status.get("available"):
+            return {
+                "allowed": False,
+                "reason": "GPU nicht verfügbar",
+                "fallback": "cpu"
+            }
+
+        required_bytes = required_gb * 1024 * 1024 * 1024
+        current_bytes = status.get("allocated_bytes", 0)
+        would_use_bytes = current_bytes + required_bytes
+
+        would_exceed = would_use_bytes > self.memory_limit_bytes
+
+        if would_exceed:
+            self._enforcement_count += 1
+
+            # Versuche Auto-Cleanup wenn aktiviert
+            if self.auto_cleanup:
+                freed = self.cleanup_cache()
+                if freed > 0:
+                    # Re-check nach Cleanup
+                    new_status = self.check_memory_status()
+                    new_current = new_status.get("allocated_bytes", 0)
+                    would_use_bytes = new_current + required_bytes
+                    would_exceed = would_use_bytes > self.memory_limit_bytes
+
+            if would_exceed:
+                logger.warning(
+                    "gpu_memory_guard_blocked",
+                    required_gb=required_gb,
+                    current_gb=status.get("allocated_gb"),
+                    limit_gb=self.memory_limit_gb
+                )
+                return {
+                    "allowed": False,
+                    "reason": f"Würde Limit überschreiten ({self.memory_limit_gb}GB)",
+                    "required_gb": required_gb,
+                    "current_gb": status.get("allocated_gb"),
+                    "would_use_gb": would_use_bytes / (1024**3),
+                    "limit_gb": self.memory_limit_gb,
+                    "fallback": "Verwende kleineres Modell oder CPU"
+                }
+
+        return {
+            "allowed": True,
+            "required_gb": required_gb,
+            "current_gb": status.get("allocated_gb"),
+            "would_use_gb": would_use_bytes / (1024**3),
+            "remaining_after_gb": (self.memory_limit_bytes - would_use_bytes) / (1024**3),
+            "limit_gb": self.memory_limit_gb
+        }
+
+    def cleanup_cache(self) -> int:
+        """
+        Bereinige GPU Cache.
+
+        Returns:
+            Freigegebene Bytes
+        """
+        if not TORCH_AVAILABLE or not torch.cuda.is_available():
+            return 0
+
+        try:
+            before = torch.cuda.memory_allocated(0)
+
+            # Cache leeren
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+
+            # Garbage Collection
+            import gc
+            gc.collect()
+
+            after = torch.cuda.memory_allocated(0)
+            freed = before - after
+
+            if freed > 0:
+                self._cleanup_count += 1
+                logger.info(
+                    "gpu_cache_cleaned",
+                    freed_mb=freed / (1024**2),
+                    freed_gb=freed / (1024**3)
+                )
+
+            return max(0, freed)
+
+        except Exception as e:
+            logger.error("gpu_cache_cleanup_failed", error=str(e))
+            return 0
+
+    def enforce_limit(self) -> Dict:
+        """
+        Erzwinge VRAM Limit durch Cache-Bereinigung.
+
+        Returns:
+            Dict mit Enforcement-Ergebnis
+        """
+        status = self.check_memory_status()
+
+        if not status.get("available"):
+            return {
+                "enforced": False,
+                "reason": "GPU nicht verfügbar"
+            }
+
+        if not status.get("over_limit"):
+            return {
+                "enforced": False,
+                "reason": "Limit nicht überschritten",
+                "current_gb": status.get("allocated_gb"),
+                "limit_gb": self.memory_limit_gb
+            }
+
+        logger.warning(
+            "gpu_memory_guard_enforcing",
+            current_gb=status.get("allocated_gb"),
+            limit_gb=self.memory_limit_gb
+        )
+
+        # Step 1: Cache leeren
+        freed = self.cleanup_cache()
+
+        # Step 2: Re-check
+        new_status = self.check_memory_status()
+
+        if new_status.get("over_limit"):
+            # Immer noch über Limit
+            logger.error(
+                "gpu_memory_guard_enforcement_insufficient",
+                current_gb=new_status.get("allocated_gb"),
+                limit_gb=self.memory_limit_gb,
+                freed_gb=freed / (1024**3)
+            )
+            return {
+                "enforced": True,
+                "success": False,
+                "reason": "Cache-Bereinigung nicht ausreichend",
+                "freed_gb": freed / (1024**3),
+                "current_gb": new_status.get("allocated_gb"),
+                "limit_gb": self.memory_limit_gb,
+                "recommendation": "Modelle entladen erforderlich"
+            }
+
+        logger.info(
+            "gpu_memory_guard_enforcement_success",
+            freed_gb=freed / (1024**3),
+            current_gb=new_status.get("allocated_gb")
+        )
+
+        return {
+            "enforced": True,
+            "success": True,
+            "freed_gb": freed / (1024**3),
+            "current_gb": new_status.get("allocated_gb"),
+            "limit_gb": self.memory_limit_gb
+        }
+
+    def get_metrics(self) -> Dict:
+        """Hole Metriken für Prometheus."""
+        status = self.check_memory_status()
+
+        return {
+            "gpu_memory_allocated_bytes": status.get("allocated_bytes", 0),
+            "gpu_memory_reserved_bytes": status.get("reserved_bytes", 0),
+            "gpu_memory_limit_bytes": self.memory_limit_bytes,
+            "gpu_memory_usage_ratio": status.get("usage_ratio", 0),
+            "gpu_memory_guard_cleanups_total": self._cleanup_count,
+            "gpu_memory_guard_enforcements_total": self._enforcement_count,
+            "gpu_memory_guard_warnings_total": self._warning_count,
+            "gpu_memory_guard_critical_total": self._critical_count,
+            "gpu_memory_status": 2 if status.get("is_critical") else 1 if status.get("is_warning") else 0,
+        }
+
+    def get_status(self) -> Dict:
+        """Hole vollständigen Status."""
+        memory_status = self.check_memory_status()
+
+        return {
+            "memory": memory_status,
+            "config": {
+                "limit_gb": self.memory_limit_gb,
+                "warning_threshold": self.WARNING_THRESHOLD,
+                "critical_threshold": self.CRITICAL_THRESHOLD,
+                "auto_cleanup": self.auto_cleanup,
+            },
+            "metrics": {
+                "cleanup_count": self._cleanup_count,
+                "enforcement_count": self._enforcement_count,
+                "warning_count": self._warning_count,
+                "critical_count": self._critical_count,
+            }
+        }
+
+
+# Context Manager für Memory-geschützte Operations
+class gpu_memory_guard:
+    """
+    Context Manager für GPU Memory geschützte Operations.
+
+    Usage:
+        with gpu_memory_guard(required_gb=10.0) as guard:
+            # GPU-intensive Operation
+            result = model.process(data)
+    """
+
+    def __init__(
+        self,
+        required_gb: float = 0.0,
+        cleanup_after: bool = True,
+        enforce_limit: bool = True
+    ):
+        """
+        Args:
+            required_gb: Benötigter Speicher in GB
+            cleanup_after: Cache nach Operation leeren
+            enforce_limit: Limit erzwingen
+        """
+        self.required_gb = required_gb
+        self.cleanup_after = cleanup_after
+        self.enforce_limit = enforce_limit
+        self._guard = None
+
+    def __enter__(self):
+        self._guard = GPUMemoryGuard()
+
+        if self.required_gb > 0:
+            check = self._guard.can_allocate(self.required_gb)
+            if not check.get("allowed"):
+                raise MemoryError(
+                    f"GPU Memory Guard: Allocation von {self.required_gb}GB nicht erlaubt. "
+                    f"Grund: {check.get('reason')}"
+                )
+
+        return self._guard
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.cleanup_after and self._guard:
+            self._guard.cleanup_cache()
+
+        if self.enforce_limit and self._guard:
+            self._guard.enforce_limit()
+
+        return False  # Exceptions nicht unterdrücken
+
+
+# Singleton Instance
+_memory_guard: Optional[GPUMemoryGuard] = None
+
+
+def get_memory_guard() -> GPUMemoryGuard:
+    """Hole Singleton-Instance des Memory Guards."""
+    global _memory_guard
+    if _memory_guard is None:
+        _memory_guard = GPUMemoryGuard()
+    return _memory_guard

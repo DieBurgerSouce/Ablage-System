@@ -14,10 +14,12 @@ Best for:
 import asyncio
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from io import BytesIO
 
+import numpy as np
 import torch
+import torch.nn.functional as F
 from PIL import Image
 from transformers import AutoProcessor, AutoModel
 
@@ -282,6 +284,111 @@ class GOTOCRAgent(OCRAgent):
         x1, y1, x2, y2 = region
         return image.crop((x1, y1, x2, y2))
 
+    def _calculate_token_confidence(
+        self,
+        scores: Tuple[torch.Tensor, ...],
+        generated_ids: torch.Tensor,
+        skip_special_tokens: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Berechne Token-Level Confidence aus Model Output Logits.
+
+        Args:
+            scores: Tuple von Logit-Tensoren für jeden generierten Token
+            generated_ids: Die generierten Token-IDs
+            skip_special_tokens: Spezielle Tokens überspringen
+
+        Returns:
+            Dictionary mit Confidence-Metriken
+        """
+        if not scores or len(scores) == 0:
+            return {
+                "mean_confidence": 0.0,
+                "min_confidence": 0.0,
+                "weighted_confidence": 0.0,
+                "token_confidences": [],
+                "low_confidence_positions": [],
+                "confidence_method": "no_scores"
+            }
+
+        token_confidences = []
+        low_confidence_positions = []
+
+        # Tokenizer für Special Token Detection
+        tokenizer = getattr(self.processor, 'tokenizer', None)
+        special_token_ids = set()
+        if tokenizer:
+            special_token_ids = set(tokenizer.all_special_ids) if hasattr(tokenizer, 'all_special_ids') else set()
+
+        try:
+            for idx, logits in enumerate(scores):
+                # logits shape: (batch_size, vocab_size)
+                if logits.dim() == 3:
+                    logits = logits.squeeze(0)
+
+                # Softmax für Wahrscheinlichkeiten
+                probs = F.softmax(logits, dim=-1)
+
+                # Hole die Wahrscheinlichkeit des tatsächlich generierten Tokens
+                if idx < len(generated_ids[0]) - len(scores):
+                    continue
+
+                token_idx = idx
+                if token_idx < probs.shape[0]:
+                    gen_token_id = generated_ids[0, -(len(scores) - idx)].item() if len(scores) > idx else None
+
+                    if gen_token_id is not None:
+                        if skip_special_tokens and gen_token_id in special_token_ids:
+                            continue
+
+                        if probs.dim() == 1:
+                            token_prob = probs[gen_token_id].item()
+                        else:
+                            token_prob = probs[0, gen_token_id].item()
+
+                        token_confidences.append(token_prob)
+
+                        if token_prob < 0.7:
+                            low_confidence_positions.append({
+                                "position": idx,
+                                "confidence": token_prob,
+                                "token_id": gen_token_id
+                            })
+
+            if token_confidences:
+                mean_conf = float(np.mean(token_confidences))
+                min_conf = float(np.min(token_confidences))
+                weighted_conf = 0.7 * mean_conf + 0.3 * min_conf
+            else:
+                mean_conf = 0.0
+                min_conf = 0.0
+                weighted_conf = 0.0
+
+            return {
+                "mean_confidence": mean_conf,
+                "min_confidence": min_conf,
+                "weighted_confidence": weighted_conf,
+                "token_confidences": token_confidences[:100],
+                "low_confidence_positions": low_confidence_positions[:20],
+                "total_tokens": len(token_confidences),
+                "confidence_method": "token_logits"
+            }
+
+        except Exception as e:
+            self.logger.warning(
+                "got_confidence_calculation_error",
+                error=str(e),
+                fallback="heuristic"
+            )
+            return {
+                "mean_confidence": 0.85,
+                "min_confidence": 0.70,
+                "weighted_confidence": 0.80,
+                "token_confidences": [],
+                "low_confidence_positions": [],
+                "confidence_method": "fallback_error"
+            }
+
     async def _run_ocr(
         self,
         image: Image.Image,
@@ -322,7 +429,8 @@ class GOTOCRAgent(OCRAgent):
             inputs = {k: v.to(device) if torch.is_tensor(v) else v
                      for k, v in inputs.items()}
 
-            # Run inference
+            # Run inference mit output_scores für Confidence
+            confidence_data = None
             with torch.no_grad():
                 if hasattr(self.model, 'generate'):
                     # Get tokenizer for special tokens
@@ -331,6 +439,8 @@ class GOTOCRAgent(OCRAgent):
                     generate_kwargs = {
                         "max_new_tokens": 4096,
                         "do_sample": False,
+                        "output_scores": True,
+                        "return_dict_in_generate": True,
                     }
 
                     # Add token IDs if tokenizer available
@@ -341,13 +451,29 @@ class GOTOCRAgent(OCRAgent):
 
                     outputs = self.model.generate(**inputs, **generate_kwargs)
 
+                    # Extrahiere Sequenzen und Scores
+                    generated_ids = outputs.sequences if hasattr(outputs, 'sequences') else outputs
+                    scores = outputs.scores if hasattr(outputs, 'scores') else None
+
+                    # Berechne Token-Level Confidence
+                    if scores:
+                        confidence_data = self._calculate_token_confidence(scores, generated_ids)
+
                     # Decode output
-                    if hasattr(self.processor, 'batch_decode'):
-                        text = self.processor.batch_decode(outputs, skip_special_tokens=True)[0]
-                    elif tokenizer is not None and hasattr(tokenizer, 'decode'):
-                        text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+                    if hasattr(outputs, 'sequences'):
+                        if hasattr(self.processor, 'batch_decode'):
+                            text = self.processor.batch_decode(outputs.sequences, skip_special_tokens=True)[0]
+                        elif tokenizer is not None and hasattr(tokenizer, 'decode'):
+                            text = tokenizer.decode(outputs.sequences[0], skip_special_tokens=True)
+                        else:
+                            text = str(outputs.sequences)
                     else:
-                        text = str(outputs)
+                        if hasattr(self.processor, 'batch_decode'):
+                            text = self.processor.batch_decode(outputs, skip_special_tokens=True)[0]
+                        elif tokenizer is not None and hasattr(tokenizer, 'decode'):
+                            text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+                        else:
+                            text = str(outputs)
                 else:
                     # Direct prediction model (less common)
                     outputs = self.model(**inputs)
@@ -363,12 +489,29 @@ class GOTOCRAgent(OCRAgent):
             # Clean up text
             text = text.strip()
 
-            # Estimate confidence (GOT-OCR typically has high accuracy on formulas)
-            confidence = 0.92 if text else 0.0
-            if extract_formulas and "$" in text:  # LaTeX formulas detected
-                confidence = 0.95
+            # Berechne finale Confidence aus Token-Level Daten
+            if confidence_data and confidence_data.get("confidence_method") == "token_logits":
+                confidence = confidence_data.get("weighted_confidence", 0.0)
 
-            return {
+                # Bonus für erkannte Formeln
+                if extract_formulas and "$" in text:
+                    confidence = min(1.0, confidence * 1.05)
+
+                # Sicherstelle gültigen Bereich
+                confidence = max(0.0, min(1.0, confidence))
+            else:
+                # Fallback: Heuristische Confidence
+                if not text:
+                    confidence = 0.0
+                elif len(text) < 10:
+                    confidence = 0.5
+                elif extract_formulas and "$" in text:
+                    confidence = 0.90
+                else:
+                    confidence = 0.85
+
+            # Baue Result mit Confidence-Details
+            result = {
                 "text": text,
                 "confidence": confidence,
                 "format": output_format,
@@ -378,6 +521,18 @@ class GOTOCRAgent(OCRAgent):
                 "backend": "got-ocr-2.0",
                 "success": True,
             }
+
+            # Füge detaillierte Confidence-Metriken hinzu wenn verfügbar
+            if confidence_data:
+                result["confidence_details"] = {
+                    "method": confidence_data.get("confidence_method", "unknown"),
+                    "mean_confidence": confidence_data.get("mean_confidence", 0.0),
+                    "min_confidence": confidence_data.get("min_confidence", 0.0),
+                    "total_tokens": confidence_data.get("total_tokens", 0),
+                    "low_confidence_count": len(confidence_data.get("low_confidence_positions", []))
+                }
+
+            return result
 
         except Exception as e:
             self.logger.error("got_ocr_inference_error", error=str(e), exc_info=True)

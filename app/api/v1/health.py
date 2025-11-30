@@ -533,3 +533,670 @@ async def ocr_backend_health(backend_name: str) -> OCRBackendHealth:
             grund=f"Pruefung fehlgeschlagen: {str(e)[:100]}",
             status=None,
         )
+
+
+# =============================================================================
+# Circuit Breaker Health Endpoints
+# =============================================================================
+
+
+class CircuitBreakerHealth(BaseModel):
+    """Circuit Breaker Gesundheitsstatus."""
+
+    name: str = Field(..., description="Backend-Name")
+    state: str = Field(..., description="closed, open, half_open")
+    gesund: bool = Field(..., description="True wenn closed")
+    failure_rate: float = Field(..., description="Aktuelle Fehlerrate")
+    consecutive_failures: int = Field(..., description="Aufeinanderfolgende Fehler")
+    retry_after_seconds: float = Field(..., description="Sekunden bis Retry moeglich")
+    times_opened: int = Field(..., description="Wie oft geoeffnet")
+
+
+class CircuitBreakerHealthResponse(BaseModel):
+    """Circuit Breaker Gesamtstatus."""
+
+    status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    circuit_breakers: Dict[str, CircuitBreakerHealth] = Field(
+        ..., description="Status je Circuit Breaker"
+    )
+    offene_circuits: int = Field(..., description="Anzahl offener Circuits")
+    gesamtzahl: int = Field(..., description="Gesamtzahl Circuit Breakers")
+
+
+@router.get(
+    "/circuit-breakers",
+    response_model=CircuitBreakerHealthResponse,
+    summary="Circuit Breaker Status",
+    description="Prueft alle OCR Backend Circuit Breakers.",
+)
+async def circuit_breaker_health() -> CircuitBreakerHealthResponse:
+    """
+    Gesundheitspruefung aller Circuit Breakers.
+
+    Zeigt Status, Fehlerraten und Recovery-Zeiten fuer alle Backends.
+    """
+    try:
+        from app.services.circuit_breaker import get_circuit_breaker_registry, CircuitState
+
+        registry = get_circuit_breaker_registry()
+        all_status = registry.get_all_status()
+
+        circuit_breakers = {}
+        offene = 0
+
+        for name, status in all_status.items():
+            state = status.get("state", "unknown")
+            is_healthy = state == "closed"
+
+            if state == "open":
+                offene += 1
+
+            stats = status.get("stats", {})
+
+            circuit_breakers[name] = CircuitBreakerHealth(
+                name=name,
+                state=state,
+                gesund=is_healthy,
+                failure_rate=stats.get("failure_rate", 0.0),
+                consecutive_failures=stats.get("consecutive_failures", 0),
+                retry_after_seconds=status.get("retry_after", 0.0),
+                times_opened=stats.get("times_opened", 0),
+            )
+
+        # Bestimme Gesamtstatus
+        total = len(circuit_breakers)
+        if offene == 0:
+            status = "gesund"
+        elif offene < total:
+            status = "beeintraechtigt"
+        else:
+            status = "kritisch"
+
+        logger.info(
+            "circuit_breaker_health_complete",
+            status=status,
+            open_count=offene,
+            total=total,
+        )
+
+        return CircuitBreakerHealthResponse(
+            status=status,
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            circuit_breakers=circuit_breakers,
+            offene_circuits=offene,
+            gesamtzahl=total,
+        )
+
+    except ImportError:
+        return CircuitBreakerHealthResponse(
+            status="unbekannt",
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            circuit_breakers={},
+            offene_circuits=0,
+            gesamtzahl=0,
+        )
+    except Exception as e:
+        logger.error("circuit_breaker_health_failed", error=str(e))
+        return CircuitBreakerHealthResponse(
+            status="kritisch",
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            circuit_breakers={},
+            offene_circuits=0,
+            gesamtzahl=0,
+        )
+
+
+# =============================================================================
+# OCR Pipeline Health Endpoints
+# =============================================================================
+
+
+class PipelineHealthResponse(BaseModel):
+    """OCR Pipeline Gesamtstatus."""
+
+    status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    german_correction_enabled: bool = Field(..., description="Deutsche Korrektur aktiv")
+    circuit_breaker_enabled: bool = Field(..., description="Circuit Breaker aktiv")
+    memory_guard_enabled: bool = Field(..., description="Memory Guard aktiv")
+    min_confidence_threshold: float = Field(..., description="Min. Confidence Schwelle")
+    fallback_chain_status: Optional[Dict[str, Any]] = Field(
+        None, description="Fallback Chain Metriken"
+    )
+    circuit_breaker_status: Optional[Dict[str, Any]] = Field(
+        None, description="Circuit Breaker Status"
+    )
+    memory_guard_status: Optional[Dict[str, Any]] = Field(
+        None, description="GPU Memory Guard Status"
+    )
+    german_correction_stats: Optional[Dict[str, Any]] = Field(
+        None, description="German Correction Statistiken"
+    )
+
+
+@router.get(
+    "/pipeline",
+    response_model=PipelineHealthResponse,
+    summary="OCR Pipeline Status",
+    description="Vollstaendiger Status der OCR Pipeline mit allen Komponenten.",
+)
+async def pipeline_health() -> PipelineHealthResponse:
+    """
+    Vollstaendige Gesundheitspruefung der OCR Pipeline.
+
+    Prueft:
+    - Pipeline-Konfiguration
+    - Fallback Chain Status
+    - Circuit Breaker Status
+    - GPU Memory Guard Status
+    - German Correction Agent Status
+    """
+    try:
+        from app.services.ocr_pipeline import get_ocr_pipeline
+
+        pipeline = get_ocr_pipeline()
+        status_data = pipeline.get_status()
+
+        pipeline_config = status_data.get("pipeline", {})
+        fallback_status = status_data.get("fallback_chain", {})
+        cb_status = status_data.get("circuit_breakers", {})
+        memory_status = status_data.get("memory_guard")
+        german_stats = status_data.get("german_correction")
+
+        # Bestimme Gesamtstatus
+        issues = []
+
+        # Check Circuit Breakers
+        open_circuits = [k for k, v in cb_status.items() if v.get("state") == "open"]
+        if open_circuits:
+            issues.append(f"Circuit Breaker offen: {', '.join(open_circuits)}")
+
+        # Check Memory Guard
+        if memory_status and memory_status.get("is_critical"):
+            issues.append("GPU-Speicher kritisch")
+
+        # Check Fallback Chain
+        if fallback_status.get("total_failures", 0) > 10:
+            issues.append("Hohe Anzahl Fallback-Fehler")
+
+        if not issues:
+            status = "gesund"
+        elif len(issues) < 2:
+            status = "beeintraechtigt"
+        else:
+            status = "kritisch"
+
+        logger.info(
+            "pipeline_health_complete",
+            status=status,
+            issues=issues,
+        )
+
+        return PipelineHealthResponse(
+            status=status,
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            german_correction_enabled=pipeline_config.get("german_correction_enabled", False),
+            circuit_breaker_enabled=pipeline_config.get("circuit_breaker_enabled", False),
+            memory_guard_enabled=pipeline_config.get("memory_guard_enabled", False),
+            min_confidence_threshold=pipeline_config.get("min_confidence_threshold", 0.65),
+            fallback_chain_status=fallback_status,
+            circuit_breaker_status=cb_status,
+            memory_guard_status=memory_status,
+            german_correction_stats=german_stats,
+        )
+
+    except ImportError:
+        return PipelineHealthResponse(
+            status="unbekannt",
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            german_correction_enabled=False,
+            circuit_breaker_enabled=False,
+            memory_guard_enabled=False,
+            min_confidence_threshold=0.65,
+            fallback_chain_status=None,
+            circuit_breaker_status=None,
+            memory_guard_status=None,
+            german_correction_stats=None,
+        )
+    except Exception as e:
+        logger.error("pipeline_health_failed", error=str(e))
+        return PipelineHealthResponse(
+            status="kritisch",
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            german_correction_enabled=False,
+            circuit_breaker_enabled=False,
+            memory_guard_enabled=False,
+            min_confidence_threshold=0.65,
+            fallback_chain_status=None,
+            circuit_breaker_status=None,
+            memory_guard_status=None,
+            german_correction_stats=None,
+        )
+
+
+# =============================================================================
+# SLO/SLI Health Endpoints
+# =============================================================================
+
+
+class SLOHealthResponse(BaseModel):
+    """SLO/SLI Status."""
+
+    status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    availability_target: float = Field(..., description="Verfuegbarkeits-Ziel")
+    availability_current: float = Field(..., description="Aktuelle Verfuegbarkeit")
+    availability_met: bool = Field(..., description="Verfuegbarkeits-SLO erfuellt")
+    latency_target_p95_seconds: float = Field(..., description="Latenz P95 Ziel")
+    latency_current_p95_seconds: float = Field(..., description="Aktuelle Latenz P95")
+    latency_met: bool = Field(..., description="Latenz-SLO erfuellt")
+    quality_target: float = Field(..., description="Qualitaets-Ziel (Confidence)")
+    quality_current: float = Field(..., description="Aktuelle Qualitaet")
+    quality_met: bool = Field(..., description="Qualitaets-SLO erfuellt")
+    error_budget_remaining: float = Field(..., description="Verbleibendes Error Budget (0-1)")
+    error_budget_exhausted: bool = Field(..., description="Error Budget erschoepft")
+    all_slos_met: bool = Field(..., description="Alle SLOs erfuellt")
+
+
+@router.get(
+    "/slo",
+    response_model=SLOHealthResponse,
+    summary="SLO/SLI Status",
+    description="Service Level Objectives und Indicators Uebersicht.",
+)
+async def slo_health() -> SLOHealthResponse:
+    """
+    Prueft alle Service Level Objectives.
+
+    SLOs:
+    - Verfuegbarkeit: 99.9%
+    - Latenz P95: < 10s
+    - Qualitaet: > 85% Confidence
+    """
+    try:
+        from app.core.telemetry import get_slo_tracker
+
+        tracker = get_slo_tracker()
+        report = tracker.get_slo_report()
+
+        availability = report.get("availability", {})
+        latency = report.get("latency", {})
+        quality = report.get("quality", {})
+        error_budget = report.get("error_budget", {})
+
+        # Extrahiere Werte
+        availability_current = availability.get("current", 0.0)
+        availability_target = availability.get("target", 0.999)
+        availability_met = availability.get("met", False)
+
+        latency_current = latency.get("current_p95", 0.0)
+        latency_target = latency.get("target_p95", 10.0)
+        latency_met = latency.get("met", False)
+
+        quality_current = quality.get("current", 0.0)
+        quality_target = quality.get("target", 0.85)
+        quality_met = quality.get("met", False)
+
+        budget_remaining = error_budget.get("remaining", 1.0)
+        budget_exhausted = budget_remaining <= 0
+
+        all_met = all([availability_met, latency_met, quality_met, not budget_exhausted])
+
+        # Bestimme Status
+        met_count = sum([availability_met, latency_met, quality_met])
+        if all_met:
+            status = "gesund"
+        elif met_count >= 2:
+            status = "beeintraechtigt"
+        else:
+            status = "kritisch"
+
+        logger.info(
+            "slo_health_complete",
+            status=status,
+            all_met=all_met,
+            availability=availability_current,
+            latency_p95=latency_current,
+            quality=quality_current,
+        )
+
+        return SLOHealthResponse(
+            status=status,
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            availability_target=availability_target,
+            availability_current=availability_current,
+            availability_met=availability_met,
+            latency_target_p95_seconds=latency_target,
+            latency_current_p95_seconds=latency_current,
+            latency_met=latency_met,
+            quality_target=quality_target,
+            quality_current=quality_current,
+            quality_met=quality_met,
+            error_budget_remaining=budget_remaining,
+            error_budget_exhausted=budget_exhausted,
+            all_slos_met=all_met,
+        )
+
+    except ImportError:
+        return SLOHealthResponse(
+            status="unbekannt",
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            availability_target=0.999,
+            availability_current=0.0,
+            availability_met=False,
+            latency_target_p95_seconds=10.0,
+            latency_current_p95_seconds=0.0,
+            latency_met=False,
+            quality_target=0.85,
+            quality_current=0.0,
+            quality_met=False,
+            error_budget_remaining=1.0,
+            error_budget_exhausted=False,
+            all_slos_met=False,
+        )
+    except Exception as e:
+        logger.error("slo_health_failed", error=str(e))
+        return SLOHealthResponse(
+            status="kritisch",
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            availability_target=0.999,
+            availability_current=0.0,
+            availability_met=False,
+            latency_target_p95_seconds=10.0,
+            latency_current_p95_seconds=0.0,
+            latency_met=False,
+            quality_target=0.85,
+            quality_current=0.0,
+            quality_met=False,
+            error_budget_remaining=0.0,
+            error_budget_exhausted=True,
+            all_slos_met=False,
+        )
+
+
+# =============================================================================
+# GPU Memory Guard Health Endpoint
+# =============================================================================
+
+
+class MemoryGuardHealthResponse(BaseModel):
+    """GPU Memory Guard Status."""
+
+    status: str = Field(..., description="gesund, warnung, kritisch")
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    gpu_available: bool = Field(..., description="GPU verfuegbar")
+    total_memory_gb: float = Field(..., description="Gesamt VRAM in GB")
+    used_memory_gb: float = Field(..., description="Belegter VRAM in GB")
+    available_memory_gb: float = Field(..., description="Verfuegbarer VRAM in GB")
+    usage_percent: float = Field(..., description="VRAM Nutzung in Prozent")
+    limit_gb: float = Field(..., description="Konfiguriertes Limit in GB")
+    is_critical: bool = Field(..., description="Kritischer Zustand")
+    cleanup_recommended: bool = Field(..., description="Cleanup empfohlen")
+
+
+@router.get(
+    "/gpu-memory",
+    response_model=MemoryGuardHealthResponse,
+    summary="GPU Memory Guard Status",
+    description="Prueft GPU-Speicher und Memory Guard Zustand.",
+)
+async def gpu_memory_health() -> MemoryGuardHealthResponse:
+    """
+    Detaillierter GPU-Speicher Status.
+
+    Zeigt:
+    - Aktueller VRAM-Verbrauch
+    - Verfuegbarer Speicher
+    - Memory Guard Limit
+    - Empfehlungen
+    """
+    try:
+        from app.gpu_manager import get_memory_guard
+
+        guard = get_memory_guard()
+        status_data = guard.get_status()
+
+        gpu_available = status_data.get("available", False)
+        total = status_data.get("total_gb", 0.0)
+        used = status_data.get("used_gb", 0.0)
+        available = status_data.get("remaining_gb", 0.0)
+        usage = status_data.get("usage_percent", 0.0)
+        limit = status_data.get("limit_gb", 13.6)
+        is_critical = status_data.get("is_critical", False)
+
+        # Bestimme Status
+        if not gpu_available:
+            status = "unbekannt"
+        elif is_critical or usage > 90:
+            status = "kritisch"
+        elif usage > 75:
+            status = "warnung"
+        else:
+            status = "gesund"
+
+        cleanup_recommended = usage > 80
+
+        logger.info(
+            "gpu_memory_health_complete",
+            status=status,
+            usage_percent=usage,
+            is_critical=is_critical,
+        )
+
+        return MemoryGuardHealthResponse(
+            status=status,
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            gpu_available=gpu_available,
+            total_memory_gb=total,
+            used_memory_gb=used,
+            available_memory_gb=available,
+            usage_percent=usage,
+            limit_gb=limit,
+            is_critical=is_critical,
+            cleanup_recommended=cleanup_recommended,
+        )
+
+    except ImportError:
+        return MemoryGuardHealthResponse(
+            status="unbekannt",
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            gpu_available=False,
+            total_memory_gb=0.0,
+            used_memory_gb=0.0,
+            available_memory_gb=0.0,
+            usage_percent=0.0,
+            limit_gb=13.6,
+            is_critical=False,
+            cleanup_recommended=False,
+        )
+    except Exception as e:
+        logger.error("gpu_memory_health_failed", error=str(e))
+        return MemoryGuardHealthResponse(
+            status="kritisch",
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            gpu_available=False,
+            total_memory_gb=0.0,
+            used_memory_gb=0.0,
+            available_memory_gb=0.0,
+            usage_percent=0.0,
+            limit_gb=13.6,
+            is_critical=True,
+            cleanup_recommended=True,
+        )
+
+
+# =============================================================================
+# Complete System Health Endpoint
+# =============================================================================
+
+
+class CompleteHealthResponse(BaseModel):
+    """Vollstaendiger System-Gesundheitsbericht."""
+
+    status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    version: str = Field(default="0.2.0-poc", description="API-Version")
+    zusammenfassung: str = Field(..., description="Kurze Zusammenfassung")
+    komponenten: Dict[str, KomponentenStatus] = Field(
+        ..., description="Basis-Komponenten Status"
+    )
+    ocr_status: Optional[str] = Field(None, description="OCR Status")
+    pipeline_status: Optional[str] = Field(None, description="Pipeline Status")
+    slo_status: Optional[str] = Field(None, description="SLO Status")
+    circuit_breaker_status: Optional[str] = Field(None, description="Circuit Breaker Status")
+    gpu_memory_status: Optional[str] = Field(None, description="GPU Memory Status")
+    probleme: list = Field(default_factory=list, description="Aktive Probleme")
+    empfehlungen: list = Field(default_factory=list, description="Empfehlungen")
+
+
+@router.get(
+    "/complete",
+    response_model=CompleteHealthResponse,
+    summary="Vollstaendige Systemgesundheit",
+    description="Umfassende Pruefung aller Systemkomponenten inkl. OCR Pipeline, SLOs und Circuit Breaker.",
+)
+async def complete_health(
+    db: AsyncSession = Depends(get_db),
+) -> CompleteHealthResponse:
+    """
+    Vollstaendiger Gesundheitsbericht des gesamten Systems.
+
+    Prueft:
+    - Basis-Infrastruktur (DB, Redis, MinIO, GPU, Disk)
+    - OCR Backends
+    - OCR Pipeline
+    - Service Level Objectives
+    - Circuit Breaker
+    - GPU Memory Guard
+    """
+    probleme = []
+    empfehlungen = []
+
+    # Basis-Komponenten
+    db_status = await _check_database(db)
+    redis_status = await _check_redis()
+    gpu_status = _check_gpu()
+    disk_status = _check_disk_space()
+    minio_status = await _check_minio()
+
+    komponenten = {
+        "datenbank": db_status,
+        "cache": redis_status,
+        "gpu": gpu_status,
+        "speicherplatz": disk_status,
+        "objektspeicher": minio_status,
+    }
+
+    # Sammle Probleme aus Basis-Komponenten
+    for name, status in komponenten.items():
+        if not status.gesund:
+            probleme.append(f"{name}: {status.nachricht}")
+
+    # OCR Status
+    ocr_response = await ocr_health()
+    ocr_status_str = ocr_response.status
+    if ocr_status_str != "gesund":
+        probleme.append(f"OCR: {ocr_response.ungesunde_backends} Backends nicht verfuegbar")
+
+    # Pipeline Status
+    pipeline_response = await pipeline_health()
+    pipeline_status_str = pipeline_response.status
+    if pipeline_status_str == "kritisch":
+        probleme.append("Pipeline: Kritischer Zustand")
+
+    # SLO Status
+    slo_response = await slo_health()
+    slo_status_str = slo_response.status
+    if not slo_response.all_slos_met:
+        if not slo_response.availability_met:
+            probleme.append(f"SLO Verfuegbarkeit nicht erfuellt: {slo_response.availability_current:.2%}")
+        if not slo_response.latency_met:
+            probleme.append(f"SLO Latenz nicht erfuellt: {slo_response.latency_current_p95_seconds:.2f}s")
+        if not slo_response.quality_met:
+            probleme.append(f"SLO Qualitaet nicht erfuellt: {slo_response.quality_current:.2%}")
+        if slo_response.error_budget_exhausted:
+            probleme.append("Error Budget erschoepft!")
+
+    # Circuit Breaker Status
+    cb_response = await circuit_breaker_health()
+    cb_status_str = cb_response.status
+    if cb_response.offene_circuits > 0:
+        probleme.append(f"Circuit Breaker: {cb_response.offene_circuits} offen")
+
+    # GPU Memory Status
+    gpu_mem_response = await gpu_memory_health()
+    gpu_mem_status_str = gpu_mem_response.status
+    if gpu_mem_response.is_critical:
+        probleme.append(f"GPU-Speicher kritisch: {gpu_mem_response.usage_percent:.1f}%")
+    elif gpu_mem_response.cleanup_recommended:
+        empfehlungen.append("GPU-Speicher aufräumen empfohlen")
+
+    # Empfehlungen generieren
+    if not db_status.gesund:
+        empfehlungen.append("Datenbank-Verbindung pruefen")
+    if not redis_status.gesund:
+        empfehlungen.append("Redis-Server pruefen")
+    if cb_response.offene_circuits > 0:
+        empfehlungen.append("Circuit Breaker Recovery abwarten oder manuell zuruecksetzen")
+    if slo_response.error_budget_exhausted:
+        empfehlungen.append("Fehlerursachen analysieren und beheben")
+
+    # Gesamtstatus bestimmen
+    critical_components = ["datenbank"]
+    has_critical = any(not komponenten[c].gesund for c in critical_components if c in komponenten)
+
+    status_scores = {
+        "gesund": 0,
+        "warnung": 1,
+        "beeintraechtigt": 2,
+        "kritisch": 3,
+        "unbekannt": 1,
+    }
+
+    max_score = max([
+        status_scores.get(ocr_status_str, 0),
+        status_scores.get(pipeline_status_str, 0),
+        status_scores.get(slo_status_str, 0),
+        status_scores.get(cb_status_str, 0),
+        status_scores.get(gpu_mem_status_str, 0),
+    ])
+
+    if has_critical or max_score >= 3:
+        status = "kritisch"
+    elif max_score >= 2 or len(probleme) >= 3:
+        status = "beeintraechtigt"
+    elif len(probleme) > 0:
+        status = "beeintraechtigt"
+    else:
+        status = "gesund"
+
+    # Zusammenfassung
+    if status == "gesund":
+        zusammenfassung = "Alle Systeme funktionieren ordnungsgemaess"
+    elif status == "beeintraechtigt":
+        zusammenfassung = f"{len(probleme)} Problem(e) erkannt, System funktionsfaehig"
+    else:
+        zusammenfassung = f"Kritische Probleme: {len(probleme)} - Sofortige Aufmerksamkeit erforderlich"
+
+    logger.info(
+        "complete_health_check",
+        status=status,
+        problem_count=len(probleme),
+        recommendation_count=len(empfehlungen),
+    )
+
+    return CompleteHealthResponse(
+        status=status,
+        zeitstempel=datetime.now(timezone.utc).isoformat(),
+        version="0.2.0-poc",
+        zusammenfassung=zusammenfassung,
+        komponenten=komponenten,
+        ocr_status=ocr_status_str,
+        pipeline_status=pipeline_status_str,
+        slo_status=slo_status_str,
+        circuit_breaker_status=cb_status_str,
+        gpu_memory_status=gpu_mem_status_str,
+        probleme=probleme,
+        empfehlungen=empfehlungen,
+    )

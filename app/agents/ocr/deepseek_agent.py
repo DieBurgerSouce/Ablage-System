@@ -17,11 +17,12 @@ import asyncio
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from io import BytesIO
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from PIL import Image
 from transformers import AutoModelForCausalLM
 
@@ -459,6 +460,121 @@ class DeepSeekAgent(OCRAgent):
         except Exception as e:
             raise ValueError(f"Failed to load image: {e}")
 
+    def _calculate_token_confidence(
+        self,
+        scores: Tuple[torch.Tensor, ...],
+        generated_ids: torch.Tensor,
+        skip_special_tokens: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Berechne Token-Level Confidence aus Model Output Logits.
+
+        Args:
+            scores: Tuple von Logit-Tensoren für jeden generierten Token
+            generated_ids: Die generierten Token-IDs
+            skip_special_tokens: Spezielle Tokens überspringen
+
+        Returns:
+            Dictionary mit Confidence-Metriken:
+            - mean_confidence: Durchschnittliche Confidence über alle Tokens
+            - min_confidence: Minimale Token-Confidence
+            - token_confidences: Liste der Confidences pro Token
+            - low_confidence_positions: Positionen mit Confidence < 0.7
+        """
+        if not scores or len(scores) == 0:
+            return {
+                "mean_confidence": 0.0,
+                "min_confidence": 0.0,
+                "token_confidences": [],
+                "low_confidence_positions": [],
+                "confidence_method": "no_scores"
+            }
+
+        token_confidences = []
+        low_confidence_positions = []
+
+        # Tokenizer für Special Token Detection
+        tokenizer = self.tokenizer if self.tokenizer else getattr(self.processor, 'tokenizer', None)
+        special_token_ids = set()
+        if tokenizer:
+            special_token_ids = set(tokenizer.all_special_ids) if hasattr(tokenizer, 'all_special_ids') else set()
+
+        try:
+            for idx, logits in enumerate(scores):
+                # logits shape: (batch_size, vocab_size)
+                if logits.dim() == 3:
+                    logits = logits.squeeze(0)  # Remove batch dim if present
+
+                # Softmax für Wahrscheinlichkeiten
+                probs = F.softmax(logits, dim=-1)
+
+                # Hole die Wahrscheinlichkeit des tatsächlich generierten Tokens
+                # generated_ids enthält auch Input-Tokens, daher Offset
+                if idx < len(generated_ids[0]) - len(scores):
+                    continue
+
+                token_idx = idx
+                if token_idx < probs.shape[0]:
+                    # Finde das generierte Token an dieser Position
+                    gen_token_id = generated_ids[0, -(len(scores) - idx)].item() if len(scores) > idx else None
+
+                    if gen_token_id is not None:
+                        # Überspringe Special Tokens wenn gewünscht
+                        if skip_special_tokens and gen_token_id in special_token_ids:
+                            continue
+
+                        # Hole Confidence für das generierte Token
+                        if probs.dim() == 1:
+                            token_prob = probs[gen_token_id].item()
+                        else:
+                            token_prob = probs[0, gen_token_id].item()
+
+                        token_confidences.append(token_prob)
+
+                        # Markiere niedrige Confidence
+                        if token_prob < 0.7:
+                            low_confidence_positions.append({
+                                "position": idx,
+                                "confidence": token_prob,
+                                "token_id": gen_token_id
+                            })
+
+            # Aggregiere Confidences
+            if token_confidences:
+                mean_conf = float(np.mean(token_confidences))
+                min_conf = float(np.min(token_confidences))
+
+                # Gewichtete Confidence: Bestraft niedrige Min-Werte stärker
+                weighted_conf = 0.7 * mean_conf + 0.3 * min_conf
+            else:
+                mean_conf = 0.0
+                min_conf = 0.0
+                weighted_conf = 0.0
+
+            return {
+                "mean_confidence": mean_conf,
+                "min_confidence": min_conf,
+                "weighted_confidence": weighted_conf,
+                "token_confidences": token_confidences[:100],  # Limit für Speicher
+                "low_confidence_positions": low_confidence_positions[:20],  # Limit
+                "total_tokens": len(token_confidences),
+                "confidence_method": "token_logits"
+            }
+
+        except Exception as e:
+            self.logger.warning(
+                "confidence_calculation_error",
+                error=str(e),
+                fallback="heuristic"
+            )
+            return {
+                "mean_confidence": 0.85,  # Konservativer Fallback
+                "min_confidence": 0.70,
+                "token_confidences": [],
+                "low_confidence_positions": [],
+                "confidence_method": "fallback_error"
+            }
+
     async def _run_inference(
         self, image: Image.Image, language: str, options: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -501,10 +617,12 @@ class DeepSeekAgent(OCRAgent):
                          for k, v in inputs.items()}
 
             # Prepare inputs for multimodal model
+            confidence_data = None
+
             if hasattr(self.model, 'prepare_inputs_embeds'):
                 inputs_embeds = self.model.prepare_inputs_embeds(**inputs)
 
-                # Generate with language model component
+                # Generate with language model component - mit output_scores für Confidence
                 with torch.no_grad():
                     outputs = self.model.language_model.generate(
                         inputs_embeds=inputs_embeds,
@@ -513,28 +631,59 @@ class DeepSeekAgent(OCRAgent):
                         do_sample=False,  # Deterministic for OCR
                         temperature=0.1,
                         pad_token_id=self.tokenizer.eos_token_id,
-                        eos_token_id=self.tokenizer.eos_token_id
+                        eos_token_id=self.tokenizer.eos_token_id,
+                        output_scores=True,
+                        return_dict_in_generate=True
                     )
 
+                # Extrahiere Sequenzen und Scores
+                generated_ids = outputs.sequences if hasattr(outputs, 'sequences') else outputs
+                scores = outputs.scores if hasattr(outputs, 'scores') else None
+
+                # Berechne Token-Level Confidence
+                if scores:
+                    confidence_data = self._calculate_token_confidence(scores, generated_ids)
+
                 # Decode with tokenizer
-                generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+                if hasattr(outputs, 'sequences'):
+                    generated_text = self.tokenizer.decode(outputs.sequences[0], skip_special_tokens=True)
+                else:
+                    generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
             else:
-                # Fallback to standard generation
+                # Fallback to standard generation - mit output_scores
                 with torch.no_grad():
                     outputs = self.model.generate(
                         **inputs,
                         max_new_tokens=options.get("max_tokens", 4096),
                         do_sample=False,
                         temperature=0.1,
-                        pad_token_id=self.tokenizer.eos_token_id if self.tokenizer else self.processor.tokenizer.eos_token_id
+                        pad_token_id=self.tokenizer.eos_token_id if self.tokenizer else self.processor.tokenizer.eos_token_id,
+                        output_scores=True,
+                        return_dict_in_generate=True
                     )
 
-                if self.tokenizer:
-                    generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+                # Extrahiere Sequenzen und Scores
+                generated_ids = outputs.sequences if hasattr(outputs, 'sequences') else outputs
+                scores = outputs.scores if hasattr(outputs, 'scores') else None
+
+                # Berechne Token-Level Confidence
+                if scores:
+                    confidence_data = self._calculate_token_confidence(scores, generated_ids)
+
+                if hasattr(outputs, 'sequences'):
+                    if self.tokenizer:
+                        generated_text = self.tokenizer.decode(outputs.sequences[0], skip_special_tokens=True)
+                    else:
+                        generated_text = self.processor.batch_decode(outputs.sequences, skip_special_tokens=True)[0]
                 else:
-                    generated_text = self.processor.batch_decode(outputs, skip_special_tokens=True)[0]
+                    if self.tokenizer:
+                        generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+                    else:
+                        generated_text = self.processor.batch_decode(outputs, skip_special_tokens=True)[0]
         else:
             # Standard transformers processing
+            confidence_data = None
+
             inputs = self.processor(
                 text=prompt,
                 images=image,
@@ -545,7 +694,7 @@ class DeepSeekAgent(OCRAgent):
             inputs = {k: v.to(self.model.device) if torch.is_tensor(v) else v
                      for k, v in inputs.items()}
 
-            # Run inference
+            # Run inference - mit output_scores für Confidence
             with torch.no_grad():
                 outputs = self.model.generate(
                     **inputs,
@@ -553,12 +702,27 @@ class DeepSeekAgent(OCRAgent):
                     temperature=options.get("temperature", 0.1),
                     do_sample=False,  # Deterministic for OCR
                     pad_token_id=self.processor.tokenizer.eos_token_id,
+                    output_scores=True,
+                    return_dict_in_generate=True
                 )
 
+            # Extrahiere Sequenzen und Scores
+            generated_ids = outputs.sequences if hasattr(outputs, 'sequences') else outputs
+            scores = outputs.scores if hasattr(outputs, 'scores') else None
+
+            # Berechne Token-Level Confidence
+            if scores:
+                confidence_data = self._calculate_token_confidence(scores, generated_ids)
+
             # Decode output
-            generated_text = self.processor.batch_decode(
-                outputs, skip_special_tokens=True
-            )[0]
+            if hasattr(outputs, 'sequences'):
+                generated_text = self.processor.batch_decode(
+                    outputs.sequences, skip_special_tokens=True
+                )[0]
+            else:
+                generated_text = self.processor.batch_decode(
+                    outputs, skip_special_tokens=True
+                )[0]
 
         # Calculate processing time
         processing_time_ms = int((time.perf_counter() - start_time) * 1000)
@@ -567,17 +731,49 @@ class DeepSeekAgent(OCRAgent):
         if prompt in generated_text:
             generated_text = generated_text.replace(prompt, "").strip()
 
-        # Estimate confidence based on text quality
-        # Janus-Pro typically has high accuracy
-        confidence = 0.95 if generated_text else 0.0
+        # Berechne finale Confidence aus Token-Level Daten
+        if confidence_data and confidence_data.get("confidence_method") == "token_logits":
+            # Verwende gewichtete Confidence (70% mean + 30% min)
+            confidence = confidence_data.get("weighted_confidence", 0.0)
 
-        return {
+            # Zusätzliche Heuristik: Falls Text sehr kurz, reduziere Confidence
+            if len(generated_text) < 10:
+                confidence *= 0.8
+
+            # Sicherstelle dass Confidence im gültigen Bereich
+            confidence = max(0.0, min(1.0, confidence))
+        else:
+            # Fallback: Heuristische Confidence basierend auf Textqualität
+            if not generated_text:
+                confidence = 0.0
+            elif len(generated_text) < 10:
+                confidence = 0.5
+            elif len(generated_text) < 50:
+                confidence = 0.7
+            else:
+                # Längerer Text = wahrscheinlich erfolgreich
+                confidence = 0.85
+
+        # Baue erweiterte Response mit Confidence-Details
+        result = {
             "text": generated_text,
             "confidence": confidence,
             "model": self.MODEL_NAME,
             "processing_time_ms": processing_time_ms,
             "backend": "deepseek-janus-pro"
         }
+
+        # Füge detaillierte Confidence-Metriken hinzu wenn verfügbar
+        if confidence_data:
+            result["confidence_details"] = {
+                "method": confidence_data.get("confidence_method", "unknown"),
+                "mean_confidence": confidence_data.get("mean_confidence", 0.0),
+                "min_confidence": confidence_data.get("min_confidence", 0.0),
+                "total_tokens": confidence_data.get("total_tokens", 0),
+                "low_confidence_count": len(confidence_data.get("low_confidence_positions", []))
+            }
+
+        return result
 
     def _build_prompt(self, language: str, options: Dict[str, Any]) -> str:
         """Build OCR prompt for DeepSeek."""
