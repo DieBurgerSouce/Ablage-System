@@ -5,7 +5,7 @@ from typing import Optional, List, Dict, Any
 from enum import Enum
 import uuid
 
-from sqlalchemy import Column, String, Integer, DateTime, Boolean, Float, Text, JSON, ForeignKey, Index, Table
+from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Boolean, Float, Text, JSON, ForeignKey, Index, Table
 from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
 from sqlalchemy.types import TypeDecorator
 from pgvector.sqlalchemy import Vector
@@ -114,6 +114,12 @@ class Document(Base):
 
     # Document metadata
     document_type = Column(String(50), default=DocumentType.OTHER)
+    data_category = Column(
+        String(50),
+        nullable=True,
+        default="document_content",
+        comment="GDPR Datenkategorie für Aufbewahrungsfristen"
+    )
     status = Column(String(50), default=ProcessingStatus.PENDING, nullable=False)
     page_count = Column(Integer)
 
@@ -151,7 +157,7 @@ class Document(Base):
 
     # Relationships
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
-    owner = relationship("User", back_populates="documents")
+    owner = relationship("User", back_populates="documents", foreign_keys=[owner_id])
     tags = relationship("Tag", secondary=document_tags, back_populates="documents")
     processing_jobs = relationship("ProcessingJob", back_populates="document", cascade="all, delete-orphan")
     ocr_results = relationship("OCRResult", back_populates="document", cascade="all, delete-orphan")
@@ -201,7 +207,9 @@ class User(Base):
     documents_processed_today = Column(Integer, default=0)
 
     # Two-Factor Authentication (2FA/TOTP)
-    totp_secret = Column(String(32), nullable=True)  # Base32-encoded TOTP secret (encrypted in production)
+    # Secret ist mit AES-256-GCM verschlüsselt (nonce + ciphertext + tag, Base64-encoded)
+    # Länge: ~100 Zeichen für verschlüsselte Daten
+    totp_secret = Column(String(256), nullable=True)
     totp_enabled = Column(Boolean, default=False)
     totp_backup_codes = Column(CrossDBJSON, nullable=True)  # Hashed backup codes
     totp_setup_at = Column(DateTime(timezone=True), nullable=True)
@@ -223,8 +231,18 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     last_login = Column(DateTime(timezone=True))
 
+    # GDPR Art. 17 - Right to Erasure (Recht auf Löschung)
+    deletion_requested_at = Column(DateTime(timezone=True), nullable=True)
+    deletion_scheduled_for = Column(DateTime(timezone=True), nullable=True)
+    deletion_reason = Column(String(500), nullable=True)
+    deletion_confirmed = Column(Boolean, default=False)
+
+    # Email Verification
+    email_verified = Column(Boolean, default=False)
+    email_verified_at = Column(DateTime(timezone=True), nullable=True)
+
     # Relationships
-    documents = relationship("Document", back_populates="owner")
+    documents = relationship("Document", back_populates="owner", foreign_keys="Document.owner_id")
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user")
     deactivated_by = relationship("User", remote_side="User.id", foreign_keys=[deactivated_by_id])
@@ -241,6 +259,8 @@ class ProcessingJob(Base):
     job_type = Column(String(50), nullable=False)  # ocr, validation, export, etc.
     backend = Column(String(50))
     status = Column(String(50), default=ProcessingStatus.QUEUED, nullable=False)
+    progress = Column(Integer, default=0, comment="Fortschritt 0-100%")
+    message = Column(String(500), nullable=True, comment="Status-Nachricht")
     priority = Column(Integer, default=5)
     retry_count = Column(Integer, default=0)
     max_retries = Column(Integer, default=3)
@@ -408,7 +428,17 @@ class APIKey(Base):
 
 
 class AuditLog(Base):
-    """Audit log for DSGVO compliance."""
+    """
+    Audit log for DSGVO compliance.
+
+    Immutability Features (AP6):
+    - sequence_number: Eindeutige, aufsteigende Sequenznummer
+    - integrity_hash: SHA-256 Hash des Eintrags für Tamper-Detection
+    - previous_hash: Hash des vorherigen Eintrags (Blockchain-ähnliche Verkettung)
+
+    SECURITY: Diese Tabelle sollte mit DB-Level-Triggers gegen
+    UPDATE/DELETE geschützt sein (siehe Migration 017).
+    """
     __tablename__ = "audit_logs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -429,6 +459,14 @@ class AuditLog(Base):
     audit_metadata = Column(CrossDBJSON, default={})
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Immutability Fields (AP6: Audit Log Immutabilität)
+    # Sequenznummer für geordnete Verkettung
+    sequence_number = Column(BigInteger, unique=True, index=True, nullable=True)
+    # SHA-256 Hash dieses Eintrags (berechnet aus allen relevanten Feldern)
+    integrity_hash = Column(String(64), nullable=True)
+    # SHA-256 Hash des vorherigen Eintrags (Verkettung)
+    previous_hash = Column(String(64), nullable=True)
+
     # Relationships
     user = relationship("User", back_populates="audit_logs")
 
@@ -437,6 +475,7 @@ class AuditLog(Base):
         Index("ix_audit_logs_user_id", "user_id"),
         Index("ix_audit_logs_created_at", "created_at"),
         Index("ix_audit_logs_action", "action"),
+        Index("ix_audit_logs_sequence", "sequence_number"),
     )
 
 
@@ -788,4 +827,164 @@ class PasswordResetToken(Base):
         Index("ix_password_reset_tokens_user_id", "user_id"),
         Index("ix_password_reset_tokens_token_hash", "token_hash"),
         Index("ix_password_reset_tokens_expires_at", "expires_at"),
+    )
+
+
+# ============================================================================
+# GDPR Art. 20 - Data Portability
+# ============================================================================
+
+class ExportStatus(str, Enum):
+    """Data export status for GDPR Art. 20."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    EXPIRED = "expired"
+
+
+class ExportFormat(str, Enum):
+    """Supported export formats for GDPR Art. 20."""
+    JSON = "json"
+    CSV = "csv"
+
+
+class DataExport(Base):
+    """
+    GDPR Art. 20 - Data Export Request.
+
+    Ermöglicht Benutzern den Export ihrer Daten in maschinenlesbarem Format.
+    Exports sind 7 Tage gültig und werden danach automatisch gelöscht.
+    """
+    __tablename__ = "data_exports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Export Status
+    status = Column(String(50), default=ExportStatus.PENDING, nullable=False)
+    format = Column(String(20), default=ExportFormat.JSON, nullable=False)
+
+    # File Information
+    file_path = Column(String(500), nullable=True)  # MinIO path
+    file_size_bytes = Column(Integer, nullable=True)
+    error_message = Column(Text, nullable=True)
+
+    # Timestamps
+    requested_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)  # 7 Tage nach Erstellung
+
+    # Download Tracking
+    download_count = Column(Integer, default=0)
+
+    # Relationships
+    user = relationship("User", backref="data_exports")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_data_exports_user_id", "user_id"),
+        Index("ix_data_exports_status", "status"),
+        Index("ix_data_exports_expires_at", "expires_at"),
+    )
+
+
+# ============================================================================
+# Session Management
+# ============================================================================
+
+class UserSession(Base):
+    """
+    Active user session tracking.
+
+    Ermöglicht:
+    - Übersicht aller aktiven Sessions
+    - Logout von anderen Geräten
+    - Erkennung verdächtiger Aktivitäten
+    - Session-Widerruf bei Sicherheitsvorfällen
+    """
+    __tablename__ = "user_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Token Identification
+    token_jti = Column(String(64), unique=True, nullable=False)  # JWT ID für Blacklisting
+
+    # Device Information
+    device_name = Column(String(100), nullable=True)  # z.B. "Chrome auf Windows"
+    device_type = Column(String(50), nullable=True)   # desktop, mobile, tablet
+    ip_address = Column(String(45), nullable=False)   # IPv4 oder IPv6
+    user_agent = Column(String(500), nullable=True)
+    location = Column(String(100), nullable=True)     # Stadt, Land (GeoIP)
+
+    # Timestamps
+    last_activity_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+
+    # Status
+    is_current = Column(Boolean, default=False)  # Markiert aktuelle Session
+    revoked = Column(Boolean, default=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    user = relationship("User", backref="sessions")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_user_sessions_user_id", "user_id"),
+        Index("ix_user_sessions_token_jti", "token_jti"),
+        Index("ix_user_sessions_expires_at", "expires_at"),
+    )
+
+
+class EmailVerificationToken(Base):
+    """
+    Email verification tokens.
+
+    Verwendet für:
+    - Neue Benutzerregistrierung (email_verified=False)
+    - Email-Adresse ändern (new_email-Feld)
+    - Erneute Verifizierung anfordern
+    """
+    __tablename__ = "email_verification_tokens"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Token Data
+    token_hash = Column(String(128), nullable=False)  # SHA-256 Hash des Tokens
+    email = Column(String(255), nullable=False)  # Email bei Token-Erstellung
+    token_type = Column(String(20), nullable=False)  # 'verification' oder 'email_change'
+    new_email = Column(String(255), nullable=True)  # Nur für Email-Änderungen
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Security
+    ip_address = Column(String(45), nullable=True)
+
+    # Relationships
+    user = relationship("User", backref="email_verification_tokens")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_email_verification_tokens_user_id", "user_id"),
+        Index("ix_email_verification_tokens_token_hash", "token_hash"),
+        Index("ix_email_verification_tokens_expires_at", "expires_at"),
     )

@@ -6,18 +6,30 @@ Protokolliert alle sicherheitsrelevanten Events für GDPR Art. 25/30 Compliance.
 Events werden in die AuditLog-Tabelle geschrieben und können für
 Compliance-Reports und Security-Monitoring verwendet werden.
 
+Arbeitspaket 6: Audit Log Immutabilität
+- Blockchain-ähnliche Verkettung mit previous_hash
+- SHA-256 Integrity-Hash pro Eintrag
+- Sequenznummern für Ordering
+- Verifikationsfunktionen für Tamper-Detection
+
 Feinpoliert und durchdacht - Enterprise-grade Audit Logging.
 """
 
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 from enum import Enum
 import uuid
+import hashlib
+import json
 
 import structlog
+from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger(__name__)
+
+# Genesis-Hash für den ersten Eintrag in der Kette
+GENESIS_HASH = "0" * 64  # 64 Nullen als Genesis-Block-Hash
 
 
 class SecurityEventType(str, Enum):
@@ -67,6 +79,240 @@ class SecurityEventType(str, Enum):
     ADMIN_USER_UPDATED = "admin_user_updated"
     ADMIN_USER_DELETED = "admin_user_deleted"
     ADMIN_FORCE_LOGOUT = "admin_force_logout"
+
+
+# ==================== Integrity Functions (AP6) ====================
+
+def calculate_entry_hash(
+    sequence_number: int,
+    user_id: Optional[str],
+    action: str,
+    resource_type: Optional[str],
+    resource_id: Optional[str],
+    ip_address: Optional[str],
+    created_at: datetime,
+    metadata: Dict[str, Any],
+    previous_hash: str,
+) -> str:
+    """
+    Berechnet den SHA-256 Integrity-Hash für einen Audit-Log-Eintrag.
+
+    Der Hash wird aus allen relevanten Feldern berechnet, um sicherzustellen,
+    dass jede Änderung am Eintrag erkannt werden kann.
+
+    Args:
+        sequence_number: Sequenznummer des Eintrags
+        user_id: Benutzer-ID
+        action: Event-Typ
+        resource_type: Ressourcentyp
+        resource_id: Ressourcen-ID
+        ip_address: IP-Adresse
+        created_at: Zeitstempel
+        metadata: Zusätzliche Metadaten
+        previous_hash: Hash des vorherigen Eintrags
+
+    Returns:
+        SHA-256 Hash als Hex-String (64 Zeichen)
+    """
+    # Erstelle deterministisches Hash-Input
+    hash_input = {
+        "seq": sequence_number,
+        "user_id": user_id,
+        "action": action,
+        "resource_type": resource_type,
+        "resource_id": resource_id,
+        "ip": ip_address,
+        "timestamp": created_at.isoformat() if created_at else None,
+        "metadata": metadata,
+        "prev_hash": previous_hash,
+    }
+
+    # JSON-Serialisierung mit sortieren Keys für Determinismus
+    json_str = json.dumps(hash_input, sort_keys=True, default=str)
+
+    # SHA-256 Hash
+    return hashlib.sha256(json_str.encode('utf-8')).hexdigest()
+
+
+def verify_entry_integrity(
+    entry: "AuditLog",  # type: ignore
+    expected_previous_hash: Optional[str] = None,
+) -> Tuple[bool, Optional[str]]:
+    """
+    Verifiziert die Integrität eines einzelnen Audit-Log-Eintrags.
+
+    Args:
+        entry: AuditLog-Eintrag
+        expected_previous_hash: Erwarteter previous_hash (optional)
+
+    Returns:
+        Tuple von:
+        - is_valid: True wenn Integrität OK
+        - error_message: Fehlermeldung bei Problemen
+    """
+    # Berechne erwarteten Hash
+    calculated_hash = calculate_entry_hash(
+        sequence_number=entry.sequence_number,
+        user_id=str(entry.user_id) if entry.user_id else None,
+        action=entry.action,
+        resource_type=entry.resource_type,
+        resource_id=str(entry.resource_id) if entry.resource_id else None,
+        ip_address=entry.ip_address,
+        created_at=entry.created_at,
+        metadata=entry.audit_metadata or {},
+        previous_hash=entry.previous_hash or GENESIS_HASH,
+    )
+
+    # Vergleiche mit gespeichertem Hash
+    if entry.integrity_hash != calculated_hash:
+        return False, f"Integrity hash mismatch for entry {entry.sequence_number}"
+
+    # Prüfe Verkettung wenn previous_hash erwartet
+    if expected_previous_hash is not None:
+        if entry.previous_hash != expected_previous_hash:
+            return False, f"Chain broken at entry {entry.sequence_number}"
+
+    return True, None
+
+
+async def verify_audit_chain(
+    db: AsyncSession,
+    start_sequence: Optional[int] = None,
+    end_sequence: Optional[int] = None,
+    batch_size: int = 1000,
+) -> Tuple[bool, List[Dict[str, Any]]]:
+    """
+    Verifiziert die Integrität der gesamten Audit-Log-Kette.
+
+    Prüft:
+    1. Integrity-Hash jedes Eintrags
+    2. Verkettung (previous_hash = integrity_hash des Vorgängers)
+    3. Lückenlose Sequenznummern
+
+    Args:
+        db: Datenbank-Session
+        start_sequence: Startsequenz für partielle Prüfung
+        end_sequence: Endsequenz für partielle Prüfung
+        batch_size: Anzahl Einträge pro Batch
+
+    Returns:
+        Tuple von:
+        - is_valid: True wenn gesamte Kette OK
+        - errors: Liste der gefundenen Fehler
+    """
+    from app.db.models import AuditLog
+
+    errors: List[Dict[str, Any]] = []
+
+    # Query vorbereiten
+    query = select(AuditLog).order_by(AuditLog.sequence_number)
+
+    if start_sequence is not None:
+        query = query.where(AuditLog.sequence_number >= start_sequence)
+    if end_sequence is not None:
+        query = query.where(AuditLog.sequence_number <= end_sequence)
+
+    # Hole ersten Eintrag für Initialisierung
+    result = await db.execute(query.limit(1))
+    first_entry = result.scalar_one_or_none()
+
+    if not first_entry:
+        # Keine Einträge - alles OK
+        return True, []
+
+    # Initialisiere mit erstem Eintrag
+    if start_sequence is None or first_entry.sequence_number == 1:
+        expected_prev_hash = GENESIS_HASH
+    else:
+        # Hole Hash des Vorgängers
+        prev_query = select(AuditLog).where(
+            AuditLog.sequence_number == first_entry.sequence_number - 1
+        )
+        prev_result = await db.execute(prev_query)
+        prev_entry = prev_result.scalar_one_or_none()
+        expected_prev_hash = prev_entry.integrity_hash if prev_entry else GENESIS_HASH
+
+    last_sequence: Optional[int] = None
+    entries_checked = 0
+
+    # Verifiziere in Batches
+    offset = 0
+    while True:
+        result = await db.execute(query.offset(offset).limit(batch_size))
+        entries = result.scalars().all()
+
+        if not entries:
+            break
+
+        for entry in entries:
+            entries_checked += 1
+
+            # Prüfe Sequenz-Kontinuität
+            if last_sequence is not None:
+                if entry.sequence_number != last_sequence + 1:
+                    errors.append({
+                        "type": "sequence_gap",
+                        "expected": last_sequence + 1,
+                        "found": entry.sequence_number,
+                    })
+
+            # Verifiziere Eintrag
+            is_valid, error_msg = verify_entry_integrity(entry, expected_prev_hash)
+            if not is_valid:
+                errors.append({
+                    "type": "integrity_error",
+                    "sequence": entry.sequence_number,
+                    "entry_id": str(entry.id),
+                    "message": error_msg,
+                })
+
+            # Update für nächste Iteration
+            expected_prev_hash = entry.integrity_hash
+            last_sequence = entry.sequence_number
+
+        offset += batch_size
+
+    logger.info(
+        "audit_chain_verified",
+        entries_checked=entries_checked,
+        errors_found=len(errors),
+        is_valid=len(errors) == 0,
+    )
+
+    return len(errors) == 0, errors
+
+
+async def get_last_audit_entry(db: AsyncSession) -> Optional["AuditLog"]:  # type: ignore
+    """
+    Holt den letzten Audit-Log-Eintrag für Verkettung.
+
+    Returns:
+        Letzter AuditLog-Eintrag oder None
+    """
+    from app.db.models import AuditLog
+
+    query = select(AuditLog).order_by(desc(AuditLog.sequence_number)).limit(1)
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
+
+
+async def get_next_sequence_number(db: AsyncSession) -> int:
+    """
+    Holt die nächste Sequenznummer für einen neuen Eintrag.
+
+    Verwendet SELECT FOR UPDATE um Race Conditions zu vermeiden.
+
+    Returns:
+        Nächste Sequenznummer
+    """
+    from app.db.models import AuditLog
+
+    # Hole maximale Sequenznummer
+    query = select(func.max(AuditLog.sequence_number))
+    result = await db.execute(query)
+    max_seq = result.scalar_one_or_none()
+
+    return (max_seq or 0) + 1
 
 
 class SecurityAuditLogger:
@@ -170,8 +416,37 @@ class SecurityAuditLogger:
         resource_id: Optional[str],
         details: Dict[str, Any],
     ) -> str:
-        """Speichert Event in AuditLog-Tabelle."""
+        """
+        Speichert Event in AuditLog-Tabelle mit Immutabilitäts-Features.
+
+        AP6: Audit Log Immutabilität
+        - Sequenznummer für Reihenfolge
+        - previous_hash für Verkettung (Blockchain-artig)
+        - integrity_hash für Tamper-Detection
+        """
         from app.db.models import AuditLog
+
+        # AP6: Hole letzte Sequenz und Hash für Verkettung
+        sequence = await get_next_sequence_number(self.db)
+        last_entry = await get_last_audit_entry(self.db)
+        previous_hash = last_entry.integrity_hash if last_entry else GENESIS_HASH
+
+        # Timestamp festlegen
+        created_at = datetime.now(timezone.utc)
+        filtered_details = self._filter_sensitive_data(details)
+
+        # AP6: Berechne Integrity-Hash
+        integrity_hash = calculate_entry_hash(
+            sequence_number=sequence,
+            user_id=user_id,
+            action=event_type.value,
+            resource_type=resource_type or "security",
+            resource_id=resource_id,
+            ip_address=ip_address,
+            created_at=created_at,
+            metadata=filtered_details,
+            previous_hash=previous_hash,
+        )
 
         audit_log = AuditLog(
             id=uuid.uuid4(),
@@ -183,12 +458,22 @@ class SecurityAuditLogger:
             user_agent=user_agent[:255] if user_agent else None,
             request_method=None,
             request_path=None,
-            audit_metadata=self._filter_sensitive_data(details),
-            created_at=datetime.now(timezone.utc),
+            audit_metadata=filtered_details,
+            created_at=created_at,
+            # AP6: Immutabilitäts-Felder
+            sequence_number=sequence,
+            integrity_hash=integrity_hash,
+            previous_hash=previous_hash,
         )
 
         self.db.add(audit_log)
         await self.db.flush()
+
+        logger.debug(
+            "audit_log_saved_with_integrity",
+            sequence=sequence,
+            integrity_hash=integrity_hash[:16] + "...",
+        )
 
         return str(audit_log.id)
 

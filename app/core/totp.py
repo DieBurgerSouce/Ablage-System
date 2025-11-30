@@ -39,6 +39,12 @@ except ImportError:
     QRCODE_AVAILABLE = False
 
 from app.core.config import settings
+from app.core.encryption import (
+    encrypt_totp_secret,
+    decrypt_totp_secret,
+    DecryptionError,
+    KeyNotConfiguredError,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -74,6 +80,14 @@ class TOTPAlreadyEnabledError(TOTPError):
 class TOTPNotEnabledError(TOTPError):
     """Ausnahme wenn 2FA nicht aktiviert ist."""
     pass
+
+
+class TOTPSecretEncryptionError(TOTPError):
+    """Ausnahme bei Verschlüsselungs-/Entschlüsselungsfehlern."""
+
+    def __init__(self, message: str, user_message_de: str):
+        super().__init__(message)
+        self.user_message_de = user_message_de
 
 
 def check_totp_available() -> bool:
@@ -331,6 +345,146 @@ def get_totp_remaining_seconds() -> int:
     return TOTP_INTERVAL - int(time.time()) % TOTP_INTERVAL
 
 
+# ==================== Secret Encryption/Decryption ====================
+
+def encrypt_secret(secret: str, user_id: str) -> str:
+    """
+    Verschlüsselt einen TOTP-Secret für sichere DB-Speicherung.
+
+    Verwendet AES-256-GCM mit User-ID als AAD (Associated Authenticated Data),
+    um sicherzustellen, dass verschlüsselte Secrets nicht zwischen Benutzern
+    übertragen werden können.
+
+    Args:
+        secret: Base32-encoded TOTP-Secret (Klartext)
+        user_id: Benutzer-ID (wird als AAD verwendet)
+
+    Returns:
+        Verschlüsselter Secret (Base64-encoded)
+
+    Raises:
+        TOTPSecretEncryptionError: Bei Verschlüsselungsfehlern
+    """
+    try:
+        encrypted = encrypt_totp_secret(secret, user_id)
+        logger.debug(
+            "totp_secret_encrypted",
+            user_id=str(user_id)[:8] + "..."
+        )
+        return encrypted
+    except KeyNotConfiguredError:
+        logger.error("totp_encryption_key_not_configured")
+        raise TOTPSecretEncryptionError(
+            "Encryption key not configured",
+            "Verschlüsselung nicht konfiguriert. Bitte Administrator kontaktieren."
+        )
+    except Exception as e:
+        logger.error("totp_secret_encryption_failed", error=str(e))
+        raise TOTPSecretEncryptionError(
+            f"Encryption failed: {e}",
+            "Verschlüsselung fehlgeschlagen. Bitte später erneut versuchen."
+        )
+
+
+def decrypt_secret(encrypted_secret: str, user_id: str) -> str:
+    """
+    Entschlüsselt einen TOTP-Secret aus der Datenbank.
+
+    Args:
+        encrypted_secret: Verschlüsselter Secret (Base64-encoded)
+        user_id: Benutzer-ID (muss mit Verschlüsselung übereinstimmen)
+
+    Returns:
+        Base32-encoded TOTP-Secret (Klartext)
+
+    Raises:
+        TOTPSecretEncryptionError: Bei Entschlüsselungsfehlern
+    """
+    try:
+        decrypted = decrypt_totp_secret(encrypted_secret, user_id)
+        logger.debug(
+            "totp_secret_decrypted",
+            user_id=str(user_id)[:8] + "..."
+        )
+        return decrypted
+    except KeyNotConfiguredError:
+        logger.error("totp_decryption_key_not_configured")
+        raise TOTPSecretEncryptionError(
+            "Encryption key not configured",
+            "Entschlüsselung nicht konfiguriert. Bitte Administrator kontaktieren."
+        )
+    except DecryptionError as e:
+        logger.error("totp_secret_decryption_failed", error=str(e))
+        raise TOTPSecretEncryptionError(
+            f"Decryption failed: {e}",
+            "Entschlüsselung fehlgeschlagen. Secret möglicherweise beschädigt."
+        )
+    except Exception as e:
+        logger.error("totp_secret_decryption_unexpected_error", error=str(e))
+        raise TOTPSecretEncryptionError(
+            f"Decryption failed: {e}",
+            "Entschlüsselung fehlgeschlagen. Bitte Administrator kontaktieren."
+        )
+
+
+def verify_totp_code_encrypted(
+    encrypted_secret: str,
+    user_id: str,
+    code: str,
+    valid_window: int = 1
+) -> bool:
+    """
+    Verifiziert einen TOTP-Code mit verschlüsseltem Secret.
+
+    Convenience-Funktion, die Entschlüsselung und Verifikation kombiniert.
+
+    Args:
+        encrypted_secret: Verschlüsselter TOTP-Secret aus der DB
+        user_id: Benutzer-ID für Entschlüsselung
+        code: 6-stelliger TOTP-Code vom Benutzer
+        valid_window: Erlaubte Zeitabweichung in Intervallen (Default: 1)
+
+    Returns:
+        True wenn Code gültig ist
+
+    Raises:
+        TOTPSecretEncryptionError: Bei Entschlüsselungsfehlern
+        TOTPNotAvailableError: Wenn pyotp nicht installiert ist
+    """
+    secret = decrypt_secret(encrypted_secret, user_id)
+    return verify_totp_code(secret, code, valid_window)
+
+
+def verify_2fa_login_encrypted(
+    encrypted_secret: str,
+    user_id: str,
+    code: str,
+    backup_codes: Optional[List[str]] = None
+) -> Tuple[bool, bool, Optional[int]]:
+    """
+    Verifiziert 2FA bei Login mit verschlüsseltem Secret.
+
+    Convenience-Funktion, die Entschlüsselung und Verifikation kombiniert.
+
+    Args:
+        encrypted_secret: Verschlüsselter TOTP-Secret aus der DB
+        user_id: Benutzer-ID für Entschlüsselung
+        code: Code vom Benutzer (TOTP oder Backup)
+        backup_codes: Optional: Liste der gehashten Backup-Codes
+
+    Returns:
+        Tuple von:
+        - is_valid: True wenn Authentifizierung erfolgreich
+        - used_backup: True wenn Backup-Code verwendet wurde
+        - backup_index: Index des verwendeten Backup-Codes (falls used_backup=True)
+
+    Raises:
+        TOTPSecretEncryptionError: Bei Entschlüsselungsfehlern
+    """
+    secret = decrypt_secret(encrypted_secret, user_id)
+    return verify_2fa_login(secret, code, backup_codes)
+
+
 # ==================== 2FA Setup/Management Functions ====================
 
 async def setup_2fa(
@@ -375,6 +529,9 @@ async def setup_2fa(
     # Generiere Backup-Codes
     plain_codes, hashed_codes = generate_backup_codes()
 
+    # Verschlüssele Secret für DB-Speicherung
+    encrypted_secret = encrypt_secret(secret, user_id)
+
     logger.info(
         "totp_setup_initiated",
         user_id=str(user_id)[:8] + "...",
@@ -382,7 +539,8 @@ async def setup_2fa(
     )
 
     return {
-        "secret": secret,
+        "secret": secret,  # Klartext für QR-Code/Setup-Verifikation
+        "encrypted_secret": encrypted_secret,  # Verschlüsselt für DB-Speicherung
         "qr_code": qr_code,
         "provisioning_uri": provisioning_uri,
         "backup_codes": plain_codes,

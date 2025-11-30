@@ -40,6 +40,70 @@ class DocumentType(str, Enum):
     OTHER = "other"
 
 
+class DataCategory(str, Enum):
+    """GDPR data category for retention policies."""
+    PERSONAL_IDENTIFIABLE = "personal_identifiable"  # 365 Tage
+    SPECIAL_CATEGORY = "special_category"  # 180 Tage (Gesundheit, Religion, etc.)
+    FINANCIAL = "financial"  # 3650 Tage (10 Jahre HGB)
+    CONTACT = "contact"  # 365 Tage
+    DOCUMENT_CONTENT = "document_content"  # 2555 Tage (7 Jahre HGB)
+    METADATA = "metadata"  # 90 Tage
+    ANONYMOUS = "anonymous"  # Unbegrenzt
+
+
+class DocumentMetadata(BaseModel):
+    """
+    Typisiertes Schema für Dokument-Metadata.
+
+    SICHERHEIT: Verhindert willkürliche Daten-Injektion durch strikte Validierung.
+    Nur definierte Felder sind erlaubt (extra="forbid").
+    """
+    # Quelle und Ursprung
+    source: Optional[str] = Field(None, max_length=200, description="Ursprung des Dokuments")
+    source_url: Optional[str] = Field(None, max_length=500, description="URL des Ursprungs")
+
+    # Benutzerdefinierte Felder
+    custom_tags: Optional[List[str]] = Field(
+        default=None,
+        max_length=20,
+        description="Benutzerdefinierte Tags (max 20)"
+    )
+    notes: Optional[str] = Field(
+        None,
+        max_length=2000,
+        description="Notizen zum Dokument (max 2000 Zeichen)"
+    )
+
+    # Geschäftliche Informationen
+    customer_id: Optional[str] = Field(None, max_length=100, description="Kunden-ID")
+    project_id: Optional[str] = Field(None, max_length=100, description="Projekt-ID")
+    department: Optional[str] = Field(None, max_length=100, description="Abteilung")
+
+    # Dokumentenspezifisch
+    invoice_number: Optional[str] = Field(None, max_length=50, description="Rechnungsnummer")
+    contract_number: Optional[str] = Field(None, max_length=50, description="Vertragsnummer")
+    reference_number: Optional[str] = Field(None, max_length=50, description="Referenznummer")
+
+    # Validierung: Keine zusätzlichen Felder erlaubt
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("custom_tags")
+    @classmethod
+    def validate_tags(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validiere Tags: max 50 Zeichen pro Tag, keine Sonderzeichen."""
+        if v is None:
+            return v
+        validated = []
+        for tag in v:
+            if len(tag) > 50:
+                raise ValueError(f"Tag zu lang: max 50 Zeichen, gefunden {len(tag)}")
+            # Nur alphanumerische Zeichen, Bindestriche und Unterstriche
+            if not tag.replace("-", "").replace("_", "").replace(" ", "").isalnum():
+                raise ValueError(f"Tag enthält ungültige Zeichen: {tag}")
+            validated.append(tag.strip().lower())
+        return validated
+
+
 # User Schemas
 class UserBase(BaseModel):
     """Base user schema."""
@@ -833,7 +897,14 @@ class DocumentUpdateRequest(BaseModel):
     document_type: Optional[DocumentType] = None
     language: Optional[str] = Field(None, pattern="^(de|en)$")
     tags: Optional[List[str]] = Field(None, max_length=20)
-    metadata: Optional[Dict[str, str]] = None
+    metadata: Optional[DocumentMetadata] = Field(
+        None,
+        description="Typisierte Metadaten - nur definierte Felder erlaubt"
+    )
+    data_category: Optional[DataCategory] = Field(
+        None,
+        description="GDPR-Datenkategorie für Aufbewahrungsfristen"
+    )
 
 
 class DocumentPartialUpdateRequest(BaseModel):
@@ -1572,3 +1643,216 @@ class AdminActionListResponse(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+# ============================================================================
+# GDPR DELETION SCHEMAS (Art. 17 DSGVO)
+# ============================================================================
+
+class DeletionRequestCreate(BaseModel):
+    """Anfrage zur Kontolöschung (Art. 17 DSGVO)."""
+    reason: Optional[str] = Field(
+        None,
+        max_length=500,
+        description="Grund für Löschung (optional)"
+    )
+    confirm_deletion: bool = Field(
+        ...,
+        description="Bestätigung der unwiderruflichen Löschung"
+    )
+
+    @field_validator("confirm_deletion")
+    @classmethod
+    def must_confirm(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError("Löschung muss explizit bestätigt werden (confirm_deletion=true)")
+        return v
+
+
+class DeletionCancelRequest(BaseModel):
+    """Abbruch einer Löschanfrage."""
+    reason: Optional[str] = Field(
+        None,
+        max_length=200,
+        description="Grund für den Abbruch (optional)"
+    )
+
+
+class DeletionStatusResponse(BaseModel):
+    """Status einer Löschanfrage."""
+    deletion_requested: bool
+    deletion_requested_at: Optional[datetime] = None
+    deletion_scheduled_for: Optional[datetime] = None
+    days_remaining: Optional[int] = None
+    can_cancel: bool
+    nachricht: str  # Deutsche Nachricht
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DeletionExecutionStats(BaseModel):
+    """Statistiken nach Löschausführung."""
+    documents_deleted: int
+    api_keys_deleted: int
+    audit_logs_anonymized: int
+    user_deleted: bool
+    hard_delete: bool
+
+
+class DeletionExecutionResponse(BaseModel):
+    """Antwort nach Löschausführung (Admin)."""
+    success: bool
+    user_id: uuid.UUID
+    stats: DeletionExecutionStats
+    nachricht: str
+
+
+# ============================================================================
+# GDPR DATA EXPORT SCHEMAS (Art. 20 DSGVO)
+# ============================================================================
+
+class ExportRequestCreate(BaseModel):
+    """Anfrage zum Datenexport (Art. 20 DSGVO)."""
+    format: str = Field(
+        default="json",
+        pattern="^(json|csv)$",
+        description="Export-Format: json oder csv"
+    )
+
+
+class ExportStatusResponse(BaseModel):
+    """Status eines Datenexports."""
+    export_id: uuid.UUID
+    status: str
+    format: str
+    requested_at: datetime
+    completed_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
+    file_size_bytes: Optional[int] = None
+    download_count: int = 0
+    error_message: Optional[str] = None
+    nachricht: str  # Deutsche Nachricht
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ExportListResponse(BaseModel):
+    """Liste aller Datenexports eines Benutzers."""
+    exports: List[ExportStatusResponse]
+    total: int
+
+
+class ExportDownloadResponse(BaseModel):
+    """Download-URL für einen Export."""
+    download_url: str
+    expires_in_seconds: int
+    nachricht: str
+
+
+# ============================================================================
+# SESSION MANAGEMENT SCHEMAS
+# ============================================================================
+
+class SessionInfo(BaseModel):
+    """Informationen zu einer aktiven Session."""
+    id: uuid.UUID
+    device_name: Optional[str] = None
+    device_type: Optional[str] = None
+    ip_address: str
+    location: Optional[str] = None
+    last_activity_at: datetime
+    created_at: datetime
+    expires_at: datetime
+    is_current: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SessionListResponse(BaseModel):
+    """Liste aller aktiven Sessions."""
+    sessions: List[SessionInfo]
+    total: int
+    current_session_id: Optional[uuid.UUID] = None
+
+
+class SessionRevokeRequest(BaseModel):
+    """Anfrage zum Widerruf einer Session."""
+    session_id: uuid.UUID
+
+
+class SessionRevokeAllRequest(BaseModel):
+    """Anfrage zum Widerruf aller Sessions."""
+    except_current: bool = Field(
+        default=True,
+        description="Aktuelle Session ausschließen"
+    )
+
+
+class SessionRevokeResponse(BaseModel):
+    """Antwort nach Session-Widerruf."""
+    success: bool
+    revoked_count: int
+    nachricht: str
+
+
+class LoginResponseWithSession(BaseModel):
+    """Login-Antwort mit Session-Informationen."""
+    access_token: str
+    refresh_token: Optional[str] = None
+    token_type: str = "bearer"
+    expires_in: int
+    session_id: uuid.UUID
+    user: "UserResponse"
+    nachricht: str = "Erfolgreich angemeldet"
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================================
+# EMAIL VERIFICATION SCHEMAS
+# ============================================================================
+
+class EmailVerificationRequest(BaseModel):
+    """Anfrage zum erneuten Senden der Verifizierungs-Email."""
+    pass  # Keine Parameter erforderlich, verwendet aktuelle User-Email
+
+
+class EmailVerificationResponse(BaseModel):
+    """Antwort auf Verifizierungs-Anfrage."""
+    success: bool
+    email: str
+    nachricht: str
+
+
+class EmailVerifyTokenRequest(BaseModel):
+    """Anfrage zur Token-Verifizierung."""
+    token: str = Field(..., min_length=32, description="Verifizierungs-Token aus der Email")
+
+
+class EmailVerifyResponse(BaseModel):
+    """Antwort nach erfolgreicher Verifizierung."""
+    success: bool
+    email_verified: bool
+    nachricht: str
+
+
+class EmailChangeRequest(BaseModel):
+    """Anfrage zur Email-Änderung."""
+    new_email: EmailStr = Field(..., description="Neue Email-Adresse")
+    password: str = Field(..., min_length=1, description="Aktuelles Passwort zur Bestätigung")
+
+
+class EmailChangeResponse(BaseModel):
+    """Antwort auf Email-Änderungs-Anfrage."""
+    success: bool
+    new_email: str
+    nachricht: str
+
+
+class EmailVerificationStatusResponse(BaseModel):
+    """Status der Email-Verifizierung."""
+    email: str
+    email_verified: bool
+    email_verified_at: Optional[datetime] = None
+    pending_verification: bool
+    pending_email_change: bool

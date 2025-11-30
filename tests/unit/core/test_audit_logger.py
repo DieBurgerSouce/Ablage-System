@@ -467,3 +467,221 @@ class TestGetAuditLogger:
         assert logger1 is not logger2
         assert logger1.db is mock_db1
         assert logger2.db is mock_db2
+
+
+# ==================== AP6: Immutability Tests ====================
+
+class TestCalculateEntryHash:
+    """Tests fuer Hash-Berechnung (AP6)."""
+
+    def test_calculate_hash_returns_sha256(self):
+        """Hash sollte SHA-256 Format haben (64 Hex-Zeichen)."""
+        from app.core.audit_logger import calculate_entry_hash, GENESIS_HASH
+        from datetime import datetime, timezone
+
+        result = calculate_entry_hash(
+            sequence_number=1,
+            user_id="test-user",
+            action="login_success",
+            resource_type="security",
+            resource_id=None,
+            ip_address="192.168.1.1",
+            created_at=datetime.now(timezone.utc),
+            metadata={},
+            previous_hash=GENESIS_HASH,
+        )
+
+        assert isinstance(result, str)
+        assert len(result) == 64
+        assert all(c in '0123456789abcdef' for c in result)
+
+    def test_calculate_hash_deterministic(self):
+        """Gleiche Inputs sollten gleichen Hash erzeugen."""
+        from app.core.audit_logger import calculate_entry_hash, GENESIS_HASH
+        from datetime import datetime, timezone
+
+        timestamp = datetime(2025, 11, 30, 12, 0, 0, tzinfo=timezone.utc)
+        args = {
+            "sequence_number": 1,
+            "user_id": "test-user",
+            "action": "login_success",
+            "resource_type": "security",
+            "resource_id": None,
+            "ip_address": "192.168.1.1",
+            "created_at": timestamp,
+            "metadata": {"key": "value"},
+            "previous_hash": GENESIS_HASH,
+        }
+
+        hash1 = calculate_entry_hash(**args)
+        hash2 = calculate_entry_hash(**args)
+
+        assert hash1 == hash2
+
+    def test_calculate_hash_changes_with_sequence(self):
+        """Aenderung der Sequenznummer aendert Hash."""
+        from app.core.audit_logger import calculate_entry_hash, GENESIS_HASH
+        from datetime import datetime, timezone
+
+        timestamp = datetime(2025, 11, 30, 12, 0, 0, tzinfo=timezone.utc)
+        base_args = {
+            "user_id": "test-user",
+            "action": "login_success",
+            "resource_type": "security",
+            "resource_id": None,
+            "ip_address": "192.168.1.1",
+            "created_at": timestamp,
+            "metadata": {},
+            "previous_hash": GENESIS_HASH,
+        }
+
+        hash1 = calculate_entry_hash(sequence_number=1, **base_args)
+        hash2 = calculate_entry_hash(sequence_number=2, **base_args)
+
+        assert hash1 != hash2
+
+    def test_calculate_hash_changes_with_previous_hash(self):
+        """Aenderung des previous_hash aendert Hash."""
+        from app.core.audit_logger import calculate_entry_hash, GENESIS_HASH
+        from datetime import datetime, timezone
+
+        timestamp = datetime(2025, 11, 30, 12, 0, 0, tzinfo=timezone.utc)
+        base_args = {
+            "sequence_number": 1,
+            "user_id": "test-user",
+            "action": "login_success",
+            "resource_type": "security",
+            "resource_id": None,
+            "ip_address": "192.168.1.1",
+            "created_at": timestamp,
+            "metadata": {},
+        }
+
+        hash1 = calculate_entry_hash(previous_hash=GENESIS_HASH, **base_args)
+        hash2 = calculate_entry_hash(previous_hash="a" * 64, **base_args)
+
+        assert hash1 != hash2
+
+
+class TestVerifyEntryIntegrity:
+    """Tests fuer Integritaetspruefung (AP6)."""
+
+    def test_verify_valid_entry(self):
+        """Gueltiger Eintrag sollte verifiziert werden."""
+        from app.core.audit_logger import (
+            calculate_entry_hash,
+            verify_entry_integrity,
+            GENESIS_HASH
+        )
+        from datetime import datetime, timezone
+
+        timestamp = datetime(2025, 11, 30, 12, 0, 0, tzinfo=timezone.utc)
+
+        entry = Mock()
+        entry.sequence_number = 1
+        entry.user_id = None
+        entry.action = "login_success"
+        entry.resource_type = "security"
+        entry.resource_id = None
+        entry.ip_address = "192.168.1.1"
+        entry.created_at = timestamp
+        entry.audit_metadata = {}
+        entry.previous_hash = GENESIS_HASH
+
+        entry.integrity_hash = calculate_entry_hash(
+            sequence_number=1,
+            user_id=None,
+            action="login_success",
+            resource_type="security",
+            resource_id=None,
+            ip_address="192.168.1.1",
+            created_at=timestamp,
+            metadata={},
+            previous_hash=GENESIS_HASH,
+        )
+
+        is_valid, error = verify_entry_integrity(entry)
+
+        assert is_valid is True
+        assert error is None
+
+    def test_verify_tampered_entry(self):
+        """Manipulierter Eintrag sollte erkannt werden."""
+        from app.core.audit_logger import verify_entry_integrity, GENESIS_HASH
+        from datetime import datetime, timezone
+
+        timestamp = datetime(2025, 11, 30, 12, 0, 0, tzinfo=timezone.utc)
+
+        entry = Mock()
+        entry.sequence_number = 1
+        entry.user_id = None
+        entry.action = "login_success"
+        entry.resource_type = "security"
+        entry.resource_id = None
+        entry.ip_address = "192.168.1.1"
+        entry.created_at = timestamp
+        entry.audit_metadata = {}
+        entry.previous_hash = GENESIS_HASH
+        entry.integrity_hash = "0" * 64  # Falscher Hash
+
+        is_valid, error = verify_entry_integrity(entry)
+
+        assert is_valid is False
+        assert "mismatch" in error.lower()
+
+    def test_verify_chain_broken(self):
+        """Unterbrochene Kette sollte erkannt werden."""
+        from app.core.audit_logger import (
+            calculate_entry_hash,
+            verify_entry_integrity,
+        )
+        from datetime import datetime, timezone
+
+        timestamp = datetime(2025, 11, 30, 12, 0, 0, tzinfo=timezone.utc)
+
+        entry = Mock()
+        entry.sequence_number = 2
+        entry.user_id = None
+        entry.action = "login_success"
+        entry.resource_type = "security"
+        entry.resource_id = None
+        entry.ip_address = "192.168.1.1"
+        entry.created_at = timestamp
+        entry.audit_metadata = {}
+        entry.previous_hash = "a" * 64
+
+        entry.integrity_hash = calculate_entry_hash(
+            sequence_number=2,
+            user_id=None,
+            action="login_success",
+            resource_type="security",
+            resource_id=None,
+            ip_address="192.168.1.1",
+            created_at=timestamp,
+            metadata={},
+            previous_hash="a" * 64,
+        )
+
+        # Pruefe mit falschem expected_previous_hash
+        is_valid, error = verify_entry_integrity(entry, expected_previous_hash="b" * 64)
+
+        assert is_valid is False
+        assert "chain broken" in error.lower()
+
+
+class TestGenesisHash:
+    """Tests fuer GENESIS_HASH Konstante (AP6)."""
+
+    def test_genesis_hash_format(self):
+        """GENESIS_HASH sollte 64 Nullen sein."""
+        from app.core.audit_logger import GENESIS_HASH
+
+        assert len(GENESIS_HASH) == 64
+        assert all(c == '0' for c in GENESIS_HASH)
+
+    def test_genesis_hash_is_constant(self):
+        """GENESIS_HASH sollte konstant sein."""
+        from app.core.audit_logger import GENESIS_HASH
+
+        expected = "0" * 64
+        assert GENESIS_HASH == expected

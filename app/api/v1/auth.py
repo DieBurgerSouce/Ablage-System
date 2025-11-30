@@ -7,6 +7,7 @@ All responses in German for user-facing messages.
 
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,7 +28,12 @@ from app.db.schemas import (
     Token,
     RefreshTokenRequest,
     LogoutRequest,
-    MessageResponse
+    MessageResponse,
+    SessionInfo,
+    SessionListResponse,
+    SessionRevokeRequest,
+    SessionRevokeAllRequest,
+    SessionRevokeResponse
 )
 from app.services.user_service import UserService
 from app.core.security import (
@@ -41,9 +47,13 @@ from app.core.totp import (
     setup_2fa,
     verify_2fa_setup,
     verify_2fa_login,
+    verify_2fa_login_encrypted,
+    verify_totp_code_encrypted,
+    decrypt_secret,
     generate_backup_codes,
     TOTPNotAvailableError,
     TOTPAlreadyEnabledError,
+    TOTPSecretEncryptionError,
     PYOTP_AVAILABLE,
 )
 from app.core.account_lockout import (
@@ -245,6 +255,33 @@ async def login(
     }
     tokens = create_token_pair(token_data)
 
+    # Create session for tracking
+    try:
+        from app.core.session_manager import get_session_manager
+
+        session_manager = get_session_manager()
+
+        # Extract JTI from access token
+        access_payload = await decode_token(tokens["access_token"])
+        token_jti = access_payload.get("jti")
+
+        if token_jti and client_ip:
+            user_agent = request.headers.get("User-Agent")
+            await session_manager.create_session(
+                db=db,
+                user_id=user.id,
+                token_jti=token_jti,
+                ip_address=client_ip,
+                user_agent=user_agent
+            )
+    except Exception as e:
+        # Session creation failure should not block login
+        logger.warning(
+            "session_creation_failed",
+            user_id=str(user.id),
+            error=str(e)
+        )
+
     logger.info(
         "login_successful",
         user_id=str(user.id),
@@ -343,8 +380,10 @@ async def refresh_token(
     description="Meldet einen Benutzer ab und widerruft Tokens"
 )
 async def logout(
+    request: Request,
     logout_data: LogoutRequest,
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
 ) -> Any:
     """
     Melde einen Benutzer ab.
@@ -355,6 +394,24 @@ async def logout(
 
     **Hinweis:** Nach dem Logout müssen sich Clients erneut anmelden.
     """
+    # Revoke current session
+    try:
+        from app.core.session_manager import get_session_manager
+
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            payload = await decode_token(token)
+            current_jti = payload.get("jti")
+
+            if current_jti:
+                session_manager = get_session_manager()
+                await session_manager.revoke_session_by_jti(db, current_jti)
+
+    except Exception as e:
+        # Session revocation failure should not block logout
+        logger.debug("session_revoke_skipped", error=str(e))
+
     # Blacklist refresh token if provided (async Redis-backed)
     if logout_data.refresh_token:
         try:
@@ -757,14 +814,17 @@ async def initiate_2fa_setup(
             db_session=db
         )
 
-        # Secret temporär im User speichern (noch nicht aktiviert!)
-        current_user.totp_secret = result["secret"]
+        # Verschlüsselten Secret im User speichern (noch nicht aktiviert!)
+        # Seit Arbeitspaket 5 (TOTP-Verschlüsselung) wird der Secret
+        # mit AES-256-GCM verschlüsselt in der DB gespeichert.
+        current_user.totp_secret = result["encrypted_secret"]
         current_user.totp_backup_codes = result["hashed_backup_codes"]
         await db.commit()
 
         logger.info(
             "2fa_setup_initiated",
             user_id=str(current_user.id)[:8] + "...",
+            encryption="AES-256-GCM"
         )
 
         return {
@@ -775,6 +835,12 @@ async def initiate_2fa_setup(
             "warning": "WICHTIG: Speichern Sie die Backup-Codes sicher! Sie werden nur einmal angezeigt."
         }
 
+    except TOTPSecretEncryptionError as e:
+        logger.error("2fa_setup_encryption_failed", error=str(e), user_id=str(current_user.id)[:8])
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=e.user_message_de
+        )
     except Exception as e:
         logger.error("2fa_setup_failed", error=str(e), user_id=str(current_user.id)[:8])
         raise HTTPException(
@@ -812,11 +878,23 @@ async def verify_2fa_setup_endpoint(
             detail="2FA ist bereits aktiviert."
         )
 
-    # Verifiziere den Code
-    if not verify_2fa_setup(current_user.totp_secret, code):
+    try:
+        # Verifiziere den Code mit verschlüsseltem Secret
+        # Der Secret ist seit AP5 mit AES-256-GCM verschlüsselt
+        if not verify_totp_code_encrypted(
+            encrypted_secret=current_user.totp_secret,
+            user_id=str(current_user.id),
+            code=code
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ungültiger Code. Stellen Sie sicher, dass die Zeit auf Ihrem Gerät korrekt ist."
+            )
+    except TOTPSecretEncryptionError as e:
+        logger.error("2fa_verify_decryption_failed", error=str(e))
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungültiger Code. Stellen Sie sicher, dass die Zeit auf Ihrem Gerät korrekt ist."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=e.user_message_de
         )
 
     # 2FA aktivieren
@@ -861,12 +939,20 @@ async def disable_2fa(
             detail="2FA ist nicht aktiviert."
         )
 
-    # Verifiziere den Code (TOTP oder Backup)
-    is_valid, used_backup, backup_index = verify_2fa_login(
-        secret=current_user.totp_secret,
-        code=code,
-        backup_codes=current_user.totp_backup_codes
-    )
+    try:
+        # Verifiziere den Code (TOTP oder Backup) mit verschlüsseltem Secret
+        is_valid, used_backup, backup_index = verify_2fa_login_encrypted(
+            encrypted_secret=current_user.totp_secret,
+            user_id=str(current_user.id),
+            code=code,
+            backup_codes=current_user.totp_backup_codes
+        )
+    except TOTPSecretEncryptionError as e:
+        logger.error("2fa_disable_decryption_failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=e.user_message_de
+        )
 
     if not is_valid:
         raise HTTPException(
@@ -917,12 +1003,22 @@ async def regenerate_backup_codes(
             detail="2FA ist nicht aktiviert."
         )
 
-    # Verifiziere mit TOTP-Code (nicht Backup-Code für diese Operation)
-    from app.core.totp import verify_totp_code
-    if not verify_totp_code(current_user.totp_secret, code):
+    try:
+        # Verifiziere mit TOTP-Code (nicht Backup-Code für diese Operation)
+        if not verify_totp_code_encrypted(
+            encrypted_secret=current_user.totp_secret,
+            user_id=str(current_user.id),
+            code=code
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ungültiger Code."
+            )
+    except TOTPSecretEncryptionError as e:
+        logger.error("2fa_regenerate_decryption_failed", error=str(e))
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungültiger Code."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=e.user_message_de
         )
 
     # Neue Backup-Codes generieren
@@ -941,3 +1037,380 @@ async def regenerate_backup_codes(
         "backup_codes": plain_codes,
         "warning": "WICHTIG: Speichern Sie die Backup-Codes sicher! Die alten Codes sind ungültig."
     }
+
+
+# ==================== Session Management ====================
+
+@router.get(
+    "/sessions",
+    response_model=SessionListResponse,
+    summary="Aktive Sessions auflisten",
+    description="Zeigt alle aktiven Sessions des Benutzers"
+)
+async def list_sessions(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> SessionListResponse:
+    """
+    Listet alle aktiven Sessions des aktuellen Benutzers auf.
+
+    Zeigt für jede Session:
+    - Gerät und Browser
+    - IP-Adresse
+    - Letzte Aktivität
+    - Ob es die aktuelle Session ist
+
+    **Sicherheitshinweis:**
+    Unbekannte Sessions können auf unbefugten Zugriff hinweisen.
+    """
+    from app.core.session_manager import get_session_manager
+
+    session_manager = get_session_manager()
+    sessions = await session_manager.get_active_sessions(db, current_user.id)
+
+    # Finde aktuelle Session anhand des Tokens
+    current_session_id = None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            token = auth_header.split(" ")[1]
+            payload = await decode_token(token)
+            current_jti = payload.get("jti")
+
+            if current_jti:
+                current_session = await session_manager.get_session_by_jti(db, current_jti)
+                if current_session:
+                    current_session_id = current_session.id
+        except Exception:
+            pass  # Token-Fehler ignorieren
+
+    session_infos = []
+    for session in sessions:
+        session_infos.append(SessionInfo(
+            id=session.id,
+            device_name=session.device_name,
+            device_type=session.device_type,
+            ip_address=session.ip_address,
+            location=session.location,
+            last_activity_at=session.last_activity_at,
+            created_at=session.created_at,
+            expires_at=session.expires_at,
+            is_current=session.id == current_session_id
+        ))
+
+    return SessionListResponse(
+        sessions=session_infos,
+        total=len(session_infos),
+        current_session_id=current_session_id
+    )
+
+
+@router.delete(
+    "/sessions/{session_id}",
+    response_model=SessionRevokeResponse,
+    summary="Session widerrufen",
+    description="Beendet eine einzelne Session"
+)
+async def revoke_session(
+    session_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> SessionRevokeResponse:
+    """
+    Widerruft eine einzelne Session.
+
+    Nach dem Widerruf ist die Session ungültig und
+    der Benutzer wird auf diesem Gerät abgemeldet.
+
+    **Hinweis:**
+    Sie können nur Ihre eigenen Sessions widerrufen.
+    """
+    from uuid import UUID
+    from app.core.session_manager import get_session_manager, SessionError
+
+    session_manager = get_session_manager()
+
+    try:
+        await session_manager.revoke_session(db, session_id, current_user.id)
+
+        logger.info(
+            "session_revoked_by_user",
+            user_id=str(current_user.id)[:8] + "...",
+            session_id=str(session_id)[:8] + "..."
+        )
+
+        return SessionRevokeResponse(
+            success=True,
+            revoked_count=1,
+            nachricht="Session erfolgreich beendet"
+        )
+
+    except SessionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.user_message_de
+        )
+
+
+@router.delete(
+    "/sessions",
+    response_model=SessionRevokeResponse,
+    summary="Alle Sessions widerrufen",
+    description="Beendet alle Sessions (optional außer der aktuellen)"
+)
+async def revoke_all_sessions(
+    request: Request,
+    revoke_request: SessionRevokeAllRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> SessionRevokeResponse:
+    """
+    Widerruft alle Sessions des Benutzers.
+
+    - **except_current**: Wenn true, bleibt die aktuelle Session aktiv
+
+    **Anwendungsfälle:**
+    - Nach Passwortänderung alle anderen Sessions beenden
+    - Bei Verdacht auf unbefugten Zugriff
+    - Abmeldung von allen Geräten
+
+    **Hinweis:**
+    Wenn except_current=false, müssen Sie sich erneut anmelden.
+    """
+    from app.core.session_manager import get_session_manager
+
+    session_manager = get_session_manager()
+
+    # Finde aktuelle Session JTI
+    current_jti = None
+    if revoke_request.except_current:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            try:
+                token = auth_header.split(" ")[1]
+                payload = await decode_token(token)
+                current_jti = payload.get("jti")
+            except Exception:
+                pass
+
+    count = await session_manager.revoke_all_sessions(
+        db,
+        current_user.id,
+        except_current=revoke_request.except_current,
+        current_jti=current_jti
+    )
+
+    logger.info(
+        "all_sessions_revoked_by_user",
+        user_id=str(current_user.id)[:8] + "...",
+        count=count,
+        except_current=revoke_request.except_current
+    )
+
+    if revoke_request.except_current:
+        nachricht = f"{count} Session(s) beendet. Ihre aktuelle Session bleibt aktiv."
+    else:
+        nachricht = f"Alle {count} Session(s) beendet. Bitte melden Sie sich erneut an."
+
+    return SessionRevokeResponse(
+        success=True,
+        revoked_count=count,
+        nachricht=nachricht
+    )
+
+
+# ==================== Email Verification ====================
+
+@router.get(
+    "/email/verification-status",
+    response_model="EmailVerificationStatusResponse",
+    summary="Email-Verifizierungsstatus",
+    description="Zeigt den aktuellen Verifizierungsstatus der Email-Adresse"
+)
+async def get_email_verification_status(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Prüft den Email-Verifizierungsstatus des aktuellen Benutzers.
+
+    Returns:
+        - **email**: Aktuelle Email-Adresse
+        - **email_verified**: Ob Email verifiziert ist
+        - **email_verified_at**: Zeitpunkt der Verifizierung
+        - **pending_verification**: Ob Verifizierung aussteht
+        - **pending_email_change**: Ob Email-Änderung aussteht
+    """
+    from app.db.schemas import EmailVerificationStatusResponse
+    from app.services.email_verification_service import get_email_verification_service
+
+    service = get_email_verification_service()
+    status = await service.check_verification_status(db, current_user.id)
+
+    return EmailVerificationStatusResponse(**status)
+
+
+@router.post(
+    "/email/resend-verification",
+    response_model="EmailVerificationResponse",
+    summary="Verifizierungs-Email erneut senden",
+    description="Sendet die Verifizierungs-Email erneut an die aktuelle Adresse"
+)
+async def resend_verification_email(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Sendet die Verifizierungs-Email erneut.
+
+    **Rate-Limiting:** Max 3 Anfragen pro Stunde.
+
+    Falls die Email bereits verifiziert ist, wird eine entsprechende
+    Meldung zurückgegeben.
+    """
+    from app.db.schemas import EmailVerificationResponse
+    from app.services.email_verification_service import get_email_verification_service
+    from app.core.exceptions import EmailVerificationError
+
+    service = get_email_verification_service()
+    client_ip = request.client.host if request.client else None
+
+    try:
+        token = await service.resend_verification(db, current_user.id, client_ip)
+
+        if token is None:
+            return EmailVerificationResponse(
+                success=True,
+                email=current_user.email,
+                nachricht="Ihre Email-Adresse ist bereits verifiziert"
+            )
+
+        # In Produktion: Email mit Token senden
+        # await notification_service.send_verification_email(current_user.email, token)
+
+        logger.info(
+            "verification_email_resent",
+            user_id=str(current_user.id)[:8] + "...",
+            email=current_user.email[:3] + "***"
+        )
+
+        return EmailVerificationResponse(
+            success=True,
+            email=current_user.email,
+            nachricht="Verifizierungs-Email wurde gesendet. Bitte prüfen Sie Ihren Posteingang."
+        )
+
+    except EmailVerificationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=e.user_message_de
+        )
+
+
+@router.post(
+    "/email/verify",
+    response_model="EmailVerifyResponse",
+    summary="Email verifizieren",
+    description="Verifiziert die Email-Adresse mit dem Token aus der Email"
+)
+async def verify_email(
+    verify_request: "EmailVerifyTokenRequest",
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Verifiziert eine Email-Adresse mit dem Token.
+
+    - **token**: Das Token aus der Verifizierungs-Email
+
+    **Hinweis:** Der Token ist 24 Stunden gültig.
+    """
+    from app.db.schemas import EmailVerifyTokenRequest, EmailVerifyResponse
+    from app.services.email_verification_service import get_email_verification_service
+
+    service = get_email_verification_service()
+    success, message, user = await service.verify_email(db, verify_request.token)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+
+    return EmailVerifyResponse(
+        success=True,
+        email_verified=True,
+        nachricht=message
+    )
+
+
+@router.post(
+    "/email/change",
+    response_model="EmailChangeResponse",
+    summary="Email-Adresse ändern",
+    description="Initiiert eine Email-Änderung (erfordert Verifizierung)"
+)
+async def request_email_change(
+    request: Request,
+    change_request: "EmailChangeRequest",
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Fordert eine Email-Änderung an.
+
+    - **new_email**: Die neue Email-Adresse
+    - **password**: Aktuelles Passwort zur Bestätigung
+
+    Ein Verifizierungs-Link wird an die neue Email-Adresse gesendet.
+    Die Änderung wird erst nach Klick auf den Link wirksam.
+    """
+    from app.db.schemas import EmailChangeRequest, EmailChangeResponse
+    from app.services.email_verification_service import get_email_verification_service
+    from app.services.user_service import UserService
+    from app.core.exceptions import EmailVerificationError
+
+    # Verifiziere Passwort
+    authenticated = await UserService.authenticate_user(
+        db, current_user.email, change_request.password
+    )
+    if not authenticated:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Ungültiges Passwort"
+        )
+
+    service = get_email_verification_service()
+    client_ip = request.client.host if request.client else None
+
+    try:
+        token = await service.create_email_change_token(
+            db,
+            current_user.id,
+            current_user.email,
+            change_request.new_email,
+            client_ip
+        )
+
+        # In Produktion: Email mit Token senden
+        # await notification_service.send_email_change_verification(change_request.new_email, token)
+
+        logger.info(
+            "email_change_requested",
+            user_id=str(current_user.id)[:8] + "...",
+            new_email=change_request.new_email[:3] + "***"
+        )
+
+        return EmailChangeResponse(
+            success=True,
+            new_email=change_request.new_email,
+            nachricht="Bestätigungs-Email wurde an die neue Adresse gesendet. "
+                      "Bitte klicken Sie auf den Link in der Email."
+        )
+
+    except EmailVerificationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.user_message_de
+        )

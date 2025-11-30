@@ -361,6 +361,118 @@ async def _cleanup_search_analytics_async(
     return stats
 
 
+@shared_task(
+    name="app.workers.tasks.cleanup_tasks.cleanup_expired_sessions",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+)
+def cleanup_expired_sessions(self) -> Dict[str, Any]:
+    """
+    Bereinigt abgelaufene User-Sessions aus der Datenbank.
+
+    Entfernt Sessions die:
+    - Älter als 30 Tage sind
+    - Widerrufen und älter als 7 Tage sind
+
+    Sollte täglich ausgeführt werden.
+
+    Returns:
+        Dict mit Statistiken über gelöschte Sessions
+    """
+    import asyncio
+    return asyncio.get_event_loop().run_until_complete(
+        _cleanup_expired_sessions_async()
+    )
+
+
+async def _cleanup_expired_sessions_async() -> Dict[str, Any]:
+    """Async implementation of session cleanup."""
+    from app.db.database import get_db_session
+    from app.core.session_manager import get_session_manager
+
+    logger.info("session_cleanup_started")
+
+    stats = {
+        "sessions_deleted": 0,
+        "errors": [],
+    }
+
+    try:
+        session_manager = get_session_manager()
+
+        async with get_db_session() as db:
+            count = await session_manager.cleanup_expired_sessions(db)
+            stats["sessions_deleted"] = count
+
+        logger.info(
+            "session_cleanup_completed",
+            sessions_deleted=stats["sessions_deleted"],
+        )
+
+    except Exception as e:
+        logger.error("session_cleanup_error", error=str(e))
+        stats["errors"].append({"type": "general", "error": str(e)})
+
+    return stats
+
+
+@shared_task(
+    name="app.workers.tasks.cleanup_tasks.cleanup_expired_verification_tokens",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+)
+def cleanup_expired_verification_tokens(self) -> Dict[str, Any]:
+    """
+    Bereinigt abgelaufene Email-Verifizierungs-Tokens.
+
+    Entfernt Tokens die:
+    - Älter als 7 Tage sind (auch wenn ungenutzt)
+    - Bereits verwendet wurden und älter als 24 Stunden sind
+
+    Sollte täglich ausgeführt werden.
+
+    Returns:
+        Dict mit Statistiken über gelöschte Tokens
+    """
+    import asyncio
+    return asyncio.get_event_loop().run_until_complete(
+        _cleanup_expired_verification_tokens_async()
+    )
+
+
+async def _cleanup_expired_verification_tokens_async() -> Dict[str, Any]:
+    """Async implementation of verification token cleanup."""
+    from app.db.database import get_db_session
+    from app.services.email_verification_service import get_email_verification_service
+
+    logger.info("verification_token_cleanup_started")
+
+    stats = {
+        "tokens_deleted": 0,
+        "errors": [],
+    }
+
+    try:
+        service = get_email_verification_service()
+
+        async with get_db_session() as db:
+            count = await service.cleanup_expired_tokens(db)
+            stats["tokens_deleted"] = count
+
+        logger.info(
+            "verification_token_cleanup_completed",
+            tokens_deleted=stats["tokens_deleted"],
+        )
+
+    except Exception as e:
+        logger.error("verification_token_cleanup_error", error=str(e))
+        stats["errors"].append({"type": "general", "error": str(e)})
+
+    return stats
+
+
 async def _cleanup_expired_cache_async() -> Dict[str, Any]:
     """Async implementation of cache cleanup."""
     from app.core.rate_limiting import get_redis_storage

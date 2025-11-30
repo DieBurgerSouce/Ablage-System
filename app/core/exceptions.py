@@ -220,6 +220,54 @@ class GDPRViolationError(ComplianceException):
         )
 
 
+class GDPRError(ComplianceException):
+    """General GDPR operation error"""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="E011",
+            details=details or {},
+            user_message_de=message
+        )
+
+
+class UserNotFoundError(AblageSystemException):
+    """User not found in database"""
+
+    def __init__(self, user_id: str):
+        super().__init__(
+            message=f"User not found: {user_id}",
+            error_code="E012",
+            details={"user_id": user_id},
+            user_message_de="Benutzer nicht gefunden"
+        )
+
+
+class ExportError(AblageSystemException):
+    """Data export operation error"""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="E013",
+            details=details or {},
+            user_message_de=message
+        )
+
+
+class EmailVerificationError(AblageSystemException):
+    """Email verification operation error"""
+
+    def __init__(self, message: str, user_message_de: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="E014",
+            details=details or {},
+            user_message_de=user_message_de
+        )
+
+
 # Error Code Registry (from ERROR_PATTERNS.md)
 ERROR_CODE_REGISTRY = {
     "E001": "GPU Out of Memory",
@@ -231,7 +279,11 @@ ERROR_CODE_REGISTRY = {
     "E007": "Document Format Invalid",
     "E008": "File Size Exceeded",
     "E009": "GDPR Violation Detected",
-    "E010": "Backend Selection Failed"
+    "E010": "Backend Selection Failed",
+    "E011": "GDPR Operation Error",
+    "E012": "User Not Found",
+    "E013": "Data Export Error",
+    "E014": "Email Verification Error"
 }
 
 

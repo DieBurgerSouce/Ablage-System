@@ -219,6 +219,13 @@ class Settings(BaseSettings):
         default="",
         description="JWT Secret Key - MUSS in Production gesetzt sein (min. 32 Zeichen)"
     )
+    # ENCRYPTION_KEY für TOTP-Secrets und andere sensible Daten
+    # Optional: Wenn nicht gesetzt, wird aus SECRET_KEY abgeleitet
+    # Generieren: python -c "import base64, secrets; print(base64.b64encode(secrets.token_bytes(32)).decode())"
+    ENCRYPTION_KEY: Optional[str] = Field(
+        default=None,
+        description="AES-256 Encryption Key (Base64-encoded, 32 Bytes)"
+    )
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
