@@ -129,6 +129,8 @@ celery_app = Celery(
         "app.workers.tasks.ocr_tasks",
         "app.workers.tasks.embedding_tasks",
         "app.workers.tasks.backup_tasks",
+        "app.workers.tasks.cleanup_tasks",
+        "app.workers.tasks.gdpr_tasks",
     ]
 )
 
@@ -212,6 +214,20 @@ celery_app.conf.update(
             "task": "app.workers.tasks.cleanup_tasks.cleanup_search_analytics",
             "schedule": crontab(day_of_month=1, hour=4, minute=0),  # Monatlich am 1. um 04:00
             "kwargs": {"retention_months": 6, "dry_run": False},
+        },
+        # GDPR Automatisierung (Art. 17, 30, 33 DSGVO)
+        "gdpr-process-deletion-requests": {
+            "task": "app.workers.tasks.gdpr_tasks.process_deletion_requests",
+            "schedule": crontab(hour="*/6"),  # Alle 6 Stunden
+        },
+        "gdpr-check-retention-compliance": {
+            "task": "app.workers.tasks.gdpr_tasks.check_retention_compliance",
+            "schedule": crontab(hour=1, minute=0),  # Täglich um 01:00 Uhr
+            "kwargs": {"dry_run": False},
+        },
+        "gdpr-generate-compliance-report": {
+            "task": "app.workers.tasks.gdpr_tasks.generate_compliance_report",
+            "schedule": crontab(day_of_week=1, hour=6, minute=0),  # Montag 06:00
         },
     },
 

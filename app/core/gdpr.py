@@ -178,8 +178,101 @@ class GDPRComplianceManager:
 
         return findings
 
-    def anonymize_text(self, text: str) -> str:
-        """Anonymize sensitive data in text"""
+    def anonymize_text(self, text: str, use_pseudonymization: bool = False) -> str:
+        """
+        Anonymize sensitive data in text.
+
+        Args:
+            text: Text containing potential PII
+            use_pseudonymization: If True, use SHA-256 hashed pseudonyms
+                                  (allows linking, but not reversing)
+                                  If False, use generic placeholders
+
+        Returns:
+            Anonymized/pseudonymized text
+        """
+        import re
+
+        anonymized = text
+
+        if use_pseudonymization:
+            # SHA-256 based pseudonymization (linkable within system)
+            anonymized = self._pseudonymize_with_sha256(anonymized)
+        else:
+            # Simple anonymization with generic placeholders
+            anonymized = self._anonymize_with_placeholders(anonymized)
+
+        return anonymized
+
+    def _pseudonymize_with_sha256(self, text: str) -> str:
+        """
+        Pseudonymize PII with SHA-256 hashes.
+
+        Creates consistent pseudonyms - same PII produces same hash.
+        This allows for data analysis while protecting identity.
+        """
+        import re
+
+        def hash_match(match: re.Match, prefix: str = "") -> str:
+            """Hash a regex match with SHA-256."""
+            value = match.group(0)
+            hashed = hashlib.sha256(value.encode()).hexdigest()[:16]
+            return f"[{prefix}:{hashed}]"
+
+        anonymized = text
+
+        # Pseudonymize German SSN with hash
+        anonymized = re.sub(
+            r'\d{2}\s?\d{6}\s?[A-Z]\s?\d{3}',
+            lambda m: hash_match(m, "SSN"),
+            anonymized
+        )
+
+        # Pseudonymize Tax ID with hash
+        anonymized = re.sub(
+            r'(?<!\d)\d{11}(?!\d)',
+            lambda m: hash_match(m, "TAX"),
+            anonymized
+        )
+
+        # Pseudonymize IBAN with hash (keep DE prefix for format)
+        anonymized = re.sub(
+            r'(DE)\d{20}',
+            lambda m: f"DE{hashlib.sha256(m.group(0).encode()).hexdigest()[:20]}",
+            anonymized
+        )
+
+        # Pseudonymize Email with hash (keep domain visible)
+        def hash_email(m: re.Match) -> str:
+            email = m.group(0)
+            parts = email.split('@')
+            hashed_local = hashlib.sha256(parts[0].encode()).hexdigest()[:8]
+            return f"[EMAIL:{hashed_local}@{parts[1]}]"
+
+        anonymized = re.sub(
+            r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+            hash_email,
+            anonymized
+        )
+
+        # Pseudonymize Phone with hash
+        anonymized = re.sub(
+            r'(\+49|0049|0)\s?\d{3,4}\s?\d{6,}',
+            lambda m: hash_match(m, "PHONE"),
+            anonymized
+        )
+
+        # Pseudonymize Names (German pattern: Herr/Frau + Name)
+        anonymized = re.sub(
+            r'(Herr|Frau|Hr\.|Fr\.)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)',
+            lambda m: f"{m.group(1)} [NAME:{hashlib.sha256(m.group(2).encode()).hexdigest()[:12]}]",
+            anonymized
+        )
+
+        return anonymized
+
+    def _anonymize_with_placeholders(self, text: str) -> str:
+        """Anonymize with generic placeholders (non-linkable)."""
         import re
 
         anonymized = text
@@ -220,6 +313,58 @@ class GDPRComplianceManager:
         )
 
         return anonymized
+
+    def pseudonymize_identifier(self, identifier: str, salt: Optional[str] = None) -> str:
+        """
+        Pseudonymize a single identifier with SHA-256.
+
+        Art. 4(5) DSGVO - Pseudonymisierung: Verarbeitung personenbezogener Daten
+        in einer Weise, dass die Daten ohne Hinzuziehung zusätzlicher Informationen
+        nicht mehr einer spezifischen betroffenen Person zugeordnet werden können.
+
+        Args:
+            identifier: The identifier to pseudonymize (email, user_id, etc.)
+            salt: Optional salt for additional security (stored separately)
+
+        Returns:
+            SHA-256 hash of the identifier
+        """
+        if salt:
+            combined = f"{salt}:{identifier}"
+        else:
+            combined = identifier
+
+        return hashlib.sha256(combined.encode('utf-8')).hexdigest()
+
+    def anonymize_ip_address(self, ip: str) -> str:
+        """
+        Anonymize IP address for logging (GDPR-compliant).
+
+        IPv4: Last octet zeroed (e.g., 192.168.1.100 -> 192.168.1.0)
+        IPv6: Last 80 bits zeroed
+        """
+        if not ip:
+            return "[NO_IP]"
+
+        if ':' in ip:
+            # IPv6: Keep first 48 bits (3 groups)
+            parts = ip.split(':')
+            anonymized_parts = parts[:3] + ['0'] * (len(parts) - 3)
+            return ':'.join(anonymized_parts)
+        else:
+            # IPv4: Zero last octet
+            parts = ip.split('.')
+            if len(parts) == 4:
+                return f"{parts[0]}.{parts[1]}.{parts[2]}.0"
+            return "[INVALID_IP]"
+
+    def hash_for_audit(self, data: str) -> str:
+        """
+        Create a one-way hash for audit logging.
+
+        Used to track actions on specific data without storing the actual data.
+        """
+        return hashlib.sha256(data.encode('utf-8')).hexdigest()[:32]
 
     def handle_data_breach(
         self,

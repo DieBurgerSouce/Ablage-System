@@ -304,6 +304,7 @@ app.state.limiter = limiter
 from app.api.v1 import auth, tasks, metrics, ml, versions, documents, health, ocr
 from app.api.v1.admin import router as admin_router
 from app.api.v1.backup import router as backup_router
+from app.api.v1.vault import router as vault_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -315,6 +316,7 @@ app.include_router(admin_router, prefix="/api/v1")
 app.include_router(backup_router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(ocr.router, prefix="/api/v1")
+app.include_router(vault_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================

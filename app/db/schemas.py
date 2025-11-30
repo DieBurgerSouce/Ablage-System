@@ -316,6 +316,44 @@ class LogoutRequest(BaseModel):
     refresh_token: Optional[str] = None
 
 
+# Password Reset Schemas
+class PasswordResetRequest(BaseModel):
+    """Request password reset via email."""
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    """Confirm password reset with token."""
+    token: str = Field(..., min_length=32, max_length=64)
+    new_password: str = Field(..., min_length=8, max_length=100)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        """Validate password meets security requirements."""
+        if not any(c.isupper() for c in v):
+            raise ValueError("Passwort muss mindestens einen Großbuchstaben enthalten")
+        if not any(c.islower() for c in v):
+            raise ValueError("Passwort muss mindestens einen Kleinbuchstaben enthalten")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Passwort muss mindestens eine Zahl enthalten")
+        if not any(c in "!@#$%^&*(),.?\":{}|<>-_=+[]'" for c in v):
+            raise ValueError("Passwort muss mindestens ein Sonderzeichen enthalten")
+        return v
+
+
+class PasswordResetValidate(BaseModel):
+    """Validate a password reset token."""
+    token: str = Field(..., min_length=32, max_length=64)
+
+
+class PasswordResetResponse(BaseModel):
+    """Password reset response."""
+    success: bool
+    message: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
 class MessageResponse(BaseModel):
     """Generic message response."""
     message: str

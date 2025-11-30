@@ -596,3 +596,190 @@ class RateLimitOverride(Base):
         Index("ix_rate_limit_overrides_user_id", "user_id"),
         Index("ix_rate_limit_overrides_valid_until", "valid_until"),
     )
+
+
+# ==================== GDPR Compliance Models ====================
+
+class GDPRDeletionRequestStatus(str, Enum):
+    """Status für GDPR Löschanfragen (Art. 17 DSGVO)."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+
+
+class GDPRDeletionRequest(Base):
+    """
+    GDPR Löschanfrage (Art. 17 DSGVO - Recht auf Löschung).
+
+    Verfolgt Löschanfragen von Benutzern und deren Bearbeitungsstatus.
+    Anfragen müssen innerhalb von 30 Tagen bearbeitet werden.
+    """
+    __tablename__ = "gdpr_deletion_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Request details
+    status = Column(String(50), default=GDPRDeletionRequestStatus.PENDING, nullable=False)
+    reason = Column(Text, nullable=True)  # Optionaler Grund des Benutzers
+    deletion_deadline = Column(DateTime(timezone=True), nullable=False)  # 30 Tage Frist
+
+    # Timestamps
+    requested_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Audit
+    processed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    deletion_reason = Column(String(255), nullable=True)  # Warum abgelehnt (falls rejected)
+
+    # Statistics
+    documents_deleted = Column(Integer, default=0)
+    audit_entries_anonymized = Column(Integer, default=0)
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id], backref="gdpr_deletion_requests")
+    processed_by = relationship("User", foreign_keys=[processed_by_id])
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_gdpr_deletion_requests_user_id", "user_id"),
+        Index("ix_gdpr_deletion_requests_status", "status"),
+        Index("ix_gdpr_deletion_requests_deadline", "deletion_deadline"),
+    )
+
+
+class GDPRBreachLog(Base):
+    """
+    GDPR Datenschutzvorfall-Log (Art. 33/34 DSGVO).
+
+    Dokumentiert Datenschutzvorfälle und deren Meldung:
+    - Art. 33: Meldung an Aufsichtsbehörde (72 Stunden)
+    - Art. 34: Meldung an betroffene Personen (bei hohem Risiko)
+    """
+    __tablename__ = "gdpr_breach_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    breach_id = Column(String(32), unique=True, nullable=False)  # Eindeutige Breach-ID
+
+    # Breach details
+    breach_type = Column(String(100), nullable=False)  # unauthorized_access, data_loss, etc.
+    affected_records = Column(Integer, default=0)
+    description = Column(Text, nullable=False)
+    severity = Column(String(20), default="medium")  # low, medium, high, critical
+
+    # Detection & Timeline
+    detected_at = Column(DateTime(timezone=True), server_default=func.now())
+    notification_deadline = Column(DateTime(timezone=True), nullable=False)  # 72 Stunden
+
+    # Notification status
+    authority_notified = Column(Boolean, default=False)
+    authority_notification_date = Column(DateTime(timezone=True), nullable=True)
+    users_notified = Column(Integer, default=0)
+    user_notification_date = Column(DateTime(timezone=True), nullable=True)
+
+    # Response
+    containment_measures = Column(Text, nullable=True)
+    remediation_status = Column(String(50), default="investigating")  # investigating, contained, resolved
+    resolution_date = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    reported_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    reported_by = relationship("User", backref="reported_breaches")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_gdpr_breach_logs_breach_id", "breach_id"),
+        Index("ix_gdpr_breach_logs_detected_at", "detected_at"),
+        Index("ix_gdpr_breach_logs_severity", "severity"),
+        Index("ix_gdpr_breach_logs_remediation_status", "remediation_status"),
+    )
+
+
+class GDPRConsentLog(Base):
+    """
+    GDPR Einwilligungsprotokoll (Art. 7 DSGVO).
+
+    Dokumentiert Einwilligungen der Benutzer für verschiedene Zwecke.
+    """
+    __tablename__ = "gdpr_consent_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Consent details
+    consent_type = Column(String(100), nullable=False)  # data_processing, marketing, analytics
+    purpose = Column(String(255), nullable=False)  # Zweck der Einwilligung
+    consent_given = Column(Boolean, nullable=False)
+    consent_text = Column(Text, nullable=True)  # Text der Einwilligung zum Zeitpunkt
+
+    # Timestamps
+    consent_date = Column(DateTime(timezone=True), server_default=func.now())
+    withdrawal_date = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)  # Einwilligung läuft ab
+
+    # Source
+    source = Column(String(50), default="web")  # web, api, admin
+    ip_address = Column(String(45), nullable=True)  # IPv4/IPv6
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", backref="gdpr_consents")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_gdpr_consent_logs_user_id", "user_id"),
+        Index("ix_gdpr_consent_logs_consent_type", "consent_type"),
+        Index("ix_gdpr_consent_logs_consent_date", "consent_date"),
+    )
+
+
+# ==================== Password Reset Models ====================
+
+class PasswordResetToken(Base):
+    """
+    Password Reset Token für sicheren Passwort-Reset.
+
+    Sicherheitsmerkmale:
+    - Token wird gehasht gespeichert (SHA-256)
+    - Zeitlich begrenzte Gültigkeit (1 Stunde)
+    - Einmalige Verwendung
+    - Rate-Limiting über MAX_ACTIVE_TOKENS_PER_USER
+
+    OWASP-konform: Token-basierter Reset ohne Sicherheitsfragen.
+    """
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Token (nur Hash gespeichert!)
+    token_hash = Column(String(64), nullable=False, unique=True)  # SHA-256 hash
+
+    # Validity
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)  # Null = ungenutzt
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    ip_address = Column(String(45), nullable=True)  # IP bei Anfrage
+
+    # Relationships
+    user = relationship("User", backref="password_reset_tokens")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_password_reset_tokens_user_id", "user_id"),
+        Index("ix_password_reset_tokens_token_hash", "token_hash"),
+        Index("ix_password_reset_tokens_expires_at", "expires_at"),
+    )

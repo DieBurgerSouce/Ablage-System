@@ -28,6 +28,18 @@ from app.core.config import settings
 logger = structlog.get_logger(__name__)
 
 
+# ==================== Exceptions ====================
+
+class RateLimitStorageError(Exception):
+    """
+    Raised when rate limit storage (Redis) is unavailable and fail_closed mode is enabled.
+
+    This exception indicates that the request should be denied due to inability
+    to verify rate limits.
+    """
+    pass
+
+
 # ==================== Rate Limit Key Functions ====================
 
 def get_user_identifier(request: Request) -> str:
@@ -115,18 +127,29 @@ class RedisRateLimitStorage:
         """Check if Redis is available."""
         return self._available and self._redis is not None
 
-    async def increment(self, key: str, expiry: int) -> int:
+    async def increment(self, key: str, expiry: int, fail_closed: bool = False) -> int:
         """
         Increment rate limit counter.
 
         Args:
             key: Rate limit key
             expiry: Expiry time in seconds
+            fail_closed: If True, raise exception on Redis error (deny request)
+                        If False, return 0 (allow request) - default for backwards compatibility
 
         Returns:
             Current counter value
+
+        Raises:
+            RateLimitStorageError: If fail_closed=True and Redis is unavailable
         """
         if not self.is_available:
+            if fail_closed:
+                logger.error("rate_limit_redis_unavailable_fail_closed", key=key)
+                raise RateLimitStorageError(
+                    "Rate-Limiting-Service vorübergehend nicht verfügbar. "
+                    "Bitte versuchen Sie es später erneut."
+                )
             # Graceful degradation: allow request if Redis unavailable
             logger.warning("rate_limit_redis_unavailable_allowing_request", key=key)
             return 0
@@ -140,6 +163,11 @@ class RedisRateLimitStorage:
             return int(results[0])
         except Exception as e:
             logger.error("rate_limit_redis_error", key=key, error=str(e))
+            if fail_closed:
+                raise RateLimitStorageError(
+                    "Rate-Limiting-Service vorübergehend nicht verfügbar. "
+                    "Bitte versuchen Sie es später erneut."
+                ) from e
             # Allow request on Redis error (fail-open)
             return 0
 

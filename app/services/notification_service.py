@@ -808,6 +808,72 @@ class NotificationService:
             channels=[NotificationChannel.IN_APP],  # Quality warnings only in-app
         )
 
+    async def send_admin_alert(
+        self,
+        subject: str,
+        message: str,
+        priority: str = NotificationPriority.HIGH,
+    ) -> bool:
+        """
+        Send alert to admin/DPO.
+
+        Used for critical system alerts, security incidents, and GDPR breach notifications.
+
+        Args:
+            subject: Alert subject
+            message: Alert message
+            priority: Alert priority (default: HIGH)
+
+        Returns:
+            True if sent successfully
+        """
+        admin_email = getattr(settings, "SMTP_FROM_EMAIL", None) or getattr(settings, "ADMIN_EMAIL", None)
+
+        if not admin_email:
+            logger.warning("admin_alert_no_recipient", message="Keine Admin-E-Mail konfiguriert")
+            # Log to console as fallback
+            logger.critical("admin_alert", subject=subject, message=message, priority=priority)
+            return False
+
+        if not self.email.is_configured:
+            logger.warning("admin_alert_email_not_configured")
+            logger.critical("admin_alert", subject=subject, message=message, priority=priority)
+            return False
+
+        return await self.email.send(
+            to_email=admin_email,
+            subject=f"[{priority.upper()}] {subject}",
+            body=message,
+        )
+
+    async def send_email(
+        self,
+        to_email: str,
+        subject: str,
+        body: str,
+        html_body: Optional[str] = None,
+    ) -> bool:
+        """
+        Send email directly.
+
+        Convenience method for direct email sending (e.g., GDPR notifications).
+
+        Args:
+            to_email: Recipient email
+            subject: Email subject
+            body: Email body
+            html_body: Optional HTML body
+
+        Returns:
+            True if sent successfully
+        """
+        return await self.email.send(
+            to_email=to_email,
+            subject=subject,
+            body=body,
+            html_body=html_body,
+        )
+
 
 # Singleton instance
 _notification_service: Optional[NotificationService] = None
