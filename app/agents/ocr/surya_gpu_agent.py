@@ -236,6 +236,7 @@ class SuryaGPUAgent(OCRAgent):
             # Process each page with GPU optimization
             all_text = []
             all_confidences = []
+            pages_data = []  # NEW: Page-level data
 
             for i, image in enumerate(images):
                 logger.info("processing_page", page=i+1, total=len(images))
@@ -248,9 +249,24 @@ class SuryaGPUAgent(OCRAgent):
                 all_text.append(result["text"])
                 all_confidences.append(result["confidence"])
 
+                # NEW: Collect page-level confidence data
+                page_data = {
+                    "page_number": i + 1,
+                    "text": result["text"],
+                    "page_confidence": round(result["confidence"], 3),
+                    "text_regions": result.get("text_regions", 0),
+                    "german_chars_found": result.get("german_chars_found", []),
+                }
+                pages_data.append(page_data)
+
             # Combine results
             full_text = "\n\n".join(all_text)
             avg_confidence = sum(all_confidences) / len(all_confidences) if all_confidences else 0
+
+            # NEW: Calculate confidence statistics
+            min_page_confidence = min(all_confidences) if all_confidences else 0.0
+            max_page_confidence = max(all_confidences) if all_confidences else 0.0
+            low_confidence_pages = [p["page_number"] for p in pages_data if p["page_confidence"] < 0.7]
 
             # Final GPU memory cleanup
             if torch.cuda.is_available():
@@ -268,6 +284,14 @@ class SuryaGPUAgent(OCRAgent):
                 "backend": "surya_gpu",
                 "device": str(self.device),
                 "model": "surya-ocr-0.17.0",
+                # NEW: Page-level confidence data
+                "pages": pages_data,
+                "confidence_stats": {
+                    "mean": round(avg_confidence, 3),
+                    "min": round(min_page_confidence, 3),
+                    "max": round(max_page_confidence, 3),
+                    "low_confidence_pages": low_confidence_pages,
+                },
                 "metadata": {
                     "language": language,
                     "gpu_accelerated": torch.cuda.is_available(),

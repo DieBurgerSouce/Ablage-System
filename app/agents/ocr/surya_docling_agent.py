@@ -206,11 +206,27 @@ class SuryaDoclingAgent(OCRAgent):
                     None, self._process_single_image, image, language
                 )
 
-                # Collect results
+                # Collect results with page-level confidence
+                page_confidences = [block["confidence"] for block in result["text_blocks"]]
+                page_confidence = float(sum(page_confidences) / len(page_confidences)) if page_confidences else 0.0
+
+                # Identify low confidence blocks for this page
+                low_confidence_blocks = [
+                    {"block_idx": i, "confidence": block["confidence"], "text_preview": block.get("text", "")[:50]}
+                    for i, block in enumerate(result["text_blocks"])
+                    if block["confidence"] < 0.7
+                ]
+
                 page_data = {
                     "page_number": idx + 1,
                     "text_blocks": result["text_blocks"],
-                    "full_text": result["full_text"]
+                    "full_text": result["full_text"],
+                    # NEW: Page-level confidence metrics
+                    "page_confidence": round(page_confidence, 3),
+                    "block_count": len(result["text_blocks"]),
+                    "low_confidence_blocks": low_confidence_blocks[:10],  # Limit to 10
+                    "min_block_confidence": round(min(page_confidences), 3) if page_confidences else 0.0,
+                    "max_block_confidence": round(max(page_confidences), 3) if page_confidences else 0.0,
                 }
                 pages_data.append(page_data)
 

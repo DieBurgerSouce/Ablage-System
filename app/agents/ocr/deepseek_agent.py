@@ -500,6 +500,12 @@ class DeepSeekAgent(OCRAgent):
             special_token_ids = set(tokenizer.all_special_ids) if hasattr(tokenizer, 'all_special_ids') else set()
 
         try:
+            # FIXED: Korrekte Berechnung der Token-Position
+            # scores enthält Logits für jeden *generierten* Token (nicht Input-Tokens)
+            # generated_ids enthält [input_tokens + generated_tokens]
+            # Daher: input_length = len(generated_ids[0]) - len(scores)
+            input_length = len(generated_ids[0]) - len(scores)
+
             for idx, logits in enumerate(scores):
                 # logits shape: (batch_size, vocab_size)
                 if logits.dim() == 3:
@@ -508,36 +514,44 @@ class DeepSeekAgent(OCRAgent):
                 # Softmax für Wahrscheinlichkeiten
                 probs = F.softmax(logits, dim=-1)
 
-                # Hole die Wahrscheinlichkeit des tatsächlich generierten Tokens
-                # generated_ids enthält auch Input-Tokens, daher Offset
-                if idx < len(generated_ids[0]) - len(scores):
+                # FIXED: Korrekte Token-Position berechnen
+                # idx ist der Index im scores-Array (0-basiert für generierte Tokens)
+                # actual_token_pos ist die Position im generated_ids-Array
+                actual_token_pos = input_length + idx
+
+                # Validiere Position
+                if not (0 <= actual_token_pos < len(generated_ids[0])):
+                    self.logger.warning(
+                        "token_position_out_of_bounds",
+                        idx=idx,
+                        actual_pos=actual_token_pos,
+                        generated_len=len(generated_ids[0])
+                    )
                     continue
 
-                token_idx = idx
-                if token_idx < probs.shape[0]:
-                    # Finde das generierte Token an dieser Position
-                    gen_token_id = generated_ids[0, -(len(scores) - idx)].item() if len(scores) > idx else None
+                # Hole das generierte Token an dieser Position
+                gen_token_id = generated_ids[0, actual_token_pos].item()
 
-                    if gen_token_id is not None:
-                        # Überspringe Special Tokens wenn gewünscht
-                        if skip_special_tokens and gen_token_id in special_token_ids:
-                            continue
+                if gen_token_id is not None:
+                    # Überspringe Special Tokens wenn gewünscht
+                    if skip_special_tokens and gen_token_id in special_token_ids:
+                        continue
 
-                        # Hole Confidence für das generierte Token
-                        if probs.dim() == 1:
-                            token_prob = probs[gen_token_id].item()
-                        else:
-                            token_prob = probs[0, gen_token_id].item()
+                    # Hole Confidence für das generierte Token
+                    if probs.dim() == 1:
+                        token_prob = probs[gen_token_id].item()
+                    else:
+                        token_prob = probs[0, gen_token_id].item()
 
-                        token_confidences.append(token_prob)
+                    token_confidences.append(token_prob)
 
-                        # Markiere niedrige Confidence
-                        if token_prob < 0.7:
-                            low_confidence_positions.append({
-                                "position": idx,
-                                "confidence": token_prob,
-                                "token_id": gen_token_id
-                            })
+                    # Markiere niedrige Confidence
+                    if token_prob < 0.7:
+                        low_confidence_positions.append({
+                            "position": idx,
+                            "confidence": token_prob,
+                            "token_id": gen_token_id
+                        })
 
             # Aggregiere Confidences
             if token_confidences:
