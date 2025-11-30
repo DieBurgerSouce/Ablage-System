@@ -1,0 +1,320 @@
+# Performance Testing Pipeline - Ablage-System OCR
+# Load Tests mit k6 gegen die API
+
+name: Performance Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Test type to run'
+        required: true
+        default: 'load'
+        type: choice
+        options:
+          - load
+          - stress
+          - smoke
+      vus:
+        description: 'Number of virtual users'
+        required: false
+        default: '10'
+      duration:
+        description: 'Test duration (e.g., 5m, 1h)'
+        required: false
+        default: '5m'
+  schedule:
+    # Woechentlicher Performance-Test Sonntag 02:00 UTC
+    - cron: '0 2 * * 0'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'tests/performance/**'
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # Job 1: Setup Test Environment
+  setup-environment:
+    name: Setup Test Environment
+    runs-on: ubuntu-latest
+    outputs:
+      api_url: ${{ steps.setup.outputs.api_url }}
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ablage_perf
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Database Migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ablage_perf
+        run: |
+          alembic upgrade head
+
+      - name: Start API Server
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ablage_perf
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: perf-test-secret-key-12345678
+          DEBUG: false
+          TESTING: true
+        run: |
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 10
+          curl -f http://localhost:8000/health || exit 1
+
+      - name: Setup outputs
+        id: setup
+        run: |
+          echo "api_url=http://localhost:8000" >> $GITHUB_OUTPUT
+
+  # Job 2: Smoke Test (Quick verification)
+  smoke-test:
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    needs: setup-environment
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run Smoke Test
+        run: |
+          k6 run --vus 1 --duration 30s \
+            -e BASE_URL=${{ needs.setup-environment.outputs.api_url }} \
+            tests/performance/load-test.js
+
+  # Job 3: Load Test
+  load-test:
+    name: Load Test
+    runs-on: ubuntu-latest
+    needs: [setup-environment, smoke-test]
+    if: github.event_name == 'schedule' || github.event.inputs.test_type == 'load'
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ablage_perf
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          alembic upgrade head
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ablage_perf
+
+      - name: Start API Server
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ablage_perf
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: perf-test-secret-key-12345678
+          DEBUG: false
+        run: |
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 10
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run Load Test
+        run: |
+          k6 run \
+            --out json=results.json \
+            -e BASE_URL=http://localhost:8000 \
+            tests/performance/load-test.js
+
+      - name: Generate Summary
+        if: always()
+        run: |
+          echo "## Load Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Key Metrics" >> $GITHUB_STEP_SUMMARY
+          if [ -f results.json ]; then
+            echo "Results available in artifacts" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-test-results
+          path: results.json
+          retention-days: 30
+
+  # Job 4: Stress Test (Manual only)
+  stress-test:
+    name: Stress Test
+    runs-on: ubuntu-latest
+    needs: [setup-environment, smoke-test]
+    if: github.event.inputs.test_type == 'stress'
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ablage_perf
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          alembic upgrade head
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ablage_perf
+
+      - name: Start API Server
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ablage_perf
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: perf-test-secret-key-12345678
+          DEBUG: false
+        run: |
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 &
+          sleep 15
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run Stress Test
+        run: |
+          k6 run \
+            --out json=stress-results.json \
+            -e BASE_URL=http://localhost:8000 \
+            tests/performance/stress-test.js
+
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stress-test-results
+          path: stress-results.json
+          retention-days: 30
+
+  # Job 5: Performance Summary
+  summary:
+    name: Performance Summary
+    runs-on: ubuntu-latest
+    needs: [smoke-test, load-test]
+    if: always()
+
+    steps:
+      - name: Download Results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-test-results'
+          merge-multiple: true
+        continue-on-error: true
+
+      - name: Generate Summary Report
+        run: |
+          echo "## Performance Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Smoke Test | ${{ needs.smoke-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Load Test | ${{ needs.load-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- Test Type: ${{ github.event.inputs.test_type || 'scheduled' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY

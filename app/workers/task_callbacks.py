@@ -31,6 +31,48 @@ engine = create_async_engine(settings.DATABASE_URL, pool_pre_ping=True)
 async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
+# ==================== Webhook Dispatch Integration ====================
+
+async def _dispatch_webhook_event(
+    document_id: str,
+    event_type: str,
+    payload: Dict[str, Any]
+) -> None:
+    """Dispatcht Webhook-Event für Dokument-Owner."""
+    try:
+        from app.services.webhook_dispatcher import get_webhook_dispatcher
+
+        async with async_session_maker() as session:
+            # Get document with owner
+            doc_result = await session.execute(
+                select(Document).where(Document.id == UUID(document_id))
+            )
+            document = doc_result.scalar_one_or_none()
+
+            if not document or not document.owner_id:
+                return
+
+            dispatcher = get_webhook_dispatcher()
+            await dispatcher.dispatch_event(
+                db=session,
+                user_id=document.owner_id,
+                event_type=event_type,
+                payload={
+                    "document_id": document_id,
+                    "filename": document.original_filename or document.filename,
+                    **payload
+                }
+            )
+
+    except Exception as e:
+        logger.warning(
+            "webhook_dispatch_failed",
+            document_id=document_id,
+            event_type=event_type,
+            error=str(e)
+        )
+
+
 # ==================== Success Callbacks ====================
 
 def on_success(
@@ -552,6 +594,18 @@ def _send_success_notification(document_id: str, result: Dict[str, Any]) -> None
                     user_id=user_id,
                 )
 
+                # Dispatch webhook event
+                await _dispatch_webhook_event(
+                    document_id=document_id,
+                    event_type="ocr.completed",
+                    payload={
+                        "backend": document.ocr_backend_used or "unknown",
+                        "confidence": result.get("confidence", 0),
+                        "word_count": result.get("word_count", 0),
+                        "processing_time_ms": result.get("processing_time_ms", 0),
+                    }
+                )
+
         except Exception as e:
             logger.warning(
                 "success_notification_failed",
@@ -628,6 +682,16 @@ def _send_failure_notification(document_id: str, error_message: str) -> None:
                     "failure_notification_sent",
                     document_id=document_id,
                     user_id=user_id,
+                )
+
+                # Dispatch webhook event
+                await _dispatch_webhook_event(
+                    document_id=document_id,
+                    event_type="ocr.failed",
+                    payload={
+                        "error_message": german_error,
+                        "backend": document.ocr_backend_used,
+                    }
                 )
 
         except Exception as e:

@@ -25,7 +25,7 @@ from sqlalchemy import select, delete
 
 from app.workers.celery_app import celery_app, GPUTask, CPUTask, gpu_memory_guard
 from app.core.config import settings
-from app.db.models import Document, ProcessingJob, OCRResult, ProcessingStatus, SystemMetrics
+from app.db.models import Document, ProcessingJob, OCRResult, ProcessingStatus, SystemMetrics, BatchJob
 from app.services.ocr_service import OCRService
 from app.german_validator import GermanValidator
 
@@ -400,7 +400,10 @@ def batch_process_task(
     document_ids: List[str],
     backend: str = "auto",
     language: str = "de",
-    max_concurrent: int = 1  # GPU tasks must be sequential
+    max_concurrent: int = 1,  # GPU tasks must be sequential
+    batch_job_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    resume_from_index: int = 0
 ) -> Dict[str, Any]:
     """Process multiple documents in batch.
 
@@ -409,6 +412,9 @@ def batch_process_task(
         backend: OCR backend to use
         language: Target language
         max_concurrent: Maximum concurrent processing (GPU: 1, CPU: 3)
+        batch_job_id: Optional BatchJob ID for tracking
+        user_id: User ID for BatchJob updates
+        resume_from_index: Index to resume from (for paused jobs)
 
     Returns:
         Dictionary with batch processing results
@@ -421,14 +427,68 @@ def batch_process_task(
         "batch_task_starting",
         task_id=task_id,
         document_count=total_docs,
-        backend=backend
+        backend=backend,
+        batch_job_id=batch_job_id,
+        resume_from=resume_from_index
     )
 
     results = []
     successful = 0
     failed = 0
 
-    for idx, doc_id in enumerate(document_ids):
+    # Helper function to update BatchJob status
+    async def update_batch_job_progress(processed: int, failed_count: int, current_doc: str):
+        if batch_job_id:
+            try:
+                from app.services.batch_job_service import get_batch_job_service
+                async with async_session_maker() as session:
+                    service = get_batch_job_service()
+                    await service.update_progress(
+                        db=session,
+                        batch_id=UUID(batch_job_id),
+                        processed=processed,
+                        failed=failed_count,
+                        current_document=current_doc
+                    )
+            except Exception as e:
+                logger.warning("batch_job_progress_update_failed", error=str(e))
+
+    # Helper function to check if batch is paused
+    async def check_batch_paused() -> bool:
+        if not batch_job_id:
+            return False
+        try:
+            async with async_session_maker() as session:
+                from app.db.models import BatchJob
+                result = await session.execute(
+                    select(BatchJob).where(BatchJob.id == UUID(batch_job_id))
+                )
+                batch_job = result.scalar_one_or_none()
+                return batch_job.is_paused if batch_job else False
+        except Exception:
+            return False
+
+    # Start from resume index
+    start_index = resume_from_index
+
+    for idx, doc_id in enumerate(document_ids[start_index:], start=start_index):
+        # Check if batch was paused
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            is_paused = loop.run_until_complete(check_batch_paused())
+        finally:
+            loop.close()
+
+        if is_paused:
+            logger.info(
+                "batch_task_paused",
+                task_id=task_id,
+                batch_job_id=batch_job_id,
+                paused_at_document=idx
+            )
+            break
+
         try:
             update_task_progress(
                 task_id,
@@ -450,6 +510,18 @@ def batch_process_task(
                 failed += 1
 
             results.append(result)
+
+            # Update BatchJob progress
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(update_batch_job_progress(
+                    idx + 1 - start_index + successful + failed - 1,
+                    failed,
+                    doc_id[:8]
+                ))
+            finally:
+                loop.close()
 
         except Exception as e:
             logger.error(
@@ -483,6 +555,33 @@ def batch_process_task(
         duration_seconds=processing_time
     )
 
+    # Complete BatchJob
+    if batch_job_id:
+        async def complete_batch():
+            try:
+                from app.services.batch_job_service import get_batch_job_service
+                async with async_session_maker() as session:
+                    service = get_batch_job_service()
+                    await service.complete_batch_job(
+                        db=session,
+                        batch_id=UUID(batch_job_id),
+                        result_summary={
+                            "total": total_docs,
+                            "successful": successful,
+                            "failed": failed,
+                            "processing_time_seconds": processing_time
+                        }
+                    )
+            except Exception as e:
+                logger.warning("batch_job_completion_failed", error=str(e))
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(complete_batch())
+        finally:
+            loop.close()
+
     return {
         "success": True,
         "total_documents": total_docs,
@@ -491,6 +590,7 @@ def batch_process_task(
         "results": results,
         "processing_time_seconds": processing_time,
         "completed_at": datetime.utcnow().isoformat(),
+        "batch_job_id": batch_job_id
     }
 
 

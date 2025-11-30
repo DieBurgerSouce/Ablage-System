@@ -363,6 +363,66 @@ async def delete_document(
     return Response(status_code=204)
 
 
+# ==================== Document Report ====================
+
+@router.get("/{document_id}/report")
+async def get_document_report(
+    document_id: UUID,
+    include_text: bool = Query(True, description="Extrahierten Text einschliessen"),
+    include_history: bool = Query(True, description="Verarbeitungshistorie einschliessen"),
+    include_entities: bool = Query(True, description="Erkannte Entitaeten einschliessen"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Detaillierten PDF-Bericht fuer ein Dokument generieren.
+
+    Erstellt einen umfassenden PDF-Bericht mit:
+    - Dokumentinformationen (Dateiname, Typ, Status, Groesse)
+    - OCR-Ergebnisse (Backend, Konfidenz, Wortanzahl)
+    - Erkannte Entitaeten (Datumsangaben, Geldbetraege, IBAN, USt-IdNr.)
+    - Deutsche Textvalidierung (Umlaute, Sprache)
+    - Extrahierter Text (optional, max. 5000 Zeichen)
+    - Verarbeitungshistorie (optional)
+
+    Der Bericht wird im A4-Format generiert und ist
+    fuer Archivierung und Nachvollziehbarkeit geeignet.
+    """
+    from app.services.document_report_service import get_document_report_service
+
+    try:
+        service = get_document_report_service()
+        pdf_bytes = await service.generate_document_report(
+            db=db,
+            document_id=document_id,
+            user_id=current_user.id,
+            include_text=include_text,
+            include_history=include_history,
+            include_entities=include_entities
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    # Filename fuer Download
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    filename = f"dokument_bericht_{str(document_id)[:8]}_{timestamp}.pdf"
+
+    logger.info(
+        "document_report_generated_api",
+        document_id=str(document_id),
+        user_id=str(current_user.id),
+        size_bytes=len(pdf_bytes)
+    )
+
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(pdf_bytes))
+        }
+    )
+
+
 # ==================== Similar Documents ====================
 
 @router.get("/{document_id}/similar", response_model=List[SimilarDocumentItem])

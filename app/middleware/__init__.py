@@ -44,6 +44,11 @@ from app.middleware.csrf import (
     CSRF_COOKIE_NAME,
 )
 
+from app.middleware.ip_blocking import (
+    IPBlockingMiddleware,
+    create_ip_blocking_middleware,
+)
+
 __all__ = [
     "RateLimitMiddleware",
     "DevelopmentRateLimitBypass",
@@ -65,4 +70,6 @@ __all__ = [
     "get_csrf_token_response",
     "CSRF_HEADER_NAME",
     "CSRF_COOKIE_NAME",
+    "IPBlockingMiddleware",
+    "create_ip_blocking_middleware",
 ]
