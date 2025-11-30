@@ -213,7 +213,12 @@ class Settings(BaseSettings):
     LOG_FORMAT: str = "json"  # json or text
     
     # Security
-    SECRET_KEY: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
+    # WICHTIG: SECRET_KEY MUSS in Production via Umgebungsvariable gesetzt werden!
+    # Beispiel: SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(64))")
+    SECRET_KEY: str = Field(
+        default="",
+        description="JWT Secret Key - MUSS in Production gesetzt sein (min. 32 Zeichen)"
+    )
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -318,6 +323,9 @@ class Settings(BaseSettings):
     QUEUE_CHECK_INTERVAL_SECONDS: int = 30  # How often to check queues
     LOAD_BALANCE_PREFER_GPU: bool = True  # Prefer GPU when queues similar
 
+    # CSRF Protection
+    CSRF_ENABLED: bool = True  # Enable CSRF protection (Double-Submit-Cookie)
+
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_REQUESTS_PER_MINUTE: int = 100
@@ -342,6 +350,12 @@ class Settings(BaseSettings):
 
     # Rate Limit Storage
     RATE_LIMIT_STORAGE_URL: Optional[str] = None
+
+    # Rate Limit Fail-Closed Mode
+    # If True, deny requests when Redis is unavailable (more secure)
+    # If False, allow requests when Redis is unavailable (more available)
+    RATE_LIMIT_FAIL_CLOSED: bool = False  # Default: fail-open for backwards compatibility
+    RATE_LIMIT_FAIL_CLOSED_CRITICAL: bool = True  # Always fail-closed for critical endpoints (login, etc.)
 
     # German Language Settings
     GERMAN_VALIDATION_ENABLED: bool = True
@@ -425,6 +439,68 @@ class Settings(BaseSettings):
     @model_validator(mode='after')
     def build_computed_urls(self) -> 'Settings':
         """Build database and Redis URLs from components if not provided."""
+        # ========== SECRET_KEY Validierung ==========
+        # In Production: SECRET_KEY MUSS explizit gesetzt sein
+        # In Development: Generiere temporären Key mit Warnung
+        if not self.SECRET_KEY:
+            if not self.DEBUG:
+                raise ValueError(
+                    "SECRET_KEY ist nicht gesetzt! "
+                    "In Production muss SECRET_KEY via Umgebungsvariable definiert werden. "
+                    "Generiere einen sicheren Key mit: "
+                    "python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+                )
+            else:
+                # Development: Generiere temporären Key mit Warnung
+                temp_key = secrets.token_urlsafe(64)
+                logger.warning(
+                    "secret_key_auto_generated",
+                    message="SECRET_KEY wurde automatisch generiert! "
+                            "In Production muss ein persistenter Key gesetzt werden. "
+                            "Alle JWTs werden nach App-Neustart ungültig!",
+                    key_length=len(temp_key)
+                )
+                object.__setattr__(self, 'SECRET_KEY', temp_key)
+        elif len(self.SECRET_KEY) < 32:
+            raise ValueError(
+                f"SECRET_KEY ist zu kurz ({len(self.SECRET_KEY)} Zeichen). "
+                "Mindestens 32 Zeichen erforderlich für sichere JWT-Signierung."
+            )
+
+        # ========== CORS Origins Validierung ==========
+        # In Production: Keine localhost Origins erlauben
+        localhost_patterns = ("localhost", "127.0.0.1", "::1", "0.0.0.0")
+        has_localhost = any(
+            any(pattern in origin.lower() for pattern in localhost_patterns)
+            for origin in self.CORS_ORIGINS
+        )
+        has_wildcard = "*" in self.CORS_ORIGINS
+
+        if has_wildcard:
+            if self.CORS_ALLOW_CREDENTIALS:
+                raise ValueError(
+                    "CORS_ORIGINS='*' ist nicht erlaubt wenn CORS_ALLOW_CREDENTIALS=True! "
+                    "Setze explizite Origins oder deaktiviere Credentials."
+                )
+            if not self.DEBUG:
+                raise ValueError(
+                    "CORS_ORIGINS='*' ist in Production nicht erlaubt! "
+                    "Setze explizite Origins via CORS_ORIGINS Umgebungsvariable."
+                )
+
+        if has_localhost and not self.DEBUG:
+            raise ValueError(
+                "CORS_ORIGINS enthält localhost-Adressen in Production! "
+                "Entferne localhost aus CORS_ORIGINS oder setze DEBUG=True. "
+                f"Gefundene Origins: {self.CORS_ORIGINS}"
+            )
+        elif has_localhost and self.DEBUG:
+            logger.warning(
+                "cors_localhost_origins_in_development",
+                message="localhost in CORS Origins nur für Development verwenden!",
+                origins=self.CORS_ORIGINS
+            )
+
         # Build DATABASE_URL if not set
         if not self.DATABASE_URL:
             password = self.DB_PASSWORD

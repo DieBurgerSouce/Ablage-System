@@ -100,8 +100,9 @@ async def _get_redis_client() -> Optional[Any]:
 
     except Exception as e:
         _redis_available = False
+        # SECURITY: Nur Fehlertyp loggen, nicht Details (könnten Credentials enthalten)
         logger.warning("token_blacklist_redis_unavailable",
-                      error=str(e),
+                      error_type=type(e).__name__,
                       message="Fallback auf In-Memory-Blacklist")
         return None
 
@@ -130,7 +131,8 @@ async def blacklist_token_redis(jti: str, expires_at: datetime) -> bool:
                 logger.debug("token_blacklisted_redis", jti=jti[:8] + "...")
                 return True
         except Exception as e:
-            logger.warning("token_blacklist_redis_error", error=str(e))
+            # SECURITY: Nur Fehlertyp loggen, nicht Details (könnten Credentials enthalten)
+            logger.warning("token_blacklist_redis_error", error_type=type(e).__name__)
 
     # Fallback to in-memory
     _token_blacklist_fallback[jti] = expires_at
@@ -158,7 +160,8 @@ async def is_token_blacklisted_redis(jti: str) -> bool:
             if exists:
                 return True
         except Exception as e:
-            logger.warning("token_blacklist_check_redis_error", error=str(e))
+            # SECURITY: Nur Fehlertyp loggen, nicht Details (könnten Credentials enthalten)
+            logger.warning("token_blacklist_check_redis_error", error_type=type(e).__name__)
 
     # Also check in-memory fallback (for tokens blacklisted during Redis outage)
     if jti in _token_blacklist_fallback:

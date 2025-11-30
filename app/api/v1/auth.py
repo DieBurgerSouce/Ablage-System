@@ -8,7 +8,7 @@ All responses in German for user-facing messages.
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
@@ -36,9 +36,41 @@ from app.core.security import (
     verify_token_type,
     blacklist_token
 )
+from app.core.account_lockout import (
+    check_account_lockout,
+    record_failed_attempt,
+    reset_failed_attempts,
+    AccountLockoutStorageError,
+)
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+# ==================== CSRF Token ====================
+
+@router.get(
+    "/csrf-token",
+    summary="CSRF-Token abrufen",
+    description="Gibt ein CSRF-Token für geschützte Anfragen zurück"
+)
+async def get_csrf_token() -> dict:
+    """
+    Hole ein CSRF-Token für geschützte Anfragen.
+
+    Das Token wird auch als Cookie gesetzt. Für state-changing Requests
+    (POST, PUT, DELETE, PATCH) muss das Token im X-CSRF-Token Header
+    oder im csrf_token Form-Feld gesendet werden.
+
+    Bei Verwendung von Bearer-Token-Authentifizierung ist CSRF-Schutz
+    nicht erforderlich, da der Authorization-Header nicht cross-origin
+    gesetzt werden kann.
+
+    Returns:
+        Dict mit CSRF-Token und Header-Namen
+    """
+    from app.middleware.csrf import get_csrf_token_response
+    return get_csrf_token_response()
 
 
 # ==================== Registration ====================
@@ -80,6 +112,7 @@ async def register(
 )
 async def login(
     login_data: LoginRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db)
 ) -> Any:
     """
@@ -90,6 +123,10 @@ async def login(
 
     Gibt Access Token (15 Minuten gültig) und Refresh Token (7 Tage gültig) zurück.
 
+    **Sicherheitshinweise:**
+    - Nach 5 fehlgeschlagenen Versuchen wird das Konto vorübergehend gesperrt
+    - Exponentielles Backoff: 1min → 5min → 15min → 1h
+
     **Beispiel:**
     ```json
     {
@@ -98,6 +135,45 @@ async def login(
     }
     ```
     """
+    # Get client IP for lockout tracking
+    client_ip = request.client.host if request.client else None
+
+    # Check if account is locked due to too many failed attempts
+    # fail_closed=None verwendet settings.RATE_LIMIT_FAIL_CLOSED_CRITICAL (default: True)
+    try:
+        is_locked, remaining_seconds, lockout_message = await check_account_lockout(
+            ip=client_ip,
+            username=login_data.email
+        )
+    except AccountLockoutStorageError as e:
+        # Redis nicht verfügbar und fail_closed=True -> blockieren
+        logger.error(
+            "login_blocked_security_service_unavailable",
+            ip=client_ip,
+            email=login_data.email[:3] + "***" if login_data.email else None,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e),
+            headers={"Retry-After": "60"},
+        )
+
+    if is_locked:
+        logger.warning(
+            "login_attempt_while_locked",
+            email=login_data.email[:3] + "***",
+            ip=client_ip,
+            remaining_seconds=remaining_seconds,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=lockout_message,
+            headers={
+                "Retry-After": str(remaining_seconds),
+                "X-RateLimit-Reset": str(remaining_seconds),
+            },
+        )
+
     # Authenticate user
     user = await UserService.authenticate_user(
         db,
@@ -106,9 +182,38 @@ async def login(
     )
 
     if not user:
+        # Record failed attempt and potentially lock account
+        try:
+            attempts, is_now_locked, lockout_seconds = await record_failed_attempt(
+                ip=client_ip,
+                username=login_data.email
+            )
+        except AccountLockoutStorageError as e:
+            # Redis nicht verfügbar und fail_closed=True -> blockieren
+            logger.error(
+                "login_blocked_cannot_record_failed_attempt",
+                ip=client_ip,
+                email=login_data.email[:3] + "***" if login_data.email else None,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(e),
+                headers={"Retry-After": "60"},
+            )
+
+        if is_now_locked:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Zu viele fehlgeschlagene Anmeldeversuche. Konto für {lockout_seconds // 60} Minute(n) gesperrt.",
+                headers={
+                    "Retry-After": str(lockout_seconds),
+                    "X-RateLimit-Reset": str(lockout_seconds),
+                },
+            )
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungültige E-Mail-Adresse oder Passwort",  # Invalid email or password
+            detail="Ungültige E-Mail-Adresse oder Passwort",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -116,8 +221,11 @@ async def login(
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Benutzerkonto ist deaktiviert",  # User account is deactivated
+            detail="Benutzerkonto ist deaktiviert",
         )
+
+    # Reset failed attempts on successful login
+    await reset_failed_attempts(ip=client_ip, username=login_data.email)
 
     # Create token pair
     token_data = {
@@ -126,6 +234,12 @@ async def login(
         "username": user.username
     }
     tokens = create_token_pair(token_data)
+
+    logger.info(
+        "login_successful",
+        user_id=str(user.id),
+        username=user.username,
+    )
 
     return Token(**tokens)
 
@@ -373,6 +487,157 @@ async def change_password(
     return MessageResponse(
         message="Passwort erfolgreich geändert",  # Password changed successfully
         detail="Bitte verwenden Sie Ihr neues Passwort bei der nächsten Anmeldung"  # Please use your new password for next login
+    )
+
+
+# ==================== Password Reset ====================
+
+@router.post(
+    "/forgot-password",
+    response_model=MessageResponse,
+    summary="Passwort zurücksetzen anfordern",
+    description="Sendet eine E-Mail mit Link zum Zurücksetzen des Passworts"
+)
+async def request_password_reset(
+    reset_request: "PasswordResetRequest",
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Fordere einen Link zum Zurücksetzen des Passworts an.
+
+    - **email**: E-Mail-Adresse des Kontos
+
+    Eine E-Mail mit einem Reset-Link wird gesendet, falls das Konto existiert.
+
+    **Sicherheitshinweise:**
+    - Gibt immer die gleiche Nachricht zurück (Enumeration-Schutz)
+    - Rate-Limiting: Max. 3 Anfragen pro Stunde pro E-Mail
+    - Reset-Link ist 1 Stunde gültig
+    """
+    from app.db.schemas import PasswordResetRequest
+    from app.services.password_reset_service import get_password_reset_service
+    from app.services.notification_service import NotificationService
+
+    reset_service = get_password_reset_service()
+
+    # Optional: NotificationService erstellen falls SMTP konfiguriert
+    notification_service = None
+    try:
+        notification_service = NotificationService()
+    except Exception as e:
+        logger.warning("notification_service_unavailable", error=str(e))
+
+    success, message = await reset_service.request_password_reset(
+        db=db,
+        email=reset_request.email,
+        notification_service=notification_service,
+    )
+
+    logger.info(
+        "password_reset_requested",
+        email=reset_request.email[:3] + "***",
+        ip=request.client.host if request.client else None,
+    )
+
+    return MessageResponse(
+        message=message,
+        detail="Überprüfen Sie Ihren Posteingang (und Spam-Ordner)"
+    )
+
+
+@router.post(
+    "/validate-reset-token",
+    response_model="PasswordResetResponse",
+    summary="Reset-Token validieren",
+    description="Prüft ob ein Reset-Token gültig ist"
+)
+async def validate_reset_token(
+    validate_request: "PasswordResetValidate",
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Validiere einen Password-Reset-Token.
+
+    - **token**: Der Reset-Token aus der E-Mail
+
+    Nützlich für Frontends um zu prüfen, ob der Token noch gültig ist,
+    bevor das Formular zum Setzen eines neuen Passworts angezeigt wird.
+    """
+    from app.db.schemas import PasswordResetValidate, PasswordResetResponse
+    from app.services.password_reset_service import get_password_reset_service
+
+    reset_service = get_password_reset_service()
+
+    is_valid, user, message = await reset_service.validate_reset_token(
+        db=db,
+        token=validate_request.token,
+    )
+
+    return PasswordResetResponse(
+        success=is_valid,
+        message=message if is_valid else "Token ungültig oder abgelaufen"
+    )
+
+
+@router.post(
+    "/reset-password",
+    response_model="PasswordResetResponse",
+    summary="Passwort zurücksetzen",
+    description="Setzt das Passwort mit einem gültigen Reset-Token zurück"
+)
+async def reset_password(
+    reset_data: "PasswordResetConfirm",
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Setze das Passwort mit einem gültigen Reset-Token zurück.
+
+    - **token**: Der Reset-Token aus der E-Mail
+    - **new_password**: Das neue Passwort (mindestens 8 Zeichen)
+
+    **Passwortanforderungen:**
+    - Mindestens 8 Zeichen
+    - Mindestens ein Großbuchstabe
+    - Mindestens ein Kleinbuchstabe
+    - Mindestens eine Zahl
+    - Mindestens ein Sonderzeichen
+
+    Nach erfolgreichem Reset werden alle anderen Reset-Tokens invalidiert.
+    """
+    from app.db.schemas import PasswordResetConfirm, PasswordResetResponse
+    from app.services.password_reset_service import get_password_reset_service
+
+    reset_service = get_password_reset_service()
+
+    success, message = await reset_service.reset_password(
+        db=db,
+        token=reset_data.token,
+        new_password=reset_data.new_password,
+    )
+
+    if success:
+        logger.info(
+            "password_reset_completed",
+            ip=request.client.host if request.client else None,
+        )
+    else:
+        logger.warning(
+            "password_reset_failed",
+            ip=request.client.host if request.client else None,
+            reason=message,
+        )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+
+    return PasswordResetResponse(
+        success=True,
+        message="Passwort erfolgreich zurückgesetzt. Sie können sich jetzt anmelden."
     )
 
 

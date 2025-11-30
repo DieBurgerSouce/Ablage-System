@@ -79,12 +79,20 @@ class UserAdminService:
 
             # Search filter (email, username, full_name)
             if filters.search:
-                search_term = f"%{filters.search}%"
+                # Escape LIKE-Wildcards um Injection zu verhindern
+                # % und _ werden als literale Zeichen behandelt
+                safe_search = (
+                    filters.search
+                    .replace("\\", "\\\\")  # Escape backslash first
+                    .replace("%", "\\%")     # Escape %
+                    .replace("_", "\\_")     # Escape _
+                )
+                search_term = f"%{safe_search}%"
                 conditions.append(
                     or_(
-                        User.email.ilike(search_term),
-                        User.username.ilike(search_term),
-                        User.full_name.ilike(search_term),
+                        User.email.ilike(search_term, escape="\\"),
+                        User.username.ilike(search_term, escape="\\"),
+                        User.full_name.ilike(search_term, escape="\\"),
                     )
                 )
 

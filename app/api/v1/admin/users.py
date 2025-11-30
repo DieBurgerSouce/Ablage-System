@@ -48,7 +48,12 @@ router = APIRouter(prefix="/users", tags=["Admin - Benutzerverwaltung"])
 async def list_users(
     page: int = Query(1, ge=1, description="Seitennummer"),
     per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
-    search: Optional[str] = Query(None, description="Suche in E-Mail, Benutzername, Name"),
+    search: Optional[str] = Query(
+        None,
+        min_length=1,
+        max_length=100,
+        description="Suche in E-Mail, Benutzername, Name (max. 100 Zeichen)"
+    ),
     role: Optional[UserRole] = Query(None, description="Nach Rolle filtern"),
     status_filter: Optional[UserStatus] = Query(None, alias="status", description="Nach Status filtern"),
     tier: Optional[UserTier] = Query(None, description="Nach Tier filtern"),
@@ -455,3 +460,95 @@ async def delete_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
+
+# ==================== Unlock Account ====================
+
+@router.post(
+    "/unlock-account",
+    response_model=MessageResponse,
+    summary="Account entsperren",
+    description="Entsperrt ein durch fehlgeschlagene Logins gesperrtes Konto"
+)
+async def unlock_account(
+    request: Request,
+    email: Optional[str] = Query(None, description="E-Mail des Benutzers zum Entsperren"),
+    ip: Optional[str] = Query(None, description="IP-Adresse zum Entsperren"),
+    admin: User = Depends(get_current_superuser),
+) -> MessageResponse:
+    """
+    Entsperrt ein durch zu viele fehlgeschlagene Login-Versuche gesperrtes Konto.
+
+    **Parameter (mindestens einer erforderlich):**
+    - **email**: E-Mail-Adresse des zu entsperrenden Benutzers
+    - **ip**: IP-Adresse zum Entsperren
+
+    Nach der Entsperrung kann sich der Benutzer sofort wieder anmelden.
+    Diese Aktion wird im Audit-Log protokolliert.
+    """
+    from app.core.account_lockout import admin_unlock_account, get_lockout_status
+
+    if not email and not ip:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mindestens E-Mail oder IP-Adresse erforderlich",
+        )
+
+    # Get current lockout status
+    status_info = await get_lockout_status(ip=ip, username=email)
+
+    if not status_info["is_locked"] and status_info["failed_attempts"] == 0:
+        return MessageResponse(
+            message="Konto ist nicht gesperrt",
+            detail=f"Keine Sperre fuer {email or ip} gefunden",
+        )
+
+    # Unlock the account
+    success = await admin_unlock_account(
+        ip=ip,
+        username=email,
+        admin_user=admin.email,
+    )
+
+    if success:
+        return MessageResponse(
+            message="Konto erfolgreich entsperrt",
+            detail=f"Sperre fuer {email or ip} wurde aufgehoben. "
+                   f"(Vorherige Fehlversuche: {status_info['failed_attempts']})",
+        )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Entsperrung fehlgeschlagen",
+        )
+
+
+@router.get(
+    "/lockout-status",
+    summary="Lockout-Status abrufen",
+    description="Zeigt den Lockout-Status fuer eine E-Mail oder IP"
+)
+async def get_account_lockout_status(
+    email: Optional[str] = Query(None, description="E-Mail des Benutzers"),
+    ip: Optional[str] = Query(None, description="IP-Adresse"),
+    admin: User = Depends(get_current_superuser),
+) -> dict:
+    """
+    Zeigt den aktuellen Lockout-Status fuer eine E-Mail-Adresse oder IP.
+
+    **Hinweis:** Mindestens ein Parameter erforderlich.
+
+    Gibt Details zurueck:
+    - Anzahl fehlgeschlagener Versuche
+    - Ob derzeit gesperrt
+    - Verbleibende Sperrzeit
+    """
+    from app.core.account_lockout import get_lockout_status
+
+    if not email and not ip:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mindestens E-Mail oder IP-Adresse erforderlich",
+        )
+
+    return await get_lockout_status(ip=ip, username=email)
