@@ -370,14 +370,34 @@ class TestBackupServiceEncryption:
         config.backup_dir = tmp_path
         config.encryption_enabled = True
         config.gpg_recipient = "test@example.com"
-        return BackupService(config=config)
+
+        # Mock GPG validation to succeed
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stderr=b"")
+            service = BackupService(config=config)
+            service._encryption_validated = True  # Force validation success
+            return service
+
+    @pytest.fixture
+    def backup_service_encryption_not_validated(self, tmp_path):
+        """Create backup service with encryption enabled but not validated."""
+        config = BackupConfig()
+        config.backup_dir = tmp_path
+        config.encryption_enabled = True
+        config.gpg_recipient = "test@example.com"
+
+        # Mock GPG validation to fail
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=1, stderr=b"key not found")
+            service = BackupService(config=config)
+            return service
 
     @pytest.mark.asyncio
     async def test_encrypt_backup_success(self, backup_service_with_encryption, tmp_path):
         """Test successful encryption."""
         # Create test file
         test_file = tmp_path / "test.sql.gz"
-        test_file.write_bytes(b"test data")
+        test_file.write_bytes(b"test data " * 100)  # Make it larger
 
         # Mock GPG subprocess
         mock_proc = AsyncMock()
@@ -385,14 +405,26 @@ class TestBackupServiceEncryption:
         mock_proc.communicate = AsyncMock(return_value=(b"", b""))
 
         with patch("app.services.backup_service.run_subprocess", return_value=mock_proc):
-            # Create the expected output file
+            # Create the expected output file with valid GPG header
             expected_output = test_file.with_suffix(".gz.gpg")
-            expected_output.write_bytes(b"encrypted")
+            # 0xc0 is a valid GPG new-style packet header
+            expected_output.write_bytes(b"\xc0\x00" + b"encrypted" * 100)
 
             result = await backup_service_with_encryption.encrypt_backup(test_file)
 
             assert result is not None
             assert str(result).endswith(".gpg")
+
+    @pytest.mark.asyncio
+    async def test_encrypt_backup_pre_flight_check_fails(self, backup_service_encryption_not_validated, tmp_path):
+        """Test encryption fails when GPG config not validated."""
+        test_file = tmp_path / "test.sql.gz"
+        test_file.write_bytes(b"test data")
+
+        result = await backup_service_encryption_not_validated.encrypt_backup(test_file)
+
+        assert result is None
+        # Pre-flight check should have failed
 
     @pytest.mark.asyncio
     async def test_encrypt_backup_gpg_not_found(self, backup_service_with_encryption, tmp_path):
@@ -413,6 +445,269 @@ class TestBackupServiceEncryption:
         )
 
         assert result is None
+
+
+class TestBackupServiceEncryptionValidation:
+    """Tests for GPG encryption validation functionality."""
+
+    @pytest.fixture
+    def tmp_backup_dir(self, tmp_path):
+        """Create temp backup directory."""
+        return tmp_path
+
+    def test_encryption_validation_gpg_available(self, tmp_backup_dir):
+        """Test encryption validation when GPG is available and key exists."""
+        config = BackupConfig()
+        config.backup_dir = tmp_backup_dir
+        config.encryption_enabled = True
+        config.gpg_recipient = "test@example.com"
+
+        with patch("subprocess.run") as mock_run:
+            # Mock successful GPG calls
+            mock_run.return_value = Mock(returncode=0, stderr=b"", stdout=b"")
+            service = BackupService(config=config)
+
+            assert service._encryption_validated is True
+            assert service._encryption_validation_error is None
+
+    def test_encryption_validation_gpg_not_installed(self, tmp_backup_dir):
+        """Test encryption validation when GPG is not installed."""
+        config = BackupConfig()
+        config.backup_dir = tmp_backup_dir
+        config.encryption_enabled = True
+        config.gpg_recipient = "test@example.com"
+
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            service = BackupService(config=config)
+
+            assert service._encryption_validated is False
+            assert "nicht installiert" in service._encryption_validation_error
+
+    def test_encryption_validation_key_not_found(self, tmp_backup_dir):
+        """Test encryption validation when GPG key doesn't exist."""
+        config = BackupConfig()
+        config.backup_dir = tmp_backup_dir
+        config.encryption_enabled = True
+        config.gpg_recipient = "nonexistent@example.com"
+
+        with patch("subprocess.run") as mock_run:
+            # First call (gpg --version) succeeds
+            # Second call (gpg --list-keys) fails
+            mock_run.side_effect = [
+                Mock(returncode=0, stderr=b""),  # version check
+                Mock(returncode=2, stderr=b"gpg: error: key not found"),  # list-keys fails
+            ]
+            service = BackupService(config=config)
+
+            assert service._encryption_validated is False
+            assert "nicht gefunden" in service._encryption_validation_error
+
+    def test_encryption_validation_invalid_gpg_home(self, tmp_backup_dir):
+        """Test encryption validation with invalid GPG home directory."""
+        config = BackupConfig()
+        config.backup_dir = tmp_backup_dir
+        config.encryption_enabled = True
+        config.gpg_recipient = "test@example.com"
+        config.gpg_home = "/nonexistent/gpg/home"
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stderr=b"")
+            service = BackupService(config=config)
+
+            assert service._encryption_validated is False
+            assert "existiert nicht" in service._encryption_validation_error
+
+    def test_get_encryption_status_enabled(self, tmp_backup_dir):
+        """Test get_encryption_status when encryption is enabled."""
+        config = BackupConfig()
+        config.backup_dir = tmp_backup_dir
+        config.encryption_enabled = True
+        config.gpg_recipient = "test@example.com"
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stderr=b"")
+            service = BackupService(config=config)
+            status = service.get_encryption_status()
+
+            assert status["enabled"] is True
+            assert status["validated"] is True
+            assert status["recipient"] == "test@example.com"
+            assert status["error"] is None
+
+    def test_get_encryption_status_disabled(self, tmp_backup_dir):
+        """Test get_encryption_status when encryption is disabled."""
+        config = BackupConfig()
+        config.backup_dir = tmp_backup_dir
+        config.encryption_enabled = False
+
+        service = BackupService(config=config)
+        status = service.get_encryption_status()
+
+        assert status["enabled"] is False
+        assert status["validated"] is False
+        assert status["recipient"] is None
+
+    def test_revalidate_encryption_config(self, tmp_backup_dir):
+        """Test re-validation of encryption config."""
+        config = BackupConfig()
+        config.backup_dir = tmp_backup_dir
+        config.encryption_enabled = True
+        config.gpg_recipient = "test@example.com"
+
+        with patch("subprocess.run") as mock_run:
+            # Initially fail
+            mock_run.return_value = Mock(returncode=1, stderr=b"key not found")
+            service = BackupService(config=config)
+
+            assert service._encryption_validated is False
+
+            # Now mock success for re-validation
+            mock_run.return_value = Mock(returncode=0, stderr=b"")
+            result = service.revalidate_encryption_config()
+
+            assert result is True
+            assert service._encryption_validated is True
+
+    def test_revalidate_encryption_config_disabled(self, tmp_backup_dir):
+        """Test re-validation when encryption is disabled."""
+        config = BackupConfig()
+        config.backup_dir = tmp_backup_dir
+        config.encryption_enabled = False
+
+        service = BackupService(config=config)
+        result = service.revalidate_encryption_config()
+
+        assert result is False
+
+
+class TestBackupServicePostEncryptionValidation:
+    """Tests for post-encryption validation."""
+
+    @pytest.fixture
+    def backup_service(self, tmp_path):
+        """Create backup service."""
+        config = BackupConfig()
+        config.backup_dir = tmp_path
+        config.encryption_enabled = False
+        return BackupService(config=config)
+
+    @pytest.mark.asyncio
+    async def test_validate_encrypted_file_success(self, backup_service, tmp_path):
+        """Test successful validation of encrypted file."""
+        # Create file with valid GPG header (0xc0 = new-style packet)
+        encrypted_file = tmp_path / "test.gpg"
+        encrypted_file.write_bytes(b"\xc0\x00" + b"encrypted content" * 100)
+
+        result = await backup_service._validate_encrypted_file(encrypted_file, 1000)
+
+        assert result["valid"] is True
+
+    @pytest.mark.asyncio
+    async def test_validate_encrypted_file_empty(self, backup_service, tmp_path):
+        """Test validation fails for empty file."""
+        encrypted_file = tmp_path / "test.gpg"
+        encrypted_file.write_bytes(b"")
+
+        result = await backup_service._validate_encrypted_file(encrypted_file, 100)
+
+        assert result["valid"] is False
+        assert "leer" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_validate_encrypted_file_too_small(self, backup_service, tmp_path):
+        """Test validation fails for file that is too small."""
+        encrypted_file = tmp_path / "test.gpg"
+        encrypted_file.write_bytes(b"\xc0\x00tiny")  # Very small compared to original
+
+        result = await backup_service._validate_encrypted_file(encrypted_file, 10000)
+
+        assert result["valid"] is False
+        assert "zu klein" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_validate_encrypted_file_invalid_header(self, backup_service, tmp_path):
+        """Test validation fails for invalid GPG header."""
+        encrypted_file = tmp_path / "test.gpg"
+        # Invalid header (not a GPG packet)
+        encrypted_file.write_bytes(b"\x00\x00" + b"not encrypted content" * 100)
+
+        result = await backup_service._validate_encrypted_file(encrypted_file, 1000)
+
+        assert result["valid"] is False
+        assert "Ungueltige GPG-Datei" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_validate_encrypted_file_ascii_armored(self, backup_service, tmp_path):
+        """Test validation accepts ASCII-armored GPG files."""
+        encrypted_file = tmp_path / "test.gpg"
+        # ASCII-armored GPG message
+        encrypted_file.write_bytes(b"-----BEGIN PGP MESSAGE-----\n" + b"base64content" * 100)
+
+        result = await backup_service._validate_encrypted_file(encrypted_file, 1000)
+
+        assert result["valid"] is True
+
+    @pytest.mark.asyncio
+    async def test_validate_encrypted_file_nonexistent(self, backup_service, tmp_path):
+        """Test validation fails for non-existent file."""
+        result = await backup_service._validate_encrypted_file(
+            tmp_path / "nonexistent.gpg", 1000
+        )
+
+        assert result["valid"] is False
+        assert "nicht erstellt" in result["error"]
+
+
+class TestBackupServiceGPGBackupValidation:
+    """Tests for GPG backup validation in validate_backup method."""
+
+    @pytest.fixture
+    def backup_service(self, tmp_path):
+        """Create backup service."""
+        config = BackupConfig()
+        config.backup_dir = tmp_path
+        config.encryption_enabled = False
+        return BackupService(config=config)
+
+    @pytest.mark.asyncio
+    async def test_validate_gpg_backup_valid_binary(self, backup_service, tmp_path):
+        """Test validation of valid binary GPG file."""
+        gpg_file = tmp_path / "backup.sql.gz.gpg"
+        gpg_file.write_bytes(b"\xc0\x00" + b"encrypted" * 50)
+
+        result = await backup_service.validate_backup(gpg_file)
+
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_validate_gpg_backup_valid_ascii(self, backup_service, tmp_path):
+        """Test validation of valid ASCII-armored GPG file."""
+        gpg_file = tmp_path / "backup.sql.gz.gpg"
+        gpg_file.write_bytes(b"-----BEGIN PGP MESSAGE-----\n" + b"content" * 50)
+
+        result = await backup_service.validate_backup(gpg_file)
+
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_validate_gpg_backup_too_small(self, backup_service, tmp_path):
+        """Test validation fails for GPG file that is too small."""
+        gpg_file = tmp_path / "backup.sql.gz.gpg"
+        gpg_file.write_bytes(b"\xc0tiny")  # Less than 100 bytes
+
+        result = await backup_service.validate_backup(gpg_file)
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_validate_gpg_backup_invalid_header(self, backup_service, tmp_path):
+        """Test validation fails for invalid GPG header."""
+        gpg_file = tmp_path / "backup.sql.gz.gpg"
+        gpg_file.write_bytes(b"\x00\x00not a gpg file" * 20)
+
+        result = await backup_service.validate_backup(gpg_file)
+
+        assert result is False
 
 
 class TestBackupServiceRemoteSync:

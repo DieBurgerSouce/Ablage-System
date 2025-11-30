@@ -20,11 +20,14 @@ from sqlalchemy.orm import selectinload
 
 from app.db.models import Document, Tag, User, document_tags, ProcessingStatus
 from app.db.schemas import (
-    SearchFilters, SortField, SortOrder, DocumentType,
+    SearchFilters, SortField, SortOrder, DocumentType, ProcessingStatus as SchemaProcessingStatus,
     DocumentSummary, DocumentDetailResponse, DocumentListResponseExtended,
     BatchOperationResult, BatchOperationError, BatchExportResult, ExportFormat,
-    TagOperation, TagResponse
+    TagOperation, TagResponse,
+    DocumentFilterForBulkUpdate, DocumentPartialUpdateRequest, BulkUpdateResult,
+    SoftDeleteResponse, RestoreDocumentResponse, DeletedDocumentSummary, DeletedDocumentsListResponse
 )
+from datetime import timedelta
 from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
@@ -189,6 +192,227 @@ class DocumentService:
 
         return self._to_detail_response(doc)
 
+    async def partial_update_document(
+        self,
+        db: AsyncSession,
+        document_id: UUID,
+        user_id: UUID,
+        updates: Dict[str, any],
+        tag_operation: Optional[str] = None,
+        tag_values: Optional[List[str]] = None
+    ) -> Optional[DocumentDetailResponse]:
+        """Partielle Dokumentaktualisierung (PATCH).
+
+        Phase 2.1: Aktualisiert nur die angegebenen Felder.
+
+        Args:
+            db: Datenbank-Session
+            document_id: Dokument-ID
+            user_id: Benutzer-ID
+            updates: Dictionary mit Feldname -> Wert
+            tag_operation: "set", "add", oder "remove"
+            tag_values: Tags fuer die Operation
+        """
+        # Dokument laden
+        query = (
+            select(Document)
+            .options(selectinload(Document.tags))
+            .where(and_(Document.id == document_id, Document.owner_id == user_id))
+        )
+        result = await db.execute(query)
+        doc = result.scalar_one_or_none()
+
+        if not doc:
+            return None
+
+        # Felder aktualisieren
+        if "document_type" in updates:
+            doc.document_type = updates["document_type"].value if hasattr(updates["document_type"], 'value') else updates["document_type"]
+
+        if "language" in updates:
+            doc.detected_language = updates["language"]
+
+        if "metadata" in updates:
+            current_meta = doc.document_metadata or {}
+            current_meta.update(updates["metadata"])
+            doc.document_metadata = current_meta
+
+        # Tag-Operationen
+        if tag_operation and tag_values is not None:
+            if tag_operation == "set":
+                # Alle Tags ersetzen
+                await self._update_document_tags(db, doc, tag_values)
+            elif tag_operation == "add":
+                # Tags hinzufuegen
+                current_tag_names = [t.name for t in doc.tags]
+                new_tag_names = list(set(current_tag_names + tag_values))
+                await self._update_document_tags(db, doc, new_tag_names)
+            elif tag_operation == "remove":
+                # Tags entfernen
+                current_tag_names = [t.name for t in doc.tags]
+                remaining_tags = [t for t in current_tag_names if t not in tag_values]
+                await self._update_document_tags(db, doc, remaining_tags)
+
+        doc.updated_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(doc)
+
+        logger.info(
+            "document_partial_updated",
+            document_id=str(document_id),
+            user_id=str(user_id),
+            updates=list(updates.keys()),
+            tag_operation=tag_operation
+        )
+
+        # Such-Caches invalidieren
+        try:
+            search_service = _get_search_service()
+            await search_service.invalidate_document_cache(
+                document_id, user_id, reason="partial_update"
+            )
+        except Exception as e:
+            logger.warning(
+                "cache_invalidation_failed",
+                document_id=str(document_id),
+                error=str(e)
+            )
+
+        return self._to_detail_response(doc)
+
+    async def bulk_update(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        filter_criteria: DocumentFilterForBulkUpdate,
+        updates: DocumentPartialUpdateRequest,
+        dry_run: bool = False
+    ) -> BulkUpdateResult:
+        """Bulk-Update fuer mehrere Dokumente.
+
+        Phase 2.2: Aktualisiert Dokumente basierend auf Filterkriterien.
+
+        Args:
+            db: Datenbank-Session
+            user_id: Benutzer-ID
+            filter_criteria: Filter fuer zu aktualisierende Dokumente
+            updates: Anzuwendende Aenderungen
+            dry_run: Nur simulieren, nicht ausfuehren
+        """
+        errors: List[str] = []
+
+        # Query mit Filtern aufbauen
+        query = (
+            select(Document)
+            .options(selectinload(Document.tags))
+            .where(Document.owner_id == user_id)
+        )
+
+        if filter_criteria.document_ids:
+            query = query.where(Document.id.in_(filter_criteria.document_ids))
+
+        if filter_criteria.document_type:
+            query = query.where(
+                Document.document_type == filter_criteria.document_type.value
+            )
+
+        if filter_criteria.status:
+            query = query.where(
+                Document.status == filter_criteria.status.value
+            )
+
+        if filter_criteria.date_from:
+            query = query.where(Document.created_at >= filter_criteria.date_from)
+
+        if filter_criteria.date_to:
+            query = query.where(Document.created_at <= filter_criteria.date_to)
+
+        if filter_criteria.tags:
+            # Dokumente mit mindestens einem der Tags
+            query = query.join(Document.tags).where(Tag.name.in_(filter_criteria.tags))
+
+        # Dokumente laden
+        result = await db.execute(query)
+        documents = result.scalars().unique().all()
+
+        total_matched = len(documents)
+        total_updated = 0
+
+        if dry_run:
+            return BulkUpdateResult(
+                total_matched=total_matched,
+                total_updated=0,
+                failed=0,
+                dry_run=True,
+                errors=[]
+            )
+
+        # Updates anwenden
+        for doc in documents:
+            try:
+                # Felder aktualisieren
+                if updates.document_type is not None:
+                    doc.document_type = updates.document_type.value
+
+                if updates.language is not None:
+                    doc.detected_language = updates.language
+
+                if updates.metadata is not None:
+                    current_meta = doc.document_metadata or {}
+                    current_meta.update(updates.metadata)
+                    doc.document_metadata = current_meta
+
+                # Tag-Operationen
+                if updates.tags is not None:
+                    await self._update_document_tags(db, doc, updates.tags)
+                elif updates.add_tags is not None:
+                    current_tag_names = [t.name for t in doc.tags]
+                    new_tag_names = list(set(current_tag_names + updates.add_tags))
+                    await self._update_document_tags(db, doc, new_tag_names)
+                elif updates.remove_tags is not None:
+                    current_tag_names = [t.name for t in doc.tags]
+                    remaining_tags = [t for t in current_tag_names if t not in updates.remove_tags]
+                    await self._update_document_tags(db, doc, remaining_tags)
+
+                doc.updated_at = datetime.now(timezone.utc)
+                total_updated += 1
+
+            except Exception as e:
+                errors.append(f"Dokument {doc.id}: {str(e)}")
+                logger.warning(
+                    "bulk_update_document_failed",
+                    document_id=str(doc.id),
+                    error=str(e)
+                )
+
+        await db.commit()
+
+        logger.info(
+            "bulk_update_completed",
+            user_id=str(user_id),
+            total_matched=total_matched,
+            total_updated=total_updated,
+            failed=len(errors)
+        )
+
+        # Such-Caches invalidieren
+        try:
+            search_service = _get_search_service()
+            for doc in documents:
+                await search_service.invalidate_document_cache(
+                    doc.id, user_id, reason="bulk_update"
+                )
+        except Exception as e:
+            logger.warning("cache_invalidation_failed_bulk", error=str(e))
+
+        return BulkUpdateResult(
+            total_matched=total_matched,
+            total_updated=total_updated,
+            failed=len(errors),
+            dry_run=False,
+            errors=errors
+        )
+
     async def delete_document(
         self,
         db: AsyncSession,
@@ -230,6 +454,207 @@ class DocumentService:
             )
 
         return True
+
+    # ========== Soft-Delete Operationen (GDPR Phase 2.3) ==========
+
+    async def soft_delete_document(
+        self,
+        db: AsyncSession,
+        document_id: UUID,
+        user_id: UUID,
+        reason: Optional[str] = None
+    ) -> Optional[SoftDeleteResponse]:
+        """Dokument soft-loeschen (GDPR-konform).
+
+        Phase 2.3: Markiert Dokument als geloescht, entfernt es aber nicht.
+        Nach 30 Tagen wird es permanent geloescht (via Scheduled Task).
+        """
+        query = select(Document).where(
+            and_(
+                Document.id == document_id,
+                Document.owner_id == user_id,
+                Document.deleted_at.is_(None)  # Noch nicht geloescht
+            )
+        )
+        result = await db.execute(query)
+        doc = result.scalar_one_or_none()
+
+        if not doc:
+            return None
+
+        now = datetime.now(timezone.utc)
+        doc.deleted_at = now
+        doc.deleted_by_id = user_id
+
+        # Grund in Metadaten speichern
+        if reason:
+            meta = doc.document_metadata or {}
+            meta["deletion_reason"] = reason
+            doc.document_metadata = meta
+
+        await db.commit()
+
+        logger.info(
+            "document_soft_deleted",
+            document_id=str(document_id),
+            user_id=str(user_id),
+            reason=reason
+        )
+
+        # Such-Caches invalidieren
+        try:
+            search_service = _get_search_service()
+            await search_service.invalidate_document_cache(
+                document_id, user_id, reason="soft_delete"
+            )
+        except Exception as e:
+            logger.warning("cache_invalidation_failed", error=str(e))
+
+        return SoftDeleteResponse(
+            document_id=doc.id,
+            deleted_at=doc.deleted_at,
+            deleted_by_id=doc.deleted_by_id,
+            can_restore_until=now + timedelta(days=30)
+        )
+
+    async def restore_document(
+        self,
+        db: AsyncSession,
+        document_id: UUID,
+        user_id: UUID
+    ) -> Optional[RestoreDocumentResponse]:
+        """Soft-geloeschtes Dokument wiederherstellen.
+
+        Phase 2.3: Stellt ein geloeschtes Dokument wieder her,
+        solange die 30-Tage-Frist nicht abgelaufen ist.
+        """
+        # Nur geloeschte Dokumente des Benutzers finden
+        query = select(Document).where(
+            and_(
+                Document.id == document_id,
+                Document.owner_id == user_id,
+                Document.deleted_at.isnot(None)
+            )
+        )
+        result = await db.execute(query)
+        doc = result.scalar_one_or_none()
+
+        if not doc:
+            return None
+
+        # Pruefen ob 30-Tage-Frist noch nicht abgelaufen
+        days_since_deletion = (datetime.now(timezone.utc) - doc.deleted_at).days
+        if days_since_deletion > 30:
+            raise ValueError(
+                f"Wiederherstellung nicht mehr moeglich. "
+                f"Dokument wurde vor {days_since_deletion} Tagen geloescht."
+            )
+
+        now = datetime.now(timezone.utc)
+        doc.deleted_at = None
+        doc.deleted_by_id = None
+
+        # Loeschgrund aus Metadaten entfernen
+        if doc.document_metadata and "deletion_reason" in doc.document_metadata:
+            meta = doc.document_metadata.copy()
+            del meta["deletion_reason"]
+            doc.document_metadata = meta
+
+        doc.updated_at = now
+        await db.commit()
+
+        logger.info(
+            "document_restored",
+            document_id=str(document_id),
+            user_id=str(user_id)
+        )
+
+        return RestoreDocumentResponse(
+            document_id=doc.id,
+            restored_at=now
+        )
+
+    async def list_deleted_documents(
+        self,
+        db: AsyncSession,
+        user_id: UUID
+    ) -> DeletedDocumentsListResponse:
+        """Alle soft-geloeschten Dokumente eines Benutzers auflisten.
+
+        Phase 2.3: Zeigt geloeschte Dokumente mit Restzeit bis zur
+        permanenten Loeschung.
+        """
+        query = (
+            select(Document)
+            .where(
+                and_(
+                    Document.owner_id == user_id,
+                    Document.deleted_at.isnot(None)
+                )
+            )
+            .order_by(Document.deleted_at.desc())
+        )
+        result = await db.execute(query)
+        documents = result.scalars().all()
+
+        now = datetime.now(timezone.utc)
+        summaries = []
+
+        for doc in documents:
+            days_since = (now - doc.deleted_at).days
+            days_until_permanent = max(0, 30 - days_since)
+
+            summaries.append(DeletedDocumentSummary(
+                id=doc.id,
+                filename=doc.filename,
+                document_type=DocumentType(doc.document_type) if doc.document_type else DocumentType.OTHER,
+                deleted_at=doc.deleted_at,
+                deleted_by_id=doc.deleted_by_id,
+                days_until_permanent_deletion=days_until_permanent,
+                can_restore=days_until_permanent > 0
+            ))
+
+        return DeletedDocumentsListResponse(
+            total=len(summaries),
+            documents=summaries
+        )
+
+    async def permanently_delete_expired(
+        self,
+        db: AsyncSession,
+        days_threshold: int = 30
+    ) -> int:
+        """Permanent loescht alle Dokumente, deren Soft-Delete abgelaufen ist.
+
+        Phase 2.3: Sollte als Scheduled Task laufen.
+        Returns: Anzahl geloeschter Dokumente
+        """
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_threshold)
+
+        # Alle abgelaufenen Dokumente finden
+        query = select(Document).where(
+            and_(
+                Document.deleted_at.isnot(None),
+                Document.deleted_at < cutoff_date
+            )
+        )
+        result = await db.execute(query)
+        documents = result.scalars().all()
+
+        count = len(documents)
+
+        for doc in documents:
+            await db.delete(doc)
+
+        if count > 0:
+            await db.commit()
+            logger.info(
+                "expired_documents_permanently_deleted",
+                count=count,
+                threshold_days=days_threshold
+            )
+
+        return count
 
     # ========== Batch-Operationen ==========
 

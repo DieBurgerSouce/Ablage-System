@@ -136,10 +136,17 @@ class BackupService:
         # Verschluesselungsstatus setzen
         self.metrics.set_encryption_enabled(self.config.encryption_enabled)
 
+        # GPG-Konfiguration validieren wenn Verschluesselung aktiviert
+        self._encryption_validated = False
+        self._encryption_validation_error: Optional[str] = None
+        if self.config.encryption_enabled:
+            self._validate_encryption_config()
+
         logger.info(
             "backup_service_initialisiert",
             backup_dir=str(self.config.backup_dir),
             encryption=self.config.encryption_enabled,
+            encryption_validated=self._encryption_validated,
             remote_sync=self.config.remote_enabled,
         )
 
@@ -150,6 +157,81 @@ class BackupService:
             path = self.config.backup_dir / subdir
             path.mkdir(parents=True, exist_ok=True)
             logger.debug("backup_verzeichnis_erstellt", path=str(path))
+
+    def _validate_encryption_config(self) -> None:
+        """
+        Validiere GPG-Verschluesselungs-Konfiguration.
+
+        Prueft:
+        - GPG-Binary verfuegbar
+        - GPG-Schluessel fuer Empfaenger existiert
+        - GPG-Home Verzeichnis valide (wenn konfiguriert)
+        """
+        import subprocess
+
+        try:
+            # 1. GPG-Binary verfuegbar?
+            result = subprocess.run(
+                ["gpg", "--version"],
+                capture_output=True,
+                timeout=5,
+            )
+            if result.returncode != 0:
+                self._encryption_validation_error = "GPG nicht verfuegbar oder fehlerhaft"
+                logger.error("gpg_validation_fehler", error=self._encryption_validation_error)
+                return
+
+            # 2. GPG-Home Verzeichnis pruefen (wenn konfiguriert)
+            gpg_args = ["gpg"]
+            if self.config.gpg_home:
+                gpg_home_path = Path(self.config.gpg_home)
+                if not gpg_home_path.exists():
+                    self._encryption_validation_error = f"GPG-Home existiert nicht: {self.config.gpg_home}"
+                    logger.error("gpg_validation_fehler", error=self._encryption_validation_error)
+                    return
+                gpg_args.extend(["--homedir", self.config.gpg_home])
+
+            # 3. GPG-Schluessel fuer Empfaenger pruefen
+            gpg_args.extend(["--list-keys", self.config.gpg_recipient])
+            result = subprocess.run(
+                gpg_args,
+                capture_output=True,
+                timeout=10,
+            )
+
+            if result.returncode != 0:
+                stderr = result.stderr.decode("utf-8", errors="ignore")
+                if "not found" in stderr.lower() or "keine" in stderr.lower():
+                    self._encryption_validation_error = (
+                        f"GPG-Schluessel fuer '{self.config.gpg_recipient}' nicht gefunden. "
+                        f"Bitte Schluessel importieren: gpg --import <keyfile>"
+                    )
+                else:
+                    self._encryption_validation_error = f"GPG-Schluessel-Pruefung fehlgeschlagen: {stderr[:200]}"
+                logger.error(
+                    "gpg_validation_fehler",
+                    error=self._encryption_validation_error,
+                    recipient=self.config.gpg_recipient,
+                )
+                return
+
+            # Alles OK
+            self._encryption_validated = True
+            logger.info(
+                "gpg_validation_erfolgreich",
+                recipient=self.config.gpg_recipient,
+                gpg_home=self.config.gpg_home,
+            )
+
+        except subprocess.TimeoutExpired:
+            self._encryption_validation_error = "GPG-Validierung Timeout"
+            logger.error("gpg_validation_timeout")
+        except FileNotFoundError:
+            self._encryption_validation_error = "GPG nicht installiert"
+            logger.error("gpg_nicht_gefunden")
+        except Exception as e:
+            self._encryption_validation_error = f"GPG-Validierung Fehler: {str(e)}"
+            logger.exception("gpg_validation_fehler")
 
     def _generate_filename(self, backup_type: str, extension: str) -> str:
         """
@@ -615,6 +697,17 @@ class BackupService:
             logger.error("verschluesselung_datei_nicht_gefunden", pfad=str(path))
             return None
 
+        # Pre-Flight Check: Encryption-Konfiguration validiert?
+        if not self._encryption_validated:
+            error_msg = self._encryption_validation_error or "GPG-Konfiguration nicht validiert"
+            logger.error(
+                "verschluesselung_nicht_moeglich",
+                error=error_msg,
+                pfad=str(path),
+            )
+            self.metrics.record_encryption_failure(f"Pre-flight: {error_msg}")
+            return None
+
         output_path = path.with_suffix(path.suffix + ".gpg")
 
         logger.debug("backup_verschluesselung_gestartet", quelle=str(path))
@@ -642,10 +735,31 @@ class BackupService:
                 error_msg = stderr.decode() if stderr else "GPG Verschluesselung fehlgeschlagen"
                 logger.error("verschluesselung_fehlgeschlagen", error=error_msg)
                 self.metrics.record_encryption_failure(error_msg)
+                # Aufraumen bei Fehler
+                if output_path.exists():
+                    output_path.unlink()
+                return None
+
+            # Post-Encryption Validation
+            validation_result = await self._validate_encrypted_file(output_path, path.stat().st_size)
+            if not validation_result["valid"]:
+                logger.error(
+                    "post_encryption_validation_fehlgeschlagen",
+                    error=validation_result["error"],
+                    pfad=str(output_path),
+                )
+                self.metrics.record_encryption_failure(f"Post-validation: {validation_result['error']}")
+                if output_path.exists():
+                    output_path.unlink()
                 return None
 
             self.metrics.record_encryption_success()
-            logger.info("backup_verschluesselt", pfad=str(output_path))
+            logger.info(
+                "backup_verschluesselt",
+                pfad=str(output_path),
+                original_groesse=path.stat().st_size,
+                verschluesselt_groesse=output_path.stat().st_size,
+            )
             return output_path
 
         except FileNotFoundError:
@@ -656,7 +770,105 @@ class BackupService:
         except Exception as e:
             logger.exception("verschluesselung_fehler")
             self.metrics.record_encryption_failure(str(e))
+            # Aufraumen bei Fehler
+            if output_path.exists():
+                output_path.unlink()
             return None
+
+    async def _validate_encrypted_file(
+        self,
+        encrypted_path: Path,
+        original_size: int,
+    ) -> Dict[str, any]:
+        """
+        Validiere verschluesselte Datei nach Erstellung.
+
+        Args:
+            encrypted_path: Pfad zur verschluesselten Datei
+            original_size: Groesse der Original-Datei
+
+        Returns:
+            Dict mit 'valid' (bool) und optional 'error' (str)
+        """
+        # 1. Datei existiert?
+        if not encrypted_path.exists():
+            return {"valid": False, "error": "Verschluesselte Datei wurde nicht erstellt"}
+
+        encrypted_size = encrypted_path.stat().st_size
+
+        # 2. Datei nicht leer?
+        if encrypted_size == 0:
+            return {"valid": False, "error": "Verschluesselte Datei ist leer"}
+
+        # 3. Verschluesselte Datei sollte mindestens aehnlich gross sein
+        # GPG fuegt Overhead hinzu (~100-500 Bytes), aber die Datei sollte
+        # nicht dramatisch kleiner sein als das Original
+        min_expected_size = max(100, original_size * 0.5)  # Mind. 50% der Originalgroesse
+        if encrypted_size < min_expected_size:
+            return {
+                "valid": False,
+                "error": f"Verschluesselte Datei zu klein: {encrypted_size} < {min_expected_size}",
+            }
+
+        # 4. GPG-Header validieren
+        try:
+            with open(encrypted_path, "rb") as f:
+                header = f.read(2)
+
+            # GPG Binary Packets beginnen mit bestimmten Bytes
+            # 0x85: Old-style packet (compressed data)
+            # 0xa3: Old-style packet (symmetric key)
+            # 0xc0-0xff: New-style packets
+            valid_headers = set([0x85, 0xa3] + list(range(0xc0, 0x100)))
+
+            if header[0] not in valid_headers:
+                # Check for ASCII-armored GPG
+                with open(encrypted_path, "rb") as f:
+                    ascii_check = f.read(27)
+                if not ascii_check.startswith(b"-----BEGIN PGP MESSAGE"):
+                    return {
+                        "valid": False,
+                        "error": f"Ungueltige GPG-Datei: Header 0x{header[0]:02x} nicht erkannt",
+                    }
+
+        except Exception as e:
+            return {"valid": False, "error": f"Header-Validierung fehlgeschlagen: {e}"}
+
+        return {"valid": True}
+
+    def get_encryption_status(self) -> Dict[str, any]:
+        """
+        Hole aktuellen Encryption-Status (fuer Health-Checks).
+
+        Returns:
+            Dict mit Status-Informationen
+        """
+        return {
+            "enabled": self.config.encryption_enabled,
+            "validated": self._encryption_validated,
+            "recipient": self.config.gpg_recipient if self.config.encryption_enabled else None,
+            "gpg_home": self.config.gpg_home,
+            "error": self._encryption_validation_error,
+        }
+
+    def revalidate_encryption_config(self) -> bool:
+        """
+        Validiere GPG-Konfiguration erneut.
+
+        Nuetzlich nach Schluessel-Import oder Konfigurationsaenderung.
+
+        Returns:
+            True wenn Validierung erfolgreich
+        """
+        if not self.config.encryption_enabled:
+            logger.debug("encryption_nicht_aktiviert_skip_revalidation")
+            return False
+
+        self._encryption_validated = False
+        self._encryption_validation_error = None
+        self._validate_encryption_config()
+
+        return self._encryption_validated
 
     async def decrypt_backup(self, path: Path, output_path: Optional[Path] = None) -> Optional[Path]:
         """
@@ -844,10 +1056,30 @@ class BackupService:
             try:
                 suffix = "".join(path.suffixes).lower()
 
-                # GPG-verschluesselte Dateien
+                # GPG-verschluesselte Dateien - erweiterte Validierung
                 if suffix.endswith(".gpg"):
-                    # Nur Dateigroesse pruefen (Entschluesselung zu teuer)
-                    return path.stat().st_size > 0
+                    file_size = path.stat().st_size
+                    if file_size < 100:  # Minimal sinnvolle GPG-Dateigroesse
+                        logger.warning("gpg_backup_zu_klein", pfad=str(path), groesse=file_size)
+                        return False
+
+                    # GPG-Header validieren
+                    with open(path, "rb") as f:
+                        header = f.read(2)
+
+                    # Gueltige GPG-Header
+                    valid_headers = set([0x85, 0xa3] + list(range(0xc0, 0x100)))
+                    if len(header) >= 1 and header[0] in valid_headers:
+                        return True
+
+                    # ASCII-armored GPG pruefen
+                    with open(path, "rb") as f:
+                        ascii_check = f.read(27)
+                    if ascii_check.startswith(b"-----BEGIN PGP MESSAGE"):
+                        return True
+
+                    logger.warning("gpg_backup_ungueltiger_header", pfad=str(path))
+                    return False
 
                 # Gzip-komprimierte Dateien
                 if ".gz" in suffix:

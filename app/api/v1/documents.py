@@ -7,7 +7,7 @@ Provides REST API endpoints for:
 - Batch operations (delete, tag, export)
 """
 
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
 import io
@@ -24,10 +24,14 @@ from app.db.schemas import (
     SortField, SortOrder, DocumentType, ProcessingStatus,
     # Documents
     DocumentDetailResponse, DocumentListResponseExtended, DocumentUpdateRequest,
-    DocumentSummary,
+    DocumentSummary, DocumentPartialUpdateRequest,
     # Batch
     BatchDeleteRequest, BatchTagRequest, BatchExportRequest,
     BatchOperationResult, BatchExportResult, TagOperation, ExportFormat,
+    BulkUpdateRequest, BulkUpdateResult,
+    # Soft-Delete (GDPR Phase 2.3)
+    SoftDeleteRequest, SoftDeleteResponse, RestoreDocumentResponse,
+    DeletedDocumentsListResponse,
     # Common
     MessageResponse
 )
@@ -260,6 +264,76 @@ async def update_document(
     return document
 
 
+@router.patch("/{document_id}", response_model=DocumentDetailResponse)
+async def partial_update_document(
+    document_id: UUID,
+    updates: DocumentPartialUpdateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Partielle Dokumentaktualisierung (PATCH).
+
+    Phase 2.1: Ermoeglicht das Aendern einzelner Felder:
+    - **document_type**: Dokumenttyp aendern
+    - **language**: Sprache aendern
+    - **tags**: Alle Tags ersetzen
+    - **add_tags**: Tags hinzufuegen (additiv)
+    - **remove_tags**: Bestimmte Tags entfernen
+    - **metadata**: Metadaten aktualisieren/erweitern
+
+    Nur angegebene Felder werden aktualisiert.
+    Tag-Operationen sind gegenseitig exklusiv.
+    """
+    service = get_document_service()
+
+    # Build update dict from non-None fields
+    update_data: Dict[str, Any] = {}
+
+    if updates.document_type is not None:
+        update_data["document_type"] = updates.document_type
+    if updates.language is not None:
+        update_data["language"] = updates.language
+    if updates.metadata is not None:
+        update_data["metadata"] = updates.metadata
+
+    # Handle tag operations
+    tag_operation = None
+    tag_values = None
+    if updates.tags is not None:
+        tag_operation = "set"
+        tag_values = updates.tags
+    elif updates.add_tags is not None:
+        tag_operation = "add"
+        tag_values = updates.add_tags
+    elif updates.remove_tags is not None:
+        tag_operation = "remove"
+        tag_values = updates.remove_tags
+
+    document = await service.partial_update_document(
+        db=db,
+        document_id=document_id,
+        user_id=current_user.id,
+        updates=update_data,
+        tag_operation=tag_operation,
+        tag_values=tag_values
+    )
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Dokument nicht gefunden oder keine Berechtigung"
+        )
+
+    logger.info(
+        "document_partial_updated_api",
+        document_id=str(document_id),
+        user_id=str(current_user.id),
+        updated_fields=list(update_data.keys()) + ([f"tags_{tag_operation}"] if tag_operation else [])
+    )
+
+    return document
+
+
 @router.delete("/{document_id}", status_code=204)
 async def delete_document(
     document_id: UUID,
@@ -401,6 +475,50 @@ async def batch_tag_documents(
     )
 
 
+@router.post("/batch/update", response_model=BulkUpdateResult)
+async def batch_update_documents(
+    request: BulkUpdateRequest,
+    current_user: User = Depends(check_batch_rate_limit),
+    db: AsyncSession = Depends(get_db)
+):
+    """Mehrere Dokumente gleichzeitig aktualisieren.
+
+    Phase 2.2: Bulk-Update basierend auf Filterkriterien.
+
+    Filter-Optionen:
+    - **document_ids**: Liste spezifischer IDs (max. 100)
+    - **document_type**: Nach Dokumenttyp filtern
+    - **status**: Nach Verarbeitungsstatus filtern
+    - **date_from/date_to**: Nach Erstellungsdatum filtern
+    - **tags**: Nach Tags filtern
+
+    Update-Optionen:
+    - **document_type**: Dokumenttyp aendern
+    - **language**: Sprache aendern
+    - **tags/add_tags/remove_tags**: Tag-Operationen
+
+    Mit **dry_run: true** kann die Operation simuliert werden.
+    """
+    logger.info(
+        "batch_update_request",
+        filter=request.filter.model_dump(exclude_none=True),
+        updates=request.updates.model_dump(exclude_none=True),
+        dry_run=request.dry_run,
+        user_id=str(current_user.id)
+    )
+
+    service = get_document_service()
+    result = await service.bulk_update(
+        db=db,
+        user_id=current_user.id,
+        filter_criteria=request.filter,
+        updates=request.updates,
+        dry_run=request.dry_run
+    )
+
+    return result
+
+
 @router.post("/batch/export")
 async def batch_export_documents(
     request: BatchExportRequest,
@@ -453,6 +571,97 @@ async def batch_export_documents(
             "X-Export-Failed": str(result.failed)
         }
     )
+
+
+# ==================== Soft-Delete (GDPR Phase 2.3) ====================
+
+@router.post("/{document_id}/soft-delete", response_model=SoftDeleteResponse)
+async def soft_delete_document(
+    document_id: UUID,
+    request: SoftDeleteRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Dokument soft-loeschen (GDPR-konform).
+
+    Phase 2.3: Markiert ein Dokument als geloescht, ohne es sofort
+    permanent zu entfernen. Das Dokument kann innerhalb von 30 Tagen
+    wiederhergestellt werden.
+
+    Nach 30 Tagen wird das Dokument automatisch permanent geloescht.
+    """
+    service = get_document_service()
+    result = await service.soft_delete_document(
+        db=db,
+        document_id=document_id,
+        user_id=current_user.id,
+        reason=request.reason
+    )
+
+    if not result:
+        raise HTTPException(
+            status_code=404,
+            detail="Dokument nicht gefunden oder bereits geloescht"
+        )
+
+    logger.info(
+        "document_soft_deleted_api",
+        document_id=str(document_id),
+        user_id=str(current_user.id)
+    )
+
+    return result
+
+
+@router.post("/{document_id}/restore", response_model=RestoreDocumentResponse)
+async def restore_document(
+    document_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Soft-geloeschtes Dokument wiederherstellen.
+
+    Phase 2.3: Stellt ein geloeschtes Dokument wieder her,
+    sofern die 30-Tage-Frist noch nicht abgelaufen ist.
+    """
+    service = get_document_service()
+
+    try:
+        result = await service.restore_document(
+            db=db,
+            document_id=document_id,
+            user_id=current_user.id
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if not result:
+        raise HTTPException(
+            status_code=404,
+            detail="Dokument nicht gefunden oder nicht geloescht"
+        )
+
+    logger.info(
+        "document_restored_api",
+        document_id=str(document_id),
+        user_id=str(current_user.id)
+    )
+
+    return result
+
+
+@router.get("/deleted/list", response_model=DeletedDocumentsListResponse)
+async def list_deleted_documents(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Alle soft-geloeschten Dokumente auflisten.
+
+    Phase 2.3: Zeigt alle geloeschten Dokumente des Benutzers mit
+    der verbleibenden Zeit bis zur permanenten Loeschung.
+    """
+    service = get_document_service()
+    return await service.list_deleted_documents(db=db, user_id=current_user.id)
 
 
 # ==================== Statistics and Info ====================

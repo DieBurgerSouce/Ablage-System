@@ -779,6 +779,144 @@ class DocumentUpdateRequest(BaseModel):
     metadata: Optional[Dict[str, str]] = None
 
 
+class DocumentPartialUpdateRequest(BaseModel):
+    """Partial document update request (PATCH).
+
+    Phase 2.1: Ermoeglicht partielle Updates einzelner Felder.
+    Nur angegebene Felder werden aktualisiert.
+    """
+    document_type: Optional[DocumentType] = Field(None, description="Dokumenttyp aendern")
+    language: Optional[str] = Field(None, pattern="^(de|en)$", description="Sprache aendern")
+    tags: Optional[List[str]] = Field(None, max_length=20, description="Tags ersetzen")
+    add_tags: Optional[List[str]] = Field(None, max_length=20, description="Tags hinzufuegen")
+    remove_tags: Optional[List[str]] = Field(None, max_length=20, description="Tags entfernen")
+    metadata: Optional[Dict[str, str]] = Field(None, description="Metadaten aktualisieren")
+
+    @model_validator(mode='after')
+    def validate_tags_operations(self) -> 'DocumentPartialUpdateRequest':
+        """Ensure tags operations are mutually exclusive."""
+        tag_ops = [self.tags, self.add_tags, self.remove_tags]
+        non_none = [op for op in tag_ops if op is not None]
+        if len(non_none) > 1:
+            raise ValueError(
+                "Nur eine Tag-Operation erlaubt: tags (ersetzen), add_tags, oder remove_tags"
+            )
+        return self
+
+
+class DocumentFilterForBulkUpdate(BaseModel):
+    """Filter fuer Bulk-Update Operationen.
+
+    Phase 2.2: Ermoeglicht Updates basierend auf Filterkriterien.
+    """
+    document_ids: Optional[List[uuid.UUID]] = Field(
+        None,
+        max_length=100,
+        description="Spezifische Dokument-IDs (max. 100)"
+    )
+    document_type: Optional[DocumentType] = Field(None, description="Nach Dokumenttyp filtern")
+    status: Optional[ProcessingStatus] = Field(None, description="Nach Status filtern")
+    date_from: Optional[datetime] = Field(None, description="Erstellt nach")
+    date_to: Optional[datetime] = Field(None, description="Erstellt vor")
+    tags: Optional[List[str]] = Field(None, description="Dokumente mit diesen Tags")
+
+    @model_validator(mode='after')
+    def validate_has_filter(self) -> 'DocumentFilterForBulkUpdate':
+        """Ensure at least one filter is provided."""
+        has_filter = any([
+            self.document_ids,
+            self.document_type,
+            self.status,
+            self.date_from,
+            self.date_to,
+            self.tags
+        ])
+        if not has_filter:
+            raise ValueError("Mindestens ein Filter muss angegeben werden")
+        return self
+
+
+class BulkUpdateRequest(BaseModel):
+    """Bulk update request for multiple documents.
+
+    Phase 2.2: Ermoeglicht Massenaktualisierungen.
+    """
+    filter: DocumentFilterForBulkUpdate = Field(..., description="Filter fuer betroffene Dokumente")
+    updates: DocumentPartialUpdateRequest = Field(..., description="Anzuwendende Aenderungen")
+    dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
+
+
+class BulkUpdateResult(BaseModel):
+    """Result of bulk update operation."""
+    total_matched: int = Field(description="Anzahl gefundener Dokumente")
+    total_updated: int = Field(description="Anzahl aktualisierter Dokumente")
+    failed: int = Field(default=0, description="Anzahl fehlgeschlagener Updates")
+    dry_run: bool = Field(description="War dies ein Testlauf?")
+    errors: List[str] = Field(default_factory=list, description="Fehlermeldungen")
+
+
+# ============================================================================
+# SOFT-DELETE SCHEMAS (GDPR Phase 2.3)
+# ============================================================================
+
+class SoftDeleteRequest(BaseModel):
+    """Request for soft-deleting a document (GDPR-compliant).
+
+    Phase 2.3: Soft-Delete ermoeglicht Wiederherstellung und GDPR-Compliance.
+    """
+    reason: Optional[str] = Field(
+        None,
+        max_length=500,
+        description="Grund fuer die Loeschung (optional)"
+    )
+    confirm: bool = Field(
+        ...,
+        description="Bestaetigung erforderlich (muss true sein)"
+    )
+
+    @field_validator("confirm")
+    @classmethod
+    def must_confirm(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError("Loeschung muss mit confirm=true bestaetigt werden")
+        return v
+
+
+class SoftDeleteResponse(BaseModel):
+    """Response after soft-deleting a document."""
+    document_id: uuid.UUID
+    deleted_at: datetime
+    deleted_by_id: uuid.UUID
+    can_restore_until: datetime = Field(
+        description="Zeitpunkt bis zu dem Wiederherstellung moeglich ist (30 Tage)"
+    )
+    message: str = "Dokument wurde geloescht und kann innerhalb von 30 Tagen wiederhergestellt werden"
+
+
+class RestoreDocumentResponse(BaseModel):
+    """Response after restoring a soft-deleted document."""
+    document_id: uuid.UUID
+    restored_at: datetime
+    message: str = "Dokument wurde erfolgreich wiederhergestellt"
+
+
+class DeletedDocumentSummary(BaseModel):
+    """Summary of a soft-deleted document."""
+    id: uuid.UUID
+    filename: str
+    document_type: DocumentType
+    deleted_at: datetime
+    deleted_by_id: uuid.UUID
+    days_until_permanent_deletion: int
+    can_restore: bool = True
+
+
+class DeletedDocumentsListResponse(BaseModel):
+    """List of soft-deleted documents."""
+    total: int
+    documents: List[DeletedDocumentSummary]
+
+
 class DocumentDetailResponse(BaseModel):
     """Detailed document response with all fields."""
     id: uuid.UUID

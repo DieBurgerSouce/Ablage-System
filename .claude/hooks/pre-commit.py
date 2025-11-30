@@ -122,6 +122,55 @@ def check_gpu_patterns(files: List[str]) -> bool:
     return True
 
 
+def check_test_existence(files: List[str]) -> bool:
+    """Check that modified services have corresponding tests.
+
+    Phase 1.3: Test-Existenz-Validator für kritische Services.
+    """
+    issues = []
+
+    # Directories that require tests
+    critical_dirs = ['app/services/', 'app/api/', 'app/core/']
+
+    for filepath in files:
+        if not filepath.endswith('.py'):
+            continue
+        if 'test' in filepath.lower() or '__pycache__' in filepath:
+            continue
+
+        # Check if file is in a critical directory
+        is_critical = any(crit_dir in filepath.replace('\\', '/') for crit_dir in critical_dirs)
+        if not is_critical:
+            continue
+
+        # Determine expected test file path
+        filename = Path(filepath).name
+        if filename.startswith('_'):
+            continue  # Skip __init__.py etc.
+
+        # Build possible test file paths
+        possible_test_paths = [
+            f"tests/unit/services/test_{filename}",
+            f"tests/unit/api/test_{filename}",
+            f"tests/unit/core/test_{filename}",
+            f"tests/unit/test_{filename}",
+        ]
+
+        # Check if any test file exists
+        test_exists = any(Path(test_path).exists() for test_path in possible_test_paths)
+
+        if not test_exists:
+            issues.append(f"{filepath}: Kein zugehöriger Test gefunden")
+
+    if issues:
+        print("TEST-ABDECKUNG WARNUNG:")
+        print("  Folgende kritische Dateien haben keine Tests:")
+        for issue in issues:
+            print(f"  - {issue}")
+        # Warning only - don't block commit
+    return True
+
+
 def main() -> int:
     """Run all pre-commit checks."""
     # Get staged files
@@ -143,6 +192,7 @@ def main() -> int:
         ("Deutsche Nachrichten", check_german_messages),
         ("Sicherheitsmuster", check_security_patterns),
         ("GPU-Management", check_gpu_patterns),
+        ("Test-Existenz", check_test_existence),
     ]
 
     for name, check_func in checks:

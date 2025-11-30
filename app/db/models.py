@@ -139,6 +139,10 @@ class Document(Base):
     current_version_number = Column(Integer, default=0)
     total_versions = Column(Integer, default=0)
 
+    # Soft-Delete for GDPR (Phase 2.3)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
     # Search vectors (Full-Text Search + Semantic Search)
     search_vector = Column(CrossDBTSVector)  # PostgreSQL tsvector for FTS with german_text config
     embedding = Column(CrossDBVector(1024))  # pgvector for semantic search (multilingual-e5-large)
@@ -164,7 +168,16 @@ class Document(Base):
         Index("ix_documents_upload_date", "upload_date"),
         Index("ix_documents_owner_id", "owner_id"),
         Index("ix_documents_checksum", "checksum"),
+        # Phase 2.3: Index fuer Soft-Delete Queries
+        Index("ix_documents_deleted_at", "deleted_at"),
+        # Phase 3: Compound Index fuer Owner + Created (haeufige Query)
+        Index("ix_documents_owner_created", "owner_id", "created_at"),
     )
+
+    @property
+    def is_deleted(self) -> bool:
+        """Check if document is soft-deleted (GDPR Phase 2.3)."""
+        return self.deleted_at is not None
 
 
 class User(Base):

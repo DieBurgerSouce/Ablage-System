@@ -320,6 +320,8 @@ parallel = true
 precision = 2
 show_missing = true
 skip_covered = false
+# Phase 1.3: Coverage-Schwelle auf 80% setzen
+fail_under = 80
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
