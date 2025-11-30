@@ -5,14 +5,14 @@ Provides convenient logging functions and decorators.
 """
 import time
 import functools
-from typing import Any, Callable, Optional, TypeVar, cast
+from typing import Callable, Generator, Optional, TypeVar, ParamSpec, Concatenate
 import structlog
 from contextlib import contextmanager
 import asyncio
-import inspect
 
-# Type variable for decorated functions
-F = TypeVar('F', bound=Callable[..., Any])
+# Type variables for decorated functions (PEP 612)
+P = ParamSpec('P')
+R = TypeVar('R')
 
 # Get logger
 logger = structlog.get_logger(__name__)
@@ -23,7 +23,7 @@ def log_execution_time(
     log_level: str = "info",
     include_args: bool = False,
     german: bool = True
-) -> Callable[[F], F]:
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
     Decorator to log execution time of functions.
 
@@ -34,15 +34,15 @@ def log_execution_time(
         german: Use German language for logging
 
     Returns:
-        Decorated function
+        Decorated function with preserved signature
     """
-    def decorator(func: F) -> F:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         name = operation_name or func.__name__
 
         @functools.wraps(func)
-        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+        async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             start_time = time.time()
-            log_data = {
+            log_data: dict[str, object] = {
                 "operation": name,
                 "typ": "ausführungszeit"
             }
@@ -54,7 +54,7 @@ def log_execution_time(
                 }
 
             try:
-                result = await func(*args, **kwargs)
+                result = await func(*args, **kwargs)  # type: ignore[misc]
                 duration_ms = int((time.time() - start_time) * 1000)
 
                 log_data.update({
@@ -80,9 +80,9 @@ def log_execution_time(
                 raise
 
         @functools.wraps(func)
-        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+        def sync_wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             start_time = time.time()
-            log_data = {
+            log_data: dict[str, object] = {
                 "operation": name,
                 "typ": "ausführungszeit"
             }
@@ -121,9 +121,9 @@ def log_execution_time(
 
         # Return appropriate wrapper based on function type
         if asyncio.iscoroutinefunction(func):
-            return cast(F, async_wrapper)
+            return async_wrapper  # type: ignore[return-value]
         else:
-            return cast(F, sync_wrapper)
+            return sync_wrapper  # type: ignore[return-value]
 
     return decorator
 
@@ -132,7 +132,7 @@ def log_retry(
     max_retries: int = 3,
     backoff_seconds: float = 1.0,
     german: bool = True
-) -> Callable[[F], F]:
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
     Decorator to add retry logic with logging.
 
@@ -142,12 +142,12 @@ def log_retry(
         german: Use German language for logging
 
     Returns:
-        Decorated function
+        Decorated function with preserved signature
     """
-    def decorator(func: F) -> F:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
-        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_exception = None
+        async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            last_exception: Optional[Exception] = None
 
             for attempt in range(max_retries):
                 try:
@@ -163,7 +163,7 @@ def log_retry(
                         )
                         await asyncio.sleep(wait_time)
 
-                    return await func(*args, **kwargs)
+                    return await func(*args, **kwargs)  # type: ignore[misc]
 
                 except Exception as e:
                     last_exception = e
@@ -184,11 +184,13 @@ def log_retry(
                 max_versuche=max_retries,
                 exc_info=True
             )
-            raise last_exception
+            if last_exception is not None:
+                raise last_exception
+            raise RuntimeError("Unerwarteter Fehler: last_exception ist None")
 
         @functools.wraps(func)
-        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_exception = None
+        def sync_wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            last_exception: Optional[Exception] = None
 
             for attempt in range(max_retries):
                 try:
@@ -225,18 +227,20 @@ def log_retry(
                 max_versuche=max_retries,
                 exc_info=True
             )
-            raise last_exception
+            if last_exception is not None:
+                raise last_exception
+            raise RuntimeError("Unerwarteter Fehler: last_exception ist None")
 
         if asyncio.iscoroutinefunction(func):
-            return cast(F, async_wrapper)
+            return async_wrapper  # type: ignore[return-value]
         else:
-            return cast(F, sync_wrapper)
+            return sync_wrapper  # type: ignore[return-value]
 
     return decorator
 
 
 @contextmanager
-def log_context(**kwargs: Any):
+def log_context(**kwargs: object) -> Generator[None, None, None]:
     """
     Context manager to add contextual information to logs.
 
@@ -254,13 +258,13 @@ def log_context(**kwargs: Any):
 class OCRLogger:
     """Specialized logger for OCR operations."""
 
-    def __init__(self, logger: Optional[structlog.BoundLogger] = None):
+    def __init__(self, bound_logger: Optional[structlog.BoundLogger] = None):
         """Initialize OCR logger."""
-        self.logger = logger or structlog.get_logger("ocr")
+        self._logger = bound_logger or structlog.get_logger("ocr")
 
-    def log_start(self, dokument_id: str, backend: str, **kwargs: Any) -> None:
+    def log_start(self, dokument_id: str, backend: str, **kwargs: object) -> None:
         """Log OCR processing start."""
-        self.logger.info(
+        self._logger.info(
             "OCR Verarbeitung gestartet",
             dokument_id=dokument_id,
             backend=backend,
@@ -273,10 +277,10 @@ class OCRLogger:
         dokument_id: str,
         fortschritt: int,
         nachricht: str,
-        **kwargs: Any
+        **kwargs: object
     ) -> None:
         """Log OCR processing progress."""
-        self.logger.info(
+        self._logger.info(
             f"OCR Fortschritt: {nachricht}",
             dokument_id=dokument_id,
             fortschritt_prozent=fortschritt,
@@ -290,10 +294,10 @@ class OCRLogger:
         backend: str,
         dauer_ms: int,
         zeichen_extrahiert: int,
-        **kwargs: Any
+        **kwargs: object
     ) -> None:
         """Log OCR processing completion."""
-        self.logger.info(
+        self._logger.info(
             "OCR Verarbeitung abgeschlossen",
             dokument_id=dokument_id,
             backend=backend,
@@ -308,10 +312,10 @@ class OCRLogger:
         dokument_id: str,
         backend: str,
         fehler: str,
-        **kwargs: Any
+        **kwargs: object
     ) -> None:
         """Log OCR processing error."""
-        self.logger.error(
+        self._logger.error(
             "OCR Verarbeitung fehlgeschlagen",
             dokument_id=dokument_id,
             backend=backend,
@@ -334,7 +338,7 @@ class DatabaseLogger:
         query: str,
         dauer_ms: int,
         zeilen: Optional[int] = None,
-        **kwargs: Any
+        **kwargs: object
     ) -> None:
         """Log database query."""
         self.logger.debug(
@@ -346,7 +350,7 @@ class DatabaseLogger:
             **kwargs
         )
 
-    def log_transaction_start(self, transaction_id: str, **kwargs: Any) -> None:
+    def log_transaction_start(self, transaction_id: str, **kwargs: object) -> None:
         """Log transaction start."""
         self.logger.debug(
             "Transaktion gestartet",
@@ -359,7 +363,7 @@ class DatabaseLogger:
         self,
         transaction_id: str,
         dauer_ms: int,
-        **kwargs: Any
+        **kwargs: object
     ) -> None:
         """Log transaction commit."""
         self.logger.debug(
@@ -374,7 +378,7 @@ class DatabaseLogger:
         self,
         transaction_id: str,
         grund: str,
-        **kwargs: Any
+        **kwargs: object
     ) -> None:
         """Log transaction rollback."""
         self.logger.warning(
@@ -398,7 +402,7 @@ class SecurityLogger:
         benutzer: str,
         erfolgreich: bool,
         ip_adresse: str,
-        **kwargs: Any
+        **kwargs: object
     ) -> None:
         """Log login attempt."""
         level = "info" if erfolgreich else "warning"
@@ -416,7 +420,7 @@ class SecurityLogger:
         benutzer: str,
         ressource: str,
         grund: str,
-        **kwargs: Any
+        **kwargs: object
     ) -> None:
         """Log access denied event."""
         self.logger.warning(
@@ -433,7 +437,7 @@ class SecurityLogger:
         ip_adresse: str,
         endpoint: str,
         limit: int,
-        **kwargs: Any
+        **kwargs: object
     ) -> None:
         """Log rate limit exceeded."""
         self.logger.warning(
@@ -449,7 +453,7 @@ class SecurityLogger:
         self,
         beschreibung: str,
         ip_adresse: str,
-        **kwargs: Any
+        **kwargs: object
     ) -> None:
         """Log suspicious activity."""
         self.logger.warning(
