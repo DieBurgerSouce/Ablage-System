@@ -304,6 +304,140 @@ class TestCSRFExemptPaths:
         assert response.status_code == 403
 
 
+class TestCSRFTokenRotation:
+    """Tests für CSRF-Token-Rotation nach erfolgreichen state-changing Requests."""
+
+    @pytest.fixture
+    def client(self):
+        """Test-Client mit CSRF."""
+        app = FastAPI()
+        app.add_middleware(CSRFMiddleware, enabled=True, cookie_secure=False)
+
+        @app.get("/test")
+        async def test_get():
+            return {"message": "ok"}
+
+        @app.post("/test")
+        async def test_post():
+            return {"message": "created"}
+
+        @app.put("/test")
+        async def test_put():
+            return {"message": "updated"}
+
+        return TestClient(app)
+
+    def test_token_rotates_after_successful_post(self, client):
+        """Token sollte nach erfolgreichem POST rotiert werden."""
+        # Hole initiales Token
+        get_response = client.get("/test")
+        initial_token = get_response.cookies.get(CSRF_COOKIE_NAME)
+
+        # Erfolgreicher POST
+        post_response = client.post(
+            "/test",
+            headers={CSRF_HEADER_NAME: initial_token}
+        )
+        assert post_response.status_code == 200
+
+        # Prüfe ob neues Token im Cookie gesetzt wurde
+        new_cookie_token = post_response.cookies.get(CSRF_COOKIE_NAME)
+        assert new_cookie_token is not None
+        assert new_cookie_token != initial_token
+
+    def test_new_token_in_response_header(self, client):
+        """Neues Token sollte im X-New-CSRF-Token Header sein."""
+        get_response = client.get("/test")
+        initial_token = get_response.cookies.get(CSRF_COOKIE_NAME)
+
+        post_response = client.post(
+            "/test",
+            headers={CSRF_HEADER_NAME: initial_token}
+        )
+
+        # Prüfe Response-Header
+        assert "X-New-CSRF-Token" in post_response.headers
+        new_header_token = post_response.headers["X-New-CSRF-Token"]
+        assert len(new_header_token) == 64  # 32 bytes hex
+
+    def test_rotated_token_matches_cookie_and_header(self, client):
+        """Cookie und Header sollten das gleiche neue Token enthalten."""
+        get_response = client.get("/test")
+        initial_token = get_response.cookies.get(CSRF_COOKIE_NAME)
+
+        post_response = client.post(
+            "/test",
+            headers={CSRF_HEADER_NAME: initial_token}
+        )
+
+        new_cookie_token = post_response.cookies.get(CSRF_COOKIE_NAME)
+        new_header_token = post_response.headers["X-New-CSRF-Token"]
+        assert new_cookie_token == new_header_token
+
+    def test_old_token_invalid_after_rotation(self, client):
+        """Altes Token sollte nach Rotation ungültig sein."""
+        get_response = client.get("/test")
+        initial_token = get_response.cookies.get(CSRF_COOKIE_NAME)
+
+        # Erster POST rotiert Token
+        post_response = client.post(
+            "/test",
+            headers={CSRF_HEADER_NAME: initial_token}
+        )
+        assert post_response.status_code == 200
+
+        # Zweiter POST mit altem Token sollte fehlschlagen
+        # Da der Client das alte Token im Header sendet aber das Cookie bereits rotiert wurde
+        second_response = client.post(
+            "/test",
+            headers={CSRF_HEADER_NAME: initial_token},
+            cookies={CSRF_COOKIE_NAME: post_response.cookies.get(CSRF_COOKIE_NAME)}
+        )
+        assert second_response.status_code == 403
+
+    def test_rotated_token_works_for_next_request(self, client):
+        """Rotiertes Token sollte für den nächsten Request funktionieren."""
+        get_response = client.get("/test")
+        initial_token = get_response.cookies.get(CSRF_COOKIE_NAME)
+
+        # Erster POST
+        post_response = client.post(
+            "/test",
+            headers={CSRF_HEADER_NAME: initial_token}
+        )
+        new_token = post_response.headers["X-New-CSRF-Token"]
+
+        # Zweiter POST mit neuem Token
+        second_response = client.post(
+            "/test",
+            headers={CSRF_HEADER_NAME: new_token},
+            cookies={CSRF_COOKIE_NAME: new_token}
+        )
+        assert second_response.status_code == 200
+
+    def test_token_rotates_after_put(self, client):
+        """Token sollte auch nach PUT rotiert werden."""
+        get_response = client.get("/test")
+        initial_token = get_response.cookies.get(CSRF_COOKIE_NAME)
+
+        put_response = client.put(
+            "/test",
+            headers={CSRF_HEADER_NAME: initial_token}
+        )
+        assert put_response.status_code == 200
+        assert "X-New-CSRF-Token" in put_response.headers
+        assert put_response.cookies.get(CSRF_COOKIE_NAME) != initial_token
+
+    def test_no_rotation_on_failed_request(self, client):
+        """Token sollte bei fehlerhaftem Request nicht rotiert werden."""
+        # POST ohne Token schlägt fehl
+        post_response = client.post("/test")
+        assert post_response.status_code == 403
+
+        # Kein neues Token im Header
+        assert "X-New-CSRF-Token" not in post_response.headers
+
+
 class TestCSRFErrorMessages:
     """Tests für CSRF-Fehlermeldungen."""
 

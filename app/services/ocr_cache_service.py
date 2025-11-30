@@ -491,8 +491,13 @@ class OCRCacheService:
             try:
                 await redis.incr(f"{self._stats_prefix}hits")
                 await redis.incr(f"{self._stats_prefix}hits:{file_hash[:8]}")
-            except Exception:
-                pass
+            except Exception as e:
+                # Stats-Fehler sind nicht kritisch, aber loggen für Debugging
+                self.logger.debug(
+                    "ocr_cache_stats_hit_failed",
+                    file_hash=file_hash[:8],
+                    error=str(e),
+                )
 
     async def _record_miss(self, file_hash: str) -> None:
         """Record cache miss in stats."""
@@ -500,8 +505,13 @@ class OCRCacheService:
         if redis:
             try:
                 await redis.incr(f"{self._stats_prefix}misses")
-            except Exception:
-                pass
+            except Exception as e:
+                # Stats-Fehler sind nicht kritisch, aber loggen für Debugging
+                self.logger.debug(
+                    "ocr_cache_stats_miss_failed",
+                    file_hash=file_hash[:8],
+                    error=str(e),
+                )
 
     async def get_stats(self) -> Dict[str, Any]:
         """

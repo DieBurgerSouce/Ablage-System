@@ -373,9 +373,11 @@ def create_access_token(
     })
 
     # Encode token
+    # SECURITY FIX: SECRET_KEY ist jetzt SecretStr - verwende get_secret_value()
+    secret_key = settings.SECRET_KEY.get_secret_value() if hasattr(settings.SECRET_KEY, 'get_secret_value') else settings.SECRET_KEY
     encoded_jwt = jwt.encode(
         to_encode,
-        settings.SECRET_KEY,
+        secret_key,
         algorithm=settings.ALGORITHM
     )
 
@@ -413,9 +415,11 @@ def create_refresh_token(
     })
 
     # Encode token
+    # SECURITY FIX: SECRET_KEY ist jetzt SecretStr - verwende get_secret_value()
+    secret_key = settings.SECRET_KEY.get_secret_value() if hasattr(settings.SECRET_KEY, 'get_secret_value') else settings.SECRET_KEY
     encoded_jwt = jwt.encode(
         to_encode,
-        settings.SECRET_KEY,
+        secret_key,
         algorithm=settings.ALGORITHM
     )
 
@@ -443,9 +447,11 @@ async def decode_token(
         HTTPException: If token is invalid, expired, blacklisted, or wrong type
     """
     try:
+        # SECURITY FIX: SECRET_KEY ist jetzt SecretStr - verwende get_secret_value()
+        secret_key = settings.SECRET_KEY.get_secret_value() if hasattr(settings.SECRET_KEY, 'get_secret_value') else settings.SECRET_KEY
         payload = jwt.decode(
             token,
-            settings.SECRET_KEY,
+            secret_key,
             algorithms=[settings.ALGORITHM]
         )
 
@@ -520,9 +526,11 @@ def decode_token_sync(token: str) -> Dict[str, Any]:
         stacklevel=2
     )
     try:
+        # SECURITY FIX: SECRET_KEY ist jetzt SecretStr - verwende get_secret_value()
+        secret_key = settings.SECRET_KEY.get_secret_value() if hasattr(settings.SECRET_KEY, 'get_secret_value') else settings.SECRET_KEY
         payload = jwt.decode(
             token,
-            settings.SECRET_KEY,
+            secret_key,
             algorithms=[settings.ALGORITHM]
         )
 

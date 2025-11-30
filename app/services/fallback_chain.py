@@ -24,6 +24,12 @@ from app.services.confidence_service import (
     QualityDecision,
     get_confidence_service
 )
+from app.services.circuit_breaker import (
+    CircuitBreakerRegistry,
+    CircuitBreakerError,
+    CircuitState,
+    get_circuit_breaker_registry
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -136,8 +142,10 @@ class FallbackChain:
         self,
         backends: Optional[List[BackendConfig]] = None,
         confidence_service: Optional[ConfidenceService] = None,
+        circuit_breaker_registry: Optional[CircuitBreakerRegistry] = None,
         max_fallbacks: int = 3,
-        aggregate_results: bool = False
+        aggregate_results: bool = False,
+        enable_circuit_breaker: bool = True
     ):
         """
         Initialisiere Fallback Chain.
@@ -145,16 +153,20 @@ class FallbackChain:
         Args:
             backends: Liste von Backend-Konfigurationen
             confidence_service: ConfidenceService Instance
+            circuit_breaker_registry: CircuitBreakerRegistry für Backend-Schutz
             max_fallbacks: Maximale Anzahl Fallback-Versuche
             aggregate_results: Ob mehrere Ergebnisse aggregiert werden sollen
+            enable_circuit_breaker: Circuit Breaker für Backends aktivieren
         """
         self.backends = sorted(
             backends or self.DEFAULT_BACKENDS,
             key=lambda b: b.priority
         )
         self.confidence_service = confidence_service or get_confidence_service()
+        self.circuit_registry = circuit_breaker_registry or get_circuit_breaker_registry()
         self.max_fallbacks = max_fallbacks
         self.aggregate_results = aggregate_results
+        self.enable_circuit_breaker = enable_circuit_breaker
 
         # Backend Handler Registry
         self._backend_handlers: Dict[str, Callable] = {}
@@ -164,10 +176,16 @@ class FallbackChain:
         self._success_counts: Dict[str, int] = {b.name: 0 for b in self.backends}
         self._total_calls: Dict[str, int] = {b.name: 0 for b in self.backends}
 
+        # Circuit Breakers für alle Backends initialisieren
+        if self.enable_circuit_breaker:
+            for backend in self.backends:
+                self.circuit_registry.get_or_create(backend.name)
+
         logger.info(
             "fallback_chain_initialized",
             backends=[b.name for b in self.backends],
-            max_fallbacks=max_fallbacks
+            max_fallbacks=max_fallbacks,
+            circuit_breaker_enabled=enable_circuit_breaker
         )
 
     def register_backend_handler(
@@ -376,6 +394,21 @@ class FallbackChain:
                     timeout=backend.timeout_seconds
                 )
 
+            except CircuitBreakerError as e:
+                # Circuit Breaker hat Backend blockiert
+                fallback_reasons.append({
+                    "backend": backend_name,
+                    "reason": FallbackReason.CIRCUIT_OPEN.value,
+                    "details": f"Circuit offen, retry in {e.retry_after:.1f}s"
+                })
+                self._fallback_counts[backend_name] = self._fallback_counts.get(backend_name, 0) + 1
+                logger.warning(
+                    "fallback_chain_circuit_breaker_skip",
+                    document_id=document_id,
+                    backend=backend_name,
+                    retry_after=e.retry_after
+                )
+
             except Exception as e:
                 error_type = type(e).__name__
 
@@ -451,7 +484,7 @@ class FallbackChain:
         options: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         """
-        Führe ein einzelnes Backend aus.
+        Führe ein einzelnes Backend mit Circuit Breaker Schutz aus.
 
         Args:
             backend: Backend-Konfiguration
@@ -462,6 +495,10 @@ class FallbackChain:
 
         Returns:
             OCR-Ergebnis oder None bei Fehler
+
+        Raises:
+            CircuitBreakerError: Wenn Circuit offen ist
+            asyncio.TimeoutError: Bei Timeout
         """
         handler = self._backend_handlers.get(backend.name)
 
@@ -471,6 +508,25 @@ class FallbackChain:
                 backend=backend.name
             )
             return None
+
+        # Circuit Breaker Check (wenn aktiviert)
+        circuit = None
+        if self.enable_circuit_breaker:
+            circuit = self.circuit_registry.get_or_create(backend.name)
+
+            # Prüfe ob Circuit offen ist
+            if circuit.state == CircuitState.OPEN:
+                retry_after = circuit.get_retry_after()
+                logger.warning(
+                    "fallback_chain_circuit_open",
+                    backend=backend.name,
+                    retry_after=retry_after
+                )
+                raise CircuitBreakerError(
+                    backend=backend.name,
+                    state=circuit.state,
+                    retry_after=retry_after
+                )
 
         # Führe mit Timeout aus
         try:
@@ -483,10 +539,27 @@ class FallbackChain:
                 ),
                 timeout=backend.timeout_seconds
             )
+
+            # Erfolg dem Circuit Breaker melden
+            if circuit:
+                await circuit.record_success()
+
             return result
+
         except asyncio.TimeoutError:
+            # Timeout dem Circuit Breaker als Fehler melden
+            if circuit:
+                await circuit.record_failure()
             raise
+
+        except CircuitBreakerError:
+            # Weiterleiten ohne erneutes Recording
+            raise
+
         except Exception as e:
+            # Fehler dem Circuit Breaker melden
+            if circuit:
+                await circuit.record_failure()
             raise
 
     def _reorder_by_preference(
@@ -509,11 +582,12 @@ class FallbackChain:
         return backends
 
     def get_metrics(self) -> Dict[str, Any]:
-        """Hole aktuelle Fallback-Metriken."""
+        """Hole aktuelle Fallback-Metriken inkl. Circuit Breaker Status."""
         metrics = {
             "backends": {},
             "total_fallbacks": sum(self._fallback_counts.values()),
-            "total_calls": sum(self._total_calls.values())
+            "total_calls": sum(self._total_calls.values()),
+            "circuit_breaker_enabled": self.enable_circuit_breaker
         }
 
         for backend in self.backends:
@@ -522,13 +596,25 @@ class FallbackChain:
             success = self._success_counts.get(name, 0)
             fallbacks = self._fallback_counts.get(name, 0)
 
-            metrics["backends"][name] = {
+            backend_metrics = {
                 "total_calls": total,
                 "successes": success,
                 "fallbacks": fallbacks,
                 "success_rate": success / total if total > 0 else 0.0,
                 "fallback_rate": fallbacks / total if total > 0 else 0.0,
             }
+
+            # Circuit Breaker Status hinzufügen wenn aktiviert
+            if self.enable_circuit_breaker:
+                circuit = self.circuit_registry.get(name)
+                if circuit:
+                    backend_metrics["circuit_breaker"] = {
+                        "state": circuit.state.value,
+                        "consecutive_failures": circuit.stats.consecutive_failures,
+                        "times_opened": circuit.stats.times_opened,
+                    }
+
+            metrics["backends"][name] = backend_metrics
 
         return metrics
 

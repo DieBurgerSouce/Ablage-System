@@ -41,7 +41,7 @@ class GOTOCRAgent(OCRAgent):
     MODEL_NAME = "stepfun-ai/GOT-OCR-2.0-hf"
     VRAM_REQUIRED_GB = 10
     MAX_BATCH_SIZE = 8
-    MODEL_LOADING_TIMEOUT = 300.0  # 5 Minuten Timeout für Model-Loading
+    MODEL_LOADING_TIMEOUT = 600.0  # 10 Minuten Timeout für Model-Loading (erste Initialisierung kann langsam sein)
 
     # Class-level lock to prevent concurrent model loading (race condition fix)
     _model_lock: Optional[asyncio.Lock] = None

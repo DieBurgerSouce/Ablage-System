@@ -1,0 +1,111 @@
+@import url('https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --radius: 0.5rem;
+
+        /* Core Palette - German Industrial */
+        --background: oklch(0.985 0.002 250);
+        --foreground: oklch(0.145 0.004 250);
+
+        /* Primary - Deep Industrial Blue */
+        --primary: oklch(0.35 0.08 250);
+        --primary-foreground: oklch(0.985 0 0);
+
+        /* Accent - Precision Yellow */
+        --accent: oklch(0.88 0.16 85);
+        --accent-foreground: oklch(0.25 0.04 85);
+
+        /* Semantic Colors */
+        --destructive: oklch(0.55 0.22 25);
+        --destructive-foreground: oklch(0.985 0 0);
+        --warning: oklch(0.82 0.15 75);
+        --success: oklch(0.72 0.17 145);
+
+        /* Secondary */
+        --secondary: oklch(0.96 0.01 250);
+        --secondary-foreground: oklch(0.145 0.004 250);
+
+        /* Muted */
+        --muted: oklch(0.96 0.01 250);
+        --muted-foreground: oklch(0.55 0.02 250);
+
+        /* Popover */
+        --popover: oklch(1 0 0);
+        --popover-foreground: oklch(0.145 0.004 250);
+
+        /* Card */
+        --card: oklch(1 0 0);
+        --card-foreground: oklch(0.145 0.004 250);
+
+        /* Border/Input/Ring */
+        --border: oklch(0.92 0.01 250);
+        --input: oklch(0.92 0.01 250);
+        --ring: oklch(0.35 0.08 250);
+
+        /* Chart Colors */
+        --chart-1: oklch(0.55 0.18 250);
+        --chart-2: oklch(0.72 0.17 145);
+        --chart-3: oklch(0.82 0.15 75);
+        --chart-4: oklch(0.55 0.22 25);
+        --chart-5: oklch(0.65 0.12 320);
+
+        /* Sidebar - Dark Theme */
+        --sidebar: oklch(0.12 0.02 250);
+        --sidebar-foreground: oklch(0.92 0.01 250);
+        --sidebar-primary: oklch(0.88 0.16 85);
+        --sidebar-primary-foreground: oklch(0.12 0.02 250);
+        --sidebar-accent: oklch(0.15 0.02 250);
+        --sidebar-accent-foreground: oklch(0.985 0 0);
+        --sidebar-border: oklch(0.2 0.02 250);
+        --sidebar-ring: oklch(0.88 0.16 85);
+    }
+
+    .dark {
+        --background: oklch(0.12 0.02 250);
+        --foreground: oklch(0.92 0.01 250);
+
+        --primary: oklch(0.88 0.16 85);
+        --primary-foreground: oklch(0.12 0.02 250);
+
+        --secondary: oklch(0.15 0.02 250);
+        --secondary-foreground: oklch(0.985 0 0);
+
+        --muted: oklch(0.15 0.02 250);
+        --muted-foreground: oklch(0.7 0.02 250);
+
+        --popover: oklch(0.12 0.02 250);
+        --popover-foreground: oklch(0.985 0 0);
+
+        --card: oklch(0.12 0.02 250);
+        --card-foreground: oklch(0.985 0 0);
+
+        --border: oklch(0.2 0.02 250);
+        --input: oklch(0.2 0.02 250);
+        --ring: oklch(0.88 0.16 85);
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground font-body antialiased;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-display tracking-tight;
+    }
+}

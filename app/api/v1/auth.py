@@ -256,8 +256,9 @@ async def login(
     tokens = create_token_pair(token_data)
 
     # Create session for tracking
+    session_warning = None
     try:
-        from app.core.session_manager import get_session_manager
+        from app.core.session_manager import get_session_manager, SessionLimitReachedError
 
         session_manager = get_session_manager()
 
@@ -267,13 +268,32 @@ async def login(
 
         if token_jti and client_ip:
             user_agent = request.headers.get("User-Agent")
-            await session_manager.create_session(
+            session_result = await session_manager.create_session(
                 db=db,
                 user_id=user.id,
                 token_jti=token_jti,
                 ip_address=client_ip,
                 user_agent=user_agent
             )
+            # Speichere Warnung über widerrufene Sessions
+            session_warning = session_result.get("warning")
+
+    except SessionLimitReachedError as e:
+        # Hard-Mode: Login blockieren wenn Limit erreicht
+        logger.warning(
+            "login_blocked_session_limit",
+            user_id=str(user.id),
+            current_sessions=e.current_sessions,
+            max_sessions=e.max_sessions
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=e.user_message_de,
+            headers={
+                "X-Session-Limit": str(e.max_sessions),
+                "X-Session-Current": str(e.current_sessions)
+            }
+        )
     except Exception as e:
         # Session creation failure should not block login
         logger.warning(
@@ -286,9 +306,10 @@ async def login(
         "login_successful",
         user_id=str(user.id),
         username=user.username,
+        session_warning=session_warning is not None
     )
 
-    return Token(**tokens)
+    return Token(**tokens, session_warning=session_warning)
 
 
 # ==================== Token Refresh ====================
@@ -1042,6 +1063,56 @@ async def regenerate_backup_codes(
 # ==================== Session Management ====================
 
 @router.get(
+    "/sessions/limits",
+    summary="Session-Limits abfragen",
+    description="Zeigt die aktuellen Session-Limit-Einstellungen und den Status"
+)
+async def get_session_limits(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """
+    Gibt die Session-Limit-Konfiguration und den aktuellen Status zurück.
+
+    Returns:
+        - **max_sessions**: Maximale Anzahl gleichzeitiger Sessions
+        - **current_sessions**: Aktuelle Anzahl aktiver Sessions
+        - **limit_mode**: "soft" (alte Sessions automatisch beendet) oder "hard" (Login blockiert)
+        - **session_expiry_hours**: Wie lange Sessions gültig sind
+        - **can_create_new**: Ob eine neue Session erstellt werden kann
+    """
+    from app.core.session_manager import (
+        get_session_manager,
+        MAX_SESSIONS_PER_USER,
+        SESSION_EXPIRY_HOURS,
+        SESSION_LIMIT_MODE
+    )
+
+    session_manager = get_session_manager()
+    sessions = await session_manager.get_active_sessions(db, current_user.id)
+    current_count = len(sessions)
+
+    # Bei soft mode kann immer eine neue Session erstellt werden (alte werden entfernt)
+    # Bei hard mode nur wenn unter dem Limit
+    can_create_new = (
+        SESSION_LIMIT_MODE == "soft" or
+        current_count < MAX_SESSIONS_PER_USER
+    )
+
+    return {
+        "max_sessions": MAX_SESSIONS_PER_USER,
+        "current_sessions": current_count,
+        "limit_mode": SESSION_LIMIT_MODE,
+        "session_expiry_hours": SESSION_EXPIRY_HOURS,
+        "can_create_new": can_create_new,
+        "hinweis": (
+            "Im 'soft'-Modus werden älteste Sessions automatisch beendet. "
+            "Im 'hard'-Modus wird der Login blockiert wenn das Limit erreicht ist."
+        )
+    }
+
+
+@router.get(
     "/sessions",
     response_model=SessionListResponse,
     summary="Aktive Sessions auflisten",
@@ -1082,8 +1153,15 @@ async def list_sessions(
                 current_session = await session_manager.get_session_by_jti(db, current_jti)
                 if current_session:
                     current_session_id = current_session.id
-        except Exception:
-            pass  # Token-Fehler ignorieren
+        except Exception as token_error:
+            # Token-Fehler loggen aber Session-Liste nicht blockieren
+            import structlog
+            logger = structlog.get_logger(__name__)
+            logger.warning(
+                "session_list_token_extraction_failed",
+                error=str(token_error),
+                user_id=str(current_user.id),
+            )
 
     session_infos = []
     for session in sessions:

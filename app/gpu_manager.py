@@ -856,11 +856,12 @@ class gpu_memory_guard:
 
 class AdaptiveBatchProcessor:
     """
-    Adaptive Batch-Verarbeitung mit automatischem OOM-Fallback.
+    Adaptive Batch-Verarbeitung mit automatischem OOM-Fallback und Hysterese.
 
     Implementiert exponentielles Backoff bei GPU Out-of-Memory Fehlern:
     - Startet mit optimaler Batch-Size (z.B. 4)
     - Bei OOM: Halbiert Batch-Size (4→2→1)
+    - Hysterese: Nach 100 erfolgreichen Batches wird Batch-Size um 10% erhöht
     - Tracked Erfolgs/Fehler-Statistiken
     - Integriert mit GPU Memory Profiling
 
@@ -877,6 +878,10 @@ class AdaptiveBatchProcessor:
     DEFAULT_INITIAL_BATCH = 4
     MIN_BATCH_SIZE = 1
     MAX_BATCH_SIZE = 8
+
+    # Hysterese-Konfiguration
+    HYSTERESIS_SUCCESS_THRESHOLD = 100  # Erfolgreiche Batches bis zur Erhöhung
+    HYSTERESIS_INCREASE_FACTOR = 1.1  # +10% Batch-Size bei Erholung
 
     def __init__(
         self,
@@ -903,6 +908,10 @@ class AdaptiveBatchProcessor:
             "oom_events": 0,
             "fallback_count": 0,
             "last_successful_batch_size": initial_batch_size,
+            # Hysterese-Tracking
+            "consecutive_successes_since_oom": 0,
+            "hysteresis_increases": 0,
+            "current_effective_max_batch": initial_batch_size,
         }
         self._lock = threading.Lock()
 
@@ -942,12 +951,14 @@ class AdaptiveBatchProcessor:
         if not documents:
             return []
 
-        # Bestimme optimale Start-Batch-Size
+        # Bestimme optimale Start-Batch-Size (berücksichtigt Hysterese)
         if initial_batch is not None:
             batch_size = initial_batch
         else:
             batch_size = self.gpu_manager.get_optimal_batch_size_adaptive(backend)
-            batch_size = min(batch_size, self.initial_batch_size, len(documents))
+            # Hysterese: Verwende current_effective_max_batch als Obergrenze
+            effective_max = self._stats.get("current_effective_max_batch", self.initial_batch_size)
+            batch_size = min(batch_size, effective_max, len(documents))
 
         results: List[Dict[str, Any]] = []
         remaining = list(documents)
@@ -987,12 +998,38 @@ class AdaptiveBatchProcessor:
                 with self._stats_lock():
                     self._stats["successful_batches"] += 1
                     self._stats["last_successful_batch_size"] = batch_size
+                    self._stats["consecutive_successes_since_oom"] += 1
+
+                    # Hysterese: Nach genügend erfolgreichen Batches Batch-Size erhöhen
+                    if self._stats["consecutive_successes_since_oom"] >= self.HYSTERESIS_SUCCESS_THRESHOLD:
+                        old_max = self._stats["current_effective_max_batch"]
+                        new_max = min(
+                            int(old_max * self.HYSTERESIS_INCREASE_FACTOR),
+                            self.MAX_BATCH_SIZE
+                        )
+
+                        if new_max > old_max:
+                            self._stats["current_effective_max_batch"] = new_max
+                            self._stats["hysteresis_increases"] += 1
+                            self._stats["consecutive_successes_since_oom"] = 0
+
+                            logger.info(
+                                "hysteresis_batch_size_increased",
+                                old_max_batch=old_max,
+                                new_max_batch=new_max,
+                                successes_before_increase=self.HYSTERESIS_SUCCESS_THRESHOLD,
+                                backend=backend
+                            )
+                        else:
+                            # Max erreicht, Zähler zurücksetzen
+                            self._stats["consecutive_successes_since_oom"] = 0
 
                 logger.debug(
                     "batch_processed_successfully",
                     batch_size=batch_size,
                     remaining=len(remaining),
-                    backend=backend
+                    backend=backend,
+                    consecutive_successes=self._stats.get("consecutive_successes_since_oom", 0)
                 )
 
             except (torch.cuda.OutOfMemoryError if TORCH_AVAILABLE else Exception) as e:
@@ -1000,11 +1037,20 @@ class AdaptiveBatchProcessor:
                 with self._stats_lock():
                     self._stats["oom_events"] += 1
                     self._stats["fallback_count"] += 1
+                    # Hysterese zurücksetzen bei OOM
+                    self._stats["consecutive_successes_since_oom"] = 0
+                    # Effektive Max-Batch-Size ebenfalls reduzieren
+                    self._stats["current_effective_max_batch"] = max(
+                        self.MIN_BATCH_SIZE,
+                        batch_size // 2
+                    )
 
                 logger.warning(
                     "oom_batch_fallback",
                     current_batch_size=batch_size,
                     new_batch_size=batch_size // 2,
+                    new_effective_max=self._stats["current_effective_max_batch"],
+                    hysteresis_reset=True,
                     error=str(e),
                     backend=backend
                 )
@@ -1058,7 +1104,7 @@ class AdaptiveBatchProcessor:
             }
 
     def reset_stats(self) -> None:
-        """Setze Statistiken zurück."""
+        """Setze Statistiken zurück (inkl. Hysterese)."""
         with self._stats_lock():
             self._stats = {
                 "total_batches": 0,
@@ -1066,6 +1112,10 @@ class AdaptiveBatchProcessor:
                 "oom_events": 0,
                 "fallback_count": 0,
                 "last_successful_batch_size": self.initial_batch_size,
+                # Hysterese zurücksetzen
+                "consecutive_successes_since_oom": 0,
+                "hysteresis_increases": 0,
+                "current_effective_max_batch": self.initial_batch_size,
             }
 
     @contextmanager

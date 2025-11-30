@@ -98,8 +98,11 @@ def _get_encryption_key() -> bytes:
     if not secret_key:
         raise KeyNotConfiguredError()
 
+    # SECURITY FIX: SECRET_KEY ist jetzt SecretStr - verwende get_secret_value()
+    secret_key_value = secret_key.get_secret_value() if hasattr(secret_key, 'get_secret_value') else secret_key
+
     # Derive 256-bit key using SHA-256
-    _encryption_key = hashlib.sha256(secret_key.encode()).digest()
+    _encryption_key = hashlib.sha256(secret_key_value.encode()).digest()
 
     logger.info("encryption_key_loaded", source="SECRET_KEY_DERIVED")
     return _encryption_key

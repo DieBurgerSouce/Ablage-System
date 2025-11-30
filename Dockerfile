@@ -65,9 +65,10 @@ COPY --chown=ablage:ablage app/ ./app/
 COPY --chown=ablage:ablage test_documents/ ./test_documents/
 COPY --chown=ablage:ablage *.py ./
 
-# Set permissions
+# Set permissions (SECURITY FIX: 775 statt 777 für write-Verzeichnisse)
+# User ablage und Gruppe ablage haben Schreibrechte, andere nur lesen
 RUN chmod -R 755 /app && \
-    chmod -R 777 /app/uploads /app/outputs /app/logs /app/cache
+    chmod -R 775 /app/uploads /app/outputs /app/logs /app/cache
 
 # Switch to non-root user
 USER ablage

@@ -24,9 +24,10 @@ from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
 
-# Session-Konfiguration
-SESSION_EXPIRY_HOURS = getattr(settings, 'SESSION_EXPIRY_HOURS', 24 * 7)  # 7 Tage
-MAX_SESSIONS_PER_USER = getattr(settings, 'MAX_SESSIONS_PER_USER', 10)
+# Session-Konfiguration aus Settings
+SESSION_EXPIRY_HOURS = settings.SESSION_EXPIRY_HOURS
+MAX_SESSIONS_PER_USER = settings.MAX_SESSIONS_PER_USER
+SESSION_LIMIT_MODE = settings.SESSION_LIMIT_MODE  # "soft" oder "hard"
 
 
 class SessionError(Exception):
@@ -35,6 +36,18 @@ class SessionError(Exception):
     def __init__(self, message: str, user_message_de: str):
         super().__init__(message)
         self.user_message_de = user_message_de
+
+
+class SessionLimitReachedError(SessionError):
+    """Fehler wenn Session-Limit erreicht und Hard-Modus aktiv."""
+
+    def __init__(self, current_sessions: int, max_sessions: int):
+        super().__init__(
+            f"Session limit reached: {current_sessions}/{max_sessions}",
+            settings.SESSION_LIMIT_HARD_MESSAGE
+        )
+        self.current_sessions = current_sessions
+        self.max_sessions = max_sessions
 
 
 class SessionManager:
@@ -48,7 +61,7 @@ class SessionManager:
         ip_address: str,
         user_agent: Optional[str] = None,
         location: Optional[str] = None
-    ) -> UserSession:
+    ) -> Dict[str, any]:
         """
         Erstellt eine neue Session beim Login.
 
@@ -61,11 +74,29 @@ class SessionManager:
             location: Optionaler Standort
 
         Returns:
-            Erstellte UserSession
+            Dict mit:
+            - session: Erstellte UserSession
+            - revoked_sessions: Liste der widerrufenen Session-IDs (bei soft mode)
+            - warning: Warnhinweis wenn Sessions widerrufen wurden
 
         Raises:
-            SessionError: Bei Fehlern
+            SessionLimitReachedError: Bei Hard-Mode wenn Limit erreicht
+            SessionError: Bei anderen Fehlern
         """
+        # Prüfe aktuelle Session-Anzahl
+        active_sessions = await self.get_active_sessions(db, user_id)
+        current_count = len(active_sessions)
+
+        # Hard-Mode: Blockiere wenn Limit erreicht
+        if SESSION_LIMIT_MODE == "hard" and current_count >= MAX_SESSIONS_PER_USER:
+            logger.warning(
+                "session_limit_reached_hard_mode",
+                user_id=str(user_id)[:8] + "...",
+                current_sessions=current_count,
+                max_sessions=MAX_SESSIONS_PER_USER
+            )
+            raise SessionLimitReachedError(current_count, MAX_SESSIONS_PER_USER)
+
         # Parse User-Agent für Geräteinformationen
         device_name, device_type = self._parse_device_info(user_agent)
 
@@ -96,20 +127,36 @@ class SessionManager:
 
         db.add(session)
 
-        # Bereinige alte Sessions wenn Maximum überschritten
-        await self._cleanup_old_sessions(db, user_id)
+        # Soft-Mode: Bereinige alte Sessions wenn Maximum überschritten
+        revoked_sessions = await self._cleanup_old_sessions(db, user_id)
 
         await db.commit()
         await db.refresh(session)
 
+        # Log-Info mit Details
         logger.info(
             "session_created",
             user_id=str(user_id)[:8] + "...",
             device_type=device_type,
-            ip_address=self._mask_ip(ip_address)
+            ip_address=self._mask_ip(ip_address),
+            sessions_revoked=len(revoked_sessions) if revoked_sessions else 0
         )
 
-        return session
+        # Erstelle Response-Dict
+        result: Dict[str, any] = {
+            "session": session,
+            "revoked_sessions": revoked_sessions,
+            "warning": None
+        }
+
+        # Setze Warnung wenn Sessions widerrufen wurden
+        if revoked_sessions:
+            result["warning"] = (
+                f"{len(revoked_sessions)} ältere Session(s) wurden automatisch beendet, "
+                f"da das Maximum von {MAX_SESSIONS_PER_USER} Sessions erreicht wurde."
+            )
+
+        return result
 
     async def get_active_sessions(
         self,
@@ -409,11 +456,14 @@ class SessionManager:
         self,
         db: AsyncSession,
         user_id: UUID
-    ) -> None:
+    ) -> List[UUID]:
         """
         Bereinigt alte Sessions wenn Maximum überschritten.
 
         Behält die neuesten MAX_SESSIONS_PER_USER Sessions.
+
+        Returns:
+            Liste der widerrufenen Session-IDs
         """
         # Hole alle aktiven Sessions sortiert nach Aktivität
         result = await db.execute(
@@ -428,6 +478,7 @@ class SessionManager:
         )
 
         sessions = list(result.scalars().all())
+        revoked_ids: List[UUID] = []
 
         # Wenn mehr als Maximum, widerrufe die ältesten
         if len(sessions) > MAX_SESSIONS_PER_USER:
@@ -437,12 +488,16 @@ class SessionManager:
             for old_session in sessions_to_revoke:
                 old_session.revoked = True
                 old_session.revoked_at = now
+                revoked_ids.append(old_session.id)
 
             logger.info(
                 "old_sessions_cleaned",
                 user_id=str(user_id)[:8] + "...",
-                count=len(sessions_to_revoke)
+                count=len(sessions_to_revoke),
+                session_ids=[str(sid)[:8] for sid in revoked_ids]
             )
+
+        return revoked_ids
 
     def _parse_device_info(
         self,

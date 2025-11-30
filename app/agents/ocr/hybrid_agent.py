@@ -65,27 +65,75 @@ class HybridOCRAgent(OCRAgent):
     async def _run_parallel_ocr(
         self, input_data: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
-        """Run all OCR engines in parallel."""
-        tasks = [
-            self.deepseek.process(input_data),
-            self.got_ocr.process(input_data),
-            self.surya_docling.process(input_data),
+        """
+        Run OCR engines SEQUENTIALLY to prevent GPU OOM.
+
+        WICHTIG: Auf RTX 4080 (16GB) können nicht alle Backends parallel laufen:
+        - DeepSeek: 12GB VRAM
+        - GOT-OCR: 10GB VRAM
+        - Surya GPU: 8GB VRAM
+
+        Strategie: Sequential mit Memory Cleanup zwischen Backends.
+        Dies verhindert OOM-Fehler und ermöglicht trotzdem Multi-Engine-Fusion.
+        """
+        try:
+            import torch
+            TORCH_AVAILABLE = torch.cuda.is_available()
+        except ImportError:
+            TORCH_AVAILABLE = False
+
+        valid_results = []
+        engines = [
+            ("deepseek", self.deepseek),
+            ("got_ocr", self.got_ocr),
+            ("surya_docling", self.surya_docling),
         ]
 
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for engine_name, engine in engines:
+            try:
+                self.logger.info(
+                    "hybrid_ocr_engine_starting",
+                    engine=engine_name,
+                )
 
-        # Filter out exceptions
-        valid_results = []
-        for i, result in enumerate(results):
-            engine_name = ["deepseek", "got_ocr", "surya_docling"][i]
-            if isinstance(result, Exception):
+                # Process with this engine
+                result = await engine.process(input_data)
+                valid_results.append({**result, "engine": engine_name})
+
+                self.logger.info(
+                    "hybrid_ocr_engine_completed",
+                    engine=engine_name,
+                    confidence=result.get("confidence", 0.0),
+                )
+
+            except Exception as e:
                 self.logger.warning(
                     "hybrid_ocr_engine_failed",
                     engine=engine_name,
-                    error=str(result),
+                    error=str(e),
                 )
-            else:
-                valid_results.append({**result, "engine": engine_name})
+            finally:
+                # KRITISCH: GPU Memory zwischen Backends freigeben
+                if TORCH_AVAILABLE:
+                    try:
+                        import gc
+                        gc.collect()
+                        torch.cuda.empty_cache()
+                        torch.cuda.synchronize()
+
+                        # Log Memory Status
+                        allocated_gb = torch.cuda.memory_allocated() / (1024**3)
+                        self.logger.debug(
+                            "hybrid_ocr_memory_cleanup",
+                            engine=engine_name,
+                            allocated_gb=round(allocated_gb, 2),
+                        )
+                    except Exception as cleanup_error:
+                        self.logger.warning(
+                            "hybrid_ocr_memory_cleanup_failed",
+                            engine=engine_name,
+                            error=str(cleanup_error),
+                        )
 
         return valid_results
 

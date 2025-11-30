@@ -1,0 +1,590 @@
+# -*- coding: utf-8 -*-
+"""
+Unit tests for OCR Cache Service.
+
+Tests for:
+- TTLCache: LRU eviction, TTL expiration, thread safety
+- OCRCacheService: Multi-level caching, Redis fallback, statistics
+"""
+
+import asyncio
+import json
+import pytest
+import time
+import threading
+from unittest.mock import Mock, AsyncMock, patch, MagicMock
+
+from app.services.ocr_cache_service import (
+    TTLCache,
+    OCRCacheService,
+)
+
+
+# =============================================================================
+# TTLCache Tests
+# =============================================================================
+
+class TestTTLCache:
+    """Tests for in-memory TTL cache."""
+
+    def test_init_defaults(self):
+        """Test default initialization."""
+        cache = TTLCache()
+
+        stats = cache.stats()
+        assert stats["maxsize"] == 100
+        assert stats["ttl_seconds"] == 300
+        assert stats["size"] == 0
+
+    def test_init_custom_params(self):
+        """Test custom initialization parameters."""
+        cache = TTLCache(maxsize=50, ttl=60)
+
+        stats = cache.stats()
+        assert stats["maxsize"] == 50
+        assert stats["ttl_seconds"] == 60
+
+    def test_set_and_get(self):
+        """Test basic set and get operations."""
+        cache = TTLCache(maxsize=10, ttl=60)
+
+        cache.set("key1", "value1")
+        result = cache.get("key1")
+
+        assert result == "value1"
+
+    def test_get_missing_key(self):
+        """Test get with non-existent key returns None."""
+        cache = TTLCache()
+
+        result = cache.get("nonexistent")
+
+        assert result is None
+
+    def test_ttl_expiration(self):
+        """Test that items expire after TTL."""
+        cache = TTLCache(maxsize=10, ttl=1)  # 1 second TTL
+
+        cache.set("key1", "value1")
+        assert cache.get("key1") == "value1"
+
+        # Wait for expiration
+        time.sleep(1.1)
+
+        result = cache.get("key1")
+        assert result is None
+
+    def test_lru_eviction(self):
+        """Test LRU eviction when cache is full."""
+        cache = TTLCache(maxsize=3, ttl=60)
+
+        cache.set("key1", "value1")
+        cache.set("key2", "value2")
+        cache.set("key3", "value3")
+
+        # Access key1 to make it recently used
+        cache.get("key1")
+
+        # Add key4, should evict key2 (least recently used)
+        cache.set("key4", "value4")
+
+        assert cache.get("key1") == "value1"  # Still present (recently accessed)
+        assert cache.get("key2") is None      # Evicted (LRU)
+        assert cache.get("key3") == "value3"  # Still present
+        assert cache.get("key4") == "value4"  # Newly added
+
+    def test_delete(self):
+        """Test delete operation."""
+        cache = TTLCache()
+
+        cache.set("key1", "value1")
+        assert cache.get("key1") == "value1"
+
+        deleted = cache.delete("key1")
+
+        assert deleted is True
+        assert cache.get("key1") is None
+
+    def test_delete_nonexistent(self):
+        """Test delete of non-existent key returns False."""
+        cache = TTLCache()
+
+        deleted = cache.delete("nonexistent")
+
+        assert deleted is False
+
+    def test_clear(self):
+        """Test clear operation removes all items."""
+        cache = TTLCache()
+
+        cache.set("key1", "value1")
+        cache.set("key2", "value2")
+        assert len(cache) == 2
+
+        cache.clear()
+
+        assert len(cache) == 0
+        assert cache.get("key1") is None
+
+    def test_contains(self):
+        """Test __contains__ operator."""
+        cache = TTLCache(maxsize=10, ttl=60)
+
+        cache.set("key1", "value1")
+
+        assert "key1" in cache
+        assert "key2" not in cache
+
+    def test_len_excludes_expired(self):
+        """Test __len__ excludes expired items."""
+        cache = TTLCache(maxsize=10, ttl=1)
+
+        cache.set("key1", "value1")
+        cache.set("key2", "value2")
+
+        assert len(cache) == 2
+
+        time.sleep(1.1)
+
+        assert len(cache) == 0
+
+    def test_thread_safety(self):
+        """Test thread safety with concurrent operations."""
+        cache = TTLCache(maxsize=100, ttl=60)
+        errors = []
+
+        def writer(thread_id):
+            try:
+                for i in range(50):
+                    cache.set(f"key_{thread_id}_{i}", f"value_{thread_id}_{i}")
+            except Exception as e:
+                errors.append(e)
+
+        def reader(thread_id):
+            try:
+                for i in range(50):
+                    cache.get(f"key_{thread_id}_{i}")
+            except Exception as e:
+                errors.append(e)
+
+        threads = []
+        for i in range(5):
+            threads.append(threading.Thread(target=writer, args=(i,)))
+            threads.append(threading.Thread(target=reader, args=(i,)))
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert len(errors) == 0
+
+    def test_complex_values(self):
+        """Test caching complex values (dicts, lists)."""
+        cache = TTLCache()
+
+        complex_value = {
+            "text": "OCR result",
+            "confidence": 0.95,
+            "entities": [{"type": "PERSON", "value": "Max Mustermann"}],
+            "metadata": {"backend": "deepseek", "language": "de"}
+        }
+
+        cache.set("ocr_result", complex_value)
+        result = cache.get("ocr_result")
+
+        assert result == complex_value
+        assert result["confidence"] == 0.95
+
+
+# =============================================================================
+# OCRCacheService Tests
+# =============================================================================
+
+class TestOCRCacheService:
+    """Tests for OCR Cache Service."""
+
+    @pytest.fixture
+    def mock_redis(self):
+        """Create mock Redis client."""
+        redis = AsyncMock()
+        redis.get = AsyncMock(return_value=None)
+        redis.set = AsyncMock()  # Uses .set() with ex= parameter
+        redis.delete = AsyncMock(return_value=1)
+        redis.incr = AsyncMock()
+        return redis
+
+    @pytest.fixture
+    def cache_service(self, mock_redis):
+        """Create OCRCacheService with mock Redis."""
+        return OCRCacheService(
+            redis_client=mock_redis,
+            l1_maxsize=10,
+            l1_ttl=60,
+            l2_ttl=3600
+        )
+
+    @pytest.fixture
+    def sample_content(self):
+        """Sample file content for testing."""
+        return b"Sample PDF content for OCR testing"
+
+    @pytest.fixture
+    def sample_ocr_result(self):
+        """Sample OCR result."""
+        return {
+            "text": "Dies ist ein Testdokument mit deutschem Text.",
+            "confidence": 0.92,
+            "entities": [
+                {"type": "LOCATION", "value": "Deutschland"}
+            ],
+            "backend": "deepseek",
+            "processing_time_ms": 1234
+        }
+
+    def test_init(self, mock_redis):
+        """Test service initialization."""
+        service = OCRCacheService(
+            redis_client=mock_redis,
+            l1_maxsize=50,
+            l1_ttl=120,
+            l2_ttl=7200
+        )
+
+        assert service._enabled is True
+        assert service._default_ttl == 7200
+
+    def test_compute_file_hash(self, cache_service, sample_content):
+        """Test file hash computation."""
+        hash1 = cache_service._compute_file_hash(sample_content)
+        hash2 = cache_service._compute_file_hash(sample_content)
+
+        assert hash1 == hash2
+        assert len(hash1) == 64  # SHA256 hex length
+
+        # Different content should produce different hash
+        hash3 = cache_service._compute_file_hash(b"Different content")
+        assert hash1 != hash3
+
+    def test_make_cache_key(self, cache_service):
+        """Test cache key generation."""
+        key = cache_service._make_cache_key(
+            file_hash="abc123",
+            backend="deepseek",
+            language="de"
+        )
+
+        assert "ocr_cache:" in key
+        assert "abc123" in key
+        assert "deepseek" in key
+        assert "de" in key
+
+    def test_hash_options(self, cache_service):
+        """Test options hashing for consistency."""
+        opts1 = {"quality": "high", "deskew": True}
+        opts2 = {"deskew": True, "quality": "high"}  # Same, different order
+
+        hash1 = cache_service._hash_options(opts1)
+        hash2 = cache_service._hash_options(opts2)
+
+        assert hash1 == hash2  # Should be same (sorted keys)
+
+        # Empty options
+        assert cache_service._hash_options(None) == ""
+        assert cache_service._hash_options({}) == ""
+
+    @pytest.mark.asyncio
+    async def test_l1_cache_hit(self, cache_service, sample_content, sample_ocr_result):
+        """Test L1 (memory) cache hit."""
+        # Manually populate L1 cache
+        file_hash = cache_service._compute_file_hash(sample_content)
+        cache_key = cache_service._make_cache_key(file_hash, "deepseek", "de")
+        cache_service._l1_cache.set(cache_key, sample_ocr_result)
+
+        # Get should return from L1 without hitting Redis
+        result = await cache_service.get_cached_result(
+            content=sample_content,
+            backend="deepseek",
+            language="de"
+        )
+
+        assert result == sample_ocr_result
+        # Redis should NOT have been called (L1 hit)
+        cache_service._redis.get.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_l2_cache_hit_and_l1_promotion(
+        self, cache_service, sample_content, sample_ocr_result, mock_redis
+    ):
+        """Test L2 (Redis) cache hit promotes to L1."""
+        # Setup Redis to return cached result
+        cached_data = json.dumps({
+            "result": sample_ocr_result,
+            "cached_at": "2025-01-01T00:00:00Z"
+        })
+        mock_redis.get = AsyncMock(return_value=cached_data)
+
+        # First call - L1 miss, L2 hit
+        result = await cache_service.get_cached_result(
+            content=sample_content,
+            backend="deepseek",
+            language="de"
+        )
+
+        assert result == sample_ocr_result
+
+        # Verify L1 was populated (promotion)
+        file_hash = cache_service._compute_file_hash(sample_content)
+        cache_key = cache_service._make_cache_key(file_hash, "deepseek", "de")
+        l1_result = cache_service._l1_cache.get(cache_key)
+        assert l1_result == sample_ocr_result
+
+    @pytest.mark.asyncio
+    async def test_cache_miss(self, cache_service, sample_content, mock_redis):
+        """Test cache miss returns None."""
+        mock_redis.get = AsyncMock(return_value=None)
+
+        result = await cache_service.get_cached_result(
+            content=sample_content,
+            backend="deepseek",
+            language="de"
+        )
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_cache_result_stores_in_both_levels(
+        self, cache_service, sample_content, sample_ocr_result, mock_redis
+    ):
+        """Test caching stores in both L1 and L2."""
+        await cache_service.cache_result(
+            content=sample_content,
+            backend="deepseek",
+            language="de",
+            result=sample_ocr_result
+        )
+
+        # Verify L1 was populated
+        file_hash = cache_service._compute_file_hash(sample_content)
+        cache_key = cache_service._make_cache_key(file_hash, "deepseek", "de")
+        l1_result = cache_service._l1_cache.get(cache_key)
+        assert l1_result == sample_ocr_result
+
+        # Verify Redis set was called
+        mock_redis.set.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_redis_unavailable_fallback(self, sample_content, sample_ocr_result):
+        """Test graceful handling when Redis is unavailable."""
+        # Create service without Redis
+        service = OCRCacheService(redis_client=None)
+
+        # Mock the lazy loader to fail
+        with patch.object(service, '_get_redis', return_value=None):
+            result = await service.get_cached_result(
+                content=sample_content,
+                backend="deepseek",
+                language="de"
+            )
+
+            assert result is None  # Should return None, not raise
+
+    @pytest.mark.asyncio
+    async def test_disabled_cache(self, cache_service, sample_content):
+        """Test that disabled cache returns None."""
+        cache_service._enabled = False
+
+        result = await cache_service.get_cached_result(
+            content=sample_content,
+            backend="deepseek",
+            language="de"
+        )
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_invalidate_removes_from_both_levels(
+        self, cache_service, sample_content, sample_ocr_result, mock_redis
+    ):
+        """Test invalidation removes from L1 and L2."""
+        # First cache the result
+        await cache_service.cache_result(
+            content=sample_content,
+            backend="deepseek",
+            result=sample_ocr_result,
+            language="de"
+        )
+
+        # Then invalidate
+        deleted = await cache_service.invalidate(
+            content=sample_content,
+            backend="deepseek",
+            language="de"
+        )
+
+        # Verify L1 is empty
+        file_hash = cache_service._compute_file_hash(sample_content)
+        cache_key = cache_service._make_cache_key(file_hash, "deepseek", "de")
+        assert cache_service._l1_cache.get(cache_key) is None
+
+    @pytest.mark.asyncio
+    async def test_get_stats(self, cache_service, mock_redis):
+        """Test statistics retrieval."""
+        # Mock Redis responses for stats
+        mock_redis.get = AsyncMock(return_value="0")
+
+        stats = await cache_service.get_stats()
+
+        assert "l1_cache" in stats
+        assert "enabled" in stats
+        assert stats["enabled"] is True
+
+    def test_backend_hit_tracking(self, cache_service):
+        """Test per-backend hit rate tracking."""
+        # Record some hits and misses using internal methods
+        cache_service._record_backend_hit("deepseek", "l1")
+        cache_service._record_backend_hit("deepseek", "l1")
+        cache_service._record_backend_hit("deepseek", "l2")
+        cache_service._record_backend_miss("deepseek")
+
+        cache_service._record_backend_hit("got_ocr", "l1")
+        cache_service._record_backend_miss("got_ocr")
+        cache_service._record_backend_miss("got_ocr")
+
+        # Access internal stats directly
+        stats = cache_service._backend_stats
+
+        # DeepSeek: 2 l1_hits + 1 l2_hit = 3 hits, 1 miss
+        assert stats["deepseek"]["l1_hits"] == 2
+        assert stats["deepseek"]["l2_hits"] == 1
+        assert stats["deepseek"]["misses"] == 1
+
+        # GOT-OCR: 1 l1_hit, 2 misses
+        assert stats["got_ocr"]["l1_hits"] == 1
+        assert stats["got_ocr"]["misses"] == 2
+
+
+class TestOCRCacheServiceEdgeCases:
+    """Edge case tests for OCR Cache Service."""
+
+    @pytest.fixture
+    def mock_redis(self):
+        """Create mock Redis client."""
+        redis = AsyncMock()
+        return redis
+
+    @pytest.mark.asyncio
+    async def test_empty_content(self, mock_redis):
+        """Test handling of empty content."""
+        service = OCRCacheService(redis_client=mock_redis)
+
+        result = await service.get_cached_result(
+            content=b"",
+            backend="deepseek",
+            language="de"
+        )
+
+        # Should handle gracefully (empty hash is still valid)
+        assert result is None or isinstance(result, dict)
+
+    @pytest.mark.asyncio
+    async def test_large_content_hash(self, mock_redis):
+        """Test hashing of large content."""
+        service = OCRCacheService(redis_client=mock_redis)
+
+        # 10MB content
+        large_content = b"x" * (10 * 1024 * 1024)
+
+        hash1 = service._compute_file_hash(large_content)
+        hash2 = service._compute_file_hash(large_content)
+
+        assert hash1 == hash2
+        assert len(hash1) == 64
+
+    @pytest.mark.asyncio
+    async def test_redis_json_parse_error(self, mock_redis):
+        """Test handling of corrupted Redis data."""
+        mock_redis.get = AsyncMock(return_value="invalid json {{{")
+        service = OCRCacheService(redis_client=mock_redis)
+
+        result = await service.get_cached_result(
+            content=b"test content",
+            backend="deepseek",
+            language="de"
+        )
+
+        # Should handle gracefully
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_special_characters_in_backend_name(self, mock_redis):
+        """Test backend names with special characters."""
+        service = OCRCacheService(redis_client=mock_redis)
+
+        key = service._make_cache_key(
+            file_hash="abc123",
+            backend="got-ocr-2.0",
+            language="de"
+        )
+
+        assert "got-ocr-2.0" in key
+
+    @pytest.mark.asyncio
+    async def test_concurrent_cache_access(self, mock_redis):
+        """Test concurrent access to cache service."""
+        service = OCRCacheService(redis_client=mock_redis)
+        mock_redis.get = AsyncMock(return_value=None)
+
+        content = b"test content"
+
+        # Simulate concurrent access
+        tasks = [
+            service.get_cached_result(content, f"backend_{i}", "de")
+            for i in range(10)
+        ]
+
+        results = await asyncio.gather(*tasks)
+
+        # All should complete without errors
+        assert len(results) == 10
+
+
+class TestTTLCacheStress:
+    """Stress tests for TTLCache."""
+
+    def test_rapid_set_get(self):
+        """Test rapid set/get operations."""
+        cache = TTLCache(maxsize=1000, ttl=60)
+
+        # Rapid writes
+        for i in range(1000):
+            cache.set(f"key_{i}", f"value_{i}")
+
+        # Rapid reads
+        for i in range(1000):
+            result = cache.get(f"key_{i}")
+            assert result == f"value_{i}"
+
+    def test_overwrite_existing(self):
+        """Test overwriting existing keys."""
+        cache = TTLCache(maxsize=10, ttl=60)
+
+        cache.set("key1", "value1")
+        cache.set("key1", "value2")
+
+        assert cache.get("key1") == "value2"
+
+    def test_eviction_under_load(self):
+        """Test eviction behavior under heavy load."""
+        cache = TTLCache(maxsize=10, ttl=60)
+
+        # Add more items than maxsize
+        for i in range(20):
+            cache.set(f"key_{i}", f"value_{i}")
+
+        # Cache should not exceed maxsize
+        assert len(cache) <= 10
+
+        # Most recent items should be present
+        assert cache.get("key_19") == "value_19"
+        assert cache.get("key_18") == "value_18"

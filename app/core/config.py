@@ -215,7 +215,8 @@ class Settings(BaseSettings):
     # Security
     # WICHTIG: SECRET_KEY MUSS in Production via Umgebungsvariable gesetzt werden!
     # Beispiel: SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(64))")
-    SECRET_KEY: str = Field(
+    # SECURITY FIX: SecretStr verhindert Logging von Secrets
+    SECRET_KEY: SecretStr = Field(
         default="",
         description="JWT Secret Key - MUSS in Production gesetzt sein (min. 32 Zeichen)"
     )
@@ -365,6 +366,16 @@ class Settings(BaseSettings):
     RATE_LIMIT_FAIL_CLOSED: bool = True  # SECURITY: fail-closed für besseren Schutz
     RATE_LIMIT_FAIL_CLOSED_CRITICAL: bool = True  # Always fail-closed for critical endpoints (login, etc.)
 
+    # Session Management
+    # Maximale Anzahl gleichzeitiger Sessions pro Benutzer
+    MAX_SESSIONS_PER_USER: int = 10
+    # Session-Ablaufzeit in Stunden (Standard: 7 Tage)
+    SESSION_EXPIRY_HOURS: int = 168  # 7 * 24
+    # Session-Limit-Modus: "soft" (alte Sessions automatisch widerrufen) oder "hard" (Login blockieren)
+    SESSION_LIMIT_MODE: str = "soft"
+    # Bei "hard"-Modus: Nachricht wenn Limit erreicht
+    SESSION_LIMIT_HARD_MESSAGE: str = "Maximale Anzahl aktiver Sessions erreicht. Bitte beenden Sie eine andere Session."
+
     # German Language Settings
     GERMAN_VALIDATION_ENABLED: bool = True
     MINIMUM_GERMAN_VALIDATION_SCORE: float = 0.7
@@ -450,7 +461,9 @@ class Settings(BaseSettings):
         # ========== SECRET_KEY Validierung ==========
         # In Production: SECRET_KEY MUSS explizit gesetzt sein
         # In Development: Generiere temporären Key mit Warnung
-        if not self.SECRET_KEY:
+        # SECURITY FIX: SECRET_KEY ist jetzt SecretStr - verwende get_secret_value()
+        secret_key_value = self.SECRET_KEY.get_secret_value() if isinstance(self.SECRET_KEY, SecretStr) else self.SECRET_KEY
+        if not secret_key_value:
             if not self.DEBUG:
                 raise ValueError(
                     "SECRET_KEY ist nicht gesetzt! "
@@ -468,10 +481,10 @@ class Settings(BaseSettings):
                             "Alle JWTs werden nach App-Neustart ungültig!",
                     key_length=len(temp_key)
                 )
-                object.__setattr__(self, 'SECRET_KEY', temp_key)
-        elif len(self.SECRET_KEY) < 32:
+                object.__setattr__(self, 'SECRET_KEY', SecretStr(temp_key))
+        elif len(secret_key_value) < 32:
             raise ValueError(
-                f"SECRET_KEY ist zu kurz ({len(self.SECRET_KEY)} Zeichen). "
+                f"SECRET_KEY ist zu kurz ({len(secret_key_value)} Zeichen). "
                 "Mindestens 32 Zeichen erforderlich für sichere JWT-Signierung."
             )
 

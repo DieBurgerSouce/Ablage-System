@@ -6,8 +6,15 @@ Implementiert Double-Submit-Cookie-Pattern für CSRF-Schutz.
 Sicherheitsfeatures:
 - CSRF-Token-Generierung mit kryptographisch sicheren Zufallswerten
 - Token-Validierung für state-changing Requests (POST, PUT, DELETE, PATCH)
+- Token-Rotation nach erfolgreichen state-changing Requests (verhindert Token-Reuse)
+- Neues Token wird im 'X-New-CSRF-Token' Response-Header für JS-Clients bereitgestellt
 - Sichere Cookie-Konfiguration (HttpOnly, SameSite, Secure)
 - Graceful Degradation für API-Clients mit Bearer-Token-Authentifizierung
+
+Token-Rotation:
+Nach jedem erfolgreichen POST/PUT/DELETE/PATCH wird automatisch ein neues Token
+generiert. JavaScript-Clients sollten den 'X-New-CSRF-Token' Header auslesen und
+für nachfolgende Requests verwenden.
 
 Feinpoliert und durchdacht - Enterprise-grade Sicherheit.
 """
@@ -316,7 +323,32 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             )
 
         logger.debug("csrf_validation_passed", path=request.url.path)
-        return await call_next(request)
+
+        # Request verarbeiten
+        response = await call_next(request)
+
+        # Token-Rotation nach erfolgreichem state-changing Request
+        # Verhindert Token-Reuse-Angriffe
+        if response.status_code < 400:
+            new_csrf_token = self._generate_csrf_token()
+            response.set_cookie(
+                key=CSRF_COOKIE_NAME,
+                value=new_csrf_token,
+                max_age=self.cookie_max_age,
+                httponly=self.cookie_httponly,
+                secure=self.cookie_secure,
+                samesite=self.cookie_samesite,
+                path="/",
+            )
+            # Neues Token auch im Response-Header für JavaScript-Clients
+            response.headers["X-New-CSRF-Token"] = new_csrf_token
+            logger.debug(
+                "csrf_token_rotated",
+                path=request.url.path,
+                method=method,
+            )
+
+        return response
 
 
 def create_csrf_middleware(

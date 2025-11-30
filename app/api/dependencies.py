@@ -603,3 +603,138 @@ async def verify_document_ownership(
         )
 
     return True
+
+
+# ==================== API Key Authentication ====================
+
+API_KEY_PREFIX = "ablage_"
+
+
+async def get_user_from_api_key(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    """
+    Dependency für Authentifizierung mit API-Key.
+
+    Unterstützt sowohl JWT-Token als auch API-Keys.
+    API-Keys beginnen mit 'ablage_'.
+
+    Args:
+        credentials: HTTP Bearer credentials
+        db: Database session
+
+    Returns:
+        Authentifizierter User
+
+    Raises:
+        HTTPException: Bei ungültigem Token/Key
+
+    Usage:
+        @app.get("/api/v1/documents")
+        async def get_documents(user: User = Depends(get_user_from_api_key)):
+            ...
+    """
+    token = credentials.credentials
+
+    # Prüfe ob es ein API-Key ist
+    if token.startswith(API_KEY_PREFIX):
+        from app.services.api_key_service import get_api_key_service
+
+        service = get_api_key_service()
+        result = await service.validate_api_key(db, token)
+
+        if not result:
+            logger.warning(
+                "api_key_validation_failed",
+                key_prefix=token[:16] + "..." if len(token) > 16 else token
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Ungültiger oder abgelaufener API-Key",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        api_key, user = result
+        return user
+
+    # Andernfalls: JWT-Token verwenden
+    return await get_current_user(credentials, db)
+
+
+async def get_user_with_api_key_permission(
+    required_permission: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    """
+    Dependency die Benutzer authentifiziert und API-Key-Berechtigung prüft.
+
+    Bei JWT-Token werden alle Berechtigungen gewährt.
+    Bei API-Key wird die spezifische Berechtigung geprüft.
+
+    Args:
+        required_permission: Benötigte Berechtigung (z.B. "read:documents")
+        credentials: HTTP Bearer credentials
+        db: Database session
+
+    Returns:
+        Authentifizierter User mit Berechtigung
+
+    Raises:
+        HTTPException: Bei fehlender Berechtigung
+    """
+    token = credentials.credentials
+
+    if token.startswith(API_KEY_PREFIX):
+        from app.services.api_key_service import get_api_key_service
+
+        service = get_api_key_service()
+        result = await service.validate_api_key(db, token)
+
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Ungültiger oder abgelaufener API-Key",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        api_key, user = result
+
+        # Prüfe Berechtigung
+        if not service.has_permission(api_key, required_permission):
+            logger.warning(
+                "api_key_permission_denied",
+                key_name=api_key.name,
+                required_permission=required_permission,
+                key_permissions=api_key.permissions
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"API-Key hat keine '{required_permission}' Berechtigung"
+            )
+
+        return user
+
+    # JWT-Token: Voller Zugriff (Berechtigungen werden durch User-Rolle geprüft)
+    return await get_current_user(credentials, db)
+
+
+def require_api_key_permission(permission: str):
+    """
+    Factory für Permission-abhängige Dependency.
+
+    Usage:
+        @app.get("/documents")
+        async def get_documents(
+            user: User = Depends(require_api_key_permission("read:documents"))
+        ):
+            ...
+    """
+    async def dependency(
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: AsyncSession = Depends(get_db)
+    ) -> User:
+        return await get_user_with_api_key_permission(permission, credentials, db)
+
+    return dependency
