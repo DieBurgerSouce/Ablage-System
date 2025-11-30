@@ -1,0 +1,24 @@
+{
+  "id": "sample_letter_001",
+  "image_path": "german_documents/letters/brief_001.png",
+  "ground_truth_text": "Sehr geehrter Herr Dr. Schröder,\n\nbezugnehmend auf unser Telefonat vom vergangenen Freitag möchte ich Ihnen hiermit unsere Geschäftsbedingungen für die geplante Zusammenarbeit übermitteln.\n\nWie bereits besprochen, können wir Ihnen folgende Konditionen anbieten:\n\n- Monatliche Grundgebühr: 499,00 EUR\n- Zusätzliche Beratungsstunden: 85,00 EUR/Std.\n- Fahrtkosten: 0,42 EUR/km ab 50 km Entfernung\n\nDie Vertragslaufzeit beträgt zunächst zwölf Monate mit einer Kündigungsfrist von drei Monaten zum Quartalsende.\n\nFür Rückfragen stehe ich Ihnen selbstverständlich jederzeit gerne zur Verfügung. Sie erreichen mich unter der Telefonnummer 089 / 123 456 78 oder per E-Mail an m.fischer@beispiel-firma.de.\n\nIch würde mich freuen, von Ihnen zu hören.\n\nMit freundlichen Grüßen\n\nMartina Fischer\nVertriebsleiterin",
+  "document_type": "letter",
+  "language": "de",
+  "difficulty": "easy",
+  "has_fraktur": false,
+  "has_handwriting": false,
+  "has_tables": false,
+  "expected_umlauts": ["ö", "ü", "ä", "ü", "ö", "ü", "ü", "ü"],
+  "expected_entities": {
+    "person": ["Dr. Schröder", "Martina Fischer"],
+    "email": ["m.fischer@beispiel-firma.de"],
+    "phone": ["089 / 123 456 78"],
+    "currency": ["499,00 EUR", "85,00 EUR", "0,42 EUR"]
+  },
+  "metadata": {
+    "source": "synthetic",
+    "letter_type": "Geschäftsbrief",
+    "notes": "Formeller Geschäftsbrief mit Anrede und Grußformel"
+  },
+  "created_at": "2024-11-30T10:00:00"
+}

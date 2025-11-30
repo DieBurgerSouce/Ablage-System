@@ -1,0 +1,113 @@
+{
+  "name": "Komposita-Validierungsset",
+  "description": "Testfaelle fuer die Zerlegung deutscher Komposita",
+  "version": "1.0",
+  "test_cases": [
+    {
+      "id": "compound_001",
+      "word": "Bundesfinanzministerium",
+      "expected_parts": ["Bundes", "Finanz", "Ministerium"],
+      "fugen_elements": ["s"],
+      "category": "government"
+    },
+    {
+      "id": "compound_002",
+      "word": "Krankenversicherung",
+      "expected_parts": ["Kranken", "Versicherung"],
+      "fugen_elements": ["en"],
+      "category": "insurance"
+    },
+    {
+      "id": "compound_003",
+      "word": "Arbeitslosenversicherung",
+      "expected_parts": ["Arbeitslosen", "Versicherung"],
+      "fugen_elements": ["en"],
+      "category": "insurance"
+    },
+    {
+      "id": "compound_004",
+      "word": "Geschäftsführer",
+      "expected_parts": ["Geschäfts", "Führer"],
+      "fugen_elements": ["s"],
+      "category": "job_title"
+    },
+    {
+      "id": "compound_005",
+      "word": "Kindergarten",
+      "expected_parts": ["Kinder", "Garten"],
+      "fugen_elements": ["er"],
+      "category": "education"
+    },
+    {
+      "id": "compound_006",
+      "word": "Tageszeitung",
+      "expected_parts": ["Tages", "Zeitung"],
+      "fugen_elements": ["es"],
+      "category": "media"
+    },
+    {
+      "id": "compound_007",
+      "word": "Rechnungsnummer",
+      "expected_parts": ["Rechnungs", "Nummer"],
+      "fugen_elements": ["s"],
+      "category": "business"
+    },
+    {
+      "id": "compound_008",
+      "word": "Umsatzsteuer",
+      "expected_parts": ["Umsatz", "Steuer"],
+      "fugen_elements": [],
+      "category": "tax"
+    },
+    {
+      "id": "compound_009",
+      "word": "Softwareentwicklung",
+      "expected_parts": ["Software", "Entwicklung"],
+      "fugen_elements": [],
+      "category": "technology"
+    },
+    {
+      "id": "compound_010",
+      "word": "Qualitätssicherung",
+      "expected_parts": ["Qualitäts", "Sicherung"],
+      "fugen_elements": ["s"],
+      "category": "business"
+    },
+    {
+      "id": "compound_011",
+      "word": "Vertragslaufzeit",
+      "expected_parts": ["Vertrags", "Lauf", "Zeit"],
+      "fugen_elements": ["s"],
+      "category": "legal"
+    },
+    {
+      "id": "compound_012",
+      "word": "Hauptbahnhof",
+      "expected_parts": ["Haupt", "Bahnhof"],
+      "fugen_elements": [],
+      "category": "transportation"
+    },
+    {
+      "id": "compound_013",
+      "word": "Steuererklärung",
+      "expected_parts": ["Steuer", "Erklärung"],
+      "fugen_elements": [],
+      "category": "tax"
+    },
+    {
+      "id": "compound_014",
+      "word": "Gewerbefreiheit",
+      "expected_parts": ["Gewerbe", "Freiheit"],
+      "fugen_elements": [],
+      "category": "legal"
+    },
+    {
+      "id": "compound_015",
+      "word": "Regierungsrath",
+      "expected_parts": ["Regierungs", "Rath"],
+      "fugen_elements": ["s"],
+      "category": "historical",
+      "note": "Historische Schreibweise"
+    }
+  ]
+}

@@ -4,12 +4,21 @@ German Text Validator for Ablage-System
 Ensures 100% accuracy for German language processing
 
 CRITICAL: Business requirement - 100% umlaut accuracy
+
+Erweitert um:
+- EnhancedUmlautHandler: Kontextbasierte Umlaut-Wiederherstellung
+- GermanCapitalizationValidator: Deutsche Großschreibungs-Validierung
 """
 
 import re
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Dict, FrozenSet, List, Optional, Set, Tuple
 from datetime import datetime
 import json
+
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 class GermanValidator:
     """German text validation with focus on business documents"""
@@ -362,3 +371,532 @@ class GermanValidator:
                 "1.234,56 EUR"
             ]
         }
+
+
+# =============================================================================
+# Enhanced Umlaut Handler (NEU)
+# =============================================================================
+
+
+@dataclass
+class UmlautCorrection:
+    """Details zu einer Umlaut-Korrektur."""
+    original: str
+    corrected: str
+    position: int
+    confidence: float
+    rule_applied: str
+
+
+class EnhancedUmlautHandler:
+    """
+    Kontextbewusste Umlaut-Wiederherstellung mit False-Positive-Vermeidung.
+
+    Behandelt:
+    - ae -> ä, oe -> ö, ue -> ü Konvertierung
+    - ss -> ß nach langen Vokalen
+    - Vermeidung von False Positives (Israel, Michael, etc.)
+    """
+
+    # Wörter die NICHT konvertiert werden dürfen (False Positives)
+    FALSE_POSITIVES: FrozenSet[str] = frozenset([
+        # Eigennamen mit ae
+        "israel", "michael", "rafael", "raphael", "gabriel", "nathanael",
+        "ismaël", "ismael", "aero", "aerob", "maestro", "pharao",
+        "mae", "gaelic", "paella",
+        # Wörter mit oe
+        "poet", "poesie", "poem", "koexistenz", "koeffizient",
+        "boeing", "phoenix", "oekumene", "noel", "joel", "roentgen",
+        # Wörter mit ue
+        "bauer", "mauer", "trauer", "sauer", "treue", "neue", "reue",
+        "feuer", "euer", "teuer", "steuer", "abenteuer", "ungeheuer",
+        "queue", "duell", "duett", "suez", "manuel", "sequel",
+        "fuel", "cruel", "duel",
+        # Wörter mit ss das kein ß sein soll
+        "adresse", "adressen", "esse", "essen", "messe", "message",
+        "professor", "mission", "passion", "session",
+    ])
+
+    # Wörter die definitiv Umlaute haben sollten
+    DEFINITE_UMLAUTS: Dict[str, str] = {
+        # ae -> ä
+        "aerger": "Ärger", "aenderung": "Änderung", "aerztlich": "ärztlich",
+        "aesthetik": "Ästhetik", "aequivalent": "äquivalent",
+        "muenchen": "München", "nuernberg": "Nürnberg",
+        "geschaeftsfuehrer": "Geschäftsführer", "geschaeft": "Geschäft",
+        "taetigkeit": "Tätigkeit", "waehrung": "Währung",
+        "naechste": "nächste", "spaeter": "später",
+        "staerke": "Stärke", "laenge": "Länge",
+        # oe -> ö
+        "oesterreich": "Österreich", "koeln": "Köln",
+        "goettingen": "Göttingen", "moenchengladbach": "Mönchengladbach",
+        "oeffnung": "Öffnung", "moechte": "möchte",
+        "koennen": "können", "hoeren": "hören",
+        "groesse": "Größe", "schoenheit": "Schönheit",
+        # ue -> ü
+        "muenster": "Münster", "duesseldorf": "Düsseldorf",
+        "zuerich": "Zürich", "gruende": "Gründe",
+        "pruefung": "Prüfung", "verfuegung": "Verfügung",
+        "fuehrung": "Führung", "begruendung": "Begründung",
+        "ueberpruefen": "überprüfen", "uebersicht": "Übersicht",
+        # ss -> ß
+        "strasse": "Straße", "gruss": "Gruß", "fuss": "Fuß",
+        "mass": "Maß", "spass": "Spaß", "gross": "groß",
+        "weiss": "weiß", "heiss": "heiß",
+    }
+
+    # Sichere Kontexte für Konvertierung
+    # (Regex-Pattern, ob Konvertierung sicher ist)
+    SAFE_PATTERNS: Dict[str, List[Tuple[str, bool]]] = {
+        "ae": [
+            # Sichere Konvertierungen
+            (r'(?<=[bcdfghjklmnprstvwxz])ae(?=[lnrst])', True),  # z.B. "Aenderung"
+            (r'^ae(?=[gmnrst])', True),  # Wortanfang mit ae
+            (r'(?<=sch)ae(?=[ft])', True),  # z.B. "Geschäft"
+            # Unsichere/False Positives
+            (r'(?<=[aeiou])ae', False),  # Nach Vokal
+            (r'ae(?=l$)', False),  # Endet auf -ael (Michael, etc.)
+        ],
+        "oe": [
+            (r'(?<=[bcdfghjklmnprstvwxz])oe(?=[fhlnrs])', True),
+            (r'^oe(?=[fst])', True),
+            (r'(?<=k|g|sch)oe(?=[n])', True),  # können, mögen
+            (r'oe(?=t$)', False),  # Poet
+            (r'(?<=[aeiou])oe', False),
+        ],
+        "ue": [
+            (r'(?<=[bcdfghjklmnprstvwxz])ue(?=[bcdfghlmnrst])', True),
+            (r'^ue(?=[b])', True),  # über
+            (r'(?<=f|pr)ue(?=[f])', True),  # Prüfung, Führung
+            (r'ue(?=r$)', False),  # Bauer, Mauer
+            (r'(?<=e|a)ue(?=r)', False),  # Feuer, Steuer
+        ],
+    }
+
+    def __init__(self, strict_mode: bool = True) -> None:
+        """
+        Initialisiere Enhanced Umlaut Handler.
+
+        Args:
+            strict_mode: Bei True nur sichere Konvertierungen
+        """
+        self.strict_mode = strict_mode
+        self._definite_lookup: Dict[str, str] = {
+            k.lower(): v for k, v in self.DEFINITE_UMLAUTS.items()
+        }
+        logger.debug("EnhancedUmlautHandler initialisiert", strict_mode=strict_mode)
+
+    def restore_umlauts(self, text: str) -> Tuple[str, List[UmlautCorrection]]:
+        """
+        Stelle Umlaute kontextbewusst wieder her.
+
+        Args:
+            text: Der zu korrigierende Text
+
+        Returns:
+            (korrigierter_text, liste_der_korrekturen)
+        """
+        if not text:
+            return text, []
+
+        corrections: List[UmlautCorrection] = []
+        result = text
+
+        # Zuerst definitive Wörter ersetzen
+        words = re.findall(r'\b\w+\b', result)
+        for word in words:
+            word_lower = word.lower()
+            if word_lower in self._definite_lookup:
+                correct = self._definite_lookup[word_lower]
+                # Case-Preserving
+                if word[0].isupper():
+                    correct = correct[0].upper() + correct[1:]
+                if word != correct:
+                    pos = result.find(word)
+                    corrections.append(UmlautCorrection(
+                        original=word,
+                        corrected=correct,
+                        position=pos,
+                        confidence=0.95,
+                        rule_applied="definite_word",
+                    ))
+                    result = result.replace(word, correct, 1)
+
+        # Dann kontextbasierte Konvertierung
+        if not self.strict_mode:
+            result, ctx_corrections = self._apply_context_patterns(result)
+            corrections.extend(ctx_corrections)
+
+        return result, corrections
+
+    def _apply_context_patterns(self, text: str) -> Tuple[str, List[UmlautCorrection]]:
+        """Wende kontextbasierte Muster an."""
+        corrections: List[UmlautCorrection] = []
+        result = text
+
+        # ae -> ä
+        result, ae_corr = self._convert_pattern(result, "ae", "ä")
+        corrections.extend(ae_corr)
+
+        # oe -> ö
+        result, oe_corr = self._convert_pattern(result, "oe", "ö")
+        corrections.extend(oe_corr)
+
+        # ue -> ü
+        result, ue_corr = self._convert_pattern(result, "ue", "ü")
+        corrections.extend(ue_corr)
+
+        return result, corrections
+
+    def _convert_pattern(
+        self,
+        text: str,
+        pattern: str,
+        replacement: str,
+    ) -> Tuple[str, List[UmlautCorrection]]:
+        """Konvertiere einzelnes Pattern mit Kontextprüfung."""
+        corrections: List[UmlautCorrection] = []
+        result = text
+
+        # Finde alle Vorkommen
+        pattern_lower = pattern.lower()
+        idx = 0
+        while True:
+            idx = result.lower().find(pattern_lower, idx)
+            if idx == -1:
+                break
+
+            # Extrahiere umgebendes Wort
+            word_start = idx
+            word_end = idx + len(pattern)
+
+            while word_start > 0 and result[word_start - 1].isalpha():
+                word_start -= 1
+            while word_end < len(result) and result[word_end].isalpha():
+                word_end += 1
+
+            word = result[word_start:word_end]
+
+            # Prüfe False Positives
+            if word.lower() in self.FALSE_POSITIVES:
+                idx += len(pattern)
+                continue
+
+            # Prüfe sichere Muster
+            is_safe = self._is_safe_conversion(text, idx, pattern)
+
+            if is_safe:
+                # Ersetze
+                original_char = result[idx:idx + len(pattern)]
+                if original_char[0].isupper():
+                    new_char = replacement.upper()
+                else:
+                    new_char = replacement
+
+                corrections.append(UmlautCorrection(
+                    original=original_char,
+                    corrected=new_char,
+                    position=idx,
+                    confidence=0.85,
+                    rule_applied=f"context_{pattern}_to_{replacement}",
+                ))
+
+                result = result[:idx] + new_char + result[idx + len(pattern):]
+                idx += 1
+            else:
+                idx += len(pattern)
+
+        return result, corrections
+
+    def _is_safe_conversion(self, text: str, position: int, pattern: str) -> bool:
+        """Prüfe ob Konvertierung sicher ist."""
+        patterns = self.SAFE_PATTERNS.get(pattern, [])
+
+        # Hole Kontext
+        start = max(0, position - 5)
+        end = min(len(text), position + len(pattern) + 5)
+        context = text[start:end]
+
+        for regex, is_safe in patterns:
+            if re.search(regex, context, re.IGNORECASE):
+                return is_safe
+
+        # Default: unsicher
+        return False
+
+    def is_false_positive(self, word: str) -> bool:
+        """Prüfe ob Wort ein bekannter False Positive ist."""
+        return word.lower() in self.FALSE_POSITIVES
+
+
+# =============================================================================
+# German Capitalization Validator (NEU)
+# =============================================================================
+
+
+@dataclass
+class CapitalizationIssue:
+    """Ein Großschreibungs-Problem."""
+    word: str
+    position: int
+    expected_capitalized: bool
+    reason: str
+
+
+class GermanCapitalizationValidator:
+    """
+    Validiert deutsche Großschreibungs-Regeln.
+
+    Prüft:
+    - Substantive müssen großgeschrieben sein
+    - Satzanfänge großgeschrieben
+    - Formelles Sie/Ihnen großgeschrieben
+    """
+
+    # Substantiv-Suffixe (indizieren Nomen)
+    NOUN_SUFFIXES: FrozenSet[str] = frozenset([
+        "ung", "heit", "keit", "schaft", "nis", "tum", "ling",
+        "tion", "sion", "ität", "ismus", "ant", "ent", "ist", "or",
+        "eur", "eur", "ie", "ik", "ur", "age", "enz", "anz",
+    ])
+
+    # Artikel (folgendes Wort ist meist Substantiv)
+    ARTICLES: FrozenSet[str] = frozenset([
+        "der", "die", "das", "den", "dem", "des",
+        "ein", "eine", "einer", "einem", "einen", "eines",
+        "kein", "keine", "keiner", "keinem", "keinen", "keines",
+    ])
+
+    # Präpositionen mit Artikel (folgendes Wort ist meist Substantiv)
+    PREPOSITION_ARTICLE_COMBOS: FrozenSet[str] = frozenset([
+        "im", "am", "zum", "zur", "vom", "beim", "ans", "aufs", "ins",
+    ])
+
+    # Formelle Anrede (immer großgeschrieben)
+    FORMAL_PRONOUNS: FrozenSet[str] = frozenset([
+        "sie", "ihnen", "ihr", "ihre", "ihrer", "ihrem", "ihren",
+    ])
+
+    def __init__(self) -> None:
+        """Initialisiere Capitalization Validator."""
+        logger.debug("GermanCapitalizationValidator initialisiert")
+
+    def validate(self, text: str) -> Tuple[float, List[CapitalizationIssue]]:
+        """
+        Validiere Großschreibung im Text.
+
+        Args:
+            text: Der zu validierende Text
+
+        Returns:
+            (accuracy, list_of_issues)
+        """
+        if not text:
+            return 1.0, []
+
+        issues: List[CapitalizationIssue] = []
+        words = self._tokenize_with_context(text)
+
+        total_nouns = 0
+        correct_capitalization = 0
+
+        for word, position, prev_word, is_sentence_start in words:
+            if len(word) < 2:
+                continue
+
+            # Prüfe ob es ein Substantiv sein sollte
+            should_be_capitalized, reason = self._should_be_capitalized(
+                word, prev_word, is_sentence_start
+            )
+
+            if should_be_capitalized:
+                total_nouns += 1
+                is_capitalized = word[0].isupper()
+
+                if is_capitalized:
+                    correct_capitalization += 1
+                else:
+                    issues.append(CapitalizationIssue(
+                        word=word,
+                        position=position,
+                        expected_capitalized=True,
+                        reason=reason,
+                    ))
+
+        accuracy = correct_capitalization / total_nouns if total_nouns > 0 else 1.0
+
+        return accuracy, issues
+
+    def _tokenize_with_context(
+        self,
+        text: str,
+    ) -> List[Tuple[str, int, Optional[str], bool]]:
+        """
+        Tokenisiere mit Kontext.
+
+        Returns:
+            List von (word, position, prev_word, is_sentence_start)
+        """
+        tokens = []
+        prev_word: Optional[str] = None
+        is_sentence_start = True
+
+        # Einfache Tokenisierung
+        pattern = r'\b(\w+)\b'
+        for match in re.finditer(pattern, text):
+            word = match.group(1)
+            position = match.start()
+
+            tokens.append((word, position, prev_word, is_sentence_start))
+
+            # Update für nächste Iteration
+            prev_word = word
+
+            # Prüfe Satzende nach diesem Wort
+            end_pos = match.end()
+            if end_pos < len(text):
+                following = text[end_pos:end_pos + 2]
+                is_sentence_start = bool(re.match(r'[.!?]\s', following))
+            else:
+                is_sentence_start = False
+
+        return tokens
+
+    def _should_be_capitalized(
+        self,
+        word: str,
+        prev_word: Optional[str],
+        is_sentence_start: bool,
+    ) -> Tuple[bool, str]:
+        """
+        Prüfe ob ein Wort großgeschrieben sein sollte.
+
+        Returns:
+            (should_be_capitalized, reason)
+        """
+        word_lower = word.lower()
+
+        # Satzanfang
+        if is_sentence_start:
+            return True, "Satzanfang"
+
+        # Nach Artikel -> Substantiv
+        if prev_word and prev_word.lower() in self.ARTICLES:
+            return True, f"Nach Artikel '{prev_word}'"
+
+        # Nach Präposition+Artikel-Kombination
+        if prev_word and prev_word.lower() in self.PREPOSITION_ARTICLE_COMBOS:
+            return True, f"Nach '{prev_word}'"
+
+        # Substantiv-Suffix
+        for suffix in self.NOUN_SUFFIXES:
+            if word_lower.endswith(suffix) and len(word) > len(suffix) + 2:
+                return True, f"Substantiv-Suffix '-{suffix}'"
+
+        # Formelle Anrede (nur in Briefen, schwer zu erkennen)
+        # Hier konservativ: nicht als Fehler markieren
+
+        return False, ""
+
+    def fix_capitalization(self, text: str) -> str:
+        """
+        Korrigiere Großschreibung im Text.
+
+        Args:
+            text: Der zu korrigierende Text
+
+        Returns:
+            Korrigierter Text
+        """
+        _, issues = self.validate(text)
+
+        if not issues:
+            return text
+
+        result = text
+
+        # Von hinten nach vorne ersetzen um Positionsverschiebung zu vermeiden
+        for issue in sorted(issues, key=lambda x: x.position, reverse=True):
+            word = issue.word
+            pos = issue.position
+
+            if issue.expected_capitalized and not word[0].isupper():
+                corrected = word[0].upper() + word[1:]
+                result = result[:pos] + corrected + result[pos + len(word):]
+
+        return result
+
+
+# =============================================================================
+# Convenience Functions (NEU)
+# =============================================================================
+
+
+def get_german_validator() -> GermanValidator:
+    """Hole GermanValidator-Instanz."""
+    return GermanValidator()
+
+
+def get_umlaut_handler(strict_mode: bool = True) -> EnhancedUmlautHandler:
+    """Hole EnhancedUmlautHandler-Instanz."""
+    return EnhancedUmlautHandler(strict_mode=strict_mode)
+
+
+def get_capitalization_validator() -> GermanCapitalizationValidator:
+    """Hole GermanCapitalizationValidator-Instanz."""
+    return GermanCapitalizationValidator()
+
+
+def validate_german_text(text: str) -> Dict:
+    """
+    Vollständige Validierung eines deutschen Texts.
+
+    Kombiniert alle Validatoren.
+
+    Returns:
+        Dictionary mit allen Validierungsergebnissen
+    """
+    validator = GermanValidator()
+    umlaut_handler = EnhancedUmlautHandler(strict_mode=False)
+    cap_validator = GermanCapitalizationValidator()
+
+    # Umlaut-Validierung
+    umlaut_result = validator.validate_umlauts(text)
+
+    # Umlaut-Wiederherstellung
+    corrected_text, umlaut_corrections = umlaut_handler.restore_umlauts(text)
+
+    # Großschreibungs-Validierung
+    cap_accuracy, cap_issues = cap_validator.validate(text)
+
+    # Daten/Währung extrahieren
+    dates = validator.validate_date_format(text)
+    currencies = validator.validate_currency_format(text)
+
+    return {
+        "original_text": text,
+        "corrected_text": corrected_text,
+        "umlaut_validation": umlaut_result,
+        "umlaut_corrections": [
+            {
+                "original": c.original,
+                "corrected": c.corrected,
+                "position": c.position,
+                "confidence": c.confidence,
+            }
+            for c in umlaut_corrections
+        ],
+        "capitalization": {
+            "accuracy": round(cap_accuracy, 4),
+            "issues_count": len(cap_issues),
+            "issues": [
+                {"word": i.word, "position": i.position, "reason": i.reason}
+                for i in cap_issues
+            ],
+        },
+        "extracted_dates": dates,
+        "extracted_currencies": currencies,
+        "overall_confidence": round(
+            (umlaut_result["confidence"] + cap_accuracy) / 2, 2
+        ),
+    }

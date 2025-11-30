@@ -1,0 +1,119 @@
+{
+  "name": "Umlaut-Validierungsset",
+  "description": "Testfaelle fuer die korrekte Erkennung deutscher Umlaute",
+  "version": "1.0",
+  "test_cases": [
+    {
+      "id": "umlaut_001",
+      "input": "Munchen",
+      "expected": "München",
+      "category": "city_name",
+      "umlaut": "ü"
+    },
+    {
+      "id": "umlaut_002",
+      "input": "Osterreich",
+      "expected": "Österreich",
+      "category": "country_name",
+      "umlaut": "ö"
+    },
+    {
+      "id": "umlaut_003",
+      "input": "Geschaftsfuhrer",
+      "expected": "Geschäftsführer",
+      "category": "job_title",
+      "umlaut": "ä,ü"
+    },
+    {
+      "id": "umlaut_004",
+      "input": "Grosse",
+      "expected": "Größe",
+      "category": "noun",
+      "umlaut": "ö,ß"
+    },
+    {
+      "id": "umlaut_005",
+      "input": "uberprufen",
+      "expected": "überprüfen",
+      "category": "verb",
+      "umlaut": "ü,ü"
+    },
+    {
+      "id": "umlaut_006",
+      "input": "Aenderung",
+      "expected": "Änderung",
+      "category": "noun",
+      "umlaut": "Ä"
+    },
+    {
+      "id": "umlaut_007",
+      "input": "Oeffnung",
+      "expected": "Öffnung",
+      "category": "noun",
+      "umlaut": "Ö"
+    },
+    {
+      "id": "umlaut_008",
+      "input": "Uebersicht",
+      "expected": "Übersicht",
+      "category": "noun",
+      "umlaut": "Ü"
+    },
+    {
+      "id": "umlaut_009",
+      "input": "Strasse",
+      "expected": "Straße",
+      "category": "noun",
+      "umlaut": "ß"
+    },
+    {
+      "id": "umlaut_010",
+      "input": "weiss",
+      "expected": "weiß",
+      "category": "adjective",
+      "umlaut": "ß"
+    },
+    {
+      "id": "umlaut_011",
+      "input": "Fusse",
+      "expected": "Füße",
+      "category": "noun",
+      "umlaut": "ü,ß"
+    },
+    {
+      "id": "umlaut_012",
+      "input": "Buro",
+      "expected": "Büro",
+      "category": "noun",
+      "umlaut": "ü"
+    },
+    {
+      "id": "false_positive_001",
+      "input": "Israel",
+      "expected": "Israel",
+      "category": "false_positive",
+      "note": "ae sollte NICHT zu ä werden"
+    },
+    {
+      "id": "false_positive_002",
+      "input": "Michael",
+      "expected": "Michael",
+      "category": "false_positive",
+      "note": "ae sollte NICHT zu ä werden"
+    },
+    {
+      "id": "false_positive_003",
+      "input": "Bauer",
+      "expected": "Bauer",
+      "category": "false_positive",
+      "note": "ue sollte NICHT zu ü werden"
+    },
+    {
+      "id": "false_positive_004",
+      "input": "Queue",
+      "expected": "Queue",
+      "category": "false_positive",
+      "note": "ue sollte NICHT zu ü werden (Fremdwort)"
+    }
+  ]
+}

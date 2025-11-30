@@ -105,6 +105,41 @@ if PROMETHEUS_AVAILABLE:
         registry=ML_REGISTRY,
     )
 
+    # -------------------------------------------------------------------------
+    # Ground-Truth Quality Metriken (NEU)
+    # -------------------------------------------------------------------------
+
+    OCR_CER = Histogram(
+        "ocr_character_error_rate",
+        "Character Error Rate (CER) fuer OCR-Ergebnisse",
+        ["backend", "document_type"],
+        buckets=[0.01, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5],
+        registry=ML_REGISTRY,
+    )
+
+    OCR_WER = Histogram(
+        "ocr_word_error_rate",
+        "Word Error Rate (WER) fuer OCR-Ergebnisse",
+        ["backend", "document_type"],
+        buckets=[0.01, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5],
+        registry=ML_REGISTRY,
+    )
+
+    OCR_UMLAUT_ACCURACY = Histogram(
+        "ocr_umlaut_accuracy",
+        "Deutsche Umlaut-Erkennungsgenauigkeit",
+        ["backend"],
+        buckets=[0.8, 0.85, 0.9, 0.95, 0.97, 0.99, 1.0],
+        registry=ML_REGISTRY,
+    )
+
+    OCR_BENCHMARK_SAMPLES = Counter(
+        "ocr_benchmark_samples_total",
+        "Anzahl der Benchmark-Samples pro Backend",
+        ["backend", "document_type", "difficulty"],
+        registry=ML_REGISTRY,
+    )
+
     BACKEND_QUEUE_SIZE = Gauge(
         "ocr_backend_queue_size",
         "Aktuelle Queue-Größe pro Backend",
@@ -329,6 +364,47 @@ class MLMetrics:
             logger.debug(
                 f"Backend {backend}: {status}, "
                 f"time={processing_time:.2f}s, accuracy={accuracy}"
+            )
+
+    def record_quality_metrics(
+        self,
+        backend: str,
+        cer: float,
+        wer: float,
+        umlaut_accuracy: float,
+        document_type: str = "unknown",
+        difficulty: str = "medium",
+    ) -> None:
+        """
+        Erfasse Ground-Truth-basierte Qualitaetsmetriken.
+
+        Args:
+            backend: Backend-Name
+            cer: Character Error Rate (0-1)
+            wer: Word Error Rate (0-1)
+            umlaut_accuracy: Umlaut-Genauigkeit (0-1)
+            document_type: Dokumenttyp
+            difficulty: Schwierigkeitsgrad
+        """
+        if self.enabled:
+            OCR_CER.labels(
+                backend=backend, document_type=document_type
+            ).observe(cer)
+            OCR_WER.labels(
+                backend=backend, document_type=document_type
+            ).observe(wer)
+            OCR_UMLAUT_ACCURACY.labels(
+                backend=backend
+            ).observe(umlaut_accuracy)
+            OCR_BENCHMARK_SAMPLES.labels(
+                backend=backend,
+                document_type=document_type,
+                difficulty=difficulty,
+            ).inc()
+        else:
+            logger.debug(
+                f"Quality metrics: {backend} CER={cer:.4f}, "
+                f"WER={wer:.4f}, Umlaut={umlaut_accuracy:.4f}"
             )
 
     def set_backend_queue_size(self, backend: str, size: int) -> None:

@@ -1,0 +1,25 @@
+{
+  "id": "sample_invoice_001",
+  "image_path": "german_documents/invoices/rechnung_001.png",
+  "ground_truth_text": "Müller & Söhne GmbH\nGeschäftsführer: Dr. Hans Müller\nBahnhofstraße 42\n80331 München\n\nRechnung Nr. R-2024-001234\n\nSehr geehrte Damen und Herren,\n\nfür die erbrachten Leistungen erlauben wir uns, Ihnen folgende Positionen in Rechnung zu stellen:\n\nPos. | Beschreibung | Menge | Einzelpreis | Gesamtpreis\n1 | Beratungsleistung gemäß Vertrag | 8 Std. | 150,00 EUR | 1.200,00 EUR\n2 | Softwareentwicklung | 24 Std. | 120,00 EUR | 2.880,00 EUR\n3 | Qualitätssicherung | 4 Std. | 100,00 EUR | 400,00 EUR\n\nZwischensumme netto: 4.480,00 EUR\nUmsatzsteuer 19%: 851,20 EUR\nGesamtbetrag: 5.331,20 EUR\n\nZahlbar innerhalb von 14 Tagen ohne Abzug.\n\nBankverbindung:\nIBAN: DE89 3704 0044 0532 0130 00\nBIC: COBADEFFXXX\n\nUSt-IdNr.: DE123456789\n\nMit freundlichen Grüßen\nMüller & Söhne GmbH",
+  "document_type": "invoice",
+  "language": "de",
+  "difficulty": "medium",
+  "has_fraktur": false,
+  "has_handwriting": false,
+  "has_tables": true,
+  "expected_umlauts": ["ü", "ö", "ä", "ü", "ß", "ä", "ä", "ü", "ü"],
+  "expected_entities": {
+    "iban": ["DE89 3704 0044 0532 0130 00"],
+    "ust_id": ["DE123456789"],
+    "currency": ["1.200,00 EUR", "2.880,00 EUR", "400,00 EUR", "4.480,00 EUR", "851,20 EUR", "5.331,20 EUR"],
+    "date": [],
+    "company": ["Müller & Söhne GmbH"]
+  },
+  "metadata": {
+    "source": "synthetic",
+    "author": "benchmark_generator",
+    "notes": "Standard-Rechnung mit Tabelle und Umlauten"
+  },
+  "created_at": "2024-11-30T10:00:00"
+}

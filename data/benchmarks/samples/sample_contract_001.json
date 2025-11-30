@@ -1,0 +1,24 @@
+{
+  "id": "sample_contract_001",
+  "image_path": "german_documents/contracts/vertrag_001.png",
+  "ground_truth_text": "DIENSTLEISTUNGSVERTRAG\n\nzwischen\n\nMeyer Consulting AG\nKönigsallee 100\n40215 Düsseldorf\n- nachfolgend \"Auftraggeber\" genannt -\n\nund\n\nSoftware Solutions GmbH\nFriedrichstraße 50\n10117 Berlin\n- nachfolgend \"Auftragnehmer\" genannt -\n\n§ 1 Vertragsgegenstand\n\nDer Auftragnehmer verpflichtet sich, für den Auftraggeber folgende Leistungen zu erbringen:\n\n1. Entwicklung einer maßgeschneiderten Softwarelösung gemäß Pflichtenheft\n2. Durchführung von Qualitätsprüfungen und Abnahmetests\n3. Übergabe sämtlicher Dokumentationen und Schulungsunterlagen\n\n§ 2 Vergütung\n\nDer Auftraggeber zahlt dem Auftragnehmer für die vereinbarten Leistungen ein Pauschalhonorar in Höhe von 75.000,00 EUR (fünfundsiebzigtausend Euro) zuzüglich der gesetzlichen Mehrwertsteuer.\n\n§ 3 Vertraulichkeit\n\nBeide Vertragsparteien verpflichten sich, über alle vertraulichen Informationen Stillschweigen zu bewahren.\n\nDüsseldorf, den 15.11.2024\n\n_________________________\nMeyer Consulting AG\n\n_________________________\nSoftware Solutions GmbH",
+  "document_type": "contract",
+  "language": "de",
+  "difficulty": "medium",
+  "has_fraktur": false,
+  "has_handwriting": false,
+  "has_tables": false,
+  "expected_umlauts": ["ö", "ü", "ä", "ß", "ü", "ä", "ü", "ü"],
+  "expected_entities": {
+    "company": ["Meyer Consulting AG", "Software Solutions GmbH"],
+    "currency": ["75.000,00 EUR"],
+    "date": ["15.11.2024"],
+    "city": ["Düsseldorf", "Berlin"]
+  },
+  "metadata": {
+    "source": "synthetic",
+    "contract_type": "Dienstleistungsvertrag",
+    "notes": "Formeller Vertrag mit Paragraphen und juristischer Sprache"
+  },
+  "created_at": "2024-11-30T10:00:00"
+}

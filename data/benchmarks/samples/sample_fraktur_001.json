@@ -1,0 +1,24 @@
+{
+  "id": "sample_fraktur_001",
+  "image_path": "german_documents/fraktur/fraktur_001.png",
+  "ground_truth_text": "Das Deutsche Reich\n\nBekanntmachung\n\nHiermit wird allen Bürgern und Untertanen des Reiches kundgetan, daß die neue Verordnung betreffend die Gewerbefreiheit am ersten Tage des kommenden Monats in Kraft treten wird.\n\nDie Obrigkeit ermahnt alle Gewerbetreibenden, sich innerhalb einer Frist von dreißig Tagen bei der zuständigen Behörde anzumelden und die erforderlichen Genehmigungen einzuholen.\n\nWer dieser Pflicht nicht nachkommt, hat mit empfindlichen Strafen zu rechnen.\n\nGegeben zu Berlin, am fünfzehnten Tage des Monats November im Jahre des Herrn achtzehnhundertsiebenundachtzig.\n\nDer Königliche Geheime Regierungsrath\nvon Bülow",
+  "document_type": "fraktur",
+  "language": "de-fraktur",
+  "difficulty": "hard",
+  "has_fraktur": true,
+  "has_handwriting": false,
+  "has_tables": false,
+  "expected_umlauts": ["ü", "ü", "ß", "ä", "ö", "ü"],
+  "expected_entities": {
+    "date": ["fünfzehnten Tage des Monats November", "achtzehnhundertsiebenundachtzig"],
+    "person": ["von Bülow"],
+    "location": ["Berlin"]
+  },
+  "metadata": {
+    "source": "synthetic",
+    "era": "19. Jahrhundert",
+    "script": "Fraktur",
+    "notes": "Historisches Dokument mit Frakturschrift und alter Rechtschreibung (daß statt dass)"
+  },
+  "created_at": "2024-11-30T10:00:00"
+}

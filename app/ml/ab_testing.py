@@ -60,6 +60,12 @@ class Variant:
     total_accuracy: float = 0.0
     errors: int = 0
 
+    # Ground-Truth Quality Metrics (NEU)
+    benchmark_samples: int = 0
+    total_cer: float = 0.0  # Character Error Rate Summe
+    total_wer: float = 0.0  # Word Error Rate Summe
+    total_umlaut_accuracy: float = 0.0  # Umlaut-Genauigkeit Summe
+
     @property
     def conversion_rate(self) -> float:
         """Erfolgsrate."""
@@ -80,6 +86,22 @@ class Variant:
         """Fehlerrate."""
         return self.errors / self.samples if self.samples > 0 else 0.0
 
+    # Ground-Truth Metrics Properties (NEU)
+    @property
+    def avg_cer(self) -> float:
+        """Durchschnittliche Character Error Rate."""
+        return self.total_cer / self.benchmark_samples if self.benchmark_samples > 0 else 0.0
+
+    @property
+    def avg_wer(self) -> float:
+        """Durchschnittliche Word Error Rate."""
+        return self.total_wer / self.benchmark_samples if self.benchmark_samples > 0 else 0.0
+
+    @property
+    def avg_umlaut_accuracy(self) -> float:
+        """Durchschnittliche Umlaut-Genauigkeit."""
+        return self.total_umlaut_accuracy / self.benchmark_samples if self.benchmark_samples > 0 else 0.0
+
     def to_dict(self) -> Dict[str, Any]:
         """Konvertiere zu Dictionary."""
         return {
@@ -94,6 +116,13 @@ class Variant:
                 "avg_latency_ms": self.avg_latency_ms,
                 "avg_accuracy": self.avg_accuracy,
                 "error_rate": self.error_rate,
+            },
+            # Ground-Truth Quality Metrics (NEU)
+            "quality_metrics": {
+                "benchmark_samples": self.benchmark_samples,
+                "avg_cer": round(self.avg_cer, 4),
+                "avg_wer": round(self.avg_wer, 4),
+                "avg_umlaut_accuracy": round(self.avg_umlaut_accuracy, 4),
             },
         }
 
@@ -221,6 +250,45 @@ class Experiment:
 
         # Check for winner
         self._check_significance()
+
+    def record_benchmark_result(
+        self,
+        variant_name: str,
+        cer: float,
+        wer: float,
+        umlaut_accuracy: float,
+        latency_ms: float = 0.0,
+    ) -> None:
+        """
+        Erfasse Ground-Truth-basiertes Benchmark-Ergebnis.
+
+        Args:
+            variant_name: Name der Variante
+            cer: Character Error Rate (0-1)
+            wer: Word Error Rate (0-1)
+            umlaut_accuracy: Umlaut-Erkennungsgenauigkeit (0-1)
+            latency_ms: Verarbeitungszeit in Millisekunden
+        """
+        variant = next((v for v in self.variants if v.name == variant_name), None)
+        if not variant:
+            logger.warning("unbekannte_variante_benchmark", variant_name=variant_name)
+            return
+
+        with self._lock:
+            variant.benchmark_samples += 1
+            variant.total_cer += cer
+            variant.total_wer += wer
+            variant.total_umlaut_accuracy += umlaut_accuracy
+            if latency_ms > 0:
+                variant.total_latency_ms += latency_ms
+
+        logger.debug(
+            "benchmark_ergebnis_erfasst",
+            variant=variant_name,
+            cer=round(cer, 4),
+            wer=round(wer, 4),
+            umlaut_accuracy=round(umlaut_accuracy, 4),
+        )
 
     def _check_significance(self) -> None:
         """Prüfe statistische Signifikanz."""
@@ -622,6 +690,11 @@ class ABTestManager:
                         config=v.get("config", {}),
                         samples=v.get("metrics", {}).get("samples", 0),
                         conversions=v.get("metrics", {}).get("conversions", 0),
+                        # Ground-Truth Quality Metrics laden
+                        benchmark_samples=v.get("quality_metrics", {}).get("benchmark_samples", 0),
+                        total_cer=v.get("quality_metrics", {}).get("avg_cer", 0.0) * v.get("quality_metrics", {}).get("benchmark_samples", 0),
+                        total_wer=v.get("quality_metrics", {}).get("avg_wer", 0.0) * v.get("quality_metrics", {}).get("benchmark_samples", 0),
+                        total_umlaut_accuracy=v.get("quality_metrics", {}).get("avg_umlaut_accuracy", 0.0) * v.get("quality_metrics", {}).get("benchmark_samples", 0),
                     )
                     for v in data.get("variants", [])
                 ]

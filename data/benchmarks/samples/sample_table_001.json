@@ -1,0 +1,24 @@
+{
+  "id": "sample_table_001",
+  "image_path": "german_documents/invoices/tabelle_001.png",
+  "ground_truth_text": "Quartalsübersicht Q3 2024\n\nAbteilung | Umsatz | Kosten | Gewinn\nVertrieb | 125.000,00 EUR | 45.000,00 EUR | 80.000,00 EUR\nEntwicklung | 0,00 EUR | 180.000,00 EUR | -180.000,00 EUR\nMarketing | 15.000,00 EUR | 52.000,00 EUR | -37.000,00 EUR\nVerwaltung | 0,00 EUR | 35.000,00 EUR | -35.000,00 EUR\nGesamt | 140.000,00 EUR | 312.000,00 EUR | -172.000,00 EUR\n\nErläuterungen:\n- Der Vertrieb übertraf die Erwartungen um 15%\n- Die Entwicklungskosten beinhalten Personalaufstockung\n- Marketingkosten für Messeauftritte höher als geplant\n\nErstellt von: Thomas Müller\nDatum: 30.09.2024\nFreigabe: Dr. Sabine Schäfer",
+  "document_type": "table",
+  "language": "de",
+  "difficulty": "hard",
+  "has_fraktur": false,
+  "has_handwriting": false,
+  "has_tables": true,
+  "expected_umlauts": ["ü", "ä", "ü", "ö", "ü", "ä"],
+  "expected_entities": {
+    "currency": ["125.000,00 EUR", "45.000,00 EUR", "80.000,00 EUR", "180.000,00 EUR", "15.000,00 EUR", "52.000,00 EUR", "37.000,00 EUR", "35.000,00 EUR", "140.000,00 EUR", "312.000,00 EUR", "172.000,00 EUR"],
+    "date": ["30.09.2024"],
+    "person": ["Thomas Müller", "Dr. Sabine Schäfer"],
+    "percentage": ["15%"]
+  },
+  "metadata": {
+    "source": "synthetic",
+    "table_type": "Finanzbericht",
+    "notes": "Komplexe Tabelle mit mehreren Spalten und negativen Zahlen"
+  },
+  "created_at": "2024-11-30T10:00:00"
+}

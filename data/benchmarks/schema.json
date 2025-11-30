@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OCR Benchmark Sample Schema",
+  "description": "Schema fuer OCR Benchmark-Samples mit Ground-Truth-Annotationen",
+  "version": "1.0",
+  "type": "object",
+  "required": ["id", "image_path", "ground_truth_text"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Eindeutige Sample-ID",
+      "pattern": "^sample_[a-z0-9]+$"
+    },
+    "image_path": {
+      "type": "string",
+      "description": "Pfad zum Dokumentbild (relativ zum benchmarks-Verzeichnis)"
+    },
+    "ground_truth_text": {
+      "type": "string",
+      "description": "Der korrekte Text (Ground-Truth)"
+    },
+    "document_type": {
+      "type": "string",
+      "enum": ["invoice", "contract", "letter", "fraktur", "table", "form", "handwritten", "mixed", "other"],
+      "default": "other",
+      "description": "Dokumenttyp"
+    },
+    "language": {
+      "type": "string",
+      "enum": ["de", "de-fraktur", "de-swiss", "de-at", "en", "mixed"],
+      "default": "de",
+      "description": "Sprache des Dokuments"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["easy", "medium", "hard"],
+      "default": "medium",
+      "description": "Schwierigkeitsgrad"
+    },
+    "has_fraktur": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enthaelt Frakturschrift"
+    },
+    "has_handwriting": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enthaelt Handschrift"
+    },
+    "has_tables": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enthaelt Tabellen"
+    },
+    "expected_umlauts": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Liste erwarteter Umlaute"
+    },
+    "expected_entities": {
+      "type": "object",
+      "description": "Erwartete Entitaeten (z.B. IBAN, Datum)",
+      "additionalProperties": {
+        "type": "array",
+        "items": {"type": "string"}
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Zusaetzliche Metadaten",
+      "additionalProperties": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Erstellungszeitpunkt"
+    }
+  }
+}
