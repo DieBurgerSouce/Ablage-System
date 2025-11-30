@@ -31,10 +31,16 @@ except ImportError as e:
     logging.warning(f"Could not import models: {e}. Autogenerate will not work.")
     target_metadata = None
 
-# Override database URL from environment variable
-database_url = os.getenv("ABLAGE_DATABASE_URL")
-if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+# Database URL MUSS aus Umgebungsvariable kommen (Sicherheit!)
+# Unterstützt: ABLAGE_DATABASE_URL oder DATABASE_URL
+database_url = os.getenv("ABLAGE_DATABASE_URL") or os.getenv("DATABASE_URL")
+if not database_url:
+    raise ValueError(
+        "Datenbank-URL nicht gesetzt! "
+        "Bitte ABLAGE_DATABASE_URL oder DATABASE_URL als Umgebungsvariable setzen. "
+        "Beispiel: export DATABASE_URL='postgresql+asyncpg://user:pass@localhost:5433/ablage_system'"
+    )
+config.set_main_option("sqlalchemy.url", database_url)
 
 
 def run_migrations_offline() -> None:

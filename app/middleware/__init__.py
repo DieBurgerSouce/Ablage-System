@@ -6,6 +6,7 @@ Available middleware:
 - DevelopmentRateLimitBypass: Bypass rate limiting in development mode
 - SecurityHeadersMiddleware: HTTP security headers (CSP, HSTS, X-Frame-Options, etc.)
 - PrometheusMiddleware: HTTP metrics collection for Prometheus
+- CSRFMiddleware: CSRF protection with Double-Submit-Cookie pattern
 """
 
 from app.middleware.rate_limit import (
@@ -30,6 +31,19 @@ from app.middleware.prometheus_middleware import (
     http_slow_requests_total
 )
 
+from app.middleware.request_size import (
+    RequestSizeLimitMiddleware,
+    create_request_size_middleware
+)
+
+from app.middleware.csrf import (
+    CSRFMiddleware,
+    create_csrf_middleware,
+    get_csrf_token_response,
+    CSRF_HEADER_NAME,
+    CSRF_COOKIE_NAME,
+)
+
 __all__ = [
     "RateLimitMiddleware",
     "DevelopmentRateLimitBypass",
@@ -44,4 +58,11 @@ __all__ = [
     "http_requests_in_progress",
     "http_errors_total",
     "http_slow_requests_total",
+    "RequestSizeLimitMiddleware",
+    "create_request_size_middleware",
+    "CSRFMiddleware",
+    "create_csrf_middleware",
+    "get_csrf_token_response",
+    "CSRF_HEADER_NAME",
+    "CSRF_COOKIE_NAME",
 ]

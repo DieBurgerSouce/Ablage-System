@@ -239,9 +239,9 @@ class OCRResult(BaseModel):
 
 class BatchOCRRequest(BaseModel):
     """Batch OCR processing request."""
-    document_ids: List[uuid.UUID]
+    document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
     backend: OCRBackend = OCRBackend.AUTO
-    language: str = "de"
+    language: str = Field(default="de", pattern="^(de|en)$")
     priority: int = Field(5, ge=1, le=10)
 
 
@@ -702,9 +702,23 @@ class ExportFormat(str, Enum):
 
 
 class BatchDeleteRequest(BaseModel):
-    """Request for batch document deletion."""
+    """Request for batch document deletion with safety features.
+
+    Safeguards:
+    - confirm: Must be true to execute
+    - dry_run: Simulate deletion without executing
+    - X-Force-Confirm header required for >50 documents
+
+    Beispiel dry_run Request:
+        POST /documents/batch/delete
+        {"document_ids": [...], "confirm": true, "dry_run": true}
+    """
     document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
     confirm: bool = Field(..., description="Bestaetigung erforderlich (muss true sein)")
+    dry_run: bool = Field(
+        default=False,
+        description="Nur simulieren, nicht loeschen. Zeigt welche Dokumente betroffen waeren."
+    )
 
     @field_validator("confirm")
     @classmethod
@@ -746,6 +760,11 @@ class BatchOperationResult(BaseModel):
     failed: int
     errors: List[BatchOperationError] = []
     message: str  # German message
+    dry_run: bool = Field(default=False, description="War dies eine Simulation?")
+    affected_documents: Optional[List[uuid.UUID]] = Field(
+        default=None,
+        description="IDs der betroffenen Dokumente (bei dry_run)"
+    )
 
 
 class BatchExportResult(BatchOperationResult):

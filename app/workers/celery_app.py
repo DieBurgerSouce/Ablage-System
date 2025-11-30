@@ -194,6 +194,25 @@ celery_app.conf.update(
             "task": "app.workers.tasks.backup_tasks.update_backup_metrics_task",
             "schedule": 900.0,  # Alle 15 Minuten
         },
+        # Cleanup Tasks (GDPR-konform)
+        "cleanup-soft-deleted-daily": {
+            "task": "app.workers.tasks.cleanup_tasks.cleanup_soft_deleted_documents",
+            "schedule": crontab(hour=3, minute=30),  # Taeglich um 03:30 Uhr
+            "kwargs": {"retention_days": 30, "dry_run": False},
+        },
+        "cleanup-orphaned-files-weekly": {
+            "task": "app.workers.tasks.cleanup_tasks.cleanup_orphaned_files",
+            "schedule": crontab(day_of_week=6, hour=4, minute=30),  # Samstag 04:30
+        },
+        "cleanup-expired-cache-daily": {
+            "task": "app.workers.tasks.cleanup_tasks.cleanup_expired_cache",
+            "schedule": crontab(hour=5, minute=0),  # Taeglich um 05:00 Uhr
+        },
+        "cleanup-search-analytics-monthly": {
+            "task": "app.workers.tasks.cleanup_tasks.cleanup_search_analytics",
+            "schedule": crontab(day_of_month=1, hour=4, minute=0),  # Monatlich am 1. um 04:00
+            "kwargs": {"retention_months": 6, "dry_run": False},
+        },
     },
 
     # Queue routing
@@ -219,6 +238,11 @@ celery_app.conf.update(
         "app.workers.tasks.backup_tasks.apply_retention_task": {"queue": "maintenance", "priority": 1},
         "app.workers.tasks.backup_tasks.sync_to_remote_task": {"queue": "backup", "priority": 2},
         "app.workers.tasks.backup_tasks.update_backup_metrics_task": {"queue": "metrics", "priority": 1},
+        # Cleanup tasks (GDPR)
+        "app.workers.tasks.cleanup_tasks.cleanup_soft_deleted_documents": {"queue": "maintenance", "priority": 1},
+        "app.workers.tasks.cleanup_tasks.cleanup_orphaned_files": {"queue": "maintenance", "priority": 1},
+        "app.workers.tasks.cleanup_tasks.cleanup_expired_cache": {"queue": "maintenance", "priority": 1},
+        "app.workers.tasks.cleanup_tasks.cleanup_search_analytics": {"queue": "maintenance", "priority": 1},
     },
 
     # Priority settings

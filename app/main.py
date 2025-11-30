@@ -6,7 +6,7 @@ Created: 2025-11-22
 Status: Working POC with Surya OCR
 """
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -36,13 +36,16 @@ from app.core.rate_limiting import (
     limiter,
     rate_limit_exceeded_handler_german,
     get_redis_storage,
-    RateLimitTier
+    RateLimitTier,
+    RateLimitStorageError,
 )
-from app.middleware import RateLimitMiddleware, DevelopmentRateLimitBypass, SecurityHeadersMiddleware
+from app.middleware import RateLimitMiddleware, DevelopmentRateLimitBypass, SecurityHeadersMiddleware, RequestSizeLimitMiddleware, CSRFMiddleware, get_csrf_token_response
 from app.core.config import settings
 from app.core.monitoring import get_system_monitor, PerformanceTimer
 from app.core.german_messages import HTTPErrors, StatusMessages
 from app.services.storage_service import cleanup_storage_service
+from app.core.idempotency import check_idempotency, get_idempotency_service
+from app.services.ocr_cache_service import get_ocr_cache_service, get_cached_ocr_result, cache_ocr_result
 
 logger = structlog.get_logger(__name__)
 
@@ -210,6 +213,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Request Size Limit Middleware (MUSS als erstes, um DoS zu verhindern)
+# Prüft Content-Length Header VOR dem Upload
+app.add_middleware(
+    RequestSizeLimitMiddleware,
+    max_size_bytes=10 * 1024 * 1024,  # 10MB für normale Requests
+    upload_max_size_bytes=settings.max_upload_size_bytes,  # 50MB für Uploads (aus config)
+)
+
 # Add Security Headers middleware (MUSS vor CORS sein!)
 # Fügt X-Content-Type-Options, X-Frame-Options, CSP, HSTS, etc. hinzu
 app.add_middleware(
@@ -230,6 +241,17 @@ app.add_middleware(
     max_age=settings.CORS_MAX_AGE,
 )
 
+# Add CSRF protection middleware
+# Double-Submit-Cookie-Pattern für SPA-kompatiblen CSRF-Schutz
+# Bei Bearer-Token-Authentifizierung wird CSRF automatisch übersprungen
+app.add_middleware(
+    CSRFMiddleware,
+    enabled=settings.CSRF_ENABLED,
+    cookie_secure=not settings.DEBUG,
+    cookie_samesite="strict",
+    bearer_token_bypass=True,  # API-Clients mit Bearer Token überspringen
+)
+
 # Add rate limiting middleware
 if settings.DEBUG:
     # Bypass rate limiting in development
@@ -245,6 +267,35 @@ if settings.RATE_LIMIT_ENABLED:
 
 # Register rate limit exception handler
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler_german)
+
+
+# Exception handler for rate limit storage errors (fail-closed mode)
+@app.exception_handler(RateLimitStorageError)
+async def rate_limit_storage_error_handler(request: Request, exc: RateLimitStorageError):
+    """
+    Handle rate limit storage unavailable errors (fail-closed mode).
+
+    When Redis is unavailable and fail_closed=True, requests are denied
+    for security reasons (preventing brute-force during Redis outages).
+    """
+    logger.error(
+        "rate_limit_storage_unavailable",
+        path=request.url.path,
+        client_ip=request.client.host if request.client else None,
+        error=str(exc),
+    )
+    return JSONResponse(
+        status_code=503,
+        content={
+            "fehler": "Service vorübergehend nicht verfügbar",
+            "nachricht": str(exc),
+            "zeitstempel": datetime.now(timezone.utc).isoformat(),
+            "pfad": request.url.path,
+        },
+        headers={
+            "Retry-After": "60",  # Suggest retry in 1 minute
+        },
+    )
 
 # Add limiter state to app for SlowAPI decorators
 app.state.limiter = limiter
@@ -366,10 +417,12 @@ async def get_ocr_backends():
 
 @app.post("/ocr/process")
 async def process_document(
+    request: Request,
     file: UploadFile = File(...),
     backend: Optional[str] = Form("auto"),
     language: Optional[str] = Form("de"),
-    detect_layout: Optional[bool] = Form(True)
+    detect_layout: Optional[bool] = Form(True),
+    cached_response: Optional[Dict[str, Any]] = Depends(check_idempotency)
 ):
     """
     Process a document with OCR
@@ -379,10 +432,21 @@ async def process_document(
         backend: OCR backend to use (auto, surya, got_ocr, deepseek)
         language: Target language (de, en)
         detect_layout: Whether to detect document layout
+        cached_response: Gecachte Antwort bei Idempotency-Key (automatisch geprüft)
 
     Returns:
         OCR processing result with extracted text
+
+    Headers:
+        Idempotency-Key: Optional. Bei Wiederholung wird gecachtes Ergebnis zurückgegeben.
     """
+    # Wenn gecachte Antwort vorhanden, direkt zurückgeben
+    if cached_response:
+        return JSONResponse(
+            content=cached_response["response"],
+            status_code=cached_response.get("status_code", 200),
+            headers={"X-Idempotency-Cached": "true"}
+        )
     if not ocr_service:
         raise HTTPException(status_code=503, detail=HTTPErrors.OCR_SERVICE_NOT_INITIALIZED)
 
@@ -431,6 +495,23 @@ async def process_document(
             raise HTTPException(
                 status_code=400,
                 detail=content_error or "Ungültiger Dateiinhalt"
+            )
+
+        # 2c. Check OCR result cache (based on file hash)
+        cached_ocr = await get_cached_ocr_result(
+            content=file_content,
+            backend=backend or "auto",
+            language=language or "de"
+        )
+        if cached_ocr:
+            logger.info(
+                "ocr_cache_hit",
+                filename=file.filename,
+                backend=backend,
+            )
+            return JSONResponse(
+                content=cached_ocr,
+                headers={"X-OCR-Cached": "true"}
             )
 
         # 3. Validate backend parameter
@@ -485,6 +566,27 @@ async def process_document(
         if language == "de" and result.get("success") and result.get("text"):
             validation = await ocr_service.validate_german_text(result["text"])
             result["german_validation"] = validation
+
+        # Cache OCR result for identical file uploads (24h TTL)
+        if result.get("success"):
+            await cache_ocr_result(
+                content=file_content,
+                backend=actual_backend,
+                result=result,
+                language=language or "de"
+            )
+
+        # Cache result if Idempotency-Key was provided
+        idempotency_key = getattr(request.state, "idempotency_key", None)
+        if idempotency_key:
+            idempotency_service = get_idempotency_service()
+            user_id = getattr(request.state, "idempotency_user_id", None)
+            await idempotency_service.cache_response(
+                idempotency_key=idempotency_key,
+                response_data=result,
+                status_code=200,
+                user_id=user_id
+            )
 
         return result
 

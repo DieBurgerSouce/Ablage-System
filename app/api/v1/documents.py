@@ -411,15 +411,30 @@ async def get_similar_documents(
 
 # ==================== Batch Operations ====================
 
+FORCE_CONFIRM_THRESHOLD = 50  # Ab dieser Anzahl ist X-Force-Confirm erforderlich
+
+
 @router.post("/batch/delete", response_model=BatchOperationResult)
 async def batch_delete_documents(
+    request_obj: Request,
     request: BatchDeleteRequest,
     current_user: User = Depends(check_batch_rate_limit),
     db: AsyncSession = Depends(get_db)
 ):
     """Mehrere Dokumente gleichzeitig loeschen.
 
-    Erfordert explizite Bestaetigung mit `confirm: true`.
+    **Safeguards:**
+    - `confirm: true` erforderlich
+    - `dry_run: true` fuer Simulation ohne Loeschung
+    - Header `X-Force-Confirm: DELETE-{anzahl}` erforderlich bei >50 Dokumenten
+
+    **Beispiel fuer 75 Dokumente:**
+    ```
+    POST /documents/batch/delete
+    X-Force-Confirm: DELETE-75
+    {"document_ids": [...], "confirm": true}
+    ```
+
     Maximal 100 Dokumente pro Anfrage.
     """
     if not request.confirm:
@@ -428,17 +443,42 @@ async def batch_delete_documents(
             detail="Loeschung muss mit confirm=true bestaetigt werden"
         )
 
+    doc_count = len(request.document_ids)
+
+    # Zusaetzliche Sicherheit bei grossen Batches
+    if doc_count > FORCE_CONFIRM_THRESHOLD and not request.dry_run:
+        force_confirm = request_obj.headers.get("X-Force-Confirm")
+        expected_confirm = f"DELETE-{doc_count}"
+
+        if not force_confirm:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Bei mehr als {FORCE_CONFIRM_THRESHOLD} Dokumenten ist der Header "
+                       f"'X-Force-Confirm: {expected_confirm}' erforderlich. "
+                       f"Nutzen Sie dry_run=true um die Operation zu simulieren."
+            )
+
+        if force_confirm != expected_confirm:
+            raise HTTPException(
+                status_code=400,
+                detail=f"X-Force-Confirm Header ungueltig. Erwartet: '{expected_confirm}', "
+                       f"erhalten: '{force_confirm}'"
+            )
+
     logger.info(
         "batch_delete_request",
-        count=len(request.document_ids),
-        user_id=str(current_user.id)
+        count=doc_count,
+        user_id=str(current_user.id),
+        dry_run=request.dry_run,
+        force_confirmed=doc_count > FORCE_CONFIRM_THRESHOLD
     )
 
     service = get_document_service()
     return await service.batch_delete(
         db=db,
         document_ids=request.document_ids,
-        user_id=current_user.id
+        user_id=current_user.id,
+        dry_run=request.dry_run
     )
 
 

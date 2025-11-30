@@ -662,12 +662,22 @@ class DocumentService:
         self,
         db: AsyncSession,
         document_ids: List[UUID],
-        user_id: UUID
+        user_id: UUID,
+        dry_run: bool = False
     ) -> BatchOperationResult:
         """Mehrere Dokumente loeschen (optimierte Bulk-Operation).
 
         Verwendet eine einzige Abfrage fuer effiziente Batch-Loeschung
         anstatt N+1 Einzelabfragen.
+
+        Args:
+            db: Datenbank-Session
+            document_ids: Liste der zu loeschenden Dokument-IDs
+            user_id: ID des ausfuehrenden Benutzers
+            dry_run: Wenn True, wird nur simuliert (keine Loeschung)
+
+        Returns:
+            BatchOperationResult mit Statistiken und ggf. betroffenen Dokumenten
         """
         errors: List[BatchOperationError] = []
 
@@ -679,7 +689,8 @@ class DocumentService:
                 processed=0,
                 failed=0,
                 errors=[],
-                message="Keine Dokumente zum Loeschen angegeben"
+                message="Keine Dokumente zum Loeschen angegeben",
+                dry_run=dry_run
             )
 
         try:
@@ -702,7 +713,27 @@ class DocumentService:
                     error_code="NOT_FOUND"
                 ))
 
-            # Schritt 3: Bulk-Delete der gefundenen Dokumente
+            # Bei dry_run: Nur zeigen was geloescht wuerde
+            if dry_run:
+                logger.info(
+                    "batch_delete_dry_run",
+                    total=len(document_ids),
+                    would_delete=len(found_ids),
+                    not_found=len(not_found_ids)
+                )
+                return BatchOperationResult(
+                    success=True,
+                    operation="delete",
+                    total_requested=len(document_ids),
+                    processed=len(found_ids),  # Anzahl die geloescht wuerde
+                    failed=len(not_found_ids),
+                    errors=errors,
+                    message=f"[DRY RUN] {len(found_ids)} Dokument(e) wuerden geloescht",
+                    dry_run=True,
+                    affected_documents=list(found_ids) if found_ids else None
+                )
+
+            # Schritt 3: Bulk-Delete der gefundenen Dokumente (nur wenn nicht dry_run)
             processed = 0
             if found_ids:
                 delete_stmt = delete(Document).where(
@@ -733,7 +764,8 @@ class DocumentService:
             logger.error(
                 "batch_delete_failed",
                 error=str(e),
-                document_count=len(document_ids)
+                document_count=len(document_ids),
+                dry_run=dry_run
             )
             await db.rollback()
             return BatchOperationResult(
@@ -747,7 +779,8 @@ class DocumentService:
                     error=f"Batch-Loeschung fehlgeschlagen: {str(e)}",
                     error_code="DELETE_ERROR"
                 )],
-                message="Batch-Loeschung fehlgeschlagen"
+                message="Batch-Loeschung fehlgeschlagen",
+                dry_run=dry_run
             )
 
         success = failed == 0
@@ -761,7 +794,8 @@ class DocumentService:
             "batch_delete_completed",
             total=len(document_ids),
             processed=processed,
-            failed=failed
+            failed=failed,
+            dry_run=dry_run
         )
 
         return BatchOperationResult(
@@ -771,7 +805,8 @@ class DocumentService:
             processed=processed,
             failed=failed,
             errors=errors,
-            message=message
+            message=message,
+            dry_run=dry_run
         )
 
     async def batch_tag(

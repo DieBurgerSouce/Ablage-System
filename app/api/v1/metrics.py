@@ -208,6 +208,69 @@ async def metrics_health():
     }
 
 
+# =============================================================================
+# OCR CACHE METRICS
+# =============================================================================
+
+
+@router.get("/ocr-cache")
+async def ocr_cache_metrics():
+    """
+    OCR Cache Statistics (JSON format).
+
+    Returns cache-specific metrics:
+    - **enabled**: Ob Caching aktiviert ist
+    - **redis_available**: Redis-Verbindungsstatus
+    - **hits**: Cache-Treffer
+    - **misses**: Cache-Fehlschlaege
+    - **total_requests**: Gesamtzahl der Anfragen
+    - **hit_rate_percent**: Trefferquote in Prozent
+    - **default_ttl_seconds**: Standard-Cache-Lebenszeit
+
+    Nuetzlich fuer:
+    - Performance-Monitoring
+    - Cache-Effizienz-Analyse
+    - Ressourcen-Optimierung
+    """
+    from app.services.ocr_cache_service import get_ocr_cache_service
+
+    service = get_ocr_cache_service()
+    return await service.get_stats()
+
+
+@router.delete("/ocr-cache/stats")
+async def clear_ocr_cache_stats(
+    current_user: User = Depends(get_current_superuser)
+):
+    """
+    OCR Cache Statistiken zuruecksetzen.
+
+    **REQUIRES ADMIN AUTHENTICATION**
+
+    Setzt nur die Statistik-Zaehler zurueck (hits/misses),
+    nicht die gecacheten Ergebnisse selbst.
+    """
+    import structlog
+    logger = structlog.get_logger(__name__)
+
+    from app.services.ocr_cache_service import get_ocr_cache_service
+
+    logger.warning(
+        "ocr_cache_stats_reset_initiated",
+        admin_user_id=str(current_user.id),
+        admin_email=current_user.email
+    )
+
+    service = get_ocr_cache_service()
+    success = await service.clear_stats()
+
+    return {
+        "status": "erfolg" if success else "fehlgeschlagen",
+        "nachricht": "OCR-Cache-Statistiken wurden zurueckgesetzt" if success else "Zuruecksetzen fehlgeschlagen",
+        "durchgefuehrt_von": str(current_user.id)
+    }
+
+
 @router.post("/reset")
 async def reset_metrics(
     current_user: User = Depends(get_current_superuser)
