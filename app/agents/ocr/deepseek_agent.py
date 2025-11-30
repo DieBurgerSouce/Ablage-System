@@ -623,7 +623,8 @@ class DeepSeekAgent(OCRAgent):
                 inputs_embeds = self.model.prepare_inputs_embeds(**inputs)
 
                 # Generate with language model component - mit output_scores für Confidence
-                with torch.no_grad():
+                # Mixed-precision inference for better GPU performance
+                with torch.no_grad(), torch.cuda.amp.autocast(enabled=torch.cuda.is_available(), dtype=torch.bfloat16):
                     outputs = self.model.language_model.generate(
                         inputs_embeds=inputs_embeds,
                         attention_mask=inputs.get('attention_mask'),
@@ -651,7 +652,8 @@ class DeepSeekAgent(OCRAgent):
                     generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
             else:
                 # Fallback to standard generation - mit output_scores
-                with torch.no_grad():
+                # Mixed-precision inference for better GPU performance
+                with torch.no_grad(), torch.cuda.amp.autocast(enabled=torch.cuda.is_available(), dtype=torch.bfloat16):
                     outputs = self.model.generate(
                         **inputs,
                         max_new_tokens=options.get("max_tokens", 4096),
@@ -695,7 +697,8 @@ class DeepSeekAgent(OCRAgent):
                      for k, v in inputs.items()}
 
             # Run inference - mit output_scores für Confidence
-            with torch.no_grad():
+            # Mixed-precision inference for better GPU performance
+            with torch.no_grad(), torch.cuda.amp.autocast(enabled=torch.cuda.is_available(), dtype=torch.bfloat16):
                 outputs = self.model.generate(
                     **inputs,
                     max_new_tokens=options.get("max_tokens", 4096),

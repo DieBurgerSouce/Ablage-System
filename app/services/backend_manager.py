@@ -17,8 +17,14 @@ try:
     if TORCH_AVAILABLE:
         from app.agents.ocr.deepseek_agent import DeepSeekAgent
         from app.agents.ocr.got_ocr_agent import GOTOCRAgent
+        from app.agents.ocr.donut_agent import DonutOCRAgent, is_donut_available
+        from app.agents.ocr.hybrid_agent import HybridOCRAgent
+        DONUT_AVAILABLE = is_donut_available()
+    else:
+        DONUT_AVAILABLE = False
 except ImportError:
     TORCH_AVAILABLE = False
+    DONUT_AVAILABLE = False
 
 logger = structlog.get_logger(__name__)
 
@@ -67,6 +73,26 @@ class BackendManager:
                 logger.info("got_ocr_backend_initialized")
             except Exception as e:
                 logger.warning("got_ocr_backend_unavailable", error=str(e))
+
+            # Initialize DONUT for multilingual document understanding (8GB VRAM)
+            if DONUT_AVAILABLE:
+                try:
+                    self.backends["donut"] = DonutOCRAgent()
+                    logger.info("donut_backend_initialized")
+                except Exception as e:
+                    logger.warning("donut_backend_unavailable", error=str(e))
+
+            # Initialize Hybrid Agent for maximum accuracy (combines multiple backends)
+            # Only if at least 2 other backends are available for meaningful fusion
+            available_for_hybrid = len([b for b in self.backends.keys()
+                                        if b in ["deepseek", "got_ocr", "surya", "surya_gpu"]])
+            if available_for_hybrid >= 2:
+                try:
+                    self.backends["hybrid"] = HybridOCRAgent()
+                    logger.info("hybrid_backend_initialized",
+                               available_engines=available_for_hybrid)
+                except Exception as e:
+                    logger.warning("hybrid_backend_unavailable", error=str(e))
         else:
             logger.info("gpu_unavailable_cpu_only")
 
@@ -180,6 +206,11 @@ class BackendManager:
             logger.info("backend_selected", backend="deepseek", reason="german_text")
             return "deepseek"
 
+        # Non-German languages → prefer DONUT for multilingual support (100+ languages)
+        if language != "de" and "donut" in available_backends:
+            logger.info("backend_selected", backend="donut", reason="multilingual_support", language=language)
+            return "donut"
+
         # Default to fastest available
         if "surya" in available_backends:
             logger.info("backend_selected", backend="surya", reason="default")
@@ -250,7 +281,13 @@ class BackendManager:
         available = list(self.backends.keys())
 
         # Define fallback priority (most capable to least)
-        priority_order = ["deepseek", "got_ocr", "surya_gpu", "surya"]
+        # hybrid: Multi-engine fusion with confidence voting (highest accuracy)
+        # deepseek: Best for German/Fraktur and complex layouts
+        # got_ocr: Fast transformer-based, good for tables/formulas
+        # donut: Multilingual document understanding
+        # surya_gpu: Fast GPU-accelerated layout analysis
+        # surya: CPU fallback with layout analysis
+        priority_order = ["hybrid", "deepseek", "got_ocr", "donut", "surya_gpu", "surya"]
 
         # Build fallback chain starting with preferred
         fallback_chain = []

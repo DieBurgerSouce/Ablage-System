@@ -430,8 +430,9 @@ class GOTOCRAgent(OCRAgent):
                      for k, v in inputs.items()}
 
             # Run inference mit output_scores für Confidence
+            # Mixed-precision inference for better GPU performance
             confidence_data = None
-            with torch.no_grad():
+            with torch.no_grad(), torch.cuda.amp.autocast(enabled=(device == "cuda"), dtype=torch.bfloat16):
                 if hasattr(self.model, 'generate'):
                     # Get tokenizer for special tokens
                     tokenizer = getattr(self.processor, 'tokenizer', None)

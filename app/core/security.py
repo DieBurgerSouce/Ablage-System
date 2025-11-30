@@ -16,6 +16,14 @@ from jose import JWTError, jwt
 from fastapi import HTTPException, status
 import structlog
 
+# TTLCache for memory-efficient token blacklist with automatic expiration
+try:
+    from cachetools import TTLCache
+    CACHETOOLS_AVAILABLE = True
+except ImportError:
+    TTLCache = None
+    CACHETOOLS_AVAILABLE = False
+
 from app.core.config import settings
 
 
@@ -27,9 +35,26 @@ BCRYPT_COST_FACTOR = 12
 # Redis key prefix for token blacklist
 TOKEN_BLACKLIST_PREFIX = "token:blacklist:"
 
+# Token blacklist configuration
+TOKEN_BLACKLIST_MAX_SIZE = 10000  # Maximum entries to prevent memory exhaustion
+TOKEN_BLACKLIST_TTL_SECONDS = 86400  # 24 hours (max typical token lifetime)
+
 # In-Memory Fallback Blacklist (used when Redis is unavailable)
+# Uses TTLCache for automatic expiration and size limits
 # Format: {token_jti: expiration_timestamp}
-_token_blacklist_fallback: Dict[str, datetime] = {}
+if CACHETOOLS_AVAILABLE:
+    _token_blacklist_fallback: TTLCache = TTLCache(
+        maxsize=TOKEN_BLACKLIST_MAX_SIZE,
+        ttl=TOKEN_BLACKLIST_TTL_SECONDS
+    )
+else:
+    # Fallback to regular Dict if cachetools not installed
+    _token_blacklist_fallback: Dict[str, datetime] = {}
+    logger.warning(
+        "cachetools_not_available",
+        message="Verwende Dict statt TTLCache für Token-Blacklist. "
+                "Installiere cachetools für automatische Speicherbereinigung: pip install cachetools"
+    )
 
 # Redis client instance (lazy-loaded)
 _redis_client: Optional[Any] = None
@@ -156,10 +181,16 @@ async def get_blacklist_stats() -> Dict[str, Any]:
     """
     redis = await _get_redis_client()
 
+    # Trigger cleanup of expired entries
+    _cleanup_fallback_blacklist()
+
     stats = {
         "redis_available": redis is not None,
         "fallback_count": len(_token_blacklist_fallback),
-        "storage_type": "redis" if redis else "in-memory"
+        "storage_type": "redis" if redis else "in-memory",
+        "fallback_storage": "TTLCache" if CACHETOOLS_AVAILABLE else "Dict",
+        "fallback_max_size": TOKEN_BLACKLIST_MAX_SIZE if CACHETOOLS_AVAILABLE else "unlimited",
+        "fallback_ttl_seconds": TOKEN_BLACKLIST_TTL_SECONDS if CACHETOOLS_AVAILABLE else "manual",
     }
 
     if redis is not None:
@@ -187,14 +218,30 @@ def _cleanup_fallback_blacklist() -> int:
     """
     Remove expired tokens from fallback blacklist.
 
+    Note: If using TTLCache, expiration is automatic. This function
+    only performs manual cleanup for Dict fallback and logs stats.
+
     Returns:
         Number of tokens removed
     """
+    if CACHETOOLS_AVAILABLE:
+        # TTLCache handles expiration automatically
+        # Just expire any stale entries by accessing the cache
+        try:
+            _token_blacklist_fallback.expire()  # Trigger expiration check
+        except AttributeError:
+            pass  # expire() may not exist in all cachetools versions
+        return 0
+
+    # Manual cleanup for Dict fallback
     now = datetime.now(timezone.utc)
     expired = [jti for jti, exp in _token_blacklist_fallback.items() if now >= exp]
 
     for jti in expired:
         del _token_blacklist_fallback[jti]
+
+    if expired:
+        logger.debug("token_blacklist_cleanup", removed=len(expired))
 
     return len(expired)
 

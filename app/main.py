@@ -13,12 +13,20 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 import sys
 from pathlib import Path
 import structlog
 import os
 import json
+
+# Magic-byte validation for file upload security
+try:
+    import magic
+    MAGIC_AVAILABLE = True
+except ImportError:
+    magic = None
+    MAGIC_AVAILABLE = False
 
 # Use absolute imports for production compatibility
 from app.gpu_manager import GPUManager
@@ -30,7 +38,7 @@ from app.core.rate_limiting import (
     get_redis_storage,
     RateLimitTier
 )
-from app.middleware import RateLimitMiddleware, DevelopmentRateLimitBypass
+from app.middleware import RateLimitMiddleware, DevelopmentRateLimitBypass, SecurityHeadersMiddleware
 from app.core.config import settings
 from app.core.monitoring import get_system_monitor, PerformanceTimer
 from app.core.german_messages import HTTPErrors, StatusMessages
@@ -51,6 +59,111 @@ gpu_manager = None
 german_validator = None
 ocr_service = None
 redis_storage = None
+
+# Allowed MIME types mapped to extensions
+ALLOWED_MIME_TYPES = {
+    "application/pdf": [".pdf"],
+    "image/jpeg": [".jpg", ".jpeg"],
+    "image/png": [".png"],
+    "image/tiff": [".tif", ".tiff"],
+    "image/bmp": [".bmp"],
+    "image/gif": [".gif"],
+}
+
+# Reverse mapping: extension to expected MIME types
+EXTENSION_MIME_MAP = {}
+for mime, exts in ALLOWED_MIME_TYPES.items():
+    for ext in exts:
+        if ext not in EXTENSION_MIME_MAP:
+            EXTENSION_MIME_MAP[ext] = []
+        EXTENSION_MIME_MAP[ext].append(mime)
+
+
+def validate_file_content_type(content: bytes, filename: str) -> Tuple[bool, str, str]:
+    """
+    Validate file content using magic bytes.
+
+    Prevents malicious files being uploaded with spoofed extensions.
+
+    Args:
+        content: File content bytes
+        filename: Original filename
+
+    Returns:
+        Tuple of (is_valid, detected_mime, error_message)
+    """
+    if not content:
+        return False, "", "Leere Datei"
+
+    file_ext = Path(filename).suffix.lower() if filename else ""
+
+    if not MAGIC_AVAILABLE:
+        # Fallback: Basic magic byte detection without python-magic
+        mime_type = _detect_mime_basic(content)
+        if not mime_type:
+            # Can't detect, allow if extension is valid (graceful degradation)
+            logger.warning(
+                "magic_not_available_fallback",
+                filename=filename,
+                message="python-magic nicht installiert - Fallback auf Extension-Validierung"
+            )
+            return True, "unknown", ""
+    else:
+        try:
+            mime_type = magic.from_buffer(content, mime=True)
+        except Exception as e:
+            logger.warning("magic_detection_error", error=str(e), filename=filename)
+            # On error, use fallback
+            mime_type = _detect_mime_basic(content)
+
+    if not mime_type:
+        return False, "", "Dateityp konnte nicht erkannt werden"
+
+    # Check if MIME type is allowed
+    if mime_type not in ALLOWED_MIME_TYPES:
+        return False, mime_type, f"Dateityp nicht erlaubt: {mime_type}"
+
+    # Check if MIME type matches extension
+    expected_mimes = EXTENSION_MIME_MAP.get(file_ext, [])
+    if expected_mimes and mime_type not in expected_mimes:
+        return False, mime_type, (
+            f"Dateiinhalt ({mime_type}) stimmt nicht mit Erweiterung ({file_ext}) überein. "
+            f"Möglicher Sicherheitsverstoß."
+        )
+
+    return True, mime_type, ""
+
+
+def _detect_mime_basic(content: bytes) -> Optional[str]:
+    """
+    Basic MIME type detection using magic bytes (fallback without python-magic).
+
+    Args:
+        content: File content bytes
+
+    Returns:
+        Detected MIME type or None
+    """
+    if len(content) < 8:
+        return None
+
+    # Magic byte signatures
+    signatures = {
+        b'%PDF': 'application/pdf',
+        b'\xff\xd8\xff': 'image/jpeg',
+        b'\x89PNG\r\n\x1a\n': 'image/png',
+        b'II*\x00': 'image/tiff',  # Little-endian TIFF
+        b'MM\x00*': 'image/tiff',  # Big-endian TIFF
+        b'BM': 'image/bmp',
+        b'GIF87a': 'image/gif',
+        b'GIF89a': 'image/gif',
+    }
+
+    for sig, mime in signatures.items():
+        if content[:len(sig)] == sig:
+            return mime
+
+    return None
 
 
 @asynccontextmanager
@@ -97,13 +210,24 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Add Security Headers middleware (MUSS vor CORS sein!)
+# Fügt X-Content-Type-Options, X-Frame-Options, CSP, HSTS, etc. hinzu
+app.add_middleware(
+    SecurityHeadersMiddleware,
+    enable_hsts=not settings.DEBUG,  # HSTS nur in Production
+    enable_csp=True,
+)
+
 # Add CORS middleware for web interface
+# WICHTIG: In Production explizite Origins setzen via CORS_ORIGINS Umgebungsvariable!
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=settings.CORS_ALLOW_METHODS,
     allow_headers=settings.CORS_ALLOW_HEADERS,
+    expose_headers=settings.CORS_EXPOSE_HEADERS,
+    max_age=settings.CORS_MAX_AGE,
 )
 
 # Add rate limiting middleware
@@ -266,17 +390,75 @@ async def process_document(
     monitor = get_system_monitor()
 
     try:
-        # Validate file type
-        allowed_extensions = ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.bmp']
-        file_ext = Path(file.filename).suffix.lower()
-        if file_ext not in allowed_extensions:
+        # === INPUT VALIDATION ===
+
+        # 1. Validate file extension
+        allowed_extensions = settings.ALLOWED_EXTENSIONS
+        file_ext = Path(file.filename).suffix.lower() if file.filename else ""
+        if not file_ext or file_ext not in allowed_extensions:
             raise HTTPException(
                 status_code=400,
                 detail=HTTPErrors.INVALID_FILE_TYPE.format(allowed=", ".join(allowed_extensions))
             )
 
-        # Save uploaded file
+        # 2. Read and validate file size
         file_content = await file.read()
+        file_size_mb = len(file_content) / (1024 * 1024)
+
+        if file_size_mb > settings.MAX_UPLOAD_SIZE_MB:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Datei zu groß: {file_size_mb:.1f}MB. Maximum: {settings.MAX_UPLOAD_SIZE_MB}MB"
+            )
+
+        if len(file_content) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Leere Datei. Bitte eine gültige Datei hochladen."
+            )
+
+        # 2b. Validate file content type (magic bytes) - Security check
+        is_valid_content, detected_mime, content_error = validate_file_content_type(
+            file_content, file.filename
+        )
+        if not is_valid_content:
+            logger.warning(
+                "file_content_validation_failed",
+                filename=file.filename,
+                detected_mime=detected_mime,
+                error=content_error
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=content_error or "Ungültiger Dateiinhalt"
+            )
+
+        # 3. Validate backend parameter
+        valid_backends = ["auto", "surya", "got_ocr", "deepseek", "surya_gpu"]
+        if backend and backend not in valid_backends:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Ungültiger Backend: {backend}. Erlaubt: {', '.join(valid_backends)}"
+            )
+
+        # 4. Validate language parameter
+        valid_languages = ["de", "en"]
+        if language and language not in valid_languages:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Ungültige Sprache: {language}. Erlaubt: {', '.join(valid_languages)}"
+            )
+
+        # 5. Log validated input
+        logger.info(
+            "input_validation_passed",
+            filename=file.filename,
+            size_mb=round(file_size_mb, 2),
+            backend=backend,
+            language=language
+        )
+
+        # Save uploaded file
         saved_path = await ocr_service.save_upload(file_content, file.filename)
 
         logger.info("processing_document", filename=file.filename, backend=backend, language=language)
@@ -326,7 +508,7 @@ async def process_batch(
     Process multiple documents in batch
 
     Args:
-        files: List of document files
+        files: List of document files (max 32 Dateien)
         backend: OCR backend to use
         language: Target language
 
@@ -336,13 +518,72 @@ async def process_batch(
     if not ocr_service:
         raise HTTPException(status_code=503, detail=HTTPErrors.OCR_SERVICE_NOT_INITIALIZED)
 
+    # === BATCH VALIDATION ===
+
+    # 1. Validate batch size (max 32 documents as per GPU batch size setting)
+    max_batch_size = settings.GPU_BATCH_SIZE
+    if len(files) > max_batch_size:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Zu viele Dateien: {len(files)}. Maximum pro Batch: {max_batch_size}"
+        )
+
+    if len(files) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Keine Dateien hochgeladen. Mindestens eine Datei erforderlich."
+        )
+
+    # 2. Validate backend parameter
+    valid_backends = ["auto", "surya", "got_ocr", "deepseek", "surya_gpu"]
+    if backend and backend not in valid_backends:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ungültiger Backend: {backend}. Erlaubt: {', '.join(valid_backends)}"
+        )
+
+    # 3. Validate language parameter
+    valid_languages = ["de", "en"]
+    if language and language not in valid_languages:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ungültige Sprache: {language}. Erlaubt: {', '.join(valid_languages)}"
+        )
+
     try:
-        # Save all files
+        # Save all files with validation
         saved_paths = []
+        total_size_mb = 0
+        allowed_extensions = settings.ALLOWED_EXTENSIONS
+
         for file in files:
+            # Validate each file
+            file_ext = Path(file.filename).suffix.lower() if file.filename else ""
+            if not file_ext or file_ext not in allowed_extensions:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Ungültiger Dateityp '{file.filename}'. Erlaubt: {', '.join(allowed_extensions)}"
+                )
+
             file_content = await file.read()
+            file_size_mb = len(file_content) / (1024 * 1024)
+            total_size_mb += file_size_mb
+
+            if file_size_mb > settings.MAX_UPLOAD_SIZE_MB:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"Datei '{file.filename}' zu groß: {file_size_mb:.1f}MB. Maximum: {settings.MAX_UPLOAD_SIZE_MB}MB"
+                )
+
             saved_path = await ocr_service.save_upload(file_content, file.filename)
             saved_paths.append(saved_path)
+
+        logger.info(
+            "batch_validation_passed",
+            file_count=len(files),
+            total_size_mb=round(total_size_mb, 2),
+            backend=backend
+        )
 
         logger.info("batch_processing", document_count=len(files))
 

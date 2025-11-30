@@ -4,10 +4,15 @@ Health Check API Endpoints.
 
 Detaillierte Gesundheitspruefungen fuer alle Systemkomponenten.
 Feinpoliert und durchdacht - Enterprise Health Monitoring.
+
+Features:
+- TTL-basiertes Caching für teure Health-Checks (5 Sekunden)
+- Reduziert Last bei häufigen Monitoring-Abfragen
 """
 
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
+import threading
 
 import structlog
 from fastapi import APIRouter, Depends
@@ -15,10 +20,51 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# TTL-based caching for health checks
+try:
+    from cachetools import TTLCache
+    CACHETOOLS_AVAILABLE = True
+except ImportError:
+    TTLCache = None
+    CACHETOOLS_AVAILABLE = False
+
 from app.api.dependencies import get_db
 from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
+
+# Health check cache configuration
+HEALTH_CHECK_CACHE_TTL = 5  # 5 seconds TTL
+HEALTH_CHECK_CACHE_MAXSIZE = 10  # Max cached entries
+
+# Thread-safe cache for health check results
+if CACHETOOLS_AVAILABLE:
+    _health_cache: TTLCache = TTLCache(
+        maxsize=HEALTH_CHECK_CACHE_MAXSIZE,
+        ttl=HEALTH_CHECK_CACHE_TTL
+    )
+    _health_cache_lock = threading.Lock()
+else:
+    _health_cache: Dict[str, Any] = {}
+    _health_cache_lock = threading.Lock()
+
+
+def _get_cached_result(cache_key: str) -> Optional[Any]:
+    """Get cached health check result if available."""
+    if not CACHETOOLS_AVAILABLE:
+        return None
+
+    with _health_cache_lock:
+        return _health_cache.get(cache_key)
+
+
+def _set_cached_result(cache_key: str, result: Any) -> None:
+    """Cache health check result."""
+    if not CACHETOOLS_AVAILABLE:
+        return
+
+    with _health_cache_lock:
+        _health_cache[cache_key] = result
 
 router = APIRouter(prefix="/health", tags=["health"])
 
@@ -261,7 +307,7 @@ async def basic_health() -> BasicHealthResponse:
     "/detailed",
     response_model=DetailedHealthResponse,
     summary="Detaillierte Gesundheitspruefung",
-    description="Prueft alle Systemkomponenten: Datenbank, Redis, GPU, Speicher.",
+    description="Prueft alle Systemkomponenten: Datenbank, Redis, GPU, Speicher. Ergebnisse werden 5 Sekunden gecacht.",
 )
 async def detailed_health(
     db: AsyncSession = Depends(get_db),
@@ -274,7 +320,17 @@ async def detailed_health(
     - Redis-Cache
     - GPU-Verfuegbarkeit und -Speicher
     - Festplatten-Speicherplatz
+
+    Ergebnisse werden 5 Sekunden gecacht um Last bei häufigen
+    Monitoring-Abfragen zu reduzieren.
     """
+    # Check cache first
+    cache_key = "detailed_health"
+    cached = _get_cached_result(cache_key)
+    if cached is not None:
+        logger.debug("health_check_cache_hit", endpoint="detailed")
+        return cached
+
     # Pruefe alle Komponenten
     db_status = await _check_database(db)
     redis_status = await _check_redis()
@@ -308,13 +364,18 @@ async def detailed_health(
         komponenten={k: v.gesund for k, v in komponenten.items()},
     )
 
-    return DetailedHealthResponse(
+    result = DetailedHealthResponse(
         status=status,
         zeitstempel=datetime.now(timezone.utc).isoformat(),
         version="0.2.0-poc",
         komponenten=komponenten,
         zusammenfassung=zusammenfassung,
     )
+
+    # Cache the result
+    _set_cached_result(cache_key, result)
+
+    return result
 
 
 @router.get(
@@ -1069,7 +1130,16 @@ async def complete_health(
     - Service Level Objectives
     - Circuit Breaker
     - GPU Memory Guard
+
+    Ergebnisse werden 5 Sekunden gecacht um Last zu reduzieren.
     """
+    # Check cache first
+    cache_key = "complete_health"
+    cached = _get_cached_result(cache_key)
+    if cached is not None:
+        logger.debug("health_check_cache_hit", endpoint="complete")
+        return cached
+
     probleme = []
     empfehlungen = []
 
@@ -1186,7 +1256,7 @@ async def complete_health(
         recommendation_count=len(empfehlungen),
     )
 
-    return CompleteHealthResponse(
+    result = CompleteHealthResponse(
         status=status,
         zeitstempel=datetime.now(timezone.utc).isoformat(),
         version="0.2.0-poc",
@@ -1200,3 +1270,8 @@ async def complete_health(
         probleme=probleme,
         empfehlungen=empfehlungen,
     )
+
+    # Cache the result
+    _set_cached_result(cache_key, result)
+
+    return result
