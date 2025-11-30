@@ -36,6 +36,16 @@ from app.core.security import (
     verify_token_type,
     blacklist_token
 )
+from app.core.totp import (
+    check_totp_available,
+    setup_2fa,
+    verify_2fa_setup,
+    verify_2fa_login,
+    generate_backup_codes,
+    TOTPNotAvailableError,
+    TOTPAlreadyEnabledError,
+    PYOTP_AVAILABLE,
+)
 from app.core.account_lockout import (
     check_account_lockout,
     record_failed_attempt,
@@ -671,3 +681,263 @@ async def list_users(
     users = await UserService.list_users(db, skip=skip, limit=limit)
 
     return [UserResponse.model_validate(user) for user in users]
+
+
+# ==================== Two-Factor Authentication (2FA) ====================
+
+@router.get(
+    "/2fa/status",
+    summary="2FA-Status abfragen",
+    description="Gibt den aktuellen 2FA-Status des Benutzers zurück"
+)
+async def get_2fa_status(
+    current_user: User = Depends(get_current_active_user)
+) -> dict:
+    """
+    Gibt den aktuellen 2FA-Status des Benutzers zurück.
+
+    Returns:
+        - **enabled**: Ob 2FA aktiviert ist
+        - **available**: Ob 2FA im System verfügbar ist (pyotp installiert)
+        - **setup_at**: Wann 2FA aktiviert wurde (falls aktiviert)
+        - **backup_codes_remaining**: Anzahl verbleibender Backup-Codes
+    """
+    backup_codes_count = 0
+    if current_user.totp_backup_codes:
+        backup_codes_count = len(current_user.totp_backup_codes)
+
+    return {
+        "enabled": current_user.totp_enabled,
+        "available": PYOTP_AVAILABLE,
+        "setup_at": current_user.totp_setup_at.isoformat() if current_user.totp_setup_at else None,
+        "backup_codes_remaining": backup_codes_count,
+    }
+
+
+@router.post(
+    "/2fa/setup",
+    summary="2FA-Setup initiieren",
+    description="Startet den 2FA-Setup-Prozess und gibt QR-Code zurück"
+)
+async def initiate_2fa_setup(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """
+    Initiiert den 2FA-Setup-Prozess.
+
+    Generiert:
+    - TOTP-Secret
+    - QR-Code für Authenticator-App
+    - Provisioning-URI für manuelle Eingabe
+    - 8 Backup-Codes für Notfälle
+
+    **WICHTIG:** Speichern Sie die Backup-Codes sicher!
+    Diese werden nur einmal angezeigt.
+
+    Nach dem Setup muss der Benutzer einen Code eingeben
+    um die Aktivierung zu bestätigen (/2fa/verify).
+    """
+    if not PYOTP_AVAILABLE:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="2FA ist nicht verfügbar. pyotp ist nicht installiert."
+        )
+
+    if current_user.totp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA ist bereits aktiviert. Deaktivieren Sie zuerst die bestehende 2FA."
+        )
+
+    try:
+        result = await setup_2fa(
+            user_id=str(current_user.id),
+            email=current_user.email,
+            db_session=db
+        )
+
+        # Secret temporär im User speichern (noch nicht aktiviert!)
+        current_user.totp_secret = result["secret"]
+        current_user.totp_backup_codes = result["hashed_backup_codes"]
+        await db.commit()
+
+        logger.info(
+            "2fa_setup_initiated",
+            user_id=str(current_user.id)[:8] + "...",
+        )
+
+        return {
+            "message": "2FA-Setup initiiert. Scannen Sie den QR-Code mit Ihrer Authenticator-App.",
+            "qr_code": result["qr_code"],
+            "provisioning_uri": result["provisioning_uri"],
+            "backup_codes": result["backup_codes"],
+            "warning": "WICHTIG: Speichern Sie die Backup-Codes sicher! Sie werden nur einmal angezeigt."
+        }
+
+    except Exception as e:
+        logger.error("2fa_setup_failed", error=str(e), user_id=str(current_user.id)[:8])
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="2FA-Setup fehlgeschlagen. Bitte versuchen Sie es später erneut."
+        )
+
+
+@router.post(
+    "/2fa/verify",
+    summary="2FA-Setup bestätigen",
+    description="Bestätigt das 2FA-Setup mit einem Code aus der Authenticator-App"
+)
+async def verify_2fa_setup_endpoint(
+    code: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """
+    Bestätigt das 2FA-Setup mit einem Code aus der Authenticator-App.
+
+    - **code**: 6-stelliger Code aus der Authenticator-App
+
+    Bei Erfolg wird 2FA für den Benutzer aktiviert.
+    """
+    if not current_user.totp_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Kein 2FA-Setup aktiv. Starten Sie zuerst mit /2fa/setup."
+        )
+
+    if current_user.totp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA ist bereits aktiviert."
+        )
+
+    # Verifiziere den Code
+    if not verify_2fa_setup(current_user.totp_secret, code):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ungültiger Code. Stellen Sie sicher, dass die Zeit auf Ihrem Gerät korrekt ist."
+        )
+
+    # 2FA aktivieren
+    from datetime import datetime, timezone as tz
+    current_user.totp_enabled = True
+    current_user.totp_setup_at = datetime.now(tz.utc)
+    await db.commit()
+
+    logger.info(
+        "2fa_enabled",
+        user_id=str(current_user.id)[:8] + "...",
+    )
+
+    return {
+        "message": "2FA erfolgreich aktiviert!",
+        "enabled": True,
+        "setup_at": current_user.totp_setup_at.isoformat(),
+    }
+
+
+@router.post(
+    "/2fa/disable",
+    summary="2FA deaktivieren",
+    description="Deaktiviert 2FA für den aktuellen Benutzer"
+)
+async def disable_2fa(
+    code: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """
+    Deaktiviert 2FA für den aktuellen Benutzer.
+
+    - **code**: 6-stelliger Code aus der Authenticator-App ODER Backup-Code
+
+    **Sicherheitshinweis:** Diese Aktion kann nicht rückgängig gemacht werden.
+    Sie müssen 2FA erneut einrichten, wenn Sie es wieder aktivieren möchten.
+    """
+    if not current_user.totp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA ist nicht aktiviert."
+        )
+
+    # Verifiziere den Code (TOTP oder Backup)
+    is_valid, used_backup, backup_index = verify_2fa_login(
+        secret=current_user.totp_secret,
+        code=code,
+        backup_codes=current_user.totp_backup_codes
+    )
+
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ungültiger Code."
+        )
+
+    # 2FA deaktivieren
+    current_user.totp_enabled = False
+    current_user.totp_secret = None
+    current_user.totp_backup_codes = None
+    current_user.totp_setup_at = None
+    await db.commit()
+
+    logger.info(
+        "2fa_disabled",
+        user_id=str(current_user.id)[:8] + "...",
+        used_backup=used_backup,
+    )
+
+    return {
+        "message": "2FA erfolgreich deaktiviert.",
+        "enabled": False,
+    }
+
+
+@router.post(
+    "/2fa/regenerate-backup-codes",
+    summary="Backup-Codes neu generieren",
+    description="Generiert neue Backup-Codes und invalidiert die alten"
+)
+async def regenerate_backup_codes(
+    code: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """
+    Generiert neue Backup-Codes und invalidiert die alten.
+
+    - **code**: 6-stelliger Code aus der Authenticator-App
+
+    **WICHTIG:** Die alten Backup-Codes werden ungültig!
+    Speichern Sie die neuen Codes sicher.
+    """
+    if not current_user.totp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA ist nicht aktiviert."
+        )
+
+    # Verifiziere mit TOTP-Code (nicht Backup-Code für diese Operation)
+    from app.core.totp import verify_totp_code
+    if not verify_totp_code(current_user.totp_secret, code):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ungültiger Code."
+        )
+
+    # Neue Backup-Codes generieren
+    plain_codes, hashed_codes = generate_backup_codes()
+
+    current_user.totp_backup_codes = hashed_codes
+    await db.commit()
+
+    logger.info(
+        "2fa_backup_codes_regenerated",
+        user_id=str(current_user.id)[:8] + "...",
+    )
+
+    return {
+        "message": "Neue Backup-Codes generiert.",
+        "backup_codes": plain_codes,
+        "warning": "WICHTIG: Speichern Sie die Backup-Codes sicher! Die alten Codes sind ungültig."
+    }

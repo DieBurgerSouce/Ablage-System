@@ -200,6 +200,12 @@ class User(Base):
     daily_quota = Column(Integer, default=100)
     documents_processed_today = Column(Integer, default=0)
 
+    # Two-Factor Authentication (2FA/TOTP)
+    totp_secret = Column(String(32), nullable=True)  # Base32-encoded TOTP secret (encrypted in production)
+    totp_enabled = Column(Boolean, default=False)
+    totp_backup_codes = Column(CrossDBJSON, nullable=True)  # Hashed backup codes
+    totp_setup_at = Column(DateTime(timezone=True), nullable=True)
+
     # Admin Console: Tier and Rate Limit Management
     tier = Column(String(20), default=UserTier.FREE)
     rate_limit_hourly = Column(Integer, nullable=True)  # Custom override

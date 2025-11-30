@@ -1,0 +1,306 @@
+# PostgreSQL High Availability Cluster
+# Ablage-System - Enterprise-grade Database Infrastructure
+#
+# Komponenten:
+# - 3x etcd Nodes (Distributed Configuration Store)
+# - 3x PostgreSQL/Patroni Nodes (Primary + 2 Standby)
+# - 1x HAProxy (Load Balancer + Health Checks)
+#
+# Architektur:
+#   Client --> HAProxy:5432 (Primary/RW)
+#          --> HAProxy:5433 (Replicas/RO)
+#          --> HAProxy:7000 (Stats)
+#
+# Failover: Automatisch via Patroni + etcd Konsens
+# RTO: < 30 Sekunden
+# RPO: 0 (synchrone Replikation)
+
+version: '3.8'
+
+services:
+  # ============================================================
+  # etcd Cluster (3 Nodes fuer Quorum)
+  # ============================================================
+
+  etcd1:
+    image: quay.io/coreos/etcd:v3.5.11
+    container_name: ablage-etcd1
+    hostname: etcd1
+    environment:
+      ETCD_NAME: etcd1
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd1:2380
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd1:2379
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_INITIAL_CLUSTER: etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: ablage-etcd-cluster
+      # Performance Tuning
+      ETCD_HEARTBEAT_INTERVAL: 250
+      ETCD_ELECTION_TIMEOUT: 2500
+      ETCD_SNAPSHOT_COUNT: 10000
+      ETCD_AUTO_COMPACTION_MODE: periodic
+      ETCD_AUTO_COMPACTION_RETENTION: 1h
+    volumes:
+      - etcd1_data:/etcd-data
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+    networks:
+      - postgres-ha-network
+
+  etcd2:
+    image: quay.io/coreos/etcd:v3.5.11
+    container_name: ablage-etcd2
+    hostname: etcd2
+    environment:
+      ETCD_NAME: etcd2
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd2:2380
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd2:2379
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_INITIAL_CLUSTER: etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: ablage-etcd-cluster
+      ETCD_HEARTBEAT_INTERVAL: 250
+      ETCD_ELECTION_TIMEOUT: 2500
+      ETCD_SNAPSHOT_COUNT: 10000
+      ETCD_AUTO_COMPACTION_MODE: periodic
+      ETCD_AUTO_COMPACTION_RETENTION: 1h
+    volumes:
+      - etcd2_data:/etcd-data
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+    networks:
+      - postgres-ha-network
+
+  etcd3:
+    image: quay.io/coreos/etcd:v3.5.11
+    container_name: ablage-etcd3
+    hostname: etcd3
+    environment:
+      ETCD_NAME: etcd3
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd3:2380
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd3:2379
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_INITIAL_CLUSTER: etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: ablage-etcd-cluster
+      ETCD_HEARTBEAT_INTERVAL: 250
+      ETCD_ELECTION_TIMEOUT: 2500
+      ETCD_SNAPSHOT_COUNT: 10000
+      ETCD_AUTO_COMPACTION_MODE: periodic
+      ETCD_AUTO_COMPACTION_RETENTION: 1h
+    volumes:
+      - etcd3_data:/etcd-data
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+    networks:
+      - postgres-ha-network
+
+  # ============================================================
+  # PostgreSQL/Patroni Cluster (3 Nodes)
+  # ============================================================
+
+  pg-node1:
+    build:
+      context: ./patroni
+      dockerfile: Dockerfile
+    container_name: ablage-pg-node1
+    hostname: pg-node1
+    environment:
+      PATRONI_NAME: pg-node1
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD muss gesetzt sein}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:?REPLICATION_PASSWORD muss gesetzt sein}
+      PATRONI_RESTAPI_USER: ${PATRONI_RESTAPI_USER:-patroni}
+      PATRONI_RESTAPI_PASSWORD: ${PATRONI_RESTAPI_PASSWORD:-patroni_secret}
+    volumes:
+      - pg_node1_data:/var/lib/postgresql/data
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    restart: unless-stopped
+    networks:
+      - postgres-ha-network
+
+  pg-node2:
+    build:
+      context: ./patroni
+      dockerfile: Dockerfile
+    container_name: ablage-pg-node2
+    hostname: pg-node2
+    environment:
+      PATRONI_NAME: pg-node2
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD muss gesetzt sein}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:?REPLICATION_PASSWORD muss gesetzt sein}
+      PATRONI_RESTAPI_USER: ${PATRONI_RESTAPI_USER:-patroni}
+      PATRONI_RESTAPI_PASSWORD: ${PATRONI_RESTAPI_PASSWORD:-patroni_secret}
+    volumes:
+      - pg_node2_data:/var/lib/postgresql/data
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    restart: unless-stopped
+    networks:
+      - postgres-ha-network
+
+  pg-node3:
+    build:
+      context: ./patroni
+      dockerfile: Dockerfile
+    container_name: ablage-pg-node3
+    hostname: pg-node3
+    environment:
+      PATRONI_NAME: pg-node3
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD muss gesetzt sein}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:?REPLICATION_PASSWORD muss gesetzt sein}
+      PATRONI_RESTAPI_USER: ${PATRONI_RESTAPI_USER:-patroni}
+      PATRONI_RESTAPI_PASSWORD: ${PATRONI_RESTAPI_PASSWORD:-patroni_secret}
+    volumes:
+      - pg_node3_data:/var/lib/postgresql/data
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    restart: unless-stopped
+    networks:
+      - postgres-ha-network
+
+  # ============================================================
+  # HAProxy Load Balancer
+  # ============================================================
+
+  haproxy:
+    image: haproxy:2.9-alpine
+    container_name: ablage-haproxy-pg
+    hostname: haproxy
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      # PostgreSQL Primary (Read/Write)
+      - "127.0.0.1:5432:5432"
+      # PostgreSQL Replicas (Read-Only)
+      - "127.0.0.1:5433:5433"
+      # HAProxy Stats
+      - "127.0.0.1:7000:7000"
+      # Patroni REST API
+      - "127.0.0.1:8008:8008"
+    environment:
+      HAPROXY_STATS_USER: ${HAPROXY_STATS_USER:-admin}
+      HAPROXY_STATS_PASSWORD: ${HAPROXY_STATS_PASSWORD:-admin_secret}
+    depends_on:
+      - pg-node1
+      - pg-node2
+      - pg-node3
+    healthcheck:
+      test: ["CMD", "haproxy", "-c", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    restart: unless-stopped
+    networks:
+      - postgres-ha-network
+
+volumes:
+  etcd1_data:
+    name: ablage-etcd1-data
+  etcd2_data:
+    name: ablage-etcd2-data
+  etcd3_data:
+    name: ablage-etcd3-data
+  pg_node1_data:
+    name: ablage-pg-node1-data
+  pg_node2_data:
+    name: ablage-pg-node2-data
+  pg_node3_data:
+    name: ablage-pg-node3-data
+
+networks:
+  postgres-ha-network:
+    name: ablage-postgres-ha
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.10.0/24

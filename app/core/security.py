@@ -39,6 +39,12 @@ TOKEN_BLACKLIST_PREFIX = "token:blacklist:"
 TOKEN_BLACKLIST_MAX_SIZE = 10000  # Maximum entries to prevent memory exhaustion
 TOKEN_BLACKLIST_TTL_SECONDS = 86400  # 24 hours (max typical token lifetime)
 
+# SECURITY FIX: Fail-closed mode for token blacklist
+# Bei Multi-Worker Deployments ist In-Memory nicht synchronisiert!
+# True = HTTP 503 bei Redis-Ausfall (sicherer, empfohlen für Production)
+# False = Fallback auf In-Memory (unsicher bei Multi-Worker)
+TOKEN_BLACKLIST_FAIL_CLOSED = True
+
 # In-Memory Fallback Blacklist (used when Redis is unavailable)
 # Uses TTLCache for automatic expiration and size limits
 # Format: {token_jti: expiration_timestamp}
@@ -111,14 +117,21 @@ async def blacklist_token_redis(jti: str, expires_at: datetime) -> bool:
     """
     Add token to Redis blacklist with TTL.
 
+    SECURITY: Bei TOKEN_BLACKLIST_FAIL_CLOSED=True wird bei Redis-Ausfall
+    ein HTTP 503 geworfen statt unsicher auf In-Memory zurückzufallen.
+
     Args:
         jti: Token JTI (unique identifier)
         expires_at: Token expiration time (used for TTL)
 
     Returns:
         True if stored in Redis, False if fallback used
+
+    Raises:
+        HTTPException: 503 wenn Redis nicht verfügbar und fail-closed aktiviert
     """
     redis = await _get_redis_client()
+    redis_write_failed = False
 
     if redis is not None:
         try:
@@ -131,13 +144,34 @@ async def blacklist_token_redis(jti: str, expires_at: datetime) -> bool:
                 logger.debug("token_blacklisted_redis", jti=jti[:8] + "...")
                 return True
         except Exception as e:
+            redis_write_failed = True
             # SECURITY: Nur Fehlertyp loggen, nicht Details (könnten Credentials enthalten)
             logger.warning("token_blacklist_redis_error", error_type=type(e).__name__)
+    else:
+        redis_write_failed = True
 
-    # Fallback to in-memory
+    # SECURITY FIX: Fail-closed bei Redis-Ausfall
+    # In Multi-Worker Deployments ist In-Memory nicht synchronisiert!
+    if redis_write_failed and TOKEN_BLACKLIST_FAIL_CLOSED:
+        logger.error(
+            "token_blacklist_redis_write_failed_fail_closed",
+            message="Redis nicht verfügbar - Token-Blacklist-Write fehlgeschlagen (fail-closed Modus)",
+            jti_prefix=jti[:8]
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Sicherheitsdienst temporär nicht verfügbar. Logout konnte nicht durchgeführt werden.",
+        )
+
+    # Fallback to in-memory (nur wenn fail-closed deaktiviert)
+    # WARNUNG: Nicht synchronisiert zwischen Workern!
     _token_blacklist_fallback[jti] = expires_at
     _cleanup_fallback_blacklist()
-    logger.debug("token_blacklisted_fallback", jti=jti[:8] + "...")
+    logger.warning(
+        "token_blacklisted_fallback_insecure",
+        jti=jti[:8] + "...",
+        message="Token nur lokal blacklisted - NICHT synchronisiert zwischen Workern!"
+    )
     return False
 
 
@@ -145,13 +179,20 @@ async def is_token_blacklisted_redis(jti: str) -> bool:
     """
     Check if token is blacklisted (Redis + fallback).
 
+    SECURITY: Bei TOKEN_BLACKLIST_FAIL_CLOSED=True wird bei Redis-Ausfall
+    ein HTTP 503 geworfen statt unsicher auf In-Memory zurückzufallen.
+
     Args:
         jti: Token JTI to check
 
     Returns:
         True if token is blacklisted
+
+    Raises:
+        HTTPException: 503 wenn Redis nicht verfügbar und fail-closed aktiviert
     """
     redis = await _get_redis_client()
+    redis_check_failed = False
 
     if redis is not None:
         try:
@@ -160,10 +201,26 @@ async def is_token_blacklisted_redis(jti: str) -> bool:
             if exists:
                 return True
         except Exception as e:
+            redis_check_failed = True
             # SECURITY: Nur Fehlertyp loggen, nicht Details (könnten Credentials enthalten)
             logger.warning("token_blacklist_check_redis_error", error_type=type(e).__name__)
+    else:
+        redis_check_failed = True
 
-    # Also check in-memory fallback (for tokens blacklisted during Redis outage)
+    # SECURITY FIX: Fail-closed bei Redis-Ausfall
+    # In Multi-Worker Deployments ist In-Memory nicht synchronisiert!
+    if redis_check_failed and TOKEN_BLACKLIST_FAIL_CLOSED:
+        logger.error(
+            "token_blacklist_redis_unavailable_fail_closed",
+            message="Redis nicht verfügbar - Blacklist-Check fehlgeschlagen (fail-closed Modus)"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Sicherheitsdienst temporär nicht verfügbar. Bitte später erneut versuchen.",
+        )
+
+    # Fallback auf In-Memory (nur wenn fail-closed deaktiviert)
+    # WARNUNG: Nicht synchronisiert zwischen Workern!
     if jti in _token_blacklist_fallback:
         expiration = _token_blacklist_fallback[jti]
         if datetime.now(timezone.utc) < expiration:
@@ -367,18 +424,23 @@ def create_refresh_token(
 
 # ==================== JWT Token Validation ====================
 
-async def decode_token(token: str) -> Dict[str, Any]:
+async def decode_token(
+    token: str,
+    expected_type: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Decode and validate a JWT token (async, Redis-backed blacklist).
 
     Args:
         token: JWT token string
+        expected_type: Expected token type ("access" or "refresh").
+                      If None, accepts both types.
 
     Returns:
         Decoded token payload
 
     Raises:
-        HTTPException: If token is invalid, expired, or blacklisted
+        HTTPException: If token is invalid, expired, blacklisted, or wrong type
     """
     try:
         payload = jwt.decode(
@@ -386,6 +448,34 @@ async def decode_token(token: str) -> Dict[str, Any]:
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM]
         )
+
+        # SECURITY FIX: Validate token type to prevent refresh token misuse
+        token_type = payload.get("type")
+        if token_type not in ("access", "refresh"):
+            logger.warning(
+                "invalid_token_type",
+                token_type=token_type,
+                message="Token ohne gültigen Typ erkannt"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Ungültiger Token-Typ",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # If specific type expected, validate it
+        if expected_type and token_type != expected_type:
+            logger.warning(
+                "token_type_mismatch",
+                expected=expected_type,
+                actual=token_type,
+                message="Falscher Token-Typ verwendet"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Falscher Token-Typ. Erwartet: {expected_type}",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
         # Check if token is blacklisted (async Redis check)
         jti = payload.get("jti")

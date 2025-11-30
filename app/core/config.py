@@ -352,9 +352,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_STORAGE_URL: Optional[str] = None
 
     # Rate Limit Fail-Closed Mode
-    # If True, deny requests when Redis is unavailable (more secure)
-    # If False, allow requests when Redis is unavailable (more available)
-    RATE_LIMIT_FAIL_CLOSED: bool = False  # Default: fail-open for backwards compatibility
+    # SECURITY FIX: Default auf True geändert (fail-closed ist sicherer)
+    # Bei Redis-Ausfall werden Requests abgelehnt statt durchgelassen
+    # Bei DDoS-Angriffen könnte sonst Rate Limiting umgangen werden
+    RATE_LIMIT_FAIL_CLOSED: bool = True  # SECURITY: fail-closed für besseren Schutz
     RATE_LIMIT_FAIL_CLOSED_CRITICAL: bool = True  # Always fail-closed for critical endpoints (login, etc.)
 
     # German Language Settings

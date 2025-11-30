@@ -74,6 +74,10 @@ bcrypt==4.1.2
 python-magic-bin==0.4.14; sys_platform == "win32"  # Windows: includes libmagic DLLs
 python-magic==0.4.27; sys_platform != "win32"  # Linux/Mac: requires system libmagic
 
+# Two-Factor Authentication (2FA/TOTP)
+pyotp==2.9.0  # TOTP/HOTP for 2FA (RFC 6238)
+qrcode[pil]==7.4.2  # QR-Code generation for Authenticator Apps
+
 # Utilities
 python-dotenv==1.0.0
 pyyaml==6.0.1

@@ -1,0 +1,121 @@
+# Patroni Konfiguration fuer Ablage-System PostgreSQL HA
+# Automatisches Failover mit etcd als DCS
+#
+# WICHTIG: Diese Datei wird als Template verwendet.
+# Umgebungsvariablen werden beim Container-Start ersetzt.
+
+scope: ablage-cluster
+namespace: /ablage/
+name: ${PATRONI_NAME:-pg-node1}
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: ${PATRONI_NAME:-pg-node1}:8008
+  # Authentication fuer REST API
+  authentication:
+    username: ${PATRONI_RESTAPI_USER:-patroni}
+    password: ${PATRONI_RESTAPI_PASSWORD:-patroni_secret}
+
+etcd3:
+  hosts:
+    - etcd1:2379
+    - etcd2:2379
+    - etcd3:2379
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576  # 1MB max lag fuer Failover
+    master_start_timeout: 300
+    synchronous_mode: true  # Synchrone Replikation fuer Datenkonsistenz
+    synchronous_mode_strict: false  # Erlaubt async wenn keine Standby verfuegbar
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        # Performance-Tuning fuer RTX 4080 System
+        max_connections: 200
+        shared_buffers: 2GB
+        effective_cache_size: 6GB
+        maintenance_work_mem: 512MB
+        checkpoint_completion_target: 0.9
+        wal_buffers: 64MB
+        default_statistics_target: 100
+        random_page_cost: 1.1
+        effective_io_concurrency: 200
+        work_mem: 16MB
+        min_wal_size: 1GB
+        max_wal_size: 4GB
+        max_worker_processes: 8
+        max_parallel_workers_per_gather: 4
+        max_parallel_workers: 8
+        max_parallel_maintenance_workers: 4
+        # Replikation
+        wal_level: replica
+        hot_standby: "on"
+        max_wal_senders: 10
+        max_replication_slots: 10
+        hot_standby_feedback: "on"
+        # Logging
+        log_min_duration_statement: 1000
+        log_checkpoints: "on"
+        log_connections: "on"
+        log_disconnections: "on"
+        log_lock_waits: "on"
+        log_temp_files: 0
+        # Sicherheit
+        ssl: "off"  # TLS in HAProxy terminiert
+        password_encryption: scram-sha-256
+
+  # Initdb-Optionen
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+    - locale: de_DE.UTF-8
+
+  # pg_hba.conf - Host-Based Authentication
+  pg_hba:
+    - host replication replicator 0.0.0.0/0 scram-sha-256
+    - host all all 0.0.0.0/0 scram-sha-256
+
+  # Benutzer und Datenbanken erstellen
+  users:
+    admin:
+      password: ${POSTGRES_PASSWORD:-ablage_secret}
+      options:
+        - createrole
+        - createdb
+    replicator:
+      password: ${REPLICATION_PASSWORD:-repl_secret}
+      options:
+        - replication
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: ${PATRONI_NAME:-pg-node1}:5432
+  data_dir: /var/lib/postgresql/data
+  bin_dir: /usr/lib/postgresql/16/bin
+  pgpass: /tmp/pgpass
+  authentication:
+    replication:
+      username: replicator
+      password: ${REPLICATION_PASSWORD:-repl_secret}
+    superuser:
+      username: postgres
+      password: ${POSTGRES_PASSWORD:-ablage_secret}
+    rewind:
+      username: postgres
+      password: ${POSTGRES_PASSWORD:-ablage_secret}
+  parameters:
+    unix_socket_directories: '/var/run/postgresql'
+
+watchdog:
+  mode: off  # Watchdog deaktiviert fuer Docker
+
+tags:
+  nofailover: false
+  noloadbalance: false
+  clonefrom: false
+  nosync: false

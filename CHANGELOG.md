@@ -9,6 +9,97 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### Two-Factor Authentication (2FA/TOTP) - Security Enhancement
+- **TOTP Implementation** (`app/core/totp.py`)
+  - RFC 6238 compliant Time-based One-Time Password
+  - Compatible with Google Authenticator, Authy, Microsoft Authenticator
+  - 6-digit codes with 30-second intervals
+  - QR-Code generation for easy setup
+  - 8 backup codes (SHA-256 hashed) for account recovery
+
+- **2FA API Endpoints** (`app/api/v1/auth.py`)
+  - `GET /auth/2fa/status` - Get 2FA status for current user
+  - `POST /auth/2fa/setup` - Initiate 2FA setup (returns QR code)
+  - `POST /auth/2fa/verify` - Confirm 2FA setup with first code
+  - `POST /auth/2fa/disable` - Disable 2FA (requires password)
+  - `POST /auth/2fa/regenerate-backup-codes` - Generate new backup codes
+
+- **Security Audit Logger** (`app/core/audit_logger.py`)
+  - GDPR Art. 25/30 compliant security event logging
+  - Automatic PII filtering (passwords, tokens, emails)
+  - Event types: Login, 2FA, Account, Password, Permissions, Violations
+  - Severity levels: info, warning, error, critical
+
+- **Database Migration** (`alembic/versions/010_add_2fa_fields.py`)
+  - `totp_secret` - Encrypted TOTP secret key
+  - `totp_enabled` - 2FA activation flag
+  - `totp_backup_codes` - JSON array of hashed backup codes
+  - `totp_setup_at` - Timestamp of 2FA activation
+
+### Security Fixes
+- **Token Type Verification Bug** - Fixed refresh token misuse vulnerability in `decode_token()`
+- **Rate Limiting Fail-Closed** - Changed default from fail-open to fail-closed
+- **Multi-Worker Blacklist Sync** - Redis-only blacklist with fail-closed on Redis unavailable
+
+### Dependencies
+- `pyotp==2.9.0` - TOTP/HOTP implementation
+- `qrcode[pil]==7.4.2` - QR code generation
+
+### Deployment Notes
+```bash
+# 1. Install new dependencies
+pip install pyotp qrcode[pil]
+
+# 2. Apply database migration
+set DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5433/ablage_system
+python -m alembic upgrade head
+
+# 3. Verify 2FA endpoints
+curl -X GET http://localhost:8000/api/v1/auth/2fa/status \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
+#### PostgreSQL High Availability (Patroni + etcd)
+- **3-Node etcd Cluster** (`infrastructure/postgres-ha/etcd/`)
+  - Distributed Configuration Store fuer Patroni
+  - Automatische Leader Election via Raft Consensus
+  - Health Checks alle 10 Sekunden
+
+- **3-Node PostgreSQL/Patroni Cluster** (`infrastructure/postgres-ha/patroni/`)
+  - PostgreSQL 16 mit automatischem Failover
+  - Synchrone Replikation (RPO = 0)
+  - RTO < 30 Sekunden bei Node-Ausfall
+  - Self-Healing: Automatischer Replica-Rebuild
+
+- **HAProxy Load Balancer** (`infrastructure/postgres-ha/haproxy/`)
+  - Port 5432: Primary (Read/Write)
+  - Port 5433: Replicas (Read-Only Load Balancing)
+  - Port 7000: Stats Dashboard
+  - Health Checks via Patroni REST API
+
+### PostgreSQL HA Deployment Notes
+```bash
+# 1. Konfiguration
+cd infrastructure/postgres-ha
+cp .env.example .env
+# Passwoerter in .env anpassen!
+
+# 2. Cluster starten
+docker-compose -f docker-compose.postgres-ha.yml up -d
+
+# 3. Status pruefen
+curl http://localhost:8008/cluster | jq
+
+# 4. Ablage-System konfigurieren
+DATABASE_URL=postgresql+asyncpg://ablage_admin:pwd@localhost:5432/ablage_system
+```
+
+---
+
 ### Planned Features
 - Multi-tenant support with organization isolation
 - Real-time collaboration on document annotations
