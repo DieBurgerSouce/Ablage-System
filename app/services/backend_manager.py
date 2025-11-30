@@ -70,6 +70,20 @@ class BackendManager:
         else:
             logger.info("gpu_unavailable_cpu_only")
 
+        # CRITICAL: Validate that at least one backend is available
+        if not self.backends:
+            raise RuntimeError(
+                "KRITISCHER FEHLER: Kein OCR-Backend verfügbar! "
+                "System kann nicht starten. Überprüfen Sie die Abhängigkeiten."
+            )
+
+        logger.info(
+            "backend_initialization_complete",
+            available_backends=list(self.backends.keys()),
+            gpu_available=TORCH_AVAILABLE,
+            backend_count=len(self.backends)
+        )
+
     async def select_backend(
         self,
         image_path: str,

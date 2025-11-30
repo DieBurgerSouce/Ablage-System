@@ -1,5 +1,7 @@
 """Celery application configuration for async task processing."""
 
+import os
+import time
 import structlog
 from celery import Celery, Task
 from celery.schedules import crontab
@@ -7,14 +9,115 @@ from celery.signals import task_prerun, task_postrun, task_failure, task_retry, 
 from contextlib import contextmanager
 from typing import Any, Optional
 import torch
-import threading
+from redis import Redis
+from redis.exceptions import RedisError
 
 from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
 
-# GPU lock for single GPU task execution
-_gpu_lock = threading.Lock()
+# Redis client for distributed GPU lock
+_redis_lock_client: Optional[Redis] = None
+_GPU_LOCK_KEY = "ablage:gpu:lock"
+_GPU_LOCK_TIMEOUT = 300  # 5 minutes max lock hold time
+
+
+def _get_redis_lock_client() -> Redis:
+    """Get or create Redis client for distributed locking."""
+    global _redis_lock_client
+    if _redis_lock_client is None:
+        _redis_lock_client = Redis.from_url(
+            settings.CELERY_BROKER_URL,
+            decode_responses=False,
+            socket_timeout=5.0,
+            socket_connect_timeout=5.0
+        )
+    return _redis_lock_client
+
+
+def acquire_gpu_lock(timeout: int = _GPU_LOCK_TIMEOUT) -> str:
+    """Acquire distributed GPU lock using Redis.
+
+    Args:
+        timeout: Maximum time to wait for lock (seconds)
+
+    Returns:
+        Lock value (used for release verification)
+
+    Raises:
+        RuntimeError: If lock cannot be acquired within timeout
+    """
+    redis = _get_redis_lock_client()
+    lock_value = f"worker:{os.getpid()}:{time.time()}"
+
+    # Try to acquire lock with timeout
+    for attempt in range(timeout):
+        try:
+            acquired = redis.set(
+                _GPU_LOCK_KEY,
+                lock_value,
+                nx=True,  # Only set if not exists
+                ex=_GPU_LOCK_TIMEOUT  # Auto-expire after timeout
+            )
+            if acquired:
+                logger.debug("gpu_lock_acquired", lock_value=lock_value, attempt=attempt)
+                return lock_value
+        except RedisError as e:
+            logger.warning("gpu_lock_redis_error", error=str(e), attempt=attempt)
+
+        # Wait before retry
+        time.sleep(1)
+
+    raise RuntimeError(
+        f"GPU-Lock nicht verfügbar nach {timeout} Sekunden. "
+        "Ein anderer Worker verarbeitet derzeit einen GPU-Task."
+    )
+
+
+def release_gpu_lock(lock_value: str) -> bool:
+    """Release distributed GPU lock.
+
+    Args:
+        lock_value: The value returned by acquire_gpu_lock
+
+    Returns:
+        True if lock was released, False if lock was not owned by us
+    """
+    try:
+        redis = _get_redis_lock_client()
+        current_value = redis.get(_GPU_LOCK_KEY)
+
+        # Only release if we own the lock (compare bytes)
+        if current_value == lock_value.encode():
+            redis.delete(_GPU_LOCK_KEY)
+            logger.debug("gpu_lock_released", lock_value=lock_value)
+            return True
+        else:
+            logger.warning(
+                "gpu_lock_not_owned",
+                expected=lock_value,
+                current=current_value.decode() if current_value else None
+            )
+            return False
+    except RedisError as e:
+        logger.error("gpu_lock_release_error", error=str(e), lock_value=lock_value)
+        return False
+
+
+@contextmanager
+def distributed_gpu_lock(timeout: int = _GPU_LOCK_TIMEOUT):
+    """Context manager for distributed GPU lock.
+
+    Usage:
+        with distributed_gpu_lock():
+            # GPU-intensive operation
+            pass
+    """
+    lock_value = acquire_gpu_lock(timeout)
+    try:
+        yield lock_value
+    finally:
+        release_gpu_lock(lock_value)
 
 
 # Create Celery app
@@ -134,6 +237,7 @@ class GPUTask(Task):
     """Base task class for GPU-intensive operations.
 
     Ensures only one GPU task executes at a time to prevent VRAM overflow.
+    Uses Redis-based distributed lock to coordinate across multiple workers.
     Automatically manages GPU memory and provides error recovery.
     """
 
@@ -143,16 +247,24 @@ class GPUTask(Task):
     retry_backoff_max = 600  # Max 10 minutes
     retry_jitter = True
 
+    # Instance variable to store lock value for release
+    _current_lock_value: Optional[str] = None
+
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """Execute task with GPU memory management."""
         with gpu_memory_guard():
             return super().__call__(*args, **kwargs)
 
     def before_start(self, task_id: str, args: tuple, kwargs: dict) -> None:
-        """Acquire GPU resources before task execution."""
+        """Acquire GPU resources before task execution using distributed lock."""
         logger.info("gpu_task_starting", task_id=task_id, task_name=self.name)
-        # Acquire GPU lock
-        _gpu_lock.acquire()
+        # Acquire distributed GPU lock (works across all workers)
+        try:
+            self._current_lock_value = acquire_gpu_lock()
+            logger.debug("gpu_lock_acquired_for_task", task_id=task_id, lock_value=self._current_lock_value)
+        except RuntimeError as e:
+            logger.error("gpu_lock_acquisition_failed", task_id=task_id, error=str(e))
+            raise
 
     def after_return(
         self,
@@ -171,9 +283,12 @@ class GPUTask(Task):
 
             logger.info("gpu_task_completed", task_id=task_id, task_name=self.name, status=status, has_error=einfo is not None)
         finally:
-            # Always release GPU lock
-            if _gpu_lock.locked():
-                _gpu_lock.release()
+            # Always release distributed GPU lock
+            if self._current_lock_value:
+                released = release_gpu_lock(self._current_lock_value)
+                if released:
+                    logger.debug("gpu_lock_released_for_task", task_id=task_id)
+                self._current_lock_value = None
 
     def on_retry(
         self,
@@ -188,6 +303,10 @@ class GPUTask(Task):
         # Clear GPU memory before retry
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+        # Release lock before retry (will be re-acquired on next attempt)
+        if self._current_lock_value:
+            release_gpu_lock(self._current_lock_value)
+            self._current_lock_value = None
 
 
 class CPUTask(Task):
@@ -274,9 +393,8 @@ def task_failure_handler(
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
-    # Release GPU lock if held
-    if _gpu_lock.locked():
-        _gpu_lock.release()
+    # Note: Distributed GPU lock is released in GPUTask.after_return
+    # Redis lock auto-expires after _GPU_LOCK_TIMEOUT seconds as fallback
 
 
 @task_retry.connect

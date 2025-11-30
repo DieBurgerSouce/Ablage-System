@@ -372,6 +372,13 @@ def decode_token_sync(token: str) -> Dict[str, Any]:
     Raises:
         HTTPException: If token is invalid, expired, or blacklisted
     """
+    import warnings
+    warnings.warn(
+        "decode_token_sync ist deprecated. "
+        "Verwende async decode_token() für Redis-Blacklist-Unterstützung.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     try:
         payload = jwt.decode(
             token,
@@ -478,6 +485,13 @@ def is_token_blacklisted_sync(jti: str) -> bool:
     Returns:
         True if token is blacklisted in fallback storage
     """
+    import warnings
+    warnings.warn(
+        "is_token_blacklisted_sync ist deprecated. "
+        "Verwende async is_token_blacklisted() für Redis-Unterstützung.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     if jti not in _token_blacklist_fallback:
         return False
 
@@ -543,6 +557,13 @@ def extract_user_id_from_token_sync(token: str) -> str:
 
     Use async extract_user_id_from_token() for Redis blacklist support.
     """
+    import warnings
+    warnings.warn(
+        "extract_user_id_from_token_sync ist deprecated. "
+        "Verwende async extract_user_id_from_token() für Redis-Blacklist-Unterstützung.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     payload = decode_token_sync(token)
     user_id = payload.get("sub")
 

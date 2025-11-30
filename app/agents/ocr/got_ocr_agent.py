@@ -39,6 +39,10 @@ class GOTOCRAgent(OCRAgent):
     MODEL_NAME = "stepfun-ai/GOT-OCR-2.0-hf"
     VRAM_REQUIRED_GB = 10
     MAX_BATCH_SIZE = 8
+    MODEL_LOADING_TIMEOUT = 300.0  # 5 Minuten Timeout für Model-Loading
+
+    # Class-level lock to prevent concurrent model loading (race condition fix)
+    _model_lock: Optional[asyncio.Lock] = None
 
     def __init__(self):
         super().__init__(
@@ -50,6 +54,10 @@ class GOTOCRAgent(OCRAgent):
         self.model = None
         self.processor = None
         self._model_loaded = False
+
+        # Initialize class-level lock if not exists (thread-safe singleton)
+        if GOTOCRAgent._model_lock is None:
+            GOTOCRAgent._model_lock = asyncio.Lock()
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -157,12 +165,43 @@ class GOTOCRAgent(OCRAgent):
             return "cpu"
 
     async def _load_model(self, device: str) -> None:
-        """Load GOT-OCR 2.0 model."""
+        """Load GOT-OCR 2.0 model with lock and timeout protection."""
+        # Quick check without lock (performance optimization)
         if self._model_loaded:
             return
 
-        self.logger.info("got_ocr_loading_model", device=device, model=self.MODEL_NAME)
+        # Acquire lock to prevent concurrent model loading (race condition fix)
+        async with self._model_lock:
+            # Double-check after acquiring lock (another request may have loaded it)
+            if self._model_loaded:
+                self.logger.debug("got_ocr_model_already_loaded_by_other_request")
+                return
 
+            self.logger.info("got_ocr_loading_model", device=device, model=self.MODEL_NAME)
+
+            try:
+                # Wrap actual loading with timeout
+                await asyncio.wait_for(
+                    self._do_load_model(device),
+                    timeout=self.MODEL_LOADING_TIMEOUT
+                )
+                self._model_loaded = True
+                self.logger.info("got_ocr_model_loaded", device=device)
+            except asyncio.TimeoutError:
+                self.logger.error(
+                    "got_ocr_model_load_timeout",
+                    timeout_seconds=self.MODEL_LOADING_TIMEOUT
+                )
+                raise AgentResourceError(
+                    f"Model-Loading Timeout nach {self.MODEL_LOADING_TIMEOUT / 60:.0f} Minuten. "
+                    "Überprüfen Sie die Netzwerkverbindung und den verfügbaren Speicher."
+                )
+            except Exception as e:
+                self.logger.error("got_ocr_model_load_failed", error=str(e), exc_info=True)
+                raise AgentResourceError(f"Fehler beim Laden des GOT-OCR-Modells: {e}")
+
+    async def _do_load_model(self, device: str) -> None:
+        """Actual model loading logic (called within lock and timeout)."""
         try:
             # Check for GOT-specific implementation
             try:
@@ -213,12 +252,9 @@ class GOTOCRAgent(OCRAgent):
                 )
                 torch.cuda.empty_cache()
 
-            self._model_loaded = True
-            self.logger.info("got_ocr_model_loaded", device=device)
-
-        except Exception as e:
-            self.logger.error("got_ocr_model_load_failed", error=str(e), exc_info=True)
-            raise AgentResourceError(f"Failed to load GOT-OCR model: {e}")
+        except ImportError as e:
+            # Re-raise ImportError so caller can handle model not available
+            raise AgentResourceError(f"GOT-OCR Model nicht verfügbar: {e}")
 
     async def _load_image(self, image_path: Path) -> Image.Image:
         """Load and validate image."""

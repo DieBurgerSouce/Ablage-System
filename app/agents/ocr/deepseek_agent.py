@@ -74,6 +74,10 @@ class DeepSeekAgent(OCRAgent):
     VRAM_REQUIRED_GB = 24  # Can be reduced to 12GB with 4-bit quantization
     MAX_BATCH_SIZE = 4
     ENABLE_QUANTIZATION = True  # Enable for RTX 4080 16GB
+    MODEL_LOADING_TIMEOUT = 300.0  # 5 Minuten Timeout für Model-Loading
+
+    # Class-level lock to prevent concurrent model loading (race condition fix)
+    _model_lock: Optional[asyncio.Lock] = None
 
     def __init__(self):
         super().__init__(
@@ -86,6 +90,10 @@ class DeepSeekAgent(OCRAgent):
         self.processor = None
         self._model_loaded = False
         self._quantization_active = False  # Set during model loading
+
+        # Initialize class-level lock if not exists (thread-safe singleton)
+        if DeepSeekAgent._model_lock is None:
+            DeepSeekAgent._model_lock = asyncio.Lock()
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -182,12 +190,42 @@ class DeepSeekAgent(OCRAgent):
             )
 
     async def _load_model(self) -> None:
-        """Load DeepSeek Janus-Pro model and processor."""
+        """Load DeepSeek Janus-Pro model and processor with lock and timeout."""
+        # Quick check without lock (performance optimization)
         if self._model_loaded:
             return
 
-        self.logger.info("deepseek_loading_model", model_name=self.MODEL_NAME)
+        # Acquire lock to prevent concurrent model loading (race condition fix)
+        async with self._model_lock:
+            # Double-check after acquiring lock (another request may have loaded it)
+            if self._model_loaded:
+                self.logger.debug("deepseek_model_already_loaded_by_other_request")
+                return
 
+            self.logger.info("deepseek_loading_model", model_name=self.MODEL_NAME)
+
+            try:
+                # Wrap actual loading with timeout
+                await asyncio.wait_for(
+                    self._do_load_model(),
+                    timeout=self.MODEL_LOADING_TIMEOUT
+                )
+                self._model_loaded = True
+            except asyncio.TimeoutError:
+                self.logger.error(
+                    "deepseek_model_load_timeout",
+                    timeout_seconds=self.MODEL_LOADING_TIMEOUT
+                )
+                raise AgentResourceError(
+                    f"Model-Loading Timeout nach {self.MODEL_LOADING_TIMEOUT / 60:.0f} Minuten. "
+                    "Überprüfen Sie die Netzwerkverbindung und den verfügbaren Speicher."
+                )
+            except Exception as e:
+                self.logger.error("deepseek_model_load_failed", error=str(e), exc_info=True)
+                raise AgentResourceError(f"Fehler beim Laden des DeepSeek-Modells: {e}")
+
+    async def _do_load_model(self) -> None:
+        """Actual model loading logic (called within lock and timeout)."""
         try:
             # Check if we need to use a custom Janus implementation
             # Note: DeepSeek Janus uses custom multimodal architecture
@@ -386,7 +424,7 @@ class DeepSeekAgent(OCRAgent):
                 )
                 torch.cuda.empty_cache()
 
-            self._model_loaded = True
+            # Note: _model_loaded is set in the wrapper (_load_model) after successful completion
             quantization_status = f"{quantization_method} quantized" if self._quantization_active else f"{quantization_method} (full precision)"
             self.logger.info(
                 "deepseek_model_loaded",
@@ -397,8 +435,8 @@ class DeepSeekAgent(OCRAgent):
             )
 
         except Exception as e:
-            self.logger.error("deepseek_model_load_failed", error=str(e), exc_info=True)
-            raise AgentResourceError(f"Fehler beim Laden des DeepSeek-Modells: {e}")
+            # Re-raise to be handled by the wrapper with timeout context
+            raise
 
     async def _load_image(self, image_path: Path) -> Image.Image:
         """Load and validate image."""
