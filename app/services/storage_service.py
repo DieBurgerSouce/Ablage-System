@@ -15,6 +15,8 @@ from datetime import timedelta
 import mimetypes
 import hashlib
 
+from app.core.config import settings
+
 try:
     from minio import Minio
     from minio.error import S3Error
@@ -47,22 +49,23 @@ logger = structlog.get_logger(__name__)
 # ============================================================================
 
 class StorageConfig:
-    """MinIO configuration from environment"""
+    """MinIO configuration from central settings"""
 
     def __init__(self):
-        self.ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9000")
-        self.ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-        self.SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
-        self.SECURE = os.getenv("MINIO_SECURE", "false").lower() == "true"
+        # Verwende zentrale settings statt hardcoded Defaults
+        self.ENDPOINT = settings.MINIO_ENDPOINT
+        self.ACCESS_KEY = settings.MINIO_ACCESS_KEY
+        self.SECRET_KEY = settings.MINIO_SECRET_KEY.get_secret_value() if settings.MINIO_SECRET_KEY else ""
+        self.SECURE = settings.MINIO_SECURE
 
-        # Buckets
-        self.DOCUMENTS_BUCKET = os.getenv("MINIO_DOCUMENTS_BUCKET", "documents")
-        self.THUMBNAILS_BUCKET = os.getenv("MINIO_THUMBNAILS_BUCKET", "thumbnails")
+        # Buckets - aus zentraler settings
+        self.DOCUMENTS_BUCKET = settings.MINIO_BUCKET_DOCUMENTS
+        self.THUMBNAILS_BUCKET = settings.MINIO_BUCKET_THUMBNAILS
         self.EXPORTS_BUCKET = os.getenv("MINIO_EXPORTS_BUCKET", "exports")
 
         # Settings
         self.PRESIGNED_URL_EXPIRY_HOURS = int(os.getenv("MINIO_PRESIGNED_EXPIRY", "24"))
-        self.MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "50"))
+        self.MAX_FILE_SIZE_MB = settings.MAX_UPLOAD_SIZE_MB
 
 
 # ============================================================================

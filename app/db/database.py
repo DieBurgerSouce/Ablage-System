@@ -12,6 +12,8 @@ from contextlib import asynccontextmanager
 import structlog
 import os
 
+from app.core.config import settings
+
 logger = structlog.get_logger(__name__)
 
 
@@ -20,23 +22,24 @@ logger = structlog.get_logger(__name__)
 # ============================================================================
 
 class DatabaseConfig:
-    """Database configuration from environment"""
+    """Database configuration from central settings"""
 
     def __init__(self):
-        self.DB_HOST = os.getenv("DB_HOST", "localhost")
-        self.DB_PORT = self._safe_int(os.getenv("DB_PORT"), 5432)
-        self.DB_NAME = os.getenv("DB_NAME", "ablage_ocr")
-        self.DB_USER = os.getenv("DB_USER", "postgres")
-        self.DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
+        # Verwende zentrale settings statt eigener Defaults
+        self.DB_HOST = settings.DB_HOST
+        self.DB_PORT = settings.DB_PORT
+        self.DB_NAME = settings.DB_NAME
+        self.DB_USER = settings.DB_USER
+        self.DB_PASSWORD = settings.DB_PASSWORD.get_secret_value() if settings.DB_PASSWORD else ""
 
-        # Connection pool settings
+        # Connection pool settings - aus Umgebungsvariablen mit sicheren Defaults
         self.POOL_SIZE = self._safe_int(os.getenv("DB_POOL_SIZE"), 20)
         self.MAX_OVERFLOW = self._safe_int(os.getenv("DB_MAX_OVERFLOW"), 40)
         self.POOL_TIMEOUT = self._safe_int(os.getenv("DB_POOL_TIMEOUT"), 30)
         self.POOL_RECYCLE = self._safe_int(os.getenv("DB_POOL_RECYCLE"), 3600)  # 1 hour
 
         # Query settings
-        self.ECHO_SQL = os.getenv("DB_ECHO_SQL", "false").lower() == "true"
+        self.ECHO_SQL = settings.DEBUG
 
     @staticmethod
     def _safe_int(value: Optional[str], default: int) -> int:

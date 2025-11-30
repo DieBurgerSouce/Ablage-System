@@ -356,6 +356,10 @@ class Token(BaseModel):
     session_warning: Optional[str] = None  # Warnung über automatisch beendete Sessions
 
 
+# Alias für Backwards-Kompatibilität mit Tests
+TokenResponse = Token
+
+
 class TokenPayload(BaseModel):
     """Token payload data."""
     sub: str  # user_id
@@ -891,6 +895,22 @@ class DocumentCreateRequest(BaseModel):
     ocr_backend: OCRBackend = Field(OCRBackend.AUTO)
     priority: int = Field(5, ge=1, le=10)
     generate_embedding: bool = Field(True, description="Generate semantic embedding after OCR")
+
+
+class DocumentCreateResponse(BaseModel):
+    """Response nach erfolgreichem Document Upload."""
+    id: uuid.UUID = Field(..., description="Dokument-ID")
+    filename: str = Field(..., description="Gespeicherter Dateiname")
+    original_filename: str = Field(..., description="Original-Dateiname")
+    file_size: int = Field(..., description="Dateigroesse in Bytes")
+    mime_type: str = Field(..., description="MIME-Type")
+    status: ProcessingStatus = Field(..., description="Verarbeitungsstatus")
+    storage_path: str = Field(..., description="Pfad im Object Storage")
+    created_at: datetime = Field(..., description="Erstellungszeitpunkt")
+    processing_job_id: Optional[uuid.UUID] = Field(None, description="ID des OCR-Jobs (falls gestartet)")
+    message: str = Field(..., description="Statusnachricht")
+
+    model_config = {"from_attributes": True}
 
 
 class DocumentUpdateRequest(BaseModel):

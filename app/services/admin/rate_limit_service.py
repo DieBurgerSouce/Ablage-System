@@ -156,8 +156,8 @@ class RateLimitService:
             Current usage counts
         """
         try:
-            redis_url = getattr(settings, 'REDIS_URL', 'redis://localhost:6380')
-            client = redis.from_url(redis_url)
+            # Verwende zentrale settings - REDIS_URL wird automatisch konstruiert
+            client = redis.from_url(settings.REDIS_URL)
 
             # Keys for rate limiting
             keys = {
@@ -397,8 +397,8 @@ class RateLimitService:
             True if successful
         """
         try:
-            redis_url = getattr(settings, 'REDIS_URL', 'redis://localhost:6380')
-            client = redis.from_url(redis_url)
+            # Verwende zentrale settings - REDIS_URL wird automatisch konstruiert
+            client = redis.from_url(settings.REDIS_URL)
 
             # Delete all rate limit keys for user
             keys = [

@@ -234,8 +234,8 @@ class SystemStatusService:
         """
         start_time = datetime.utcnow()
         try:
-            redis_url = getattr(settings, 'REDIS_URL', 'redis://localhost:6380')
-            client = redis.from_url(redis_url)
+            # Verwende zentrale settings - REDIS_URL wird automatisch konstruiert
+            client = redis.from_url(settings.REDIS_URL)
             await client.ping()
             latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
             await client.close()
@@ -267,15 +267,14 @@ class SystemStatusService:
         try:
             from minio import Minio
 
-            minio_endpoint = getattr(settings, 'MINIO_ENDPOINT', 'localhost:9000')
-            minio_access_key = getattr(settings, 'MINIO_ACCESS_KEY', 'minioadmin')
-            minio_secret_key = getattr(settings, 'MINIO_SECRET_KEY', 'minioadmin')
+            # Verwende zentrale settings statt getattr Fallbacks
+            minio_secret = settings.MINIO_SECRET_KEY.get_secret_value() if settings.MINIO_SECRET_KEY else ""
 
             client = Minio(
-                minio_endpoint,
-                access_key=minio_access_key,
-                secret_key=minio_secret_key,
-                secure=False,
+                settings.MINIO_ENDPOINT,
+                access_key=settings.MINIO_ACCESS_KEY,
+                secret_key=minio_secret,
+                secure=settings.MINIO_SECURE,
             )
             # Try to list buckets as health check
             _ = client.list_buckets()

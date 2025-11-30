@@ -1,9 +1,10 @@
 """Hybrid OCR Agent - Multi-engine fusion for maximum accuracy."""
 
 import asyncio
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from app.agents.base import OCRAgent
+from app.gpu_manager import GPUManager
 
 from .deepseek_agent import DeepSeekAgent
 from .got_ocr_agent import GOTOCRAgent
@@ -15,10 +16,26 @@ class HybridOCRAgent(OCRAgent):
     Hybrid OCR agent that combines multiple engines for maximum accuracy.
 
     Strategy:
-    1. Run all available OCR engines in parallel
-    2. Compare results with confidence-based voting
-    3. Merge results using intelligent fusion
+    1. Smart parallel execution based on available VRAM
+    2. Backends that fit in memory run in parallel
+    3. Remaining backends run sequentially with cleanup
+    4. Compare results with confidence-based voting
+    5. Merge results using intelligent fusion
     """
+
+    # Backend VRAM requirements in GB (muss mit gpu_manager.py uebereinstimmen)
+    BACKEND_VRAM_MAP = {
+        "deepseek": 12.0,      # DeepSeek-Janus-Pro needs 12GB
+        "got_ocr": 10.0,       # GOT-OCR 2.0 needs 10GB
+        "surya_docling": 0.5,  # Surya+Docling is mostly CPU (minimal GPU)
+    }
+
+    # Backend Prioritaet (hoeher = wichtiger, wird zuerst versucht)
+    BACKEND_PRIORITY = {
+        "deepseek": 3,     # Beste Qualitaet
+        "got_ocr": 2,      # Gut fuer Tabellen/Formeln
+        "surya_docling": 1 # CPU-Fallback
+    }
 
     def __init__(self):
         super().__init__(name="hybrid_ocr_agent", gpu_required=True, vram_gb=12)
@@ -27,6 +44,9 @@ class HybridOCRAgent(OCRAgent):
         self.deepseek = DeepSeekAgent()
         self.got_ocr = GOTOCRAgent()
         self.surya_docling = SuryaDoclingAgent()
+
+        # GPU Manager fuer VRAM-Checks
+        self.gpu_manager = GPUManager()
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -66,15 +86,19 @@ class HybridOCRAgent(OCRAgent):
         self, input_data: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
         """
-        Run OCR engines SEQUENTIALLY to prevent GPU OOM.
+        Smart Parallel OCR - Maximiert GPU-Nutzung ohne OOM.
 
-        WICHTIG: Auf RTX 4080 (16GB) können nicht alle Backends parallel laufen:
-        - DeepSeek: 12GB VRAM
-        - GOT-OCR: 10GB VRAM
-        - Surya GPU: 8GB VRAM
+        OPTIMIERUNG: Statt rein sequentieller Verarbeitung:
+        1. Pruefe verfuegbaren VRAM
+        2. Sortiere Backends nach Prioritaet
+        3. Backends die zusammen passen → parallel
+        4. Rest → sequentiell mit Memory Cleanup
 
-        Strategie: Sequential mit Memory Cleanup zwischen Backends.
-        Dies verhindert OOM-Fehler und ermöglicht trotzdem Multi-Engine-Fusion.
+        Auf RTX 4080 (16GB) mit 13.6GB nutzbarem VRAM:
+        - DeepSeek (12GB) + Surya (0.5GB) = 12.5GB → parallel moeglich!
+        - Dann GOT-OCR (10GB) → sequentiell nach Cleanup
+
+        Erwarteter Speedup: ~30-40% gegenueber rein sequentiell.
         """
         try:
             import torch
@@ -89,53 +113,214 @@ class HybridOCRAgent(OCRAgent):
             ("surya_docling", self.surya_docling),
         ]
 
+        # Hole verfuegbaren VRAM
+        available_vram_gb = self._get_available_vram()
+
+        self.logger.info(
+            "hybrid_ocr_smart_parallel_starting",
+            available_vram_gb=round(available_vram_gb, 2),
+            backends=[name for name, _ in engines]
+        )
+
+        # Sortiere nach Prioritaet (hoeher zuerst)
+        sorted_engines = sorted(
+            engines,
+            key=lambda x: self.BACKEND_PRIORITY.get(x[0], 0),
+            reverse=True
+        )
+
+        # Teile in parallel und sequential Gruppen
+        parallel_tasks: List[Tuple[str, Any]] = []
+        sequential_queue: List[Tuple[str, Any]] = []
+        remaining_vram = available_vram_gb
+
+        for engine_name, engine in sorted_engines:
+            vram_required = self.BACKEND_VRAM_MAP.get(engine_name, 8.0)
+
+            if vram_required <= remaining_vram:
+                # Passt in verfuegbaren VRAM → parallel
+                parallel_tasks.append((engine_name, engine))
+                remaining_vram -= vram_required
+            else:
+                # Passt nicht → sequentiell spaeter
+                sequential_queue.append((engine_name, engine))
+
+        self.logger.info(
+            "hybrid_ocr_execution_plan",
+            parallel_backends=[name for name, _ in parallel_tasks],
+            sequential_backends=[name for name, _ in sequential_queue],
+            parallel_vram_usage=round(available_vram_gb - remaining_vram, 2)
+        )
+
+        # PHASE 1: Parallele Ausfuehrung
+        if parallel_tasks:
+            parallel_results = await self._run_parallel_group(
+                parallel_tasks, input_data, TORCH_AVAILABLE
+            )
+            valid_results.extend(parallel_results)
+
+        # PHASE 2: Sequentielle Ausfuehrung mit Memory Cleanup
+        if sequential_queue:
+            # Cleanup vor sequentieller Phase
+            self._cleanup_gpu_memory(TORCH_AVAILABLE)
+
+            sequential_results = await self._run_sequential_group(
+                sequential_queue, input_data, TORCH_AVAILABLE
+            )
+            valid_results.extend(sequential_results)
+
+        return valid_results
+
+    async def _run_parallel_group(
+        self,
+        engines: List[Tuple[str, Any]],
+        input_data: Dict[str, Any],
+        torch_available: bool
+    ) -> List[Dict[str, Any]]:
+        """
+        Fuehre eine Gruppe von Backends parallel aus.
+
+        Args:
+            engines: Liste von (name, engine) Tupeln
+            input_data: OCR Input
+            torch_available: PyTorch verfuegbar?
+
+        Returns:
+            Liste von Ergebnissen
+        """
+        if not engines:
+            return []
+
+        self.logger.info(
+            "hybrid_ocr_parallel_phase",
+            backends=[name for name, _ in engines]
+        )
+
+        async def process_engine(name: str, engine: Any) -> Dict[str, Any]:
+            """Wrapper fuer einzelnes Backend mit Error Handling."""
+            try:
+                self.logger.debug(f"hybrid_parallel_starting_{name}")
+                result = await engine.process(input_data)
+                self.logger.info(
+                    "hybrid_parallel_completed",
+                    engine=name,
+                    confidence=result.get("confidence", 0.0)
+                )
+                return {**result, "engine": name}
+            except Exception as e:
+                self.logger.warning(
+                    "hybrid_parallel_failed",
+                    engine=name,
+                    error=str(e)
+                )
+                return {"engine": name, "error": str(e), "confidence": 0.0}
+
+        # Alle parallel starten
+        tasks = [process_engine(name, engine) for name, engine in engines]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Filtere erfolgreiche Ergebnisse
+        valid_results = []
+        for result in results:
+            if isinstance(result, Exception):
+                self.logger.warning("hybrid_parallel_exception", error=str(result))
+            elif isinstance(result, dict) and "error" not in result:
+                valid_results.append(result)
+
+        return valid_results
+
+    async def _run_sequential_group(
+        self,
+        engines: List[Tuple[str, Any]],
+        input_data: Dict[str, Any],
+        torch_available: bool
+    ) -> List[Dict[str, Any]]:
+        """
+        Fuehre eine Gruppe von Backends sequentiell aus mit Memory Cleanup.
+
+        Args:
+            engines: Liste von (name, engine) Tupeln
+            input_data: OCR Input
+            torch_available: PyTorch verfuegbar?
+
+        Returns:
+            Liste von Ergebnissen
+        """
+        valid_results = []
+
         for engine_name, engine in engines:
             try:
                 self.logger.info(
-                    "hybrid_ocr_engine_starting",
-                    engine=engine_name,
+                    "hybrid_sequential_starting",
+                    engine=engine_name
                 )
 
-                # Process with this engine
                 result = await engine.process(input_data)
                 valid_results.append({**result, "engine": engine_name})
 
                 self.logger.info(
-                    "hybrid_ocr_engine_completed",
+                    "hybrid_sequential_completed",
                     engine=engine_name,
-                    confidence=result.get("confidence", 0.0),
+                    confidence=result.get("confidence", 0.0)
                 )
 
             except Exception as e:
                 self.logger.warning(
-                    "hybrid_ocr_engine_failed",
+                    "hybrid_sequential_failed",
                     engine=engine_name,
-                    error=str(e),
+                    error=str(e)
                 )
             finally:
-                # KRITISCH: GPU Memory zwischen Backends freigeben
-                if TORCH_AVAILABLE:
-                    try:
-                        import gc
-                        gc.collect()
-                        torch.cuda.empty_cache()
-                        torch.cuda.synchronize()
-
-                        # Log Memory Status
-                        allocated_gb = torch.cuda.memory_allocated() / (1024**3)
-                        self.logger.debug(
-                            "hybrid_ocr_memory_cleanup",
-                            engine=engine_name,
-                            allocated_gb=round(allocated_gb, 2),
-                        )
-                    except Exception as cleanup_error:
-                        self.logger.warning(
-                            "hybrid_ocr_memory_cleanup_failed",
-                            engine=engine_name,
-                            error=str(cleanup_error),
-                        )
+                # Memory Cleanup nach jedem Backend
+                self._cleanup_gpu_memory(torch_available)
 
         return valid_results
+
+    def _get_available_vram(self) -> float:
+        """
+        Hole verfuegbaren VRAM in GB.
+
+        Returns:
+            Verfuegbarer VRAM in GB (mit 15% Safety Buffer)
+        """
+        try:
+            import torch
+            if not torch.cuda.is_available():
+                return 0.0
+
+            total = torch.cuda.get_device_properties(0).total_memory
+            allocated = torch.cuda.memory_allocated(0)
+            free = total - allocated
+
+            # 15% Safety Buffer
+            safe_free = free * 0.85
+
+            return safe_free / (1024**3)
+
+        except Exception as e:
+            self.logger.warning("vram_check_failed", error=str(e))
+            return 0.0
+
+    def _cleanup_gpu_memory(self, torch_available: bool) -> None:
+        """GPU Memory aufraeumen."""
+        if not torch_available:
+            return
+
+        try:
+            import gc
+            import torch
+
+            gc.collect()
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+
+            allocated_gb = torch.cuda.memory_allocated() / (1024**3)
+            self.logger.debug(
+                "hybrid_memory_cleanup",
+                allocated_gb=round(allocated_gb, 2)
+            )
+        except Exception as e:
+            self.logger.warning("memory_cleanup_failed", error=str(e))
 
     async def _fuse_results(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
@@ -328,15 +513,8 @@ class HybridOCRAgent(OCRAgent):
         if str_a == str_b:
             return 1.0
 
-        try:
-            # Try to use external Levenshtein function
-            from Static_Knowledge.Snippets.german_validation_snippets import (
-                levenshtein_distance
-            )
-            distance = levenshtein_distance(str_a, str_b)
-        except ImportError:
-            # Fallback: inline implementation
-            distance = self._levenshtein_distance(str_a, str_b)
+        # Use internal Levenshtein implementation
+        distance = self._levenshtein_distance(str_a, str_b)
 
         max_len = max(len(str_a), len(str_b))
         similarity = 1.0 - (distance / max_len)

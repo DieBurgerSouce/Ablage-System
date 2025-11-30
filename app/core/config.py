@@ -634,6 +634,49 @@ class Settings(BaseSettings):
                 origins=self.CORS_ORIGINS
             )
 
+        # ========== Infrastruktur-Validierung (Production) ==========
+        if not self.DEBUG:
+            # Kritische Services dürfen nicht auf localhost zeigen in Production
+            localhost_hosts = ("localhost", "127.0.0.1", "::1")
+
+            infrastructure_warnings = []
+
+            if self.DB_HOST in localhost_hosts:
+                infrastructure_warnings.append(f"DB_HOST={self.DB_HOST}")
+
+            if self.REDIS_HOST in localhost_hosts:
+                infrastructure_warnings.append(f"REDIS_HOST={self.REDIS_HOST}")
+
+            if any(host in self.MINIO_ENDPOINT for host in localhost_hosts):
+                infrastructure_warnings.append(f"MINIO_ENDPOINT={self.MINIO_ENDPOINT}")
+
+            if infrastructure_warnings:
+                logger.warning(
+                    "production_localhost_infrastructure",
+                    message="Kritische Services zeigen auf localhost in Production!",
+                    services=infrastructure_warnings,
+                    hint="Setze DEBUG=True für Development oder konfiguriere echte Hosts."
+                )
+
+            # Prüfe auf Default-Passwörter in Production
+            default_passwords = ["changeme", "postgres", "password", "secret", "admin"]
+
+            db_password = self.DB_PASSWORD.get_secret_value() if self.DB_PASSWORD else ""
+            if db_password.lower() in default_passwords:
+                raise ValueError(
+                    "DB_PASSWORD verwendet ein unsicheres Default-Passwort in Production! "
+                    "Bitte setze ein starkes Passwort."
+                )
+
+            # Prüfe MinIO Default-Credentials
+            minio_secret = self.MINIO_SECRET_KEY.get_secret_value() if self.MINIO_SECRET_KEY else ""
+            if self.MINIO_ACCESS_KEY == "minioadmin" or minio_secret in ["minioadmin", "minioadmin123"]:
+                logger.warning(
+                    "production_default_minio_credentials",
+                    message="MinIO verwendet Default-Credentials in Production!",
+                    hint="Setze MINIO_ACCESS_KEY und MINIO_SECRET_KEY auf sichere Werte."
+                )
+
         # Build DATABASE_URL if not set
         if not self.DATABASE_URL:
             password = self.DB_PASSWORD

@@ -26,6 +26,7 @@ from typing import Dict, List, Optional
 
 import structlog
 
+from app.core.config import settings
 from app.services.backup_metrics_service import get_backup_metrics, track_backup
 
 logger = structlog.get_logger(__name__)
@@ -44,30 +45,30 @@ run_subprocess = asyncio.create_subprocess_exec
 
 @dataclass
 class BackupConfig:
-    """Konfiguration fuer Backup-Service."""
+    """Konfiguration fuer Backup-Service - verwendet zentrale settings."""
 
     # Verzeichnisse
     backup_dir: Path = field(default_factory=lambda: Path(os.getenv("BACKUP_DIR", "/var/backups/ablage")))
     retention_days: int = field(default_factory=lambda: int(os.getenv("BACKUP_RETENTION_DAYS", "30")))
     compression_enabled: bool = field(default_factory=lambda: os.getenv("BACKUP_COMPRESSION", "true").lower() == "true")
 
-    # PostgreSQL
-    postgres_host: str = field(default_factory=lambda: os.getenv("DB_HOST", "localhost"))
-    postgres_port: int = field(default_factory=lambda: int(os.getenv("DB_PORT", "5433")))
-    postgres_db: str = field(default_factory=lambda: os.getenv("DB_NAME", "ablage_system"))
-    postgres_user: str = field(default_factory=lambda: os.getenv("DB_USER", "ablage_admin"))
-    postgres_password: str = field(default_factory=lambda: os.getenv("DB_PASSWORD", ""))
+    # PostgreSQL - aus zentraler settings
+    postgres_host: str = field(default_factory=lambda: settings.DB_HOST)
+    postgres_port: int = field(default_factory=lambda: settings.DB_PORT)
+    postgres_db: str = field(default_factory=lambda: settings.DB_NAME)
+    postgres_user: str = field(default_factory=lambda: settings.DB_USER)
+    postgres_password: str = field(default_factory=lambda: settings.DB_PASSWORD.get_secret_value() if settings.DB_PASSWORD else "")
 
-    # Redis
-    redis_host: str = field(default_factory=lambda: os.getenv("REDIS_HOST", "localhost"))
-    redis_port: int = field(default_factory=lambda: int(os.getenv("REDIS_PORT", "6380")))
-    redis_password: Optional[str] = field(default_factory=lambda: os.getenv("REDIS_PASSWORD"))
+    # Redis - aus zentraler settings
+    redis_host: str = field(default_factory=lambda: settings.REDIS_HOST)
+    redis_port: int = field(default_factory=lambda: settings.REDIS_PORT)
+    redis_password: Optional[str] = field(default_factory=lambda: settings.REDIS_PASSWORD.get_secret_value() if settings.REDIS_PASSWORD else None)
 
-    # MinIO
-    minio_endpoint: str = field(default_factory=lambda: os.getenv("MINIO_ENDPOINT", "localhost:9000"))
-    minio_access_key: str = field(default_factory=lambda: os.getenv("MINIO_ACCESS_KEY", "minioadmin"))
-    minio_secret_key: str = field(default_factory=lambda: os.getenv("MINIO_SECRET_KEY", "minioadmin123"))
-    minio_buckets: List[str] = field(default_factory=lambda: os.getenv("MINIO_BUCKETS", "documents,processed,thumbnails").split(","))
+    # MinIO - aus zentraler settings
+    minio_endpoint: str = field(default_factory=lambda: settings.MINIO_ENDPOINT)
+    minio_access_key: str = field(default_factory=lambda: settings.MINIO_ACCESS_KEY)
+    minio_secret_key: str = field(default_factory=lambda: settings.MINIO_SECRET_KEY.get_secret_value() if settings.MINIO_SECRET_KEY else "")
+    minio_buckets: List[str] = field(default_factory=lambda: [settings.MINIO_BUCKET_DOCUMENTS, settings.MINIO_BUCKET_PROCESSED, settings.MINIO_BUCKET_THUMBNAILS])
 
     # GPG Verschluesselung
     encryption_enabled: bool = field(default_factory=lambda: os.getenv("BACKUP_ENCRYPTION", "false").lower() == "true")
