@@ -13,12 +13,18 @@ except ImportError:
     torch = None
 
 import psutil
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any, Callable, TypeVar
 from datetime import datetime, timezone
 import structlog
 import threading
+import asyncio
+from functools import wraps
+from contextlib import contextmanager
 
 logger = structlog.get_logger(__name__)
+
+# Type variable for generic decorator
+T = TypeVar('T')
 
 class GPUManager:
     """Single RTX 4080 resource manager - CRITICAL COMPONENT"""
@@ -844,8 +850,413 @@ class gpu_memory_guard:
         return False  # Exceptions nicht unterdrücken
 
 
-# Singleton Instance
+# =============================================================================
+# AdaptiveBatchProcessor - OOM-sichere Batch-Verarbeitung
+# =============================================================================
+
+class AdaptiveBatchProcessor:
+    """
+    Adaptive Batch-Verarbeitung mit automatischem OOM-Fallback.
+
+    Implementiert exponentielles Backoff bei GPU Out-of-Memory Fehlern:
+    - Startet mit optimaler Batch-Size (z.B. 4)
+    - Bei OOM: Halbiert Batch-Size (4→2→1)
+    - Tracked Erfolgs/Fehler-Statistiken
+    - Integriert mit GPU Memory Profiling
+
+    Usage:
+        processor = AdaptiveBatchProcessor(gpu_manager)
+        results = await processor.process_with_fallback(
+            documents,
+            process_func=ocr_backend.process_batch,
+            backend="deepseek"
+        )
+    """
+
+    # Default Konfiguration
+    DEFAULT_INITIAL_BATCH = 4
+    MIN_BATCH_SIZE = 1
+    MAX_BATCH_SIZE = 8
+
+    def __init__(
+        self,
+        gpu_manager: Optional['GPUManager'] = None,
+        initial_batch_size: int = DEFAULT_INITIAL_BATCH,
+        enable_profiling: bool = True
+    ):
+        """
+        Initialisiere AdaptiveBatchProcessor.
+
+        Args:
+            gpu_manager: GPUManager Instance für Batch-Size-Berechnung
+            initial_batch_size: Start-Batch-Size
+            enable_profiling: GPU Memory Profiling aktivieren
+        """
+        self.gpu_manager = gpu_manager or GPUManager()
+        self.initial_batch_size = initial_batch_size
+        self.enable_profiling = enable_profiling
+
+        # Statistiken
+        self._stats = {
+            "total_batches": 0,
+            "successful_batches": 0,
+            "oom_events": 0,
+            "fallback_count": 0,
+            "last_successful_batch_size": initial_batch_size,
+        }
+        self._lock = threading.Lock()
+
+        logger.info(
+            "adaptive_batch_processor_initialized",
+            initial_batch_size=initial_batch_size,
+            enable_profiling=enable_profiling
+        )
+
+    async def process_with_fallback(
+        self,
+        documents: List[Dict[str, Any]],
+        process_func: Callable,
+        backend: str = "auto",
+        initial_batch: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Verarbeite Dokumente mit automatischem OOM-Fallback.
+
+        Implementiert exponentielles Backoff:
+        - Bei OOM: batch_size = batch_size // 2
+        - Minimum: batch_size = 1
+        - Bei Erfolg: Profiling der Memory-Nutzung
+
+        Args:
+            documents: Liste von Dokumenten zur Verarbeitung
+            process_func: Async/Sync Funktion für Batch-Verarbeitung
+            backend: OCR Backend Name für Profiling
+            initial_batch: Optionale Start-Batch-Size (überschreibt Default)
+
+        Returns:
+            Liste von verarbeiteten Ergebnissen
+
+        Raises:
+            RuntimeError: Wenn Verarbeitung auch mit batch_size=1 fehlschlägt
+        """
+        if not documents:
+            return []
+
+        # Bestimme optimale Start-Batch-Size
+        if initial_batch is not None:
+            batch_size = initial_batch
+        else:
+            batch_size = self.gpu_manager.get_optimal_batch_size_adaptive(backend)
+            batch_size = min(batch_size, self.initial_batch_size, len(documents))
+
+        results: List[Dict[str, Any]] = []
+        remaining = list(documents)
+
+        while remaining:
+            current_batch = remaining[:batch_size]
+
+            try:
+                with self._stats_lock():
+                    self._stats["total_batches"] += 1
+
+                # GPU Memory vor Verarbeitung
+                start_memory = 0
+                if TORCH_AVAILABLE and torch.cuda.is_available() and self.enable_profiling:
+                    torch.cuda.reset_peak_memory_stats()
+                    start_memory = torch.cuda.memory_allocated()
+
+                # Verarbeite Batch (unterstützt sync und async)
+                if asyncio.iscoroutinefunction(process_func):
+                    batch_results = await process_func(current_batch)
+                else:
+                    batch_results = process_func(current_batch)
+
+                # Profiling bei Erfolg
+                if TORCH_AVAILABLE and torch.cuda.is_available() and self.enable_profiling:
+                    peak_memory = torch.cuda.max_memory_allocated()
+                    self.gpu_manager.record_batch_profile(
+                        backend=backend,
+                        batch_size=len(current_batch),
+                        peak_memory_bytes=peak_memory
+                    )
+
+                # Erfolg!
+                results.extend(batch_results if isinstance(batch_results, list) else [batch_results])
+                remaining = remaining[batch_size:]
+
+                with self._stats_lock():
+                    self._stats["successful_batches"] += 1
+                    self._stats["last_successful_batch_size"] = batch_size
+
+                logger.debug(
+                    "batch_processed_successfully",
+                    batch_size=batch_size,
+                    remaining=len(remaining),
+                    backend=backend
+                )
+
+            except (torch.cuda.OutOfMemoryError if TORCH_AVAILABLE else Exception) as e:
+                # OOM Error - Fallback zu kleinerer Batch-Size
+                with self._stats_lock():
+                    self._stats["oom_events"] += 1
+                    self._stats["fallback_count"] += 1
+
+                logger.warning(
+                    "oom_batch_fallback",
+                    current_batch_size=batch_size,
+                    new_batch_size=batch_size // 2,
+                    error=str(e),
+                    backend=backend
+                )
+
+                # GPU Memory bereinigen
+                if TORCH_AVAILABLE and torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
+
+                # Batch-Size halbieren
+                batch_size = batch_size // 2
+
+                if batch_size < self.MIN_BATCH_SIZE:
+                    # Auch mit minimaler Batch-Size fehlgeschlagen
+                    logger.error(
+                        "batch_processing_failed_min_size",
+                        backend=backend,
+                        documents_remaining=len(remaining)
+                    )
+                    raise RuntimeError(
+                        f"OCR-Verarbeitung fehlgeschlagen auch mit batch_size=1. "
+                        f"Backend: {backend}, Error: {str(e)}"
+                    ) from e
+
+                # Retry mit kleinerer Batch-Size (nächste Iteration)
+                continue
+
+            except Exception as e:
+                # Andere Fehler - nicht recoverable durch Batch-Size Reduktion
+                logger.error(
+                    "batch_processing_error",
+                    error=str(e),
+                    backend=backend,
+                    batch_size=batch_size
+                )
+                raise
+
+        return results
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Hole Verarbeitungs-Statistiken."""
+        with self._stats_lock():
+            return {
+                **self._stats,
+                "oom_rate": (
+                    self._stats["oom_events"] / max(1, self._stats["total_batches"])
+                ),
+                "success_rate": (
+                    self._stats["successful_batches"] / max(1, self._stats["total_batches"])
+                )
+            }
+
+    def reset_stats(self) -> None:
+        """Setze Statistiken zurück."""
+        with self._stats_lock():
+            self._stats = {
+                "total_batches": 0,
+                "successful_batches": 0,
+                "oom_events": 0,
+                "fallback_count": 0,
+                "last_successful_batch_size": self.initial_batch_size,
+            }
+
+    @contextmanager
+    def _stats_lock(self):
+        """Thread-safe Stats-Zugriff."""
+        self._lock.acquire()
+        try:
+            yield
+        finally:
+            self._lock.release()
+
+
+# =============================================================================
+# GPU Memory Profiling Decorator
+# =============================================================================
+
+def profile_gpu_memory(backend_name: str, gpu_manager: Optional['GPUManager'] = None):
+    """
+    Decorator für automatisches GPU Memory Profiling.
+
+    Trackt Peak-Memory-Nutzung und speichert Profil für adaptive Batch-Sizing.
+
+    Usage:
+        @profile_gpu_memory("deepseek")
+        async def process_batch(self, documents):
+            ...
+
+    Args:
+        backend_name: Name des OCR Backends für Profiling
+        gpu_manager: Optional GPUManager Instance (Default: Singleton)
+
+    Returns:
+        Decorated Function
+    """
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        async def async_wrapper(*args: Any, **kwargs: Any) -> T:
+            manager = gpu_manager or get_gpu_manager()
+
+            # Memory vor Ausführung
+            if TORCH_AVAILABLE and torch.cuda.is_available():
+                torch.cuda.reset_peak_memory_stats()
+
+            try:
+                result = await func(*args, **kwargs)
+
+                # Memory nach Ausführung
+                if TORCH_AVAILABLE and torch.cuda.is_available():
+                    peak_memory = torch.cuda.max_memory_allocated()
+
+                    # Bestimme Batch-Size aus Args
+                    batch_size = 1
+                    if args and len(args) > 1 and isinstance(args[1], (list, tuple)):
+                        batch_size = len(args[1])
+                    elif 'documents' in kwargs and isinstance(kwargs['documents'], (list, tuple)):
+                        batch_size = len(kwargs['documents'])
+
+                    manager.record_batch_profile(
+                        backend=backend_name,
+                        batch_size=batch_size,
+                        peak_memory_bytes=peak_memory
+                    )
+
+                    logger.debug(
+                        "gpu_memory_profiled",
+                        backend=backend_name,
+                        peak_memory_gb=round(peak_memory / (1024**3), 2),
+                        batch_size=batch_size
+                    )
+
+                return result
+
+            finally:
+                # Cleanup
+                if TORCH_AVAILABLE and torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
+        @wraps(func)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> T:
+            manager = gpu_manager or get_gpu_manager()
+
+            if TORCH_AVAILABLE and torch.cuda.is_available():
+                torch.cuda.reset_peak_memory_stats()
+
+            try:
+                result = func(*args, **kwargs)
+
+                if TORCH_AVAILABLE and torch.cuda.is_available():
+                    peak_memory = torch.cuda.max_memory_allocated()
+
+                    batch_size = 1
+                    if args and len(args) > 1 and isinstance(args[1], (list, tuple)):
+                        batch_size = len(args[1])
+                    elif 'documents' in kwargs and isinstance(kwargs['documents'], (list, tuple)):
+                        batch_size = len(kwargs['documents'])
+
+                    manager.record_batch_profile(
+                        backend=backend_name,
+                        batch_size=batch_size,
+                        peak_memory_bytes=peak_memory
+                    )
+
+                return result
+
+            finally:
+                if TORCH_AVAILABLE and torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
+        # Return async or sync wrapper based on function type
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper
+        return sync_wrapper
+
+    return decorator
+
+
+# =============================================================================
+# Adaptive Batch Size Calculator
+# =============================================================================
+
+def get_optimal_batch_size_for_document(
+    backend: str,
+    document_size_mb: float,
+    gpu_manager: Optional['GPUManager'] = None
+) -> int:
+    """
+    Berechne optimale Batch-Size basierend auf Dokumentgröße und verfügbarem VRAM.
+
+    Berücksichtigt:
+    - Backend-spezifische Memory-Anforderungen
+    - Aktuelle GPU-Auslastung
+    - Dokumentgröße (größere Dokumente = mehr Memory)
+    - 15% Safety Buffer
+
+    Args:
+        backend: OCR Backend Name
+        document_size_mb: Dokumentgröße in MB
+        gpu_manager: Optional GPUManager Instance
+
+    Returns:
+        Optimale Batch-Size (1-8)
+    """
+    manager = gpu_manager or get_gpu_manager()
+    status = manager.check_availability()
+
+    if not status.get("available") or backend == "surya":
+        return 4  # CPU Fallback
+
+    available_vram_gb = status.get("free_gb", 0)
+
+    # Heuristiken: Base Memory + Document Size Faktor (in GB)
+    memory_per_doc = {
+        "deepseek": lambda size: 2.0 + size * 0.15,   # 2GB base + 150MB pro MB
+        "got_ocr": lambda size: 1.5 + size * 0.10,    # 1.5GB base + 100MB pro MB
+        "surya_gpu": lambda size: 0.5 + size * 0.05,  # 0.5GB base + 50MB pro MB
+        "donut": lambda size: 1.0 + size * 0.08,      # 1GB base + 80MB pro MB
+        "hybrid": lambda size: 2.0 + size * 0.15,     # Wie DeepSeek (konservativ)
+    }
+
+    # Berechne Memory pro Dokument
+    size_mb = document_size_mb / 1024  # Convert to GB für Formel
+    estimated_gb = memory_per_doc.get(backend, lambda s: 1.5)(size_mb)
+
+    # Safety Buffer: 15%
+    safe_vram_gb = available_vram_gb * 0.85
+
+    # Berechne optimale Batch-Size
+    optimal = int(safe_vram_gb / estimated_gb)
+
+    # Clamp zwischen 1 und 8
+    result = max(1, min(optimal, 8))
+
+    logger.debug(
+        "optimal_batch_size_calculated",
+        backend=backend,
+        document_size_mb=document_size_mb,
+        available_vram_gb=round(available_vram_gb, 2),
+        estimated_gb_per_doc=round(estimated_gb, 2),
+        optimal_batch_size=result
+    )
+
+    return result
+
+
+# =============================================================================
+# Singleton Instances
+# =============================================================================
+
 _memory_guard: Optional[GPUMemoryGuard] = None
+_gpu_manager: Optional[GPUManager] = None
+_batch_processor: Optional[AdaptiveBatchProcessor] = None
 
 
 def get_memory_guard() -> GPUMemoryGuard:
@@ -854,3 +1265,19 @@ def get_memory_guard() -> GPUMemoryGuard:
     if _memory_guard is None:
         _memory_guard = GPUMemoryGuard()
     return _memory_guard
+
+
+def get_gpu_manager() -> GPUManager:
+    """Hole Singleton-Instance des GPU Managers."""
+    global _gpu_manager
+    if _gpu_manager is None:
+        _gpu_manager = GPUManager()
+    return _gpu_manager
+
+
+def get_batch_processor() -> AdaptiveBatchProcessor:
+    """Hole Singleton-Instance des AdaptiveBatchProcessor."""
+    global _batch_processor
+    if _batch_processor is None:
+        _batch_processor = AdaptiveBatchProcessor(gpu_manager=get_gpu_manager())
+    return _batch_processor

@@ -5,7 +5,10 @@ import time
 import structlog
 from celery import Celery, Task
 from celery.schedules import crontab
-from celery.signals import task_prerun, task_postrun, task_failure, task_retry, task_success
+from celery.signals import (
+    task_prerun, task_postrun, task_failure, task_retry, task_success,
+    worker_ready, worker_shutdown, celeryd_init
+)
 from contextlib import contextmanager
 from typing import Any, Optional
 import torch
@@ -459,3 +462,296 @@ def task_success_handler(
     """Log successful task completion."""
     task_name = sender.name if sender else None
     logger.info("task_success", task_name=task_name)
+
+
+# =============================================================================
+# Model Preloading - Worker Startup Optimization
+# =============================================================================
+
+# Global flag to track if models are preloaded
+_models_preloaded = False
+
+
+@worker_ready.connect
+def preload_ocr_models(sender: Any = None, **kwargs: Any) -> None:
+    """
+    Preload OCR models when worker starts to eliminate cold start latency.
+
+    Cold start problem:
+    - First inference takes 60-90 seconds (CUDA kernel compilation)
+    - Subsequent inferences are fast (~2-5 seconds)
+
+    Solution:
+    - Load models at worker startup
+    - Run warm-up inference with dummy data
+    - Models stay in GPU memory for fast subsequent processing
+
+    Note: Only runs on GPU workers (worker_pool="solo")
+    """
+    global _models_preloaded
+
+    if _models_preloaded:
+        logger.debug("models_already_preloaded")
+        return
+
+    logger.info("worker_ready_preloading_models")
+
+    if not torch.cuda.is_available():
+        logger.warning("gpu_not_available_skipping_preload")
+        _models_preloaded = True
+        return
+
+    try:
+        # Import OCR backends lazily to avoid circular imports
+        from app.core.config import settings
+
+        # Get default backend from settings
+        default_backend = getattr(settings, 'DEFAULT_OCR_BACKEND', 'deepseek')
+
+        logger.info(
+            "preloading_ocr_model",
+            backend=default_backend,
+            cuda_device=torch.cuda.get_device_name(0)
+        )
+
+        # Preload based on backend
+        if default_backend == "deepseek":
+            _preload_deepseek()
+        elif default_backend == "got_ocr":
+            _preload_got_ocr()
+        elif default_backend == "surya_gpu":
+            _preload_surya_gpu()
+        else:
+            logger.info("preload_skipped_cpu_backend", backend=default_backend)
+
+        _models_preloaded = True
+        logger.info("models_preloaded_successfully", backend=default_backend)
+
+    except Exception as e:
+        logger.error("model_preload_failed", error=str(e), exc_info=True)
+        # Don't fail worker startup - just log and continue
+        _models_preloaded = True
+
+
+def _preload_deepseek() -> None:
+    """Preload DeepSeek-Janus-Pro model."""
+    try:
+        from app.agents.ocr.deepseek_agent import DeepSeekAgent
+
+        logger.info("preloading_deepseek_model")
+        agent = DeepSeekAgent()
+
+        # Access model to trigger loading
+        if hasattr(agent, 'model') and agent.model is not None:
+            # Run warm-up inference
+            logger.info("running_deepseek_warmup")
+            dummy_input = torch.randn(1, 3, 224, 224).cuda()
+            with torch.no_grad():
+                # Simple forward pass to compile CUDA kernels
+                if hasattr(agent.model, 'encode_image'):
+                    _ = agent.model.encode_image(dummy_input)
+                elif hasattr(agent.model, 'forward'):
+                    _ = agent.model(dummy_input)
+
+            logger.info("deepseek_warmup_complete")
+        else:
+            logger.warning("deepseek_model_not_loaded")
+
+    except ImportError as e:
+        logger.warning("deepseek_import_failed", error=str(e))
+    except Exception as e:
+        logger.error("deepseek_preload_error", error=str(e))
+
+
+def _preload_got_ocr() -> None:
+    """Preload GOT-OCR 2.0 model."""
+    try:
+        from app.agents.ocr.got_ocr_agent import GOTOCRAgent
+
+        logger.info("preloading_got_ocr_model")
+        agent = GOTOCRAgent()
+
+        if hasattr(agent, 'model') and agent.model is not None:
+            logger.info("running_got_ocr_warmup")
+            dummy_input = torch.randn(1, 3, 384, 384).cuda()
+            with torch.no_grad():
+                if hasattr(agent.model, 'forward'):
+                    _ = agent.model(dummy_input)
+
+            logger.info("got_ocr_warmup_complete")
+        else:
+            logger.warning("got_ocr_model_not_loaded")
+
+    except ImportError as e:
+        logger.warning("got_ocr_import_failed", error=str(e))
+    except Exception as e:
+        logger.error("got_ocr_preload_error", error=str(e))
+
+
+def _preload_surya_gpu() -> None:
+    """Preload Surya GPU model."""
+    try:
+        from app.agents.ocr.surya_gpu_agent import SuryaGPUAgent
+
+        logger.info("preloading_surya_gpu_model")
+        agent = SuryaGPUAgent()
+
+        if hasattr(agent, 'model') and agent.model is not None:
+            logger.info("running_surya_gpu_warmup")
+            # Surya typically uses different input shape
+            dummy_input = torch.randn(1, 3, 256, 256).cuda()
+            with torch.no_grad():
+                if hasattr(agent.model, 'forward'):
+                    _ = agent.model(dummy_input)
+
+            logger.info("surya_gpu_warmup_complete")
+        else:
+            logger.warning("surya_gpu_model_not_loaded")
+
+    except ImportError as e:
+        logger.warning("surya_gpu_import_failed", error=str(e))
+    except Exception as e:
+        logger.error("surya_gpu_preload_error", error=str(e))
+
+
+# =============================================================================
+# Worker Shutdown - GPU Cleanup
+# =============================================================================
+
+@worker_shutdown.connect
+def cleanup_gpu_on_worker_shutdown(sender: Any = None, **kwargs: Any) -> None:
+    """
+    Clean up GPU resources when worker shuts down.
+
+    Prevents:
+    - GPU memory leaks
+    - Zombie CUDA processes
+    - Resource contention with other workers
+    """
+    logger.info("worker_shutdown_cleaning_gpu")
+
+    if torch.cuda.is_available():
+        try:
+            # Clear CUDA cache
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+
+            # Log final memory state
+            allocated = torch.cuda.memory_allocated() / (1024**3)
+            reserved = torch.cuda.memory_reserved() / (1024**3)
+
+            logger.info(
+                "gpu_cleanup_complete",
+                allocated_gb=round(allocated, 2),
+                reserved_gb=round(reserved, 2)
+            )
+
+        except Exception as e:
+            logger.error("gpu_cleanup_failed", error=str(e))
+
+    # Force garbage collection
+    import gc
+    gc.collect()
+
+    logger.info("worker_shutdown_complete")
+
+
+# =============================================================================
+# Enhanced OOM Recovery Signal Handler
+# =============================================================================
+
+@task_failure.connect
+def enhanced_oom_recovery_handler(
+    sender: Optional[Task] = None,
+    task_id: Optional[str] = None,
+    exception: Optional[Exception] = None,
+    args: Optional[tuple] = None,
+    kwargs: Optional[dict] = None,
+    traceback: Optional[Any] = None,
+    einfo: Optional[Any] = None,
+    **extra: Any
+) -> None:
+    """
+    Enhanced OOM recovery handler with GPU memory cleanup.
+
+    Actions on OOM:
+    1. Log detailed GPU memory state
+    2. Clear CUDA cache
+    3. Reset peak memory stats
+    4. Trigger garbage collection
+    5. Record metrics for monitoring
+    """
+    task_name = sender.name if sender else "unknown"
+
+    # Check if this is an OOM error
+    is_oom = (
+        isinstance(exception, torch.cuda.OutOfMemoryError) if torch.cuda.is_available()
+        else False
+    ) or (
+        exception and "out of memory" in str(exception).lower()
+    )
+
+    if is_oom:
+        logger.error(
+            "oom_recovery_triggered",
+            task_id=task_id,
+            task_name=task_name,
+            error=str(exception)
+        )
+
+        if torch.cuda.is_available():
+            try:
+                # Log memory state before cleanup
+                before_allocated = torch.cuda.memory_allocated() / (1024**3)
+                before_reserved = torch.cuda.memory_reserved() / (1024**3)
+
+                # Aggressive cleanup
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+                torch.cuda.reset_peak_memory_stats()
+
+                # Force garbage collection
+                import gc
+                gc.collect()
+
+                # Log memory state after cleanup
+                after_allocated = torch.cuda.memory_allocated() / (1024**3)
+                after_reserved = torch.cuda.memory_reserved() / (1024**3)
+
+                freed_gb = before_allocated - after_allocated
+
+                logger.info(
+                    "oom_recovery_complete",
+                    task_id=task_id,
+                    freed_gb=round(freed_gb, 2),
+                    before_allocated_gb=round(before_allocated, 2),
+                    after_allocated_gb=round(after_allocated, 2)
+                )
+
+                # Update OOM metrics (for Prometheus)
+                _record_oom_event(task_name, freed_gb)
+
+            except Exception as cleanup_error:
+                logger.error(
+                    "oom_recovery_cleanup_failed",
+                    task_id=task_id,
+                    error=str(cleanup_error)
+                )
+
+
+def _record_oom_event(task_name: str, freed_gb: float) -> None:
+    """Record OOM event for metrics/monitoring."""
+    try:
+        # Try to update Prometheus metrics if available
+        from app.gpu_manager import get_batch_processor
+        processor = get_batch_processor()
+        # Stats are tracked internally in AdaptiveBatchProcessor
+        logger.debug(
+            "oom_event_recorded",
+            task_name=task_name,
+            freed_gb=freed_gb,
+            processor_stats=processor.get_stats()
+        )
+    except Exception:
+        # Metrics not available - just log
+        pass

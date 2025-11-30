@@ -1,22 +1,25 @@
 """
 OCR Result Caching Service.
 
-Cached OCR-Ergebnisse in Redis, um wiederholte Verarbeitung
-identischer Dokumente zu vermeiden.
+Multi-Level Caching für OCR-Ergebnisse:
+- L1 Cache: In-Memory (TTLCache) für häufig abgerufene Dokumente
+- L2 Cache: Redis für persistente Speicherung
 
 Cache-Key basiert auf:
 - Datei-Hash (SHA256)
 - OCR-Backend
 - Sprache
-- Optionen
 
 Feinpoliert und durchdacht - Ressourcenschonende OCR.
 """
 
 import hashlib
 import json
+import threading
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone
+from collections import OrderedDict
+import time
 
 import structlog
 
@@ -25,26 +28,155 @@ from app.core.config import settings
 logger = structlog.get_logger(__name__)
 
 
+# =============================================================================
+# L1 Cache - In-Memory TTL Cache
+# =============================================================================
+
+class TTLCache:
+    """
+    Thread-safe In-Memory Cache mit TTL.
+
+    Verwendet OrderedDict für LRU-Eviction und TTL-basierte Expiration.
+    """
+
+    def __init__(self, maxsize: int = 100, ttl: int = 300):
+        """
+        Initialize TTLCache.
+
+        Args:
+            maxsize: Maximum number of items in cache
+            ttl: Time-to-live in seconds (default 5 minutes)
+        """
+        self._cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
+        self._maxsize = maxsize
+        self._ttl = ttl
+        self._lock = threading.RLock()
+
+    def get(self, key: str) -> Optional[Any]:
+        """Get item from cache if not expired."""
+        with self._lock:
+            if key not in self._cache:
+                return None
+
+            item = self._cache[key]
+            if time.time() > item['expires']:
+                # Expired
+                del self._cache[key]
+                return None
+
+            # Move to end (LRU)
+            self._cache.move_to_end(key)
+            return item['value']
+
+    def set(self, key: str, value: Any) -> None:
+        """Set item in cache with TTL."""
+        with self._lock:
+            # Remove oldest if at capacity
+            while len(self._cache) >= self._maxsize:
+                self._cache.popitem(last=False)
+
+            self._cache[key] = {
+                'value': value,
+                'expires': time.time() + self._ttl,
+                'created': time.time()
+            }
+
+    def delete(self, key: str) -> bool:
+        """Delete item from cache."""
+        with self._lock:
+            if key in self._cache:
+                del self._cache[key]
+                return True
+            return False
+
+    def clear(self) -> None:
+        """Clear all items from cache."""
+        with self._lock:
+            self._cache.clear()
+
+    def __contains__(self, key: str) -> bool:
+        """Check if key exists and is not expired."""
+        return self.get(key) is not None
+
+    def __len__(self) -> int:
+        """Return number of non-expired items."""
+        with self._lock:
+            now = time.time()
+            # Clean expired entries
+            expired = [k for k, v in self._cache.items() if now > v['expires']]
+            for k in expired:
+                del self._cache[k]
+            return len(self._cache)
+
+    def stats(self) -> Dict[str, Any]:
+        """Get cache statistics."""
+        with self._lock:
+            return {
+                "size": len(self._cache),
+                "maxsize": self._maxsize,
+                "ttl_seconds": self._ttl
+            }
+
+
 class OCRCacheService:
     """
-    Service für OCR-Ergebnis-Caching.
+    Multi-Level OCR-Ergebnis-Caching Service.
 
-    Speichert OCR-Ergebnisse in Redis basierend auf Datei-Hash,
-    um teure Wiederverarbeitung zu vermeiden.
+    Cache-Hierarchie:
+    - L1: In-Memory TTLCache (5 Minuten, 100 Einträge)
+    - L2: Redis (24 Stunden, unbegrenzt)
+
+    Bei L1-Hit: Sofortige Rückgabe (< 1ms)
+    Bei L1-Miss, L2-Hit: Redis-Lookup + L1-Promotion
+    Bei L2-Miss: OCR-Verarbeitung erforderlich
+
+    Optimierungen:
+    - Vereinfachtes Key-Schema (ohne options_hash)
+    - Per-Backend Hit-Rate Tracking
+    - LRU-Eviction im L1 Cache
     """
 
-    def __init__(self, redis_client: Any = None):
+    # Konfiguration
+    L1_MAXSIZE = 100      # Maximum L1 Cache Einträge
+    L1_TTL = 300          # L1 TTL: 5 Minuten
+    L2_TTL = 86400        # L2 TTL: 24 Stunden
+
+    def __init__(
+        self,
+        redis_client: Any = None,
+        l1_maxsize: int = L1_MAXSIZE,
+        l1_ttl: int = L1_TTL,
+        l2_ttl: int = L2_TTL
+    ):
         """
-        Initialize OCRCacheService.
+        Initialize OCRCacheService with Multi-Level Caching.
 
         Args:
             redis_client: Redis client instance (lazy loaded wenn None)
+            l1_maxsize: Maximum L1 cache entries
+            l1_ttl: L1 TTL in seconds
+            l2_ttl: L2 (Redis) TTL in seconds
         """
+        # L1 Cache (Memory)
+        self._l1_cache = TTLCache(maxsize=l1_maxsize, ttl=l1_ttl)
+
+        # L2 Cache (Redis)
         self._redis = redis_client
         self._prefix = "ocr_cache:"
         self._stats_prefix = "ocr_cache_stats:"
-        self._default_ttl = 86400  # 24 Stunden
+        self._default_ttl = l2_ttl
         self._enabled = True
+
+        # Per-Backend Stats
+        self._backend_stats: Dict[str, Dict[str, int]] = {}
+        self._stats_lock = threading.Lock()
+
+        logger.info(
+            "ocr_cache_service_initialized",
+            l1_maxsize=l1_maxsize,
+            l1_ttl=l1_ttl,
+            l2_ttl=l2_ttl
+        )
 
     async def _get_redis(self) -> Optional[Any]:
         """Get Redis client, lazy loading if needed."""
@@ -109,13 +241,17 @@ class OCRCacheService:
         options: Optional[Dict[str, Any]] = None
     ) -> Optional[Dict[str, Any]]:
         """
-        Get cached OCR result if available.
+        Get cached OCR result using Multi-Level Cache.
+
+        Cache Lookup Order:
+        1. L1 (Memory) - instant lookup
+        2. L2 (Redis) - network lookup + L1 promotion
 
         Args:
             content: File content bytes
             backend: OCR backend to use
             language: Target language
-            options: Additional OCR options
+            options: Additional OCR options (ignored for key, kept for compatibility)
 
         Returns:
             Cached result dict or None
@@ -123,33 +259,81 @@ class OCRCacheService:
         if not self._enabled:
             return None
 
+        file_hash = self._compute_file_hash(content)
+        # Vereinfachter Key: nur hash:backend:language (ohne options)
+        cache_key = self._make_cache_key(file_hash, backend, language)
+
+        # Step 1: L1 Cache Lookup (Memory)
+        l1_result = self._l1_cache.get(cache_key)
+        if l1_result is not None:
+            self._record_backend_hit(backend, "l1")
+            await self._record_hit(file_hash)
+            logger.debug(
+                "ocr_cache_l1_hit",
+                file_hash=file_hash[:16],
+                backend=backend,
+            )
+            return l1_result
+
+        # Step 2: L2 Cache Lookup (Redis)
         redis = await self._get_redis()
         if not redis:
+            self._record_backend_miss(backend)
             return None
-
-        file_hash = self._compute_file_hash(content)
-        options_hash = self._hash_options(options)
-        cache_key = self._make_cache_key(file_hash, backend, language, options_hash)
 
         try:
             cached = await redis.get(cache_key)
             if cached:
                 data = json.loads(cached)
-                # Update stats
+                result = data.get("result")
+
+                # L1 Promotion - speichere in Memory Cache
+                if result:
+                    self._l1_cache.set(cache_key, result)
+
+                self._record_backend_hit(backend, "l2")
                 await self._record_hit(file_hash)
                 logger.debug(
-                    "ocr_cache_hit",
+                    "ocr_cache_l2_hit",
                     file_hash=file_hash[:16],
                     backend=backend,
                     cached_at=data.get("cached_at"),
+                    promoted_to_l1=True,
                 )
-                return data.get("result")
+                return result
             else:
+                self._record_backend_miss(backend)
                 await self._record_miss(file_hash)
         except Exception as e:
             logger.warning("ocr_cache_get_error", error=str(e))
+            self._record_backend_miss(backend)
 
         return None
+
+    def _record_backend_hit(self, backend: str, level: str) -> None:
+        """Record cache hit for specific backend and level."""
+        with self._stats_lock:
+            if backend not in self._backend_stats:
+                self._backend_stats[backend] = {
+                    "l1_hits": 0,
+                    "l2_hits": 0,
+                    "misses": 0,
+                }
+            if level == "l1":
+                self._backend_stats[backend]["l1_hits"] += 1
+            elif level == "l2":
+                self._backend_stats[backend]["l2_hits"] += 1
+
+    def _record_backend_miss(self, backend: str) -> None:
+        """Record cache miss for specific backend."""
+        with self._stats_lock:
+            if backend not in self._backend_stats:
+                self._backend_stats[backend] = {
+                    "l1_hits": 0,
+                    "l2_hits": 0,
+                    "misses": 0,
+                }
+            self._backend_stats[backend]["misses"] += 1
 
     async def cache_result(
         self,
@@ -161,51 +345,59 @@ class OCRCacheService:
         ttl: Optional[int] = None
     ) -> bool:
         """
-        Cache OCR result.
+        Cache OCR result in both L1 (Memory) and L2 (Redis).
 
         Args:
             content: File content bytes
             backend: OCR backend used
             result: OCR result to cache
             language: Target language
-            options: Additional OCR options
-            ttl: Cache TTL in seconds (default 24h)
+            options: Additional OCR options (stored but not in key)
+            ttl: L2 Cache TTL in seconds (default 24h)
 
         Returns:
-            True if cached successfully
+            True if cached successfully in at least L1
         """
         if not self._enabled:
             return False
 
-        redis = await self._get_redis()
-        if not redis:
-            return False
-
         file_hash = self._compute_file_hash(content)
-        options_hash = self._hash_options(options)
-        cache_key = self._make_cache_key(file_hash, backend, language, options_hash)
+        # Vereinfachter Key: nur hash:backend:language
+        cache_key = self._make_cache_key(file_hash, backend, language)
         cache_ttl = ttl or self._default_ttl
 
-        try:
-            cache_data = {
-                "result": result,
-                "cached_at": datetime.now(timezone.utc).isoformat(),
-                "file_hash": file_hash,
-                "backend": backend,
-                "language": language,
-                "options": options,
-            }
-            await redis.set(cache_key, json.dumps(cache_data), ex=cache_ttl)
-            logger.debug(
-                "ocr_result_cached",
-                file_hash=file_hash[:16],
-                backend=backend,
-                ttl=cache_ttl,
-            )
-            return True
-        except Exception as e:
-            logger.warning("ocr_cache_set_error", error=str(e))
-            return False
+        # Step 1: L1 Cache (Memory) - always store
+        self._l1_cache.set(cache_key, result)
+        l1_success = True
+
+        # Step 2: L2 Cache (Redis) - store if available
+        l2_success = False
+        redis = await self._get_redis()
+        if redis:
+            try:
+                cache_data = {
+                    "result": result,
+                    "cached_at": datetime.now(timezone.utc).isoformat(),
+                    "file_hash": file_hash,
+                    "backend": backend,
+                    "language": language,
+                    "options": options,
+                }
+                await redis.set(cache_key, json.dumps(cache_data), ex=cache_ttl)
+                l2_success = True
+            except Exception as e:
+                logger.warning("ocr_cache_l2_set_error", error=str(e))
+
+        logger.debug(
+            "ocr_result_cached",
+            file_hash=file_hash[:16],
+            backend=backend,
+            l1_success=l1_success,
+            l2_success=l2_success,
+            l2_ttl=cache_ttl if l2_success else None,
+        )
+
+        return l1_success or l2_success
 
     async def invalidate(
         self,
@@ -214,7 +406,7 @@ class OCRCacheService:
         language: Optional[str] = None
     ) -> int:
         """
-        Invalidate cached results for a file.
+        Invalidate cached results for a file in both L1 and L2 cache.
 
         Args:
             content: File content bytes
@@ -222,13 +414,45 @@ class OCRCacheService:
             language: Optional specific language to invalidate
 
         Returns:
-            Number of keys deleted
+            Number of keys deleted (L1 + L2 combined)
         """
+        file_hash = self._compute_file_hash(content)
+        deleted_count = 0
+
+        # Step 1: Invalidate L1 Cache (Memory)
+        # Build specific key if backend and language provided
+        if backend and language:
+            l1_key = self._make_cache_key(file_hash, backend, language)
+            if self._l1_cache.delete(l1_key):
+                deleted_count += 1
+                logger.debug(
+                    "ocr_cache_l1_invalidated",
+                    file_hash=file_hash[:16],
+                    backend=backend,
+                    language=language,
+                )
+        else:
+            # Clear all L1 entries for this file (scan through cache)
+            # Note: L1 cache is small, full scan is acceptable
+            with self._l1_cache._lock:
+                keys_to_delete = [
+                    k for k in self._l1_cache._cache.keys()
+                    if k.startswith(f"{self._prefix}{file_hash}:")
+                ]
+                for k in keys_to_delete:
+                    del self._l1_cache._cache[k]
+                    deleted_count += 1
+            if keys_to_delete:
+                logger.debug(
+                    "ocr_cache_l1_bulk_invalidated",
+                    file_hash=file_hash[:16],
+                    keys_deleted=len(keys_to_delete),
+                )
+
+        # Step 2: Invalidate L2 Cache (Redis)
         redis = await self._get_redis()
         if not redis:
-            return 0
-
-        file_hash = self._compute_file_hash(content)
+            return deleted_count
 
         # Build pattern for deletion
         if backend and language:
@@ -246,17 +470,19 @@ class OCRCacheService:
                 keys.append(key)
 
             if keys:
-                deleted = await redis.delete(*keys)
+                l2_deleted = await redis.delete(*keys)
+                deleted_count += l2_deleted
                 logger.info(
                     "ocr_cache_invalidated",
                     file_hash=file_hash[:16],
-                    keys_deleted=deleted,
+                    l1_deleted=deleted_count - l2_deleted,
+                    l2_deleted=l2_deleted,
+                    total_deleted=deleted_count,
                 )
-                return deleted
-            return 0
+            return deleted_count
         except Exception as e:
             logger.warning("ocr_cache_invalidate_error", error=str(e))
-            return 0
+            return deleted_count
 
     async def _record_hit(self, file_hash: str) -> None:
         """Record cache hit in stats."""
@@ -279,44 +505,108 @@ class OCRCacheService:
 
     async def get_stats(self) -> Dict[str, Any]:
         """
-        Get cache statistics.
+        Get comprehensive multi-level cache statistics.
 
         Returns:
-            Dict with hits, misses, hit_rate
+            Dict with L1 stats, L2 stats, per-backend stats, and overall metrics
         """
+        # L1 Cache Stats (Memory)
+        l1_stats = self._l1_cache.stats()
+
+        # Per-Backend Stats (local tracking)
+        with self._stats_lock:
+            backend_stats = {}
+            for backend, stats in self._backend_stats.items():
+                total_hits = stats["l1_hits"] + stats["l2_hits"]
+                total_requests = total_hits + stats["misses"]
+                hit_rate = (total_hits / total_requests * 100) if total_requests > 0 else 0
+                backend_stats[backend] = {
+                    "l1_hits": stats["l1_hits"],
+                    "l2_hits": stats["l2_hits"],
+                    "misses": stats["misses"],
+                    "total_requests": total_requests,
+                    "hit_rate_percent": round(hit_rate, 2),
+                }
+
+        # L2 Cache Stats (Redis)
         redis = await self._get_redis()
         if not redis:
-            return {"enabled": False, "redis_available": False}
+            return {
+                "enabled": self._enabled,
+                "redis_available": False,
+                "l1_cache": l1_stats,
+                "l2_cache": {"available": False},
+                "per_backend": backend_stats,
+            }
 
         try:
-            hits = int(await redis.get(f"{self._stats_prefix}hits") or 0)
-            misses = int(await redis.get(f"{self._stats_prefix}misses") or 0)
-            total = hits + misses
-            hit_rate = (hits / total * 100) if total > 0 else 0
+            l2_hits = int(await redis.get(f"{self._stats_prefix}hits") or 0)
+            l2_misses = int(await redis.get(f"{self._stats_prefix}misses") or 0)
+            l2_total = l2_hits + l2_misses
+            l2_hit_rate = (l2_hits / l2_total * 100) if l2_total > 0 else 0
+
+            # Aggregate totals from per-backend stats
+            total_l1_hits = sum(s.get("l1_hits", 0) for s in backend_stats.values())
+            total_l2_hits = sum(s.get("l2_hits", 0) for s in backend_stats.values())
+            total_misses = sum(s.get("misses", 0) for s in backend_stats.values())
+            total_requests = total_l1_hits + total_l2_hits + total_misses
+
+            overall_hit_rate = (
+                ((total_l1_hits + total_l2_hits) / total_requests * 100)
+                if total_requests > 0 else 0
+            )
 
             return {
                 "enabled": self._enabled,
                 "redis_available": True,
-                "hits": hits,
-                "misses": misses,
-                "total_requests": total,
-                "hit_rate_percent": round(hit_rate, 2),
-                "default_ttl_seconds": self._default_ttl,
+                "l1_cache": {
+                    **l1_stats,
+                    "hits": total_l1_hits,
+                    "description": "In-Memory TTL Cache (schnellste Antwortzeit)",
+                },
+                "l2_cache": {
+                    "available": True,
+                    "hits": l2_hits,
+                    "misses": l2_misses,
+                    "total_requests": l2_total,
+                    "hit_rate_percent": round(l2_hit_rate, 2),
+                    "ttl_seconds": self._default_ttl,
+                    "description": "Redis Cache (persistente Speicherung)",
+                },
+                "per_backend": backend_stats,
+                "overall": {
+                    "total_l1_hits": total_l1_hits,
+                    "total_l2_hits": total_l2_hits,
+                    "total_misses": total_misses,
+                    "total_requests": total_requests,
+                    "combined_hit_rate_percent": round(overall_hit_rate, 2),
+                },
             }
         except Exception as e:
             logger.warning("ocr_cache_stats_error", error=str(e))
-            return {"enabled": self._enabled, "error": str(e)}
+            return {
+                "enabled": self._enabled,
+                "error": str(e),
+                "l1_cache": l1_stats,
+                "per_backend": backend_stats,
+            }
 
     async def clear_stats(self) -> bool:
-        """Clear cache statistics."""
+        """Clear all cache statistics (L1, L2, and per-backend)."""
+        # Clear per-backend stats (local)
+        with self._stats_lock:
+            self._backend_stats.clear()
+
+        # Clear L2 stats (Redis)
         redis = await self._get_redis()
         if not redis:
-            return False
+            logger.info("ocr_cache_local_stats_cleared")
+            return True  # Local stats cleared successfully
 
         try:
             await redis.delete(f"{self._stats_prefix}hits")
             await redis.delete(f"{self._stats_prefix}misses")
-            logger.info("ocr_cache_stats_cleared")
+            logger.info("ocr_cache_all_stats_cleared")
             return True
         except Exception as e:
             logger.warning("ocr_cache_stats_clear_error", error=str(e))

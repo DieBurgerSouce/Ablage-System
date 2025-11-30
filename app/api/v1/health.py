@@ -447,6 +447,299 @@ async def readiness_probe(
 
 
 # =============================================================================
+# Celery Worker Health Endpoints
+# =============================================================================
+
+
+class WorkerInfo(BaseModel):
+    """Informationen zu einem einzelnen Celery Worker."""
+
+    name: str = Field(..., description="Worker-Name")
+    status: str = Field(..., description="active, idle, offline")
+    hostname: str = Field(..., description="Hostname")
+    pid: Optional[int] = Field(None, description="Process ID")
+    concurrency: Optional[int] = Field(None, description="Worker Concurrency")
+    active_tasks: int = Field(default=0, description="Aktive Tasks")
+    processed_tasks: int = Field(default=0, description="Verarbeitete Tasks gesamt")
+    gpu_memory_percent: Optional[float] = Field(None, description="GPU Memory Nutzung")
+    last_heartbeat: Optional[str] = Field(None, description="Letzter Heartbeat")
+    uptime_seconds: Optional[float] = Field(None, description="Laufzeit in Sekunden")
+
+
+class QueueInfo(BaseModel):
+    """Informationen zu einer Celery Queue."""
+
+    name: str = Field(..., description="Queue-Name")
+    length: int = Field(..., description="Anzahl Tasks in Queue")
+    consumers: int = Field(default=0, description="Anzahl Consumer")
+
+
+class WorkerHealthResponse(BaseModel):
+    """Celery Worker Gesundheitsstatus."""
+
+    status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    broker_erreichbar: bool = Field(..., description="Redis Broker erreichbar")
+    workers_aktiv: int = Field(..., description="Anzahl aktiver Worker")
+    workers_gesamt: int = Field(..., description="Gesamtzahl registrierter Worker")
+    tasks_wartend: int = Field(..., description="Tasks in Warteschlange")
+    tasks_aktiv: int = Field(..., description="Aktuell verarbeitete Tasks")
+    workers: list[WorkerInfo] = Field(default_factory=list, description="Worker Details")
+    queues: list[QueueInfo] = Field(default_factory=list, description="Queue Details")
+    tasks_erfolg_rate: Optional[float] = Field(None, description="Task Erfolgsrate")
+    durchschnittliche_task_dauer_ms: Optional[float] = Field(
+        None, description="Durchschnittliche Task-Dauer"
+    )
+    empfehlungen: list = Field(default_factory=list, description="Empfehlungen")
+
+
+async def _check_celery_workers() -> WorkerHealthResponse:
+    """Pruefe Celery Worker Status."""
+    import time
+    from datetime import datetime, timezone
+
+    empfehlungen = []
+    workers_list = []
+    queues_list = []
+    tasks_wartend = 0
+    tasks_aktiv = 0
+
+    try:
+        from app.workers.celery_app import celery_app
+        import redis.asyncio as aioredis
+
+        # Check broker connection
+        broker_url = celery_app.conf.broker_url or f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/0"
+
+        try:
+            redis_client = aioredis.from_url(broker_url, decode_responses=True)
+            await redis_client.ping()
+            broker_erreichbar = True
+        except Exception as e:
+            logger.warning("celery_broker_check_failed", error=str(e))
+            broker_erreichbar = False
+            empfehlungen.append("Redis Broker nicht erreichbar - Worker können keine Tasks empfangen")
+            return WorkerHealthResponse(
+                status="kritisch",
+                zeitstempel=datetime.now(timezone.utc).isoformat(),
+                broker_erreichbar=False,
+                workers_aktiv=0,
+                workers_gesamt=0,
+                tasks_wartend=0,
+                tasks_aktiv=0,
+                workers=[],
+                queues=[],
+                empfehlungen=empfehlungen,
+            )
+
+        # Get queue lengths from Redis
+        queue_names = ["celery", "ocr_tasks", "gpu_tasks", "default"]
+        for queue_name in queue_names:
+            try:
+                length = await redis_client.llen(queue_name)
+                queues_list.append(QueueInfo(
+                    name=queue_name,
+                    length=length,
+                    consumers=0,  # Will be updated from worker info
+                ))
+                tasks_wartend += length
+            except Exception:
+                pass
+
+        await redis_client.close()
+
+        # Get worker info using Celery inspect
+        # Note: This is synchronous, so we run it carefully
+        inspect = celery_app.control.inspect()
+
+        # Get active workers (with timeout)
+        try:
+            active = inspect.active() or {}
+            stats = inspect.stats() or {}
+            ping_result = inspect.ping() or {}
+            reserved = inspect.reserved() or {}
+        except Exception as e:
+            logger.warning("celery_inspect_failed", error=str(e))
+            active = {}
+            stats = {}
+            ping_result = {}
+            reserved = {}
+
+        # Process worker information
+        all_workers = set(active.keys()) | set(stats.keys()) | set(ping_result.keys())
+
+        for worker_name in all_workers:
+            worker_stats = stats.get(worker_name, {})
+            worker_active = active.get(worker_name, [])
+            worker_reserved = reserved.get(worker_name, [])
+
+            # Determine worker status
+            if worker_name in ping_result:
+                worker_status = "active" if worker_active else "idle"
+            else:
+                worker_status = "offline"
+
+            # Extract worker info
+            pool_info = worker_stats.get("pool", {})
+            total_tasks = worker_stats.get("total", {})
+
+            # Calculate processed tasks
+            processed = sum(total_tasks.values()) if isinstance(total_tasks, dict) else 0
+
+            # Get GPU memory if available
+            gpu_mem = None
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    mem_used = torch.cuda.memory_allocated() / torch.cuda.get_device_properties(0).total_memory * 100
+                    gpu_mem = round(mem_used, 1)
+            except Exception:
+                pass
+
+            workers_list.append(WorkerInfo(
+                name=worker_name,
+                status=worker_status,
+                hostname=worker_stats.get("hostname", worker_name.split("@")[-1] if "@" in worker_name else "unknown"),
+                pid=worker_stats.get("pid"),
+                concurrency=pool_info.get("max-concurrency"),
+                active_tasks=len(worker_active),
+                processed_tasks=processed,
+                gpu_memory_percent=gpu_mem,
+                last_heartbeat=datetime.now(timezone.utc).isoformat() if worker_status != "offline" else None,
+                uptime_seconds=worker_stats.get("uptime"),
+            ))
+
+            tasks_aktiv += len(worker_active)
+
+        # Calculate statistics
+        workers_aktiv = sum(1 for w in workers_list if w.status in ["active", "idle"])
+        workers_gesamt = len(workers_list)
+
+        # Calculate success rate from stats
+        tasks_erfolg_rate = None
+        total_success = 0
+        total_failed = 0
+
+        for worker_name, worker_stats in stats.items():
+            total_stats = worker_stats.get("total", {})
+            if isinstance(total_stats, dict):
+                for task_name, count in total_stats.items():
+                    if "error" in task_name.lower() or "fail" in task_name.lower():
+                        total_failed += count
+                    else:
+                        total_success += count
+
+        if total_success + total_failed > 0:
+            tasks_erfolg_rate = round((total_success / (total_success + total_failed)) * 100, 2)
+
+        # Generate recommendations
+        if workers_aktiv == 0:
+            empfehlungen.append("Keine aktiven Worker - celery worker starten")
+        elif workers_aktiv < 2:
+            empfehlungen.append("Nur ein Worker aktiv - redundanten Worker hinzufügen")
+
+        if tasks_wartend > 100:
+            empfehlungen.append(f"Hohe Queue-Last ({tasks_wartend} Tasks) - mehr Worker skalieren")
+
+        if tasks_erfolg_rate is not None and tasks_erfolg_rate < 95:
+            empfehlungen.append(f"Niedrige Erfolgsrate ({tasks_erfolg_rate}%) - Fehlerursachen analysieren")
+
+        # Determine overall status
+        if not broker_erreichbar or workers_aktiv == 0:
+            status = "kritisch"
+        elif tasks_wartend > 50 or workers_aktiv < workers_gesamt:
+            status = "beeintraechtigt"
+        else:
+            status = "gesund"
+
+        logger.info(
+            "celery_worker_health_complete",
+            status=status,
+            active_workers=workers_aktiv,
+            total_workers=workers_gesamt,
+            tasks_waiting=tasks_wartend,
+            tasks_active=tasks_aktiv,
+        )
+
+        return WorkerHealthResponse(
+            status=status,
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            broker_erreichbar=broker_erreichbar,
+            workers_aktiv=workers_aktiv,
+            workers_gesamt=workers_gesamt,
+            tasks_wartend=tasks_wartend,
+            tasks_aktiv=tasks_aktiv,
+            workers=workers_list,
+            queues=queues_list,
+            tasks_erfolg_rate=tasks_erfolg_rate,
+            empfehlungen=empfehlungen,
+        )
+
+    except ImportError as e:
+        logger.warning("celery_not_available", error=str(e))
+        return WorkerHealthResponse(
+            status="unbekannt",
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            broker_erreichbar=False,
+            workers_aktiv=0,
+            workers_gesamt=0,
+            tasks_wartend=0,
+            tasks_aktiv=0,
+            workers=[],
+            queues=[],
+            empfehlungen=["Celery nicht installiert oder konfiguriert"],
+        )
+    except Exception as e:
+        logger.error("celery_worker_health_failed", error=str(e))
+        return WorkerHealthResponse(
+            status="kritisch",
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            broker_erreichbar=False,
+            workers_aktiv=0,
+            workers_gesamt=0,
+            tasks_wartend=0,
+            tasks_aktiv=0,
+            workers=[],
+            queues=[],
+            empfehlungen=[f"Worker-Prüfung fehlgeschlagen: {str(e)[:100]}"],
+        )
+
+
+@router.get(
+    "/workers",
+    response_model=WorkerHealthResponse,
+    summary="Celery Worker Status",
+    description="Prueft alle Celery Worker, Queues und Task-Statistiken.",
+)
+async def worker_health() -> WorkerHealthResponse:
+    """
+    Detaillierte Gesundheitspruefung der Celery Worker.
+
+    Prueft:
+    - Broker-Verbindung (Redis)
+    - Aktive Worker und deren Status
+    - Queue-Laengen
+    - Task-Statistiken
+    - GPU-Speicher pro Worker
+
+    Gibt Empfehlungen bei Problemen.
+    """
+    # Check cache first
+    cache_key = "worker_health"
+    cached = _get_cached_result(cache_key)
+    if cached is not None:
+        logger.debug("health_check_cache_hit", endpoint="workers")
+        return cached
+
+    result = await _check_celery_workers()
+
+    # Cache the result
+    _set_cached_result(cache_key, result)
+
+    return result
+
+
+# =============================================================================
 # OCR Health Endpoints
 # =============================================================================
 
@@ -1107,6 +1400,9 @@ class CompleteHealthResponse(BaseModel):
     slo_status: Optional[str] = Field(None, description="SLO Status")
     circuit_breaker_status: Optional[str] = Field(None, description="Circuit Breaker Status")
     gpu_memory_status: Optional[str] = Field(None, description="GPU Memory Status")
+    worker_status: Optional[str] = Field(None, description="Celery Worker Status")
+    workers_aktiv: Optional[int] = Field(None, description="Anzahl aktiver Worker")
+    tasks_wartend: Optional[int] = Field(None, description="Tasks in Warteschlange")
     probleme: list = Field(default_factory=list, description="Aktive Probleme")
     empfehlungen: list = Field(default_factory=list, description="Empfehlungen")
 
@@ -1202,6 +1498,23 @@ async def complete_health(
     elif gpu_mem_response.cleanup_recommended:
         empfehlungen.append("GPU-Speicher aufräumen empfohlen")
 
+    # Worker Status
+    worker_response = await worker_health()
+    worker_status_str = worker_response.status
+    workers_aktiv = worker_response.workers_aktiv
+    tasks_wartend = worker_response.tasks_wartend
+
+    if worker_status_str == "kritisch":
+        probleme.append(f"Worker: Keine aktiven Worker verfügbar")
+    elif worker_status_str == "beeintraechtigt":
+        if tasks_wartend > 50:
+            probleme.append(f"Worker: Hohe Queue-Last ({tasks_wartend} Tasks)")
+        if workers_aktiv == 0:
+            probleme.append("Worker: Keine aktiven Worker")
+
+    # Add worker recommendations
+    empfehlungen.extend(worker_response.empfehlungen)
+
     # Empfehlungen generieren
     if not db_status.gesund:
         empfehlungen.append("Datenbank-Verbindung pruefen")
@@ -1230,6 +1543,7 @@ async def complete_health(
         status_scores.get(slo_status_str, 0),
         status_scores.get(cb_status_str, 0),
         status_scores.get(gpu_mem_status_str, 0),
+        status_scores.get(worker_status_str, 0),
     ])
 
     if has_critical or max_score >= 3:
@@ -1267,6 +1581,9 @@ async def complete_health(
         slo_status=slo_status_str,
         circuit_breaker_status=cb_status_str,
         gpu_memory_status=gpu_mem_status_str,
+        worker_status=worker_status_str,
+        workers_aktiv=workers_aktiv,
+        tasks_wartend=tasks_wartend,
         probleme=probleme,
         empfehlungen=empfehlungen,
     )

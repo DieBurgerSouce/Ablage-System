@@ -21,6 +21,7 @@ from app.api.dependencies import get_current_superuser, get_current_active_user
 from app.db.models import User
 from app.services.search_metrics import get_search_metrics
 from app.services.backup_metrics_service import get_backup_metrics
+from app.services.gpu_metrics_service import get_gpu_metrics_service
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -134,6 +135,112 @@ async def backup_metrics_summary():
     """
     metrics = get_backup_metrics()
     return metrics.get_summary()
+
+
+# =============================================================================
+# GPU METRICS
+# =============================================================================
+
+
+@router.get("/gpu", response_class=Response)
+async def gpu_metrics_prometheus():
+    """
+    Prometheus metrics for GPU functionality.
+
+    Returns GPU-specific metrics in Prometheus text format:
+    - ablage_gpu_memory_used_bytes: VRAM-Nutzung
+    - ablage_gpu_memory_total_bytes: VRAM gesamt
+    - ablage_gpu_memory_percent: VRAM-Nutzung in Prozent
+    - ablage_gpu_available: GPU-Verfuegbarkeit
+    - ablage_ocr_requests_total: OCR-Anfragen nach Backend/Status
+    - ablage_ocr_processing_duration_seconds: OCR-Verarbeitungszeit
+    - ablage_ocr_batch_size: Batch-Groessen
+    - ablage_ocr_errors_total: OCR-Fehler nach Typ
+    - ablage_gpu_oom_errors_total: OOM-Fehler
+    - ablage_gpu_oom_recoveries_total: Erfolgreiche OOM-Recoveries
+    - ablage_model_load_duration_seconds: Model-Ladezeiten
+    - ablage_ocr_cache_operations_total: Cache-Hits/Misses
+
+    Example Prometheus config:
+    ```yaml
+    scrape_configs:
+      - job_name: 'ablage-gpu'
+        static_configs:
+          - targets: ['localhost:8000']
+        metrics_path: '/api/v1/metrics/gpu'
+    ```
+    """
+    metrics = get_gpu_metrics_service()
+    return Response(
+        content=metrics.get_metrics(),
+        media_type=metrics.get_content_type(),
+    )
+
+
+@router.get("/gpu/summary")
+async def gpu_metrics_summary():
+    """
+    GPU metrics summary (JSON format).
+
+    Returns GPU-specific metrics for dashboards:
+    - GPU-Speicher-Status
+    - Verfuegbarkeit
+    - Letzte Aktualisierung
+
+    Nuetzlich fuer:
+    - GPU-Monitoring Dashboards
+    - Kapazitaetsplanung
+    - Performance-Analyse
+    """
+    metrics = get_gpu_metrics_service()
+    return metrics.get_summary()
+
+
+@router.get("/gpu/detailed")
+async def gpu_metrics_detailed():
+    """
+    Detaillierte GPU-Metriken (JSON format).
+
+    Returns comprehensive GPU metrics:
+    - Hardware-Informationen
+    - Speicher-Status
+    - OCR-Statistiken
+    - Cache-Performance
+    - Model-Status
+
+    **Hinweis**: Dieser Endpoint sammelt Metriken aus mehreren Quellen
+    und kann bei hoher Last etwas laenger dauern.
+    """
+    import structlog
+    logger = structlog.get_logger(__name__)
+
+    gpu_service = get_gpu_metrics_service()
+    gpu_summary = gpu_service.get_summary()
+
+    # Get OCR cache stats
+    try:
+        from app.services.ocr_cache_service import get_ocr_cache_service
+        cache_service = get_ocr_cache_service()
+        cache_stats = await cache_service.get_stats()
+    except Exception as e:
+        logger.warning("gpu_metrics_cache_stats_failed", error=str(e))
+        cache_stats = {"error": str(e)}
+
+    # Get GPU manager stats
+    try:
+        from app.gpu_manager import get_gpu_manager
+        gpu_manager = get_gpu_manager()
+        manager_stats = gpu_manager.get_detailed_status()
+    except Exception as e:
+        logger.warning("gpu_metrics_manager_stats_failed", error=str(e))
+        manager_stats = {"error": str(e)}
+
+    return {
+        "gpu_hardware": gpu_summary.get("gpu", {}),
+        "memory_management": manager_stats,
+        "ocr_cache": cache_stats,
+        "last_update": gpu_summary.get("last_update"),
+    }
 
 
 # =============================================================================
