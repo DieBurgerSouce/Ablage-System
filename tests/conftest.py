@@ -9,6 +9,10 @@ import pytest_asyncio
 from pathlib import Path
 from unittest.mock import Mock, AsyncMock
 
+# IMPORTANT: Set DEBUG=true BEFORE any app imports to pass CORS validation
+# This must happen before pydantic_settings loads the .env file
+os.environ.setdefault("DEBUG", "true")
+
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

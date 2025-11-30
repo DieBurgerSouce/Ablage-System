@@ -133,9 +133,11 @@ class TestAccountLockoutInMemory:
     @pytest.mark.asyncio
     async def test_first_failed_attempt(self, mock_redis_unavailable):
         """Erster Fehlversuch sollte gezählt werden."""
+        # Use fail_closed=False to test in-memory fallback behavior
         attempts, is_locked, duration = await record_failed_attempt(
             ip="192.168.1.1",
-            username="test@example.com"
+            username="test@example.com",
+            fail_closed=False  # Allow fallback to in-memory
         )
 
         assert attempts == 1
@@ -145,14 +147,19 @@ class TestAccountLockoutInMemory:
     @pytest.mark.asyncio
     async def test_lockout_after_max_attempts(self, mock_redis_unavailable):
         """Nach MAX_FAILED_ATTEMPTS sollte Sperre erfolgen."""
-        # Simulate 5 failed attempts
+        # Simulate 5 failed attempts with fail_closed=False for in-memory fallback
         for i in range(MAX_FAILED_ATTEMPTS - 1):
-            await record_failed_attempt(ip="192.168.1.1", username="test@example.com")
+            await record_failed_attempt(
+                ip="192.168.1.1",
+                username="test@example.com",
+                fail_closed=False
+            )
 
         # The 5th attempt should trigger lockout
         attempts, is_locked, duration = await record_failed_attempt(
             ip="192.168.1.1",
-            username="test@example.com"
+            username="test@example.com",
+            fail_closed=False
         )
 
         assert attempts == MAX_FAILED_ATTEMPTS
@@ -165,9 +172,11 @@ class TestAccountLockoutInMemory:
         identifier = _create_identifier("192.168.1.1", "test@example.com")
         _lockout_until_fallback[identifier] = datetime.now(timezone.utc) + timedelta(minutes=5)
 
+        # Use fail_closed=False to test in-memory fallback behavior
         is_locked, remaining, message = await check_account_lockout(
             ip="192.168.1.1",
-            username="test@example.com"
+            username="test@example.com",
+            fail_closed=False
         )
 
         assert is_locked is True
@@ -179,9 +188,11 @@ class TestAccountLockoutInMemory:
     @pytest.mark.asyncio
     async def test_check_lockout_when_not_locked(self, mock_redis_unavailable):
         """Nicht gesperrtes Konto sollte als nicht gesperrt erkannt werden."""
+        # Use fail_closed=False to test in-memory fallback behavior
         is_locked, remaining, message = await check_account_lockout(
             ip="192.168.1.1",
-            username="test@example.com"
+            username="test@example.com",
+            fail_closed=False
         )
 
         assert is_locked is False
@@ -191,9 +202,17 @@ class TestAccountLockoutInMemory:
     @pytest.mark.asyncio
     async def test_reset_clears_attempts(self, mock_redis_unavailable):
         """Reset sollte Fehlversuche löschen."""
-        # Record some attempts
-        await record_failed_attempt(ip="192.168.1.1", username="test@example.com")
-        await record_failed_attempt(ip="192.168.1.1", username="test@example.com")
+        # Record some attempts with fail_closed=False for in-memory fallback
+        await record_failed_attempt(
+            ip="192.168.1.1",
+            username="test@example.com",
+            fail_closed=False
+        )
+        await record_failed_attempt(
+            ip="192.168.1.1",
+            username="test@example.com",
+            fail_closed=False
+        )
 
         # Reset
         success = await reset_failed_attempts(ip="192.168.1.1", username="test@example.com")
@@ -219,10 +238,11 @@ class TestAccountLockoutInMemory:
 
         assert success is True
 
-        # Verify unlock
+        # Verify unlock using fail_closed=False for in-memory fallback
         is_locked, _, _ = await check_account_lockout(
             ip="192.168.1.1",
-            username="test@example.com"
+            username="test@example.com",
+            fail_closed=False
         )
         assert is_locked is False
 
@@ -233,9 +253,11 @@ class TestAccountLockoutInMemory:
         # Set lockout in the past
         _lockout_until_fallback[identifier] = datetime.now(timezone.utc) - timedelta(minutes=1)
 
+        # Use fail_closed=False for in-memory fallback
         is_locked, _, _ = await check_account_lockout(
             ip="192.168.1.1",
-            username="test@example.com"
+            username="test@example.com",
+            fail_closed=False
         )
 
         assert is_locked is False
@@ -282,13 +304,21 @@ class TestAlertThreshold:
     @pytest.mark.asyncio
     async def test_alert_at_threshold(self, mock_redis_unavailable, caplog):
         """Bei ALERT_THRESHOLD sollte Warnung geloggt werden."""
-        # Simulate attempts up to alert threshold
+        # Simulate attempts up to alert threshold using fail_closed=False
         for i in range(ALERT_THRESHOLD - 1):
-            await record_failed_attempt(ip="192.168.1.1", username="test@example.com")
+            await record_failed_attempt(
+                ip="192.168.1.1",
+                username="test@example.com",
+                fail_closed=False
+            )
 
         # This should trigger the alert
         with patch("app.core.account_lockout.logger") as mock_logger:
-            await record_failed_attempt(ip="192.168.1.1", username="test@example.com")
+            await record_failed_attempt(
+                ip="192.168.1.1",
+                username="test@example.com",
+                fail_closed=False
+            )
 
             # Check that error was logged
             mock_logger.error.assert_called_once()
@@ -318,8 +348,16 @@ class TestMultipleIdentifiers:
     @pytest.mark.asyncio
     async def test_different_ips_tracked_separately(self, mock_redis_unavailable):
         """Verschiedene IPs sollten separat getrackt werden."""
-        await record_failed_attempt(ip="192.168.1.1", username="test@example.com")
-        await record_failed_attempt(ip="192.168.1.2", username="test@example.com")
+        await record_failed_attempt(
+            ip="192.168.1.1",
+            username="test@example.com",
+            fail_closed=False
+        )
+        await record_failed_attempt(
+            ip="192.168.1.2",
+            username="test@example.com",
+            fail_closed=False
+        )
 
         status1 = await get_lockout_status(ip="192.168.1.1", username="test@example.com")
         status2 = await get_lockout_status(ip="192.168.1.2", username="test@example.com")
@@ -331,9 +369,21 @@ class TestMultipleIdentifiers:
     @pytest.mark.asyncio
     async def test_different_users_tracked_separately(self, mock_redis_unavailable):
         """Verschiedene Benutzer sollten separat getrackt werden."""
-        await record_failed_attempt(ip="192.168.1.1", username="user1@example.com")
-        await record_failed_attempt(ip="192.168.1.1", username="user1@example.com")
-        await record_failed_attempt(ip="192.168.1.1", username="user2@example.com")
+        await record_failed_attempt(
+            ip="192.168.1.1",
+            username="user1@example.com",
+            fail_closed=False
+        )
+        await record_failed_attempt(
+            ip="192.168.1.1",
+            username="user1@example.com",
+            fail_closed=False
+        )
+        await record_failed_attempt(
+            ip="192.168.1.1",
+            username="user2@example.com",
+            fail_closed=False
+        )
 
         status1 = await get_lockout_status(ip="192.168.1.1", username="user1@example.com")
         status2 = await get_lockout_status(ip="192.168.1.1", username="user2@example.com")
