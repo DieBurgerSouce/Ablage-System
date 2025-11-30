@@ -16,6 +16,9 @@ logger = structlog.get_logger(__name__)
 
 # Import our backend manager
 from app.services.backend_manager import BackendManager
+# Import German correction components
+from app.agents.postprocessing.german_correction_agent import GermanCorrectionAgent
+from app.utils.german_text import normalize_german_text
 
 
 class OCRService:
@@ -24,13 +27,18 @@ class OCRService:
     Provides high-level OCR processing interface for FastAPI
     """
 
-    def __init__(self):
-        """Initialize OCR service with backend manager"""
+    def __init__(self, enable_german_correction: bool = True):
+        """Initialize OCR service with backend manager
+
+        Args:
+            enable_german_correction: Enable automatic German text correction (default: True)
+        """
         self.backend_manager = BackendManager()
         self.processing_stats = {
             "total_processed": 0,
             "total_errors": 0,
             "total_fallbacks": 0,
+            "total_corrections": 0,
             "by_backend": {},
             "health_checks": {
                 "total": 0,
@@ -39,11 +47,29 @@ class OCRService:
             }
         }
 
+        # Initialize German correction agent
+        self._enable_german_correction = enable_german_correction
+        self._german_corrector: Optional[GermanCorrectionAgent] = None
+        if enable_german_correction:
+            try:
+                self._german_corrector = GermanCorrectionAgent(enable_languagetool=True)
+                logger.info("german_correction_agent_initialized")
+            except Exception as e:
+                logger.warning(
+                    "german_correction_agent_init_failed",
+                    error=str(e),
+                    message="Korrektur deaktiviert"
+                )
+
         # Create upload directory if it doesn't exist
         self.upload_dir = Path("uploads")
         self.upload_dir.mkdir(exist_ok=True)
 
-        logger.info("ocr_service_initialized", available_backends=self.backend_manager.get_available_backends())
+        logger.info(
+            "ocr_service_initialized",
+            available_backends=self.backend_manager.get_available_backends(),
+            german_correction_enabled=self._german_corrector is not None
+        )
 
     async def process_document(
         self,
@@ -119,6 +145,53 @@ class OCRService:
                 enable_layout=detect_layout
             )
 
+            # Apply German correction for German documents
+            correction_applied = False
+            correction_result = None
+            if language == "de" and self._german_corrector and result.get("text"):
+                try:
+                    logger.info(
+                        "applying_german_correction",
+                        text_length=len(result["text"]),
+                        image_path=image_path
+                    )
+
+                    # Run German correction agent
+                    correction_result = await self._german_corrector.process({
+                        "text": result["text"],
+                        "options": {
+                            "skip_languagetool": False,
+                            "skip_fuzzy_matching": False,
+                            "skip_compound_validation": False,
+                        }
+                    })
+
+                    # Apply corrected text
+                    if correction_result.get("text"):
+                        original_text = result["text"]
+                        result["text"] = correction_result["text"]
+
+                        # Normalize German text (Unicode NFC, whitespace)
+                        result["text"] = normalize_german_text(result["text"])
+
+                        correction_applied = True
+                        self.processing_stats["total_corrections"] += 1
+
+                        logger.info(
+                            "german_correction_applied",
+                            corrections_count=correction_result.get("corrections_applied", 0),
+                            umlauts_restored=correction_result.get("umlauts_restored", 0),
+                            quality_score=correction_result.get("validation_score", 0),
+                            text_changed=original_text != result["text"]
+                        )
+
+                except Exception as e:
+                    logger.warning(
+                        "german_correction_failed",
+                        error=str(e),
+                        message="Korrektur übersprungen, Originaltext beibehalten"
+                    )
+
             # Add processing metadata
             processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
@@ -142,8 +215,18 @@ class OCRService:
                 "fallback_used": result.get("fallback_used", False),
                 "processing_time_seconds": round(processing_time, 3),
                 "language": language,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "german_correction_applied": correction_applied,
             })
+
+            # Add German correction details if applied
+            if correction_applied and correction_result:
+                result["metadata"]["german_correction"] = {
+                    "corrections_count": correction_result.get("corrections_applied", 0),
+                    "umlauts_restored": correction_result.get("umlauts_restored", 0),
+                    "quality_score": correction_result.get("validation_score", 0),
+                    "domain_detected": correction_result.get("domain_detected"),
+                }
 
             # Update stats
             self.processing_stats["total_processed"] += 1
@@ -226,22 +309,32 @@ class OCRService:
 
     async def get_stats(self) -> Dict[str, Any]:
         """Get processing statistics"""
+        total_processed = self.processing_stats["total_processed"]
+        total_errors = self.processing_stats["total_errors"]
+        total_corrections = self.processing_stats["total_corrections"]
+
         return {
-            "total_processed": self.processing_stats["total_processed"],
-            "total_errors": self.processing_stats["total_errors"],
+            "total_processed": total_processed,
+            "total_errors": total_errors,
             "total_fallbacks": self.processing_stats["total_fallbacks"],
+            "total_corrections": total_corrections,
             "success_rate": (
-                self.processing_stats["total_processed"] /
-                max(1, self.processing_stats["total_processed"] + self.processing_stats["total_errors"])
+                total_processed /
+                max(1, total_processed + total_errors)
             ),
             "fallback_rate": (
                 self.processing_stats["total_fallbacks"] /
-                max(1, self.processing_stats["total_processed"])
+                max(1, total_processed)
+            ),
+            "correction_rate": (
+                total_corrections /
+                max(1, total_processed)
             ),
             "by_backend": self.processing_stats["by_backend"],
             "health_checks": self.processing_stats["health_checks"],
             "available_backends": self.backend_manager.get_available_backends(),
-            "backend_status": await self.backend_manager.get_backend_status()
+            "backend_status": await self.backend_manager.get_backend_status(),
+            "german_correction_enabled": self._german_corrector is not None,
         }
 
     async def get_health_status(self) -> Dict[str, Any]:

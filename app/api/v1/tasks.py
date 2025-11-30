@@ -368,8 +368,8 @@ async def task_progress_websocket(
         logger.error("websocket_error", task_id=task_id, error=str(e))
         try:
             await websocket.close(code=1011, reason=str(e))
-        except Exception:
-            pass
+        except Exception as close_error:
+            logger.debug("websocket_close_failed", task_id=task_id, error=str(close_error))
     finally:
         await manager.disconnect(task_id, websocket)
 

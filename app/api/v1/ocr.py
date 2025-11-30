@@ -182,8 +182,8 @@ async def ocr_preview_upload(
         if tmp_path.exists():
             try:
                 tmp_path.unlink()
-            except Exception:
-                pass
+            except OSError as e:
+                logger.debug("temp_file_cleanup_failed", path=str(tmp_path), error=str(e))
 
 
 @router.post(
@@ -297,8 +297,8 @@ async def ocr_preview_document(
         if file_path and file_path.exists():
             try:
                 file_path.unlink()
-            except Exception:
-                pass
+            except OSError as e:
+                logger.debug("temp_file_cleanup_failed", path=str(file_path), error=str(e))
 
 
 @router.get(
@@ -330,7 +330,8 @@ async def ocr_status(
 
         pytesseract.get_tesseract_version()
         tesseract_verfuegbar = True
-    except Exception:
+    except (ImportError, OSError) as e:
+        logger.debug("tesseract_not_available", error=str(e))
         tesseract_verfuegbar = False
 
     # GPU pruefen
@@ -355,18 +356,20 @@ async def ocr_status(
 
     # DeepSeek Backend pruefen (optional)
     try:
-        from app.agents.ocr.deepseek_backend import DeepseekBackend
+        from app.agents.ocr.deepseek_agent import DeepSeekAgent
 
-        deepseek = DeepseekBackend()
+        # DeepSeek erfordert GPU - Verfuegbarkeit basiert auf CUDA
+        deepseek_verfuegbar = gpu_verfuegbar
         backends["deepseek"] = {
-            "verfuegbar": deepseek.is_available(),
-            "beschreibung": "GPU-OCR (beste Qualitaet)",
+            "verfuegbar": deepseek_verfuegbar,
+            "beschreibung": "GPU-OCR (beste Qualitaet)" if deepseek_verfuegbar else "GPU-OCR (GPU nicht verfuegbar)",
             "gpu_erforderlich": True,
         }
-    except Exception:
+    except ImportError as e:
+        logger.warning("deepseek_import_failed", error=str(e))
         backends["deepseek"] = {
             "verfuegbar": False,
-            "beschreibung": "GPU-OCR (nicht geladen)",
+            "beschreibung": "GPU-OCR (nicht installiert)",
             "gpu_erforderlich": True,
         }
 

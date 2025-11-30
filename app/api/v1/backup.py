@@ -17,6 +17,12 @@ from pydantic import BaseModel, Field
 from app.api.dependencies import get_current_superuser
 from app.db.models import User
 from app.services.backup_service import BackupResult, get_backup_service
+from app.services.backup_validator import (
+    BackupValidator,
+    ValidationLevel,
+    ValidationStatus,
+    get_backup_validator,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -181,16 +187,32 @@ class FullRestoreResponse(BaseModel):
     nachricht: str = Field(..., description="Zusammenfassung")
 
 
+class ValidationIssueResponse(BaseModel):
+    """Einzelnes Validierungsproblem."""
+    schweregrad: str = Field(..., description="error, warning, info")
+    code: str = Field(..., description="Fehlercode")
+    nachricht: str = Field(..., description="Beschreibung des Problems")
+    details: Optional[Dict[str, Any]] = Field(None, description="Zusaetzliche Details")
+
+
 class ValidateBackupResponse(BaseModel):
     """Antwort fuer Backup-Validierung."""
 
     gueltig: bool = Field(..., description="Ist Backup gueltig?")
+    status: str = Field(..., description="valid, invalid, warning, skipped")
     backup_typ: str = Field(..., description="Erkannter Backup-Typ")
     groesse_bytes: int = Field(..., description="Groesse in Bytes")
+    datei_anzahl: int = Field(0, description="Anzahl Dateien (bei Archiven)")
+    checksum_sha256: Optional[str] = Field(None, description="SHA256 Checksum")
     verschluesselt: bool = Field(..., description="Ist Backup verschluesselt?")
     komprimiert: bool = Field(..., description="Ist Backup komprimiert?")
-    details: Dict[str, Any] = Field(..., description="Weitere Details")
-    fehler: Optional[str] = Field(None, description="Fehlermeldung bei ungueltigem Backup")
+    validierung_level: str = Field("standard", description="quick, standard, deep, full")
+    validierung_dauer_ms: int = Field(0, description="Dauer der Validierung in ms")
+    probleme: List[ValidationIssueResponse] = Field(default_factory=list, description="Gefundene Probleme")
+    anzahl_fehler: int = Field(0, description="Anzahl Fehler")
+    anzahl_warnungen: int = Field(0, description="Anzahl Warnungen")
+    details: Dict[str, Any] = Field(default_factory=dict, description="Weitere Metadaten")
+    fehler: Optional[str] = Field(None, description="Hauptfehlermeldung bei ungueltigem Backup")
 
 
 # =============================================================================
@@ -683,17 +705,25 @@ async def restore_full(
     "/validate",
     response_model=ValidateBackupResponse,
     summary="Backup validieren",
-    description="Validiert eine Backup-Datei ohne Restore durchzufuehren.",
+    description="Validiert eine Backup-Datei mit tiefgehender Analyse ohne Restore.",
 )
 async def validate_backup(
     backup_pfad: str,
+    level: str = "standard",
     current_user: User = Depends(get_current_superuser),
 ) -> ValidateBackupResponse:
-    """Validiere eine Backup-Datei."""
+    """
+    Validiere eine Backup-Datei mit konfigurierbarer Tiefe.
+
+    Args:
+        backup_pfad: Pfad zur Backup-Datei
+        level: Validierungsstufe (quick, standard, deep, full)
+    """
     logger.info(
         "backup_validierung_angefordert",
         user_id=str(current_user.id),
         backup_pfad=backup_pfad,
+        level=level,
     )
 
     backup_path = Path(backup_pfad)
@@ -704,71 +734,142 @@ async def validate_backup(
             detail=f"Backup-Datei nicht gefunden: {backup_pfad}",
         )
 
-    # Backup-Typ erkennen
+    # Validierungslevel parsen
+    try:
+        validation_level = ValidationLevel(level.lower())
+    except ValueError:
+        validation_level = ValidationLevel.STANDARD
+
+    # BackupValidator verwenden
+    validator = get_backup_validator()
+    result = await validator.validate_backup(backup_path, level=validation_level)
+
+    # Datei-Eigenschaften
     filename = backup_path.name.lower()
-    backup_typ = "unbekannt"
     verschluesselt = filename.endswith(".gpg")
     komprimiert = ".gz" in filename or ".tar" in filename
 
-    if "postgres" in filename or "pg_" in filename:
-        backup_typ = "postgres"
-    elif "redis" in filename or "dump.rdb" in filename:
-        backup_typ = "redis"
-    elif "minio" in filename:
-        backup_typ = "minio"
-    elif "config" in filename:
-        backup_typ = "config"
+    # Probleme konvertieren
+    probleme = [
+        ValidationIssueResponse(
+            schweregrad=issue.severity,
+            code=issue.code,
+            nachricht=issue.message,
+            details=issue.details,
+        )
+        for issue in result.issues
+    ]
 
-    # Dateigroesse
-    groesse_bytes = backup_path.stat().st_size
-
-    # Validierung
-    gueltig = True
+    # Hauptfehler extrahieren
     fehler = None
-    details: Dict[str, Any] = {
-        "dateiname": backup_path.name,
-        "erstellzeit": backup_path.stat().st_mtime,
-    }
-
-    # Grundlegende Validierung
-    if groesse_bytes == 0:
-        gueltig = False
-        fehler = "Backup-Datei ist leer"
-    elif backup_typ == "unbekannt":
-        gueltig = False
-        fehler = "Backup-Typ konnte nicht erkannt werden"
-
-    # Typ-spezifische Validierung
-    if gueltig and not verschluesselt:
-        try:
-            if backup_typ == "postgres" and filename.endswith(".sql.gz"):
-                import gzip
-
-                with gzip.open(backup_path, "rt") as f:
-                    header = f.read(100)
-                    if "PostgreSQL" not in header and "pg_dump" not in header:
-                        gueltig = False
-                        fehler = "Keine gueltige PostgreSQL-Dump-Datei"
-                    else:
-                        details["format"] = "pg_dump"
-            elif backup_typ == "redis" and filename.endswith(".rdb"):
-                with open(backup_path, "rb") as f:
-                    magic = f.read(5)
-                    if magic != b"REDIS":
-                        gueltig = False
-                        fehler = "Keine gueltige Redis-RDB-Datei"
-                    else:
-                        details["format"] = "RDB"
-        except Exception as e:
-            gueltig = False
-            fehler = f"Validierungsfehler: {str(e)}"
+    if result.error_count > 0:
+        error_issues = [i for i in result.issues if i.severity == "error"]
+        if error_issues:
+            fehler = error_issues[0].message
 
     return ValidateBackupResponse(
-        gueltig=gueltig,
-        backup_typ=backup_typ,
-        groesse_bytes=groesse_bytes,
+        gueltig=result.is_valid,
+        status=result.status.value,
+        backup_typ=result.backup_type,
+        groesse_bytes=result.total_size_bytes,
+        datei_anzahl=result.file_count,
+        checksum_sha256=result.checksum_sha256,
         verschluesselt=verschluesselt,
         komprimiert=komprimiert,
-        details=details,
+        validierung_level=validation_level.value,
+        validierung_dauer_ms=result.validation_duration_ms,
+        probleme=probleme,
+        anzahl_fehler=result.error_count,
+        anzahl_warnungen=result.warning_count,
+        details=result.metadata,
         fehler=fehler,
     )
+
+
+@router.post(
+    "/validate-all",
+    response_model=List[ValidateBackupResponse],
+    summary="Alle Backups validieren",
+    description="Validiert alle Backups im Backup-Verzeichnis.",
+)
+async def validate_all_backups(
+    level: str = "standard",
+    current_user: User = Depends(get_current_superuser),
+) -> List[ValidateBackupResponse]:
+    """
+    Validiere alle Backups im konfigurierten Backup-Verzeichnis.
+
+    Args:
+        level: Validierungsstufe (quick, standard, deep, full)
+    """
+    logger.info(
+        "alle_backups_validierung_angefordert",
+        user_id=str(current_user.id),
+        level=level,
+    )
+
+    # Validierungslevel parsen
+    try:
+        validation_level = ValidationLevel(level.lower())
+    except ValueError:
+        validation_level = ValidationLevel.STANDARD
+
+    # Backup-Service und Validator
+    service = get_backup_service()
+    validator = get_backup_validator()
+
+    # Alle Backups validieren
+    results = await validator.validate_all_backups(
+        service.config.backup_dir,
+        level=validation_level,
+    )
+
+    # Ergebnisse konvertieren
+    responses = []
+    for result in results:
+        filename = result.backup_path.name.lower()
+        verschluesselt = filename.endswith(".gpg")
+        komprimiert = ".gz" in filename or ".tar" in filename
+
+        probleme = [
+            ValidationIssueResponse(
+                schweregrad=issue.severity,
+                code=issue.code,
+                nachricht=issue.message,
+                details=issue.details,
+            )
+            for issue in result.issues
+        ]
+
+        fehler = None
+        if result.error_count > 0:
+            error_issues = [i for i in result.issues if i.severity == "error"]
+            if error_issues:
+                fehler = error_issues[0].message
+
+        responses.append(ValidateBackupResponse(
+            gueltig=result.is_valid,
+            status=result.status.value,
+            backup_typ=result.backup_type,
+            groesse_bytes=result.total_size_bytes,
+            datei_anzahl=result.file_count,
+            checksum_sha256=result.checksum_sha256,
+            verschluesselt=verschluesselt,
+            komprimiert=komprimiert,
+            validierung_level=validation_level.value,
+            validierung_dauer_ms=result.validation_duration_ms,
+            probleme=probleme,
+            anzahl_fehler=result.error_count,
+            anzahl_warnungen=result.warning_count,
+            details={**result.metadata, "pfad": str(result.backup_path)},
+            fehler=fehler,
+        ))
+
+    logger.info(
+        "alle_backups_validiert",
+        gesamt=len(responses),
+        gueltig=sum(1 for r in responses if r.gueltig),
+        ungueltig=sum(1 for r in responses if not r.gueltig),
+    )
+
+    return responses

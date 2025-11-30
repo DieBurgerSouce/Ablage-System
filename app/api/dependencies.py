@@ -243,8 +243,8 @@ async def get_current_user_optional(
         if user and user.is_active:
             return user
 
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("optional_user_lookup_failed", error=str(e))
 
     return None
 

@@ -244,9 +244,9 @@ async def logout(
                 exp_datetime = datetime.fromtimestamp(exp, tz=tz.utc)
                 await blacklist_token(jti, exp_datetime)
 
-        except Exception:
-            # Token already invalid, ignore
-            pass
+        except Exception as e:
+            # Token already invalid or blacklist failed - log but continue logout
+            logger.debug("token_blacklist_skipped", error=str(e))
 
     return MessageResponse(
         message="Erfolgreich abgemeldet",  # Successfully logged out
