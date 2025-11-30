@@ -1,0 +1,289 @@
+# Prometheus Alerting Rules fuer Host-Metriken (Node Exporter)
+# Alle Beschreibungen auf Deutsch fuer Betriebsteam
+
+groups:
+  - name: node_alerts
+    rules:
+      # ===================================================================
+      # Host Availability
+      # ===================================================================
+
+      # Kritisch: Host nicht erreichbar
+      - alert: NodeExporterDown
+        expr: up{job="node"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Node Exporter nicht erreichbar"
+          description: "Der Host {{ $labels.instance }} ist nicht erreichbar. Server moeglicherweise ausgefallen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/node-down"
+
+      # ===================================================================
+      # CPU Alerts
+      # ===================================================================
+
+      # Warnung: Hohe CPU-Auslastung (>85%)
+      - alert: HostHighCPULoad
+        expr: |
+          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+          resource: cpu
+        annotations:
+          summary: "Hohe CPU-Auslastung"
+          description: "CPU-Auslastung auf {{ $labels.instance }} bei {{ $value | humanize }}%."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/cpu-high"
+
+      # Kritisch: Sehr hohe CPU-Auslastung (>95%)
+      - alert: HostCriticalCPULoad
+        expr: |
+          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 95
+        for: 5m
+        labels:
+          severity: critical
+          component: infrastructure
+          resource: cpu
+        annotations:
+          summary: "KRITISCH: CPU-Auslastung extrem hoch"
+          description: "CPU-Auslastung auf {{ $labels.instance }} bei {{ $value | humanize }}%. System ueberlastet."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/cpu-critical"
+
+      # Warnung: Hohe CPU iowait
+      - alert: HostHighIOWait
+        expr: |
+          avg by(instance) (rate(node_cpu_seconds_total{mode="iowait"}[5m])) * 100 > 20
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+          resource: disk
+        annotations:
+          summary: "Hohe I/O Wait Zeit"
+          description: "I/O Wait auf {{ $labels.instance }} bei {{ $value | humanize }}%. Festplatten-Engpass moeglich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/io-wait"
+
+      # ===================================================================
+      # Memory Alerts
+      # ===================================================================
+
+      # Warnung: Niedriger verfuegbarer Speicher (<15%)
+      - alert: HostMemoryLow
+        expr: |
+          (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100) < 15
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+          resource: memory
+        annotations:
+          summary: "Niedriger Arbeitsspeicher"
+          description: "Verfuegbarer Speicher auf {{ $labels.instance }} bei {{ $value | humanize }}%."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/memory-low"
+
+      # Kritisch: Sehr niedriger Speicher (<5%)
+      - alert: HostMemoryCritical
+        expr: |
+          (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100) < 5
+        for: 2m
+        labels:
+          severity: critical
+          component: infrastructure
+          resource: memory
+        annotations:
+          summary: "KRITISCH: Speicher fast erschoepft"
+          description: "Verfuegbarer Speicher auf {{ $labels.instance }} bei {{ $value | humanize }}%. OOM-Killer droht."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/memory-critical"
+
+      # Warnung: Swap-Nutzung hoch
+      - alert: HostHighSwapUsage
+        expr: |
+          (node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes) / node_memory_SwapTotal_bytes * 100 > 50
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+          resource: memory
+        annotations:
+          summary: "Hohe Swap-Nutzung"
+          description: "Swap-Nutzung auf {{ $labels.instance }} bei {{ $value | humanize }}%. Leistung beeintraechtigt."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/swap-high"
+
+      # ===================================================================
+      # Disk Alerts
+      # ===================================================================
+
+      # Warnung: Festplatte fast voll (<15% frei)
+      - alert: HostDiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes * 100) < 15
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+          resource: disk
+        annotations:
+          summary: "Festplattenplatz niedrig"
+          description: "Festplatte {{ $labels.mountpoint }} auf {{ $labels.instance }} hat nur noch {{ $value | humanize }}% frei."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/disk-low"
+
+      # Kritisch: Festplatte kritisch (<5% frei)
+      - alert: HostDiskSpaceCritical
+        expr: |
+          (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes * 100) < 5
+        for: 5m
+        labels:
+          severity: critical
+          component: infrastructure
+          resource: disk
+        annotations:
+          summary: "KRITISCH: Festplatte fast voll"
+          description: "Festplatte {{ $labels.mountpoint }} auf {{ $labels.instance }} hat nur noch {{ $value | humanize }}% frei."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/disk-critical"
+
+      # Warnung: Hohe Disk I/O Auslastung
+      - alert: HostDiskIOSaturation
+        expr: |
+          rate(node_disk_io_time_seconds_total[5m]) > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+          resource: disk
+        annotations:
+          summary: "Hohe Disk I/O Auslastung"
+          description: "Disk {{ $labels.device }} auf {{ $labels.instance }} ist zu {{ $value | humanizePercentage }} ausgelastet."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/disk-io"
+
+      # Warnung: Disk Read Latency hoch
+      - alert: HostDiskLatencyHigh
+        expr: |
+          rate(node_disk_read_time_seconds_total[5m]) / rate(node_disk_reads_completed_total[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+          resource: disk
+        annotations:
+          summary: "Hohe Disk Read Latenz"
+          description: "Disk Read Latenz auf {{ $labels.instance }} bei {{ $value | humanizeDuration }}."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/disk-latency"
+
+      # ===================================================================
+      # Network Alerts
+      # ===================================================================
+
+      # Warnung: Hohe Netzwerk-Fehlerrate
+      - alert: HostNetworkErrors
+        expr: |
+          rate(node_network_receive_errs_total[5m]) + rate(node_network_transmit_errs_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+          resource: network
+        annotations:
+          summary: "Netzwerk-Fehler detektiert"
+          description: "Hohe Netzwerk-Fehlerrate auf {{ $labels.instance }} ({{ $labels.device }}): {{ $value }} Fehler/s."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/network-errors"
+
+      # Warnung: Interface fast gesaettigt (>80%)
+      - alert: HostNetworkSaturation
+        expr: |
+          rate(node_network_receive_bytes_total[5m]) * 8 / 1e9 > 8 or
+          rate(node_network_transmit_bytes_total[5m]) * 8 / 1e9 > 8
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+          resource: network
+        annotations:
+          summary: "Hohe Netzwerk-Auslastung"
+          description: "Netzwerk-Interface {{ $labels.device }} auf {{ $labels.instance }} naehert sich der Saettigung."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/network-saturation"
+
+      # ===================================================================
+      # System Alerts
+      # ===================================================================
+
+      # Warnung: Hohe Load Average
+      - alert: HostLoadHigh
+        expr: |
+          node_load15 / count without(cpu, mode) (node_cpu_seconds_total{mode="idle"}) > 1.5
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Hohe System Load"
+          description: "15-Minuten Load Average auf {{ $labels.instance }} ist hoch: {{ $value }}."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/load-high"
+
+      # Warnung: Systemzeit-Drift
+      - alert: HostClockDrift
+        expr: |
+          abs(node_timex_offset_seconds) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Systemzeit-Drift erkannt"
+          description: "Systemzeit auf {{ $labels.instance }} weicht um {{ $value | humanizeDuration }} ab."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/clock-drift"
+
+      # Warnung: Viele offene File Descriptors
+      - alert: HostFileDescriptorsHigh
+        expr: |
+          node_filefd_allocated / node_filefd_maximum * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Viele File Descriptors in Verwendung"
+          description: "{{ $value | humanize }}% der File Descriptors auf {{ $labels.instance }} in Verwendung."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/fd-high"
+
+      # Kritisch: File Descriptors fast erschoepft
+      - alert: HostFileDescriptorsCritical
+        expr: |
+          node_filefd_allocated / node_filefd_maximum * 100 > 95
+        for: 5m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "KRITISCH: File Descriptors fast erschoepft"
+          description: "File Descriptors auf {{ $labels.instance }} fast erschoepft ({{ $value | humanize }}%)."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/fd-critical"
+
+      # Warnung: OOM Killer aktiv
+      - alert: HostOOMKillerActive
+        expr: |
+          increase(node_vmstat_oom_kill[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: infrastructure
+          resource: memory
+        annotations:
+          summary: "OOM Killer aktiv"
+          description: "OOM Killer hat {{ $value }} Prozesse auf {{ $labels.instance }} beendet."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/oom-killer"
+
+      # Warnung: System-Neustart erkannt
+      - alert: HostRebooted
+        expr: |
+          (time() - node_boot_time_seconds) < 600
+        for: 1m
+        labels:
+          severity: info
+          component: infrastructure
+        annotations:
+          summary: "System wurde neu gestartet"
+          description: "{{ $labels.instance }} wurde vor {{ $value | humanizeDuration }} neu gestartet."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/reboot-detected"

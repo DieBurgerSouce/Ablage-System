@@ -19,6 +19,17 @@ logger = structlog.get_logger(__name__)
 
 # ==================== Konfiguration ====================
 
+# Path Traversal Protection
+DANGEROUS_FILENAME_PATTERNS = {"../", "..\\", "/", "\\", "\x00"}
+MAX_FILENAME_LENGTH = 255
+ALLOWED_FILENAME_CHARS = frozenset(
+    "abcdefghijklmnopqrstuvwxyz"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "0123456789"
+    "äöüÄÖÜß"  # Deutsche Umlaute
+    "._- "
+)
+
 # PDF Limits
 MAX_PDF_PAGES = 500  # Maximale Seitenzahl
 MAX_PDF_STREAM_RATIO = 100  # Max Dekomprimierungs-Verhältnis (100:1)
@@ -75,6 +86,135 @@ class TooManyPagesError(FileValidationError):
             f"PDF hat zu viele Seiten ({page_count}). Maximum: {MAX_PDF_PAGES}."
         )
         self.page_count = page_count
+
+
+class PathTraversalError(FileValidationError):
+    """Path Traversal Angriff erkannt."""
+
+    def __init__(self, filename: str):
+        super().__init__(
+            f"Path traversal attempt detected in filename: {filename}",
+            "Ungültiger Dateiname: Pfad-Manipulation erkannt."
+        )
+        self.filename = filename
+
+
+# ==================== Dateinamen-Sanitierung ====================
+
+
+def sanitize_filename(filename: str, strict: bool = True) -> str:
+    """
+    Sanitize Dateiname gegen Path Traversal und andere Angriffe.
+
+    Args:
+        filename: Original Dateiname vom Upload
+        strict: Wenn True, nur erlaubte Zeichen; sonst ersetzen
+
+    Returns:
+        Sicherer Dateiname
+
+    Raises:
+        PathTraversalError: Bei Path Traversal Versuch
+    """
+    import os
+    import unicodedata
+
+    if not filename:
+        return "unnamed_file"
+
+    # 1. Unicode normalisieren (NFC)
+    filename = unicodedata.normalize("NFC", filename)
+
+    # 2. Nur Basename extrahieren (entfernt alle Pfade)
+    filename = os.path.basename(filename)
+
+    # 3. Path Traversal Patterns prüfen
+    for pattern in DANGEROUS_FILENAME_PATTERNS:
+        if pattern in filename:
+            logger.warning(
+                "path_traversal_detected",
+                original_filename=filename[:50],
+                pattern=pattern
+            )
+            raise PathTraversalError(filename)
+
+    # 4. Null-Bytes entfernen (Null-Byte Injection)
+    filename = filename.replace("\x00", "")
+
+    # 5. Länge begrenzen
+    if len(filename) > MAX_FILENAME_LENGTH:
+        # Behalte Extension
+        name, ext = os.path.splitext(filename)
+        max_name_len = MAX_FILENAME_LENGTH - len(ext)
+        filename = name[:max_name_len] + ext
+
+    # 6. Strict Mode: Nur erlaubte Zeichen
+    if strict:
+        safe_chars = []
+        for char in filename:
+            if char in ALLOWED_FILENAME_CHARS:
+                safe_chars.append(char)
+            else:
+                safe_chars.append("_")
+        filename = "".join(safe_chars)
+    else:
+        # Nicht-strict: Nur gefährliche Zeichen ersetzen
+        filename = filename.replace("<", "_").replace(">", "_")
+        filename = filename.replace(":", "_").replace('"', "_")
+        filename = filename.replace("|", "_").replace("?", "_")
+        filename = filename.replace("*", "_")
+
+    # 7. Leere Dateinamen vermeiden
+    if not filename or filename.strip() == "":
+        return "unnamed_file"
+
+    # 8. Führende Punkte entfernen (versteckte Dateien)
+    while filename.startswith("."):
+        filename = filename[1:] or "unnamed_file"
+
+    # 9. Nochmal Längenbegrenzung
+    if len(filename) > MAX_FILENAME_LENGTH:
+        name, ext = os.path.splitext(filename)
+        max_name_len = MAX_FILENAME_LENGTH - len(ext)
+        filename = name[:max_name_len] + ext
+
+    return filename
+
+
+def validate_filename_security(filename: str) -> Tuple[bool, str]:
+    """
+    Validiere Dateiname auf Sicherheitsrisiken.
+
+    Args:
+        filename: Zu prüfender Dateiname
+
+    Returns:
+        Tuple von (is_safe, error_message)
+    """
+    import os
+
+    if not filename:
+        return False, "Dateiname fehlt"
+
+    # Path Traversal Check
+    for pattern in DANGEROUS_FILENAME_PATTERNS:
+        if pattern in filename:
+            return False, f"Ungültiger Dateiname: '{pattern}' nicht erlaubt"
+
+    # Absolute Pfade verbieten
+    if os.path.isabs(filename):
+        return False, "Absolute Pfade sind nicht erlaubt"
+
+    # Basename sollte gleich dem Original sein
+    basename = os.path.basename(filename)
+    if basename != filename:
+        return False, "Pfadangaben im Dateinamen nicht erlaubt"
+
+    # Länge prüfen
+    if len(filename) > MAX_FILENAME_LENGTH:
+        return False, f"Dateiname zu lang (max. {MAX_FILENAME_LENGTH} Zeichen)"
+
+    return True, ""
 
 
 # ==================== PDF Validierung ====================
@@ -281,6 +421,118 @@ def validate_image_security(
         return False, f"Bild-Validierung fehlgeschlagen: {str(e)}", metadata
 
 
+# ==================== Magic Bytes Validierung ====================
+
+# File signature (magic bytes) definitions
+# Format: {extension: [(magic_bytes, offset), ...]}
+FILE_SIGNATURES: Dict[str, list] = {
+    ".pdf": [(b"%PDF", 0)],
+    ".png": [(b"\x89PNG\r\n\x1a\n", 0)],
+    ".jpg": [(b"\xff\xd8\xff", 0)],
+    ".jpeg": [(b"\xff\xd8\xff", 0)],
+    ".gif": [(b"GIF87a", 0), (b"GIF89a", 0)],
+    ".bmp": [(b"BM", 0)],
+    ".tiff": [(b"II\x2a\x00", 0), (b"MM\x00\x2a", 0)],  # Little/Big endian
+    ".tif": [(b"II\x2a\x00", 0), (b"MM\x00\x2a", 0)],
+}
+
+
+def verify_magic_bytes(content: bytes, filename: str) -> Tuple[bool, str, Optional[str]]:
+    """
+    Verifiziere Magic Bytes gegen Dateiendung.
+
+    Schützt vor:
+    - Umbenannten Dateien (z.B. .exe → .pdf)
+    - MIME-Type Spoofing
+    - Content-Type Manipulation
+
+    Args:
+        content: Datei-Inhalt als Bytes
+        filename: Dateiname mit Extension
+
+    Returns:
+        Tuple von (is_valid, error_message, detected_type)
+    """
+    if not content:
+        return False, "Datei ist leer", None
+
+    file_ext = Path(filename).suffix.lower()
+
+    # Für bekannte Dateitypen: Magic Bytes prüfen
+    if file_ext in FILE_SIGNATURES:
+        signatures = FILE_SIGNATURES[file_ext]
+        matched = False
+
+        for magic, offset in signatures:
+            if len(content) >= offset + len(magic):
+                if content[offset:offset + len(magic)] == magic:
+                    matched = True
+                    break
+
+        if not matched:
+            # Versuche tatsächlichen Typ zu erkennen
+            detected = _detect_file_type(content)
+            detected_str = detected if detected else "unbekannt"
+
+            logger.warning(
+                "magic_bytes_mismatch",
+                filename=filename,
+                expected_ext=file_ext,
+                detected_type=detected_str
+            )
+
+            return False, (
+                f"Dateiinhalt stimmt nicht mit Dateiendung '{file_ext}' überein. "
+                f"Erkannter Dateityp: {detected_str}"
+            ), detected
+
+    return True, "", file_ext
+
+
+def _detect_file_type(content: bytes) -> Optional[str]:
+    """
+    Erkenne Dateityp anhand der Magic Bytes.
+
+    Args:
+        content: Datei-Inhalt als Bytes
+
+    Returns:
+        Erkannte Dateiendung oder None
+    """
+    if not content:
+        return None
+
+    # Prüfe alle bekannten Signaturen
+    for ext, signatures in FILE_SIGNATURES.items():
+        for magic, offset in signatures:
+            if len(content) >= offset + len(magic):
+                if content[offset:offset + len(magic)] == magic:
+                    return ext
+
+    # Weitere Dateitypen (nicht in FILE_SIGNATURES für OCR)
+    if content[:2] == b"PK":  # ZIP-basiert (docx, xlsx, etc.)
+        return ".zip"
+    if content[:4] == b"RIFF":  # RIFF-Container (wav, webp, etc.)
+        return ".riff"
+    if content[:3] == b"ID3" or content[:2] == b"\xff\xfb":  # MP3
+        return ".mp3"
+
+    return None
+
+
+class MagicBytesMismatchError(FileValidationError):
+    """Magic Bytes stimmen nicht mit Dateiendung überein."""
+
+    def __init__(self, expected: str, detected: Optional[str]):
+        detected_str = detected if detected else "unbekannt"
+        super().__init__(
+            f"Magic bytes mismatch: expected {expected}, detected {detected_str}",
+            f"Dateiformat ungültig: Erwartet '{expected}', erkannt '{detected_str}'"
+        )
+        self.expected = expected
+        self.detected = detected
+
+
 # ==================== Kombinierte Validierung ====================
 
 def validate_file_security(
@@ -313,6 +565,15 @@ def validate_file_security(
             f"Datei zu groß ({size_mb:.1f} MB). "
             f"Maximum: {MAX_FILE_SIZE_MB} MB."
         ), metadata
+
+    # Magic Bytes Validierung (SECURITY FIX)
+    magic_valid, magic_error, detected_type = verify_magic_bytes(content, filename)
+    if not magic_valid:
+        metadata["magic_bytes_error"] = magic_error
+        metadata["detected_type"] = detected_type
+        return False, magic_error, metadata
+
+    metadata["magic_bytes_validated"] = True
 
     # Typ-spezifische Validierung
     if file_ext == ".pdf" or mime_type == "application/pdf":

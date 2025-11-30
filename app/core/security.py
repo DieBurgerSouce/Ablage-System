@@ -9,6 +9,7 @@ Token-Blacklist: Redis-basiert mit In-Memory-Fallback für Skalierbarkeit.
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
+import asyncio
 import secrets
 
 import bcrypt
@@ -61,6 +62,10 @@ else:
         message="Verwende Dict statt TTLCache für Token-Blacklist. "
                 "Installiere cachetools für automatische Speicherbereinigung: pip install cachetools"
     )
+
+# THREAD-SAFETY FIX: asyncio.Lock für In-Memory Blacklist
+# Verhindert Race Conditions bei Multi-Worker Deployments mit In-Memory-Fallback
+_blacklist_lock: asyncio.Lock = asyncio.Lock()
 
 # Redis client instance (lazy-loaded)
 _redis_client: Optional[Any] = None
@@ -165,8 +170,10 @@ async def blacklist_token_redis(jti: str, expires_at: datetime) -> bool:
 
     # Fallback to in-memory (nur wenn fail-closed deaktiviert)
     # WARNUNG: Nicht synchronisiert zwischen Workern!
-    _token_blacklist_fallback[jti] = expires_at
-    _cleanup_fallback_blacklist()
+    # THREAD-SAFETY: Lock verwenden für In-Memory-Zugriff
+    async with _blacklist_lock:
+        _token_blacklist_fallback[jti] = expires_at
+        _cleanup_fallback_blacklist()
     logger.warning(
         "token_blacklisted_fallback_insecure",
         jti=jti[:8] + "...",
@@ -221,13 +228,15 @@ async def is_token_blacklisted_redis(jti: str) -> bool:
 
     # Fallback auf In-Memory (nur wenn fail-closed deaktiviert)
     # WARNUNG: Nicht synchronisiert zwischen Workern!
-    if jti in _token_blacklist_fallback:
-        expiration = _token_blacklist_fallback[jti]
-        if datetime.now(timezone.utc) < expiration:
-            return True
-        else:
-            # Expired, remove from fallback
-            del _token_blacklist_fallback[jti]
+    # THREAD-SAFETY: Lock verwenden für In-Memory-Zugriff
+    async with _blacklist_lock:
+        if jti in _token_blacklist_fallback:
+            expiration = _token_blacklist_fallback[jti]
+            if datetime.now(timezone.utc) < expiration:
+                return True
+            else:
+                # Expired, remove from fallback
+                del _token_blacklist_fallback[jti]
 
     return False
 

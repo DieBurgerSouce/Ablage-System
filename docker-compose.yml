@@ -107,7 +107,8 @@ services:
     container_name: ablage-backend
     environment:
       # Vault Configuration (secrets loaded from Vault when enabled)
-      VAULT_ENABLED: ${VAULT_ENABLED:-false}
+      # SECURITY FIX: Default auf true geändert für Production-Sicherheit
+      VAULT_ENABLED: ${VAULT_ENABLED:-true}
       VAULT_ADDR: https://vault:8200
       VAULT_TOKEN: ${VAULT_TOKEN:-}
       VAULT_SECRET_PATH: ablage-system
@@ -165,6 +166,13 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    # SECURITY FIX: Healthcheck für Backend
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=5).raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
     networks:
       - backend-network
@@ -177,9 +185,12 @@ services:
       dockerfile: Dockerfile
     container_name: ablage-worker
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo
+    ports:
+      - "127.0.0.1:8001:8001"  # Prometheus Metrics
     environment:
       # Vault Configuration
-      VAULT_ENABLED: ${VAULT_ENABLED:-false}
+      # SECURITY FIX: Default auf true geändert für Production-Sicherheit
+      VAULT_ENABLED: ${VAULT_ENABLED:-true}
       VAULT_ADDR: https://vault:8200
       VAULT_TOKEN: ${VAULT_TOKEN:-}
       VAULT_SECRET_PATH: ablage-system
@@ -235,10 +246,18 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    # SECURITY FIX: Healthcheck für Worker
+    healthcheck:
+      test: ["CMD", "celery", "-A", "app.workers.celery_app", "inspect", "ping", "-d", "celery@$$HOSTNAME"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 120s
     restart: unless-stopped
     networks:
       - backend-network
       - data-network
+      - monitoring-network  # Für Prometheus Metrics Scraping
 
   # Frontend Application (React + Vite) - Frontend + Backend Networks
   frontend:
@@ -293,6 +312,12 @@ services:
     depends_on:
       backend:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -332,6 +357,12 @@ services:
     depends_on:
       prometheus:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -356,6 +387,12 @@ services:
       - loki_data:/loki
     ports:
       - "127.0.0.1:3100:3100"  # Nur localhost
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -571,6 +608,42 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+    restart: unless-stopped
+    networks:
+      - monitoring-network
+
+  # Node Exporter für Host-Metriken (CPU, RAM, Disk, Network)
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: ablage-node-exporter
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "127.0.0.1:9100:9100"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    pid: host
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9100/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     restart: unless-stopped
     networks:
       - monitoring-network

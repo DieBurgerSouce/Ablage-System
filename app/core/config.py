@@ -13,12 +13,97 @@ from typing import Optional, List, Dict, Any
 from pathlib import Path
 import secrets
 import os
+import math
 
 from pydantic import Field, field_validator, SecretStr, PostgresDsn, RedisDsn, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import structlog
 
 logger = structlog.get_logger(__name__)
+
+
+# ==================== Security Helper Functions ====================
+
+
+def calculate_entropy_bits(secret: str) -> float:
+    """
+    Berechne die Entropie eines Secrets in Bits.
+
+    Entropie = log2(Anzahl_einzigartiger_Zeichen ^ Länge)
+
+    Args:
+        secret: Der zu prüfende String
+
+    Returns:
+        Entropie in Bits
+    """
+    if not secret:
+        return 0.0
+
+    unique_chars = len(set(secret))
+    length = len(secret)
+
+    if unique_chars <= 1:
+        return 0.0
+
+    # Entropie = log2(unique_chars) * length
+    return math.log2(unique_chars) * length
+
+
+def validate_secret_entropy(
+    secret: str,
+    min_entropy_bits: float = 128.0,
+    min_unique_ratio: float = 0.3
+) -> tuple[bool, str]:
+    """
+    Validiere Entropie und Qualität eines Secrets.
+
+    Args:
+        secret: Der zu prüfende String
+        min_entropy_bits: Mindest-Entropie in Bits (default: 128 für AES-128 Sicherheit)
+        min_unique_ratio: Mindest-Verhältnis einzigartiger Zeichen (default: 30%)
+
+    Returns:
+        Tuple von (is_valid, error_message)
+    """
+    if not secret:
+        return False, "Secret darf nicht leer sein"
+
+    length = len(secret)
+    unique_chars = len(set(secret))
+    entropy = calculate_entropy_bits(secret)
+    unique_ratio = unique_chars / length if length > 0 else 0
+
+    # Prüfe Entropie
+    if entropy < min_entropy_bits:
+        return False, (
+            f"Secret hat zu wenig Entropie ({entropy:.0f} Bits). "
+            f"Mindestens {min_entropy_bits:.0f} Bits erforderlich. "
+            f"Verwende mehr einzigartige Zeichen oder eine längere Zeichenkette."
+        )
+
+    # Prüfe Einzigartigkeit (verhindert "aaaaaaa...")
+    if unique_ratio < min_unique_ratio:
+        return False, (
+            f"Secret hat zu wenig einzigartige Zeichen ({unique_ratio*100:.0f}%). "
+            f"Mindestens {min_unique_ratio*100:.0f}% einzigartige Zeichen erforderlich."
+        )
+
+    # Prüfe auf offensichtlich schwache Muster
+    weak_patterns = [
+        "12345", "password", "secret", "admin", "test",
+        "qwerty", "asdfgh", "00000", "11111", "abcde"
+    ]
+    secret_lower = secret.lower()
+    for pattern in weak_patterns:
+        if pattern in secret_lower:
+            return False, (
+                f"Secret enthält schwaches Muster: '{pattern}'. "
+                "Verwende einen sicher generierten Schlüssel: "
+                "python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+            )
+
+    return True, ""
 
 # Try to import hvac for Vault integration
 try:
@@ -290,7 +375,15 @@ class Settings(BaseSettings):
     REDIS_DB: int = 0
     REDIS_PASSWORD: Optional[SecretStr] = None
     REDIS_URL: Optional[str] = None
-    
+
+    # Redis Connection Pool Settings
+    REDIS_POOL_MIN_SIZE: int = 5
+    REDIS_POOL_MAX_SIZE: int = 20
+    REDIS_SOCKET_TIMEOUT: float = 5.0
+    REDIS_SOCKET_CONNECT_TIMEOUT: float = 5.0
+    REDIS_SOCKET_KEEPALIVE: bool = True
+    REDIS_HEALTH_CHECK_INTERVAL: int = 30
+
     # Celery
     CELERY_BROKER_URL: Optional[str] = None
     CELERY_RESULT_BACKEND: Optional[str] = None
@@ -424,9 +517,11 @@ class Settings(BaseSettings):
     # Performance
     WORKER_CONNECTIONS: int = 1000
     KEEPALIVE_TIMEOUT: int = 5
-    DB_POOL_SIZE: int = 20
-    DB_MAX_OVERFLOW: int = 40
+    DB_POOL_SIZE: int = 50  # Erhöht von 20 für 100+ concurrent users
+    DB_MAX_OVERFLOW: int = 150  # Erhöht von 40 für Peak-Load
     DB_POOL_PRE_PING: bool = True
+    DB_POOL_RECYCLE: int = 1800  # 30 Minuten Connection Recycling
+    DB_POOL_TIMEOUT: int = 60  # 60 Sekunden Wartezeit für Pool
     
     # Monitoring
     ENABLE_METRICS: bool = True
@@ -487,6 +582,23 @@ class Settings(BaseSettings):
                 f"SECRET_KEY ist zu kurz ({len(secret_key_value)} Zeichen). "
                 "Mindestens 32 Zeichen erforderlich für sichere JWT-Signierung."
             )
+        else:
+            # Entropie-Validierung nur in Production
+            if not self.DEBUG:
+                is_valid, error_msg = validate_secret_entropy(
+                    secret_key_value,
+                    min_entropy_bits=128.0,  # AES-128 Sicherheit
+                    min_unique_ratio=0.25    # 25% einzigartige Zeichen
+                )
+                if not is_valid:
+                    raise ValueError(f"SECRET_KEY unsicher: {error_msg}")
+
+                entropy = calculate_entropy_bits(secret_key_value)
+                logger.info(
+                    "secret_key_validated",
+                    entropy_bits=round(entropy, 1),
+                    length=len(secret_key_value)
+                )
 
         # ========== CORS Origins Validierung ==========
         # In Production: Keine localhost Origins erlauben

@@ -1,0 +1,293 @@
+# Prometheus Alerting Rules fuer Celery Worker
+# Basierend auf den neuen ablage_celery_* Metriken
+# Alle Beschreibungen auf Deutsch fuer Betriebsteam
+
+groups:
+  - name: celery_alerts
+    rules:
+      # ===================================================================
+      # Worker Health Alerts
+      # ===================================================================
+
+      # Kritisch: Celery Worker nicht erreichbar
+      - alert: CeleryWorkerDown
+        expr: ablage_celery_worker_up == 0 or absent(ablage_celery_worker_up)
+        for: 2m
+        labels:
+          severity: critical
+          component: celery
+        annotations:
+          summary: "Celery Worker nicht erreichbar"
+          description: "Der Celery Worker ist seit mehr als 2 Minuten nicht erreichbar. Task-Verarbeitung gestoppt."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-worker-down"
+
+      # Warnung: Worker Uptime niedrig (haeufige Neustarts)
+      - alert: CeleryWorkerFrequentRestarts
+        expr: ablage_celery_worker_uptime_seconds < 600
+        for: 5m
+        labels:
+          severity: warning
+          component: celery
+        annotations:
+          summary: "Celery Worker wird haeufig neu gestartet"
+          description: "Der Celery Worker wurde vor {{ $value | humanizeDuration }} neu gestartet. Moeglicherweise instabil."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-restarts"
+
+      # ===================================================================
+      # Task Processing Alerts
+      # ===================================================================
+
+      # Warnung: Hohe Task Fehlerrate (>10%)
+      - alert: CeleryTaskFailureRateHigh
+        expr: |
+          sum(rate(ablage_celery_tasks_total{status="failed"}[10m]))
+          / sum(rate(ablage_celery_tasks_total[10m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: celery
+        annotations:
+          summary: "Hohe Celery Task Fehlerrate"
+          description: "Mehr als 10% der Celery Tasks schlagen fehl. Aktuelle Fehlerrate: {{ $value | humanizePercentage }}"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-task-failures"
+
+      # Kritisch: Sehr hohe Task Fehlerrate (>25%)
+      - alert: CeleryTaskFailureRateCritical
+        expr: |
+          sum(rate(ablage_celery_tasks_total{status="failed"}[10m]))
+          / sum(rate(ablage_celery_tasks_total[10m])) > 0.25
+        for: 3m
+        labels:
+          severity: critical
+          component: celery
+        annotations:
+          summary: "KRITISCH: Celery Task Fehlerrate ueber 25%"
+          description: "Mehr als 25% der Celery Tasks schlagen fehl. Sofortige Untersuchung erforderlich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-critical-failures"
+
+      # Warnung: Viele Task Retries
+      - alert: CeleryHighRetryRate
+        expr: |
+          sum(rate(ablage_celery_task_retries_total[10m]))
+          / sum(rate(ablage_celery_tasks_total{status="started"}[10m])) > 0.15
+        for: 10m
+        labels:
+          severity: warning
+          component: celery
+        annotations:
+          summary: "Hohe Celery Retry-Rate"
+          description: "Mehr als 15% der Tasks benoetigen Retries. Instabilitaet moeglich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-retries"
+
+      # Warnung: Lange Task-Verarbeitung (95. Perzentil > 60s)
+      - alert: CeleryTaskProcessingSlow
+        expr: histogram_quantile(0.95, rate(ablage_celery_task_duration_seconds_bucket[10m])) > 60
+        for: 10m
+        labels:
+          severity: warning
+          component: celery
+        annotations:
+          summary: "Celery Tasks verarbeiten langsam"
+          description: "95% der Tasks dauern laenger als 60 Sekunden. Aktuell: {{ $value | humanizeDuration }}"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-slow-tasks"
+
+      # Kritisch: Sehr lange Task-Verarbeitung (95. Perzentil > 5 Min)
+      - alert: CeleryTaskProcessingVerySlow
+        expr: histogram_quantile(0.95, rate(ablage_celery_task_duration_seconds_bucket[10m])) > 300
+        for: 5m
+        labels:
+          severity: critical
+          component: celery
+        annotations:
+          summary: "KRITISCH: Celery Tasks extrem langsam"
+          description: "95% der Tasks dauern laenger als 5 Minuten. System stark beeintraechtigt."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-very-slow"
+
+      # ===================================================================
+      # Queue Alerts
+      # ===================================================================
+
+      # Warnung: Queue-Rueckstand hoch
+      - alert: CeleryQueueBacklog
+        expr: sum(ablage_celery_queue_length) > 50
+        for: 15m
+        labels:
+          severity: warning
+          component: celery
+        annotations:
+          summary: "Celery Queue Rueckstand"
+          description: "{{ $value }} Tasks warten in Queues. Verarbeitung verzögert."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-queue-backlog"
+
+      # Kritisch: Queue-Rueckstand sehr hoch
+      - alert: CeleryQueueBacklogCritical
+        expr: sum(ablage_celery_queue_length) > 200
+        for: 10m
+        labels:
+          severity: critical
+          component: celery
+        annotations:
+          summary: "KRITISCH: Celery Queue ueberlastet"
+          description: "{{ $value }} Tasks warten in Queues. Worker kann Last nicht bewaeltigen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-queue-critical"
+
+      # Warnung: Spezifische Queue blockiert
+      - alert: CeleryQueueBlocked
+        expr: ablage_celery_queue_length{queue_name=~"ocr_high|embedding_high"} > 20
+        for: 10m
+        labels:
+          severity: warning
+          component: celery
+        annotations:
+          summary: "Hochprioritaets-Queue blockiert"
+          description: "Die Queue {{ $labels.queue_name }} hat {{ $value }} wartende Tasks."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-priority-queue"
+
+      # ===================================================================
+      # GPU Alerts (Celery Worker spezifisch)
+      # ===================================================================
+
+      # Warnung: GPU Speicher im Worker hoch (>85%)
+      - alert: CeleryGPUMemoryHigh
+        expr: |
+          ablage_celery_gpu_memory_bytes{type="allocated"}
+          / ablage_celery_gpu_memory_bytes{type="total"} > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: celery
+          resource: gpu
+        annotations:
+          summary: "Celery Worker GPU Speicher hoch"
+          description: "GPU Speicherauslastung im Worker bei {{ $value | humanizePercentage }}. OOM-Gefahr."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-gpu-memory"
+
+      # Kritisch: GPU Speicher im Worker kritisch (>95%)
+      - alert: CeleryGPUMemoryCritical
+        expr: |
+          ablage_celery_gpu_memory_bytes{type="allocated"}
+          / ablage_celery_gpu_memory_bytes{type="total"} > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          component: celery
+          resource: gpu
+        annotations:
+          summary: "KRITISCH: Celery GPU Speicher fast voll"
+          description: "GPU Speicher im Worker fast erschoepft. OOM-Fehler wahrscheinlich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-gpu-critical"
+
+      # Warnung: OOM Events aufgetreten
+      - alert: CeleryGPUOOMEvents
+        expr: increase(ablage_celery_gpu_oom_events_total[15m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          component: celery
+          resource: gpu
+        annotations:
+          summary: "GPU OOM Events im Celery Worker"
+          description: "In den letzten 15 Minuten sind {{ $value }} GPU OOM Events aufgetreten."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-oom-events"
+
+      # Kritisch: Haeufige OOM Events
+      - alert: CeleryGPUOOMFrequent
+        expr: increase(ablage_celery_gpu_oom_events_total[1h]) > 5
+        for: 5m
+        labels:
+          severity: critical
+          component: celery
+          resource: gpu
+        annotations:
+          summary: "KRITISCH: Haeufige GPU OOM Events"
+          description: "Mehr als 5 GPU OOM Events in der letzten Stunde. GPU-Ressourcen ueberfordert."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-oom-frequent"
+
+      # Warnung: Lange GPU Lock Wartezeiten
+      - alert: CeleryGPULockContention
+        expr: histogram_quantile(0.95, rate(ablage_celery_gpu_lock_wait_seconds_bucket[10m])) > 30
+        for: 5m
+        labels:
+          severity: warning
+          component: celery
+          resource: gpu
+        annotations:
+          summary: "GPU Lock Wartezeit hoch"
+          description: "95% der Tasks warten mehr als 30 Sekunden auf GPU Lock."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-gpu-contention"
+
+      # ===================================================================
+      # Task-spezifische Alerts
+      # ===================================================================
+
+      # Warnung: OCR Tasks haeufig fehlerhaft
+      - alert: CeleryOCRTasksUnhealthy
+        expr: |
+          sum(rate(ablage_celery_tasks_total{task_name=~".*ocr.*", status="failed"}[10m]))
+          / sum(rate(ablage_celery_tasks_total{task_name=~".*ocr.*"}[10m])) > 0.15
+        for: 10m
+        labels:
+          severity: warning
+          component: celery
+          task_type: ocr
+        annotations:
+          summary: "OCR Tasks haeufig fehlerhaft"
+          description: "Mehr als 15% der OCR Tasks schlagen fehl. Fehlerrate: {{ $value | humanizePercentage }}"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-ocr-failures"
+
+      # Warnung: Embedding Tasks haeufig fehlerhaft
+      - alert: CeleryEmbeddingTasksUnhealthy
+        expr: |
+          sum(rate(ablage_celery_tasks_total{task_name=~".*embedding.*", status="failed"}[10m]))
+          / sum(rate(ablage_celery_tasks_total{task_name=~".*embedding.*"}[10m])) > 0.15
+        for: 10m
+        labels:
+          severity: warning
+          component: celery
+          task_type: embedding
+        annotations:
+          summary: "Embedding Tasks haeufig fehlerhaft"
+          description: "Mehr als 15% der Embedding Tasks schlagen fehl."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-embedding-failures"
+
+      # Warnung: Backup Tasks fehlgeschlagen
+      - alert: CeleryBackupTaskFailed
+        expr: increase(ablage_celery_tasks_total{task_name=~".*backup.*", status="failed"}[24h]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: celery
+          task_type: backup
+        annotations:
+          summary: "Backup Task fehlgeschlagen"
+          description: "Ein oder mehrere Backup Tasks sind in den letzten 24 Stunden fehlgeschlagen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/backup-task-failed"
+
+      # Warnung: GDPR Tasks fehlgeschlagen
+      - alert: CeleryGDPRTaskFailed
+        expr: increase(ablage_celery_tasks_total{task_name=~".*gdpr.*", status="failed"}[24h]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: celery
+          task_type: gdpr
+        annotations:
+          summary: "GDPR Task fehlgeschlagen"
+          description: "GDPR-bezogene Tasks sind fehlgeschlagen. Compliance moeglicherweise beeintraechtigt."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gdpr-task-failed"
+
+      # ===================================================================
+      # Inactivity Alerts
+      # ===================================================================
+
+      # Warnung: Keine Task-Aktivitaet
+      - alert: CeleryNoActivity
+        expr: sum(rate(ablage_celery_tasks_total[30m])) == 0
+        for: 1h
+        labels:
+          severity: warning
+          component: celery
+        annotations:
+          summary: "Keine Celery Task Aktivitaet"
+          description: "Keine Task-Aktivitaet in der letzten Stunde. Moeglicherweise ein Problem."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/celery-no-activity"

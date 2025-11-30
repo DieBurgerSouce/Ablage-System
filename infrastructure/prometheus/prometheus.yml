@@ -74,10 +74,10 @@ scrape_configs:
         target_label: instance
         replacement: 'minio'
 
-  # Node Exporter (if running on host)
+  # Node Exporter (Docker Container)
   - job_name: 'node'
     static_configs:
-      - targets: ['host.docker.internal:9100']
+      - targets: ['node-exporter:9100']
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance

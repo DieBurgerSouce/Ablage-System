@@ -16,6 +16,12 @@ from redis import Redis
 from redis.exceptions import RedisError
 
 from app.core.config import settings
+from app.workers.celery_metrics import (
+    record_task_started, record_task_succeeded, record_task_failed,
+    record_task_retried, record_gpu_oom, init_worker_metrics,
+    shutdown_worker_metrics, start_metrics_server, stop_metrics_server,
+    set_gpu_lock_status, update_gpu_metrics
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -392,8 +398,13 @@ def task_prerun_handler(
     **extra: Any
 ) -> None:
     """Log task start and update database status."""
-    task_name = task.name if task else None
+    task_name = task.name if task else "unknown"
+    queue = getattr(task.request, 'delivery_info', {}).get('routing_key', 'default') if task else "default"
+
     logger.info("task_starting", task_id=task_id, task_name=task_name)
+
+    # Prometheus Metriken
+    record_task_started(task_id or "unknown", task_name, queue)
 
 
 @task_postrun.connect
@@ -408,13 +419,20 @@ def task_postrun_handler(
     **extra: Any
 ) -> None:
     """Log task completion and cleanup GPU memory."""
-    task_name = task.name if task else None
+    task_name = task.name if task else "unknown"
+    queue = getattr(task.request, 'delivery_info', {}).get('routing_key', 'default') if task else "default"
+
     logger.info("task_completed", task_id=task_id, task_name=task_name, state=state)
+
+    # Prometheus Metriken (nur bei SUCCESS, FAILURE wird separat behandelt)
+    if state == "SUCCESS":
+        record_task_succeeded(task_id or "unknown", task_name, queue)
 
     # Clear GPU memory for GPU tasks
     if task and hasattr(task, "__class__") and issubclass(task.__class__, GPUTask):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+            update_gpu_metrics()
 
 
 @task_failure.connect
@@ -429,12 +447,23 @@ def task_failure_handler(
     **extra: Any
 ) -> None:
     """Log task failure and cleanup resources."""
-    task_name = sender.name if sender else None
+    task_name = sender.name if sender else "unknown"
+    exception_type = type(exception).__name__ if exception else "unknown"
+
     logger.error("task_failed", task_id=task_id, task_name=task_name, exception=str(exception), exc_info=True)
+
+    # Prometheus Metriken
+    record_task_failed(
+        task_id or "unknown",
+        task_name,
+        "default",
+        exception_type
+    )
 
     # Clear GPU memory on failure
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
+        update_gpu_metrics()
 
     # Note: Distributed GPU lock is released in GPUTask.after_return
     # Redis lock auto-expires after _GPU_LOCK_TIMEOUT seconds as fallback
@@ -449,8 +478,11 @@ def task_retry_handler(
     **extra: Any
 ) -> None:
     """Log task retry attempts."""
-    task_name = sender.name if sender else None
+    task_name = sender.name if sender else "unknown"
     logger.warning("task_retrying", task_id=task_id, task_name=task_name, reason=str(reason))
+
+    # Prometheus Metriken
+    record_task_retried(task_id or "unknown", task_name)
 
 
 @task_success.connect
@@ -493,6 +525,13 @@ def preload_ocr_models(sender: Any = None, **kwargs: Any) -> None:
     if _models_preloaded:
         logger.debug("models_already_preloaded")
         return
+
+    # Starte Prometheus Metrics Server auf Port 8001
+    start_metrics_server(port=8001)
+
+    # Initialisiere Worker Metriken
+    hostname = sender.hostname if sender else os.environ.get("HOSTNAME", "unknown")
+    init_worker_metrics(hostname=hostname, pool_size=1, prefetch=1)
 
     logger.info("worker_ready_preloading_models")
 
@@ -630,6 +669,10 @@ def cleanup_gpu_on_worker_shutdown(sender: Any = None, **kwargs: Any) -> None:
     """
     logger.info("worker_shutdown_cleaning_gpu")
 
+    # Stoppe Prometheus Metrics Server
+    stop_metrics_server()
+    shutdown_worker_metrics()
+
     if torch.cuda.is_available():
         try:
             # Clear CUDA cache
@@ -729,6 +772,8 @@ def enhanced_oom_recovery_handler(
                 )
 
                 # Update OOM metrics (for Prometheus)
+                record_gpu_oom(task_name)
+                update_gpu_metrics()
                 _record_oom_event(task_name, freed_gb)
 
             except Exception as cleanup_error:
