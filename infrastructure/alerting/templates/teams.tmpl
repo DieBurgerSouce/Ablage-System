@@ -1,0 +1,106 @@
+{{ define "teams.card" }}
+{
+    "@type": "MessageCard",
+    "@context": "http://schema.org/extensions",
+    "themeColor": "{{ if eq .Status "firing" }}{{ if eq .CommonLabels.severity "critical" }}DC2626{{ else if eq .CommonLabels.severity "high" }}EA580C{{ else }}F59E0B{{ end }}{{ else }}10B981{{ end }}",
+    "summary": "{{ .GroupLabels.alertname }} - {{ .Status | toUpper }}",
+    "sections": [{
+        "activityTitle": "{{ if eq .Status "firing" }}{{ if eq .CommonLabels.severity "critical" }}KRITISCH{{ else if eq .CommonLabels.severity "high" }}HOCH{{ else }}WARNUNG{{ end }}{{ else }}BEHOBEN{{ end }}: {{ .GroupLabels.alertname }}",
+        "activitySubtitle": "Ablage-System OCR - {{ .CommonLabels.service | default "System" }}",
+        "activityImage": "",
+        "facts": [
+            {
+                "name": "Schweregrad",
+                "value": "{{ .CommonLabels.severity | toUpper }}"
+            },
+            {
+                "name": "Status",
+                "value": "{{ if eq .Status "firing" }}Aktiv{{ else }}Behoben{{ end }}"
+            },
+            {
+                "name": "Service",
+                "value": "{{ .CommonLabels.service | default "Unbekannt" }}"
+            },
+            {
+                "name": "Anzahl Alerts",
+                "value": "Aktiv: {{ len .Alerts.Firing }} | Behoben: {{ len .Alerts.Resolved }}"
+            }
+        ],
+        "markdown": true,
+        "text": "{{ range .Alerts }}**{{ .Labels.alertname }}**\n{{ .Annotations.summary }}\n\n{{ if .Annotations.description }}{{ .Annotations.description }}{{ end }}\n---\n{{ end }}"
+    }],
+    "potentialAction": [
+        {
+            "@type": "OpenUri",
+            "name": "Grafana Dashboard",
+            "targets": [
+                {
+                    "os": "default",
+                    "uri": "http://localhost:3000"
+                }
+            ]
+        },
+        {
+            "@type": "OpenUri",
+            "name": "AlertManager",
+            "targets": [
+                {
+                    "os": "default",
+                    "uri": "http://localhost:9093"
+                }
+            ]
+        },
+        {
+            "@type": "OpenUri",
+            "name": "API Health",
+            "targets": [
+                {
+                    "os": "default",
+                    "uri": "http://localhost:8000/health/detailed"
+                }
+            ]
+        }
+    ]
+}
+{{ end }}
+
+{{ define "teams.default" }}
+{
+    "@type": "MessageCard",
+    "@context": "http://schema.org/extensions",
+    "themeColor": "{{ if eq .Status "firing" }}DC2626{{ else }}10B981{{ end }}",
+    "summary": "Ablage-System Alert: {{ .GroupLabels.alertname }}",
+    "sections": [{
+        "activityTitle": "{{ if eq .Status "firing" }}ALERT{{ else }}RESOLVED{{ end }}: {{ .GroupLabels.alertname }}",
+        "activitySubtitle": "Ablage-System OCR Monitoring",
+        "facts": [
+            {
+                "name": "Status",
+                "value": "{{ .Status | toUpper }}"
+            },
+            {
+                "name": "Alerts",
+                "value": "{{ len .Alerts }}"
+            },
+            {
+                "name": "Group",
+                "value": "{{ .GroupLabels.alertname }}"
+            }
+        ],
+        "markdown": true,
+        "text": "{{ .CommonAnnotations.summary | default "Alert triggered" }}"
+    }],
+    "potentialAction": [
+        {
+            "@type": "OpenUri",
+            "name": "View Details",
+            "targets": [
+                {
+                    "os": "default",
+                    "uri": "http://localhost:9093"
+                }
+            ]
+        }
+    ]
+}
+{{ end }}

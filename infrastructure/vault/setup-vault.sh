@@ -275,11 +275,15 @@ create_secrets() {
         dsn="" \
         environment="production"
 
-    # Alert webhooks
+    # Alert configuration (Email + MS Teams)
     vault kv put secret/ablage-system/alerts \
-        slack_webhook="" \
-        pagerduty_key="" \
-        opsgenie_key=""
+        smtp_host="" \
+        smtp_port="587" \
+        smtp_username="" \
+        smtp_password="" \
+        smtp_from="alertmanager@ablage-system.local" \
+        email_recipients="ops-team@internal.local" \
+        teams_webhook_url=""
 
     echo -e "${GREEN}✅ Initial secrets created${NC}"
     echo -e "${YELLOW}⚠️  Update secrets with production values!${NC}"

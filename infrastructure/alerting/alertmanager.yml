@@ -1,11 +1,15 @@
 # Alertmanager Configuration - Ablage-System OCR
-# Multi-channel alerting with routing and escalation
+# Multi-channel alerting: Email + MS Teams
+# German language alerts for on-premises deployment
 
 global:
   resolve_timeout: 5m
-  slack_api_url: '${SLACK_WEBHOOK_URL}'
-  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
-  opsgenie_api_url: 'https://api.opsgenie.com/'
+  # SMTP Configuration for Email alerts
+  smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+  smtp_from: '${SMTP_FROM:-alertmanager@ablage-system.local}'
+  smtp_auth_username: '${SMTP_USERNAME}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+  smtp_require_tls: true
 
 # Templates for alert messages
 templates:
@@ -13,208 +17,134 @@ templates:
 
 # Routing tree
 route:
-  receiver: 'default'
+  receiver: 'default-email-teams'
   group_by: ['alertname', 'cluster', 'service', 'severity']
-  group_wait: 10s
-  group_interval: 10s
-  repeat_interval: 12h
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
 
   # Child routes based on severity and service
   routes:
-    # Critical alerts - page immediately
+    # Critical alerts - immediate notification
     - match:
         severity: critical
-      receiver: 'pagerduty-critical'
-      group_wait: 5s
-      repeat_interval: 5m
-      continue: true  # Also send to other receivers
+      receiver: 'critical-email-teams'
+      group_wait: 10s
+      repeat_interval: 15m
+      continue: false
 
-    - match:
-        severity: critical
-      receiver: 'opsgenie-critical'
-      group_wait: 5s
-      continue: true
-
-    - match:
-        severity: critical
-      receiver: 'slack-critical'
-      group_wait: 5s
-
-    # High severity - alert but don't page off-hours
+    # High severity alerts
     - match:
         severity: high
-      receiver: 'slack-high'
+      receiver: 'high-email-teams'
       group_wait: 1m
       repeat_interval: 1h
       continue: false
 
-    # Warning severity - slack only
+    # Warning severity - Teams only
     - match:
         severity: warning
-      receiver: 'slack-warnings'
+      receiver: 'warning-teams'
       group_wait: 5m
       repeat_interval: 4h
 
     # GPU alerts - special handling
     - match_re:
         alertname: GPU.*
-      receiver: 'slack-gpu'
+      receiver: 'gpu-email-teams'
       group_wait: 1m
       repeat_interval: 30m
 
     # Database alerts
     - match_re:
         service: postgres|database
-      receiver: 'slack-database'
+      receiver: 'database-teams'
       group_wait: 1m
       repeat_interval: 2h
 
     # OCR alerts - special handling
     - match:
         component: ocr
-      receiver: 'slack-ocr'
+      receiver: 'ocr-teams'
       group_wait: 1m
       repeat_interval: 1h
       routes:
         # OCR Critical (no backends available)
         - match:
             alertname: NoOCRBackendAvailable
-          receiver: 'pagerduty-critical'
-          continue: true
-        - match:
-            alertname: NoOCRBackendAvailable
-          receiver: 'slack-critical'
-          group_wait: 5s
+          receiver: 'critical-email-teams'
+          group_wait: 10s
 
 # Alert receivers
 receivers:
-  # Default receiver (catch-all)
-  - name: 'default'
-    webhook_configs:
-      - url: 'http://backend:8000/api/v1/alerts/webhook'
-        send_resolved: true
-
-  # PagerDuty - Critical alerts
-  - name: 'pagerduty-critical'
-    pagerduty_configs:
-      - service_key: '${PAGERDUTY_SERVICE_KEY}'
-        severity: 'critical'
-        description: '{{ template "pagerduty.description" . }}'
-        details:
-          cluster: '{{ .GroupLabels.cluster }}'
-          service: '{{ .GroupLabels.service }}'
-          alertname: '{{ .GroupLabels.alertname }}'
-          summary: '{{ .CommonAnnotations.summary }}'
-        send_resolved: true
-
-  # OpsGenie - Critical alerts
-  - name: 'opsgenie-critical'
-    opsgenie_configs:
-      - api_key: '${OPSGENIE_API_KEY}'
-        priority: 'P1'
-        message: '{{ template "opsgenie.message" . }}'
-        description: '{{ template "opsgenie.description" . }}'
-        tags: 'ablage-system,critical,{{ .GroupLabels.service }}'
-        send_resolved: true
-
-  # Slack - Critical alerts
-  - name: 'slack-critical'
-    slack_configs:
-      - channel: '#alerts-critical'
-        username: 'Alertmanager'
-        icon_emoji: ':rotating_light:'
-        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
-        text: '{{ template "slack.critical.text" . }}'
-        color: 'danger'
-        send_resolved: true
-        actions:
-          - type: button
-            text: 'View in Grafana :chart_with_upwards_trend:'
-            url: '{{ .GeneratorURL }}'
-          - type: button
-            text: 'Runbook :notebook:'
-            url: 'https://wiki.ablage-system.local/runbooks/{{ .GroupLabels.alertname }}'
-
-  # Slack - High severity
-  - name: 'slack-high'
-    slack_configs:
-      - channel: '#alerts-high'
-        username: 'Alertmanager'
-        icon_emoji: ':warning:'
-        title: '⚠️  HIGH: {{ .GroupLabels.alertname }}'
-        text: '{{ template "slack.high.text" . }}'
-        color: 'warning'
-        send_resolved: true
-
-  # Slack - Warnings
-  - name: 'slack-warnings'
-    slack_configs:
-      - channel: '#alerts-warnings'
-        username: 'Alertmanager'
-        icon_emoji: ':information_source:'
-        title: 'ℹ️  WARNING: {{ .GroupLabels.alertname }}'
-        text: '{{ template "slack.warning.text" . }}'
-        color: '#FFCC00'
-        send_resolved: true
-
-  # Slack - GPU alerts
-  - name: 'slack-gpu'
-    slack_configs:
-      - channel: '#alerts-gpu'
-        username: 'Alertmanager'
-        icon_emoji: ':video_game:'
-        title: '🎮 GPU Alert: {{ .GroupLabels.alertname }}'
-        text: '{{ template "slack.gpu.text" . }}'
-        color: '#00BFFF'
-        send_resolved: true
-
-  # Slack - Database alerts
-  - name: 'slack-database'
-    slack_configs:
-      - channel: '#alerts-database'
-        username: 'Alertmanager'
-        icon_emoji: ':floppy_disk:'
-        title: '💾 Database Alert: {{ .GroupLabels.alertname }}'
-        text: '{{ template "slack.database.text" . }}'
-        color: '#FF6600'
-        send_resolved: true
-
-  # Slack - OCR alerts
-  - name: 'slack-ocr'
-    slack_configs:
-      - channel: '#alerts-ocr'
-        username: 'Alertmanager'
-        icon_emoji: ':mag:'
-        title: '📄 OCR Alert: {{ .GroupLabels.alertname }}'
-        text: |
-          *Alert:* {{ .GroupLabels.alertname }}
-          *Severity:* {{ .CommonLabels.severity }}
-          *Backend:* {{ .CommonLabels.backend | default "all" }}
-          *Summary:* {{ .CommonAnnotations.summary }}
-          *Description:* {{ .CommonAnnotations.description }}
-          *Runbook:* {{ .CommonAnnotations.runbook_url }}
-        color: '#9B59B6'
-        send_resolved: true
-        actions:
-          - type: button
-            text: 'View Health :health_worker:'
-            url: 'http://localhost:8000/api/v1/health/ocr'
-          - type: button
-            text: 'View Stats :chart_with_upwards_trend:'
-            url: 'http://localhost:3000/d/ocr-dashboard'
-
-  # Email notifications (backup channel)
-  - name: 'email-critical'
+  # Default receiver - Email + Teams
+  - name: 'default-email-teams'
     email_configs:
-      - to: '${ALERT_EMAIL_TO}'
-        from: '${ALERT_EMAIL_FROM}'
-        smarthost: '${SMTP_HOST}:${SMTP_PORT}'
-        auth_username: '${SMTP_USERNAME}'
-        auth_password: '${SMTP_PASSWORD}'
-        require_tls: true
+      - to: '${EMAIL_RECIPIENTS:-ops-team@internal.local}'
+        send_resolved: true
         headers:
-          Subject: '[Ablage-System] CRITICAL: {{ .GroupLabels.alertname }}'
+          Subject: '[Ablage-System] {{ .GroupLabels.alertname }} - {{ .Status | toUpper }}'
         html: '{{ template "email.html" . }}'
+    webhook_configs:
+      - url: '${TEAMS_WEBHOOK_URL}'
+        send_resolved: true
+        http_config:
+          tls_config:
+            insecure_skip_verify: false
+
+  # Critical alerts - Email + Teams with urgency
+  - name: 'critical-email-teams'
+    email_configs:
+      - to: '${EMAIL_RECIPIENTS:-ops-team@internal.local}'
+        send_resolved: true
+        headers:
+          Subject: '[KRITISCH] Ablage-System: {{ .GroupLabels.alertname }}'
+          X-Priority: '1'
+        html: '{{ template "email.html" . }}'
+    webhook_configs:
+      - url: '${TEAMS_WEBHOOK_URL}'
+        send_resolved: true
+
+  # High severity - Email + Teams
+  - name: 'high-email-teams'
+    email_configs:
+      - to: '${EMAIL_RECIPIENTS:-ops-team@internal.local}'
+        send_resolved: true
+        headers:
+          Subject: '[HOCH] Ablage-System: {{ .GroupLabels.alertname }}'
+        html: '{{ template "email.html" . }}'
+    webhook_configs:
+      - url: '${TEAMS_WEBHOOK_URL}'
+        send_resolved: true
+
+  # Warning - Teams only
+  - name: 'warning-teams'
+    webhook_configs:
+      - url: '${TEAMS_WEBHOOK_URL}'
+        send_resolved: true
+
+  # GPU alerts - Email + Teams
+  - name: 'gpu-email-teams'
+    email_configs:
+      - to: '${EMAIL_RECIPIENTS:-ops-team@internal.local}'
+        send_resolved: true
+        headers:
+          Subject: '[GPU] Ablage-System: {{ .GroupLabels.alertname }}'
+        html: '{{ template "email.html" . }}'
+    webhook_configs:
+      - url: '${TEAMS_WEBHOOK_URL}'
+        send_resolved: true
+
+  # Database alerts - Teams
+  - name: 'database-teams'
+    webhook_configs:
+      - url: '${TEAMS_WEBHOOK_URL}'
+        send_resolved: true
+
+  # OCR alerts - Teams
+  - name: 'ocr-teams'
+    webhook_configs:
+      - url: '${TEAMS_WEBHOOK_URL}'
         send_resolved: true
 
 # Inhibition rules (suppress less severe alerts when more severe are firing)

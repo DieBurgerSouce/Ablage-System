@@ -21,6 +21,19 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+      - /run
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
     restart: unless-stopped
     networks:
       - ablage-network
@@ -39,6 +52,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
     restart: unless-stopped
     networks:
       - ablage-network
@@ -62,6 +85,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
     restart: unless-stopped
     networks:
       - ablage-network
@@ -73,17 +106,25 @@ services:
       dockerfile: Dockerfile
     container_name: ablage-backend
     environment:
+      # Vault Configuration (secrets loaded from Vault when enabled)
+      VAULT_ENABLED: ${VAULT_ENABLED:-false}
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_TOKEN:-}
+      VAULT_SECRET_PATH: ablage-system
+      VAULT_MOUNT_POINT: secret
+      # Fallback credentials (used when VAULT_ENABLED=false)
       DATABASE_URL: postgresql+asyncpg://ablage_admin:${DB_PASSWORD:-changeme}@postgres:5432/ablage_system
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      # Non-secret configuration
       CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-0}
       API_HOST: 0.0.0.0
       API_PORT: 8000
       LOG_LEVEL: INFO
-      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
     volumes:
       - ./app:/app/app:ro
       - uploads:/app/uploads
@@ -95,9 +136,22 @@ services:
       - postgres
       - redis
       - minio
+      - vault
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=1G,mode=1777
+      - /app/cache:size=2G,mode=1777
     deploy:
       resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
         reservations:
+          cpus: '1.0'
+          memory: 2G
           devices:
             - driver: nvidia
               count: 1
@@ -114,12 +168,20 @@ services:
     container_name: ablage-worker
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo
     environment:
+      # Vault Configuration (secrets loaded from Vault when enabled)
+      VAULT_ENABLED: ${VAULT_ENABLED:-false}
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_TOKEN:-}
+      VAULT_SECRET_PATH: ablage-system
+      VAULT_MOUNT_POINT: secret
+      # Fallback credentials (used when VAULT_ENABLED=false)
       DATABASE_URL: postgresql+asyncpg://ablage_admin:${DB_PASSWORD:-changeme}@postgres:5432/ablage_system
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      # Non-secret configuration
       CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-0}
       LOG_LEVEL: INFO
     volumes:
@@ -131,10 +193,23 @@ services:
       - postgres
       - redis
       - minio
+      - vault
       - backend
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=2G,mode=1777
+      - /app/cache:size=4G,mode=1777
     deploy:
       resources:
+        limits:
+          cpus: '4.0'
+          memory: 16G
         reservations:
+          cpus: '1.0'
+          memory: 4G
           devices:
             - driver: nvidia
               count: 1
@@ -143,17 +218,31 @@ services:
     networks:
       - ablage-network
 
-  # Nginx Frontend Server
+  # Frontend Application (React + Vite)
   frontend:
-    image: nginx:alpine
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: ablage-frontend
-    volumes:
-      - ./frontend:/usr/share/nginx/html:ro
-      - ./infrastructure/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "80:80"
     depends_on:
       - backend
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
     restart: unless-stopped
     networks:
       - ablage-network
@@ -162,6 +251,7 @@ services:
   prometheus:
     image: prom/prometheus:latest
     container_name: ablage-prometheus
+    user: "65534:65534"
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -177,6 +267,16 @@ services:
       - "9090:9090"
     depends_on:
       - backend
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
     restart: unless-stopped
     networks:
       - ablage-network
@@ -185,6 +285,7 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: ablage-grafana
+    user: "472:472"
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
@@ -200,6 +301,16 @@ services:
       - "3000:3000"
     depends_on:
       - prometheus
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
     restart: unless-stopped
     networks:
       - ablage-network
@@ -214,6 +325,16 @@ services:
       - loki_data:/loki
     ports:
       - "3100:3100"
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
     restart: unless-stopped
     networks:
       - ablage-network
@@ -222,18 +343,21 @@ services:
   alertmanager:
     image: prom/alertmanager:v0.27.0
     container_name: ablage-alertmanager
+    user: "65534:65534"
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
       - '--data.retention=120h'
       - '--web.external-url=http://localhost:9093'
     environment:
-      # Slack Webhook (optional - set in .env)
-      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
-      # PagerDuty (optional)
-      PAGERDUTY_SERVICE_KEY: ${PAGERDUTY_SERVICE_KEY:-}
-      # OpsGenie (optional)
-      OPSGENIE_API_KEY: ${OPSGENIE_API_KEY:-}
+      # Email/Teams (set in Vault or .env)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-alertmanager@ablage-system.local}
+      EMAIL_RECIPIENTS: ${EMAIL_RECIPIENTS:-ops-team@internal.local}
+      TEAMS_WEBHOOK_URL: ${TEAMS_WEBHOOK_URL:-}
     volumes:
       - ./infrastructure/alerting/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - ./infrastructure/alerting/templates:/etc/alertmanager/templates:ro
@@ -247,6 +371,19 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
     restart: unless-stopped
     networks:
       - ablage-network
@@ -261,6 +398,17 @@ services:
       - "9187:9187"
     depends_on:
       - postgres
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
     restart: unless-stopped
     networks:
       - ablage-network
@@ -275,6 +423,17 @@ services:
       - "9121:9121"
     depends_on:
       - redis
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
     restart: unless-stopped
     networks:
       - ablage-network
@@ -290,6 +449,62 @@ services:
     command: -config.file=/etc/promtail/config.yml
     depends_on:
       - loki
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    restart: unless-stopped
+    networks:
+      - ablage-network
+
+  # HashiCorp Vault for Secrets Management
+  vault:
+    image: hashicorp/vault:1.15.4
+    container_name: ablage-vault
+    command: server
+    ports:
+      - "8200:8200"
+    volumes:
+      - ./infrastructure/vault/config:/vault/config:ro
+      - vault_data:/vault/data
+      - vault_logs:/vault/logs
+    environment:
+      VAULT_ADDR: 'http://0.0.0.0:8200'
+      VAULT_API_ADDR: 'http://vault:8200'
+      VAULT_LOCAL_CONFIG: |
+        ui = true
+        disable_mlock = true
+        storage "file" {
+          path = "/vault/data"
+        }
+        listener "tcp" {
+          address = "0.0.0.0:8200"
+          tls_disable = 1
+        }
+    cap_add:
+      - IPC_LOCK
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "vault", "status", "-address=http://127.0.0.1:8200"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
     networks:
       - ablage-network
@@ -305,6 +520,8 @@ volumes:
   grafana_data:
   loki_data:
   alertmanager_data:
+  vault_data:
+  vault_logs:
 
 networks:
   ablage-network:
