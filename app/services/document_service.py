@@ -817,62 +817,88 @@ class DocumentService:
         user_id: UUID,
         operation: TagOperation = TagOperation.ADD
     ) -> BatchOperationResult:
-        """Tags fuer mehrere Dokumente setzen - optimiert mit Bulk-Loading."""
+        """Tags fuer mehrere Dokumente setzen - optimiert mit Bulk-Loading.
+
+        TRANSAKTIONSSICHER: Bei Fehlern wird Rollback durchgefuehrt.
+        """
         processed = 0
         failed = 0
         errors: List[BatchOperationError] = []
 
-        # Tags vorbereiten (erstellen falls nicht vorhanden)
-        tag_objects = await self._ensure_tags_exist(db, tags)
+        try:
+            # Tags vorbereiten (erstellen falls nicht vorhanden)
+            tag_objects = await self._ensure_tags_exist(db, tags)
 
-        # BULK LOAD: Single query with IN clause instead of N+1 queries
-        query = (
-            select(Document)
-            .options(selectinload(Document.tags))
-            .where(and_(
-                Document.id.in_(document_ids),
-                Document.owner_id == user_id
-            ))
-        )
-        result = await db.execute(query)
-        documents = {doc.id: doc for doc in result.scalars().all()}
+            # BULK LOAD: Single query with IN clause instead of N+1 queries
+            query = (
+                select(Document)
+                .options(selectinload(Document.tags))
+                .where(and_(
+                    Document.id.in_(document_ids),
+                    Document.owner_id == user_id
+                ))
+            )
+            result = await db.execute(query)
+            documents = {doc.id: doc for doc in result.scalars().all()}
 
-        # Track not found documents
-        not_found_ids = set(document_ids) - set(documents.keys())
-        for doc_id in not_found_ids:
-            failed += 1
-            errors.append(BatchOperationError(
-                document_id=doc_id,
-                error="Dokument nicht gefunden oder keine Berechtigung",
-                error_code="NOT_FOUND"
-            ))
-
-        # Process found documents (in-memory, no additional queries)
-        for doc_id, doc in documents.items():
-            try:
-                # Tags aktualisieren basierend auf Operation
-                if operation == TagOperation.SET:
-                    doc.tags = tag_objects
-                elif operation == TagOperation.ADD:
-                    existing_ids = {t.id for t in doc.tags}
-                    for tag in tag_objects:
-                        if tag.id not in existing_ids:
-                            doc.tags.append(tag)
-                elif operation == TagOperation.REMOVE:
-                    remove_ids = {t.id for t in tag_objects}
-                    doc.tags = [t for t in doc.tags if t.id not in remove_ids]
-
-                processed += 1
-
-            except Exception as e:
+            # Track not found documents
+            not_found_ids = set(document_ids) - set(documents.keys())
+            for doc_id in not_found_ids:
                 failed += 1
                 errors.append(BatchOperationError(
                     document_id=doc_id,
-                    error=str(e),
-                    error_code="TAG_ERROR"
+                    error="Dokument nicht gefunden oder keine Berechtigung",
+                    error_code="NOT_FOUND"
                 ))
 
-        await db.commit()
+            # Process found documents (in-memory, no additional queries)
+            for doc_id, doc in documents.items():
+                try:
+                    # Tags aktualisieren basierend auf Operation
+                    if operation == TagOperation.SET:
+                        doc.tags = tag_objects
+                    elif operation == TagOperation.ADD:
+                        existing_ids = {t.id for t in doc.tags}
+                        for tag in tag_objects:
+                            if tag.id not in existing_ids:
+                                doc.tags.append(tag)
+                    elif operation == TagOperation.REMOVE:
+                        remove_ids = {t.id for t in tag_objects}
+                        doc.tags = [t for t in doc.tags if t.id not in remove_ids]
+
+                    processed += 1
+
+                except Exception as e:
+                    failed += 1
+                    errors.append(BatchOperationError(
+                        document_id=doc_id,
+                        error=str(e),
+                        error_code="TAG_ERROR"
+                    ))
+
+            await db.commit()
+
+        except Exception as e:
+            logger.error(
+                "batch_tag_failed",
+                error=str(e),
+                document_count=len(document_ids),
+                operation=operation.value
+            )
+            await db.rollback()
+            return BatchOperationResult(
+                success=False,
+                operation=f"tag_{operation.value}",
+                total_requested=len(document_ids),
+                processed=0,
+                failed=len(document_ids),
+                errors=[BatchOperationError(
+                    document_id=document_ids[0] if document_ids else None,
+                    error=f"Batch-Tag-Operation fehlgeschlagen: {str(e)}",
+                    error_code="TAG_TRANSACTION_ERROR"
+                )],
+                message="Batch-Tag-Operation fehlgeschlagen - Rollback durchgefuehrt"
+            )
 
         # Such-Caches invalidieren (Tags beeinflussen Suchergebnisse)
         if processed > 0:

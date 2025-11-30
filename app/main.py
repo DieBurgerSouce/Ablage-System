@@ -104,13 +104,18 @@ def validate_file_content_type(content: bytes, filename: str) -> Tuple[bool, str
         # Fallback: Basic magic byte detection without python-magic
         mime_type = _detect_mime_basic(content)
         if not mime_type:
-            # Can't detect, allow if extension is valid (graceful degradation)
-            logger.warning(
-                "magic_not_available_fallback",
+            # SICHERHEIT: Strenge Validierung - unbekannte Dateien ablehnen
+            # Basic magic byte detection fehlgeschlagen = potentiell gefährlicher Dateityp
+            logger.error(
+                "magic_detection_failed_strict",
                 filename=filename,
-                message="python-magic nicht installiert - Fallback auf Extension-Validierung"
+                message="Dateityp konnte nicht verifiziert werden - Ablehnung aus Sicherheitsgründen"
             )
-            return True, "unknown", ""
+            return False, "unknown", (
+                "Dateityp konnte nicht verifiziert werden. "
+                "Bitte installieren Sie python-magic für erweiterte Validierung: "
+                "pip install python-magic-bin (Windows) oder python-magic (Linux/Mac)"
+            )
     else:
         try:
             mime_type = magic.from_buffer(content, mime=True)
@@ -305,6 +310,7 @@ from app.api.v1 import auth, tasks, metrics, ml, versions, documents, health, oc
 from app.api.v1.admin import router as admin_router
 from app.api.v1.backup import router as backup_router
 from app.api.v1.vault import router as vault_router
+from app.api.v1.gdpr import router as gdpr_router, admin_router as gdpr_admin_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -317,6 +323,8 @@ app.include_router(backup_router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(ocr.router, prefix="/api/v1")
 app.include_router(vault_router, prefix="/api/v1")
+app.include_router(gdpr_router, prefix="/api/v1")
+app.include_router(gdpr_admin_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================
@@ -713,7 +721,9 @@ async def process_batch(
 
 
 @app.post("/ocr/test")
-async def test_german_text(text: str):
+async def test_german_text(
+    text: str = Form(..., max_length=50000, description="Zu validierender Text (max 50KB)")
+):
     """
     Test German text validation
 

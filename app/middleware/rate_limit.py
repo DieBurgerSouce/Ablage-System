@@ -380,16 +380,27 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """
         Add rate limit information headers to response.
 
+        Standard Headers (RFC 6585 / IETF draft-polli-ratelimit-headers):
+        - X-RateLimit-Limit: Maximum requests allowed in window
+        - X-RateLimit-Window: Window size in seconds
+        - X-RateLimit-Reset: Unix timestamp when limit resets
+
         Args:
             response: Response object
             rate_limit: Rate limit configuration
         """
-        # Add standard rate limit headers
-        response.headers["X-RateLimit-Limit"] = str(rate_limit["limit"])
-        # Note: Remaining count would require Redis query
-        # For now, we'll add the limit and window information
+        import time
 
+        # Standard rate limit headers
+        response.headers["X-RateLimit-Limit"] = str(rate_limit["limit"])
         response.headers["X-RateLimit-Window"] = str(rate_limit["window"])
+
+        # Calculate reset timestamp (current time + window)
+        reset_timestamp = int(time.time()) + rate_limit["window"]
+        response.headers["X-RateLimit-Reset"] = str(reset_timestamp)
+
+        # Policy header (IETF draft format)
+        response.headers["X-RateLimit-Policy"] = f"{rate_limit['limit']};w={rate_limit['window']}"
 
 
 class DevelopmentRateLimitBypass(BaseHTTPMiddleware):

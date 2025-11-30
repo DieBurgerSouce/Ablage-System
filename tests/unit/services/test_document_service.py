@@ -528,30 +528,28 @@ class TestDocumentServiceBatchTag:
 
         mock_document.tags = []
 
-        # Mock tag lookup
-        mock_tags_result = Mock()
-        mock_tags_result.scalars.return_value.all.return_value = [mock_tag]
-
-        # Mock document lookup
+        # Mock document lookup - scalars().all() returns a LIST of documents
         mock_doc_result = Mock()
-        mock_doc_result.scalar_one_or_none.return_value = mock_document
-
-        mock_db_session.execute.side_effect = [mock_tags_result, mock_doc_result]
+        mock_doc_result.scalars.return_value.all.return_value = [mock_document]
+        mock_db_session.execute.return_value = mock_doc_result
 
         with patch('app.services.document_service._get_search_service') as mock_search:
             mock_search_service = AsyncMock()
             mock_search.return_value = mock_search_service
 
-            result = await document_service.batch_tag(
-                mock_db_session,
-                [mock_document.id],
-                ["rechnung"],
-                sample_user_id,
-                operation=TagOperation.ADD
-            )
+            with patch.object(document_service, '_ensure_tags_exist', new_callable=AsyncMock) as mock_ensure_tags:
+                mock_ensure_tags.return_value = [mock_tag]
 
-            assert result.success is True
-            assert result.processed == 1
+                result = await document_service.batch_tag(
+                    mock_db_session,
+                    [mock_document.id],
+                    ["rechnung"],
+                    sample_user_id,
+                    operation=TagOperation.ADD
+                )
+
+                assert result.success is True
+                assert result.processed == 1
 
     @pytest.mark.asyncio
     async def test_batch_tag_remove_success(
@@ -562,27 +560,27 @@ class TestDocumentServiceBatchTag:
 
         mock_document.tags = [mock_tag]
 
-        mock_tags_result = Mock()
-        mock_tags_result.scalars.return_value.all.return_value = [mock_tag]
-
+        # Mock document lookup - scalars().all() returns a LIST of documents
         mock_doc_result = Mock()
-        mock_doc_result.scalar_one_or_none.return_value = mock_document
-
-        mock_db_session.execute.side_effect = [mock_tags_result, mock_doc_result]
+        mock_doc_result.scalars.return_value.all.return_value = [mock_document]
+        mock_db_session.execute.return_value = mock_doc_result
 
         with patch('app.services.document_service._get_search_service') as mock_search:
             mock_search_service = AsyncMock()
             mock_search.return_value = mock_search_service
 
-            result = await document_service.batch_tag(
-                mock_db_session,
-                [mock_document.id],
-                ["rechnung"],
-                sample_user_id,
-                operation=TagOperation.REMOVE
-            )
+            with patch.object(document_service, '_ensure_tags_exist', new_callable=AsyncMock) as mock_ensure_tags:
+                mock_ensure_tags.return_value = [mock_tag]
 
-            assert result.success is True
+                result = await document_service.batch_tag(
+                    mock_db_session,
+                    [mock_document.id],
+                    ["rechnung"],
+                    sample_user_id,
+                    operation=TagOperation.REMOVE
+                )
+
+                assert result.success is True
 
     @pytest.mark.asyncio
     async def test_batch_tag_set_success(
@@ -593,27 +591,27 @@ class TestDocumentServiceBatchTag:
 
         mock_document.tags = []
 
-        mock_tags_result = Mock()
-        mock_tags_result.scalars.return_value.all.return_value = [mock_tag]
-
+        # Mock document lookup - scalars().all() returns a LIST of documents
         mock_doc_result = Mock()
-        mock_doc_result.scalar_one_or_none.return_value = mock_document
-
-        mock_db_session.execute.side_effect = [mock_tags_result, mock_doc_result]
+        mock_doc_result.scalars.return_value.all.return_value = [mock_document]
+        mock_db_session.execute.return_value = mock_doc_result
 
         with patch('app.services.document_service._get_search_service') as mock_search:
             mock_search_service = AsyncMock()
             mock_search.return_value = mock_search_service
 
-            result = await document_service.batch_tag(
-                mock_db_session,
-                [mock_document.id],
-                ["rechnung"],
-                sample_user_id,
-                operation=TagOperation.SET
-            )
+            with patch.object(document_service, '_ensure_tags_exist', new_callable=AsyncMock) as mock_ensure_tags:
+                mock_ensure_tags.return_value = [mock_tag]
 
-            assert result.success is True
+                result = await document_service.batch_tag(
+                    mock_db_session,
+                    [mock_document.id],
+                    ["rechnung"],
+                    sample_user_id,
+                    operation=TagOperation.SET
+                )
+
+                assert result.success is True
 
 
 # ========================= Export Tests =========================

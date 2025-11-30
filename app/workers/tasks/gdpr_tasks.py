@@ -54,7 +54,12 @@ def process_deletion_requests(self) -> Dict[str, Any]:
 
 
 async def _process_deletion_requests_async() -> Dict[str, Any]:
-    """Async Implementation der Löschanfrage-Verarbeitung."""
+    """Async Implementation der Löschanfrage-Verarbeitung.
+
+    Verarbeitet zwei Quellen von Löschanfragen:
+    1. GDPRDeletionRequest-Tabelle (legacy)
+    2. User.deletion_scheduled_for (neu - Art. 17 via API)
+    """
     from app.db.database import get_db_session
     from app.db.models import User, Document, AuditLog, GDPRDeletionRequest
 
@@ -69,52 +74,92 @@ async def _process_deletion_requests_async() -> Dict[str, Any]:
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
+    now = datetime.now(timezone.utc)
+
     try:
         async with get_db_session() as db:
-            # Finde fällige Löschanfragen (Deadline erreicht oder überschritten)
-            now = datetime.now(timezone.utc)
-            query = select(GDPRDeletionRequest).where(
+            # 1. Verarbeite User.deletion_scheduled_for (neue Methode)
+            user_query = select(User).where(
                 and_(
-                    GDPRDeletionRequest.status == "pending",
-                    GDPRDeletionRequest.deletion_deadline <= now,
+                    User.deletion_scheduled_for <= now,
+                    User.deletion_confirmed == True,
                 )
-            ).limit(50)  # Max 50 pro Durchlauf
+            ).limit(50)
 
-            result = await db.execute(query)
-            requests = result.scalars().all()
+            user_result = await db.execute(user_query)
+            users_to_delete = user_result.scalars().all()
 
-            for request in requests:
+            for user in users_to_delete:
                 try:
-                    user_stats = await _delete_user_data(
-                        db,
-                        request.user_id,
-                        request.id,
-                    )
+                    user_stats = await _delete_user_data(db, user.id, None)
                     stats["users_deleted"] += 1
                     stats["documents_deleted"] += user_stats.get("documents", 0)
                     stats["audit_entries_anonymized"] += user_stats.get("audit_entries", 0)
-
-                    # Markiere Anfrage als abgeschlossen
-                    request.status = "completed"
-                    request.completed_at = now
                     stats["requests_processed"] += 1
 
                     logger.info(
                         "gdpr_deletion_completed",
-                        request_id=str(request.id),
-                        user_id=str(request.user_id),
+                        user_id=str(user.id)[:8] + "...",
+                        source="user_field",
                     )
-
                 except Exception as e:
                     stats["errors"].append({
-                        "request_id": str(request.id),
+                        "user_id": str(user.id)[:8] + "...",
                         "error": str(e),
                     })
                     logger.error(
                         "gdpr_deletion_failed",
-                        request_id=str(request.id),
+                        user_id=str(user.id)[:8] + "...",
                         error=str(e),
                     )
+
+            # 2. Verarbeite GDPRDeletionRequest-Tabelle (legacy)
+            try:
+                request_query = select(GDPRDeletionRequest).where(
+                    and_(
+                        GDPRDeletionRequest.status == "pending",
+                        GDPRDeletionRequest.deletion_deadline <= now,
+                    )
+                ).limit(50)
+
+                result = await db.execute(request_query)
+                requests = result.scalars().all()
+
+                for request in requests:
+                    try:
+                        user_stats = await _delete_user_data(
+                            db,
+                            request.user_id,
+                            request.id,
+                        )
+                        stats["users_deleted"] += 1
+                        stats["documents_deleted"] += user_stats.get("documents", 0)
+                        stats["audit_entries_anonymized"] += user_stats.get("audit_entries", 0)
+
+                        request.status = "completed"
+                        request.completed_at = now
+                        stats["requests_processed"] += 1
+
+                        logger.info(
+                            "gdpr_deletion_completed",
+                            request_id=str(request.id),
+                            user_id=str(request.user_id)[:8] + "...",
+                            source="request_table",
+                        )
+
+                    except Exception as e:
+                        stats["errors"].append({
+                            "request_id": str(request.id),
+                            "error": str(e),
+                        })
+                        logger.error(
+                            "gdpr_deletion_failed",
+                            request_id=str(request.id),
+                            error=str(e),
+                        )
+            except Exception:
+                # GDPRDeletionRequest-Tabelle existiert möglicherweise nicht
+                pass
 
             await db.commit()
 
@@ -154,7 +199,7 @@ async def _delete_user_data(
 
     # 1. Lösche Dokumente aus Storage
     storage = get_storage_service()
-    doc_query = select(Document).where(Document.user_id == user_id)
+    doc_query = select(Document).where(Document.owner_id == user_id)
     result = await db.execute(doc_query)
     documents = result.scalars().all()
 
@@ -171,7 +216,7 @@ async def _delete_user_data(
             )
 
     # 2. Lösche Dokumente aus DB
-    await db.execute(delete(Document).where(Document.user_id == user_id))
+    await db.execute(delete(Document).where(Document.owner_id == user_id))
 
     # 3. Anonymisiere Audit-Logs (nicht löschen für Compliance)
     anonymized_user = f"[GDPR_DELETED:{hashlib.sha256(str(user_id).encode()).hexdigest()[:16]}]"
@@ -180,10 +225,10 @@ async def _delete_user_data(
     ).values(
         user_id=None,
         ip_address="[ANONYMIZED]",
-        details=func.jsonb_set(
-            AuditLog.details,
-            '{"gdpr_anonymized"}',
-            '"true"'
+        audit_metadata=func.jsonb_set(
+            func.coalesce(AuditLog.audit_metadata, func.cast("{}", func.json())),
+            '{gdpr_anonymized}',
+            'true'
         ),
     )
     result = await db.execute(audit_update)
