@@ -4,7 +4,7 @@ Kombiniert PostgreSQL Full-Text Search (FTS) mit pgvector semantischer Suche.
 Unterstuetzt Hybrid-Suche mit Reciprocal Rank Fusion.
 """
 
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any, Tuple, Set
 from datetime import datetime
 from uuid import UUID
 import time
@@ -26,6 +26,11 @@ from app.core.config import settings
 from app.core.redis_state import RedisStateManager
 from app.services.embedding_service import get_embedding_service
 from app.services.search_metrics import get_search_metrics
+from app.services.german_compound_splitter import (
+    GermanCompoundSplitter,
+    get_compound_splitter,
+    split_for_search
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -54,6 +59,10 @@ class SearchService:
         self._embedding_cache_ttl = settings.SEARCH_EMBEDDING_CACHE_TTL
         self._similar_cache_ttl = settings.SEARCH_SIMILAR_CACHE_TTL
         self._redis_manager: Optional[RedisStateManager] = None
+
+        # German Compound Splitter (für verbesserte Suche)
+        self._compound_splitting_enabled = settings.COMPOUND_SPLITTING_ENABLED
+        self._compound_splitter: Optional[GermanCompoundSplitter] = None
 
     async def _get_redis(self) -> RedisStateManager:
         """Lazy-load Redis connection."""
@@ -109,6 +118,68 @@ class SearchService:
         """Generiert Cache-Key fuer Query-Embeddings."""
         query_hash = hashlib.sha256(query.encode()).hexdigest()[:16]
         return f"search:embedding:{query_hash}"
+
+    def _get_compound_splitter(self) -> Optional[GermanCompoundSplitter]:
+        """Lazy-load Compound Splitter."""
+        if self._compound_splitter is None and self._compound_splitting_enabled:
+            try:
+                self._compound_splitter = GermanCompoundSplitter(
+                    min_part_length=settings.COMPOUND_MIN_PART_LENGTH
+                )
+                logger.info(
+                    "compound_splitter_loaded",
+                    min_part_length=settings.COMPOUND_MIN_PART_LENGTH
+                )
+            except Exception as e:
+                logger.warning("compound_splitter_load_error", error=str(e))
+                self._compound_splitting_enabled = False
+        return self._compound_splitter
+
+    def _expand_query_with_compounds(self, query: str) -> Tuple[str, List[str]]:
+        """Erweitert eine Suchanfrage mit Compound-Word-Teilen.
+
+        Beispiel: "Bundesfinanzministerium" -> auch nach "Bundes", "Finanz", "Ministerium" suchen
+
+        Args:
+            query: Originale Suchanfrage
+
+        Returns:
+            Tuple von (erweiterte_query_string, liste_der_zusaetzlichen_terms)
+        """
+        if not self._compound_splitting_enabled:
+            return query, []
+
+        splitter = self._get_compound_splitter()
+        if not splitter:
+            return query, []
+
+        # Alle Woerter in der Query
+        words = query.split()
+        all_terms: Set[str] = set(words)
+        additional_terms: List[str] = []
+
+        for word in words:
+            # Nur Woerter mit mindestens 6 Zeichen (potentielle Komposita)
+            if len(word) >= 6:
+                search_terms = splitter.split_for_search(word)
+                for term in search_terms:
+                    if term.lower() not in {w.lower() for w in all_terms}:
+                        all_terms.add(term)
+                        additional_terms.append(term)
+
+        if additional_terms:
+            logger.debug(
+                "query_expanded_with_compounds",
+                original=query,
+                additional_terms=additional_terms[:5],  # Max 5 fuer Logging
+                total_additional=len(additional_terms)
+            )
+
+        # Erweiterte Query: Original + OR-verknuepfte Zusatzterms
+        if additional_terms:
+            expanded_query = query + " " + " ".join(additional_terms[:10])  # Max 10 Zusatzterms
+            return expanded_query, additional_terms
+        return query, []
 
     def _validate_embedding(self, embedding: List[float]) -> bool:
         """Validiert dass ein Embedding nur finite numerische Werte enthaelt.
@@ -314,16 +385,24 @@ class SearchService:
             except Exception as e:
                 logger.warning("search_cache_error", error=str(e), cache_key=cache_key[:50])
 
+        # Query mit Compound-Splits erweitern (fuer FTS und Hybrid)
+        expanded_query = query
+        compound_terms: List[str] = []
+        if search_type in (SearchType.FTS, SearchType.HYBRID):
+            expanded_query, compound_terms = self._expand_query_with_compounds(query)
+
         logger.info(
             "search_started",
             query=query[:100],
+            expanded_query=expanded_query[:100] if expanded_query != query else None,
+            compound_terms_count=len(compound_terms),
             search_type=search_type.value,
             user_id=str(user_id)
         )
 
         if search_type == SearchType.FTS:
             results, total = await self._search_fts(
-                db, query, user_id, filters, page, per_page, highlight
+                db, expanded_query, user_id, filters, page, per_page, highlight
             )
         elif search_type == SearchType.SEMANTIC:
             results, total = await self._search_semantic(
@@ -331,7 +410,7 @@ class SearchService:
             )
         else:  # HYBRID
             results, total = await self._search_hybrid(
-                db, query, user_id, filters, page, per_page, highlight, threshold
+                db, expanded_query, user_id, filters, page, per_page, highlight, threshold
             )
 
         # Sortierung anwenden (ausser bei Relevanz - schon sortiert)

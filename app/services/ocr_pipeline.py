@@ -39,6 +39,13 @@ from app.gpu_manager import (
     get_memory_guard,
     gpu_memory_guard
 )
+from app.services.historical_german_normalizer import (
+    HistoricalGermanNormalizer,
+    NormalizationResult,
+    get_historical_normalizer,
+    normalize_historical
+)
+from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
 
@@ -56,8 +63,11 @@ class OCRPipelineResult:
     corrections_applied: int
     processing_time_ms: int
     german_correction_applied: bool
+    historical_normalization_applied: bool = False
+    historical_changes_count: int = 0
     confidence_details: Optional[Dict[str, Any]] = None
     correction_details: Optional[Dict[str, Any]] = None
+    historical_normalization_details: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -72,8 +82,11 @@ class OCRPipelineResult:
             "corrections_applied": self.corrections_applied,
             "processing_time_ms": self.processing_time_ms,
             "german_correction_applied": self.german_correction_applied,
+            "historical_normalization_applied": self.historical_normalization_applied,
+            "historical_changes_count": self.historical_changes_count,
             "confidence_details": self.confidence_details,
             "correction_details": self.correction_details,
+            "historical_normalization_details": self.historical_normalization_details,
             "error": self.error,
         }
 
@@ -96,6 +109,7 @@ class OCRPipeline:
         enable_german_correction: bool = True,
         enable_circuit_breaker: bool = True,
         enable_memory_guard: bool = True,
+        enable_historical_normalization: bool = True,
         min_confidence_threshold: float = 0.65
     ):
         """
@@ -105,11 +119,16 @@ class OCRPipeline:
             enable_german_correction: German Correction Agent aktivieren
             enable_circuit_breaker: Circuit Breaker aktivieren
             enable_memory_guard: GPU Memory Guard aktivieren
+            enable_historical_normalization: Historical German Normalizer aktivieren
             min_confidence_threshold: Minimale Confidence für Akzeptanz
         """
         self.enable_german_correction = enable_german_correction
         self.enable_circuit_breaker = enable_circuit_breaker
         self.enable_memory_guard = enable_memory_guard
+        self.enable_historical_normalization = (
+            enable_historical_normalization and
+            settings.HISTORICAL_NORMALIZATION_ENABLED
+        )
         self.min_confidence_threshold = min_confidence_threshold
 
         # Services initialisieren
@@ -122,6 +141,9 @@ class OCRPipeline:
         # German Correction Agent (lazy load)
         self._german_agent = None
 
+        # Historical German Normalizer (lazy load)
+        self._historical_normalizer: Optional[HistoricalGermanNormalizer] = None
+
         # Backend Handlers registrieren
         self._register_default_backends()
 
@@ -130,6 +152,7 @@ class OCRPipeline:
             german_correction=enable_german_correction,
             circuit_breaker=enable_circuit_breaker,
             memory_guard=enable_memory_guard,
+            historical_normalization=self.enable_historical_normalization,
             min_confidence=min_confidence_threshold
         )
 
@@ -172,6 +195,33 @@ class OCRPipeline:
                 )
                 self.enable_german_correction = False
         return self._german_agent
+
+    def _get_historical_normalizer(self) -> Optional[HistoricalGermanNormalizer]:
+        """Lazy-load Historical German Normalizer."""
+        if self._historical_normalizer is None and self.enable_historical_normalization:
+            try:
+                self._historical_normalizer = HistoricalGermanNormalizer(
+                    enable_pre_1996=settings.HISTORICAL_NORM_PRE_1996,
+                    enable_th_normalization=settings.HISTORICAL_NORM_TH,
+                    enable_c_normalization=settings.HISTORICAL_NORM_C,
+                    enable_ph_normalization=settings.HISTORICAL_NORM_PH,
+                    enable_fraktur=settings.HISTORICAL_NORM_FRAKTUR,
+                )
+                logger.info(
+                    "historical_normalizer_loaded",
+                    pre_1996=settings.HISTORICAL_NORM_PRE_1996,
+                    th=settings.HISTORICAL_NORM_TH,
+                    c=settings.HISTORICAL_NORM_C,
+                    ph=settings.HISTORICAL_NORM_PH,
+                    fraktur=settings.HISTORICAL_NORM_FRAKTUR,
+                )
+            except Exception as e:
+                logger.warning(
+                    "historical_normalizer_unavailable",
+                    error=str(e)
+                )
+                self.enable_historical_normalization = False
+        return self._historical_normalizer
 
     async def process(
         self,
@@ -320,7 +370,50 @@ class OCRPipeline:
                     )
                     # Verwende unkorrigierten Text bei Fehler
 
-        # Step 4: Finale Confidence-Analyse
+        # Step 4: Historical German Normalization (nach German Correction)
+        historical_normalization_applied = False
+        historical_changes_count = 0
+        historical_normalization_details = None
+
+        if (self.enable_historical_normalization and
+            language == "de" and
+            corrected_text):
+
+            historical_normalizer = self._get_historical_normalizer()
+            if historical_normalizer:
+                try:
+                    norm_result: NormalizationResult = historical_normalizer.normalize(
+                        corrected_text
+                    )
+
+                    if norm_result.was_changed:
+                        corrected_text = norm_result.normalized
+                        historical_changes_count = norm_result.change_count
+                        historical_normalization_applied = True
+
+                        historical_normalization_details = {
+                            "changes_count": norm_result.change_count,
+                            "era_detected": norm_result.era_detected.value if norm_result.era_detected else None,
+                            "confidence": norm_result.confidence,
+                            "sample_changes": norm_result.changes[:5],  # Erste 5 Änderungen
+                        }
+
+                        logger.info(
+                            "ocr_pipeline_historical_normalization_applied",
+                            document_id=document_id,
+                            changes_count=historical_changes_count,
+                            era_detected=norm_result.era_detected.value if norm_result.era_detected else None,
+                        )
+
+                except Exception as e:
+                    logger.warning(
+                        "ocr_pipeline_historical_normalization_error",
+                        document_id=document_id,
+                        error=str(e)
+                    )
+                    # Verwende Text ohne Historical Normalization bei Fehler
+
+        # Step 5: Finale Confidence-Analyse
         confidence_details = None
         if fallback_result.confidence_metrics:
             confidence_details = fallback_result.confidence_metrics.to_dict()
@@ -338,8 +431,11 @@ class OCRPipeline:
             corrections_applied=corrections_applied,
             processing_time_ms=total_time,
             german_correction_applied=german_correction_applied,
+            historical_normalization_applied=historical_normalization_applied,
+            historical_changes_count=historical_changes_count,
             confidence_details=confidence_details,
-            correction_details=correction_details
+            correction_details=correction_details,
+            historical_normalization_details=historical_normalization_details,
         )
 
         logger.info(
@@ -349,6 +445,7 @@ class OCRPipeline:
             backend=fallback_result.final_backend,
             confidence=fallback_result.confidence,
             corrections=corrections_applied,
+            historical_changes=historical_changes_count,
             time_ms=total_time
         )
 
@@ -416,11 +513,25 @@ class OCRPipeline:
                 "german_correction_enabled": self.enable_german_correction,
                 "circuit_breaker_enabled": self.enable_circuit_breaker,
                 "memory_guard_enabled": self.enable_memory_guard,
+                "historical_normalization_enabled": self.enable_historical_normalization,
                 "min_confidence_threshold": self.min_confidence_threshold,
             },
             "fallback_chain": self.fallback_chain.get_metrics(),
             "circuit_breakers": self.circuit_registry.get_all_status(),
         }
+
+        # Historical Normalizer Status
+        if self._historical_normalizer:
+            status["historical_normalizer"] = {
+                "loaded": True,
+                "pre_1996_enabled": settings.HISTORICAL_NORM_PRE_1996,
+                "th_enabled": settings.HISTORICAL_NORM_TH,
+                "c_enabled": settings.HISTORICAL_NORM_C,
+                "ph_enabled": settings.HISTORICAL_NORM_PH,
+                "fraktur_enabled": settings.HISTORICAL_NORM_FRAKTUR,
+            }
+        else:
+            status["historical_normalizer"] = {"loaded": False}
 
         if self.memory_guard:
             status["memory_guard"] = self.memory_guard.get_status()

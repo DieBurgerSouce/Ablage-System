@@ -218,11 +218,50 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
-    # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8080"]
-    CORS_ALLOW_CREDENTIALS: bool = True
-    CORS_ALLOW_METHODS: List[str] = ["*"]
-    CORS_ALLOW_HEADERS: List[str] = ["*"]
+    # CORS - Sicherheitskonfiguration
+    # In Production: Explizite Origins setzen via CORS_ORIGINS Umgebungsvariable
+    # Beispiel: CORS_ORIGINS=["https://app.ablage-system.local","https://admin.ablage-system.local"]
+    CORS_ORIGINS: List[str] = Field(
+        default=["http://localhost:3000", "http://localhost:8080", "http://localhost:80"],
+        description="Erlaubte CORS Origins - in Production explizit setzen!"
+    )
+    CORS_ALLOW_CREDENTIALS: bool = Field(
+        default=True,
+        description="Credentials erlauben - nur mit expliziten Origins!"
+    )
+    # Eingeschränkte Methods - nur was benötigt wird
+    CORS_ALLOW_METHODS: List[str] = Field(
+        default=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        description="Erlaubte HTTP Methods"
+    )
+    # Eingeschränkte Headers
+    CORS_ALLOW_HEADERS: List[str] = Field(
+        default=[
+            "Accept",
+            "Accept-Language",
+            "Content-Type",
+            "Authorization",
+            "X-Requested-With",
+            "X-CSRF-Token",
+            "X-Request-ID",
+        ],
+        description="Erlaubte Request Headers"
+    )
+    # Expose Headers für Client
+    CORS_EXPOSE_HEADERS: List[str] = Field(
+        default=[
+            "X-Request-ID",
+            "X-RateLimit-Limit",
+            "X-RateLimit-Remaining",
+            "X-RateLimit-Reset",
+        ],
+        description="Response Headers die dem Client exponiert werden"
+    )
+    # Max Age für Preflight Caching
+    CORS_MAX_AGE: int = Field(
+        default=600,
+        description="Max Age für CORS Preflight Caching in Sekunden"
+    )
     
     # Database
     DB_USER: str = "ablage_admin"
@@ -308,6 +347,18 @@ class Settings(BaseSettings):
     GERMAN_VALIDATION_ENABLED: bool = True
     MINIMUM_GERMAN_VALIDATION_SCORE: float = 0.7
     DETECT_FRAKTUR: bool = True
+
+    # Historical German Normalization
+    HISTORICAL_NORMALIZATION_ENABLED: bool = True
+    HISTORICAL_NORM_PRE_1996: bool = True  # daß -> dass, muß -> muss
+    HISTORICAL_NORM_TH: bool = True  # Thür -> Tür, Muth -> Mut
+    HISTORICAL_NORM_C: bool = True  # Circus -> Zirkus, Classe -> Klasse
+    HISTORICAL_NORM_PH: bool = True  # Telephon -> Telefon
+    HISTORICAL_NORM_FRAKTUR: bool = True  # ſ -> s, ꝛ -> r
+
+    # German Compound Splitter (für verbesserte Suche)
+    COMPOUND_SPLITTING_ENABLED: bool = True
+    COMPOUND_MIN_PART_LENGTH: int = 3  # Mindestlänge für Wortteile
 
     # Quality Assurance Settings
     QA_REVIEW_THRESHOLD: float = 0.7  # Trigger human review below this score
