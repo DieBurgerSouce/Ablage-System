@@ -353,6 +353,7 @@ class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    session_warning: Optional[str] = None  # Warnung über automatisch beendete Sessions
 
 
 class TokenPayload(BaseModel):
@@ -1856,3 +1857,339 @@ class EmailVerificationStatusResponse(BaseModel):
     email_verified_at: Optional[datetime] = None
     pending_verification: bool
     pending_email_change: bool
+
+
+# ============================================================================
+# Webhook Schemas
+# ============================================================================
+
+class WebhookEventType(str, Enum):
+    """Verfügbare Webhook Event-Typen."""
+    DOCUMENT_CREATED = "document.created"
+    DOCUMENT_PROCESSING = "document.processing"
+    DOCUMENT_COMPLETED = "document.completed"
+    DOCUMENT_FAILED = "document.failed"
+    DOCUMENT_UPDATED = "document.updated"
+    DOCUMENT_DELETED = "document.deleted"
+    USER_CREATED = "user.created"
+    USER_UPDATED = "user.updated"
+    SYSTEM_HEALTH_FAILED = "system.health_check_failed"
+    SYSTEM_QUOTA_EXCEEDED = "system.quota_exceeded"
+    BATCH_COMPLETED = "batch.completed"
+
+
+class WebhookSubscriptionCreate(BaseModel):
+    """Webhook-Abonnement erstellen."""
+    name: str = Field(..., min_length=1, max_length=100, description="Name des Webhooks")
+    url: str = Field(..., min_length=10, max_length=500, description="Webhook-Ziel-URL (HTTPS empfohlen)")
+    description: Optional[str] = Field(None, max_length=500, description="Beschreibung")
+    event_types: List[str] = Field(..., min_length=1, description="Liste der Event-Typen")
+    headers: Optional[Dict[str, str]] = Field(None, description="Custom HTTP Headers")
+    max_retries: int = Field(default=3, ge=0, le=10, description="Maximale Wiederholungsversuche")
+    retry_delay_seconds: int = Field(default=60, ge=10, le=3600, description="Verzögerung zwischen Versuchen")
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("URL muss mit http:// oder https:// beginnen")
+        return v
+
+    @field_validator("event_types")
+    @classmethod
+    def validate_event_types(cls, v: List[str]) -> List[str]:
+        valid_types = {e.value for e in WebhookEventType}
+        for event_type in v:
+            if event_type not in valid_types:
+                raise ValueError(f"Ungültiger Event-Typ: {event_type}. Gültige Typen: {valid_types}")
+        return v
+
+
+class WebhookSubscriptionUpdate(BaseModel):
+    """Webhook-Abonnement aktualisieren."""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    url: Optional[str] = Field(None, min_length=10, max_length=500)
+    description: Optional[str] = Field(None, max_length=500)
+    event_types: Optional[List[str]] = None
+    headers: Optional[Dict[str, str]] = None
+    is_active: Optional[bool] = None
+    max_retries: Optional[int] = Field(None, ge=0, le=10)
+    retry_delay_seconds: Optional[int] = Field(None, ge=10, le=3600)
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: Optional[str]) -> Optional[str]:
+        if v and not v.startswith(("http://", "https://")):
+            raise ValueError("URL muss mit http:// oder https:// beginnen")
+        return v
+
+
+class WebhookSubscriptionResponse(BaseModel):
+    """Webhook-Abonnement-Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    url: str
+    description: Optional[str] = None
+    event_types: List[str]
+    headers: Optional[Dict[str, str]] = None
+    is_active: bool
+    is_verified: bool
+    max_retries: int
+    retry_delay_seconds: int
+    total_deliveries: int
+    successful_deliveries: int
+    failed_deliveries: int
+    last_delivery_at: Optional[datetime] = None
+    last_failure_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class WebhookSubscriptionWithSecret(WebhookSubscriptionResponse):
+    """Webhook-Abonnement mit Secret (nur bei Erstellung)."""
+    secret: str = Field(..., description="HMAC-Secret für Signaturverifizierung (nur einmalig angezeigt)")
+
+
+class WebhookSecretRotateResponse(BaseModel):
+    """Antwort auf Secret-Rotation."""
+    id: uuid.UUID
+    secret: str = Field(..., description="Neues HMAC-Secret")
+    rotated_at: datetime
+
+
+class WebhookDeliveryResponse(BaseModel):
+    """Webhook-Zustellungsprotokoll."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    event_id: str
+    event_type: str
+    status: str
+    attempt: int
+    max_attempts: int
+    response_status_code: Optional[int] = None
+    response_time_ms: Optional[int] = None
+    error_message: Optional[str] = None
+    error_type: Optional[str] = None
+    created_at: datetime
+    delivered_at: Optional[datetime] = None
+    next_retry_at: Optional[datetime] = None
+
+
+class WebhookDeliveryListResponse(BaseModel):
+    """Liste der Webhook-Zustellungen."""
+    subscription_id: uuid.UUID
+    total: int
+    deliveries: List[WebhookDeliveryResponse]
+
+
+class WebhookTestRequest(BaseModel):
+    """Test-Webhook senden."""
+    event_type: str = Field(default="document.created", description="Event-Typ für Test")
+
+
+class WebhookTestResponse(BaseModel):
+    """Antwort auf Test-Webhook."""
+    success: bool
+    status_code: Optional[int] = None
+    response_time_ms: Optional[int] = None
+    error: Optional[str] = None
+
+
+class WebhookListResponse(BaseModel):
+    """Liste aller Webhook-Abonnements."""
+    total: int
+    webhooks: List[WebhookSubscriptionResponse]
+
+
+# ============================================================================
+# Favorites Schemas
+# ============================================================================
+
+class FavoriteCreate(BaseModel):
+    """Favorit erstellen."""
+    document_id: uuid.UUID = Field(..., description="Dokument-ID")
+    note: Optional[str] = Field(None, max_length=500, description="Optionale Notiz")
+    priority: int = Field(default=0, ge=0, le=100, description="Priorität (höher = wichtiger)")
+
+
+class FavoriteUpdate(BaseModel):
+    """Favorit aktualisieren."""
+    note: Optional[str] = Field(None, max_length=500)
+    priority: Optional[int] = Field(None, ge=0, le=100)
+
+
+class FavoriteResponse(BaseModel):
+    """Favorit-Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    document_id: uuid.UUID
+    note: Optional[str] = None
+    priority: int
+    created_at: datetime
+
+    # Optional: Dokument-Details (wenn mitgeladen)
+    document_filename: Optional[str] = None
+    document_status: Optional[str] = None
+
+
+class FavoriteWithDocumentResponse(FavoriteResponse):
+    """Favorit mit vollständigen Dokument-Details."""
+    document: Optional[Dict[str, Any]] = None
+
+
+class FavoriteListResponse(BaseModel):
+    """Liste der Favoriten."""
+    total: int
+    favorites: List[FavoriteResponse]
+
+
+# ============================================================================
+# Advanced Search Schemas (Facets & Suggestions)
+# ============================================================================
+
+class FacetValue(BaseModel):
+    """Ein einzelner Facet-Wert mit Anzahl."""
+    value: str
+    count: int
+    label: Optional[str] = None  # Optional: deutscher Label
+
+
+class FacetGroup(BaseModel):
+    """Gruppe von Facet-Werten für ein Feld."""
+    field: str
+    label: str  # Deutscher Name (z.B. "Dokumenttyp")
+    values: List[FacetValue]
+    total_distinct: int
+
+
+class SearchFacetsResponse(BaseModel):
+    """Facetten-Antwort für Suchseite."""
+    facets: List[FacetGroup]
+    total_documents: int
+
+
+class SuggestItem(BaseModel):
+    """Ein Vorschlag für die Autovervollständigung."""
+    text: str
+    type: str  # "document", "tag", "term"
+    score: float = 1.0
+    document_id: Optional[uuid.UUID] = None
+    highlight: Optional[str] = None  # HTML mit <mark>-Tags
+
+
+class SuggestResponse(BaseModel):
+    """Autovervollständigungs-Antwort."""
+    query: str
+    suggestions: List[SuggestItem]
+    total: int
+
+
+class SearchWithFacetsRequest(BaseModel):
+    """Suchanfrage mit Facetten-Anforderung."""
+    query: str = Field(..., min_length=1, max_length=500)
+    search_type: Optional[str] = Field("hybrid", description="fts, semantic, hybrid")
+    filters: Optional[Dict[str, Any]] = None
+    facet_fields: List[str] = Field(
+        default=["document_type", "status", "tags", "ocr_backend_used"],
+        description="Felder für Facetten"
+    )
+    page: int = Field(default=1, ge=1)
+    per_page: int = Field(default=20, ge=1, le=100)
+
+
+class SearchWithFacetsResponse(BaseModel):
+    """Suchantwort mit Facetten."""
+    query: str
+    search_type: str
+    results: List[Dict[str, Any]]  # SearchResultItem-ähnlich
+    facets: List[FacetGroup]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+
+
+# =============================================================================
+# API Key Schemas
+# =============================================================================
+
+class APIKeyPermission(str, Enum):
+    """Verfügbare API-Key-Berechtigungen."""
+    READ_DOCUMENTS = "read:documents"
+    WRITE_DOCUMENTS = "write:documents"
+    DELETE_DOCUMENTS = "delete:documents"
+    OCR_PROCESS = "ocr:process"
+    SEARCH = "search"
+    ADMIN = "admin"
+
+
+class APIKeyCreate(BaseModel):
+    """Schema zum Erstellen eines API-Keys."""
+    name: str = Field(..., min_length=1, max_length=100, description="Name des API-Keys")
+    description: Optional[str] = Field(None, max_length=255, description="Beschreibung")
+    permissions: List[APIKeyPermission] = Field(
+        default=[APIKeyPermission.READ_DOCUMENTS, APIKeyPermission.SEARCH],
+        description="Berechtigungen des API-Keys"
+    )
+    rate_limit: int = Field(default=1000, ge=1, le=100000, description="Rate Limit pro Stunde")
+    expires_in_days: Optional[int] = Field(
+        None, ge=1, le=365,
+        description="Ablauf in Tagen (None = kein Ablauf)"
+    )
+
+
+class APIKeyResponse(BaseModel):
+    """Schema für API-Key-Antwort (ohne Secret)."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    description: Optional[str]
+    permissions: List[str]
+    rate_limit: int
+    is_active: bool
+    created_at: datetime
+    last_used: Optional[datetime]
+    expires_at: Optional[datetime]
+    key_prefix: Optional[str] = Field(None, description="Erste 8 Zeichen des Keys")
+
+
+class APIKeyCreateResponse(BaseModel):
+    """Schema für neu erstellten API-Key (einmalig mit Secret)."""
+    id: uuid.UUID
+    name: str
+    api_key: str = Field(..., description="Vollständiger API-Key - NUR EINMAL ANGEZEIGT!")
+    key_prefix: str = Field(..., description="Erste 8 Zeichen zur Identifikation")
+    permissions: List[str]
+    rate_limit: int
+    expires_at: Optional[datetime]
+    warnung: str = Field(
+        default="WICHTIG: Speichern Sie diesen API-Key sicher! Er wird nur einmal angezeigt.",
+        description="Sicherheitshinweis"
+    )
+
+
+class APIKeyUpdate(BaseModel):
+    """Schema zum Aktualisieren eines API-Keys."""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=255)
+    permissions: Optional[List[APIKeyPermission]] = None
+    rate_limit: Optional[int] = Field(None, ge=1, le=100000)
+    is_active: Optional[bool] = None
+
+
+class APIKeyListResponse(BaseModel):
+    """Liste von API-Keys."""
+    api_keys: List[APIKeyResponse]
+    total: int
+
+
+class APIKeyDeleteResponse(BaseModel):
+    """Antwort nach Löschen eines API-Keys."""
+    success: bool
+    nachricht: str
+    deleted_key_name: str

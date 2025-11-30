@@ -286,6 +286,65 @@ class ProcessingJob(Base):
     )
 
 
+class BatchJob(Base):
+    """Batch job tracking for multiple documents."""
+    __tablename__ = "batch_jobs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Batch details
+    job_type = Column(String(50), nullable=False)  # ocr, embedding, validation, export
+    status = Column(String(50), default=ProcessingStatus.QUEUED, nullable=False)
+    priority = Column(Integer, default=5)  # 1=highest, 10=lowest
+
+    # Document tracking
+    total_documents = Column(Integer, default=0)
+    processed_documents = Column(Integer, default=0)
+    failed_documents = Column(Integer, default=0)
+    document_ids = Column(CrossDBJSON, default=[])
+
+    # Progress tracking
+    progress = Column(Integer, default=0, comment="Fortschritt 0-100%")
+    current_document = Column(String(255), nullable=True)
+    message = Column(String(500), nullable=True)
+
+    # Configuration
+    backend = Column(String(50))
+    language = Column(String(10), default="de")
+    options = Column(CrossDBJSON, default={})
+
+    # Timing
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    started_at = Column(DateTime(timezone=True))
+    completed_at = Column(DateTime(timezone=True))
+    estimated_completion = Column(DateTime(timezone=True))
+
+    # Performance metrics
+    avg_time_per_document_ms = Column(Integer)
+    total_processing_time_ms = Column(Integer)
+
+    # Results
+    result_summary = Column(CrossDBJSON, default={})
+    error_message = Column(Text)
+    celery_task_id = Column(String(100))
+
+    # Pause/Resume support
+    is_paused = Column(Boolean, default=False)
+    paused_at = Column(DateTime(timezone=True))
+    resume_from_index = Column(Integer, default=0)
+
+    # Relationships
+    user = relationship("User", backref="batch_jobs")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_batch_jobs_status", "status"),
+        Index("ix_batch_jobs_user_id", "user_id"),
+        Index("ix_batch_jobs_created_at", "created_at"),
+    )
+
+
 class OCRResult(Base):
     """Detailed OCR results with layout and confidence data."""
     __tablename__ = "ocr_results"
@@ -987,4 +1046,194 @@ class EmailVerificationToken(Base):
         Index("ix_email_verification_tokens_user_id", "user_id"),
         Index("ix_email_verification_tokens_token_hash", "token_hash"),
         Index("ix_email_verification_tokens_expires_at", "expires_at"),
+    )
+
+
+# ============================================================================
+# Webhook System - Event-Driven Notifications
+# ============================================================================
+
+class WebhookEventType(str, Enum):
+    """Verfügbare Webhook Event-Typen."""
+    # Document Events
+    DOCUMENT_CREATED = "document.created"
+    DOCUMENT_PROCESSING = "document.processing"
+    DOCUMENT_COMPLETED = "document.completed"
+    DOCUMENT_FAILED = "document.failed"
+    DOCUMENT_UPDATED = "document.updated"
+    DOCUMENT_DELETED = "document.deleted"
+    # User Events
+    USER_CREATED = "user.created"
+    USER_UPDATED = "user.updated"
+    # System Events
+    SYSTEM_HEALTH_FAILED = "system.health_check_failed"
+    SYSTEM_QUOTA_EXCEEDED = "system.quota_exceeded"
+    BATCH_COMPLETED = "batch.completed"
+
+
+class WebhookDeliveryStatus(str, Enum):
+    """Status einer Webhook-Zustellung."""
+    PENDING = "pending"
+    DELIVERED = "delivered"
+    FAILED = "failed"
+    RETRYING = "retrying"
+
+
+class WebhookSubscription(Base):
+    """
+    Webhook-Abonnement für Event-Benachrichtigungen.
+
+    Ermöglicht Benutzern, HTTP-Callbacks für bestimmte Events zu registrieren.
+    Unterstützt HMAC-Signierung, Custom Headers und Retry-Konfiguration.
+    """
+    __tablename__ = "webhook_subscriptions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Endpoint-Konfiguration
+    name = Column(String(100), nullable=False)  # Benutzerfreundlicher Name
+    url = Column(String(500), nullable=False)   # Webhook-Ziel-URL
+    description = Column(String(500), nullable=True)
+
+    # Event-Filter (Liste von Event-Typen)
+    event_types = Column(CrossDBJSON, nullable=False)  # ["document.created", "document.completed"]
+
+    # Sicherheit
+    secret = Column(String(100), nullable=False)  # HMAC-Secret für Signierung
+    headers = Column(CrossDBJSON, nullable=True)  # Custom Headers {"X-Custom": "value"}
+
+    # Status
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_verified = Column(Boolean, default=False)  # Endpoint-Verifizierung
+
+    # Retry-Konfiguration
+    max_retries = Column(Integer, default=3)
+    retry_delay_seconds = Column(Integer, default=60)
+
+    # Statistiken
+    total_deliveries = Column(Integer, default=0)
+    successful_deliveries = Column(Integer, default=0)
+    failed_deliveries = Column(Integer, default=0)
+    last_delivery_at = Column(DateTime(timezone=True), nullable=True)
+    last_failure_at = Column(DateTime(timezone=True), nullable=True)
+    last_failure_reason = Column(Text, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", backref="webhook_subscriptions")
+    deliveries = relationship("WebhookDelivery", back_populates="subscription", cascade="all, delete-orphan")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_webhook_subscriptions_user_id", "user_id"),
+        Index("ix_webhook_subscriptions_is_active", "is_active"),
+        Index("ix_webhook_subscriptions_created_at", "created_at"),
+    )
+
+
+class WebhookDelivery(Base):
+    """
+    Webhook-Zustellungsprotokoll.
+
+    Dokumentiert jeden Zustellungsversuch mit Response-Details.
+    Ermöglicht Debugging und Retry-Tracking.
+    """
+    __tablename__ = "webhook_deliveries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    subscription_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("webhook_subscriptions.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Event-Daten
+    event_id = Column(String(64), nullable=False)  # Unique Event ID
+    event_type = Column(String(100), nullable=False)
+    payload = Column(CrossDBJSON, nullable=False)  # Gesendetes Payload
+
+    # Zustellungsstatus
+    status = Column(String(20), default="pending")  # pending, delivered, failed, retrying
+    attempt = Column(Integer, default=1)
+    max_attempts = Column(Integer, default=4)  # 1 initial + 3 retries
+
+    # Response-Details
+    response_status_code = Column(Integer, nullable=True)
+    response_body = Column(Text, nullable=True)  # Truncated auf 1000 Zeichen
+    response_time_ms = Column(Integer, nullable=True)
+
+    # Fehlerdetails
+    error_message = Column(Text, nullable=True)
+    error_type = Column(String(100), nullable=True)  # timeout, connection_error, http_error
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    delivered_at = Column(DateTime(timezone=True), nullable=True)
+    next_retry_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    subscription = relationship("WebhookSubscription", back_populates="deliveries")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_webhook_deliveries_subscription_id", "subscription_id"),
+        Index("ix_webhook_deliveries_event_id", "event_id"),
+        Index("ix_webhook_deliveries_status", "status"),
+        Index("ix_webhook_deliveries_created_at", "created_at"),
+        Index("ix_webhook_deliveries_next_retry_at", "next_retry_at"),
+    )
+
+
+# ============================================================================
+# Favorites System - Dokument-Favoriten
+# ============================================================================
+
+class DocumentFavorite(Base):
+    """
+    Favorisierte Dokumente für schnellen Zugriff.
+
+    Ermöglicht Benutzern, Dokumente als Favoriten zu markieren
+    und optional Notizen hinzuzufügen.
+    """
+    __tablename__ = "document_favorites"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Optional: Benutzernotiz zum Favorit
+    note = Column(String(500), nullable=True)
+
+    # Sortierung (höher = wichtiger)
+    priority = Column(Integer, default=0)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User", backref="favorites")
+    document = relationship("Document", backref="favorited_by")
+
+    # Indexes und Constraints
+    __table_args__ = (
+        Index("ix_document_favorites_user_id", "user_id"),
+        Index("ix_document_favorites_document_id", "document_id"),
+        Index("ix_document_favorites_user_document", "user_id", "document_id", unique=True),
+        Index("ix_document_favorites_created_at", "created_at"),
     )

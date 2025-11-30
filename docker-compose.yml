@@ -1,23 +1,23 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database (Data-Network only - kein externer Zugriff in Production)
   postgres:
     image: postgres:16-alpine
     container_name: ablage-postgres
     environment:
-      POSTGRES_DB: ablage_system
-      POSTGRES_USER: ablage_admin
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-ablage_system}
+      POSTGRES_USER: ${POSTGRES_USER:-ablage_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
       POSTGRES_MAX_CONNECTIONS: 100
       POSTGRES_SHARED_BUFFERS: 256MB
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5434:5432"  # Port 5434 (5433 von Hyper-V reserviert)
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ablage_admin -d ablage_system"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ablage_admin} -d ${POSTGRES_DB:-ablage_system}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -36,17 +36,17 @@ services:
           memory: 1G
     restart: unless-stopped
     networks:
-      - ablage-network
+      - data-network
 
-  # Redis for Cache and Queue
+  # Redis for Cache and Queue (Data-Network only)
   redis:
     image: redis:7-alpine
     container_name: ablage-redis
-    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-}
     volumes:
       - redis_data:/data
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"  # Nur localhost in Production!
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -64,22 +64,22 @@ services:
           memory: 512M
     restart: unless-stopped
     networks:
-      - ablage-network
+      - data-network
 
-  # MinIO Object Storage
+  # MinIO Object Storage (Data-Network only)
   minio:
     image: minio/minio:latest
     container_name: ablage-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
       MINIO_DEFAULT_BUCKETS: documents,processed,backups
     volumes:
       - minio_data:/data
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"  # Nur localhost in Production!
+      - "127.0.0.1:9001:9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
@@ -97,9 +97,9 @@ services:
           memory: 1G
     restart: unless-stopped
     networks:
-      - ablage-network
+      - data-network
 
-  # FastAPI Backend Application
+  # FastAPI Backend Application (Backend + Data Networks)
   backend:
     build:
       context: .
@@ -108,35 +108,44 @@ services:
     environment:
       # Vault Configuration (secrets loaded from Vault when enabled)
       VAULT_ENABLED: ${VAULT_ENABLED:-false}
-      VAULT_ADDR: http://vault:8200
+      VAULT_ADDR: https://vault:8200
       VAULT_TOKEN: ${VAULT_TOKEN:-}
       VAULT_SECRET_PATH: ablage-system
       VAULT_MOUNT_POINT: secret
-      # Fallback credentials (used when VAULT_ENABLED=false)
-      DATABASE_URL: postgresql+asyncpg://ablage_admin:${DB_PASSWORD:-changeme}@postgres:5432/ablage_system
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
+      VAULT_CACERT: /app/certs/ca.crt
+      # Database (Secrets aus .env)
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      # Redis (mit optionalem Passwort)
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      # MinIO (Secrets aus .env)
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
-      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
+      # Security
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY muss gesetzt sein}
       # Non-secret configuration
       CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-0}
       API_HOST: 0.0.0.0
       API_PORT: 8000
-      LOG_LEVEL: INFO
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - ./app:/app/app:ro
+      - ./infrastructure/vault/config/certs:/app/certs:ro
       - uploads:/app/uploads
       - outputs:/app/outputs
       - backups:/var/backups/ablage
     ports:
       - "8000:8000"
     depends_on:
-      - postgres
-      - redis
-      - minio
-      - vault
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
     user: "1000:1000"
     security_opt:
       - no-new-privileges:true
@@ -158,9 +167,10 @@ services:
               capabilities: [gpu]
     restart: unless-stopped
     networks:
-      - ablage-network
+      - backend-network
+      - data-network
 
-  # Celery Worker with GPU Support
+  # Celery Worker with GPU Support (Backend + Data Networks)
   worker:
     build:
       context: .
@@ -168,33 +178,44 @@ services:
     container_name: ablage-worker
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo
     environment:
-      # Vault Configuration (secrets loaded from Vault when enabled)
+      # Vault Configuration
       VAULT_ENABLED: ${VAULT_ENABLED:-false}
-      VAULT_ADDR: http://vault:8200
+      VAULT_ADDR: https://vault:8200
       VAULT_TOKEN: ${VAULT_TOKEN:-}
       VAULT_SECRET_PATH: ablage-system
       VAULT_MOUNT_POINT: secret
-      # Fallback credentials (used when VAULT_ENABLED=false)
-      DATABASE_URL: postgresql+asyncpg://ablage_admin:${DB_PASSWORD:-changeme}@postgres:5432/ablage_system
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
+      VAULT_CACERT: /app/certs/ca.crt
+      # Database (Secrets aus .env)
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      # Redis (mit optionalem Passwort)
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      # MinIO (Secrets aus .env)
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
       # Non-secret configuration
       CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-0}
-      LOG_LEVEL: INFO
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # GPU Memory Limits (85% von 16GB = 13.6GB)
+      GPU_MEMORY_LIMIT_GB: ${GPU_MEMORY_LIMIT_GB:-13.6}
     volumes:
       - ./app:/app/app:ro
+      - ./infrastructure/vault/config/certs:/app/certs:ro
       - uploads:/app/uploads
       - outputs:/app/outputs
       - backups:/var/backups/ablage
     depends_on:
-      - postgres
-      - redis
-      - minio
-      - vault
-      - backend
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+      backend:
+        condition: service_started
     user: "1000:1000"
     security_opt:
       - no-new-privileges:true
@@ -216,9 +237,10 @@ services:
               capabilities: [gpu]
     restart: unless-stopped
     networks:
-      - ablage-network
+      - backend-network
+      - data-network
 
-  # Frontend Application (React + Vite)
+  # Frontend Application (React + Vite) - Frontend + Backend Networks
   frontend:
     build:
       context: ./frontend
@@ -226,8 +248,10 @@ services:
     container_name: ablage-frontend
     ports:
       - "80:80"
+      - "443:443"  # HTTPS Port
     depends_on:
-      - backend
+      backend:
+        condition: service_started
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -238,16 +262,17 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 256M
+          cpus: '1.0'
+          memory: 512M
         reservations:
-          cpus: '0.1'
-          memory: 64M
+          cpus: '0.2'
+          memory: 128M
     restart: unless-stopped
     networks:
-      - ablage-network
+      - frontend-network
+      - backend-network
 
-  # Prometheus Metrics Collection
+  # Prometheus Metrics Collection (Monitoring Network)
   prometheus:
     image: prom/prometheus:latest
     container_name: ablage-prometheus
@@ -264,9 +289,10 @@ services:
       - ./infrastructure/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"  # Nur localhost - Zugriff über Nginx Proxy
     depends_on:
-      - backend
+      backend:
+        condition: service_started
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -279,28 +305,33 @@ services:
           memory: 512M
     restart: unless-stopped
     networks:
-      - ablage-network
+      - monitoring-network
+      - backend-network
 
-  # Grafana Dashboards
+  # Grafana Dashboards (Monitoring Network)
   grafana:
     image: grafana/grafana:latest
     container_name: ablage-grafana
     user: "472:472"
     environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:?GRAFANA_USER muss gesetzt sein}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?GRAFANA_PASSWORD muss gesetzt sein}
       GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_SERVER_ROOT_URL: http://localhost:3000
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
       GF_INSTALL_PLUGINS: grafana-piechart-panel
       GF_DATE_FORMATS_DEFAULT_TIMEZONE: Europe/Berlin
+      # Security Settings
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_SECURITY_STRICT_TRANSPORT_SECURITY: "true"
     volumes:
       - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./infrastructure/grafana/dashboards:/etc/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"  # Nur localhost - Zugriff über Nginx Proxy
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_started
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -313,9 +344,9 @@ services:
           memory: 256M
     restart: unless-stopped
     networks:
-      - ablage-network
+      - monitoring-network
 
-  # Loki for Log Aggregation
+  # Loki for Log Aggregation (Monitoring Network)
   loki:
     image: grafana/loki:latest
     container_name: ablage-loki
@@ -324,7 +355,7 @@ services:
       - ./infrastructure/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
       - loki_data:/loki
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"  # Nur localhost
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -337,9 +368,9 @@ services:
           memory: 512M
     restart: unless-stopped
     networks:
-      - ablage-network
+      - monitoring-network
 
-  # AlertManager for Alert Routing and Notifications
+  # AlertManager for Alert Routing and Notifications (Monitoring Network)
   alertmanager:
     image: prom/alertmanager:v0.27.0
     container_name: ablage-alertmanager
@@ -348,9 +379,9 @@ services:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
       - '--data.retention=120h'
-      - '--web.external-url=http://localhost:9093'
+      - '--web.external-url=${ALERTMANAGER_EXTERNAL_URL:-http://localhost:9093}'
     environment:
-      # Email/Teams (set in Vault or .env)
+      # Email/Teams (Secrets aus .env oder Vault)
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
@@ -363,9 +394,10 @@ services:
       - ./infrastructure/alerting/templates:/etc/alertmanager/templates:ro
       - alertmanager_data:/alertmanager
     ports:
-      - "9093:9093"
+      - "127.0.0.1:9093:9093"  # Nur localhost
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
       interval: 30s
@@ -386,18 +418,19 @@ services:
           memory: 64M
     restart: unless-stopped
     networks:
-      - ablage-network
+      - monitoring-network
 
-  # PostgreSQL Exporter for Prometheus
+  # PostgreSQL Exporter for Prometheus (Monitoring + Data Networks)
   postgres_exporter:
     image: prometheuscommunity/postgres-exporter:latest
     container_name: ablage-postgres-exporter
     environment:
-      DATA_SOURCE_NAME: postgresql://ablage_admin:${DB_PASSWORD:-changeme}@postgres:5432/ablage_system?sslmode=disable
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=disable
     ports:
-      - "9187:9187"
+      - "127.0.0.1:9187:9187"  # Nur localhost
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -411,18 +444,21 @@ services:
           memory: 32M
     restart: unless-stopped
     networks:
-      - ablage-network
+      - monitoring-network
+      - data-network
 
-  # Redis Exporter for Prometheus
+  # Redis Exporter for Prometheus (Monitoring + Data Networks)
   redis_exporter:
     image: oliver006/redis_exporter:latest
     container_name: ablage-redis-exporter
     environment:
       REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     ports:
-      - "9121:9121"
+      - "127.0.0.1:9121:9121"  # Nur localhost
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -436,9 +472,10 @@ services:
           memory: 32M
     restart: unless-stopped
     networks:
-      - ablage-network
+      - monitoring-network
+      - data-network
 
-  # Promtail for Log Shipping to Loki
+  # Promtail for Log Shipping to Loki (Monitoring Network)
   promtail:
     image: grafana/promtail:latest
     container_name: ablage-promtail
@@ -448,7 +485,8 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
     command: -config.file=/etc/promtail/config.yml
     depends_on:
-      - loki
+      loki:
+        condition: service_started
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -461,13 +499,13 @@ services:
           memory: 64M
     restart: unless-stopped
     networks:
-      - ablage-network
+      - monitoring-network
 
-  # HashiCorp Vault for Secrets Management
+  # HashiCorp Vault for Secrets Management (TLS-enabled)
   vault:
     image: hashicorp/vault:1.15.4
     container_name: ablage-vault
-    command: server
+    command: server -config=/vault/config/vault.hcl
     ports:
       - "8200:8200"
     volumes:
@@ -475,18 +513,12 @@ services:
       - vault_data:/vault/data
       - vault_logs:/vault/logs
     environment:
-      VAULT_ADDR: 'http://0.0.0.0:8200'
-      VAULT_API_ADDR: 'http://vault:8200'
-      VAULT_LOCAL_CONFIG: |
-        ui = true
-        disable_mlock = true
-        storage "file" {
-          path = "/vault/data"
-        }
-        listener "tcp" {
-          address = "0.0.0.0:8200"
-          tls_disable = 1
-        }
+      # HTTPS für sichere Kommunikation
+      VAULT_ADDR: 'https://0.0.0.0:8200'
+      VAULT_API_ADDR: 'https://vault:8200'
+      VAULT_CACERT: '/vault/config/certs/ca.crt'
+      # Skip TLS verification nur für Development
+      VAULT_SKIP_VERIFY: '${VAULT_SKIP_VERIFY:-false}'
     cap_add:
       - IPC_LOCK
     security_opt:
@@ -500,14 +532,48 @@ services:
           cpus: '0.1'
           memory: 128M
     healthcheck:
-      test: ["CMD", "vault", "status", "-address=http://127.0.0.1:8200"]
+      test: ["CMD", "vault", "status", "-address=https://127.0.0.1:8200", "-ca-cert=/vault/config/certs/ca.crt"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
     restart: unless-stopped
     networks:
-      - ablage-network
+      - backend-network
+      - data-network
+
+  # NVIDIA GPU Exporter für Prometheus-Metriken
+  dcgm-exporter:
+    image: nvidia/dcgm-exporter:3.3.0-3.2.0-ubuntu22.04
+    container_name: ablage-dcgm-exporter
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      # Metriken-Konfiguration
+      DCGM_EXPORTER_LISTEN: ':9400'
+      DCGM_EXPORTER_KUBERNETES: 'false'
+      # Standard GPU-Metriken
+      DCGM_EXPORTER_COLLECTORS: 'default'
+    ports:
+      - "9400:9400"
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9400/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - monitoring-network
 
 volumes:
   postgres_data:
@@ -524,5 +590,36 @@ volumes:
   vault_logs:
 
 networks:
+  # Frontend-Netzwerk: Nur für externe Zugriffe (Nginx)
+  frontend-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.1.0/24
+
+  # Backend-Netzwerk: API, Workers, interne Kommunikation
+  backend-network:
+    driver: bridge
+    internal: false  # Erlaubt externe API-Zugriffe
+    ipam:
+      config:
+        - subnet: 172.28.2.0/24
+
+  # Data-Netzwerk: Datenbanken, Cache, Storage (nur intern)
+  data-network:
+    driver: bridge
+    internal: true  # Kein externer Zugriff!
+    ipam:
+      config:
+        - subnet: 172.28.3.0/24
+
+  # Monitoring-Netzwerk: Prometheus, Grafana, Loki
+  monitoring-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.4.0/24
+
+  # Legacy-Netzwerk für Migration (wird später entfernt)
   ablage-network:
     driver: bridge

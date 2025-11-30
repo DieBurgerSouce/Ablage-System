@@ -39,7 +39,7 @@ from app.core.rate_limiting import (
     RateLimitTier,
     RateLimitStorageError,
 )
-from app.middleware import RateLimitMiddleware, DevelopmentRateLimitBypass, SecurityHeadersMiddleware, RequestSizeLimitMiddleware, CSRFMiddleware, get_csrf_token_response
+from app.middleware import RateLimitMiddleware, DevelopmentRateLimitBypass, SecurityHeadersMiddleware, RequestSizeLimitMiddleware, CSRFMiddleware, get_csrf_token_response, IPBlockingMiddleware
 from app.core.config import settings
 from app.core.monitoring import get_system_monitor, PerformanceTimer
 from app.core.german_messages import HTTPErrors, StatusMessages
@@ -226,6 +226,14 @@ app.add_middleware(
     upload_max_size_bytes=settings.max_upload_size_bytes,  # 50MB für Uploads (aus config)
 )
 
+# IP-Blocking Middleware (blockiert gesperrte IPs aus Incident Response)
+# Prüft gegen In-Memory-Liste und Redis
+app.add_middleware(
+    IPBlockingMiddleware,
+    enabled=not settings.DEBUG,  # Nur in Production
+    whitelist={"127.0.0.1", "::1", "localhost"},
+)
+
 # Add Security Headers middleware (MUSS vor CORS sein!)
 # Fügt X-Content-Type-Options, X-Frame-Options, CSP, HSTS, etc. hinzu
 app.add_middleware(
@@ -311,6 +319,11 @@ from app.api.v1.admin import router as admin_router
 from app.api.v1.backup import router as backup_router
 from app.api.v1.vault import router as vault_router
 from app.api.v1.gdpr import router as gdpr_router, admin_router as gdpr_admin_router
+from app.api.v1.webhooks import router as webhooks_router
+from app.api.v1.favorites import router as favorites_router
+from app.api.v1.search import router as search_router
+from app.api.v1.api_keys import router as api_keys_router
+from app.api.v1.batch_jobs import router as batch_jobs_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -325,6 +338,11 @@ app.include_router(ocr.router, prefix="/api/v1")
 app.include_router(vault_router, prefix="/api/v1")
 app.include_router(gdpr_router, prefix="/api/v1")
 app.include_router(gdpr_admin_router, prefix="/api/v1")
+app.include_router(webhooks_router, prefix="/api/v1")
+app.include_router(favorites_router, prefix="/api/v1")
+app.include_router(search_router, prefix="/api/v1")
+app.include_router(api_keys_router, prefix="/api/v1")
+app.include_router(batch_jobs_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================
@@ -507,7 +525,27 @@ async def process_document(
                 detail=content_error or "Ungültiger Dateiinhalt"
             )
 
-        # 2c. Check OCR result cache (based on file hash)
+        # 2c. Extended security validation (PDF bombs, image bombs)
+        from app.core.file_validation import validate_file_security, FileValidationError
+        try:
+            is_secure, security_error, security_metadata = validate_file_security(
+                file_content, file.filename, detected_mime
+            )
+            if not is_secure:
+                logger.warning(
+                    "file_security_validation_failed",
+                    filename=file.filename,
+                    error=security_error,
+                    metadata=security_metadata
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail=security_error or "Sicherheitsvalidierung fehlgeschlagen"
+                )
+        except FileValidationError as e:
+            raise HTTPException(status_code=400, detail=e.user_message_de)
+
+        # 2d. Check OCR result cache (based on file hash)
         cached_ocr = await get_cached_ocr_result(
             content=file_content,
             backend=backend or "auto",

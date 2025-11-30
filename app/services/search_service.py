@@ -1021,6 +1021,353 @@ class SearchService:
             return text
         return text[:max_length - 3] + "..."
 
+    # ==================== Facets ====================
+
+    async def get_facets(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        facet_fields: List[str],
+        filters: Optional[SearchFilters] = None
+    ) -> Dict[str, Any]:
+        """
+        Berechnet Facetten fuer die Suchseite.
+
+        Args:
+            db: Datenbank-Session
+            user_id: Benutzer-ID fuer Zugriffsfilter
+            facet_fields: Felder fuer Facetten (z.B. ["document_type", "status", "tags"])
+            filters: Optionale Filter (werden auf Facetten angewendet)
+
+        Returns:
+            Dict mit Facetten-Gruppen
+        """
+        from app.db.schemas import FacetGroup, FacetValue
+
+        # Label-Mapping fuer deutsche UI
+        field_labels = {
+            "document_type": "Dokumenttyp",
+            "status": "Status",
+            "tags": "Tags",
+            "ocr_backend_used": "OCR-Backend",
+            "mime_type": "Dateityp",
+            "language": "Sprache",
+        }
+
+        # Value-Labels fuer deutsche UI
+        value_labels = {
+            "document_type": {
+                "invoice": "Rechnung",
+                "contract": "Vertrag",
+                "receipt": "Quittung",
+                "form": "Formular",
+                "letter": "Brief",
+                "report": "Bericht",
+                "other": "Sonstiges",
+            },
+            "status": {
+                "pending": "Ausstehend",
+                "queued": "In Warteschlange",
+                "processing": "Verarbeitung",
+                "completed": "Abgeschlossen",
+                "failed": "Fehlgeschlagen",
+                "cancelled": "Abgebrochen",
+            },
+        }
+
+        facets: List[FacetGroup] = []
+
+        # Basis-Query mit Benutzer-Filter
+        base_conditions = [Document.owner_id == user_id]
+
+        # Zusaetzliche Filter anwenden
+        if filters:
+            if filters.document_type:
+                base_conditions.append(Document.document_type == filters.document_type.value)
+            if filters.status:
+                base_conditions.append(Document.status == filters.status.value)
+            if filters.date_from:
+                base_conditions.append(Document.created_at >= filters.date_from)
+            if filters.date_to:
+                base_conditions.append(Document.created_at <= filters.date_to)
+
+        # Facet fuer jedes Feld berechnen
+        for field in facet_fields:
+            if field == "document_type":
+                result = await db.execute(
+                    select(Document.document_type, func.count(Document.id))
+                    .where(and_(*base_conditions))
+                    .group_by(Document.document_type)
+                    .order_by(func.count(Document.id).desc())
+                )
+                rows = result.all()
+                values = [
+                    FacetValue(
+                        value=row[0] or "other",
+                        count=row[1],
+                        label=value_labels.get("document_type", {}).get(row[0], row[0])
+                    )
+                    for row in rows if row[0]
+                ]
+                facets.append(FacetGroup(
+                    field=field,
+                    label=field_labels.get(field, field),
+                    values=values,
+                    total_distinct=len(values)
+                ))
+
+            elif field == "status":
+                result = await db.execute(
+                    select(Document.status, func.count(Document.id))
+                    .where(and_(*base_conditions))
+                    .group_by(Document.status)
+                    .order_by(func.count(Document.id).desc())
+                )
+                rows = result.all()
+                values = [
+                    FacetValue(
+                        value=row[0],
+                        count=row[1],
+                        label=value_labels.get("status", {}).get(row[0], row[0])
+                    )
+                    for row in rows if row[0]
+                ]
+                facets.append(FacetGroup(
+                    field=field,
+                    label=field_labels.get(field, field),
+                    values=values,
+                    total_distinct=len(values)
+                ))
+
+            elif field == "ocr_backend_used":
+                result = await db.execute(
+                    select(Document.ocr_backend_used, func.count(Document.id))
+                    .where(and_(*base_conditions, Document.ocr_backend_used.isnot(None)))
+                    .group_by(Document.ocr_backend_used)
+                    .order_by(func.count(Document.id).desc())
+                )
+                rows = result.all()
+                values = [
+                    FacetValue(value=row[0], count=row[1], label=row[0].upper() if row[0] else None)
+                    for row in rows if row[0]
+                ]
+                facets.append(FacetGroup(
+                    field=field,
+                    label=field_labels.get(field, field),
+                    values=values,
+                    total_distinct=len(values)
+                ))
+
+            elif field == "tags":
+                # Join mit Tags-Tabelle
+                result = await db.execute(
+                    select(Tag.name, func.count(Document.id))
+                    .select_from(Document)
+                    .join(document_tags, Document.id == document_tags.c.document_id)
+                    .join(Tag, Tag.id == document_tags.c.tag_id)
+                    .where(and_(*base_conditions))
+                    .group_by(Tag.name)
+                    .order_by(func.count(Document.id).desc())
+                    .limit(20)  # Top 20 Tags
+                )
+                rows = result.all()
+                values = [
+                    FacetValue(value=row[0], count=row[1])
+                    for row in rows
+                ]
+                facets.append(FacetGroup(
+                    field=field,
+                    label=field_labels.get(field, field),
+                    values=values,
+                    total_distinct=len(values)
+                ))
+
+            elif field == "mime_type":
+                result = await db.execute(
+                    select(Document.mime_type, func.count(Document.id))
+                    .where(and_(*base_conditions))
+                    .group_by(Document.mime_type)
+                    .order_by(func.count(Document.id).desc())
+                )
+                rows = result.all()
+                values = [
+                    FacetValue(value=row[0], count=row[1])
+                    for row in rows if row[0]
+                ]
+                facets.append(FacetGroup(
+                    field=field,
+                    label=field_labels.get(field, field),
+                    values=values,
+                    total_distinct=len(values)
+                ))
+
+        # Gesamtanzahl der Dokumente
+        total_result = await db.execute(
+            select(func.count(Document.id)).where(and_(*base_conditions))
+        )
+        total_documents = total_result.scalar() or 0
+
+        logger.debug(
+            "facets_calculated",
+            user_id=str(user_id),
+            fields=facet_fields,
+            total_documents=total_documents
+        )
+
+        return {
+            "facets": facets,
+            "total_documents": total_documents
+        }
+
+    # ==================== Suggestions ====================
+
+    async def get_suggestions(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        query: str,
+        limit: int = 10
+    ) -> Dict[str, Any]:
+        """
+        Autovervollstaendigung fuer Suchanfragen.
+
+        Sucht in:
+        - Dokumentnamen
+        - Tags
+        - Extrahiertem Text (Schlagwoerter)
+
+        Args:
+            db: Datenbank-Session
+            user_id: Benutzer-ID fuer Zugriffsfilter
+            query: Suchbegriff (mind. 2 Zeichen)
+            limit: Maximale Anzahl Vorschlaege
+
+        Returns:
+            Dict mit Vorschlaegen
+        """
+        from app.db.schemas import SuggestItem
+
+        if len(query) < 2:
+            return {"query": query, "suggestions": [], "total": 0}
+
+        suggestions: List[SuggestItem] = []
+        query_lower = query.lower()
+        query_pattern = f"%{query_lower}%"
+
+        # 1. Dokumentnamen durchsuchen
+        doc_result = await db.execute(
+            select(Document.id, Document.original_filename, Document.filename)
+            .where(
+                Document.owner_id == user_id,
+                or_(
+                    func.lower(Document.original_filename).like(query_pattern),
+                    func.lower(Document.filename).like(query_pattern)
+                )
+            )
+            .order_by(Document.created_at.desc())
+            .limit(5)
+        )
+        doc_rows = doc_result.all()
+
+        for doc_id, orig_name, name in doc_rows:
+            display_name = orig_name or name
+            # Highlight erstellen
+            highlight = self._create_highlight(display_name, query)
+            suggestions.append(SuggestItem(
+                text=display_name,
+                type="document",
+                score=1.0,
+                document_id=doc_id,
+                highlight=highlight
+            ))
+
+        # 2. Tags durchsuchen
+        tag_result = await db.execute(
+            select(Tag.name, func.count(document_tags.c.document_id).label("doc_count"))
+            .select_from(Tag)
+            .join(document_tags, Tag.id == document_tags.c.tag_id)
+            .join(Document, Document.id == document_tags.c.document_id)
+            .where(
+                Document.owner_id == user_id,
+                func.lower(Tag.name).like(query_pattern)
+            )
+            .group_by(Tag.name)
+            .order_by(desc("doc_count"))
+            .limit(5)
+        )
+        tag_rows = tag_result.all()
+
+        for tag_name, doc_count in tag_rows:
+            highlight = self._create_highlight(tag_name, query)
+            suggestions.append(SuggestItem(
+                text=tag_name,
+                type="tag",
+                score=0.9,
+                highlight=highlight
+            ))
+
+        # 3. Häufige Wörter aus extrahiertem Text (vereinfacht)
+        # Suche in FTS-Vektor nach passenden Begriffen
+        try:
+            text_result = await db.execute(
+                text("""
+                    SELECT DISTINCT word
+                    FROM (
+                        SELECT unnest(string_to_array(
+                            regexp_replace(lower(extracted_text), '[^a-zäöüß ]+', ' ', 'g'),
+                            ' '
+                        )) as word
+                        FROM documents
+                        WHERE owner_id = :user_id
+                        AND extracted_text IS NOT NULL
+                        AND length(extracted_text) > 100
+                        LIMIT 1000
+                    ) words
+                    WHERE word LIKE :pattern
+                    AND length(word) > 3
+                    LIMIT 5
+                """),
+                {"user_id": str(user_id), "pattern": query_pattern}
+            )
+            text_rows = text_result.all()
+
+            for (word,) in text_rows:
+                # Nur hinzufügen, wenn nicht schon als Dokument/Tag vorhanden
+                if not any(s.text.lower() == word for s in suggestions):
+                    highlight = self._create_highlight(word, query)
+                    suggestions.append(SuggestItem(
+                        text=word,
+                        type="term",
+                        score=0.7,
+                        highlight=highlight
+                    ))
+        except Exception as e:
+            # Wenn die Text-Suche fehlschlägt (z.B. SQLite), ignorieren
+            logger.debug("text_suggest_failed", error=str(e))
+
+        # Nach Score sortieren und limitieren
+        suggestions.sort(key=lambda x: x.score, reverse=True)
+        suggestions = suggestions[:limit]
+
+        logger.debug(
+            "suggestions_generated",
+            user_id=str(user_id),
+            query=query,
+            count=len(suggestions)
+        )
+
+        return {
+            "query": query,
+            "suggestions": suggestions,
+            "total": len(suggestions)
+        }
+
+    def _create_highlight(self, text: str, query: str) -> str:
+        """Erstellt HTML-Highlight fuer Suchbegriff."""
+        import re
+        pattern = re.compile(re.escape(query), re.IGNORECASE)
+        return pattern.sub(lambda m: f"<mark>{m.group()}</mark>", text)
+
 
 # Dependency Injection
 _search_service: Optional[SearchService] = None
