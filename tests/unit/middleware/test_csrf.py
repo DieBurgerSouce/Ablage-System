@@ -111,7 +111,8 @@ class TestCSRFMiddleware:
         response = client.post("/test")
 
         assert response.status_code == 403
-        assert "CSRF" in response.json()["detail"]
+        # Deutsche Feldnamen nach Refactoring
+        assert "CSRF" in response.json()["nachricht"]
 
     def test_post_request_fails_with_invalid_csrf_token(self, client):
         """POST-Request mit ungültigem CSRF-Token sollte fehlschlagen."""
@@ -458,23 +459,26 @@ class TestCSRFErrorMessages:
         response = client.post("/test")
 
         assert response.status_code == 403
-        detail = response.json()["detail"]
+        # Geändert zu 'nachricht' nach deutscher Feldnamen-Refactoring
+        nachricht = response.json()["nachricht"]
         # Prüfe auf deutsche Wörter
-        assert "CSRF" in detail
-        assert any(word in detail.lower() for word in ["bitte", "seite", "laden"])
+        assert "CSRF" in nachricht
+        assert any(word in nachricht.lower() for word in ["bitte", "seite", "laden"])
 
     def test_csrf_error_includes_hint(self, client):
         """CSRF-Fehler sollte Hinweis enthalten."""
         response = client.post("/test")
 
         data = response.json()
-        assert "hint" in data
-        assert CSRF_HEADER_NAME in data["hint"]
+        # Geändert zu 'hinweis' nach deutscher Feldnamen-Refactoring
+        assert "hinweis" in data
+        assert CSRF_HEADER_NAME in data["hinweis"]
 
     def test_csrf_error_includes_error_code(self, client):
         """CSRF-Fehler sollte Error-Code enthalten."""
         response = client.post("/test")
 
         data = response.json()
-        assert "error_code" in data
-        assert data["error_code"] == "CSRF_VALIDATION_FAILED"
+        # Geändert zu 'fehler_code' nach deutscher Feldnamen-Refactoring
+        assert "fehler_code" in data
+        assert data["fehler_code"] == "CSRF_VALIDATION_FAILED"

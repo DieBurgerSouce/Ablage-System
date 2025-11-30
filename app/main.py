@@ -46,6 +46,7 @@ from app.core.german_messages import HTTPErrors, StatusMessages
 from app.services.storage_service import cleanup_storage_service
 from app.core.idempotency import check_idempotency, get_idempotency_service
 from app.services.ocr_cache_service import get_ocr_cache_service, get_cached_ocr_result, cache_ocr_result
+from app.core.exception_handlers import register_exception_handlers
 
 logger = structlog.get_logger(__name__)
 
@@ -208,14 +209,120 @@ async def lifespan(app: FastAPI):
     logger.info("api_shutdown_complete")
 
 
+# OpenAPI Configuration
+OPENAPI_TAGS = [
+    {
+        "name": "auth",
+        "description": "Authentifizierung und Benutzerverwaltung. JWT-Token-basierte Authentifizierung mit 2FA-Unterstützung.",
+    },
+    {
+        "name": "documents",
+        "description": "Dokumentenverwaltung und -verarbeitung. Upload, Suche und Verwaltung von Dokumenten.",
+    },
+    {
+        "name": "ocr",
+        "description": "OCR-Verarbeitung mit mehreren Backends (DeepSeek, GOT-OCR, Surya). GPU-beschleunigte Textextraktion.",
+    },
+    {
+        "name": "health",
+        "description": "System-Health-Checks und Statusabfragen für Monitoring.",
+    },
+    {
+        "name": "admin",
+        "description": "Administratorfunktionen. Benutzerverwaltung, System-Dashboard und Audit-Logs.",
+    },
+    {
+        "name": "backup",
+        "description": "Backup- und Wiederherstellungsfunktionen. Automatische und manuelle Backups.",
+    },
+    {
+        "name": "gdpr",
+        "description": "DSGVO-Compliance-Funktionen. Datenexport, Löschung und Einwilligungsverwaltung.",
+    },
+    {
+        "name": "vault",
+        "description": "HashiCorp Vault Integration für sichere Secrets-Verwaltung.",
+    },
+    {
+        "name": "webhooks",
+        "description": "Webhook-Konfiguration für externe Integrationen.",
+    },
+    {
+        "name": "metrics",
+        "description": "Prometheus-Metriken und Business-Analytics.",
+    },
+]
+
+OPENAPI_DESCRIPTION = """
+# Ablage-System OCR API
+
+Enterprise-Lösung für deutsche Dokumentenverarbeitung mit GPU-beschleunigter OCR.
+
+## Hauptfunktionen
+
+- **Multi-Backend OCR**: DeepSeek-Janus-Pro, GOT-OCR 2.0, Surya+Docling
+- **Deutsche Textoptimierung**: Spezialisiert auf deutsche Dokumente mit Fraktur-Unterstützung
+- **GPU-Beschleunigung**: NVIDIA RTX 4080 optimiert für Echtzeit-Verarbeitung
+- **DSGVO-Konform**: Vollständige Compliance mit deutschem Datenschutzrecht
+
+## Authentifizierung
+
+Die API verwendet JWT-Bearer-Tokens. Tokens können über `/api/v1/auth/login` abgerufen werden.
+
+```
+Authorization: Bearer <token>
+```
+
+## Rate Limiting
+
+- Standard: 100 Anfragen/Minute
+- Upload: 50 Anfragen/Minute
+- Kritische Endpoints: 5-20 Anfragen/Minute
+
+## Fehlerbehandlung
+
+Alle Fehlerantworten folgen diesem Format:
+
+```json
+{
+  "fehler": "Kurze Fehlerbezeichnung",
+  "nachricht": "Detaillierte Beschreibung",
+  "status_code": 400,
+  "fehler_code": "E001",
+  "zeitstempel": "2025-01-01T12:00:00Z",
+  "pfad": "/api/v1/resource"
+}
+```
+
+## Support
+
+Bei Problemen erstellen Sie ein Issue im [GitHub Repository](https://github.com/ablage-system/ocr).
+"""
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Ablage-System OCR",
-    description="Enterprise German Document Processing with GPU Acceleration",
+    description=OPENAPI_DESCRIPTION,
     version="0.2.0-poc",
     docs_url="/docs",
     redoc_url="/redoc",
-    lifespan=lifespan
+    lifespan=lifespan,
+    openapi_tags=OPENAPI_TAGS,
+    contact={
+        "name": "Ablage-System Support",
+        "url": "https://github.com/ablage-system/ocr",
+        "email": "support@ablage-system.local",
+    },
+    license_info={
+        "name": "Proprietär",
+        "url": "https://ablage-system.local/license",
+    },
+    swagger_ui_parameters={
+        "defaultModelsExpandDepth": -1,
+        "docExpansion": "none",
+        "filter": True,
+        "showExtensions": True,
+    },
 )
 
 # Request Size Limit Middleware (MUSS als erstes, um DoS zu verhindern)
@@ -281,34 +388,8 @@ if settings.RATE_LIMIT_ENABLED:
 # Register rate limit exception handler
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler_german)
 
-
-# Exception handler for rate limit storage errors (fail-closed mode)
-@app.exception_handler(RateLimitStorageError)
-async def rate_limit_storage_error_handler(request: Request, exc: RateLimitStorageError):
-    """
-    Handle rate limit storage unavailable errors (fail-closed mode).
-
-    When Redis is unavailable and fail_closed=True, requests are denied
-    for security reasons (preventing brute-force during Redis outages).
-    """
-    logger.error(
-        "rate_limit_storage_unavailable",
-        path=request.url.path,
-        client_ip=request.client.host if request.client else None,
-        error=str(exc),
-    )
-    return JSONResponse(
-        status_code=503,
-        content={
-            "fehler": "Service vorübergehend nicht verfügbar",
-            "nachricht": str(exc),
-            "zeitstempel": datetime.now(timezone.utc).isoformat(),
-            "pfad": request.url.path,
-        },
-        headers={
-            "Retry-After": "60",  # Suggest retry in 1 minute
-        },
-    )
+# Register all unified exception handlers
+register_exception_handlers(app)
 
 # Add limiter state to app for SlowAPI decorators
 app.state.limiter = limiter
@@ -872,35 +953,6 @@ async def get_rate_limit_info_endpoint(request: Request):
     from app.core.rate_limiting import get_rate_limit_info
 
     return get_rate_limit_info(request)
-
-
-# ==================== Error Handlers ====================
-
-@app.exception_handler(404)
-async def not_found_handler(request, exc):
-    """Handle 404 errors"""
-    return JSONResponse(
-        status_code=404,
-        content={
-            "fehler": "Nicht gefunden",
-            "nachricht": f"Die angeforderte URL {request.url.path} wurde nicht gefunden",
-            "zeitstempel": datetime.now(timezone.utc).isoformat()
-        }
-    )
-
-
-@app.exception_handler(500)
-async def internal_error_handler(request, exc):
-    """Handle 500 errors"""
-    logger.error("internal_server_error", error=str(exc))
-    return JSONResponse(
-        status_code=500,
-        content={
-            "fehler": "Interner Serverfehler",
-            "nachricht": HTTPErrors.INTERNAL_ERROR,
-            "zeitstempel": datetime.now(timezone.utc).isoformat()
-        }
-    )
 
 
 # ==================== Main Entry Point ====================

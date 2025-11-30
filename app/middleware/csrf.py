@@ -316,9 +316,11 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content={
-                    "detail": "CSRF-Validierung fehlgeschlagen. Bitte laden Sie die Seite neu.",
-                    "error_code": "CSRF_VALIDATION_FAILED",
-                    "hint": f"Senden Sie das CSRF-Token im '{CSRF_HEADER_NAME}' Header",
+                    "fehler": "CSRF-Validierung fehlgeschlagen",
+                    "nachricht": "CSRF-Validierung fehlgeschlagen. Bitte laden Sie die Seite neu.",
+                    "status_code": 403,
+                    "fehler_code": "CSRF_VALIDATION_FAILED",
+                    "hinweis": f"Senden Sie das CSRF-Token im '{CSRF_HEADER_NAME}' Header",
                 }
             )
 

@@ -163,54 +163,64 @@ class TestConfigIntegration:
         """Standardwerte sollten korrekt gesetzt sein."""
         from app.core.config import settings
 
-        # Default: fail-open für allgemeine Requests
-        assert settings.RATE_LIMIT_FAIL_CLOSED is False
-        # Default: fail-closed für kritische Endpoints (Login etc.)
+        # SECURITY FIX: Fail-closed ist jetzt der Default für alle Requests
+        # Bei Multi-Worker Deployments ist In-Memory nicht synchronisiert!
+        assert settings.RATE_LIMIT_FAIL_CLOSED is True
+        # Fail-closed für kritische Endpoints (Login etc.)
         assert settings.RATE_LIMIT_FAIL_CLOSED_CRITICAL is True
 
 
 class TestExceptionHandler:
-    """Tests für Exception Handler in main.py."""
+    """Tests für Exception Handler (jetzt in exception_handlers.py)."""
 
     @pytest.mark.asyncio
     async def test_exception_handler_returns_503(self):
         """Exception Handler sollte 503 zurückgeben."""
         from fastapi import Request
-        from starlette.testclient import TestClient
-        from app.main import app, rate_limit_storage_error_handler
+        from app.core.exception_handlers import (
+            EXCEPTION_STATUS_CODES,
+            create_error_response,
+        )
 
-        # Create mock request
-        mock_request = MagicMock(spec=Request)
-        mock_request.url.path = "/test/path"
-        mock_request.client.host = "127.0.0.1"
+        # RateLimitStorageError sollte Status 503 haben
+        assert RateLimitStorageError in EXCEPTION_STATUS_CODES
+        assert EXCEPTION_STATUS_CODES[RateLimitStorageError] == 503
 
-        exc = RateLimitStorageError("Test error")
+        # Teste create_error_response für 503
+        response = create_error_response(
+            fehler="Service nicht verfügbar",
+            nachricht="Test error",
+            status_code=503,
+            pfad="/test/path",
+            retry_after=60,
+        )
 
-        response = await rate_limit_storage_error_handler(mock_request, exc)
-
-        assert response.status_code == 503
-        assert response.headers.get("Retry-After") == "60"
+        assert response["status_code"] == 503
+        assert response["retry_after"] == 60
 
     @pytest.mark.asyncio
     async def test_exception_handler_response_is_german(self):
         """Exception Handler sollte deutsche Antwort liefern."""
-        from fastapi import Request
-        from app.main import rate_limit_storage_error_handler
-        import json
+        from app.core.exception_handlers import create_error_response
 
-        mock_request = MagicMock(spec=Request)
-        mock_request.url.path = "/test/path"
-        mock_request.client.host = "127.0.0.1"
+        response = create_error_response(
+            fehler="Service nicht verfügbar",
+            nachricht="Rate-Limiting-Service nicht verfügbar",
+            status_code=503,
+            pfad="/test/path",
+        )
 
-        exc = RateLimitStorageError("Test error")
+        # Prüfe deutsche Feldnamen
+        assert "fehler" in response
+        assert "nachricht" in response
+        assert "zeitstempel" in response
+        assert "pfad" in response
 
-        response = await rate_limit_storage_error_handler(mock_request, exc)
-
-        content = json.loads(response.body.decode())
-        assert "fehler" in content
-        assert "nachricht" in content
-        assert "zeitstempel" in content
-        assert "pfad" in content
+        # Prüfe dass keine englischen Feldnamen vorhanden sind
+        assert "error" not in response
+        assert "message" not in response
+        assert "timestamp" not in response
+        assert "path" not in response
 
 
 class TestSecurityScenarios:

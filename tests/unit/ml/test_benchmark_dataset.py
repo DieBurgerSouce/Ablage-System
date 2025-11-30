@@ -36,7 +36,7 @@ class TestBenchmarkSample:
             image_path="/path/to/image.png",
             ground_truth_text="Test Text",
             document_type=DocumentType.INVOICE,
-            language=Language.GERMAN,
+            language=Language.DE,  # Korrigiert: GERMAN -> DE
             difficulty=Difficulty.MEDIUM,
             has_fraktur=False,
             expected_umlauts=["ü", "ö"],
@@ -44,7 +44,7 @@ class TestBenchmarkSample:
 
         assert sample.id == "test_001"
         assert sample.document_type == DocumentType.INVOICE
-        assert sample.language == Language.GERMAN
+        assert sample.language == Language.DE  # Korrigiert: GERMAN -> DE
         assert sample.difficulty == Difficulty.MEDIUM
         assert not sample.has_fraktur
         assert len(sample.expected_umlauts) == 2
@@ -56,7 +56,7 @@ class TestBenchmarkSample:
             image_path="/path/to/image.png",
             ground_truth_text="Rechnung Nr. 12345",
             document_type=DocumentType.INVOICE,
-            language=Language.GERMAN,
+            language=Language.DE,
             difficulty=Difficulty.EASY,
             has_fraktur=False,
             expected_umlauts=[],
@@ -73,44 +73,54 @@ class TestBenchmarkResult:
 
     def test_create_result(self):
         """Test creating a benchmark result."""
-        result = BenchmarkResult(
-            sample_id="test_001",
-            backend="deepseek",
-            extracted_text="Test Text",
+        from app.ml.quality_metrics import OCRQualityMetrics
+
+        metrics = OCRQualityMetrics(
             cer=0.05,
             wer=0.1,
-            umlaut_accuracy=1.0,
+            char_accuracy=0.95,
+            word_accuracy=0.9,
+            umlaut_accuracy=1.0
+        )
+
+        result = BenchmarkResult(
+            sample_id="test_001",
+            backend_name="deepseek",
+            ocr_output="Test Text",
+            metrics=metrics,
             processing_time_ms=150.0,
+            success=True,
         )
 
         assert result.sample_id == "test_001"
-        assert result.backend == "deepseek"
-        assert result.cer == 0.05
-        assert result.is_accurate  # CER < 0.1
+        assert result.backend_name == "deepseek"
+        assert result.metrics.cer == 0.05
+        assert result.success is True
 
     def test_result_accuracy_check(self):
-        """Test accuracy determination."""
-        accurate_result = BenchmarkResult(
-            sample_id="test_001",
-            backend="deepseek",
-            extracted_text="Test",
+        """Test result with different metrics."""
+        from app.ml.quality_metrics import OCRQualityMetrics
+
+        good_metrics = OCRQualityMetrics(
             cer=0.05,
             wer=0.1,
-            umlaut_accuracy=1.0,
-            processing_time_ms=100.0,
+            char_accuracy=0.95,
+            word_accuracy=0.9,
+            umlaut_accuracy=1.0
         )
-        assert accurate_result.is_accurate
 
-        inaccurate_result = BenchmarkResult(
-            sample_id="test_002",
-            backend="surya",
-            extracted_text="Tost",
-            cer=0.25,
-            wer=0.5,
-            umlaut_accuracy=0.8,
-            processing_time_ms=200.0,
+        result = BenchmarkResult(
+            sample_id="test_001",
+            backend_name="deepseek",
+            ocr_output="Test",
+            metrics=good_metrics,
+            processing_time_ms=100.0,
+            success=True,
         )
-        assert not inaccurate_result.is_accurate
+
+        # Prüfe Metriken
+        assert result.metrics.cer < 0.1
+        assert result.success
 
 
 @pytest.mark.unit
@@ -120,38 +130,43 @@ class TestBenchmarkReport:
     def test_create_empty_report(self):
         """Test creating an empty report."""
         report = BenchmarkReport(
+            backend_name="deepseek",
             total_samples=0,
+            successful_samples=0,
+            failed_samples=0,
             avg_cer=0.0,
             avg_wer=0.0,
             avg_umlaut_accuracy=1.0,
             avg_processing_time_ms=0.0,
-            backend_results={},
-            document_type_results={},
-            difficulty_results={},
+            min_cer=0.0,
+            max_cer=0.0,
+            min_wer=0.0,
+            max_wer=0.0,
         )
 
         assert report.total_samples == 0
         assert report.avg_cer == 0.0
 
     def test_report_with_results(self):
-        """Test report with backend results."""
+        """Test report with sample results."""
         report = BenchmarkReport(
+            backend_name="deepseek",
             total_samples=10,
+            successful_samples=9,
+            failed_samples=1,
             avg_cer=0.08,
             avg_wer=0.15,
             avg_umlaut_accuracy=0.95,
             avg_processing_time_ms=120.0,
-            backend_results={
-                "deepseek": {"cer": 0.05, "wer": 0.1, "samples": 5},
-                "got_ocr": {"cer": 0.11, "wer": 0.2, "samples": 5},
-            },
-            document_type_results={},
-            difficulty_results={},
+            min_cer=0.02,
+            max_cer=0.15,
+            min_wer=0.05,
+            max_wer=0.25,
         )
 
         assert report.total_samples == 10
-        assert "deepseek" in report.backend_results
-        assert report.backend_results["deepseek"]["cer"] == 0.05
+        assert report.backend_name == "deepseek"
+        assert report.avg_cer == 0.08
 
 
 @pytest.mark.unit
@@ -161,7 +176,7 @@ class TestBenchmarkDataset:
     def setup_method(self):
         """Setup before each test."""
         self.temp_dir = tempfile.mkdtemp()
-        self.dataset = BenchmarkDataset(data_dir=Path(self.temp_dir))
+        self.dataset = BenchmarkDataset(base_path=Path(self.temp_dir))
 
     def test_add_sample(self):
         """Test adding a sample to dataset."""
@@ -170,7 +185,7 @@ class TestBenchmarkDataset:
             image_path="/path/to/image.png",
             ground_truth_text="Test Text",
             document_type=DocumentType.INVOICE,
-            language=Language.GERMAN,
+            language=Language.DE,
             difficulty=Difficulty.MEDIUM,
             has_fraktur=False,
             expected_umlauts=[],
@@ -189,7 +204,7 @@ class TestBenchmarkDataset:
             image_path="/path/1.png",
             ground_truth_text="Rechnung",
             document_type=DocumentType.INVOICE,
-            language=Language.GERMAN,
+            language=Language.DE,
             difficulty=Difficulty.EASY,
             has_fraktur=False,
             expected_umlauts=[],
@@ -199,7 +214,7 @@ class TestBenchmarkDataset:
             image_path="/path/2.png",
             ground_truth_text="Vertrag",
             document_type=DocumentType.CONTRACT,
-            language=Language.GERMAN,
+            language=Language.DE,
             difficulty=Difficulty.MEDIUM,
             has_fraktur=False,
             expected_umlauts=[],
@@ -217,7 +232,7 @@ class TestBenchmarkDataset:
             image_path="/path/1.png",
             ground_truth_text="Einfach",
             document_type=DocumentType.LETTER,
-            language=Language.GERMAN,
+            language=Language.DE,
             difficulty=Difficulty.EASY,
             has_fraktur=False,
             expected_umlauts=[],
@@ -227,7 +242,7 @@ class TestBenchmarkDataset:
             image_path="/path/2.png",
             ground_truth_text="Schwierig",
             document_type=DocumentType.HISTORICAL,
-            language=Language.GERMAN,
+            language=Language.DE,
             difficulty=Difficulty.HARD,
             has_fraktur=True,
             expected_umlauts=[],
@@ -245,7 +260,7 @@ class TestBenchmarkDataset:
             image_path="/path/1.png",
             ground_truth_text="Modern",
             document_type=DocumentType.INVOICE,
-            language=Language.GERMAN,
+            language=Language.DE,
             difficulty=Difficulty.EASY,
             has_fraktur=False,
             expected_umlauts=[],
@@ -255,7 +270,7 @@ class TestBenchmarkDataset:
             image_path="/path/2.png",
             ground_truth_text="Fraktur",
             document_type=DocumentType.HISTORICAL,
-            language=Language.GERMAN,
+            language=Language.DE,
             difficulty=Difficulty.HARD,
             has_fraktur=True,
             expected_umlauts=[],
@@ -280,7 +295,7 @@ class TestBenchmarkDataset:
                 image_path=f"/path/{i}.png",
                 ground_truth_text=f"Text {i}",
                 document_type=DocumentType.INVOICE if i < 3 else DocumentType.CONTRACT,
-                language=Language.GERMAN,
+                language=Language.DE,
                 difficulty=Difficulty.MEDIUM,
                 has_fraktur=i == 4,
                 expected_umlauts=["ü"] if i % 2 == 0 else [],

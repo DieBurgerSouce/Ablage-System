@@ -302,12 +302,10 @@ class TestBackendSelection:
             surya_cls.side_effect = Exception("Init fehlgeschlagen")
 
             from app.services.backend_manager import BackendManager
-            manager = BackendManager()
 
-            with pytest.raises(RuntimeError, match="No OCR backends available"):
-                await manager.select_backend(
-                    image_path="/fake/path.pdf"
-                )
+            # BackendManager wirft RuntimeError im __init__ wenn keine Backends verfügbar
+            with pytest.raises(RuntimeError, match="Kein OCR-Backend"):
+                BackendManager()
 
 
 # ========================= Backend Selection with A/B Testing =========================

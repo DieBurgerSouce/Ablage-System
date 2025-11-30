@@ -7,6 +7,7 @@ from pathlib import Path
 import os
 
 from app.agents.ocr.surya_docling_agent import SuryaDoclingAgent
+from app.gpu_manager import GPUManager
 
 # Import A/B testing for backend selection experiments
 from app.ml.ab_testing import get_ab_test_manager
@@ -32,9 +33,19 @@ logger = structlog.get_logger(__name__)
 class BackendManager:
     """Manages OCR backend selection and processing."""
 
+    # VRAM-Anforderungen pro Backend in GB
+    BACKEND_VRAM_REQUIREMENTS = {
+        "deepseek": 12.0,
+        "got_ocr": 10.0,
+        "surya_gpu": 4.0,
+        "donut": 8.0,
+        "hybrid": 12.0,
+    }
+
     def __init__(self):
         """Initialize backend manager with available OCR agents."""
         self.backends = {}
+        self._gpu_manager = GPUManager()
         self._initialize_backends()
         logger.info("backend_manager_initialized", backend_count=len(self.backends))
 
@@ -110,6 +121,38 @@ class BackendManager:
             backend_count=len(self.backends)
         )
 
+    def _has_sufficient_vram(self, backend: str) -> bool:
+        """
+        Prüft ob genügend VRAM für ein GPU-Backend verfügbar ist.
+
+        Args:
+            backend: Name des Backends
+
+        Returns:
+            True wenn genügend VRAM verfügbar oder Backend CPU-basiert
+        """
+        required_gb = self.BACKEND_VRAM_REQUIREMENTS.get(backend, 0)
+        if required_gb == 0:
+            # CPU-Backend oder keine VRAM-Anforderung
+            return True
+
+        gpu_status = self._gpu_manager.get_detailed_status()
+        if not gpu_status.get("available", False):
+            return False
+
+        free_gb = gpu_status.get("free_memory_gb", 0)
+        has_vram = free_gb >= required_gb
+
+        if not has_vram:
+            logger.debug(
+                "insufficient_vram_for_backend",
+                backend=backend,
+                required_gb=required_gb,
+                free_gb=round(free_gb, 2),
+            )
+
+        return has_vram
+
     async def select_backend(
         self,
         image_path: str,
@@ -173,24 +216,37 @@ class BackendManager:
         file_size_mb = file_path.stat().st_size / (1024 * 1024)
         is_pdf = file_path.suffix.lower() == '.pdf'
 
-        # Prefer GPU-accelerated Surya if available
+        # Prefer GPU-accelerated Surya if available and has sufficient VRAM
         if prefer_gpu and "surya_gpu" in available_backends:
-            logger.info("backend_selected", backend="surya_gpu", reason="gpu_accelerated")
-            return "surya_gpu"
+            if self._has_sufficient_vram("surya_gpu"):
+                logger.info("backend_selected", backend="surya_gpu", reason="gpu_accelerated")
+                return "surya_gpu"
+            else:
+                logger.info(
+                    "backend_skipped_insufficient_vram",
+                    backend="surya_gpu",
+                    reason="falling_back_to_cpu"
+                )
 
         # If only CPU Surya is available, use it
         if len(available_backends) == 1 and "surya" in available_backends:
             logger.info("backend_selected", backend="surya", reason="only_available")
             return "surya"
 
-        # Complex documents with tables/layout → prefer DeepSeek or GOT-OCR
+        # Complex documents with tables/layout → prefer DeepSeek or GOT-OCR (with VRAM check)
         if detect_layout and prefer_gpu and TORCH_AVAILABLE:
             if "deepseek" in available_backends and file_size_mb > 5:
-                logger.info("backend_selected", backend="deepseek", reason="large_complex_document", file_size_mb=round(file_size_mb, 1))
-                return "deepseek"
-            elif "got_ocr" in available_backends:
-                logger.info("backend_selected", backend="got_ocr", reason="layout_detection")
-                return "got_ocr"
+                if self._has_sufficient_vram("deepseek"):
+                    logger.info("backend_selected", backend="deepseek", reason="large_complex_document", file_size_mb=round(file_size_mb, 1))
+                    return "deepseek"
+                else:
+                    logger.debug("deepseek_skipped_vram", reason="insufficient_vram")
+            if "got_ocr" in available_backends:
+                if self._has_sufficient_vram("got_ocr"):
+                    logger.info("backend_selected", backend="got_ocr", reason="layout_detection")
+                    return "got_ocr"
+                else:
+                    logger.debug("got_ocr_skipped_vram", reason="insufficient_vram")
 
         # PDF files → prefer GOT-OCR or Surya
         if is_pdf:
@@ -201,15 +257,21 @@ class BackendManager:
                 logger.info("backend_selected", backend="surya", reason="pdf_processing")
                 return "surya"
 
-        # German text with potential Fraktur → prefer DeepSeek
+        # German text with potential Fraktur → prefer DeepSeek (with VRAM check)
         if language == "de" and "deepseek" in available_backends:
-            logger.info("backend_selected", backend="deepseek", reason="german_text")
-            return "deepseek"
+            if self._has_sufficient_vram("deepseek"):
+                logger.info("backend_selected", backend="deepseek", reason="german_text")
+                return "deepseek"
+            else:
+                logger.debug("deepseek_skipped_vram_german", reason="insufficient_vram")
 
-        # Non-German languages → prefer DONUT for multilingual support (100+ languages)
+        # Non-German languages → prefer DONUT for multilingual support (with VRAM check)
         if language != "de" and "donut" in available_backends:
-            logger.info("backend_selected", backend="donut", reason="multilingual_support", language=language)
-            return "donut"
+            if self._has_sufficient_vram("donut"):
+                logger.info("backend_selected", backend="donut", reason="multilingual_support", language=language)
+                return "donut"
+            else:
+                logger.debug("donut_skipped_vram", reason="insufficient_vram")
 
         # Default to fastest available
         if "surya" in available_backends:

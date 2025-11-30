@@ -138,6 +138,14 @@ class TestBackendSelection:
                 "deepseek": mock_deepseek,
                 "got_ocr": mock_got_ocr
             }
+            # Mock GPUManager to simulate sufficient VRAM
+            manager._gpu_manager = Mock()
+            manager._gpu_manager.get_detailed_status.return_value = {
+                "available": True,
+                "free_memory_gb": 16.0,  # Genug für alle Backends
+                "total_memory_gb": 16.0,
+                "device_name": "Mock GPU"
+            }
             yield manager, tmp_path
 
     @pytest.fixture
@@ -225,13 +233,10 @@ class TestBackendSelection:
             mock_surya.side_effect = Exception("Init failed")
 
             from app.services.backend_manager import BackendManager
-            manager = BackendManager()
 
-            test_file = tmp_path / "test.png"
-            test_file.write_bytes(b'test')
-
-            with pytest.raises(RuntimeError, match="No OCR backends available"):
-                await manager.select_backend(str(test_file))
+            # BackendManager wirft RuntimeError bereits im __init__ wenn keine Backends verfügbar
+            with pytest.raises(RuntimeError, match="Kein OCR-Backend"):
+                BackendManager()
 
 
 class TestBackendProcessing:
@@ -249,6 +254,11 @@ class TestBackendProcessing:
                 "confidence": 0.95,
                 "success": True
             })
+            # Health-Check muss korrekte Werte zurückgeben
+            mock_backend.get_status.return_value = {
+                "status": "ready",
+                "gpu_required": False,  # CPU-Backend
+            }
             mock_surya.return_value = mock_backend
 
             from app.services.backend_manager import BackendManager
@@ -285,7 +295,8 @@ class TestBackendProcessing:
         test_file = tmp_path / "test.png"
         test_file.write_bytes(b'test')
 
-        with pytest.raises(ValueError, match="not available"):
+        # Deutsche Fehlermeldung: "Backend '...' nicht verfügbar"
+        with pytest.raises(ValueError, match="nicht verfügbar"):
             await manager.process_with_backend(
                 "nonexistent_backend",
                 str(test_file)
@@ -322,6 +333,11 @@ class TestBackendProcessing:
 
             mock_backend = Mock()
             mock_backend.process = AsyncMock(side_effect=RuntimeError("OCR failed"))
+            # Health-Check Status setzen
+            mock_backend.get_status.return_value = {
+                "status": "ready",
+                "gpu_required": False,
+            }
             mock_surya.return_value = mock_backend
 
             from app.services.backend_manager import BackendManager
@@ -330,6 +346,7 @@ class TestBackendProcessing:
             test_file = tmp_path / "test.png"
             test_file.write_bytes(b'test')
 
+            # Nach Fallback-Logik: "Alle OCR-Backends fehlgeschlagen" mit dem ursprünglichen Fehler
             with pytest.raises(RuntimeError, match="OCR failed"):
                 await manager.process_with_backend("surya", str(test_file))
 
@@ -473,6 +490,15 @@ class TestBackendSelectionGerman:
             from app.services.backend_manager import BackendManager
             manager = BackendManager()
 
+            # Mock GPUManager to simulate sufficient VRAM
+            manager._gpu_manager = Mock()
+            manager._gpu_manager.get_detailed_status.return_value = {
+                "available": True,
+                "free_memory_gb": 16.0,  # Genug für alle Backends
+                "total_memory_gb": 16.0,
+                "device_name": "Mock GPU"
+            }
+
             # Remove surya_gpu to test German-specific selection
             if "surya_gpu" in manager.backends:
                 del manager.backends["surya_gpu"]
@@ -504,11 +530,10 @@ class TestBackendSelectionGerman:
         """Test that English text can use Surya."""
         manager, tmp_path = manager_with_german_support
 
-        # Remove DeepSeek to force Surya selection
-        if "deepseek" in manager.backends:
-            del manager.backends["deepseek"]
-        if "got_ocr" in manager.backends:
-            del manager.backends["got_ocr"]
+        # Remove alle GPU-Backends to force Surya selection
+        for backend in ["deepseek", "got_ocr", "donut", "hybrid", "surya_gpu"]:
+            if backend in manager.backends:
+                del manager.backends[backend]
 
         test_file = tmp_path / "english.png"
         test_file.write_bytes(b'test')
@@ -536,6 +561,11 @@ class TestBackendManagerMultipleFiles:
                 "confidence": 0.9,
                 "success": True
             })
+            # Health-Check Status für CPU-Backend
+            mock_backend.get_status.return_value = {
+                "status": "ready",
+                "gpu_required": False,
+            }
             mock_surya.return_value = mock_backend
 
             from app.services.backend_manager import BackendManager

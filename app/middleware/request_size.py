@@ -104,13 +104,16 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                     return JSONResponse(
                         status_code=413,
                         content={
-                            "error": "request_too_large",
+                            "fehler": "Anfrage zu groß",
                             "nachricht": f"Anfrage zu groß: {self._format_size(size)}. "
                                         f"Maximum: {self._format_size(max_size)}",
-                            "max_bytes": max_size,
-                            "max_formatted": self._format_size(max_size),
-                            "received_bytes": size,
-                            "received_formatted": self._format_size(size),
+                            "status_code": 413,
+                            "details": {
+                                "max_bytes": max_size,
+                                "max_formatiert": self._format_size(max_size),
+                                "empfangen_bytes": size,
+                                "empfangen_formatiert": self._format_size(size),
+                            },
                         },
                         headers={
                             "X-Max-Content-Length": str(max_size),
