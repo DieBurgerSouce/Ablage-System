@@ -40,6 +40,7 @@ from app.core.rate_limiting import (
     RateLimitStorageError,
 )
 from app.middleware import RateLimitMiddleware, DevelopmentRateLimitBypass, SecurityHeadersMiddleware, RequestSizeLimitMiddleware, CSRFMiddleware, get_csrf_token_response, IPBlockingMiddleware
+from app.middleware.profiling import ProfilingMiddleware
 from app.core.config import settings
 from app.core.monitoring import get_system_monitor, PerformanceTimer
 from app.core.german_messages import HTTPErrors, StatusMessages
@@ -298,7 +299,7 @@ async def lifespan(app: FastAPI):
 OPENAPI_TAGS = [
     {
         "name": "auth",
-        "description": "Authentifizierung und Benutzerverwaltung. JWT-Token-basierte Authentifizierung mit 2FA-Unterstützung.",
+        "description": "Authentifizierung und Benutzerverwaltung. JWT-Token-basierte Authentifizierung mit 2FA-Unterstuetzung.",
     },
     {
         "name": "documents",
@@ -310,7 +311,7 @@ OPENAPI_TAGS = [
     },
     {
         "name": "health",
-        "description": "System-Health-Checks und Statusabfragen für Monitoring.",
+        "description": "System-Health-Checks und Statusabfragen fuer Monitoring.",
     },
     {
         "name": "admin",
@@ -322,47 +323,108 @@ OPENAPI_TAGS = [
     },
     {
         "name": "gdpr",
-        "description": "DSGVO-Compliance-Funktionen. Datenexport, Löschung und Einwilligungsverwaltung.",
+        "description": "DSGVO-Compliance-Funktionen. Datenexport, Loeschung und Einwilligungsverwaltung.",
     },
     {
         "name": "vault",
-        "description": "HashiCorp Vault Integration für sichere Secrets-Verwaltung.",
+        "description": "HashiCorp Vault Integration fuer sichere Secrets-Verwaltung.",
     },
     {
         "name": "webhooks",
-        "description": "Webhook-Konfiguration für externe Integrationen.",
+        "description": "Webhook-Konfiguration fuer externe Integrationen und Event-Benachrichtigungen.",
     },
     {
         "name": "metrics",
-        "description": "Prometheus-Metriken und Business-Analytics.",
+        "description": "Prometheus-Metriken und Business-Analytics fuer Monitoring.",
+    },
+    {
+        "name": "errors",
+        "description": "Error-Tracking und -Statistiken. Ueberwachung von Fehlern nach Kategorie mit Alert-Management.",
+    },
+    {
+        "name": "profiling",
+        "description": "Performance-Profiling. Endpoint-Latenz, Hot Paths, Memory-Snapshots und Optimierungsempfehlungen.",
+    },
+    {
+        "name": "search",
+        "description": "Volltextsuche und semantische Suche in Dokumenten mit Elasticsearch-Backend.",
+    },
+    {
+        "name": "api-keys",
+        "description": "API-Schluessel-Verwaltung fuer programmatischen Zugriff und Integrationen.",
+    },
+    {
+        "name": "batch-jobs",
+        "description": "Batch-Verarbeitung und Job-Queue-Management fuer grosse Dokumentenmengen.",
+    },
+    {
+        "name": "sharing",
+        "description": "Dokumentenfreigabe und Zugriffssteuerung fuer Collaboration.",
+    },
+    {
+        "name": "settings",
+        "description": "Benutzer- und Systemeinstellungen. Praeferenzen und Konfiguration.",
+    },
+    {
+        "name": "favorites",
+        "description": "Favoriten-Verwaltung fuer schnellen Zugriff auf wichtige Dokumente.",
+    },
+    {
+        "name": "security",
+        "description": "Security Audit und Sicherheitspruefungen. Konfigurationsanalyse und Empfehlungen.",
+    },
+    {
+        "name": "readiness",
+        "description": "Production Readiness Checks. Deployment-Vorbereitung und System-Validierung.",
+    },
+    {
+        "name": "log-analytics",
+        "description": "Log-Analyse und Monitoring. Trend-Erkennung, Anomalien und Dashboard-Metriken.",
     },
 ]
 
 OPENAPI_DESCRIPTION = """
 # Ablage-System OCR API
 
-Enterprise-Lösung für deutsche Dokumentenverarbeitung mit GPU-beschleunigter OCR.
+Enterprise-Loesung fuer deutsche Dokumentenverarbeitung mit GPU-beschleunigter OCR.
 
 ## Hauptfunktionen
 
-- **Multi-Backend OCR**: DeepSeek-Janus-Pro, GOT-OCR 2.0, Surya+Docling
-- **Deutsche Textoptimierung**: Spezialisiert auf deutsche Dokumente mit Fraktur-Unterstützung
-- **GPU-Beschleunigung**: NVIDIA RTX 4080 optimiert für Echtzeit-Verarbeitung
-- **DSGVO-Konform**: Vollständige Compliance mit deutschem Datenschutzrecht
+| Feature | Beschreibung |
+|---------|--------------|
+| **Multi-Backend OCR** | DeepSeek-Janus-Pro, GOT-OCR 2.0, Surya+Docling |
+| **Deutsche Textoptimierung** | Spezialisiert auf deutsche Dokumente mit Fraktur-Unterstuetzung |
+| **GPU-Beschleunigung** | NVIDIA RTX 4080 optimiert fuer Echtzeit-Verarbeitung |
+| **DSGVO-Konform** | Vollstaendige Compliance mit deutschem Datenschutzrecht |
+| **Performance-Monitoring** | Integriertes Profiling, Error-Tracking und Prometheus-Metriken |
+| **Enterprise Security** | JWT-Auth, 2FA, API-Keys, Rate-Limiting, Audit-Logs |
 
 ## Authentifizierung
 
-Die API verwendet JWT-Bearer-Tokens. Tokens können über `/api/v1/auth/login` abgerufen werden.
+Die API unterstuetzt mehrere Authentifizierungsmethoden:
 
+### JWT Bearer Token (Standard)
 ```
-Authorization: Bearer <token>
+Authorization: Bearer <access_token>
 ```
+Tokens werden ueber `/api/v1/auth/login` abgerufen.
+
+### API-Schluessel (fuer Integrationen)
+```
+X-API-Key: <api_key>
+```
+API-Schluessel werden ueber `/api/v1/api-keys` verwaltet.
 
 ## Rate Limiting
 
-- Standard: 100 Anfragen/Minute
-- Upload: 50 Anfragen/Minute
-- Kritische Endpoints: 5-20 Anfragen/Minute
+| Endpoint-Typ | Limit |
+|--------------|-------|
+| Standard | 100 Anfragen/Minute |
+| Upload | 50 Anfragen/Minute |
+| Auth | 20 Anfragen/Minute |
+| Admin | 30 Anfragen/Minute |
+
+Bei Ueberschreitung wird HTTP 429 zurueckgegeben mit `Retry-After` Header.
 
 ## Fehlerbehandlung
 
@@ -371,13 +433,28 @@ Alle Fehlerantworten folgen diesem Format:
 ```json
 {
   "fehler": "Kurze Fehlerbezeichnung",
-  "nachricht": "Detaillierte Beschreibung",
+  "nachricht": "Detaillierte Beschreibung auf Deutsch",
   "status_code": 400,
   "fehler_code": "E001",
   "zeitstempel": "2025-01-01T12:00:00Z",
-  "pfad": "/api/v1/resource"
+  "pfad": "/api/v1/resource",
+  "request_id": "req-abc123"
 }
 ```
+
+## Monitoring
+
+- **Health Checks**: `/api/v1/health/*`
+- **Prometheus Metriken**: `/api/v1/metrics/prometheus`
+- **Error-Statistiken**: `/api/v1/errors/stats`
+- **Performance-Profiling**: `/api/v1/profiling/summary`
+
+## Webhooks
+
+Konfigurieren Sie Webhooks fuer Event-Benachrichtigungen:
+- `document.uploaded` - Dokument hochgeladen
+- `document.processed` - OCR abgeschlossen
+- `document.failed` - Verarbeitung fehlgeschlagen
 
 ## Support
 
@@ -388,7 +465,7 @@ Bei Problemen erstellen Sie ein Issue im [GitHub Repository](https://github.com/
 app = FastAPI(
     title="Ablage-System OCR",
     description=OPENAPI_DESCRIPTION,
-    version="0.2.0-poc",
+    version="0.3.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -457,6 +534,13 @@ app.add_middleware(
     bearer_token_bypass=True,  # API-Clients mit Bearer Token überspringen
 )
 
+# Add profiling middleware
+# Erfasst Request-Timings fuer Performance-Analyse
+app.add_middleware(
+    ProfilingMiddleware,
+    track_memory=settings.DEBUG,  # Memory-Tracking nur in Debug-Modus
+)
+
 # Add rate limiting middleware
 if settings.DEBUG:
     # Bypass rate limiting in development
@@ -492,6 +576,11 @@ from app.api.v1.api_keys import router as api_keys_router
 from app.api.v1.batch_jobs import router as batch_jobs_router
 from app.api.v1.sharing import router as sharing_router
 from app.api.v1.settings import router as settings_router
+from app.api.v1.errors import router as errors_router
+from app.api.v1.profiling import router as profiling_router
+from app.api.v1.security import router as security_router
+from app.api.v1.readiness import router as readiness_router
+from app.api.v1.log_analytics import router as log_analytics_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -514,6 +603,11 @@ app.include_router(batch_jobs_router, prefix="/api/v1")
 app.include_router(sharing_router, prefix="/api/v1")
 app.include_router(settings_router, prefix="/api/v1")
 app.include_router(agents.router, prefix="/api/v1")
+app.include_router(errors_router, prefix="/api/v1")
+app.include_router(profiling_router, prefix="/api/v1")
+app.include_router(security_router, prefix="/api/v1")
+app.include_router(readiness_router, prefix="/api/v1")
+app.include_router(log_analytics_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================
