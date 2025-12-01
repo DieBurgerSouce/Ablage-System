@@ -25,8 +25,10 @@ class OCRBackend(str, Enum):
     AUTO = "auto"
     DEEPSEEK = "deepseek"
     GOT_OCR = "got_ocr"
+    DONUT = "donut"
     SURYA = "surya"
     SURYA_GPU = "surya_gpu"
+    HYBRID = "hybrid"
 
 
 class DocumentType(str, Enum):
@@ -694,6 +696,36 @@ class SortOrder(str, Enum):
     """Sort order options."""
     ASC = "asc"
     DESC = "desc"
+
+
+class FavoriteSortField(str, Enum):
+    """Sort fields for favorites listing."""
+    PRIORITY = "priority"
+    CREATED_AT = "created_at"
+
+
+class UserSortField(str, Enum):
+    """Sort fields for user administration."""
+    CREATED_AT = "created_at"
+    EMAIL = "email"
+    USERNAME = "username"
+    LAST_LOGIN = "last_login"
+
+
+class AuditSortField(str, Enum):
+    """Sort fields for audit log listing."""
+    CREATED_AT = "created_at"
+    USER_ID = "user_id"
+    ACTION = "action"
+    RESOURCE_TYPE = "resource_type"
+
+
+class JobSortField(str, Enum):
+    """Sort fields for job administration."""
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+    STATUS = "status"
+    PRIORITY = "priority"
 
 
 class SearchFilters(BaseModel):

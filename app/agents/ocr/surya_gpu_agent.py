@@ -101,9 +101,50 @@ class SuryaGPUAgent(OCRAgent):
             self._models_loaded = True
             logger.info("All Surya 0.17.0 models loaded successfully with GPU optimization")
 
+            # Warm-Up: Compile CUDA kernels to avoid first-inference latency
+            self._warmup_models()
+
         except Exception as e:
             logger.error("surya_models_load_failed", error=str(e))
             raise
+
+    def _warmup_models(self):
+        """Warm up models with dummy inference to compile CUDA kernels.
+
+        This avoids 2-3 seconds latency on first real inference by
+        pre-compiling CUDA kernels and JIT-compiling PyTorch operations.
+        """
+        if not torch.cuda.is_available():
+            return
+
+        try:
+            import time
+            start = time.perf_counter()
+            logger.info("model_warmup_starting")
+
+            # Create small dummy image (224x224 RGB)
+            dummy_image = Image.new('RGB', (224, 224), color='white')
+
+            # Run detection warmup
+            with torch.no_grad():
+                try:
+                    _ = self._det_predictor([dummy_image])
+                except Exception:
+                    pass  # Ignore errors during warmup
+
+            # Synchronize CUDA to ensure kernels are compiled
+            torch.cuda.synchronize()
+
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            logger.info(
+                "model_warmup_completed",
+                warmup_time_ms=round(elapsed_ms, 1),
+                message="CUDA kernels compiled - first inference will be fast"
+            )
+
+        except Exception as e:
+            # Warmup failure is not critical - just log it
+            logger.warning("model_warmup_failed", error=str(e))
 
     def _load_image(self, image_path: str) -> List[Image.Image]:
         """Load image(s) from file path, handling both PDFs and images."""

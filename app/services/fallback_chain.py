@@ -119,8 +119,17 @@ class FallbackChain:
             strengths=["formulas", "tables", "markdown", "fast"]
         ),
         BackendConfig(
-            name="surya-gpu",
+            name="donut",
             priority=3,
+            requires_gpu=True,
+            vram_gb=8.0,
+            min_confidence_threshold=0.60,
+            timeout_seconds=90.0,
+            strengths=["multilingual", "100_languages", "cyrillic", "polish", "russian"]
+        ),
+        BackendConfig(
+            name="surya-gpu",
+            priority=4,
             requires_gpu=True,
             vram_gb=4.0,
             min_confidence_threshold=0.60,
@@ -129,7 +138,7 @@ class FallbackChain:
         ),
         BackendConfig(
             name="surya",
-            priority=4,
+            priority=5,
             requires_gpu=False,
             vram_gb=0.0,
             min_confidence_threshold=0.50,

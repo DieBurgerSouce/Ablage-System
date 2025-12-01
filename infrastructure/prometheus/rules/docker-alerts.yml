@@ -1,0 +1,201 @@
+# Prometheus Alerting Rules fuer Docker Container Metriken
+# Alle Beschreibungen auf Deutsch fuer Betriebsteam
+
+groups:
+  - name: docker_alerts
+    rules:
+      # ===================================================================
+      # Container Availability
+      # ===================================================================
+
+      # Kritisch: Container abgestuerzt und neugestartet
+      - alert: ContainerRestarting
+        expr: |
+          increase(container_restart_count_total[15m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+          component: docker
+        annotations:
+          summary: "Container startet wiederholt neu"
+          description: "Container {{ $labels.name }} auf {{ $labels.instance }} wurde {{ $value }} mal in 15 Minuten neugestartet."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/container-restart"
+
+      # Kritisch: Container nicht laufend
+      - alert: ContainerNotRunning
+        expr: |
+          container_state{state!="running"} == 1
+        for: 5m
+        labels:
+          severity: critical
+          component: docker
+        annotations:
+          summary: "Container nicht aktiv"
+          description: "Container {{ $labels.name }} ist im Status {{ $labels.state }} statt running."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/container-down"
+
+      # ===================================================================
+      # Container Resource Alerts
+      # ===================================================================
+
+      # Warnung: Container CPU Throttling
+      - alert: ContainerCPUThrottling
+        expr: |
+          rate(container_cpu_cfs_throttled_seconds_total[5m]) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          component: docker
+          resource: cpu
+        annotations:
+          summary: "Container CPU wird gedrosselt"
+          description: "Container {{ $labels.name }} wird CPU-gedrosselt. CPU-Limits ueberpruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/container-cpu-throttle"
+
+      # Warnung: Container Memory hoch (>85% des Limits)
+      - alert: ContainerMemoryHigh
+        expr: |
+          container_memory_usage_bytes / container_spec_memory_limit_bytes * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          component: docker
+          resource: memory
+        annotations:
+          summary: "Container Memory nahe am Limit"
+          description: "Container {{ $labels.name }} nutzt {{ $value | humanize }}% des Memory-Limits."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/container-memory-high"
+
+      # Kritisch: Container Memory kritisch (>95% des Limits)
+      - alert: ContainerMemoryCritical
+        expr: |
+          container_memory_usage_bytes / container_spec_memory_limit_bytes * 100 > 95
+        for: 5m
+        labels:
+          severity: critical
+          component: docker
+          resource: memory
+        annotations:
+          summary: "KRITISCH: Container Memory fast erschoepft"
+          description: "Container {{ $labels.name }} nutzt {{ $value | humanize }}% des Memory-Limits. OOM-Kill droht."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/container-memory-critical"
+
+      # Kritisch: Container OOM Kill
+      - alert: ContainerOOMKilled
+        expr: |
+          increase(container_oom_events_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: docker
+          resource: memory
+        annotations:
+          summary: "Container durch OOM-Killer beendet"
+          description: "Container {{ $labels.name }} wurde durch OOM-Killer beendet. Memory-Limits erhoehen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/container-oom"
+
+      # ===================================================================
+      # Application Container Alerts
+      # ===================================================================
+
+      # Backend Container nicht gesund
+      - alert: BackendContainerUnhealthy
+        expr: |
+          container_health_status{name=~".*backend.*", status!="healthy"} == 1
+        for: 2m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Backend Container nicht gesund"
+          description: "Backend Container {{ $labels.name }} meldet Status {{ $labels.status }}."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/backend-unhealthy"
+
+      # Worker Container nicht gesund
+      - alert: WorkerContainerUnhealthy
+        expr: |
+          container_health_status{name=~".*worker.*", status!="healthy"} == 1
+        for: 5m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: "Worker Container nicht gesund"
+          description: "Worker Container {{ $labels.name }} meldet Status {{ $labels.status }}."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/worker-unhealthy"
+
+      # Database Container nicht gesund
+      - alert: DatabaseContainerUnhealthy
+        expr: |
+          container_health_status{name=~".*postgres.*|.*redis.*", status!="healthy"} == 1
+        for: 2m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Datenbank-Container nicht gesund"
+          description: "Datenbank-Container {{ $labels.name }} meldet Status {{ $labels.status }}."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/database-unhealthy"
+
+      # ===================================================================
+      # GPU Container Alerts (fuer OCR Workers)
+      # ===================================================================
+
+      # GPU Container hat keinen Zugriff auf GPU
+      - alert: GPUContainerNoAccess
+        expr: |
+          container_gpu_memory_total_bytes{name=~".*worker.*"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: gpu
+        annotations:
+          summary: "Worker Container hat keinen GPU-Zugriff"
+          description: "Container {{ $labels.name }} hat keinen Zugriff auf GPU. NVIDIA Runtime pruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-access"
+
+      # GPU Memory im Container hoch
+      - alert: ContainerGPUMemoryHigh
+        expr: |
+          container_gpu_memory_usage_bytes / container_gpu_memory_total_bytes * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: gpu
+          resource: gpu_memory
+        annotations:
+          summary: "Container GPU Memory hoch"
+          description: "Container {{ $labels.name }} nutzt {{ $value | humanize }}% des GPU-Speichers."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/container-gpu-memory"
+
+      # ===================================================================
+      # Network & Storage Alerts
+      # ===================================================================
+
+      # Container Netzwerk-Fehler
+      - alert: ContainerNetworkErrors
+        expr: |
+          rate(container_network_receive_errors_total[5m]) + rate(container_network_transmit_errors_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: docker
+          resource: network
+        annotations:
+          summary: "Container Netzwerk-Fehler"
+          description: "Container {{ $labels.name }} hat erhoehte Netzwerk-Fehlerrate: {{ $value }}/s."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/container-network"
+
+      # Container Filesystem fast voll
+      - alert: ContainerFilesystemFull
+        expr: |
+          container_fs_usage_bytes / container_fs_limit_bytes * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+          component: docker
+          resource: disk
+        annotations:
+          summary: "Container Filesystem fast voll"
+          description: "Filesystem im Container {{ $labels.name }} ist zu {{ $value | humanize }}% belegt."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/container-fs"

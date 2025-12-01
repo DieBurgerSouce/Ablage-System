@@ -23,6 +23,7 @@ from app.db.schemas import (
     JobListResponse,
     JobActionResponse,
     QueueClearResponse,
+    JobSortField,
     SortOrder,
 )
 from app.services.admin.job_admin_service import JobAdminService
@@ -49,7 +50,7 @@ async def list_jobs(
     has_error: Optional[bool] = Query(None, description="Nur Auftraege mit/ohne Fehler"),
     created_from: Optional[datetime] = Query(None, description="Erstellt ab (ISO-Format)"),
     created_to: Optional[datetime] = Query(None, description="Erstellt bis (ISO-Format)"),
-    sort_by: str = Query("created_at", description="Sortierfeld"),
+    sort_by: JobSortField = Query(JobSortField.CREATED_AT, description="Sortierfeld"),
     sort_order: SortOrder = Query(SortOrder.DESC, description="Sortierrichtung"),
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),

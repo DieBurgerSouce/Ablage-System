@@ -27,6 +27,7 @@ from app.db.schemas import (
     FavoriteResponse,
     FavoriteWithDocumentResponse,
     FavoriteListResponse,
+    FavoriteSortField,
 )
 
 logger = structlog.get_logger(__name__)
@@ -115,7 +116,7 @@ async def add_favorite(
 async def list_favorites(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    sort_by: str = Query("priority", description="Sortierung: priority, created_at"),
+    sort_by: FavoriteSortField = Query(FavoriteSortField.PRIORITY, description="Sortierung"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> FavoriteListResponse:
@@ -136,7 +137,7 @@ async def list_favorites(
     )
 
     # Sortierung
-    if sort_by == "priority":
+    if sort_by == FavoriteSortField.PRIORITY:
         query = query.order_by(DocumentFavorite.priority.desc(), DocumentFavorite.created_at.desc())
     else:
         query = query.order_by(DocumentFavorite.created_at.desc())

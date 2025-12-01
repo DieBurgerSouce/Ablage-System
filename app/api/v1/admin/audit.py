@@ -22,6 +22,7 @@ from app.db.schemas import (
     AuditLogView,
     AuditLogFilters,
     AuditLogListResponse,
+    AuditSortField,
     SortOrder,
 )
 from app.services.admin.audit_service import AuditService
@@ -49,7 +50,7 @@ async def list_audit_logs(
     from_date: Optional[datetime] = Query(None, description="Ab Datum (ISO-Format)"),
     to_date: Optional[datetime] = Query(None, description="Bis Datum (ISO-Format)"),
     success: Optional[bool] = Query(None, description="Nur erfolgreiche/fehlgeschlagene"),
-    sort_by: str = Query("created_at", description="Sortierfeld"),
+    sort_by: AuditSortField = Query(AuditSortField.CREATED_AT, description="Sortierfeld"),
     sort_order: SortOrder = Query(SortOrder.DESC, description="Sortierrichtung"),
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
