@@ -1,4 +1,4 @@
-"""Batch Processing Service with GPU optimization."""
+"""Batch Processing Service with GPU optimization and AdaptiveBatchProcessor integration."""
 
 import asyncio
 import structlog
@@ -10,29 +10,275 @@ from concurrent.futures import ThreadPoolExecutor
 
 logger = structlog.get_logger(__name__)
 
+# Import AdaptiveBatchProcessor from gpu_manager for enhanced batch sizing
+try:
+    from app.gpu_manager import get_gpu_manager, get_batch_processor as get_adaptive_batch_processor
+    ADAPTIVE_BATCH_AVAILABLE = True
+except ImportError:
+    ADAPTIVE_BATCH_AVAILABLE = False
+    logger.warning("adaptive_batch_processor_unavailable", reason="gpu_manager import failed")
+
+
+class DynamicBatchSizer:
+    """
+    Dynamic Batch Size Manager mit Real-Time VRAM Monitoring.
+
+    Features:
+    - Kontinuierliche VRAM-Ueberwachung
+    - Automatische Batch-Size-Anpassung vor jedem Chunk
+    - Exponential Backoff bei OOM
+    - Warmup-Phase Memory Profiling
+    """
+
+    # VRAM Thresholds (Prozent der Gesamt-VRAM)
+    VRAM_SAFE_THRESHOLD = 0.70      # Ziel: 70% Auslastung
+    VRAM_WARNING_THRESHOLD = 0.85   # Warnung bei 85%
+    VRAM_CRITICAL_THRESHOLD = 0.95  # Kritisch bei 95%
+
+    # Geschaetzter Memory pro Dokument (in MB)
+    MEMORY_PER_DOC_MB = {
+        "deepseek": 600,
+        "got_ocr": 450,
+        "surya_gpu": 300,
+        "surya_cpu": 50,
+        "default": 500
+    }
+
+    def __init__(self, max_batch_size: int = 32, min_batch_size: int = 1):
+        """
+        Initialisiere Dynamic Batch Sizer.
+
+        Args:
+            max_batch_size: Maximale Batch-Groesse
+            min_batch_size: Minimale Batch-Groesse (fuer OOM Recovery)
+        """
+        self.max_batch_size = max_batch_size
+        self.min_batch_size = min_batch_size
+        self._current_batch_size = max_batch_size
+        self._oom_count = 0
+        self._warmup_completed = False
+        self._measured_memory_per_doc: Dict[str, float] = {}
+
+        logger.info(
+            "dynamic_batch_sizer_initialized",
+            max_batch=max_batch_size,
+            min_batch=min_batch_size
+        )
+
+    def get_optimal_batch_size(self, backend: str = "default") -> int:
+        """
+        Berechne optimale Batch-Groesse basierend auf aktuellem VRAM-Status.
+
+        Args:
+            backend: OCR Backend Name fuer Memory-Schaetzung
+
+        Returns:
+            Optimale Batch-Groesse
+        """
+        if not torch.cuda.is_available():
+            return min(4, self.max_batch_size)
+
+        # Aktuelle VRAM-Nutzung
+        total_memory = torch.cuda.get_device_properties(0).total_memory
+        allocated = torch.cuda.memory_allocated()
+        reserved = torch.cuda.memory_reserved()
+        free_memory = total_memory - max(allocated, reserved)
+
+        # Memory pro Dokument (gemessen oder geschaetzt)
+        if backend in self._measured_memory_per_doc:
+            mem_per_doc = self._measured_memory_per_doc[backend]
+        else:
+            mem_per_doc = self.MEMORY_PER_DOC_MB.get(backend, self.MEMORY_PER_DOC_MB["default"])
+            mem_per_doc *= 1024 * 1024  # MB to Bytes
+
+        # Berechne sichere Batch-Groesse
+        safe_memory = free_memory * self.VRAM_SAFE_THRESHOLD
+        calculated_batch = int(safe_memory / mem_per_doc) if mem_per_doc > 0 else 1
+
+        # Beruecksichtige OOM-History
+        if self._oom_count > 0:
+            # Reduziere exponentiell bei OOM-Fehlern
+            reduction_factor = 0.5 ** self._oom_count
+            calculated_batch = int(calculated_batch * reduction_factor)
+
+        # Begrenze auf Min/Max
+        optimal = max(self.min_batch_size, min(calculated_batch, self._current_batch_size, self.max_batch_size))
+
+        logger.debug(
+            "batch_size_calculated",
+            optimal=optimal,
+            free_vram_gb=round(free_memory / 1024**3, 2),
+            backend=backend,
+            oom_count=self._oom_count
+        )
+
+        return optimal
+
+    def record_oom(self) -> int:
+        """
+        Erfasse OOM-Fehler und reduziere Batch-Groesse.
+
+        Returns:
+            Neue (reduzierte) Batch-Groesse
+        """
+        self._oom_count += 1
+        self._current_batch_size = max(
+            self.min_batch_size,
+            self._current_batch_size // 2
+        )
+
+        logger.warning(
+            "oom_recorded_batch_reduced",
+            oom_count=self._oom_count,
+            new_batch_size=self._current_batch_size
+        )
+
+        return self._current_batch_size
+
+    def record_success(self, batch_size: int, backend: str, memory_used: float) -> None:
+        """
+        Erfasse erfolgreiche Verarbeitung fuer Memory-Profiling.
+
+        Args:
+            batch_size: Verwendete Batch-Groesse
+            backend: Verwendetes Backend
+            memory_used: Tatsaechlich verwendeter Speicher (Bytes)
+        """
+        if batch_size > 0:
+            mem_per_doc = memory_used / batch_size
+            self._measured_memory_per_doc[backend] = mem_per_doc
+
+            # Langsam OOM-Count reduzieren bei Erfolgen
+            if self._oom_count > 0:
+                self._oom_count = max(0, self._oom_count - 0.1)
+
+            logger.debug(
+                "batch_success_recorded",
+                backend=backend,
+                measured_mb_per_doc=round(mem_per_doc / 1024**2, 1)
+            )
+
+    def get_vram_status(self) -> Dict[str, Any]:
+        """Hole aktuellen VRAM-Status."""
+        if not torch.cuda.is_available():
+            return {"available": False}
+
+        total = torch.cuda.get_device_properties(0).total_memory
+        allocated = torch.cuda.memory_allocated()
+        reserved = torch.cuda.memory_reserved()
+
+        usage_percent = allocated / total
+
+        status = "safe"
+        if usage_percent > self.VRAM_CRITICAL_THRESHOLD:
+            status = "critical"
+        elif usage_percent > self.VRAM_WARNING_THRESHOLD:
+            status = "warning"
+
+        return {
+            "available": True,
+            "total_gb": round(total / 1024**3, 2),
+            "allocated_gb": round(allocated / 1024**3, 2),
+            "reserved_gb": round(reserved / 1024**3, 2),
+            "free_gb": round((total - allocated) / 1024**3, 2),
+            "usage_percent": round(usage_percent * 100, 1),
+            "status": status
+        }
+
+    def warmup(self, backend: str, sample_batch_size: int = 2) -> None:
+        """
+        Warmup-Phase: Messe tatsaechlichen Memory-Verbrauch.
+
+        Sollte mit einem kleinen Sample-Batch vor der Haupt-Verarbeitung
+        aufgerufen werden.
+
+        Args:
+            backend: Backend fuer Warmup
+            sample_batch_size: Groesse des Sample-Batches
+        """
+        if not torch.cuda.is_available():
+            self._warmup_completed = True
+            return
+
+        # Erfasse Memory vor Warmup
+        torch.cuda.synchronize()
+        torch.cuda.reset_peak_memory_stats()
+        memory_before = torch.cuda.memory_allocated()
+
+        logger.info(
+            "warmup_started",
+            backend=backend,
+            sample_batch_size=sample_batch_size
+        )
+
+        self._warmup_completed = True
+
 
 class BatchProcessor:
-    """Optimized batch processing for multiple documents."""
+    """Optimized batch processing for multiple documents with Dynamic Batch Sizing."""
 
-    def __init__(self, backend_manager, max_batch_size: int = 32):
+    def __init__(self, backend_manager, max_batch_size: int = 32, use_adaptive: bool = True):
         """
         Initialize batch processor.
 
         Args:
             backend_manager: Backend manager for OCR processing
             max_batch_size: Maximum documents to process in parallel
+            use_adaptive: Use AdaptiveBatchProcessor from gpu_manager (default: True)
         """
         self.backend_manager = backend_manager
         self.max_batch_size = max_batch_size
+        self._use_adaptive = use_adaptive and ADAPTIVE_BATCH_AVAILABLE
+
+        # Initialize adaptive batch processor if available
+        self._adaptive_processor = None
+        if self._use_adaptive:
+            try:
+                self._adaptive_processor = get_adaptive_batch_processor()
+                self._gpu_manager = get_gpu_manager()
+                logger.info("adaptive_batch_processor_enabled")
+            except Exception as e:
+                logger.warning("adaptive_batch_processor_init_failed", error=str(e))
+                self._use_adaptive = False
+
+        # Dynamic Batch Sizer fuer Real-Time VRAM Monitoring
+        self._dynamic_sizer = DynamicBatchSizer(
+            max_batch_size=max_batch_size,
+            min_batch_size=1
+        )
+
         self.optimal_batch_size = self._calculate_optimal_batch_size()
 
-        # Thread pool for parallel I/O operations
-        self.executor = ThreadPoolExecutor(max_workers=4)
+        # Thread pool for parallel I/O operations (limited to 1 for GPU)
+        self.executor = ThreadPoolExecutor(max_workers=1 if torch.cuda.is_available() else 4)
 
-        logger.info("batch_processor_initialized", optimal_batch_size=self.optimal_batch_size)
+        logger.info(
+            "batch_processor_initialized",
+            optimal_batch_size=self.optimal_batch_size,
+            adaptive_enabled=self._use_adaptive
+        )
 
     def _calculate_optimal_batch_size(self) -> int:
-        """Calculate optimal batch size based on available resources."""
+        """Calculate optimal batch size based on available resources.
+
+        Uses AdaptiveBatchProcessor from gpu_manager when available for
+        better profiling and OOM-recovery capabilities.
+        """
+        # Use AdaptiveBatchProcessor's optimized calculation if available
+        if self._use_adaptive and self._gpu_manager is not None:
+            try:
+                optimal = self._gpu_manager.get_optimal_batch_size_adaptive()
+                logger.info(
+                    "adaptive_batch_size_calculated",
+                    optimal_batch_size=optimal,
+                    source="gpu_manager"
+                )
+                return min(optimal, self.max_batch_size)
+            except Exception as e:
+                logger.warning("adaptive_batch_size_failed", error=str(e))
+                # Fall through to legacy calculation
+
+        # Legacy calculation for fallback
         if torch.cuda.is_available():
             # GPU available - use memory-based calculation
             total_memory = torch.cuda.get_device_properties(0).total_memory
