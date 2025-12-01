@@ -83,6 +83,7 @@ python-dotenv==1.0.0
 pyyaml==6.0.1
 cachetools==5.3.2  # TTL-based caching for token blacklist
 user-agents==2.2.0  # User-Agent parsing for session management
+orjson==3.10.12  # Fast JSON serialization (10-15% faster than stdlib json)
 
 # PDF Export
 reportlab==4.0.9  # PDF generation for document export

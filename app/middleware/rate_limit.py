@@ -25,7 +25,8 @@ from app.core.rate_limiting import (
     ip_whitelist,
     rate_limit_metrics,
     get_remote_address,
-    RedisRateLimitStorage
+    RedisRateLimitStorage,
+    RateLimitStorageError
 )
 from app.core.config import settings
 
@@ -165,11 +166,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         )
 
         # Check rate limit
-        is_allowed, retry_after = await self._check_rate_limit(
-            request=request,
-            rate_limit=rate_limit,
-            user=user
-        )
+        try:
+            is_allowed, retry_after = await self._check_rate_limit(
+                request=request,
+                rate_limit=rate_limit,
+                user=user
+            )
+        except RateLimitStorageError as e:
+            # Fail-closed: Return 503 Service Unavailable
+            return self._create_fail_closed_error_response(request, str(e))
 
         if not is_allowed:
             rate_limit_metrics.record_rate_limited()
@@ -267,6 +272,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         Returns:
             Tuple of (is_allowed, retry_after_seconds)
+
+        Note:
+            - Uses settings.RATE_LIMIT_FAIL_CLOSED for general endpoints
+            - Uses settings.RATE_LIMIT_FAIL_CLOSED_CRITICAL for auth endpoints
         """
         # Build rate limit key
         if user and hasattr(user, "id"):
@@ -278,12 +287,20 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         window_start = int(datetime.now(timezone.utc).timestamp() / rate_limit["window"])
         rate_limit_key = f"ratelimit:{key_prefix}:{request.url.path}:{window_start}"
 
+        # Determine fail_closed mode based on endpoint criticality
+        is_critical_endpoint = self._is_critical_endpoint(request.url.path)
+        fail_closed = (
+            settings.RATE_LIMIT_FAIL_CLOSED_CRITICAL if is_critical_endpoint
+            else settings.RATE_LIMIT_FAIL_CLOSED
+        )
+
         # Check Redis if available
         if self.redis_storage and self.redis_storage.is_available:
             try:
                 current_count = await self.redis_storage.increment(
                     rate_limit_key,
-                    rate_limit["window"]
+                    rate_limit["window"],
+                    fail_closed=fail_closed
                 )
 
                 if current_count > rate_limit["limit"]:
@@ -295,6 +312,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
                 return True, None
 
+            except RateLimitStorageError:
+                # Fail-closed: deny request when Redis unavailable for security
+                logger.warning(
+                    "rate_limit_fail_closed_triggered",
+                    path=request.url.path,
+                    is_critical=is_critical_endpoint,
+                    action="denying_request"
+                )
+                rate_limit_metrics.record_error()
+                raise  # Re-raise to be handled by exception handler in main.py
+
             except Exception as e:
                 logger.error(
                     "rate_limit_check_error",
@@ -302,16 +330,111 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     error=str(e)
                 )
                 rate_limit_metrics.record_error()
+                if fail_closed:
+                    raise RateLimitStorageError(
+                        "Rate-Limiting-Service vorübergehend nicht verfügbar. "
+                        "Bitte versuchen Sie es später erneut."
+                    ) from e
                 # Fail-open: allow request on error
                 return True, None
 
-        # If Redis not available, allow request (graceful degradation)
+        # If Redis not available
+        if fail_closed:
+            logger.warning(
+                "rate_limit_redis_unavailable_fail_closed",
+                path=request.url.path,
+                is_critical=is_critical_endpoint,
+                action="denying_request"
+            )
+            raise RateLimitStorageError(
+                "Rate-Limiting-Service vorübergehend nicht verfügbar. "
+                "Bitte versuchen Sie es später erneut."
+            )
+
+        # Fail-open: allow request (graceful degradation)
         logger.warning(
             "rate_limit_redis_unavailable",
             path=request.url.path,
             action="allowing_request"
         )
         return True, None
+
+    def _is_critical_endpoint(self, path: str) -> bool:
+        """
+        Check if endpoint is security-critical (requires stricter fail-closed).
+
+        Critical endpoints are those where bypassing rate limits could lead
+        to security issues (brute-force attacks, credential stuffing, etc.).
+
+        Args:
+            path: Request path
+
+        Returns:
+            True if endpoint is security-critical
+        """
+        critical_prefixes = [
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/auth/reset-password",
+            "/api/v1/auth/2fa",
+            "/api/v1/api-keys",  # API key creation
+        ]
+        return any(path.startswith(prefix) for prefix in critical_prefixes)
+
+    def _create_fail_closed_error_response(
+        self,
+        request: Request,
+        error_message: str
+    ) -> JSONResponse:
+        """
+        Create 503 error response for fail-closed mode.
+
+        Args:
+            request: FastAPI request object
+            error_message: Error message to include
+
+        Returns:
+            JSONResponse with 503 status and German error message
+        """
+        user = getattr(request.state, "user", None)
+        user_id = user.id if user else None
+
+        # Log fail-closed event
+        logger.warning(
+            "rate_limit_fail_closed_response",
+            path=request.url.path,
+            user_id=user_id,
+            ip=get_remote_address(request)
+        )
+
+        error_response = {
+            "fehler": "Service vorübergehend nicht verfügbar",
+            "nachricht": (
+                "Der Rate-Limiting-Service ist vorübergehend nicht erreichbar. "
+                "Bitte versuchen Sie es in 60 Sekunden erneut."
+            ),
+            "details": {
+                "pfad": request.url.path,
+                "wiederholen_nach_sekunden": 60,
+                "zeitstempel": datetime.now(timezone.utc).isoformat()
+            },
+            "hinweis": (
+                "Dies ist eine Sicherheitsmaßnahme. Bei anhaltenden Problemen "
+                "kontaktieren Sie bitte den Support."
+            )
+        }
+
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=error_response,
+            headers={
+                "Retry-After": "60",
+                "X-RateLimit-Reset": str(
+                    int(datetime.now(timezone.utc).timestamp()) + 60
+                ),
+                "Content-Type": "application/json; charset=utf-8"
+            }
+        )
 
     def _create_rate_limit_error_response(
         self,

@@ -17,7 +17,7 @@ from pydantic import BaseModel
 import structlog
 
 from app.core.config import settings, VaultClient
-from app.core.security import get_current_admin_user
+from app.api.dependencies import get_current_superuser
 from app.db.models import User
 
 logger = structlog.get_logger(__name__)
@@ -68,7 +68,7 @@ class SecretMetadataResponse(BaseModel):
     description="Zeigt den aktuellen Vault-Verbindungsstatus an.",
 )
 async def get_vault_status(
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_superuser),
 ) -> VaultStatusResponse:
     """
     Ruft den aktuellen Vault-Status ab.
@@ -189,20 +189,36 @@ async def vault_health_check() -> VaultHealthResponse:
         # Prüfe KV-Engine
         secrets_status = "unknown"
         try:
-            vault._client.secrets.kv.v2.list_secrets(
-                path="",
-                mount_point=settings.VAULT_MOUNT_POINT,
-            )
-            secrets_status = "healthy"
-        except Exception:
+            # Safe check for client existence
+            if not hasattr(vault, '_client') or vault._client is None:
+                secrets_status = "unhealthy"
+                logger.warning("vault_client_not_initialized")
+            else:
+                vault._client.secrets.kv.v2.list_secrets(
+                    path="",
+                    mount_point=settings.VAULT_MOUNT_POINT,
+                )
+                secrets_status = "healthy"
+        except PermissionError as e:
+            logger.warning("vault_kv_permission_denied", error=str(e))
+            secrets_status = "permission_denied"
+        except Exception as e:
+            logger.warning("vault_kv_check_failed", error_type=type(e).__name__, error=str(e))
             secrets_status = "unhealthy"
 
         # Prüfe Transit-Engine
         transit_status = "unknown"
         try:
-            vault._client.secrets.transit.list_keys()
-            transit_status = "healthy"
-        except Exception:
+            if hasattr(vault, '_client') and vault._client is not None:
+                vault._client.secrets.transit.list_keys()
+                transit_status = "healthy"
+            else:
+                transit_status = "client_unavailable"
+        except PermissionError as e:
+            logger.debug("vault_transit_permission_denied", error=str(e))
+            transit_status = "not_configured"
+        except Exception as e:
+            logger.debug("vault_transit_check_failed", error_type=type(e).__name__, error=str(e))
             transit_status = "not_configured"
 
         # Bestimme Gesamtstatus
@@ -245,7 +261,7 @@ async def vault_health_check() -> VaultHealthResponse:
 )
 async def get_secret_metadata(
     path: str,
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_superuser),
 ) -> SecretMetadataResponse:
     """
     Ruft Metadaten eines Secrets ab.
@@ -335,7 +351,7 @@ async def get_secret_metadata(
     description="Lädt Secrets aus Vault neu (für Runtime-Rotation).",
 )
 async def refresh_secrets(
-    current_user: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_superuser),
 ) -> Dict[str, Any]:
     """
     Lädt Secrets aus Vault neu.

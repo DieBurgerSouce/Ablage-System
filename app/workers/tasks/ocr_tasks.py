@@ -385,13 +385,8 @@ def process_document_task(
                 )
                 raise
 
-    # Run async processing
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        return loop.run_until_complete(process_async())
-    finally:
-        loop.close()
+    # Run async processing - use asyncio.run() for automatic cleanup
+    return asyncio.run(process_async())
 
 
 @celery_app.task(bind=True, base=GPUTask, name="app.workers.tasks.ocr_tasks.batch_process_task")
@@ -419,6 +414,14 @@ def batch_process_task(
     Returns:
         Dictionary with batch processing results
     """
+    # Validate batch size to prevent resource abuse
+    MAX_BATCH_SIZE = 500
+    if len(document_ids) > MAX_BATCH_SIZE:
+        raise ValueError(
+            f"Batch zu gross: maximal {MAX_BATCH_SIZE} Dokumente pro Batch, "
+            f"erhalten: {len(document_ids)}"
+        )
+
     task_id = self.request.id
     start_time = datetime.utcnow()
     total_docs = len(document_ids)
@@ -762,12 +765,8 @@ def extract_metadata_task(
 
             return metadata
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        return loop.run_until_complete(extract_async())
-    finally:
-        loop.close()
+    # Run async processing - use asyncio.run() for automatic cleanup
+    return asyncio.run(extract_async())
 
 
 # ==================== Maintenance Tasks ====================
@@ -842,12 +841,102 @@ def cleanup_task(self, hours_old: int = 24) -> Dict[str, Any]:
                 "cutoff_time": cutoff_time.isoformat(),
             }
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        return loop.run_until_complete(cleanup_async())
-    finally:
-        loop.close()
+    # Run async processing - use asyncio.run() for automatic cleanup
+    return asyncio.run(cleanup_async())
+
+
+# =============================================================================
+# WORKFLOW TASK - Full document processing pipeline
+# =============================================================================
+
+
+@celery_app.task(bind=True, base=GPUTask, name="app.workers.tasks.ocr_tasks.process_document_workflow")
+def process_document_workflow(
+    self,
+    document_id: str,
+    file_path: str,
+    priority: int = 0,
+    options: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """Execute complete document processing workflow.
+
+    Orchestrates the full pipeline:
+    1. Classification - Document type detection
+    2. Pre-Processing - Image enhancement
+    3. OCR - Text extraction
+    4. Post-Processing - German text validation
+    5. QA - Quality assurance
+    6. Storage - Result persistence
+
+    Args:
+        document_id: Document UUID as string
+        file_path: Path to document file
+        priority: Processing priority (0=normal, higher=more urgent)
+        options: Optional processing options
+
+    Returns:
+        Dictionary with complete workflow results
+    """
+    task_id = self.request.id
+    options = options or {}
+
+    logger.info(
+        "workflow_task_starting",
+        task_id=task_id,
+        document_id=document_id,
+        file_path=file_path,
+        priority=priority
+    )
+
+    # Use process_document_task for the main processing
+    # It already handles OCR + German validation + embedding generation
+    result = process_document_task(
+        document_id=document_id,
+        backend=options.get("backend", "auto"),
+        language=options.get("language", "de"),
+        detect_layout=options.get("detect_layout", True),
+        detect_fraktur=options.get("detect_fraktur", False),
+        priority="high" if priority > 0 else "normal"
+    )
+
+    # Extract metadata after OCR if successful
+    if result.get("success"):
+        try:
+            metadata_result = extract_metadata_task(document_id=document_id)
+            result["metadata"] = metadata_result
+        except Exception as e:
+            logger.warning(
+                "workflow_metadata_extraction_failed",
+                task_id=task_id,
+                document_id=document_id,
+                error=str(e)
+            )
+            result["metadata"] = None
+
+    logger.info(
+        "workflow_task_completed",
+        task_id=task_id,
+        document_id=document_id,
+        success=result.get("success", False)
+    )
+
+    return {
+        "workflow": "full_processing",
+        "task_id": task_id,
+        **result
+    }
+
+
+# =============================================================================
+# ALIASES FOR BACKWARDS COMPATIBILITY
+# =============================================================================
+
+# These aliases are used by app/api/v1/agents.py
+process_document_gpu = process_document_task
+batch_process_documents = batch_process_task
+
+
+# ==================== System Metrics Task ====================
 
 
 @celery_app.task(bind=True, base=CPUTask, name="app.workers.tasks.ocr_tasks.update_system_metrics")
@@ -924,9 +1013,5 @@ def update_system_metrics(self) -> Dict[str, Any]:
 
             return metrics_data
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        return loop.run_until_complete(store_metrics())
-    finally:
-        loop.close()
+    # Run async processing - use asyncio.run() for automatic cleanup
+    return asyncio.run(store_metrics())

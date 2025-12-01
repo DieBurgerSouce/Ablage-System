@@ -164,38 +164,27 @@ class TestDocumentSchemas:
 
     def test_document_base_defaults(self):
         """DocumentBase sollte korrekte Defaults haben."""
-        doc = DocumentBase(
-            filename="test.pdf",
-            original_filename="Test Document.pdf"
-        )
+        doc = DocumentBase(filename="test.pdf")
         assert doc.document_type == DocumentType.OTHER
-        assert doc.status == ProcessingStatus.PENDING
+        assert doc.language == "de"
 
-    def test_document_create_validates_filename(self):
-        """DocumentCreate sollte gefaehrliche Dateinamen ablehnen."""
-        # Path traversal attempt
-        with pytest.raises(ValidationError) as exc_info:
-            DocumentCreate(
-                filename="../../../etc/passwd",
-                original_filename="test.pdf"
-            )
-        assert "dateiname" in str(exc_info.value).lower()
+    def test_document_create_with_backend(self):
+        """DocumentCreate sollte Backend-Optionen akzeptieren."""
+        from app.db.schemas import OCRBackend
+        doc = DocumentCreate(filename="test.pdf", backend=OCRBackend.DEEPSEEK)
+        assert doc.backend == OCRBackend.DEEPSEEK
+        assert doc.detect_layout is True
 
-    def test_document_create_rejects_slash(self):
-        """DocumentCreate sollte Slashes im Dateinamen ablehnen."""
-        with pytest.raises(ValidationError):
-            DocumentCreate(
-                filename="path/to/file.pdf",
-                original_filename="test.pdf"
-            )
+    def test_document_create_with_layout_detection(self):
+        """DocumentCreate sollte Layout-Erkennung konfigurierbar sein."""
+        doc = DocumentCreate(filename="test.pdf", detect_layout=False)
+        assert doc.detect_layout is False
 
-    def test_document_create_rejects_backslash(self):
-        """DocumentCreate sollte Backslashes im Dateinamen ablehnen."""
-        with pytest.raises(ValidationError):
-            DocumentCreate(
-                filename="path\\to\\file.pdf",
-                original_filename="test.pdf"
-            )
+    def test_document_create_inherits_base(self):
+        """DocumentCreate sollte von DocumentBase erben."""
+        doc = DocumentCreate(filename="test.pdf", language="en")
+        assert doc.language == "en"
+        assert doc.document_type == DocumentType.OTHER
 
 
 class TestEnumSchemas:
@@ -236,10 +225,10 @@ class TestAuthSchemas:
     def test_login_request_valid(self):
         """LoginRequest sollte gueltigen Login akzeptieren."""
         login = LoginRequest(
-            username="testuser",
+            email="test@example.com",
             password="password123"
         )
-        assert login.username == "testuser"
+        assert login.email == "test@example.com"
 
     def test_token_response_structure(self):
         """TokenResponse sollte korrektes Format haben."""

@@ -250,7 +250,17 @@ class EnsembleVotingService:
         )
 
     def _get_weight(self, backend: str) -> BackendWeight:
-        """Hole oder erstelle Backend-Gewicht."""
+        """Hole oder erstelle Backend-Gewicht.
+
+        Laedt existierendes Gewicht aus Cache oder erstellt neues mit
+        statischem Gewicht aus Konfiguration (default: 1.0).
+
+        Args:
+            backend: Backend-Name (z.B. 'deepseek', 'got_ocr')
+
+        Returns:
+            BackendWeight-Instanz mit aktuellem Gewicht und Statistiken
+        """
         if backend not in self._backend_weights:
             static = self._static_weights.get(backend, 1.0)
             self._backend_weights[backend] = BackendWeight(

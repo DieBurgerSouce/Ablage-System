@@ -763,3 +763,237 @@ async def change_ocr_backend(
         "reprocess_started": request.reprocess,
         "message": result_message
     }
+
+
+# =============================================================================
+# OCR Cache Management
+# =============================================================================
+
+
+@router.get(
+    "/documents/{document_id}/cache",
+    summary="OCR-Cache Status",
+    description="Zeigt den Cache-Status fuer ein Dokument."
+)
+async def get_ocr_cache_status(
+    document_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Zeigt den OCR-Cache-Status fuer ein Dokument.
+
+    Gibt Informationen ueber gecachte OCR-Ergebnisse zurueck:
+    - Ob ein Cache-Eintrag existiert
+    - Wann der Cache erstellt wurde
+    - Welches Backend verwendet wurde
+    - Cache-Groesse
+
+    Nuetzlich fuer:
+    - Debugging von OCR-Problemen
+    - Verstaendnis warum bestimmte Ergebnisse zurueckgegeben werden
+    - Cache-Management und Invalidierung
+    """
+    from sqlalchemy import select
+    from app.db.models import Document
+    from app.services.ocr_cache_service import get_ocr_cache_service
+
+    # Dokument laden und Berechtigung pruefen
+    doc_query = select(Document).where(Document.id == document_id)
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
+
+    if document.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Keine Berechtigung fuer dieses Dokument"
+        )
+
+    cache_service = get_ocr_cache_service()
+
+    cache_status = {
+        "document_id": str(document_id),
+        "cache_entries": [],
+        "total_cached": 0
+    }
+
+    try:
+        # Cache-Keys fuer dieses Dokument abrufen
+        # Format: ocr_cache:{file_hash}:{backend}:{language}
+        # Wir pruefen auch den document_id basierten Cache
+
+        from app.core.redis_state import RedisStateManager
+        redis_manager = RedisStateManager.get_instance()
+        await redis_manager._ensure_connection()
+
+        # Suche nach Cache-Eintraegen fuer dieses Dokument
+        pattern = f"ocr_result:{document_id}:*"
+        cursor = 0
+        cache_keys = []
+
+        while True:
+            cursor, keys = await redis_manager._redis.scan(cursor=cursor, match=pattern, count=100)
+            cache_keys.extend(keys)
+            if cursor == 0:
+                break
+
+        for key in cache_keys:
+            try:
+                ttl = await redis_manager._redis.ttl(key)
+                entry = {
+                    "key": key.decode() if isinstance(key, bytes) else key,
+                    "ttl_seconds": ttl if ttl > 0 else None,
+                    "expires_in_hours": round(ttl / 3600, 1) if ttl > 0 else None
+                }
+                cache_status["cache_entries"].append(entry)
+            except Exception as e:
+                logger.warning("cache_key_inspection_failed", key=str(key), error=str(e))
+
+        cache_status["total_cached"] = len(cache_keys)
+
+        # Zusaetzlich: File-Hash basierten Cache pruefen
+        if document.file_hash:
+            hash_pattern = f"ocr_cache:{document.file_hash}:*"
+            cursor = 0
+
+            while True:
+                cursor, keys = await redis_manager._redis.scan(cursor=cursor, match=hash_pattern, count=100)
+                for key in keys:
+                    try:
+                        ttl = await redis_manager._redis.ttl(key)
+                        key_str = key.decode() if isinstance(key, bytes) else key
+                        # Backend aus Key extrahieren
+                        parts = key_str.split(":")
+                        backend = parts[2] if len(parts) > 2 else "unknown"
+                        language = parts[3] if len(parts) > 3 else "unknown"
+
+                        entry = {
+                            "key": key_str,
+                            "backend": backend,
+                            "language": language,
+                            "ttl_seconds": ttl if ttl > 0 else None,
+                            "expires_in_hours": round(ttl / 3600, 1) if ttl > 0 else None,
+                            "type": "file_hash_cache"
+                        }
+                        cache_status["cache_entries"].append(entry)
+                        cache_status["total_cached"] += 1
+                    except Exception as e:
+                        logger.warning("hash_cache_inspection_failed", key=str(key), error=str(e))
+                if cursor == 0:
+                    break
+
+    except Exception as e:
+        logger.warning("cache_status_error", document_id=str(document_id), error=str(e))
+        cache_status["error"] = f"Cache-Abfrage fehlgeschlagen: {str(e)}"
+
+    # Dokument-Metadaten hinzufuegen
+    cache_status["document_info"] = {
+        "filename": document.original_filename,
+        "status": document.status,
+        "ocr_backend_used": document.ocr_backend_used,
+        "has_extracted_text": bool(document.extracted_text),
+        "file_hash": document.file_hash[:16] + "..." if document.file_hash else None
+    }
+
+    logger.debug(
+        "ocr_cache_status_retrieved",
+        document_id=str(document_id),
+        cache_entries=cache_status["total_cached"]
+    )
+
+    return cache_status
+
+
+@router.delete(
+    "/documents/{document_id}/cache",
+    summary="OCR-Cache loeschen",
+    description="Loescht den OCR-Cache fuer ein Dokument."
+)
+async def invalidate_ocr_cache(
+    document_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Loescht den OCR-Cache fuer ein Dokument.
+
+    Nuetzlich wenn:
+    - OCR-Ergebnisse fehlerhaft waren
+    - Dokument aktualisiert wurde
+    - Neuverarbeitung mit anderem Backend gewuenscht
+    """
+    from sqlalchemy import select
+    from app.db.models import Document
+    from app.services.ocr_cache_service import get_ocr_cache_service
+
+    # Dokument laden
+    doc_query = select(Document).where(Document.id == document_id)
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
+
+    if document.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Keine Berechtigung fuer dieses Dokument"
+        )
+
+    deleted_count = 0
+
+    try:
+        from app.core.redis_state import RedisStateManager
+        redis_manager = RedisStateManager.get_instance()
+        await redis_manager._ensure_connection()
+
+        # Document-ID basierte Cache-Keys loeschen
+        pattern = f"ocr_result:{document_id}:*"
+        cursor = 0
+
+        while True:
+            cursor, keys = await redis_manager._redis.scan(cursor=cursor, match=pattern, count=100)
+            if keys:
+                await redis_manager._redis.delete(*keys)
+                deleted_count += len(keys)
+            if cursor == 0:
+                break
+
+        # File-Hash basierte Cache-Keys loeschen
+        if document.file_hash:
+            hash_pattern = f"ocr_cache:{document.file_hash}:*"
+            cursor = 0
+
+            while True:
+                cursor, keys = await redis_manager._redis.scan(cursor=cursor, match=hash_pattern, count=100)
+                if keys:
+                    await redis_manager._redis.delete(*keys)
+                    deleted_count += len(keys)
+                if cursor == 0:
+                    break
+
+        # OCR Cache Service auch invalidieren
+        cache_service = get_ocr_cache_service()
+        await cache_service.invalidate_document_cache(str(document_id))
+
+    except Exception as e:
+        logger.error("cache_invalidation_error", document_id=str(document_id), error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Cache-Invalidierung fehlgeschlagen: {str(e)}"
+        )
+
+    logger.info(
+        "ocr_cache_invalidated",
+        document_id=str(document_id),
+        deleted_count=deleted_count,
+        user_id=str(current_user.id)
+    )
+
+    return {
+        "document_id": str(document_id),
+        "cache_cleared": True,
+        "entries_deleted": deleted_count,
+        "message": f"OCR-Cache geloescht ({deleted_count} Eintraege)"
+    }

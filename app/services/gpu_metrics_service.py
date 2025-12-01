@@ -239,6 +239,60 @@ gpu_task_queue_length = Gauge(
 
 
 # =============================================================================
+# ADAPTIVE BATCH PROCESSING METRICS (für Hysterese-Tracking)
+# =============================================================================
+
+# Consecutive successes since last OOM
+adaptive_batch_consecutive_successes = Gauge(
+    "ablage_adaptive_batch_consecutive_successes",
+    "Aufeinanderfolgende erfolgreiche Batches seit letztem OOM",
+    registry=GPU_REGISTRY,
+)
+
+# Current effective max batch size
+adaptive_batch_effective_max = Gauge(
+    "ablage_adaptive_batch_effective_max",
+    "Aktuelle effektive maximale Batch-Größe",
+    ["backend"],
+    registry=GPU_REGISTRY,
+)
+
+# Hysteresis increase count
+adaptive_batch_hysteresis_increases = Counter(
+    "ablage_adaptive_batch_hysteresis_increases",
+    "Anzahl der Hysterese-basierten Batch-Size-Erhöhungen",
+    ["backend"],
+    registry=GPU_REGISTRY,
+)
+
+# Peak memory per operation
+ocr_peak_memory_bytes = Histogram(
+    "ablage_ocr_peak_memory_bytes",
+    "Peak GPU-Speicher pro OCR-Operation in Bytes",
+    ["backend"],
+    buckets=[
+        1 * 1024**3,   # 1 GB
+        2 * 1024**3,   # 2 GB
+        4 * 1024**3,   # 4 GB
+        6 * 1024**3,   # 6 GB
+        8 * 1024**3,   # 8 GB
+        10 * 1024**3,  # 10 GB
+        12 * 1024**3,  # 12 GB
+        14 * 1024**3,  # 14 GB
+        16 * 1024**3,  # 16 GB
+    ],
+    registry=GPU_REGISTRY,
+)
+
+# Memory Guard Status (0=ok, 1=warning, 2=critical)
+gpu_memory_guard_status = Gauge(
+    "ablage_gpu_memory_guard_status",
+    "Memory Guard Status (0=OK, 1=Warnung, 2=Kritisch)",
+    registry=GPU_REGISTRY,
+)
+
+
+# =============================================================================
 # GPU METRICS SERVICE
 # =============================================================================
 
@@ -464,6 +518,46 @@ class GPUMetricsService:
         gpu_tasks_active.labels(worker=worker_name).set(active_tasks)
         gpu_task_queue_length.set(queue_length)
 
+    def record_peak_memory(self, backend: str, peak_bytes: int) -> None:
+        """
+        Record peak GPU memory usage for OCR operation.
+
+        Args:
+            backend: OCR backend name
+            peak_bytes: Peak memory in bytes
+        """
+        ocr_peak_memory_bytes.labels(backend=backend).observe(peak_bytes)
+
+    def update_adaptive_batch_metrics(
+        self,
+        backend: str,
+        consecutive_successes: int,
+        effective_max_batch: int,
+    ) -> None:
+        """
+        Update adaptive batch processing metrics.
+
+        Args:
+            backend: OCR backend name
+            consecutive_successes: Number of successful batches since last OOM
+            effective_max_batch: Current effective maximum batch size
+        """
+        adaptive_batch_consecutive_successes.set(consecutive_successes)
+        adaptive_batch_effective_max.labels(backend=backend).set(effective_max_batch)
+
+    def record_hysteresis_increase(self, backend: str) -> None:
+        """Record a hysteresis-based batch size increase."""
+        adaptive_batch_hysteresis_increases.labels(backend=backend).inc()
+
+    def update_memory_guard_status(self, status: int) -> None:
+        """
+        Update memory guard status.
+
+        Args:
+            status: 0=OK, 1=Warning, 2=Critical
+        """
+        gpu_memory_guard_status.set(status)
+
     def get_metrics(self) -> bytes:
         """
         Get all GPU metrics in Prometheus format.
@@ -575,3 +669,31 @@ def record_model_load_metrics(model_name: str, duration_seconds: float, success:
     """Convenience function to record model load metrics."""
     service = get_gpu_metrics_service()
     service.record_model_load(model_name, duration_seconds, success)
+
+
+def record_peak_memory(backend: str, peak_bytes: int) -> None:
+    """Convenience function to record peak GPU memory usage."""
+    service = get_gpu_metrics_service()
+    service.record_peak_memory(backend, peak_bytes)
+
+
+def update_adaptive_batch_stats(
+    backend: str,
+    consecutive_successes: int,
+    effective_max_batch: int,
+) -> None:
+    """Convenience function to update adaptive batch processing stats."""
+    service = get_gpu_metrics_service()
+    service.update_adaptive_batch_metrics(backend, consecutive_successes, effective_max_batch)
+
+
+def update_memory_guard_status(is_critical: bool = False, is_warning: bool = False) -> None:
+    """Convenience function to update memory guard status."""
+    service = get_gpu_metrics_service()
+    if is_critical:
+        status = 2
+    elif is_warning:
+        status = 1
+    else:
+        status = 0
+    service.update_memory_guard_status(status)

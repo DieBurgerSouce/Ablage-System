@@ -58,13 +58,14 @@ class StorageConfig:
         self.SECRET_KEY = settings.MINIO_SECRET_KEY.get_secret_value() if settings.MINIO_SECRET_KEY else ""
         self.SECURE = settings.MINIO_SECURE
 
-        # Buckets - aus zentraler settings
+        # Buckets - aus zentraler settings (validiert durch Pydantic)
         self.DOCUMENTS_BUCKET = settings.MINIO_BUCKET_DOCUMENTS
         self.THUMBNAILS_BUCKET = settings.MINIO_BUCKET_THUMBNAILS
-        self.EXPORTS_BUCKET = os.getenv("MINIO_EXPORTS_BUCKET", "exports")
+        # Fallback auf settings wenn vorhanden, sonst Default
+        self.EXPORTS_BUCKET = getattr(settings, "MINIO_BUCKET_EXPORTS", None) or os.getenv("MINIO_EXPORTS_BUCKET", "exports")
 
-        # Settings
-        self.PRESIGNED_URL_EXPIRY_HOURS = int(os.getenv("MINIO_PRESIGNED_EXPIRY", "24"))
+        # Settings - zentralisiert fuer bessere Validierung
+        self.PRESIGNED_URL_EXPIRY_HOURS = getattr(settings, "MINIO_PRESIGNED_EXPIRY_HOURS", None) or int(os.getenv("MINIO_PRESIGNED_EXPIRY", "24"))
         self.MAX_FILE_SIZE_MB = settings.MAX_UPLOAD_SIZE_MB
 
 

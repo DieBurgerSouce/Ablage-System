@@ -318,7 +318,7 @@ async def login(
     "/refresh",
     response_model=Token,
     summary="Token erneuern",
-    description="Erneuert Access Token mit Refresh Token"
+    description="Erneuert Access Token mit Refresh Token (Token Rotation)"
 )
 async def refresh_token(
     refresh_data: RefreshTokenRequest,
@@ -326,6 +326,11 @@ async def refresh_token(
 ) -> Any:
     """
     Erneuere Access Token mit einem gültigen Refresh Token.
+
+    **SECURITY: Refresh Token Rotation**
+    - Der alte Refresh Token wird invalidiert (Blacklist)
+    - Ein komplett neues Token-Paar wird ausgestellt
+    - Verhindert Token-Wiederverwendung bei Token-Diebstahl
 
     - **refresh_token**: Gültiger Refresh Token
 
@@ -337,14 +342,23 @@ async def refresh_token(
         "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
     }
     ```
+
+    **Sicherheitshinweise:**
+    - Nach Verwendung ist der alte Refresh Token ungültig
+    - Bei Verdacht auf Token-Diebstahl: Alle Sessions widerrufen
     """
+    from datetime import timezone as tz
+
     try:
         # Decode and validate refresh token (async for Redis blacklist check)
         payload = await decode_token(refresh_data.refresh_token)
         verify_token_type(payload, "refresh")
 
-        # Extract user ID
+        # Extract user ID and token metadata
         user_id_str = payload.get("sub")
+        old_jti = payload.get("jti")
+        old_exp = payload.get("exp")
+
         if not user_id_str:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -371,13 +385,45 @@ async def refresh_token(
                 detail="Benutzerkonto ist deaktiviert",  # User account is deactivated
             )
 
-        # Create new token pair
+        # SECURITY FIX: Token Rotation - Blacklist the OLD refresh token
+        # This prevents replay attacks if the token was stolen
+        if old_jti and old_exp:
+            try:
+                old_exp_datetime = datetime.fromtimestamp(old_exp, tz=tz.utc)
+                await blacklist_token(old_jti, old_exp_datetime)
+                logger.debug(
+                    "refresh_token_rotated",
+                    old_jti=old_jti[:8] + "...",
+                    user_id=str(user.id)[:8] + "..."
+                )
+            except HTTPException:
+                # Re-raise HTTPException (fail-closed mode from blacklist_token)
+                # This is critical for security - blocking login is safer than
+                # allowing potentially compromised tokens
+                raise
+            except Exception as blacklist_error:
+                # Other errors (e.g., connection issues in non-fail-closed mode)
+                # Log as warning but continue to avoid blocking legitimate users
+                logger.warning(
+                    "refresh_token_blacklist_failed",
+                    error_type=type(blacklist_error).__name__,
+                    user_id=str(user.id)[:8] + "..."
+                )
+
+        # Create new token pair (with new JTIs)
         token_data = {
             "sub": str(user.id),
             "email": user.email,
             "username": user.username
         }
         tokens = create_token_pair(token_data)
+
+        logger.info(
+            "token_refresh_successful",
+            user_id=str(user.id)[:8] + "...",
+            username=user.username,
+            rotation_applied=True
+        )
 
         return Token(**tokens)
 
@@ -409,17 +455,55 @@ async def logout(
     """
     Melde einen Benutzer ab.
 
-    Fügt den Refresh Token zur Blacklist hinzu, um weitere Verwendung zu verhindern.
+    Fügt Access Token und Refresh Token zur Blacklist hinzu, um weitere Verwendung zu verhindern.
 
     - **refresh_token**: Refresh Token zum Widerrufen (optional)
 
     **Hinweis:** Nach dem Logout müssen sich Clients erneut anmelden.
+
+    **Sicherheitsverbesserung:**
+    - Access Token wird sofort ungültig (nicht erst nach 15min Ablauf)
+    - Refresh Token wird ebenfalls auf Blacklist gesetzt
+    - Session wird in der Datenbank widerrufen
     """
-    # Revoke current session
+    from datetime import timezone as tz
+
+    access_token_blacklisted = False
+    refresh_token_blacklisted = False
+    session_revoked = False
+
+    # 1. SECURITY FIX: Blacklist the ACCESS token (wichtigste Änderung!)
+    # Ohne dies bleibt der Access Token bis zu 15 Minuten gültig nach Logout
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            access_token = auth_header.split(" ")[1]
+            access_payload = await decode_token(access_token)
+            access_jti = access_payload.get("jti")
+            access_exp = access_payload.get("exp")
+
+            if access_jti and access_exp:
+                access_exp_datetime = datetime.fromtimestamp(access_exp, tz=tz.utc)
+                await blacklist_token(access_jti, access_exp_datetime)
+                access_token_blacklisted = True
+                logger.debug(
+                    "access_token_blacklisted",
+                    jti=access_jti[:8] + "...",
+                    user_id=str(current_user.id)[:8] + "..."
+                )
+
+        except Exception as e:
+            # Access token blacklist failed - log warning (security relevant)
+            logger.warning(
+                "access_token_blacklist_failed",
+                error_type=type(e).__name__,
+                user_id=str(current_user.id)[:8] + "..."
+            )
+
+    # 2. Revoke session in database
     try:
         from app.core.session_manager import get_session_manager
 
-        auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
             payload = await decode_token(token)
@@ -428,12 +512,13 @@ async def logout(
             if current_jti:
                 session_manager = get_session_manager()
                 await session_manager.revoke_session_by_jti(db, current_jti)
+                session_revoked = True
 
     except Exception as e:
         # Session revocation failure should not block logout
         logger.debug("session_revoke_skipped", error=str(e))
 
-    # Blacklist refresh token if provided (async Redis-backed)
+    # 3. Blacklist refresh token if provided
     if logout_data.refresh_token:
         try:
             payload = await decode_token(logout_data.refresh_token)
@@ -441,18 +526,32 @@ async def logout(
             exp = payload.get("exp")
 
             if jti and exp:
-                # Convert exp timestamp to datetime (with timezone)
-                from datetime import timezone as tz
                 exp_datetime = datetime.fromtimestamp(exp, tz=tz.utc)
                 await blacklist_token(jti, exp_datetime)
+                refresh_token_blacklisted = True
+                logger.debug(
+                    "refresh_token_blacklisted",
+                    jti=jti[:8] + "...",
+                    user_id=str(current_user.id)[:8] + "..."
+                )
 
         except Exception as e:
             # Token already invalid or blacklist failed - log but continue logout
-            logger.debug("token_blacklist_skipped", error=str(e))
+            logger.debug("refresh_token_blacklist_skipped", error=str(e))
+
+    # Log logout summary
+    logger.info(
+        "user_logout_completed",
+        user_id=str(current_user.id)[:8] + "...",
+        username=current_user.username,
+        access_token_blacklisted=access_token_blacklisted,
+        refresh_token_blacklisted=refresh_token_blacklisted,
+        session_revoked=session_revoked
+    )
 
     return MessageResponse(
-        message="Erfolgreich abgemeldet",  # Successfully logged out
-        detail="Bitte melden Sie sich erneut an, um auf geschützte Ressourcen zuzugreifen"  # Please log in again to access protected resources
+        message="Erfolgreich abgemeldet",
+        detail="Alle Tokens wurden widerrufen. Bitte melden Sie sich erneut an."
     )
 
 

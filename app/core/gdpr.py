@@ -2,14 +2,22 @@
 GDPR Compliance Framework for Ablage-System OCR
 Data Privacy and Protection for German Document Processing
 Created: 2024-11-22
+Updated: 2024-12-01 - Processing Activities now persisted to PostgreSQL
+
+SECURITY FIX: In-Memory-Speicherung wurde durch PostgreSQL ersetzt,
+damit Verarbeitungsaktivitäten nicht bei Restart verloren gehen.
 """
 
-from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any, TYPE_CHECKING
+from datetime import datetime, timedelta, timezone
 from enum import Enum
+from uuid import UUID
 import hashlib
 import structlog
 import json
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger(__name__)
 
@@ -73,12 +81,104 @@ class DataSubject:
 
 
 class GDPRComplianceManager:
-    """GDPR Compliance Management System"""
+    """
+    GDPR Compliance Management System.
+
+    SECURITY UPDATE: Processing activities werden jetzt in PostgreSQL gespeichert,
+    nicht mehr in-memory. Dies gewährleistet:
+    - Persistenz über Restarts
+    - Konsistenz zwischen Worker-Instanzen
+    - Compliance-Audit-Fähigkeit
+    """
 
     def __init__(self):
         self.data_subjects: Dict[str, DataSubject] = {}
-        self.processing_activities: List[Dict] = []
+        # DEPRECATED: In-memory storage nur noch als Fallback
+        self._processing_activities_cache: List[Dict] = []
         self.data_breaches: List[Dict] = []
+
+    async def register_processing_activity_async(
+        self,
+        db: "AsyncSession",
+        document_id: str,
+        data_categories: List[DataCategory],
+        purpose: ProcessingPurpose,
+        subject_id: Optional[str] = None,
+        processing_backend: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Art. 30 DSGVO - Record of Processing Activities (Async/DB).
+
+        SECURITY: Diese Methode speichert in PostgreSQL für Persistenz.
+
+        Args:
+            db: AsyncSession für Datenbankzugriff
+            document_id: UUID des verarbeiteten Dokuments
+            data_categories: Liste der Datenkategorien
+            purpose: Verarbeitungszweck
+            subject_id: Optional - User-ID (wird gehasht)
+            processing_backend: Optional - Verwendetes OCR-Backend
+
+        Returns:
+            Dict mit Activity-Details
+        """
+        from app.db.models import GDPRProcessingActivity
+
+        now = datetime.now(timezone.utc)
+        activity_id = hashlib.sha256(
+            f"{document_id}{now.isoformat()}".encode()
+        ).hexdigest()[:16]
+
+        retention_days = self._get_retention_period(data_categories)
+        retention_expires = now + timedelta(days=retention_days)
+
+        # Hash subject_id for privacy
+        hashed_subject = None
+        if subject_id:
+            hashed_subject = self.pseudonymize_identifier(subject_id)
+
+        # Parse document_id
+        try:
+            doc_uuid = UUID(document_id) if document_id else None
+        except (ValueError, TypeError):
+            doc_uuid = None
+
+        # Create database record
+        activity = GDPRProcessingActivity(
+            activity_id=activity_id,
+            document_id=doc_uuid,
+            subject_id=hashed_subject,
+            data_categories=[cat.value for cat in data_categories],
+            processing_purpose=purpose.value,
+            legal_basis=self._determine_legal_basis(purpose),
+            retention_period_days=retention_days,
+            retention_expires_at=retention_expires,
+            processing_backend=processing_backend,
+            processed_by_system="ablage-system-ocr"
+        )
+
+        db.add(activity)
+        await db.commit()
+        await db.refresh(activity)
+
+        logger.info(
+            "processing_activity_registered_db",
+            activity_id=activity_id,
+            document_id=str(doc_uuid)[:8] + "..." if doc_uuid else None,
+            purpose=purpose.value
+        )
+
+        return {
+            "id": activity_id,
+            "document_id": document_id,
+            "timestamp": now.isoformat(),
+            "data_categories": [cat.value for cat in data_categories],
+            "purpose": purpose.value,
+            "subject_id": hashed_subject,
+            "legal_basis": self._determine_legal_basis(purpose),
+            "retention_period_days": retention_days,
+            "retention_expires_at": retention_expires.isoformat()
+        }
 
     def register_processing_activity(
         self,
@@ -87,12 +187,17 @@ class GDPRComplianceManager:
         purpose: ProcessingPurpose,
         subject_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Art. 30 DSGVO - Record of Processing Activities"""
+        """
+        Art. 30 DSGVO - Record of Processing Activities (Sync/In-Memory Fallback).
 
+        DEPRECATED: Verwende register_processing_activity_async für Persistenz.
+        Diese Methode existiert für Rückwärtskompatibilität.
+        """
+        now = datetime.now(timezone.utc)
         activity = {
-            "id": hashlib.sha256(f"{document_id}{datetime.now().isoformat()}".encode()).hexdigest()[:16],
+            "id": hashlib.sha256(f"{document_id}{now.isoformat()}".encode()).hexdigest()[:16],
             "document_id": document_id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": now.isoformat(),
             "data_categories": [cat.value for cat in data_categories],
             "purpose": purpose.value,
             "subject_id": subject_id,
@@ -100,8 +205,12 @@ class GDPRComplianceManager:
             "retention_period_days": self._get_retention_period(data_categories)
         }
 
-        self.processing_activities.append(activity)
-        logger.info("processing_activity_registered", activity_id=activity['id'])
+        self._processing_activities_cache.append(activity)
+        logger.warning(
+            "processing_activity_registered_memory",
+            activity_id=activity['id'],
+            warning="In-Memory-Speicherung ist deprecated. Verwende register_processing_activity_async."
+        )
 
         return activity
 
@@ -171,8 +280,8 @@ class GDPRComplianceManager:
             findings["has_sensitive_data"] = True
             findings["data_types"].append("email")
 
-        # Phone numbers
-        if re.search(r'(\+49|0049|0)\s?\d{3,4}\s?\d{6,}', text):
+        # Phone numbers (Deutsche Formate mit 2-4 stelligen Vorwahlen)
+        if re.search(r'(\+49|0049|0)\s?\d{2,4}\s?\d{5,}', text):
             findings["has_sensitive_data"] = True
             findings["data_types"].append("phone")
 
@@ -255,9 +364,9 @@ class GDPRComplianceManager:
             anonymized
         )
 
-        # Pseudonymize Phone with hash
+        # Pseudonymize Phone with hash (Deutsche Formate mit 2-4 stelligen Vorwahlen)
         anonymized = re.sub(
-            r'(\+49|0049|0)\s?\d{3,4}\s?\d{6,}',
+            r'(\+49|0049|0)\s?\d{2,4}\s?\d{5,}',
             lambda m: hash_match(m, "PHONE"),
             anonymized
         )
@@ -305,9 +414,9 @@ class GDPRComplianceManager:
             anonymized
         )
 
-        # Anonymize Phone
+        # Anonymize Phone (Deutsche Formate mit 2-4 stelligen Vorwahlen)
         anonymized = re.sub(
-            r'(\+49|0049|0)\s?\d{3,4}\s?\d{6,}',
+            r'(\+49|0049|0)\s?\d{2,4}\s?\d{5,}',
             '[PHONE_ANONYMIZED]',
             anonymized
         )
@@ -412,15 +521,77 @@ class GDPRComplianceManager:
 
         return export
 
-    def check_retention_compliance(self) -> Dict[str, Any]:
-        """Check which data should be deleted based on retention periods"""
+    async def check_retention_compliance_async(
+        self,
+        db: "AsyncSession"
+    ) -> Dict[str, Any]:
+        """
+        Check which data should be deleted based on retention periods (DB).
 
-        now = datetime.now()
+        Art. 5(1)(e) DSGVO - Speicherbegrenzung.
+
+        Args:
+            db: AsyncSession für Datenbankzugriff
+
+        Returns:
+            Dict mit Compliance-Status und ablaufenden Aktivitäten
+        """
+        from sqlalchemy import select, func
+        from app.db.models import GDPRProcessingActivity
+
+        now = datetime.now(timezone.utc)
+
+        # Count total activities
+        total_result = await db.execute(
+            select(func.count()).select_from(GDPRProcessingActivity)
+        )
+        total_count = total_result.scalar() or 0
+
+        # Find expired activities
+        expired_result = await db.execute(
+            select(GDPRProcessingActivity).where(
+                GDPRProcessingActivity.retention_expires_at < now
+            ).limit(100)  # Limit for performance
+        )
+        expired_activities = expired_result.scalars().all()
+
+        expired_list = []
+        for activity in expired_activities:
+            days_expired = (now - activity.retention_expires_at).days if activity.retention_expires_at else 0
+            expired_list.append({
+                "activity_id": activity.activity_id,
+                "document_id": str(activity.document_id) if activity.document_id else None,
+                "expired_since_days": days_expired,
+                "purpose": activity.processing_purpose
+            })
+
+        logger.info(
+            "retention_compliance_checked",
+            total=total_count,
+            expired=len(expired_list)
+        )
+
+        return {
+            "total_activities": total_count,
+            "expired_activities": len(expired_list),
+            "to_be_deleted": expired_list,
+            "check_timestamp": now.isoformat()
+        }
+
+    def check_retention_compliance(self) -> Dict[str, Any]:
+        """
+        Check which data should be deleted (In-Memory Fallback).
+
+        DEPRECATED: Verwende check_retention_compliance_async für DB-Zugriff.
+        """
+        now = datetime.now(timezone.utc)
         expired_activities = []
 
-        for activity in self.processing_activities:
+        for activity in self._processing_activities_cache:
             retention_days = activity["retention_period_days"]
             activity_date = datetime.fromisoformat(activity["timestamp"])
+            if activity_date.tzinfo is None:
+                activity_date = activity_date.replace(tzinfo=timezone.utc)
             expiry_date = activity_date + timedelta(days=retention_days)
 
             if now > expiry_date:
@@ -431,27 +602,202 @@ class GDPRComplianceManager:
                 })
 
         return {
-            "total_activities": len(self.processing_activities),
+            "total_activities": len(self._processing_activities_cache),
             "expired_activities": len(expired_activities),
             "to_be_deleted": expired_activities
         }
 
-    def get_compliance_report(self) -> Dict[str, Any]:
-        """Generate GDPR compliance report"""
+    async def get_compliance_report_async(
+        self,
+        db: "AsyncSession"
+    ) -> Dict[str, Any]:
+        """
+        Generate GDPR compliance report (DB).
 
+        Erstellt umfassenden Compliance-Bericht für Audits.
+
+        Args:
+            db: AsyncSession für Datenbankzugriff
+
+        Returns:
+            Dict mit vollständigem Compliance-Report
+        """
+        from sqlalchemy import select, func
+        from app.db.models import (
+            GDPRProcessingActivity,
+            GDPRDeletionRequest,
+            GDPRBreachLog,
+            GDPRConsentLog,
+            User
+        )
+
+        now = datetime.now(timezone.utc)
+
+        # Processing activities count
+        activities_result = await db.execute(
+            select(func.count()).select_from(GDPRProcessingActivity)
+        )
+        total_activities = activities_result.scalar() or 0
+
+        # Pending deletion requests
+        pending_deletions_result = await db.execute(
+            select(func.count()).select_from(GDPRDeletionRequest).where(
+                GDPRDeletionRequest.status == "pending"
+            )
+        )
+        pending_deletions = pending_deletions_result.scalar() or 0
+
+        # Data breaches
+        breaches_result = await db.execute(
+            select(func.count()).select_from(GDPRBreachLog)
+        )
+        total_breaches = breaches_result.scalar() or 0
+
+        # Active consents
+        consents_result = await db.execute(
+            select(func.count()).select_from(GDPRConsentLog).where(
+                GDPRConsentLog.consent_given == True,
+                GDPRConsentLog.withdrawal_date == None
+            )
+        )
+        active_consents = consents_result.scalar() or 0
+
+        # Retention compliance check
+        retention_check = await self.check_retention_compliance_async(db)
+
+        # Users with deletion scheduled
+        scheduled_deletions_result = await db.execute(
+            select(func.count()).select_from(User).where(
+                User.deletion_scheduled_for != None,
+                User.deletion_confirmed == True
+            )
+        )
+        scheduled_deletions = scheduled_deletions_result.scalar() or 0
+
+        logger.info(
+            "compliance_report_generated",
+            activities=total_activities,
+            pending_deletions=pending_deletions,
+            breaches=total_breaches
+        )
+
+        return {
+            "timestamp": now.isoformat(),
+            "total_processing_activities": total_activities,
+            "total_data_subjects": active_consents,
+            "total_data_breaches": total_breaches,
+            "pending_deletion_requests": pending_deletions,
+            "scheduled_user_deletions": scheduled_deletions,
+            "retention_compliance": retention_check,
+            "report_type": "full_compliance",
+            "gdpr_articles_covered": [
+                "Art. 5 - Grundsätze",
+                "Art. 7 - Einwilligung",
+                "Art. 17 - Recht auf Löschung",
+                "Art. 30 - Verarbeitungsverzeichnis",
+                "Art. 33 - Datenschutzvorfälle"
+            ]
+        }
+
+    def get_compliance_report(self) -> Dict[str, Any]:
+        """
+        Generate GDPR compliance report (In-Memory Fallback).
+
+        DEPRECATED: Verwende get_compliance_report_async für DB-Zugriff.
+        """
         retention_check = self.check_retention_compliance()
 
         return {
-            "timestamp": datetime.now().isoformat(),
-            "total_processing_activities": len(self.processing_activities),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "total_processing_activities": len(self._processing_activities_cache),
             "total_data_subjects": len(self.data_subjects),
             "total_data_breaches": len(self.data_breaches),
             "retention_compliance": retention_check,
             "pending_deletions": [
                 sub_id for sub_id, subject in self.data_subjects.items()
                 if subject.deletion_requested
-            ]
+            ],
+            "warning": "In-Memory-Report - verwende get_compliance_report_async für vollständigen Report"
         }
+
+    async def get_processing_activities_async(
+        self,
+        db: "AsyncSession",
+        document_id: Optional[str] = None,
+        subject_id: Optional[str] = None,
+        purpose: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve processing activities from database.
+
+        Args:
+            db: AsyncSession für Datenbankzugriff
+            document_id: Optional - Filter nach Dokument
+            subject_id: Optional - Filter nach Subject (wird gehasht)
+            purpose: Optional - Filter nach Zweck
+            limit: Max. Anzahl Ergebnisse
+            offset: Offset für Pagination
+
+        Returns:
+            Liste der Processing Activities
+        """
+        from sqlalchemy import select
+        from app.db.models import GDPRProcessingActivity
+
+        query = select(GDPRProcessingActivity)
+
+        if document_id:
+            try:
+                doc_uuid = UUID(document_id)
+                query = query.where(GDPRProcessingActivity.document_id == doc_uuid)
+            except (ValueError, TypeError):
+                pass
+
+        if subject_id:
+            hashed_subject = self.pseudonymize_identifier(subject_id)
+            query = query.where(GDPRProcessingActivity.subject_id == hashed_subject)
+
+        if purpose:
+            query = query.where(GDPRProcessingActivity.processing_purpose == purpose)
+
+        query = query.order_by(GDPRProcessingActivity.created_at.desc())
+        query = query.limit(limit).offset(offset)
+
+        result = await db.execute(query)
+        activities = result.scalars().all()
+
+        return [
+            {
+                "id": a.activity_id,
+                "document_id": str(a.document_id) if a.document_id else None,
+                "subject_id": a.subject_id,
+                "data_categories": a.data_categories,
+                "purpose": a.processing_purpose,
+                "legal_basis": a.legal_basis,
+                "retention_period_days": a.retention_period_days,
+                "retention_expires_at": a.retention_expires_at.isoformat() if a.retention_expires_at else None,
+                "processing_backend": a.processing_backend,
+                "created_at": a.created_at.isoformat() if a.created_at else None
+            }
+            for a in activities
+        ]
+
+    @property
+    def processing_activities(self) -> List[Dict]:
+        """
+        Property für Rückwärtskompatibilität.
+
+        DEPRECATED: Gibt nur in-memory Cache zurück.
+        Verwende get_processing_activities_async für DB-Zugriff.
+        """
+        logger.warning(
+            "deprecated_property_access",
+            property="processing_activities",
+            warning="Verwende get_processing_activities_async für DB-Zugriff"
+        )
+        return self._processing_activities_cache
 
 
 # Global singleton instance

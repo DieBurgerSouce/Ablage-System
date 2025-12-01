@@ -306,13 +306,19 @@ def _cleanup_fallback_blacklist() -> int:
     now = datetime.now(timezone.utc)
     expired = [jti for jti, exp in _token_blacklist_fallback.items() if now >= exp]
 
+    removed = 0
     for jti in expired:
-        del _token_blacklist_fallback[jti]
+        try:
+            del _token_blacklist_fallback[jti]
+            removed += 1
+        except KeyError:
+            # Already deleted by concurrent cleanup (race condition safe)
+            pass
 
-    if expired:
-        logger.debug("token_blacklist_cleanup", removed=len(expired))
+    if removed:
+        logger.debug("token_blacklist_cleanup", removed=removed)
 
-    return len(expired)
+    return removed
 
 
 # ==================== Password Hashing ====================

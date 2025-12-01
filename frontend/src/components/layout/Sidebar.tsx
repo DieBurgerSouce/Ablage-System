@@ -1,6 +1,5 @@
 import { Link } from '@tanstack/react-router'
 import { LayoutDashboard, Upload, ListTodo, FileText } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 export function Sidebar() {
     return (

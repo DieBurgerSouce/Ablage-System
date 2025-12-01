@@ -8,10 +8,17 @@ Feinpoliert und durchdacht - Enterprise Health Monitoring.
 Features:
 - TTL-basiertes Caching für teure Health-Checks (5 Sekunden)
 - Reduziert Last bei häufigen Monitoring-Abfragen
+- Kubernetes-kompatible Probes (live, ready, startup)
+- Parallele Health-Checks für schnellere Antwortzeiten
+- Umfassende System-Informationen
 """
 
+import asyncio
+import platform
+import sys
+import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 import threading
 
 import structlog
@@ -19,6 +26,9 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Track startup time for uptime calculation
+_startup_time = time.time()
 
 # TTL-based caching for health checks
 try:
@@ -144,7 +154,17 @@ async def _check_database(db: AsyncSession) -> KomponentenStatus:
 
 
 async def _check_redis() -> KomponentenStatus:
-    """Pruefe Redis-Verbindung."""
+    """Pruefe Redis-Verbindung.
+
+    Testet Verbindung zum Redis-Server via PING-Befehl.
+
+    Returns:
+        KomponentenStatus mit Latenz bei Erfolg
+
+    Note:
+        Erfordert redis.asyncio (optionale Abhaengigkeit).
+        Bei fehlendem Modul wird gesund=False zurueckgegeben.
+    """
     import time
 
     try:
@@ -444,6 +464,82 @@ async def readiness_probe(
         )
 
     return {"status": "ready", "datenbank": db_status.gesund}
+
+
+@router.get(
+    "/startup",
+    summary="Startup Probe",
+    description="Kubernetes Startup Probe - prueft ob Anwendung vollstaendig gestartet ist.",
+)
+async def startup_probe(
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Kubernetes Startup Probe.
+
+    Prueft ob alle kritischen Komponenten beim Start bereit sind:
+    - Datenbank-Verbindung
+    - Redis-Verbindung
+    - Model Preloader Status (falls aktiviert)
+
+    Unterschied zu Readiness:
+    - Startup Probe laeuft nur einmal beim Start
+    - Readiness Probe laeuft kontinuierlich
+    """
+    from fastapi import HTTPException, status
+
+    startup_checks = {}
+    errors = []
+
+    # Check Database
+    db_status = await _check_database(db)
+    startup_checks["datenbank"] = db_status.gesund
+    if not db_status.gesund:
+        errors.append("Datenbank nicht verfuegbar")
+
+    # Check Redis
+    redis_status = await _check_redis()
+    startup_checks["redis"] = redis_status.gesund
+    if not redis_status.gesund:
+        errors.append("Redis nicht verfuegbar")
+
+    # Check Model Preloader
+    try:
+        from app.services.model_preloader import get_model_preloader
+
+        preloader = get_model_preloader()
+        preloader_status = preloader.get_status()
+        startup_checks["model_preloader"] = preloader_status.get("enabled", False)
+
+        # If preloading is enabled, check if it completed
+        if preloader_status.get("enabled") and preloader_status.get("preload_started"):
+            if not preloader_status.get("preload_completed"):
+                # Still loading - not ready yet
+                startup_checks["models_ready"] = False
+            else:
+                startup_checks["models_ready"] = True
+    except ImportError:
+        startup_checks["model_preloader"] = False
+
+    # Calculate startup duration
+    uptime = time.time() - _startup_time
+
+    if errors:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "status": "starting",
+                "errors": errors,
+                "checks": startup_checks,
+                "uptime_seconds": round(uptime, 2),
+            },
+        )
+
+    return {
+        "status": "started",
+        "checks": startup_checks,
+        "uptime_seconds": round(uptime, 2),
+    }
 
 
 # =============================================================================

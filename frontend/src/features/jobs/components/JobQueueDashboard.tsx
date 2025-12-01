@@ -1,13 +1,13 @@
 import { useState } from 'react';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-// import useWebSocket from 'react-use-websocket';
-import { motion, AnimatePresence, type Variants } from 'framer-motion';
-import { GripVertical, ChevronDown } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { GripVertical, ChevronDown, CheckCircle, Clock, Loader2, FileText } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { motionTokens } from '@/lib/motion-tokens';
 
 interface Job {
     id: string;
@@ -18,8 +18,12 @@ interface Job {
 }
 
 const listVariants: Variants = {
+    hidden: { opacity: 0 },
     visible: {
-        transition: { staggerChildren: 0.05 }
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.05
+        }
     }
 };
 
@@ -28,15 +32,14 @@ const itemVariants: Variants = {
     visible: { opacity: 1, x: 0 }
 };
 
+const MotionDiv = motion.div as any;
+
 export function JobQueueDashboard() {
     const [jobs, setJobs] = useState<Job[]>([
         { id: '1', name: 'OCR Processing', documentName: 'Invoice_2023.pdf', status: 'processing', progress: 45 },
         { id: '2', name: 'Text Extraction', documentName: 'Contract_Draft.pdf', status: 'pending', progress: 0 },
         { id: '3', name: 'Classification', documentName: 'Receipt_001.jpg', status: 'completed', progress: 100 },
     ]);
-
-    // Mock WebSocket for now as we don't have a real backend
-    // const { lastJsonMessage } = useWebSocket('ws://api/jobs/stream', ...);
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
@@ -50,81 +53,130 @@ export function JobQueueDashboard() {
     };
 
     return (
-        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={jobs} strategy={verticalListSortingStrategy}>
-                <motion.div
-                    variants={listVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className="space-y-2"
-                >
-                    {jobs.map(job => (
-                        <SortableJobItem key={job.id} job={job} />
-                    ))}
-                    {jobs.length === 0 && <div className="text-center text-muted-foreground p-8">No active jobs</div>}
-                </motion.div>
-            </SortableContext>
-        </DndContext>
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-display font-semibold tracking-tight">Active Jobs</h2>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    System Operational
+                </div>
+            </div>
+
+            <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={jobs} strategy={verticalListSortingStrategy}>
+                    <MotionDiv
+                        variants={listVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="space-y-3"
+                    >
+                        {jobs.map(job => (
+                            <SortableJobItem key={job.id} job={job} />
+                        ))}
+                        {jobs.length === 0 && (
+                            <div className="text-center text-muted-foreground p-12 border-2 border-dashed rounded-xl">
+                                No active jobs
+                            </div>
+                        )}
+                    </MotionDiv>
+                </SortableContext>
+            </DndContext>
+        </div>
     );
 }
 
+function StatusIndicator({ status }: { status: Job['status'] }) {
+    switch (status) {
+        case 'completed':
+            return <CheckCircle className="w-5 h-5 text-success" />;
+        case 'processing':
+            return <Loader2 className="w-5 h-5 text-primary animate-spin" />;
+        case 'pending':
+            return <Clock className="w-5 h-5 text-muted-foreground" />;
+        default:
+            return <div className="w-5 h-5 rounded-full bg-destructive/20 border-2 border-destructive" />;
+    }
+}
+
 function SortableJobItem({ job }: { job: Job }) {
-    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: job.id });
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: job.id });
     const [expanded, setExpanded] = useState(false);
 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
+        zIndex: isDragging ? 50 : 1,
     };
 
     return (
-        <motion.div
+        <MotionDiv
             ref={setNodeRef}
             style={style}
             variants={itemVariants}
-            className="border rounded-lg bg-card"
+            className={cn(
+                "border rounded-xl bg-card transition-all duration-200 glass-card",
+                isDragging && "shadow-xl scale-[1.02] border-primary/50 rotate-1"
+            )}
         >
-            <div className="flex items-center gap-3 p-4">
-                <div {...attributes} {...listeners} className="cursor-grab">
+            <div className="flex items-center gap-4 p-4">
+                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded-md transition-colors">
                     <GripVertical className="w-5 h-5 text-muted-foreground" />
                 </div>
+
                 <StatusIndicator status={job.status} />
-                <div className="flex-1">
-                    <h4 className="font-medium">{job.name}</h4>
-                    <p className="text-sm text-muted-foreground">{job.documentName}</p>
+
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-medium truncate">{job.name}</h4>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FileText className="w-3.5 h-3.5" />
+                        <span className="truncate">{job.documentName}</span>
+                    </div>
                 </div>
-                <Progress value={job.progress} className="w-24" />
-                <span className="text-sm w-12 text-right">{job.progress}%</span>
-                <Button variant="ghost" size="icon" onClick={() => setExpanded(!expanded)}>
-                    <ChevronDown className={cn("transition-transform", expanded && "rotate-180")} />
-                </Button>
+
+                <div className="flex items-center gap-4">
+                    <div className="w-32 hidden sm:block">
+                        <div className="flex justify-between text-xs mb-1.5">
+                            <span className="text-muted-foreground">Progress</span>
+                            <span className="font-mono">{job.progress}%</span>
+                        </div>
+                        <Progress value={job.progress} className="h-1.5" />
+                    </div>
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setExpanded(!expanded)}
+                        className="hover:bg-muted"
+                    >
+                        <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", expanded && "rotate-180")} />
+                    </Button>
+                </div>
             </div>
 
             <AnimatePresence>
                 {expanded && (
-                    <motion.div
+                    <MotionDiv
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="px-4 pb-4 border-t"
+                        transition={motionTokens.spring.snappy}
+                        className="overflow-hidden"
                     >
-                        <div className="pt-4">
-                            <p className="text-sm">Job Details for {job.id}</p>
-                            {/* Add more details here */}
+                        <div className="px-4 pb-4 pt-0 border-t bg-muted/30">
+                            <div className="pt-4 grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span className="text-muted-foreground block mb-1">Job ID</span>
+                                    <span className="font-mono text-xs bg-background px-2 py-1 rounded border">{job.id}</span>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground block mb-1">Started At</span>
+                                    <span>{new Date().toLocaleTimeString()}</span>
+                                </div>
+                            </div>
                         </div>
-                    </motion.div>
+                    </MotionDiv>
                 )}
             </AnimatePresence>
-        </motion.div>
+        </MotionDiv>
     );
-}
-
-function StatusIndicator({ status }: { status: Job['status'] }) {
-    const colors = {
-        pending: 'bg-muted-foreground',
-        processing: 'bg-primary',
-        completed: 'bg-success',
-        failed: 'bg-destructive'
-    };
-    return <div className={cn("w-2 h-2 rounded-full", colors[status])} />;
 }

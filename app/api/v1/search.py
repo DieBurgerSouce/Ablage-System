@@ -15,6 +15,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, IntegrityError
+from redis.exceptions import RedisError, ConnectionError as RedisConnectionError
 
 from app.db.models import User
 from app.api.dependencies import get_current_user, get_db
@@ -117,8 +119,26 @@ async def get_search_facets(
             total_documents=result["total_documents"]
         )
 
+    except OperationalError as e:
+        logger.error("facets_db_connection_error", error_type="OperationalError", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Datenbankverbindung nicht verfuegbar"
+        )
+    except SQLAlchemyError as e:
+        logger.error("facets_db_error", error_type=type(e).__name__, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Datenbankfehler beim Abrufen der Facetten"
+        )
+    except ValueError as e:
+        logger.warning("facets_validation_error", error_type="ValueError", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltige Filterparameter: {str(e)}"
+        )
     except Exception as e:
-        logger.error("facets_error", error=str(e), exc_info=True)
+        logger.error("facets_error", error_type=type(e).__name__, error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Facetten"
@@ -153,6 +173,13 @@ async def get_search_suggestions(
 
     Das `highlight`-Feld enthält HTML mit <mark>-Tags für die Hervorhebung.
     """
+    # P3: Input Sanitization - Query sanitieren gegen XSS/ReDoS
+    from app.core.input_sanitization import sanitize_search_query
+    sanitized_q, warnings = sanitize_search_query(q, max_length=100, strict_mode=False)
+    if warnings:
+        logger.debug("search_query_sanitized", original=q[:50], warnings=warnings)
+    q = sanitized_q if sanitized_q else q
+
     try:
         result = await search_service.get_suggestions(
             db=db,
@@ -174,8 +201,20 @@ async def get_search_suggestions(
             total=result["total"]
         )
 
+    except OperationalError as e:
+        logger.error("suggest_db_connection_error", error_type="OperationalError", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Datenbankverbindung nicht verfuegbar"
+        )
+    except SQLAlchemyError as e:
+        logger.error("suggest_db_error", error_type=type(e).__name__, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Datenbankfehler bei der Autovervollstaendigung"
+        )
     except Exception as e:
-        logger.error("suggest_error", error=str(e), exc_info=True)
+        logger.error("suggest_error", error_type=type(e).__name__, error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler bei der Autovervollständigung"
@@ -228,8 +267,20 @@ async def get_popular_tags(
             "total": len(tags)
         }
 
+    except OperationalError as e:
+        logger.error("popular_tags_db_connection_error", error_type="OperationalError", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Datenbankverbindung nicht verfuegbar"
+        )
+    except SQLAlchemyError as e:
+        logger.error("popular_tags_db_error", error_type=type(e).__name__, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Datenbankfehler beim Abrufen der Tags"
+        )
     except Exception as e:
-        logger.error("popular_tags_error", error=str(e), exc_info=True)
+        logger.error("popular_tags_error", error_type=type(e).__name__, error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Tags"
@@ -239,7 +290,7 @@ async def get_popular_tags(
 @router.get(
     "/recent",
     summary="Letzte Suchen",
-    description="Gibt die letzten Suchanfragen des Benutzers zurück (aus Cache)."
+    description="Gibt die letzten Suchanfragen des Benutzers zurück (aus Redis)."
 )
 async def get_recent_searches(
     limit: int = Query(10, ge=1, le=20),
@@ -249,20 +300,340 @@ async def get_recent_searches(
     """
     Letzte Suchanfragen des Benutzers.
 
-    Wird aus dem Redis-Cache abgerufen (falls aktiviert).
+    Wird aus dem Redis-Cache abgerufen.
+    Jede Suche enthält:
+    - query: Der Suchbegriff
+    - timestamp: Zeitstempel der Suche (ISO 8601)
+    - results_count: Anzahl der Ergebnisse
+    - filters: Verwendete Filter (optional)
     """
+    import json
+    from app.core.redis_state import RedisStateManager
+
     try:
-        # Diese Funktion würde Redis nutzen, um letzte Suchen zu speichern
-        # Für jetzt geben wir eine leere Liste zurück
+        redis_manager = RedisStateManager.get_instance()
+        await redis_manager._ensure_connection()
+
+        # Key fuer Search History: search_history:{user_id}
+        key = f"search_history:{current_user.id}"
+
+        # Letzte N Suchen abrufen (LRANGE gibt Liste zurueck)
+        raw_searches = await redis_manager._redis.lrange(key, 0, limit - 1)
+
+        # JSON-Strings zu Dicts parsen
+        searches = []
+        for raw in raw_searches:
+            try:
+                search_data = json.loads(raw)
+                searches.append(search_data)
+            except json.JSONDecodeError:
+                logger.warning("invalid_search_history_entry", raw=raw[:50])
+                continue
+
+        # Gesamtzahl der Suchen (LLEN gibt Laenge der Liste)
+        total = await redis_manager._redis.llen(key)
+
+        logger.debug(
+            "recent_searches_retrieved",
+            user_id=str(current_user.id),
+            count=len(searches),
+            total=total
+        )
+
         return {
-            "searches": [],
-            "total": 0,
-            "info": "Suchhistorie wird in zukünftigen Versionen unterstützt"
+            "searches": searches,
+            "total": total,
+            "limit": limit
         }
 
     except Exception as e:
-        logger.error("recent_searches_error", error=str(e))
-        return {"searches": [], "total": 0}
+        logger.warning("recent_searches_redis_error", error=str(e))
+        # Graceful degradation: Leere Liste zurueckgeben wenn Redis nicht verfuegbar
+        return {
+            "searches": [],
+            "total": 0,
+            "info": "Suchhistorie temporaer nicht verfuegbar"
+        }
+
+
+@router.delete(
+    "/recent",
+    summary="Suchhistorie loeschen",
+    description="Loescht die gesamte Suchhistorie des Benutzers."
+)
+async def clear_search_history(
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Loescht alle gespeicherten Suchen des Benutzers.
+
+    Nuetzlich fuer Datenschutz oder zum Zuruecksetzen der Historie.
+    """
+    from app.core.redis_state import RedisStateManager
+
+    try:
+        redis_manager = RedisStateManager.get_instance()
+        await redis_manager._ensure_connection()
+
+        key = f"search_history:{current_user.id}"
+
+        # Anzahl der geloeschten Eintraege
+        deleted_count = await redis_manager._redis.llen(key)
+
+        # Liste loeschen
+        await redis_manager._redis.delete(key)
+
+        logger.info(
+            "search_history_cleared",
+            user_id=str(current_user.id),
+            deleted_count=deleted_count
+        )
+
+        return {
+            "erfolg": True,
+            "geloeschte_eintraege": deleted_count,
+            "nachricht": f"Suchhistorie erfolgreich geloescht ({deleted_count} Eintraege)"
+        }
+
+    except (RedisError, RedisConnectionError) as e:
+        logger.error("clear_search_history_redis_error", error_type=type(e).__name__, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Redis nicht verfuegbar - Suchhistorie konnte nicht geloescht werden"
+        )
+    except Exception as e:
+        logger.error("clear_search_history_error", error_type=type(e).__name__, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Loeschen der Suchhistorie"
+        )
+
+
+# ==================== Search History Helper ====================
+
+async def save_search_to_history(
+    user_id: str,
+    query: str,
+    results_count: int,
+    filters: Optional[dict] = None,
+    max_history_size: int = 100
+) -> bool:
+    """
+    Speichert eine Suche in der Redis-History des Benutzers.
+
+    Args:
+        user_id: Benutzer-ID
+        query: Suchbegriff
+        results_count: Anzahl der Ergebnisse
+        filters: Verwendete Filter (optional)
+        max_history_size: Maximale Anzahl der gespeicherten Suchen
+
+    Returns:
+        True wenn erfolgreich, False bei Fehler
+    """
+    import json
+    from datetime import datetime
+    from app.core.redis_state import RedisStateManager
+
+    # Leere Suchen nicht speichern
+    if not query or not query.strip():
+        return False
+
+    try:
+        redis_manager = RedisStateManager.get_instance()
+        await redis_manager._ensure_connection()
+
+        key = f"search_history:{user_id}"
+
+        # Sucheintrag erstellen
+        search_entry = {
+            "query": query.strip(),
+            "timestamp": datetime.utcnow().isoformat(),
+            "results_count": results_count,
+        }
+
+        # Filter hinzufuegen wenn vorhanden
+        if filters:
+            # Nur serialisierbare Filter behalten
+            safe_filters = {}
+            for k, v in filters.items():
+                if v is not None:
+                    if hasattr(v, 'value'):  # Enum
+                        safe_filters[k] = v.value
+                    elif hasattr(v, 'isoformat'):  # datetime
+                        safe_filters[k] = v.isoformat()
+                    elif isinstance(v, (str, int, float, bool, list)):
+                        safe_filters[k] = v
+            if safe_filters:
+                search_entry["filters"] = safe_filters
+
+        # Am Anfang der Liste einfuegen (LPUSH)
+        await redis_manager._redis.lpush(key, json.dumps(search_entry))
+
+        # Liste auf max_history_size begrenzen (LTRIM)
+        await redis_manager._redis.ltrim(key, 0, max_history_size - 1)
+
+        # TTL setzen (30 Tage)
+        await redis_manager._redis.expire(key, 30 * 24 * 60 * 60)
+
+        logger.debug(
+            "search_saved_to_history",
+            user_id=user_id,
+            query=query[:50],
+            results_count=results_count
+        )
+
+        return True
+
+    except Exception as e:
+        logger.warning("save_search_history_error", error=str(e))
+        return False
+
+
+@router.get(
+    "/trending",
+    summary="Trending Suchbegriffe und Tags",
+    description="Gibt die beliebtesten Suchbegriffe und Tags der letzten Tage zurueck."
+)
+async def get_trending_searches(
+    days: int = Query(7, ge=1, le=30, description="Analysezeitraum in Tagen"),
+    limit: int = Query(10, ge=1, le=50, description="Maximale Anzahl pro Kategorie"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    search_service: SearchService = Depends(get_search_service_dep)
+) -> dict:
+    """
+    Trending Suchbegriffe und Tags.
+
+    Kombiniert:
+    - Haeufigste Suchbegriffe (aus Search Analytics)
+    - Beliebteste Tags (aus Dokumenten)
+    - Neue Dokumente (letzten 7 Tage)
+
+    Nuetzlich fuer:
+    - Dashboard-Widgets
+    - Suchvorschlaege
+    - Content Discovery
+    """
+    from datetime import datetime, timedelta
+    from sqlalchemy import select, func, desc
+    from app.db.models import Document, Tag, document_tags
+
+    result = {
+        "period_days": days,
+        "trending_queries": [],
+        "trending_tags": [],
+        "recent_activity": {}
+    }
+
+    try:
+        # 1. Trending Suchbegriffe aus Redis (letzte Suchen aggregieren)
+        from app.core.redis_state import RedisStateManager
+        redis_manager = RedisStateManager.get_instance()
+        await redis_manager._ensure_connection()
+
+        # Alle User-Histories aggregieren (nur eigene fuer Privacy)
+        key = f"search_history:{current_user.id}"
+        raw_searches = await redis_manager._redis.lrange(key, 0, 100)
+
+        import json
+        from collections import Counter
+        query_counter = Counter()
+        cutoff = datetime.utcnow() - timedelta(days=days)
+
+        for raw in raw_searches:
+            try:
+                search_data = json.loads(raw)
+                timestamp = datetime.fromisoformat(search_data.get("timestamp", ""))
+                if timestamp >= cutoff:
+                    query = search_data.get("query", "").lower().strip()
+                    if query and len(query) >= 2:
+                        query_counter[query] += 1
+            except (json.JSONDecodeError, ValueError):
+                continue
+
+        result["trending_queries"] = [
+            {"query": q, "count": c}
+            for q, c in query_counter.most_common(limit)
+        ]
+
+    except Exception as e:
+        logger.warning("trending_queries_error", error=str(e))
+        result["trending_queries"] = []
+
+    try:
+        # 2. Trending Tags (meist verwendete Tags in den letzten N Tagen)
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+
+        tag_query = (
+            select(Tag.name, func.count(document_tags.c.document_id).label("count"))
+            .select_from(Tag)
+            .join(document_tags, Tag.id == document_tags.c.tag_id)
+            .join(Document, Document.id == document_tags.c.document_id)
+            .where(
+                Document.owner_id == current_user.id,
+                Document.created_at >= cutoff_date
+            )
+            .group_by(Tag.name)
+            .order_by(desc("count"))
+            .limit(limit)
+        )
+        tag_result = await db.execute(tag_query)
+        tag_rows = tag_result.all()
+
+        result["trending_tags"] = [
+            {"tag": row[0], "count": row[1]}
+            for row in tag_rows
+        ]
+
+    except Exception as e:
+        logger.warning("trending_tags_error", error=str(e))
+        result["trending_tags"] = []
+
+    try:
+        # 3. Recent Activity Stats
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+
+        # Neue Dokumente
+        new_docs_result = await db.execute(
+            select(func.count(Document.id))
+            .where(
+                Document.owner_id == current_user.id,
+                Document.created_at >= cutoff_date
+            )
+        )
+        new_docs_count = new_docs_result.scalar() or 0
+
+        # Verarbeitete Dokumente (mit OCR-Text)
+        processed_result = await db.execute(
+            select(func.count(Document.id))
+            .where(
+                Document.owner_id == current_user.id,
+                Document.created_at >= cutoff_date,
+                Document.extracted_text.isnot(None)
+            )
+        )
+        processed_count = processed_result.scalar() or 0
+
+        result["recent_activity"] = {
+            "new_documents": new_docs_count,
+            "processed_documents": processed_count,
+            "period_start": cutoff_date.isoformat(),
+            "period_end": datetime.utcnow().isoformat()
+        }
+
+    except Exception as e:
+        logger.warning("recent_activity_error", error=str(e))
+        result["recent_activity"] = {}
+
+    logger.debug(
+        "trending_retrieved",
+        user_id=str(current_user.id),
+        queries=len(result["trending_queries"]),
+        tags=len(result["trending_tags"])
+    )
+
+    return result
 
 
 @router.get(
@@ -330,8 +701,20 @@ async def get_search_stats(
             "documents_without_text": total - with_text
         }
 
+    except OperationalError as e:
+        logger.error("search_stats_db_connection_error", error_type="OperationalError", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Datenbankverbindung nicht verfuegbar"
+        )
+    except SQLAlchemyError as e:
+        logger.error("search_stats_db_error", error_type=type(e).__name__, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Datenbankfehler beim Abrufen der Statistiken"
+        )
     except Exception as e:
-        logger.error("search_stats_error", error=str(e), exc_info=True)
+        logger.error("search_stats_error", error_type=type(e).__name__, error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Statistiken"

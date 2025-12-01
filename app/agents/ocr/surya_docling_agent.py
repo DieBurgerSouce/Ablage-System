@@ -12,7 +12,7 @@ import structlog
 from PIL import Image
 import pypdfium2 as pdfium
 
-from app.agents.base import OCRAgent
+from app.agents.base import OCRAgent, OCRResult
 
 logger = structlog.get_logger(__name__)
 
@@ -250,31 +250,36 @@ class SuryaDoclingAgent(OCRAgent):
             logger.info("ocr_completed", chars_extracted=len(full_text), pages=len(images))
 
             # Check for German characters if German language was used
+            has_umlauts = False
             if language == "de" and full_text:
                 german_chars = ['ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü', 'ß']
                 found_chars = [char for char in german_chars if char in full_text]
+                has_umlauts = len(found_chars) > 0
                 if found_chars:
                     logger.info("german_chars_detected", chars=found_chars)
 
-            return {
-                "text": full_text,
-                "confidence": round(avg_confidence, 3),
-                "pages": pages_data,
-                "page_count": len(images),
-                "language": language,
-                "model": "surya-ocr-0.17.0",
-                "success": bool(full_text)
-            }
+            # Erstelle standardisiertes OCRResult
+            result = self.create_success_result(
+                text=full_text,
+                confidence=round(avg_confidence, 3),
+                processing_time_ms=0,
+                page_count=len(images),
+                language=language,
+                pages=pages_data,
+                has_umlauts=has_umlauts,
+            )
+
+            return result.to_dict()
 
         except Exception as e:
             logger.error("surya_ocr_processing_error", error=str(e), exc_info=True)
-            return {
-                "text": "",
-                "confidence": 0.0,
-                "error": str(e),
-                "success": False,
-                "model": "surya-ocr-0.17.0"
-            }
+
+            # Erstelle standardisiertes Fehler-Result
+            result = self.create_error_result(
+                error=str(e),
+                error_code="SURYA_DOCLING_ERROR",
+            )
+            return result.to_dict()
 
     async def cleanup(self):
         """Clean up resources."""

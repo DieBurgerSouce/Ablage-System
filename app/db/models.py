@@ -178,6 +178,10 @@ class Document(Base):
         Index("ix_documents_deleted_at", "deleted_at"),
         # Phase 3: Compound Index fuer Owner + Created (haeufige Query)
         Index("ix_documents_owner_created", "owner_id", "created_at"),
+        # Phase 8: Additional compound indexes for common query patterns
+        Index("ix_documents_status_created", "status", "created_at"),
+        Index("ix_documents_owner_status", "owner_id", "status"),
+        Index("ix_documents_deleted_owner", "deleted_at", "owner_id"),
     )
 
     @property

@@ -1,7 +1,9 @@
 # Loki Configuration for Ablage-System OCR
 # Log Aggregation and Analysis
 
-auth_enabled: false
+# SECURITY FIX: Auth aktiviert um unautorisierten Log-Zugriff zu verhindern
+# Erfordert X-Scope-OrgID Header in Anfragen
+auth_enabled: true
 
 server:
   http_listen_port: 3100

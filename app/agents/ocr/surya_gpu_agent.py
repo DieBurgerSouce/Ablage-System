@@ -13,7 +13,7 @@ import torch
 from PIL import Image
 import pypdfium2 as pdfium
 
-from app.agents.base import OCRAgent
+from app.agents.base import OCRAgent, OCRResult
 
 logger = structlog.get_logger(__name__)
 
@@ -276,28 +276,21 @@ class SuryaGPUAgent(OCRAgent):
 
             logger.info("ocr_completed", chars_extracted=len(full_text), pages=len(images))
 
-            return {
-                "success": True,
-                "text": full_text,
-                "confidence": avg_confidence,
-                "page_count": len(images),
-                "backend": "surya_gpu",
-                "device": str(self.device),
-                "model": "surya-ocr-0.17.0",
-                # NEW: Page-level confidence data
-                "pages": pages_data,
-                "confidence_stats": {
-                    "mean": round(avg_confidence, 3),
-                    "min": round(min_page_confidence, 3),
-                    "max": round(max_page_confidence, 3),
-                    "low_confidence_pages": low_confidence_pages,
-                },
-                "metadata": {
-                    "language": language,
-                    "gpu_accelerated": torch.cuda.is_available(),
-                    "dtype": str(self.dtype)
-                }
-            }
+            # Pruefe auf deutsche Zeichen
+            has_umlauts = any(c in full_text for c in "äöüÄÖÜß")
+
+            # Erstelle standardisiertes OCRResult
+            result = self.create_success_result(
+                text=full_text,
+                confidence=avg_confidence,
+                processing_time_ms=0,  # Could add timing if needed
+                page_count=len(images),
+                language=language,
+                pages=pages_data,
+                has_umlauts=has_umlauts,
+            )
+
+            return result.to_dict()
 
         except Exception as e:
             logger.error("ocr_processing_failed", error=str(e))
@@ -305,13 +298,12 @@ class SuryaGPUAgent(OCRAgent):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
-            return {
-                "success": False,
-                "error": str(e),
-                "backend": "surya_gpu",
-                "device": str(self.device),
-                "model": "surya-ocr-0.17.0"
-            }
+            # Erstelle standardisiertes Fehler-Result
+            result = self.create_error_result(
+                error=str(e),
+                error_code="SURYA_OCR_ERROR",
+            )
+            return result.to_dict()
 
     def get_status(self) -> Dict[str, Any]:
         """Get agent status including GPU information."""

@@ -29,7 +29,7 @@ except ImportError:
     MAGIC_AVAILABLE = False
 
 # Use absolute imports for production compatibility
-from app.gpu_manager import GPUManager
+from app.gpu_manager import GPUManager, get_memory_guard
 from app.german_validator import GermanValidator
 from app.services.ocr_service import OCRService
 from app.core.rate_limiting import (
@@ -44,9 +44,17 @@ from app.core.config import settings
 from app.core.monitoring import get_system_monitor, PerformanceTimer
 from app.core.german_messages import HTTPErrors, StatusMessages
 from app.services.storage_service import cleanup_storage_service
+from app.services.webhook_dispatcher import get_webhook_dispatcher
 from app.core.idempotency import check_idempotency, get_idempotency_service
 from app.services.ocr_cache_service import get_ocr_cache_service, get_cached_ocr_result, cache_ocr_result
 from app.core.exception_handlers import register_exception_handlers
+from app.services.model_preloader import get_model_preloader, preload_ocr_models
+from app.core.backpressure import (
+    backpressure_dependency,
+    get_backpressure_info,
+    add_backpressure_headers,
+    BackpressureStatus,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -63,6 +71,8 @@ gpu_manager = None
 german_validator = None
 ocr_service = None
 redis_storage = None
+memory_guard = None  # P0: GPU Memory Guard mit proaktivem Monitor
+model_preloader = None  # P1: Model Pre-Loading fuer schnellere erste Anfragen
 
 # Allowed MIME types mapped to extensions
 ALLOWED_MIME_TYPES = {
@@ -178,15 +188,42 @@ def _detect_mime_basic(content: bytes) -> Optional[str]:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle"""
-    global gpu_manager, german_validator, ocr_service, redis_storage
+    global gpu_manager, german_validator, ocr_service, redis_storage, memory_guard, model_preloader
 
     # Startup
     logger.info("api_starting")
+
+    # SECURITY: Production Debug Check
+    # Verhindert versehentlich aktivierten Debug-Modus in Production
+    if os.getenv("ENVIRONMENT", "development").lower() == "production":
+        if settings.DEBUG:
+            logger.critical(
+                "production_debug_mode_detected",
+                message="DEBUG=True in Production-Umgebung erkannt! "
+                        "Dies ist ein Sicherheitsrisiko. Setze DEBUG=False."
+            )
+            raise RuntimeError(
+                "SICHERHEITSFEHLER: DEBUG=True ist in Production nicht erlaubt! "
+                "Setze DEBUG=False oder entferne ENVIRONMENT=production."
+            )
 
     # Initialize managers
     gpu_manager = GPUManager()
     german_validator = GermanValidator()
     ocr_service = OCRService()
+
+    # P0: Initialize GPU Memory Guard with proactive monitoring
+    # Prevents 80% of OOM errors through proactive cache cleanup
+    memory_guard = get_memory_guard()
+    try:
+        await memory_guard.start_memory_monitor()
+        logger.info(
+            "gpu_memory_monitor_initialized",
+            interval=memory_guard.MONITOR_INTERVAL_SECONDS,
+            proactive_threshold=memory_guard.PROACTIVE_CLEANUP_THRESHOLD
+        )
+    except Exception as e:
+        logger.warning("gpu_memory_monitor_start_failed", error=str(e))
 
     # Initialize rate limiting Redis storage
     if settings.RATE_LIMIT_ENABLED:
@@ -194,16 +231,64 @@ async def lifespan(app: FastAPI):
         logger.info("rate_limiting_enabled", redis_available=redis_storage.is_available if redis_storage else False)
 
     logger.info("available_ocr_backends", backends=ocr_service.backend_manager.get_available_backends())
+
+    # P1: Model Pre-Loading - Laedt OCR-Modelle im Background vor
+    # Reduziert Cold-Start-Latenz fuer erste Anfragen um 10-30 Sekunden
+    model_preloader = get_model_preloader()
+    preload_enabled = getattr(settings, "MODEL_PRELOAD_ENABLED", True)
+
+    if preload_enabled:
+        include_gpu = gpu_manager.has_gpu() if gpu_manager else False
+        logger.info(
+            "model_preload_starting",
+            include_gpu=include_gpu,
+            background=True
+        )
+        try:
+            # Background-Loading: Blockiert nicht den Startup
+            await preload_ocr_models(
+                include_gpu=include_gpu,
+                background=True
+            )
+        except Exception as e:
+            logger.warning("model_preload_startup_error", error=str(e))
+    else:
+        logger.info("model_preload_disabled_by_config")
+
     logger.info("api_started")
 
     yield
 
     # Shutdown
     logger.info("api_shutting_down")
+
+    # P1: Cleanup Model Preloader
+    if model_preloader:
+        try:
+            await model_preloader.cleanup()
+            logger.info("model_preloader_cleanup_complete")
+        except Exception as e:
+            logger.warning("model_preloader_cleanup_failed", error=str(e))
+
+    # P0: Stop GPU Memory Monitor
+    if memory_guard:
+        try:
+            await memory_guard.stop_memory_monitor()
+            logger.info("gpu_memory_monitor_stopped")
+        except Exception as e:
+            logger.warning("gpu_memory_monitor_stop_failed", error=str(e))
+
     if ocr_service:
         await ocr_service.cleanup()
     if redis_storage:
         await redis_storage.disconnect()
+    # Cleanup webhook dispatcher HTTP client
+    try:
+        webhook_dispatcher = get_webhook_dispatcher()
+        await webhook_dispatcher.close()
+        logger.info("webhook_dispatcher_cleanup_complete")
+    except Exception as e:
+        logger.warning("webhook_dispatcher_cleanup_failed", error=str(e))
     # Cleanup storage service (MinIO client)
     await cleanup_storage_service()
     logger.info("api_shutdown_complete")
@@ -395,7 +480,7 @@ register_exception_handlers(app)
 app.state.limiter = limiter
 
 # Include API routers
-from app.api.v1 import auth, tasks, metrics, ml, versions, documents, health, ocr
+from app.api.v1 import auth, tasks, metrics, ml, versions, documents, health, ocr, agents
 from app.api.v1.admin import router as admin_router
 from app.api.v1.backup import router as backup_router
 from app.api.v1.vault import router as vault_router
@@ -428,6 +513,7 @@ app.include_router(api_keys_router, prefix="/api/v1")
 app.include_router(batch_jobs_router, prefix="/api/v1")
 app.include_router(sharing_router, prefix="/api/v1")
 app.include_router(settings_router, prefix="/api/v1")
+app.include_router(agents.router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================
@@ -475,6 +561,14 @@ async def health_check():
     """Comprehensive health check"""
     gpu_status = gpu_manager.get_detailed_status() if gpu_manager else None
     ocr_backends = ocr_service.backend_manager.get_available_backends() if ocr_service else []
+    preloader_status = model_preloader.get_status() if model_preloader else None
+
+    # P2: Backpressure Status
+    try:
+        backpressure_status = get_backpressure_info()
+    except Exception as e:
+        logger.debug("backpressure_info_failed", error=str(e))
+        backpressure_status = {"enabled": False, "error": str(e)}
 
     health = {
         "status": "healthy",
@@ -490,6 +584,16 @@ async def health_check():
             },
             "german_validator": {
                 "available": german_validator is not None
+            },
+            "model_preloader": {
+                "enabled": preloader_status.get("enabled", False) if preloader_status else False,
+                "completed": preloader_status.get("preload_completed", False) if preloader_status else False,
+                "models_loaded": preloader_status.get("summary", {}).get("loaded", 0) if preloader_status else 0,
+            },
+            "backpressure": {
+                "enabled": backpressure_status.get("enabled", False),
+                "status": backpressure_status.get("current_status", "unknown"),
+                "queue_length": backpressure_status.get("total_queue_length", 0),
             }
         }
     }
@@ -498,6 +602,16 @@ async def health_check():
     if not ocr_backends:
         health["status"] = "degraded"
         health["message"] = "No OCR backends available"
+
+    # Check backpressure status
+    bp_status = backpressure_status.get("current_status", "normal")
+    if bp_status == BackpressureStatus.OVERLOADED:
+        health["status"] = "degraded"
+        health["message"] = "System ueberlastet - hohe Queue-Auslastung"
+    elif bp_status == BackpressureStatus.CRITICAL:
+        if health["status"] == "healthy":
+            health["status"] = "warning"
+            health["message"] = "Kritische Queue-Auslastung - Graceful Degradation aktiv"
 
     return health
 
@@ -535,7 +649,8 @@ async def process_document(
     backend: Optional[str] = Form("auto"),
     language: Optional[str] = Form("de"),
     detect_layout: Optional[bool] = Form(True),
-    cached_response: Optional[Dict[str, Any]] = Depends(check_idempotency)
+    cached_response: Optional[Dict[str, Any]] = Depends(check_idempotency),
+    backpressure: Dict[str, Any] = Depends(backpressure_dependency)
 ):
     """
     Process a document with OCR
@@ -546,13 +661,30 @@ async def process_document(
         language: Target language (de, en)
         detect_layout: Whether to detect document layout
         cached_response: Gecachte Antwort bei Idempotency-Key (automatisch geprüft)
+        backpressure: Queue-Backpressure-Status (automatisch geprüft)
 
     Returns:
         OCR processing result with extracted text
 
     Headers:
         Idempotency-Key: Optional. Bei Wiederholung wird gecachtes Ergebnis zurückgegeben.
+        X-Priority: Optional. Prioritaet der Anfrage (high, normal, low)
+        X-Backpressure-Status: Response Header mit aktuellem Queue-Status
+
+    Raises:
+        HTTPException 503: Wenn System ueberlastet (Backpressure)
     """
+    # P2: Backpressure - Backend-Empfehlung bei hoher Last
+    suggested_backend = backpressure.get("suggested_backend")
+    if suggested_backend and backend == "auto":
+        logger.info(
+            "backpressure_backend_override",
+            original_backend=backend,
+            suggested_backend=suggested_backend,
+            queue_length=backpressure.get("queue_length", 0)
+        )
+        backend = suggested_backend
+
     # Wenn gecachte Antwort vorhanden, direkt zurückgeben
     if cached_response:
         return JSONResponse(
@@ -735,9 +867,11 @@ async def process_document(
 
 @app.post("/ocr/batch")
 async def process_batch(
+    request: Request,
     files: List[UploadFile] = File(...),
     backend: Optional[str] = Form("auto"),
-    language: Optional[str] = Form("de")
+    language: Optional[str] = Form("de"),
+    backpressure: Dict[str, Any] = Depends(backpressure_dependency)
 ):
     """
     Process multiple documents in batch
@@ -746,10 +880,40 @@ async def process_batch(
         files: List of document files (max 32 Dateien)
         backend: OCR backend to use
         language: Target language
+        backpressure: Queue-Backpressure-Status (automatisch geprüft)
 
     Returns:
         List of OCR results
+
+    Headers:
+        X-Priority: Optional. Prioritaet der Anfrage (high, normal, low)
+
+    Raises:
+        HTTPException 503: Wenn System ueberlastet (Backpressure)
     """
+    # P2: Backpressure - Bei Batch strengere Limits
+    bp_status = backpressure.get("status", "normal")
+    if bp_status in [BackpressureStatus.CRITICAL, BackpressureStatus.OVERLOADED]:
+        # Bei kritischer Last: Batch-Groesse reduzieren
+        max_batch = 8 if bp_status == BackpressureStatus.CRITICAL else 4
+        if len(files) > max_batch:
+            raise HTTPException(
+                status_code=503,
+                detail=f"System unter hoher Last. Batch-Groesse temporaer auf {max_batch} Dateien limitiert. "
+                       f"Aktuelle Anfrage: {len(files)} Dateien."
+            )
+
+    # P2: Backpressure - Backend-Empfehlung bei hoher Last
+    suggested_backend = backpressure.get("suggested_backend")
+    if suggested_backend and backend == "auto":
+        logger.info(
+            "backpressure_batch_backend_override",
+            original_backend=backend,
+            suggested_backend=suggested_backend,
+            queue_length=backpressure.get("queue_length", 0)
+        )
+        backend = suggested_backend
+
     if not ocr_service:
         raise HTTPException(status_code=503, detail=HTTPErrors.OCR_SERVICE_NOT_INITIALIZED)
 
@@ -957,6 +1121,44 @@ async def get_rate_limit_info_endpoint(request: Request):
     from app.core.rate_limiting import get_rate_limit_info
 
     return get_rate_limit_info(request)
+
+
+# ==================== Backpressure Status Endpoint ====================
+
+@app.get("/backpressure/status")
+async def get_backpressure_status_endpoint():
+    """
+    Get current backpressure status for queue monitoring.
+
+    Returns backpressure information including:
+    - Current status (normal, warning, critical, overloaded)
+    - Queue lengths per queue
+    - Thresholds and recommendations
+
+    Use this endpoint for:
+    - Monitoring dashboards
+    - Alerting systems
+    - Client-side backoff decisions
+
+    Returns:
+        Backpressure status and queue information
+    """
+    try:
+        info = get_backpressure_info()
+        return {
+            "success": True,
+            "backpressure": info
+        }
+    except Exception as e:
+        logger.error("backpressure_status_error", error=str(e))
+        return {
+            "success": False,
+            "error": str(e),
+            "backpressure": {
+                "enabled": False,
+                "current_status": "unknown"
+            }
+        }
 
 
 # ==================== Main Entry Point ====================

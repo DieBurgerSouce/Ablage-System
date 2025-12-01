@@ -300,14 +300,33 @@ async def get_next_sequence_number(db: AsyncSession) -> int:
     """
     Holt die nächste Sequenznummer für einen neuen Eintrag.
 
-    Verwendet SELECT FOR UPDATE um Race Conditions zu vermeiden.
+    SECURITY FIX: Verwendet PostgreSQL SEQUENCE für atomare Sequenznummern.
+    Fallback auf MAX() + 1 für SQLite (Tests) mit Advisory Lock.
 
     Returns:
         Nächste Sequenznummer
     """
+    from sqlalchemy import text
+    from app.core.config import settings
+
+    # PostgreSQL: Verwende SEQUENCE (atomar, keine Race Condition)
+    if "postgresql" in str(settings.DATABASE_URL).lower():
+        try:
+            result = await db.execute(text("SELECT nextval('audit_log_seq')"))
+            seq = result.scalar_one()
+            return int(seq)
+        except Exception as e:
+            # SEQUENCE existiert noch nicht - Fallback mit Warnung
+            logger.warning(
+                "audit_log_sequence_not_found",
+                error=str(e),
+                message="Fallback auf MAX()+1 - bitte Migration 019 ausführen!"
+            )
+
+    # Fallback für SQLite (Tests) oder wenn SEQUENCE nicht existiert
+    # WARNUNG: Hat Race Condition in Multi-Worker-Deployments!
     from app.db.models import AuditLog
 
-    # Hole maximale Sequenznummer
     query = select(func.max(AuditLog.sequence_number))
     result = await db.execute(query)
     max_seq = result.scalar_one_or_none()

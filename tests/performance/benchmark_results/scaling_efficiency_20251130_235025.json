@@ -1,0 +1,25 @@
+{
+  "name": "scaling_efficiency",
+  "count": 0,
+  "mean": 0,
+  "median": 0,
+  "stdev": 0,
+  "min": 0,
+  "max": 0,
+  "p50": 0,
+  "p95": 0,
+  "p99": 0,
+  "errors": 0,
+  "duration_seconds": 0.89562,
+  "metadata": {
+    "scaling_results": {
+      "1": 18.238741035388813,
+      "2": 40.18672923231329,
+      "4": 68.68364255653627,
+      "8": 130.99550067441083
+    },
+    "efficiency_2_workers": 1.101685942969928,
+    "efficiency_4_workers": 0.9414526258044443,
+    "efficiency_8_workers": 0.8977833257531246
+  }
+}

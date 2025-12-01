@@ -49,6 +49,14 @@ from app.middleware.ip_blocking import (
     create_ip_blocking_middleware,
 )
 
+from app.middleware.request_logging import (
+    RequestLoggingMiddleware,
+    PIIFilterConfig,
+    filter_pii_from_dict,
+    filter_pii_from_text,
+    get_request_logging_stats,
+)
+
 __all__ = [
     "RateLimitMiddleware",
     "DevelopmentRateLimitBypass",
@@ -72,4 +80,9 @@ __all__ = [
     "CSRF_COOKIE_NAME",
     "IPBlockingMiddleware",
     "create_ip_blocking_middleware",
+    "RequestLoggingMiddleware",
+    "PIIFilterConfig",
+    "filter_pii_from_dict",
+    "filter_pii_from_text",
+    "get_request_logging_stats",
 ]

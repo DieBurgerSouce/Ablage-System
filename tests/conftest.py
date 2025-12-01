@@ -59,7 +59,7 @@ def test_settings():
         REDIS_URL="redis://localhost:6379/15",  # Use different DB for tests
         CELERY_TASK_ALWAYS_EAGER=True,  # Execute tasks synchronously in tests
         CELERY_TASK_EAGER_PROPAGATES=True,
-        SECRET_KEY="test-secret-key",
+        SECRET_KEY="test-secret-key-minimum-32-characters-for-jwt-signing",
         RATE_LIMIT_ENABLED=False,
         GERMAN_VALIDATION_ENABLED=True
     )

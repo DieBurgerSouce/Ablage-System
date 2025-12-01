@@ -23,7 +23,7 @@ import torch.nn.functional as F
 from PIL import Image
 from transformers import AutoProcessor, AutoModel
 
-from app.agents.base import AgentResourceError, OCRAgent
+from app.agents.base import AgentResourceError, OCRAgent, OCRResult
 from app.gpu_manager import GPUManager
 
 
@@ -127,12 +127,13 @@ class GOTOCRAgent(OCRAgent):
             self.logger.info(
                 "got_ocr_processing_completed",
                 document_id=document_id,
-                text_length=len(result["text"]),
-                format=result["format"],
+                text_length=len(result.text),
+                confidence=result.confidence,
                 device=device,
             )
 
-            return result
+            # Rueckgabe als standardisiertes Dictionary
+            return result.to_dict()
 
         except torch.cuda.OutOfMemoryError as e:
             self.logger.error(
@@ -280,8 +281,19 @@ class GOTOCRAgent(OCRAgent):
             raise ValueError(f"Failed to load image: {e}")
 
     def _crop_region(self, image: Image.Image, region: List[int]) -> Image.Image:
-        """Crop image to specified region."""
+        """Crop image to specified region with bounds validation."""
+        if len(region) != 4:
+            raise ValueError(f"Region muss 4 Koordinaten haben, erhalten: {len(region)}")
+
         x1, y1, x2, y2 = region
+        width, height = image.size
+
+        # Clamp coordinates to image bounds
+        x1 = max(0, min(x1, width - 1))
+        y1 = max(0, min(y1, height - 1))
+        x2 = max(x1 + 1, min(x2, width))
+        y2 = max(y1 + 1, min(y2, height))
+
         return image.crop((x1, y1, x2, y2))
 
     def _calculate_token_confidence(
@@ -524,161 +536,61 @@ class GOTOCRAgent(OCRAgent):
                 else:
                     confidence = 0.85
 
-            # Baue Result mit Confidence-Details
-            result = {
-                "text": text,
-                "confidence": confidence,
-                "format": output_format,
-                "model": self.MODEL_NAME,
-                "device": device,
-                "processing_time_ms": processing_time_ms,
-                "backend": "got-ocr-2.0",
-                "success": True,
-            }
+            # Erstelle standardisiertes OCRResult
+            has_umlauts = any(c in text for c in "äöüÄÖÜß")
 
-            # Füge detaillierte Confidence-Metriken hinzu wenn verfügbar
-            if confidence_data:
-                result["confidence_details"] = {
-                    "method": confidence_data.get("confidence_method", "unknown"),
-                    "mean_confidence": confidence_data.get("mean_confidence", 0.0),
-                    "min_confidence": confidence_data.get("min_confidence", 0.0),
-                    "total_tokens": confidence_data.get("total_tokens", 0),
-                    "low_confidence_count": len(confidence_data.get("low_confidence_positions", []))
-                }
+            result = self.create_success_result(
+                text=text,
+                confidence=confidence,
+                processing_time_ms=processing_time_ms,
+                language=language,
+                has_umlauts=has_umlauts,
+            )
 
             return result
 
         except Exception as e:
             self.logger.error("got_ocr_inference_error", error=str(e), exc_info=True)
-            return {
-                "text": "",
-                "confidence": 0.0,
-                "format": output_format,
-                "model": self.MODEL_NAME,
-                "device": device,
-                "processing_time_ms": int((time.perf_counter() - start_time) * 1000),
-                "backend": "got-ocr-2.0",
-                "success": False,
-                "error": str(e),
-            }
+            return self.create_error_result(
+                error=str(e),
+                error_code="OCR_INFERENCE_ERROR",
+                processing_time_ms=int((time.perf_counter() - start_time) * 1000)
+            )
 
-    async def _postprocess_german(self, result: Dict[str, Any]) -> Dict[str, Any]:
-        """Post-process for German language specifics with context-aware correction."""
-        import re
+    async def _postprocess_german(self, result: OCRResult) -> OCRResult:
+        """Post-process for German language specifics using unified postprocessor.
 
-        text = result["text"]
-        corrections: List[Dict[str, str]] = []
+        Args:
+            result: OCRResult-Objekt von _run_ocr
 
-        # German words that commonly need umlaut restoration
-        # These are words where ae/oe/ue should become umlauts
-        german_umlaut_words = {
-            # Common business/document words
-            'über', 'überprüfung', 'überweisung', 'übersicht', 'übernahme',
-            'für', 'führung', 'ausführung', 'durchführung',
-            'büro', 'gebühr', 'gebühren',
-            'größe', 'größer', 'größte',
-            'öffentlich', 'öffnung', 'eröffnung',
-            'änderung', 'ändern', 'ergänzung',
-            'prüfung', 'prüfen', 'überprüfen',
-            'erklärung', 'klärung', 'aufklärung',
-            'möglich', 'möglichkeit', 'unmöglich',
-            'geschäft', 'geschäftsführer', 'geschäftlich',
-            'gültig', 'gültigkeit', 'ungültig',
-            'straße', 'hauptstraße',
-            'müller', 'schröder', 'köhler', 'bäcker',
-            'münchen', 'köln', 'düsseldorf', 'nürnberg', 'würzburg',
-            'träger', 'empfänger', 'absender',
-            'währung', 'erläuterung', 'begründung',
-            'verfügung', 'verfügbar', 'zuständig',
-            'ausländisch', 'inländisch',
-            'stück', 'rückgabe', 'rücksendung',
-            'kürzlich', 'natürlich', 'persönlich',
-        }
+        Returns:
+            Aktualisiertes OCRResult mit deutschen Korrekturen
+        """
+        if not result.text:
+            return result
 
-        # Words where ss should become ß (after long vowels/diphthongs)
-        eszett_words = {
-            'groß', 'größe', 'größer', 'größte',
-            'straße', 'hauptstraße',
-            'gruß', 'grüße', 'begrüßung',
-            'fuß', 'füße',
-            'maß', 'maße', 'maßnahme',
-            'spaß',
-            'weiß', 'weißer',
-            'heiß', 'heißt', 'heißen',
-            'außen', 'außer', 'außerdem', 'außerhalb',
-            'schließen', 'schließlich', 'abschließend',
-            'gemäß',
-        }
-
-        # Build reverse mapping for detection
-        umlaut_to_ascii = {
-            'ü': 'ue', 'ö': 'oe', 'ä': 'ae',
-            'Ü': 'Ue', 'Ö': 'Oe', 'Ä': 'Ae',
-        }
-
-        # Apply context-aware umlaut restoration
-        words = re.findall(r'\b\w+\b', text)
-        for word in words:
-            word_lower = word.lower()
-
-            # Try umlaut replacements
-            test_word = word_lower
-            for umlaut, ascii_form in umlaut_to_ascii.items():
-                test_word = test_word.replace(ascii_form.lower(), umlaut.lower())
-
-            # Check if the corrected word is in our vocabulary
-            if test_word in german_umlaut_words and test_word != word_lower:
-                # Preserve original case pattern
-                if word[0].isupper():
-                    corrected = test_word.capitalize()
-                elif word.isupper():
-                    corrected = test_word.upper()
-                else:
-                    corrected = test_word
-
-                # Apply replacement
-                pattern = r'\b' + re.escape(word) + r'\b'
-                if re.search(pattern, text):
-                    text = re.sub(pattern, corrected, text, count=1)
-                    corrections.append({
-                        "original": word,
-                        "corrected": corrected,
-                        "type": "umlaut_restoration"
-                    })
-
-        # Apply ß corrections for known words
-        for eszett_word in eszett_words:
-            ss_version = eszett_word.replace('ß', 'ss')
-            # Case variations
-            for original, replacement in [
-                (ss_version, eszett_word),
-                (ss_version.capitalize(), eszett_word.capitalize()),
-                (ss_version.upper(), eszett_word.upper()),
-            ]:
-                pattern = r'\b' + re.escape(original) + r'\b'
-                if re.search(pattern, text):
-                    text = re.sub(pattern, replacement, text)
-                    corrections.append({
-                        "original": original,
-                        "corrected": replacement,
-                        "type": "eszett_restoration"
-                    })
-
-        # Validate with GermanValidator if available
-        validation_result = None
+        # OPTIMIERUNG: Verwende Unified German Postprocessor
         try:
-            from app.german_validator import GermanValidator
-            validator = GermanValidator()
-            validation_result = validator.validate_umlauts(text)
-        except ImportError:
-            self.logger.debug("german_validator_not_available")
+            from app.services.german_text_postprocessor import get_german_postprocessor
+            postprocessor = get_german_postprocessor()
+            german_result = postprocessor.postprocess(result.text, {"validate": True})
 
-        result["text"] = text
-        result["german_processed"] = True
-        result["corrections"] = corrections
-        result["corrections_count"] = len(corrections)
-        if validation_result:
-            result["umlaut_validation"] = validation_result
+            # Aktualisiere OCRResult mit korrigiertem Text
+            result.text = german_result["text"]
+            result.has_umlauts = any(c in result.text for c in "äöüÄÖÜß")
+
+            # Extrahiere Qualitaetsmetriken
+            stats = german_result.get("stats", {})
+            result.german_validation_score = stats.get("quality_score", 0.0)
+
+            self.logger.debug(
+                "got_ocr_german_postprocessing",
+                corrections_count=german_result.get("corrections_count", 0),
+                text_changed=german_result.get("text_changed", False)
+            )
+
+        except ImportError:
+            self.logger.debug("german_postprocessor_not_available_fallback")
 
         return result
 

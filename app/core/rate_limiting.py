@@ -14,6 +14,7 @@ Features:
 from typing import Optional, Callable
 from functools import wraps
 from datetime import datetime, timezone, timedelta
+import asyncio
 
 import structlog
 from fastapi import Request, Response, HTTPException
@@ -79,11 +80,11 @@ def get_ip_identifier(request: Request) -> str:
 # ==================== Redis Backend Configuration ====================
 
 class RedisRateLimitStorage:
-    """Redis backend for rate limit storage with graceful degradation."""
+    """Redis backend for rate limit storage with connection pooling and graceful degradation."""
 
     def __init__(self, redis_url: str):
         """
-        Initialize Redis storage backend.
+        Initialize Redis storage backend with connection pooling.
 
         Args:
             redis_url: Redis connection URL
@@ -91,29 +92,43 @@ class RedisRateLimitStorage:
         self.redis_url = redis_url
         self._redis: Optional[aioredis.Redis] = None
         self._available = False
+        self._connect_lock = asyncio.Lock()
 
     async def connect(self) -> None:
-        """Connect to Redis with error handling."""
-        try:
-            self._redis = await aioredis.from_url(
-                self.redis_url,
-                encoding="utf-8",
-                decode_responses=True,
-                socket_timeout=5,
-                socket_connect_timeout=5
-            )
-            # Test connection
-            await self._redis.ping()
-            self._available = True
-            logger.info("rate_limit_redis_connected")
-        except Exception as e:
-            logger.warning(
-                "rate_limit_redis_unavailable",
-                error=str(e),
-                fallback="in-memory"
-            )
-            self._available = False
-            self._redis = None
+        """Connect to Redis with connection pooling and error handling."""
+        async with self._connect_lock:
+            if self._redis is not None:
+                return  # Already connected
+            try:
+                # Nutze Connection Pool Settings aus Config
+                self._redis = await aioredis.from_url(
+                    self.redis_url,
+                    encoding="utf-8",
+                    decode_responses=True,
+                    # Connection Pool Settings
+                    max_connections=settings.REDIS_POOL_MAX_SIZE,
+                    socket_timeout=settings.REDIS_SOCKET_TIMEOUT,
+                    socket_connect_timeout=settings.REDIS_SOCKET_CONNECT_TIMEOUT,
+                    socket_keepalive=settings.REDIS_SOCKET_KEEPALIVE,
+                    health_check_interval=settings.REDIS_HEALTH_CHECK_INTERVAL,
+                    retry_on_timeout=True,
+                )
+                # Test connection
+                await self._redis.ping()
+                self._available = True
+                logger.info(
+                    "rate_limit_redis_connected",
+                    max_connections=settings.REDIS_POOL_MAX_SIZE,
+                    socket_timeout=settings.REDIS_SOCKET_TIMEOUT
+                )
+            except Exception as e:
+                logger.warning(
+                    "rate_limit_redis_unavailable",
+                    error=str(e),
+                    fallback="in-memory"
+                )
+                self._available = False
+                self._redis = None
 
     async def disconnect(self) -> None:
         """Close Redis connection."""
@@ -426,6 +441,9 @@ def bypass_rate_limit_if_whitelisted(func: Callable) -> Callable:
     """
     Decorator to bypass rate limiting for whitelisted IPs.
 
+    Markiert Requests von whitelisted IPs, sodass nachfolgende
+    Rate-Limit-Checks diese ueberspringen koennen.
+
     Args:
         func: Function to decorate
 
@@ -442,9 +460,12 @@ def bypass_rate_limit_if_whitelisted(func: Callable) -> Callable:
                 ip=get_remote_address(request),
                 path=request.url.path
             )
-            # Skip rate limit check
-            return await func(*args, **kwargs)
+            # Markiere Request als whitelisted fuer nachfolgende Checks
+            request.state.rate_limit_whitelisted = True
+        else:
+            request.state.rate_limit_whitelisted = False
 
+        # Funktion wird genau einmal aufgerufen
         return await func(*args, **kwargs)
 
     return wrapper

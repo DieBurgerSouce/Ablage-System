@@ -417,6 +417,12 @@ class Settings(BaseSettings):
     ENABLE_GPU: bool = True
     GPU_BATCH_SIZE: int = 32
 
+    # Model Pre-Loading Settings
+    # Laedt OCR-Modelle beim Startup vor fuer schnellere erste Anfragen
+    MODEL_PRELOAD_ENABLED: bool = True
+    MODEL_PRELOAD_GPU_MODELS: bool = True  # Ob GPU-Modelle vorgeladen werden
+    MODEL_PRELOAD_TIMEOUT_SECONDS: int = 600  # Timeout pro Model (10 Min)
+
     # Load Balancing Settings
     LOAD_BALANCING_ENABLED: bool = True
     QUEUE_LENGTH_THRESHOLD_HIGH: int = 100  # Switch to faster backend

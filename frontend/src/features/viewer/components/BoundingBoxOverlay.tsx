@@ -24,6 +24,8 @@ interface BoundingBoxOverlayProps {
     onBoxClick: (box: BoundingBox) => void;
 }
 
+const MotionRect = motion.rect as any;
+
 export function BoundingBoxOverlay({ boxes, scale, selectedBox, onBoxClick }: BoundingBoxOverlayProps) {
     return (
         <svg
@@ -32,7 +34,7 @@ export function BoundingBoxOverlay({ boxes, scale, selectedBox, onBoxClick }: Bo
         >
             {boxes.map((box, idx) => (
                 <g key={box.id || idx}>
-                    <motion.rect
+                    <MotionRect
                         x={box.x * scale}
                         y={box.y * scale}
                         width={box.width * scale}

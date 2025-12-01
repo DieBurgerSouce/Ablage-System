@@ -11,6 +11,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
 import io
+import asyncio
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, File, Form, Request
@@ -317,7 +318,7 @@ async def list_documents(
 @router.get("/search/", response_model=SearchResponse)
 async def search_documents(
     request: Request,
-    q: str = Query(..., min_length=1, max_length=1000, description="Suchbegriff"),
+    q: str = Query(..., min_length=2, max_length=1000, description="Suchbegriff (mindestens 2 Zeichen)"),
     search_type: SearchType = Query(SearchType.HYBRID, description="Art der Suche"),
     page: int = Query(1, ge=1, description="Seitennummer"),
     per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
@@ -367,19 +368,37 @@ async def search_documents(
     )
 
     service = get_search_service()
-    result = await service.search(
-        db=db,
-        query=q,
-        user_id=current_user.id,
-        search_type=search_type,
-        filters=filters,
-        page=page,
-        per_page=per_page,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        highlight=highlight,
-        similarity_threshold=similarity_threshold
-    )
+
+    # Search mit Timeout (30s) um Slow-Query DoS zu verhindern
+    SEARCH_TIMEOUT_SECONDS = 30.0
+    try:
+        result = await asyncio.wait_for(
+            service.search(
+                db=db,
+                query=q,
+                user_id=current_user.id,
+                search_type=search_type,
+                filters=filters,
+                page=page,
+                per_page=per_page,
+                sort_by=sort_by,
+                sort_order=sort_order,
+                highlight=highlight,
+                similarity_threshold=similarity_threshold
+            ),
+            timeout=SEARCH_TIMEOUT_SECONDS
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "search_timeout",
+            query=q[:50],
+            search_type=search_type.value,
+            timeout_seconds=SEARCH_TIMEOUT_SECONDS
+        )
+        raise HTTPException(
+            status_code=504,
+            detail="Suche hat zu lange gedauert. Bitte versuchen Sie eine praezisere Anfrage."
+        )
 
     # Log analytics asynchronously (non-blocking)
     try:
@@ -411,6 +430,15 @@ async def search_documents(
 
         # Add analytics_id to response for click tracking
         result.analytics_id = analytics_id
+
+        # Save to user's search history (Redis)
+        from app.api.v1.search import save_search_to_history
+        await save_search_to_history(
+            user_id=str(current_user.id),
+            query=q,
+            results_count=result.total,
+            filters=filters.model_dump() if filters else None
+        )
     except Exception as e:
         # Don't fail the search if analytics logging fails
         logger.warning(
@@ -1005,7 +1033,19 @@ async def batch_delete_documents(
             detail="Loeschung muss mit confirm=true bestaetigt werden"
         )
 
+    # Explizite Batch-Groessen-Validierung (Defense in Depth)
+    MAX_BATCH_SIZE = 100
     doc_count = len(request.document_ids)
+    if doc_count > MAX_BATCH_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Maximal {MAX_BATCH_SIZE} Dokumente pro Anfrage. Erhalten: {doc_count}"
+        )
+    if doc_count == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Mindestens ein Dokument muss angegeben werden"
+        )
 
     # Zusaetzliche Sicherheit bei grossen Batches
     if doc_count > FORCE_CONFIRM_THRESHOLD and not request.dry_run:
@@ -1264,6 +1304,263 @@ async def list_deleted_documents(
     """
     service = get_document_service()
     return await service.list_deleted_documents(db=db, user_id=current_user.id)
+
+
+# ==================== Cleanup and Maintenance ====================
+
+@router.post("/{document_id}/cleanup")
+async def cleanup_document_resources(
+    document_id: UUID,
+    clear_cache: bool = Query(True, description="Cache fuer dieses Dokument loeschen"),
+    clear_temp_files: bool = Query(True, description="Temporaere Dateien loeschen"),
+    clear_gpu_memory: bool = Query(False, description="GPU-Speicher freigeben (VRAM)"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Ressourcen fuer ein Dokument bereinigen.
+
+    Nuetzlich nach der Verarbeitung um:
+    - Temporaere Dateien zu loeschen
+    - Caches zu invalidieren
+    - GPU-Speicher freizugeben
+
+    **Hinweis**: GPU-Speicher-Freigabe ist eine globale Operation und
+    kann andere laufende Verarbeitungen beeinflussen.
+    """
+    from app.services.storage_service import get_storage_service
+    from app.services.ocr_cache_service import get_ocr_cache_service
+
+    # Dokument existiert und gehoert dem Benutzer?
+    service = get_document_service()
+    doc = await service.get_document(db=db, document_id=document_id, user_id=current_user.id)
+
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden"
+        )
+
+    cleanup_results = {
+        "document_id": str(document_id),
+        "cache_cleared": False,
+        "temp_files_cleared": False,
+        "gpu_memory_cleared": False,
+        "errors": []
+    }
+
+    # 1. Cache loeschen
+    if clear_cache:
+        try:
+            cache_service = get_ocr_cache_service()
+            await cache_service.invalidate_document_cache(str(document_id))
+
+            search_service = get_search_service()
+            await search_service.invalidate_document_cache(
+                document_id, current_user.id, reason="manual_cleanup"
+            )
+            cleanup_results["cache_cleared"] = True
+        except Exception as e:
+            cleanup_results["errors"].append(f"Cache-Bereinigung fehlgeschlagen: {str(e)}")
+            logger.warning("cleanup_cache_failed", document_id=str(document_id), error=str(e))
+
+    # 2. Temporaere Dateien loeschen
+    if clear_temp_files:
+        try:
+            import shutil
+            from pathlib import Path
+
+            temp_dir = Path("data/temp") / str(document_id)
+            if temp_dir.exists():
+                shutil.rmtree(temp_dir)
+                cleanup_results["temp_files_cleared"] = True
+            else:
+                cleanup_results["temp_files_cleared"] = True  # Keine temp files = bereits bereinigt
+        except Exception as e:
+            cleanup_results["errors"].append(f"Temp-Bereinigung fehlgeschlagen: {str(e)}")
+            logger.warning("cleanup_temp_failed", document_id=str(document_id), error=str(e))
+
+    # 3. GPU-Speicher freigeben (optional, globale Auswirkung)
+    if clear_gpu_memory:
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+
+                # Aktuelle Speichernutzung nach Bereinigung
+                memory_allocated = torch.cuda.memory_allocated() / (1024 ** 3)
+                memory_reserved = torch.cuda.memory_reserved() / (1024 ** 3)
+
+                cleanup_results["gpu_memory_cleared"] = True
+                cleanup_results["gpu_memory_after"] = {
+                    "allocated_gb": round(memory_allocated, 2),
+                    "reserved_gb": round(memory_reserved, 2)
+                }
+            else:
+                cleanup_results["gpu_memory_cleared"] = False
+                cleanup_results["errors"].append("GPU nicht verfuegbar")
+        except Exception as e:
+            cleanup_results["errors"].append(f"GPU-Bereinigung fehlgeschlagen: {str(e)}")
+            logger.warning("cleanup_gpu_failed", document_id=str(document_id), error=str(e))
+
+    cleanup_results["success"] = len(cleanup_results["errors"]) == 0
+
+    logger.info(
+        "document_cleanup_completed",
+        document_id=str(document_id),
+        user_id=str(current_user.id),
+        results=cleanup_results
+    )
+
+    return cleanup_results
+
+
+@router.post("/{document_id}/validate-german")
+async def validate_german_text(
+    document_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Validiert den extrahierten Text eines Dokuments auf deutsche Sprachmerkmale.
+
+    Prueft auf:
+    - Umlaute (ae, oe, ue, ss)
+    - Deutsche Datumsformate (TT.MM.JJJJ)
+    - Waehrungsformate (1.234,56 EUR)
+    - IBANs (DE...)
+    - USt-IDs (DE...)
+    - Geschaeftsbegriffe (Rechnung, Vertrag, etc.)
+
+    Nuetzlich zur:
+    - OCR-Qualitaetspruefung
+    - Spracherkennung
+    - Dokumentklassifizierung
+    """
+    from app.german_validator import GermanValidator
+
+    # Dokument laden
+    service = get_document_service()
+    doc = await service.get_document(db=db, document_id=document_id, user_id=current_user.id)
+
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden"
+        )
+
+    # Extrahierten Text pruefen
+    text = doc.extracted_text
+    if not text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Dokument hat keinen extrahierten Text. Bitte zuerst OCR durchfuehren."
+        )
+
+    # German Validator initialisieren
+    validator = GermanValidator()
+
+    # Validierungen durchfuehren
+    validation_result = {
+        "document_id": str(document_id),
+        "text_length": len(text),
+        "word_count": len(text.split()),
+        "validations": {}
+    }
+
+    # 1. Umlaute
+    has_umlauts = validator.validate_umlauts(text)
+    validation_result["validations"]["umlauts"] = {
+        "present": has_umlauts,
+        "description": "Deutsche Umlaute (ae, oe, ue, ss) erkannt"
+    }
+
+    # 2. Datumsformate
+    dates = validator.validate_date_format(text)
+    validation_result["validations"]["dates"] = {
+        "found": len(dates),
+        "examples": dates[:5],  # Maximal 5 Beispiele
+        "description": "Deutsche Datumsformate (TT.MM.JJJJ)"
+    }
+
+    # 3. Waehrungsformate
+    amounts = validator.validate_currency_format(text)
+    validation_result["validations"]["currency"] = {
+        "found": len(amounts),
+        "examples": amounts[:5],
+        "description": "Deutsche Waehrungsformate (1.234,56 EUR)"
+    }
+
+    # 4. Geschaeftsbegriffe
+    business_terms = validator.extract_business_terms(text)
+    validation_result["validations"]["business_terms"] = {
+        "found": len(business_terms),
+        "terms": business_terms[:10],
+        "description": "Deutsche Geschaeftsbegriffe (Rechnung, Vertrag, etc.)"
+    }
+
+    # 5. IBANs und USt-IDs
+    ibans = []
+    vat_ids = []
+    words = text.split()
+    for word in words:
+        word_clean = word.strip(".,;:()[]")
+        if word_clean.startswith("DE") and len(word_clean) == 22:
+            if validator.validate_iban(word_clean):
+                ibans.append(word_clean)
+        elif word_clean.startswith("DE") and len(word_clean) == 11:
+            if validator.validate_vat_id(word_clean):
+                vat_ids.append(word_clean)
+
+    validation_result["validations"]["iban"] = {
+        "found": len(ibans),
+        "examples": ibans[:3],
+        "description": "Deutsche IBANs"
+    }
+
+    validation_result["validations"]["vat_id"] = {
+        "found": len(vat_ids),
+        "examples": vat_ids[:3],
+        "description": "Deutsche USt-IDs"
+    }
+
+    # Gesamtbewertung
+    is_german = (
+        has_umlauts or
+        len(dates) > 0 or
+        len(amounts) > 0 or
+        len(business_terms) >= 2 or
+        len(ibans) > 0 or
+        len(vat_ids) > 0
+    )
+
+    confidence = 0.0
+    if has_umlauts:
+        confidence += 0.3
+    if len(dates) > 0:
+        confidence += 0.2
+    if len(amounts) > 0:
+        confidence += 0.15
+    if len(business_terms) >= 2:
+        confidence += 0.2
+    if len(ibans) > 0 or len(vat_ids) > 0:
+        confidence += 0.15
+
+    validation_result["is_german"] = is_german
+    validation_result["confidence"] = min(confidence, 1.0)
+    validation_result["quality_rating"] = (
+        "hoch" if confidence >= 0.7 else
+        "mittel" if confidence >= 0.4 else
+        "niedrig"
+    )
+
+    logger.info(
+        "german_validation_completed",
+        document_id=str(document_id),
+        is_german=is_german,
+        confidence=confidence
+    )
+
+    return validation_result
 
 
 # ==================== Statistics and Info ====================

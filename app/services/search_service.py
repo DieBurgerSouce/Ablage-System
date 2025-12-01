@@ -6,6 +6,7 @@ Unterstuetzt Hybrid-Suche mit Reciprocal Rank Fusion.
 
 from typing import List, Optional, Dict, Any, Tuple, Set
 from datetime import datetime
+from functools import lru_cache
 from uuid import UUID
 import time
 import math
@@ -17,7 +18,7 @@ from sqlalchemy import select, func, text, and_, or_, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Document, Tag, document_tags
+from app.db.models import Document, Tag, document_tags, DocumentAccess
 from app.db.schemas import (
     SearchType, SearchFilters, SearchResultItem, SearchResponse,
     SimilarDocumentItem, SortField, SortOrder, DocumentType, ProcessingStatus
@@ -495,9 +496,21 @@ class SearchService:
         offset = (page - 1) * per_page
 
         # Base query mit tsvector Suche
+        # Inkludiert eigene UND geteilte Dokumente (via DocumentAccess)
         fts_query = text("""
             WITH search_query AS (
                 SELECT plainto_tsquery('german_text', :query) AS query
+            ),
+            accessible_docs AS (
+                -- Eigene Dokumente
+                SELECT document_id FROM (
+                    SELECT id AS document_id FROM documents WHERE owner_id = :user_id
+                ) owned
+                UNION
+                -- Geteilte Dokumente (nicht abgelaufen)
+                SELECT document_id FROM document_access
+                WHERE user_id = :user_id
+                    AND (expires_at IS NULL OR expires_at > NOW())
             ),
             ranked_docs AS (
                 SELECT
@@ -518,7 +531,7 @@ class SearchService:
                         'MaxWords=50, MinWords=25, StartSel=<mark>, StopSel=</mark>'
                     ) AS highlight
                 FROM documents d, search_query sq
-                WHERE d.owner_id = :user_id
+                WHERE d.id IN (SELECT document_id FROM accessible_docs)
                     AND d.search_vector @@ sq.query
                     {filters}
                 ORDER BY fts_rank DESC
@@ -527,11 +540,18 @@ class SearchService:
             LIMIT :limit OFFSET :offset
         """.format(filters=self._build_filter_sql(filters)))
 
-        # Count query
+        # Count query (inkl. geteilte Dokumente)
         count_query = text("""
+            WITH accessible_docs AS (
+                SELECT id AS document_id FROM documents WHERE owner_id = :user_id
+                UNION
+                SELECT document_id FROM document_access
+                WHERE user_id = :user_id
+                    AND (expires_at IS NULL OR expires_at > NOW())
+            )
             SELECT COUNT(*) FROM documents d,
                 plainto_tsquery('german_text', :query) AS query
-            WHERE d.owner_id = :user_id
+            WHERE d.id IN (SELECT document_id FROM accessible_docs)
                 AND d.search_vector @@ query
                 {filters}
         """.format(filters=self._build_filter_sql(filters)))
@@ -597,9 +617,16 @@ class SearchService:
         query_embedding = await self.embedding_service.generate_embedding_async(query, is_query=True)
         embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
 
-        # Semantic search query
+        # Semantic search query (inkl. geteilte Dokumente)
         semantic_query = text("""
-            WITH semantic_results AS (
+            WITH accessible_docs AS (
+                SELECT id AS document_id FROM documents WHERE owner_id = :user_id
+                UNION
+                SELECT document_id FROM document_access
+                WHERE user_id = :user_id
+                    AND (expires_at IS NULL OR expires_at > NOW())
+            ),
+            semantic_results AS (
                 SELECT
                     d.id,
                     d.filename,
@@ -615,7 +642,7 @@ class SearchService:
                     d.extracted_text,
                     1 - (d.embedding <=> :embedding::vector) AS similarity
                 FROM documents d
-                WHERE d.owner_id = :user_id
+                WHERE d.id IN (SELECT document_id FROM accessible_docs)
                     AND d.embedding IS NOT NULL
                     AND 1 - (d.embedding <=> :embedding::vector) >= :threshold
                     {filters}
@@ -625,10 +652,17 @@ class SearchService:
             LIMIT :limit OFFSET :offset
         """.format(filters=self._build_filter_sql(filters)))
 
-        # Count query
+        # Count query (inkl. geteilte Dokumente)
         count_query = text("""
+            WITH accessible_docs AS (
+                SELECT id AS document_id FROM documents WHERE owner_id = :user_id
+                UNION
+                SELECT document_id FROM document_access
+                WHERE user_id = :user_id
+                    AND (expires_at IS NULL OR expires_at > NOW())
+            )
             SELECT COUNT(*) FROM documents d
-            WHERE d.owner_id = :user_id
+            WHERE d.id IN (SELECT document_id FROM accessible_docs)
                 AND d.embedding IS NOT NULL
                 AND 1 - (d.embedding <=> :embedding::vector) >= :threshold
                 {filters}
@@ -794,10 +828,29 @@ class SearchService:
             except Exception as e:
                 logger.warning("similar_cache_error", error=str(e))
 
-        # Embedding des Quelldokuments holen
-        doc_query = select(Document).where(
-            and_(Document.id == document_id, Document.owner_id == user_id)
-        )
+        # Embedding des Quelldokuments holen (eigenes oder geteiltes)
+        # Prüfe ob Benutzer Zugriff hat (Owner oder via DocumentAccess)
+        doc_query = text("""
+            SELECT d.* FROM documents d
+            WHERE d.id = :document_id
+            AND (
+                d.owner_id = :user_id
+                OR d.id IN (
+                    SELECT document_id FROM document_access
+                    WHERE user_id = :user_id
+                    AND (expires_at IS NULL OR expires_at > NOW())
+                )
+            )
+        """)
+        result = await db.execute(doc_query, {"document_id": str(document_id), "user_id": str(user_id)})
+        source_row = result.first()
+
+        if not source_row:
+            logger.warning("document_not_found_or_no_access", document_id=str(document_id))
+            return []
+
+        # Lade das vollständige Document-Objekt
+        doc_query = select(Document).where(Document.id == document_id)
         result = await db.execute(doc_query)
         source_doc = result.scalar_one_or_none()
 
@@ -820,12 +873,19 @@ class SearchService:
 
         embedding_str = "[" + ",".join(str(x) for x in source_doc.embedding) + "]"
 
-        # Aehnliche Dokumente suchen
+        # Aehnliche Dokumente suchen (inkl. geteilte Dokumente)
         type_filter = ""
         if exclude_same_type and source_doc.document_type:
             type_filter = "AND d.document_type != :source_type"
 
         similar_query = text(f"""
+            WITH accessible_docs AS (
+                SELECT id AS document_id FROM documents WHERE owner_id = :user_id
+                UNION
+                SELECT document_id FROM document_access
+                WHERE user_id = :user_id
+                    AND (expires_at IS NULL OR expires_at > NOW())
+            )
             SELECT
                 d.id AS document_id,
                 d.filename,
@@ -834,7 +894,7 @@ class SearchService:
                 d.created_at,
                 LEFT(d.extracted_text, 200) AS text_preview
             FROM documents d
-            WHERE d.owner_id = :user_id
+            WHERE d.id IN (SELECT document_id FROM accessible_docs)
                 AND d.id != :source_id
                 AND d.embedding IS NOT NULL
                 AND 1 - (d.embedding <=> :embedding::vector) >= :threshold
@@ -1342,8 +1402,9 @@ class SearchService:
                         highlight=highlight
                     ))
         except Exception as e:
-            # Wenn die Text-Suche fehlschlägt (z.B. SQLite), ignorieren
-            logger.debug("text_suggest_failed", error=str(e))
+            # Log at WARNING for unexpected failures (schema issues, etc.)
+            # SQLite limitation is expected and harmless, but other errors need visibility
+            logger.warning("text_suggest_failed", error=str(e), error_type=type(e).__name__)
 
         # Nach Score sortieren und limitieren
         suggestions.sort(key=lambda x: x.score, reverse=True)
@@ -1363,19 +1424,13 @@ class SearchService:
         }
 
     def _create_highlight(self, text: str, query: str) -> str:
-        """Erstellt HTML-Highlight fuer Suchbegriff."""
-        import re
-        pattern = re.compile(re.escape(query), re.IGNORECASE)
-        return pattern.sub(lambda m: f"<mark>{m.group()}</mark>", text)
+        """Erstellt sicheres HTML-Highlight fuer Suchbegriff (ReDoS-geschuetzt)."""
+        from app.core.input_sanitization import create_safe_highlight
+        return create_safe_highlight(text, query, tag="mark")
 
 
-# Dependency Injection
-_search_service: Optional[SearchService] = None
-
-
+# Thread-safe singleton via lru_cache
+@lru_cache(maxsize=1)
 def get_search_service() -> SearchService:
-    """Search-Service-Instanz abrufen."""
-    global _search_service
-    if _search_service is None:
-        _search_service = SearchService()
-    return _search_service
+    """Search-Service-Instanz abrufen (thread-safe singleton)."""
+    return SearchService()

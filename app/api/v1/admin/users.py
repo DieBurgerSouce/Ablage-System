@@ -552,3 +552,244 @@ async def get_account_lockout_status(
         )
 
     return await get_lockout_status(ip=ip, username=email)
+
+
+# ==================== User Quotas Management ====================
+
+from pydantic import BaseModel, Field
+from sqlalchemy import select, update
+from app.db.models import RateLimitOverride
+
+
+class UserQuotasResponse(BaseModel):
+    """Response model for user quotas."""
+    user_id: str
+    email: str
+    tier: str
+
+    # Base quotas (from User model)
+    daily_quota: int
+    documents_processed_today: int
+    daily_quota_remaining: int
+
+    # Rate limit overrides (from User model, null = tier default)
+    rate_limit_hourly_override: Optional[int] = None
+    rate_limit_daily_override: Optional[int] = None
+
+    # Detailed overrides (from RateLimitOverride model)
+    has_custom_override: bool = False
+    override_details: Optional[dict] = None
+
+    # Computed effective limits
+    effective_limits: dict
+
+    class Config:
+        from_attributes = True
+
+
+class UserQuotasUpdate(BaseModel):
+    """Request model for updating user quotas."""
+    daily_quota: Optional[int] = Field(None, ge=1, le=10000, description="Taegliches Dokumentenlimit")
+    rate_limit_hourly: Optional[int] = Field(None, ge=1, le=1000, description="Stuendliches Rate-Limit")
+    rate_limit_daily: Optional[int] = Field(None, ge=1, le=10000, description="Taegliches Rate-Limit")
+    reset_daily_usage: bool = Field(False, description="Tagesnutzung zuruecksetzen")
+
+    # Override settings (set to create/update RateLimitOverride)
+    ocr_hourly: Optional[int] = Field(None, ge=1, le=1000, description="Max OCR-Anfragen pro Stunde")
+    ocr_daily: Optional[int] = Field(None, ge=1, le=10000, description="Max OCR-Anfragen pro Tag")
+    batch_hourly: Optional[int] = Field(None, ge=1, le=100, description="Max Batch-Operationen pro Stunde")
+    api_per_minute: Optional[int] = Field(None, ge=1, le=1000, description="Max API-Anfragen pro Minute")
+
+
+@router.get(
+    "/{user_id}/quotas",
+    response_model=UserQuotasResponse,
+    summary="Benutzer-Quotas abrufen",
+    description="Ruft alle Quota-Einstellungen und Nutzung fuer einen Benutzer ab"
+)
+async def get_user_quotas(
+    user_id: UUID,
+    admin: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> UserQuotasResponse:
+    """
+    Ruft alle Quota-Einstellungen fuer einen Benutzer ab.
+
+    Zeigt:
+    - **Basis-Quotas**: Taegliches Dokumentenlimit und aktuelle Nutzung
+    - **Rate-Limits**: Individuelle Overrides (falls vorhanden)
+    - **Effektive Limits**: Kombination aus Tier-Defaults und Overrides
+
+    Die effektiven Limits werden automatisch berechnet basierend auf:
+    1. Tier-Standardwerten (free/premium/admin)
+    2. Individuellen Overrides (falls gesetzt)
+    """
+    # Get user
+    from sqlalchemy import select
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Benutzer nicht gefunden",
+        )
+
+    # Get rate limit override if exists
+    override_result = await db.execute(
+        select(RateLimitOverride).where(RateLimitOverride.user_id == user_id)
+    )
+    override = override_result.scalar_one_or_none()
+
+    # Calculate effective limits based on tier
+    from app.services.admin.rate_limit_service import RateLimitService
+    tier_defaults = RateLimitService.get_tier_defaults(user.tier or "free")
+
+    effective_limits = {
+        "ocr_hourly": override.ocr_hourly if override and override.ocr_hourly else tier_defaults.ocr_hourly,
+        "ocr_daily": override.ocr_daily if override and override.ocr_daily else tier_defaults.ocr_daily,
+        "batch_hourly": override.batch_hourly if override and override.batch_hourly else tier_defaults.batch_hourly,
+        "api_per_minute": override.api_per_minute if override and override.api_per_minute else tier_defaults.api_per_minute,
+        "daily_documents": user.daily_quota,
+    }
+
+    # Build override details if exists
+    override_details = None
+    if override:
+        override_details = {
+            "ocr_hourly": override.ocr_hourly,
+            "ocr_daily": override.ocr_daily,
+            "batch_hourly": override.batch_hourly,
+            "api_per_minute": override.api_per_minute,
+            "valid_until": override.valid_until.isoformat() if override.valid_until else None,
+            "reason": override.reason,
+            "created_at": override.created_at.isoformat() if override.created_at else None,
+        }
+
+    return UserQuotasResponse(
+        user_id=str(user.id),
+        email=user.email,
+        tier=user.tier or "free",
+        daily_quota=user.daily_quota,
+        documents_processed_today=user.documents_processed_today or 0,
+        daily_quota_remaining=max(0, user.daily_quota - (user.documents_processed_today or 0)),
+        rate_limit_hourly_override=user.rate_limit_hourly,
+        rate_limit_daily_override=user.rate_limit_daily,
+        has_custom_override=override is not None,
+        override_details=override_details,
+        effective_limits=effective_limits,
+    )
+
+
+@router.put(
+    "/{user_id}/quotas",
+    response_model=UserQuotasResponse,
+    summary="Benutzer-Quotas aktualisieren",
+    description="Aktualisiert Quota-Einstellungen fuer einen Benutzer"
+)
+async def update_user_quotas(
+    user_id: UUID,
+    data: UserQuotasUpdate,
+    request: Request,
+    admin: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> UserQuotasResponse:
+    """
+    Aktualisiert Quota-Einstellungen fuer einen Benutzer.
+
+    **Aktualisierbare Felder:**
+    - **daily_quota**: Maximale Dokumente pro Tag
+    - **rate_limit_hourly**: Stuendliches Rate-Limit (Override)
+    - **rate_limit_daily**: Taegliches Rate-Limit (Override)
+    - **reset_daily_usage**: Setzt Tagesnutzung auf 0 zurueck
+
+    **OCR-spezifische Overrides:**
+    - **ocr_hourly**: Max OCR-Anfragen pro Stunde
+    - **ocr_daily**: Max OCR-Anfragen pro Tag
+    - **batch_hourly**: Max Batch-Operationen pro Stunde
+    - **api_per_minute**: Max API-Anfragen pro Minute
+
+    Nur angegebene Felder werden aktualisiert.
+    """
+    # Get user
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Benutzer nicht gefunden",
+        )
+
+    # Build update dict for User model
+    user_updates = {}
+    if data.daily_quota is not None:
+        user_updates["daily_quota"] = data.daily_quota
+    if data.rate_limit_hourly is not None:
+        user_updates["rate_limit_hourly"] = data.rate_limit_hourly
+    if data.rate_limit_daily is not None:
+        user_updates["rate_limit_daily"] = data.rate_limit_daily
+    if data.reset_daily_usage:
+        user_updates["documents_processed_today"] = 0
+
+    # Update User if any changes
+    if user_updates:
+        await db.execute(
+            update(User).where(User.id == user_id).values(**user_updates)
+        )
+
+    # Handle RateLimitOverride updates
+    override_updates = {}
+    if data.ocr_hourly is not None:
+        override_updates["ocr_hourly"] = data.ocr_hourly
+    if data.ocr_daily is not None:
+        override_updates["ocr_daily"] = data.ocr_daily
+    if data.batch_hourly is not None:
+        override_updates["batch_hourly"] = data.batch_hourly
+    if data.api_per_minute is not None:
+        override_updates["api_per_minute"] = data.api_per_minute
+
+    if override_updates:
+        # Check if override exists
+        override_result = await db.execute(
+            select(RateLimitOverride).where(RateLimitOverride.user_id == user_id)
+        )
+        existing_override = override_result.scalar_one_or_none()
+
+        if existing_override:
+            # Update existing override
+            await db.execute(
+                update(RateLimitOverride)
+                .where(RateLimitOverride.user_id == user_id)
+                .values(**override_updates)
+            )
+        else:
+            # Create new override
+            from datetime import datetime, timezone
+            new_override = RateLimitOverride(
+                user_id=user_id,
+                created_by_id=admin.id,
+                reason=f"Erstellt via Admin-Quotas-Endpoint durch {admin.email}",
+                **override_updates
+            )
+            db.add(new_override)
+
+    await db.commit()
+
+    # Log the action
+    from app.core.audit_logger import AuditLogger
+    ip_address = request.client.host if request.client else None
+    await AuditLogger.log_admin_action(
+        db=db,
+        admin_id=admin.id,
+        action="user.quotas.updated",
+        target_user_id=user_id,
+        details={
+            "user_updates": user_updates,
+            "override_updates": override_updates,
+        },
+        ip_address=ip_address,
+    )
+
+    # Return updated quotas
+    return await get_user_quotas(user_id, admin, db)

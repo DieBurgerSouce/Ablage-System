@@ -647,7 +647,7 @@ async def detect_fraktur(
 async def is_fraktur(image: Any, text: Optional[str] = None) -> bool:
     """Schnelle Prüfung ob Dokument Fraktur enthält."""
     analysis = await detect_fraktur(image, text)
-    return analysis.is_fraktur
+    return bool(analysis.is_fraktur)  # Konvertiere numpy.bool_ zu Python bool
 
 
 async def get_recommended_backend(image: Any, text: Optional[str] = None) -> str:

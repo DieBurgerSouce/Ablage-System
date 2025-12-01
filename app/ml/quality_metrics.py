@@ -737,6 +737,24 @@ def calculate_metrics(reference: str, hypothesis: str) -> OCRQualityMetrics:
     return get_quality_calculator().calculate_full_metrics(reference, hypothesis)
 
 
+# Alias für Backwards-Kompatibilität mit Tests
+calculate_quality_metrics = calculate_metrics
+
+
+def analyze_umlaut_accuracy(reference: str, hypothesis: str) -> UmlautAnalysis:
+    """
+    Analysiere Umlaut-Genauigkeit zwischen Referenz und OCR-Ergebnis.
+
+    Args:
+        reference: Referenztext (Ground Truth)
+        hypothesis: OCR-Ergebnis
+
+    Returns:
+        UmlautAnalysis mit Details zu Umlaut-Fehlern
+    """
+    return get_quality_calculator().calculate_umlaut_accuracy(reference, hypothesis)
+
+
 def compare_texts(reference: str, hypothesis: str) -> Dict[str, float]:
     """
     Schneller Vergleich zweier Texte.

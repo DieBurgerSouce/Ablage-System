@@ -27,6 +27,9 @@ class OCRService:
     Provides high-level OCR processing interface for FastAPI
     """
 
+    # Timeout for batch operations to prevent hanging (5 minutes per batch)
+    BATCH_TIMEOUT_SECONDS = 300.0
+
     def __init__(self, enable_german_correction: bool = True):
         """Initialize OCR service with backend manager
 
@@ -39,6 +42,7 @@ class OCRService:
             "total_errors": 0,
             "total_fallbacks": 0,
             "total_corrections": 0,
+            "total_correction_errors": 0,  # P2: Track German correction failures
             "by_backend": {},
             "health_checks": {
                 "total": 0,
@@ -186,9 +190,15 @@ class OCRService:
                         )
 
                 except Exception as e:
+                    # P2: Track correction errors for monitoring
+                    self.processing_stats["total_correction_errors"] += 1
+
                     logger.warning(
                         "german_correction_failed",
+                        error_type=type(e).__name__,
                         error=str(e),
+                        text_length=len(result.get("text", "")),
+                        total_correction_errors=self.processing_stats["total_correction_errors"],
                         message="Korrektur übersprungen, Originaltext beibehalten"
                     )
 
@@ -287,7 +297,22 @@ class OCRService:
 
         # Process all documents concurrently (limited by semaphore)
         tasks = [process_with_semaphore(path) for path in image_paths]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        try:
+            results = await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True),
+                timeout=self.BATCH_TIMEOUT_SECONDS
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                "batch_processing_timeout",
+                document_count=len(image_paths),
+                timeout_seconds=self.BATCH_TIMEOUT_SECONDS
+            )
+            # Return timeout errors for all documents
+            results = [
+                TimeoutError(f"Batch-Timeout nach {self.BATCH_TIMEOUT_SECONDS}s")
+                for _ in image_paths
+            ]
 
         # Convert exceptions to error results
         processed_results = []

@@ -2,6 +2,7 @@
 
 import os
 import time
+from datetime import datetime
 import structlog
 from celery import Celery, Task
 from celery.schedules import crontab
@@ -10,7 +11,7 @@ from celery.signals import (
     worker_ready, worker_shutdown, celeryd_init
 )
 from contextlib import contextmanager
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 import torch
 from redis import Redis
 from redis.exceptions import RedisError
@@ -28,7 +29,9 @@ logger = structlog.get_logger(__name__)
 # Redis client for distributed GPU lock
 _redis_lock_client: Optional[Redis] = None
 _GPU_LOCK_KEY = "ablage:gpu:lock"
-_GPU_LOCK_TIMEOUT = 300  # 5 minutes max lock hold time
+_GPU_LOCK_TIMEOUT = 60  # 60 seconds - shorter timeout with refresh
+_GPU_LOCK_ACQUIRE_TIMEOUT = 30  # Max 30 seconds to wait for lock
+_GPU_LOCK_RETRY_INTERVAL = 0.1  # 100ms between retries (non-blocking)
 
 
 def _get_redis_lock_client() -> Redis:
@@ -44,14 +47,17 @@ def _get_redis_lock_client() -> Redis:
     return _redis_lock_client
 
 
-def acquire_gpu_lock(timeout: int = _GPU_LOCK_TIMEOUT) -> str:
+def acquire_gpu_lock(timeout: int = _GPU_LOCK_ACQUIRE_TIMEOUT) -> str:
     """Acquire distributed GPU lock using Redis.
 
+    Uses short retry intervals (100ms) to minimize blocking.
+    Lock auto-expires after 60 seconds (use refresh_gpu_lock for long tasks).
+
     Args:
-        timeout: Maximum time to wait for lock (seconds)
+        timeout: Maximum time to wait for lock (seconds), default 30s
 
     Returns:
-        Lock value (used for release verification)
+        Lock value (used for release verification and refresh)
 
     Raises:
         RuntimeError: If lock cannot be acquired within timeout
@@ -59,32 +65,77 @@ def acquire_gpu_lock(timeout: int = _GPU_LOCK_TIMEOUT) -> str:
     redis = _get_redis_lock_client()
     lock_value = f"worker:{os.getpid()}:{time.time()}"
 
-    # Try to acquire lock with timeout
-    for attempt in range(timeout):
+    # Calculate max attempts based on retry interval
+    max_attempts = int(timeout / _GPU_LOCK_RETRY_INTERVAL)
+    start_time = time.time()
+
+    for attempt in range(max_attempts):
         try:
             acquired = redis.set(
                 _GPU_LOCK_KEY,
                 lock_value,
                 nx=True,  # Only set if not exists
-                ex=_GPU_LOCK_TIMEOUT  # Auto-expire after timeout
+                ex=_GPU_LOCK_TIMEOUT  # Auto-expire after 60s
             )
             if acquired:
-                logger.debug("gpu_lock_acquired", lock_value=lock_value, attempt=attempt)
+                elapsed = time.time() - start_time
+                logger.debug(
+                    "gpu_lock_acquired",
+                    lock_value=lock_value,
+                    attempts=attempt + 1,
+                    elapsed_ms=int(elapsed * 1000)
+                )
                 return lock_value
         except RedisError as e:
             logger.warning("gpu_lock_redis_error", error=str(e), attempt=attempt)
 
-        # Wait before retry
-        time.sleep(1)
+        # Short non-blocking sleep (100ms)
+        time.sleep(_GPU_LOCK_RETRY_INTERVAL)
 
+    elapsed = time.time() - start_time
     raise RuntimeError(
-        f"GPU-Lock nicht verfügbar nach {timeout} Sekunden. "
+        f"GPU-Lock nicht verfügbar nach {elapsed:.1f} Sekunden ({max_attempts} Versuche). "
         "Ein anderer Worker verarbeitet derzeit einen GPU-Task."
     )
 
 
+def refresh_gpu_lock(lock_value: str, extend_seconds: int = _GPU_LOCK_TIMEOUT) -> bool:
+    """Refresh/extend GPU lock TTL for long-running tasks.
+
+    Should be called periodically (every 30s) for tasks > 60 seconds.
+
+    Args:
+        lock_value: The value returned by acquire_gpu_lock
+        extend_seconds: New TTL in seconds (default 60s)
+
+    Returns:
+        True if lock was refreshed, False if lock expired or not owned
+    """
+    try:
+        redis = _get_redis_lock_client()
+        current_value = redis.get(_GPU_LOCK_KEY)
+
+        # Only refresh if we still own the lock
+        if current_value == lock_value.encode():
+            redis.expire(_GPU_LOCK_KEY, extend_seconds)
+            logger.debug("gpu_lock_refreshed", lock_value=lock_value, new_ttl=extend_seconds)
+            return True
+        else:
+            logger.warning(
+                "gpu_lock_refresh_failed_not_owned",
+                expected=lock_value,
+                current=current_value.decode() if current_value else None
+            )
+            return False
+    except RedisError as e:
+        logger.error("gpu_lock_refresh_error", error=str(e), lock_value=lock_value)
+        return False
+
+
 def release_gpu_lock(lock_value: str) -> bool:
     """Release distributed GPU lock.
+
+    Uses Redis WATCH/MULTI/EXEC for atomic check-and-delete.
 
     Args:
         lock_value: The value returned by acquire_gpu_lock
@@ -94,27 +145,81 @@ def release_gpu_lock(lock_value: str) -> bool:
     """
     try:
         redis = _get_redis_lock_client()
-        current_value = redis.get(_GPU_LOCK_KEY)
 
-        # Only release if we own the lock (compare bytes)
-        if current_value == lock_value.encode():
-            redis.delete(_GPU_LOCK_KEY)
-            logger.debug("gpu_lock_released", lock_value=lock_value)
-            return True
-        else:
-            logger.warning(
-                "gpu_lock_not_owned",
-                expected=lock_value,
-                current=current_value.decode() if current_value else None
-            )
-            return False
+        # Use pipeline with WATCH for atomic check-and-delete
+        with redis.pipeline() as pipe:
+            try:
+                # Watch the key for changes
+                pipe.watch(_GPU_LOCK_KEY)
+                current_value = pipe.get(_GPU_LOCK_KEY)
+
+                # Only delete if we own the lock
+                if current_value == lock_value.encode():
+                    pipe.multi()
+                    pipe.delete(_GPU_LOCK_KEY)
+                    pipe.execute()
+                    logger.debug("gpu_lock_released", lock_value=lock_value)
+                    return True
+                else:
+                    pipe.unwatch()
+                    logger.warning(
+                        "gpu_lock_not_owned",
+                        expected=lock_value,
+                        current=current_value.decode() if current_value else None
+                    )
+                    return False
+            except Exception:
+                pipe.unwatch()
+                raise
+
     except RedisError as e:
         logger.error("gpu_lock_release_error", error=str(e), lock_value=lock_value)
+        # Force delete on error to prevent deadlock
+        try:
+            redis = _get_redis_lock_client()
+            redis.delete(_GPU_LOCK_KEY)
+            logger.warning("gpu_lock_force_released", lock_value=lock_value)
+        except RedisError:
+            pass
         return False
 
 
+def check_gpu_lock_health() -> dict:
+    """Check GPU lock status for monitoring/debugging.
+
+    Returns:
+        Dict with lock status, owner, and TTL
+    """
+    try:
+        redis = _get_redis_lock_client()
+        current_value = redis.get(_GPU_LOCK_KEY)
+        ttl = redis.ttl(_GPU_LOCK_KEY)
+
+        if current_value:
+            return {
+                "locked": True,
+                "owner": current_value.decode(),
+                "ttl_seconds": ttl if ttl > 0 else 0,
+                "status": "healthy" if ttl > 10 else "expiring_soon"
+            }
+        else:
+            return {
+                "locked": False,
+                "owner": None,
+                "ttl_seconds": 0,
+                "status": "available"
+            }
+    except RedisError as e:
+        return {
+            "locked": None,
+            "owner": None,
+            "ttl_seconds": None,
+            "status": f"error: {str(e)}"
+        }
+
+
 @contextmanager
-def distributed_gpu_lock(timeout: int = _GPU_LOCK_TIMEOUT):
+def distributed_gpu_lock(timeout: int = _GPU_LOCK_ACQUIRE_TIMEOUT):
     """Context manager for distributed GPU lock.
 
     Usage:
@@ -172,6 +277,77 @@ celery_app.conf.update(
     worker_disable_rate_limits=False,
     worker_send_task_events=True,
     worker_pool="solo",  # Single process pool for GPU isolation
+
+    # ==========================================================================
+    # PRIORITY QUEUE CONFIGURATION
+    # ==========================================================================
+    # Redis supports priority queues with broker_transport_options
+    # Priority range: 0 (highest) to 9 (lowest)
+    # Workers should be started with: celery -A app.workers.celery_app worker -Q ocr_high,ocr_normal,embedding_high,embedding_normal,validation,metadata,backup,maintenance,metrics
+
+    broker_transport_options={
+        "priority_steps": list(range(10)),  # 0-9 priority levels
+        "sep": ":",
+        "queue_order_strategy": "priority",  # Process high priority first
+        "visibility_timeout": 43200,  # 12 hours (for long-running OCR tasks)
+    },
+
+    # Task queues with explicit priority configuration
+    task_queues={
+        # GPU Tasks (High Priority)
+        "ocr_high": {
+            "exchange": "ocr_high",
+            "routing_key": "ocr.high",
+            "queue_arguments": {"x-max-priority": 10},
+        },
+        "ocr_normal": {
+            "exchange": "ocr_normal",
+            "routing_key": "ocr.normal",
+            "queue_arguments": {"x-max-priority": 10},
+        },
+        "embedding_high": {
+            "exchange": "embedding_high",
+            "routing_key": "embedding.high",
+            "queue_arguments": {"x-max-priority": 10},
+        },
+        "embedding_normal": {
+            "exchange": "embedding_normal",
+            "routing_key": "embedding.normal",
+            "queue_arguments": {"x-max-priority": 10},
+        },
+        "embedding_low": {
+            "exchange": "embedding_low",
+            "routing_key": "embedding.low",
+            "queue_arguments": {"x-max-priority": 10},
+        },
+        # CPU Tasks (Medium Priority)
+        "validation": {
+            "exchange": "validation",
+            "routing_key": "validation",
+            "queue_arguments": {"x-max-priority": 10},
+        },
+        "metadata": {
+            "exchange": "metadata",
+            "routing_key": "metadata",
+            "queue_arguments": {"x-max-priority": 10},
+        },
+        "backup": {
+            "exchange": "backup",
+            "routing_key": "backup",
+            "queue_arguments": {"x-max-priority": 10},
+        },
+        # Background Tasks (Low Priority)
+        "maintenance": {
+            "exchange": "maintenance",
+            "routing_key": "maintenance",
+            "queue_arguments": {"x-max-priority": 10},
+        },
+        "metrics": {
+            "exchange": "metrics",
+            "routing_key": "metrics",
+            "queue_arguments": {"x-max-priority": 10},
+        },
+    },
 
     # Beat schedule (for periodic tasks)
     beat_schedule={
@@ -237,6 +413,15 @@ celery_app.conf.update(
         "gdpr-generate-compliance-report": {
             "task": "app.workers.tasks.gdpr_tasks.generate_compliance_report",
             "schedule": crontab(day_of_week=1, hour=6, minute=0),  # Montag 06:00
+        },
+        # Worker Health Monitoring
+        "worker-health-check": {
+            "task": "app.workers.tasks.monitoring_tasks.worker_health_check_task",
+            "schedule": 60.0,  # Jede Minute
+        },
+        "worker-stuck-task-cleanup": {
+            "task": "app.workers.tasks.monitoring_tasks.cleanup_stuck_tasks",
+            "schedule": 300.0,  # Alle 5 Minuten
         },
     },
 
@@ -697,6 +882,253 @@ def cleanup_gpu_on_worker_shutdown(sender: Any = None, **kwargs: Any) -> None:
     gc.collect()
 
     logger.info("worker_shutdown_complete")
+
+
+# =============================================================================
+# Worker Health Check System (P1 - Tote Worker erkennen)
+# =============================================================================
+
+# Health Check Konfiguration
+HEALTH_CHECK_INTERVAL_SECONDS = 30  # Alle 30 Sekunden
+STALE_TASK_THRESHOLD_SECONDS = 600  # Tasks aelter als 10 Min gelten als stuck
+WORKER_UNRESPONSIVE_THRESHOLD_SECONDS = 120  # Worker gilt als tot nach 2 Min ohne Heartbeat
+
+# Globaler Health-Status Cache
+_worker_health_cache: Dict[str, Any] = {}
+_last_health_check: Optional[datetime] = None
+
+
+def get_worker_health_status() -> Dict[str, Any]:
+    """
+    Ermittle den Gesundheitsstatus aller Celery Worker.
+
+    Returns:
+        Dict mit:
+        - workers: Liste der Worker mit Status
+        - total_workers: Anzahl aktiver Worker
+        - healthy_workers: Anzahl gesunder Worker
+        - stale_tasks: Liste von stuck Tasks
+        - warnings: Warnungen
+        - timestamp: Zeitstempel der Pruefung
+    """
+    from celery import current_app
+    from datetime import timezone
+    import time
+
+    result = {
+        "workers": [],
+        "total_workers": 0,
+        "healthy_workers": 0,
+        "unhealthy_workers": 0,
+        "stale_tasks": [],
+        "warnings": [],
+        "errors": [],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+    try:
+        inspect = current_app.control.inspect()
+
+        # 1. Pruefe aktive Worker via Ping
+        ping_results = inspect.ping() or {}
+        active_workers = list(ping_results.keys())
+        result["total_workers"] = len(active_workers)
+
+        # 2. Hole Worker-Stats
+        stats = inspect.stats() or {}
+
+        # 3. Hole aktive Tasks
+        active_tasks = inspect.active() or {}
+
+        # 4. Hole reservierte (queued) Tasks
+        reserved_tasks = inspect.reserved() or {}
+
+        # 5. Pruefe jeden Worker
+        for worker_name in active_workers:
+            worker_stats = stats.get(worker_name, {})
+            worker_active = active_tasks.get(worker_name, [])
+            worker_reserved = reserved_tasks.get(worker_name, [])
+
+            worker_info = {
+                "name": worker_name,
+                "status": "healthy",
+                "active_tasks": len(worker_active),
+                "reserved_tasks": len(worker_reserved),
+                "pid": worker_stats.get("pid"),
+                "pool": worker_stats.get("pool", {}).get("implementation", "unknown"),
+                "prefetch": worker_stats.get("prefetch_count", 0),
+                "total_processed": worker_stats.get("total", {}).get("app.workers.tasks.ocr_tasks.process_document_task", 0),
+                "warnings": [],
+            }
+
+            # GPU-Status pruefen wenn verfuegbar
+            if torch.cuda.is_available():
+                try:
+                    worker_info["gpu"] = {
+                        "available": True,
+                        "device": torch.cuda.get_device_name(0),
+                        "allocated_gb": round(torch.cuda.memory_allocated() / (1024**3), 2),
+                        "reserved_gb": round(torch.cuda.memory_reserved() / (1024**3), 2),
+                    }
+                except Exception as e:
+                    worker_info["gpu"] = {"available": False, "error": str(e)}
+                    worker_info["warnings"].append("GPU-Status nicht verfuegbar")
+
+            # Pruefe auf stuck Tasks
+            for task in worker_active:
+                if isinstance(task, dict):
+                    task_started = task.get("time_start")
+                    if task_started:
+                        elapsed = time.time() - task_started
+                        if elapsed > STALE_TASK_THRESHOLD_SECONDS:
+                            task_info = {
+                                "task_id": task.get("id"),
+                                "task_name": task.get("name"),
+                                "worker": worker_name,
+                                "elapsed_seconds": round(elapsed, 0),
+                                "args": str(task.get("args", []))[:100],  # Truncate
+                            }
+                            result["stale_tasks"].append(task_info)
+                            worker_info["warnings"].append(
+                                f"Stuck Task: {task.get('name')} laeuft seit {int(elapsed)}s"
+                            )
+                            worker_info["status"] = "degraded"
+
+            # Worker ist gesund wenn keine Warnungen
+            if worker_info["status"] == "healthy":
+                result["healthy_workers"] += 1
+            else:
+                result["unhealthy_workers"] += 1
+
+            result["workers"].append(worker_info)
+
+        # 6. Warnungen generieren
+        if result["total_workers"] == 0:
+            result["warnings"].append("KRITISCH: Keine aktiven Worker gefunden!")
+
+        if result["stale_tasks"]:
+            result["warnings"].append(
+                f"WARNUNG: {len(result['stale_tasks'])} stuck Tasks gefunden"
+            )
+
+        if result["unhealthy_workers"] > 0:
+            result["warnings"].append(
+                f"WARNUNG: {result['unhealthy_workers']} Worker mit Problemen"
+            )
+
+        # GPU Lock Status
+        lock_status = check_gpu_lock_health()
+        result["gpu_lock"] = lock_status
+
+    except Exception as e:
+        logger.error("worker_health_check_failed", error=str(e))
+        result["errors"].append(f"Health Check fehlgeschlagen: {e}")
+
+    # Cache aktualisieren
+    global _worker_health_cache, _last_health_check
+    _worker_health_cache = result
+    _last_health_check = datetime.now(timezone.utc)
+
+    return result
+
+
+def get_cached_worker_health() -> Dict[str, Any]:
+    """
+    Hole gecachten Worker-Health-Status.
+
+    Falls der Cache aelter als HEALTH_CHECK_INTERVAL_SECONDS ist,
+    wird ein neuer Health Check durchgefuehrt.
+
+    Returns:
+        Dict mit Worker-Health-Informationen
+    """
+    global _worker_health_cache, _last_health_check
+
+    if _last_health_check is None:
+        return get_worker_health_status()
+
+    age_seconds = (datetime.now(timezone.utc) - _last_health_check).total_seconds()
+
+    if age_seconds > HEALTH_CHECK_INTERVAL_SECONDS:
+        return get_worker_health_status()
+
+    return _worker_health_cache
+
+
+def restart_stuck_tasks(force: bool = False) -> Dict[str, Any]:
+    """
+    Beende und starte stuck Tasks neu.
+
+    VORSICHT: Kann zu Datenverlust fuehren wenn Tasks
+    wichtige Arbeit machen. Nur mit force=True ausfuehren.
+
+    Args:
+        force: Erzwinge Neustart auch bei laufenden Tasks
+
+    Returns:
+        Dict mit Ergebnis der Operation
+    """
+    if not force:
+        return {
+            "success": False,
+            "message": "force=True erforderlich fuer Restart",
+            "stuck_tasks": len(get_worker_health_status().get("stale_tasks", []))
+        }
+
+    from celery import current_app
+
+    result = {
+        "revoked": [],
+        "errors": [],
+    }
+
+    health = get_worker_health_status()
+    stale_tasks = health.get("stale_tasks", [])
+
+    for task in stale_tasks:
+        task_id = task.get("task_id")
+        if task_id:
+            try:
+                current_app.control.revoke(task_id, terminate=True, signal="SIGKILL")
+                result["revoked"].append(task_id)
+                logger.warning("stuck_task_revoked", task_id=task_id)
+            except Exception as e:
+                result["errors"].append({"task_id": task_id, "error": str(e)})
+                logger.error("stuck_task_revoke_failed", task_id=task_id, error=str(e))
+
+    return result
+
+
+def get_worker_heartbeat_status() -> Dict[str, Any]:
+    """
+    Pruefe Worker-Heartbeats via Celery Events.
+
+    Returns:
+        Dict mit Heartbeat-Status pro Worker
+    """
+    from celery import current_app
+
+    result = {
+        "workers": {},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+    try:
+        # Ping alle Worker
+        inspect = current_app.control.inspect()
+        ping_results = inspect.ping(timeout=5.0) or {}
+
+        for worker, response in ping_results.items():
+            result["workers"][worker] = {
+                "responding": response.get("ok") == "pong",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+
+    except Exception as e:
+        logger.error("heartbeat_check_failed", error=str(e))
+        result["error"] = str(e)
+
+    return result
 
 
 # =============================================================================

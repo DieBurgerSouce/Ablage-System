@@ -357,34 +357,36 @@ class TestSecureErrorLogging:
 
     @pytest.mark.asyncio
     async def test_blacklist_token_redis_error_logs_securely(self):
-        """blacklist_token_redis loggt Redis-Fehler sicher."""
+        """blacklist_token_redis gibt HTTPException im fail-closed Modus."""
         from app.core import security as security_module
+        from fastapi import HTTPException
+
+        # SECURITY FIX: Mit fail-closed Modus wird HTTPException geworfen
+        # wenn Redis nicht verfügbar ist (kein Fall-Back auf in-memory)
 
         # Create mock Redis client that raises error
         mock_redis = AsyncMock()
         mock_redis.setex = AsyncMock(side_effect=Exception("Connection to redis://:secret@host failed"))
 
         with patch.object(security_module, "_get_redis_client", AsyncMock(return_value=mock_redis)):
-            with patch.object(security_module.logger, "warning") as mock_warning:
-                expires = datetime.now(timezone.utc) + timedelta(hours=1)
+            expires = datetime.now(timezone.utc) + timedelta(hours=1)
 
-                result = await security_module.blacklist_token_redis("test-jti", expires)
+            # Im fail-closed Modus sollte HTTPException 503 geworfen werden
+            with pytest.raises(HTTPException) as exc_info:
+                await security_module.blacklist_token_redis("test-jti", expires)
 
-                # Should fall back to in-memory
-                assert result is False
-
-                # Check warning was called
-                mock_warning.assert_called()
-                call_args = mock_warning.call_args
-                call_str = str(call_args)
-
-                # Should NOT contain sensitive data
-                assert "secret" not in call_str.lower()
+            assert exc_info.value.status_code == 503
+            # Fehlermeldung sollte auf Deutsch sein
+            assert "nicht verf" in exc_info.value.detail.lower() or "sicherheit" in exc_info.value.detail.lower()
 
     @pytest.mark.asyncio
     async def test_is_token_blacklisted_redis_error_logs_securely(self):
-        """is_token_blacklisted_redis loggt Redis-Fehler sicher."""
+        """is_token_blacklisted_redis gibt HTTPException im fail-closed Modus."""
         from app.core import security as security_module
+        from fastapi import HTTPException
+
+        # SECURITY FIX: Mit fail-closed Modus wird HTTPException geworfen
+        # wenn Redis nicht verfügbar ist (kein Fall-Back auf in-memory)
 
         # Use unique JTI that doesn't exist in fallback
         unique_jti = "test-secure-log-jti-" + secrets_module.token_hex(16)
@@ -398,20 +400,13 @@ class TestSecureErrorLogging:
         mock_redis.exists = AsyncMock(side_effect=Exception("Auth failed: password=secret123"))
 
         with patch.object(security_module, "_get_redis_client", AsyncMock(return_value=mock_redis)):
-            with patch.object(security_module.logger, "warning") as mock_warning:
-                result = await security_module.is_token_blacklisted_redis(unique_jti)
+            # Im fail-closed Modus sollte HTTPException 503 geworfen werden
+            with pytest.raises(HTTPException) as exc_info:
+                await security_module.is_token_blacklisted_redis(unique_jti)
 
-                # Should return False on error (token not confirmed blacklisted)
-                assert result is False, f"Expected False for non-existent JTI, got {result}"
-
-                # Check warning was called
-                mock_warning.assert_called()
-                call_args = mock_warning.call_args
-                call_str = str(call_args)
-
-                # Should NOT contain sensitive data
-                assert "secret" not in call_str.lower()
-                assert "password" not in call_str.lower()
+            assert exc_info.value.status_code == 503
+            # Fehlermeldung sollte auf Deutsch sein
+            assert "nicht verf" in exc_info.value.detail.lower() or "sicherheit" in exc_info.value.detail.lower()
 
 
 # ==================== Password Validation Tests ====================
@@ -482,7 +477,9 @@ class TestTokenCreation:
         from app.core.config import settings
 
         token = create_access_token({"sub": "user123"})
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        # SecretStr muss mit get_secret_value() konvertiert werden
+        secret_key = settings.SECRET_KEY.get_secret_value()
+        payload = jwt.decode(token, secret_key, algorithms=[settings.ALGORITHM])
 
         assert "jti" in payload
         assert len(payload["jti"]) > 0
@@ -494,7 +491,9 @@ class TestTokenCreation:
         from app.core.config import settings
 
         token = create_refresh_token({"sub": "user123"})
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        # SecretStr muss mit get_secret_value() konvertiert werden
+        secret_key = settings.SECRET_KEY.get_secret_value()
+        payload = jwt.decode(token, secret_key, algorithms=[settings.ALGORITHM])
 
         assert "jti" in payload
         assert len(payload["jti"]) > 0
@@ -506,7 +505,9 @@ class TestTokenCreation:
         from app.core.config import settings
 
         token = create_access_token({"sub": "user123"})
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        # SecretStr muss mit get_secret_value() konvertiert werden
+        secret_key = settings.SECRET_KEY.get_secret_value()
+        payload = jwt.decode(token, secret_key, algorithms=[settings.ALGORITHM])
 
         assert payload["type"] == "access"
 
@@ -517,7 +518,9 @@ class TestTokenCreation:
         from app.core.config import settings
 
         token = create_refresh_token({"sub": "user123"})
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        # SecretStr muss mit get_secret_value() konvertiert werden
+        secret_key = settings.SECRET_KEY.get_secret_value()
+        payload = jwt.decode(token, secret_key, algorithms=[settings.ALGORITHM])
 
         assert payload["type"] == "refresh"
 
@@ -540,9 +543,13 @@ class TestTokenBlacklisting:
     """Tests für Token-Blacklisting."""
 
     @pytest.mark.asyncio
-    async def test_blacklist_token_fallback_on_redis_unavailable(self):
-        """Token-Blacklisting fällt auf In-Memory zurück wenn Redis nicht verfügbar."""
+    async def test_blacklist_token_fails_closed_on_redis_unavailable(self):
+        """Token-Blacklisting gibt HTTPException im fail-closed Modus."""
         from app.core import security as security_module
+        from fastapi import HTTPException
+
+        # SECURITY FIX: Mit fail-closed Modus gibt es keinen Fallback mehr
+        # Das System verweigert Operationen wenn Redis nicht verfügbar ist
 
         # Ensure Redis is "unavailable"
         security_module._redis_available = False
@@ -551,59 +558,46 @@ class TestTokenBlacklisting:
         expires = datetime.now(timezone.utc) + timedelta(hours=1)
         jti = "test-fallback-jti-" + secrets_module.token_hex(8)
 
-        # Clear any existing entries
-        if jti in security_module._token_blacklist_fallback:
-            del security_module._token_blacklist_fallback[jti]
+        # Im fail-closed Modus sollte HTTPException 503 geworfen werden
+        with pytest.raises(HTTPException) as exc_info:
+            await security_module.blacklist_token(jti, expires)
 
-        await security_module.blacklist_token(jti, expires)
-
-        # Should be in fallback storage
-        assert jti in security_module._token_blacklist_fallback
-
-        # Cleanup
-        if jti in security_module._token_blacklist_fallback:
-            del security_module._token_blacklist_fallback[jti]
+        assert exc_info.value.status_code == 503
 
     @pytest.mark.asyncio
-    async def test_is_token_blacklisted_checks_fallback(self):
-        """is_token_blacklisted prüft auch Fallback-Speicher."""
+    async def test_is_token_blacklisted_fails_closed_on_redis_unavailable(self):
+        """is_token_blacklisted gibt HTTPException im fail-closed Modus."""
         from app.core import security as security_module
+        from fastapi import HTTPException
+
+        # SECURITY FIX: Mit fail-closed Modus gibt es keinen Fallback mehr
 
         security_module._redis_available = False
         security_module._redis_client = None
 
         jti = "test-check-fallback-jti-" + secrets_module.token_hex(8)
-        expires = datetime.now(timezone.utc) + timedelta(hours=1)
 
-        # Add to fallback
-        security_module._token_blacklist_fallback[jti] = expires
+        # Im fail-closed Modus sollte HTTPException 503 geworfen werden
+        with pytest.raises(HTTPException) as exc_info:
+            await security_module.is_token_blacklisted(jti)
 
-        # Should find in fallback
-        is_blacklisted = await security_module.is_token_blacklisted(jti)
-        assert is_blacklisted is True
-
-        # Cleanup
-        if jti in security_module._token_blacklist_fallback:
-            del security_module._token_blacklist_fallback[jti]
+        assert exc_info.value.status_code == 503
 
     @pytest.mark.asyncio
-    async def test_expired_token_removed_from_fallback(self):
-        """Abgelaufene Tokens werden aus Fallback entfernt."""
+    async def test_token_blacklist_fail_closed_security_message(self):
+        """Fail-closed gibt deutsche Sicherheitsmeldung."""
         from app.core import security as security_module
+        from fastapi import HTTPException
+
+        # SECURITY FIX: Überprüfe dass die Fehlermeldung sicher und auf Deutsch ist
 
         security_module._redis_available = False
         security_module._redis_client = None
 
-        jti = "test-expired-jti-" + secrets_module.token_hex(8)
-        # Already expired
-        expires = datetime.now(timezone.utc) - timedelta(hours=1)
+        jti = "test-security-msg-jti-" + secrets_module.token_hex(8)
 
-        # Add expired entry
-        security_module._token_blacklist_fallback[jti] = expires
+        with pytest.raises(HTTPException) as exc_info:
+            await security_module.is_token_blacklisted(jti)
 
-        # Should return False and remove entry
-        is_blacklisted = await security_module.is_token_blacklisted(jti)
-        assert is_blacklisted is False
-
-        # Should be removed from fallback
-        assert jti not in security_module._token_blacklist_fallback
+        # Fehlermeldung sollte auf Deutsch sein und keine sensiblen Infos enthalten
+        assert "sicherheit" in exc_info.value.detail.lower() or "verfügbar" in exc_info.value.detail.lower()

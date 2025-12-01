@@ -294,6 +294,90 @@ async def business_metrics():
     }
 
 
+@router.get("/business/prometheus", response_class=Response)
+async def business_metrics_prometheus():
+    """
+    Prometheus metrics for OCR and document processing.
+
+    Returns business-specific metrics in Prometheus text format:
+
+    **OCR Metrics:**
+    - ablage_ocr_processing_total: OCR-Verarbeitungen nach Backend/Status
+    - ablage_ocr_processing_duration_seconds: Verarbeitungsdauer
+    - ablage_ocr_characters_extracted: Extrahierte Zeichen
+    - ablage_ocr_confidence_score: Konfidenz-Scores
+    - ablage_ocr_backend_selection_total: Backend-Auswahl
+    - ablage_ocr_pages_processed_total: Verarbeitete Seiten
+
+    **Fraktur/German Metrics:**
+    - ablage_ocr_fraktur_detected_total: Fraktur-Erkennungen
+    - ablage_ocr_umlaut_accuracy: Umlaut-Genauigkeit
+    - ablage_ocr_postprocessing_corrections_total: Postprocessing-Korrekturen
+
+    **Document Metrics:**
+    - ablage_documents_uploaded_total: Hochgeladene Dokumente
+    - ablage_document_size_bytes: Dokumentengroesse
+    - ablage_document_page_count: Seitenanzahl
+    - ablage_document_status_transitions_total: Status-Uebergaenge
+
+    **Backpressure Metrics:**
+    - ablage_backpressure_status: Aktueller Status
+    - ablage_backpressure_queue_length_total: Queue-Laenge
+    - ablage_backpressure_rejected_total: Abgelehnte Anfragen
+    - ablage_backpressure_degraded_total: Degradierte Anfragen
+
+    **Model Loading Metrics:**
+    - ablage_model_loading_duration_seconds: Model-Ladedauer
+    - ablage_model_loading_status: Model-Status
+    - ablage_models_preloaded_total: Vorgeladene Modelle
+
+    Example Prometheus config:
+    ```yaml
+    scrape_configs:
+      - job_name: 'ablage-business'
+        static_configs:
+          - targets: ['localhost:8000']
+        metrics_path: '/api/v1/metrics/business/prometheus'
+    ```
+    """
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST,
+    )
+
+
+@router.get("/business/summary")
+async def business_metrics_summary():
+    """
+    Business metrics summary (JSON format).
+
+    Returns a structured summary of all business metrics categories.
+    """
+    from app.core.business_metrics import get_metrics_summary
+
+    redis = await get_redis()
+
+    # Get counters from Redis
+    documents_processed = await redis.get_counter("ocr.documents_processed")
+    documents_failed = await redis.get_counter("ocr.documents_failed")
+    gpu_oom_errors = await redis.get_counter("gpu.oom_errors")
+
+    # Calculate success rate
+    total = documents_processed + documents_failed
+    success_rate = (documents_processed / total * 100) if total > 0 else 0.0
+
+    return {
+        "overview": {
+            "total_documents_processed": documents_processed,
+            "total_documents_failed": documents_failed,
+            "success_rate_percent": round(success_rate, 2),
+            "gpu_oom_errors": gpu_oom_errors,
+        },
+        "metrics_categories": get_metrics_summary(),
+        "hinweis": "Nutze /metrics/business/prometheus fuer Prometheus-Format"
+    }
+
+
 @router.get("/health")
 async def metrics_health():
     """

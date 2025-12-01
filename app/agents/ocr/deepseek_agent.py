@@ -53,7 +53,7 @@ try:
 except ImportError:
     AutoAWQForCausalLM = None
 
-from app.agents.base import AgentResourceError, OCRAgent
+from app.agents.base import AgentResourceError, OCRAgent, OCRResult
 from app.gpu_manager import GPUManager
 
 # Platform detection
@@ -189,18 +189,18 @@ class DeepSeekAgent(OCRAgent):
             # Run OCR inference
             ocr_result = await self._run_inference(image, language, options)
 
-            # Post-process results
+            # Post-process results - returns OCRResult
             result = await self._postprocess_result(ocr_result, options)
 
             self.logger.info(
                 "deepseek_processing_completed",
                 document_id=document_id,
-                text_length=len(result["text"]),
-                confidence=result["confidence"],
-                entities_found=len(result.get("entities", [])),
+                text_length=len(result.text),
+                confidence=result.confidence,
             )
 
-            return result
+            # Rueckgabe als standardisiertes Dictionary
+            return result.to_dict()
 
         except torch.cuda.OutOfMemoryError as e:
             self.logger.error(
@@ -885,12 +885,46 @@ class DeepSeekAgent(OCRAgent):
 
     async def _postprocess_result(
         self, ocr_result: Dict[str, Any], options: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Post-process OCR results."""
+    ) -> OCRResult:
+        """Post-process OCR results with German text optimization.
+
+        Returns:
+            Standardisiertes OCRResult-Objekt fuer konsistente API.
+        """
         text = ocr_result["text"]
 
         # Basic text cleaning
         text = text.strip()
+
+        # OPTIMIERUNG: Deutsche Textnachbearbeitung mit Unified Postprocessor
+        german_corrections = []
+        german_validation_score = 0.0
+        has_umlauts = False
+        language = options.get("language", "de")
+
+        if language == "de" and text:
+            try:
+                from app.services.german_text_postprocessor import get_german_postprocessor
+                postprocessor = get_german_postprocessor()
+                german_result = postprocessor.postprocess(text)
+                text = german_result["text"]
+                german_corrections = german_result.get("corrections", [])
+
+                # Extrahiere deutsche Qualitaetsmetriken
+                stats = german_result.get("stats", {})
+                german_validation_score = stats.get("quality_score", 0.0)
+                has_umlauts = any(c in text for c in "äöüÄÖÜß")
+
+                if german_corrections:
+                    self.logger.debug(
+                        "deepseek_german_postprocessing",
+                        corrections_count=len(german_corrections),
+                        umlaut_fixes=stats.get("umlaut_corrections", 0),
+                        eszett_fixes=stats.get("eszett_corrections", 0)
+                    )
+            except ImportError:
+                self.logger.debug("german_postprocessor_not_available")
+                has_umlauts = any(c in text for c in "äöüÄÖÜß")
 
         # Extract structured data (IBAN, VAT, dates, phone, email, NER)
         entities = []
@@ -902,13 +936,18 @@ class DeepSeekAgent(OCRAgent):
         if options.get("detect_layout"):
             layout = self._detect_layout(text)
 
-        return {
-            "text": text,
-            "confidence": ocr_result["confidence"],
-            "entities": entities,
-            "layout": layout,
-            "model": ocr_result["model"],
-        }
+        # Erstelle standardisiertes OCRResult
+        result = self.create_success_result(
+            text=text,
+            confidence=ocr_result["confidence"],
+            processing_time_ms=ocr_result.get("processing_time_ms", 0),
+            language=language,
+            layout=layout if layout else None,
+            has_umlauts=has_umlauts,
+            german_validation_score=german_validation_score,
+        )
+
+        return result
 
     def _extract_entities(self, text: str) -> List[Dict[str, Any]]:
         """Extract business entities from German text using regex patterns and spaCy NER."""

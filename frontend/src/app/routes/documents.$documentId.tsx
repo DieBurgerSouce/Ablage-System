@@ -34,6 +34,7 @@ function DocumentViewerPage() {
                 <SplitDocumentViewer
                     documentId={documentId}
                     ocrResults={ocrResults}
+                    fileUrl="/sample.pdf"
                 />
             </div>
         </div>

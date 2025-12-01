@@ -1,0 +1,19 @@
+{
+  "name": "memory_baseline",
+  "count": 1,
+  "mean": 0.0,
+  "median": 0.0,
+  "stdev": 0,
+  "min": 0.0,
+  "max": 0.0,
+  "p50": 0.0,
+  "p95": 0.0,
+  "p99": 0.0,
+  "errors": 0,
+  "duration_seconds": 0.000533,
+  "metadata": {
+    "total_gb": 15.99169921875,
+    "limit_gb": 13.6,
+    "status": "ok"
+  }
+}

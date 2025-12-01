@@ -9,8 +9,6 @@ Feinpoliert und durchdacht - Enterprise-grade Event Delivery.
 """
 
 import asyncio
-import hashlib
-import hmac
 import json
 import secrets
 from datetime import datetime, timezone
@@ -24,6 +22,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.db.models import WebhookSubscription, WebhookDelivery, User
+from app.core.webhook_signature import (
+    generate_signature,
+    SIGNATURE_HEADER_NAME,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -74,6 +76,7 @@ class WebhookDispatcher:
     """
 
     DEFAULT_TIMEOUT = 30
+    DISPATCH_TIMEOUT = 120  # Max time for all webhooks in a dispatch batch
     MAX_PAYLOAD_SIZE = 1024 * 1024  # 1MB
 
     def __init__(self):
@@ -137,7 +140,21 @@ class WebhookDispatcher:
             for subscription in subscriptions
         ]
 
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        try:
+            results = await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True),
+                timeout=self.DISPATCH_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                "webhook_dispatch_timeout",
+                user_id=str(user_id)[:8],
+                event_type=event_type,
+                subscriptions=len(subscriptions),
+                timeout_seconds=self.DISPATCH_TIMEOUT
+            )
+            # Return 0 successful deliveries on timeout
+            return 0
 
         # Zähle erfolgreiche Zustellungen
         success_count = sum(1 for r in results if r is True)
@@ -201,13 +218,15 @@ class WebhookDispatcher:
             "metadata": metadata or {}
         }
 
-    def _sign_payload(self, payload: bytes, secret: str) -> str:
-        """Erstellt HMAC-SHA256 Signatur für Payload."""
-        return hmac.new(
-            secret.encode("utf-8"),
-            payload,
-            hashlib.sha256
-        ).hexdigest()
+    def _sign_payload(self, payload: bytes, secret: str, timestamp: int) -> str:
+        """
+        Erstellt HMAC-SHA256 Signatur für Payload.
+
+        Verwendet das neue Signaturformat mit Timestamp-Schutz:
+        Format: t=<timestamp>,v1=<signature>
+        """
+        signature_header, _ = generate_signature(payload, secret, timestamp)
+        return signature_header
 
     async def _deliver_webhook(
         self,
@@ -253,16 +272,22 @@ class WebhookDispatcher:
             await db.commit()
             return False
 
-        # Signatur erstellen
-        signature = self._sign_payload(payload_bytes, subscription.secret)
+        # Timestamp für Signatur (Unix-Timestamp)
+        import time
+        signature_timestamp = int(time.time())
 
-        # Headers vorbereiten
+        # Signatur erstellen (neues Format mit Timestamp-Schutz)
+        signature = self._sign_payload(
+            payload_bytes, subscription.secret, signature_timestamp
+        )
+
+        # Headers vorbereiten (mit standardisiertem Signatur-Header)
         headers = {
             "Content-Type": "application/json",
-            "X-Webhook-Signature": signature,
+            SIGNATURE_HEADER_NAME: signature,
             "X-Webhook-Delivery-ID": payload["event_id"],
             "X-Webhook-Event": payload["event_type"],
-            "X-Webhook-Timestamp": payload["created_at"],
+            "X-Webhook-Timestamp": str(signature_timestamp),
             "User-Agent": "Ablage-Webhook/1.0"
         }
 

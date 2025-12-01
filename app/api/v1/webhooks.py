@@ -23,6 +23,10 @@ from sqlalchemy import select, func, update
 
 from app.db.models import User, WebhookSubscription, WebhookDelivery
 from app.api.dependencies import get_current_user, get_db
+from app.core.webhook_signature import (
+    generate_signature_header,
+    SIGNATURE_HEADER_NAME,
+)
 from app.db.schemas import (
     WebhookSubscriptionCreate,
     WebhookSubscriptionUpdate,
@@ -308,8 +312,6 @@ async def test_webhook(
 ) -> WebhookTestResponse:
     """Test-Webhook an den Endpoint senden."""
     import httpx
-    import hmac
-    import hashlib
     import json
     import time
 
@@ -328,6 +330,7 @@ async def test_webhook(
         )
 
     # Test-Payload erstellen
+    timestamp = int(time.time())
     payload = {
         "event_id": f"test_{secrets.token_hex(8)}",
         "event_type": test_data.event_type,
@@ -341,19 +344,16 @@ async def test_webhook(
         }
     }
 
-    # Signatur generieren
+    # Signatur generieren (neues Format mit Timestamp-Schutz)
     payload_bytes = json.dumps(payload, separators=(',', ':')).encode('utf-8')
-    signature = hmac.new(
-        webhook.secret.encode('utf-8'),
-        payload_bytes,
-        hashlib.sha256
-    ).hexdigest()
+    signature = generate_signature_header(payload_bytes, webhook.secret, timestamp)
 
     # Headers vorbereiten
     headers = {
         "Content-Type": "application/json",
-        "X-Webhook-Signature": signature,
+        SIGNATURE_HEADER_NAME: signature,
         "X-Webhook-Delivery-ID": payload["event_id"],
+        "X-Webhook-Timestamp": str(timestamp),
         "X-Webhook-Test": "true",
         "User-Agent": "Ablage-Webhook/1.0"
     }

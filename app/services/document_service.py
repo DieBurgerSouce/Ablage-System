@@ -4,9 +4,10 @@ Zentrale Service-Schicht fuer Dokumentenverwaltung mit Unterstuetzung
 fuer Filterung, Pagination und Batch-Operationen.
 """
 
-from typing import List, Optional, Dict, Tuple
+from typing import Any, List, Optional, Dict, Tuple
 from datetime import datetime, timezone
 from uuid import UUID
+from functools import lru_cache
 import math
 import json
 import csv
@@ -32,17 +33,49 @@ from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
 
-# Lazy import to avoid circular dependency
-_search_service = None
+
+# Thread-safe search service access using contextvars for async safety
+import asyncio
+from contextvars import ContextVar
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.services.search_service import SearchService
+
+# Context variable for async-safe search service access
+_search_service_ctx: ContextVar[Optional["SearchService"]] = ContextVar(
+    "_search_service_ctx", default=None
+)
 
 
-def _get_search_service():
-    """Lazy-load SearchService to avoid circular import."""
-    global _search_service
-    if _search_service is None:
-        from app.services.search_service import get_search_service
-        _search_service = get_search_service()
-    return _search_service
+def _get_search_service() -> Optional["SearchService"]:
+    """Get SearchService instance - async-safe with lazy loading.
+
+    Uses contextvars for thread/async safety instead of global state.
+    Falls back to creating instance if not in context (backwards compatible).
+    """
+    service = _search_service_ctx.get()
+    if service is None:
+        try:
+            from app.services.search_service import get_search_service
+            service = get_search_service()
+            _search_service_ctx.set(service)
+        except ImportError as e:
+            logger.warning(
+                "search_service_import_failed",
+                error_type="ImportError",
+                error=str(e)
+            )
+            return None
+    return service
+
+
+def set_search_service(service: "SearchService") -> None:
+    """Inject SearchService instance for current async context.
+
+    Used for dependency injection in tests or application setup.
+    """
+    _search_service_ctx.set(service)
 
 
 class DocumentService:
@@ -197,7 +230,7 @@ class DocumentService:
         db: AsyncSession,
         document_id: UUID,
         user_id: UUID,
-        updates: Dict[str, any],
+        updates: Dict[str, Any],
         tag_operation: Optional[str] = None,
         tag_values: Optional[List[str]] = None
     ) -> Optional[DocumentDetailResponse]:
@@ -663,7 +696,8 @@ class DocumentService:
         db: AsyncSession,
         document_ids: List[UUID],
         user_id: UUID,
-        dry_run: bool = False
+        dry_run: bool = False,
+        soft_delete: bool = True
     ) -> BatchOperationResult:
         """Mehrere Dokumente loeschen (optimierte Bulk-Operation).
 
@@ -675,6 +709,8 @@ class DocumentService:
             document_ids: Liste der zu loeschenden Dokument-IDs
             user_id: ID des ausfuehrenden Benutzers
             dry_run: Wenn True, wird nur simuliert (keine Loeschung)
+            soft_delete: Wenn True (Standard), Soft-Delete fuer GDPR-Konformitaet.
+                        Nach 30 Tagen erfolgt permanente Loeschung via Scheduled Task.
 
         Returns:
             BatchOperationResult mit Statistiken und ggf. betroffenen Dokumenten
@@ -733,29 +769,47 @@ class DocumentService:
                     affected_documents=list(found_ids) if found_ids else None
                 )
 
-            # Schritt 3: Bulk-Delete der gefundenen Dokumente (nur wenn nicht dry_run)
+            # Schritt 3: Bulk-Delete/Soft-Delete der gefundenen Dokumente (nur wenn nicht dry_run)
             processed = 0
             if found_ids:
-                delete_stmt = delete(Document).where(
-                    and_(
-                        Document.id.in_(list(found_ids)),
-                        Document.owner_id == user_id
+                if soft_delete:
+                    # GDPR-konformes Soft-Delete: Markiere als geloescht
+                    now = datetime.now(timezone.utc)
+                    update_stmt = update(Document).where(
+                        and_(
+                            Document.id.in_(list(found_ids)),
+                            Document.owner_id == user_id
+                        )
+                    ).values(
+                        deleted_at=now,
+                        deleted_by_id=user_id,
+                        status=ProcessingStatus.DELETED
                     )
-                )
-                delete_result = await db.execute(delete_stmt)
-                processed = delete_result.rowcount
+                    update_result = await db.execute(update_stmt)
+                    processed = update_result.rowcount
+                else:
+                    # Hard-Delete (nur fuer Admin oder nach Ablauf der Aufbewahrungsfrist)
+                    delete_stmt = delete(Document).where(
+                        and_(
+                            Document.id.in_(list(found_ids)),
+                            Document.owner_id == user_id
+                        )
+                    )
+                    delete_result = await db.execute(delete_stmt)
+                    processed = delete_result.rowcount
                 await db.commit()
 
                 # Such-Caches invalidieren
                 try:
                     search_service = _get_search_service()
                     await search_service.invalidate_user_search_cache(
-                        user_id, reason="batch_delete"
+                        user_id, reason="batch_soft_delete" if soft_delete else "batch_delete"
                     )
                 except Exception as e:
                     logger.warning(
                         "cache_invalidation_on_batch_delete_failed",
-                        error=str(e)
+                        error=str(e),
+                        soft_delete=soft_delete
                     )
 
             failed = len(not_found_ids)
@@ -784,10 +838,11 @@ class DocumentService:
             )
 
         success = failed == 0
+        delete_type = "soft-geloescht (wiederherstellbar 30 Tage)" if soft_delete else "permanent geloescht"
         message = (
-            f"{processed} Dokument(e) erfolgreich geloescht"
+            f"{processed} Dokument(e) erfolgreich {delete_type}"
             if success else
-            f"{processed} von {len(document_ids)} Dokument(en) geloescht, {failed} fehlgeschlagen"
+            f"{processed} von {len(document_ids)} Dokument(en) {delete_type}, {failed} fehlgeschlagen"
         )
 
         logger.info(
@@ -795,12 +850,13 @@ class DocumentService:
             total=len(document_ids),
             processed=processed,
             failed=failed,
-            dry_run=dry_run
+            dry_run=dry_run,
+            soft_delete=soft_delete
         )
 
         return BatchOperationResult(
             success=success,
-            operation="delete",
+            operation="soft_delete" if soft_delete else "delete",
             total_requested=len(document_ids),
             processed=processed,
             failed=failed,
@@ -1410,13 +1466,8 @@ class DocumentService:
         return output.getvalue(), "application/pdf"
 
 
-# Dependency Injection
-_document_service: Optional[DocumentService] = None
-
-
+# Dependency Injection - Thread-safe singleton via lru_cache
+@lru_cache(maxsize=1)
 def get_document_service() -> DocumentService:
-    """Document-Service-Instanz abrufen."""
-    global _document_service
-    if _document_service is None:
-        _document_service = DocumentService()
-    return _document_service
+    """Document-Service-Instanz abrufen (thread-safe singleton)."""
+    return DocumentService()

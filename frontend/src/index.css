@@ -1,6 +1,8 @@
 @import url('https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
+@import url('https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -27,27 +29,6 @@
         --warning: oklch(0.82 0.15 75);
         --success: oklch(0.72 0.17 145);
 
-        /* Secondary */
-        --secondary: oklch(0.96 0.01 250);
-        --secondary-foreground: oklch(0.145 0.004 250);
-
-        /* Muted */
-        --muted: oklch(0.96 0.01 250);
-        --muted-foreground: oklch(0.55 0.02 250);
-
-        /* Popover */
-        --popover: oklch(1 0 0);
-        --popover-foreground: oklch(0.145 0.004 250);
-
-        /* Card */
-        --card: oklch(1 0 0);
-        --card-foreground: oklch(0.145 0.004 250);
-
-        /* Border/Input/Ring */
-        --border: oklch(0.92 0.01 250);
-        --input: oklch(0.92 0.01 250);
-        --ring: oklch(0.35 0.08 250);
-
         /* Chart Colors */
         --chart-1: oklch(0.55 0.18 250);
         --chart-2: oklch(0.72 0.17 145);
@@ -60,33 +41,41 @@
         --sidebar-foreground: oklch(0.92 0.01 250);
         --sidebar-primary: oklch(0.88 0.16 85);
         --sidebar-primary-foreground: oklch(0.12 0.02 250);
-        --sidebar-accent: oklch(0.15 0.02 250);
+        --sidebar-accent: oklch(0.25 0.04 250);
         --sidebar-accent-foreground: oklch(0.985 0 0);
-        --sidebar-border: oklch(0.2 0.02 250);
+        --sidebar-border: oklch(0.25 0.04 250);
         --sidebar-ring: oklch(0.88 0.16 85);
+
+        /* Shadcn UI Variables mapped to OKLCH */
+        --card: oklch(1 0 0);
+        --card-foreground: oklch(0.145 0.004 250);
+        --popover: oklch(1 0 0);
+        --popover-foreground: oklch(0.145 0.004 250);
+        --muted: oklch(0.96 0.002 250);
+        --muted-foreground: oklch(0.55 0.02 250);
+        --border: oklch(0.92 0.005 250);
+        --input: oklch(0.92 0.005 250);
+        --ring: oklch(0.35 0.08 250);
+
+        /* Typography */
+        --font-display: 'Clash Display', sans-serif;
+        --font-body: 'Satoshi', sans-serif;
     }
 
     .dark {
         --background: oklch(0.12 0.02 250);
         --foreground: oklch(0.92 0.01 250);
-
         --primary: oklch(0.88 0.16 85);
         --primary-foreground: oklch(0.12 0.02 250);
 
-        --secondary: oklch(0.15 0.02 250);
-        --secondary-foreground: oklch(0.985 0 0);
-
-        --muted: oklch(0.15 0.02 250);
+        --card: oklch(0.14 0.02 250);
+        --card-foreground: oklch(0.98 0.01 250);
+        --popover: oklch(0.14 0.02 250);
+        --popover-foreground: oklch(0.98 0.01 250);
+        --muted: oklch(0.2 0.02 250);
         --muted-foreground: oklch(0.7 0.02 250);
-
-        --popover: oklch(0.12 0.02 250);
-        --popover-foreground: oklch(0.985 0 0);
-
-        --card: oklch(0.12 0.02 250);
-        --card-foreground: oklch(0.985 0 0);
-
-        --border: oklch(0.2 0.02 250);
-        --input: oklch(0.2 0.02 250);
+        --border: oklch(0.25 0.02 250);
+        --input: oklch(0.25 0.02 250);
         --ring: oklch(0.88 0.16 85);
     }
 }
@@ -106,6 +95,29 @@
     h4,
     h5,
     h6 {
-        @apply font-display tracking-tight;
+        @apply font-display;
+    }
+}
+
+@layer utilities {
+    .noise-overlay::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        opacity: 0.03;
+        pointer-events: none;
+        z-index: 50;
+    }
+
+    .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .dark .glass-card {
+        background: rgba(30, 30, 30, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.05);
     }
 }

@@ -230,11 +230,12 @@ class IncidentResponseService:
             )
             incidents.append(incident)
 
-            logger.warning(
+            logger.error(
                 "brute_force_detected",
                 ip_address=ip_address,
                 failed_count=count,
-                severity=severity.value
+                severity=severity.value,
+                security_event=True
             )
 
         return incidents

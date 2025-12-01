@@ -170,8 +170,8 @@ class UserResponse(UserBase):
 # Document Schemas
 class DocumentBase(BaseModel):
     """Base document schema."""
-    filename: str
-    language: str = "de"
+    filename: str = Field(..., min_length=1, max_length=255, description="Dateiname")
+    language: str = Field(default="de", pattern="^[a-z]{2}$", max_length=5, description="Sprache (ISO 639-1)")
     document_type: DocumentType = DocumentType.OTHER
 
 
@@ -240,11 +240,11 @@ class ProcessingJobCreate(BaseModel):
 
 class ProcessingJobUpdate(BaseModel):
     """Processing job update schema."""
-    status: Optional[ProcessingStatus]
+    status: Optional[ProcessingStatus] = None
     progress: Optional[int] = Field(None, ge=0, le=100)
-    message: Optional[str]
-    result: Optional[Dict[str, Any]]
-    error_message: Optional[str]
+    message: Optional[str] = Field(None, max_length=500, description="Status-Nachricht")
+    result: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = Field(None, max_length=2000, description="Fehlermeldung")
 
 
 class ProcessingJobResponse(BaseModel):
@@ -371,13 +371,13 @@ class TokenPayload(BaseModel):
 
 class LoginRequest(BaseModel):
     """Login request."""
-    email: EmailStr
-    password: str
+    email: EmailStr = Field(..., max_length=254, description="RFC 5321 max email length")
+    password: str = Field(..., min_length=1, max_length=256, description="Passwort")
 
 
 class RefreshTokenRequest(BaseModel):
     """Refresh token request."""
-    refresh_token: str
+    refresh_token: str = Field(..., min_length=32, max_length=512, description="JWT Refresh Token")
 
 
 class LogoutRequest(BaseModel):
@@ -388,7 +388,7 @@ class LogoutRequest(BaseModel):
 # Password Reset Schemas
 class PasswordResetRequest(BaseModel):
     """Request password reset via email."""
-    email: EmailStr
+    email: EmailStr = Field(..., max_length=254, description="RFC 5321 max email length")
 
 
 class PasswordResetConfirm(BaseModel):
