@@ -195,6 +195,10 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+# Alias für Abwärtskompatibilität
+get_db = get_db_session
+
+
 # ============================================================================
 # UTILITIES
 # ============================================================================

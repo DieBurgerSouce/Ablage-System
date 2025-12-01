@@ -446,6 +446,285 @@ async def get_document(
     return document
 
 
+# ==================== Document Download Endpoints ====================
+
+@router.get("/{document_id}/download")
+async def download_document(
+    document_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Original-Dokument herunterladen.
+
+    Lädt das originale Dokument aus dem Object Storage herunter.
+    Unterstützt alle gespeicherten Dateiformate (PDF, PNG, JPG, TIFF).
+
+    **Response:**
+    - Content-Type: Originaltyp der Datei
+    - Content-Disposition: attachment; filename="original_filename"
+
+    **Beispiel:**
+    ```
+    curl -X GET /api/v1/documents/{id}/download \\
+      -H "Authorization: Bearer <token>" \\
+      -o dokument.pdf
+    ```
+    """
+    from app.services.storage_service import get_storage_service
+    from app.db.models import Document, DocumentAccess
+    from sqlalchemy import select, or_, and_
+
+    # Prüfe Zugriff (Owner oder via DocumentAccess)
+    access_query = select(Document).where(
+        and_(
+            Document.id == document_id,
+            or_(
+                Document.owner_id == current_user.id,
+                Document.id.in_(
+                    select(DocumentAccess.document_id).where(
+                        and_(
+                            DocumentAccess.user_id == current_user.id,
+                            or_(
+                                DocumentAccess.expires_at.is_(None),
+                                DocumentAccess.expires_at > datetime.utcnow()
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+    result = await db.execute(access_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Dokument nicht gefunden oder keine Berechtigung"
+        )
+
+    if document.is_deleted:
+        raise HTTPException(
+            status_code=410,
+            detail="Dokument wurde gelöscht"
+        )
+
+    # Datei aus Storage laden
+    storage = get_storage_service()
+    try:
+        file_content = await storage.download_file(document.file_path)
+    except Exception as e:
+        logger.error(
+            "document_download_storage_error",
+            document_id=str(document_id),
+            file_path=document.file_path,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim Laden der Datei aus dem Storage"
+        )
+
+    # Original-Dateiname verwenden
+    filename = document.original_filename or document.filename
+
+    logger.info(
+        "document_downloaded",
+        document_id=str(document_id),
+        user_id=str(current_user.id),
+        filename=filename
+    )
+
+    return Response(
+        content=file_content,
+        media_type=document.mime_type or "application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(file_content))
+        }
+    )
+
+
+@router.get("/{document_id}/download/pdf")
+async def download_document_as_pdf(
+    document_id: UUID,
+    include_ocr_text: bool = Query(False, description="OCR-Text als Textlayer einbetten"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Dokument als PDF exportieren.
+
+    Konvertiert das Dokument zu PDF (falls es noch kein PDF ist)
+    und gibt es zum Download zurück.
+
+    **Parameter:**
+    - include_ocr_text: Wenn True, wird der extrahierte OCR-Text
+      als durchsuchbarer Textlayer eingebettet (PDF/A).
+
+    **Beispiel:**
+    ```
+    curl -X GET /api/v1/documents/{id}/download/pdf?include_ocr_text=true \\
+      -H "Authorization: Bearer <token>" \\
+      -o dokument_searchable.pdf
+    ```
+    """
+    from app.services.storage_service import get_storage_service
+    from app.db.models import Document, DocumentAccess
+    from sqlalchemy import select, or_, and_
+
+    # Prüfe Zugriff
+    access_query = select(Document).where(
+        and_(
+            Document.id == document_id,
+            or_(
+                Document.owner_id == current_user.id,
+                Document.id.in_(
+                    select(DocumentAccess.document_id).where(
+                        and_(
+                            DocumentAccess.user_id == current_user.id,
+                            or_(
+                                DocumentAccess.expires_at.is_(None),
+                                DocumentAccess.expires_at > datetime.utcnow()
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+    result = await db.execute(access_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Dokument nicht gefunden oder keine Berechtigung"
+        )
+
+    if document.is_deleted:
+        raise HTTPException(
+            status_code=410,
+            detail="Dokument wurde gelöscht"
+        )
+
+    # Wenn bereits PDF und kein OCR-Text gewünscht, direkt zurückgeben
+    if document.mime_type == "application/pdf" and not include_ocr_text:
+        storage = get_storage_service()
+        file_content = await storage.download_file(document.file_path)
+        filename = document.original_filename or document.filename
+        if not filename.lower().endswith('.pdf'):
+            filename = f"{filename}.pdf"
+
+        return Response(
+            content=file_content,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(file_content))
+            }
+        )
+
+    # Bild zu PDF konvertieren oder OCR-Text einbetten
+    try:
+        from PIL import Image
+        from io import BytesIO
+        from reportlab.lib.pagesizes import A4
+        from reportlab.pdfgen import canvas as reportlab_canvas
+
+        storage = get_storage_service()
+        file_content = await storage.download_file(document.file_path)
+
+        # Bild laden
+        if document.mime_type and document.mime_type.startswith("image/"):
+            img = Image.open(BytesIO(file_content))
+
+            # PDF erstellen
+            pdf_buffer = BytesIO()
+            # Bildgröße anpassen (max A4)
+            img_width, img_height = img.size
+            page_width, page_height = A4
+
+            # Skalieren um auf Seite zu passen
+            scale = min(page_width / img_width, page_height / img_height)
+            new_width = int(img_width * scale)
+            new_height = int(img_height * scale)
+
+            # PDF mit reportlab erstellen
+            c = reportlab_canvas.Canvas(pdf_buffer, pagesize=(new_width, new_height))
+
+            # Bild temporär speichern
+            img_temp = BytesIO()
+            img.save(img_temp, format='PNG')
+            img_temp.seek(0)
+
+            from reportlab.lib.utils import ImageReader
+            c.drawImage(ImageReader(img_temp), 0, 0, width=new_width, height=new_height)
+
+            # OCR-Text als Textlayer hinzufügen (unsichtbar)
+            if include_ocr_text and document.extracted_text:
+                c.setFillColorRGB(1, 1, 1, alpha=0)  # Transparent
+                c.setFont("Helvetica", 1)  # Sehr klein
+                # Text am unteren Rand (unsichtbar aber durchsuchbar)
+                text_obj = c.beginText(0, 0)
+                text_obj.textLine(document.extracted_text[:5000])  # Max 5000 Zeichen
+                c.drawText(text_obj)
+
+            c.save()
+            pdf_content = pdf_buffer.getvalue()
+
+        elif document.mime_type == "application/pdf" and include_ocr_text:
+            # PDF mit OCR-Text versehen (vereinfachte Implementierung)
+            # Für vollständige Implementierung: PyPDF2 oder pikepdf verwenden
+            pdf_content = file_content
+            logger.info(
+                "pdf_ocr_text_embedding_skipped",
+                document_id=str(document_id),
+                reason="Vollständige PDF/A-Konvertierung erfordert zusätzliche Bibliotheken"
+            )
+        else:
+            pdf_content = file_content
+
+        filename = document.original_filename or document.filename
+        if not filename.lower().endswith('.pdf'):
+            filename = f"{filename.rsplit('.', 1)[0]}.pdf"
+
+        logger.info(
+            "document_exported_as_pdf",
+            document_id=str(document_id),
+            user_id=str(current_user.id),
+            include_ocr_text=include_ocr_text
+        )
+
+        return Response(
+            content=pdf_content,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(pdf_content))
+            }
+        )
+
+    except ImportError as e:
+        logger.warning(
+            "pdf_export_missing_dependency",
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=501,
+            detail="PDF-Export nicht verfügbar. Erforderliche Bibliotheken fehlen."
+        )
+    except Exception as e:
+        logger.error(
+            "pdf_export_error",
+            document_id=str(document_id),
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler bei der PDF-Konvertierung"
+        )
+
+
 @router.put("/{document_id}", response_model=DocumentDetailResponse)
 async def update_document(
     document_id: UUID,

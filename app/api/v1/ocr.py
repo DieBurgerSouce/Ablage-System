@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_current_active_user, get_db
 from app.db.models import User
 from app.services.ocr import quick_ocr_preview
+from app.core.file_validation import sanitize_filename, PathTraversalError
 
 logger = structlog.get_logger(__name__)
 
@@ -103,7 +104,21 @@ async def ocr_preview_upload(
             detail="Dateiname fehlt",
         )
 
-    suffix = Path(file.filename).suffix.lower()
+    # Path Traversal Schutz: Dateiname sanitieren
+    try:
+        safe_filename = sanitize_filename(file.filename, strict=False)
+    except PathTraversalError:
+        logger.warning(
+            "path_traversal_attempt",
+            user_id=str(current_user.id),
+            original_filename=file.filename[:100] if file.filename else None,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ungültiger Dateiname: Pfad-Manipulation erkannt",
+        )
+
+    suffix = Path(safe_filename).suffix.lower()
     allowed_formats = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp"}
 
     if suffix not in allowed_formats:
@@ -382,3 +397,369 @@ async def ocr_status(
         pymupdf_verfuegbar=pymupdf_verfuegbar,
         tesseract_verfuegbar=tesseract_verfuegbar,
     )
+
+
+# =============================================================================
+# OCR Control Endpoints (Document-specific)
+# =============================================================================
+
+
+class OCRStartRequest(BaseModel):
+    """Anfrage zum Starten der OCR-Verarbeitung."""
+    backend: str = Field(
+        "auto",
+        description="OCR-Backend: auto, deepseek, got_ocr, surya"
+    )
+    priority: int = Field(
+        5,
+        ge=1,
+        le=10,
+        description="Verarbeitungspriorität (1=niedrig, 10=hoch)"
+    )
+    force_reprocess: bool = Field(
+        False,
+        description="OCR auch bei bereits verarbeiteten Dokumenten neu starten"
+    )
+
+
+class OCRStartResponse(BaseModel):
+    """Antwort nach OCR-Start."""
+    job_id: str = Field(..., description="Job-ID für Status-Abfrage")
+    document_id: UUID = Field(..., description="Dokument-ID")
+    backend: str = Field(..., description="Ausgewähltes Backend")
+    status: str = Field(..., description="aktueller Status")
+    message: str = Field(..., description="Statusmeldung")
+
+
+class OCRCancelResponse(BaseModel):
+    """Antwort nach OCR-Abbruch."""
+    document_id: UUID
+    cancelled: bool
+    message: str
+
+
+class OCRBackendChangeRequest(BaseModel):
+    """Anfrage zum Ändern des OCR-Backends."""
+    backend: str = Field(
+        ...,
+        description="Neues OCR-Backend: deepseek, got_ocr, surya"
+    )
+    reprocess: bool = Field(
+        False,
+        description="Dokument sofort neu verarbeiten"
+    )
+
+
+@router.post(
+    "/documents/{document_id}/start",
+    response_model=OCRStartResponse,
+    summary="OCR-Verarbeitung starten",
+    description="Startet die OCR-Verarbeitung für ein Dokument."
+)
+async def start_ocr_processing(
+    document_id: UUID,
+    request: OCRStartRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> OCRStartResponse:
+    """Startet die OCR-Verarbeitung für ein Dokument.
+
+    **Parameter:**
+    - backend: OCR-Backend (auto wählt automatisch basierend auf Dokumenttyp)
+    - priority: Verarbeitungspriorität (höher = schneller)
+    - force_reprocess: Bei True wird auch bereits verarbeitetes Dokument neu verarbeitet
+
+    **Backends:**
+    - auto: Automatische Auswahl (empfohlen)
+    - deepseek: DeepSeek-Janus-Pro (beste Qualität für Deutsch)
+    - got_ocr: GOT-OCR 2.0 (schnell, gut für Tabellen)
+    - surya: Surya + Docling (CPU-Fallback, Layout-Analyse)
+
+    **Beispiel:**
+    ```
+    POST /api/v1/ocr/documents/{id}/start
+    {"backend": "deepseek", "priority": 8}
+    ```
+    """
+    from sqlalchemy import select
+    from app.db.models import Document, ProcessingJob
+
+    # Dokument laden und Berechtigung prüfen
+    doc_query = select(Document).where(Document.id == document_id)
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
+
+    if document.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Keine Berechtigung für dieses Dokument"
+        )
+
+    if document.is_deleted:
+        raise HTTPException(status_code=410, detail="Dokument wurde gelöscht")
+
+    # Prüfe ob bereits in Verarbeitung
+    job_query = select(ProcessingJob).where(
+        ProcessingJob.document_id == document_id,
+        ProcessingJob.status.in_(["queued", "processing"])
+    )
+    result = await db.execute(job_query)
+    existing_job = result.scalar_one_or_none()
+
+    if existing_job:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Dokument wird bereits verarbeitet (Job: {existing_job.id})"
+        )
+
+    # Prüfe ob bereits verarbeitet
+    if document.status == "completed" and not request.force_reprocess:
+        raise HTTPException(
+            status_code=400,
+            detail="Dokument bereits verarbeitet. Setze force_reprocess=true für Neuverarbeitung."
+        )
+
+    # Backend validieren
+    valid_backends = ["auto", "deepseek", "got_ocr", "surya"]
+    if request.backend not in valid_backends:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ungültiges Backend. Erlaubt: {', '.join(valid_backends)}"
+        )
+
+    # OCR-Job erstellen
+    try:
+        from app.workers.celery_app import celery_app
+        from uuid import uuid4
+        import json
+
+        job_id = str(uuid4())
+
+        # ProcessingJob in DB anlegen
+        processing_job = ProcessingJob(
+            id=UUID(job_id),
+            document_id=document_id,
+            job_type="ocr",
+            status="queued",
+            priority=request.priority,
+            config={"backend": request.backend, "force_reprocess": request.force_reprocess}
+        )
+        db.add(processing_job)
+
+        # Dokument-Status aktualisieren
+        document.status = "queued"
+        document.ocr_backend_used = request.backend if request.backend != "auto" else None
+
+        await db.commit()
+
+        # Celery Task starten
+        celery_app.send_task(
+            "app.workers.tasks.ocr_tasks.process_document_ocr",
+            args=[str(document_id), request.backend, request.priority],
+            task_id=job_id,
+            priority=10 - request.priority  # Celery: niedrigere Zahl = höhere Priorität
+        )
+
+        logger.info(
+            "ocr_processing_started",
+            document_id=str(document_id),
+            job_id=job_id,
+            backend=request.backend,
+            user_id=str(current_user.id)
+        )
+
+        return OCRStartResponse(
+            job_id=job_id,
+            document_id=document_id,
+            backend=request.backend,
+            status="queued",
+            message="OCR-Verarbeitung wurde gestartet"
+        )
+
+    except Exception as e:
+        logger.error(
+            "ocr_start_failed",
+            document_id=str(document_id),
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Fehler beim Starten der OCR-Verarbeitung: {str(e)}"
+        )
+
+
+@router.post(
+    "/documents/{document_id}/cancel",
+    response_model=OCRCancelResponse,
+    summary="OCR-Verarbeitung abbrechen",
+    description="Bricht eine laufende OCR-Verarbeitung ab."
+)
+async def cancel_ocr_processing(
+    document_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> OCRCancelResponse:
+    """Bricht eine laufende OCR-Verarbeitung ab.
+
+    Kann nur für eigene Dokumente verwendet werden.
+    Bereits abgeschlossene Verarbeitungen können nicht abgebrochen werden.
+    """
+    from sqlalchemy import select
+    from app.db.models import Document, ProcessingJob
+
+    # Dokument laden
+    doc_query = select(Document).where(Document.id == document_id)
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
+
+    if document.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Keine Berechtigung für dieses Dokument"
+        )
+
+    # Aktiven Job finden
+    job_query = select(ProcessingJob).where(
+        ProcessingJob.document_id == document_id,
+        ProcessingJob.status.in_(["queued", "processing"])
+    )
+    result = await db.execute(job_query)
+    job = result.scalar_one_or_none()
+
+    if not job:
+        return OCRCancelResponse(
+            document_id=document_id,
+            cancelled=False,
+            message="Keine aktive OCR-Verarbeitung gefunden"
+        )
+
+    try:
+        from app.workers.celery_app import celery_app
+
+        # Celery Task abbrechen
+        celery_app.control.revoke(str(job.id), terminate=True)
+
+        # Job-Status aktualisieren
+        job.status = "cancelled"
+        document.status = "cancelled"
+
+        await db.commit()
+
+        logger.info(
+            "ocr_processing_cancelled",
+            document_id=str(document_id),
+            job_id=str(job.id),
+            user_id=str(current_user.id)
+        )
+
+        return OCRCancelResponse(
+            document_id=document_id,
+            cancelled=True,
+            message="OCR-Verarbeitung wurde abgebrochen"
+        )
+
+    except Exception as e:
+        logger.error(
+            "ocr_cancel_failed",
+            document_id=str(document_id),
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Fehler beim Abbrechen: {str(e)}"
+        )
+
+
+@router.put(
+    "/documents/{document_id}/backend",
+    summary="OCR-Backend ändern",
+    description="Ändert das bevorzugte OCR-Backend für ein Dokument."
+)
+async def change_ocr_backend(
+    document_id: UUID,
+    request: OCRBackendChangeRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Ändert das OCR-Backend für ein Dokument.
+
+    Wenn reprocess=true, wird das Dokument sofort mit dem neuen Backend
+    neu verarbeitet. Andernfalls wird das Backend nur für zukünftige
+    Verarbeitungen gespeichert.
+
+    **Anwendungsfall:**
+    - Qualität war mit automatischer Auswahl nicht optimal
+    - Spezifisches Backend für bestimmte Dokumenttypen erzwingen
+    """
+    from sqlalchemy import select
+    from app.db.models import Document
+
+    # Dokument laden
+    doc_query = select(Document).where(Document.id == document_id)
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
+
+    if document.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Keine Berechtigung für dieses Dokument"
+        )
+
+    # Backend validieren
+    valid_backends = ["deepseek", "got_ocr", "surya"]
+    if request.backend not in valid_backends:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ungültiges Backend. Erlaubt: {', '.join(valid_backends)}"
+        )
+
+    # Backend speichern
+    old_backend = document.ocr_backend_used
+    document.ocr_backend_used = request.backend
+
+    await db.commit()
+
+    logger.info(
+        "ocr_backend_changed",
+        document_id=str(document_id),
+        old_backend=old_backend,
+        new_backend=request.backend,
+        user_id=str(current_user.id)
+    )
+
+    result_message = f"OCR-Backend auf '{request.backend}' geändert"
+
+    # Optional: Neu verarbeiten
+    if request.reprocess:
+        try:
+            # Start OCR mit neuem Backend
+            start_request = OCRStartRequest(
+                backend=request.backend,
+                force_reprocess=True
+            )
+            start_response = await start_ocr_processing(
+                document_id=document_id,
+                request=start_request,
+                current_user=current_user,
+                db=db
+            )
+            result_message += f". Neuverarbeitung gestartet (Job: {start_response.job_id})"
+        except HTTPException as e:
+            result_message += f". Neuverarbeitung fehlgeschlagen: {e.detail}"
+
+    return {
+        "document_id": str(document_id),
+        "old_backend": old_backend,
+        "new_backend": request.backend,
+        "reprocess_started": request.reprocess,
+        "message": result_message
+    }

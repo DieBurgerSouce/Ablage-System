@@ -405,6 +405,8 @@ from app.api.v1.favorites import router as favorites_router
 from app.api.v1.search import router as search_router
 from app.api.v1.api_keys import router as api_keys_router
 from app.api.v1.batch_jobs import router as batch_jobs_router
+from app.api.v1.sharing import router as sharing_router
+from app.api.v1.settings import router as settings_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -424,6 +426,8 @@ app.include_router(favorites_router, prefix="/api/v1")
 app.include_router(search_router, prefix="/api/v1")
 app.include_router(api_keys_router, prefix="/api/v1")
 app.include_router(batch_jobs_router, prefix="/api/v1")
+app.include_router(sharing_router, prefix="/api/v1")
+app.include_router(settings_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================
