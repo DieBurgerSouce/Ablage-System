@@ -51,6 +51,14 @@ logger = structlog.get_logger(__name__)
 
 
 @dataclass
+class ConfidenceThresholds:
+    """Confidence-Schwellenwerte für Qualitätskontrolle."""
+    low: float = 0.70       # Unter diesem Wert: Fallback zu anderem Backend
+    medium: float = 0.85    # Unter diesem Wert: needs_review Flag setzen
+    high: float = 0.95      # Über diesem Wert: Hohe Qualität, direkt akzeptieren
+
+
+@dataclass
 class OCRPipelineResult:
     """Vollständiges Ergebnis der OCR Pipeline."""
     success: bool
@@ -69,6 +77,8 @@ class OCRPipelineResult:
     correction_details: Optional[Dict[str, Any]] = None
     historical_normalization_details: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
+    needs_review: bool = False  # True wenn Confidence zwischen low und medium
+    confidence_fallback_triggered: bool = False  # True wenn Fallback wegen niedriger Confidence
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -88,6 +98,8 @@ class OCRPipelineResult:
             "correction_details": self.correction_details,
             "historical_normalization_details": self.historical_normalization_details,
             "error": self.error,
+            "needs_review": self.needs_review,
+            "confidence_fallback_triggered": self.confidence_fallback_triggered,
         }
 
 
@@ -110,7 +122,9 @@ class OCRPipeline:
         enable_circuit_breaker: bool = True,
         enable_memory_guard: bool = True,
         enable_historical_normalization: bool = True,
-        min_confidence_threshold: float = 0.65
+        min_confidence_threshold: float = 0.65,
+        confidence_thresholds: Optional[ConfidenceThresholds] = None,
+        enable_confidence_fallback: bool = True
     ):
         """
         Initialisiere OCR Pipeline.
@@ -120,7 +134,9 @@ class OCRPipeline:
             enable_circuit_breaker: Circuit Breaker aktivieren
             enable_memory_guard: GPU Memory Guard aktivieren
             enable_historical_normalization: Historical German Normalizer aktivieren
-            min_confidence_threshold: Minimale Confidence für Akzeptanz
+            min_confidence_threshold: Minimale Confidence für Akzeptanz (legacy)
+            confidence_thresholds: Konfigurierbare Schwellenwerte für Confidence
+            enable_confidence_fallback: Fallback bei niedriger Confidence aktivieren
         """
         self.enable_german_correction = enable_german_correction
         self.enable_circuit_breaker = enable_circuit_breaker
@@ -130,6 +146,8 @@ class OCRPipeline:
             settings.HISTORICAL_NORMALIZATION_ENABLED
         )
         self.min_confidence_threshold = min_confidence_threshold
+        self.confidence_thresholds = confidence_thresholds or ConfidenceThresholds()
+        self.enable_confidence_fallback = enable_confidence_fallback
 
         # Services initialisieren
         self.confidence_service = get_confidence_service()
@@ -153,7 +171,13 @@ class OCRPipeline:
             circuit_breaker=enable_circuit_breaker,
             memory_guard=enable_memory_guard,
             historical_normalization=self.enable_historical_normalization,
-            min_confidence=min_confidence_threshold
+            min_confidence=min_confidence_threshold,
+            confidence_thresholds={
+                "low": self.confidence_thresholds.low,
+                "medium": self.confidence_thresholds.medium,
+                "high": self.confidence_thresholds.high,
+            },
+            confidence_fallback=enable_confidence_fallback
         )
 
     def _register_default_backends(self) -> None:
@@ -325,6 +349,97 @@ class OCRPipeline:
                 error=fallback_result.error
             )
 
+        # Step 2.5: Confidence Thresholding
+        needs_review = False
+        confidence_fallback_triggered = False
+        current_confidence = fallback_result.confidence
+
+        if current_confidence < self.confidence_thresholds.low:
+            # Niedrige Confidence: Versuche Fallback zu anderem Backend
+            logger.warning(
+                "ocr_pipeline_low_confidence",
+                document_id=document_id,
+                confidence=current_confidence,
+                threshold=self.confidence_thresholds.low,
+                backend=fallback_result.final_backend
+            )
+
+            if self.enable_confidence_fallback:
+                # Versuche ein anderes Backend (wenn noch nicht alle probiert)
+                available_for_retry = [
+                    b for b in ["deepseek", "got_ocr", "surya", "surya_gpu"]
+                    if b not in fallback_result.backends_tried
+                ]
+
+                if available_for_retry:
+                    retry_backend = available_for_retry[0]
+                    logger.info(
+                        "ocr_pipeline_confidence_fallback",
+                        document_id=document_id,
+                        retry_backend=retry_backend,
+                        original_confidence=current_confidence
+                    )
+
+                    try:
+                        retry_result = await self.fallback_chain.execute(
+                            document_id=document_id,
+                            image_path=image_path,
+                            language=language,
+                            options=options,
+                            preferred_backend=retry_backend,
+                            document_type=document_type,
+                            gpu_available=gpu_available,
+                            available_vram_gb=available_vram_gb
+                        )
+
+                        if retry_result.success and retry_result.confidence > current_confidence:
+                            # Besseres Ergebnis gefunden
+                            logger.info(
+                                "ocr_pipeline_confidence_fallback_success",
+                                document_id=document_id,
+                                old_confidence=current_confidence,
+                                new_confidence=retry_result.confidence,
+                                new_backend=retry_result.final_backend
+                            )
+                            fallback_result = retry_result
+                            current_confidence = retry_result.confidence
+                            confidence_fallback_triggered = True
+                        else:
+                            logger.debug(
+                                "ocr_pipeline_confidence_fallback_no_improvement",
+                                document_id=document_id,
+                                retry_confidence=retry_result.confidence if retry_result.success else 0.0
+                            )
+                    except Exception as e:
+                        logger.warning(
+                            "ocr_pipeline_confidence_fallback_error",
+                            document_id=document_id,
+                            error=str(e)
+                        )
+
+            # Setze needs_review wenn Confidence immer noch niedrig
+            if current_confidence < self.confidence_thresholds.medium:
+                needs_review = True
+
+        elif current_confidence < self.confidence_thresholds.medium:
+            # Mittlere Confidence: Akzeptieren aber markieren
+            needs_review = True
+            logger.info(
+                "ocr_pipeline_medium_confidence_review_needed",
+                document_id=document_id,
+                confidence=current_confidence,
+                threshold=self.confidence_thresholds.medium,
+                backend=fallback_result.final_backend
+            )
+        else:
+            # Hohe Confidence: Direkt akzeptieren
+            logger.debug(
+                "ocr_pipeline_high_confidence",
+                document_id=document_id,
+                confidence=current_confidence,
+                backend=fallback_result.final_backend
+            )
+
         # Step 3: German Correction (wenn aktiviert und Sprache = de)
         corrected_text = fallback_result.text
         corrections_applied = 0
@@ -424,7 +539,7 @@ class OCRPipeline:
             success=True,
             text=fallback_result.text,
             corrected_text=corrected_text,
-            confidence=fallback_result.confidence,
+            confidence=current_confidence,  # Aktualisierte Confidence nach ggf. Fallback
             backend_used=fallback_result.final_backend,
             backends_tried=fallback_result.backends_tried,
             fallbacks_occurred=fallback_result.fallbacks_occurred,
@@ -436,6 +551,8 @@ class OCRPipeline:
             confidence_details=confidence_details,
             correction_details=correction_details,
             historical_normalization_details=historical_normalization_details,
+            needs_review=needs_review,
+            confidence_fallback_triggered=confidence_fallback_triggered,
         )
 
         logger.info(
@@ -443,10 +560,12 @@ class OCRPipeline:
             document_id=document_id,
             success=True,
             backend=fallback_result.final_backend,
-            confidence=fallback_result.confidence,
+            confidence=current_confidence,
             corrections=corrections_applied,
             historical_changes=historical_changes_count,
-            time_ms=total_time
+            time_ms=total_time,
+            needs_review=needs_review,
+            confidence_fallback_triggered=confidence_fallback_triggered
         )
 
         return result
@@ -515,6 +634,12 @@ class OCRPipeline:
                 "memory_guard_enabled": self.enable_memory_guard,
                 "historical_normalization_enabled": self.enable_historical_normalization,
                 "min_confidence_threshold": self.min_confidence_threshold,
+                "confidence_thresholds": {
+                    "low": self.confidence_thresholds.low,
+                    "medium": self.confidence_thresholds.medium,
+                    "high": self.confidence_thresholds.high,
+                },
+                "confidence_fallback_enabled": self.enable_confidence_fallback,
             },
             "fallback_chain": self.fallback_chain.get_metrics(),
             "circuit_breakers": self.circuit_registry.get_all_status(),

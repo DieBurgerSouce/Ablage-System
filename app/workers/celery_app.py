@@ -2,7 +2,7 @@
 
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 import structlog
 from celery import Celery, Task
 from celery.schedules import crontab
@@ -245,6 +245,7 @@ celery_app = Celery(
         "app.workers.tasks.backup_tasks",
         "app.workers.tasks.cleanup_tasks",
         "app.workers.tasks.gdpr_tasks",
+        "app.workers.tasks.ml_tasks",
     ]
 )
 
@@ -423,6 +424,31 @@ celery_app.conf.update(
             "task": "app.workers.tasks.monitoring_tasks.cleanup_stuck_tasks",
             "schedule": 300.0,  # Alle 5 Minuten
         },
+        # ML/Drift Detection Tasks
+        "ml-drift-detection": {
+            "task": "app.workers.tasks.ml_tasks.run_drift_detection",
+            "schedule": 3600.0,  # Stündlich
+        },
+        "ml-drift-response": {
+            "task": "app.workers.tasks.ml_tasks.check_drift_and_respond",
+            "schedule": 7200.0,  # Alle 2 Stunden - automatische A/B-Tests bei Drift
+        },
+        "ml-metrics-update": {
+            "task": "app.workers.tasks.ml_tasks.update_ml_metrics",
+            "schedule": 60.0,  # Jede Minute (reduziert von 30s für weniger Load)
+        },
+        "ml-experiment-check": {
+            "task": "app.workers.tasks.ml_tasks.check_experiment_completion",
+            "schedule": 300.0,  # Alle 5 Minuten
+        },
+        "ml-apply-winners": {
+            "task": "app.workers.tasks.ml_tasks.apply_ab_test_winners",
+            "schedule": 1800.0,  # Alle 30 Minuten
+        },
+        "ml-monthly-report": {
+            "task": "app.workers.tasks.ml_tasks.generate_monthly_drift_report",
+            "schedule": crontab(day_of_month=1, hour=5, minute=0),  # Monatlich am 1. um 05:00
+        },
     },
 
     # Queue routing
@@ -453,6 +479,15 @@ celery_app.conf.update(
         "app.workers.tasks.cleanup_tasks.cleanup_orphaned_files": {"queue": "maintenance", "priority": 1},
         "app.workers.tasks.cleanup_tasks.cleanup_expired_cache": {"queue": "maintenance", "priority": 1},
         "app.workers.tasks.cleanup_tasks.cleanup_search_analytics": {"queue": "maintenance", "priority": 1},
+        # ML/Drift Detection tasks (CPU)
+        "app.workers.tasks.ml_tasks.run_drift_detection": {"queue": "metrics", "priority": 2},
+        "app.workers.tasks.ml_tasks.check_drift_and_respond": {"queue": "metrics", "priority": 3},
+        "app.workers.tasks.ml_tasks.update_ml_metrics": {"queue": "metrics", "priority": 1},
+        "app.workers.tasks.ml_tasks.check_experiment_completion": {"queue": "metrics", "priority": 2},
+        "app.workers.tasks.ml_tasks.apply_ab_test_winners": {"queue": "metrics", "priority": 2},
+        "app.workers.tasks.ml_tasks.generate_ml_report": {"queue": "maintenance", "priority": 1},
+        "app.workers.tasks.ml_tasks.generate_monthly_drift_report": {"queue": "maintenance", "priority": 1},
+        "app.workers.tasks.ml_tasks.trigger_model_retrain": {"queue": "maintenance", "priority": 2},
     },
 
     # Priority settings

@@ -155,6 +155,52 @@ if PROMETHEUS_AVAILABLE:
     )
 
     # -------------------------------------------------------------------------
+    # Confidence Calibration Metriken
+    # -------------------------------------------------------------------------
+
+    CALIBRATION_ECE = Gauge(
+        "ocr_calibration_ece",
+        "Expected Calibration Error (ECE) pro Backend",
+        ["backend"],
+        registry=ML_REGISTRY,
+    )
+
+    CALIBRATION_MCE = Gauge(
+        "ocr_calibration_mce",
+        "Maximum Calibration Error (MCE) pro Backend",
+        ["backend"],
+        registry=ML_REGISTRY,
+    )
+
+    CALIBRATION_BRIER_SCORE = Gauge(
+        "ocr_calibration_brier_score",
+        "Brier Score pro Backend",
+        ["backend"],
+        registry=ML_REGISTRY,
+    )
+
+    CALIBRATION_SAMPLES = Counter(
+        "ocr_calibration_samples_total",
+        "Gesamtzahl der Kalibrierungssamples",
+        ["backend", "is_correct"],
+        registry=ML_REGISTRY,
+    )
+
+    CALIBRATION_OVERCONFIDENCE = Gauge(
+        "ocr_calibration_overconfidence_ratio",
+        "Anteil ueberconfidenter Vorhersagen pro Backend",
+        ["backend"],
+        registry=ML_REGISTRY,
+    )
+
+    CALIBRATION_LAST_RETRAIN = Gauge(
+        "ocr_calibration_last_retrain_timestamp",
+        "Zeitstempel des letzten Calibration-Retrainings",
+        ["backend"],
+        registry=ML_REGISTRY,
+    )
+
+    # -------------------------------------------------------------------------
     # Drift Metriken
     # -------------------------------------------------------------------------
 
@@ -474,6 +520,63 @@ class MLMetrics:
                 DRIFT_ALERTS.labels(severity=severity).inc()
         else:
             logger.info("drift_score_recorded", overall_score=round(overall_score, 3), severity=severity)
+
+    # -------------------------------------------------------------------------
+    # Confidence Calibration Metriken
+    # -------------------------------------------------------------------------
+
+    def record_calibration_sample(
+        self,
+        backend: str,
+        is_correct: bool,
+    ) -> None:
+        """
+        Erfasse Kalibrierungssample.
+
+        Args:
+            backend: Backend-Name
+            is_correct: War die OCR-Vorhersage korrekt?
+        """
+        if self.enabled:
+            CALIBRATION_SAMPLES.labels(
+                backend=backend,
+                is_correct=str(is_correct).lower(),
+            ).inc()
+        else:
+            logger.debug("calibration_sample", backend=backend, is_correct=is_correct)
+
+    def update_calibration_metrics(
+        self,
+        backend: str,
+        ece: float,
+        mce: float,
+        brier_score: float,
+        overconfidence_ratio: float,
+    ) -> None:
+        """
+        Aktualisiere Calibration-Metriken fuer ein Backend.
+
+        Args:
+            backend: Backend-Name
+            ece: Expected Calibration Error
+            mce: Maximum Calibration Error
+            brier_score: Brier Score
+            overconfidence_ratio: Anteil ueberconfidenter Vorhersagen
+        """
+        if self.enabled:
+            CALIBRATION_ECE.labels(backend=backend).set(ece)
+            CALIBRATION_MCE.labels(backend=backend).set(mce)
+            CALIBRATION_BRIER_SCORE.labels(backend=backend).set(brier_score)
+            CALIBRATION_OVERCONFIDENCE.labels(backend=backend).set(overconfidence_ratio)
+            CALIBRATION_LAST_RETRAIN.labels(backend=backend).set_to_current_time()
+        else:
+            logger.info(
+                "calibration_metrics_updated",
+                backend=backend,
+                ece=round(ece, 4),
+                mce=round(mce, 4),
+                brier_score=round(brier_score, 4),
+            )
 
     # -------------------------------------------------------------------------
     # A/B Test Metriken

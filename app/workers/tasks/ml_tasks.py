@@ -571,6 +571,171 @@ def generate_ml_report(self) -> Dict[str, Any]:
         raise
 
 
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.ml_tasks.check_drift_and_respond",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=600,
+    soft_time_limit=300,
+    time_limit=360,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def check_drift_and_respond(self) -> Dict[str, Any]:
+    """
+    Prüfe Drift und reagiere automatisch mit A/B-Tests oder Alerts.
+
+    Diese Task integriert:
+    - Drift Detection mit automatischer A/B-Test Erstellung bei PSI > 0.2
+    - Alert bei kritischem Drift (PSI > 0.25)
+    - Quality Degradation Monitoring
+    - Retraining-Trigger Check
+
+    Returns:
+        Dict mit durchgeführten Aktionen
+    """
+    task_id = self.request.id
+
+    logger.info("drift_response_check_starting", task_id=task_id)
+
+    try:
+        from app.ml.drift_detector import get_drift_alert_manager
+
+        alert_manager = get_drift_alert_manager()
+
+        # Check drift and respond
+        result = alert_manager.check_and_respond_to_drift()
+
+        # Check if retraining is needed
+        retraining_status = alert_manager.check_retraining_trigger()
+        result["retraining_status"] = retraining_status
+
+        # Log summary
+        logger.info(
+            "drift_response_check_completed",
+            task_id=task_id,
+            drift_detected=result.get("drift_detected", False),
+            alerts_sent=len(result.get("alerts_sent", [])),
+            experiments_created=len(result.get("experiments_created", [])),
+            quality_status=result.get("quality_status", "unknown"),
+            should_retrain=retraining_status.get("should_retrain", False),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception("drift_response_check_failed", task_id=task_id, error=str(e))
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.ml_tasks.generate_monthly_drift_report",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=600,
+    soft_time_limit=300,
+    time_limit=360,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def generate_monthly_drift_report(self) -> Dict[str, Any]:
+    """
+    Generiere monatlichen Drift- und Performance-Report.
+
+    Enthält:
+    - Drift-Zusammenfassung
+    - Quality-Trend
+    - Automatisch erstellte Experimente
+    - Empfehlungen
+
+    Returns:
+        Monatlicher Report
+    """
+    task_id = self.request.id
+
+    logger.info("monthly_drift_report_starting", task_id=task_id)
+
+    try:
+        from app.ml.drift_detector import get_drift_alert_manager
+
+        alert_manager = get_drift_alert_manager()
+        report = alert_manager.generate_monthly_report()
+
+        logger.info(
+            "monthly_drift_report_completed",
+            task_id=task_id,
+            period=report.get("period", "unknown"),
+            status=report.get("status", "generated"),
+        )
+
+        return report
+
+    except Exception as e:
+        logger.exception("monthly_drift_report_failed", task_id=task_id, error=str(e))
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.ml_tasks.apply_ab_test_winners",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=300,
+    soft_time_limit=120,
+    time_limit=180,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def apply_ab_test_winners(self) -> Dict[str, Any]:
+    """
+    Wende A/B-Test Gewinner auf Backend-Routing an.
+
+    Prüft laufende Experimente und aktualisiert die
+    Backend-Fallback-Reihenfolge basierend auf Ergebnissen.
+
+    Returns:
+        Dict mit angewendeten Änderungen
+    """
+    task_id = self.request.id
+
+    logger.info("apply_ab_winners_starting", task_id=task_id)
+
+    try:
+        from app.services.backend_manager import get_backend_manager
+
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        # Get backend manager (async initialization)
+        manager = loop.run_until_complete(get_backend_manager())
+
+        # Apply winners
+        result = manager.apply_ab_test_winners()
+
+        logger.info(
+            "apply_ab_winners_completed",
+            task_id=task_id,
+            winners_applied=len(result.get("applied_winners", [])),
+            fallback_updated=result.get("fallback_updated", False),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception("apply_ab_winners_failed", task_id=task_id, error=str(e))
+        raise
+
+
 # ==================== Celery Beat Schedule ====================
 
 # Diese Tasks sollten in der Celery Beat Konfiguration hinzugefügt werden
@@ -578,6 +743,10 @@ CELERY_BEAT_ML_SCHEDULE = {
     "ml-drift-detection-hourly": {
         "task": "app.workers.tasks.ml_tasks.run_drift_detection",
         "schedule": 3600.0,  # Stündlich
+    },
+    "ml-drift-response-check": {
+        "task": "app.workers.tasks.ml_tasks.check_drift_and_respond",
+        "schedule": 7200.0,  # Alle 2 Stunden - automatische A/B-Tests bei Drift
     },
     "ml-metrics-update": {
         "task": "app.workers.tasks.ml_tasks.update_ml_metrics",
@@ -587,8 +756,16 @@ CELERY_BEAT_ML_SCHEDULE = {
         "task": "app.workers.tasks.ml_tasks.check_experiment_completion",
         "schedule": 300.0,  # Alle 5 Minuten
     },
+    "ml-apply-ab-winners": {
+        "task": "app.workers.tasks.ml_tasks.apply_ab_test_winners",
+        "schedule": 1800.0,  # Alle 30 Minuten - Gewinner anwenden
+    },
     "ml-report-daily": {
         "task": "app.workers.tasks.ml_tasks.generate_ml_report",
         "schedule": 86400.0,  # Täglich
+    },
+    "ml-monthly-drift-report": {
+        "task": "app.workers.tasks.ml_tasks.generate_monthly_drift_report",
+        "schedule": 2592000.0,  # Monatlich (30 Tage)
     },
 }

@@ -322,14 +322,18 @@ class HybridOCRAgent(OCRAgent):
         except Exception as e:
             self.logger.warning("memory_cleanup_failed", error=str(e))
 
+    # Confidence-Differenz Schwellenwert fuer Ensemble Voting
+    CONFIDENCE_DIFF_THRESHOLD = 0.15
+
     async def _fuse_results(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Fuse results from multiple engines.
+        Fuse results from multiple engines with Ensemble Voting.
 
-        Strategy:
-        1. Select engine with highest confidence
-        2. If confidences similar, choose longest text
-        3. Merge entities from all engines
+        Strategy (gemaess OCR/ML Optimierungsplan):
+        1. Wenn Confidence-Differenz > 0.15: Waehle hoechsten
+        2. Wenn Differenz < 0.15: Character-Level Voting
+        3. Bei Konflikt: Fallback zu DeepSeek (Umlaut-staerker)
+        4. Merge entities from all engines
         """
         if not results:
             raise ValueError("No valid OCR results to fuse")
@@ -339,28 +343,143 @@ class HybridOCRAgent(OCRAgent):
             results, key=lambda x: x.get("confidence", 0.0), reverse=True
         )
 
-        # Select best result
         best_result = sorted_results[0]
+        final_text = best_result.get("text", "")
+        fusion_method = "highest_confidence"
 
-        # Merge entities from all results (if available)
+        # Check if we need ensemble voting
+        if len(sorted_results) >= 2:
+            second_best = sorted_results[1]
+            confidence_diff = best_result.get("confidence", 0.0) - second_best.get("confidence", 0.0)
+
+            if confidence_diff < self.CONFIDENCE_DIFF_THRESHOLD:
+                # Aehnliche Confidence -> Character-Level Voting
+                self.logger.info(
+                    "hybrid_ensemble_voting",
+                    confidence_diff=round(confidence_diff, 3),
+                    engines=[r.get("engine") for r in sorted_results[:3]]
+                )
+
+                final_text = self._character_level_voting(sorted_results)
+                fusion_method = "character_voting"
+            else:
+                fusion_method = "confidence_winner"
+
+        # Merge entities from all results
         all_entities = []
         for result in results:
             entities = result.get("entities", [])
             all_entities.extend(entities)
 
-        # Deduplicate entities
         unique_entities = self._deduplicate_entities(all_entities)
 
+        # Calculate ensemble confidence
+        ensemble_confidence = self._calculate_ensemble_confidence(sorted_results)
+
         return {
-            "text": best_result.get("text", ""),
-            "confidence": best_result.get("confidence", 0.0),
+            "text": final_text,
+            "confidence": ensemble_confidence,
             "selected_engine": best_result.get("engine"),
+            "fusion_method": fusion_method,
             "all_confidences": {
                 r.get("engine"): r.get("confidence") for r in results
             },
             "entities": unique_entities,
             "layout": best_result.get("layout", {}),
         }
+
+    def _character_level_voting(self, results: List[Dict[str, Any]]) -> str:
+        """
+        Character-Level Voting zwischen mehreren OCR-Ergebnissen.
+
+        Bei aehnlicher Confidence wird Zeichen fuer Zeichen abgestimmt.
+        DeepSeek hat Bonus bei deutschen Umlauten (Umlaut-staerker).
+
+        Args:
+            results: Sortierte Liste von OCR-Ergebnissen (hoechste Confidence zuerst)
+
+        Returns:
+            Fused text nach Character-Level Voting
+        """
+        if len(results) < 2:
+            return results[0].get("text", "") if results else ""
+
+        texts = [r.get("text", "") for r in results]
+        confidences = [r.get("confidence", 0.5) for r in results]
+        engines = [r.get("engine", "unknown") for r in results]
+
+        # Finde maximale Textlaenge
+        max_len = max(len(t) for t in texts) if texts else 0
+
+        # Pad texts to same length
+        padded_texts = [t.ljust(max_len) for t in texts]
+
+        # Character-Level Voting
+        result_chars = []
+
+        for i in range(max_len):
+            chars_at_pos = [t[i] for t in padded_texts]
+
+            # Vote with confidence weighting
+            char_votes: Dict[str, float] = {}
+            for char, conf, engine in zip(chars_at_pos, confidences, engines):
+                if char not in char_votes:
+                    char_votes[char] = 0.0
+
+                vote_weight = conf
+
+                # DeepSeek Bonus fuer deutsche Umlaute
+                if engine == "deepseek" and char in "äöüÄÖÜß":
+                    vote_weight *= 1.5  # 50% Bonus fuer Umlaute
+
+                char_votes[char] += vote_weight
+
+            # Waehle Zeichen mit hoechster Stimmzahl
+            best_char = max(char_votes.keys(), key=lambda c: char_votes[c])
+            result_chars.append(best_char)
+
+        # Trailing spaces entfernen
+        result_text = "".join(result_chars).rstrip()
+
+        self.logger.debug(
+            "character_voting_complete",
+            input_lengths=[len(t) for t in texts],
+            output_length=len(result_text)
+        )
+
+        return result_text
+
+    def _calculate_ensemble_confidence(self, results: List[Dict[str, Any]]) -> float:
+        """
+        Berechne Ensemble-Confidence aus mehreren Ergebnissen.
+
+        Hoehere Confidence wenn mehrere Engines uebereinstimmen.
+
+        Args:
+            results: Liste von OCR-Ergebnissen
+
+        Returns:
+            Gewichtete Ensemble-Confidence
+        """
+        if not results:
+            return 0.0
+
+        if len(results) == 1:
+            return results[0].get("confidence", 0.0)
+
+        # Basis: Durchschnittliche Confidence
+        confidences = [r.get("confidence", 0.0) for r in results]
+        avg_confidence = sum(confidences) / len(confidences)
+
+        # Bonus wenn Texte aehnlich sind (Uebereinstimmung)
+        texts = [r.get("text", "") for r in results]
+        if len(texts) >= 2:
+            similarity = self._calculate_similarity(texts[0], texts[1])
+            if similarity > 0.9:
+                # Hohe Uebereinstimmung -> Confidence Boost
+                avg_confidence = min(1.0, avg_confidence * 1.1)
+
+        return round(avg_confidence, 4)
 
     def _deduplicate_entities(self, entities: List[Dict]) -> List[Dict]:
         """

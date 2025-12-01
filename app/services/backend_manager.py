@@ -3,13 +3,18 @@
 import structlog
 import asyncio
 import time
-from typing import Dict, Any, Optional, List
+from datetime import datetime
+from typing import Dict, Any, Optional, List, Union, Tuple
 from pathlib import Path
 import os
 from dataclasses import dataclass
 
 from app.agents.ocr.surya_docling_agent import SuryaDoclingAgent
 from app.gpu_manager import GPUManager
+from app.ml.quality_metrics import get_quality_calculator
+from app.ml.confidence_calibration import add_calibration_sample, get_calibrator
+from app.ml.metrics import get_ml_metrics
+from app.ml.drift_detector import get_drift_detector, get_drift_alert_manager
 
 
 # =============================================================================
@@ -157,6 +162,346 @@ except ImportError:
 logger = structlog.get_logger(__name__)
 
 
+# =============================================================================
+# Phase 5.3: Cost Optimization
+# =============================================================================
+
+
+@dataclass
+class CostWeights:
+    """
+    Configurable weights for cost optimization scoring.
+
+    Score-Formel:
+    score = (quality_weight * quality_score) -
+            (latency_weight * latency_ms / 1000) -
+            (vram_weight * vram_usage_percent)
+    """
+    quality_weight: float = 0.5      # Gewichtung für Qualität (0-1)
+    latency_weight: float = 0.3      # Gewichtung für Latenz (0-1)
+    vram_weight: float = 0.2         # Gewichtung für VRAM-Nutzung (0-1)
+
+    def validate(self) -> bool:
+        """Validiere dass Gewichte sinnvoll sind."""
+        total = self.quality_weight + self.latency_weight + self.vram_weight
+        return 0.99 <= total <= 1.01  # Allow small floating point error
+
+
+@dataclass
+class SLATargets:
+    """
+    Service Level Agreement Ziele für automatische Backend-Auswahl.
+    """
+    max_latency_ms: float = 3000.0    # Maximum 3 Sekunden pro Seite
+    min_quality_score: float = 0.85   # Minimum 85% Qualität
+    max_vram_percent: float = 85.0    # Maximum 85% VRAM-Nutzung
+
+
+@dataclass
+class BackendCostEstimate:
+    """Kostenabschätzung für ein Backend."""
+    backend: str
+    estimated_quality: float      # 0-1
+    estimated_latency_ms: float   # Millisekunden
+    estimated_vram_gb: float      # GB
+    cost_score: float             # Berechneter Score (höher = besser)
+    meets_sla: bool               # Erfüllt SLA-Ziele?
+    recommendation: str           # Empfehlung
+
+
+class CostOptimizer:
+    """
+    Optimizer für Backend-Auswahl basierend auf Kosten/Nutzen.
+
+    Ermöglicht:
+    - Configurable Weights per Use-Case
+    - Real-Time Cost Estimation
+    - SLA-based Backend Selection
+    - Budget-Mode für reduzierte GPU-Nutzung
+    """
+
+    # Durchschnittliche Performance-Werte pro Backend (empirisch ermittelt)
+    BACKEND_PERFORMANCE = {
+        "deepseek": {
+            "quality_score": 0.95,      # Beste Qualität für Deutsch
+            "latency_ms_per_page": 2000,
+            "vram_gb": 12.0,
+        },
+        "got_ocr": {
+            "quality_score": 0.90,      # Gut für Tabellen/Formeln
+            "latency_ms_per_page": 1500,
+            "vram_gb": 10.0,
+        },
+        "surya_gpu": {
+            "quality_score": 0.82,
+            "latency_ms_per_page": 800,
+            "vram_gb": 4.0,
+        },
+        "surya": {
+            "quality_score": 0.80,
+            "latency_ms_per_page": 5000,  # CPU ist langsamer
+            "vram_gb": 0.0,
+        },
+        "hybrid": {
+            "quality_score": 0.97,      # Höchste durch Ensemble
+            "latency_ms_per_page": 4000,  # Langsamer wegen Multi-Backend
+            "vram_gb": 12.0,
+        },
+        "donut": {
+            "quality_score": 0.85,
+            "latency_ms_per_page": 1800,
+            "vram_gb": 8.0,
+        },
+    }
+
+    # Preset-Konfigurationen für verschiedene Use-Cases
+    PRESETS: Dict[str, CostWeights] = {
+        "quality_first": CostWeights(quality_weight=0.7, latency_weight=0.2, vram_weight=0.1),
+        "balanced": CostWeights(quality_weight=0.5, latency_weight=0.3, vram_weight=0.2),
+        "speed_first": CostWeights(quality_weight=0.3, latency_weight=0.5, vram_weight=0.2),
+        "budget": CostWeights(quality_weight=0.4, latency_weight=0.2, vram_weight=0.4),
+    }
+
+    def __init__(
+        self,
+        weights: Optional[CostWeights] = None,
+        sla_targets: Optional[SLATargets] = None,
+        budget_mode: bool = False,
+    ):
+        """
+        Initialisiere CostOptimizer.
+
+        Args:
+            weights: Kostengewichte (default: balanced)
+            sla_targets: SLA-Ziele (default: Standard)
+            budget_mode: Budget-Modus aktivieren
+        """
+        self.weights = weights or self.PRESETS["balanced"]
+        self.sla_targets = sla_targets or SLATargets()
+        self.budget_mode = budget_mode
+
+        if budget_mode:
+            self.weights = self.PRESETS["budget"]
+
+        logger.info(
+            "cost_optimizer_initialized",
+            quality_weight=self.weights.quality_weight,
+            latency_weight=self.weights.latency_weight,
+            vram_weight=self.weights.vram_weight,
+            budget_mode=budget_mode,
+        )
+
+    def set_preset(self, preset_name: str) -> None:
+        """
+        Setze Preset-Konfiguration.
+
+        Args:
+            preset_name: Name des Presets (quality_first, balanced, speed_first, budget)
+        """
+        if preset_name in self.PRESETS:
+            self.weights = self.PRESETS[preset_name]
+            logger.info("cost_preset_applied", preset=preset_name)
+        else:
+            raise ValueError(f"Unbekanntes Preset: {preset_name}. Verfügbar: {list(self.PRESETS.keys())}")
+
+    def calculate_cost_score(
+        self,
+        backend: str,
+        current_vram_percent: float = 0.0,
+    ) -> float:
+        """
+        Berechne Cost-Score für ein Backend.
+
+        Score-Formel:
+        score = (quality_weight * quality_score) -
+                (latency_weight * latency_ms / 1000) -
+                (vram_weight * vram_usage_percent)
+
+        Args:
+            backend: Backend-Name
+            current_vram_percent: Aktuelle VRAM-Nutzung in Prozent
+
+        Returns:
+            Cost Score (höher = besser)
+        """
+        if backend not in self.BACKEND_PERFORMANCE:
+            return -1.0
+
+        perf = self.BACKEND_PERFORMANCE[backend]
+
+        # Normalize values to 0-1 range
+        quality_normalized = perf["quality_score"]  # Already 0-1
+        latency_normalized = 1.0 - min(perf["latency_ms_per_page"] / 10000, 1.0)  # Inverted
+        vram_normalized = 1.0 - (perf["vram_gb"] / 16.0)  # Assume 16GB max
+
+        # Calculate weighted score
+        score = (
+            self.weights.quality_weight * quality_normalized +
+            self.weights.latency_weight * latency_normalized +
+            self.weights.vram_weight * vram_normalized
+        )
+
+        # Penalty if current VRAM is high and backend needs more
+        if current_vram_percent + (perf["vram_gb"] / 16.0 * 100) > self.sla_targets.max_vram_percent:
+            score *= 0.5  # 50% penalty for potential OOM
+
+        return round(score, 4)
+
+    def estimate_backend_cost(
+        self,
+        backend: str,
+        page_count: int = 1,
+        current_vram_percent: float = 0.0,
+    ) -> BackendCostEstimate:
+        """
+        Schätze Kosten für ein Backend ab.
+
+        Args:
+            backend: Backend-Name
+            page_count: Anzahl Seiten
+            current_vram_percent: Aktuelle VRAM-Nutzung
+
+        Returns:
+            BackendCostEstimate mit allen Schätzungen
+        """
+        if backend not in self.BACKEND_PERFORMANCE:
+            return BackendCostEstimate(
+                backend=backend,
+                estimated_quality=0.0,
+                estimated_latency_ms=999999,
+                estimated_vram_gb=0.0,
+                cost_score=-1.0,
+                meets_sla=False,
+                recommendation="Backend nicht verfügbar",
+            )
+
+        perf = self.BACKEND_PERFORMANCE[backend]
+        total_latency = perf["latency_ms_per_page"] * page_count
+        cost_score = self.calculate_cost_score(backend, current_vram_percent)
+
+        # Check SLA compliance
+        meets_latency = total_latency <= self.sla_targets.max_latency_ms * page_count
+        meets_quality = perf["quality_score"] >= self.sla_targets.min_quality_score
+        meets_vram = (perf["vram_gb"] / 16.0 * 100) + current_vram_percent <= self.sla_targets.max_vram_percent
+        meets_sla = meets_latency and meets_quality and meets_vram
+
+        # Generate recommendation
+        if meets_sla:
+            recommendation = "Empfohlen - erfüllt alle SLA-Ziele"
+        else:
+            issues = []
+            if not meets_latency:
+                issues.append(f"Latenz zu hoch ({total_latency}ms > {self.sla_targets.max_latency_ms * page_count}ms)")
+            if not meets_quality:
+                issues.append(f"Qualität zu niedrig ({perf['quality_score']} < {self.sla_targets.min_quality_score})")
+            if not meets_vram:
+                issues.append(f"VRAM-Anforderung zu hoch")
+            recommendation = "Nicht empfohlen: " + ", ".join(issues)
+
+        return BackendCostEstimate(
+            backend=backend,
+            estimated_quality=perf["quality_score"],
+            estimated_latency_ms=total_latency,
+            estimated_vram_gb=perf["vram_gb"],
+            cost_score=cost_score,
+            meets_sla=meets_sla,
+            recommendation=recommendation,
+        )
+
+    def get_optimal_backend(
+        self,
+        available_backends: List[str],
+        page_count: int = 1,
+        current_vram_percent: float = 0.0,
+        require_sla_compliance: bool = True,
+    ) -> Tuple[str, BackendCostEstimate]:
+        """
+        Wähle optimales Backend basierend auf Cost Score.
+
+        Args:
+            available_backends: Liste verfügbarer Backends
+            page_count: Anzahl Seiten
+            current_vram_percent: Aktuelle VRAM-Nutzung
+            require_sla_compliance: Nur SLA-konforme Backends?
+
+        Returns:
+            Tuple von (backend_name, cost_estimate)
+        """
+        estimates = []
+
+        for backend in available_backends:
+            estimate = self.estimate_backend_cost(backend, page_count, current_vram_percent)
+            estimates.append(estimate)
+
+        # Filter for SLA compliance if required
+        if require_sla_compliance:
+            compliant = [e for e in estimates if e.meets_sla]
+            if compliant:
+                estimates = compliant
+
+        # Sort by cost score (descending)
+        estimates.sort(key=lambda e: e.cost_score, reverse=True)
+
+        if not estimates:
+            # Fallback to surya (CPU) if nothing else works
+            return "surya", self.estimate_backend_cost("surya", page_count, current_vram_percent)
+
+        best = estimates[0]
+        logger.debug(
+            "optimal_backend_selected",
+            backend=best.backend,
+            cost_score=best.cost_score,
+            meets_sla=best.meets_sla,
+        )
+
+        return best.backend, best
+
+    def get_all_estimates(
+        self,
+        available_backends: List[str],
+        page_count: int = 1,
+        current_vram_percent: float = 0.0,
+    ) -> List[BackendCostEstimate]:
+        """
+        Hole Kostenabschätzungen für alle verfügbaren Backends.
+
+        Returns:
+            Liste von BackendCostEstimate, sortiert nach Score
+        """
+        estimates = [
+            self.estimate_backend_cost(backend, page_count, current_vram_percent)
+            for backend in available_backends
+        ]
+        return sorted(estimates, key=lambda e: e.cost_score, reverse=True)
+
+
+# Global Cost Optimizer Singleton
+_cost_optimizer: Optional[CostOptimizer] = None
+
+
+def get_cost_optimizer(
+    preset: Optional[str] = None,
+    budget_mode: bool = False,
+) -> CostOptimizer:
+    """
+    Hole globale CostOptimizer Instanz.
+
+    Args:
+        preset: Optional Preset-Name
+        budget_mode: Budget-Modus aktivieren
+
+    Returns:
+        CostOptimizer Instanz
+    """
+    global _cost_optimizer
+
+    if _cost_optimizer is None:
+        weights = CostOptimizer.PRESETS.get(preset) if preset else None
+        _cost_optimizer = CostOptimizer(weights=weights, budget_mode=budget_mode)
+
+    return _cost_optimizer
+
+
 class BackendManager:
     """Manages OCR backend selection and processing."""
 
@@ -288,8 +633,9 @@ class BackendManager:
         language: str = "de",
         detect_layout: bool = True,
         prefer_gpu: bool = True,
-        document_id: Optional[str] = None
-    ) -> str:
+        document_id: Optional[str] = None,
+        return_experiment_info: bool = False
+    ) -> Union[str, Tuple[str, Optional[Dict[str, str]]]]:
         """
         Select the best backend for processing.
 
@@ -301,11 +647,13 @@ class BackendManager:
             detect_layout: Whether layout detection is needed
             prefer_gpu: Whether to prefer GPU backends
             document_id: Optional document ID for A/B experiment allocation
+            return_experiment_info: If True, returns tuple (backend, experiment_info)
 
         Returns:
-            Name of the selected backend
+            Name of the selected backend, or tuple (backend, experiment_info) if return_experiment_info=True
         """
         available_backends = list(self.backends.keys())
+        experiment_info: Optional[Dict[str, str]] = None
 
         if not available_backends:
             raise RuntimeError("No OCR backends available")
@@ -328,6 +676,13 @@ class BackendManager:
                                 variant=variant.name,
                                 document_id=document_id
                             )
+                            # Store experiment info for result tracking
+                            experiment_info = {
+                                "experiment_id": experiment.experiment_id,
+                                "variant_name": variant.name,
+                            }
+                            if return_experiment_info:
+                                return (ab_backend, experiment_info)
                             return ab_backend
                         else:
                             logger.warning(
@@ -340,6 +695,12 @@ class BackendManager:
                 # Don't fail if A/B testing has issues - fall back to normal selection
                 logger.warning("ab_test_check_failed", error=str(e))
 
+        # Helper to format return value based on return_experiment_info flag
+        def _return_backend(backend: str) -> Union[str, Tuple[str, Optional[Dict[str, str]]]]:
+            if return_experiment_info:
+                return (backend, experiment_info)
+            return backend
+
         # Check file size and type for rule-based selection
         file_path = Path(image_path)
         file_size_mb = file_path.stat().st_size / (1024 * 1024)
@@ -349,7 +710,7 @@ class BackendManager:
         if prefer_gpu and "surya_gpu" in available_backends:
             if self._has_sufficient_vram("surya_gpu"):
                 logger.info("backend_selected", backend="surya_gpu", reason="gpu_accelerated")
-                return "surya_gpu"
+                return _return_backend("surya_gpu")
             else:
                 logger.info(
                     "backend_skipped_insufficient_vram",
@@ -360,20 +721,20 @@ class BackendManager:
         # If only CPU Surya is available, use it
         if len(available_backends) == 1 and "surya" in available_backends:
             logger.info("backend_selected", backend="surya", reason="only_available")
-            return "surya"
+            return _return_backend("surya")
 
         # Complex documents with tables/layout → prefer DeepSeek or GOT-OCR (with VRAM check)
         if detect_layout and prefer_gpu and TORCH_AVAILABLE:
             if "deepseek" in available_backends and file_size_mb > 5:
                 if self._has_sufficient_vram("deepseek"):
                     logger.info("backend_selected", backend="deepseek", reason="large_complex_document", file_size_mb=round(file_size_mb, 1))
-                    return "deepseek"
+                    return _return_backend("deepseek")
                 else:
                     logger.debug("deepseek_skipped_vram", reason="insufficient_vram")
             if "got_ocr" in available_backends:
                 if self._has_sufficient_vram("got_ocr"):
                     logger.info("backend_selected", backend="got_ocr", reason="layout_detection")
-                    return "got_ocr"
+                    return _return_backend("got_ocr")
                 else:
                     logger.debug("got_ocr_skipped_vram", reason="insufficient_vram")
 
@@ -381,16 +742,16 @@ class BackendManager:
         if is_pdf:
             if "got_ocr" in available_backends:
                 logger.info("backend_selected", backend="got_ocr", reason="pdf_processing")
-                return "got_ocr"
+                return _return_backend("got_ocr")
             else:
                 logger.info("backend_selected", backend="surya", reason="pdf_processing")
-                return "surya"
+                return _return_backend("surya")
 
         # German text with potential Fraktur → prefer DeepSeek (with VRAM check)
         if language == "de" and "deepseek" in available_backends:
             if self._has_sufficient_vram("deepseek"):
                 logger.info("backend_selected", backend="deepseek", reason="german_text")
-                return "deepseek"
+                return _return_backend("deepseek")
             else:
                 logger.debug("deepseek_skipped_vram_german", reason="insufficient_vram")
 
@@ -398,20 +759,20 @@ class BackendManager:
         if language != "de" and "donut" in available_backends:
             if self._has_sufficient_vram("donut"):
                 logger.info("backend_selected", backend="donut", reason="multilingual_support", language=language)
-                return "donut"
+                return _return_backend("donut")
             else:
                 logger.debug("donut_skipped_vram", reason="insufficient_vram")
 
         # Default to fastest available
         if "surya" in available_backends:
             logger.info("backend_selected", backend="surya", reason="default")
-            return "surya"
+            return _return_backend("surya")
         elif "got_ocr" in available_backends:
             logger.info("backend_selected", backend="got_ocr", reason="default")
-            return "got_ocr"
+            return _return_backend("got_ocr")
         else:
             logger.info("backend_selected", backend=available_backends[0], reason="first_available")
-            return available_backends[0]
+            return _return_backend(available_backends[0])
 
     async def check_backend_health(
         self,
@@ -550,6 +911,8 @@ class BackendManager:
         language: str = "de",
         detect_fraktur: bool = False,
         enable_fallback: bool = True,
+        document_id: Optional[str] = None,
+        experiment_info: Optional[Dict[str, str]] = None,
         **kwargs
     ) -> Dict[str, Any]:
         """
@@ -561,6 +924,8 @@ class BackendManager:
             language: Target language
             detect_fraktur: Whether to detect Fraktur script
             enable_fallback: Whether to try fallback backends on failure
+            document_id: Optional document ID for A/B test tracking
+            experiment_info: Optional dict with 'experiment_id' and 'variant_name' for A/B tracking
             **kwargs: Additional backend-specific parameters
 
         Returns:
@@ -573,6 +938,7 @@ class BackendManager:
         # Get fallback chain
         fallback_chain = self.get_fallback_order(backend_name) if enable_fallback else [backend_name]
         last_error = None
+        start_time = time.monotonic()
 
         for current_backend in fallback_chain:
             # Health check before processing
@@ -598,8 +964,13 @@ class BackendManager:
 
             # Process with backend
             try:
+                backend_start = time.monotonic()
                 result = await backend.process(input_data)
+                latency_ms = (time.monotonic() - backend_start) * 1000
+
                 result["backend"] = current_backend
+                result["latency_ms"] = latency_ms
+
                 if current_backend != backend_name:
                     result["fallback_used"] = True
                     result["original_backend"] = backend_name
@@ -608,10 +979,33 @@ class BackendManager:
                         original=backend_name,
                         fallback=current_backend
                     )
+
+                # Record A/B test result if experiment tracking enabled
+                if experiment_info and document_id:
+                    await self._record_ab_test_result(
+                        experiment_info=experiment_info,
+                        success=True,
+                        latency_ms=latency_ms,
+                        confidence=result.get("confidence", 0.0),
+                        backend_name=current_backend,
+                    )
+
                 return result
 
             except Exception as e:
                 last_error = e
+                latency_ms = (time.monotonic() - start_time) * 1000
+
+                # Record failed A/B test result
+                if experiment_info and document_id:
+                    await self._record_ab_test_result(
+                        experiment_info=experiment_info,
+                        success=False,
+                        latency_ms=latency_ms,
+                        confidence=0.0,
+                        backend_name=current_backend,
+                    )
+
                 # P2: Invalidiere Cache bei Verarbeitungsfehler
                 self._health_cache.invalidate(current_backend)
                 logger.warning(
@@ -632,6 +1026,138 @@ class BackendManager:
             f"Alle OCR-Backends fehlgeschlagen. Versucht: {fallback_chain}. "
             f"Letzter Fehler: {last_error}"
         )
+
+    async def _record_ab_test_result(
+        self,
+        experiment_info: Dict[str, str],
+        success: bool,
+        latency_ms: float,
+        confidence: float,
+        backend_name: Optional[str] = None,
+        document_type: str = "unknown",
+    ) -> None:
+        """
+        Record A/B test result and quality metrics for feedback loop.
+
+        Args:
+            experiment_info: Dict with 'experiment_id' and 'variant_name'
+            success: Whether OCR processing succeeded
+            latency_ms: Processing latency in milliseconds
+            confidence: OCR confidence score (0-1)
+            backend_name: Name of the backend used
+            document_type: Type of document processed
+        """
+        try:
+            experiment_id = experiment_info.get("experiment_id")
+            variant_name = experiment_info.get("variant_name")
+
+            if not experiment_id or not variant_name:
+                return
+
+            # Record A/B test result
+            ab_manager = get_ab_test_manager()
+            ab_manager.record_result(
+                experiment_id=experiment_id,
+                variant_name=variant_name,
+                success=success,
+                latency_ms=latency_ms,
+                accuracy=confidence,
+            )
+
+            # Quality Feedback Loop: Record calibration sample
+            # Use confidence threshold to determine if result is "correct"
+            # (high confidence = likely correct prediction)
+            is_correct = success and confidence >= 0.85
+            if backend_name:
+                add_calibration_sample(
+                    raw_confidence=confidence,
+                    is_correct=is_correct,
+                    backend=backend_name,
+                    document_type=document_type,
+                )
+
+            # Record Prometheus metrics
+            ml_metrics = get_ml_metrics()
+            ml_metrics.record_ab_sample(
+                experiment_id=experiment_id,
+                variant=variant_name,
+                success=success,
+            )
+            if backend_name:
+                ml_metrics.record_calibration_sample(
+                    backend=backend_name,
+                    is_correct=is_correct,
+                )
+
+            # Record drift detection sample for monitoring
+            await self._record_drift_sample(
+                backend=backend_name or "unknown",
+                confidence=confidence,
+                latency_ms=latency_ms,
+                document_type=document_type,
+                success=success,
+            )
+
+            logger.debug(
+                "ab_test_result_recorded",
+                experiment_id=experiment_id,
+                variant_name=variant_name,
+                success=success,
+                latency_ms=round(latency_ms, 2),
+                calibration_sample_added=backend_name is not None,
+            )
+
+        except Exception as e:
+            # Don't fail processing if A/B recording fails
+            logger.warning("ab_test_recording_failed", error=str(e))
+
+    async def _record_drift_sample(
+        self,
+        backend: str,
+        confidence: float,
+        latency_ms: float,
+        document_type: str,
+        success: bool,
+    ) -> None:
+        """
+        Record sample for drift detection and quality monitoring.
+
+        Args:
+            backend: Backend name used
+            confidence: Confidence score (0-1)
+            latency_ms: Processing latency
+            document_type: Type of document
+            success: Whether processing succeeded
+        """
+        try:
+            # Get drift detector and alert manager
+            drift_detector = get_drift_detector()
+            alert_manager = get_drift_alert_manager()
+
+            # Build feature dict for drift detection
+            features = {
+                "quality_score": confidence,
+                "document_type": document_type,
+                "detected_language": "de",  # Assume German
+            }
+
+            # Add sample to drift detector
+            drift_detector.add_sample(
+                features=features,
+                prediction=backend,
+            )
+
+            # Record quality sample for alert manager
+            alert_manager.record_quality_sample(
+                quality_score=confidence if success else 0.0,
+                latency_ms=latency_ms,
+                backend=backend,
+                document_type=document_type,
+            )
+
+        except Exception as e:
+            # Don't fail processing if drift recording fails
+            logger.debug("drift_sample_recording_failed", error=str(e))
 
     async def get_backend_status(self, backend_name: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -698,3 +1224,358 @@ class BackendManager:
             Anzahl invalidierter Einträge
         """
         return self._health_cache.invalidate(backend)
+
+    def apply_ab_test_winners(self) -> Dict[str, Any]:
+        """
+        Wende A/B-Test Gewinner auf die Backend-Konfiguration an.
+
+        Prüft laufende Experimente auf Signifikanz und aktualisiert
+        die Fallback-Reihenfolge basierend auf den Ergebnissen.
+
+        Returns:
+            Dict mit angewendeten Änderungen und Empfehlungen
+        """
+        ab_manager = get_ab_test_manager()
+
+        # Check and apply winners from running experiments
+        applied_winners = ab_manager.check_and_apply_winners(
+            auto_conclude=True,
+            min_improvement_percent=5.0,
+        )
+
+        # Get recommended backend order
+        recommended_order = ab_manager.get_recommended_backend_order()
+
+        # Update fallback chain if we have recommendations
+        updated_fallback = False
+        if recommended_order:
+            # Filter to only include available backends
+            available = set(self.backends.keys())
+            new_fallback = [b for b in recommended_order if b in available]
+
+            # Add any remaining backends not in the recommendation
+            for backend in self.fallback_chain:
+                if backend not in new_fallback:
+                    new_fallback.append(backend)
+
+            if new_fallback != self.fallback_chain:
+                old_fallback = self.fallback_chain.copy()
+                self.fallback_chain = new_fallback
+                updated_fallback = True
+
+                logger.info(
+                    "fallback_chain_updated_from_ab_tests",
+                    old_order=old_fallback,
+                    new_order=new_fallback,
+                )
+
+        result = {
+            "applied_winners": applied_winners,
+            "recommended_order": recommended_order,
+            "current_fallback_chain": self.fallback_chain,
+            "fallback_updated": updated_fallback,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        # Record metrics
+        ml_metrics = get_ml_metrics()
+        ml_metrics.set_active_experiments(len(ab_manager.get_active_experiments()))
+
+        return result
+
+    def get_ab_test_status(self) -> Dict[str, Any]:
+        """
+        Hole Status aller A/B-Tests und deren Auswirkung auf Routing.
+
+        Returns:
+            Umfassender Status inkl. Experimente, Gewinner und Empfehlungen
+        """
+        ab_manager = get_ab_test_manager()
+
+        active_experiments = []
+        for exp in ab_manager.get_active_experiments():
+            active_experiments.append({
+                "experiment_id": exp.experiment_id,
+                "name": exp.name,
+                "status": exp.status.value,
+                "total_samples": sum(v.samples for v in exp.variants),
+                "significance_reached": exp.significance_reached,
+                "winner": exp.winner,
+                "variants": [
+                    {
+                        "name": v.name,
+                        "samples": v.samples,
+                        "conversion_rate": round(v.conversion_rate, 4),
+                        "backend": v.config.get("backend"),
+                    }
+                    for v in exp.variants
+                ],
+            })
+
+        significant_winners = ab_manager.get_significant_winners()
+        recommended_order = ab_manager.get_recommended_backend_order()
+
+        return {
+            "active_experiments": active_experiments,
+            "active_count": len(active_experiments),
+            "significant_winners": significant_winners,
+            "recommended_backend_order": recommended_order,
+            "current_fallback_chain": self.fallback_chain,
+        }
+
+    def get_drift_status(self) -> Dict[str, Any]:
+        """
+        Hole aktuellen Drift-Status und Monitoring-Informationen.
+
+        Returns:
+            Dict mit Drift-Status, Quality-Trend und Empfehlungen
+        """
+        drift_detector = get_drift_detector()
+        alert_manager = get_drift_alert_manager()
+
+        # Get current drift detector status
+        detector_status = drift_detector.get_current_status()
+
+        # Get drift history
+        drift_history = drift_detector.get_drift_history(limit=10)
+        history_summary = []
+        for report in drift_history:
+            history_summary.append({
+                "report_id": report.report_id,
+                "timestamp": report.timestamp.isoformat(),
+                "severity": report.severity.value,
+                "overall_score": round(report.overall_drift_score, 4),
+                "drifted_features": [fd.feature_name for fd in report.feature_drifts if fd.is_drifted],
+            })
+
+        # Check retraining status
+        retraining_status = alert_manager.check_retraining_trigger()
+
+        return {
+            "detector_status": detector_status,
+            "drift_history": history_summary,
+            "retraining_recommended": retraining_status["should_retrain"],
+            "retraining_reasons": retraining_status["reasons"],
+            "retraining_action": retraining_status["recommended_action"],
+            "quality_trend": alert_manager._check_quality_degradation(),
+        }
+
+    async def check_and_respond_to_drift(self) -> Dict[str, Any]:
+        """
+        Führe Drift-Check durch und reagiere mit A/B-Tests oder Alerts.
+
+        Diese Methode sollte periodisch aufgerufen werden (z.B. via Celery Beat).
+
+        Returns:
+            Dict mit durchgeführten Aktionen
+        """
+        alert_manager = get_drift_alert_manager()
+
+        # Check drift and respond
+        result = alert_manager.check_and_respond_to_drift()
+
+        # If experiments were created, log them
+        if result.get("experiments_created"):
+            logger.info(
+                "drift_response_experiments_created",
+                experiments=result["experiments_created"],
+            )
+
+        # If retraining is recommended, add to result
+        retraining_check = alert_manager.check_retraining_trigger()
+        result["retraining_status"] = retraining_check
+
+        return result
+
+    def generate_drift_report(self) -> Dict[str, Any]:
+        """
+        Generiere monatlichen Drift- und Performance-Report.
+
+        Returns:
+            Report-Dict mit allen Drift- und Quality-Informationen
+        """
+        alert_manager = get_drift_alert_manager()
+        return alert_manager.generate_monthly_report()
+
+    # =========================================================================
+    # Cost Optimization API
+    # =========================================================================
+
+    def get_cost_estimates(
+        self,
+        page_count: int = 1,
+        preset: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Hole Kostenabschätzungen für alle verfügbaren Backends.
+
+        Real-Time Cost Estimation API für Frontend und Monitoring.
+
+        Args:
+            page_count: Anzahl Seiten
+            preset: Optional Cost-Preset (quality_first, balanced, speed_first, budget)
+
+        Returns:
+            Dict mit Kostenschätzungen für alle Backends
+        """
+        optimizer = get_cost_optimizer(preset=preset)
+
+        # Get current VRAM usage
+        vram_percent = 0.0
+        if TORCH_AVAILABLE:
+            try:
+                gpu_status = self._gpu_manager.get_detailed_status()
+                vram_percent = gpu_status.get("vram_used_percent", 0.0)
+            except Exception:
+                pass
+
+        estimates = optimizer.get_all_estimates(
+            available_backends=list(self.backends.keys()),
+            page_count=page_count,
+            current_vram_percent=vram_percent,
+        )
+
+        return {
+            "page_count": page_count,
+            "preset": preset or "balanced",
+            "current_vram_percent": round(vram_percent, 2),
+            "estimates": [
+                {
+                    "backend": e.backend,
+                    "quality": e.estimated_quality,
+                    "latency_ms": e.estimated_latency_ms,
+                    "vram_gb": e.estimated_vram_gb,
+                    "cost_score": e.cost_score,
+                    "meets_sla": e.meets_sla,
+                    "recommendation": e.recommendation,
+                }
+                for e in estimates
+            ],
+            "optimal_backend": estimates[0].backend if estimates else "surya",
+        }
+
+    def select_optimal_backend(
+        self,
+        page_count: int = 1,
+        preset: Optional[str] = None,
+        require_sla: bool = True,
+    ) -> Tuple[str, Dict[str, Any]]:
+        """
+        Wähle optimales Backend basierend auf Cost Optimization.
+
+        Args:
+            page_count: Anzahl Seiten
+            preset: Cost-Preset
+            require_sla: Nur SLA-konforme Backends?
+
+        Returns:
+            Tuple von (backend_name, estimate_info)
+        """
+        optimizer = get_cost_optimizer(preset=preset)
+
+        # Get current VRAM usage
+        vram_percent = 0.0
+        if TORCH_AVAILABLE:
+            try:
+                gpu_status = self._gpu_manager.get_detailed_status()
+                vram_percent = gpu_status.get("vram_used_percent", 0.0)
+            except Exception:
+                pass
+
+        backend, estimate = optimizer.get_optimal_backend(
+            available_backends=list(self.backends.keys()),
+            page_count=page_count,
+            current_vram_percent=vram_percent,
+            require_sla_compliance=require_sla,
+        )
+
+        return backend, {
+            "quality": estimate.estimated_quality,
+            "latency_ms": estimate.estimated_latency_ms,
+            "vram_gb": estimate.estimated_vram_gb,
+            "cost_score": estimate.cost_score,
+            "meets_sla": estimate.meets_sla,
+            "recommendation": estimate.recommendation,
+        }
+
+    def enable_budget_mode(self, enable: bool = True) -> Dict[str, Any]:
+        """
+        Aktiviere/Deaktiviere Budget-Modus.
+
+        Im Budget-Modus werden GPU-intensive Backends gemieden
+        und CPU-Fallbacks bevorzugt.
+
+        Args:
+            enable: Budget-Modus aktivieren?
+
+        Returns:
+            Aktueller Status
+        """
+        global _cost_optimizer
+        _cost_optimizer = CostOptimizer(budget_mode=enable)
+
+        logger.info("budget_mode_changed", enabled=enable)
+
+        return {
+            "budget_mode": enable,
+            "current_preset": "budget" if enable else "balanced",
+            "weights": {
+                "quality": _cost_optimizer.weights.quality_weight,
+                "latency": _cost_optimizer.weights.latency_weight,
+                "vram": _cost_optimizer.weights.vram_weight,
+            },
+        }
+
+    def set_cost_preset(self, preset: str) -> Dict[str, Any]:
+        """
+        Setze Cost-Optimization Preset.
+
+        Verfügbare Presets:
+        - quality_first: Maximale Qualität (DeepSeek bevorzugt)
+        - balanced: Ausgewogen (Standard)
+        - speed_first: Schnellste Verarbeitung
+        - budget: Minimale GPU-Nutzung
+
+        Args:
+            preset: Preset-Name
+
+        Returns:
+            Aktueller Status
+        """
+        optimizer = get_cost_optimizer()
+        optimizer.set_preset(preset)
+
+        return {
+            "preset": preset,
+            "weights": {
+                "quality": optimizer.weights.quality_weight,
+                "latency": optimizer.weights.latency_weight,
+                "vram": optimizer.weights.vram_weight,
+            },
+            "available_presets": list(CostOptimizer.PRESETS.keys()),
+        }
+
+    def get_cost_optimizer_status(self) -> Dict[str, Any]:
+        """
+        Hole aktuellen Status des Cost Optimizers.
+
+        Returns:
+            Status-Dict
+        """
+        optimizer = get_cost_optimizer()
+
+        return {
+            "budget_mode": optimizer.budget_mode,
+            "weights": {
+                "quality": optimizer.weights.quality_weight,
+                "latency": optimizer.weights.latency_weight,
+                "vram": optimizer.weights.vram_weight,
+            },
+            "sla_targets": {
+                "max_latency_ms": optimizer.sla_targets.max_latency_ms,
+                "min_quality_score": optimizer.sla_targets.min_quality_score,
+                "max_vram_percent": optimizer.sla_targets.max_vram_percent,
+            },
+            "available_presets": list(CostOptimizer.PRESETS.keys()),
+            "backend_performance_data": optimizer.BACKEND_PERFORMANCE,
+        }

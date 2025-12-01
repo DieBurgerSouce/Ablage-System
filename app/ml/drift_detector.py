@@ -17,13 +17,17 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 import hashlib
 
 import numpy as np
 import structlog
 
 logger = structlog.get_logger(__name__)
+
+
+# Alert callback types
+AlertCallback = Callable[[str, str, Dict[str, Any]], None]
 
 # Thread-Safety für Singleton
 _drift_detector_lock = threading.Lock()
@@ -717,8 +721,500 @@ class DriftDetector:
         logger.info("Reference-Fenster zurückgesetzt für neuen Baseline")
 
 
-# Singleton instance
+# ============================================================================
+# A/B Testing & Alert Integration
+# ============================================================================
+
+
+class DriftAlertManager:
+    """
+    Manager für Drift-basierte Alerts und A/B-Test Erstellung.
+
+    Verbindet Drift Detection mit:
+    - Automatischer A/B-Test Erstellung bei signifikantem Drift
+    - Alerting bei PSI > Schwellenwert
+    - Monthly Performance Reports
+    - Retraining-Trigger bei Quality Degradation
+    """
+
+    # PSI Schwellenwerte
+    PSI_LOW = 0.1       # Leichter Drift - beobachten
+    PSI_MEDIUM = 0.2    # Signifikanter Drift - A/B-Test starten
+    PSI_HIGH = 0.25     # Kritischer Drift - sofortige Aktion
+
+    # Quality Degradation Schwellenwerte
+    QUALITY_DROP_THRESHOLD = 0.05  # 5% Qualitätsverlust
+    LATENCY_INCREASE_THRESHOLD = 0.2  # 20% Latenz-Anstieg
+
+    def __init__(
+        self,
+        drift_detector: Optional["DriftDetector"] = None,
+        alert_callbacks: Optional[List[AlertCallback]] = None,
+        storage_path: Optional[Path] = None,
+    ) -> None:
+        """
+        Initialisiere DriftAlertManager.
+
+        Args:
+            drift_detector: DriftDetector Instanz (verwendet Singleton wenn None)
+            alert_callbacks: Callback-Funktionen für Alerts
+            storage_path: Pfad für Reports
+        """
+        self._drift_detector = drift_detector
+        self._alert_callbacks = alert_callbacks or []
+        self.storage_path = storage_path or Path("data/drift_reports")
+        self.storage_path.mkdir(parents=True, exist_ok=True)
+
+        # Track created experiments
+        self._created_experiments: List[str] = []
+
+        # Quality history for degradation detection
+        self._quality_history: List[Dict[str, Any]] = []
+
+        # Monthly report tracking
+        self._last_report_date: Optional[datetime] = None
+
+        logger.info("DriftAlertManager initialisiert")
+
+    @property
+    def drift_detector(self) -> "DriftDetector":
+        """Hole DriftDetector (lazy loading)."""
+        if self._drift_detector is None:
+            self._drift_detector = get_drift_detector()
+        return self._drift_detector
+
+    def add_alert_callback(self, callback: AlertCallback) -> None:
+        """
+        Registriere Alert-Callback.
+
+        Args:
+            callback: Funktion(alert_type, message, details)
+        """
+        self._alert_callbacks.append(callback)
+
+    def check_and_respond_to_drift(self) -> Dict[str, Any]:
+        """
+        Prüfe aktuellen Drift-Status und reagiere entsprechend.
+
+        Führt aus:
+        1. Drift Detection
+        2. Alert bei PSI > 0.2
+        3. A/B-Test Erstellung bei signifikantem Drift
+        4. Quality Degradation Check
+
+        Returns:
+            Dict mit Aktionen und Ergebnissen
+        """
+        result = {
+            "drift_detected": False,
+            "alerts_sent": [],
+            "experiments_created": [],
+            "recommendations": [],
+            "quality_status": "stable",
+        }
+
+        # Run drift detection
+        report = self.drift_detector.detect_drift()
+
+        if report.overall_drift_score > 0.1:
+            result["drift_detected"] = True
+
+        # Check PSI and send alerts
+        psi_score = self._calculate_overall_psi(report)
+
+        if psi_score >= self.PSI_HIGH:
+            # Critical drift - immediate alert
+            alert = self._send_alert(
+                "critical_drift",
+                f"⚠️ KRITISCH: PSI Score {psi_score:.3f} - Sofortige Überprüfung erforderlich!",
+                {
+                    "psi_score": psi_score,
+                    "severity": report.severity.value,
+                    "drifted_features": [fd.feature_name for fd in report.feature_drifts if fd.is_drifted],
+                }
+            )
+            result["alerts_sent"].append(alert)
+            result["recommendations"].append("Modell-Retraining dringend empfohlen")
+
+        elif psi_score >= self.PSI_MEDIUM:
+            # Significant drift - start A/B test
+            alert = self._send_alert(
+                "significant_drift",
+                f"📊 Signifikanter Drift erkannt (PSI: {psi_score:.3f}) - A/B-Test wird erstellt",
+                {
+                    "psi_score": psi_score,
+                    "severity": report.severity.value,
+                }
+            )
+            result["alerts_sent"].append(alert)
+
+            # Create A/B test
+            experiment = self._create_drift_experiment(report)
+            if experiment:
+                result["experiments_created"].append(experiment)
+                result["recommendations"].append(
+                    f"A/B-Test '{experiment}' wurde gestartet zur Evaluierung"
+                )
+
+        elif psi_score >= self.PSI_LOW:
+            # Low drift - monitoring alert
+            alert = self._send_alert(
+                "low_drift",
+                f"📈 Leichter Drift erkannt (PSI: {psi_score:.3f}) - Verstärkte Überwachung aktiv",
+                {"psi_score": psi_score}
+            )
+            result["alerts_sent"].append(alert)
+
+        # Check quality degradation
+        quality_status = self._check_quality_degradation()
+        result["quality_status"] = quality_status
+
+        if quality_status == "degraded":
+            result["recommendations"].append(
+                "Qualitätsverschlechterung erkannt - Retraining empfohlen"
+            )
+
+        # Add report recommendations
+        result["recommendations"].extend(report.recommendations)
+
+        return result
+
+    def _calculate_overall_psi(self, report: DriftReport) -> float:
+        """
+        Berechne Gesamt-PSI aus Feature-Drifts.
+
+        Args:
+            report: DriftReport
+
+        Returns:
+            PSI Score (0-1)
+        """
+        if not report.feature_drifts:
+            return 0.0
+
+        # Use maximum drift score as PSI proxy
+        max_drift = max(fd.drift_score for fd in report.feature_drifts)
+
+        # Consider prediction drift as well
+        if report.prediction_drift is not None:
+            return max(max_drift, report.prediction_drift)
+
+        return max_drift
+
+    def _send_alert(
+        self,
+        alert_type: str,
+        message: str,
+        details: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Sende Alert über alle registrierten Callbacks.
+
+        Args:
+            alert_type: Art des Alerts
+            message: Alert-Nachricht
+            details: Zusätzliche Details
+
+        Returns:
+            Alert-Info
+        """
+        alert_info = {
+            "type": alert_type,
+            "message": message,
+            "details": details,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        # Log alert
+        logger.warning(
+            f"drift_alert_{alert_type}",
+            message=message,
+            **details
+        )
+
+        # Call registered callbacks
+        for callback in self._alert_callbacks:
+            try:
+                callback(alert_type, message, details)
+            except Exception as e:
+                logger.error("alert_callback_failed", callback=str(callback), error=str(e))
+
+        return alert_info
+
+    def _create_drift_experiment(self, report: DriftReport) -> Optional[str]:
+        """
+        Erstelle A/B-Test als Reaktion auf Drift.
+
+        Vergleicht aktuelles Modell-Routing mit alternativen Strategien.
+
+        Args:
+            report: DriftReport
+
+        Returns:
+            Experiment-ID oder None
+        """
+        try:
+            from app.ml.ab_testing import get_ab_test_manager
+
+            manager = get_ab_test_manager()
+
+            # Determine which backends to compare based on drift
+            control_backend = "deepseek"  # Current default
+            treatment_backend = "got-ocr"  # Alternative
+
+            # Check if features suggest different backend
+            drifted_features = [fd.feature_name for fd in report.feature_drifts if fd.is_drifted]
+
+            if "has_tables" in drifted_features or "has_formulas" in drifted_features:
+                # Table/formula drift - GOT-OCR might be better
+                control_backend = "got-ocr"
+                treatment_backend = "deepseek"
+
+            # Create experiment
+            experiment_name = f"drift_response_{datetime.now().strftime('%Y%m%d_%H%M')}"
+
+            experiment = manager.create_experiment(
+                name=experiment_name,
+                description=f"Automatisch erstellt aufgrund Drift (Severity: {report.severity.value})",
+                variants=[
+                    {
+                        "name": "control",
+                        "description": f"Aktuelles Backend: {control_backend}",
+                        "weight": 0.5,
+                        "config": {"backend": control_backend},
+                    },
+                    {
+                        "name": "treatment",
+                        "description": f"Alternatives Backend: {treatment_backend}",
+                        "weight": 0.5,
+                        "config": {"backend": treatment_backend},
+                    },
+                ],
+                allocation_method="sticky",
+                min_samples=100,
+                duration_days=7,  # 1 Woche Laufzeit
+            )
+
+            manager.start_experiment(experiment.experiment_id)
+            self._created_experiments.append(experiment.experiment_id)
+
+            logger.info(
+                "drift_experiment_created",
+                experiment_id=experiment.experiment_id,
+                control=control_backend,
+                treatment=treatment_backend,
+                severity=report.severity.value,
+            )
+
+            return experiment.experiment_id
+
+        except Exception as e:
+            logger.error("drift_experiment_creation_failed", error=str(e))
+            return None
+
+    def _check_quality_degradation(self) -> str:
+        """
+        Prüfe auf Qualitätsverschlechterung.
+
+        Returns:
+            'stable', 'degraded', oder 'improved'
+        """
+        if len(self._quality_history) < 2:
+            return "stable"
+
+        # Compare recent quality to baseline
+        recent = self._quality_history[-10:]  # Last 10 samples
+        baseline = self._quality_history[:10]  # First 10 samples
+
+        if not recent or not baseline:
+            return "stable"
+
+        # Calculate average quality scores
+        recent_quality = np.mean([q.get("quality_score", 0.5) for q in recent])
+        baseline_quality = np.mean([q.get("quality_score", 0.5) for q in baseline])
+
+        quality_change = (recent_quality - baseline_quality) / baseline_quality if baseline_quality > 0 else 0
+
+        if quality_change < -self.QUALITY_DROP_THRESHOLD:
+            return "degraded"
+        elif quality_change > self.QUALITY_DROP_THRESHOLD:
+            return "improved"
+
+        return "stable"
+
+    def record_quality_sample(
+        self,
+        quality_score: float,
+        latency_ms: float,
+        backend: str,
+        document_type: str = "unknown",
+    ) -> None:
+        """
+        Erfasse Quality-Sample für Degradation-Tracking.
+
+        Args:
+            quality_score: Qualitätsscore (0-1)
+            latency_ms: Latenz in Millisekunden
+            backend: Verwendetes Backend
+            document_type: Dokumenttyp
+        """
+        sample = {
+            "timestamp": datetime.now(),
+            "quality_score": quality_score,
+            "latency_ms": latency_ms,
+            "backend": backend,
+            "document_type": document_type,
+        }
+        self._quality_history.append(sample)
+
+        # Keep only last 1000 samples
+        if len(self._quality_history) > 1000:
+            self._quality_history = self._quality_history[-1000:]
+
+    def generate_monthly_report(self) -> Dict[str, Any]:
+        """
+        Generiere monatlichen Performance-Report.
+
+        Returns:
+            Report als Dictionary
+        """
+        now = datetime.now()
+
+        # Check if already generated this month
+        if self._last_report_date and self._last_report_date.month == now.month:
+            logger.info("monthly_report_already_generated")
+            return {"status": "already_generated", "last_report": self._last_report_date.isoformat()}
+
+        report = {
+            "report_type": "monthly_performance",
+            "generated_at": now.isoformat(),
+            "period": f"{now.year}-{now.month:02d}",
+            "sections": {},
+        }
+
+        # Drift Summary
+        drift_history = self.drift_detector.get_drift_history(limit=30)
+        if drift_history:
+            drift_summary = {
+                "total_detections": len(drift_history),
+                "high_severity_count": sum(1 for d in drift_history if d.severity in (DriftSeverity.HIGH, DriftSeverity.CRITICAL)),
+                "avg_drift_score": np.mean([d.overall_drift_score for d in drift_history]),
+                "max_drift_score": max(d.overall_drift_score for d in drift_history),
+            }
+            report["sections"]["drift_summary"] = drift_summary
+
+        # Quality Summary
+        if self._quality_history:
+            quality_summary = {
+                "total_samples": len(self._quality_history),
+                "avg_quality": np.mean([q["quality_score"] for q in self._quality_history]),
+                "avg_latency_ms": np.mean([q["latency_ms"] for q in self._quality_history]),
+                "backends_used": list(set(q["backend"] for q in self._quality_history)),
+                "quality_trend": self._check_quality_degradation(),
+            }
+            report["sections"]["quality_summary"] = quality_summary
+
+        # Experiments Summary
+        report["sections"]["experiments"] = {
+            "drift_triggered": len(self._created_experiments),
+            "experiment_ids": self._created_experiments[-10:],  # Last 10
+        }
+
+        # Recommendations
+        recommendations = []
+        if report["sections"].get("drift_summary", {}).get("high_severity_count", 0) > 5:
+            recommendations.append("Häufige kritische Drift-Events - Modellüberprüfung empfohlen")
+
+        quality_trend = report["sections"].get("quality_summary", {}).get("quality_trend", "stable")
+        if quality_trend == "degraded":
+            recommendations.append("Qualitätsabfall erkannt - Retraining-Pipeline prüfen")
+
+        report["recommendations"] = recommendations
+
+        # Save report
+        report_path = self.storage_path / f"monthly_report_{now.strftime('%Y%m')}.json"
+        with open(report_path, "w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2, default=str)
+
+        self._last_report_date = now
+
+        logger.info(
+            "monthly_report_generated",
+            period=report["period"],
+            path=str(report_path),
+        )
+
+        return report
+
+    def check_retraining_trigger(self) -> Dict[str, Any]:
+        """
+        Prüfe ob Retraining ausgelöst werden sollte.
+
+        Kriterien:
+        - Kritischer Drift (PSI > 0.25)
+        - Quality Degradation > 5%
+        - Mehr als 3 High-Severity Drift Events im letzten Monat
+
+        Returns:
+            Dict mit Trigger-Status und Gründen
+        """
+        result = {
+            "should_retrain": False,
+            "reasons": [],
+            "severity": "none",
+            "recommended_action": None,
+        }
+
+        # Check recent drift
+        drift_history = self.drift_detector.get_drift_history(limit=30)
+        high_severity_count = sum(
+            1 for d in drift_history
+            if d.severity in (DriftSeverity.HIGH, DriftSeverity.CRITICAL)
+        )
+
+        if high_severity_count > 3:
+            result["should_retrain"] = True
+            result["reasons"].append(f"{high_severity_count} High-Severity Drift Events im letzten Monat")
+            result["severity"] = "high"
+
+        # Check latest drift report
+        if drift_history:
+            latest = drift_history[-1]
+            if latest.severity == DriftSeverity.CRITICAL:
+                result["should_retrain"] = True
+                result["reasons"].append(f"Kritischer Drift erkannt (Score: {latest.overall_drift_score:.3f})")
+                result["severity"] = "critical"
+
+        # Check quality degradation
+        quality_status = self._check_quality_degradation()
+        if quality_status == "degraded":
+            result["should_retrain"] = True
+            result["reasons"].append("Qualitätsverschlechterung > 5% erkannt")
+            if result["severity"] != "critical":
+                result["severity"] = "medium"
+
+        # Set recommended action
+        if result["should_retrain"]:
+            if result["severity"] == "critical":
+                result["recommended_action"] = "Sofortiges Retraining und manuelle Überprüfung"
+            elif result["severity"] == "high":
+                result["recommended_action"] = "Retraining innerhalb 24 Stunden einplanen"
+            else:
+                result["recommended_action"] = "Retraining in nächster Wartungsperiode einplanen"
+
+            # Send alert
+            self._send_alert(
+                "retraining_recommended",
+                f"🔄 Retraining empfohlen: {', '.join(result['reasons'])}",
+                result
+            )
+
+        return result
+
+
+# Singleton instances
 _drift_detector: Optional[DriftDetector] = None
+_drift_alert_manager: Optional[DriftAlertManager] = None
 
 
 def get_drift_detector() -> DriftDetector:
@@ -746,3 +1242,26 @@ def get_drift_detector() -> DriftDetector:
             )
 
     return _drift_detector
+
+
+def get_drift_alert_manager() -> DriftAlertManager:
+    """
+    Hole globale DriftAlertManager Instanz.
+
+    Thread-safe mit double-checked locking.
+    """
+    global _drift_alert_manager
+
+    # Fast path: bereits initialisiert
+    if _drift_alert_manager is not None:
+        return _drift_alert_manager
+
+    # Slow path: Thread-safe Initialisierung
+    with _drift_detector_lock:
+        # Double-check nach Lock-Erwerb
+        if _drift_alert_manager is None:
+            logger.info("drift_alert_manager_initialisierung")
+            _drift_alert_manager = DriftAlertManager()
+            logger.info("drift_alert_manager_initialisiert")
+
+    return _drift_alert_manager
