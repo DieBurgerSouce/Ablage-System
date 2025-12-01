@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Unit-Tests für Backup Celery Tasks.
+Unit-Tests fuer Backup Celery Tasks.
 
 Testet:
 - backup_full_task (Vollbackup)
@@ -58,75 +58,59 @@ def sample_failed_result():
     return result
 
 
-@pytest.fixture
-def mock_celery_task():
-    """Create mock Celery task context."""
-    task = Mock()
-    task.request = Mock()
-    task.request.id = str(uuid4())
-    task.retry = Mock(side_effect=Exception("Retry triggered"))
-    return task
-
-
 # ========================= backup_full_task Tests =========================
 
 
 class TestBackupFullTask:
     """Tests for full backup task."""
 
-    def test_backup_full_success(self, mock_backup_service, sample_backup_result, mock_celery_task):
+    def test_backup_full_success(self, mock_backup_service, sample_backup_result):
         """Vollbackup sollte alle Komponenten sichern."""
-        with patch('app.workers.tasks.backup_tasks.get_backup_service') as mock_get:
+        with patch('app.services.backup_service.get_backup_service') as mock_get:
             mock_get.return_value = mock_backup_service
 
-            # Mock async backup_full
-            async def mock_backup():
-                return [sample_backup_result, sample_backup_result]
+            with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
+                mock_run.return_value = [sample_backup_result, sample_backup_result]
 
-            mock_backup_service.backup_full = Mock(return_value=mock_backup())
+                from app.workers.tasks.backup_tasks import backup_full_task
 
-            from app.workers.tasks.backup_tasks import backup_full_task
+                # Call task function directly (not via Celery)
+                result = backup_full_task.run()
 
-            with patch.object(backup_full_task, 'request', mock_celery_task.request):
-                with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
-                    mock_run.return_value = [sample_backup_result, sample_backup_result]
+                assert result["erfolg"] is True
+                assert result["erfolgreich"] == 2
+                assert result["fehlgeschlagen"] == 0
 
-                    result = backup_full_task(mock_celery_task)
-
-                    assert result["erfolg"] is True
-                    assert result["erfolgreich"] == 2
-                    assert result["fehlgeschlagen"] == 0
-
-    def test_backup_full_partial_failure(self, mock_backup_service, sample_backup_result, sample_failed_result, mock_celery_task):
+    def test_backup_full_partial_failure(self, mock_backup_service, sample_backup_result, sample_failed_result):
         """Teilweiser Fehler sollte reported werden."""
-        with patch('app.workers.tasks.backup_tasks.get_backup_service') as mock_get:
+        with patch('app.services.backup_service.get_backup_service') as mock_get:
             mock_get.return_value = mock_backup_service
 
-            from app.workers.tasks.backup_tasks import backup_full_task
+            with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
+                mock_run.return_value = [sample_backup_result, sample_failed_result]
 
-            with patch.object(backup_full_task, 'request', mock_celery_task.request):
-                with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
-                    mock_run.return_value = [sample_backup_result, sample_failed_result]
+                from app.workers.tasks.backup_tasks import backup_full_task
 
-                    result = backup_full_task(mock_celery_task)
+                result = backup_full_task.run()
 
-                    assert result["erfolg"] is False
-                    assert result["erfolgreich"] == 1
-                    assert result["fehlgeschlagen"] == 1
+                assert result["erfolg"] is False
+                assert result["erfolgreich"] == 1
+                assert result["fehlgeschlagen"] == 1
 
-    def test_backup_full_retry_on_error(self, mock_backup_service, mock_celery_task):
-        """Fehler sollte Retry auslösen."""
-        with patch('app.workers.tasks.backup_tasks.get_backup_service') as mock_get:
+    def test_backup_full_retry_on_error(self, mock_backup_service):
+        """Fehler sollte Exception ausloesen."""
+        with patch('app.services.backup_service.get_backup_service') as mock_get:
             mock_get.return_value = mock_backup_service
 
-            from app.workers.tasks.backup_tasks import backup_full_task
+            with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
+                mock_run.side_effect = Exception("Connection error")
 
-            with patch.object(backup_full_task, 'request', mock_celery_task.request):
-                with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
-                    mock_run.side_effect = Exception("Connection error")
+                from app.workers.tasks.backup_tasks import backup_full_task
 
-                    with pytest.raises(Exception):
-                        backup_full_task(mock_celery_task)
+                with pytest.raises(Exception) as exc_info:
+                    backup_full_task.run()
+
+                assert "Connection error" in str(exc_info.value)
 
 
 # ========================= backup_postgres_task Tests =========================
@@ -135,26 +119,25 @@ class TestBackupFullTask:
 class TestBackupPostgresTask:
     """Tests for PostgreSQL backup task."""
 
-    def test_backup_postgres_success(self, mock_backup_service, sample_backup_result, mock_celery_task):
+    def test_backup_postgres_success(self, mock_backup_service, sample_backup_result):
         """PostgreSQL-Backup sollte erfolgreich sein."""
-        with patch('app.workers.tasks.backup_tasks.get_backup_service') as mock_get:
+        with patch('app.services.backup_service.get_backup_service') as mock_get:
             mock_get.return_value = mock_backup_service
 
-            from app.workers.tasks.backup_tasks import backup_postgres_task
+            with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
+                mock_run.return_value = sample_backup_result
 
-            with patch.object(backup_postgres_task, 'request', mock_celery_task.request):
-                with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
-                    mock_run.return_value = sample_backup_result
+                from app.workers.tasks.backup_tasks import backup_postgres_task
 
-                    result = backup_postgres_task(mock_celery_task)
+                result = backup_postgres_task.run()
 
-                    assert result["erfolg"] is True
-                    assert result["typ"] == "postgres"
-                    assert result["groesse_mb"] == 50.0
+                assert result["erfolg"] is True
+                assert result["typ"] == "postgres"
+                assert result["groesse_mb"] == 50.0
 
-    def test_backup_postgres_calculates_size(self, mock_backup_service, mock_celery_task):
+    def test_backup_postgres_calculates_size(self, mock_backup_service):
         """Groesse sollte korrekt berechnet werden."""
-        with patch('app.workers.tasks.backup_tasks.get_backup_service') as mock_get:
+        with patch('app.services.backup_service.get_backup_service') as mock_get:
             mock_get.return_value = mock_backup_service
 
             backup_result = Mock()
@@ -164,15 +147,14 @@ class TestBackupPostgresTask:
             backup_result.size_bytes = 1024 * 1024 * 100  # 100MB
             backup_result.error = None
 
-            from app.workers.tasks.backup_tasks import backup_postgres_task
+            with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
+                mock_run.return_value = backup_result
 
-            with patch.object(backup_postgres_task, 'request', mock_celery_task.request):
-                with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
-                    mock_run.return_value = backup_result
+                from app.workers.tasks.backup_tasks import backup_postgres_task
 
-                    result = backup_postgres_task(mock_celery_task)
+                result = backup_postgres_task.run()
 
-                    assert result["groesse_mb"] == 100.0
+                assert result["groesse_mb"] == 100.0
 
 
 # ========================= backup_redis_task Tests =========================
@@ -181,9 +163,9 @@ class TestBackupPostgresTask:
 class TestBackupRedisTask:
     """Tests for Redis backup task."""
 
-    def test_backup_redis_success(self, mock_backup_service, mock_celery_task):
+    def test_backup_redis_success(self, mock_backup_service):
         """Redis-Backup sollte erfolgreich sein."""
-        with patch('app.workers.tasks.backup_tasks.get_backup_service') as mock_get:
+        with patch('app.services.backup_service.get_backup_service') as mock_get:
             mock_get.return_value = mock_backup_service
 
             backup_result = Mock()
@@ -193,16 +175,15 @@ class TestBackupRedisTask:
             backup_result.size_bytes = 1024 * 1024 * 10
             backup_result.error = None
 
-            from app.workers.tasks.backup_tasks import backup_redis_task
+            with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
+                mock_run.return_value = backup_result
 
-            with patch.object(backup_redis_task, 'request', mock_celery_task.request):
-                with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
-                    mock_run.return_value = backup_result
+                from app.workers.tasks.backup_tasks import backup_redis_task
 
-                    result = backup_redis_task(mock_celery_task)
+                result = backup_redis_task.run()
 
-                    assert result["erfolg"] is True
-                    assert result["typ"] == "redis"
+                assert result["erfolg"] is True
+                assert result["typ"] == "redis"
 
 
 # ========================= apply_retention_task Tests =========================
@@ -211,40 +192,38 @@ class TestBackupRedisTask:
 class TestApplyRetentionTask:
     """Tests for retention policy task."""
 
-    def test_retention_deletes_old_backups(self, mock_backup_service, mock_celery_task):
+    def test_retention_deletes_old_backups(self, mock_backup_service):
         """Retention sollte alte Backups loeschen."""
-        with patch('app.workers.tasks.backup_tasks.get_backup_service') as mock_get:
+        with patch('app.services.backup_service.get_backup_service') as mock_get:
             mock_get.return_value = mock_backup_service
 
-            from app.workers.tasks.backup_tasks import apply_retention_task
+            with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
+                mock_run.return_value = {
+                    "postgres": 5,
+                    "redis": 3,
+                    "minio": 2,
+                }
 
-            with patch.object(apply_retention_task, 'request', mock_celery_task.request):
-                with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
-                    mock_run.return_value = {
-                        "postgres": 5,
-                        "redis": 3,
-                        "minio": 2,
-                    }
+                from app.workers.tasks.backup_tasks import apply_retention_task
 
-                    result = apply_retention_task(mock_celery_task)
+                result = apply_retention_task.run()
 
-                    assert result["erfolg"] is True
-                    assert result["geloescht_gesamt"] == 10
+                assert result["erfolg"] is True
+                assert result["geloescht_gesamt"] == 10
 
-    def test_retention_no_old_backups(self, mock_backup_service, mock_celery_task):
+    def test_retention_no_old_backups(self, mock_backup_service):
         """Ohne alte Backups sollte nichts geloescht werden."""
-        with patch('app.workers.tasks.backup_tasks.get_backup_service') as mock_get:
+        with patch('app.services.backup_service.get_backup_service') as mock_get:
             mock_get.return_value = mock_backup_service
 
-            from app.workers.tasks.backup_tasks import apply_retention_task
+            with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
+                mock_run.return_value = {}
 
-            with patch.object(apply_retention_task, 'request', mock_celery_task.request):
-                with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
-                    mock_run.return_value = {}
+                from app.workers.tasks.backup_tasks import apply_retention_task
 
-                    result = apply_retention_task(mock_celery_task)
+                result = apply_retention_task.run()
 
-                    assert result["geloescht_gesamt"] == 0
+                assert result["geloescht_gesamt"] == 0
 
 
 # ========================= sync_to_remote_task Tests =========================
@@ -253,37 +232,37 @@ class TestApplyRetentionTask:
 class TestSyncToRemoteTask:
     """Tests for remote sync task."""
 
-    def test_sync_success(self, mock_backup_service, mock_celery_task):
+    def test_sync_success(self, mock_backup_service):
         """Sync sollte erfolgreich sein."""
-        with patch('app.workers.tasks.backup_tasks.get_backup_service') as mock_get:
-            mock_backup_service.config.remote_enabled = True
+        mock_backup_service.config.remote_enabled = True
+
+        with patch('app.services.backup_service.get_backup_service') as mock_get:
             mock_get.return_value = mock_backup_service
 
-            from app.workers.tasks.backup_tasks import sync_to_remote_task
+            with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
+                mock_run.return_value = True
 
-            with patch.object(sync_to_remote_task, 'request', mock_celery_task.request):
-                with patch('app.workers.tasks.backup_tasks.run_async') as mock_run:
-                    mock_run.return_value = True
+                from app.workers.tasks.backup_tasks import sync_to_remote_task
 
-                    result = sync_to_remote_task(mock_celery_task)
-
-                    assert result["erfolg"] is True
-                    assert result["synchronisiert"] is True
-
-    def test_sync_disabled(self, mock_backup_service, mock_celery_task):
-        """Deaktivierter Sync sollte uebersprungen werden."""
-        with patch('app.workers.tasks.backup_tasks.get_backup_service') as mock_get:
-            mock_backup_service.config.remote_enabled = False
-            mock_get.return_value = mock_backup_service
-
-            from app.workers.tasks.backup_tasks import sync_to_remote_task
-
-            with patch.object(sync_to_remote_task, 'request', mock_celery_task.request):
-                result = sync_to_remote_task(mock_celery_task)
+                result = sync_to_remote_task.run()
 
                 assert result["erfolg"] is True
-                assert result["synchronisiert"] is False
-                assert "deaktiviert" in result["nachricht"]
+                assert result["synchronisiert"] is True
+
+    def test_sync_disabled(self, mock_backup_service):
+        """Deaktivierter Sync sollte uebersprungen werden."""
+        mock_backup_service.config.remote_enabled = False
+
+        with patch('app.services.backup_service.get_backup_service') as mock_get:
+            mock_get.return_value = mock_backup_service
+
+            from app.workers.tasks.backup_tasks import sync_to_remote_task
+
+            result = sync_to_remote_task.run()
+
+            assert result["erfolg"] is True
+            assert result["synchronisiert"] is False
+            assert "deaktiviert" in result["nachricht"]
 
 
 # ========================= update_backup_metrics_task Tests =========================
@@ -292,9 +271,9 @@ class TestSyncToRemoteTask:
 class TestUpdateBackupMetricsTask:
     """Tests for backup metrics task."""
 
-    def test_metrics_update_success(self, mock_backup_service, mock_celery_task):
+    def test_metrics_update_success(self, mock_backup_service):
         """Metriken-Update sollte erfolgreich sein."""
-        with patch('app.workers.tasks.backup_tasks.get_backup_service') as mock_get:
+        with patch('app.services.backup_service.get_backup_service') as mock_get:
             mock_get.return_value = mock_backup_service
 
             disk_usage = Mock()
@@ -310,12 +289,11 @@ class TestUpdateBackupMetricsTask:
 
             from app.workers.tasks.backup_tasks import update_backup_metrics_task
 
-            with patch.object(update_backup_metrics_task, 'request', mock_celery_task.request):
-                result = update_backup_metrics_task(mock_celery_task)
+            result = update_backup_metrics_task.run()
 
-                assert result["erfolg"] is True
-                assert result["speicherplatz"]["total_gb"] == 500.0
-                assert result["speicherplatz"]["verwendung_prozent"] == 60.0
+            assert result["erfolg"] is True
+            assert result["speicherplatz"]["total_gb"] == 500.0
+            assert result["speicherplatz"]["verwendung_prozent"] == 60.0
 
 
 # ========================= run_async Helper Tests =========================
@@ -346,3 +324,53 @@ class TestRunAsyncHelper:
             run_async(failing_coro())
 
         assert "Test error" in str(exc_info.value)
+
+
+# ========================= Task Definition Tests =========================
+
+
+class TestTaskDefinitions:
+    """Tests fuer Task-Definitionen."""
+
+    def test_backup_full_task_exists(self):
+        """backup_full_task sollte existieren."""
+        from app.workers.tasks.backup_tasks import backup_full_task
+        assert backup_full_task is not None
+
+    def test_backup_postgres_task_exists(self):
+        """backup_postgres_task sollte existieren."""
+        from app.workers.tasks.backup_tasks import backup_postgres_task
+        assert backup_postgres_task is not None
+
+    def test_backup_redis_task_exists(self):
+        """backup_redis_task sollte existieren."""
+        from app.workers.tasks.backup_tasks import backup_redis_task
+        assert backup_redis_task is not None
+
+    def test_apply_retention_task_exists(self):
+        """apply_retention_task sollte existieren."""
+        from app.workers.tasks.backup_tasks import apply_retention_task
+        assert apply_retention_task is not None
+
+    def test_sync_to_remote_task_exists(self):
+        """sync_to_remote_task sollte existieren."""
+        from app.workers.tasks.backup_tasks import sync_to_remote_task
+        assert sync_to_remote_task is not None
+
+    def test_update_backup_metrics_task_exists(self):
+        """update_backup_metrics_task sollte existieren."""
+        from app.workers.tasks.backup_tasks import update_backup_metrics_task
+        assert update_backup_metrics_task is not None
+
+    def test_tasks_have_names(self):
+        """Tasks sollten benannt sein."""
+        from app.workers.tasks.backup_tasks import (
+            backup_full_task,
+            backup_postgres_task,
+            backup_redis_task,
+        )
+
+        assert backup_full_task.name is not None
+        assert "backup_full" in backup_full_task.name
+        assert backup_postgres_task.name is not None
+        assert backup_redis_task.name is not None
