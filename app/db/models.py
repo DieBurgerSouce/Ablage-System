@@ -246,6 +246,13 @@ class User(Base):
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user")
     deactivated_by = relationship("User", remote_side="User.id", foreign_keys=[deactivated_by_id])
+    roles = relationship(
+        "Role",
+        secondary="user_roles",
+        primaryjoin="User.id == user_roles.c.user_id",
+        secondaryjoin="user_roles.c.role_id == Role.id",
+        back_populates="users"
+    )
 
 
 class ProcessingJob(Base):
@@ -848,6 +855,65 @@ class GDPRConsentLog(Base):
     )
 
 
+class GDPRProcessingActivity(Base):
+    """
+    GDPR Verarbeitungsverzeichnis (Art. 30 DSGVO).
+
+    Dokumentiert alle Verarbeitungstätigkeiten gemäß Rechenschaftspflicht.
+    Ersetzt die In-Memory-Speicherung in GDPRComplianceManager.
+
+    SECURITY: Dieses Verzeichnis muss bei Audits vorgelegt werden können.
+    """
+    __tablename__ = "gdpr_processing_activities"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    activity_id = Column(String(32), unique=True, nullable=False)  # Hash-basierte ID
+
+    # Document reference
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
+
+    # Subject (anonymized after processing)
+    subject_id = Column(String(64), nullable=True)  # Hash des User-IDs
+
+    # Processing details (Art. 30 DSGVO Pflichtangaben)
+    data_categories = Column(CrossDBJSON, default=[])  # personal_identifiable, financial, etc.
+    processing_purpose = Column(String(100), nullable=False)  # document_digitization, ocr_processing
+    legal_basis = Column(String(255), nullable=False)  # Art. 6(1)(b) Contract, etc.
+
+    # Retention
+    retention_period_days = Column(Integer, nullable=False)
+    retention_expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Processing metadata
+    processed_by_system = Column(String(100), default="ablage-system-ocr")
+    processing_backend = Column(String(50), nullable=True)  # deepseek, got_ocr, etc.
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Data transfer (Art. 30(1)(e) DSGVO)
+    data_recipients = Column(CrossDBJSON, default=[])  # Empty if no transfer
+    third_country_transfer = Column(Boolean, default=False)
+
+    # Technical measures (Art. 32 DSGVO)
+    encryption_applied = Column(Boolean, default=True)
+    pseudonymization_applied = Column(Boolean, default=False)
+
+    # Relationships
+    document = relationship("Document", backref="gdpr_activities")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_gdpr_processing_activities_activity_id", "activity_id"),
+        Index("ix_gdpr_processing_activities_document_id", "document_id"),
+        Index("ix_gdpr_processing_activities_subject_id", "subject_id"),
+        Index("ix_gdpr_processing_activities_created_at", "created_at"),
+        Index("ix_gdpr_processing_activities_purpose", "processing_purpose"),
+        Index("ix_gdpr_processing_activities_retention", "retention_expires_at"),
+    )
+
+
 # ==================== Password Reset Models ====================
 
 class PasswordResetToken(Base):
@@ -949,6 +1015,138 @@ class DataExport(Base):
         Index("ix_data_exports_user_id", "user_id"),
         Index("ix_data_exports_status", "status"),
         Index("ix_data_exports_expires_at", "expires_at"),
+    )
+
+
+# ============================================================================
+# Role-Based Access Control (RBAC)
+# ============================================================================
+
+class PermissionAction(str, Enum):
+    """Verfügbare Permission-Aktionen."""
+    READ = "read"
+    WRITE = "write"
+    DELETE = "delete"
+    MANAGE = "manage"  # Vollzugriff inkl. Berechtigungsverwaltung
+
+
+class ResourceType(str, Enum):
+    """Ressourcentypen für Permissions."""
+    DOCUMENTS = "documents"
+    USERS = "users"
+    ROLES = "roles"
+    WEBHOOKS = "webhooks"
+    API_KEYS = "api_keys"
+    AUDIT_LOGS = "audit_logs"
+    SYSTEM = "system"
+    BACKUPS = "backups"
+    OCR = "ocr"
+    SEARCH = "search"
+
+
+# Association table for Role <-> Permission (many-to-many)
+role_permissions = Table(
+    "role_permissions",
+    Base.metadata,
+    Column("role_id", UUID(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE")),
+    Column("permission_id", UUID(as_uuid=True), ForeignKey("permissions.id", ondelete="CASCADE")),
+    Index("ix_role_permissions_role_id", "role_id"),
+    Index("ix_role_permissions_permission_id", "permission_id")
+)
+
+
+# Association table for User <-> Role (many-to-many)
+user_roles = Table(
+    "user_roles",
+    Base.metadata,
+    Column("user_id", UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")),
+    Column("role_id", UUID(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE")),
+    Column("assigned_at", DateTime(timezone=True), server_default=func.now()),
+    Column("assigned_by_id", UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")),
+    Index("ix_user_roles_user_id", "user_id"),
+    Index("ix_user_roles_role_id", "role_id")
+)
+
+
+class Permission(Base):
+    """
+    Granulare Berechtigung für RBAC.
+
+    Berechtigungen definieren, was ein Benutzer mit einer bestimmten
+    Ressource tun darf (z.B. documents:read, users:manage).
+    """
+    __tablename__ = "permissions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Permission identifier (unique, z.B. "documents:read")
+    name = Column(String(100), unique=True, nullable=False)
+    description = Column(String(255), nullable=True)
+
+    # Permission details
+    resource_type = Column(String(50), nullable=False)  # documents, users, etc.
+    action = Column(String(50), nullable=False)  # read, write, delete, manage
+
+    # System permission (cannot be deleted)
+    is_system = Column(Boolean, default=False)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    roles = relationship("Role", secondary=role_permissions, back_populates="permissions")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_permissions_name", "name"),
+        Index("ix_permissions_resource_action", "resource_type", "action"),
+    )
+
+
+class Role(Base):
+    """
+    Benutzerrolle für RBAC.
+
+    Rollen gruppieren Berechtigungen und können Benutzern zugewiesen werden.
+    Standard-Rollen: admin, manager, analyst, viewer
+    """
+    __tablename__ = "roles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Role identifier
+    name = Column(String(50), unique=True, nullable=False)
+    display_name = Column(String(100), nullable=False)  # Deutscher Anzeigename
+    description = Column(String(500), nullable=True)
+
+    # Role hierarchy (höher = mehr Rechte, z.B. admin=100, viewer=10)
+    priority = Column(Integer, default=0)
+
+    # System role (cannot be deleted/modified)
+    is_system = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+
+    # Color for UI display (Hex)
+    color = Column(String(7), default="#6B7280")
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    permissions = relationship("Permission", secondary=role_permissions, back_populates="roles")
+    users = relationship(
+        "User",
+        secondary=user_roles,
+        primaryjoin="Role.id == user_roles.c.role_id",
+        secondaryjoin="user_roles.c.user_id == User.id",
+        back_populates="roles"
+    )
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_roles_name", "name"),
+        Index("ix_roles_priority", "priority"),
     )
 
 
@@ -1237,3 +1435,127 @@ class DocumentFavorite(Base):
         Index("ix_document_favorites_user_document", "user_id", "document_id", unique=True),
         Index("ix_document_favorites_created_at", "created_at"),
     )
+
+
+# ============================================================================
+# Document Access Control (Sharing)
+# ============================================================================
+
+class AccessLevel(str, Enum):
+    """
+    Zugriffsebenen für Dokument-Sharing.
+
+    - VIEW: Nur lesen (Standard für Shares)
+    - COMMENT: Lesen + Kommentieren
+    - EDIT: Lesen + Bearbeiten (Text korrigieren, Tags)
+    - MANAGE: Vollzugriff (inkl. Weitergabe, Löschen)
+    """
+    VIEW = "view"
+    COMMENT = "comment"
+    EDIT = "edit"
+    MANAGE = "manage"
+
+
+class DocumentAccess(Base):
+    """
+    Dokumentenzugriff für Sharing.
+
+    Ermöglicht:
+    - Dokumente mit anderen Benutzern teilen
+    - Verschiedene Zugriffsebenen (view, comment, edit, manage)
+    - Zeitlich begrenzte Shares
+    - Audit-Trail wer geteilt hat
+    """
+    __tablename__ = "document_access"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Dokument das geteilt wird
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Benutzer der Zugriff erhält
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Wer hat geteilt
+    granted_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Zugriffsebene
+    access_level = Column(
+        String(20),
+        nullable=False,
+        default=AccessLevel.VIEW.value
+    )
+
+    # Optionale zeitliche Begrenzung
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Ob der Empfänger weitergeben darf
+    can_share = Column(Boolean, default=False)
+
+    # Optionale Notiz beim Teilen
+    share_note = Column(String(500), nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    document = relationship("Document", backref="shared_access")
+    user = relationship("User", foreign_keys=[user_id], backref="shared_documents")
+    granted_by = relationship("User", foreign_keys=[granted_by_id])
+
+    # Indexes und Constraints
+    __table_args__ = (
+        # Nur eine Zugriffsberechtigung pro Benutzer pro Dokument
+        Index(
+            "ix_document_access_user_document",
+            "user_id", "document_id",
+            unique=True
+        ),
+        Index("ix_document_access_document_id", "document_id"),
+        Index("ix_document_access_user_id", "user_id"),
+        Index("ix_document_access_expires_at", "expires_at"),
+    )
+
+    @property
+    def is_expired(self) -> bool:
+        """Prüft ob der Zugriff abgelaufen ist."""
+        if self.expires_at is None:
+            return False
+        from datetime import datetime, timezone
+        return self.expires_at < datetime.now(timezone.utc)
+
+    def can_view(self) -> bool:
+        """Hat mindestens View-Berechtigung."""
+        return not self.is_expired
+
+    def can_comment(self) -> bool:
+        """Hat Comment- oder höhere Berechtigung."""
+        return not self.is_expired and self.access_level in [
+            AccessLevel.COMMENT.value,
+            AccessLevel.EDIT.value,
+            AccessLevel.MANAGE.value
+        ]
+
+    def can_edit(self) -> bool:
+        """Hat Edit- oder höhere Berechtigung."""
+        return not self.is_expired and self.access_level in [
+            AccessLevel.EDIT.value,
+            AccessLevel.MANAGE.value
+        ]
+
+    def can_manage(self) -> bool:
+        """Hat Manage-Berechtigung (Vollzugriff)."""
+        return not self.is_expired and self.access_level == AccessLevel.MANAGE.value

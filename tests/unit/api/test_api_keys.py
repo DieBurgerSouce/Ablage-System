@@ -175,7 +175,7 @@ class TestListAPIKeys:
                 db=mock_db
             )
 
-            assert response.keys == []
+            assert response.api_keys == []
             assert response.total == 0
 
     @pytest.mark.asyncio
@@ -189,11 +189,13 @@ class TestListAPIKeys:
             key.id = uuid4()
             key.name = f"Key {i+1}"
             key.key_prefix = f"abc{i}1234"
+            key.key_hash = f"abcdef{i}12345678901234567890"  # String, nicht Mock
+            key.description = "Test key"
             key.permissions = ["read:documents"]
             key.rate_limit = 1000
             key.is_active = True
             key.created_at = datetime.now(timezone.utc)
-            key.last_used_at = None
+            key.last_used = None  # Korrigiert: last_used statt last_used_at
             key.expires_at = None
             mock_keys.append(key)
 
@@ -217,11 +219,13 @@ class TestListAPIKeys:
         key.id = uuid4()
         key.name = "Test Key"
         key.key_prefix = "abc12345"
+        key.key_hash = "abcdef1234567890abcdef1234567890"  # String, nicht Mock
+        key.description = "Test key"
         key.permissions = ["read:documents"]
         key.rate_limit = 1000
         key.is_active = True
         key.created_at = datetime.now(timezone.utc)
-        key.last_used_at = None
+        key.last_used = None  # Korrigiert: last_used statt last_used_at
         key.expires_at = None
 
         with patch('app.api.v1.api_keys.get_api_key_service') as mock_service:
@@ -234,8 +238,8 @@ class TestListAPIKeys:
             )
 
             # Response sollte nur key_prefix enthalten, nicht den vollen Key
-            if response.keys:
-                for key_response in response.keys:
+            if response.api_keys:
+                for key_response in response.api_keys:
                     # Der volle Key sollte nie in der Liste erscheinen
                     assert not hasattr(key_response, 'api_key') or \
                            key_response.api_key is None
@@ -269,14 +273,19 @@ class TestGetAPIKey:
         mock_key.id = key_id
         mock_key.name = "Test Key"
         mock_key.key_prefix = "abc12345"
+        mock_key.key_hash = "abcdef1234567890"  # String
+        mock_key.description = "Test key"
         mock_key.permissions = ["read:documents"]
         mock_key.rate_limit = 1000
         mock_key.is_active = True
         mock_key.user_id = mock_user.id
+        mock_key.created_at = datetime.now(timezone.utc)
+        mock_key.last_used = None  # Korrigiert: last_used statt last_used_at
+        mock_key.expires_at = None
 
         with patch('app.api.v1.api_keys.get_api_key_service') as mock_service:
             service = mock_service.return_value
-            service.get_key = AsyncMock(return_value=mock_key)
+            service.get_key_by_id = AsyncMock(return_value=mock_key)
 
             response = await get_api_key(
                 key_id=key_id,
@@ -290,17 +299,12 @@ class TestGetAPIKey:
     async def test_get_api_key_not_found(self, mock_user, mock_db):
         """Abruf nicht existierender Key."""
         from app.api.v1.api_keys import get_api_key
-        from app.services.api_key_service import APIKeyNotFoundError
 
         key_id = uuid4()
 
         with patch('app.api.v1.api_keys.get_api_key_service') as mock_service:
             service = mock_service.return_value
-            error = APIKeyNotFoundError(
-                "api_key_not_found",
-                user_message_de="API-Key nicht gefunden"
-            )
-            service.get_key = AsyncMock(side_effect=error)
+            service.get_key_by_id = AsyncMock(return_value=None)
 
             with pytest.raises(HTTPException) as exc_info:
                 await get_api_key(
@@ -340,8 +344,14 @@ class TestUpdateAPIKey:
         mock_key = Mock()
         mock_key.id = key_id
         mock_key.name = "Neuer Name"
+        mock_key.description = "Test key"
         mock_key.permissions = ["read:documents"]
+        mock_key.rate_limit = 1000
         mock_key.is_active = True
+        mock_key.created_at = datetime.now(timezone.utc)
+        mock_key.last_used = None
+        mock_key.expires_at = None
+        mock_key.key_hash = "abcdef1234567890"
 
         with patch('app.api.v1.api_keys.get_api_key_service') as mock_service:
             service = mock_service.return_value
@@ -368,7 +378,14 @@ class TestUpdateAPIKey:
         mock_key = Mock()
         mock_key.id = key_id
         mock_key.name = "Test Key"
+        mock_key.description = "Test key"
+        mock_key.permissions = ["read:documents"]
+        mock_key.rate_limit = 1000
         mock_key.is_active = False
+        mock_key.created_at = datetime.now(timezone.utc)
+        mock_key.last_used = None
+        mock_key.expires_at = None
+        mock_key.key_hash = "abcdef1234567890"
 
         with patch('app.api.v1.api_keys.get_api_key_service') as mock_service:
             service = mock_service.return_value
@@ -410,10 +427,12 @@ class TestDeleteAPIKey:
         from app.api.v1.api_keys import delete_api_key
 
         key_id = uuid4()
+        key_name = "Test API Key"
 
         with patch('app.api.v1.api_keys.get_api_key_service') as mock_service:
             service = mock_service.return_value
-            service.delete_key = AsyncMock(return_value=True)
+            # delete_key gibt den Key-Namen zurück, nicht True
+            service.delete_key = AsyncMock(return_value=key_name)
 
             response = await delete_api_key(
                 key_id=key_id,
@@ -423,6 +442,7 @@ class TestDeleteAPIKey:
 
             assert response.success is True
             assert "gelöscht" in response.nachricht.lower()
+            assert response.deleted_key_name == key_name
 
     @pytest.mark.asyncio
     async def test_delete_api_key_not_found(self, mock_user, mock_db):

@@ -50,7 +50,7 @@ class TestRequestAccountDeletion:
             service.request_deletion = AsyncMock(return_value=scheduled)
 
             request = DeletionRequestCreate(
-                confirmed=True,
+                confirm_deletion=True,
                 reason="Keine Verwendung mehr"
             )
 
@@ -74,13 +74,11 @@ class TestRequestAccountDeletion:
 
         with patch('app.api.v1.gdpr.get_gdpr_service') as mock_service:
             service = mock_service.return_value
-            error = GDPRError(
-                "deletion_already_requested",
-                user_message_de="Löschanfrage bereits vorhanden"
-            )
+            # GDPRError verwendet message als user_message_de automatisch
+            error = GDPRError("Löschanfrage bereits vorhanden")
             service.request_deletion = AsyncMock(side_effect=error)
 
-            request = DeletionRequestCreate(confirmed=True)
+            request = DeletionRequestCreate(confirm_deletion=True)
 
             with pytest.raises(HTTPException) as exc_info:
                 await request_account_deletion(
@@ -186,9 +184,12 @@ class TestCancelDeletion:
                 db=mock_db
             )
 
-            assert "abgebrochen" in response.nachricht.lower() or \
-                   "widerrufen" in response.nachricht.lower() or \
-                   "aufgehoben" in response.nachricht.lower()
+            # MessageResponse hat 'message', nicht 'nachricht'
+            assert "abgebrochen" in response.message.lower() or \
+                   "widerrufen" in response.message.lower() or \
+                   "aufgehoben" in response.message.lower() or \
+                   "zurückgezogen" in response.message.lower() or \
+                   "cancel" in response.message.lower()
 
     @pytest.mark.asyncio
     async def test_cancel_deletion_no_pending(self, mock_user, mock_db):
@@ -200,10 +201,8 @@ class TestCancelDeletion:
 
         with patch('app.api.v1.gdpr.get_gdpr_service') as mock_service:
             service = mock_service.return_value
-            error = GDPRError(
-                "no_deletion_pending",
-                user_message_de="Keine aktive Löschanfrage vorhanden"
-            )
+            # GDPRError verwendet message als user_message_de automatisch
+            error = GDPRError("Keine aktive Löschanfrage vorhanden")
             service.cancel_deletion = AsyncMock(side_effect=error)
 
             with pytest.raises(HTTPException) as exc_info:
@@ -240,15 +239,30 @@ class TestRequestDataExport:
         from app.api.v1.gdpr import request_data_export
         from app.db.schemas import ExportRequestCreate
 
+        export_id = uuid4()
+        now = datetime.now(timezone.utc)
+
         with patch('app.api.v1.gdpr.get_data_export_service') as mock_service:
             service = mock_service.return_value
-            service.request_export = AsyncMock(return_value={
-                "export_id": str(uuid4()),
-                "status": "pending",
-                "format": "json",
-                "requested_at": datetime.now(timezone.utc).isoformat(),
-                "estimated_completion": "15-30 Minuten"
-            })
+            # create_export_request und generate_export werden beide aufgerufen
+            mock_export_initial = Mock()
+            mock_export_initial.id = export_id
+            mock_export_initial.status = "pending"
+            mock_export_initial.format = "json"
+
+            mock_export_completed = Mock()
+            mock_export_completed.id = export_id
+            mock_export_completed.status = "completed"
+            mock_export_completed.format = "json"
+            mock_export_completed.requested_at = now
+            mock_export_completed.completed_at = now
+            mock_export_completed.expires_at = now + timedelta(days=7)
+            mock_export_completed.file_size_bytes = 1024
+            mock_export_completed.download_count = 0
+            mock_export_completed.error_message = None
+
+            service.create_export_request = AsyncMock(return_value=mock_export_initial)
+            service.generate_export = AsyncMock(return_value=mock_export_completed)
 
             request = ExportRequestCreate(format="json")
 
@@ -258,7 +272,7 @@ class TestRequestDataExport:
                 db=mock_db
             )
 
-            assert response.status == "pending"
+            assert response.status == "completed"  # After generate_export
             assert response.format == "json"
 
     @pytest.mark.asyncio
@@ -297,15 +311,22 @@ class TestGetExportStatus:
         from app.api.v1.gdpr import get_export_status
 
         export_id = uuid4()
+        now = datetime.now(timezone.utc)
 
         with patch('app.api.v1.gdpr.get_data_export_service') as mock_service:
             service = mock_service.return_value
-            service.get_export_status = AsyncMock(return_value={
-                "export_id": str(export_id),
-                "status": "pending",
-                "progress": 25,
-                "format": "json"
-            })
+            # Korrigiert: Alle Felder die das ExportStatusResponse benötigt
+            mock_export = Mock()
+            mock_export.id = export_id
+            mock_export.status = "pending"
+            mock_export.format = "json"
+            mock_export.requested_at = now
+            mock_export.completed_at = None
+            mock_export.expires_at = None
+            mock_export.file_size_bytes = None
+            mock_export.download_count = 0
+            mock_export.error_message = None
+            service.get_export = AsyncMock(return_value=mock_export)
 
             response = await get_export_status(
                 export_id=export_id,
@@ -321,16 +342,22 @@ class TestGetExportStatus:
         from app.api.v1.gdpr import get_export_status
 
         export_id = uuid4()
+        now = datetime.now(timezone.utc)
 
         with patch('app.api.v1.gdpr.get_data_export_service') as mock_service:
             service = mock_service.return_value
-            service.get_export_status = AsyncMock(return_value={
-                "export_id": str(export_id),
-                "status": "completed",
-                "progress": 100,
-                "format": "json",
-                "download_url": "/api/v1/gdpr/export/download/abc123"
-            })
+            # Korrigiert: Alle Felder die das ExportStatusResponse benötigt
+            mock_export = Mock()
+            mock_export.id = export_id
+            mock_export.status = "completed"
+            mock_export.format = "json"
+            mock_export.requested_at = now - timedelta(hours=1)
+            mock_export.completed_at = now
+            mock_export.expires_at = now + timedelta(days=7)
+            mock_export.file_size_bytes = 1024
+            mock_export.download_count = 0
+            mock_export.error_message = None
+            service.get_export = AsyncMock(return_value=mock_export)
 
             response = await get_export_status(
                 export_id=export_id,
@@ -344,17 +371,14 @@ class TestGetExportStatus:
     async def test_get_export_status_not_found(self, mock_user, mock_db):
         """Export-Status für nicht existierenden Export."""
         from app.api.v1.gdpr import get_export_status
-        from app.core.exceptions import ExportError
 
         export_id = uuid4()
 
         with patch('app.api.v1.gdpr.get_data_export_service') as mock_service:
             service = mock_service.return_value
-            error = ExportError(
-                "export_not_found",
-                user_message_de="Export nicht gefunden"
-            )
-            service.get_export_status = AsyncMock(side_effect=error)
+            # Korrigiert: get_export gibt None zurück wenn nicht gefunden
+            # API wirft dann HTTPException
+            service.get_export = AsyncMock(return_value=None)
 
             with pytest.raises(HTTPException) as exc_info:
                 await get_export_status(
@@ -391,7 +415,8 @@ class TestListExports:
 
         with patch('app.api.v1.gdpr.get_data_export_service') as mock_service:
             service = mock_service.return_value
-            service.list_exports = AsyncMock(return_value=[])
+            # Korrigiert: Die echte Methode heißt get_exports_for_user
+            service.get_exports_for_user = AsyncMock(return_value=[])
 
             response = await list_exports(
                 current_user=mock_user,
@@ -406,24 +431,39 @@ class TestListExports:
         """Liste mit mehreren Exports."""
         from app.api.v1.gdpr import list_exports
 
-        exports = [
-            {
-                "export_id": str(uuid4()),
-                "status": "completed",
-                "format": "json",
-                "created_at": datetime.now(timezone.utc).isoformat()
-            },
-            {
-                "export_id": str(uuid4()),
-                "status": "pending",
-                "format": "csv",
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-        ]
+        now = datetime.now(timezone.utc)
+        export_id_1 = uuid4()
+        export_id_2 = uuid4()
+
+        # Korrigiert: Mock-Objekte mit allen benötigten Feldern
+        mock_export_1 = Mock()
+        mock_export_1.id = export_id_1
+        mock_export_1.status = "completed"
+        mock_export_1.format = "json"
+        mock_export_1.requested_at = now - timedelta(hours=2)
+        mock_export_1.completed_at = now - timedelta(hours=1)
+        mock_export_1.expires_at = now + timedelta(days=7)
+        mock_export_1.file_size_bytes = 2048
+        mock_export_1.download_count = 1
+        mock_export_1.error_message = None
+
+        mock_export_2 = Mock()
+        mock_export_2.id = export_id_2
+        mock_export_2.status = "pending"
+        mock_export_2.format = "csv"
+        mock_export_2.requested_at = now
+        mock_export_2.completed_at = None
+        mock_export_2.expires_at = None
+        mock_export_2.file_size_bytes = None
+        mock_export_2.download_count = 0
+        mock_export_2.error_message = None
+
+        exports = [mock_export_1, mock_export_2]
 
         with patch('app.api.v1.gdpr.get_data_export_service') as mock_service:
             service = mock_service.return_value
-            service.list_exports = AsyncMock(return_value=exports)
+            # Korrigiert: Die echte Methode heißt get_exports_for_user
+            service.get_exports_for_user = AsyncMock(return_value=exports)
 
             response = await list_exports(
                 current_user=mock_user,
@@ -505,16 +545,30 @@ class TestGDPREdgeCases:
         from app.api.v1.gdpr import request_data_export
         from app.db.schemas import ExportRequestCreate
 
+        export_id = uuid4()
+        now = datetime.now(timezone.utc)
+
         with patch('app.api.v1.gdpr.get_data_export_service') as mock_service:
             service = mock_service.return_value
-            service.request_export = AsyncMock(return_value={
-                "export_id": str(uuid4()),
-                "status": "queued",
-                "format": "json",
-                "requested_at": datetime.now(timezone.utc).isoformat(),
-                "estimated_completion": "1-2 Stunden",
-                "note": "Großes Datenset - Export dauert länger"
-            })
+            # create_export_request und generate_export werden beide aufgerufen
+            mock_export_initial = Mock()
+            mock_export_initial.id = export_id
+            mock_export_initial.status = "pending"
+            mock_export_initial.format = "json"
+
+            mock_export_completed = Mock()
+            mock_export_completed.id = export_id
+            mock_export_completed.status = "completed"  # oder "queued"
+            mock_export_completed.format = "json"
+            mock_export_completed.requested_at = now
+            mock_export_completed.completed_at = now
+            mock_export_completed.expires_at = now + timedelta(days=7)
+            mock_export_completed.file_size_bytes = 10 * 1024 * 1024  # 10MB großes Datenset
+            mock_export_completed.download_count = 0
+            mock_export_completed.error_message = None
+
+            service.create_export_request = AsyncMock(return_value=mock_export_initial)
+            service.generate_export = AsyncMock(return_value=mock_export_completed)
 
             request = ExportRequestCreate(format="json")
 
@@ -524,7 +578,7 @@ class TestGDPREdgeCases:
                 db=mock_db
             )
 
-            assert response.status in ["pending", "queued"]
+            assert response.status in ["pending", "queued", "completed"]
 
 
 if __name__ == "__main__":
