@@ -12,7 +12,7 @@ Feinpoliert und durchdacht - ML-Operationen für Produktion.
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -299,7 +299,7 @@ def update_ml_metrics(self) -> Dict[str, Any]:
         drift_status = drift_detector.get_current_status()
 
         result = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "active_experiments": len(active_experiments),
             "drift_ready": drift_status["ready_for_detection"],
             "reference_samples": drift_status["reference_samples"],
@@ -531,7 +531,7 @@ def generate_ml_report(self) -> Dict[str, Any]:
         feature_importance = explainer.get_global_importance()
 
         report = {
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "drift": {
                 "status": drift_status,
                 "recent_reports": [r.to_dict() for r in drift_history],

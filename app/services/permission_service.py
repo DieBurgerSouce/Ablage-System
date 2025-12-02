@@ -5,6 +5,7 @@ Stellt Funktionen zur Berechtigungsprüfung und Rollenverwaltung bereit.
 Alle Fehlermeldungen auf Deutsch für Benutzerinteraktionen.
 """
 
+import asyncio
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any, Set
 from uuid import UUID
@@ -46,6 +47,8 @@ class PermissionService:
         """
         self.db = db
         self._permission_cache: Dict[str, Set[str]] = {}
+        # SECURITY FIX: Lock für thread-safe Cache-Zugriff bei concurrent requests
+        self._cache_lock = asyncio.Lock()
 
     async def has_permission(
         self,
@@ -160,6 +163,9 @@ class PermissionService:
         """
         Holt alle Berechtigungen eines Benutzers aus allen zugewiesenen Rollen.
 
+        SECURITY FIX: Thread-safe mit asyncio.Lock um Race Conditions zu vermeiden.
+        Double-checked locking Pattern für optimale Performance.
+
         Args:
             user: Der Benutzer
 
@@ -168,37 +174,43 @@ class PermissionService:
         """
         cache_key = str(user.id)
 
-        # Check cache
+        # Fast path: Check cache without lock (read is atomic for simple types)
         if cache_key in self._permission_cache:
             return self._permission_cache[cache_key]
 
-        # Query all permissions via user roles
-        stmt = (
-            select(Permission.name)
-            .join(role_permissions, Permission.id == role_permissions.c.permission_id)
-            .join(Role, Role.id == role_permissions.c.role_id)
-            .join(user_roles, Role.id == user_roles.c.role_id)
-            .where(
-                and_(
-                    user_roles.c.user_id == user.id,
-                    Role.is_active == True
+        # Slow path: Acquire lock for cache update
+        async with self._cache_lock:
+            # Double-check: Cache könnte von anderem Request gefüllt worden sein
+            if cache_key in self._permission_cache:
+                return self._permission_cache[cache_key]
+
+            # Query all permissions via user roles
+            stmt = (
+                select(Permission.name)
+                .join(role_permissions, Permission.id == role_permissions.c.permission_id)
+                .join(Role, Role.id == role_permissions.c.role_id)
+                .join(user_roles, Role.id == user_roles.c.role_id)
+                .where(
+                    and_(
+                        user_roles.c.user_id == user.id,
+                        Role.is_active == True
+                    )
                 )
             )
-        )
 
-        result = await self.db.execute(stmt)
-        permissions = set(row[0] for row in result.fetchall())
+            result = await self.db.execute(stmt)
+            permissions = set(row[0] for row in result.fetchall())
 
-        # Cache result
-        self._permission_cache[cache_key] = permissions
+            # Cache result (innerhalb des Locks)
+            self._permission_cache[cache_key] = permissions
 
-        logger.debug(
-            "user_permissions_loaded",
-            user_id=str(user.id),
-            permission_count=len(permissions)
-        )
+            logger.debug(
+                "user_permissions_loaded",
+                user_id=str(user.id),
+                permission_count=len(permissions)
+            )
 
-        return permissions
+            return permissions
 
     async def get_user_roles(self, user: User) -> List[Role]:
         """
@@ -577,16 +589,30 @@ class PermissionService:
         """
         Löscht den Permission-Cache für einen Benutzer.
 
+        Note: Dict key deletion ist atomic in CPython, daher kein Lock nötig
+        für einzelne User-Einträge.
+
         Args:
             user: Der Benutzer
         """
         cache_key = str(user.id)
-        if cache_key in self._permission_cache:
-            del self._permission_cache[cache_key]
+        # pop statt del um KeyError zu vermeiden wenn Key bereits gelöscht
+        self._permission_cache.pop(cache_key, None)
+
+    async def clear_cache_async(self) -> None:
+        """
+        Löscht den gesamten Permission-Cache (async-safe).
+        """
+        async with self._cache_lock:
+            self._permission_cache.clear()
+            logger.debug("permission_cache_cleared_async")
 
     def clear_cache(self) -> None:
         """
-        Löscht den gesamten Permission-Cache.
+        Löscht den gesamten Permission-Cache (sync version).
+
+        Warnung: Sollte nicht während aktiver async Operations verwendet werden.
+        Bevorzuge clear_cache_async() in async Contexten.
         """
         self._permission_cache.clear()
         logger.debug("permission_cache_cleared")

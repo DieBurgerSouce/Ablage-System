@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
     useReactTable,
     getCoreRowModel,
@@ -6,7 +7,7 @@ import {
     getSortedRowModel,
     flexRender,
     createColumnHelper,
-    SortingState
+    type SortingState
 } from '@tanstack/react-table';
 import { MoreHorizontal, Plus, Shield, ShieldAlert, ShieldCheck, Trash2, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,29 +15,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { adminService, type User } from '@/lib/api/services/admin';
+import { useAuth } from '@/lib/auth/AuthContext';
 
-// Mock Data & Types
-interface User {
-    id: string;
-    name: string;
-    email: string;
-    role: 'admin' | 'editor' | 'viewer';
-    lastLogin: string;
-    status: 'active' | 'inactive';
-}
-
-const mockUsers: User[] = [
-    { id: '1', name: 'Admin User', email: 'admin@company.com', role: 'admin', lastLogin: '2023-11-28T10:30:00', status: 'active' },
-    { id: '2', name: 'Max Mustermann', email: 'max@company.com', role: 'editor', lastLogin: '2023-11-29T14:15:00', status: 'active' },
-    { id: '3', name: 'Lisa Schmidt', email: 'lisa@company.com', role: 'viewer', lastLogin: '2023-11-25T09:00:00', status: 'inactive' },
-];
-
-// RBAC Hook (Mocked)
+// RBAC Hook using AuthContext
 function usePermissions() {
-    // In a real app, this would come from auth context
-    const currentUserRole = 'admin';
+    const { user } = useAuth();
+    const currentUserRole = user?.role || 'viewer';
 
-    const can = (action: string, resource: string) => {
+    const can = (action: string, _resource?: string) => {
+        void _resource; // Suppress unused variable warning
         if (currentUserRole === 'admin') return true;
         if (currentUserRole === 'editor' && action !== 'delete') return true;
         return false;
@@ -48,7 +36,10 @@ function usePermissions() {
 const columnHelper = createColumnHelper<User>();
 
 export function UserManagement() {
-    const [data] = useState(mockUsers);
+    const { data: users = [], isLoading } = useQuery({
+        queryKey: ['users'],
+        queryFn: adminService.getUsers
+    });
     const [sorting, setSorting] = useState<SortingState>([]);
     const { can } = usePermissions();
 
@@ -108,7 +99,7 @@ export function UserManagement() {
     ];
 
     const table = useReactTable({
-        data,
+        data: users,
         columns,
         state: { sorting },
         onSortingChange: setSorting,
@@ -131,40 +122,44 @@ export function UserManagement() {
                 )}
             </CardHeader>
             <CardContent>
-                <div className="rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            {table.getHeaderGroups().map(headerGroup => (
-                                <TableRow key={headerGroup.id}>
-                                    {headerGroup.headers.map(header => (
-                                        <TableHead key={header.id}>
-                                            {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                                        </TableHead>
-                                    ))}
-                                </TableRow>
-                            ))}
-                        </TableHeader>
-                        <TableBody>
-                            {table.getRowModel().rows?.length ? (
-                                table.getRowModel().rows.map(row => (
-                                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                                        {row.getVisibleCells().map(cell => (
-                                            <TableCell key={cell.id}>
-                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                            </TableCell>
+                {isLoading ? (
+                    <div className="flex justify-center p-8">Loading...</div>
+                ) : (
+                    <div className="rounded-md border">
+                        <Table>
+                            <TableHeader>
+                                {table.getHeaderGroups().map(headerGroup => (
+                                    <TableRow key={headerGroup.id}>
+                                        {headerGroup.headers.map(header => (
+                                            <TableHead key={header.id}>
+                                                {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                                            </TableHead>
                                         ))}
                                     </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={columns.length} className="h-24 text-center">
-                                        Keine Ergebnisse.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                                ))}
+                            </TableHeader>
+                            <TableBody>
+                                {table.getRowModel().rows?.length ? (
+                                    table.getRowModel().rows.map(row => (
+                                        <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                                            {row.getVisibleCells().map(cell => (
+                                                <TableCell key={cell.id}>
+                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                </TableCell>
+                                            ))}
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={columns.length} className="h-24 text-center">
+                                            Keine Ergebnisse.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
                 <div className="flex items-center justify-end space-x-2 py-4">
                     <Button
                         variant="outline"

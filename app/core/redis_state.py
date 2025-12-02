@@ -14,10 +14,12 @@ import asyncio
 import json
 import structlog
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import redis.asyncio as aioredis
+
+from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
 
@@ -32,10 +34,17 @@ class RedisStateManager:
     _instance: Optional["RedisStateManager"] = None
 
     def __init__(self, redis_url: Optional[str] = None):
-        """Initialize Redis connection."""
-        self.redis_url = redis_url or os.getenv(
-            "REDIS_URL", "redis://localhost:6379/0"
-        )
+        """Initialize Redis connection using centralized settings."""
+        # Use settings-based URL if not explicitly provided
+        if redis_url:
+            self.redis_url = redis_url
+        elif settings.REDIS_URL:
+            self.redis_url = settings.REDIS_URL
+        else:
+            # Build URL from settings
+            password_part = f":{settings.REDIS_PASSWORD.get_secret_value()}@" if settings.REDIS_PASSWORD else ""
+            self.redis_url = f"redis://{password_part}{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}"
+
         self._redis: Optional[aioredis.Redis] = None
         self._pubsub = None
 
@@ -47,15 +56,23 @@ class RedisStateManager:
         return cls._instance
 
     async def connect(self) -> None:
-        """Establish Redis connection."""
+        """Establish Redis connection using centralized pool settings."""
         if self._redis is None:
             self._redis = await aioredis.from_url(
                 self.redis_url,
                 encoding="utf-8",
                 decode_responses=True,
-                max_connections=50,
+                max_connections=settings.REDIS_POOL_MAX_SIZE,
+                socket_timeout=settings.REDIS_SOCKET_TIMEOUT,
+                socket_connect_timeout=settings.REDIS_SOCKET_CONNECT_TIMEOUT,
+                socket_keepalive=settings.REDIS_SOCKET_KEEPALIVE,
+                health_check_interval=settings.REDIS_HEALTH_CHECK_INTERVAL,
             )
-            logger.info("redis_connected", url=self.redis_url.split('@')[-1])
+            logger.info(
+                "redis_connected",
+                url=self.redis_url.split('@')[-1],
+                max_connections=settings.REDIS_POOL_MAX_SIZE,
+            )
 
     async def disconnect(self) -> None:
         """Close Redis connection and cleanup subscriptions."""
@@ -103,7 +120,7 @@ class RedisStateManager:
         key = f"agent:{agent_id}:status"
         data = {
             "status": status,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "metadata": metadata or {},
         }
 
@@ -162,7 +179,7 @@ class RedisStateManager:
         key = f"task:{task_id}"
         task_data = {
             "state": state,
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
             "data": data or {},
         }
 
@@ -200,7 +217,7 @@ class RedisStateManager:
         data = {
             "progress": min(1.0, max(0.0, progress)),
             "message": message,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         await self._redis.setex(key, timedelta(hours=1), json.dumps(data))
@@ -283,7 +300,7 @@ class RedisStateManager:
 
         event = {
             "type": event_type,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "data": data,
         }
 
@@ -570,7 +587,7 @@ class RedisStateManager:
             "qa_score": str(qa_score),
             "reasons": json.dumps(reasons),
             "metadata": json.dumps(metadata or {}),
-            "added_at": datetime.utcnow().isoformat(),
+            "added_at": datetime.now(timezone.utc).isoformat(),
         }
 
         # Use pipeline for atomicity

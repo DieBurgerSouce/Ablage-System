@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 from pathlib import Path
 import structlog
+import torch
 
 from app.services.confidence_service import (
     ConfidenceService,
@@ -314,11 +315,79 @@ class OCRPipeline:
                 gpu_available=gpu_available,
                 available_vram_gb=available_vram_gb
             )
-        except Exception as e:
+        except torch.cuda.OutOfMemoryError as e:
+            # GPU OOM - don't retry, need manual intervention
             logger.error(
-                "ocr_pipeline_fallback_error",
+                "ocr_pipeline_gpu_oom",
                 document_id=document_id,
+                error=str(e),
+                recoverable=False
+            )
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            return OCRPipelineResult(
+                success=False,
+                text="",
+                corrected_text="",
+                confidence=0.0,
+                backend_used="none",
+                backends_tried=[],
+                fallbacks_occurred=0,
+                corrections_applied=0,
+                processing_time_ms=int((time.perf_counter() - start_time) * 1000),
+                german_correction_applied=False,
+                error=f"GPU out of memory: {e}"
+            )
+        except asyncio.TimeoutError as e:
+            # Timeout - could retry with extended timeout
+            logger.warning(
+                "ocr_pipeline_timeout",
+                document_id=document_id,
+                error=str(e),
+                recoverable=True
+            )
+            return OCRPipelineResult(
+                success=False,
+                text="",
+                corrected_text="",
+                confidence=0.0,
+                backend_used="none",
+                backends_tried=[],
+                fallbacks_occurred=0,
+                corrections_applied=0,
+                processing_time_ms=int((time.perf_counter() - start_time) * 1000),
+                german_correction_applied=False,
+                error=f"Processing timeout: {e}"
+            )
+        except (ValueError, IOError, RuntimeError) as e:
+            # Known error types - log and return
+            logger.error(
+                "ocr_pipeline_processing_error",
+                document_id=document_id,
+                error_type=type(e).__name__,
                 error=str(e)
+            )
+            return OCRPipelineResult(
+                success=False,
+                text="",
+                corrected_text="",
+                confidence=0.0,
+                backend_used="none",
+                backends_tried=[],
+                fallbacks_occurred=0,
+                corrections_applied=0,
+                processing_time_ms=int((time.perf_counter() - start_time) * 1000),
+                german_correction_applied=False,
+                error=str(e)
+            )
+        except Exception as e:
+            # Unexpected error - log with full context
+            logger.error(
+                "ocr_pipeline_unexpected_error",
+                document_id=document_id,
+                error_type=type(e).__name__,
+                error=str(e),
+                exc_info=True
             )
             return OCRPipelineResult(
                 success=False,

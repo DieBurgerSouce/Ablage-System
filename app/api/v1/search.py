@@ -70,7 +70,7 @@ async def get_search_facets(
     - ocr_backend_used: Verwendetes OCR-Backend
     - mime_type: MIME-Typ
     """
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     # Parse facet fields
     fields = [f.strip() for f in facet_fields.split(",") if f.strip()]
@@ -432,7 +432,7 @@ async def save_search_to_history(
         True wenn erfolgreich, False bei Fehler
     """
     import json
-    from datetime import datetime
+    from datetime import datetime, timezone
     from app.core.redis_state import RedisStateManager
 
     # Leere Suchen nicht speichern
@@ -448,7 +448,7 @@ async def save_search_to_history(
         # Sucheintrag erstellen
         search_entry = {
             "query": query.strip(),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "results_count": results_count,
         }
 
@@ -515,7 +515,7 @@ async def get_trending_searches(
     - Suchvorschlaege
     - Content Discovery
     """
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     from sqlalchemy import select, func, desc
     from app.db.models import Document, Tag, document_tags
 
@@ -539,7 +539,7 @@ async def get_trending_searches(
         import json
         from collections import Counter
         query_counter = Counter()
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
         for raw in raw_searches:
             try:
@@ -563,7 +563,7 @@ async def get_trending_searches(
 
     try:
         # 2. Trending Tags (meist verwendete Tags in den letzten N Tagen)
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
         tag_query = (
             select(Tag.name, func.count(document_tags.c.document_id).label("count"))
@@ -592,7 +592,7 @@ async def get_trending_searches(
 
     try:
         # 3. Recent Activity Stats
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
         # Neue Dokumente
         new_docs_result = await db.execute(
@@ -619,7 +619,7 @@ async def get_trending_searches(
             "new_documents": new_docs_count,
             "processed_documents": processed_count,
             "period_start": cutoff_date.isoformat(),
-            "period_end": datetime.utcnow().isoformat()
+            "period_end": datetime.now(timezone.utc).isoformat()
         }
 
     except Exception as e:

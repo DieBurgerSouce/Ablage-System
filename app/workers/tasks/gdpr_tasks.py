@@ -21,6 +21,7 @@ from sqlalchemy import select, delete, update, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.cache import invalidate_user_cache, invalidate_all_caches
 
 logger = structlog.get_logger(__name__)
 
@@ -236,6 +237,22 @@ async def _delete_user_data(
 
     # 4. Lösche Benutzer
     await db.execute(delete(User).where(User.id == user_id))
+
+    # 5. Cache Invalidation: Alle Caches für gelöschten Benutzer invalidieren
+    try:
+        cache_result = await invalidate_user_cache(str(user_id))
+        logger.info(
+            "gdpr_user_cache_invalidated",
+            user_id=str(user_id),
+            invalidated_keys=cache_result
+        )
+    except Exception as cache_error:
+        # Cache-Invalidation sollte GDPR-Löschung nicht blockieren
+        logger.warning(
+            "gdpr_cache_invalidation_failed",
+            user_id=str(user_id),
+            error=str(cache_error)
+        )
 
     return stats
 

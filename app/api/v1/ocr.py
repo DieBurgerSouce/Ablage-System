@@ -997,3 +997,339 @@ async def invalidate_ocr_cache(
         "entries_deleted": deleted_count,
         "message": f"OCR-Cache geloescht ({deleted_count} Eintraege)"
     }
+
+
+# =============================================================================
+# Batch OCR Operations
+# =============================================================================
+
+
+class BatchReprocessRequest(BaseModel):
+    """Anfrage fuer Batch-OCR-Neuverarbeitung."""
+    document_ids: list[UUID] = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="Liste der Dokument-IDs (max. 100)"
+    )
+    backend: str = Field(
+        "auto",
+        description="OCR-Backend: auto, deepseek, got_ocr, surya"
+    )
+    priority: int = Field(
+        5,
+        ge=1,
+        le=10,
+        description="Verarbeitungsprioritaet (1=niedrig, 10=hoch)"
+    )
+    force: bool = Field(
+        False,
+        description="Auch bereits verarbeitete Dokumente neu verarbeiten"
+    )
+
+
+class BatchReprocessResponse(BaseModel):
+    """Antwort auf Batch-OCR-Neuverarbeitung."""
+    total_requested: int = Field(..., description="Anzahl angeforderter Dokumente")
+    jobs_created: int = Field(..., description="Anzahl erstellter Jobs")
+    skipped: int = Field(..., description="Anzahl uebersprungener Dokumente")
+    failed: int = Field(..., description="Anzahl fehlgeschlagener Dokumente")
+    job_ids: list[str] = Field(default=[], description="Liste der Job-IDs")
+    details: list[dict] = Field(default=[], description="Details pro Dokument")
+
+
+@router.post(
+    "/documents/batch/reprocess",
+    response_model=BatchReprocessResponse,
+    summary="Batch-OCR-Neuverarbeitung",
+    description="Startet die OCR-Verarbeitung fuer mehrere Dokumente gleichzeitig."
+)
+async def batch_reprocess_ocr(
+    request: BatchReprocessRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> BatchReprocessResponse:
+    """Batch-OCR-Neuverarbeitung fuer mehrere Dokumente.
+
+    **Anwendungsfaelle:**
+    - Neuverarbeitung nach Backend-Update
+    - Qualitaetsverbesserung mit anderem Backend
+    - Massenneuverarbeitung nach Fehler
+
+    **Limits:**
+    - Maximal 100 Dokumente pro Anfrage
+    - Rate-Limiting gilt fuer jeden erstellten Job
+
+    **Beispiel:**
+    ```
+    POST /api/v1/ocr/documents/batch/reprocess
+    {
+        "document_ids": ["uuid1", "uuid2", "uuid3"],
+        "backend": "deepseek",
+        "priority": 8,
+        "force": true
+    }
+    ```
+
+    **Rueckgabe:**
+    - job_ids: Liste der erstellten Celery-Job-IDs
+    - details: Status pro Dokument (created, skipped, failed)
+    """
+    from sqlalchemy import select
+    from app.db.models import Document, ProcessingJob
+    from app.workers.celery_app import celery_app
+    from uuid import uuid4
+
+    # Backend validieren
+    valid_backends = ["auto", "deepseek", "got_ocr", "surya"]
+    if request.backend not in valid_backends:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltiges Backend. Erlaubt: {', '.join(valid_backends)}"
+        )
+
+    jobs_created = 0
+    skipped = 0
+    failed = 0
+    job_ids = []
+    details = []
+
+    logger.info(
+        "batch_ocr_reprocess_started",
+        user_id=str(current_user.id),
+        document_count=len(request.document_ids),
+        backend=request.backend,
+        force=request.force
+    )
+
+    for doc_id in request.document_ids:
+        try:
+            # Dokument laden
+            doc_query = select(Document).where(Document.id == doc_id)
+            result = await db.execute(doc_query)
+            document = result.scalar_one_or_none()
+
+            # Validierungen
+            if not document:
+                details.append({
+                    "document_id": str(doc_id),
+                    "status": "failed",
+                    "reason": "Dokument nicht gefunden"
+                })
+                failed += 1
+                continue
+
+            if document.owner_id != current_user.id and not current_user.is_superuser:
+                details.append({
+                    "document_id": str(doc_id),
+                    "status": "failed",
+                    "reason": "Keine Berechtigung"
+                })
+                failed += 1
+                continue
+
+            if document.is_deleted:
+                details.append({
+                    "document_id": str(doc_id),
+                    "status": "skipped",
+                    "reason": "Dokument geloescht"
+                })
+                skipped += 1
+                continue
+
+            # Pruefen ob bereits in Verarbeitung
+            job_query = select(ProcessingJob).where(
+                ProcessingJob.document_id == doc_id,
+                ProcessingJob.status.in_(["queued", "processing"])
+            )
+            result = await db.execute(job_query)
+            existing_job = result.scalar_one_or_none()
+
+            if existing_job:
+                details.append({
+                    "document_id": str(doc_id),
+                    "status": "skipped",
+                    "reason": f"Bereits in Verarbeitung (Job: {existing_job.id})"
+                })
+                skipped += 1
+                continue
+
+            # Pruefen ob bereits verarbeitet (wenn force=false)
+            if document.status == "completed" and not request.force:
+                details.append({
+                    "document_id": str(doc_id),
+                    "status": "skipped",
+                    "reason": "Bereits verarbeitet (force=false)"
+                })
+                skipped += 1
+                continue
+
+            # OCR-Job erstellen
+            job_id = str(uuid4())
+
+            processing_job = ProcessingJob(
+                id=UUID(job_id),
+                document_id=doc_id,
+                job_type="ocr",
+                status="queued",
+                priority=request.priority,
+                config={
+                    "backend": request.backend,
+                    "force_reprocess": request.force,
+                    "batch_job": True
+                }
+            )
+            db.add(processing_job)
+
+            # Dokument-Status aktualisieren
+            document.status = "queued"
+            if request.backend != "auto":
+                document.ocr_backend_used = request.backend
+
+            # Celery Task starten
+            celery_app.send_task(
+                "app.workers.tasks.ocr_tasks.process_document_ocr",
+                args=[str(doc_id), request.backend, request.priority],
+                task_id=job_id,
+                priority=10 - request.priority
+            )
+
+            job_ids.append(job_id)
+            details.append({
+                "document_id": str(doc_id),
+                "status": "created",
+                "job_id": job_id
+            })
+            jobs_created += 1
+
+        except Exception as e:
+            logger.error(
+                "batch_ocr_document_error",
+                document_id=str(doc_id),
+                error=str(e)
+            )
+            details.append({
+                "document_id": str(doc_id),
+                "status": "failed",
+                "reason": f"Fehler: {str(e)}"
+            })
+            failed += 1
+
+    # Alle Aenderungen speichern
+    await db.commit()
+
+    logger.info(
+        "batch_ocr_reprocess_completed",
+        user_id=str(current_user.id),
+        jobs_created=jobs_created,
+        skipped=skipped,
+        failed=failed
+    )
+
+    return BatchReprocessResponse(
+        total_requested=len(request.document_ids),
+        jobs_created=jobs_created,
+        skipped=skipped,
+        failed=failed,
+        job_ids=job_ids,
+        details=details
+    )
+
+
+@router.get(
+    "/documents/batch/status",
+    summary="Batch-Job-Status abfragen",
+    description="Gibt den Status mehrerer OCR-Jobs zurueck."
+)
+async def batch_job_status(
+    job_ids: str = Query(
+        ...,
+        description="Komma-separierte Liste von Job-IDs"
+    ),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Status mehrerer OCR-Jobs abfragen.
+
+    **Eingabe:** Komma-separierte Job-IDs aus batch/reprocess
+
+    **Beispiel:**
+    ```
+    GET /api/v1/ocr/documents/batch/status?job_ids=uuid1,uuid2,uuid3
+    ```
+    """
+    from sqlalchemy import select
+    from app.db.models import ProcessingJob
+
+    # Job-IDs parsen
+    job_id_list = [jid.strip() for jid in job_ids.split(",") if jid.strip()]
+
+    if not job_id_list:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mindestens eine Job-ID erforderlich"
+        )
+
+    if len(job_id_list) > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximal 100 Jobs pro Anfrage"
+        )
+
+    jobs_status = []
+    completed = 0
+    processing = 0
+    queued = 0
+    failed_count = 0
+
+    for job_id in job_id_list:
+        try:
+            job_uuid = UUID(job_id)
+            job_query = select(ProcessingJob).where(ProcessingJob.id == job_uuid)
+            result = await db.execute(job_query)
+            job = result.scalar_one_or_none()
+
+            if not job:
+                jobs_status.append({
+                    "job_id": job_id,
+                    "status": "not_found"
+                })
+                continue
+
+            job_status = {
+                "job_id": job_id,
+                "document_id": str(job.document_id),
+                "status": job.status,
+                "created_at": job.created_at.isoformat() if job.created_at else None,
+                "completed_at": job.completed_at.isoformat() if hasattr(job, 'completed_at') and job.completed_at else None,
+            }
+
+            if job.status == "completed":
+                completed += 1
+            elif job.status == "processing":
+                processing += 1
+            elif job.status == "queued":
+                queued += 1
+            elif job.status == "failed":
+                failed_count += 1
+                job_status["error"] = job.error_message if hasattr(job, 'error_message') else None
+
+            jobs_status.append(job_status)
+
+        except ValueError:
+            jobs_status.append({
+                "job_id": job_id,
+                "status": "invalid_id"
+            })
+
+    return {
+        "total": len(job_id_list),
+        "summary": {
+            "completed": completed,
+            "processing": processing,
+            "queued": queued,
+            "failed": failed_count,
+            "not_found": len(job_id_list) - completed - processing - queued - failed_count
+        },
+        "jobs": jobs_status
+    }

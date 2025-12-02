@@ -6,7 +6,7 @@ Provides audit log operations for the admin console:
 - Export audit data
 """
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 import math
@@ -487,7 +487,7 @@ class AuditService:
         """
         from datetime import timedelta
 
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Total entries
         total_result = await db.execute(

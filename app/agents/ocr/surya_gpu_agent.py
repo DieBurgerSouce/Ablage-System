@@ -21,8 +21,15 @@ logger = structlog.get_logger(__name__)
 class SuryaGPUAgent(OCRAgent):
     """Surya OCR agent with GPU acceleration optimized for RTX 4080."""
 
+    # Class-level lock to prevent race conditions during model loading
+    _model_lock: asyncio.Lock = None
+
     def __init__(self):
         """Initialize Surya OCR models with GPU support."""
+        # Initialize class-level lock if not already done
+        if SuryaGPUAgent._model_lock is None:
+            SuryaGPUAgent._model_lock = asyncio.Lock()
+
         # Check GPU availability
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.dtype = torch.float16 if torch.cuda.is_available() else torch.float32
@@ -59,8 +66,26 @@ class SuryaGPUAgent(OCRAgent):
 
         logger.info("surya_gpu_agent_initialized", device=str(self.device), dtype=str(self.dtype))
 
+    async def _load_models_async(self):
+        """Load Surya models with GPU optimization (thread-safe with lock).
+
+        SECURITY FIX: Uses asyncio.Lock to prevent race conditions when
+        multiple concurrent requests try to load models simultaneously.
+        """
+        async with SuryaGPUAgent._model_lock:
+            # Double-check pattern: re-check inside lock
+            if self._models_loaded:
+                return
+            self._load_models_sync()
+
     def _load_models(self):
-        """Load Surya models with GPU optimization."""
+        """Synchronous model loading - prefer _load_models_async() for concurrent access."""
+        if self._models_loaded:
+            return
+        self._load_models_sync()
+
+    def _load_models_sync(self):
+        """Internal synchronous model loading implementation."""
         if self._models_loaded:
             return
 
@@ -335,9 +360,6 @@ class SuryaGPUAgent(OCRAgent):
 
         except Exception as e:
             logger.error("ocr_processing_failed", error=str(e))
-            # GPU memory cleanup on error
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
 
             # Erstelle standardisiertes Fehler-Result
             result = self.create_error_result(
@@ -345,6 +367,11 @@ class SuryaGPUAgent(OCRAgent):
                 error_code="SURYA_OCR_ERROR",
             )
             return result.to_dict()
+
+        finally:
+            # Ensure GPU memory cleanup happens in all cases
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
     def get_status(self) -> Dict[str, Any]:
         """Get agent status including GPU information."""

@@ -8,7 +8,7 @@ This module contains all async OCR processing tasks including:
 - System maintenance tasks
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from uuid import UUID
@@ -217,7 +217,7 @@ def process_document_task(
     Returns:
         Dictionary with OCR results, metadata, and processing information
     """
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     doc_uuid = UUID(document_id)
     task_id = self.request.id
 
@@ -285,7 +285,7 @@ def process_document_task(
                     )
 
                 # Calculate processing duration
-                processing_time = (datetime.utcnow() - start_time).total_seconds()
+                processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
                 processing_ms = int(processing_time * 1000)
 
                 # Update document with OCR results
@@ -297,7 +297,7 @@ def process_document_task(
                 )
                 document.ocr_confidence = ocr_result.get("confidence", 0.0)
                 document.processing_duration_ms = processing_ms
-                document.processed_date = datetime.utcnow()
+                document.processed_date = datetime.now(timezone.utc)
                 document.status = ProcessingStatus.COMPLETED
 
                 # German validation scores
@@ -434,7 +434,7 @@ def process_document_task(
                     "processing_time_ms": processing_ms,
                     "word_count": len(document.extracted_text.split()),
                     "german_validation": validation_result,
-                    "completed_at": datetime.utcnow().isoformat(),
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
                     "embedding_task_id": embedding_task_id,
                 }
 
@@ -479,13 +479,13 @@ def process_document_task(
                             document.ocr_backend_used = "surya_cpu_fallback"
                             document.ocr_confidence = ocr_result.get("confidence", 0.0)
                             document.status = ProcessingStatus.COMPLETED
-                            document.processed_date = datetime.utcnow()
+                            document.processed_date = datetime.now(timezone.utc)
                             await session.commit()
 
                             # Record quality metrics for fallback
                             try:
                                 from app.services.ocr_quality_metrics_service import record_ocr_quality
-                                fallback_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                                fallback_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
                                 await record_ocr_quality(
                                     backend="surya_cpu_fallback",
                                     confidence=document.ocr_confidence,
@@ -584,7 +584,7 @@ def process_document_task(
                 )
 
                 # Track failed OCR for A/B testing and metrics
-                processing_time_failed = (datetime.utcnow() - start_time).total_seconds() * 1000
+                processing_time_failed = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
                 ml_tracker.track_ocr_result(
                     document_id=document_id,
                     backend=backend,
@@ -657,7 +657,7 @@ def batch_process_task(
         )
 
     task_id = self.request.id
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     total_docs = len(document_ids)
 
     logger.info(
@@ -811,7 +811,7 @@ def batch_process_task(
         except Exception as cleanup_error:
             logger.warning("batch_gpu_final_cleanup_failed", error=str(cleanup_error))
 
-    processing_time = (datetime.utcnow() - start_time).total_seconds()
+    processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
     update_task_progress(
         task_id,
@@ -875,7 +875,7 @@ def batch_process_task(
         "gpu_oom_failures": gpu_oom_count,
         "results": results,
         "processing_time_seconds": processing_time,
-        "completed_at": datetime.utcnow().isoformat(),
+        "completed_at": datetime.now(timezone.utc).isoformat(),
         "batch_job_id": batch_job_id,
         "gpu_recovery_stats": gpu_recovery_stats,
     }
@@ -1066,7 +1066,7 @@ def cleanup_task(self, hours_old: int = 24) -> Dict[str, Any]:
         Cleanup statistics
     """
     task_id = self.request.id
-    cutoff_time = datetime.utcnow() - timedelta(hours=hours_old)
+    cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours_old)
 
     logger.info(
         "cleanup_task_starting",

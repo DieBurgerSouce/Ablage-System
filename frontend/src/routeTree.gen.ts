@@ -10,7 +10,12 @@
 
 import { Route as rootRouteImport } from './app/routes/__root'
 import { Route as UploadRouteImport } from './app/routes/upload'
+import { Route as SearchRouteImport } from './app/routes/search'
+import { Route as MonitoringRouteImport } from './app/routes/monitoring'
+import { Route as LoginRouteImport } from './app/routes/login'
 import { Route as JobsRouteImport } from './app/routes/jobs'
+import { Route as AutomationRouteImport } from './app/routes/automation'
+import { Route as AdminRouteImport } from './app/routes/admin'
 import { Route as IndexRouteImport } from './app/routes/index'
 import { Route as DocumentsDocumentIdRouteImport } from './app/routes/documents.$documentId'
 
@@ -19,9 +24,34 @@ const UploadRoute = UploadRouteImport.update({
   path: '/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MonitoringRoute = MonitoringRouteImport.update({
+  id: '/monitoring',
+  path: '/monitoring',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JobsRoute = JobsRouteImport.update({
   id: '/jobs',
   path: '/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AutomationRoute = AutomationRouteImport.update({
+  id: '/automation',
+  path: '/automation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -37,34 +67,82 @@ const DocumentsDocumentIdRoute = DocumentsDocumentIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/automation': typeof AutomationRoute
   '/jobs': typeof JobsRoute
+  '/login': typeof LoginRoute
+  '/monitoring': typeof MonitoringRoute
+  '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/automation': typeof AutomationRoute
   '/jobs': typeof JobsRoute
+  '/login': typeof LoginRoute
+  '/monitoring': typeof MonitoringRoute
+  '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/automation': typeof AutomationRoute
   '/jobs': typeof JobsRoute
+  '/login': typeof LoginRoute
+  '/monitoring': typeof MonitoringRoute
+  '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/jobs' | '/upload' | '/documents/$documentId'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/automation'
+    | '/jobs'
+    | '/login'
+    | '/monitoring'
+    | '/search'
+    | '/upload'
+    | '/documents/$documentId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/jobs' | '/upload' | '/documents/$documentId'
-  id: '__root__' | '/' | '/jobs' | '/upload' | '/documents/$documentId'
+  to:
+    | '/'
+    | '/admin'
+    | '/automation'
+    | '/jobs'
+    | '/login'
+    | '/monitoring'
+    | '/search'
+    | '/upload'
+    | '/documents/$documentId'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/automation'
+    | '/jobs'
+    | '/login'
+    | '/monitoring'
+    | '/search'
+    | '/upload'
+    | '/documents/$documentId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  AutomationRoute: typeof AutomationRoute
   JobsRoute: typeof JobsRoute
+  LoginRoute: typeof LoginRoute
+  MonitoringRoute: typeof MonitoringRoute
+  SearchRoute: typeof SearchRoute
   UploadRoute: typeof UploadRoute
   DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRoute
 }
@@ -78,11 +156,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/monitoring': {
+      id: '/monitoring'
+      path: '/monitoring'
+      fullPath: '/monitoring'
+      preLoaderRoute: typeof MonitoringRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/jobs': {
       id: '/jobs'
       path: '/jobs'
       fullPath: '/jobs'
       preLoaderRoute: typeof JobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/automation': {
+      id: '/automation'
+      path: '/automation'
+      fullPath: '/automation'
+      preLoaderRoute: typeof AutomationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -104,7 +217,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  AutomationRoute: AutomationRoute,
   JobsRoute: JobsRoute,
+  LoginRoute: LoginRoute,
+  MonitoringRoute: MonitoringRoute,
+  SearchRoute: SearchRoute,
   UploadRoute: UploadRoute,
   DocumentsDocumentIdRoute: DocumentsDocumentIdRoute,
 }

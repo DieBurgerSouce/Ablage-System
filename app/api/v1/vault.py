@@ -9,7 +9,7 @@ Art. 32 DSGVO - Sicherheit der Verarbeitung:
 """
 
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
@@ -80,7 +80,7 @@ async def get_vault_status(
             enabled=False,
             connected=False,
             authenticated=False,
-            last_check=datetime.utcnow().isoformat(),
+            last_check=datetime.now(timezone.utc).isoformat(),
             message="Vault-Integration ist deaktiviert",
         )
 
@@ -110,7 +110,7 @@ async def get_vault_status(
                     version=health.get("version", None) if isinstance(health, dict) else None,
                     cluster_name=health.get("cluster_name", None) if isinstance(health, dict) else None,
                     address=settings.VAULT_ADDR,
-                    last_check=datetime.utcnow().isoformat(),
+                    last_check=datetime.now(timezone.utc).isoformat(),
                 )
             except Exception as e:
                 logger.warning("vault_health_check_partial", error=str(e))
@@ -119,7 +119,7 @@ async def get_vault_status(
                     connected=True,
                     authenticated=vault._authenticated,
                     address=settings.VAULT_ADDR,
-                    last_check=datetime.utcnow().isoformat(),
+                    last_check=datetime.now(timezone.utc).isoformat(),
                     error=f"Teilweise Statusabfrage fehlgeschlagen: {str(e)}",
                 )
         else:
@@ -128,7 +128,7 @@ async def get_vault_status(
                 connected=False,
                 authenticated=False,
                 address=settings.VAULT_ADDR,
-                last_check=datetime.utcnow().isoformat(),
+                last_check=datetime.now(timezone.utc).isoformat(),
                 error="Verbindung zu Vault fehlgeschlagen",
             )
 
@@ -139,7 +139,7 @@ async def get_vault_status(
             connected=False,
             authenticated=False,
             address=settings.VAULT_ADDR,
-            last_check=datetime.utcnow().isoformat(),
+            last_check=datetime.now(timezone.utc).isoformat(),
             error=str(e),
         )
 
@@ -376,13 +376,13 @@ async def refresh_secrets(
             return {
                 "status": "success",
                 "message": "Secrets wurden erfolgreich aktualisiert",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         else:
             return {
                 "status": "no_change",
                 "message": "Keine neuen Secrets geladen",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
     except Exception as e:

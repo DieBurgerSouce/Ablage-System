@@ -485,12 +485,12 @@ async def get_cache_hit_rate_metrics():
         Aggregierte Cache-Statistiken
     """
     import structlog
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     logger = structlog.get_logger(__name__)
 
     result = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "ocr_cache": {},
         "api_cache": {},
         "prometheus_metrics": {},
@@ -628,12 +628,12 @@ async def get_database_metrics():
         Database Performance Statistiken
     """
     import structlog
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     logger = structlog.get_logger(__name__)
 
     result = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "connection_pool": {},
         "query_stats": {},
         "slow_queries": {},
@@ -1010,7 +1010,7 @@ async def get_slo_metrics():
         }
 
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "overall_status": "erfuellt" if overall_compliant else "verletzt",
         "slos": slo_status,
         "summary": {
@@ -1071,7 +1071,7 @@ async def get_slo_history(
     for slo in tracked_slos:
         daily_values = []
         for day_offset in range(days):
-            date = (datetime.utcnow() - timedelta(days=day_offset)).strftime("%Y-%m-%d")
+            date = (datetime.now(timezone.utc) - timedelta(days=day_offset)).strftime("%Y-%m-%d")
             key = f"slo:history:{slo}:{date}"
 
             try:
@@ -1111,7 +1111,7 @@ async def get_slo_history(
 
     return {
         "period_days": days,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "history": history
     }
 
@@ -1157,8 +1157,8 @@ async def get_ocr_quality_metrics():
     }
 
     try:
-        from datetime import datetime
-        quality_metrics["timestamp"] = datetime.utcnow().isoformat()
+        from datetime import datetime, timezone
+        quality_metrics["timestamp"] = datetime.now(timezone.utc).isoformat()
 
         # Aggregierte CER-Metriken
         cer_avg = await redis.get("metrics:ocr:cer:avg")
@@ -1257,12 +1257,12 @@ async def get_webhook_metrics():
         Webhook und Circuit Breaker Statistiken
     """
     import structlog
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     logger = structlog.get_logger(__name__)
 
     result = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "circuit_breaker": {},
         "delivery_stats": {},
         "recommendations": [],

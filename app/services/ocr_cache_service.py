@@ -16,6 +16,7 @@ Performance: orjson für 10-15% schnellere JSON-Serialisierung.
 
 import asyncio
 import hashlib
+import sys
 import threading
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone
@@ -67,23 +68,55 @@ logger = structlog.get_logger(__name__)
 
 class TTLCache:
     """
-    Thread-safe In-Memory Cache mit TTL.
+    Thread-safe In-Memory Cache mit TTL und Memory-Limit.
 
     Verwendet OrderedDict für LRU-Eviction und TTL-basierte Expiration.
+    Optional: Memory-basiertes Eviction wenn max_memory_mb gesetzt.
     """
 
-    def __init__(self, maxsize: int = 100, ttl: int = 300):
+    # Default memory limit: 256 MB für L1 Cache
+    DEFAULT_MAX_MEMORY_MB = 256
+
+    def __init__(
+        self,
+        maxsize: int = 100,
+        ttl: int = 300,
+        max_memory_mb: Optional[float] = None
+    ):
         """
         Initialize TTLCache.
 
         Args:
             maxsize: Maximum number of items in cache
             ttl: Time-to-live in seconds (default 5 minutes)
+            max_memory_mb: Maximum memory usage in MB (default: 256MB)
         """
         self._cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
         self._maxsize = maxsize
         self._ttl = ttl
+        self._max_memory_bytes = int((max_memory_mb or self.DEFAULT_MAX_MEMORY_MB) * 1024 * 1024)
+        self._current_memory_bytes = 0
         self._lock = threading.RLock()
+
+    def _estimate_size(self, value: Any) -> int:
+        """Estimate memory size of a value in bytes."""
+        try:
+            # sys.getsizeof gives shallow size, add estimate for nested objects
+            base_size = sys.getsizeof(value)
+            if isinstance(value, dict):
+                # Estimate dict content size
+                for k, v in value.items():
+                    base_size += sys.getsizeof(k) + self._estimate_size(v)
+            elif isinstance(value, (list, tuple)):
+                for item in value:
+                    base_size += self._estimate_size(item)
+            elif isinstance(value, str):
+                # String memory is already captured by getsizeof
+                pass
+            return base_size
+        except Exception:
+            # Fallback: assume 1KB per item
+            return 1024
 
     def get(self, key: str) -> Optional[Any]:
         """Get item from cache if not expired."""
@@ -93,7 +126,8 @@ class TTLCache:
 
             item = self._cache[key]
             if time.time() > item['expires']:
-                # Expired
+                # Expired - update memory tracking
+                self._current_memory_bytes -= item.get('size_bytes', 0)
                 del self._cache[key]
                 return None
 
@@ -102,22 +136,42 @@ class TTLCache:
             return item['value']
 
     def set(self, key: str, value: Any) -> None:
-        """Set item in cache with TTL."""
+        """Set item in cache with TTL and memory limit enforcement."""
         with self._lock:
-            # Remove oldest if at capacity
+            # Estimate size of new item
+            item_size = self._estimate_size(value)
+
+            # Remove existing item if updating (to adjust memory tracking)
+            if key in self._cache:
+                old_item = self._cache[key]
+                self._current_memory_bytes -= old_item.get('size_bytes', 0)
+                del self._cache[key]
+
+            # Evict oldest items if at capacity (count-based)
             while len(self._cache) >= self._maxsize:
-                self._cache.popitem(last=False)
+                _, evicted = self._cache.popitem(last=False)
+                self._current_memory_bytes -= evicted.get('size_bytes', 0)
+
+            # Evict oldest items if memory limit exceeded
+            while (self._current_memory_bytes + item_size > self._max_memory_bytes
+                   and len(self._cache) > 0):
+                _, evicted = self._cache.popitem(last=False)
+                self._current_memory_bytes -= evicted.get('size_bytes', 0)
 
             self._cache[key] = {
                 'value': value,
                 'expires': time.time() + self._ttl,
-                'created': time.time()
+                'created': time.time(),
+                'size_bytes': item_size,
             }
+            self._current_memory_bytes += item_size
 
     def delete(self, key: str) -> bool:
         """Delete item from cache."""
         with self._lock:
             if key in self._cache:
+                item = self._cache[key]
+                self._current_memory_bytes -= item.get('size_bytes', 0)
                 del self._cache[key]
                 return True
             return False
@@ -126,6 +180,7 @@ class TTLCache:
         """Clear all items from cache."""
         with self._lock:
             self._cache.clear()
+            self._current_memory_bytes = 0
 
     def __contains__(self, key: str) -> bool:
         """Check if key exists and is not expired."""
@@ -138,16 +193,24 @@ class TTLCache:
             # Clean expired entries
             expired = [k for k, v in self._cache.items() if now > v['expires']]
             for k in expired:
+                item = self._cache[k]
+                self._current_memory_bytes -= item.get('size_bytes', 0)
                 del self._cache[k]
             return len(self._cache)
 
     def stats(self) -> Dict[str, Any]:
-        """Get cache statistics."""
+        """Get cache statistics including memory usage."""
         with self._lock:
             return {
                 "size": len(self._cache),
                 "maxsize": self._maxsize,
-                "ttl_seconds": self._ttl
+                "ttl_seconds": self._ttl,
+                "memory_bytes": self._current_memory_bytes,
+                "memory_mb": round(self._current_memory_bytes / (1024 * 1024), 2),
+                "max_memory_mb": round(self._max_memory_bytes / (1024 * 1024), 2),
+                "memory_usage_percent": round(
+                    (self._current_memory_bytes / self._max_memory_bytes) * 100, 2
+                ) if self._max_memory_bytes > 0 else 0,
             }
 
 
@@ -167,18 +230,33 @@ class OCRCacheService:
     - Vereinfachtes Key-Schema (ohne options_hash)
     - Per-Backend Hit-Rate Tracking
     - LRU-Eviction im L1 Cache
+    - SECURITY FIX: Model-Version im Cache-Key (verhindert stale results nach Model-Update)
     """
 
     # Konfiguration - Performance-optimiert
     L1_MAXSIZE = 200      # Maximum L1 Cache Einträge (erhöht von 100)
     L1_TTL = 3600         # L1 TTL: 1 Stunde (erhöht von 5 Minuten für bessere Hit-Rate)
+    L1_MAX_MEMORY_MB = 256  # Maximum L1 Memory: 256 MB
     L2_TTL = 86400        # L2 TTL: 24 Stunden
+
+    # SECURITY FIX: Model-Versionen - bei Update hier inkrementieren!
+    # Alle caches für betroffenes Backend werden automatisch invalidiert
+    MODEL_VERSIONS: Dict[str, str] = {
+        "deepseek": "v1.0",      # DeepSeek-Janus-Pro
+        "got_ocr": "v2.0",       # GOT-OCR 2.0
+        "surya": "v1.1",         # Surya + Docling
+        "surya_gpu": "v1.1",     # Surya GPU Variant
+        "donut": "v1.0",         # Donut Agent
+        "hybrid": "v1.0",        # Hybrid/Ensemble
+        "easyocr": "v1.0",       # EasyOCR (wenn hinzugefügt)
+    }
 
     def __init__(
         self,
         redis_client: Any = None,
         l1_maxsize: int = L1_MAXSIZE,
         l1_ttl: int = L1_TTL,
+        l1_max_memory_mb: float = L1_MAX_MEMORY_MB,
         l2_ttl: int = L2_TTL
     ):
         """
@@ -188,10 +266,11 @@ class OCRCacheService:
             redis_client: Redis client instance (lazy loaded wenn None)
             l1_maxsize: Maximum L1 cache entries
             l1_ttl: L1 TTL in seconds
+            l1_max_memory_mb: Maximum L1 memory in MB (default: 256MB)
             l2_ttl: L2 (Redis) TTL in seconds
         """
-        # L1 Cache (Memory)
-        self._l1_cache = TTLCache(maxsize=l1_maxsize, ttl=l1_ttl)
+        # L1 Cache (Memory) - with count AND memory limit
+        self._l1_cache = TTLCache(maxsize=l1_maxsize, ttl=l1_ttl, max_memory_mb=l1_max_memory_mb)
 
         # L2 Cache (Redis)
         self._redis = redis_client
@@ -208,6 +287,7 @@ class OCRCacheService:
             "ocr_cache_service_initialized",
             l1_maxsize=l1_maxsize,
             l1_ttl=l1_ttl,
+            l1_max_memory_mb=l1_max_memory_mb,
             l2_ttl=l2_ttl
         )
 
@@ -244,6 +324,11 @@ class OCRCacheService:
         """
         Create cache key for OCR result.
 
+        SECURITY FIX: Inkludiert Model-Version im Key, damit bei Model-Updates
+        automatisch neue OCR-Ergebnisse generiert werden (keine stale results).
+
+        Key-Format: {prefix}:{file_hash}:{backend}:{model_version}:{language}[:options_hash]
+
         Args:
             file_hash: SHA256 hash of file content
             backend: OCR backend used
@@ -253,18 +338,13 @@ class OCRCacheService:
         Returns:
             Full cache key
         """
-        key_parts = [self._prefix, file_hash, backend, language]
+        # Model-Version aus Dictionary holen (Default "v0" falls unbekannt)
+        model_version = self.MODEL_VERSIONS.get(backend.lower(), "v0")
+
+        key_parts = [self._prefix, file_hash, backend, model_version, language]
         if options_hash:
             key_parts.append(options_hash)
         return ":".join(key_parts)
-
-    def _hash_options(self, options: Optional[Dict[str, Any]]) -> str:
-        """Hash options dict for cache key."""
-        if not options:
-            return ""
-        # Sortiere Keys für konsistente Hashes
-        sorted_opts = json_dumps(options, sort_keys=True)
-        return hashlib.md5(sorted_opts.encode()).hexdigest()[:8]
 
     async def get_cached_result(
         self,
@@ -365,6 +445,14 @@ class OCRCacheService:
             elif level == "l2":
                 self._backend_stats[backend]["l2_hits"] += 1
 
+        # Record to Prometheus
+        try:
+            from app.services.gpu_metrics_service import get_gpu_metrics_service
+            metrics = get_gpu_metrics_service()
+            metrics.record_cache_operation(operation="hit", level=level)
+        except Exception:
+            pass  # Non-critical - don't fail on metrics recording
+
     def _record_backend_miss(self, backend: str) -> None:
         """Record cache miss for specific backend."""
         with self._stats_lock:
@@ -375,6 +463,14 @@ class OCRCacheService:
                     "misses": 0,
                 }
             self._backend_stats[backend]["misses"] += 1
+
+        # Record to Prometheus
+        try:
+            from app.services.gpu_metrics_service import get_gpu_metrics_service
+            metrics = get_gpu_metrics_service()
+            metrics.record_cache_operation(operation="miss", level="l2")
+        except Exception:
+            pass  # Non-critical - don't fail on metrics recording
 
     async def cache_result(
         self,
@@ -496,13 +592,18 @@ class OCRCacheService:
             return deleted_count
 
         # Build pattern for deletion
+        # Key-Format: {prefix}:{file_hash}:{backend}:{model_version}:{language}[:options_hash]
         if backend and language:
+            # Spezifisch: exakte Key mit Wildcard für options
             pattern = self._make_cache_key(file_hash, backend, language, "*")
         elif backend:
+            # Alle Sprachen für dieses Backend (version ist Teil des Keys)
             pattern = f"{self._prefix}{file_hash}:{backend}:*"
         elif language:
-            pattern = f"{self._prefix}{file_hash}:*:{language}:*"
+            # Alle Backends für diese Sprache (muss alle Backends/Versionen matchen)
+            pattern = f"{self._prefix}{file_hash}:*:*:{language}*"
         else:
+            # Alle Caches für diesen File-Hash
             pattern = f"{self._prefix}{file_hash}:*"
 
         try:

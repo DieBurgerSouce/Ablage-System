@@ -1,0 +1,62 @@
+{
+  "service_strategies": [
+    {
+      "service": "ablage-system",
+      "type": "probabilistic",
+      "param": 0.1,
+      "operation_strategies": [
+        {
+          "operation": "POST /api/v1/ocr/*",
+          "type": "probabilistic",
+          "param": 1.0
+        },
+        {
+          "operation": "POST /api/v1/documents/*",
+          "type": "probabilistic",
+          "param": 0.5
+        },
+        {
+          "operation": "GET /health",
+          "type": "probabilistic",
+          "param": 0.0
+        },
+        {
+          "operation": "GET /readiness",
+          "type": "probabilistic",
+          "param": 0.0
+        },
+        {
+          "operation": "GET /metrics",
+          "type": "probabilistic",
+          "param": 0.0
+        }
+      ]
+    },
+    {
+      "service": "ablage-worker",
+      "type": "probabilistic",
+      "param": 0.5,
+      "operation_strategies": [
+        {
+          "operation": "ocr_processing",
+          "type": "probabilistic",
+          "param": 1.0
+        },
+        {
+          "operation": "embedding_generation",
+          "type": "probabilistic",
+          "param": 0.5
+        }
+      ]
+    },
+    {
+      "service": "ablage-frontend",
+      "type": "probabilistic",
+      "param": 0.05
+    }
+  ],
+  "default_strategy": {
+    "type": "probabilistic",
+    "param": 0.1
+  }
+}

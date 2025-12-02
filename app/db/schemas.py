@@ -269,10 +269,10 @@ class ProcessingJobResponse(BaseModel):
 class OCRRequest(BaseModel):
     """OCR processing request."""
     backend: OCRBackend = OCRBackend.AUTO
-    language: str = "de"
+    language: str = Field(default="de", pattern="^(de|en)$", description="Zielsprache")
     detect_layout: bool = True
     extract_entities: bool = True
-    priority: int = Field(5, ge=1, le=10)
+    priority: int = Field(5, ge=1, le=10, description="Verarbeitungsprioritaet (1-10)")
 
 
 class OCRResult(BaseModel):
@@ -881,6 +881,45 @@ class BatchExportRequest(BaseModel):
     include_text: bool = Field(True, description="Include extracted text in export")
     include_metadata: bool = Field(True, description="Include document metadata")
     include_original_files: bool = Field(False, description="Include original document files")
+
+
+class BatchFetchRequest(BaseModel):
+    """Request for batch document fetch.
+
+    Ermoeglicht das Abrufen mehrerer Dokumente in einem API-Call.
+    Reduziert Netzwerk-Overhead bei Frontend-Dashboard-Ansichten.
+
+    Beispiel:
+        POST /api/v1/documents/batch/fetch
+        {"document_ids": ["uuid1", "uuid2"], "include_text": false}
+    """
+    document_ids: List[uuid.UUID] = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Liste der Dokument-IDs (max 50)"
+    )
+    include_text: bool = Field(
+        default=False,
+        description="Extrahierten Text inkludieren (erhoeht Response-Groesse)"
+    )
+    include_ocr_metadata: bool = Field(
+        default=True,
+        description="OCR-Metadaten inkludieren (Confidence, Backend, etc.)"
+    )
+
+
+class BatchFetchResponse(BaseModel):
+    """Response for batch document fetch."""
+    success: bool
+    total_requested: int
+    found: int
+    not_found: int
+    documents: List["DocumentDetailResponse"]
+    not_found_ids: List[uuid.UUID] = Field(
+        default_factory=list,
+        description="IDs der nicht gefundenen Dokumente"
+    )
 
 
 class BatchOperationError(BaseModel):

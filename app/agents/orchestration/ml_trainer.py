@@ -13,7 +13,7 @@ Feinpoliert und durchdacht - Kontinuierliches Lernen für optimale Ergebnisse.
 
 import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import uuid
@@ -85,7 +85,7 @@ class TrainingSample:
         self.was_successful = was_successful
         self.accuracy_score = accuracy_score
         self.processing_time_ms = processing_time_ms
-        self.timestamp = timestamp or datetime.utcnow()
+        self.timestamp = timestamp or datetime.now(timezone.utc)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -189,7 +189,7 @@ class TrainingDataBuffer:
 
         # Filter by age
         if max_age_days:
-            cutoff = datetime.utcnow() - timedelta(days=max_age_days)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
             samples = [s for s in samples if s.timestamp > cutoff]
 
         # Filter by backend
@@ -307,7 +307,7 @@ class TrainingDataBuffer:
 
         # Age statistics
         ages = [
-            (datetime.utcnow() - s.timestamp).days
+            (datetime.now(timezone.utc) - s.timestamp.replace(tzinfo=timezone.utc)).days
             for s in self.samples
         ]
 
@@ -559,7 +559,7 @@ class MLRouterTrainer:
 
         # Check if retraining is needed
         if not force and self._last_training:
-            time_since_training = datetime.utcnow() - self._last_training
+            time_since_training = datetime.now(timezone.utc) - self._last_training
             if time_since_training.total_seconds() < self.RETRAINING_INTERVAL_HOURS * 3600:
                 return {
                     "status": "skipped",
@@ -584,13 +584,13 @@ class MLRouterTrainer:
                 )
 
             # Save model with timestamp
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             model_path = self.model_dir / f"model_{timestamp}.pkl"
             model.save(model_path)
 
             # Update current model
             self._current_model = model
-            self._last_training = datetime.utcnow()
+            self._last_training = datetime.now(timezone.utc)
 
             logger.info(
                 "Modelltraining erfolgreich",
@@ -718,7 +718,7 @@ class MLRouterTrainer:
         if self._last_training:
             status["last_training"] = self._last_training.isoformat()
             status["hours_since_training"] = (
-                (datetime.utcnow() - self._last_training).total_seconds() / 3600
+                (datetime.now(timezone.utc) - self._last_training).total_seconds() / 3600
             )
 
         if self._current_model and self._current_model.is_trained:

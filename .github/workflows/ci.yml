@@ -1,18 +1,29 @@
 # CI Pipeline - Ablage-System OCR
 # Continuous Integration: Tests, Linting, Type Checking, Security Scanning
+# Optimiert für schnelles Feedback mit paralleler Ausführung
 
 name: CI
 
 on:
   push:
     branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
   pull_request:
     branches: [main, develop]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PYTHON_VERSION: "3.11"
   POETRY_VERSION: "1.7.1"
+  # Cache-Keys für konsistentes Caching
+  CACHE_KEY_PREFIX: "ablage-ci-v2"
 
 jobs:
   # Job 1: Code Quality Checks (fastest, fail fast)

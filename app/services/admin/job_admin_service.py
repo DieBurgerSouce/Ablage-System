@@ -7,7 +7,7 @@ Provides job management operations for the admin console:
 - Clear job queue
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 import math

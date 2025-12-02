@@ -48,7 +48,8 @@ services:
     ports:
       - "127.0.0.1:6380:6379"  # Nur localhost in Production!
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # SECURITY FIX: Redis Healthcheck mit Passwort-Authentifizierung
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD:-} ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -68,7 +69,7 @@ services:
 
   # MinIO Object Storage (Data-Network only)
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
     container_name: ablage-minio
     command: server /data --console-address ":9001"
     environment:
@@ -92,6 +93,39 @@ services:
         limits:
           cpus: '2.0'
           memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    restart: unless-stopped
+    networks:
+      - data-network
+
+  # ClamAV Antivirus Scanner (Data-Network für Security Scanning)
+  clamav:
+    image: clamav/clamav:1.4
+    container_name: ablage-clamav
+    environment:
+      # Automatische Updates deaktivieren (manuell via Cron)
+      CLAMAV_NO_FRESHCLAMD: "false"
+      # Daemon-Konfiguration
+      CLAMD_STARTUP_TIMEOUT: 1800  # 30 Minuten für Datenbank-Download
+    volumes:
+      - clamav_data:/var/lib/clamav
+    ports:
+      - "127.0.0.1:3310:3310"  # Nur localhost - ClamAV Daemon Port
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping", "3"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 300s  # 5 Minuten für initialen DB-Download
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G  # ClamAV braucht viel RAM für Signaturen
         reservations:
           cpus: '0.5'
           memory: 1G
@@ -167,12 +201,13 @@ services:
               count: 1
               capabilities: [gpu]
     # SECURITY FIX: Healthcheck für Backend
+    # GPU-Inference braucht 10-15s, Model-Loading 60-90s
     healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=5).raise_for_status()"]
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=10).raise_for_status()"]
       interval: 30s
-      timeout: 10s
+      timeout: 15s  # PERF FIX: Erhöht von 10s für GPU-Inference
       retries: 3
-      start_period: 60s
+      start_period: 90s  # PERF FIX: Erhöht von 60s für GPU Model-Loading
     restart: unless-stopped
     networks:
       - backend-network
@@ -212,6 +247,7 @@ services:
       GPU_MEMORY_LIMIT_GB: ${GPU_MEMORY_LIMIT_GB:-13.6}
     volumes:
       - ./app:/app/app:ro
+      - ./scripts:/app/scripts:ro
       - ./infrastructure/vault/config/certs:/app/certs:ro
       - uploads:/app/uploads
       - outputs:/app/outputs
@@ -278,6 +314,13 @@ services:
       - /tmp
       - /var/cache/nginx
       - /var/run
+    # SECURITY FIX: Healthcheck für Frontend (Nginx)
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     deploy:
       resources:
         limits:
@@ -293,7 +336,7 @@ services:
 
   # Prometheus Metrics Collection (Monitoring Network)
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.54.0
     container_name: ablage-prometheus
     user: "65534:65534"
     command:
@@ -335,7 +378,7 @@ services:
 
   # Grafana Dashboards (Monitoring Network)
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.3.0
     container_name: ablage-grafana
     user: "472:472"
     environment:
@@ -379,7 +422,7 @@ services:
 
   # Loki for Log Aggregation (Monitoring Network)
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.2.0
     container_name: ablage-loki
     command: -config.file=/etc/loki/loki-config.yml
     volumes:
@@ -459,7 +502,7 @@ services:
 
   # PostgreSQL Exporter for Prometheus (Monitoring + Data Networks)
   postgres_exporter:
-    image: prometheuscommunity/postgres-exporter:latest
+    image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: ablage-postgres-exporter
     environment:
       DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=disable
@@ -471,6 +514,12 @@ services:
     security_opt:
       - no-new-privileges:true
     read_only: true
+    # SECURITY FIX: Healthcheck für Postgres Exporter
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9187/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -486,7 +535,7 @@ services:
 
   # Redis Exporter for Prometheus (Monitoring + Data Networks)
   redis_exporter:
-    image: oliver006/redis_exporter:latest
+    image: oliver006/redis_exporter:v1.63.0
     container_name: ablage-redis-exporter
     environment:
       REDIS_ADDR: redis://redis:6379
@@ -499,6 +548,12 @@ services:
     security_opt:
       - no-new-privileges:true
     read_only: true
+    # SECURITY FIX: Healthcheck für Redis Exporter
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9121/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -514,7 +569,7 @@ services:
 
   # Promtail for Log Shipping to Loki (Monitoring Network)
   promtail:
-    image: grafana/promtail:latest
+    image: grafana/promtail:3.2.0
     container_name: ablage-promtail
     volumes:
       - ./infrastructure/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
@@ -597,7 +652,8 @@ services:
       # Standard GPU-Metriken
       DCGM_EXPORTER_COLLECTORS: 'default'
     ports:
-      - "9400:9400"
+      # SECURITY FIX: Bind to localhost only to prevent external access to GPU metrics
+      - "127.0.0.1:9400:9400"
     cap_add:
       - SYS_ADMIN
     security_opt:
@@ -652,9 +708,11 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  clamav_data:  # ClamAV Virus-Signaturen
   uploads:
   outputs:
   backups:
+  quarantine:  # Quarantaene fuer erkannte Malware
   prometheus_data:
   grafana_data:
   loki_data:

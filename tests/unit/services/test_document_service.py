@@ -1008,6 +1008,88 @@ class TestDocumentServiceCacheInvalidation:
 
             assert result is not None
 
+    @pytest.mark.asyncio
+    async def test_delete_calls_central_cache_invalidation(
+        self, document_service, mock_db_session, mock_document, sample_user_id
+    ):
+        """Delete sollte zentrale Cache-Invalidation aufrufen."""
+        mock_result = Mock()
+        mock_result.scalar_one_or_none.return_value = mock_document
+        mock_db_session.execute.return_value = mock_result
+
+        with patch('app.services.document_service._get_search_service') as mock_search:
+            mock_search_service = AsyncMock()
+            mock_search.return_value = mock_search_service
+
+            with patch('app.services.document_service.invalidate_on_document_change') as mock_invalidate:
+                mock_invalidate.return_value = {"deleted": 5}
+
+                await document_service.delete_document(
+                    mock_db_session,
+                    mock_document.id,
+                    sample_user_id
+                )
+
+                mock_invalidate.assert_called_once_with(
+                    str(mock_document.id),
+                    change_type="delete"
+                )
+
+    @pytest.mark.asyncio
+    async def test_soft_delete_calls_central_cache_invalidation(
+        self, document_service, mock_db_session, mock_document, sample_user_id
+    ):
+        """Soft-Delete sollte zentrale Cache-Invalidation aufrufen."""
+        mock_document.deleted_at = None
+        mock_result = Mock()
+        mock_result.scalar_one_or_none.return_value = mock_document
+        mock_db_session.execute.return_value = mock_result
+
+        with patch('app.services.document_service._get_search_service') as mock_search:
+            mock_search_service = AsyncMock()
+            mock_search.return_value = mock_search_service
+
+            with patch('app.services.document_service.invalidate_on_document_change') as mock_invalidate:
+                mock_invalidate.return_value = {"deleted": 5}
+
+                await document_service.soft_delete_document(
+                    mock_db_session,
+                    mock_document.id,
+                    sample_user_id,
+                    reason="test"
+                )
+
+                mock_invalidate.assert_called_once_with(
+                    str(mock_document.id),
+                    change_type="delete"
+                )
+
+    @pytest.mark.asyncio
+    async def test_central_cache_invalidation_failure_handled(
+        self, document_service, mock_db_session, mock_document, sample_user_id
+    ):
+        """Zentrale Cache-Invalidierungsfehler sollte abgefangen werden."""
+        mock_result = Mock()
+        mock_result.scalar_one_or_none.return_value = mock_document
+        mock_db_session.execute.return_value = mock_result
+
+        with patch('app.services.document_service._get_search_service') as mock_search:
+            mock_search_service = AsyncMock()
+            mock_search.return_value = mock_search_service
+
+            with patch('app.services.document_service.invalidate_on_document_change') as mock_invalidate:
+                mock_invalidate.side_effect = Exception("Central cache error")
+
+                # Should not raise, delete should still succeed
+                result = await document_service.delete_document(
+                    mock_db_session,
+                    mock_document.id,
+                    sample_user_id
+                )
+
+                assert result is True
+                mock_db_session.delete.assert_called_once()
+
 
 # ========================= Edge Cases =========================
 

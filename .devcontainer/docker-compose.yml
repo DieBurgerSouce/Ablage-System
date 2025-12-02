@@ -78,7 +78,7 @@ services:
 
   # MinIO object storage
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
     restart: unless-stopped
     volumes:
       - minio-data:/data
@@ -99,7 +99,7 @@ services:
 
   # MinIO client for bucket creation
   minio-setup:
-    image: minio/mc:latest
+    image: minio/mc:RELEASE.2024-11-05T11-29-45Z
     depends_on:
       - minio
     networks:

@@ -154,6 +154,10 @@ class GOTOCRAgent(OCRAgent):
             )
             raise
 
+        finally:
+            # Cleanup GPU resources after processing (success or failure)
+            await self._cleanup_gpu_resources()
+
     async def _allocate_device(self) -> str:
         """Allocate GPU or fallback to CPU."""
         allocation = self.gpu_manager.allocate_for_backend("got_ocr")
@@ -593,6 +597,11 @@ class GOTOCRAgent(OCRAgent):
             self.logger.debug("german_postprocessor_not_available_fallback")
 
         return result
+
+    async def _cleanup_gpu_resources(self) -> None:
+        """Cleanup GPU resources after processing."""
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     async def _handle_gpu_oom(self) -> None:
         """Handle GPU out-of-memory error."""

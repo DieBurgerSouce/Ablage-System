@@ -122,7 +122,7 @@ def _generate_cache_key(
             try:
                 arg_hash = hashlib.md5(
                     json.dumps(arg, sort_keys=True, default=str).encode()
-                ).hexdigest()[:8]
+                ).hexdigest()[:16]  # 16 chars = 64 bits to reduce collision risk
                 key_parts.append(f"arg{i}:{arg_hash}")
             except Exception:
                 key_parts.append(f"arg{i}:obj")
@@ -139,7 +139,7 @@ def _generate_cache_key(
             try:
                 v_hash = hashlib.md5(
                     json.dumps(v, sort_keys=True, default=str).encode()
-                ).hexdigest()[:8]
+                ).hexdigest()[:16]  # 16 chars = 64 bits to reduce collision risk
                 key_parts.append(f"{k}:{v_hash}")
             except Exception:
                 key_parts.append(f"{k}:obj")
@@ -197,11 +197,24 @@ def redis_cache(
 
             # Versuche aus Cache zu laden
             try:
+                import time as time_module
                 from app.core.redis_state import RedisStateManager
                 redis_manager = RedisStateManager.get_instance()
                 await redis_manager._ensure_connection()
 
+                read_start = time_module.perf_counter()
                 cached_value = await redis_manager._redis.get(cache_key)
+                read_latency = time_module.perf_counter() - read_start
+
+                # Record cache latency
+                try:
+                    from app.core.business_metrics import (
+                        record_api_cache_operation,
+                        record_api_cache_latency,
+                    )
+                    record_api_cache_latency("read", read_latency)
+                except Exception:
+                    pass
 
                 if cached_value is not None:
                     logger.debug(
@@ -209,6 +222,11 @@ def redis_cache(
                         key=cache_key[:50],
                         function=func.__name__
                     )
+                    # Record cache hit
+                    try:
+                        record_api_cache_operation("hit", func.__name__)
+                    except Exception:
+                        pass
                     return _deserialize_value(cached_value)
 
                 logger.debug(
@@ -216,6 +234,11 @@ def redis_cache(
                     key=cache_key[:50],
                     function=func.__name__
                 )
+                # Record cache miss
+                try:
+                    record_api_cache_operation("miss", func.__name__)
+                except Exception:
+                    pass
 
             except Exception as e:
                 # Redis nicht verfuegbar - continue without cache
@@ -230,12 +253,22 @@ def redis_cache(
 
             # Ergebnis cachen
             try:
+                import time as time_module
                 from app.core.redis_state import RedisStateManager
                 redis_manager = RedisStateManager.get_instance()
                 await redis_manager._ensure_connection()
 
                 serialized = _serialize_value(result)
+                write_start = time_module.perf_counter()
                 await redis_manager._redis.setex(cache_key, ttl, serialized)
+                write_latency = time_module.perf_counter() - write_start
+
+                # Record write latency
+                try:
+                    from app.core.business_metrics import record_api_cache_latency
+                    record_api_cache_latency("write", write_latency)
+                except Exception:
+                    pass
 
                 logger.debug(
                     "cache_set",
@@ -293,17 +326,65 @@ async def invalidate_cache(pattern: str) -> int:
         return 0
 
 
-async def invalidate_user_cache(user_id: str) -> int:
+async def invalidate_user_cache(user_id: str, cascade: bool = True) -> dict:
     """
-    Invalidiere alle Cache-Eintraege eines Users.
+    Invalidiere alle Cache-Eintraege eines Users mit optionaler Cascade.
+
+    Mit cascade=True werden auch abhaengige Caches invalidiert:
+    - User-spezifische Caches (user:{user_id})
+    - User's Dokument-Caches (owner_id)
+    - Search/Facets Caches (koennten User-Daten enthalten)
+    - Stats Caches (User-spezifische Statistiken)
 
     Args:
         user_id: User ID
+        cascade: Ob abhaengige Caches auch invalidiert werden (default: True)
 
     Returns:
-        Anzahl geloeschter Keys
+        Dict mit Anzahl geloeschter Keys pro Kategorie
     """
-    return await invalidate_cache(f"cache:*:user:{user_id}:*")
+    result = {
+        "user": 0,
+        "documents": 0,
+        "search": 0,
+        "facets": 0,
+        "stats": 0,
+        "total": 0
+    }
+
+    # User-spezifische Cache-Eintraege
+    user_patterns = [
+        f"cache:*:user:{user_id}:*",
+        f"cache:user:{user_id}:*",
+        f"*:owner_id:{user_id}:*",
+    ]
+
+    for pattern in user_patterns:
+        result["user"] += await invalidate_cache(pattern)
+
+    if cascade:
+        # User's Dokument-Caches (besitzte Dokumente)
+        result["documents"] += await invalidate_cache(f"cache:doc:*:owner:{user_id}:*")
+
+        # Search-Caches (koennten User-spezifische Ergebnisse enthalten)
+        result["search"] += await invalidate_cache(f"cache:search:*:user:{user_id}:*")
+
+        # Facets-Caches (User-spezifische Facetten)
+        result["facets"] += await invalidate_cache(f"cache:facets:*:user:{user_id}:*")
+
+        # Stats-Caches (User-spezifische Statistiken)
+        result["stats"] += await invalidate_cache(f"cache:stats:*:user:{user_id}:*")
+        result["stats"] += await invalidate_cache(f"cache:stats:*:owner:{user_id}:*")
+
+        logger.info(
+            "user_cache_cascade_invalidation",
+            user_id=user_id,
+            deleted=result
+        )
+
+    result["total"] = sum(v for k, v in result.items() if k != "total")
+
+    return result
 
 
 async def invalidate_document_cache(document_id: str, cascade: bool = True) -> dict:

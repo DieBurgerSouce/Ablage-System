@@ -213,6 +213,34 @@ async def lifespan(app: FastAPI):
     german_validator = GermanValidator()
     ocr_service = OCRService()
 
+    # Initialize OpenTelemetry Tracing
+    try:
+        from app.core.telemetry import init_telemetry, set_system_info
+        otlp_endpoint = getattr(settings, "OTLP_ENDPOINT", None) or os.getenv("OTLP_ENDPOINT")
+        init_telemetry(
+            service_name="ablage-system-ocr",
+            otlp_endpoint=otlp_endpoint
+        )
+        set_system_info(
+            version=getattr(settings, "APP_VERSION", "1.0.0"),
+            environment=os.getenv("ENVIRONMENT", "development")
+        )
+        logger.info(
+            "telemetry_initialized",
+            otlp_enabled=otlp_endpoint is not None
+        )
+    except Exception as e:
+        logger.warning("telemetry_init_failed", error=str(e))
+
+    # Initialize Database Query Metrics
+    try:
+        from app.api.dependencies import engine
+        from app.middleware.db_metrics import setup_db_metrics
+        setup_db_metrics(engine)
+        logger.info("db_query_metrics_initialized")
+    except Exception as e:
+        logger.warning("db_query_metrics_init_failed", error=str(e))
+
     # P0: Initialize GPU Memory Guard with proactive monitoring
     # Prevents 80% of OOM errors through proactive cache cleanup
     memory_guard = get_memory_guard()
@@ -229,6 +257,11 @@ async def lifespan(app: FastAPI):
     # Initialize rate limiting Redis storage
     if settings.RATE_LIMIT_ENABLED:
         redis_storage = await get_redis_storage()
+        # FIX P0.5: Store redis_storage in app.state for middleware late binding
+        # The RateLimitMiddleware is created before lifespan runs, so it can't
+        # receive redis_storage at construction time. This enables the middleware
+        # to access redis_storage via app.state.redis_storage property fallback.
+        app.state.redis_storage = redis_storage
         logger.info("rate_limiting_enabled", redis_available=redis_storage.is_available if redis_storage else False)
 
     logger.info("available_ocr_backends", backends=ocr_service.backend_manager.get_available_backends())

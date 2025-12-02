@@ -1688,3 +1688,481 @@ async def complete_health(
     _set_cached_result(cache_key, result)
 
     return result
+
+
+# =============================================================================
+# System Information Endpoints
+# =============================================================================
+
+
+class SystemInfoResponse(BaseModel):
+    """System-Informationen."""
+
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    uptime_seconds: float = Field(..., description="Laufzeit in Sekunden")
+    uptime_human: str = Field(..., description="Laufzeit lesbar")
+    python_version: str = Field(..., description="Python Version")
+    platform_name: str = Field(..., description="Betriebssystem")
+    platform_version: str = Field(..., description="OS Version")
+    architecture: str = Field(..., description="CPU Architektur")
+    hostname: str = Field(..., description="Hostname")
+    cpu_count: int = Field(..., description="CPU Kerne")
+    api_version: str = Field(default="0.2.0-poc", description="API Version")
+    debug_mode: bool = Field(..., description="Debug Modus aktiv")
+    environment: str = Field(..., description="Environment (dev/staging/prod)")
+
+
+def _format_uptime(seconds: float) -> str:
+    """Formatiere Uptime in lesbares Format."""
+    days, remainder = divmod(int(seconds), 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, secs = divmod(remainder, 60)
+
+    parts = []
+    if days > 0:
+        parts.append(f"{days}d")
+    if hours > 0:
+        parts.append(f"{hours}h")
+    if minutes > 0:
+        parts.append(f"{minutes}m")
+    parts.append(f"{secs}s")
+
+    return " ".join(parts)
+
+
+@router.get(
+    "/system",
+    response_model=SystemInfoResponse,
+    summary="System-Informationen",
+    description="Zeigt Systeminformationen wie Uptime, Versionen und Konfiguration.",
+)
+async def system_info() -> SystemInfoResponse:
+    """
+    System-Informationen Endpoint.
+
+    Zeigt:
+    - Uptime seit Start
+    - Python und Betriebssystem Version
+    - Hardware-Informationen
+    - Konfiguration
+    """
+    import os
+
+    uptime = time.time() - _startup_time
+    env = getattr(settings, 'ENVIRONMENT', None) or "development"
+
+    return SystemInfoResponse(
+        zeitstempel=datetime.now(timezone.utc).isoformat(),
+        uptime_seconds=round(uptime, 2),
+        uptime_human=_format_uptime(uptime),
+        python_version=sys.version.split()[0],
+        platform_name=platform.system(),
+        platform_version=platform.release(),
+        architecture=platform.machine(),
+        hostname=platform.node(),
+        cpu_count=os.cpu_count() or 1,
+        api_version="0.2.0-poc",
+        debug_mode=settings.DEBUG,
+        environment=env,
+    )
+
+
+# =============================================================================
+# Cache Statistics Endpoints
+# =============================================================================
+
+
+class CacheStatsResponse(BaseModel):
+    """Cache-Statistiken."""
+
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    redis_verfuegbar: bool = Field(..., description="Redis erreichbar")
+    health_cache: Dict[str, Any] = Field(..., description="Health Check Cache Stats")
+    ocr_cache: Optional[Dict[str, Any]] = Field(None, description="OCR Cache Stats")
+    session_cache: Optional[Dict[str, Any]] = Field(None, description="Session Cache Stats")
+    redis_info: Optional[Dict[str, Any]] = Field(None, description="Redis Server Info")
+
+
+@router.get(
+    "/cache",
+    response_model=CacheStatsResponse,
+    summary="Cache-Statistiken",
+    description="Zeigt Cache-Statistiken fuer Health Checks, OCR und Sessions.",
+)
+async def cache_stats() -> CacheStatsResponse:
+    """
+    Cache-Statistiken Endpoint.
+
+    Zeigt:
+    - Health Check Cache Nutzung
+    - OCR Cache Statistiken
+    - Redis Server Informationen
+    """
+    # Health check cache stats
+    health_cache_stats: Dict[str, Any] = {
+        "cachetools_available": CACHETOOLS_AVAILABLE,
+        "maxsize": HEALTH_CHECK_CACHE_MAXSIZE,
+        "ttl_seconds": HEALTH_CHECK_CACHE_TTL,
+    }
+
+    if CACHETOOLS_AVAILABLE:
+        with _health_cache_lock:
+            health_cache_stats["current_size"] = len(_health_cache)
+            health_cache_stats["cached_keys"] = list(_health_cache.keys())
+
+    # OCR Cache stats
+    ocr_cache_stats = None
+    try:
+        from app.services.ocr_cache_service import get_ocr_cache_service
+
+        cache_service = get_ocr_cache_service()
+        ocr_cache_stats = await cache_service.get_stats()
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.warning("cache_stats_ocr_failed", error=str(e))
+        ocr_cache_stats = {"error": str(e)[:100]}
+
+    # Redis info
+    redis_verfuegbar = False
+    redis_info = None
+
+    try:
+        import redis.asyncio as aioredis
+
+        client = aioredis.from_url(
+            f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}",
+            decode_responses=True,
+        )
+
+        # Basic Redis info
+        info = await client.info(section="memory")
+        redis_verfuegbar = True
+
+        redis_info = {
+            "used_memory_human": info.get("used_memory_human", "unknown"),
+            "used_memory_peak_human": info.get("used_memory_peak_human", "unknown"),
+            "maxmemory_human": info.get("maxmemory_human", "unlimited"),
+            "connected_clients": (await client.info(section="clients")).get("connected_clients", 0),
+        }
+
+        # Get key count by pattern
+        try:
+            db_info = await client.info(section="keyspace")
+            if "db0" in db_info:
+                redis_info["total_keys"] = db_info["db0"].get("keys", 0)
+        except Exception:
+            pass
+
+        await client.close()
+
+    except ImportError:
+        redis_info = {"error": "Redis Client nicht installiert"}
+    except Exception as e:
+        logger.warning("cache_stats_redis_failed", error=str(e))
+        redis_info = {"error": str(e)[:100]}
+
+    # Session cache stats
+    session_cache_stats = None
+    try:
+        from app.core.session_store import get_session_stats
+
+        session_cache_stats = get_session_stats()
+    except ImportError:
+        pass
+    except Exception:
+        pass
+
+    return CacheStatsResponse(
+        zeitstempel=datetime.now(timezone.utc).isoformat(),
+        redis_verfuegbar=redis_verfuegbar,
+        health_cache=health_cache_stats,
+        ocr_cache=ocr_cache_stats,
+        session_cache=session_cache_stats,
+        redis_info=redis_info,
+    )
+
+
+# =============================================================================
+# Model Preloader Status Endpoint
+# =============================================================================
+
+
+class ModelPreloaderResponse(BaseModel):
+    """Model Preloader Status."""
+
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    enabled: bool = Field(..., description="Preloading aktiviert")
+    preload_started: bool = Field(..., description="Preloading gestartet")
+    preload_completed: bool = Field(..., description="Preloading abgeschlossen")
+    models: Dict[str, str] = Field(..., description="Model Status (model -> status)")
+    summary: Dict[str, int] = Field(..., description="Zusammenfassung")
+    load_times: Optional[Dict[str, float]] = Field(None, description="Ladezeiten in Sekunden")
+    errors: Optional[Dict[str, str]] = Field(None, description="Fehler pro Model")
+
+
+@router.get(
+    "/models",
+    response_model=ModelPreloaderResponse,
+    summary="Model Preloader Status",
+    description="Zeigt Status aller vorgeladenen OCR-Modelle.",
+)
+async def model_preloader_status() -> ModelPreloaderResponse:
+    """
+    Model Preloader Status Endpoint.
+
+    Zeigt:
+    - Welche Modelle vorgeladen werden
+    - Status jedes Modells (pending, loading, loaded, failed, skipped)
+    - Ladezeiten
+    - Fehler falls aufgetreten
+    """
+    try:
+        from app.services.model_preloader import get_model_preloader
+
+        preloader = get_model_preloader()
+        status_data = preloader.get_status()
+
+        return ModelPreloaderResponse(
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            enabled=status_data.get("enabled", False),
+            preload_started=status_data.get("preload_started", False),
+            preload_completed=status_data.get("preload_completed", False),
+            models=status_data.get("models", {}),
+            summary=status_data.get("summary", {"total": 0, "loaded": 0, "failed": 0, "skipped": 0}),
+            load_times=status_data.get("load_times"),
+            errors=status_data.get("errors"),
+        )
+
+    except ImportError:
+        return ModelPreloaderResponse(
+            zeitstempel=datetime.now(timezone.utc).isoformat(),
+            enabled=False,
+            preload_started=False,
+            preload_completed=False,
+            models={},
+            summary={"total": 0, "loaded": 0, "failed": 0, "skipped": 0},
+            load_times=None,
+            errors={"_": "Model Preloader nicht verfuegbar"},
+        )
+
+
+# =============================================================================
+# Parallel Health Check Helper
+# =============================================================================
+
+
+async def _run_parallel_health_checks(
+    db: AsyncSession,
+) -> Dict[str, KomponentenStatus]:
+    """
+    Fuehre alle Basis-Health-Checks parallel aus.
+
+    Verbessert die Response-Zeit erheblich bei mehreren Checks.
+    """
+    # Define all check coroutines
+    async def check_db() -> tuple[str, KomponentenStatus]:
+        return "datenbank", await _check_database(db)
+
+    async def check_redis_wrap() -> tuple[str, KomponentenStatus]:
+        return "cache", await _check_redis()
+
+    async def check_minio_wrap() -> tuple[str, KomponentenStatus]:
+        return "objektspeicher", await _check_minio()
+
+    def check_gpu_sync() -> tuple[str, KomponentenStatus]:
+        return "gpu", _check_gpu()
+
+    def check_disk_sync() -> tuple[str, KomponentenStatus]:
+        return "speicherplatz", _check_disk_space()
+
+    # Run async checks in parallel
+    async_results = await asyncio.gather(
+        check_db(),
+        check_redis_wrap(),
+        check_minio_wrap(),
+        return_exceptions=True,
+    )
+
+    # Run sync checks (GPU, disk)
+    sync_results = [check_gpu_sync(), check_disk_sync()]
+
+    # Combine results
+    komponenten: Dict[str, KomponentenStatus] = {}
+
+    for result in list(async_results) + sync_results:
+        if isinstance(result, Exception):
+            logger.error("parallel_health_check_error", error=str(result))
+            continue
+        if isinstance(result, tuple) and len(result) == 2:
+            name, status = result
+            komponenten[name] = status
+
+    return komponenten
+
+
+@router.get(
+    "/detailed/fast",
+    response_model=DetailedHealthResponse,
+    summary="Schnelle detaillierte Gesundheitspruefung",
+    description="Fuehrt alle Health-Checks parallel aus fuer schnellere Antwortzeit.",
+)
+async def detailed_health_fast(
+    db: AsyncSession = Depends(get_db),
+) -> DetailedHealthResponse:
+    """
+    Detaillierte Gesundheitspruefung mit paralleler Ausfuehrung.
+
+    Gleiche Pruefungen wie /detailed, aber alle Checks laufen parallel
+    fuer bessere Performance bei hoher Last.
+    """
+    # Check cache first
+    cache_key = "detailed_health_fast"
+    cached = _get_cached_result(cache_key)
+    if cached is not None:
+        logger.debug("health_check_cache_hit", endpoint="detailed_fast")
+        return cached
+
+    # Run all checks in parallel
+    komponenten = await _run_parallel_health_checks(db)
+
+    # Bestimme Gesamtstatus
+    kritisch = [k for k, v in komponenten.items() if not v.gesund and k in ["datenbank"]]
+    beeintraechtigt = [k for k, v in komponenten.items() if not v.gesund and k not in ["datenbank"]]
+
+    if kritisch:
+        status = "kritisch"
+        zusammenfassung = f"Kritische Fehler: {', '.join(kritisch)}"
+    elif beeintraechtigt:
+        status = "beeintraechtigt"
+        zusammenfassung = f"Beeintraechtigte Komponenten: {', '.join(beeintraechtigt)}"
+    else:
+        status = "gesund"
+        zusammenfassung = "Alle Komponenten funktionieren ordnungsgemaess"
+
+    logger.info(
+        "health_check_fast_complete",
+        status=status,
+        komponenten={k: v.gesund for k, v in komponenten.items()},
+    )
+
+    result = DetailedHealthResponse(
+        status=status,
+        zeitstempel=datetime.now(timezone.utc).isoformat(),
+        version="0.2.0-poc",
+        komponenten=komponenten,
+        zusammenfassung=zusammenfassung,
+    )
+
+    # Cache the result
+    _set_cached_result(cache_key, result)
+
+    return result
+
+
+# =============================================================================
+# Degradation Status Endpoint
+# =============================================================================
+
+
+class DegradationStatusResponse(BaseModel):
+    """Degradation Status - zeigt ob System im eingeschraenkten Modus laeuft."""
+
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    degraded: bool = Field(..., description="System laeuft eingeschraenkt")
+    degradation_reasons: List[str] = Field(..., description="Gruende fuer Einschraenkung")
+    available_features: Dict[str, bool] = Field(..., description="Verfuegbare Features")
+    unavailable_features: List[str] = Field(..., description="Nicht verfuegbare Features")
+    recovery_actions: List[str] = Field(..., description="Empfohlene Recovery-Aktionen")
+
+
+@router.get(
+    "/degradation",
+    response_model=DegradationStatusResponse,
+    summary="Degradation Status",
+    description="Zeigt ob und warum das System im eingeschraenkten Modus laeuft.",
+)
+async def degradation_status(
+    db: AsyncSession = Depends(get_db),
+) -> DegradationStatusResponse:
+    """
+    Prueft ob das System im Degradation Mode laeuft.
+
+    Nuetzlich fuer:
+    - Feature-Flags basierend auf Systemzustand
+    - Automatische Fallback-Aktivierung
+    - User-Benachrichtigungen
+    """
+    degradation_reasons: List[str] = []
+    unavailable_features: List[str] = []
+    recovery_actions: List[str] = []
+
+    available_features = {
+        "ocr_gpu": True,
+        "ocr_cpu": True,
+        "document_upload": True,
+        "document_search": True,
+        "user_auth": True,
+        "batch_processing": True,
+        "real_time_processing": True,
+    }
+
+    # Check GPU
+    gpu_status = _check_gpu()
+    if not gpu_status.gesund:
+        available_features["ocr_gpu"] = False
+        unavailable_features.append("GPU-basierte OCR")
+        degradation_reasons.append("GPU nicht verfuegbar oder Speicher kritisch")
+        recovery_actions.append("GPU-Speicher freigeben oder System neustarten")
+
+    # Check Database
+    db_status = await _check_database(db)
+    if not db_status.gesund:
+        available_features["document_upload"] = False
+        available_features["document_search"] = False
+        available_features["user_auth"] = False
+        unavailable_features.extend(["Dokumenten-Upload", "Suche", "Authentifizierung"])
+        degradation_reasons.append("Datenbank nicht erreichbar")
+        recovery_actions.append("Datenbank-Verbindung pruefen")
+
+    # Check Redis
+    redis_status = await _check_redis()
+    if not redis_status.gesund:
+        available_features["batch_processing"] = False
+        available_features["real_time_processing"] = False
+        unavailable_features.extend(["Batch-Verarbeitung", "Echtzeit-Verarbeitung"])
+        degradation_reasons.append("Redis/Task-Queue nicht erreichbar")
+        recovery_actions.append("Redis-Server pruefen und ggf. neustarten")
+
+    # Check Circuit Breakers
+    try:
+        from app.services.circuit_breaker import get_circuit_breaker_registry
+
+        registry = get_circuit_breaker_registry()
+        all_status = registry.get_all_status()
+        open_circuits = [k for k, v in all_status.items() if v.get("state") == "open"]
+
+        if open_circuits:
+            degradation_reasons.append(f"Circuit Breaker offen: {', '.join(open_circuits)}")
+            recovery_actions.append("Warten auf Circuit Breaker Recovery (automatisch)")
+    except ImportError:
+        pass
+
+    # Check Disk Space
+    disk_status = _check_disk_space()
+    if not disk_status.gesund:
+        available_features["document_upload"] = False
+        unavailable_features.append("Dokumenten-Upload (Speicherplatz)")
+        degradation_reasons.append("Speicherplatz kritisch")
+        recovery_actions.append("Speicherplatz freigeben")
+
+    degraded = len(degradation_reasons) > 0
+
+    return DegradationStatusResponse(
+        zeitstempel=datetime.now(timezone.utc).isoformat(),
+        degraded=degraded,
+        degradation_reasons=degradation_reasons,
+        available_features=available_features,
+        unavailable_features=unavailable_features,
+        recovery_actions=recovery_actions,
+    )

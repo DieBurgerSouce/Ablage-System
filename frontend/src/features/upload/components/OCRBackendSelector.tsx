@@ -44,7 +44,7 @@ const backends = [
     }
 ];
 
-const MotionButton = motion.button as any;
+const MotionButton = motion.button;
 
 export function OCRBackendSelector({ selectedId, onSelect, gpuAvailable }: OCRBackendSelectorProps) {
     return (

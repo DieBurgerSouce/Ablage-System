@@ -12,7 +12,7 @@ interface DocumentCardProps {
     onSelect: (checked: boolean) => void;
 }
 
-const MotionDiv = motion.div as any;
+const MotionDiv = motion.div;
 
 const cardVariants = {
     idle: {

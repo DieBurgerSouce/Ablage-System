@@ -1563,3 +1563,313 @@ class DocumentAccess(Base):
     def can_manage(self) -> bool:
         """Hat Manage-Berechtigung (Vollzugriff)."""
         return not self.is_expired and self.access_level == AccessLevel.MANAGE.value
+
+
+# =============================================================================
+# BACKUP & SYSTEM MODELS
+# =============================================================================
+
+class BackupType(str, Enum):
+    """Backup-Typen."""
+    FULL = "full"
+    INCREMENTAL = "incremental"
+    POSTGRES = "postgres"
+    REDIS = "redis"
+    MINIO = "minio"
+    CONFIG = "config"
+
+
+class BackupStatus(str, Enum):
+    """Backup-Status."""
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    EXPIRED = "expired"
+
+
+class BackupRecord(Base):
+    """
+    Backup-Verlauf und -Tracking.
+
+    Speichert Informationen ueber durchgefuehrte Backups:
+    - Zeitpunkt und Dauer
+    - Typ (Full, Incremental, Component)
+    - Groesse und Speicherort
+    - Status und Fehler
+    """
+    __tablename__ = "backup_records"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Backup-Typ
+    backup_type = Column(
+        String(20),
+        nullable=False,
+        default=BackupType.FULL.value
+    )
+
+    # Status
+    status = Column(
+        String(20),
+        nullable=False,
+        default=BackupStatus.PENDING.value
+    )
+
+    # Zeitstempel
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Groesse in Bytes
+    size_bytes = Column(BigInteger, nullable=True)
+
+    # Speicherort (lokal oder remote)
+    storage_path = Column(String(500), nullable=True)
+    remote_path = Column(String(500), nullable=True)
+
+    # Checksumme fuer Integritaet
+    checksum = Column(String(64), nullable=True)
+
+    # Retention bis wann aufbewahren
+    retention_until = Column(DateTime(timezone=True), nullable=True)
+
+    # Fehlerdetails bei Fehlschlag
+    error_message = Column(Text, nullable=True)
+
+    # Metadata (z.B. DB-Version, Tabellen)
+    backup_metadata = Column(JSON, default=dict)
+
+    # Wer hat Backup ausgeloest (NULL = automatisch)
+    triggered_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    triggered_by = relationship("User", backref="triggered_backups")
+
+    __table_args__ = (
+        Index("ix_backup_records_type_status", "backup_type", "status"),
+        Index("ix_backup_records_started_at", "started_at"),
+        Index("ix_backup_records_retention", "retention_until"),
+    )
+
+    @property
+    def duration_seconds(self) -> Optional[float]:
+        """Berechnet Backup-Dauer in Sekunden."""
+        if self.completed_at and self.started_at:
+            return (self.completed_at - self.started_at).total_seconds()
+        return None
+
+    @property
+    def size_human(self) -> str:
+        """Gibt Groesse in lesbarem Format zurueck."""
+        if not self.size_bytes:
+            return "N/A"
+        for unit in ["B", "KB", "MB", "GB", "TB"]:
+            if abs(self.size_bytes) < 1024.0:
+                return f"{self.size_bytes:.1f} {unit}"
+            self.size_bytes /= 1024.0
+        return f"{self.size_bytes:.1f} PB"
+
+
+class NotificationType(str, Enum):
+    """Benachrichtigungs-Typen."""
+    INFO = "info"
+    SUCCESS = "success"
+    WARNING = "warning"
+    ERROR = "error"
+    OCR_COMPLETE = "ocr_complete"
+    BATCH_COMPLETE = "batch_complete"
+    EXPORT_READY = "export_ready"
+    SHARE_RECEIVED = "share_received"
+    SYSTEM = "system"
+
+
+class Notification(Base):
+    """
+    Benutzer-Benachrichtigungen.
+
+    Speichert In-App und E-Mail Benachrichtigungen:
+    - OCR-Verarbeitung abgeschlossen
+    - Batch-Job fertig
+    - Export bereit zum Download
+    - Dokument wurde geteilt
+    - System-Benachrichtigungen
+    """
+    __tablename__ = "notifications"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Empfaenger
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Typ und Titel
+    notification_type = Column(
+        String(30),
+        nullable=False,
+        default=NotificationType.INFO.value
+    )
+    title = Column(String(200), nullable=False)
+    message = Column(Text, nullable=False)
+
+    # Optionale Referenz (z.B. Dokument-ID)
+    reference_type = Column(String(50), nullable=True)  # "document", "batch_job", etc.
+    reference_id = Column(UUID(as_uuid=True), nullable=True)
+
+    # Status
+    read = Column(Boolean, default=False)
+    read_at = Column(DateTime(timezone=True), nullable=True)
+
+    # E-Mail gesendet?
+    email_sent = Column(Boolean, default=False)
+    email_sent_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Zusaetzliche Daten
+    data = Column(JSON, default=dict)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    user = relationship("User", backref="notifications")
+
+    __table_args__ = (
+        Index("ix_notifications_user_read", "user_id", "read"),
+        Index("ix_notifications_user_created", "user_id", "created_at"),
+        Index("ix_notifications_expires", "expires_at"),
+    )
+
+    @property
+    def is_expired(self) -> bool:
+        """Prueft ob Benachrichtigung abgelaufen ist."""
+        if self.expires_at is None:
+            return False
+        from datetime import datetime, timezone
+        return self.expires_at < datetime.now(timezone.utc)
+
+
+class FeatureFlag(Base):
+    """
+    Feature Flags fuer A/B Testing und Rollouts.
+
+    Ermoeglicht:
+    - Graduelle Feature-Rollouts
+    - A/B Tests mit Benutzergruppen
+    - Kill-Switches fuer kritische Features
+    - Benutzer-spezifische Overrides
+    """
+    __tablename__ = "feature_flags"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Feature-Identifikator (z.B. "new_ocr_pipeline", "dark_mode_v2")
+    key = Column(String(100), nullable=False, unique=True)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Aktivierungsstatus
+    enabled = Column(Boolean, default=False)
+
+    # Rollout-Prozent (0-100)
+    rollout_percentage = Column(Integer, default=0)
+
+    # Zielgruppen (JSON Array von User-Tiers oder User-IDs)
+    target_tiers = Column(JSON, default=list)  # ["premium", "enterprise"]
+    target_users = Column(JSON, default=list)  # Spezifische User-IDs
+
+    # A/B Test Varianten
+    variants = Column(JSON, default=dict)  # {"control": 50, "variant_a": 25, "variant_b": 25}
+
+    # Zeitliche Begrenzung
+    starts_at = Column(DateTime(timezone=True), nullable=True)
+    ends_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Zusaetzliche Konfiguration
+    config = Column(JSON, default=dict)
+
+    # Audit
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    updated_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    updated_by = relationship("User", foreign_keys=[updated_by_id])
+
+    __table_args__ = (
+        Index("ix_feature_flags_key", "key"),
+        Index("ix_feature_flags_enabled", "enabled"),
+    )
+
+    def is_active(self) -> bool:
+        """Prueft ob Feature Flag aktiv ist (zeitlich)."""
+        if not self.enabled:
+            return False
+
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+
+        if self.starts_at and now < self.starts_at:
+            return False
+        if self.ends_at and now > self.ends_at:
+            return False
+
+        return True
+
+    def is_enabled_for_user(self, user_id: str, user_tier: Optional[str] = None) -> bool:
+        """Prueft ob Feature fuer bestimmten Benutzer aktiviert ist."""
+        if not self.is_active():
+            return False
+
+        # Spezifische User-IDs haben Vorrang
+        if self.target_users and user_id in self.target_users:
+            return True
+
+        # Tier-basierte Aktivierung
+        if self.target_tiers and user_tier and user_tier in self.target_tiers:
+            return True
+
+        # Rollout-Prozent (deterministisch basierend auf User-ID Hash)
+        if self.rollout_percentage > 0:
+            import hashlib
+            hash_input = f"{self.key}:{user_id}".encode()
+            hash_value = int(hashlib.md5(hash_input).hexdigest(), 16) % 100
+            return hash_value < self.rollout_percentage
+
+        return False
+
+    def get_variant_for_user(self, user_id: str) -> Optional[str]:
+        """Ermittelt A/B Test Variante fuer Benutzer."""
+        if not self.variants:
+            return None
+
+        import hashlib
+        hash_input = f"{self.key}:variant:{user_id}".encode()
+        hash_value = int(hashlib.md5(hash_input).hexdigest(), 16) % 100
+
+        cumulative = 0
+        for variant_name, percentage in self.variants.items():
+            cumulative += percentage
+            if hash_value < cumulative:
+                return variant_name
+
+        return list(self.variants.keys())[0] if self.variants else None

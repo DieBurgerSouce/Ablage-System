@@ -13,7 +13,7 @@ Feinpoliert und durchdacht - Enterprise-grade Webhooks.
 
 import secrets
 import structlog
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -294,7 +294,7 @@ async def rotate_webhook_secret(
     return WebhookSecretRotateResponse(
         id=webhook.id,
         secret=new_secret,
-        rotated_at=datetime.utcnow()
+        rotated_at=datetime.now(timezone.utc)
     )
 
 
@@ -334,7 +334,7 @@ async def test_webhook(
     payload = {
         "event_id": f"test_{secrets.token_hex(8)}",
         "event_type": test_data.event_type,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "api_version": "v1",
         "test": True,
         "data": {

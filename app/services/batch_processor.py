@@ -369,6 +369,11 @@ class DynamicBatchSizer:
 class BatchProcessor:
     """Optimized batch processing for multiple documents with Dynamic Batch Sizing."""
 
+    # GPU OOM Retry Configuration
+    MAX_OOM_RETRIES = 3  # Maximum OOM retries before giving up
+    OOM_BACKOFF_BASE = 1.0  # Base backoff time in seconds
+    OOM_BACKOFF_MAX = 10.0  # Maximum backoff time in seconds
+
     def __init__(self, backend_manager, max_batch_size: int = 32, use_adaptive: bool = True):
         """
         Initialize batch processor.
@@ -381,6 +386,7 @@ class BatchProcessor:
         self.backend_manager = backend_manager
         self.max_batch_size = max_batch_size
         self._use_adaptive = use_adaptive and ADAPTIVE_BATCH_AVAILABLE
+        self._oom_retry_count = 0  # Track OOM retries
 
         # Initialize adaptive batch processor if available
         self._adaptive_processor = None
@@ -574,8 +580,43 @@ class BatchProcessor:
                     })
 
             except torch.cuda.OutOfMemoryError as e:
-                logger.error("gpu_oom_reducing_batch", chunk_number=i//self.optimal_batch_size + 1, new_batch_size=max(1, self.optimal_batch_size // 2), error_type="OutOfMemoryError")
-                # Reduce batch size and retry
+                self._oom_retry_count += 1
+
+                # Check retry limit
+                if self._oom_retry_count > self.MAX_OOM_RETRIES:
+                    logger.error(
+                        "gpu_oom_max_retries_exceeded",
+                        chunk_number=i//self.optimal_batch_size + 1,
+                        retries=self._oom_retry_count,
+                        error_type="OutOfMemoryError"
+                    )
+                    # Add all remaining as errors
+                    for file_path in chunk:
+                        errors.append({"file": file_path, "error": f"GPU OOM after {self.MAX_OOM_RETRIES} retries"})
+                    continue
+
+                # Calculate exponential backoff
+                backoff_time = min(
+                    self.OOM_BACKOFF_BASE * (2 ** (self._oom_retry_count - 1)),
+                    self.OOM_BACKOFF_MAX
+                )
+
+                logger.warning(
+                    "gpu_oom_reducing_batch",
+                    chunk_number=i//self.optimal_batch_size + 1,
+                    new_batch_size=max(1, self.optimal_batch_size // 2),
+                    retry_count=self._oom_retry_count,
+                    backoff_seconds=backoff_time,
+                    error_type="OutOfMemoryError"
+                )
+
+                # Clear GPU cache and wait with backoff
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
+                await asyncio.sleep(backoff_time)
+
+                # Reduce batch size
                 self.optimal_batch_size = max(1, self.optimal_batch_size // 2)
 
                 # Process chunk serially as fallback
@@ -583,12 +624,33 @@ class BatchProcessor:
                     try:
                         result = await self._process_single(file_path, backend, language, **kwargs)
                         results.append(result)
-                    except Exception as e:
-                        logger.error("single_file_processing_failed", file_path=file_path, error=str(e))
-                        errors.append({"file": file_path, "error": str(e)})
+                    except torch.cuda.OutOfMemoryError as oom_e:
+                        logger.error("single_file_oom", file_path=file_path, error=str(oom_e))
+                        errors.append({"file": file_path, "error": f"GPU OOM: {oom_e}"})
+                    except (ValueError, IOError, RuntimeError) as proc_e:
+                        logger.error("single_file_processing_failed", file_path=file_path, error_type=type(proc_e).__name__, error=str(proc_e))
+                        errors.append({"file": file_path, "error": str(proc_e)})
+                    except Exception as unexpected_e:
+                        logger.error("single_file_unexpected_error", file_path=file_path, error_type=type(unexpected_e).__name__, error=str(unexpected_e))
+                        errors.append({"file": file_path, "error": str(unexpected_e)})
+
+            except asyncio.TimeoutError as timeout_e:
+                logger.error("chunk_processing_timeout", chunk_number=i//self.optimal_batch_size + 1, error=str(timeout_e))
+                for file_path in chunk:
+                    errors.append({"file": file_path, "error": f"Timeout: {timeout_e}"})
+
+            except (ValueError, IOError, RuntimeError) as proc_e:
+                logger.error("chunk_processing_failed", error_type=type(proc_e).__name__, error=str(proc_e))
+                # Process remaining documents individually
+                for file_path in chunk:
+                    try:
+                        result = await self._process_single(file_path, backend, language, **kwargs)
+                        results.append(result)
+                    except Exception as e2:
+                        errors.append({"file": file_path, "error": str(e2)})
 
             except Exception as e:
-                logger.error("chunk_processing_failed", error=str(e))
+                logger.error("chunk_processing_unexpected_error", error_type=type(e).__name__, error=str(e))
                 # Process remaining documents individually
                 for file_path in chunk:
                     try:

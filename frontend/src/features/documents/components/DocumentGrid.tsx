@@ -33,7 +33,7 @@ interface DocumentGridProps {
     onDocumentClick: (id: string) => void;
 }
 
-const MotionDiv = motion.div as any;
+const MotionDiv = motion.div;
 
 export function DocumentGrid({ documents, viewMode, selectedIds, onSelect, onDocumentClick }: DocumentGridProps) {
     const parentRef = useRef<HTMLDivElement>(null);

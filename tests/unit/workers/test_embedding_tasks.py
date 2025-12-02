@@ -83,67 +83,56 @@ class TestGenerateDocumentEmbedding:
 
     def test_embedding_generated_successfully(self, mock_celery_task, sample_document, mock_embedding_service):
         """Embedding sollte erfolgreich generiert werden."""
-        with patch('app.workers.tasks.embedding_tasks.get_embedding_service') as mock_get:
-            mock_get.return_value = mock_embedding_service
+        # Patch run_async_task to skip actual async processing
+        with patch('app.workers.tasks.embedding_tasks.run_async_task') as mock_run:
+            mock_run.return_value = {
+                "success": True,
+                "document_id": str(sample_document.id),
+                "embedding_dimension": 1024,
+            }
 
-            with patch('app.workers.tasks.embedding_tasks.async_session_maker') as mock_session:
-                mock_session_instance = AsyncMock()
-                mock_result = Mock()
-                mock_result.scalar_one_or_none.return_value = sample_document
-                mock_session_instance.execute.return_value = mock_result
-                mock_session.return_value.__aenter__.return_value = mock_session_instance
-
-                with patch('app.workers.tasks.embedding_tasks.run_async_task') as mock_run:
-                    mock_run.return_value = {
-                        "success": True,
-                        "document_id": str(sample_document.id),
-                        "embedding_dimension": 1024,
-                    }
-
-                    from app.workers.tasks.embedding_tasks import generate_document_embedding
-
-                    result = generate_document_embedding(mock_celery_task, str(sample_document.id))
-
-                    assert result["success"] is True
-                    assert result["embedding_dimension"] == 1024
-
-    def test_embedding_skipped_if_exists(self, mock_celery_task, sample_document_with_embedding):
-        """Existierendes Embedding sollte uebersprungen werden."""
-        with patch('app.workers.tasks.embedding_tasks.get_embedding_service'):
-            with patch('app.workers.tasks.embedding_tasks.run_async_task') as mock_run:
-                mock_run.return_value = {
-                    "success": True,
-                    "document_id": str(sample_document_with_embedding.id),
-                    "skipped": True,
-                    "message": "Embedding existiert bereits",
-                }
+            with patch('app.workers.tasks.embedding_tasks.get_embedding_service') as mock_get:
+                mock_get.return_value = mock_embedding_service
 
                 from app.workers.tasks.embedding_tasks import generate_document_embedding
 
-                result = generate_document_embedding(
-                    mock_celery_task,
-                    str(sample_document_with_embedding.id),
-                    force_regenerate=False
-                )
+                result = generate_document_embedding.run(str(sample_document.id))
+
+                assert result["success"] is True
+                assert result["embedding_dimension"] == 1024
+
+    def test_embedding_skipped_if_exists(self, mock_celery_task, sample_document_with_embedding):
+        """Existierendes Embedding sollte uebersprungen werden."""
+        with patch('app.workers.tasks.embedding_tasks.run_async_task') as mock_run:
+            mock_run.return_value = {
+                "success": True,
+                "document_id": str(sample_document_with_embedding.id),
+                "skipped": True,
+                "message": "Embedding existiert bereits",
+            }
+
+            with patch('app.workers.tasks.embedding_tasks.get_embedding_service'):
+                from app.workers.tasks.embedding_tasks import generate_document_embedding
+
+                result = generate_document_embedding.run(str(sample_document_with_embedding.id))
 
                 assert result["skipped"] is True
 
     def test_embedding_regenerated_when_forced(self, mock_celery_task, sample_document_with_embedding, mock_embedding_service):
         """Force-Regenerate sollte Embedding neu erstellen."""
-        with patch('app.workers.tasks.embedding_tasks.get_embedding_service') as mock_get:
-            mock_get.return_value = mock_embedding_service
+        with patch('app.workers.tasks.embedding_tasks.run_async_task') as mock_run:
+            mock_run.return_value = {
+                "success": True,
+                "document_id": str(sample_document_with_embedding.id),
+                "embedding_dimension": 1024,
+            }
 
-            with patch('app.workers.tasks.embedding_tasks.run_async_task') as mock_run:
-                mock_run.return_value = {
-                    "success": True,
-                    "document_id": str(sample_document_with_embedding.id),
-                    "embedding_dimension": 1024,
-                }
+            with patch('app.workers.tasks.embedding_tasks.get_embedding_service') as mock_get:
+                mock_get.return_value = mock_embedding_service
 
                 from app.workers.tasks.embedding_tasks import generate_document_embedding
 
-                result = generate_document_embedding(
-                    mock_celery_task,
+                result = generate_document_embedding.run(
                     str(sample_document_with_embedding.id),
                     force_regenerate=True
                 )
@@ -153,14 +142,14 @@ class TestGenerateDocumentEmbedding:
 
     def test_embedding_error_on_missing_document(self, mock_celery_task):
         """Fehler bei nicht existierendem Dokument."""
-        with patch('app.workers.tasks.embedding_tasks.get_embedding_service'):
-            with patch('app.workers.tasks.embedding_tasks.run_async_task') as mock_run:
-                mock_run.side_effect = ValueError("Dokument nicht gefunden")
+        with patch('app.workers.tasks.embedding_tasks.run_async_task') as mock_run:
+            mock_run.side_effect = ValueError("Dokument nicht gefunden")
 
+            with patch('app.workers.tasks.embedding_tasks.get_embedding_service'):
                 from app.workers.tasks.embedding_tasks import generate_document_embedding
 
                 with pytest.raises(ValueError) as exc_info:
-                    generate_document_embedding(mock_celery_task, str(uuid4()))
+                    generate_document_embedding.run(str(uuid4()))
 
                 assert "nicht gefunden" in str(exc_info.value)
 
@@ -168,14 +157,14 @@ class TestGenerateDocumentEmbedding:
         """Fehler bei Dokument ohne Text."""
         sample_document.extracted_text = None
 
-        with patch('app.workers.tasks.embedding_tasks.get_embedding_service'):
-            with patch('app.workers.tasks.embedding_tasks.run_async_task') as mock_run:
-                mock_run.side_effect = ValueError("keinen extrahierten Text")
+        with patch('app.workers.tasks.embedding_tasks.run_async_task') as mock_run:
+            mock_run.side_effect = ValueError("keinen extrahierten Text")
 
+            with patch('app.workers.tasks.embedding_tasks.get_embedding_service'):
                 from app.workers.tasks.embedding_tasks import generate_document_embedding
 
                 with pytest.raises(ValueError) as exc_info:
-                    generate_document_embedding(mock_celery_task, str(sample_document.id))
+                    generate_document_embedding.run(str(sample_document.id))
 
                 assert "Text" in str(exc_info.value)
 
@@ -204,7 +193,7 @@ class TestBatchGenerateEmbeddings:
 
                 from app.workers.tasks.embedding_tasks import batch_generate_embeddings
 
-                result = batch_generate_embeddings(mock_celery_task, doc_ids)
+                result = batch_generate_embeddings.run(doc_ids)
 
                 assert result["total_documents"] == 5
                 assert result["successful"] == 5
@@ -232,7 +221,7 @@ class TestBatchGenerateEmbeddings:
 
                 from app.workers.tasks.embedding_tasks import batch_generate_embeddings
 
-                result = batch_generate_embeddings(mock_celery_task, doc_ids)
+                result = batch_generate_embeddings.run(doc_ids)
 
                 assert result["failed"] == 1
                 assert result["successful"] == 2
@@ -255,7 +244,7 @@ class TestBatchGenerateEmbeddings:
 
                 from app.workers.tasks.embedding_tasks import batch_generate_embeddings
 
-                result = batch_generate_embeddings(mock_celery_task, doc_ids, force_regenerate=False)
+                result = batch_generate_embeddings.run(doc_ids, force_regenerate=False)
 
                 assert result["skipped"] == 2
 
@@ -277,7 +266,7 @@ class TestRegenerateAllEmbeddings:
 
             from app.workers.tasks.embedding_tasks import regenerate_all_embeddings
 
-            result = regenerate_all_embeddings(mock_celery_task)
+            result = regenerate_all_embeddings.run()
 
             assert result["total_documents"] == 100
 
@@ -293,7 +282,7 @@ class TestRegenerateAllEmbeddings:
 
             from app.workers.tasks.embedding_tasks import regenerate_all_embeddings
 
-            result = regenerate_all_embeddings(mock_celery_task, user_id=user_id)
+            result = regenerate_all_embeddings.run(user_id=user_id)
 
             assert result["total_documents"] == 10
 
@@ -308,7 +297,7 @@ class TestRegenerateAllEmbeddings:
 
             from app.workers.tasks.embedding_tasks import regenerate_all_embeddings
 
-            result = regenerate_all_embeddings(mock_celery_task)
+            result = regenerate_all_embeddings.run()
 
             assert result["total_documents"] == 0
 
@@ -331,7 +320,7 @@ class TestCheckEmbeddingCoverage:
 
             from app.workers.tasks.embedding_tasks import check_embedding_coverage
 
-            result = check_embedding_coverage(mock_celery_task)
+            result = check_embedding_coverage.run()
 
             assert result["total_documents"] == 100
             assert result["with_embedding"] == 80
@@ -351,7 +340,7 @@ class TestCheckEmbeddingCoverage:
 
             from app.workers.tasks.embedding_tasks import check_embedding_coverage
 
-            result = check_embedding_coverage(mock_celery_task)
+            result = check_embedding_coverage.run()
 
             assert len(result["missing_document_ids"]) == 5
 
@@ -368,7 +357,7 @@ class TestCheckEmbeddingCoverage:
 
             from app.workers.tasks.embedding_tasks import check_embedding_coverage
 
-            result = check_embedding_coverage(mock_celery_task, user_id=user_id)
+            result = check_embedding_coverage.run(user_id=user_id)
 
             assert result["total_documents"] == 20
 
@@ -393,7 +382,7 @@ class TestRefreshSearchAnalytics:
 
                 from app.workers.tasks.embedding_tasks import refresh_search_analytics
 
-                result = refresh_search_analytics(mock_celery_task)
+                result = refresh_search_analytics.run()
 
                 assert result["success"] is True
 
@@ -410,7 +399,7 @@ class TestRefreshSearchAnalytics:
 
                 from app.workers.tasks.embedding_tasks import refresh_search_analytics
 
-                result = refresh_search_analytics(mock_celery_task)
+                result = refresh_search_analytics.run()
 
                 assert result["success"] is False
 

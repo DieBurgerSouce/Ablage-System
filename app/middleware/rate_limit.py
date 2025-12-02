@@ -71,10 +71,28 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         Args:
             app: ASGI application
-            redis_storage: Optional Redis storage backend
+            redis_storage: Optional Redis storage backend (can also be set via app.state.redis_storage)
         """
         super().__init__(app)
-        self.redis_storage = redis_storage
+        self._redis_storage = redis_storage
+
+    @property
+    def redis_storage(self) -> Optional[RedisRateLimitStorage]:
+        """
+        Get Redis storage, falling back to app.state.redis_storage if not set directly.
+
+        This property enables late binding of the Redis storage, which is necessary
+        because the middleware is created before the lifespan startup initializes Redis.
+
+        Returns:
+            RedisRateLimitStorage instance or None if unavailable
+        """
+        if self._redis_storage is not None:
+            return self._redis_storage
+        # Fallback to app.state.redis_storage (set during lifespan startup)
+        if hasattr(self.app, 'state') and hasattr(self.app.state, 'redis_storage'):
+            return self.app.state.redis_storage
+        return None
 
     def is_excluded_path(self, path: str) -> bool:
         """

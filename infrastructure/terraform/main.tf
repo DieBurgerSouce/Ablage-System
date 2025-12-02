@@ -20,18 +20,43 @@ terraform {
   }
 
   # Backend configuration for state storage
-  backend "local" {
-    path = "terraform.tfstate"
+  # WICHTIG: Für Remote State mit MinIO (S3-kompatibel):
+  #
+  # 1. Zuerst Bucket erstellen:
+  #    mc mb local/terraform-state
+  #    mc anonymous set none local/terraform-state
+  #
+  # 2. Dann State migrieren:
+  #    terraform init -migrate-state
+  #
+  # Für lokale Entwicklung kann "local" Backend verwendet werden.
+  # Für Production MUSS das S3-Backend (MinIO) aktiviert werden!
+
+  backend "s3" {
+    # MinIO als S3-kompatibler State Store
+    bucket = "terraform-state"
+    key    = "ablage-system/production/terraform.tfstate"
+    region = "us-east-1"  # Dummy-Region für MinIO (wird ignoriert)
+
+    # MinIO Endpoint (aus Environment: TF_VAR_minio_endpoint)
+    # Standard: http://localhost:9000
+    endpoints = {
+      s3 = "http://localhost:9000"
+    }
+
+    # MinIO verwendet keine echten AWS-Credentials
+    skip_credentials_validation = true
+    skip_metadata_api_check     = true
+    skip_region_validation      = true
+    skip_requesting_account_id  = true
+    use_path_style              = true  # Wichtig für MinIO!
+
+    # Encryption at rest
+    encrypt = true
   }
 
-  # For production, use remote backend:
-  # backend "s3" {
-  #   bucket         = "ablage-system-terraform-state"
-  #   key            = "production/terraform.tfstate"
-  #   region         = "eu-central-1"
-  #   encrypt        = true
-  #   dynamodb_table = "terraform-state-lock"
-  # }
+  # Für State Locking ohne DynamoDB verwenden wir Terraform Cloud
+  # oder einen Lock-File im MinIO Bucket (terraform.tfstate.lock.info)
 }
 
 # Provider configuration

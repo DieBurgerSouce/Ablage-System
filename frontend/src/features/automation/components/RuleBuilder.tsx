@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import {
     ReactFlow,
     MiniMap,
@@ -7,21 +8,31 @@ import {
     useNodesState,
     useEdgesState,
     addEdge,
-    Handle,
-    Position,
     type Node,
+    type NodeProps,
     type Edge,
     type Connection,
-    BackgroundVariant
+    BackgroundVariant,
+    Handle,
+    Position
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Zap, GitBranch, Play } from 'lucide-react';
+import { Zap, GitBranch, Play, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { automationService, type AutomationRule } from '@/lib/api/services/automation';
 
-// Custom Node Components
-const TriggerNode = ({ data, selected }: any) => (
+interface RuleNodeData extends Record<string, unknown> {
+    label?: string;
+    config?: {
+        event?: string;
+        field?: string;
+        action?: string;
+    };
+}
+
+const TriggerNode = ({ data, selected }: NodeProps<Node<RuleNodeData>>) => (
     <div className={cn("p-4 rounded-xl border-2 bg-card min-w-[250px] shadow-sm transition-all", selected ? "border-primary ring-2 ring-primary/20" : "border-border")}>
         <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-primary border-2 border-background" />
         <div className="flex items-center gap-3 mb-3">
@@ -46,7 +57,7 @@ const TriggerNode = ({ data, selected }: any) => (
     </div>
 );
 
-const ConditionNode = ({ data, selected }: any) => (
+const ConditionNode = ({ data, selected }: NodeProps<Node<RuleNodeData>>) => (
     <div className={cn("p-4 rounded-xl border-2 bg-card min-w-[250px] shadow-sm transition-all", selected ? "border-primary ring-2 ring-primary/20" : "border-border")}>
         <Handle type="target" position={Position.Top} className="w-3 h-3 bg-muted-foreground border-2 border-background" />
         <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-primary border-2 border-background" />
@@ -90,7 +101,7 @@ const ConditionNode = ({ data, selected }: any) => (
     </div>
 );
 
-const ActionNode = ({ data, selected }: any) => (
+const ActionNode = ({ data, selected }: NodeProps<Node<RuleNodeData>>) => (
     <div className={cn("p-4 rounded-xl border-2 bg-card min-w-[250px] shadow-sm transition-all", selected ? "border-primary ring-2 ring-primary/20" : "border-border")}>
         <Handle type="target" position={Position.Top} className="w-3 h-3 bg-muted-foreground border-2 border-background" />
         <div className="flex items-center gap-3 mb-3">
@@ -136,9 +147,31 @@ export function RuleBuilder() {
     const [nodes, , onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
+    // Fetch existing rules (prefetching for future use)
+    useQuery({
+        queryKey: ['rules'],
+        queryFn: automationService.getAllRules
+    });
+
+    const saveMutation = useMutation({
+        mutationFn: (ruleData: Omit<AutomationRule, 'id' | 'createdAt' | 'updatedAt'>) => automationService.createRule(ruleData),
+        onSuccess: () => {
+            // Success feedback handled by UI
+        }
+    });
+
     const onConnect = useCallback((params: Connection) => {
         setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: 'var(--primary)' } }, eds));
     }, [setEdges]);
+
+    const onSave = () => {
+        saveMutation.mutate({
+            name: 'New Rule',
+            enabled: true,
+            nodes,
+            edges
+        });
+    };
 
     const onDragStart = (event: React.DragEvent, nodeType: string) => {
         event.dataTransfer.setData('application/reactflow', nodeType);
@@ -182,8 +215,12 @@ export function RuleBuilder() {
                 </div>
 
                 <div className="mt-auto">
-                    <Button className="w-full gap-2">
-                        <Play className="w-4 h-4" /> Regel aktivieren
+                    <Button className="w-full gap-2" onClick={onSave} disabled={saveMutation.isPending}>
+                        {saveMutation.isPending ? 'Speichern...' : (
+                            <>
+                                <Save className="w-4 h-4" /> Regel speichern
+                            </>
+                        )}
                     </Button>
                 </div>
             </div>

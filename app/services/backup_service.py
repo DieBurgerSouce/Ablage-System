@@ -20,7 +20,7 @@ import shutil
 import tarfile
 import threading
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -245,7 +245,7 @@ class BackupService:
         Returns:
             Dateiname mit Zeitstempel
         """
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         return f"{backup_type}_{timestamp}{extension}"
 
     # -------------------------------------------------------------------------

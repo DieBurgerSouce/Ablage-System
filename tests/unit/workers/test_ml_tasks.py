@@ -87,11 +87,11 @@ class TestMLTracker:
 
     def test_track_routing_decision(self, sample_features):
         """Sollte Routing-Entscheidung tracken."""
-        with patch('app.workers.tasks.ml_tasks.get_drift_detector') as mock_drift:
+        with patch('app.ml.drift_detector.get_drift_detector') as mock_drift:
             detector = Mock()
             mock_drift.return_value = detector
 
-            with patch('app.workers.tasks.ml_tasks.get_ml_metrics') as mock_metrics:
+            with patch('app.ml.metrics.get_ml_metrics') as mock_metrics:
                 metrics = Mock()
                 mock_metrics.return_value = metrics
 
@@ -111,7 +111,7 @@ class TestMLTracker:
 
     def test_track_routing_handles_errors(self, sample_features):
         """Sollte Fehler beim Tracking abfangen."""
-        with patch('app.workers.tasks.ml_tasks.get_drift_detector') as mock_drift:
+        with patch('app.ml.drift_detector.get_drift_detector') as mock_drift:
             mock_drift.side_effect = Exception("Service unavailable")
 
             from app.workers.tasks.ml_tasks import ml_tracker
@@ -128,11 +128,11 @@ class TestMLTracker:
 
     def test_track_ocr_result(self):
         """Sollte OCR-Ergebnis tracken."""
-        with patch('app.workers.tasks.ml_tasks.get_ml_metrics') as mock_metrics:
+        with patch('app.ml.metrics.get_ml_metrics') as mock_metrics:
             metrics = Mock()
             mock_metrics.return_value = metrics
 
-            with patch('app.workers.tasks.ml_tasks.get_ab_test_manager') as mock_ab:
+            with patch('app.ml.ab_testing.get_ab_test_manager') as mock_ab:
                 ab_manager = Mock()
                 ab_manager.get_active_experiments.return_value = []
                 mock_ab.return_value = ab_manager
@@ -153,7 +153,7 @@ class TestMLTracker:
 
     def test_get_routing_explanation(self, sample_features):
         """Sollte SHAP-Erklaerung generieren."""
-        with patch('app.workers.tasks.ml_tasks.get_shap_explainer') as mock_shap:
+        with patch('app.ml.shap_explainer.get_shap_explainer') as mock_shap:
             explainer = Mock()
             explanation = Mock()
             explanation.to_dict.return_value = {
@@ -184,41 +184,39 @@ class TestRunDriftDetection:
 
     def test_drift_detection_success(self, mock_celery_task, sample_drift_report):
         """Sollte Drift erfolgreich erkennen."""
-        with patch('app.workers.tasks.ml_tasks.get_drift_detector') as mock_get:
+        with patch('app.ml.drift_detector.get_drift_detector') as mock_get:
             detector = Mock()
             detector.detect_drift.return_value = sample_drift_report
             mock_get.return_value = detector
 
-            with patch('app.workers.tasks.ml_tasks.get_ml_metrics') as mock_metrics:
+            with patch('app.ml.metrics.get_ml_metrics') as mock_metrics:
                 metrics = Mock()
                 mock_metrics.return_value = metrics
 
                 from app.workers.tasks.ml_tasks import run_drift_detection
 
-                with patch.object(run_drift_detection, 'request', mock_celery_task.request):
-                    result = run_drift_detection(mock_celery_task)
+                result = run_drift_detection.run()
 
-                    assert result["overall_drift_score"] == 0.35
-                    metrics.record_drift_score.assert_called_once()
+                assert result["overall_drift_score"] == 0.35
+                metrics.record_drift_score.assert_called_once()
 
     def test_drift_detection_records_severity(self, mock_celery_task, sample_drift_report):
         """Sollte Schweregrad aufzeichnen."""
-        with patch('app.workers.tasks.ml_tasks.get_drift_detector') as mock_get:
+        with patch('app.ml.drift_detector.get_drift_detector') as mock_get:
             detector = Mock()
             detector.detect_drift.return_value = sample_drift_report
             mock_get.return_value = detector
 
-            with patch('app.workers.tasks.ml_tasks.get_ml_metrics') as mock_metrics:
+            with patch('app.ml.metrics.get_ml_metrics') as mock_metrics:
                 metrics = Mock()
                 mock_metrics.return_value = metrics
 
                 from app.workers.tasks.ml_tasks import run_drift_detection
 
-                with patch.object(run_drift_detection, 'request', mock_celery_task.request):
-                    run_drift_detection(mock_celery_task)
+                run_drift_detection.run()
 
-                    call_args = metrics.record_drift_score.call_args
-                    assert call_args[1]["severity"] == "low"
+                call_args = metrics.record_drift_score.call_args
+                assert call_args[1]["severity"] == "low"
 
 
 # ========================= update_ml_metrics Tests =========================
@@ -229,16 +227,16 @@ class TestUpdateMLMetrics:
 
     def test_metrics_update_success(self, mock_celery_task):
         """Sollte Metriken erfolgreich aktualisieren."""
-        with patch('app.workers.tasks.ml_tasks.get_ml_metrics') as mock_get_metrics:
+        with patch('app.ml.metrics.get_ml_metrics') as mock_get_metrics:
             metrics = Mock()
             mock_get_metrics.return_value = metrics
 
-            with patch('app.workers.tasks.ml_tasks.get_ab_test_manager') as mock_get_ab:
+            with patch('app.ml.ab_testing.get_ab_test_manager') as mock_get_ab:
                 ab_manager = Mock()
                 ab_manager.get_active_experiments.return_value = []
                 mock_get_ab.return_value = ab_manager
 
-                with patch('app.workers.tasks.ml_tasks.get_drift_detector') as mock_get_drift:
+                with patch('app.ml.drift_detector.get_drift_detector') as mock_get_drift:
                     detector = Mock()
                     detector.get_current_status.return_value = {
                         "ready_for_detection": True,
@@ -249,24 +247,22 @@ class TestUpdateMLMetrics:
 
                     from app.workers.tasks.ml_tasks import update_ml_metrics
 
-                    with patch.object(update_ml_metrics, 'request', mock_celery_task.request):
-                        result = update_ml_metrics(mock_celery_task)
+                    result = update_ml_metrics.run()
 
-                        assert "timestamp" in result
-                        assert result["active_experiments"] == 0
-                        metrics.update_gpu_metrics.assert_called_once()
+                    assert "timestamp" in result
+                    assert result["active_experiments"] == 0
+                    metrics.update_gpu_metrics.assert_called_once()
 
     def test_metrics_update_handles_error(self, mock_celery_task):
         """Sollte Fehler abfangen."""
-        with patch('app.workers.tasks.ml_tasks.get_ml_metrics') as mock_get:
+        with patch('app.ml.metrics.get_ml_metrics') as mock_get:
             mock_get.side_effect = Exception("Metrics error")
 
             from app.workers.tasks.ml_tasks import update_ml_metrics
 
-            with patch.object(update_ml_metrics, 'request', mock_celery_task.request):
-                result = update_ml_metrics(mock_celery_task)
+            result = update_ml_metrics.run()
 
-                assert "error" in result
+            assert "error" in result
 
 
 # ========================= check_experiment_completion Tests =========================
@@ -279,7 +275,7 @@ class TestCheckExperimentCompletion:
         """Sollte abgelaufene Experimente finden."""
         sample_experiment.end_time = datetime.now(timezone.utc) - timedelta(days=1)
 
-        with patch('app.workers.tasks.ml_tasks.get_ab_test_manager') as mock_get:
+        with patch('app.ml.ab_testing.get_ab_test_manager') as mock_get:
             ab_manager = Mock()
             ab_manager.get_active_experiments.return_value = [sample_experiment]
             ab_manager.conclude_experiment.return_value = "deepseek"
@@ -287,17 +283,16 @@ class TestCheckExperimentCompletion:
 
             from app.workers.tasks.ml_tasks import check_experiment_completion
 
-            with patch.object(check_experiment_completion, 'request', mock_celery_task.request):
-                result = check_experiment_completion(mock_celery_task)
+            result = check_experiment_completion.run()
 
-                assert len(result["completed"]) == 1
-                assert result["completed"][0]["winner"] == "deepseek"
+            assert len(result["completed"]) == 1
+            assert result["completed"][0]["winner"] == "deepseek"
 
     def test_check_finds_significant_experiments(self, mock_celery_task, sample_experiment):
         """Sollte signifikante Experimente finden."""
         sample_experiment.significance_reached = True
 
-        with patch('app.workers.tasks.ml_tasks.get_ab_test_manager') as mock_get:
+        with patch('app.ml.ab_testing.get_ab_test_manager') as mock_get:
             ab_manager = Mock()
             ab_manager.get_active_experiments.return_value = [sample_experiment]
             ab_manager.conclude_experiment.return_value = "got_ocr"
@@ -305,15 +300,14 @@ class TestCheckExperimentCompletion:
 
             from app.workers.tasks.ml_tasks import check_experiment_completion
 
-            with patch.object(check_experiment_completion, 'request', mock_celery_task.request):
-                result = check_experiment_completion(mock_celery_task)
+            result = check_experiment_completion.run()
 
-                assert len(result["completed"]) == 1
-                assert "Signifikanz" in result["completed"][0]["reason"]
+            assert len(result["completed"]) == 1
+            assert "Signifikanz" in result["completed"][0]["reason"]
 
     def test_check_no_completed_experiments(self, mock_celery_task, sample_experiment):
         """Sollte keine Experimente abschliessen wenn nicht faellig."""
-        with patch('app.workers.tasks.ml_tasks.get_ab_test_manager') as mock_get:
+        with patch('app.ml.ab_testing.get_ab_test_manager') as mock_get:
             ab_manager = Mock()
             ab_manager.get_active_experiments.return_value = [sample_experiment]
             mock_get.return_value = ab_manager
@@ -337,7 +331,7 @@ class TestTriggerModelRetrain:
         sample_drift_report.overall_drift_score = 0.7
         sample_drift_report.severity.value = "high"
 
-        with patch('app.workers.tasks.ml_tasks.get_drift_detector') as mock_get:
+        with patch('app.ml.drift_detector.get_drift_detector') as mock_get:
             detector = Mock()
             detector.get_drift_history.return_value = [sample_drift_report]
             detector.reset_reference_window = Mock()
@@ -357,7 +351,7 @@ class TestTriggerModelRetrain:
         sample_drift_report.overall_drift_score = 0.2
         sample_drift_report.severity.value = "low"
 
-        with patch('app.workers.tasks.ml_tasks.get_drift_detector') as mock_get:
+        with patch('app.ml.drift_detector.get_drift_detector') as mock_get:
             detector = Mock()
             detector.get_drift_history.return_value = [sample_drift_report]
             mock_get.return_value = detector
@@ -371,7 +365,7 @@ class TestTriggerModelRetrain:
 
     def test_retrain_forced(self, mock_celery_task, sample_drift_report):
         """Sollte Retraining bei force=True triggern."""
-        with patch('app.workers.tasks.ml_tasks.get_drift_detector') as mock_get:
+        with patch('app.ml.drift_detector.get_drift_detector') as mock_get:
             detector = Mock()
             detector.get_drift_history.return_value = [sample_drift_report]
             detector.reset_reference_window = Mock()
@@ -394,19 +388,19 @@ class TestGenerateMLReport:
 
     def test_report_generation_success(self, mock_celery_task, sample_experiment):
         """Sollte Report erfolgreich generieren."""
-        with patch('app.workers.tasks.ml_tasks.get_drift_detector') as mock_drift:
+        with patch('app.ml.drift_detector.get_drift_detector') as mock_drift:
             detector = Mock()
             detector.get_current_status.return_value = {"ready_for_detection": True}
             detector.get_drift_history.return_value = []
             mock_drift.return_value = detector
 
-            with patch('app.workers.tasks.ml_tasks.get_ab_test_manager') as mock_ab:
+            with patch('app.ml.ab_testing.get_ab_test_manager') as mock_ab:
                 ab_manager = Mock()
                 ab_manager.get_active_experiments.return_value = [sample_experiment]
                 ab_manager.list_experiments.return_value = []
                 mock_ab.return_value = ab_manager
 
-                with patch('app.workers.tasks.ml_tasks.get_shap_explainer') as mock_shap:
+                with patch('app.ml.shap_explainer.get_shap_explainer') as mock_shap:
                     explainer = Mock()
                     explainer.get_global_importance.return_value = {"complexity_score": 0.5}
                     mock_shap.return_value = explainer
@@ -425,19 +419,19 @@ class TestGenerateMLReport:
         """Sollte Empfehlungen enthalten."""
         sample_drift_report.severity.value = "high"
 
-        with patch('app.workers.tasks.ml_tasks.get_drift_detector') as mock_drift:
+        with patch('app.ml.drift_detector.get_drift_detector') as mock_drift:
             detector = Mock()
             detector.get_current_status.return_value = {"ready_for_detection": True}
             detector.get_drift_history.return_value = [sample_drift_report]
             mock_drift.return_value = detector
 
-            with patch('app.workers.tasks.ml_tasks.get_ab_test_manager') as mock_ab:
+            with patch('app.ml.ab_testing.get_ab_test_manager') as mock_ab:
                 ab_manager = Mock()
                 ab_manager.get_active_experiments.return_value = []
                 ab_manager.list_experiments.return_value = []
                 mock_ab.return_value = ab_manager
 
-                with patch('app.workers.tasks.ml_tasks.get_shap_explainer') as mock_shap:
+                with patch('app.ml.shap_explainer.get_shap_explainer') as mock_shap:
                     explainer = Mock()
                     explainer.get_global_importance.return_value = {}
                     mock_shap.return_value = explainer

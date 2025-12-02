@@ -32,7 +32,7 @@ const itemVariants: Variants = {
     visible: { opacity: 1, x: 0 }
 };
 
-const MotionDiv = motion.div as any;
+const MotionDiv = motion.div;
 
 export function JobQueueDashboard() {
     const [jobs, setJobs] = useState<Job[]>([

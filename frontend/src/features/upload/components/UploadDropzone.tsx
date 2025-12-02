@@ -28,7 +28,7 @@ const dropzoneVariants: Variants = {
     }
 };
 
-const MotionDiv = motion.div as any;
+const MotionDiv = motion.div;
 
 export function UploadDropzone({ onFilesAdd }: UploadDropzoneProps) {
     const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
@@ -42,6 +42,7 @@ export function UploadDropzone({ onFilesAdd }: UploadDropzoneProps) {
     });
 
     return (
+        // @ts-expect-error: Dropzone props conflict with motion props
         <MotionDiv
             {...getRootProps()}
             variants={dropzoneVariants}

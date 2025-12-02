@@ -1426,8 +1426,9 @@ class BackendManager:
             try:
                 gpu_status = self._gpu_manager.get_detailed_status()
                 vram_percent = gpu_status.get("vram_used_percent", 0.0)
-            except Exception:
-                pass
+            except Exception as e:
+                # GPU-Status kann fehlschlagen wenn GPU nicht verfügbar
+                logger.debug("gpu_status_check_failed", error=str(e))
 
         estimates = optimizer.get_all_estimates(
             available_backends=list(self.backends.keys()),
@@ -1479,8 +1480,9 @@ class BackendManager:
             try:
                 gpu_status = self._gpu_manager.get_detailed_status()
                 vram_percent = gpu_status.get("vram_used_percent", 0.0)
-            except Exception:
-                pass
+            except Exception as e:
+                # GPU-Status kann fehlschlagen wenn GPU nicht verfügbar
+                logger.debug("gpu_status_check_failed", error=str(e))
 
         backend, estimate = optimizer.get_optimal_backend(
             available_backends=list(self.backends.keys()),

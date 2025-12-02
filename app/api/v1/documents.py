@@ -8,15 +8,16 @@ Provides REST API endpoints for:
 """
 
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 import io
 import asyncio
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, File, Form, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, File, Form, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import func
 
 from app.db.models import User
 from app.db.schemas import (
@@ -30,6 +31,7 @@ from app.db.schemas import (
     BatchDeleteRequest, BatchTagRequest, BatchExportRequest,
     BatchOperationResult, BatchExportResult, TagOperation, ExportFormat,
     BulkUpdateRequest, BulkUpdateResult,
+    BatchFetchRequest, BatchFetchResponse,  # P1.4: Bulk fetch endpoint
     # Soft-Delete (GDPR Phase 2.3)
     SoftDeleteRequest, SoftDeleteResponse, RestoreDocumentResponse,
     DeletedDocumentsListResponse,
@@ -514,7 +516,7 @@ async def download_document(
                             DocumentAccess.user_id == current_user.id,
                             or_(
                                 DocumentAccess.expires_at.is_(None),
-                                DocumentAccess.expires_at > datetime.utcnow()
+                                DocumentAccess.expires_at > datetime.now(timezone.utc)
                             )
                         )
                     )
@@ -573,6 +575,110 @@ async def download_document(
     )
 
 
+@router.get("/{document_id}/stream")
+async def stream_document_download(
+    document_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Dokument als Stream herunterladen (für große Dateien).
+
+    Speichereffizientes Streaming für Dokumente > 10 MB.
+    Verwendet chunked transfer encoding für minimalen Speicherverbrauch.
+
+    **Response:**
+    - Streaming-Response mit chunked transfer encoding
+    - Content-Type basierend auf Dokumenttyp
+
+    **Vorteile gegenüber regulärem Download:**
+    - Konstanter Speicherverbrauch (~1 MB)
+    - Schnellerer erster Byte (Time to First Byte)
+    - Keine Request-Timeouts bei großen Dateien
+
+    **Beispiel:**
+    ```
+    curl -X GET /api/v1/documents/{id}/stream \\
+      -H "Authorization: Bearer <token>" \\
+      -o grosses_dokument.pdf
+    ```
+    """
+    from app.services.storage_service import get_storage_service
+    from app.db.models import Document, DocumentAccess
+    from sqlalchemy import select, or_, and_
+
+    # Prüfe Zugriff (Owner oder via DocumentAccess)
+    access_query = select(Document).where(
+        and_(
+            Document.id == document_id,
+            or_(
+                Document.owner_id == current_user.id,
+                Document.id.in_(
+                    select(DocumentAccess.document_id).where(
+                        and_(
+                            DocumentAccess.user_id == current_user.id,
+                            or_(
+                                DocumentAccess.expires_at.is_(None),
+                                DocumentAccess.expires_at > datetime.now(timezone.utc)
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+    result = await db.execute(access_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Dokument nicht gefunden oder kein Zugriff"
+        )
+
+    # Dateigröße und Metadaten holen
+    storage = get_storage_service()
+    try:
+        doc_info = await storage.get_document_info(document.file_path)
+    except Exception as e:
+        logger.error(
+            "document_stream_info_error",
+            document_id=str(document_id),
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim Abrufen der Dokumentinformationen"
+        )
+
+    filename = document.original_filename or document.filename
+    content_type = document.mime_type or "application/octet-stream"
+
+    async def generate_chunks():
+        """Async Generator für Streaming-Chunks."""
+        async for chunk in storage.stream_document(document.file_path):
+            yield chunk
+
+    logger.info(
+        "document_streaming_started",
+        document_id=str(document_id),
+        user_id=str(current_user.id),
+        filename=filename,
+        size_bytes=doc_info.get("size", 0)
+    )
+
+    return StreamingResponse(
+        generate_chunks(),
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(doc_info.get("size", 0)),
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-cache",
+        }
+    )
+
+
 @router.get("/{document_id}/download/pdf")
 async def download_document_as_pdf(
     document_id: UUID,
@@ -612,7 +718,7 @@ async def download_document_as_pdf(
                             DocumentAccess.user_id == current_user.id,
                             or_(
                                 DocumentAccess.expires_at.is_(None),
-                                DocumentAccess.expires_at > datetime.utcnow()
+                                DocumentAccess.expires_at > datetime.now(timezone.utc)
                             )
                         )
                     )
@@ -933,7 +1039,7 @@ async def get_document_report(
         raise HTTPException(status_code=404, detail=str(e))
 
     # Filename fuer Download
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"dokument_bericht_{str(document_id)[:8]}_{timestamp}.pdf"
 
     logger.info(
@@ -1002,6 +1108,107 @@ async def get_similar_documents(
 # ==================== Batch Operations ====================
 
 FORCE_CONFIRM_THRESHOLD = 50  # Ab dieser Anzahl ist X-Force-Confirm erforderlich
+
+
+@router.post("/batch/fetch", response_model=BatchFetchResponse)
+async def batch_fetch_documents(
+    request: BatchFetchRequest,
+    current_user: User = Depends(check_rate_limit),
+    db: AsyncSession = Depends(get_db)
+):
+    """Mehrere Dokumente in einem API-Call abrufen.
+
+    Optimiert fuer Frontend-Dashboard-Ansichten und Dokumentenlisten.
+    Reduziert Netzwerk-Overhead durch gebündelte Anfragen.
+
+    **Limits:**
+    - Maximal 50 Dokumente pro Anfrage
+    - include_text=true erhoeht Response-Groesse signifikant
+
+    **Beispiel:**
+    ```
+    POST /api/v1/documents/batch/fetch
+    {
+        "document_ids": ["uuid1", "uuid2", "uuid3"],
+        "include_text": false,
+        "include_ocr_metadata": true
+    }
+    ```
+
+    **Response:**
+    - `found`: Anzahl gefundener Dokumente
+    - `not_found`: Anzahl nicht gefundener IDs
+    - `not_found_ids`: Liste der nicht gefundenen IDs
+    """
+    from app.db.models import Document
+    from sqlalchemy import select
+
+    doc_count = len(request.document_ids)
+
+    logger.info(
+        "batch_fetch_request",
+        count=doc_count,
+        user_id=str(current_user.id),
+        include_text=request.include_text
+    )
+
+    # Query documents owned by user
+    query = select(Document).where(
+        Document.id.in_(request.document_ids),
+        Document.owner_id == current_user.id,
+        Document.deleted_at.is_(None)  # Nur nicht-geloeschte Dokumente
+    )
+
+    result = await db.execute(query)
+    documents = result.scalars().all()
+
+    # Build response
+    found_ids = {doc.id for doc in documents}
+    not_found_ids = [doc_id for doc_id in request.document_ids if doc_id not in found_ids]
+
+    # Convert to response models
+    document_responses = []
+    for doc in documents:
+        doc_response = DocumentDetailResponse(
+            id=doc.id,
+            filename=doc.filename,
+            original_filename=doc.original_filename,
+            file_size=doc.file_size,
+            mime_type=doc.mime_type,
+            document_type=doc.document_type,
+            status=doc.status,
+            owner_id=doc.owner_id,
+            created_at=doc.created_at,
+            updated_at=doc.updated_at,
+            processed_date=doc.processed_date,
+            tags=doc.tags or [],
+            # OCR metadata (optional)
+            confidence_score=doc.confidence_score if request.include_ocr_metadata else None,
+            ocr_backend_used=doc.ocr_backend_used if request.include_ocr_metadata else None,
+            word_count=doc.word_count if request.include_ocr_metadata else None,
+            page_count=doc.page_count if request.include_ocr_metadata else None,
+            language=doc.language if request.include_ocr_metadata else None,
+            # Text (optional - can be large)
+            extracted_text=doc.extracted_text if request.include_text else None,
+        )
+        document_responses.append(doc_response)
+
+    logger.info(
+        "batch_fetch_completed",
+        requested=doc_count,
+        found=len(documents),
+        not_found=len(not_found_ids),
+        user_id=str(current_user.id)
+    )
+
+    return BatchFetchResponse(
+        success=True,
+        total_requested=doc_count,
+        found=len(documents),
+        not_found=len(not_found_ids),
+        documents=document_responses,
+        not_found_ids=not_found_ids
+    )
 
 
 @router.post("/batch/delete", response_model=BatchOperationResult)
@@ -1194,7 +1401,7 @@ async def batch_export_documents(
     )
 
     # Filename basierend auf Format
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     extension_map = {
         ExportFormat.JSON: "json",
         ExportFormat.CSV: "csv",
@@ -1825,3 +2032,135 @@ async def log_search_click(
     )
 
     return {"status": "ok"}
+
+
+# ==================== Document Access Log (Audit Trail) ====================
+
+@router.get("/{document_id}/access-log")
+async def get_document_access_log(
+    document_id: UUID,
+    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl Eintraege"),
+    offset: int = Query(0, ge=0, description="Offset fuer Paginierung"),
+    action_filter: Optional[str] = Query(None, description="Nach Aktionstyp filtern"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Zugriffs-Log fuer ein Dokument abrufen (Audit Trail).
+
+    Zeigt alle Zugriffe und Aktionen auf dieses Dokument:
+    - Views (Dokument angesehen)
+    - Downloads
+    - OCR-Verarbeitungen
+    - Metadaten-Aenderungen
+    - Sharing-Aktivitaeten
+
+    **Beispiel-Aktionen:**
+    - document_viewed
+    - document_downloaded
+    - document_updated
+    - document_shared
+    - ocr_started
+    - ocr_completed
+
+    **Hinweis:** Nur der Dokumenteigentuemer oder Admins
+    koennen das Access-Log einsehen.
+    """
+    from sqlalchemy import select, and_, or_
+    from app.db.models import Document, AuditLog
+
+    # Dokument laden und Berechtigung pruefen
+    doc_query = select(Document).where(Document.id == document_id)
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Dokument nicht gefunden"
+        )
+
+    # Nur Eigentuemer oder Admin darf Access-Log sehen
+    if document.owner_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=403,
+            detail="Keine Berechtigung zum Abrufen des Zugriffs-Logs"
+        )
+
+    try:
+        # Audit-Log-Eintraege fuer dieses Dokument abrufen
+        audit_query = select(AuditLog).where(
+            and_(
+                AuditLog.resource_type == "document",
+                AuditLog.resource_id == str(document_id)
+            )
+        )
+
+        # Optional nach Aktion filtern
+        if action_filter:
+            audit_query = audit_query.where(
+                AuditLog.action.ilike(f"%{action_filter}%")
+            )
+
+        # Sortierung und Paginierung
+        audit_query = audit_query.order_by(AuditLog.created_at.desc())
+        audit_query = audit_query.offset(offset).limit(limit)
+
+        result = await db.execute(audit_query)
+        audit_entries = result.scalars().all()
+
+        # Gesamtzahl fuer Paginierung
+        count_query = select(func.count(AuditLog.id)).where(
+            and_(
+                AuditLog.resource_type == "document",
+                AuditLog.resource_id == str(document_id)
+            )
+        )
+        if action_filter:
+            count_query = count_query.where(
+                AuditLog.action.ilike(f"%{action_filter}%")
+            )
+
+        count_result = await db.execute(count_query)
+        total_count = count_result.scalar() or 0
+
+        # Eintraege formatieren
+        access_log = []
+        for entry in audit_entries:
+            log_entry = {
+                "id": str(entry.id),
+                "action": entry.action,
+                "timestamp": entry.created_at.isoformat() if entry.created_at else None,
+                "user_id": str(entry.user_id) if entry.user_id else None,
+                "ip_address": entry.ip_address,
+                "success": entry.success if hasattr(entry, 'success') else True,
+                "details": entry.metadata if hasattr(entry, 'metadata') else None,
+            }
+            access_log.append(log_entry)
+
+        logger.debug(
+            "document_access_log_retrieved",
+            document_id=str(document_id),
+            user_id=str(current_user.id),
+            entries=len(access_log)
+        )
+
+        return {
+            "document_id": str(document_id),
+            "access_log": access_log,
+            "total": total_count,
+            "limit": limit,
+            "offset": offset,
+            "has_more": offset + len(access_log) < total_count
+        }
+
+    except Exception as e:
+        logger.error(
+            "document_access_log_error",
+            document_id=str(document_id),
+            error=str(e),
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim Abrufen des Zugriffs-Logs"
+        )

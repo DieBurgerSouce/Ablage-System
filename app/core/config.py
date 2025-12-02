@@ -380,11 +380,12 @@ class Settings(BaseSettings):
     DATABASE_URL: Optional[str] = None
 
     # Database Connection Pool Settings
-    # API Pool (groesser fuer HTTP Requests)
-    DB_POOL_SIZE: int = Field(default=10, description="Database connection pool size for API")
-    DB_MAX_OVERFLOW: int = Field(default=20, description="Maximum overflow connections for API")
-    DB_POOL_RECYCLE: int = Field(default=3600, description="Connection recycle time in seconds")
-    DB_POOL_TIMEOUT: int = Field(default=30, description="Pool connection timeout in seconds")
+    # API Pool (optimiert für 100+ concurrent users)
+    DB_POOL_SIZE: int = Field(default=50, description="Database connection pool size for API")
+    DB_MAX_OVERFLOW: int = Field(default=150, description="Maximum overflow connections for API")
+    DB_POOL_RECYCLE: int = Field(default=1800, description="Connection recycle time in seconds (30 min)")
+    DB_POOL_TIMEOUT: int = Field(default=60, description="Pool connection timeout in seconds")
+    DB_POOL_PRE_PING: bool = Field(default=True, description="Validate connections before use")
 
     # Worker Pool Settings (Celery Tasks)
     DB_WORKER_POOL_SIZE: int = Field(default=5, description="Database pool size for workers")
@@ -440,9 +441,9 @@ class Settings(BaseSettings):
     
     # GPU Settings
     CUDA_VISIBLE_DEVICES: str = "0"
-    GPU_MEMORY_FRACTION: float = 0.85  # Max 85% VRAM usage
+    GPU_MEMORY_FRACTION: float = Field(default=0.85, ge=0.0, le=1.0, description="Max VRAM usage (0.0-1.0)")
     ENABLE_GPU: bool = True
-    GPU_BATCH_SIZE: int = 32
+    GPU_BATCH_SIZE: int = Field(default=32, ge=1, le=128, description="GPU batch size (1-128)")
 
     # GPU Lock Settings (Distributed locking via Redis)
     GPU_LOCK_TIMEOUT: int = Field(default=60, description="GPU lock auto-expire timeout in seconds")
@@ -474,12 +475,12 @@ class Settings(BaseSettings):
     # Rate Limit Whitelist (comma-separated IPs)
     RATE_LIMIT_WHITELIST: List[str] = []
 
-    # Rate Limit Tiers
-    RATE_LIMIT_FREE_HOURLY: int = 10
-    RATE_LIMIT_FREE_DAILY: int = 50
-    RATE_LIMIT_PREMIUM_HOURLY: int = 100
-    RATE_LIMIT_PREMIUM_DAILY: int = 1000
-    RATE_LIMIT_ADMIN_HOURLY: int = 10000
+    # Rate Limit Tiers (Daily >= Hourly validated in model_validator)
+    RATE_LIMIT_FREE_HOURLY: int = Field(default=10, ge=1, description="Hourly requests for free tier")
+    RATE_LIMIT_FREE_DAILY: int = Field(default=50, ge=1, description="Daily requests for free tier")
+    RATE_LIMIT_PREMIUM_HOURLY: int = Field(default=100, ge=1, description="Hourly requests for premium tier")
+    RATE_LIMIT_PREMIUM_DAILY: int = Field(default=1000, ge=1, description="Daily requests for premium tier")
+    RATE_LIMIT_ADMIN_HOURLY: int = Field(default=10000, ge=1, description="Hourly requests for admin tier")
 
     # Rate Limit Windows (in seconds)
     RATE_LIMIT_LOGIN_ATTEMPTS: int = 5
@@ -552,14 +553,10 @@ class Settings(BaseSettings):
     EMBEDDING_TASK_DELAY_SECONDS: int = 5  # Delay before embedding task
     EMBEDDING_TASK_PRIORITY: int = 9  # Celery priority (0-9, 9=lowest)
     
-    # Performance
+    # Performance (Worker-Konfiguration)
     WORKER_CONNECTIONS: int = 1000
     KEEPALIVE_TIMEOUT: int = 5
-    DB_POOL_SIZE: int = 50  # Erhöht von 20 für 100+ concurrent users
-    DB_MAX_OVERFLOW: int = 150  # Erhöht von 40 für Peak-Load
-    DB_POOL_PRE_PING: bool = True
-    DB_POOL_RECYCLE: int = 1800  # 30 Minuten Connection Recycling
-    DB_POOL_TIMEOUT: int = 60  # 60 Sekunden Wartezeit für Pool
+    # DB Pool Settings sind oben bei "Database Connection Pool Settings" definiert
     
     # Monitoring
     ENABLE_METRICS: bool = True
@@ -773,6 +770,51 @@ class Settings(BaseSettings):
                     f"MINIO_ACCESS_KEY ist zu kurz ({len(self.MINIO_ACCESS_KEY)} Zeichen). "
                     "In Production sind mindestens 8 Zeichen erforderlich."
                 )
+
+        # ========== Rate Limit Tier Validierung ==========
+        # Daily limits muessen >= Hourly limits sein
+        if self.RATE_LIMIT_FREE_DAILY < self.RATE_LIMIT_FREE_HOURLY:
+            raise ValueError(
+                f"RATE_LIMIT_FREE_DAILY ({self.RATE_LIMIT_FREE_DAILY}) muss >= "
+                f"RATE_LIMIT_FREE_HOURLY ({self.RATE_LIMIT_FREE_HOURLY}) sein!"
+            )
+        if self.RATE_LIMIT_PREMIUM_DAILY < self.RATE_LIMIT_PREMIUM_HOURLY:
+            raise ValueError(
+                f"RATE_LIMIT_PREMIUM_DAILY ({self.RATE_LIMIT_PREMIUM_DAILY}) muss >= "
+                f"RATE_LIMIT_PREMIUM_HOURLY ({self.RATE_LIMIT_PREMIUM_HOURLY}) sein!"
+            )
+
+        # ========== Vault Konfiguration Validierung ==========
+        if self.VAULT_ENABLED:
+            # Wenn Vault aktiviert ist, muessen Authentifizierungs-Credentials gesetzt sein
+            has_token = bool(self.VAULT_TOKEN)
+            has_approle = bool(self.VAULT_ROLE_ID and self.VAULT_SECRET_ID)
+
+            if not has_token and not has_approle:
+                raise ValueError(
+                    "VAULT_ENABLED=True aber keine Authentifizierung konfiguriert! "
+                    "Setze entweder VAULT_TOKEN oder beide VAULT_ROLE_ID und VAULT_SECRET_ID."
+                )
+
+            if not self.VAULT_ADDR:
+                raise ValueError(
+                    "VAULT_ENABLED=True aber VAULT_ADDR ist nicht gesetzt! "
+                    "Setze die Vault Server-Adresse (z.B. https://vault.example.com:8200)."
+                )
+
+            # Production: HTTPS fuer Vault erzwingen
+            if not self.DEBUG and self.VAULT_ADDR and not self.VAULT_ADDR.startswith("https://"):
+                raise ValueError(
+                    f"VAULT_ADDR '{self.VAULT_ADDR}' verwendet kein HTTPS in Production! "
+                    "Vault-Verbindungen muessen in Production verschluesselt sein."
+                )
+
+            logger.info(
+                "vault_configuration_validated",
+                vault_addr=self.VAULT_ADDR,
+                auth_method="token" if has_token else "approle",
+                verify_ssl=self.VAULT_VERIFY_SSL
+            )
 
         # Build DATABASE_URL if not set
         if not self.DATABASE_URL:

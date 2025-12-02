@@ -66,6 +66,11 @@ from app.core.gpu_recovery import GPURecoveryError
 from app.core.retry_strategy import RetryExhaustedError
 from app.services.api_key_service import APIKeyError, APIKeyLimitError, APIKeyNotFoundError
 from app.middleware.csrf import CSRFError
+from app.services.error_tracking_service import (
+    get_error_tracking_service,
+    ErrorCategory,
+    ErrorSeverity,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -234,6 +239,9 @@ async def ablage_system_exception_handler(
         client_ip=request.client.host if request.client else None,
         # Keine exc.message - könnte PII enthalten
     )
+
+    # Track error for analytics
+    _track_exception(exc, request, status_code)
 
     response = create_error_response(
         fehler=_get_error_category(exc),
@@ -490,6 +498,10 @@ async def http_exception_handler(
             detail=nachricht if len(str(nachricht)) < 200 else str(nachricht)[:200],
         )
 
+    # Track error for analytics (nur bei Fehlern >= 400)
+    if exc.status_code >= 400:
+        _track_exception(exc, request, exc.status_code)
+
     headers = dict(exc.headers) if exc.headers else {}
     if exc.status_code == 503:
         headers.setdefault("Retry-After", "60")
@@ -532,6 +544,9 @@ async def validation_exception_handler(
         error_count=len(errors),
     )
 
+    # Track error for analytics
+    _track_exception(exc, request, 422, ErrorCategory.VALIDATION)
+
     return JSONResponse(
         status_code=422,
         content=create_error_response(
@@ -560,6 +575,9 @@ async def generic_exception_handler(
         method=request.method,
     )
 
+    # Track critical error for analytics
+    _track_exception(exc, request, 500, ErrorCategory.SYSTEM)
+
     return JSONResponse(
         status_code=500,
         content=create_error_response(
@@ -587,6 +605,75 @@ def _get_error_category(exc: AblageSystemException) -> str:
         return "Textverarbeitungsfehler"
     else:
         return "Systemfehler"
+
+
+def _get_tracking_category(exc: Exception) -> ErrorCategory:
+    """Bestimmt die Error-Tracking-Kategorie basierend auf Exception-Typ."""
+    if isinstance(exc, GPUException):
+        return ErrorCategory.GPU
+    elif isinstance(exc, OCRException):
+        return ErrorCategory.OCR
+    elif isinstance(exc, DatabaseException):
+        return ErrorCategory.DATABASE
+    elif isinstance(exc, ComplianceException):
+        return ErrorCategory.COMPLIANCE
+    elif isinstance(exc, (TOTPError, SessionError, APIKeyError)):
+        return ErrorCategory.AUTH
+    elif isinstance(exc, (FileValidationError, DocumentException)):
+        return ErrorCategory.FILE
+    elif isinstance(exc, CSRFError):
+        return ErrorCategory.AUTH
+    elif isinstance(exc, RequestValidationError):
+        return ErrorCategory.VALIDATION
+    else:
+        return ErrorCategory.SYSTEM
+
+
+def _get_tracking_severity(status_code: int) -> ErrorSeverity:
+    """Bestimmt den Schweregrad basierend auf HTTP-Status-Code."""
+    if status_code < 400:
+        return ErrorSeverity.DEBUG
+    elif status_code < 500:
+        return ErrorSeverity.WARNING
+    elif status_code < 503:
+        return ErrorSeverity.ERROR
+    else:
+        return ErrorSeverity.CRITICAL
+
+
+def _track_exception(
+    exc: Exception,
+    request: Request,
+    status_code: int,
+    category: Optional[ErrorCategory] = None,
+) -> None:
+    """Zentrale Funktion zum Tracking von Exceptions."""
+    try:
+        service = get_error_tracking_service()
+
+        # Kategorie bestimmen
+        if category is None:
+            category = _get_tracking_category(exc)
+
+        # Severity basierend auf Status-Code
+        severity = _get_tracking_severity(status_code)
+
+        # Error tracken
+        service.track_error(
+            category=category,
+            error_type=type(exc).__name__,
+            severity=severity,
+            message=str(exc)[:500],  # Truncate
+            path=request.url.path,
+            request_id=getattr(request.state, "request_id", None),
+            details={
+                "method": request.method,
+                "status_code": status_code,
+            }
+        )
+    except Exception as e:
+        # Error tracking darf nicht den Request-Flow stoeren
+        logger.debug("error_tracking_failed", error=str(e))
 
 
 def _translate_validation_error(error_type: str, msg: str) -> str:

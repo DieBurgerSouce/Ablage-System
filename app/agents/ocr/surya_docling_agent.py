@@ -20,8 +20,15 @@ logger = structlog.get_logger(__name__)
 class SuryaDoclingAgent(OCRAgent):
     """Surya OCR agent with working German text recognition (CPU-only)."""
 
+    # Class-level lock to prevent race conditions during model loading
+    _model_lock: asyncio.Lock = None
+
     def __init__(self):
         """Initialize Surya OCR models."""
+        # Initialize class-level lock if not already done
+        if SuryaDoclingAgent._model_lock is None:
+            SuryaDoclingAgent._model_lock = asyncio.Lock()
+
         super().__init__(name="surya_docling_agent", gpu_required=False, vram_gb=0)
 
         # Models will be loaded on first use
@@ -36,8 +43,26 @@ class SuryaDoclingAgent(OCRAgent):
 
         logger.info("SuryaDoclingAgent initialized (models will be loaded on first use)")
 
+    async def _load_models_async(self):
+        """Load Surya models with thread-safe locking.
+
+        SECURITY FIX: Uses asyncio.Lock to prevent race conditions when
+        multiple concurrent requests try to load models simultaneously.
+        """
+        async with SuryaDoclingAgent._model_lock:
+            # Double-check pattern: re-check inside lock
+            if self._models_loaded:
+                return
+            self._load_models_sync()
+
     def _load_models(self):
-        """Load Surya models if not already loaded."""
+        """Synchronous model loading - prefer _load_models_async() for concurrent access."""
+        if self._models_loaded:
+            return
+        self._load_models_sync()
+
+    def _load_models_sync(self):
+        """Internal synchronous model loading implementation."""
         if self._models_loaded:
             return
 

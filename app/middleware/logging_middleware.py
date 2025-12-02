@@ -68,11 +68,16 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         if any(request.url.path.startswith(path) for path in self.skip_paths):
             return await call_next(request)
 
-        # Generate correlation ID
-        correlation_id = request.headers.get(
-            'X-Correlation-ID',
+        # Generate/Extract Request ID (consolidated approach)
+        # Priority: 1. request.state (set by security_headers), 2. X-Request-ID, 3. X-Correlation-ID, 4. Generate
+        correlation_id = (
+            getattr(request.state, 'request_id', None) or
+            request.headers.get('X-Request-ID') or
+            request.headers.get('X-Correlation-ID') or
             str(uuid.uuid4())
         )
+        # Store in request.state for other middleware
+        request.state.request_id = correlation_id
 
         # Set context variables
         correlation_id_var.set(correlation_id)
@@ -171,8 +176,9 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                     user_id=user_id
                 )
 
-                # Add correlation ID to response headers
-                response.headers["X-Correlation-ID"] = correlation_id
+                # Add request/correlation ID to response headers (both for compatibility)
+                response.headers["X-Request-ID"] = correlation_id
+                response.headers["X-Correlation-ID"] = correlation_id  # Backwards compatibility
                 response.headers["X-Response-Time-ms"] = str(duration_ms)
 
                 # Log response body if enabled and small
@@ -286,10 +292,37 @@ class ErrorLoggingMiddleware(BaseHTTPMiddleware):
             raise
 
 
+def get_correlation_id() -> Optional[str]:
+    """
+    Get current correlation/request ID from context.
+
+    Use this when dispatching Celery tasks or making external calls
+    to propagate the request ID for distributed tracing.
+
+    Returns:
+        Current correlation ID or None if not in request context
+    """
+    return correlation_id_var.get()
+
+
+def set_correlation_id(correlation_id: str) -> None:
+    """
+    Set correlation ID in current context.
+
+    Use this in Celery tasks to restore correlation ID from headers.
+
+    Args:
+        correlation_id: The correlation ID to set
+    """
+    correlation_id_var.set(correlation_id)
+
+
 # Export components
 __all__ = [
     'LoggingMiddleware',
     'ErrorLoggingMiddleware',
     'correlation_id_var',
-    'request_var'
+    'request_var',
+    'get_correlation_id',
+    'set_correlation_id',
 ]

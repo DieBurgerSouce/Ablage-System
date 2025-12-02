@@ -291,8 +291,9 @@ def update_queue_metrics(app: Any) -> None:
                     redis = Redis.from_url(settings.CELERY_BROKER_URL)
                     length = redis.llen(queue_name) or 0
                     celery_queue_length.labels(queue_name=queue_name).set(length)
-                except Exception:
-                    pass
+                except Exception as e:
+                    # Redis-Zugriff kann fehlschlagen, wird auf äußerer Ebene geloggt
+                    logger.debug("queue_length_check_failed", queue=queue_name, error=str(e))
     except Exception as e:
         logger.debug("queue_metrics_update_failed", error=str(e))
 

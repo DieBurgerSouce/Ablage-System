@@ -9,7 +9,7 @@ Provides user management operations for the admin console:
 """
 
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 import math

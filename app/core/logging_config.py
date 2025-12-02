@@ -10,7 +10,7 @@ import structlog
 from structlog.processors import JSONRenderer, CallsiteParameter
 from structlog.stdlib import LoggerFactory, add_logger_name, BoundLogger
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 # German log level names
@@ -71,7 +71,7 @@ class PerformanceProcessor:
         import psutil
 
         # Add timestamp
-        event_dict["zeitstempel"] = datetime.utcnow().isoformat()
+        event_dict["zeitstempel"] = datetime.now(timezone.utc).isoformat()
 
         # Add system metrics
         event_dict["system"] = {

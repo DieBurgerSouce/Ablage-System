@@ -26,12 +26,15 @@ from app.core.encryption import (
     rotate_encryption_key,
     set_test_key,
     clear_key_cache,
+    _derive_key_from_secret,
     EncryptionError,
     KeyNotConfiguredError,
     DecryptionError,
     AES_KEY_SIZE,
     NONCE_SIZE,
     TAG_SIZE,
+    KDF_ITERATIONS,
+    KDF_SALT,
 )
 
 
@@ -389,3 +392,131 @@ class TestEdgeCases:
         decrypted = decrypt_data(encrypted)
 
         assert decrypted == binary_like
+
+
+class TestPBKDF2KeyDerivation:
+    """
+    Tests für PBKDF2-basierte Key-Derivation.
+
+    Stellt sicher, dass die Key-Derivation:
+    - Deterministisch ist (gleicher Input = gleicher Output)
+    - NIST-konforme Parameter verwendet
+    - Sicher gegen Rainbow-Table-Angriffe ist
+    """
+
+    def test_derive_key_returns_correct_length(self):
+        """Abgeleiteter Key hat korrekte Länge (32 Bytes für AES-256)."""
+        key = _derive_key_from_secret("test-secret")
+
+        assert len(key) == AES_KEY_SIZE
+        assert len(key) == 32  # 256 bits
+
+    def test_derive_key_is_deterministic(self):
+        """Gleicher Input ergibt immer gleichen Key."""
+        secret = "my-secret-key-for-testing"
+
+        key1 = _derive_key_from_secret(secret)
+        key2 = _derive_key_from_secret(secret)
+
+        assert key1 == key2
+
+    def test_derive_key_different_inputs_different_outputs(self):
+        """Unterschiedliche Inputs ergeben unterschiedliche Keys."""
+        key1 = _derive_key_from_secret("secret-1")
+        key2 = _derive_key_from_secret("secret-2")
+
+        assert key1 != key2
+
+    def test_derive_key_case_sensitive(self):
+        """Key-Derivation ist case-sensitive."""
+        key_lower = _derive_key_from_secret("secret")
+        key_upper = _derive_key_from_secret("SECRET")
+
+        assert key_lower != key_upper
+
+    def test_kdf_iterations_nist_compliant(self):
+        """KDF verwendet mindestens 10.000 Iterationen (NIST Empfehlung)."""
+        # NIST SP 800-132 empfiehlt mindestens 10.000 Iterationen
+        assert KDF_ITERATIONS >= 10000
+        # Wir verwenden 100.000 für zusätzliche Sicherheit
+        assert KDF_ITERATIONS == 100000
+
+    def test_kdf_salt_is_set(self):
+        """KDF verwendet einen Salt."""
+        assert KDF_SALT is not None
+        assert len(KDF_SALT) > 0
+
+    def test_derive_key_returns_bytes(self):
+        """Abgeleiteter Key ist vom Typ bytes."""
+        key = _derive_key_from_secret("test")
+
+        assert isinstance(key, bytes)
+
+    def test_derive_key_handles_unicode(self):
+        """Key-Derivation funktioniert mit Unicode."""
+        key = _derive_key_from_secret("geheim-äöü-中文")
+
+        assert len(key) == AES_KEY_SIZE
+
+    def test_derive_key_handles_empty_string(self):
+        """Key-Derivation funktioniert mit leerem String."""
+        # Leerer String ist gültig (auch wenn nicht empfohlen)
+        key = _derive_key_from_secret("")
+
+        assert len(key) == AES_KEY_SIZE
+
+    def test_derive_key_handles_long_secret(self):
+        """Key-Derivation funktioniert mit langem Secret."""
+        long_secret = "A" * 10000
+        key = _derive_key_from_secret(long_secret)
+
+        assert len(key) == AES_KEY_SIZE
+
+    def test_encryption_with_derived_key_works(self):
+        """Verschlüsselung mit abgeleitetem Key funktioniert Ende-zu-Ende."""
+        clear_key_cache()
+        set_test_key(None)
+
+        with patch('app.core.encryption.settings') as mock_settings:
+            mock_settings.ENCRYPTION_KEY = None
+            # Simuliere SecretStr
+            mock_secret = MagicMock()
+            mock_secret.get_secret_value.return_value = "test-secret-key"
+            mock_settings.SECRET_KEY = mock_secret
+
+            plaintext = "Geheime Daten für Test"
+            encrypted = encrypt_data(plaintext)
+            decrypted = decrypt_data(encrypted)
+
+            assert decrypted == plaintext
+
+    def test_derived_key_changes_with_different_secret(self):
+        """Unterschiedliche SECRET_KEYs ergeben unterschiedliche Verschlüsselungen."""
+        clear_key_cache()
+        set_test_key(None)
+
+        plaintext = "Test Data"
+
+        # Verschlüssele mit erstem Secret
+        with patch('app.core.encryption.settings') as mock_settings:
+            mock_settings.ENCRYPTION_KEY = None
+            mock_secret1 = MagicMock()
+            mock_secret1.get_secret_value.return_value = "secret-key-1"
+            mock_settings.SECRET_KEY = mock_secret1
+
+            encrypted1 = encrypt_data(plaintext)
+
+        clear_key_cache()
+
+        # Verschlüssele mit zweitem Secret
+        with patch('app.core.encryption.settings') as mock_settings:
+            mock_settings.ENCRYPTION_KEY = None
+            mock_secret2 = MagicMock()
+            mock_secret2.get_secret_value.return_value = "secret-key-2"
+            mock_settings.SECRET_KEY = mock_secret2
+
+            encrypted2 = encrypt_data(plaintext)
+
+        # Ciphertexts sollten unterschiedlich sein
+        # (wegen unterschiedlicher Keys + unterschiedlicher Nonces)
+        assert encrypted1 != encrypted2

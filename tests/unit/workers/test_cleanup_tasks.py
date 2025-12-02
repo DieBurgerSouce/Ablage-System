@@ -72,14 +72,14 @@ class TestCleanupSoftDeletedDocuments:
     @pytest.mark.asyncio
     async def test_cleanup_finds_old_documents(self, mock_db, sample_soft_deleted_document, mock_storage_service):
         """Sollte Dokumente aelter als 30 Tage finden."""
-        with patch('app.workers.tasks.cleanup_tasks.get_db_session') as mock_get_db:
+        with patch('app.db.database.get_db_session') as mock_get_db:
             mock_get_db.return_value.__aenter__.return_value = mock_db
 
             mock_result = Mock()
             mock_result.scalars.return_value.all.return_value = [sample_soft_deleted_document]
             mock_db.execute.return_value = mock_result
 
-            with patch('app.workers.tasks.cleanup_tasks.get_storage_service') as mock_get_storage:
+            with patch('app.services.storage_service.get_storage_service') as mock_get_storage:
                 mock_get_storage.return_value = mock_storage_service
 
                 from app.workers.tasks.cleanup_tasks import _cleanup_soft_deleted_async
@@ -92,14 +92,14 @@ class TestCleanupSoftDeletedDocuments:
     @pytest.mark.asyncio
     async def test_cleanup_dry_run_no_delete(self, mock_db, sample_soft_deleted_document, mock_storage_service):
         """Dry-Run sollte nicht loeschen."""
-        with patch('app.workers.tasks.cleanup_tasks.get_db_session') as mock_get_db:
+        with patch('app.db.database.get_db_session') as mock_get_db:
             mock_get_db.return_value.__aenter__.return_value = mock_db
 
             mock_result = Mock()
             mock_result.scalars.return_value.all.return_value = [sample_soft_deleted_document]
             mock_db.execute.return_value = mock_result
 
-            with patch('app.workers.tasks.cleanup_tasks.get_storage_service') as mock_get_storage:
+            with patch('app.services.storage_service.get_storage_service') as mock_get_storage:
                 mock_get_storage.return_value = mock_storage_service
 
                 from app.workers.tasks.cleanup_tasks import _cleanup_soft_deleted_async
@@ -112,7 +112,7 @@ class TestCleanupSoftDeletedDocuments:
     @pytest.mark.asyncio
     async def test_cleanup_deletes_storage_files(self, mock_db, sample_soft_deleted_document, mock_storage_service):
         """Sollte Dateien aus MinIO loeschen."""
-        with patch('app.workers.tasks.cleanup_tasks.get_db_session') as mock_get_db:
+        with patch('app.db.database.get_db_session') as mock_get_db:
             mock_get_db.return_value.__aenter__.return_value = mock_db
 
             mock_result = Mock()
@@ -120,7 +120,7 @@ class TestCleanupSoftDeletedDocuments:
             mock_result.rowcount = 1
             mock_db.execute.return_value = mock_result
 
-            with patch('app.workers.tasks.cleanup_tasks.get_storage_service') as mock_get_storage:
+            with patch('app.services.storage_service.get_storage_service') as mock_get_storage:
                 mock_get_storage.return_value = mock_storage_service
 
                 from app.workers.tasks.cleanup_tasks import _cleanup_soft_deleted_async
@@ -133,7 +133,7 @@ class TestCleanupSoftDeletedDocuments:
     @pytest.mark.asyncio
     async def test_cleanup_continues_on_storage_error(self, mock_db, sample_soft_deleted_document, mock_storage_service):
         """Storage-Fehler sollten nicht stoppen."""
-        with patch('app.workers.tasks.cleanup_tasks.get_db_session') as mock_get_db:
+        with patch('app.db.database.get_db_session') as mock_get_db:
             mock_get_db.return_value.__aenter__.return_value = mock_db
 
             mock_result = Mock()
@@ -141,7 +141,7 @@ class TestCleanupSoftDeletedDocuments:
             mock_result.rowcount = 1
             mock_db.execute.return_value = mock_result
 
-            with patch('app.workers.tasks.cleanup_tasks.get_storage_service') as mock_get_storage:
+            with patch('app.services.storage_service.get_storage_service') as mock_get_storage:
                 mock_storage_service.delete_document.side_effect = Exception("MinIO error")
                 mock_get_storage.return_value = mock_storage_service
 
@@ -164,7 +164,7 @@ class TestCleanupOrphanedFiles:
     @pytest.mark.asyncio
     async def test_finds_orphaned_files(self, mock_db, sample_orphaned_file, mock_storage_service):
         """Sollte verwaiste Dateien finden."""
-        with patch('app.workers.tasks.cleanup_tasks.get_db_session') as mock_get_db:
+        with patch('app.db.database.get_db_session') as mock_get_db:
             mock_get_db.return_value.__aenter__.return_value = mock_db
 
             mock_storage_service.list_all_documents.return_value = [sample_orphaned_file]
@@ -173,7 +173,7 @@ class TestCleanupOrphanedFiles:
             mock_result.fetchall.return_value = []  # No documents in DB
             mock_db.execute.return_value = mock_result
 
-            with patch('app.workers.tasks.cleanup_tasks.get_storage_service') as mock_get_storage:
+            with patch('app.services.storage_service.get_storage_service') as mock_get_storage:
                 mock_get_storage.return_value = mock_storage_service
 
                 from app.workers.tasks.cleanup_tasks import _cleanup_orphaned_files_async
@@ -186,7 +186,7 @@ class TestCleanupOrphanedFiles:
     @pytest.mark.asyncio
     async def test_deletes_orphaned_files(self, mock_db, sample_orphaned_file, mock_storage_service):
         """Sollte verwaiste Dateien loeschen."""
-        with patch('app.workers.tasks.cleanup_tasks.get_db_session') as mock_get_db:
+        with patch('app.db.database.get_db_session') as mock_get_db:
             mock_get_db.return_value.__aenter__.return_value = mock_db
 
             mock_storage_service.list_all_documents.return_value = [sample_orphaned_file]
@@ -195,7 +195,7 @@ class TestCleanupOrphanedFiles:
             mock_result.fetchall.return_value = []
             mock_db.execute.return_value = mock_result
 
-            with patch('app.workers.tasks.cleanup_tasks.get_storage_service') as mock_get_storage:
+            with patch('app.services.storage_service.get_storage_service') as mock_get_storage:
                 mock_get_storage.return_value = mock_storage_service
 
                 from app.workers.tasks.cleanup_tasks import _cleanup_orphaned_files_async
@@ -208,7 +208,7 @@ class TestCleanupOrphanedFiles:
     @pytest.mark.asyncio
     async def test_no_orphans_when_all_in_db(self, mock_db, sample_orphaned_file, mock_storage_service):
         """Keine Orphans wenn alle Dateien in DB."""
-        with patch('app.workers.tasks.cleanup_tasks.get_db_session') as mock_get_db:
+        with patch('app.db.database.get_db_session') as mock_get_db:
             mock_get_db.return_value.__aenter__.return_value = mock_db
 
             mock_storage_service.list_all_documents.return_value = [sample_orphaned_file]
@@ -217,7 +217,7 @@ class TestCleanupOrphanedFiles:
             mock_result.fetchall.return_value = [(uuid4(),)]  # Document exists
             mock_db.execute.return_value = mock_result
 
-            with patch('app.workers.tasks.cleanup_tasks.get_storage_service') as mock_get_storage:
+            with patch('app.services.storage_service.get_storage_service') as mock_get_storage:
                 mock_get_storage.return_value = mock_storage_service
 
                 from app.workers.tasks.cleanup_tasks import _cleanup_orphaned_files_async
@@ -237,7 +237,7 @@ class TestCleanupSearchAnalytics:
     @pytest.mark.asyncio
     async def test_finds_old_analytics(self, mock_db):
         """Sollte alte Analytics finden."""
-        with patch('app.workers.tasks.cleanup_tasks.get_db_session') as mock_get_db:
+        with patch('app.db.database.get_db_session') as mock_get_db:
             mock_get_db.return_value.__aenter__.return_value = mock_db
 
             mock_count_result = Mock()
@@ -254,7 +254,7 @@ class TestCleanupSearchAnalytics:
     @pytest.mark.asyncio
     async def test_deletes_old_analytics(self, mock_db):
         """Sollte alte Analytics loeschen."""
-        with patch('app.workers.tasks.cleanup_tasks.get_db_session') as mock_get_db:
+        with patch('app.db.database.get_db_session') as mock_get_db:
             mock_get_db.return_value.__aenter__.return_value = mock_db
 
             mock_count_result = Mock()
@@ -282,10 +282,10 @@ class TestCleanupExpiredSessions:
     @pytest.mark.asyncio
     async def test_cleanup_sessions(self, mock_db):
         """Sollte abgelaufene Sessions loeschen."""
-        with patch('app.workers.tasks.cleanup_tasks.get_db_session') as mock_get_db:
+        with patch('app.db.database.get_db_session') as mock_get_db:
             mock_get_db.return_value.__aenter__.return_value = mock_db
 
-            with patch('app.workers.tasks.cleanup_tasks.get_session_manager') as mock_get_manager:
+            with patch('app.core.session_manager.get_session_manager') as mock_get_manager:
                 manager = Mock()
                 manager.cleanup_expired_sessions = AsyncMock(return_value=50)
                 mock_get_manager.return_value = manager
@@ -299,10 +299,10 @@ class TestCleanupExpiredSessions:
     @pytest.mark.asyncio
     async def test_cleanup_sessions_handles_error(self, mock_db):
         """Fehler sollten gefangen werden."""
-        with patch('app.workers.tasks.cleanup_tasks.get_db_session') as mock_get_db:
+        with patch('app.db.database.get_db_session') as mock_get_db:
             mock_get_db.return_value.__aenter__.return_value = mock_db
 
-            with patch('app.workers.tasks.cleanup_tasks.get_session_manager') as mock_get_manager:
+            with patch('app.core.session_manager.get_session_manager') as mock_get_manager:
                 mock_get_manager.side_effect = Exception("Manager error")
 
                 from app.workers.tasks.cleanup_tasks import _cleanup_expired_sessions_async
@@ -321,10 +321,10 @@ class TestCleanupExpiredVerificationTokens:
     @pytest.mark.asyncio
     async def test_cleanup_tokens(self, mock_db):
         """Sollte abgelaufene Tokens loeschen."""
-        with patch('app.workers.tasks.cleanup_tasks.get_db_session') as mock_get_db:
+        with patch('app.db.database.get_db_session') as mock_get_db:
             mock_get_db.return_value.__aenter__.return_value = mock_db
 
-            with patch('app.workers.tasks.cleanup_tasks.get_email_verification_service') as mock_get_service:
+            with patch('app.services.email_verification_service.get_email_verification_service') as mock_get_service:
                 service = Mock()
                 service.cleanup_expired_tokens = AsyncMock(return_value=25)
                 mock_get_service.return_value = service
@@ -345,7 +345,7 @@ class TestCleanupExpiredCache:
     @pytest.mark.asyncio
     async def test_cleanup_cache_patterns(self):
         """Sollte Cache-Patterns bereinigen."""
-        with patch('app.workers.tasks.cleanup_tasks.get_redis_storage') as mock_get_redis:
+        with patch('app.core.rate_limiting.get_redis_storage') as mock_get_redis:
             redis = AsyncMock()
             redis.scan_iter = AsyncMock(return_value=AsyncIteratorMock([]))
             mock_get_redis.return_value = redis
@@ -360,7 +360,7 @@ class TestCleanupExpiredCache:
     @pytest.mark.asyncio
     async def test_cleanup_cache_no_redis(self):
         """Ohne Redis sollte leer zurueckgeben."""
-        with patch('app.workers.tasks.cleanup_tasks.get_redis_storage') as mock_get_redis:
+        with patch('app.core.rate_limiting.get_redis_storage') as mock_get_redis:
             mock_get_redis.return_value = None
 
             from app.workers.tasks.cleanup_tasks import _cleanup_expired_cache_async

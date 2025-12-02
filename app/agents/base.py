@@ -7,7 +7,7 @@ Provides abstract base classes and common functionality for all agents.
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -162,7 +162,7 @@ class BaseAgent(ABC):
                 "category": self.category.value,
                 "status": status.value,
                 "duration_seconds": duration,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "task_id": task_id,
             },
         }

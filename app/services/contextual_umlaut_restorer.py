@@ -286,7 +286,28 @@ class ContextualUmlautRestorer:
             outputs = self._model(**inputs, labels=inputs["input_ids"])
             return outputs.loss.item()
 
-        except Exception:
+        except (ValueError, RuntimeError, TypeError) as e:
+            logger.warning(
+                "sentence_scoring_failed",
+                error_type=type(e).__name__,
+                error=str(e)
+            )
+            return 0.0
+        except torch.cuda.OutOfMemoryError as e:
+            logger.error(
+                "sentence_scoring_gpu_oom",
+                error=str(e)
+            )
+            # Clear GPU cache on OOM
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            return 0.0
+        except Exception as e:
+            logger.warning(
+                "sentence_scoring_unexpected_error",
+                error_type=type(e).__name__,
+                error=str(e)
+            )
             return 0.0
 
     def _restore_with_heuristics(

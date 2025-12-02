@@ -2,18 +2,25 @@
 
 GPU-beschleunigte Generierung von Embeddings mit multilingual-e5-large.
 Singleton-Muster fuer effiziente Modellnutzung.
+Mit Redis-Caching für Query-Embeddings.
 """
 
 from typing import List, Optional, TypedDict, Union
 from datetime import datetime, timezone
 import threading
 import asyncio
+import hashlib
+import json
 
 import structlog
 import torch
 import numpy as np
 
 from app.core.config import settings
+
+# Query Embedding Cache Konfiguration
+QUERY_EMBEDDING_CACHE_TTL = 3600  # 1 Stunde - Queries wiederholen sich oft
+QUERY_EMBEDDING_CACHE_PREFIX = "cache:embedding:query"
 
 
 class EmbeddingModelInfo(TypedDict, total=False):
@@ -31,7 +38,7 @@ logger = structlog.get_logger(__name__)
 
 
 class EmbeddingService:
-    """Service fuer semantische Embeddings.
+    """Service fuer semantische Embeddings mit Query-Caching.
 
     Verwendet multilingual-e5-large (1024 Dimensionen) fuer deutsche Dokumente.
     GPU-beschleunigt mit VRAM-Management fuer RTX 4080.
@@ -39,6 +46,8 @@ class EmbeddingService:
     Hinweis: E5-Modelle benoetigen spezielle Praefixe:
     - "query: " fuer Suchanfragen
     - "passage: " fuer Dokumente/Texte
+
+    Query-Embeddings werden gecacht um GPU-Last zu reduzieren.
     """
 
     _instance: Optional['EmbeddingService'] = None
@@ -46,6 +55,7 @@ class EmbeddingService:
     _model = None
     _tokenizer = None
     _initialized = False
+    _redis = None
 
     def __new__(cls) -> 'EmbeddingService':
         """Singleton-Instanz zurueckgeben."""
@@ -198,12 +208,72 @@ class EmbeddingService:
                 return embedding.tolist()
             raise
 
+    async def _get_redis(self):
+        """Lazy-load Redis connection."""
+        if self._redis is None:
+            from app.core.redis_state import RedisStateManager
+            self._redis = RedisStateManager.get_instance()
+            await self._redis.connect()
+        return self._redis
+
+    def _get_query_cache_key(self, query: str) -> str:
+        """Cache-Key für Query-Embedding generieren."""
+        query_hash = hashlib.sha256(query.encode()).hexdigest()[:16]
+        return f"{QUERY_EMBEDDING_CACHE_PREFIX}:{query_hash}"
+
+    async def _get_cached_query_embedding(self, query: str) -> Optional[List[float]]:
+        """Gecachtes Query-Embedding abrufen."""
+        try:
+            redis = await self._get_redis()
+            cache_key = self._get_query_cache_key(query)
+            cached = await redis._redis.get(cache_key)
+            if cached:
+                logger.debug("query_embedding_cache_hit", query=query[:50])
+                return json.loads(cached)
+        except Exception as e:
+            logger.debug("query_embedding_cache_get_failed", error=str(e))
+        return None
+
+    async def _cache_query_embedding(self, query: str, embedding: List[float]) -> None:
+        """Query-Embedding cachen."""
+        try:
+            redis = await self._get_redis()
+            cache_key = self._get_query_cache_key(query)
+            await redis._redis.setex(
+                cache_key,
+                QUERY_EMBEDDING_CACHE_TTL,
+                json.dumps(embedding)
+            )
+            logger.debug("query_embedding_cached", query=query[:50])
+        except Exception as e:
+            logger.debug("query_embedding_cache_set_failed", error=str(e))
+
     def generate_query_embedding(self, query: str) -> List[float]:
-        """Embedding fuer Suchanfrage generieren.
+        """Embedding fuer Suchanfrage generieren (sync).
 
         Verwendet automatisch "query: " Praefix fuer E5-Modell.
+        Fuer gecachte Version nutze generate_query_embedding_cached().
         """
         return self.generate_embedding(query, is_query=True)
+
+    async def generate_query_embedding_cached(self, query: str) -> List[float]:
+        """Embedding fuer Suchanfrage mit Cache generieren (async).
+
+        Prueft erst den Cache, generiert nur bei Cache-Miss.
+        Ideal fuer Search-Endpoints.
+        """
+        # Cache-Lookup
+        cached = await self._get_cached_query_embedding(query)
+        if cached:
+            return cached
+
+        # Generieren (sync - GPU-Operationen sind nicht async)
+        embedding = self.generate_embedding(query, is_query=True)
+
+        # Cachen (async)
+        await self._cache_query_embedding(query, embedding)
+
+        return embedding
 
     def generate_document_embedding(self, text: str) -> List[float]:
         """Embedding fuer Dokument generieren.
@@ -300,12 +370,27 @@ class EmbeddingService:
         text: str,
         is_query: bool = False
     ) -> List[float]:
-        """Async-Wrapper fuer Embedding-Generierung."""
+        """Async-Wrapper fuer Embedding-Generierung mit Query-Caching.
+
+        Bei is_query=True wird erst der Cache geprueft.
+        """
+        # Bei Query-Embeddings Cache nutzen
+        if is_query:
+            cached = await self._get_cached_query_embedding(text)
+            if cached:
+                return cached
+
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
+        embedding = await loop.run_in_executor(
             None,
             lambda: self.generate_embedding(text, is_query)
         )
+
+        # Query-Embedding cachen
+        if is_query:
+            await self._cache_query_embedding(text, embedding)
+
+        return embedding
 
     async def generate_batch_embeddings_async(
         self,

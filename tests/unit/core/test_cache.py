@@ -350,13 +350,21 @@ class TestInvalidateCache:
 
     @pytest.mark.asyncio
     async def test_invalidate_user_cache_calls_invalidate_cache(self):
-        """invalidate_user_cache sollte invalidate_cache aufrufen."""
+        """invalidate_user_cache sollte invalidate_cache mit Cascade aufrufen."""
         # Test dass die Funktion das richtige Pattern verwendet
         # Ohne Mock - testet nur dass Funktion nicht crasht
         result = await invalidate_user_cache("user123")
 
-        # Ohne Redis sollte 0 zurueckgegeben werden
-        assert result == 0
+        # Sollte dict mit Kategorien zurueckgeben (wie invalidate_document_cache)
+        assert isinstance(result, dict)
+        assert "user" in result
+        assert "documents" in result
+        assert "search" in result
+        assert "facets" in result
+        assert "stats" in result
+        assert "total" in result
+        # Ohne Redis sollten alle Werte 0 sein
+        assert result["total"] == 0
 
     @pytest.mark.asyncio
     async def test_invalidate_document_cache_uses_multiple_patterns(self):
@@ -364,8 +372,13 @@ class TestInvalidateCache:
         # Test dass die Funktion nicht crasht
         result = await invalidate_document_cache("doc123")
 
-        # Ohne Redis sollte 0 zurueckgegeben werden
-        assert isinstance(result, int)
+        # Sollte dict mit Kategorien zurueckgeben
+        assert isinstance(result, dict)
+        assert "document" in result
+        assert "search" in result
+        assert "facets" in result
+        assert "stats" in result
+        assert "total" in result
 
 
 class TestGetCacheStats:

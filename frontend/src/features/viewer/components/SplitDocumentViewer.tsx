@@ -13,7 +13,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 interface SplitDocumentViewerProps {
     documentId: string;
-    ocrResults: any;
+    ocrResults: import('@/lib/api/services/documents').Document['ocrResults'];
     fileUrl?: string;
 }
 

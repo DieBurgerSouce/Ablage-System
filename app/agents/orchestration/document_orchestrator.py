@@ -15,7 +15,7 @@ Feinpoliert und durchdacht - Enterprise-grade document processing pipeline.
 
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -283,7 +283,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 },
                 "workflow_metadata": {
                     "total_duration_seconds": (
-                        datetime.utcnow() - workflow_state["started_at"]
+                        datetime.now(timezone.utc) - workflow_state["started_at"]
                     ).total_seconds(),
                     "priority": priority,
                 },
@@ -329,7 +329,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         Returns:
             Initialized workflow state dictionary
         """
-        started_at = datetime.utcnow()
+        started_at = datetime.now(timezone.utc)
 
         state = {
             "document_id": document_id,
@@ -419,9 +419,9 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
         retry_phase_map = {
             WorkflowPhase.CLASSIFYING: RetryPhase.CLASSIFICATION,
             WorkflowPhase.PREPROCESSING: RetryPhase.PREPROCESSING,
-            WorkflowPhase.OCR_PROCESSING: RetryPhase.OCR_PROCESSING,
+            WorkflowPhase.OCR_PROCESSING: RetryPhase.OCR,
             WorkflowPhase.POSTPROCESSING: RetryPhase.POSTPROCESSING,
-            WorkflowPhase.QA_CHECK: RetryPhase.QA_CHECK,
+            WorkflowPhase.QA_CHECK: RetryPhase.QA,
             WorkflowPhase.STORING: RetryPhase.STORAGE,
         }
         retry_phase = retry_phase_map.get(phase, RetryPhase.CLASSIFICATION)
@@ -602,7 +602,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
             phase: New workflow phase
             data: Phase-specific data to store
         """
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
 
         # Update local state
         workflow_state["current_phase"] = phase
@@ -1602,7 +1602,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
 
         storage_result = {
             "document_id": document_id,
-            "stored_at": datetime.utcnow().isoformat(),
+            "stored_at": datetime.now(timezone.utc).isoformat(),
             "metadata": metadata,
             "postgresql_updated": False,
             "version_created": False,
@@ -1641,7 +1641,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 processing_duration_ms = None
                 if hasattr(self, "_processing_start_time"):
                     processing_duration_ms = int(
-                        (datetime.utcnow() - self._processing_start_time).total_seconds() * 1000
+                        (datetime.now(timezone.utc) - self._processing_start_time).total_seconds() * 1000
                     )
 
                 # Update document fields
@@ -1651,7 +1651,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 document.document_type = classification.get("document_type", "other")
                 document.detected_language = classification.get("language", "de")
                 document.has_umlauts = "ä" in text or "ö" in text or "ü" in text or "ß" in text
-                document.processed_date = datetime.utcnow()
+                document.processed_date = datetime.now(timezone.utc)
 
                 if processing_duration_ms:
                     document.processing_duration_ms = processing_duration_ms
@@ -1673,7 +1673,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                     },
                     "qa_score": qa_score,
                     "ocr_backend": metadata.get("ocr_backend", "unknown"),
-                    "processing_completed_at": datetime.utcnow().isoformat(),
+                    "processing_completed_at": datetime.now(timezone.utc).isoformat(),
                 }
 
                 await db.commit()
@@ -1702,7 +1702,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                         "metadata": {
                             "backend_used": metadata.get("ocr_backend", "unknown"),
                             "language": classification.get("language", "de"),
-                            "timestamp": datetime.utcnow().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         },
                         "detected_dates": [
                             e.get("value") for e in entities if e.get("type") == "date"
@@ -1757,7 +1757,7 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
                 if storage_service.available:
                     # Create searchable text file
                     text_content = f"""# OCR Ergebnis für Dokument {document_id}
-# Verarbeitet am: {datetime.utcnow().isoformat()}
+# Verarbeitet am: {datetime.now(timezone.utc).isoformat()}
 # Backend: {metadata.get('ocr_backend', 'unknown')}
 # Konfidenz: {qa_score:.2%}
 
@@ -1833,7 +1833,7 @@ Metadaten:
         """
         health = {
             "orchestrator": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "error_recovery": {},
             "agents": {},
             "external_services": {},

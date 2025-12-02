@@ -1,13 +1,13 @@
 import type { BoundingBox } from "./BoundingBoxOverlay";
 
 interface OCRTextPanelProps {
-    ocrData: any; // Define proper type
+    ocrData: { text: string; confidence: number; boxes?: BoundingBox[] } | undefined;
     selectedBox: BoundingBox | null;
     onBoxSelect: (box: BoundingBox | null) => void;
     onTextEdit: (id: string, text: string) => void;
 }
 
-export function OCRTextPanel({ ocrData: _ocrData, selectedBox, onBoxSelect: _onBoxSelect, onTextEdit: _onTextEdit }: OCRTextPanelProps) {
+export function OCRTextPanel({ selectedBox }: OCRTextPanelProps) {
     return (
         <div className="space-y-4">
             <h3 className="font-semibold text-lg">OCR Results</h3>

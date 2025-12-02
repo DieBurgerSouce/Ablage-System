@@ -133,7 +133,7 @@ services:
 
   # Database Admin UI
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:8.13
     container_name: ablage-pgadmin-dev
     restart: unless-stopped
     environment:
@@ -152,7 +152,7 @@ services:
 
   # Redis Admin UI
   redis-commander:
-    image: rediscommander/redis-commander:latest
+    image: rediscommander/redis-commander:0.8.1
     container_name: ablage-redis-commander-dev
     restart: unless-stopped
     environment:

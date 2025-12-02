@@ -449,3 +449,315 @@ class TestResponseModels:
         assert response.status == "gesund"
         assert len(response.komponenten) == 2
         assert response.zusammenfassung == "Alles funktioniert"
+
+
+# =============================================================================
+# Test Startup Probe
+# =============================================================================
+
+
+class TestStartupProbe:
+    """Tests fuer Kubernetes Startup Probe."""
+
+    @pytest.mark.asyncio
+    async def test_startup_probe_success(self):
+        """Startup Probe mit allen Komponenten bereit."""
+        from app.api.v1.health import startup_probe
+
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 1
+        mock_db.execute.return_value = mock_result
+
+        with patch("app.api.v1.health._check_redis") as mock_redis:
+            mock_redis.return_value = KomponentenStatus(
+                gesund=True, nachricht="Redis OK"
+            )
+
+            result = await startup_probe(mock_db)
+
+            assert result["status"] == "started"
+            assert "checks" in result
+            assert "uptime_seconds" in result
+
+    @pytest.mark.asyncio
+    async def test_startup_probe_db_not_ready(self):
+        """Startup Probe mit nicht verfuegbarer Datenbank."""
+        from app.api.v1.health import startup_probe
+
+        mock_db = AsyncMock()
+        mock_db.execute.side_effect = Exception("DB not ready")
+
+        with patch("app.api.v1.health._check_redis") as mock_redis:
+            mock_redis.return_value = KomponentenStatus(
+                gesund=True, nachricht="Redis OK"
+            )
+
+            with pytest.raises(HTTPException) as exc_info:
+                await startup_probe(mock_db)
+
+            assert exc_info.value.status_code == 503
+            detail = exc_info.value.detail
+            assert "Datenbank" in detail["errors"][0]
+
+
+# =============================================================================
+# Test System Info
+# =============================================================================
+
+
+class TestSystemInfo:
+    """Tests fuer System-Informationen Endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_system_info_returns_data(self):
+        """System info sollte alle Felder zurueckgeben."""
+        from app.api.v1.health import system_info
+
+        mock_settings = MagicMock()
+        mock_settings.DEBUG = False
+        mock_settings.ENVIRONMENT = "testing"
+
+        with patch("app.api.v1.health.settings", mock_settings):
+            result = await system_info()
+
+            assert result.uptime_seconds >= 0
+            assert result.python_version is not None
+            assert result.platform_name is not None
+            assert result.cpu_count >= 1
+            assert result.api_version == "0.2.0-poc"
+
+    def test_format_uptime_seconds(self):
+        """Uptime Formatierung nur Sekunden."""
+        from app.api.v1.health import _format_uptime
+
+        result = _format_uptime(45)
+        assert result == "45s"
+
+    def test_format_uptime_minutes_seconds(self):
+        """Uptime Formatierung Minuten und Sekunden."""
+        from app.api.v1.health import _format_uptime
+
+        result = _format_uptime(125)
+        assert result == "2m 5s"
+
+    def test_format_uptime_hours_minutes_seconds(self):
+        """Uptime Formatierung Stunden, Minuten, Sekunden."""
+        from app.api.v1.health import _format_uptime
+
+        result = _format_uptime(3723)  # 1h 2m 3s
+        assert result == "1h 2m 3s"
+
+    def test_format_uptime_days(self):
+        """Uptime Formatierung mit Tagen."""
+        from app.api.v1.health import _format_uptime
+
+        result = _format_uptime(90061)  # 1d 1h 1m 1s
+        assert result == "1d 1h 1m 1s"
+
+
+# =============================================================================
+# Test Cache Stats
+# =============================================================================
+
+
+class TestCacheStats:
+    """Tests fuer Cache-Statistiken Endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_cache_stats_returns_health_cache_info(self):
+        """Cache stats sollte Health Cache Info zurueckgeben."""
+        from app.api.v1.health import cache_stats
+
+        mock_settings = MagicMock()
+        mock_settings.REDIS_HOST = "localhost"
+        mock_settings.REDIS_PORT = 6379
+
+        with patch("app.api.v1.health.settings", mock_settings), \
+             patch("redis.asyncio.from_url") as mock_redis:
+            mock_client = AsyncMock()
+            mock_redis.return_value = mock_client
+            mock_client.info.side_effect = Exception("Not connected")
+
+            result = await cache_stats()
+
+            assert "health_cache" in result.model_dump()
+            assert result.health_cache["cachetools_available"] is not None
+
+
+# =============================================================================
+# Test Model Preloader Status
+# =============================================================================
+
+
+class TestModelPreloaderStatus:
+    """Tests fuer Model Preloader Status Endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_model_preloader_status_with_preloader(self):
+        """Model Preloader Status mit aktivem Preloader."""
+        from app.api.v1.health import model_preloader_status
+
+        mock_preloader = MagicMock()
+        mock_preloader.get_status.return_value = {
+            "enabled": True,
+            "preload_started": True,
+            "preload_completed": True,
+            "models": {"surya_docling": "loaded", "got_ocr": "loaded"},
+            "summary": {"total": 2, "loaded": 2, "failed": 0, "skipped": 0},
+            "load_times": {"surya_docling": 5.2, "got_ocr": 3.1},
+            "errors": {},
+        }
+
+        # Mock the import inside the function
+        with patch.dict("sys.modules", {"app.services.model_preloader": MagicMock()}):
+            with patch("app.services.model_preloader.get_model_preloader", return_value=mock_preloader):
+                result = await model_preloader_status()
+
+                assert result.enabled is True
+                assert result.preload_completed is True
+                assert len(result.models) == 2
+                assert result.summary["loaded"] == 2
+
+    @pytest.mark.asyncio
+    async def test_model_preloader_status_not_available(self):
+        """Model Preloader Status wenn nicht verfuegbar."""
+        from app.api.v1.health import model_preloader_status
+
+        # Remove the model_preloader from sys.modules to simulate import failure
+        import sys
+        original_modules = sys.modules.copy()
+
+        # Remove the module if it exists
+        modules_to_remove = [k for k in sys.modules if 'model_preloader' in k]
+        for mod in modules_to_remove:
+            del sys.modules[mod]
+
+        # Create a mock that raises ImportError when accessed
+        mock_module = MagicMock()
+        mock_module.get_model_preloader.side_effect = ImportError("Not available")
+
+        with patch.dict(sys.modules, {"app.services.model_preloader": mock_module}):
+            result = await model_preloader_status()
+
+            # The function handles ImportError and returns disabled status
+            assert result.enabled is False
+            assert result.preload_completed is False
+
+
+# =============================================================================
+# Test Detailed Health Fast
+# =============================================================================
+
+
+class TestDetailedHealthFast:
+    """Tests fuer parallele detaillierte Gesundheitspruefung."""
+
+    @pytest.mark.asyncio
+    async def test_detailed_health_fast_all_healthy(self):
+        """Parallele Health Checks mit allen gesunden Komponenten."""
+        from app.api.v1.health import detailed_health_fast, _set_cached_result
+
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 1
+        mock_db.execute.return_value = mock_result
+
+        # Clear any cached result
+        _set_cached_result("detailed_health_fast", None)
+
+        with patch("app.api.v1.health._check_redis") as mock_redis, \
+             patch("app.api.v1.health._check_minio") as mock_minio, \
+             patch("app.api.v1.health._check_gpu") as mock_gpu, \
+             patch("app.api.v1.health._check_disk_space") as mock_disk:
+
+            mock_redis.return_value = KomponentenStatus(gesund=True, nachricht="OK")
+            mock_minio.return_value = KomponentenStatus(gesund=True, nachricht="OK")
+            mock_gpu.return_value = KomponentenStatus(gesund=True, nachricht="OK")
+            mock_disk.return_value = KomponentenStatus(gesund=True, nachricht="OK")
+
+            result = await detailed_health_fast(mock_db)
+
+            assert result.status == "gesund"
+
+
+# =============================================================================
+# Test Degradation Status
+# =============================================================================
+
+
+class TestDegradationStatus:
+    """Tests fuer Degradation Status Endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_degradation_status_no_degradation(self):
+        """Degradation Status ohne Einschraenkungen."""
+        from app.api.v1.health import degradation_status
+
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 1
+        mock_db.execute.return_value = mock_result
+
+        with patch("app.api.v1.health._check_gpu") as mock_gpu, \
+             patch("app.api.v1.health._check_redis") as mock_redis, \
+             patch("app.api.v1.health._check_disk_space") as mock_disk:
+
+            mock_gpu.return_value = KomponentenStatus(gesund=True, nachricht="OK")
+            mock_redis.return_value = KomponentenStatus(gesund=True, nachricht="OK")
+            mock_disk.return_value = KomponentenStatus(gesund=True, nachricht="OK")
+
+            result = await degradation_status(mock_db)
+
+            assert result.degraded is False
+            assert len(result.degradation_reasons) == 0
+            assert result.available_features["ocr_gpu"] is True
+            assert result.available_features["document_upload"] is True
+
+    @pytest.mark.asyncio
+    async def test_degradation_status_with_gpu_issue(self):
+        """Degradation Status mit GPU-Problem."""
+        from app.api.v1.health import degradation_status
+
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 1
+        mock_db.execute.return_value = mock_result
+
+        with patch("app.api.v1.health._check_gpu") as mock_gpu, \
+             patch("app.api.v1.health._check_redis") as mock_redis, \
+             patch("app.api.v1.health._check_disk_space") as mock_disk:
+
+            mock_gpu.return_value = KomponentenStatus(gesund=False, nachricht="GPU Speicher kritisch")
+            mock_redis.return_value = KomponentenStatus(gesund=True, nachricht="OK")
+            mock_disk.return_value = KomponentenStatus(gesund=True, nachricht="OK")
+
+            result = await degradation_status(mock_db)
+
+            assert result.degraded is True
+            assert len(result.degradation_reasons) > 0
+            assert result.available_features["ocr_gpu"] is False
+            assert "GPU-basierte OCR" in result.unavailable_features
+
+    @pytest.mark.asyncio
+    async def test_degradation_status_with_db_issue(self):
+        """Degradation Status mit Datenbank-Problem."""
+        from app.api.v1.health import degradation_status
+
+        mock_db = AsyncMock()
+        mock_db.execute.side_effect = Exception("DB down")
+
+        with patch("app.api.v1.health._check_gpu") as mock_gpu, \
+             patch("app.api.v1.health._check_redis") as mock_redis, \
+             patch("app.api.v1.health._check_disk_space") as mock_disk:
+
+            mock_gpu.return_value = KomponentenStatus(gesund=True, nachricht="OK")
+            mock_redis.return_value = KomponentenStatus(gesund=True, nachricht="OK")
+            mock_disk.return_value = KomponentenStatus(gesund=True, nachricht="OK")
+
+            result = await degradation_status(mock_db)
+
+            assert result.degraded is True
+            assert result.available_features["document_upload"] is False
+            assert result.available_features["document_search"] is False
+            assert result.available_features["user_auth"] is False

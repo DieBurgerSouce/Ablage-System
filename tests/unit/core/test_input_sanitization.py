@@ -24,6 +24,11 @@ from app.core.input_sanitization import (
     create_safe_highlight,
     SanitizationError,
     SanitizationConfig,
+    # Neue SQL Injection Prevention Funktionen
+    SQLInjectionError,
+    enforce_sql_safe,
+    sql_safe_decorator,
+    validate_and_sanitize_search_input,
 )
 from app.middleware.request_logging import (
     filter_pii_from_dict,
@@ -408,3 +413,250 @@ class TestHTMLSanitization:
         html = "<style>body{display:none}</style><p>Test</p>"
         result = sanitize_html_content(html)
         assert "<style>" not in result
+
+
+# ============================================================================
+# Neue Tests fuer SQL Injection Prevention Layer (P0-2)
+# ============================================================================
+
+
+class TestEnforceSQLSafe:
+    """Tests fuer enforce_sql_safe() - Defense in Depth."""
+
+    def test_safe_query_passes(self):
+        """Sichere Queries werden durchgelassen."""
+        result = enforce_sql_safe("Rechnung 2024 März")
+        assert result == "Rechnung 2024 März"
+
+    def test_empty_value_passes(self):
+        """Leere Werte werden durchgelassen."""
+        result = enforce_sql_safe("")
+        assert result == ""
+        result = enforce_sql_safe(None)
+        assert result is None
+
+    def test_german_umlauts_allowed(self):
+        """Deutsche Umlaute werden erlaubt."""
+        result = enforce_sql_safe("Rechnungsübersicht für März")
+        assert "ü" in result
+        assert "ä" in result
+
+    def test_union_injection_blocked(self):
+        """UNION Injection wird blockiert."""
+        with pytest.raises(SQLInjectionError) as exc_info:
+            enforce_sql_safe("1 UNION SELECT * FROM users")
+        assert exc_info.value.detected_pattern == "UNION"
+
+    def test_select_injection_blocked(self):
+        """SELECT Injection wird blockiert."""
+        with pytest.raises(SQLInjectionError) as exc_info:
+            enforce_sql_safe("SELECT password FROM users")
+        assert exc_info.value.detected_pattern == "SELECT"
+
+    def test_drop_injection_blocked(self):
+        """DROP Injection wird blockiert."""
+        with pytest.raises(SQLInjectionError) as exc_info:
+            enforce_sql_safe("1; DROP TABLE documents; --")
+        assert exc_info.value.detected_pattern == "DROP"
+
+    def test_insert_injection_blocked(self):
+        """INSERT Injection wird blockiert."""
+        with pytest.raises(SQLInjectionError) as exc_info:
+            enforce_sql_safe("INSERT INTO users VALUES (1, 'hack')")
+        assert exc_info.value.detected_pattern == "INSERT"
+
+    def test_update_injection_blocked(self):
+        """UPDATE Injection wird blockiert."""
+        with pytest.raises(SQLInjectionError) as exc_info:
+            enforce_sql_safe("UPDATE users SET admin=1")
+        assert exc_info.value.detected_pattern == "UPDATE"
+
+    def test_delete_injection_blocked(self):
+        """DELETE Injection wird blockiert."""
+        with pytest.raises(SQLInjectionError) as exc_info:
+            enforce_sql_safe("DELETE FROM users WHERE 1=1")
+        assert exc_info.value.detected_pattern == "DELETE"
+
+    def test_exec_injection_blocked(self):
+        """EXEC Injection wird blockiert."""
+        with pytest.raises(SQLInjectionError) as exc_info:
+            enforce_sql_safe("EXEC xp_cmdshell 'whoami'")
+        assert "EXEC" in exc_info.value.detected_pattern or "xp_" in exc_info.value.detected_pattern
+
+    def test_truncate_injection_blocked(self):
+        """TRUNCATE Injection wird blockiert."""
+        with pytest.raises(SQLInjectionError) as exc_info:
+            enforce_sql_safe("TRUNCATE TABLE users")
+        assert exc_info.value.detected_pattern == "TRUNCATE"
+
+    def test_declare_injection_blocked(self):
+        """DECLARE Injection wird blockiert."""
+        with pytest.raises(SQLInjectionError) as exc_info:
+            enforce_sql_safe("DECLARE @x INT")
+        assert exc_info.value.detected_pattern == "DECLARE"
+
+    def test_case_insensitive_detection(self):
+        """Erkennung ist case-insensitive."""
+        with pytest.raises(SQLInjectionError):
+            enforce_sql_safe("1 union select * from users")
+        with pytest.raises(SQLInjectionError):
+            enforce_sql_safe("1 UNION SELECT * FROM users")
+        with pytest.raises(SQLInjectionError):
+            enforce_sql_safe("1 UnIoN sElEcT * fRoM users")
+
+    def test_error_contains_user_message(self):
+        """Fehler enthaelt benutzerfreundliche Nachricht."""
+        with pytest.raises(SQLInjectionError) as exc_info:
+            enforce_sql_safe("DROP TABLE users")
+        assert exc_info.value.user_message_de
+        assert "verbotene" in exc_info.value.user_message_de.lower() or "ungueltig" in exc_info.value.user_message_de.lower()
+
+    def test_error_contains_preview(self):
+        """Fehler enthaelt Vorschau des Werts."""
+        with pytest.raises(SQLInjectionError) as exc_info:
+            enforce_sql_safe("SELECT * FROM users")
+        assert exc_info.value.value_preview  # Sollte nicht leer sein
+
+
+class TestSQLSafeDecorator:
+    """Tests fuer sql_safe_decorator()."""
+
+    def test_sync_function_safe_params(self):
+        """Sync-Funktion mit sicheren Parametern funktioniert."""
+        @sql_safe_decorator(fields=["query"])
+        def search(query: str) -> str:
+            return f"Searching: {query}"
+
+        result = search(query="Rechnung 2024")
+        assert result == "Searching: Rechnung 2024"
+
+    def test_sync_function_unsafe_params_blocked(self):
+        """Sync-Funktion mit unsicheren Parametern wird blockiert."""
+        @sql_safe_decorator(fields=["query"])
+        def search(query: str) -> str:
+            return f"Searching: {query}"
+
+        with pytest.raises(SQLInjectionError):
+            search(query="UNION SELECT * FROM users")
+
+    @pytest.mark.asyncio
+    async def test_async_function_safe_params(self):
+        """Async-Funktion mit sicheren Parametern funktioniert."""
+        @sql_safe_decorator(fields=["query"])
+        async def search(query: str) -> str:
+            return f"Searching: {query}"
+
+        result = await search(query="Rechnung 2024")
+        assert result == "Searching: Rechnung 2024"
+
+    @pytest.mark.asyncio
+    async def test_async_function_unsafe_params_blocked(self):
+        """Async-Funktion mit unsicheren Parametern wird blockiert."""
+        @sql_safe_decorator(fields=["query"])
+        async def search(query: str) -> str:
+            return f"Searching: {query}"
+
+        with pytest.raises(SQLInjectionError):
+            await search(query="DROP TABLE documents")
+
+    def test_specific_fields_only_checked(self):
+        """Nur spezifizierte Felder werden geprueft."""
+        @sql_safe_decorator(fields=["query"])
+        def search(query: str, description: str) -> str:
+            return f"{query}: {description}"
+
+        # 'query' wird geprueft, 'description' nicht
+        with pytest.raises(SQLInjectionError):
+            search(query="DROP TABLE", description="Safe text")
+
+        # 'description' wird nicht geprueft
+        result = search(query="Safe", description="SELECT * FROM (safe in description)")
+        assert result == "Safe: SELECT * FROM (safe in description)"
+
+    def test_non_string_params_ignored(self):
+        """Nicht-String-Parameter werden ignoriert."""
+        @sql_safe_decorator(fields=["query"])
+        def search(query: str, limit: int) -> str:
+            return f"{query} limit {limit}"
+
+        result = search(query="Test", limit=10)
+        assert result == "Test limit 10"
+
+
+class TestValidateAndSanitizeSearchInput:
+    """Tests fuer validate_and_sanitize_search_input()."""
+
+    def test_safe_query_sanitized(self):
+        """Sichere Query wird sanitiert."""
+        result = validate_and_sanitize_search_input("  Rechnung 2024  ")
+        assert result == "Rechnung 2024"  # Whitespace normalisiert
+
+    def test_xss_removed_sql_checked(self):
+        """XSS wird entfernt und SQL wird geprueft."""
+        result = validate_and_sanitize_search_input('<script>alert(1)</script>Test')
+        assert "<script>" not in result
+        assert "Test" in result
+
+    def test_sql_injection_blocked(self):
+        """SQL Injection wird blockiert."""
+        with pytest.raises(SQLInjectionError):
+            validate_and_sanitize_search_input("UNION SELECT * FROM users")
+
+    def test_max_length_enforced(self):
+        """Maximale Laenge wird eingehalten."""
+        # Verwende verschiedene Zeichen um ReDoS-Pattern nicht auszuloesen
+        long_query = "x1y2 " * 60  # 300 Zeichen
+        result = validate_and_sanitize_search_input(long_query, max_length=100)
+        assert len(result) <= 100
+
+    def test_empty_query_returns_empty(self):
+        """Leere Query gibt leeren String zurueck."""
+        result = validate_and_sanitize_search_input("")
+        assert result == ""
+
+    def test_sql_check_can_be_disabled(self):
+        """SQL-Check kann deaktiviert werden."""
+        # Mit check_sql=False sollte kein Fehler geworfen werden
+        result = validate_and_sanitize_search_input(
+            "Test SELECT value",  # SELECT ist normalerweise blockiert
+            check_sql=False
+        )
+        assert "SELECT" in result
+
+    def test_strict_mode_limits_characters(self):
+        """Strict-Mode begrenzt erlaubte Zeichen."""
+        result = validate_and_sanitize_search_input(
+            "Test@#$%value",
+            strict_mode=True
+        )
+        assert "@" not in result
+        assert "#" not in result
+
+
+class TestSQLInjectionError:
+    """Tests fuer SQLInjectionError Exception."""
+
+    def test_exception_attributes(self):
+        """Exception hat alle erwarteten Attribute."""
+        error = SQLInjectionError(
+            detected_pattern="UNION",
+            value_preview="test UNION SELECT"
+        )
+        assert error.detected_pattern == "UNION"
+        assert error.value_preview == "test UNION SELECT"
+        assert error.user_message_de
+        assert error.field == "query"
+
+    def test_value_preview_truncated(self):
+        """Value Preview wird auf 50 Zeichen begrenzt."""
+        long_value = "x" * 100
+        error = SQLInjectionError(
+            detected_pattern="TEST",
+            value_preview=long_value
+        )
+        assert len(error.value_preview) <= 50
+
+    def test_inherits_from_sanitization_error(self):
+        """SQLInjectionError erbt von SanitizationError."""
+        error = SQLInjectionError(detected_pattern="TEST")
+        assert isinstance(error, SanitizationError)

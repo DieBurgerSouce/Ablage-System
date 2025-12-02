@@ -33,7 +33,7 @@ export function Sidebar() {
     )
 }
 
-function SidebarLink({ to, icon: Icon, label }: { to: string; icon: any; label: string }) {
+function SidebarLink({ to, icon: Icon, label }: { to: string; icon: React.ElementType; label: string }) {
     return (
         <Link
             to={to}

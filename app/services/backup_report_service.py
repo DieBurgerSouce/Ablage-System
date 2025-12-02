@@ -18,7 +18,7 @@ Related:
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -121,7 +121,7 @@ class BackupReportService:
         Returns:
             BackupReportData with daily statistics
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         period_start = now - timedelta(days=1)
 
         report = self._collect_report_data("daily", period_start, now)
@@ -146,7 +146,7 @@ class BackupReportService:
         Returns:
             BackupReportData with weekly statistics
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         period_start = now - timedelta(days=7)
 
         report = self._collect_report_data("weekly", period_start, now)
@@ -171,7 +171,7 @@ class BackupReportService:
         Returns:
             BackupReportData with monthly statistics
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         period_start = now - timedelta(days=30)
 
         report = self._collect_report_data("monthly", period_start, now)
@@ -208,7 +208,7 @@ class BackupReportService:
         """
         report = BackupReportData(
             report_type=report_type,
-            generated_at=datetime.utcnow(),
+            generated_at=datetime.now(timezone.utc),
             period_start=period_start,
             period_end=period_end,
         )

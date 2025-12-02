@@ -13,7 +13,7 @@ interface ViewerToolbarProps {
     onZoomOut: () => void;
 }
 
-const MotionDiv = motion.div as any;
+const MotionDiv = motion.div;
 
 export function ViewerToolbar({ currentPage, numPages, scale, onPageChange, onZoomIn, onZoomOut }: ViewerToolbarProps) {
     return (

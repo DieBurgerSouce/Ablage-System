@@ -24,13 +24,15 @@ from app.services.user_service import UserService
 
 # ==================== Database Dependencies ====================
 
-# Create async engine
+# Create async engine with centralized pool settings
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,
     pool_pre_ping=settings.DB_POOL_PRE_PING,
+    pool_recycle=settings.DB_POOL_RECYCLE,
+    pool_timeout=settings.DB_POOL_TIMEOUT,
 )
 
 # Create async session maker
@@ -60,6 +62,41 @@ async def get_db() -> Generator[AsyncSession, None, None]:
             yield session
         finally:
             await session.close()
+
+
+async def set_rls_context(
+    session: AsyncSession,
+    user_id: str,
+    is_admin: bool = False
+) -> None:
+    """
+    Set Row Level Security context for the current session.
+
+    This must be called before any queries that are protected by RLS policies.
+    The settings are LOCAL to the current transaction.
+
+    Args:
+        session: Database session
+        user_id: Current user's UUID as string
+        is_admin: Whether user has admin privileges (bypasses RLS)
+
+    Usage:
+        async with AsyncSessionLocal() as session:
+            await set_rls_context(session, str(user.id), user.is_admin)
+            # Now RLS policies will filter results
+    """
+    from sqlalchemy import text
+
+    # SECURITY FIX: Use parameterized queries to prevent SQL injection
+    # Previous code used f-string interpolation which was vulnerable
+    await session.execute(
+        text("SET LOCAL app.current_user_id = :user_id"),
+        {"user_id": str(user_id)}
+    )
+    await session.execute(
+        text("SET LOCAL app.is_admin = :is_admin"),
+        {"is_admin": "true" if is_admin else "false"}
+    )
 
 
 # ==================== Authentication Dependencies ====================

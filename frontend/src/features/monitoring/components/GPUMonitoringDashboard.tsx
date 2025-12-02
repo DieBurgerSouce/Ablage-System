@@ -1,42 +1,29 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import GaugeComponent from 'react-gauge-component';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import { motionTokens } from '@/lib/motion-tokens';
+import { monitoringService, type GPUMetrics } from '@/lib/api/services/monitoring';
 
-interface GPUMetrics {
-    utilization: number;
-    vramUsed: number;
-    vramTotal: number;
-    temperature: number;
-    time: number;
-}
-
-const MotionDiv = motion.div as any;
+const MotionDiv = motion.div;
 
 export function GPUMonitoringDashboard() {
-    // Mock WebSocket data for now
-    const [gpuMetrics, setGpuMetrics] = useState<GPUMetrics | null>(null);
     const [history, setHistory] = useState<GPUMetrics[]>([]);
 
+    const { data: gpuMetrics } = useQuery({
+        queryKey: ['gpu-metrics'],
+        queryFn: monitoringService.getGPUMetrics,
+        refetchInterval: 1000, // Poll every second
+    });
+
     useEffect(() => {
-        const interval = setInterval(() => {
-            const now = Date.now();
-            const newMetrics: GPUMetrics = {
-                utilization: Math.floor(Math.random() * 40) + 30, // 30-70%
-                vramUsed: Math.floor(Math.random() * 4) + 8, // 8-12GB
-                vramTotal: 24,
-                temperature: Math.floor(Math.random() * 20) + 50, // 50-70C
-                time: now
-            };
-
-            setGpuMetrics(newMetrics);
-            setHistory(prev => [...prev.slice(-60), newMetrics]);
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, []);
+        if (gpuMetrics) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setHistory(prev => [...prev.slice(-60), gpuMetrics]);
+        }
+    }, [gpuMetrics]);
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

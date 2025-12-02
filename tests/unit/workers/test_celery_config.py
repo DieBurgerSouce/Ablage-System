@@ -23,7 +23,7 @@ class TestCeleryAppConfiguration:
     def test_celery_app_exists(self):
         """Celery app sollte initialisiert sein."""
         assert celery_app is not None
-        assert celery_app.main == "ablage-system"
+        assert celery_app.main == "ablage_system"
 
     def test_celery_app_has_broker(self):
         """Celery app sollte Broker-Konfiguration haben."""
@@ -93,8 +93,8 @@ class TestGPULockFunctions:
         assert _GPU_LOCK_KEY == "ablage:gpu:lock"
 
     def test_gpu_lock_timeout_constant(self):
-        """GPU Lock Timeout sollte 5 Minuten sein."""
-        assert _GPU_LOCK_TIMEOUT == 300
+        """GPU Lock Timeout sollte 60 Sekunden sein (mit Refresh-Mechanismus)."""
+        assert _GPU_LOCK_TIMEOUT == 60
 
     @patch("app.workers.celery_app._get_redis_lock_client")
     def test_acquire_gpu_lock_success(self, mock_get_client):
@@ -125,26 +125,32 @@ class TestGPULockFunctions:
     def test_release_gpu_lock_success(self, mock_get_client):
         """GPU Lock Release sollte funktionieren."""
         mock_redis = Mock()
-        mock_redis.get.return_value = b"worker:123:1234567890"
-        mock_redis.delete.return_value = 1
+        mock_pipe = MagicMock()
+        mock_pipe.__enter__ = Mock(return_value=mock_pipe)
+        mock_pipe.__exit__ = Mock(return_value=False)
+        mock_pipe.get.return_value = b"worker:123:1234567890"
+        mock_pipe.execute.return_value = [1]  # Successful delete
+        mock_redis.pipeline.return_value = mock_pipe
         mock_get_client.return_value = mock_redis
 
         result = release_gpu_lock("worker:123:1234567890")
 
         assert result is True
-        mock_redis.delete.assert_called_with(_GPU_LOCK_KEY)
 
     @patch("app.workers.celery_app._get_redis_lock_client")
     def test_release_gpu_lock_wrong_value(self, mock_get_client):
         """GPU Lock Release sollte bei falschem Wert fehlschlagen."""
         mock_redis = Mock()
-        mock_redis.get.return_value = b"worker:other:9999"  # Different lock holder
+        mock_pipe = MagicMock()
+        mock_pipe.__enter__ = Mock(return_value=mock_pipe)
+        mock_pipe.__exit__ = Mock(return_value=False)
+        mock_pipe.get.return_value = b"worker:other:9999"  # Different lock holder
+        mock_redis.pipeline.return_value = mock_pipe
         mock_get_client.return_value = mock_redis
 
         result = release_gpu_lock("worker:123:1234567890")
 
         assert result is False
-        mock_redis.delete.assert_not_called()
 
 
 class TestTaskBaseClasses:

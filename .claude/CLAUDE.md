@@ -66,7 +66,9 @@ Validation: Pydantic v2
 
 Frontend
 
-Framework: [To be confirmed in repository - likely Vue.js or React]
+Framework: React 18 + TypeScript 5.x with TanStack Router
+UI Library: shadcn/ui + Tailwind CSS
+State: TanStack Query for server state
 Display Modes: Dark, Light, Whitescreen (high contrast), Blackscreen (inverted)
 Accessibility: WCAG 2.1 AA compliant
 

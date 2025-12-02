@@ -30,7 +30,7 @@ function useDebounce<T>(value: T, delay: number): T {
     return debouncedValue;
 }
 
-const MotionDiv = motion.div as any;
+const MotionDiv = motion.div;
 
 export function SearchPanel({ onSearch }: SearchPanelProps) {
     const [query, setQuery] = useState('');
@@ -47,7 +47,7 @@ export function SearchPanel({ onSearch }: SearchPanelProps) {
         onSearch({ query: debouncedQuery, mode: searchMode, filters });
     }, [debouncedQuery, searchMode, filters, onSearch]);
 
-    const updateFilter = (key: keyof SearchFilters, value: any) => {
+    const updateFilter = (key: keyof SearchFilters, value: string | string[] | Date | undefined) => {
         setFilters(prev => ({ ...prev, [key]: value }));
     };
 
@@ -138,17 +138,18 @@ export function SearchPanel({ onSearch }: SearchPanelProps) {
                         Filter zurücksetzen
                     </Button>
                 )}
+
             </MotionDiv>
         </div >
     );
 }
 
 interface FilterDropdownProps {
-    icon: any;
+    icon: React.ElementType;
     label: string;
     options: { id: string; label: string }[];
     selected: string[] | string;
-    onChange: (value: any) => void;
+    onChange: (value: string | string[]) => void;
     single?: boolean;
 }
 

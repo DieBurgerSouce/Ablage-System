@@ -59,8 +59,8 @@ def get_user_identifier(request: Request) -> str:
     if user and hasattr(user, "id"):
         return f"user:{user.id}"
 
-    # Fall back to IP address
-    return f"ip:{get_remote_address(request)}"
+    # Fall back to IP address (mit sicherer Extraktion)
+    return f"ip:{get_secure_remote_address(request)}"
 
 
 def get_ip_identifier(request: Request) -> str:
@@ -74,7 +74,102 @@ def get_ip_identifier(request: Request) -> str:
     Returns:
         IP address string
     """
-    return get_remote_address(request)
+    return get_secure_remote_address(request)
+
+
+def get_secure_remote_address(request: Request) -> str:
+    """
+    Securely extract client IP address with X-Forwarded-For validation.
+
+    SECURITY: X-Forwarded-For kann gespooft werden.
+    Diese Funktion validiert die Header und erlaubt nur trusted Proxies.
+
+    Priorität:
+    1. X-Real-IP (von trusted Proxy gesetzt)
+    2. Erster valider IP aus X-Forwarded-For (wenn trusted Proxy)
+    3. Client-IP aus Connection
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        Validated client IP address
+    """
+    import ipaddress
+
+    # Trusted Proxy IPs (Nginx, Load Balancer, etc.)
+    TRUSTED_PROXIES = {
+        ipaddress.ip_network("127.0.0.0/8"),      # Localhost
+        ipaddress.ip_network("10.0.0.0/8"),       # Private Class A
+        ipaddress.ip_network("172.16.0.0/12"),    # Private Class B
+        ipaddress.ip_network("192.168.0.0/16"),   # Private Class C
+        ipaddress.ip_network("::1/128"),          # IPv6 Localhost
+        ipaddress.ip_network("fc00::/7"),         # IPv6 Private
+    }
+
+    def is_trusted_proxy(ip: str) -> bool:
+        """Prüfe ob IP ein trusted Proxy ist."""
+        try:
+            addr = ipaddress.ip_address(ip)
+            return any(addr in net for net in TRUSTED_PROXIES)
+        except ValueError:
+            return False
+
+    def is_valid_ip(ip: str) -> bool:
+        """Prüfe ob IP-String eine valide IP-Adresse ist."""
+        try:
+            ipaddress.ip_address(ip.strip())
+            return True
+        except ValueError:
+            return False
+
+    # Direct connection IP
+    client_host = request.client.host if request.client else "127.0.0.1"
+
+    # Only process proxy headers if request comes from trusted proxy
+    if is_trusted_proxy(client_host):
+        # Option 1: X-Real-IP (gesetzt von Nginx)
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip and is_valid_ip(real_ip):
+            logger.debug(
+                "rate_limit_ip_from_real_ip",
+                real_ip=real_ip,
+                proxy=client_host
+            )
+            return real_ip.strip()
+
+        # Option 2: X-Forwarded-For (erste IP in der Kette)
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            # Format: client, proxy1, proxy2, ...
+            ips = [ip.strip() for ip in forwarded_for.split(",")]
+
+            # Finde die erste nicht-Proxy-IP
+            for ip in ips:
+                if is_valid_ip(ip) and not is_trusted_proxy(ip):
+                    logger.debug(
+                        "rate_limit_ip_from_forwarded",
+                        forwarded_ip=ip,
+                        proxy=client_host,
+                        full_chain=forwarded_for
+                    )
+                    return ip
+
+            # Wenn alle IPs Proxies sind, nimm die erste
+            if ips and is_valid_ip(ips[0]):
+                return ips[0]
+    else:
+        # SECURITY: X-Forwarded-For von nicht-trusted Source ignorieren
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            logger.warning(
+                "rate_limit_untrusted_proxy_header_ignored",
+                client_host=client_host,
+                x_forwarded_for=forwarded_for
+            )
+
+    # Fallback: Direct connection IP
+    return client_host
 
 
 # ==================== Redis Backend Configuration ====================
@@ -576,8 +671,20 @@ async def check_rate_limit_budget(
     storage = await get_redis_storage()
 
     if not storage or not storage.is_available:
+        # SECURITY: Fail-Closed bei Redis-Ausfall wenn konfiguriert
+        if settings.RATE_LIMIT_FAIL_CLOSED:
+            logger.error(
+                "rate_limit_check_redis_unavailable_fail_closed",
+                user_id=user_id,
+                limit_type=limit_type
+            )
+            raise RateLimitStorageError(
+                "Rate-Limiting-Service vorübergehend nicht verfügbar. "
+                "Bitte versuchen Sie es später erneut."
+            )
+
         logger.warning(
-            "rate_limit_check_redis_unavailable",
+            "rate_limit_check_redis_unavailable_fail_open",
             user_id=user_id,
             limit_type=limit_type
         )
@@ -698,7 +805,15 @@ async def check_rate_limit_budget(
             limit_type=limit_type,
             error=str(e)
         )
-        # Fail-open: allow request on error
+
+        # SECURITY: Fail-Closed bei Fehler wenn konfiguriert
+        if settings.RATE_LIMIT_FAIL_CLOSED:
+            raise RateLimitStorageError(
+                "Rate-Limiting-Prüfung fehlgeschlagen. "
+                "Bitte versuchen Sie es später erneut."
+            ) from e
+
+        # Fail-open: allow request on error (nur wenn RATE_LIMIT_FAIL_CLOSED=False)
         return {
             "available": True,
             "reason": "check_failed",

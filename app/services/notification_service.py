@@ -14,7 +14,7 @@ Feinpoliert und durchdacht - Zuverlässige Benachrichtigungen für Benutzer.
 import asyncio
 import json
 import smtplib
-from datetime import datetime
+from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any, Dict, List, Optional
@@ -37,6 +37,7 @@ class NotificationType:
     GERMAN_VALIDATION_WARNING = "german_validation_warning"
     BATCH_COMPLETED = "batch_completed"
     SYSTEM_ALERT = "system_alert"
+    PASSWORD_RESET_CONFIRMATION = "password_reset_confirmation"
 
 
 class NotificationChannel:
@@ -190,6 +191,29 @@ Schweregrad: {severity}
 {details}
 
 Bitte überprüfen Sie das System.
+            """.strip(),
+        },
+        NotificationType.PASSWORD_RESET_CONFIRMATION: {
+            "subject": "Passwort erfolgreich geändert - Ablage-System",
+            "body": """
+Guten Tag {full_name},
+
+Ihr Passwort für das Ablage-System wurde erfolgreich geändert.
+
+Zeitpunkt: {timestamp}
+IP-Adresse: {ip_address}
+Gerät: {user_agent}
+
+Falls Sie diese Änderung NICHT vorgenommen haben, ergreifen Sie bitte sofort folgende Maßnahmen:
+1. Kontaktieren Sie umgehend den Administrator
+2. Versuchen Sie, Ihr Passwort erneut zurückzusetzen
+3. Überprüfen Sie Ihre anderen Konten auf verdächtige Aktivitäten
+
+Mit freundlichen Grüßen,
+Ablage-System Team
+
+---
+Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
             """.strip(),
         },
     }
@@ -376,7 +400,7 @@ class WebhookNotifier:
             request_headers = {
                 "Content-Type": "application/json",
                 "X-Ablage-System-Event": payload.get("event_type", "notification"),
-                "X-Ablage-System-Timestamp": datetime.utcnow().isoformat(),
+                "X-Ablage-System-Timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
             if headers:
@@ -463,7 +487,7 @@ class InAppNotificationStore:
         notification_data = {
             "id": notification_id,
             "user_id": user_id,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "read": False,
             **notification,
         }
@@ -555,7 +579,7 @@ class InAppNotificationStore:
                 notification = json.loads(raw)
                 if notification.get("id") == notification_id:
                     notification["read"] = True
-                    notification["read_at"] = datetime.utcnow().isoformat()
+                    notification["read_at"] = datetime.now(timezone.utc).isoformat()
                     await redis.client.lset(key, i, json.dumps(notification))
                     return True
 
@@ -694,7 +718,7 @@ class NotificationService:
         """Send webhook notification."""
         payload = {
             "event_type": notification_type,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "priority": priority,
             "data": context,
         }
@@ -772,7 +796,7 @@ class NotificationService:
             "document_id": document_id,
             "filename": filename,
             "error_message": error_message,
-            "failed_at": datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S"),
+            "failed_at": datetime.now(timezone.utc).strftime("%d.%m.%Y %H:%M:%S"),
         }
 
         return await self.notify(

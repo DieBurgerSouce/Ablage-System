@@ -9,7 +9,7 @@ Provides high-level interface for:
 """
 
 import structlog
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from uuid import UUID
 

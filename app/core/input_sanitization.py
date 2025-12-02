@@ -424,7 +424,7 @@ def validate_uuid(value: str, field_name: str = "id") -> UUID:
 def sanitize_pagination_params(
     page: int,
     per_page: int,
-    max_page: int = 10000,
+    max_page: int = 1000,  # SECURITY FIX: Reduziert von 10000 auf 1000 (DoS-Schutz)
     max_per_page: int = 100,
     default_per_page: int = 20
 ) -> Tuple[int, int]:
@@ -515,3 +515,245 @@ def get_sanitization_stats() -> Dict[str, Any]:
         "sql_keywords_blocked": len(SanitizationConfig.SQL_DANGEROUS_KEYWORDS),
         "redos_patterns_checked": len(SanitizationConfig.REDOS_DANGEROUS_PATTERNS),
     }
+
+
+# ============================================================================
+# SQL Injection Prevention - Defense in Depth
+# ============================================================================
+
+
+class SQLInjectionError(SanitizationError):
+    """Exception bei erkanntem SQL-Injection-Versuch."""
+
+    def __init__(self, detected_pattern: str, value_preview: str = ""):
+        self.detected_pattern = detected_pattern
+        self.value_preview = value_preview[:50] if value_preview else ""
+        super().__init__(
+            message=f"SQL-Injection-Pattern erkannt: {detected_pattern}",
+            field="query",
+            user_message_de="Ungueltige Suchanfrage - verbotene Zeichen erkannt"
+        )
+
+
+def enforce_sql_safe(value: str, field_name: str = "query") -> str:
+    """
+    Prueft einen Wert auf SQL-Injection-Patterns und wirft Exception bei Erkennung.
+
+    Dies ist eine Defense-in-Depth-Massnahme zusaetzlich zu SQLAlchemy's
+    parametrisierten Queries.
+
+    Args:
+        value: Zu pruefender Wert
+        field_name: Feldname fuer Logging und Fehlermeldung
+
+    Returns:
+        Der unveraenderte Wert, wenn sicher
+
+    Raises:
+        SQLInjectionError: Bei erkanntem SQL-Injection-Pattern
+    """
+    if not value:
+        return value
+
+    is_safe, detected_pattern = check_sql_injection_patterns(value)
+
+    if not is_safe:
+        logger.warning(
+            "sql_injection_blocked",
+            field=field_name,
+            pattern=detected_pattern,
+            value_preview=value[:100],
+            action="request_blocked"
+        )
+        raise SQLInjectionError(
+            detected_pattern=detected_pattern or "unknown",
+            value_preview=value
+        )
+
+    return value
+
+
+def sql_safe_decorator(fields: Optional[List[str]] = None):
+    """
+    Decorator zum Schutz von Funktionsparametern vor SQL-Injection.
+
+    Verwendung:
+        @sql_safe_decorator(fields=["query", "search_term"])
+        async def search_documents(query: str, search_term: str):
+            ...
+
+    Args:
+        fields: Liste der zu pruefenden Parameter-Namen.
+                Falls None, werden alle String-Parameter geprueft.
+    """
+    import functools
+    import inspect
+
+    def decorator(func):
+        @functools.wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            # Signatur der Funktion holen
+            sig = inspect.signature(func)
+            bound = sig.bind(*args, **kwargs)
+            bound.apply_defaults()
+
+            # Parameter pruefen
+            for param_name, param_value in bound.arguments.items():
+                # Nur String-Parameter pruefen
+                if not isinstance(param_value, str):
+                    continue
+
+                # Nur spezifizierte Felder oder alle
+                if fields is not None and param_name not in fields:
+                    continue
+
+                enforce_sql_safe(param_value, field_name=param_name)
+
+            return await func(*args, **kwargs)
+
+        @functools.wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            # Signatur der Funktion holen
+            sig = inspect.signature(func)
+            bound = sig.bind(*args, **kwargs)
+            bound.apply_defaults()
+
+            # Parameter pruefen
+            for param_name, param_value in bound.arguments.items():
+                if not isinstance(param_value, str):
+                    continue
+                if fields is not None and param_name not in fields:
+                    continue
+                enforce_sql_safe(param_value, field_name=param_name)
+
+            return func(*args, **kwargs)
+
+        # Async oder Sync Wrapper zurueckgeben
+        if inspect.iscoroutinefunction(func):
+            return async_wrapper
+        return sync_wrapper
+
+    return decorator
+
+
+# FastAPI Dependency fuer SQL-Safe Query-Parameter
+def create_sql_safe_query_dependency():
+    """
+    Erstellt eine FastAPI Dependency zur Pruefung von Query-Parametern.
+
+    Verwendung in Endpoints:
+        from app.core.input_sanitization import SQLSafeQuery
+
+        @router.get("/search")
+        async def search(
+            q: str = Query(...),
+            _: None = Depends(SQLSafeQuery(["q"]))
+        ):
+            ...
+    """
+    from fastapi import Query, HTTPException, status
+
+    class SQLSafeQuery:
+        """FastAPI Dependency fuer SQL-sichere Query-Parameter."""
+
+        def __init__(self, param_names: Optional[List[str]] = None):
+            """
+            Args:
+                param_names: Namen der zu pruefenden Query-Parameter.
+                            Falls None, wird "q" und "query" geprueft.
+            """
+            self.param_names = param_names or ["q", "query", "search", "filter"]
+
+        async def __call__(self, **kwargs) -> None:
+            """Prueft alle konfigurierten Parameter."""
+            for name in self.param_names:
+                value = kwargs.get(name)
+                if value and isinstance(value, str):
+                    try:
+                        enforce_sql_safe(value, field_name=name)
+                    except SQLInjectionError as e:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail={
+                                "error": "sql_injection_detected",
+                                "message": e.user_message_de,
+                                "field": name,
+                            }
+                        )
+
+    return SQLSafeQuery
+
+
+# Singleton-Instanz
+SQLSafeQuery = create_sql_safe_query_dependency()
+
+
+def validate_and_sanitize_search_input(
+    query: str,
+    max_length: int = 500,
+    check_sql: bool = True,
+    strict_mode: bool = False
+) -> str:
+    """
+    Kombinierte Validierung und Sanitierung fuer Sucheingaben.
+
+    Fuehrt alle relevanten Checks in einem Aufruf durch:
+    1. SQL-Injection-Check (Defense in Depth)
+    2. XSS-Schutz
+    3. ReDoS-Schutz
+    4. Laengenbegrenzung
+    5. Unicode-Normalisierung
+
+    Args:
+        query: Originale Suchanfrage
+        max_length: Maximale erlaubte Laenge
+        check_sql: SQL-Injection-Patterns pruefen
+        strict_mode: Nur alphanumerisch + Umlaute erlauben
+
+    Returns:
+        Sanitierte und validierte Query
+
+    Raises:
+        SQLInjectionError: Bei erkanntem SQL-Injection-Versuch
+        SanitizationError: Bei anderen kritischen Problemen
+    """
+    if not query:
+        return ""
+
+    # 1. SQL-Injection-Check (vor Sanitierung, um Original zu loggen)
+    if check_sql:
+        enforce_sql_safe(query, field_name="search_query")
+
+    # 2. Vollstaendige Sanitierung
+    sanitized, warnings = sanitize_search_query(
+        query=query,
+        max_length=max_length,
+        allow_wildcards=True,
+        strict_mode=strict_mode
+    )
+
+    # 3. Nochmal SQL-Check nach Sanitierung (falls durch Sanitierung Patterns entstehen)
+    if check_sql and sanitized:
+        enforce_sql_safe(sanitized, field_name="search_query_sanitized")
+
+    return sanitized
+
+
+# Prometheus Metriken fuer Security-Monitoring (optional)
+try:
+    from prometheus_client import Counter
+
+    SQL_INJECTION_ATTEMPTS = Counter(
+        'ablage_sql_injection_attempts_total',
+        'Anzahl erkannter SQL-Injection-Versuche',
+        ['pattern', 'field']
+    )
+
+    def _increment_sql_injection_metric(pattern: str, field: str):
+        """Inkrementiert SQL-Injection-Counter."""
+        SQL_INJECTION_ATTEMPTS.labels(pattern=pattern, field=field).inc()
+
+except ImportError:
+    def _increment_sql_injection_metric(pattern: str, field: str):
+        """Stub wenn Prometheus nicht verfuegbar."""
+        pass

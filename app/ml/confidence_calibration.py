@@ -15,7 +15,7 @@ Feinpoliert und durchdacht - Zuverlässige Konfidenzschätzungen.
 import json
 import math
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -515,7 +515,7 @@ class ConfidenceCalibrator:
             is_correct=is_correct,
             backend=backend,
             document_type=document_type,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         if backend not in self._pending_samples:
@@ -580,7 +580,7 @@ class ConfidenceCalibrator:
             method=method,
             parameters=parameters,
             samples_used=len(samples),
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             metrics=metrics,
         )
 

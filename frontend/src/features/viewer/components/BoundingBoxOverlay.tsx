@@ -24,7 +24,7 @@ interface BoundingBoxOverlayProps {
     onBoxClick: (box: BoundingBox) => void;
 }
 
-const MotionRect = motion.rect as any;
+const MotionRect = motion.rect;
 
 export function BoundingBoxOverlay({ boxes, scale, selectedBox, onBoxClick }: BoundingBoxOverlayProps) {
     return (
