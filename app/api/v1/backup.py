@@ -726,7 +726,27 @@ async def validate_backup(
         level=level,
     )
 
-    backup_path = Path(backup_pfad)
+    backup_path = Path(backup_pfad).resolve()
+
+    # SECURITY FIX: Path Traversal Prevention
+    # Resolve path to prevent ../ attacks and validate it's within backup dir
+    backup_service = get_backup_service()
+    allowed_backup_dir = backup_service.config.backup_dir.resolve()
+
+    try:
+        # Check if path is within allowed backup directory
+        backup_path.relative_to(allowed_backup_dir)
+    except ValueError:
+        logger.warning(
+            "path_traversal_attempt_blocked",
+            user_id=str(current_user.id),
+            requested_path=backup_pfad,
+            allowed_dir=str(allowed_backup_dir),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Zugriff verweigert: Pfad außerhalb des Backup-Verzeichnisses",
+        )
 
     if not backup_path.exists():
         raise HTTPException(
@@ -741,7 +761,7 @@ async def validate_backup(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Validierungslevel: '{level}'. "
+            detail=f"Ungültiger Validierungslevel: '{level}'. "
                    f"Erlaubte Werte: {', '.join(valid_levels)}",
         )
 
@@ -820,7 +840,7 @@ async def validate_all_backups(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Validierungslevel: '{level}'. "
+            detail=f"Ungültiger Validierungslevel: '{level}'. "
                    f"Erlaubte Werte: {', '.join(valid_levels)}",
         )
 

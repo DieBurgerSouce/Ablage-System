@@ -59,9 +59,9 @@ RUN mkdir -p Dynamic_Knowledge/Logs \
     Dynamic_Knowledge/Context \
     /tmp/uploads
 
-# Set permissions
+# Set permissions - SECURITY: 775 statt 777 (kein world-write)
 RUN chmod -R 755 app/ && \
-    chmod -R 777 Dynamic_Knowledge/ /tmp/uploads
+    chmod -R 775 Dynamic_Knowledge/ /tmp/uploads
 
 # Create non-root user for security
 RUN useradd -m -u 1000 ablage && \

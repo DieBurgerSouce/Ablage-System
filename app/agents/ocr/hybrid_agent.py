@@ -524,7 +524,17 @@ class HybridOCRAgent(OCRAgent):
             reverse=True
         )
 
-        return deduplicated
+        # Limit entity count to prevent OOM with very large documents
+        max_entities = 1000
+        if len(deduplicated) > max_entities:
+            logger.warning(
+                "entity_limit_exceeded",
+                total=len(deduplicated),
+                limit=max_entities,
+                message="Entity list truncated to prevent memory issues"
+            )
+
+        return deduplicated[:max_entities]
 
     def _group_by_exact_match(self, entities: List[Dict]) -> List[Dict]:
         """

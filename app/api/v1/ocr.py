@@ -453,6 +453,8 @@ class OCRBackendChangeRequest(BaseModel):
 @router.post(
     "/documents/{document_id}/start",
     response_model=OCRStartResponse,
+    # HTTP 202 Accepted: Async-Verarbeitung gestartet, Ergebnis noch nicht verfügbar
+    status_code=202,
     summary="OCR-Verarbeitung starten",
     description="Startet die OCR-Verarbeitung für ein Dokument."
 )

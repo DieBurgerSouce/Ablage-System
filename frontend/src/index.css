@@ -78,6 +78,66 @@
         --input: oklch(0.25 0.02 250);
         --ring: oklch(0.88 0.16 85);
     }
+
+    /* ACCESSIBILITY: Whitescreen Mode - High Contrast (WCAG AAA)
+     * Use case: Visual impairments, maximum readability
+     * Pure white background, pure black text, high contrast ratios */
+    .whitescreen {
+        --background: oklch(1 0 0);          /* Pure white #FFFFFF */
+        --foreground: oklch(0 0 0);          /* Pure black #000000 */
+        --primary: oklch(0.45 0.31 264);     /* Pure blue #0000FF */
+        --primary-foreground: oklch(1 0 0);  /* Pure white */
+
+        --card: oklch(1 0 0);
+        --card-foreground: oklch(0 0 0);
+        --popover: oklch(1 0 0);
+        --popover-foreground: oklch(0 0 0);
+        --muted: oklch(0.95 0 0);
+        --muted-foreground: oklch(0.25 0 0);
+        --border: oklch(0 0 0);              /* Black borders for max contrast */
+        --input: oklch(0.95 0 0);
+        --ring: oklch(0.45 0.31 264);
+
+        --accent: oklch(0.45 0.31 264);      /* Blue accent */
+        --accent-foreground: oklch(1 0 0);
+        --destructive: oklch(0.5 0.3 29);    /* High contrast red */
+        --destructive-foreground: oklch(1 0 0);
+
+        /* Sidebar in whitescreen mode */
+        --sidebar: oklch(0.95 0 0);
+        --sidebar-foreground: oklch(0 0 0);
+        --sidebar-border: oklch(0 0 0);
+    }
+
+    /* ACCESSIBILITY: Blackscreen Mode - Inverted High Contrast
+     * Use case: OLED displays, extreme low-light, photosensitivity
+     * Pure black background, pure white text, bright green accents */
+    .blackscreen {
+        --background: oklch(0 0 0);          /* Pure black #000000 */
+        --foreground: oklch(1 0 0);          /* Pure white #FFFFFF */
+        --primary: oklch(0.87 0.3 142);      /* Bright green #00FF00 */
+        --primary-foreground: oklch(0 0 0);  /* Pure black */
+
+        --card: oklch(0.08 0 0);             /* Near-black card */
+        --card-foreground: oklch(1 0 0);
+        --popover: oklch(0.08 0 0);
+        --popover-foreground: oklch(1 0 0);
+        --muted: oklch(0.15 0 0);
+        --muted-foreground: oklch(0.8 0 0);
+        --border: oklch(1 0 0);              /* White borders for visibility */
+        --input: oklch(0.1 0 0);
+        --ring: oklch(0.87 0.3 142);
+
+        --accent: oklch(0.87 0.3 142);       /* Green accent */
+        --accent-foreground: oklch(0 0 0);
+        --destructive: oklch(0.65 0.3 29);   /* Bright red on black */
+        --destructive-foreground: oklch(0 0 0);
+
+        /* Sidebar in blackscreen mode */
+        --sidebar: oklch(0 0 0);
+        --sidebar-foreground: oklch(1 0 0);
+        --sidebar-border: oklch(0.3 0 0);
+    }
 }
 
 @layer base {

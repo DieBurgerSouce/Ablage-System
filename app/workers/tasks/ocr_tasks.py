@@ -710,12 +710,8 @@ def batch_process_task(
 
     for idx, doc_id in enumerate(document_ids[start_index:], start=start_index):
         # Check if batch was paused
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            is_paused = loop.run_until_complete(check_batch_paused())
-        finally:
-            loop.close()
+        # MEMORY FIX: asyncio.run() statt new_event_loop() - verhindert Memory Leaks
+        is_paused = asyncio.run(check_batch_paused())
 
         if is_paused:
             logger.info(
@@ -749,16 +745,12 @@ def batch_process_task(
             results.append(result)
 
             # Update BatchJob progress
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(update_batch_job_progress(
-                    idx + 1 - start_index + successful + failed - 1,
-                    failed,
-                    doc_id[:8]
-                ))
-            finally:
-                loop.close()
+            # MEMORY FIX: asyncio.run() statt new_event_loop() - verhindert Memory Leaks
+            asyncio.run(update_batch_job_progress(
+                idx + 1 - start_index + successful + failed - 1,
+                failed,
+                doc_id[:8]
+            ))
 
         except Exception as e:
             # GPU OOM bei Batch-Verarbeitung: Speicher aufräumen, aber weitermachen
@@ -849,12 +841,8 @@ def batch_process_task(
             except Exception as e:
                 logger.warning("batch_job_completion_failed", error=str(e))
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(complete_batch())
-        finally:
-            loop.close()
+        # MEMORY FIX: asyncio.run() statt new_event_loop() - verhindert Memory Leaks
+        asyncio.run(complete_batch())
 
     # GPU OOM Statistiken sammeln
     gpu_oom_count = sum(1 for r in results if r.get("error_type") == "gpu_oom")
@@ -951,12 +939,8 @@ def validate_german_text_task(
                         german_validation_score=quality_score
                     )
 
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(update_doc())
-            finally:
-                loop.close()
+            # MEMORY FIX: asyncio.run() statt new_event_loop() - verhindert Memory Leaks
+            asyncio.run(update_doc())
 
         logger.info(
             "validation_task_completed",

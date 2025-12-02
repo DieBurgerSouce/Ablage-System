@@ -15,7 +15,9 @@ export function GPUMonitoringDashboard() {
     const { data: gpuMetrics } = useQuery({
         queryKey: ['gpu-metrics'],
         queryFn: monitoringService.getGPUMetrics,
-        refetchInterval: 1000, // Poll every second
+        // PERFORMANCE FIX: 5s statt 1s - reduziert API-Last um 80%
+        // GPU-Metriken ändern sich nicht so schnell, 5s ist ausreichend
+        refetchInterval: 5000,
     });
 
     useEffect(() => {

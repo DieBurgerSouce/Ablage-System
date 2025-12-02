@@ -321,6 +321,12 @@ class DeepSeekAgent(OCRAgent):
 
             if use_janus_implementation:
                 # Use Janus-specific implementation as per initial-prompt.md
+                # SECURITY WARNING: trust_remote_code=True is REQUIRED for DeepSeek-Janus models
+                # This allows execution of model-specific code from HuggingFace Hub.
+                # Risk: Malicious model code could execute arbitrary commands.
+                # Mitigation: Only use official deepseek-ai/Janus-Pro-7B model.
+                # Alternative: Use local model copy after manual code review.
+                # See: https://huggingface.co/docs/transformers/main_classes/model#trust-remote-code
                 if quantization_method == "bitsandbytes":
                     # 4-bit quantization for RTX 4080 16GB (Linux)
                     quant_config = BitsAndBytesConfig(
@@ -805,7 +811,8 @@ class DeepSeekAgent(OCRAgent):
             generated_text = generated_text.replace(prompt, "").strip()
 
         # Berechne finale Confidence aus Token-Level Daten
-        if confidence_data and confidence_data.get("confidence_method") == "token_logits":
+        # Prüfe auf beide möglichen Methoden-Namen (legacy und aktuell)
+        if confidence_data and confidence_data.get("confidence_method") in ("token_logits", "token_logits_vectorized"):
             # Verwende gewichtete Confidence (70% mean + 30% min)
             confidence = confidence_data.get("weighted_confidence", 0.0)
 
@@ -1360,7 +1367,8 @@ class DeepSeekAgent(OCRAgent):
                     )
                     results.append({"error": str(result)})
                 else:
-                    results.append(result["result"])
+                    # result ist bereits das Dict von to_dict(), nicht {"result": ...}
+                    results.append(result)
 
         return results
 

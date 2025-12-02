@@ -373,7 +373,8 @@ class Settings(BaseSettings):
     
     # Database
     DB_USER: str = "ablage_admin"
-    DB_PASSWORD: SecretStr = "changeme"
+    # SECURITY FIX: Kein Default-Passwort - muss in .env gesetzt werden
+    DB_PASSWORD: SecretStr = Field(..., description="Database password - REQUIRED, set in .env")
     DB_HOST: str = "localhost"
     DB_PORT: int = 5433
     DB_NAME: str = "ablage_system"
@@ -384,7 +385,8 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = Field(default=50, description="Database connection pool size for API")
     DB_MAX_OVERFLOW: int = Field(default=150, description="Maximum overflow connections for API")
     DB_POOL_RECYCLE: int = Field(default=1800, description="Connection recycle time in seconds (30 min)")
-    DB_POOL_TIMEOUT: int = Field(default=60, description="Pool connection timeout in seconds")
+    # PERFORMANCE FIX: 10s statt 60s - schnelleres Fail-Fast bei Pool-Erschöpfung
+    DB_POOL_TIMEOUT: int = Field(default=10, description="Pool connection timeout in seconds")
     DB_POOL_PRE_PING: bool = Field(default=True, description="Validate connections before use")
 
     # Worker Pool Settings (Celery Tasks)
@@ -420,8 +422,9 @@ class Settings(BaseSettings):
     
     # MinIO
     MINIO_ENDPOINT: str = "localhost:9000"
-    MINIO_ACCESS_KEY: str = "minioadmin"
-    MINIO_SECRET_KEY: SecretStr = "minioadmin123"
+    # SECURITY FIX: Keine Default-Credentials - müssen in .env gesetzt werden
+    MINIO_ACCESS_KEY: str = Field(..., description="MinIO access key - REQUIRED, set in .env")
+    MINIO_SECRET_KEY: SecretStr = Field(..., description="MinIO secret key - REQUIRED, set in .env")
     MINIO_SECURE: bool = False
     MINIO_BUCKET_DOCUMENTS: str = "documents"
     MINIO_BUCKET_PROCESSED: str = "processed"

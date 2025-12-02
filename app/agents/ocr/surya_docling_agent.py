@@ -5,7 +5,7 @@ FoundationPredictor, and RecognitionPredictor classes.
 """
 
 import asyncio
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from pathlib import Path
 import structlog
 
@@ -21,7 +21,7 @@ class SuryaDoclingAgent(OCRAgent):
     """Surya OCR agent with working German text recognition (CPU-only)."""
 
     # Class-level lock to prevent race conditions during model loading
-    _model_lock: asyncio.Lock = None
+    _model_lock: Optional[asyncio.Lock] = None
 
     def __init__(self):
         """Initialize Surya OCR models."""
@@ -43,17 +43,37 @@ class SuryaDoclingAgent(OCRAgent):
 
         logger.info("SuryaDoclingAgent initialized (models will be loaded on first use)")
 
-    async def _load_models_async(self):
-        """Load Surya models with thread-safe locking.
+    async def _load_models_async(self, timeout_seconds: float = 600.0):
+        """Load Surya models with thread-safe locking and timeout.
 
         SECURITY FIX: Uses asyncio.Lock to prevent race conditions when
         multiple concurrent requests try to load models simultaneously.
+
+        Args:
+            timeout_seconds: Maximum time to wait for model loading (default: 600s = 10min)
+
+        Raises:
+            asyncio.TimeoutError: If model loading exceeds timeout
         """
         async with SuryaDoclingAgent._model_lock:
             # Double-check pattern: re-check inside lock
             if self._models_loaded:
                 return
-            self._load_models_sync()
+
+            loop = asyncio.get_event_loop()
+            try:
+                # Run sync loading in thread pool with timeout
+                await asyncio.wait_for(
+                    loop.run_in_executor(None, self._load_models_sync),
+                    timeout=timeout_seconds
+                )
+            except asyncio.TimeoutError:
+                logger.error(
+                    "surya_model_loading_timeout",
+                    timeout_seconds=timeout_seconds,
+                    message="Model loading exceeded timeout - possible stuck download or OOM"
+                )
+                raise
 
     def _load_models(self):
         """Synchronous model loading - prefer _load_models_async() for concurrent access."""

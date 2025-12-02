@@ -11,6 +11,7 @@ Manages:
 """
 
 import asyncio
+import atexit
 import json
 import structlog
 import os
@@ -22,6 +23,23 @@ import redis.asyncio as aioredis
 from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
+
+
+# MEMORY FIX: Cleanup-Handler um Connection Pool Leaks zu verhindern
+_cleanup_registered = False
+
+
+def _sync_cleanup():
+    """Synchroner Cleanup für atexit Handler."""
+    try:
+        manager = RedisStateManager._instance
+        if manager and manager._redis:
+            # Erstelle temporären Event-Loop für Cleanup
+            asyncio.run(manager.disconnect())
+            logger.info("redis_atexit_cleanup_completed")
+    except Exception as e:
+        # Fehler beim Cleanup nicht propagieren
+        logger.warning("redis_atexit_cleanup_failed", error=str(e))
 
 
 class RedisStateManager:
@@ -51,8 +69,14 @@ class RedisStateManager:
     @classmethod
     def get_instance(cls) -> "RedisStateManager":
         """Get singleton instance."""
+        global _cleanup_registered
         if cls._instance is None:
             cls._instance = cls()
+            # MEMORY FIX: Registriere Cleanup-Handler beim ersten Instance-Erstellen
+            if not _cleanup_registered:
+                atexit.register(_sync_cleanup)
+                _cleanup_registered = True
+                logger.debug("redis_atexit_handler_registered")
         return cls._instance
 
     async def connect(self) -> None:

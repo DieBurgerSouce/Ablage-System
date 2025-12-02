@@ -21,13 +21,13 @@ logger = structlog.get_logger(__name__)
 
 
 def run_async(coro):
-    """Hilfsfunktion um async Code in sync Celery Tasks auszufuehren."""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+    """Hilfsfunktion um async Code in sync Celery Tasks auszufuehren.
+
+    MEMORY FIX: Verwendet asyncio.run() statt new_event_loop() um Memory Leaks
+    zu verhindern. asyncio.run() erstellt einen neuen Event-Loop, fuehrt die
+    Coroutine aus und schließt den Loop korrekt inkl. aller pending Tasks.
+    """
+    return asyncio.run(coro)
 
 
 @celery_app.task(

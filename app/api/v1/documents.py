@@ -113,7 +113,7 @@ async def upload_document(
     if language not in ["de", "en"]:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltige Sprache: {language}. Erlaubt: de, en"
+            detail=f"Ungültige Sprache: {language}. Erlaubt: de, en"
         )
 
     # 3. Dateiinhalt lesen und Groesse pruefen
@@ -140,7 +140,7 @@ async def upload_document(
     if not is_valid:
         raise HTTPException(
             status_code=400,
-            detail=magic_error or "Ungueltige Datei - Magic Bytes stimmen nicht ueberein"
+            detail=magic_error or "Ungültige Datei - Magic Bytes stimmen nicht überein"
         )
 
     # MIME-Type aus Dateiendung ableiten

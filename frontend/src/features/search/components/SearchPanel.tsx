@@ -52,12 +52,12 @@ export function SearchPanel({ onSearch }: SearchPanelProps) {
     };
 
     return (
-        <div className="space-y-4 w-full max-w-4xl mx-auto">
+        <div className="space-y-4 w-full max-w-4xl mx-auto" role="search" aria-label="Dokumentensuche">
             {/* Search Bar */}
             <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-accent/20 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-accent/20 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" aria-hidden="true" />
                 <div className="relative flex items-center bg-background/80 backdrop-blur-xl border rounded-xl shadow-sm focus-within:shadow-md focus-within:border-primary/50 transition-all overflow-hidden">
-                    <div className="pl-4 text-muted-foreground">
+                    <div className="pl-4 text-muted-foreground" aria-hidden="true">
                         <Search className="w-5 h-5" />
                     </div>
                     <Input
@@ -65,6 +65,8 @@ export function SearchPanel({ onSearch }: SearchPanelProps) {
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Dokumente durchsuchen (Volltext & Semantisch)..."
                         className="border-none shadow-none focus-visible:ring-0 h-14 text-lg bg-transparent"
+                        aria-label="Suchbegriff eingeben"
+                        type="search"
                     />
                     <div className="pr-2 flex items-center gap-2">
                         <div className="h-8 w-px bg-border mx-2" />

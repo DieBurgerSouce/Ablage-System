@@ -212,7 +212,7 @@ def _check_gpu() -> KomponentenStatus:
 
             return KomponentenStatus(
                 gesund=memory_percent < 85,
-                nachricht=f"GPU verfuegbar: {device_name}",
+                nachricht=f"GPU verfügbar: {device_name}",
                 details={
                     "geraet": device_name,
                     "speicher_total_gb": round(memory_total / 1024**3, 2),
@@ -223,8 +223,8 @@ def _check_gpu() -> KomponentenStatus:
         else:
             return KomponentenStatus(
                 gesund=True,
-                nachricht="Keine GPU verfuegbar - CPU-Modus aktiv",
-                details={"cuda_verfuegbar": False},
+                nachricht="Keine GPU verfügbar - CPU-Modus aktiv",
+                details={"cuda_verfügbar": False},
             )
     except ImportError:
         return KomponentenStatus(

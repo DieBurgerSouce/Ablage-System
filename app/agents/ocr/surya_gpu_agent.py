@@ -22,7 +22,7 @@ class SuryaGPUAgent(OCRAgent):
     """Surya OCR agent with GPU acceleration optimized for RTX 4080."""
 
     # Class-level lock to prevent race conditions during model loading
-    _model_lock: asyncio.Lock = None
+    _model_lock: Optional[asyncio.Lock] = None
 
     def __init__(self):
         """Initialize Surya OCR models with GPU support."""
@@ -66,17 +66,41 @@ class SuryaGPUAgent(OCRAgent):
 
         logger.info("surya_gpu_agent_initialized", device=str(self.device), dtype=str(self.dtype))
 
-    async def _load_models_async(self):
-        """Load Surya models with GPU optimization (thread-safe with lock).
+    async def _load_models_async(self, timeout_seconds: float = 600.0):
+        """Load Surya models with GPU optimization (thread-safe with lock and timeout).
 
         SECURITY FIX: Uses asyncio.Lock to prevent race conditions when
         multiple concurrent requests try to load models simultaneously.
+
+        Args:
+            timeout_seconds: Maximum time to wait for model loading (default: 600s = 10min)
+
+        Raises:
+            asyncio.TimeoutError: If model loading exceeds timeout
         """
         async with SuryaGPUAgent._model_lock:
             # Double-check pattern: re-check inside lock
             if self._models_loaded:
                 return
-            self._load_models_sync()
+
+            loop = asyncio.get_event_loop()
+            try:
+                # Run sync loading in thread pool with timeout
+                await asyncio.wait_for(
+                    loop.run_in_executor(None, self._load_models_sync),
+                    timeout=timeout_seconds
+                )
+            except asyncio.TimeoutError:
+                logger.error(
+                    "surya_gpu_model_loading_timeout",
+                    timeout_seconds=timeout_seconds,
+                    device=str(self.device),
+                    message="Model loading exceeded timeout - possible stuck download or GPU OOM"
+                )
+                # Clean up any partial GPU state
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                raise
 
     def _load_models(self):
         """Synchronous model loading - prefer _load_models_async() for concurrent access."""

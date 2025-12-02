@@ -10,6 +10,12 @@ export const apiClient = axios.create({
 });
 
 // Request Interceptor
+// SECURITY NOTE: localStorage ist XSS-anfällig. Für erhöhte Sicherheit sollten
+// Tokens als httpOnly Cookies vom Backend gesetzt werden. Dies erfordert:
+// 1. Backend: Set-Cookie Header mit httpOnly, Secure, SameSite=Strict
+// 2. Frontend: credentials: 'include' bei fetch/axios
+// 3. CSRF-Token für state-changing requests
+// TODO: Migration zu httpOnly Cookies für Production-Hardening
 apiClient.interceptors.request.use(
     (config) => {
         // Get token from localStorage (or your auth store)

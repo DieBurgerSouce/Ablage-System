@@ -108,8 +108,12 @@ class DocumentRepository(BaseRepository[Document]):
         Returns:
             Liste von Dokumenten
         """
+        # N+1 FIX: Eager loading für häufig genutzte Relationships
         query = select(Document).where(
             Document.status == ProcessingStatus.PENDING
+        ).options(
+            selectinload(Document.tags),
+            selectinload(Document.owner)
         )
 
         if backend:
@@ -314,7 +318,13 @@ class DocumentRepository(BaseRepository[Document]):
         Returns:
             Liste von Dokumenten
         """
-        query = select(Document).where(Document.embedding.isnot(None))
+        # N+1 FIX: Eager loading für häufig genutzte Relationships
+        query = select(Document).where(
+            Document.embedding.isnot(None)
+        ).options(
+            selectinload(Document.tags),
+            selectinload(Document.owner)
+        )
 
         if owner_id:
             query = query.where(Document.owner_id == owner_id)

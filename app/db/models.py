@@ -135,7 +135,7 @@ class Document(Base):
     detected_language = Column(String(10))
 
     # Metadata and dates
-    document_metadata = Column(CrossDBJSON, default={})
+    document_metadata = Column(CrossDBJSON, default=dict)
     upload_date = Column(DateTime(timezone=True), server_default=func.now())
     processed_date = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -282,7 +282,7 @@ class ProcessingJob(Base):
     completed_at = Column(DateTime(timezone=True))
 
     # Results and errors
-    result = Column(CrossDBJSON, default={})
+    result = Column(CrossDBJSON, default=dict)
     error_message = Column(Text)
     worker_id = Column(String(100))
 
@@ -323,7 +323,7 @@ class BatchJob(Base):
     # Configuration
     backend = Column(String(50))
     language = Column(String(10), default="de")
-    options = Column(CrossDBJSON, default={})
+    options = Column(CrossDBJSON, default=dict)
 
     # Timing
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -336,7 +336,7 @@ class BatchJob(Base):
     total_processing_time_ms = Column(Integer)
 
     # Results
-    result_summary = Column(CrossDBJSON, default={})
+    result_summary = Column(CrossDBJSON, default=dict)
     error_message = Column(Text)
     celery_task_id = Column(String(100))
 
@@ -372,7 +372,7 @@ class OCRResult(Base):
     char_count = Column(Integer)
 
     # Layout detection
-    detected_layout = Column(CrossDBJSON, default={})  # Regions, tables, images
+    detected_layout = Column(CrossDBJSON, default=dict)  # Regions, tables, images
     bounding_boxes = Column(CrossDBJSON, default=[])   # Word/line bounding boxes
     page_number = Column(Integer)
 
@@ -430,7 +430,7 @@ class OCRResultVersion(Base):
     business_terms = Column(CrossDBJSON, default=[])
 
     # Layout data
-    detected_layout = Column(CrossDBJSON, default={})
+    detected_layout = Column(CrossDBJSON, default=dict)
     bounding_boxes = Column(CrossDBJSON, default=[])
 
     # Processing metadata
@@ -526,7 +526,7 @@ class AuditLog(Base):
     request_path = Column(String(255))
 
     # Additional data
-    audit_metadata = Column(CrossDBJSON, default={})
+    audit_metadata = Column(CrossDBJSON, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Immutability Fields (AP6: Audit Log Immutabilität)
@@ -565,7 +565,7 @@ class SystemMetrics(Base):
     worker_id = Column(String(100))
 
     # Metadata
-    metric_metadata = Column(CrossDBJSON, default={})
+    metric_metadata = Column(CrossDBJSON, default=dict)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
     # Indexes
@@ -592,7 +592,7 @@ class SearchAnalytics(Base):
     query_length = Column(Integer)
 
     # Filter tracking
-    filters_used = Column(CrossDBJSON, default={})  # Which filters were applied
+    filters_used = Column(CrossDBJSON, default=dict)  # Which filters were applied
     has_document_type_filter = Column(Boolean, default=False)
     has_date_filter = Column(Boolean, default=False)
     has_tag_filter = Column(Boolean, default=False)
@@ -653,7 +653,7 @@ class AdminAction(Base):
 
     # Action details
     action = Column(String(100), nullable=False)  # create_user, update_user, reset_password, etc.
-    action_details = Column(CrossDBJSON, default={})  # Specific changes made
+    action_details = Column(CrossDBJSON, default=dict)  # Specific changes made
 
     # Request context
     ip_address = Column(String(45))
