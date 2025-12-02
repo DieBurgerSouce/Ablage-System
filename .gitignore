@@ -74,3 +74,12 @@ uploads/
 nul
 frontend/lint_report*.txt
 lint_report*.txt
+
+# OCR Results (generated)
+ocr_result*.json
+
+# Pip artifacts
+=*
+
+# Archive directory
+ARCHIVE/
