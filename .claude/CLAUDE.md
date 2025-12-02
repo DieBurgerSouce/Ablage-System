@@ -448,26 +448,7 @@ pytest tests/unit/services/test_ocr_orchestrator.py -v
 # Run tests matching pattern
 pytest -k "test_deepseek" -v
 Test Fixtures
-python# tests/conftest.py
-import pytest
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-
-@pytest.fixture
-async def db_session():
-    """Provide a clean database session for each test."""
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    async with AsyncSession(engine) as session:
-        yield session
-    
-    await engine.dispose()
-
-@pytest.fixture
-def sample_german_document():
-    """Load sample German document for OCR testing."""
-    return Path("tests/fixtures/sample_de.pdf").read_bytes()
+Define in `tests/conftest.py`: `db_session` (async SQLite in-memory), `sample_german_document` (PDF bytes)
 
 🎨 FRONTEND DISPLAY MODES
 Display Mode Requirements
@@ -608,74 +589,15 @@ def gpu_memory_guard(threshold_gb: float = 13.6):
 with gpu_memory_guard():
     results = model.process_batch(images)
 Batch Processing Strategy
-pythonclass GPUBatchProcessor:
-    """GPU-optimized batch processing with dynamic sizing."""
-    
-    def __init__(self, max_batch_size: int = 32):
-        self.max_batch_size = max_batch_size
-        self.optimal_batch_size = self._find_optimal_batch_size()
-    
-    def _find_optimal_batch_size(self) -> int:
-        """Determine optimal batch size based on available VRAM."""
-        if not torch.cuda.is_available():
-            return 1
-        
-        total_memory = torch.cuda.get_device_properties(0).total_memory
-        available = total_memory - torch.cuda.memory_allocated()
-        
-        # Heuristic: ~500MB per image for DeepSeek
-        estimated_batch = int(available * 0.7 / (500 * 1024**2))
-        return min(estimated_batch, self.max_batch_size)
-    
-    async def process_documents(self, documents: List[Document]) -> List[OCRResult]:
-        """Process documents in optimal batches."""
-        results = []
-        batch_size = self.optimal_batch_size
-        
-        for i in range(0, len(documents), batch_size):
-            batch = documents[i:i + batch_size]
-            try:
-                batch_results = await self._process_batch(batch)
-                results.extend(batch_results)
-            except torch.cuda.OutOfMemoryError:
-                # Reduce batch size and retry
-                logger.warning("gpu_oom_reducing_batch", old_size=batch_size)
-                batch_size = max(1, batch_size // 2)
-                self.optimal_batch_size = batch_size
-                # Retry with smaller batch
-                batch_results = await self._process_batch(batch[:batch_size])
-                results.extend(batch_results)
-        
-        return results
+- `GPUBatchProcessor`: Dynamic batch sizing based on VRAM (~500MB/image for DeepSeek)
+- Auto-reduces batch size on OOM, retries with smaller batch
+- Pattern: Check available VRAM, estimate batch size, process with fallback
+
 Model Loading and Caching
-pythonclass ModelManager:
-    """Singleton for GPU model management with lazy loading."""
-    
-    _instance = None
-    _models = {}
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-    
-    def get_model(self, model_name: str) -> torch.nn.Module:
-        """Load model with caching."""
-        if model_name not in self._models:
-            logger.info("loading_model", model=model_name)
-            model = self._load_model(model_name)
-            model.eval()  # Inference mode
-            model = model.cuda()  # Move to GPU
-            
-            # Warm-up inference (compile CUDA kernels)
-            with torch.no_grad():
-                dummy_input = torch.randn(1, 3, 224, 224).cuda()
-                _ = model(dummy_input)
-            
-            self._models[model_name] = model
-            logger.info("model_loaded", model=model_name)
-        
-        return self._models[model_name]
+- `ModelManager`: Singleton pattern for lazy model loading
+- Key features: Cache loaded models, move to CUDA, warm-up inference for kernel compilation
+- Set model to inference mode before use
+
 Performance Benchmarks
 Expected performance on RTX 4080:
 
@@ -815,54 +737,14 @@ CRITICAL: System failures, data loss
 
 
 
-Key Metrics to Monitor
-python# Prometheus metrics (example)
-from prometheus_client import Counter, Histogram, Gauge
+Key Metrics to Monitor (Prometheus)
+- `ocr_requests_total` (Counter): Total OCR requests by backend/status
+- `ocr_processing_duration` (Histogram): OCR processing time by backend
+- `gpu_memory_usage` (Gauge): Current GPU memory usage
+- `document_queue_length` (Gauge): Documents in processing queue
 
-ocr_requests_total = Counter(
-    'ocr_requests_total',
-    'Total OCR processing requests',
-    ['backend', 'status']
-)
-
-ocr_processing_duration = Histogram(
-    'ocr_processing_duration_seconds',
-    'OCR processing time',
-    ['backend']
-)
-
-gpu_memory_usage = Gauge(
-    'gpu_memory_usage_bytes',
-    'Current GPU memory usage'
-)
-
-document_queue_length = Gauge(
-    'document_queue_length',
-    'Number of documents in processing queue'
-)
 Health Checks
-python@router.get("/health")
-async def health_check():
-    """Comprehensive health check endpoint."""
-    checks = {
-        "database": await check_database(),
-        "redis": await check_redis(),
-        "minio": await check_minio(),
-        "gpu": check_gpu_availability(),
-        "disk_space": check_disk_space()
-    }
-    
-    all_healthy = all(checks.values())
-    status_code = 200 if all_healthy else 503
-    
-    return JSONResponse(
-        status_code=status_code,
-        content={
-            "status": "healthy" if all_healthy else "unhealthy",
-            "checks": checks,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-    )
+`GET /health` - Checks: database, redis, minio, gpu, disk_space. Returns 200/503 with status JSON.
 
 🔄 WORKFLOW PATTERNS
 Document Processing Workflow
@@ -959,16 +841,7 @@ CONVENTIONS.md: Team coding standards, Git workflow, PR guidelines
 .claude/Docs/: Additional context for AI-assisted development
 
 External Resources
-
-FastAPI: https://fastapi.tiangolo.com/
-SQLAlchemy 2.0: https://docs.sqlalchemy.org/en/20/
-Celery: https://docs.celeryq.dev/
-PostgreSQL: https://www.postgresql.org/docs/16/
-MinIO: https://min.io/docs/minio/linux/index.html
-DeepSeek: [Model documentation URL]
-GOT-OCR 2.0: https://github.com/ucaslcl/GOT-OCR2.0
-Surya: https://github.com/VikParuchuri/surya
-Docling: https://github.com/DS4SD/docling
+FastAPI, SQLAlchemy 2.0, Celery, PostgreSQL, MinIO, GOT-OCR 2.0, Surya, Docling - see official docs
 
 
 🚨 KNOWN ISSUES & GOTCHAS
@@ -1134,21 +1007,6 @@ Redis Max Memory: 2 GB
 MinIO Storage: Unlimited (hardware dependent)
 
 
-📞 SUPPORT & ESCALATION
-When to Seek Help
-
-GPU OOM errors persisting: After trying batch size reduction
-Database migration failures: Before attempting manual fixes
-Security vulnerabilities discovered: Immediately, before fixing
-Production incidents: Follow incident response playbook
-
-Escalation Path
-
-Level 1: Team lead / Senior developer
-Level 2: Architecture team / DevOps
-Level 3: CTO / Security team (for critical issues)
-
-
 ✅ FINAL CHECKLIST FOR AI ASSISTANT
 Before completing any task, verify:
 
@@ -1193,27 +1051,6 @@ alembic upgrade head
 
 # Check GPU
 nvidia-smi
-Most Common Imports
-python# FastAPI
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
-
-# Database
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-
-# Tasks
-from celery import Celery
-
-# GPU
-import torch
-from torch import nn
-
-# Utilities
-import structlog
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
-
 Version: 1.0
 Last Updated: 2025-11-21
 Maintained By: Development Team

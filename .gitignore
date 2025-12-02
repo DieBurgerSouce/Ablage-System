@@ -72,3 +72,5 @@ uploads/
 .cache/
 *.cache
 nul
+frontend/lint_report*.txt
+lint_report*.txt

@@ -1,0 +1,22 @@
+# Malware Hash Blockliste - Ablage-System OCR
+# Format: SHA256_HASH oder SHA256_HASH:MALWARE_NAME
+# Zeilen mit # sind Kommentare
+#
+# Quellen fuer aktuelle Hashes:
+# - https://virusshare.com/
+# - https://malwarebazaar.abuse.ch/
+# - https://urlhaus.abuse.ch/
+#
+# Hinweis: Diese Datei sollte regelmaessig aktualisiert werden.
+# Empfohlen: Taeglich per Cron-Job aus vertrauenswuerdiger Quelle.
+
+# === Test-Eintraege (EICAR Test Strings) ===
+# EICAR Standard Antivirus Test File
+275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f:EICAR-Test-File
+
+# === Bekannte Malware-Hashes ===
+# Hier werden bekannte Malware-Hashes eingetragen
+
+# Beispiel-Eintraege (auskommentiert):
+# 0000000000000000000000000000000000000000000000000000000000000001:Example-Malware-1
+# 0000000000000000000000000000000000000000000000000000000000000002:Example-Malware-2
