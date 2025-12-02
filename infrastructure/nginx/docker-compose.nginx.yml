@@ -40,7 +40,7 @@ services:
       start_period: 10s
 
   certbot:
-    image: certbot/certbot:latest
+    image: certbot/certbot:v3.0.1
     container_name: ablage-certbot
     volumes:
       - certbot_conf:/etc/letsencrypt

@@ -40,7 +40,8 @@ services:
 
   # Vault UI (optional - for development)
   vault-ui:
-    image: djenriquez/vault-ui:latest
+    # Note: vault-ui is unmaintained, consider using Vault's built-in UI instead
+    image: djenriquez/vault-ui:2.4.0
     container_name: ablage-vault-ui
     restart: unless-stopped
 

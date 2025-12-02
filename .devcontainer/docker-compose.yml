@@ -117,7 +117,7 @@ services:
 
   # pgAdmin (optional, for database management)
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:8.13
     restart: unless-stopped
     environment:
       - PGADMIN_DEFAULT_EMAIL=dev@ablage.local
@@ -134,7 +134,7 @@ services:
 
   # Redis Commander (optional, for Redis management)
   redis-commander:
-    image: rediscommander/redis-commander:latest
+    image: rediscommander/redis-commander:0.8.1
     restart: unless-stopped
     environment:
       - REDIS_HOSTS=local:redis:6379
@@ -147,7 +147,7 @@ services:
 
   # Flower (Celery monitoring) - will be started manually when needed
   flower:
-    image: mher/flower:latest
+    image: mher/flower:2.0.1
     restart: unless-stopped
     command: celery --broker=redis://redis:6379/0 flower --port=5555
     ports:
