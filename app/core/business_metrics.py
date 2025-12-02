@@ -231,6 +231,224 @@ gpu_idle_seconds_total = Counter(
 
 
 # =============================================================================
+# API CACHE METRIKEN
+# =============================================================================
+
+# API Cache Operationen
+api_cache_operations_total = Counter(
+    "ablage_api_cache_operations_total",
+    "API Cache Operationen (hits/misses)",
+    ["operation", "endpoint"]  # operation: hit/miss, endpoint: API endpoint name
+)
+
+# API Cache Latenz
+api_cache_latency_seconds = Histogram(
+    "ablage_api_cache_latency_seconds",
+    "API Cache Latenz in Sekunden",
+    ["operation"],  # operation: read/write
+    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5]
+)
+
+
+def record_api_cache_operation(operation: str, endpoint: str) -> None:
+    """
+    Zeichne API Cache Operation auf.
+
+    Args:
+        operation: hit oder miss
+        endpoint: Name des API Endpoints (z.B. get_documents, search)
+    """
+    api_cache_operations_total.labels(
+        operation=operation,
+        endpoint=endpoint
+    ).inc()
+
+
+def record_api_cache_latency(operation: str, latency_seconds: float) -> None:
+    """
+    Zeichne API Cache Latenz auf.
+
+    Args:
+        operation: read oder write
+        latency_seconds: Latenz in Sekunden
+    """
+    api_cache_latency_seconds.labels(operation=operation).observe(latency_seconds)
+
+
+# =============================================================================
+# DATABASE QUERY METRIKEN
+# =============================================================================
+
+# Database Query Dauer
+db_query_duration_seconds = Histogram(
+    "ablage_db_query_duration_seconds",
+    "Datenbank-Query Ausfuehrungszeit in Sekunden",
+    ["operation", "table"],  # operation: select/insert/update/delete, table: table name
+    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
+)
+
+# Database Query Counter
+db_query_total = Counter(
+    "ablage_db_query_total",
+    "Anzahl Datenbank-Queries",
+    ["operation", "status"]  # operation: select/insert/update/delete, status: success/error
+)
+
+# Database Connection Pool
+db_pool_size = Gauge(
+    "ablage_db_pool_size",
+    "Aktuelle Groesse des Connection Pools"
+)
+
+db_pool_checked_out = Gauge(
+    "ablage_db_pool_checked_out",
+    "Anzahl ausgecheckter Connections"
+)
+
+db_pool_overflow = Gauge(
+    "ablage_db_pool_overflow",
+    "Anzahl Overflow-Connections"
+)
+
+# Slow Query Counter
+db_slow_queries_total = Counter(
+    "ablage_db_slow_queries_total",
+    "Anzahl langsamer Queries (>100ms)",
+    ["table"]
+)
+
+
+def record_db_query(
+    operation: str,
+    table: str,
+    duration_seconds: float,
+    status: str = "success"
+) -> None:
+    """
+    Zeichne Datenbank-Query auf.
+
+    Args:
+        operation: Query-Typ (select, insert, update, delete)
+        table: Tabellenname
+        duration_seconds: Ausfuehrungszeit
+        status: success oder error
+    """
+    db_query_duration_seconds.labels(
+        operation=operation,
+        table=table
+    ).observe(duration_seconds)
+
+    db_query_total.labels(
+        operation=operation,
+        status=status
+    ).inc()
+
+    # Track slow queries (>100ms)
+    if duration_seconds > 0.1:
+        db_slow_queries_total.labels(table=table).inc()
+
+
+def update_db_pool_metrics(pool_size: int, checked_out: int, overflow: int) -> None:
+    """
+    Aktualisiere Connection Pool Metriken.
+
+    Args:
+        pool_size: Pool-Groesse
+        checked_out: Ausgecheckte Connections
+        overflow: Overflow-Connections
+    """
+    db_pool_size.set(pool_size)
+    db_pool_checked_out.set(checked_out)
+    db_pool_overflow.set(overflow)
+
+
+# =============================================================================
+# WEBHOOK / CIRCUIT BREAKER METRIKEN
+# =============================================================================
+
+# Webhook Zustellungen
+webhook_deliveries_total = Counter(
+    "ablage_webhook_deliveries_total",
+    "Webhook-Zustellungen gesamt",
+    ["status", "event_type"]  # status: success/failed/circuit_open
+)
+
+# Webhook Zustellungsdauer
+webhook_delivery_duration_seconds = Histogram(
+    "ablage_webhook_delivery_duration_seconds",
+    "Webhook-Zustellungsdauer in Sekunden",
+    ["status"],
+    buckets=[0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0]
+)
+
+# Circuit Breaker Zustand
+webhook_circuit_breaker_state = Gauge(
+    "ablage_webhook_circuit_breaker_state",
+    "Circuit Breaker Zustand (0=closed, 1=half_open, 2=open)",
+    ["url_hash"]  # Hashed URL for privacy
+)
+
+# Circuit Breaker Zustandsaenderungen
+webhook_circuit_breaker_transitions = Counter(
+    "ablage_webhook_circuit_breaker_transitions_total",
+    "Circuit Breaker Zustandsaenderungen",
+    ["from_state", "to_state"]
+)
+
+# Offene Circuit Breaker
+webhook_circuit_breakers_open = Gauge(
+    "ablage_webhook_circuit_breakers_open",
+    "Anzahl offener Circuit Breaker"
+)
+
+
+def record_webhook_delivery(
+    status: str,
+    event_type: str,
+    duration_seconds: Optional[float] = None
+) -> None:
+    """
+    Zeichne Webhook-Zustellung auf.
+
+    Args:
+        status: Zustellungsstatus (success, failed, circuit_open)
+        event_type: Event-Typ (z.B. document.processed)
+        duration_seconds: Zustellungsdauer (optional)
+    """
+    webhook_deliveries_total.labels(
+        status=status,
+        event_type=event_type
+    ).inc()
+
+    if duration_seconds is not None:
+        webhook_delivery_duration_seconds.labels(status=status).observe(duration_seconds)
+
+
+def record_circuit_breaker_transition(from_state: str, to_state: str) -> None:
+    """
+    Zeichne Circuit Breaker Zustandsaenderung auf.
+
+    Args:
+        from_state: Ausgangszustand (closed, half_open, open)
+        to_state: Zielzustand (closed, half_open, open)
+    """
+    webhook_circuit_breaker_transitions.labels(
+        from_state=from_state,
+        to_state=to_state
+    ).inc()
+
+
+def update_circuit_breaker_metrics(open_count: int) -> None:
+    """
+    Aktualisiere Circuit Breaker Metriken.
+
+    Args:
+        open_count: Anzahl offener Circuit Breaker
+    """
+    webhook_circuit_breakers_open.set(open_count)
+
+
+# =============================================================================
 # HELPER FUNKTIONEN
 # =============================================================================
 

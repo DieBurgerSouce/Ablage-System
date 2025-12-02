@@ -1,0 +1,275 @@
+# Prometheus Alerting Rules fuer Business-Metriken
+# Erweiterte Alerts fuer OCR-Qualitaet, Cache, DB und Webhooks
+# Alle Beschreibungen auf Deutsch fuer Betriebsteam
+
+groups:
+  - name: business_alerts
+    rules:
+      # ===================================================================
+      # OCR QUALITAET ALERTS
+      # ===================================================================
+
+      # Warnung: Character Error Rate (CER) zu hoch
+      - alert: OCRQualityCERHigh
+        expr: |
+          avg(ablage_ocr_cer_estimate_avg) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          component: ocr_quality
+        annotations:
+          summary: "OCR Character Error Rate (CER) zu hoch"
+          description: "Die durchschnittliche Character Error Rate liegt bei {{ $value | humanizePercentage }}. Ziel: <5%"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-quality-cer"
+
+      # Kritisch: Character Error Rate sehr hoch
+      - alert: OCRQualityCERCritical
+        expr: |
+          avg(ablage_ocr_cer_estimate_avg) > 0.10
+        for: 5m
+        labels:
+          severity: critical
+          component: ocr_quality
+        annotations:
+          summary: "KRITISCH: OCR Character Error Rate ueber 10%"
+          description: "Die Character Error Rate ist kritisch hoch ({{ $value | humanizePercentage }}). OCR-Qualitaet stark beeintraechtigt."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-quality-cer-critical"
+
+      # Warnung: Word Error Rate (WER) zu hoch
+      - alert: OCRQualityWERHigh
+        expr: |
+          avg(ablage_ocr_wer_estimate_avg) > 0.10
+        for: 10m
+        labels:
+          severity: warning
+          component: ocr_quality
+        annotations:
+          summary: "OCR Word Error Rate (WER) zu hoch"
+          description: "Die durchschnittliche Word Error Rate liegt bei {{ $value | humanizePercentage }}. Ziel: <10%"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-quality-wer"
+
+      # Warnung: Umlaut-Erkennung unter Ziel
+      - alert: OCRUmlautAccuracyLow
+        expr: |
+          avg(ablage_ocr_umlaut_accuracy) < 0.99
+        for: 15m
+        labels:
+          severity: warning
+          component: ocr_quality
+        annotations:
+          summary: "OCR Umlaut-Genauigkeit unter 99%"
+          description: "Die Umlaut-Erkennungsgenauigkeit liegt bei {{ $value | humanizePercentage }}. Ziel: 100%"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-umlaut-accuracy"
+
+      # Warnung: Backend-spezifische Qualitaet niedrig
+      - alert: OCRBackendQualityDegraded
+        expr: |
+          avg by (backend) (ablage_ocr_confidence_score) < 0.7
+        for: 10m
+        labels:
+          severity: warning
+          component: ocr_quality
+        annotations:
+          summary: "OCR Backend {{ $labels.backend }} Qualitaet degradiert"
+          description: "Die durchschnittliche Konfidenz fuer Backend {{ $labels.backend }} liegt nur bei {{ $value | humanizePercentage }}"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-backend-quality"
+
+      # ===================================================================
+      # CACHE HIT-RATE ALERTS
+      # ===================================================================
+
+      # Warnung: OCR Cache Hit-Rate niedrig
+      - alert: OCRCacheHitRateLow
+        expr: |
+          sum(rate(ablage_ocr_cache_operations_total{operation="hit"}[5m]))
+          / sum(rate(ablage_ocr_cache_operations_total[5m])) < 0.3
+        for: 15m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "OCR Cache Hit-Rate unter 30%"
+          description: "Die OCR Cache Hit-Rate liegt bei {{ $value | humanizePercentage }}. Caching ineffektiv."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-cache-hit-rate"
+
+      # Warnung: API Cache Hit-Rate niedrig
+      - alert: APICacheHitRateLow
+        expr: |
+          sum(rate(ablage_api_cache_operations_total{operation="hit"}[5m]))
+          / sum(rate(ablage_api_cache_operations_total[5m])) < 0.5
+        for: 15m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "API Cache Hit-Rate unter 50%"
+          description: "Die API Cache Hit-Rate liegt bei {{ $value | humanizePercentage }}. Pruefe Cache-Konfiguration."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/api-cache-hit-rate"
+
+      # Warnung: Cache Latenz hoch
+      - alert: CacheLatencyHigh
+        expr: |
+          histogram_quantile(0.95, rate(ablage_api_cache_latency_seconds_bucket[5m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Cache Latenz hoch (>100ms p95)"
+          description: "Die Cache-Zugriffszeit liegt bei {{ $value | humanizeDuration }} (95. Perzentil). Redis moeglicherweise ueberlastet."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/cache-latency"
+
+      # ===================================================================
+      # DATABASE APP-LEVEL ALERTS
+      # ===================================================================
+
+      # Warnung: Viele langsame Queries (App-Level)
+      - alert: AppSlowQueriesHigh
+        expr: |
+          increase(ablage_db_slow_queries_total[5m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Viele langsame Queries (App-Level)"
+          description: "Mehr als 50 langsame Queries (>100ms) in den letzten 5 Minuten. Tabellen: {{ $labels.table }}"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/app-slow-queries"
+
+      # Warnung: App Connection Pool Auslastung hoch
+      - alert: AppDBPoolUtilizationHigh
+        expr: |
+          ablage_db_pool_checked_out / ablage_db_pool_size > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "App DB Pool Auslastung hoch (>80%)"
+          description: "Der Application-Level Connection Pool ist zu {{ $value | humanizePercentage }} ausgelastet."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/app-db-pool"
+
+      # Kritisch: App Connection Pool erschoepft
+      - alert: AppDBPoolExhausted
+        expr: |
+          ablage_db_pool_checked_out / ablage_db_pool_size > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "KRITISCH: App DB Pool fast erschoepft"
+          description: "Der Application-Level Connection Pool ist zu {{ $value | humanizePercentage }} ausgelastet. Verbindungsprobleme wahrscheinlich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/app-db-pool-critical"
+
+      # Warnung: Query Fehlerrate hoch
+      - alert: AppDBErrorRateHigh
+        expr: |
+          sum(rate(ablage_db_query_total{status="error"}[5m]))
+          / sum(rate(ablage_db_query_total[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Datenbank Query-Fehlerrate hoch (>1%)"
+          description: "Mehr als 1% der Datenbank-Queries schlagen fehl. Aktuelle Rate: {{ $value | humanizePercentage }}"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/app-db-error-rate"
+
+      # ===================================================================
+      # WEBHOOK / CIRCUIT BREAKER ALERTS
+      # ===================================================================
+
+      # Warnung: Circuit Breaker offen
+      - alert: WebhookCircuitBreakerOpen
+        expr: |
+          ablage_webhook_circuit_breakers_open > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: webhooks
+        annotations:
+          summary: "{{ $value }} Webhook Circuit Breaker offen"
+          description: "Es gibt {{ $value }} offene Circuit Breaker. Webhook-Endpunkte sind nicht erreichbar."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/webhook-circuit-breaker"
+
+      # Kritisch: Viele Circuit Breaker offen
+      - alert: WebhookCircuitBreakersMultipleOpen
+        expr: |
+          ablage_webhook_circuit_breakers_open > 3
+        for: 2m
+        labels:
+          severity: critical
+          component: webhooks
+        annotations:
+          summary: "KRITISCH: {{ $value }} Webhook Circuit Breaker offen"
+          description: "Mehrere Webhook-Endpunkte sind nicht erreichbar. Webhook-Integration stark beeintraechtigt."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/webhook-circuit-breaker-critical"
+
+      # Warnung: Webhook Erfolgsrate niedrig
+      - alert: WebhookDeliverySuccessRateLow
+        expr: |
+          sum(rate(ablage_webhook_deliveries_total{status="success"}[5m]))
+          / sum(rate(ablage_webhook_deliveries_total[5m])) < 0.9
+        for: 10m
+        labels:
+          severity: warning
+          component: webhooks
+        annotations:
+          summary: "Webhook Erfolgsrate unter 90%"
+          description: "Die Webhook-Zustellungsrate liegt bei {{ $value | humanizePercentage }}. Pruefe Endpunkt-Verfuegbarkeit."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/webhook-delivery-rate"
+
+      # Kritisch: Webhook Erfolgsrate sehr niedrig
+      - alert: WebhookDeliverySuccessRateCritical
+        expr: |
+          sum(rate(ablage_webhook_deliveries_total{status="success"}[5m]))
+          / sum(rate(ablage_webhook_deliveries_total[5m])) < 0.5
+        for: 5m
+        labels:
+          severity: critical
+          component: webhooks
+        annotations:
+          summary: "KRITISCH: Webhook Erfolgsrate unter 50%"
+          description: "Mehr als die Haelfte der Webhooks schlagen fehl. Sofortige Pruefung erforderlich."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/webhook-delivery-critical"
+
+      # Warnung: Viele Webhooks durch Circuit Breaker blockiert
+      - alert: WebhooksBlockedByCircuitBreaker
+        expr: |
+          sum(rate(ablage_webhook_deliveries_total{status="circuit_open"}[5m]))
+          / sum(rate(ablage_webhook_deliveries_total[5m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: webhooks
+        annotations:
+          summary: "Mehr als 10% der Webhooks durch Circuit Breaker blockiert"
+          description: "{{ $value | humanizePercentage }} der Webhooks werden durch offene Circuit Breaker blockiert."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/webhooks-blocked"
+
+      # Warnung: Webhook Latenz hoch
+      - alert: WebhookDeliveryLatencyHigh
+        expr: |
+          histogram_quantile(0.95, rate(ablage_webhook_delivery_duration_seconds_bucket[5m])) > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: webhooks
+        annotations:
+          summary: "Webhook Zustellungszeit hoch (>5s p95)"
+          description: "95% der Webhook-Zustellungen dauern laenger als {{ $value | humanizeDuration }}. Endpunkte moeglicherweise langsam."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/webhook-latency"
+
+      # Info: Haeufige Circuit Breaker Transitionen
+      - alert: WebhookCircuitBreakerUnstable
+        expr: |
+          increase(ablage_webhook_circuit_breaker_transitions_total[15m]) > 10
+        for: 5m
+        labels:
+          severity: info
+          component: webhooks
+        annotations:
+          summary: "Haeufige Circuit Breaker Zustandswechsel"
+          description: "{{ $value }} Circuit Breaker Transitionen in 15 Minuten. Instabile Webhook-Endpunkte."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/webhook-circuit-unstable"

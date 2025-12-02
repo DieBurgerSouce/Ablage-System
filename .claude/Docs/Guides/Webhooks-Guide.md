@@ -2459,6 +2459,139 @@ if __name__ == "__main__":
 
 ---
 
+## Circuit Breaker
+
+### Übersicht
+
+Der Webhook Circuit Breaker schützt das System vor kaskadierten Fehlern, wenn Webhook-Endpunkte nicht erreichbar sind.
+
+### Zustände
+
+```
+CLOSED ──(5 Fehler)──► OPEN ──(300s Timeout)──► HALF_OPEN
+   ▲                                                │
+   │                                                │
+   └────────────(2 Erfolge)─────────────────────────┘
+                     │
+                     ▼
+              (1 Fehler) ──► OPEN
+```
+
+| Zustand | Beschreibung |
+|---------|--------------|
+| CLOSED | Normal - Webhooks werden zugestellt |
+| OPEN | Blockiert - Webhooks werden nicht zugestellt |
+| HALF_OPEN | Test-Phase - Begrenzte Zustellung erlaubt |
+
+### Konfiguration
+
+```python
+class WebhookCircuitBreaker:
+    FAILURE_THRESHOLD = 5      # Fehler bis zum Öffnen
+    SUCCESS_THRESHOLD = 2      # Erfolge zum Schließen
+    OPEN_TIMEOUT_SECONDS = 300  # 5 Minuten bis Half-Open
+    HALF_OPEN_MAX_CALLS = 3    # Max gleichzeitige Test-Calls
+```
+
+### API Endpoints
+
+**Circuit Breaker Status abrufen:**
+```http
+GET /api/v1/metrics/webhooks
+```
+
+**Response:**
+```json
+{
+  "timestamp": "2025-01-17T10:00:00Z",
+  "circuit_breaker": {
+    "total_tracked_urls": 5,
+    "by_state": {
+      "closed": 4,
+      "open": 1,
+      "half_open": 0
+    },
+    "open_circuits": [
+      {
+        "url": "https://failing-endpoint.com/webhook",
+        "state": "open",
+        "failures": 5,
+        "last_failure": "2025-01-17T09:55:00Z"
+      }
+    ],
+    "configuration": {
+      "failure_threshold": 5,
+      "success_threshold": 2,
+      "open_timeout_seconds": 300
+    }
+  },
+  "delivery_stats": {
+    "total_deliveries": 1000,
+    "successful": 950,
+    "failed": 40,
+    "blocked_by_circuit": 10,
+    "success_rate_percent": 95.0
+  }
+}
+```
+
+**Circuit Breaker zurücksetzen (Admin):**
+```http
+POST /api/v1/metrics/webhooks/circuit-breaker/reset
+Authorization: Bearer <admin-token>
+
+# Alle zurücksetzen:
+POST /api/v1/metrics/webhooks/circuit-breaker/reset
+
+# Nur bestimmte URL:
+POST /api/v1/metrics/webhooks/circuit-breaker/reset?url=https://example.com/webhook
+```
+
+### Prometheus Metriken
+
+```promql
+# Offene Circuit Breaker
+ablage_webhook_circuit_breakers_open
+
+# Zustellungen nach Status
+ablage_webhook_deliveries_total{status="success|failed|circuit_open"}
+
+# Zustandsübergänge
+ablage_webhook_circuit_breaker_transitions_total{from_state="closed", to_state="open"}
+
+# Zustellungslatenz
+histogram_quantile(0.95, ablage_webhook_delivery_duration_seconds_bucket)
+```
+
+### Alerts
+
+```yaml
+# Warnung bei offenen Circuit Breakern
+- alert: WebhookCircuitBreakerOpen
+  expr: ablage_webhook_circuit_breakers_open > 0
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Webhook Circuit Breaker offen"
+
+# Kritisch bei vielen offenen Circuits
+- alert: WebhookCircuitBreakersMultipleOpen
+  expr: ablage_webhook_circuit_breakers_open > 3
+  for: 2m
+  labels:
+    severity: critical
+```
+
+### Best Practices
+
+1. **Monitoring einrichten**: Alerts für offene Circuit Breaker konfigurieren
+2. **Endpunkt-Verfügbarkeit prüfen**: Bei OPEN-Status den externen Endpunkt prüfen
+3. **Retry-Logik beachten**: Circuit Breaker öffnet erst nach 5 Fehlern
+4. **Recovery abwarten**: Nach 5 Minuten wechselt OPEN automatisch zu HALF_OPEN
+
+---
+
 ## Summary
 
 Dieser Webhooks Guide behandelt:
