@@ -101,20 +101,26 @@ class JobAdminService:
         offset = (page - 1) * per_page
         query = query.offset(offset).limit(per_page)
 
-        # Execute query
+        # Execute query with eager loading to avoid N+1
+        query = query.options(selectinload(ProcessingJob.document))
         result = await db.execute(query)
         jobs = result.scalars().all()
+
+        # Batch fetch all owners to avoid N+1 queries
+        owner_ids = {job.document.owner_id for job in jobs if job.document and job.document.owner_id}
+        owners_map: Dict[UUID, User] = {}
+        if owner_ids:
+            owners_result = await db.execute(
+                select(User).where(User.id.in_(owner_ids))
+            )
+            for user in owners_result.scalars().all():
+                owners_map[user.id] = user
 
         # Convert to response format
         job_views = []
         for job in jobs:
             doc = job.document
-            owner = None
-            if doc:
-                owner_result = await db.execute(
-                    select(User).where(User.id == doc.owner_id)
-                )
-                owner = owner_result.scalar_one_or_none()
+            owner = owners_map.get(doc.owner_id) if doc and doc.owner_id else None
 
             # Calculate durations
             duration_ms = None

@@ -156,7 +156,9 @@ class VaultClient:
         self.verify_ssl = verify_ssl
 
         self._client: Optional[hvac.Client] = None
-        self._secret_cache: Dict[str, Dict[str, Any]] = {}
+        # SECURITY FIX: Cache mit TTL-Tracking (Tuple: data, timestamp)
+        self._secret_cache: Dict[str, Tuple[Dict[str, Any], float]] = {}
+        self._cache_ttl_seconds: int = 300  # 5 Minuten - rotierte Secrets werden nachgeladen
         self._authenticated = False
 
     @classmethod
@@ -246,14 +248,21 @@ class VaultClient:
             if not self.connect():
                 return None
 
+        import time
         cache_key = f"{mount_point}/{path}"
 
-        # Check cache
+        # SECURITY FIX: Check cache mit TTL-Prüfung
         if use_cache and cache_key in self._secret_cache:
-            cached = self._secret_cache[cache_key]
-            if key:
-                return cached.get("data", {}).get("data", {}).get(key)
-            return cached.get("data", {}).get("data", {})
+            cached_data, cached_time = self._secret_cache[cache_key]
+            # Prüfe ob Cache noch gültig ist
+            if (time.time() - cached_time) < self._cache_ttl_seconds:
+                if key:
+                    return cached_data.get("data", {}).get("data", {}).get(key)
+                return cached_data.get("data", {}).get("data", {})
+            else:
+                # Cache abgelaufen - entfernen
+                del self._secret_cache[cache_key]
+                logger.debug("vault_cache_expired", path=path)
 
         try:
             # Read secret (KV v2)
@@ -262,8 +271,8 @@ class VaultClient:
                 mount_point=mount_point,
             )
 
-            # Cache the response
-            self._secret_cache[cache_key] = response
+            # SECURITY FIX: Cache mit Timestamp speichern
+            self._secret_cache[cache_key] = (response, time.time())
 
             if key:
                 return response.get("data", {}).get("data", {}).get(key)
@@ -308,7 +317,8 @@ class Settings(BaseSettings):
     # ENCRYPTION_KEY für TOTP-Secrets und andere sensible Daten
     # Optional: Wenn nicht gesetzt, wird aus SECRET_KEY abgeleitet
     # Generieren: python -c "import base64, secrets; print(base64.b64encode(secrets.token_bytes(32)).decode())"
-    ENCRYPTION_KEY: Optional[str] = Field(
+    # SECURITY FIX: SecretStr verhindert Logging von Secrets
+    ENCRYPTION_KEY: Optional[SecretStr] = Field(
         default=None,
         description="AES-256 Encryption Key (Base64-encoded, 32 Bytes)"
     )
@@ -368,7 +378,24 @@ class Settings(BaseSettings):
     DB_PORT: int = 5433
     DB_NAME: str = "ablage_system"
     DATABASE_URL: Optional[str] = None
-    
+
+    # Database Connection Pool Settings
+    # API Pool (groesser fuer HTTP Requests)
+    DB_POOL_SIZE: int = Field(default=10, description="Database connection pool size for API")
+    DB_MAX_OVERFLOW: int = Field(default=20, description="Maximum overflow connections for API")
+    DB_POOL_RECYCLE: int = Field(default=3600, description="Connection recycle time in seconds")
+    DB_POOL_TIMEOUT: int = Field(default=30, description="Pool connection timeout in seconds")
+
+    # Worker Pool Settings (Celery Tasks)
+    DB_WORKER_POOL_SIZE: int = Field(default=5, description="Database pool size for workers")
+    DB_WORKER_MAX_OVERFLOW: int = Field(default=10, description="Max overflow for workers")
+    DB_WORKER_POOL_RECYCLE: int = Field(default=3600, description="Worker connection recycle time")
+
+    # Callback Pool Settings (Task Callbacks - kurzlebig)
+    DB_CALLBACK_POOL_SIZE: int = Field(default=3, description="Database pool size for callbacks")
+    DB_CALLBACK_MAX_OVERFLOW: int = Field(default=5, description="Max overflow for callbacks")
+    DB_CALLBACK_POOL_RECYCLE: int = Field(default=1800, description="Callback connection recycle time")
+
     # Redis
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6380
@@ -416,6 +443,11 @@ class Settings(BaseSettings):
     GPU_MEMORY_FRACTION: float = 0.85  # Max 85% VRAM usage
     ENABLE_GPU: bool = True
     GPU_BATCH_SIZE: int = 32
+
+    # GPU Lock Settings (Distributed locking via Redis)
+    GPU_LOCK_TIMEOUT: int = Field(default=60, description="GPU lock auto-expire timeout in seconds")
+    GPU_LOCK_ACQUIRE_TIMEOUT: int = Field(default=30, description="Max seconds to wait for GPU lock")
+    GPU_LOCK_RETRY_INTERVAL: float = Field(default=0.1, description="Seconds between lock acquisition retries")
 
     # Model Pre-Loading Settings
     # Laedt OCR-Modelle beim Startup vor fuer schnellere erste Anfragen
@@ -640,6 +672,43 @@ class Settings(BaseSettings):
                 origins=self.CORS_ORIGINS
             )
 
+        # Production: Nur HTTPS Origins erlauben (außer für localhost in DEBUG)
+        if not self.DEBUG and self.CORS_ORIGINS:
+            non_https_origins = [
+                origin for origin in self.CORS_ORIGINS
+                if origin != "*" and not origin.startswith("https://")
+            ]
+            if non_https_origins:
+                raise ValueError(
+                    "CORS_ORIGINS enthält nicht-HTTPS Origins in Production! "
+                    "Alle Origins müssen HTTPS verwenden. "
+                    f"Gefundene HTTP Origins: {non_https_origins}"
+                )
+
+        # Validiere Origin-Format (muss valide URL sein)
+        invalid_origins = []
+        for origin in self.CORS_ORIGINS:
+            if origin == "*":
+                continue
+            # Muss mit http:// oder https:// beginnen
+            if not origin.startswith(("http://", "https://")):
+                invalid_origins.append(origin)
+            # Darf keinen Pfad enthalten (außer root /)
+            from urllib.parse import urlparse
+            try:
+                parsed = urlparse(origin)
+                if parsed.path and parsed.path != "/" and parsed.path != "":
+                    invalid_origins.append(f"{origin} (hat Pfad: {parsed.path})")
+            except Exception:
+                invalid_origins.append(f"{origin} (ungültige URL)")
+
+        if invalid_origins:
+            raise ValueError(
+                "CORS_ORIGINS enthält ungültige Origins! "
+                "Origins müssen mit http:// oder https:// beginnen und keinen Pfad enthalten. "
+                f"Ungültige Origins: {invalid_origins}"
+            )
+
         # ========== Infrastruktur-Validierung (Production) ==========
         if not self.DEBUG:
             # Kritische Services dürfen nicht auf localhost zeigen in Production
@@ -674,13 +743,35 @@ class Settings(BaseSettings):
                     "Bitte setze ein starkes Passwort."
                 )
 
-            # Prüfe MinIO Default-Credentials
+            # Prüfe MinIO Default-Credentials (SECURITY FIX: Error statt Warning)
             minio_secret = self.MINIO_SECRET_KEY.get_secret_value() if self.MINIO_SECRET_KEY else ""
-            if self.MINIO_ACCESS_KEY == "minioadmin" or minio_secret in ["minioadmin", "minioadmin123"]:
-                logger.warning(
-                    "production_default_minio_credentials",
-                    message="MinIO verwendet Default-Credentials in Production!",
-                    hint="Setze MINIO_ACCESS_KEY und MINIO_SECRET_KEY auf sichere Werte."
+            minio_default_users = ["minioadmin", "admin", "minio", "root"]
+            minio_default_passwords = ["minioadmin", "minioadmin123", "minio123", "admin", "password", "123456"]
+
+            if self.MINIO_ACCESS_KEY.lower() in minio_default_users:
+                raise ValueError(
+                    f"MINIO_ACCESS_KEY '{self.MINIO_ACCESS_KEY}' ist ein unsicherer Default-Wert in Production! "
+                    "Bitte setze einen eindeutigen Access Key mit mindestens 8 Zeichen."
+                )
+
+            if minio_secret.lower() in minio_default_passwords:
+                raise ValueError(
+                    "MINIO_SECRET_KEY verwendet ein unsicheres Default-Passwort in Production! "
+                    "Bitte setze ein starkes Secret Key mit mindestens 12 Zeichen."
+                )
+
+            # Prüfe MinIO Secret Key Komplexität (min 12 Zeichen fuer Production)
+            if len(minio_secret) < 12:
+                raise ValueError(
+                    f"MINIO_SECRET_KEY ist zu kurz ({len(minio_secret)} Zeichen). "
+                    "In Production sind mindestens 12 Zeichen erforderlich."
+                )
+
+            # Prüfe MinIO Access Key Länge (min 8 Zeichen)
+            if len(self.MINIO_ACCESS_KEY) < 8:
+                raise ValueError(
+                    f"MINIO_ACCESS_KEY ist zu kurz ({len(self.MINIO_ACCESS_KEY)} Zeichen). "
+                    "In Production sind mindestens 8 Zeichen erforderlich."
                 )
 
         # Build DATABASE_URL if not set

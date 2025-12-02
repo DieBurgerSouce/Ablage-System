@@ -26,8 +26,17 @@ from app.db.models import Document, ProcessingJob, ProcessingStatus, User
 
 logger = structlog.get_logger(__name__)
 
-# Database session factory
-engine = create_async_engine(settings.DATABASE_URL, pool_pre_ping=True)
+# Database session factory mit Worker-optimiertem Connection Pool
+# Callbacks sind kurzlebig, brauchen weniger Pool-Size
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    pool_pre_ping=True,
+    pool_size=settings.DB_CALLBACK_POOL_SIZE,
+    max_overflow=settings.DB_CALLBACK_MAX_OVERFLOW,
+    pool_recycle=settings.DB_CALLBACK_POOL_RECYCLE,
+    pool_timeout=settings.DB_POOL_TIMEOUT,
+    echo=False,
+)
 async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
@@ -623,8 +632,9 @@ def _send_success_notification(document_id: str, result: Dict[str, Any]) -> None
     finally:
         try:
             loop.close()
-        except Exception:
-            pass
+        except Exception as e:
+            # Loop close kann fehlschlagen wenn bereits geschlossen
+            logger.debug("event_loop_close_failed", error=str(e))
 
 
 def _send_failure_notification(document_id: str, error_message: str) -> None:
@@ -711,8 +721,9 @@ def _send_failure_notification(document_id: str, error_message: str) -> None:
     finally:
         try:
             loop.close()
-        except Exception:
-            pass
+        except Exception as e:
+            # Loop close kann fehlschlagen wenn bereits geschlossen
+            logger.debug("event_loop_close_failed", error=str(e))
 
 
 def _send_quality_warning(document_id: str, confidence: float) -> None:
@@ -765,10 +776,16 @@ def _send_quality_warning(document_id: str, confidence: float) -> None:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(_send_async())
-    except Exception:
-        pass
+    except Exception as e:
+        # Quality Warning ist nicht kritisch, aber loggen für Debugging
+        logger.debug(
+            "quality_warning_loop_error",
+            document_id=document_id,
+            error=str(e)
+        )
     finally:
         try:
             loop.close()
-        except Exception:
-            pass
+        except Exception as e:
+            # Loop close kann fehlschlagen wenn bereits geschlossen
+            logger.debug("event_loop_close_failed", error=str(e))

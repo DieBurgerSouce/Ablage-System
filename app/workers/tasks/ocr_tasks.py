@@ -29,17 +29,69 @@ from app.db.models import Document, ProcessingJob, OCRResult, ProcessingStatus, 
 from app.services.ocr_service import OCRService
 from app.german_validator import GermanValidator
 
+# GPU Recovery und strukturierte Exceptions
+from app.core.gpu_recovery import (
+    GPURecoveryManager,
+    get_gpu_recovery_manager,
+    BACKEND_CONFIGS,
+)
+from app.core.exceptions import (
+    GPUOutOfMemoryError,
+    GPUNotAvailableError,
+    OCRProcessingError,
+    OCRBackendTimeoutError,
+)
+
 # Import embedding task for auto-generation after OCR
 from app.workers.tasks.embedding_tasks import generate_document_embedding
 
 # Import ML tracking for A/B testing and metrics
 from app.workers.tasks.ml_tasks import ml_tracker
 
+# Import Cache Invalidation für Document/Search Caches
+from app.core.cache import invalidate_on_document_change
+
 logger = structlog.get_logger(__name__)
 
-# Database session factory
-engine = create_async_engine(settings.DATABASE_URL, pool_pre_ping=True)
+# Database session factory mit Worker-optimiertem Connection Pool
+# Worker brauchen weniger Connections, aber längere Timeouts für lange Tasks
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    pool_pre_ping=True,
+    pool_size=settings.DB_WORKER_POOL_SIZE,
+    max_overflow=settings.DB_WORKER_MAX_OVERFLOW,
+    pool_recycle=settings.DB_WORKER_POOL_RECYCLE,
+    pool_timeout=settings.DB_POOL_TIMEOUT,
+    echo=False,  # Kein SQL-Logging in Production
+)
 async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+# GPU Recovery Manager (global für Worker)
+_gpu_recovery_manager: Optional[GPURecoveryManager] = None
+
+
+def get_worker_gpu_recovery_manager() -> GPURecoveryManager:
+    """Get worker-local GPU recovery manager."""
+    global _gpu_recovery_manager
+    if _gpu_recovery_manager is None:
+        _gpu_recovery_manager = GPURecoveryManager()
+    return _gpu_recovery_manager
+
+
+def _is_oom_error(exception: Exception) -> bool:
+    """Prüfe ob Exception ein GPU OOM Error ist."""
+    if torch.cuda.is_available() and isinstance(exception, torch.cuda.OutOfMemoryError):
+        return True
+
+    error_msg = str(exception).lower()
+    oom_indicators = [
+        "out of memory",
+        "cuda out of memory",
+        "oom",
+        "memory allocation",
+        "cannot allocate",
+    ]
+    return any(indicator in error_msg for indicator in oom_indicators)
 
 
 # ==================== Helper Functions ====================
@@ -285,6 +337,25 @@ def process_document_task(
                 session.add(ocr_result_record)
                 await session.commit()
 
+                # Cache Invalidation: Dokument wurde verarbeitet, Caches müssen aktualisiert werden
+                try:
+                    cache_result = await invalidate_on_document_change(
+                        document_id=document_id,
+                        change_type="ocr"
+                    )
+                    logger.debug(
+                        "ocr_cache_invalidated",
+                        document_id=document_id,
+                        invalidated_keys=cache_result.get("total", 0)
+                    )
+                except Exception as cache_error:
+                    # Cache-Invalidation sollte OCR-Erfolg nicht blockieren
+                    logger.warning(
+                        "ocr_cache_invalidation_failed",
+                        document_id=document_id,
+                        error=str(cache_error)
+                    )
+
                 update_task_progress(task_id, 100, 100, "Verarbeitung abgeschlossen!")
 
                 logger.info(
@@ -307,6 +378,26 @@ def process_document_task(
                     language=language,
                     document_type=document.document_type or "unknown",
                 )
+
+                # Record OCR quality metrics for monitoring
+                try:
+                    from app.services.ocr_quality_metrics_service import record_ocr_quality
+
+                    await record_ocr_quality(
+                        backend=document.ocr_backend_used,
+                        confidence=document.ocr_confidence,
+                        processing_time_ms=float(processing_ms),
+                        has_umlauts=document.has_umlauts if hasattr(document, 'has_umlauts') else False,
+                        german_quality_score=document.german_validation_score if hasattr(document, 'german_validation_score') else 1.0,
+                        document_type=document.document_type or "unknown",
+                    )
+                except Exception as quality_error:
+                    # Don't fail OCR if quality metrics recording fails
+                    logger.warning(
+                        "ocr_quality_metrics_failed",
+                        document_id=document_id,
+                        error=str(quality_error)
+                    )
 
                 # Queue embedding generation as low-priority background task
                 embedding_task_id = None
@@ -348,16 +439,143 @@ def process_document_task(
                 }
 
             except SoftTimeLimitExceeded:
-                logger.error("ocr_task_timeout", task_id=task_id, document_id=document_id)
+                # Timeout: CPU-Fallback versuchen wenn GPU-Backend verwendet wurde
+                gpu_backends = ["deepseek", "got_ocr", "surya_gpu"]
+                actual_backend = backend if backend != "auto" else "unknown"
+
+                logger.warning(
+                    "ocr_task_timeout_attempting_cpu_fallback",
+                    task_id=task_id,
+                    document_id=document_id,
+                    backend=actual_backend
+                )
+
+                # CPU-Fallback nur wenn GPU-Backend verwendet wurde
+                if actual_backend in gpu_backends:
+                    try:
+                        update_task_progress(
+                            task_id, 30, 100,
+                            "GPU-Timeout - wechsle zu CPU-Backend..."
+                        )
+
+                        # Surya-CPU als Fallback
+                        ocr_result = await ocr_service.process_document(
+                            image_path=document.file_path,
+                            backend="surya",  # CPU-Backend
+                            language=language,
+                            detect_layout=detect_layout,
+                            detect_fraktur=detect_fraktur,
+                            document_id=document_id
+                        )
+
+                        if ocr_result.get("success"):
+                            logger.info(
+                                "ocr_cpu_fallback_success",
+                                task_id=task_id,
+                                document_id=document_id
+                            )
+                            # Weiterverarbeitung mit CPU-Ergebnis...
+                            document.extracted_text = ocr_result.get("text", "")
+                            document.ocr_backend_used = "surya_cpu_fallback"
+                            document.ocr_confidence = ocr_result.get("confidence", 0.0)
+                            document.status = ProcessingStatus.COMPLETED
+                            document.processed_date = datetime.utcnow()
+                            await session.commit()
+
+                            # Record quality metrics for fallback
+                            try:
+                                from app.services.ocr_quality_metrics_service import record_ocr_quality
+                                fallback_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                                await record_ocr_quality(
+                                    backend="surya_cpu_fallback",
+                                    confidence=document.ocr_confidence,
+                                    processing_time_ms=float(fallback_time),
+                                    document_type="unknown",
+                                )
+                            except Exception:
+                                pass  # Non-critical
+
+                            return {
+                                "success": True,
+                                "document_id": document_id,
+                                "text": document.extracted_text,
+                                "confidence": document.ocr_confidence,
+                                "backend_used": "surya_cpu_fallback",
+                                "fallback_reason": "gpu_timeout",
+                            }
+                    except Exception as fallback_error:
+                        logger.error(
+                            "ocr_cpu_fallback_failed",
+                            task_id=task_id,
+                            document_id=document_id,
+                            error=str(fallback_error)
+                        )
+
+                # Wenn kein Fallback möglich oder Fallback fehlgeschlagen
                 await update_document_status(
                     session,
                     doc_uuid,
                     ProcessingStatus.FAILED,
                     error_message="Zeitüberschreitung bei der Verarbeitung"
                 )
-                raise Ignore()
+                raise OCRBackendTimeoutError(
+                    backend=actual_backend,
+                    timeout_seconds=int(getattr(settings, 'OCR_TIMEOUT_SECONDS', 300))
+                )
 
             except Exception as e:
+                # GPU OOM spezifisch behandeln
+                if _is_oom_error(e):
+                    gpu_manager = get_worker_gpu_recovery_manager()
+                    memory_stats = gpu_manager.get_memory_stats()
+
+                    logger.warning(
+                        "ocr_task_gpu_oom",
+                        task_id=task_id,
+                        document_id=document_id,
+                        gpu_allocated_gb=memory_stats.allocated_gb,
+                        gpu_total_gb=memory_stats.total_gb,
+                        backend=backend
+                    )
+
+                    # GPU-Speicher aufräumen
+                    await gpu_manager.clear_gpu_memory()
+
+                    # Retry-Zähler prüfen (Celery's retry-Mechanismus)
+                    retry_count = self.request.retries
+                    max_retries = getattr(self, 'max_retries', 3)
+
+                    if retry_count < max_retries:
+                        # Kleinere Batch-Size für nächsten Versuch im Backend-Config
+                        reduced_config = BACKEND_CONFIGS.get(backend)
+                        if reduced_config:
+                            current_batch = reduced_config.default_batch_size
+                            new_batch = max(1, int(current_batch * 0.5))
+                            logger.info(
+                                "ocr_task_reducing_batch_size",
+                                task_id=task_id,
+                                old_batch=current_batch,
+                                new_batch=new_batch
+                            )
+
+                        # Retry mit Exponential Backoff
+                        countdown = 60 * (2 ** retry_count)  # 60s, 120s, 240s
+                        logger.info(
+                            "ocr_task_scheduling_retry",
+                            task_id=task_id,
+                            retry_count=retry_count + 1,
+                            countdown_seconds=countdown
+                        )
+                        raise self.retry(exc=e, countdown=countdown)
+                    else:
+                        # Max retries erreicht - als GPU OOM Error melden
+                        raise GPUOutOfMemoryError(
+                            message=f"GPU OOM nach {max_retries} Versuchen für Dokument {document_id}",
+                            required_gb=memory_stats.allocated_gb + 2.0,  # Geschätzt
+                            available_gb=memory_stats.total_gb - memory_stats.allocated_gb
+                        )
+
+                # Andere Exceptions normal behandeln
                 logger.exception(
                     "ocr_task_failed",
                     task_id=task_id,
@@ -369,7 +587,7 @@ def process_document_task(
                 processing_time_failed = (datetime.utcnow() - start_time).total_seconds() * 1000
                 ml_tracker.track_ocr_result(
                     document_id=document_id,
-                    backend=backend,  # Use requested backend since we don't have actual
+                    backend=backend,
                     success=False,
                     processing_time_ms=float(processing_time_failed),
                     accuracy=None,
@@ -383,7 +601,23 @@ def process_document_task(
                     ProcessingStatus.FAILED,
                     error_message=str(e)
                 )
-                raise
+                raise OCRProcessingError(
+                    document_id=document_id,
+                    backend=backend,
+                    reason=str(e)
+                )
+
+            finally:
+                # GPU-Speicher immer aufräumen nach Verarbeitung
+                if torch.cuda.is_available():
+                    try:
+                        torch.cuda.empty_cache()
+                    except Exception as cleanup_error:
+                        logger.warning(
+                            "gpu_cleanup_failed",
+                            task_id=task_id,
+                            error=str(cleanup_error)
+                        )
 
     # Run async processing - use asyncio.run() for automatic cleanup
     return asyncio.run(process_async())
@@ -527,18 +761,55 @@ def batch_process_task(
                 loop.close()
 
         except Exception as e:
-            logger.error(
-                "batch_document_failed",
-                task_id=task_id,
-                document_id=doc_id,
-                error=str(e)
-            )
-            failed += 1
-            results.append({
-                "success": False,
-                "document_id": doc_id,
-                "error": str(e)
-            })
+            # GPU OOM bei Batch-Verarbeitung: Speicher aufräumen, aber weitermachen
+            if _is_oom_error(e):
+                logger.warning(
+                    "batch_document_gpu_oom",
+                    task_id=task_id,
+                    document_id=doc_id,
+                    error=str(e)
+                )
+
+                # GPU-Speicher aufräumen vor nächstem Dokument
+                if torch.cuda.is_available():
+                    try:
+                        gpu_manager = get_worker_gpu_recovery_manager()
+                        asyncio.run(gpu_manager.clear_gpu_memory())
+                    except Exception as cleanup_error:
+                        logger.warning(
+                            "batch_gpu_cleanup_failed",
+                            error=str(cleanup_error)
+                        )
+
+                failed += 1
+                results.append({
+                    "success": False,
+                    "document_id": doc_id,
+                    "error": f"GPU Out of Memory: {str(e)}",
+                    "error_type": "gpu_oom"
+                })
+            else:
+                logger.error(
+                    "batch_document_failed",
+                    task_id=task_id,
+                    document_id=doc_id,
+                    error=str(e)
+                )
+                failed += 1
+                results.append({
+                    "success": False,
+                    "document_id": doc_id,
+                    "error": str(e),
+                    "error_type": "processing_error"
+                })
+
+    # GPU-Speicher nach Batch-Verarbeitung aufräumen
+    if torch.cuda.is_available():
+        try:
+            torch.cuda.empty_cache()
+            logger.debug("batch_gpu_cleanup_complete", task_id=task_id)
+        except Exception as cleanup_error:
+            logger.warning("batch_gpu_final_cleanup_failed", error=str(cleanup_error))
 
     processing_time = (datetime.utcnow() - start_time).total_seconds()
 
@@ -585,15 +856,28 @@ def batch_process_task(
         finally:
             loop.close()
 
+    # GPU OOM Statistiken sammeln
+    gpu_oom_count = sum(1 for r in results if r.get("error_type") == "gpu_oom")
+    gpu_recovery_stats = None
+    if torch.cuda.is_available():
+        try:
+            gpu_manager = get_worker_gpu_recovery_manager()
+            gpu_recovery_stats = gpu_manager.get_stats()
+        except Exception as e:
+            # GPU-Stats nicht kritisch für Batch-Ergebnis
+            logger.debug("gpu_recovery_stats_failed", error=str(e))
+
     return {
         "success": True,
         "total_documents": total_docs,
         "successful": successful,
         "failed": failed,
+        "gpu_oom_failures": gpu_oom_count,
         "results": results,
         "processing_time_seconds": processing_time,
         "completed_at": datetime.utcnow().isoformat(),
-        "batch_job_id": batch_job_id
+        "batch_job_id": batch_job_id,
+        "gpu_recovery_stats": gpu_recovery_stats,
     }
 
 

@@ -509,8 +509,24 @@ class BackupValidator:
             )
 
             if backup_file.suffix == ".gz":
-                cmd = f"gunzip -c {backup_file} | psql -h localhost -U postgres -d {temp_db}"
-                subprocess.run(cmd, shell=True, check=True, timeout=300)
+                # Sichere Pipeline ohne shell=True (vermeidet Shell-Injection)
+                gunzip_proc = subprocess.Popen(
+                    ['gunzip', '-c', str(backup_file)],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                psql_proc = subprocess.Popen(
+                    ['psql', '-h', 'localhost', '-U', 'postgres', '-d', temp_db],
+                    stdin=gunzip_proc.stdout,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                gunzip_proc.stdout.close()  # Allow gunzip to receive SIGPIPE
+                _, stderr = psql_proc.communicate(timeout=300)
+                if psql_proc.returncode != 0:
+                    raise subprocess.CalledProcessError(
+                        psql_proc.returncode, 'psql', stderr=stderr
+                    )
             else:
                 subprocess.run(
                     ['pg_restore', '-h', 'localhost', '-U', 'postgres', '-d', temp_db, str(backup_file)],

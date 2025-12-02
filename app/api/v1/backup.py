@@ -735,10 +735,15 @@ async def validate_backup(
         )
 
     # Validierungslevel parsen
+    valid_levels = ["quick", "standard", "deep", "full"]
     try:
         validation_level = ValidationLevel(level.lower())
     except ValueError:
-        validation_level = ValidationLevel.STANDARD
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltiger Validierungslevel: '{level}'. "
+                   f"Erlaubte Werte: {', '.join(valid_levels)}",
+        )
 
     # BackupValidator verwenden
     validator = get_backup_validator()
@@ -809,10 +814,15 @@ async def validate_all_backups(
     )
 
     # Validierungslevel parsen
+    valid_levels = ["quick", "standard", "deep", "full"]
     try:
         validation_level = ValidationLevel(level.lower())
     except ValueError:
-        validation_level = ValidationLevel.STANDARD
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltiger Validierungslevel: '{level}'. "
+                   f"Erlaubte Werte: {', '.join(valid_levels)}",
+        )
 
     # Backup-Service und Validator
     service = get_backup_service()

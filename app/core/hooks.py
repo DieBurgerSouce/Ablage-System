@@ -14,6 +14,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
 import structlog
+from slowapi.errors import RateLimitExceeded
 
 logger = structlog.get_logger(__name__)
 
@@ -175,7 +176,7 @@ class RateLimitHook(BaseHook):
             allowed = self.rate_limiter(user_id)
 
         if not allowed:
-            raise Exception("Rate limit exceeded")
+            raise RateLimitExceeded("Rate-Limit ueberschritten")
 
         return context
 

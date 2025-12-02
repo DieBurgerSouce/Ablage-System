@@ -113,8 +113,8 @@ class ProductionReadinessService:
     """
 
     def __init__(self) -> None:
-        """Initialisiere Service."""
-        pass
+        """Initialisiere Production Readiness Service."""
+        # Stateless service - keine Initialisierung erforderlich
 
     async def run_readiness_check(self) -> ReadinessReport:
         """
@@ -323,7 +323,7 @@ class ProductionReadinessService:
                     message="Redis erreichbar",
                 ))
             else:
-                raise Exception("Ping failed")
+                raise ConnectionError("Redis Ping fehlgeschlagen")
         except Exception as e:
             checks.append(ReadinessCheck(
                 name="Redis Verbindung",

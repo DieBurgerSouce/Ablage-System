@@ -23,6 +23,7 @@ from app.core.config import settings
 from app.db.models import Document, ProcessingStatus
 from app.services.embedding_service import get_embedding_service
 from app.services.search_analytics_service import get_search_analytics_service
+from app.core.cache import invalidate_on_document_change
 
 logger = structlog.get_logger(__name__)
 
@@ -44,8 +45,17 @@ def run_async_task(coro: Coroutine[Any, Any, T]) -> T:
     """
     return asyncio.run(coro)
 
-# Database session factory
-engine = create_async_engine(settings.DATABASE_URL, pool_pre_ping=True)
+# Database session factory mit Worker-optimiertem Connection Pool
+# Embedding-Tasks sind länger laufend, brauchen angepasste Timeouts
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    pool_pre_ping=True,
+    pool_size=settings.DB_WORKER_POOL_SIZE,
+    max_overflow=settings.DB_WORKER_MAX_OVERFLOW,
+    pool_recycle=settings.DB_WORKER_POOL_RECYCLE,
+    pool_timeout=settings.DB_POOL_TIMEOUT,
+    echo=False,
+)
 async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
@@ -157,6 +167,25 @@ def generate_document_embedding(
                 document.embedding_model = settings.EMBEDDING_MODEL
 
                 await session.commit()
+
+                # Cache Invalidation: Embedding wurde generiert, Search-Cache invalidieren
+                try:
+                    cache_result = await invalidate_on_document_change(
+                        document_id=document_id,
+                        change_type="embedding"
+                    )
+                    logger.debug(
+                        "embedding_cache_invalidated",
+                        document_id=document_id,
+                        invalidated_keys=cache_result.get("total", 0)
+                    )
+                except Exception as cache_error:
+                    # Cache-Invalidation sollte Embedding-Erfolg nicht blockieren
+                    logger.warning(
+                        "embedding_cache_invalidation_failed",
+                        document_id=document_id,
+                        error=str(cache_error)
+                    )
 
                 processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
                 processing_ms = int(processing_time * 1000)

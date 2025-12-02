@@ -29,9 +29,10 @@ logger = structlog.get_logger(__name__)
 # Redis client for distributed GPU lock
 _redis_lock_client: Optional[Redis] = None
 _GPU_LOCK_KEY = "ablage:gpu:lock"
-_GPU_LOCK_TIMEOUT = 60  # 60 seconds - shorter timeout with refresh
-_GPU_LOCK_ACQUIRE_TIMEOUT = 30  # Max 30 seconds to wait for lock
-_GPU_LOCK_RETRY_INTERVAL = 0.1  # 100ms between retries (non-blocking)
+# GPU Lock Timeouts (aus config.py)
+_GPU_LOCK_TIMEOUT = settings.GPU_LOCK_TIMEOUT
+_GPU_LOCK_ACQUIRE_TIMEOUT = settings.GPU_LOCK_ACQUIRE_TIMEOUT
+_GPU_LOCK_RETRY_INTERVAL = settings.GPU_LOCK_RETRY_INTERVAL
 
 
 def _get_redis_lock_client() -> Redis:
@@ -246,6 +247,7 @@ celery_app = Celery(
         "app.workers.tasks.cleanup_tasks",
         "app.workers.tasks.gdpr_tasks",
         "app.workers.tasks.ml_tasks",
+        "app.workers.tasks.dlq_management_tasks",  # Dead Letter Queue Management
     ]
 )
 
@@ -293,60 +295,129 @@ celery_app.conf.update(
         "visibility_timeout": 43200,  # 12 hours (for long-running OCR tasks)
     },
 
-    # Task queues with explicit priority configuration
+    # ==========================================================================
+    # DEAD LETTER QUEUE (DLQ) KONFIGURATION
+    # ==========================================================================
+    # Fehlgeschlagene Tasks werden NICHT gelöscht, sondern in die DLQ verschoben.
+    # Von dort können sie inspiziert, repariert und erneut ausgeführt werden.
+    #
+    # DLQ Exchange und Queue müssen vorab in Redis/RabbitMQ existieren.
+    # Bei Redis wird automatisch eine Liste "dlq" erstellt.
+
+    # Task queues with explicit priority configuration and DLQ support
     task_queues={
-        # GPU Tasks (High Priority)
+        # =================================================================
+        # DEAD LETTER QUEUE - Sammelt alle fehlgeschlagenen Tasks
+        # =================================================================
+        "dlq": {
+            "exchange": "dlq",
+            "routing_key": "dlq",
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-message-ttl": 604800000,  # 7 Tage TTL (ms)
+            },
+        },
+
+        # =================================================================
+        # GPU Tasks (High Priority) - Mit DLQ Routing
+        # =================================================================
         "ocr_high": {
             "exchange": "ocr_high",
             "routing_key": "ocr.high",
-            "queue_arguments": {"x-max-priority": 10},
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
         },
         "ocr_normal": {
             "exchange": "ocr_normal",
             "routing_key": "ocr.normal",
-            "queue_arguments": {"x-max-priority": 10},
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
         },
         "embedding_high": {
             "exchange": "embedding_high",
             "routing_key": "embedding.high",
-            "queue_arguments": {"x-max-priority": 10},
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
         },
         "embedding_normal": {
             "exchange": "embedding_normal",
             "routing_key": "embedding.normal",
-            "queue_arguments": {"x-max-priority": 10},
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
         },
         "embedding_low": {
             "exchange": "embedding_low",
             "routing_key": "embedding.low",
-            "queue_arguments": {"x-max-priority": 10},
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
         },
-        # CPU Tasks (Medium Priority)
+
+        # =================================================================
+        # CPU Tasks (Medium Priority) - Mit DLQ Routing
+        # =================================================================
         "validation": {
             "exchange": "validation",
             "routing_key": "validation",
-            "queue_arguments": {"x-max-priority": 10},
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
         },
         "metadata": {
             "exchange": "metadata",
             "routing_key": "metadata",
-            "queue_arguments": {"x-max-priority": 10},
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
         },
         "backup": {
             "exchange": "backup",
             "routing_key": "backup",
-            "queue_arguments": {"x-max-priority": 10},
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
         },
-        # Background Tasks (Low Priority)
+
+        # =================================================================
+        # Background Tasks (Low Priority) - Mit DLQ Routing
+        # =================================================================
         "maintenance": {
             "exchange": "maintenance",
             "routing_key": "maintenance",
-            "queue_arguments": {"x-max-priority": 10},
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
         },
         "metrics": {
             "exchange": "metrics",
             "routing_key": "metrics",
-            "queue_arguments": {"x-max-priority": 10},
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
         },
     },
 
@@ -449,6 +520,18 @@ celery_app.conf.update(
             "task": "app.workers.tasks.ml_tasks.generate_monthly_drift_report",
             "schedule": crontab(day_of_month=1, hour=5, minute=0),  # Monatlich am 1. um 05:00
         },
+        # =================================================================
+        # Dead Letter Queue (DLQ) Monitoring
+        # =================================================================
+        "dlq-health-check": {
+            "task": "app.workers.tasks.dlq_management_tasks.check_dlq_health",
+            "schedule": 300.0,  # Alle 5 Minuten
+        },
+        "dlq-cleanup-old-tasks": {
+            "task": "app.workers.tasks.dlq_management_tasks.cleanup_old_dlq_tasks",
+            "schedule": crontab(hour=6, minute=0),  # Täglich um 06:00 Uhr
+            "kwargs": {"max_age_days": 7},
+        },
     },
 
     # Queue routing
@@ -488,6 +571,9 @@ celery_app.conf.update(
         "app.workers.tasks.ml_tasks.generate_ml_report": {"queue": "maintenance", "priority": 1},
         "app.workers.tasks.ml_tasks.generate_monthly_drift_report": {"queue": "maintenance", "priority": 1},
         "app.workers.tasks.ml_tasks.trigger_model_retrain": {"queue": "maintenance", "priority": 2},
+        # DLQ Management tasks (CPU)
+        "app.workers.tasks.dlq_management_tasks.check_dlq_health": {"queue": "metrics", "priority": 1},
+        "app.workers.tasks.dlq_management_tasks.cleanup_old_dlq_tasks": {"queue": "maintenance", "priority": 1},
     },
 
     # Priority settings
@@ -496,9 +582,13 @@ celery_app.conf.update(
     worker_direct=True,
     task_create_missing_queues=True,
 
-    # Dead letter queue settings
+    # ==========================================================================
+    # DEAD LETTER QUEUE SETTINGS
+    # ==========================================================================
+    # WICHTIG: Tasks werden bei Fehler NICHT gelöscht, sondern in DLQ verschoben
     task_reject_on_worker_lost=True,
-    task_acks_on_failure_or_timeout=True,
+    task_acks_on_failure_or_timeout=False,  # GEÄNDERT: False = Tasks werden bei Fehler rejected und gehen in DLQ
+    task_default_queue="ocr_normal",  # Default Queue mit DLQ-Support
 )
 
 

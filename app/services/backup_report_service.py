@@ -551,16 +551,27 @@ async def main():
     elif report_type == "monthly":
         report = service.generate_monthly_report()
     else:
-        print(f"Unbekannter Berichtstyp: {report_type}")
-        print("Verwendung: python backup_report_service.py [daily|weekly|monthly]")
+        logger.error("unknown_report_type", report_type=report_type)
+        sys.stderr.write(f"Unbekannter Berichtstyp: {report_type}\n")
+        sys.stderr.write("Verwendung: python backup_report_service.py [daily|weekly|monthly]\n")
         sys.exit(1)
 
-    print(f"\nBericht generiert:")
-    print(f"  Typ: {report.report_type}")
-    print(f"  Zeitraum: {report.period_start.date()} - {report.period_end.date()}")
-    print(f"  Erfolgsrate: {report.success_rate}%")
-    print(f"  Probleme: {len(report.issues)}")
-    print(f"  Warnungen: {len(report.warnings)}")
+    logger.info(
+        "backup_report_generated",
+        report_type=report.report_type,
+        period_start=report.period_start.isoformat(),
+        period_end=report.period_end.isoformat(),
+        success_rate=report.success_rate,
+        issues_count=len(report.issues),
+        warnings_count=len(report.warnings)
+    )
+    # CLI-Ausgabe fuer interaktive Nutzung
+    sys.stdout.write(f"\nBericht generiert:\n")
+    sys.stdout.write(f"  Typ: {report.report_type}\n")
+    sys.stdout.write(f"  Zeitraum: {report.period_start.date()} - {report.period_end.date()}\n")
+    sys.stdout.write(f"  Erfolgsrate: {report.success_rate}%\n")
+    sys.stdout.write(f"  Probleme: {len(report.issues)}\n")
+    sys.stdout.write(f"  Warnungen: {len(report.warnings)}\n")
 
 
 if __name__ == "__main__":

@@ -115,9 +115,15 @@ jobs:
             echo "✅ Staging deployment complete"
           EOF
 
-      - name: Run Post-deployment Tests
+      - name: Run Post-deployment Smoke Tests
+        uses: ./.github/workflows/smoke-tests.yml
+        with:
+          environment: staging
+        continue-on-error: true
+
+      - name: Verify Deployment Health
         run: |
-          # Run smoke tests against staging
+          # Basic health verification
           curl -f https://staging.ablage-system.local/health
           curl -f https://staging.ablage-system.local/api/v1/health
 
@@ -208,6 +214,12 @@ jobs:
             echo "✅ Production deployment complete"
           EOF
 
+      - name: Run Post-deployment Smoke Tests
+        uses: ./.github/workflows/smoke-tests.yml
+        with:
+          environment: production
+        continue-on-error: false
+
       - name: Verify Production Deployment
         run: |
           echo "🔍 Verifying production deployment..."
@@ -220,8 +232,9 @@ jobs:
           VERSION=$(curl -s https://ablage-system.local/api/v1/version | jq -r '.version')
           echo "Deployed version: $VERSION"
 
-          # Smoke tests
-          # Add critical path smoke tests here
+          # SLO status check
+          SLO_STATUS=$(curl -s https://ablage-system.local/api/v1/metrics/slo | jq -r '.overall_status')
+          echo "SLO Status: $SLO_STATUS"
 
       - name: Monitor Post-deployment
         run: |
