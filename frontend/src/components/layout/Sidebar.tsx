@@ -1,7 +1,11 @@
 import { Link } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, Settings } from 'lucide-react'
+import { ThemeToggle } from './ThemeToggle'
+import { useState } from 'react'
 
 export function Sidebar() {
+    const [showThemeMenu, setShowThemeMenu] = useState(false)
+
     return (
         <aside
             className="w-64 border-r bg-sidebar text-sidebar-foreground flex flex-col h-screen"
@@ -21,6 +25,24 @@ export function Sidebar() {
                 <SidebarLink to="/upload" icon={Upload} label="Upload Wizard" />
                 <SidebarLink to="/jobs" icon={ListTodo} label="Job Queue" />
             </nav>
+
+            {/* Display Mode Toggle */}
+            <div className="px-4 py-2 border-t border-sidebar-border">
+                <button
+                    onClick={() => setShowThemeMenu(!showThemeMenu)}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    aria-expanded={showThemeMenu}
+                    aria-controls="theme-menu"
+                >
+                    <Settings className="w-4 h-4" aria-hidden="true" />
+                    Anzeigemodus
+                </button>
+                {showThemeMenu && (
+                    <div id="theme-menu" className="mt-2 pl-2">
+                        <ThemeToggle />
+                    </div>
+                )}
+            </div>
 
             <div className="p-4 border-t border-sidebar-border">
                 <div className="flex items-center gap-3">
