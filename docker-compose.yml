@@ -197,10 +197,8 @@ services:
         reservations:
           cpus: '1.0'
           memory: 2G
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+          # GPU FIX: Backend is API-only, GPU reserved for worker
+          # Backend can still access GPU for health checks via CUDA_VISIBLE_DEVICES
     # SECURITY FIX: Healthcheck für Backend
     # GPU-Inference braucht 10-15s, Model-Loading 60-90s
     healthcheck:
