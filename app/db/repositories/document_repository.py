@@ -207,9 +207,13 @@ class DocumentRepository(BaseRepository[Document]):
         Returns:
             Liste von Dokumenten
         """
+        # N+1 FIX: Eager loading für Suchresultate
         # Einfache ILIKE-Suche (für komplexere Suche: pg_trgm oder tsvector)
         query = select(Document).where(
             Document.extracted_text.ilike(f"%{query_text}%")
+        ).options(
+            selectinload(Document.tags),
+            selectinload(Document.owner)
         )
 
         if owner_id:
@@ -236,7 +240,13 @@ class DocumentRepository(BaseRepository[Document]):
         Returns:
             Liste von Dokumenten
         """
-        query = select(Document).where(Document.document_type == document_type)
+        # N+1 FIX: Eager loading für Typ-Abfragen
+        query = select(Document).where(
+            Document.document_type == document_type
+        ).options(
+            selectinload(Document.tags),
+            selectinload(Document.owner)
+        )
 
         if owner_id:
             query = query.where(Document.owner_id == owner_id)
