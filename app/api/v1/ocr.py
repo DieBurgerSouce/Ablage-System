@@ -48,8 +48,8 @@ class OCRPreviewRequest(BaseModel):
     """Anfrage fuer OCR-Vorschau mit Dokument-ID."""
 
     dokument_id: UUID = Field(..., description="ID des Dokuments")
-    max_seiten: int = Field(1, ge=1, le=5, description="Max. Seiten zu extrahieren")
-    max_zeichen: int = Field(1000, ge=100, le=10000, description="Max. Zeichen")
+    max_pages: int = Field(1, ge=1, le=5, description="Max. Seiten zu extrahieren")
+    max_chars: int = Field(1000, ge=100, le=10000, description="Max. Zeichen")
 
 
 class OCRStatusResponse(BaseModel):
@@ -75,8 +75,8 @@ class OCRStatusResponse(BaseModel):
 )
 async def ocr_preview_upload(
     file: UploadFile = File(..., description="Dokument (PDF, PNG, JPG, TIFF)"),
-    max_seiten: int = Query(1, ge=1, le=5, description="Max. Seiten"),
-    max_zeichen: int = Query(1000, ge=100, le=10000, description="Max. Zeichen"),
+    max_pages: int = Query(1, ge=1, le=5, description="Max. Seiten"),
+    max_chars: int = Query(1000, ge=100, le=10000, description="Max. Zeichen"),
     current_user: User = Depends(get_current_active_user),
 ) -> OCRPreviewResponse:
     """Schnelle OCR-Vorschau aus hochgeladener Datei.
@@ -93,8 +93,8 @@ async def ocr_preview_upload(
         user_id=str(current_user.id),
         filename=file.filename,
         content_type=file.content_type,
-        max_seiten=max_seiten,
-        max_zeichen=max_zeichen,
+        max_pages=max_pages,
+        max_chars=max_chars,
     )
 
     # Dateiformat validieren
@@ -145,8 +145,8 @@ async def ocr_preview_upload(
         # OCR-Vorschau durchfuehren
         text = await quick_ocr_preview(
             file_path=tmp_path,
-            max_pages=max_seiten,
-            max_chars=max_zeichen,
+            max_pages=max_pages,
+            max_chars=max_chars,
         )
 
         # Methode bestimmen
@@ -155,7 +155,7 @@ async def ocr_preview_upload(
         else:
             methode = "tesseract_ocr"
 
-        abgeschnitten = len(text) >= max_zeichen
+        abgeschnitten = len(text) >= max_chars
 
         logger.info(
             "ocr_preview_upload_erfolgreich",
@@ -222,8 +222,8 @@ async def ocr_preview_document(
         "ocr_preview_document_angefordert",
         user_id=str(current_user.id),
         dokument_id=str(request.dokument_id),
-        max_seiten=request.max_seiten,
-        max_zeichen=request.max_zeichen,
+        max_pages=request.max_pages,
+        max_chars=request.max_chars,
     )
 
     # Dokument laden
@@ -257,8 +257,8 @@ async def ocr_preview_document(
         # OCR-Vorschau durchfuehren
         text = await quick_ocr_preview(
             file_path=file_path,
-            max_pages=request.max_seiten,
-            max_chars=request.max_zeichen,
+            max_pages=request.max_pages,
+            max_chars=request.max_chars,
         )
 
         # Methode bestimmen
@@ -268,7 +268,7 @@ async def ocr_preview_document(
         else:
             methode = "tesseract_ocr"
 
-        abgeschnitten = len(text) >= request.max_zeichen
+        abgeschnitten = len(text) >= request.max_chars
 
         logger.info(
             "ocr_preview_document_erfolgreich",

@@ -124,14 +124,14 @@ class AsyncBackupResponse(BaseModel):
 class RestoreRequest(BaseModel):
     """Anfrage fuer Restore-Operation."""
 
-    backup_pfad: str = Field(..., description="Pfad zur Backup-Datei")
+    backup_path: str = Field(..., description="Pfad zur Backup-Datei")
     dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
 
 
 class RestoreMinioRequest(BaseModel):
     """Anfrage fuer MinIO-Restore."""
 
-    backup_pfad: str = Field(..., description="Pfad zur Backup-Datei")
+    backup_path: str = Field(..., description="Pfad zur Backup-Datei")
     bucket: Optional[str] = Field(None, description="Ziel-Bucket (optional)")
     dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
 
@@ -561,16 +561,16 @@ async def restore_postgres(
     logger.warning(
         "postgres_restore_angefordert",
         user_id=str(current_user.id),
-        backup_pfad=request.backup_pfad,
+        backup_pfad=request.backup_path,
         dry_run=request.dry_run,
     )
 
-    backup_path = Path(request.backup_pfad)
+    backup_path = Path(request.backup_path)
 
     if not backup_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup-Datei nicht gefunden: {request.backup_pfad}",
+            detail=f"Backup-Datei nicht gefunden: {request.backup_path}",
         )
 
     service = get_backup_service()
@@ -593,16 +593,16 @@ async def restore_redis(
     logger.warning(
         "redis_restore_angefordert",
         user_id=str(current_user.id),
-        backup_pfad=request.backup_pfad,
+        backup_pfad=request.backup_path,
         dry_run=request.dry_run,
     )
 
-    backup_path = Path(request.backup_pfad)
+    backup_path = Path(request.backup_path)
 
     if not backup_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup-Datei nicht gefunden: {request.backup_pfad}",
+            detail=f"Backup-Datei nicht gefunden: {request.backup_path}",
         )
 
     service = get_backup_service()
@@ -625,17 +625,17 @@ async def restore_minio(
     logger.warning(
         "minio_restore_angefordert",
         user_id=str(current_user.id),
-        backup_pfad=request.backup_pfad,
+        backup_pfad=request.backup_path,
         bucket=request.bucket,
         dry_run=request.dry_run,
     )
 
-    backup_path = Path(request.backup_pfad)
+    backup_path = Path(request.backup_path)
 
     if not backup_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup-Datei nicht gefunden: {request.backup_pfad}",
+            detail=f"Backup-Datei nicht gefunden: {request.backup_path}",
         )
 
     service = get_backup_service()
@@ -708,7 +708,7 @@ async def restore_full(
     description="Validiert eine Backup-Datei mit tiefgehender Analyse ohne Restore.",
 )
 async def validate_backup(
-    backup_pfad: str,
+    backup_path: str,
     level: str = "standard",
     current_user: User = Depends(get_current_superuser),
 ) -> ValidateBackupResponse:
@@ -716,17 +716,17 @@ async def validate_backup(
     Validiere eine Backup-Datei mit konfigurierbarer Tiefe.
 
     Args:
-        backup_pfad: Pfad zur Backup-Datei
+        backup_path: Pfad zur Backup-Datei
         level: Validierungsstufe (quick, standard, deep, full)
     """
     logger.info(
         "backup_validierung_angefordert",
         user_id=str(current_user.id),
-        backup_pfad=backup_pfad,
+        backup_path=backup_path,
         level=level,
     )
 
-    backup_path = Path(backup_pfad).resolve()
+    resolved_path = Path(backup_path).resolve()
 
     # SECURITY FIX: Path Traversal Prevention
     # Resolve path to prevent ../ attacks and validate it's within backup dir
@@ -735,12 +735,12 @@ async def validate_backup(
 
     try:
         # Check if path is within allowed backup directory
-        backup_path.relative_to(allowed_backup_dir)
+        resolved_path.relative_to(allowed_backup_dir)
     except ValueError:
         logger.warning(
             "path_traversal_attempt_blocked",
             user_id=str(current_user.id),
-            requested_path=backup_pfad,
+            requested_path=backup_path,
             allowed_dir=str(allowed_backup_dir),
         )
         raise HTTPException(
@@ -748,10 +748,10 @@ async def validate_backup(
             detail="Zugriff verweigert: Pfad außerhalb des Backup-Verzeichnisses",
         )
 
-    if not backup_path.exists():
+    if not resolved_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup-Datei nicht gefunden: {backup_pfad}",
+            detail=f"Backup-Datei nicht gefunden: {backup_path}",
         )
 
     # Validierungslevel parsen
@@ -767,10 +767,10 @@ async def validate_backup(
 
     # BackupValidator verwenden
     validator = get_backup_validator()
-    result = await validator.validate_backup(backup_path, level=validation_level)
+    result = await validator.validate_backup(resolved_path, level=validation_level)
 
     # Datei-Eigenschaften
-    filename = backup_path.name.lower()
+    filename = resolved_path.name.lower()
     verschluesselt = filename.endswith(".gpg")
     komprimiert = ".gz" in filename or ".tar" in filename
 

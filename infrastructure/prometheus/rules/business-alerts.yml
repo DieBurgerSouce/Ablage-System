@@ -273,3 +273,102 @@ groups:
           summary: "Haeufige Circuit Breaker Zustandswechsel"
           description: "{{ $value }} Circuit Breaker Transitionen in 15 Minuten. Instabile Webhook-Endpunkte."
           runbook_url: "https://wiki.ablage-system.local/runbooks/webhook-circuit-unstable"
+
+      # Warnung: Webhook Retry-Versuche erschoepft
+      - alert: WebhookRetryExhausted
+        expr: |
+          increase(ablage_webhook_retries_exhausted_total[15m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: webhooks
+        annotations:
+          summary: "Webhook Retry-Versuche erschoepft"
+          description: "{{ $value }} Webhooks haben alle Retry-Versuche in 15 Minuten erschoepft. Endpunkte pruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/webhook-retry-exhausted"
+
+      # ===================================================================
+      # SLO / ERROR BUDGET ALERTS
+      # ===================================================================
+
+      # Warnung: Error Budget zu 75% verbraucht
+      - alert: ErrorBudgetConsuming
+        expr: |
+          (1 - ablage_slo_error_budget_remaining) > 0.75
+        for: 5m
+        labels:
+          severity: warning
+          component: slo
+        annotations:
+          summary: "Error Budget zu 75% verbraucht"
+          description: "Das Error Budget ist zu {{ $value | humanizePercentage }} verbraucht. SLO in Gefahr."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/error-budget-warning"
+
+      # Kritisch: Error Budget erschoepft (>90%)
+      - alert: ErrorBudgetExhausted
+        expr: |
+          (1 - ablage_slo_error_budget_remaining) > 0.90
+        for: 2m
+        labels:
+          severity: critical
+          component: slo
+        annotations:
+          summary: "KRITISCH: Error Budget ueber 90% verbraucht"
+          description: "Das Error Budget ist zu {{ $value | humanizePercentage }} verbraucht. SLO-Verletzung steht bevor!"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/error-budget-exhausted"
+
+      # Kritisch: SLO-Verletzung aktiv
+      - alert: SLOViolation
+        expr: |
+          ablage_slo_compliance < 0.99
+        for: 5m
+        labels:
+          severity: critical
+          component: slo
+        annotations:
+          summary: "KRITISCH: SLO-Verletzung aktiv"
+          description: "Die SLO-Compliance liegt bei {{ $value | humanizePercentage }}. Ziel: 99%"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/slo-violation"
+
+      # ===================================================================
+      # CACHE INVALIDATION ALERTS
+      # ===================================================================
+
+      # Warnung: Cache Invalidation Rate hoch
+      - alert: CacheInvalidationRateHigh
+        expr: |
+          rate(ablage_cache_invalidations_total[5m]) > 100
+        for: 10m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Cache Invalidierung Rate hoch (>100/min)"
+          description: "Die Cache-Invalidierungsrate liegt bei {{ $value | humanize }}/s. Moegliche Konfigurationsprobleme."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/cache-invalidation-high"
+
+      # Kritisch: Cache Invalidation Storm (>1000/min)
+      - alert: CacheInvalidationStorm
+        expr: |
+          rate(ablage_cache_invalidations_total[1m]) * 60 > 1000
+        for: 2m
+        labels:
+          severity: critical
+          component: cache
+        annotations:
+          summary: "KRITISCH: Cache Invalidation Storm (>1000/min)"
+          description: "Ueber 1000 Cache-Invalidierungen pro Minute. System unter extremer Last oder Fehlkonfiguration."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/cache-invalidation-storm"
+
+      # Warnung: Cache Evictions zu hoch
+      - alert: CacheEvictionsHigh
+        expr: |
+          rate(ablage_cache_evictions_total[5m]) > 50
+        for: 10m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Cache Evictions zu hoch"
+          description: "Die Cache-Eviction-Rate liegt bei {{ $value | humanize }}/s. Redis-Speicher moeglicherweise zu klein."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/cache-evictions-high"
