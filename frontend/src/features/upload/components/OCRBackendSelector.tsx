@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { motionTokens } from '@/lib/motion-tokens';
-import { Cpu, Zap, Languages, Sparkles } from 'lucide-react';
+import { Cpu, Zap, Sparkles } from 'lucide-react';
 
 interface OCRBackendSelectorProps {
     selectedId: string;
@@ -12,35 +12,49 @@ interface OCRBackendSelectorProps {
 
 const backends = [
     {
+        id: 'deepseek-janus',
+        name: 'DeepSeek Janus',
+        description: 'Vision-Language Model für komplexe Dokumente, beste Umlaut-Genauigkeit',
+        features: ['Kontextverständnis', 'Fraktur', 'Reasoning'],
+        accuracy: 99,
+        languages: 12,
+        recommended: true,
+        gpuRequired: true,
+        vram: '12GB',
+        icon: Sparkles
+    },
+    {
         id: 'got-ocr',
         name: 'GOT-OCR 2.0',
         description: 'State-of-the-art unified OCR mit Layout-Erkennung',
-        features: ['LaTeX-Formeln', 'Tabellen', 'Bounding Boxes'],
+        features: ['LaTeX-Formeln', 'Tabellen', 'Schnell'],
         accuracy: 98,
         languages: 25,
-        recommended: true,
         gpuRequired: true,
+        vram: '10GB',
+        icon: Zap
+    },
+    {
+        id: 'surya-gpu',
+        name: 'Surya + Docling (GPU)',
+        description: 'GPU-beschleunigte OCR für schnelle Verarbeitung',
+        features: ['90+ Sprachen', 'Layout-Analyse', 'GPU-beschleunigt'],
+        accuracy: 97,
+        languages: 90,
+        gpuRequired: true,
+        vram: '4GB',
         icon: Zap
     },
     {
         id: 'surya-docling',
-        name: 'Surya + Docling',
-        description: 'Multilingual OCR mit Document Understanding',
-        features: ['90+ Sprachen', 'Tabellen-Extraktion'],
+        name: 'Surya + Docling (CPU)',
+        description: 'Multilingual OCR - läuft komplett auf CPU ohne GPU',
+        features: ['90+ Sprachen', 'Tabellen-Extraktion', 'Kein GPU nötig'],
         accuracy: 96,
         languages: 90,
-        gpuRequired: true,
-        icon: Languages
-    },
-    {
-        id: 'deepseek-janus',
-        name: 'DeepSeek Janus',
-        description: 'Vision-Language Model für komplexe Dokumente',
-        features: ['Kontextverständnis', 'Reasoning'],
-        accuracy: 94,
-        languages: 12,
-        gpuRequired: true,
-        icon: Sparkles
+        gpuRequired: false,
+        vram: '0GB',
+        icon: Cpu
     }
 ];
 
@@ -48,7 +62,7 @@ const MotionButton = motion.button;
 
 export function OCRBackendSelector({ selectedId, onSelect, gpuAvailable }: OCRBackendSelectorProps) {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-5xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-6xl">
             {backends.map((backend) => {
                 const Icon = backend.icon;
                 const isSelected = selectedId === backend.id;
@@ -112,12 +126,10 @@ export function OCRBackendSelector({ selectedId, onSelect, gpuAvailable }: OCRBa
                             </div>
                         </div>
 
-                        {backend.gpuRequired && (
-                            <div className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/30 p-2 rounded-md">
-                                <Cpu className="w-3.5 h-3.5" />
-                                <span>GPU erforderlich</span>
-                            </div>
-                        )}
+                        <div className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/30 p-2 rounded-md">
+                            <Cpu className="w-3.5 h-3.5" />
+                            <span>{backend.gpuRequired ? 'GPU erforderlich' : 'Nur CPU'}</span>
+                        </div>
                     </MotionButton>
                 );
             })}

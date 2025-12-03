@@ -1,12 +1,14 @@
 import axios from 'axios';
 
 // Create Axios instance with default config
+// Use direct backend URL to avoid nginx proxy issues
 export const apiClient = axios.create({
-    baseURL: '/api', // Proxy will handle this in development
+    baseURL: 'http://localhost:8000/api/v1',
     headers: {
         'Content-Type': 'application/json',
     },
     timeout: 10000,
+    withCredentials: false, // No cookies for cross-origin
 });
 
 // Request Interceptor

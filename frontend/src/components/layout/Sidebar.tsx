@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, Settings } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, Settings, CheckCircle, Layers } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import { useState } from 'react'
 
@@ -24,6 +24,8 @@ export function Sidebar() {
                 <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" />
                 <SidebarLink to="/upload" icon={Upload} label="Upload Wizard" />
                 <SidebarLink to="/jobs" icon={ListTodo} label="Job Queue" />
+                <SidebarLink to="/validation-queue" icon={CheckCircle} label="Validierung" />
+                <SidebarLink to="/document-groups" icon={Layers} label="Dokumentgruppen" />
             </nav>
 
             {/* Display Mode Toggle */}

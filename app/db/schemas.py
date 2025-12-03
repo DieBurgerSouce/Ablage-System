@@ -2284,3 +2284,557 @@ class APIKeyDeleteResponse(BaseModel):
     success: bool
     nachricht: str
     deleted_key_name: str
+
+
+# ============================================================================
+# BUSINESS ENTITY SCHEMAS (Kunden/Lieferanten)
+# ============================================================================
+
+class EntityType(str, Enum):
+    """Geschaeftspartner-Typ."""
+    CUSTOMER = "customer"      # Kunde
+    SUPPLIER = "supplier"      # Lieferant
+    BOTH = "both"             # Kann beides sein
+    INTERNAL = "internal"      # Interne Entitaet
+
+
+class BusinessEntityBase(BaseModel):
+    """Base schema fuer Geschaeftspartner."""
+    name: str = Field(..., min_length=1, max_length=255, description="Firmenname")
+    entity_type: EntityType = Field(EntityType.SUPPLIER, description="Typ: customer, supplier, both, internal")
+    display_name: Optional[str] = Field(None, max_length=255, description="Anzeigename")
+    short_name: Optional[str] = Field(None, max_length=50, description="Kurzname")
+
+    # Deutsche Geschaeftsnummern
+    vat_id: Optional[str] = Field(None, max_length=20, pattern=r"^DE[0-9]{9}$", description="USt-IdNr (DE123456789)")
+    tax_number: Optional[str] = Field(None, max_length=30, description="Steuernummer")
+    trade_register: Optional[str] = Field(None, max_length=50, description="Handelsregisternummer (z.B. HRB 12345)")
+
+    # Banking
+    iban: Optional[str] = Field(None, max_length=34, description="IBAN")
+    bic: Optional[str] = Field(None, max_length=11, description="BIC/SWIFT")
+    bank_name: Optional[str] = Field(None, max_length=100, description="Bankname")
+
+    # Kontaktdaten
+    street: Optional[str] = Field(None, max_length=255, description="Strasse")
+    street_number: Optional[str] = Field(None, max_length=20, description="Hausnummer")
+    postal_code: Optional[str] = Field(None, max_length=10, description="PLZ")
+    city: Optional[str] = Field(None, max_length=100, description="Stadt")
+    country: str = Field("DE", max_length=2, description="Laendercode (ISO 3166-1 alpha-2)")
+    phone: Optional[str] = Field(None, max_length=30, description="Telefon")
+    fax: Optional[str] = Field(None, max_length=30, description="Fax")
+    email: Optional[EmailStr] = Field(None, description="E-Mail")
+    website: Optional[str] = Field(None, max_length=255, description="Website")
+
+    notes: Optional[str] = Field(None, max_length=2000, description="Notizen")
+
+    @field_validator("vat_id")
+    @classmethod
+    def validate_vat_id(cls, v: Optional[str]) -> Optional[str]:
+        """Validiere deutsche USt-IdNr."""
+        if v is None:
+            return v
+        # Entferne Leerzeichen
+        v = v.replace(" ", "").upper()
+        if not v.startswith("DE") or len(v) != 11:
+            raise ValueError("USt-IdNr muss das Format DE123456789 haben")
+        return v
+
+    @field_validator("iban")
+    @classmethod
+    def validate_iban(cls, v: Optional[str]) -> Optional[str]:
+        """Validiere IBAN-Format."""
+        if v is None:
+            return v
+        # Entferne Leerzeichen
+        v = v.replace(" ", "").upper()
+        if len(v) < 15 or len(v) > 34:
+            raise ValueError("IBAN muss zwischen 15 und 34 Zeichen haben")
+        return v
+
+
+class BusinessEntityCreate(BusinessEntityBase):
+    """Schema zum Erstellen eines Geschaeftspartners."""
+    name_aliases: List[str] = Field(default_factory=list, max_length=20, description="Alternative Namen")
+    email_domains: List[str] = Field(default_factory=list, max_length=10, description="E-Mail-Domains")
+
+
+class BusinessEntityUpdate(BaseModel):
+    """Schema zum Aktualisieren eines Geschaeftspartners."""
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    entity_type: Optional[EntityType] = None
+    display_name: Optional[str] = Field(None, max_length=255)
+    short_name: Optional[str] = Field(None, max_length=50)
+    vat_id: Optional[str] = Field(None, max_length=20)
+    tax_number: Optional[str] = Field(None, max_length=30)
+    trade_register: Optional[str] = Field(None, max_length=50)
+    iban: Optional[str] = Field(None, max_length=34)
+    bic: Optional[str] = Field(None, max_length=11)
+    bank_name: Optional[str] = Field(None, max_length=100)
+    street: Optional[str] = Field(None, max_length=255)
+    street_number: Optional[str] = Field(None, max_length=20)
+    postal_code: Optional[str] = Field(None, max_length=10)
+    city: Optional[str] = Field(None, max_length=100)
+    country: Optional[str] = Field(None, max_length=2)
+    phone: Optional[str] = Field(None, max_length=30)
+    fax: Optional[str] = Field(None, max_length=30)
+    email: Optional[EmailStr] = None
+    website: Optional[str] = Field(None, max_length=255)
+    notes: Optional[str] = Field(None, max_length=2000)
+    name_aliases: Optional[List[str]] = None
+    email_domains: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+    verified: Optional[bool] = None
+
+
+class BusinessEntityResponse(BusinessEntityBase):
+    """Antwort-Schema fuer Geschaeftspartner."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name_aliases: List[str] = []
+    email_domains: List[str] = []
+    document_count: int = 0
+    first_document_date: Optional[datetime] = None
+    last_document_date: Optional[datetime] = None
+    total_invoice_amount: float = 0.0
+    currency: str = "EUR"
+    is_active: bool = True
+    verified: bool = False
+    confidence_score: float = 0.0
+    auto_detected: bool = False
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    full_address: Optional[str] = None
+
+
+class BusinessEntitySummary(BaseModel):
+    """Kompakte Zusammenfassung eines Geschaeftspartners."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    entity_type: EntityType
+    vat_id: Optional[str] = None
+    city: Optional[str] = None
+    document_count: int = 0
+    is_active: bool = True
+
+
+class BusinessEntityListResponse(BaseModel):
+    """Liste von Geschaeftspartnern."""
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+    entities: List[BusinessEntitySummary]
+
+
+class BusinessEntitySearchRequest(BaseModel):
+    """Suchanfrage fuer Geschaeftspartner."""
+    query: Optional[str] = Field(None, max_length=255, description="Suchbegriff (Name, USt-IdNr, IBAN)")
+    entity_type: Optional[EntityType] = None
+    is_active: Optional[bool] = None
+    verified: Optional[bool] = None
+    has_documents: Optional[bool] = None
+    page: int = Field(1, ge=1)
+    per_page: int = Field(20, ge=1, le=100)
+
+
+class BusinessEntitySuggestion(BaseModel):
+    """Vorschlag fuer automatisch erkannten Geschaeftspartner aus OCR."""
+    name: str
+    vat_id: Optional[str] = None
+    iban: Optional[str] = None
+    address: Optional[str] = None
+    confidence: float = Field(..., ge=0, le=1, description="Konfidenz der Erkennung (0-1)")
+    matched_existing: Optional[uuid.UUID] = Field(None, description="ID eines passenden existierenden Geschaeftspartners")
+    match_reason: Optional[str] = Field(None, description="Grund fuer die Uebereinstimmung")
+
+
+# ============================================================================
+# DOCUMENT GROUP SCHEMAS (Zusammengehoerige Dokumente)
+# ============================================================================
+
+class DocumentGroupType(str, Enum):
+    """Dokumentgruppen-Typ."""
+    STAPLED = "stapled"              # Physisch geheftet
+    MULTI_PAGE = "multi_page"        # Mehrseitiger Scan
+    TRANSACTION = "transaction"      # Transaktionsbezogen
+    CORRESPONDENCE = "correspondence" # Briefwechsel
+    PROJECT = "project"              # Projektbezogen
+    MANUAL = "manual"                # Manuell erstellt
+
+
+class DocumentGroupBase(BaseModel):
+    """Base schema fuer Dokumentgruppen."""
+    name: str = Field(..., min_length=1, max_length=255, description="Name der Gruppe")
+    description: Optional[str] = Field(None, max_length=2000, description="Beschreibung")
+    group_type: DocumentGroupType = Field(DocumentGroupType.STAPLED, description="Gruppentyp")
+    reference_number: Optional[str] = Field(None, max_length=100, description="Referenznummer")
+
+
+class DocumentGroupCreate(DocumentGroupBase):
+    """Schema zum manuellen Erstellen einer Dokumentgruppe."""
+    document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100, description="Dokument-IDs fuer die Gruppe")
+    primary_document_id: Optional[uuid.UUID] = Field(None, description="ID des primaeren Dokuments")
+    business_entity_id: Optional[uuid.UUID] = Field(None, description="Zugehoeriger Geschaeftspartner")
+
+
+class DocumentGroupUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Dokumentgruppe."""
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=2000)
+    group_type: Optional[DocumentGroupType] = None
+    reference_number: Optional[str] = Field(None, max_length=100)
+    primary_document_id: Optional[uuid.UUID] = None
+    business_entity_id: Optional[uuid.UUID] = None
+
+
+class DocumentInGroup(BaseModel):
+    """Dokument innerhalb einer Gruppe."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    filename: str
+    page_number_in_group: Optional[int] = None
+    is_group_primary: bool = False
+    ocr_confidence: Optional[float] = None
+    created_at: datetime
+
+
+class DocumentGroupResponse(DocumentGroupBase):
+    """Antwort-Schema fuer Dokumentgruppen."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    primary_document_id: Optional[uuid.UUID] = None
+    detection_method: Optional[str] = None
+    detection_confidence: float = 0.0
+    total_pages: int = 1
+    combined_text: Optional[str] = None
+    business_entity_id: Optional[uuid.UUID] = None
+    business_entity_name: Optional[str] = None
+    document_date: Optional[datetime] = None
+    user_confirmed: bool = False
+    needs_review: bool = False
+    documents: List[DocumentInGroup] = []
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+
+class DocumentGroupSummary(BaseModel):
+    """Kompakte Zusammenfassung einer Dokumentgruppe."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    group_type: DocumentGroupType
+    total_pages: int
+    document_count: int
+    detection_confidence: float
+    user_confirmed: bool
+    needs_review: bool
+    created_at: datetime
+
+
+class DocumentGroupListResponse(BaseModel):
+    """Liste von Dokumentgruppen."""
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+    groups: List[DocumentGroupSummary]
+
+
+class DocumentGroupDetailResponse(DocumentGroupResponse):
+    """Erweiterte Antwort mit allen Details einer Dokumentgruppe."""
+    model_config = ConfigDict(from_attributes=True)
+
+    documents: List[DocumentInGroup] = []
+    owner_name: Optional[str] = None
+    created_by_name: Optional[str] = None
+
+
+class GroupDetectionRequest(BaseModel):
+    """Anfrage zur automatischen Gruppenerkennung."""
+    document_ids: Optional[List[uuid.UUID]] = Field(
+        None,
+        max_length=1000,
+        description="Spezifische Dokument-IDs (None = alle unzugeordneten)"
+    )
+    min_confidence: float = Field(0.99, ge=0, le=1, description="Minimale Konfidenz fuer Auto-Gruppierung")
+    detection_methods: List[str] = Field(
+        default=["filename_sequence", "content_similarity"],
+        description="Zu verwendende Erkennungsmethoden"
+    )
+    dry_run: bool = Field(True, description="Nur simulieren, nicht speichern")
+
+
+class GroupDetectionResult(BaseModel):
+    """Ergebnis einer einzelnen Gruppenerkennung."""
+    documents: List[uuid.UUID]
+    group_type: DocumentGroupType
+    detection_method: str
+    confidence: float
+    signals: List[Dict[str, Any]] = []
+    suggested_name: str
+    primary_document_id: Optional[uuid.UUID] = None
+
+
+class GroupDetectionResponse(BaseModel):
+    """Antwort auf Gruppenerkennungs-Anfrage."""
+    total_documents_analyzed: int
+    groups_detected: int
+    groups_auto_confirmed: int  # >= 0.99 confidence
+    groups_need_review: int     # < 0.99 confidence
+    detected_groups: List[GroupDetectionResult]
+    dry_run: bool
+    message: str
+
+
+class GroupConfirmRequest(BaseModel):
+    """Anfrage zur Bestaetigung einer Gruppe."""
+    confirmed: bool = Field(True, description="Gruppe bestaetigen (True) oder ablehnen (False)")
+    adjust_documents: Optional[List[uuid.UUID]] = Field(
+        None,
+        description="Optionale Liste der finalen Dokument-IDs (fuer Korrekturen)"
+    )
+
+
+class GroupSplitRequest(BaseModel):
+    """Anfrage zum Aufteilen einer Gruppe."""
+    split_after_document_id: uuid.UUID = Field(..., description="Gruppe nach diesem Dokument trennen")
+    new_group_name: Optional[str] = Field(None, max_length=255, description="Name der neuen Gruppe")
+
+
+class GroupMergeRequest(BaseModel):
+    """Anfrage zum Zusammenfuehren von Gruppen."""
+    target_group_id: uuid.UUID = Field(..., description="Zielgruppe (bleibt bestehen)")
+    source_group_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=10, description="Quellgruppen (werden geloescht)")
+
+
+# ============================================================================
+# DOCUMENT RELATIONSHIP SCHEMAS (Beziehungen zwischen Dokumenten)
+# ============================================================================
+
+class RelationshipType(str, Enum):
+    """Beziehungstyp zwischen Dokumenten."""
+    CHILD_OF = "child_of"           # Seite gehoert zu Dokument
+    REFERENCES = "references"        # Verweist auf
+    REPLIES_TO = "replies_to"        # Antwort auf
+    SUPPLEMENTS = "supplements"      # Ergaenzung zu
+    SUPERSEDES = "supersedes"        # Ersetzt
+    DUPLICATE_OF = "duplicate_of"    # Duplikat von
+    RELATED = "related"              # Allgemein verwandt
+
+
+class DocumentRelationshipCreate(BaseModel):
+    """Schema zum Erstellen einer Dokumentbeziehung."""
+    source_document_id: uuid.UUID = Field(..., description="Quell-Dokument")
+    target_document_id: uuid.UUID = Field(..., description="Ziel-Dokument")
+    relationship_type: RelationshipType = Field(..., description="Beziehungstyp")
+    sequence_number: Optional[int] = Field(None, ge=1, description="Reihenfolge (fuer CHILD_OF)")
+
+    @model_validator(mode='after')
+    def validate_different_documents(self) -> 'DocumentRelationshipCreate':
+        """Validate that source and target are different."""
+        if self.source_document_id == self.target_document_id:
+            raise ValueError("Quell- und Zieldokument muessen unterschiedlich sein")
+        return self
+
+
+class DocumentRelationshipResponse(BaseModel):
+    """Antwort-Schema fuer Dokumentbeziehungen."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    source_document_id: uuid.UUID
+    target_document_id: uuid.UUID
+    relationship_type: RelationshipType
+    confidence: float
+    sequence_number: Optional[int] = None
+    detected_by: Optional[str] = None
+    user_confirmed: bool
+    user_rejected: bool
+    created_at: datetime
+
+    # Optional: Dokument-Details
+    source_filename: Optional[str] = None
+    target_filename: Optional[str] = None
+
+
+class RelatedDocumentResponse(BaseModel):
+    """Verwandtes Dokument mit Beziehungsdetails."""
+    model_config = ConfigDict(from_attributes=True)
+
+    document_id: uuid.UUID
+    filename: str
+    document_type: Optional[str] = None
+    relationship_type: RelationshipType
+    relationship_direction: str  # "outgoing" oder "incoming"
+    confidence: float
+    sequence_number: Optional[int] = None
+    created_at: datetime
+
+
+class DocumentRelationshipsResponse(BaseModel):
+    """Alle Beziehungen eines Dokuments."""
+    document_id: uuid.UUID
+    total_relationships: int
+    outgoing: List[DocumentRelationshipResponse] = []
+    incoming: List[DocumentRelationshipResponse] = []
+
+
+class RelationshipDetectionRequest(BaseModel):
+    """Anfrage zur automatischen Beziehungserkennung."""
+    document_ids: Optional[List[uuid.UUID]] = Field(
+        None,
+        max_length=100,
+        description="Spezifische Dokument-IDs (None = alle)"
+    )
+    relationship_types: List[RelationshipType] = Field(
+        default=[RelationshipType.REFERENCES, RelationshipType.DUPLICATE_OF],
+        description="Zu erkennende Beziehungstypen"
+    )
+    min_confidence: float = Field(0.99, ge=0, le=1)
+    dry_run: bool = Field(True)
+
+
+class RelationshipDetectionResult(BaseModel):
+    """Einzelnes Erkennungsergebnis."""
+    source_document_id: uuid.UUID
+    target_document_id: uuid.UUID
+    relationship_type: RelationshipType
+    confidence: float
+    detection_method: str
+    evidence: Dict[str, Any] = {}
+
+
+class RelationshipDetectionResponse(BaseModel):
+    """Antwort auf Beziehungserkennungs-Anfrage."""
+    total_documents_analyzed: int
+    relationships_detected: int
+    relationships_auto_confirmed: int
+    relationships_need_review: int
+    detected_relationships: List[RelationshipDetectionResult]
+    dry_run: bool
+    message: str
+
+
+# ============================================================================
+# VALIDATION QUEUE SCHEMAS (Pruef-Warteschlange fuer 99%+ Praezision)
+# ============================================================================
+
+class ValidationQueueItem(BaseModel):
+    """Element in der Validierungs-Warteschlange."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    item_type: str  # "group" oder "relationship"
+    item_id: uuid.UUID
+    confidence: float
+    detection_method: str
+    detection_details: Dict[str, Any] = {}
+    priority: int
+    created_at: datetime
+
+    # Details je nach Typ
+    group_name: Optional[str] = None
+    document_count: Optional[int] = None
+    relationship_type: Optional[str] = None
+
+
+class ValidationQueueListResponse(BaseModel):
+    """Liste der Validierungs-Warteschlange."""
+    total: int
+    items: List[ValidationQueueItem]
+
+
+class ValidationQueueResponse(BaseModel):
+    """Antwort fuer Validierungswarteschlange mit Zusammenfassung."""
+    total_pending: int
+    groups_pending: int
+    relationships_pending: int
+    items: List[ValidationQueueItem] = []
+
+
+class ValidationDecision(BaseModel):
+    """Entscheidung fuer ein Element in der Warteschlange."""
+    approved: bool = Field(..., description="True = bestaetigen, False = ablehnen")
+    adjustment: Optional[Dict[str, Any]] = Field(None, description="Optionale Anpassungen")
+    reason: Optional[str] = Field(None, max_length=500, description="Begruendung")
+
+
+# ============================================================================
+# ENTITY EXTRACTION SCHEMAS (Entitaetsextraktion aus OCR-Text)
+# ============================================================================
+
+class BusinessEntityDetailResponse(BusinessEntityResponse):
+    """Erweiterte Antwort mit allen Details eines Geschaeftspartners."""
+    model_config = ConfigDict(from_attributes=True)
+
+    # Statistiken
+    document_count: int = 0
+    total_invoice_amount: float = 0.0
+    last_document_date: Optional[datetime] = None
+
+    # Aliase und Patterns
+    name_aliases: List[str] = []
+    address_patterns: List[str] = []
+
+    # Audit
+    created_by_id: Optional[uuid.UUID] = None
+    verified_by_id: Optional[uuid.UUID] = None
+
+
+class EntityExtractionRequest(BaseModel):
+    """Anfrage zur Entitaetsextraktion aus Text."""
+    text: str = Field(..., min_length=10, max_length=100000, description="OCR-Text zur Analyse")
+    document_id: Optional[uuid.UUID] = Field(None, description="Optionale Dokument-ID fuer Verknuepfung")
+    match_existing: bool = Field(True, description="Mit bestehenden Entitaeten abgleichen")
+    min_confidence: float = Field(0.7, ge=0, le=1, description="Minimale Konfidenz fuer Extraktion")
+
+
+class ExtractedEntity(BaseModel):
+    """Extrahierte Entitaet aus OCR-Text."""
+    name: Optional[str] = None
+    vat_id: Optional[str] = None
+    iban: Optional[str] = None
+    postal_code: Optional[str] = None
+    city: Optional[str] = None
+    street: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    confidence: float = Field(..., ge=0, le=1)
+    source_text: Optional[str] = Field(None, description="Originaltext-Ausschnitt")
+
+
+class EntityExtractionResponse(BaseModel):
+    """Antwort mit extrahierten Entitaeten."""
+    entities: List[ExtractedEntity] = []
+    matched_entities: List[BusinessEntitySummary] = []
+    processing_time_ms: int
+    document_id: Optional[uuid.UUID] = None
+
+
+class EntityMatchResponse(BaseModel):
+    """Antwort fuer Entitaetsmatching."""
+    match_found: bool
+    matched_entity: Optional[BusinessEntitySummary] = None
+    match_confidence: float = 0.0
+    match_reasons: List[str] = []
+    suggested_updates: Dict[str, Any] = {}
+
+
+class EntityMergeRequest(BaseModel):
+    """Anfrage zum Zusammenfuehren von Entitaeten."""
+    target_entity_id: uuid.UUID = Field(..., description="Ziel-Entitaet (bleibt bestehen)")
+    source_entity_ids: List[uuid.UUID] = Field(
+        ...,
+        min_length=1,
+        max_length=10,
+        description="Quell-Entitaeten (werden geloescht)"
+    )
+    merge_documents: bool = Field(True, description="Dokumente zur Ziel-Entitaet verschieben")
+    merge_aliases: bool = Field(True, description="Aliase zusammenfuehren")

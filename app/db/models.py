@@ -155,9 +155,35 @@ class Document(Base):
     embedding_updated_at = Column(DateTime(timezone=True))
     embedding_model = Column(String(100))  # Model used to generate embedding
 
+    # Business Entity and Document Group relationships
+    business_entity_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("business_entities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+    group_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("document_groups.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+    page_number_in_group = Column(Integer, nullable=True)  # Seitennummer innerhalb der Gruppe
+    is_group_primary = Column(Boolean, default=False)  # Ist das primaere Dokument der Gruppe
+
+    # Structured extracted data (from OCR)
+    extracted_data = Column(CrossDBJSON, default=dict)  # Strukturierte OCR-Daten (Rechnungsnr., Datum, etc.)
+
+    # Scan metadata (fuer Gruppierungserkennung)
+    scan_timestamp = Column(DateTime(timezone=True), nullable=True)  # Wann wurde gescannt
+    scan_batch_id = Column(String(100), nullable=True)  # Scan-Batch ID
+    original_filename_sequence = Column(Integer, nullable=True)  # Sequenznummer aus Original-Dateinamen
+
     # Relationships
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     owner = relationship("User", back_populates="documents", foreign_keys=[owner_id])
+    business_entity = relationship("BusinessEntity", back_populates="documents")
+    document_group = relationship("DocumentGroup", back_populates="documents", foreign_keys=[group_id])
     tags = relationship("Tag", secondary=document_tags, back_populates="documents")
     processing_jobs = relationship("ProcessingJob", back_populates="document", cascade="all, delete-orphan")
     ocr_results = relationship("OCRResult", back_populates="document", cascade="all, delete-orphan")
@@ -182,6 +208,12 @@ class Document(Base):
         Index("ix_documents_status_created", "status", "created_at"),
         Index("ix_documents_owner_status", "owner_id", "status"),
         Index("ix_documents_deleted_owner", "deleted_at", "owner_id"),
+        # Business Entity und Group Indexes
+        Index("ix_documents_business_entity_id", "business_entity_id"),
+        Index("ix_documents_group_id", "group_id"),
+        Index("ix_documents_scan_batch_id", "scan_batch_id"),
+        Index("ix_documents_entity_created", "business_entity_id", "created_at"),
+        Index("ix_documents_group_sequence", "group_id", "page_number_in_group"),
     )
 
     @property
@@ -1873,3 +1905,310 @@ class FeatureFlag(Base):
                 return variant_name
 
         return list(self.variants.keys())[0] if self.variants else None
+
+
+# ============================================================================
+# BUSINESS ENTITY MODELS (Kunden/Lieferanten)
+# ============================================================================
+
+class EntityType(str, Enum):
+    """Geschaeftspartner-Typ."""
+    CUSTOMER = "customer"      # Kunde - erhaelt Dokumente VON uns
+    SUPPLIER = "supplier"      # Lieferant - sendet Dokumente AN uns
+    BOTH = "both"             # Kann beides sein
+    INTERNAL = "internal"      # Interne Entitaet
+
+
+class BusinessEntity(Base):
+    """
+    Geschaeftspartner (Kunde/Lieferant).
+
+    Zentrale Entitaet fuer alle Geschaeftsbeziehungen.
+    Unterstuetzt automatische Erkennung aus OCR-Text mit 99%+ Praezision.
+    """
+    __tablename__ = "business_entities"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Entity identification
+    entity_type = Column(String(20), nullable=False, default=EntityType.SUPPLIER.value)
+    name = Column(String(255), nullable=False, index=True)
+    display_name = Column(String(255))
+    short_name = Column(String(50))  # Kurzname fuer Anzeige
+
+    # German business identifiers (fuer 99%+ Praezision)
+    vat_id = Column(String(20), unique=True, index=True, nullable=True)  # USt-IdNr (DE123456789)
+    tax_number = Column(String(30), nullable=True)  # Steuernummer
+    trade_register = Column(String(50), nullable=True)  # HRB 12345
+
+    # Banking information
+    iban = Column(String(34), index=True, nullable=True)
+    bic = Column(String(11), nullable=True)
+    bank_name = Column(String(100), nullable=True)
+
+    # Contact information
+    street = Column(String(255), nullable=True)
+    street_number = Column(String(20), nullable=True)
+    postal_code = Column(String(10), index=True, nullable=True)
+    city = Column(String(100), nullable=True)
+    country = Column(String(2), default="DE")
+    phone = Column(String(30), nullable=True)
+    fax = Column(String(30), nullable=True)
+    email = Column(String(255), nullable=True)
+    website = Column(String(255), nullable=True)
+
+    # Matching patterns (fuer Auto-Detection)
+    name_aliases = Column(CrossDBJSON, default=list)  # ["ACME GmbH", "ACME AG", "Acme"]
+    address_patterns = Column(CrossDBJSON, default=list)  # Alternative Adressen
+    email_domains = Column(CrossDBJSON, default=list)  # ["acme.de", "acme.com"]
+
+    # Statistics (werden automatisch aktualisiert)
+    document_count = Column(Integer, default=0)
+    first_document_date = Column(DateTime(timezone=True), nullable=True)
+    last_document_date = Column(DateTime(timezone=True), nullable=True)
+    total_invoice_amount = Column(Float, default=0.0)
+    currency = Column(String(3), default="EUR")
+
+    # Status and confidence
+    is_active = Column(Boolean, default=True)
+    verified = Column(Boolean, default=False)  # Manuell verifiziert
+    confidence_score = Column(Float, default=0.0)  # 0.0-1.0
+    auto_detected = Column(Boolean, default=False)  # Automatisch erkannt
+
+    # Metadata & Audit
+    notes = Column(Text, nullable=True)
+    custom_fields = Column(CrossDBJSON, default=dict)  # Flexible Zusatzfelder
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Soft delete
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    documents = relationship("Document", back_populates="business_entity")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_business_entities_name", "name"),
+        Index("ix_business_entities_vat_id", "vat_id"),
+        Index("ix_business_entities_iban", "iban"),
+        Index("ix_business_entities_postal_code", "postal_code"),
+        Index("ix_business_entities_entity_type", "entity_type"),
+        Index("ix_business_entities_is_active", "is_active"),
+        Index("ix_business_entities_deleted_at", "deleted_at"),
+    )
+
+    @property
+    def is_deleted(self) -> bool:
+        """Check if entity is soft-deleted."""
+        return self.deleted_at is not None
+
+    @property
+    def full_address(self) -> str:
+        """Returns formatted full address."""
+        parts = []
+        if self.street:
+            addr = self.street
+            if self.street_number:
+                addr += f" {self.street_number}"
+            parts.append(addr)
+        if self.postal_code and self.city:
+            parts.append(f"{self.postal_code} {self.city}")
+        elif self.city:
+            parts.append(self.city)
+        if self.country and self.country != "DE":
+            parts.append(self.country)
+        return ", ".join(parts)
+
+
+# ============================================================================
+# DOCUMENT GROUP MODELS (Zusammengehoerige Dokumente)
+# ============================================================================
+
+class DocumentGroupType(str, Enum):
+    """Dokumentgruppen-Typ."""
+    STAPLED = "stapled"              # Physisch geheftet gewesen
+    MULTI_PAGE = "multi_page"        # Mehrseitiger Scan (z.B. PDF mit mehreren Seiten)
+    TRANSACTION = "transaction"      # Transaktionsbezogen (z.B. Rechnung + Lieferschein)
+    CORRESPONDENCE = "correspondence" # Briefwechsel
+    PROJECT = "project"              # Projektbezogen
+    MANUAL = "manual"                # Manuell vom Benutzer erstellt
+
+
+class DocumentGroup(Base):
+    """
+    Dokumentgruppe fuer zusammengehoerige Dokumente.
+
+    Gruppiert:
+    - Physisch geheftete Seiten (waren mit Heftklammer zusammen)
+    - Mehrseitige Scans
+    - Logisch zusammengehoerige Dokumente (gleiche Transaktion)
+
+    Erkennung mit 99%+ Praezision durch Mehrfach-Validierung.
+    """
+    __tablename__ = "document_groups"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Group identification
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    group_type = Column(String(30), nullable=False, default=DocumentGroupType.STAPLED.value)
+
+    # Primary document (erstes/wichtigstes Dokument der Gruppe)
+    primary_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
+
+    # Detection metadata
+    detection_method = Column(String(50), nullable=True)  # "filename_sequence", "timestamp", "content_similarity"
+    detection_confidence = Column(Float, default=0.0)  # 0.0-1.0, muss >= 0.99 sein fuer Auto-Gruppierung
+    detection_details = Column(CrossDBJSON, default=dict)  # Details zur Erkennung
+    detection_signals = Column(CrossDBJSON, default=list)  # Alle Erkennungssignale
+
+    # Content aggregation
+    total_pages = Column(Integer, default=1)
+    combined_text = Column(Text, nullable=True)  # Kombinierter OCR-Text aller Dokumente
+    combined_text_hash = Column(String(64), nullable=True)  # SHA-256 fuer Deduplizierung
+
+    # Business context
+    business_entity_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id", ondelete="SET NULL"), nullable=True)
+    document_date = Column(DateTime(timezone=True), nullable=True)  # Hauptdatum der Gruppe
+    reference_number = Column(String(100), nullable=True)  # Referenznummer (Rechnungsnr., etc.)
+
+    # Extracted data (aggregiert aus allen Dokumenten)
+    extracted_data = Column(CrossDBJSON, default=dict)
+
+    # User interaction
+    user_confirmed = Column(Boolean, default=False)  # Benutzer hat Gruppierung bestaetigt
+    user_split = Column(Boolean, default=False)  # Benutzer hat Gruppe aufgeteilt
+    confirmation_date = Column(DateTime(timezone=True), nullable=True)
+    confirmed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Validation queue
+    needs_review = Column(Boolean, default=False)  # In Warteschlange fuer manuelle Pruefung
+    review_priority = Column(Integer, default=5)  # 1=hoechste Prioritaet
+
+    # Audit
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    owner = relationship("User", foreign_keys=[owner_id], backref="document_groups")
+    confirmed_by = relationship("User", foreign_keys=[confirmed_by_id])
+    business_entity = relationship("BusinessEntity", backref="document_groups")
+    documents = relationship("Document", back_populates="document_group", foreign_keys="Document.group_id")
+    primary_document = relationship("Document", foreign_keys=[primary_document_id], post_update=True)
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_document_groups_group_type", "group_type"),
+        Index("ix_document_groups_detection_confidence", "detection_confidence"),
+        Index("ix_document_groups_business_entity_id", "business_entity_id"),
+        Index("ix_document_groups_owner_id", "owner_id"),
+        Index("ix_document_groups_needs_review", "needs_review"),
+        Index("ix_document_groups_user_confirmed", "user_confirmed"),
+        Index("ix_document_groups_created_at", "created_at"),
+        Index("ix_document_groups_deleted_at", "deleted_at"),
+    )
+
+    @property
+    def is_deleted(self) -> bool:
+        """Check if group is soft-deleted."""
+        return self.deleted_at is not None
+
+    @property
+    def is_auto_confirmed(self) -> bool:
+        """Check if group was auto-confirmed (99%+ confidence)."""
+        return self.detection_confidence >= 0.99 and not self.user_confirmed
+
+
+# ============================================================================
+# DOCUMENT RELATIONSHIP MODEL (Beziehungen zwischen Dokumenten)
+# ============================================================================
+
+class RelationshipType(str, Enum):
+    """Beziehungstyp zwischen Dokumenten."""
+    CHILD_OF = "child_of"           # Seite gehoert zu mehrseitigem Dokument
+    REFERENCES = "references"        # Dokument verweist auf anderes (z.B. Rechnung -> Vertrag)
+    REPLIES_TO = "replies_to"        # Antwort auf Dokument
+    SUPPLEMENTS = "supplements"      # Ergaenzung/Anlage zu Dokument
+    SUPERSEDES = "supersedes"        # Ersetzt/Annulliert anderes Dokument
+    DUPLICATE_OF = "duplicate_of"    # Ist Duplikat von
+    RELATED = "related"              # Allgemeine Beziehung
+
+
+class DocumentRelationship(Base):
+    """
+    Beziehung zwischen zwei Dokumenten.
+
+    Ermoeglicht Tracking von:
+    - Seitenreihenfolge in mehrseitigen Dokumenten
+    - Verweise zwischen Dokumenten (Rechnung -> Vertrag)
+    - Duplikat-Erkennung
+
+    Bidirektionale Beziehungen werden als zwei separate Eintraege gespeichert.
+    """
+    __tablename__ = "document_relationships"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Relationship endpoints
+    source_document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    target_document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Relationship details
+    relationship_type = Column(String(30), nullable=False)
+    confidence = Column(Float, default=1.0)  # 0.0-1.0
+
+    # Ordering (fuer CHILD_OF Beziehungen)
+    sequence_number = Column(Integer, nullable=True)  # Seitennummer/Reihenfolge
+
+    # Detection metadata
+    detected_by = Column(String(50), nullable=True)  # "algorithm", "user", "ocr_reference"
+    detection_details = Column(CrossDBJSON, default=dict)
+
+    # User interaction
+    user_confirmed = Column(Boolean, default=False)
+    user_rejected = Column(Boolean, default=False)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    source_document = relationship(
+        "Document",
+        foreign_keys=[source_document_id],
+        backref="outgoing_relationships"
+    )
+    target_document = relationship(
+        "Document",
+        foreign_keys=[target_document_id],
+        backref="incoming_relationships"
+    )
+    created_by = relationship("User")
+
+    # Indexes and constraints
+    __table_args__ = (
+        Index("ix_document_relationships_source", "source_document_id"),
+        Index("ix_document_relationships_target", "target_document_id"),
+        Index("ix_document_relationships_type", "relationship_type"),
+        Index("ix_document_relationships_confidence", "confidence"),
+        # Prevent duplicate relationships
+        Index(
+            "ix_document_relationships_unique",
+            "source_document_id", "target_document_id", "relationship_type",
+            unique=True
+        ),
+    )

@@ -248,6 +248,7 @@ celery_app = Celery(
         "app.workers.tasks.gdpr_tasks",
         "app.workers.tasks.ml_tasks",
         "app.workers.tasks.dlq_management_tasks",  # Dead Letter Queue Management
+        "app.workers.tasks.document_intelligence_tasks",  # Document Intelligence (Grouping, Entities)
     ]
 )
 
@@ -532,6 +533,17 @@ celery_app.conf.update(
             "schedule": crontab(hour=6, minute=0),  # Täglich um 06:00 Uhr
             "kwargs": {"max_age_days": 7},
         },
+        # =================================================================
+        # Document Intelligence Tasks (Grouping & Entity Extraction)
+        # =================================================================
+        "document-intelligence-pipeline": {
+            "task": "app.workers.tasks.document_intelligence_tasks.run_document_intelligence_pipeline",
+            "schedule": crontab(hour=3, minute=0),  # Taeglich um 03:00 Uhr
+        },
+        "document-intelligence-metrics": {
+            "task": "app.workers.tasks.document_intelligence_tasks.update_intelligence_metrics",
+            "schedule": 900.0,  # Alle 15 Minuten
+        },
     },
 
     # Queue routing
@@ -574,6 +586,13 @@ celery_app.conf.update(
         # DLQ Management tasks (CPU)
         "app.workers.tasks.dlq_management_tasks.check_dlq_health": {"queue": "metrics", "priority": 1},
         "app.workers.tasks.dlq_management_tasks.cleanup_old_dlq_tasks": {"queue": "maintenance", "priority": 1},
+        # Document Intelligence tasks (CPU)
+        "app.workers.tasks.document_intelligence_tasks.detect_document_groups": {"queue": "metadata", "priority": 4},
+        "app.workers.tasks.document_intelligence_tasks.batch_detect_groups_by_folder": {"queue": "metadata", "priority": 3},
+        "app.workers.tasks.document_intelligence_tasks.extract_entities_from_document": {"queue": "metadata", "priority": 5},
+        "app.workers.tasks.document_intelligence_tasks.batch_extract_entities": {"queue": "metadata", "priority": 3},
+        "app.workers.tasks.document_intelligence_tasks.run_document_intelligence_pipeline": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.document_intelligence_tasks.update_intelligence_metrics": {"queue": "metrics", "priority": 1},
     },
 
     # Priority settings

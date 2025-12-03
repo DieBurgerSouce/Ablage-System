@@ -1,5 +1,6 @@
 import { Sun, Moon, Contrast, MonitorOff } from 'lucide-react'
-import { useTheme, DisplayMode } from '@/lib/theme/ThemeContext'
+import { useTheme } from '@/lib/theme/ThemeContext'
+import type { DisplayMode } from '@/lib/theme/ThemeContext'
 
 const displayModes: { mode: DisplayMode; icon: React.ElementType; label: string; description: string }[] = [
     {

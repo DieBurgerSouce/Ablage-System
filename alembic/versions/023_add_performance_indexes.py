@@ -16,6 +16,8 @@ Performance-kritische Indexes für:
 
 WICHTIG: Bei großen Tabellen in Production sollten diese Indexes
 während Off-Peak-Hours mit CONCURRENTLY erstellt werden.
+
+HINWEIS: Diese Migration prüft Tabellen- und Spalten-Existenz vor Index-Erstellung.
 """
 
 from alembic import op
@@ -28,149 +30,162 @@ branch_labels = None
 depends_on = None
 
 
+def table_exists(conn, table_name: str) -> bool:
+    """Prüft ob eine Tabelle existiert."""
+    result = conn.execute(sa.text("""
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables
+            WHERE table_name = :table_name
+        )
+    """), {"table_name": table_name})
+    return result.scalar()
+
+
+def column_exists(conn, table_name: str, column_name: str) -> bool:
+    """Prüft ob eine Spalte in einer Tabelle existiert."""
+    result = conn.execute(sa.text("""
+        SELECT EXISTS (
+            SELECT FROM information_schema.columns
+            WHERE table_name = :table_name AND column_name = :column_name
+        )
+    """), {"table_name": table_name, "column_name": column_name})
+    return result.scalar()
+
+
 def upgrade() -> None:
     """Add performance indexes for common query patterns."""
+    conn = op.get_bind()
 
     # =========================================================================
     # DOCUMENTS TABLE INDEXES
     # =========================================================================
+    if table_exists(conn, "documents"):
+        # 1. OCR Backend + Status (Backend-Statistiken)
+        if column_exists(conn, "documents", "ocr_backend_used") and column_exists(conn, "documents", "status"):
+            op.execute("""
+                CREATE INDEX IF NOT EXISTS ix_documents_backend_status
+                ON documents (ocr_backend_used, status)
+            """)
 
-    # 1. OCR Backend + Status (Backend-Statistiken)
-    op.create_index(
-        "ix_documents_backend_status",
-        "documents",
-        ["ocr_backend_used", "status"],
-        if_not_exists=True
-    )
+        # 2. Updated_at (Kürzlich geänderte Dokumente)
+        if column_exists(conn, "documents", "updated_at"):
+            op.execute("""
+                CREATE INDEX IF NOT EXISTS ix_documents_updated_at
+                ON documents (updated_at)
+            """)
 
-    # 2. Updated_at (Kürzlich geänderte Dokumente)
-    op.create_index(
-        "ix_documents_updated_at",
-        "documents",
-        ["updated_at"],
-        if_not_exists=True
-    )
+        # 3. Document Type + Status (Dashboard-Filter)
+        if column_exists(conn, "documents", "document_type") and column_exists(conn, "documents", "status"):
+            op.execute("""
+                CREATE INDEX IF NOT EXISTS ix_documents_type_status
+                ON documents (document_type, status)
+            """)
 
-    # 3. Document Type + Status (Dashboard-Filter)
-    op.create_index(
-        "ix_documents_type_status",
-        "documents",
-        ["document_type", "status"],
-        if_not_exists=True
-    )
+        # 4. Partial Index für Dokumente mit Embeddings
+        if column_exists(conn, "documents", "embedding"):
+            op.execute("""
+                CREATE INDEX IF NOT EXISTS ix_documents_with_embedding
+                ON documents (owner_id)
+                WHERE embedding IS NOT NULL
+            """)
 
-    # 4. Partial Index für Dokumente mit Embeddings
-    # Nur Dokumente mit embedding != NULL werden indexiert
-    op.execute("""
-        CREATE INDEX IF NOT EXISTS ix_documents_with_embedding
-        ON documents (owner_id)
-        WHERE embedding IS NOT NULL
-    """)
-
-    # 5. GIN Index für Full-Text-Search
-    # Verwendung des german_text Configs für deutsche Dokumente
-    op.execute("""
-        CREATE INDEX IF NOT EXISTS ix_documents_search_vector_gin
-        ON documents USING gin (search_vector)
-    """)
+        # 5. GIN Index für Full-Text-Search
+        if column_exists(conn, "documents", "search_vector"):
+            op.execute("""
+                CREATE INDEX IF NOT EXISTS ix_documents_search_vector_gin
+                ON documents USING gin (search_vector)
+            """)
 
     # =========================================================================
     # PROCESSING_JOBS TABLE INDEXES
     # =========================================================================
-
-    # 6. Job-Queue-Priorisierung (Status + Priority DESC + Created)
-    op.create_index(
-        "ix_processing_jobs_queue",
-        "processing_jobs",
-        ["status", sa.text("priority DESC"), "created_at"],
-        if_not_exists=True
-    )
+    if table_exists(conn, "processing_jobs"):
+        if column_exists(conn, "processing_jobs", "status") and \
+           column_exists(conn, "processing_jobs", "priority") and \
+           column_exists(conn, "processing_jobs", "created_at"):
+            op.execute("""
+                CREATE INDEX IF NOT EXISTS ix_processing_jobs_queue
+                ON processing_jobs (status, priority DESC, created_at)
+            """)
 
     # =========================================================================
     # OCR_RESULTS TABLE INDEXES
     # =========================================================================
-
-    # 7. OCR-History (Document + Created DESC)
-    op.create_index(
-        "ix_ocr_results_history",
-        "ocr_results",
-        ["document_id", sa.text("created_at DESC")],
-        if_not_exists=True
-    )
+    if table_exists(conn, "ocr_results"):
+        if column_exists(conn, "ocr_results", "document_id") and \
+           column_exists(conn, "ocr_results", "created_at"):
+            op.execute("""
+                CREATE INDEX IF NOT EXISTS ix_ocr_results_history
+                ON ocr_results (document_id, created_at DESC)
+            """)
 
     # =========================================================================
     # USERS TABLE INDEXES
     # =========================================================================
+    if table_exists(conn, "users"):
+        # 8. GDPR Deletion Deadline (User + Scheduled Deletion)
+        if column_exists(conn, "users", "deletion_scheduled_for"):
+            op.execute("""
+                CREATE INDEX IF NOT EXISTS ix_users_deletion_deadline
+                ON users (id, deletion_scheduled_for)
+            """)
 
-    # 8. GDPR Deletion Deadline (User + Scheduled Deletion)
-    op.create_index(
-        "ix_users_deletion_deadline",
-        "users",
-        ["id", "deletion_scheduled_for"],
-        if_not_exists=True
-    )
+        # 9. User Tier + Created (Tier-Management)
+        if column_exists(conn, "users", "tier") and column_exists(conn, "users", "created_at"):
+            op.execute("""
+                CREATE INDEX IF NOT EXISTS ix_users_tier_created
+                ON users (tier, created_at DESC)
+            """)
 
-    # 9. User Tier + Created (Tier-Management)
-    op.create_index(
-        "ix_users_tier_created",
-        "users",
-        ["tier", sa.text("created_at DESC")],
-        if_not_exists=True
-    )
-
-    # 10. Active Users (is_active + last_activity)
-    op.create_index(
-        "ix_users_active",
-        "users",
-        ["is_active", sa.text("last_activity_at DESC")],
-        if_not_exists=True
-    )
+        # 10. Active Users (is_active + last_activity)
+        if column_exists(conn, "users", "is_active") and column_exists(conn, "users", "last_activity_at"):
+            op.execute("""
+                CREATE INDEX IF NOT EXISTS ix_users_active
+                ON users (is_active, last_activity_at DESC)
+            """)
 
     # =========================================================================
     # API_KEYS TABLE INDEXES
     # =========================================================================
-
-    # 11. API-Key Lookups (User + is_active)
-    op.create_index(
-        "ix_api_keys_user_active",
-        "api_keys",
-        ["user_id", "is_active"],
-        if_not_exists=True
-    )
+    if table_exists(conn, "api_keys"):
+        if column_exists(conn, "api_keys", "user_id") and column_exists(conn, "api_keys", "is_active"):
+            op.execute("""
+                CREATE INDEX IF NOT EXISTS ix_api_keys_user_active
+                ON api_keys (user_id, is_active)
+            """)
 
     # =========================================================================
     # BATCH_JOBS TABLE INDEXES
     # =========================================================================
-
-    # 12. Batch-Job Queue (Status + Priority + Created)
-    op.create_index(
-        "ix_batch_jobs_queue",
-        "batch_jobs",
-        ["status", sa.text("priority DESC"), "created_at"],
-        if_not_exists=True
-    )
-
-    # =========================================================================
-    # DATA_EXPORTS TABLE INDEXES (falls vorhanden)
-    # =========================================================================
-
-    # 13. Export-Request Deadline (GDPR Export)
-    # FIX: Corrected table name from data_export_requests to data_exports
-    op.execute("""
-        CREATE INDEX IF NOT EXISTS ix_data_exports_deadline
-        ON data_exports (user_id, created_at)
-    """)
+    if table_exists(conn, "batch_jobs"):
+        if column_exists(conn, "batch_jobs", "status") and \
+           column_exists(conn, "batch_jobs", "priority") and \
+           column_exists(conn, "batch_jobs", "created_at"):
+            op.execute("""
+                CREATE INDEX IF NOT EXISTS ix_batch_jobs_queue
+                ON batch_jobs (status, priority DESC, created_at)
+            """)
 
     # =========================================================================
-    # GDPR_DELETION_REQUESTS TABLE INDEXES (falls vorhanden)
+    # DATA_EXPORTS TABLE INDEXES
     # =========================================================================
+    if table_exists(conn, "data_exports"):
+        if column_exists(conn, "data_exports", "user_id") and column_exists(conn, "data_exports", "created_at"):
+            op.execute("""
+                CREATE INDEX IF NOT EXISTS ix_data_exports_deadline
+                ON data_exports (user_id, created_at)
+            """)
 
-    # 14. GDPR Deletion Requests
-    # FIX: Corrected column name from scheduled_execution to deletion_scheduled_for
-    op.execute("""
-        CREATE INDEX IF NOT EXISTS ix_gdpr_deletion_requests_deadline
-        ON gdpr_deletion_requests (user_id, deletion_scheduled_for)
-    """)
+    # =========================================================================
+    # GDPR_DELETION_REQUESTS TABLE INDEXES
+    # =========================================================================
+    if table_exists(conn, "gdpr_deletion_requests"):
+        if column_exists(conn, "gdpr_deletion_requests", "user_id") and \
+           column_exists(conn, "gdpr_deletion_requests", "deletion_scheduled_for"):
+            op.execute("""
+                CREATE INDEX IF NOT EXISTS ix_gdpr_deletion_requests_deadline
+                ON gdpr_deletion_requests (user_id, deletion_scheduled_for)
+            """)
 
 
 def downgrade() -> None:
@@ -178,29 +193,28 @@ def downgrade() -> None:
 
     # GDPR tables
     op.execute("DROP INDEX IF EXISTS ix_gdpr_deletion_requests_deadline")
-    # FIX: Corrected index name to match renamed index
     op.execute("DROP INDEX IF EXISTS ix_data_exports_deadline")
 
     # Batch Jobs
-    op.drop_index("ix_batch_jobs_queue", table_name="batch_jobs", if_exists=True)
+    op.execute("DROP INDEX IF EXISTS ix_batch_jobs_queue")
 
     # API Keys
-    op.drop_index("ix_api_keys_user_active", table_name="api_keys", if_exists=True)
+    op.execute("DROP INDEX IF EXISTS ix_api_keys_user_active")
 
     # Users
-    op.drop_index("ix_users_active", table_name="users", if_exists=True)
-    op.drop_index("ix_users_tier_created", table_name="users", if_exists=True)
-    op.drop_index("ix_users_deletion_deadline", table_name="users", if_exists=True)
+    op.execute("DROP INDEX IF EXISTS ix_users_active")
+    op.execute("DROP INDEX IF EXISTS ix_users_tier_created")
+    op.execute("DROP INDEX IF EXISTS ix_users_deletion_deadline")
 
     # OCR Results
-    op.drop_index("ix_ocr_results_history", table_name="ocr_results", if_exists=True)
+    op.execute("DROP INDEX IF EXISTS ix_ocr_results_history")
 
     # Processing Jobs
-    op.drop_index("ix_processing_jobs_queue", table_name="processing_jobs", if_exists=True)
+    op.execute("DROP INDEX IF EXISTS ix_processing_jobs_queue")
 
     # Documents
     op.execute("DROP INDEX IF EXISTS ix_documents_search_vector_gin")
     op.execute("DROP INDEX IF EXISTS ix_documents_with_embedding")
-    op.drop_index("ix_documents_type_status", table_name="documents", if_exists=True)
-    op.drop_index("ix_documents_updated_at", table_name="documents", if_exists=True)
-    op.drop_index("ix_documents_backend_status", table_name="documents", if_exists=True)
+    op.execute("DROP INDEX IF EXISTS ix_documents_type_status")
+    op.execute("DROP INDEX IF EXISTS ix_documents_updated_at")
+    op.execute("DROP INDEX IF EXISTS ix_documents_backend_status")

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './app/routes/__root'
+import { Route as ValidationQueueRouteImport } from './app/routes/validation-queue'
 import { Route as UploadRouteImport } from './app/routes/upload'
 import { Route as SearchRouteImport } from './app/routes/search'
 import { Route as MonitoringRouteImport } from './app/routes/monitoring'
@@ -17,8 +18,14 @@ import { Route as JobsRouteImport } from './app/routes/jobs'
 import { Route as AutomationRouteImport } from './app/routes/automation'
 import { Route as AdminRouteImport } from './app/routes/admin'
 import { Route as IndexRouteImport } from './app/routes/index'
+import { Route as ValidationQueueIdRouteImport } from './app/routes/validation-queue.$id'
 import { Route as DocumentsDocumentIdRouteImport } from './app/routes/documents.$documentId'
 
+const ValidationQueueRoute = ValidationQueueRouteImport.update({
+  id: '/validation-queue',
+  path: '/validation-queue',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UploadRoute = UploadRouteImport.update({
   id: '/upload',
   path: '/upload',
@@ -59,6 +66,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ValidationQueueIdRoute = ValidationQueueIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ValidationQueueRoute,
+} as any)
 const DocumentsDocumentIdRoute = DocumentsDocumentIdRouteImport.update({
   id: '/documents/$documentId',
   path: '/documents/$documentId',
@@ -74,7 +86,9 @@ export interface FileRoutesByFullPath {
   '/monitoring': typeof MonitoringRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
+  '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
+  '/validation-queue/$id': typeof ValidationQueueIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -85,7 +99,9 @@ export interface FileRoutesByTo {
   '/monitoring': typeof MonitoringRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
+  '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
+  '/validation-queue/$id': typeof ValidationQueueIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -97,7 +113,9 @@ export interface FileRoutesById {
   '/monitoring': typeof MonitoringRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
+  '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
+  '/validation-queue/$id': typeof ValidationQueueIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -110,7 +128,9 @@ export interface FileRouteTypes {
     | '/monitoring'
     | '/search'
     | '/upload'
+    | '/validation-queue'
     | '/documents/$documentId'
+    | '/validation-queue/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -121,7 +141,9 @@ export interface FileRouteTypes {
     | '/monitoring'
     | '/search'
     | '/upload'
+    | '/validation-queue'
     | '/documents/$documentId'
+    | '/validation-queue/$id'
   id:
     | '__root__'
     | '/'
@@ -132,7 +154,9 @@ export interface FileRouteTypes {
     | '/monitoring'
     | '/search'
     | '/upload'
+    | '/validation-queue'
     | '/documents/$documentId'
+    | '/validation-queue/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -144,11 +168,19 @@ export interface RootRouteChildren {
   MonitoringRoute: typeof MonitoringRoute
   SearchRoute: typeof SearchRoute
   UploadRoute: typeof UploadRoute
+  ValidationQueueRoute: typeof ValidationQueueRouteWithChildren
   DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/validation-queue': {
+      id: '/validation-queue'
+      path: '/validation-queue'
+      fullPath: '/validation-queue'
+      preLoaderRoute: typeof ValidationQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/upload': {
       id: '/upload'
       path: '/upload'
@@ -205,6 +237,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/validation-queue/$id': {
+      id: '/validation-queue/$id'
+      path: '/$id'
+      fullPath: '/validation-queue/$id'
+      preLoaderRoute: typeof ValidationQueueIdRouteImport
+      parentRoute: typeof ValidationQueueRoute
+    }
     '/documents/$documentId': {
       id: '/documents/$documentId'
       path: '/documents/$documentId'
@@ -215,6 +254,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ValidationQueueRouteChildren {
+  ValidationQueueIdRoute: typeof ValidationQueueIdRoute
+}
+
+const ValidationQueueRouteChildren: ValidationQueueRouteChildren = {
+  ValidationQueueIdRoute: ValidationQueueIdRoute,
+}
+
+const ValidationQueueRouteWithChildren = ValidationQueueRoute._addFileChildren(
+  ValidationQueueRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
@@ -224,6 +275,7 @@ const rootRouteChildren: RootRouteChildren = {
   MonitoringRoute: MonitoringRoute,
   SearchRoute: SearchRoute,
   UploadRoute: UploadRoute,
+  ValidationQueueRoute: ValidationQueueRouteWithChildren,
   DocumentsDocumentIdRoute: DocumentsDocumentIdRoute,
 }
 export const routeTree = rootRouteImport

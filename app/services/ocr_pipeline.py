@@ -48,6 +48,10 @@ from app.services.historical_german_normalizer import (
 )
 from app.core.config import settings
 
+# Lazy import for entity extraction to avoid circular imports
+EntityExtractionService = None
+EntityExtractionResult = None
+
 logger = structlog.get_logger(__name__)
 
 
@@ -80,6 +84,9 @@ class OCRPipelineResult:
     error: Optional[str] = None
     needs_review: bool = False  # True wenn Confidence zwischen low und medium
     confidence_fallback_triggered: bool = False  # True wenn Fallback wegen niedriger Confidence
+    # Entity Extraction (Document Intelligence)
+    entity_extraction_applied: bool = False
+    extracted_entities: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -101,6 +108,8 @@ class OCRPipelineResult:
             "error": self.error,
             "needs_review": self.needs_review,
             "confidence_fallback_triggered": self.confidence_fallback_triggered,
+            "entity_extraction_applied": self.entity_extraction_applied,
+            "extracted_entities": self.extracted_entities,
         }
 
 
@@ -123,6 +132,7 @@ class OCRPipeline:
         enable_circuit_breaker: bool = True,
         enable_memory_guard: bool = True,
         enable_historical_normalization: bool = True,
+        enable_entity_extraction: bool = True,
         min_confidence_threshold: float = 0.65,
         confidence_thresholds: Optional[ConfidenceThresholds] = None,
         enable_confidence_fallback: bool = True
@@ -135,6 +145,7 @@ class OCRPipeline:
             enable_circuit_breaker: Circuit Breaker aktivieren
             enable_memory_guard: GPU Memory Guard aktivieren
             enable_historical_normalization: Historical German Normalizer aktivieren
+            enable_entity_extraction: Entity Extraction (Business Partner) aktivieren
             min_confidence_threshold: Minimale Confidence für Akzeptanz (legacy)
             confidence_thresholds: Konfigurierbare Schwellenwerte für Confidence
             enable_confidence_fallback: Fallback bei niedriger Confidence aktivieren
@@ -146,6 +157,7 @@ class OCRPipeline:
             enable_historical_normalization and
             settings.HISTORICAL_NORMALIZATION_ENABLED
         )
+        self.enable_entity_extraction = enable_entity_extraction
         self.min_confidence_threshold = min_confidence_threshold
         self.confidence_thresholds = confidence_thresholds or ConfidenceThresholds()
         self.enable_confidence_fallback = enable_confidence_fallback
@@ -163,6 +175,9 @@ class OCRPipeline:
         # Historical German Normalizer (lazy load)
         self._historical_normalizer: Optional[HistoricalGermanNormalizer] = None
 
+        # Entity Extraction Service (lazy load)
+        self._entity_extraction_service = None
+
         # Backend Handlers registrieren
         self._register_default_backends()
 
@@ -172,6 +187,7 @@ class OCRPipeline:
             circuit_breaker=enable_circuit_breaker,
             memory_guard=enable_memory_guard,
             historical_normalization=self.enable_historical_normalization,
+            entity_extraction=enable_entity_extraction,
             min_confidence=min_confidence_threshold,
             confidence_thresholds={
                 "low": self.confidence_thresholds.low,
@@ -247,6 +263,36 @@ class OCRPipeline:
                 )
                 self.enable_historical_normalization = False
         return self._historical_normalizer
+
+    def _get_entity_extraction_service(self):
+        """Lazy-load Entity Extraction Service."""
+        global EntityExtractionService, EntityExtractionResult
+        if self._entity_extraction_service is None and self.enable_entity_extraction:
+            try:
+                # Import on first use to avoid circular imports
+                from app.services.entity_extraction_service import (
+                    EntityExtractionService as EES,
+                    EntityExtractionResult as EER
+                )
+                EntityExtractionService = EES
+                EntityExtractionResult = EER
+
+                # Create service without DB (just extraction, no matching)
+                self._entity_extraction_service = EntityExtractionService(db=None)
+                logger.info("entity_extraction_service_loaded")
+            except ImportError as e:
+                logger.warning(
+                    "entity_extraction_service_unavailable",
+                    error=str(e)
+                )
+                self.enable_entity_extraction = False
+            except Exception as e:
+                logger.warning(
+                    "entity_extraction_service_init_error",
+                    error=str(e)
+                )
+                self.enable_entity_extraction = False
+        return self._entity_extraction_service
 
     async def process(
         self,
@@ -597,7 +643,70 @@ class OCRPipeline:
                     )
                     # Verwende Text ohne Historical Normalization bei Fehler
 
-        # Step 5: Finale Confidence-Analyse
+        # Step 5: Entity Extraction (Geschaeftspartner-Erkennung)
+        entity_extraction_applied = False
+        extracted_entities = None
+
+        if (self.enable_entity_extraction and
+            language == "de" and
+            corrected_text):
+
+            entity_service = self._get_entity_extraction_service()
+            if entity_service:
+                try:
+                    extraction_result = await entity_service.extract_entities(corrected_text)
+
+                    if extraction_result and extraction_result.overall_confidence > 0:
+                        entity_extraction_applied = True
+                        extracted_entities = {
+                            "identifiers": [
+                                {
+                                    "type": ident.identifier_type,
+                                    "value": ident.value,
+                                    "normalized": ident.normalized_value,
+                                    "confidence": ident.confidence,
+                                }
+                                for ident in extraction_result.identifiers
+                            ],
+                            "addresses": [
+                                {
+                                    "street": addr.street,
+                                    "postal_code": addr.postal_code,
+                                    "city": addr.city,
+                                    "confidence": addr.confidence,
+                                }
+                                for addr in extraction_result.addresses
+                            ],
+                            "company_names": [
+                                {
+                                    "name": company.name,
+                                    "legal_form": company.legal_form,
+                                    "confidence": company.confidence,
+                                }
+                                for company in extraction_result.company_names
+                            ],
+                            "emails": extraction_result.emails,
+                            "overall_confidence": extraction_result.overall_confidence,
+                        }
+
+                        logger.info(
+                            "ocr_pipeline_entity_extraction_applied",
+                            document_id=document_id,
+                            identifiers_found=len(extraction_result.identifiers),
+                            addresses_found=len(extraction_result.addresses),
+                            companies_found=len(extraction_result.company_names),
+                            overall_confidence=extraction_result.overall_confidence,
+                        )
+
+                except Exception as e:
+                    logger.warning(
+                        "ocr_pipeline_entity_extraction_error",
+                        document_id=document_id,
+                        error=str(e)
+                    )
+                    # Fortfahren ohne Entity Extraction bei Fehler
+
+        # Step 6: Finale Confidence-Analyse
         confidence_details = None
         if fallback_result.confidence_metrics:
             confidence_details = fallback_result.confidence_metrics.to_dict()
@@ -622,6 +731,8 @@ class OCRPipeline:
             historical_normalization_details=historical_normalization_details,
             needs_review=needs_review,
             confidence_fallback_triggered=confidence_fallback_triggered,
+            entity_extraction_applied=entity_extraction_applied,
+            extracted_entities=extracted_entities,
         )
 
         logger.info(
@@ -632,6 +743,8 @@ class OCRPipeline:
             confidence=current_confidence,
             corrections=corrections_applied,
             historical_changes=historical_changes_count,
+            entity_extraction=entity_extraction_applied,
+            entities_found=len(extracted_entities.get("identifiers", [])) if extracted_entities else 0,
             time_ms=total_time,
             needs_review=needs_review,
             confidence_fallback_triggered=confidence_fallback_triggered
@@ -702,6 +815,7 @@ class OCRPipeline:
                 "circuit_breaker_enabled": self.enable_circuit_breaker,
                 "memory_guard_enabled": self.enable_memory_guard,
                 "historical_normalization_enabled": self.enable_historical_normalization,
+                "entity_extraction_enabled": self.enable_entity_extraction,
                 "min_confidence_threshold": self.min_confidence_threshold,
                 "confidence_thresholds": {
                     "low": self.confidence_thresholds.low,
@@ -733,6 +847,15 @@ class OCRPipeline:
         # German Agent Status
         if self._german_agent:
             status["german_correction"] = self._german_agent.get_correction_stats()
+
+        # Entity Extraction Status
+        if self._entity_extraction_service:
+            status["entity_extraction"] = {
+                "loaded": True,
+                "stats": self._entity_extraction_service.get_extraction_stats(),
+            }
+        else:
+            status["entity_extraction"] = {"loaded": False}
 
         return status
 

@@ -7,11 +7,13 @@ uvicorn[standard]==0.27.0
 python-multipart==0.0.9
 
 # GPU/ML Processing
-torch==2.1.2+cu121  # CUDA 12.1 for RTX 4080
-torchvision==0.16.2+cu121
-transformers==4.36.2
-accelerate==0.25.0
-sentence-transformers==2.2.2  # For multilingual-e5-large embeddings
+# NOTE: torch and torchvision are installed separately in Dockerfile with --index-url
+# to get CUDA-enabled builds. Do NOT add them here or the build will fail.
+# torch==2.1.2+cu121 -> installed in Dockerfile
+# torchvision==0.16.2+cu121 -> installed in Dockerfile
+transformers>=4.41.0  # surya-ocr>=0.4.6 requires >=4.41.0
+accelerate>=0.25.0  # Relaxed version for newer transformers compatibility
+sentence-transformers>=2.2.2  # For multilingual-e5-large embeddings
 
 # Database & ORM
 sqlalchemy==2.0.25
@@ -30,17 +32,18 @@ slowapi==0.1.9  # Rate limiting for FastAPI
 limits==3.6.0  # Rate limiting library used by SlowAPI
 
 # Data Validation
-pydantic==2.5.3
-pydantic-settings==2.1.0
+pydantic>=2.7.0,<3.0.0  # Updated for pydantic-settings compatibility
+pydantic-settings>=2.3.0  # docling 2.20.0 requires >=2.3.0
+email-validator>=2.0.0  # Required for pydantic email validation
 
 # Storage
 minio==7.2.3
 pillow==10.2.0
 
 # OCR Backends
-surya-ocr==0.4.0  # CPU-based OCR, no GPU required
-pypdfium2==4.25.0  # PDF processing for Surya
-docling==1.0.7  # Document structure extraction
+surya-ocr>=0.4.0  # CPU-based OCR, no GPU required
+pypdfium2>=4.30.0  # PDF processing for Surya and Docling (docling requires >=4.30.0)
+docling==2.20.0  # Document structure extraction (requires Python 3.11+), pinned for faster builds
 pytesseract==0.3.10  # Python wrapper for Tesseract (fallback)
 
 # Model quantization for large models (DeepSeek, GOT)
@@ -48,7 +51,7 @@ bitsandbytes==0.41.3  # 4-bit and 8-bit quantization
 # Note: GOT-OCR and DeepSeek models are loaded via transformers/HuggingFace
 
 # German Text Processing
-spacy==3.7.2
+spacy>=3.8.0  # Updated to resolve typer conflict with docling
 # Run after install: python -m spacy download de_core_news_sm
 
 # Testing

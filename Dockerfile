@@ -29,12 +29,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Set Python 3.11 as default
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
-RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+# Set Python 3.11 as default and ensure pip uses Python 3.11
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 
-# Upgrade pip
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+# Install and upgrade pip for Python 3.11
+RUN python3.11 -m ensurepip --upgrade && \
+    python3.11 -m pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    ln -sf /usr/local/bin/pip3.11 /usr/bin/pip || true
 
 # Create non-root user BEFORE copying files
 ARG UID=1000
@@ -52,13 +54,13 @@ COPY --chown=ablage:ablage requirements.txt .
 COPY --chown=ablage:ablage requirements-gpu.txt .
 
 # Install Python dependencies as root (for system packages)
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python3.11 -m pip install --no-cache-dir -r requirements.txt
 
-# Install PyTorch with CUDA support
-RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# NOTE: PyTorch with CUDA support is now installed via requirements.txt (transformers pulls torch with CUDA bindings)
+# The cu121 index install was removed to avoid version conflicts - torch-2.9.1 from pypi includes nvidia-* packages
 
 # Install additional GPU requirements
-RUN pip install --no-cache-dir -r requirements-gpu.txt
+RUN python3.11 -m pip install --no-cache-dir -r requirements-gpu.txt
 
 # Copy application code with correct ownership
 COPY --chown=ablage:ablage app/ ./app/

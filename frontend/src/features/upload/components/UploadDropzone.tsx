@@ -36,7 +36,12 @@ export function UploadDropzone({ onFilesAdd }: UploadDropzoneProps) {
         accept: {
             'application/pdf': ['.pdf'],
             'image/png': ['.png'],
-            'image/jpeg': ['.jpg', '.jpeg']
+            'image/jpeg': ['.jpg', '.jpeg'],
+            'image/tiff': ['.tif', '.tiff'],
+            'image/bmp': ['.bmp'],
+            'image/gif': ['.gif'],
+            'image/webp': ['.webp'],
+            'image/heic': ['.heic', '.heif']
         },
         maxSize: 50 * 1024 * 1024
     });
@@ -73,14 +78,14 @@ export function UploadDropzone({ onFilesAdd }: UploadDropzoneProps) {
                             isDragActive ? 'Dateien hier ablegen' : 'Dokumente hochladen'}
                     </h3>
                     <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                        {isDragReject ? 'Bitte nur PDF, PNG oder JPG Dateien hochladen.' :
+                        {isDragReject ? 'Bitte nur unterstützte Dateiformate hochladen (PDF, Bilder).' :
                             'Drag & Drop oder klicken zum Auswählen'}
                     </p>
                 </div>
 
                 <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2 font-mono bg-muted/50 px-3 py-1.5 rounded-full border">
                     <span className="flex items-center gap-1.5">
-                        <FileType className="w-3 h-3" /> PDF, PNG, JPG
+                        <FileType className="w-3 h-3" /> PDF, PNG, JPG, TIF, BMP, GIF, WEBP, HEIC
                     </span>
                     <span className="w-px h-3 bg-border" />
                     <span>Max. 50MB</span>

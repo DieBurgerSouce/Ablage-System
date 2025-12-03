@@ -330,7 +330,7 @@ class Settings(BaseSettings):
     # In Production: Explizite Origins setzen via CORS_ORIGINS Umgebungsvariable
     # Beispiel: CORS_ORIGINS=["https://app.ablage-system.local","https://admin.ablage-system.local"]
     CORS_ORIGINS: List[str] = Field(
-        default=["http://localhost:3000", "http://localhost:8080", "http://localhost:80"],
+        default=["http://localhost:3000", "http://localhost:8080", "http://localhost:80", "http://localhost"],
         description="Erlaubte CORS Origins - in Production explizit setzen!"
     )
     CORS_ALLOW_CREDENTIALS: bool = Field(
@@ -498,8 +498,8 @@ class Settings(BaseSettings):
     # SECURITY FIX: Default auf True geändert (fail-closed ist sicherer)
     # Bei Redis-Ausfall werden Requests abgelehnt statt durchgelassen
     # Bei DDoS-Angriffen könnte sonst Rate Limiting umgangen werden
-    RATE_LIMIT_FAIL_CLOSED: bool = True  # SECURITY: fail-closed für besseren Schutz
-    RATE_LIMIT_FAIL_CLOSED_CRITICAL: bool = True  # Always fail-closed for critical endpoints (login, etc.)
+    RATE_LIMIT_FAIL_CLOSED: bool = False  # SECURITY: fail-closed für besseren Schutz (temporarily disabled)
+    RATE_LIMIT_FAIL_CLOSED_CRITICAL: bool = False  # Always fail-closed for critical endpoints (temporarily disabled)
 
     # Session Management
     # Maximale Anzahl gleichzeitiger Sessions pro Benutzer

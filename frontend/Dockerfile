@@ -5,7 +5,8 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 # SECURITY FIX: npm ci statt npm install --force für konsistente Builds
-RUN npm ci --prefer-offline --no-audit
+# --legacy-peer-deps: react-split-pane@0.1.92 ist noch nicht mit React 19 kompatibel
+RUN npm ci --prefer-offline --no-audit --legacy-peer-deps
 
 COPY . .
 RUN npm run build

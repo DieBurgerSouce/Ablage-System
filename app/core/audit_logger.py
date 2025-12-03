@@ -707,3 +707,8 @@ def get_audit_logger(db: Optional[AsyncSession] = None) -> SecurityAuditLogger:
         _global_audit_logger = SecurityAuditLogger()
 
     return _global_audit_logger
+
+
+# Backwards compatibility aliases
+AuditLogger = SecurityAuditLogger
+AuditEventType = SecurityEventType

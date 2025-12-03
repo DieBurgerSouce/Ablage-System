@@ -44,6 +44,8 @@ services:
     container_name: ablage-redis
     # SECURITY: REDIS_PASSWORD muss in .env gesetzt sein! Leer = unsicher
     command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     volumes:
       - redis_data:/data
     ports:
@@ -150,6 +152,7 @@ services:
       VAULT_MOUNT_POINT: secret
       VAULT_CACERT: /app/certs/ca.crt
       # Database (Secrets aus .env)
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
       # Redis (mit optionalem Passwort)
       REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
@@ -165,8 +168,11 @@ services:
       API_HOST: 0.0.0.0
       API_PORT: 8000
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DEBUG: ${DEBUG:-false}
     volumes:
       - ./app:/app/app:ro
+      - ./alembic:/app/alembic:ro
+      - ./alembic.ini:/app/alembic.ini:ro
       - ./infrastructure/vault/config/certs:/app/certs:ro
       - uploads:/app/uploads
       - outputs:/app/outputs
@@ -180,8 +186,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      vault:
-        condition: service_healthy
+      # vault: (disabled for development - VAULT_ENABLED=false)
+      #   condition: service_healthy
     user: "1000:1000"
     security_opt:
       - no-new-privileges:true
@@ -231,6 +237,7 @@ services:
       VAULT_MOUNT_POINT: secret
       VAULT_CACERT: /app/certs/ca.crt
       # Database (Secrets aus .env)
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
       # Redis (mit optionalem Passwort)
       REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
@@ -246,6 +253,8 @@ services:
       GPU_MEMORY_LIMIT_GB: ${GPU_MEMORY_LIMIT_GB:-13.6}
     volumes:
       - ./app:/app/app:ro
+      - ./alembic:/app/alembic:ro
+      - ./alembic.ini:/app/alembic.ini:ro
       - ./scripts:/app/scripts:ro
       - ./infrastructure/vault/config/certs:/app/certs:ro
       - uploads:/app/uploads
@@ -258,8 +267,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      vault:
-        condition: service_healthy
+      # vault: (disabled for development - VAULT_ENABLED=false)
+      #   condition: service_healthy
       backend:
         condition: service_started
     user: "1000:1000"

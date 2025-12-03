@@ -83,3 +83,10 @@ ocr_result*.json
 
 # Archive directory
 ARCHIVE/
+
+# Security - Certificates and Keys
+*.key
+*.pem
+*.crt
+!requirements*.txt
+infrastructure/vault/config/certs/

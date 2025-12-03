@@ -67,7 +67,7 @@ class RoleCreateRequest(BaseModel):
     display_name: str = Field(..., min_length=2, max_length=100, description="Anzeigename")
     description: Optional[str] = Field(None, max_length=500, description="Beschreibung")
     priority: int = Field(0, ge=0, le=99, description="Priorität (0-99, höher = mehr Rechte)")
-    color: str = Field("#6B7280", regex=r"^#[0-9A-Fa-f]{6}$", description="Hex-Farbcode")
+    color: str = Field("#6B7280", pattern=r"^#[0-9A-Fa-f]{6}$", description="Hex-Farbcode")
     permission_names: List[str] = Field(default=[], description="Liste der Berechtigungsnamen")
 
 
@@ -76,7 +76,7 @@ class RoleUpdateRequest(BaseModel):
     display_name: Optional[str] = Field(None, min_length=2, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     priority: Optional[int] = Field(None, ge=0, le=99)
-    color: Optional[str] = Field(None, regex=r"^#[0-9A-Fa-f]{6}$")
+    color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
     is_active: Optional[bool] = None
     permission_names: Optional[List[str]] = None
 

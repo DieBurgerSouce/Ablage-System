@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { authService } from '@/lib/api/services/auth'
+import { useAuth } from '@/lib/auth/AuthContext'
 
 export const Route = createFileRoute('/login')({
     component: LoginPage,
@@ -12,6 +12,7 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
     const navigate = useNavigate()
+    const { login } = useAuth()
     const [isLoading, setIsLoading] = useState(false)
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -23,7 +24,7 @@ function LoginPage() {
         setError(null)
 
         try {
-            await authService.login(email, password)
+            await login(email, password)
             navigate({ to: '/' })
         } catch (err) {
             console.error('Anmeldung fehlgeschlagen', err)
