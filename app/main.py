@@ -344,7 +344,7 @@ OPENAPI_TAGS = [
     },
     {
         "name": "health",
-        "description": "System-Health-Checks und Statusabfragen fuer Monitoring.",
+        "description": "System-Health-Checks und Statusabfragen für Monitoring.",
     },
     {
         "name": "admin",
@@ -356,23 +356,23 @@ OPENAPI_TAGS = [
     },
     {
         "name": "gdpr",
-        "description": "DSGVO-Compliance-Funktionen. Datenexport, Loeschung und Einwilligungsverwaltung.",
+        "description": "DSGVO-Compliance-Funktionen. Datenexport, Löschung und Einwilligungsverwaltung.",
     },
     {
         "name": "vault",
-        "description": "HashiCorp Vault Integration fuer sichere Secrets-Verwaltung.",
+        "description": "HashiCorp Vault Integration für sichere Secrets-Verwaltung.",
     },
     {
         "name": "webhooks",
-        "description": "Webhook-Konfiguration fuer externe Integrationen und Event-Benachrichtigungen.",
+        "description": "Webhook-Konfiguration für externe Integrationen und Event-Benachrichtigungen.",
     },
     {
         "name": "metrics",
-        "description": "Prometheus-Metriken und Business-Analytics fuer Monitoring.",
+        "description": "Prometheus-Metriken und Business-Analytics für Monitoring.",
     },
     {
         "name": "errors",
-        "description": "Error-Tracking und -Statistiken. Ueberwachung von Fehlern nach Kategorie mit Alert-Management.",
+        "description": "Error-Tracking und -Statistiken. Überwachung von Fehlern nach Kategorie mit Alert-Management.",
     },
     {
         "name": "profiling",
@@ -384,27 +384,27 @@ OPENAPI_TAGS = [
     },
     {
         "name": "api-keys",
-        "description": "API-Schluessel-Verwaltung fuer programmatischen Zugriff und Integrationen.",
+        "description": "API-Schlüssel-Verwaltung für programmatischen Zugriff und Integrationen.",
     },
     {
         "name": "batch-jobs",
-        "description": "Batch-Verarbeitung und Job-Queue-Management fuer grosse Dokumentenmengen.",
+        "description": "Batch-Verarbeitung und Job-Queue-Management für große Dokumentenmengen.",
     },
     {
         "name": "sharing",
-        "description": "Dokumentenfreigabe und Zugriffssteuerung fuer Collaboration.",
+        "description": "Dokumentenfreigabe und Zugriffssteuerung für Collaboration.",
     },
     {
         "name": "settings",
-        "description": "Benutzer- und Systemeinstellungen. Praeferenzen und Konfiguration.",
+        "description": "Benutzer- und Systemeinstellungen. Präferenzen und Konfiguration.",
     },
     {
         "name": "favorites",
-        "description": "Favoriten-Verwaltung fuer schnellen Zugriff auf wichtige Dokumente.",
+        "description": "Favoriten-Verwaltung für schnellen Zugriff auf wichtige Dokumente.",
     },
     {
         "name": "security",
-        "description": "Security Audit und Sicherheitspruefungen. Konfigurationsanalyse und Empfehlungen.",
+        "description": "Security Audit und Sicherheitsprüfungen. Konfigurationsanalyse und Empfehlungen.",
     },
     {
         "name": "readiness",
@@ -419,34 +419,34 @@ OPENAPI_TAGS = [
 OPENAPI_DESCRIPTION = """
 # Ablage-System OCR API
 
-Enterprise-Loesung fuer deutsche Dokumentenverarbeitung mit GPU-beschleunigter OCR.
+Enterprise-Lösung für deutsche Dokumentenverarbeitung mit GPU-beschleunigter OCR.
 
 ## Hauptfunktionen
 
 | Feature | Beschreibung |
 |---------|--------------|
 | **Multi-Backend OCR** | DeepSeek-Janus-Pro, GOT-OCR 2.0, Surya+Docling |
-| **Deutsche Textoptimierung** | Spezialisiert auf deutsche Dokumente mit Fraktur-Unterstuetzung |
-| **GPU-Beschleunigung** | NVIDIA RTX 4080 optimiert fuer Echtzeit-Verarbeitung |
-| **DSGVO-Konform** | Vollstaendige Compliance mit deutschem Datenschutzrecht |
+| **Deutsche Textoptimierung** | Spezialisiert auf deutsche Dokumente mit Fraktur-Unterstützung |
+| **GPU-Beschleunigung** | NVIDIA RTX 4080 optimiert für Echtzeit-Verarbeitung |
+| **DSGVO-Konform** | Vollständige Compliance mit deutschem Datenschutzrecht |
 | **Performance-Monitoring** | Integriertes Profiling, Error-Tracking und Prometheus-Metriken |
 | **Enterprise Security** | JWT-Auth, 2FA, API-Keys, Rate-Limiting, Audit-Logs |
 
 ## Authentifizierung
 
-Die API unterstuetzt mehrere Authentifizierungsmethoden:
+Die API unterstützt mehrere Authentifizierungsmethoden:
 
 ### JWT Bearer Token (Standard)
 ```
 Authorization: Bearer <access_token>
 ```
-Tokens werden ueber `/api/v1/auth/login` abgerufen.
+Tokens werden über `/api/v1/auth/login` abgerufen.
 
-### API-Schluessel (fuer Integrationen)
+### API-Schlüssel (für Integrationen)
 ```
 X-API-Key: <api_key>
 ```
-API-Schluessel werden ueber `/api/v1/api-keys` verwaltet.
+API-Schlüssel werden über `/api/v1/api-keys` verwaltet.
 
 ## Rate Limiting
 
@@ -457,7 +457,7 @@ API-Schluessel werden ueber `/api/v1/api-keys` verwaltet.
 | Auth | 20 Anfragen/Minute |
 | Admin | 30 Anfragen/Minute |
 
-Bei Ueberschreitung wird HTTP 429 zurueckgegeben mit `Retry-After` Header.
+Bei Überschreitung wird HTTP 429 zurückgegeben mit `Retry-After` Header.
 
 ## Fehlerbehandlung
 
@@ -484,7 +484,7 @@ Alle Fehlerantworten folgen diesem Format:
 
 ## Webhooks
 
-Konfigurieren Sie Webhooks fuer Event-Benachrichtigungen:
+Konfigurieren Sie Webhooks für Event-Benachrichtigungen:
 - `document.uploaded` - Dokument hochgeladen
 - `document.processed` - OCR abgeschlossen
 - `document.failed` - Verarbeitung fehlgeschlagen
@@ -568,7 +568,7 @@ app.add_middleware(
 )
 
 # Add profiling middleware
-# Erfasst Request-Timings fuer Performance-Analyse
+# Erfasst Request-Timings für Performance-Analyse
 app.add_middleware(
     ProfilingMiddleware,
     track_memory=settings.DEBUG,  # Memory-Tracking nur in Debug-Modus

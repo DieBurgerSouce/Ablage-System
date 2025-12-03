@@ -863,7 +863,7 @@ class BatchDeleteRequest(BaseModel):
     @classmethod
     def must_confirm(cls, v: bool) -> bool:
         if not v:
-            raise ValueError("Loeschung muss mit confirm=true bestaetigt werden")
+            raise ValueError("Löschung muss mit confirm=true bestätigt werden")
         return v
 
 
@@ -901,7 +901,7 @@ class BatchFetchRequest(BaseModel):
     )
     include_text: bool = Field(
         default=False,
-        description="Extrahierten Text inkludieren (erhoeht Response-Groesse)"
+        description="Extrahierten Text inkludieren (erhöht Response-Größe)"
     )
     include_ocr_metadata: bool = Field(
         default=True,
@@ -973,7 +973,7 @@ class DocumentCreateResponse(BaseModel):
     id: uuid.UUID = Field(..., description="Dokument-ID")
     filename: str = Field(..., description="Gespeicherter Dateiname")
     original_filename: str = Field(..., description="Original-Dateiname")
-    file_size: int = Field(..., description="Dateigroesse in Bytes")
+    file_size: int = Field(..., description="Dateigröße in Bytes")
     mime_type: str = Field(..., description="MIME-Type")
     status: ProcessingStatus = Field(..., description="Verarbeitungsstatus")
     storage_path: str = Field(..., description="Pfad im Object Storage")
@@ -1002,13 +1002,13 @@ class DocumentUpdateRequest(BaseModel):
 class DocumentPartialUpdateRequest(BaseModel):
     """Partial document update request (PATCH).
 
-    Phase 2.1: Ermoeglicht partielle Updates einzelner Felder.
+    Phase 2.1: Ermöglicht partielle Updates einzelner Felder.
     Nur angegebene Felder werden aktualisiert.
     """
-    document_type: Optional[DocumentType] = Field(None, description="Dokumenttyp aendern")
-    language: Optional[str] = Field(None, pattern="^(de|en)$", description="Sprache aendern")
+    document_type: Optional[DocumentType] = Field(None, description="Dokumenttyp ändern")
+    language: Optional[str] = Field(None, pattern="^(de|en)$", description="Sprache ändern")
     tags: Optional[List[str]] = Field(None, max_length=20, description="Tags ersetzen")
-    add_tags: Optional[List[str]] = Field(None, max_length=20, description="Tags hinzufuegen")
+    add_tags: Optional[List[str]] = Field(None, max_length=20, description="Tags hinzufügen")
     remove_tags: Optional[List[str]] = Field(None, max_length=20, description="Tags entfernen")
     metadata: Optional[Dict[str, str]] = Field(None, description="Metadaten aktualisieren")
 
@@ -1025,9 +1025,9 @@ class DocumentPartialUpdateRequest(BaseModel):
 
 
 class DocumentFilterForBulkUpdate(BaseModel):
-    """Filter fuer Bulk-Update Operationen.
+    """Filter für Bulk-Update Operationen.
 
-    Phase 2.2: Ermoeglicht Updates basierend auf Filterkriterien.
+    Phase 2.2: Ermöglicht Updates basierend auf Filterkriterien.
     """
     document_ids: Optional[List[uuid.UUID]] = Field(
         None,
@@ -1059,11 +1059,11 @@ class DocumentFilterForBulkUpdate(BaseModel):
 class BulkUpdateRequest(BaseModel):
     """Bulk update request for multiple documents.
 
-    Phase 2.2: Ermoeglicht Massenaktualisierungen.
+    Phase 2.2: Ermöglicht Massenaktualisierungen.
     """
-    filter: DocumentFilterForBulkUpdate = Field(..., description="Filter fuer betroffene Dokumente")
-    updates: DocumentPartialUpdateRequest = Field(..., description="Anzuwendende Aenderungen")
-    dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
+    filter: DocumentFilterForBulkUpdate = Field(..., description="Filter für betroffene Dokumente")
+    updates: DocumentPartialUpdateRequest = Field(..., description="Anzuwendende Änderungen")
+    dry_run: bool = Field(False, description="Nur simulieren, nicht ausführen")
 
 
 class BulkUpdateResult(BaseModel):
@@ -1082,23 +1082,23 @@ class BulkUpdateResult(BaseModel):
 class SoftDeleteRequest(BaseModel):
     """Request for soft-deleting a document (GDPR-compliant).
 
-    Phase 2.3: Soft-Delete ermoeglicht Wiederherstellung und GDPR-Compliance.
+    Phase 2.3: Soft-Delete ermöglicht Wiederherstellung und GDPR-Compliance.
     """
     reason: Optional[str] = Field(
         None,
         max_length=500,
-        description="Grund fuer die Loeschung (optional)"
+        description="Grund für die Löschung (optional)"
     )
     confirm: bool = Field(
         ...,
-        description="Bestaetigung erforderlich (muss true sein)"
+        description="Bestätigung erforderlich (muss true sein)"
     )
 
     @field_validator("confirm")
     @classmethod
     def must_confirm(cls, v: bool) -> bool:
         if not v:
-            raise ValueError("Loeschung muss mit confirm=true bestaetigt werden")
+            raise ValueError("Löschung muss mit confirm=true bestätigt werden")
         return v
 
 
@@ -1108,9 +1108,9 @@ class SoftDeleteResponse(BaseModel):
     deleted_at: datetime
     deleted_by_id: uuid.UUID
     can_restore_until: datetime = Field(
-        description="Zeitpunkt bis zu dem Wiederherstellung moeglich ist (30 Tage)"
+        description="Zeitpunkt bis zu dem Wiederherstellung möglich ist (30 Tage)"
     )
-    message: str = "Dokument wurde geloescht und kann innerhalb von 30 Tagen wiederhergestellt werden"
+    message: str = "Dokument wurde gelöscht und kann innerhalb von 30 Tagen wiederhergestellt werden"
 
 
 class RestoreDocumentResponse(BaseModel):
@@ -1383,7 +1383,7 @@ class UserPasswordReset(BaseModel):
     """Response for password reset."""
     success: bool
     temporary_password: str
-    message: str = "Passwort wurde zurueckgesetzt"
+    message: str = "Passwort wurde zurückgesetzt"
 
 
 class UserDeactivate(BaseModel):

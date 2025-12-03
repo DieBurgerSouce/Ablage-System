@@ -1,7 +1,7 @@
 """Request Timeout Middleware.
 
-Implementiert konfigurierbare Timeouts fuer HTTP-Requests
-mit Unterstuetzung fuer Endpoint-spezifische Werte.
+Implementiert konfigurierbare Timeouts für HTTP-Requests
+mit Unterstützung für Endpoint-spezifische Werte.
 """
 
 import asyncio
@@ -26,7 +26,7 @@ ENDPOINT_TIMEOUTS: Dict[str, float] = {
 
     # Batch-Operationen
     "/api/v1/documents/batch": 120.0,  # 2 Minuten
-    "/api/v1/search": 60.0,  # 1 Minute fuer komplexe Suchen
+    "/api/v1/search": 60.0,  # 1 Minute für komplexe Suchen
 
     # Quick endpoints
     "/health": 5.0,
@@ -40,7 +40,7 @@ ENDPOINT_TIMEOUTS: Dict[str, float] = {
     "/api/v1/admin": 60.0,
 }
 
-# Pfade ohne Timeout (fuer SSE, WebSockets)
+# Pfade ohne Timeout (für SSE, WebSockets)
 NO_TIMEOUT_PATHS: Set[str] = {
     "/api/v1/events",
     "/api/v1/ws",
@@ -48,17 +48,17 @@ NO_TIMEOUT_PATHS: Set[str] = {
 
 
 class TimeoutError(Exception):
-    """Request hat Timeout ueberschritten."""
+    """Request hat Timeout überschritten."""
     pass
 
 
 class TimeoutMiddleware(BaseHTTPMiddleware):
-    """Middleware fuer Request-Timeouts.
+    """Middleware für Request-Timeouts.
 
     Features:
     - Konfigurierbare Standard- und Endpoint-spezifische Timeouts
     - Graceful Timeout Handling mit 504 Response
-    - X-Request-Timeout Header Unterstuetzung
+    - X-Request-Timeout Header Unterstützung
     - Logging bei Timeouts
     """
 
@@ -93,7 +93,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
         """Verarbeite Request mit Timeout."""
         path = request.url.path
 
-        # Kein Timeout fuer bestimmte Pfade
+        # Kein Timeout für bestimmte Pfade
         if any(path.startswith(ntp) for ntp in NO_TIMEOUT_PATHS):
             return await call_next(request)
 
@@ -101,7 +101,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
         timeout = self._get_timeout(request, path)
 
         try:
-            # Request mit Timeout ausfuehren
+            # Request mit Timeout ausführen
             response = await asyncio.wait_for(
                 call_next(request),
                 timeout=timeout
@@ -123,9 +123,9 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=504,
                 content={
-                    "error": "Request-Timeout ueberschritten",
+                    "error": "Request-Timeout überschritten",
                     "error_code": "REQUEST_TIMEOUT",
-                    "detail": f"Der Request hat das Timeout von {timeout}s ueberschritten",
+                    "detail": f"Der Request hat das Timeout von {timeout}s überschritten",
                     "timeout_seconds": timeout
                 },
                 headers={
@@ -135,15 +135,15 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
             )
 
     def _get_timeout(self, request: Request, path: str) -> float:
-        """Ermittle Timeout fuer Request.
+        """Ermittle Timeout für Request.
 
-        Prioritaet:
+        Priorität:
         1. Header-Override (wenn erlaubt)
         2. Exakter Pfad-Match
         3. Prefix-Match
         4. Standard-Timeout
         """
-        # Header-Override pruefen
+        # Header-Override prüfen
         if self.allow_header_override:
             header_timeout = request.headers.get("X-Request-Timeout")
             if header_timeout:
@@ -157,7 +157,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
         if path in self.endpoint_timeouts:
             return self.endpoint_timeouts[path]
 
-        # Prefix-Match (laengster Match gewinnt)
+        # Prefix-Match (längster Match gewinnt)
         best_match = None
         best_length = 0
         for endpoint, timeout in self.endpoint_timeouts.items():
@@ -189,7 +189,7 @@ class GracefulTimeoutMiddleware(TimeoutMiddleware):
         Args:
             app: ASGI Application
             default_timeout: Standard-Timeout
-            grace_period: Zusaetzliche Zeit fuer Cleanup nach Timeout
+            grace_period: Zusätzliche Zeit für Cleanup nach Timeout
         """
         super().__init__(app, default_timeout=default_timeout, **kwargs)
         self.grace_period = grace_period
@@ -224,7 +224,7 @@ class GracefulTimeoutMiddleware(TimeoutMiddleware):
                 grace_period=self.grace_period
             )
 
-            # Grace Period fuer Cleanup
+            # Grace Period für Cleanup
             try:
                 await asyncio.sleep(self.grace_period)
             except asyncio.CancelledError:
@@ -233,9 +233,9 @@ class GracefulTimeoutMiddleware(TimeoutMiddleware):
             return JSONResponse(
                 status_code=504,
                 content={
-                    "error": "Request-Timeout ueberschritten",
+                    "error": "Request-Timeout überschritten",
                     "error_code": "REQUEST_TIMEOUT",
-                    "detail": f"Der Request hat das Timeout von {timeout}s ueberschritten",
+                    "detail": f"Der Request hat das Timeout von {timeout}s überschritten",
                     "timeout_seconds": timeout,
                     "graceful_shutdown": True
                 },
@@ -250,7 +250,7 @@ def create_timeout_middleware(
     default_timeout: float = DEFAULT_TIMEOUT,
     endpoint_timeouts: Optional[Dict[str, float]] = None
 ) -> type:
-    """Factory fuer Timeout Middleware."""
+    """Factory für Timeout Middleware."""
     class ConfiguredTimeoutMiddleware(TimeoutMiddleware):
         def __init__(self, app: ASGIApp):
             super().__init__(

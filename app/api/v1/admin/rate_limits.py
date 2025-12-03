@@ -37,15 +37,15 @@ router = APIRouter(prefix="/rate-limits", tags=["Admin - Rate Limits"])
 @router.get(
     "/tiers",
     summary="Tier-Standardwerte abrufen",
-    description="Ruft die Standard-Rate-Limits fuer alle Tiers ab"
+    description="Ruft die Standard-Rate-Limits für alle Tiers ab"
 )
 async def get_tier_defaults(
     admin: User = Depends(get_current_superuser),
 ) -> dict:
     """
-    Ruft die Standard-Rate-Limits fuer alle Benutzer-Tiers ab.
+    Ruft die Standard-Rate-Limits für alle Benutzer-Tiers ab.
 
-    Zeigt die Standardlimits fuer:
+    Zeigt die Standardlimits für:
     - **free**: Kostenlose Benutzer
     - **premium**: Premium-Benutzer
     - **admin**: Administratoren
@@ -122,7 +122,7 @@ async def get_user_rate_limit_status(
     "/users/{user_id}/override",
     response_model=RateLimitOverrideResponse,
     summary="Rate-Limit-Override erstellen",
-    description="Erstellt oder aktualisiert einen Rate-Limit-Override fuer einen Benutzer"
+    description="Erstellt oder aktualisiert einen Rate-Limit-Override für einen Benutzer"
 )
 async def create_or_update_override(
     user_id: UUID,
@@ -132,10 +132,10 @@ async def create_or_update_override(
     db: AsyncSession = Depends(get_db),
 ) -> RateLimitOverrideResponse:
     """
-    Erstellt oder aktualisiert einen Rate-Limit-Override fuer einen Benutzer.
+    Erstellt oder aktualisiert einen Rate-Limit-Override für einen Benutzer.
 
-    Mit Overrides koennen individuelle Limits festgelegt werden,
-    die die Tier-Standardwerte ueberschreiben.
+    Mit Overrides können individuelle Limits festgelegt werden,
+    die die Tier-Standardwerte überschreiben.
 
     **Felder:**
     - **ocr_hourly**: Max. OCR-Anfragen pro Stunde
@@ -143,7 +143,7 @@ async def create_or_update_override(
     - **batch_hourly**: Max. Batch-Operationen pro Stunde
     - **api_per_minute**: Max. API-Anfragen pro Minute
     - **valid_until**: Ablaufdatum (optional)
-    - **reason**: Grund fuer Override (z.B. "Pilot-Projekt")
+    - **reason**: Grund für Override (z.B. "Pilot-Projekt")
 
     Felder mit Wert `null` verwenden die Tier-Standardwerte.
     """
@@ -171,8 +171,8 @@ async def create_or_update_override(
 @router.delete(
     "/users/{user_id}/override",
     response_model=MessageResponse,
-    summary="Rate-Limit-Override loeschen",
-    description="Loescht einen Rate-Limit-Override (zurueck zu Tier-Defaults)"
+    summary="Rate-Limit-Override löschen",
+    description="Löscht einen Rate-Limit-Override (zurück zu Tier-Defaults)"
 )
 async def delete_override(
     user_id: UUID,
@@ -181,7 +181,7 @@ async def delete_override(
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
     """
-    Loescht einen Rate-Limit-Override fuer einen Benutzer.
+    Löscht einen Rate-Limit-Override für einen Benutzer.
 
     Der Benutzer verwendet danach wieder die Standard-Rate-Limits
     seines Tiers.
@@ -202,7 +202,7 @@ async def delete_override(
         )
 
     return MessageResponse(
-        message="Rate-Limit-Override wurde geloescht",
+        message="Rate-Limit-Override wurde gelöscht",
         detail="Der Benutzer verwendet nun die Standard-Rate-Limits seines Tiers",
     )
 
@@ -211,8 +211,8 @@ async def delete_override(
 
 @router.post(
     "/users/{user_id}/tier",
-    summary="Benutzer-Tier aendern",
-    description="Aendert den Tier eines Benutzers"
+    summary="Benutzer-Tier ändern",
+    description="Ändert den Tier eines Benutzers"
 )
 async def change_user_tier(
     user_id: UUID,
@@ -222,14 +222,14 @@ async def change_user_tier(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Aendert den Tier eines Benutzers.
+    Ändert den Tier eines Benutzers.
 
-    **Verfuegbare Tiers:**
+    **Verfügbare Tiers:**
     - **free**: Kostenlose Benutzer (Basis-Limits)
-    - **premium**: Premium-Benutzer (erhoehte Limits)
+    - **premium**: Premium-Benutzer (erhöhte Limits)
     - **admin**: Administratoren (keine Limits)
 
-    Die Tier-Aenderung aendert automatisch die Rate-Limits,
+    Die Tier-Änderung ändert automatisch die Rate-Limits,
     sofern keine individuellen Overrides existieren.
     """
     ip_address = request.client.host if request.client else None
@@ -256,7 +256,7 @@ async def change_user_tier(
         "email": user.email,
         "new_tier": new_tier.value,
         "effective_limits": tier_defaults.model_dump(),
-        "message": f"Tier wurde auf '{new_tier.value}' geaendert",
+        "message": f"Tier wurde auf '{new_tier.value}' geändert",
     }
 
 
@@ -265,8 +265,8 @@ async def change_user_tier(
 @router.post(
     "/users/{user_id}/reset",
     response_model=MessageResponse,
-    summary="Nutzungszaehler zuruecksetzen",
-    description="Setzt die Rate-Limit-Nutzungszaehler eines Benutzers zurueck"
+    summary="Nutzungszähler zurücksetzen",
+    description="Setzt die Rate-Limit-Nutzungszähler eines Benutzers zurück"
 )
 async def reset_user_usage(
     user_id: UUID,
@@ -275,9 +275,9 @@ async def reset_user_usage(
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
     """
-    Setzt die Rate-Limit-Nutzungszaehler eines Benutzers zurueck.
+    Setzt die Rate-Limit-Nutzungszähler eines Benutzers zurück.
 
-    Alle Zaehler (stuendlich, taeglich, Batch) werden auf 0 zurueckgesetzt.
+    Alle Zähler (stündlich, täglich, Batch) werden auf 0 zurückgesetzt.
     Der Benutzer kann sofort wieder Anfragen stellen.
 
     **Hinweis:** Diese Aktion wird im Audit-Log protokolliert.
@@ -300,7 +300,7 @@ async def reset_user_usage(
         )
 
     return MessageResponse(
-        message="Nutzungszaehler wurden zurueckgesetzt",
+        message="Nutzungszähler wurden zurückgesetzt",
         detail="Der Benutzer kann sofort wieder Anfragen stellen",
     )
 
@@ -310,8 +310,8 @@ async def reset_user_usage(
 @router.post(
     "/bulk/reset",
     response_model=dict,
-    summary="Alle Nutzungszaehler zuruecksetzen",
-    description="Setzt die Rate-Limit-Nutzungszaehler aller Benutzer zurueck"
+    summary="Alle Nutzungszähler zurücksetzen",
+    description="Setzt die Rate-Limit-Nutzungszähler aller Benutzer zurück"
 )
 async def bulk_reset_usage(
     request: Request,
@@ -320,11 +320,11 @@ async def bulk_reset_usage(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Setzt die Rate-Limit-Nutzungszaehler fuer mehrere Benutzer zurueck.
+    Setzt die Rate-Limit-Nutzungszähler für mehrere Benutzer zurück.
 
-    Wenn keine user_ids angegeben werden, werden ALLE Benutzer zurueckgesetzt.
+    Wenn keine user_ids angegeben werden, werden ALLE Benutzer zurückgesetzt.
 
-    **WARNUNG:** Diese Aktion kann die Systemlast erhoehen!
+    **WARNUNG:** Diese Aktion kann die Systemlast erhöhen!
     """
     ip_address = request.client.host if request.client else None
 
@@ -348,7 +348,7 @@ async def bulk_reset_usage(
     else:
         # Reset all users - simplified implementation
         # In production, this would iterate through all users
-        results["message"] = "Alle Nutzungszaehler wurden zurueckgesetzt"
+        results["message"] = "Alle Nutzungszähler wurden zurückgesetzt"
 
     results["success_count"] = len(results["success"])
     results["failed_count"] = len(results["failed"])

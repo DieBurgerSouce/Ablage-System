@@ -1,7 +1,7 @@
 """Idempotency Middleware.
 
 Verhindert doppelte Verarbeitung von Requests durch Tracking
-von Idempotency-Keys. Speichert Responses fuer Wiederholung.
+von Idempotency-Keys. Speichert Responses für Wiederholung.
 """
 
 import hashlib
@@ -17,23 +17,23 @@ from starlette.types import ASGIApp
 
 logger = structlog.get_logger(__name__)
 
-# Header fuer Idempotency Key
+# Header für Idempotency Key
 IDEMPOTENCY_HEADER = "Idempotency-Key"
 
-# Standard TTL fuer gespeicherte Responses (24 Stunden)
+# Standard TTL für gespeicherte Responses (24 Stunden)
 DEFAULT_TTL_SECONDS = 86400
 
-# Methoden die Idempotency unterstuetzen
+# Methoden die Idempotency unterstützen
 IDEMPOTENT_METHODS: Set[str] = {"POST", "PUT", "PATCH"}
 
-# Maximale Key-Laenge
+# Maximale Key-Länge
 MAX_KEY_LENGTH = 256
 
 
 class InMemoryIdempotencyStore:
-    """Einfacher In-Memory Store fuer Idempotency-Daten.
+    """Einfacher In-Memory Store für Idempotency-Daten.
 
-    Fuer Produktion sollte Redis verwendet werden.
+    Für Produktion sollte Redis verwendet werden.
     """
 
     def __init__(self, ttl: int = DEFAULT_TTL_SECONDS):
@@ -41,7 +41,7 @@ class InMemoryIdempotencyStore:
         self._ttl = ttl
 
     def _cleanup_expired(self) -> None:
-        """Entferne abgelaufene Eintraege."""
+        """Entferne abgelaufene Einträge."""
         now = time.time()
         expired = [
             key for key, data in self._store.items()
@@ -92,7 +92,7 @@ class InMemoryIdempotencyStore:
         if existing:
             if existing.get("in_progress"):
                 return False
-            # Bereits fertig - direkt Response zurueckgeben
+            # Bereits fertig - direkt Response zurückgeben
             return True
 
         await self.set(key, 0, b"", {}, in_progress=True)
@@ -105,9 +105,9 @@ class InMemoryIdempotencyStore:
 
 
 class RedisIdempotencyStore:
-    """Redis-basierter Store fuer Idempotency-Daten.
+    """Redis-basierter Store für Idempotency-Daten.
 
-    Empfohlen fuer Produktion mit mehreren Instanzen.
+    Empfohlen für Produktion mit mehreren Instanzen.
     """
 
     def __init__(
@@ -173,7 +173,7 @@ class RedisIdempotencyStore:
         }))
 
         if result:
-            await self._redis.expire(redis_key, 60)  # 60s timeout fuer in_progress
+            await self._redis.expire(redis_key, 60)  # 60s timeout für in_progress
             return True
 
         return False
@@ -184,10 +184,10 @@ class RedisIdempotencyStore:
 
 
 class IdempotencyMiddleware(BaseHTTPMiddleware):
-    """Middleware fuer Request-Idempotency.
+    """Middleware für Request-Idempotency.
 
     Verwendet Idempotency-Key Header um doppelte Requests zu erkennen
-    und gecachte Responses zurueckzugeben.
+    und gecachte Responses zurückzugeben.
 
     Features:
     - In-Progress Detection (409 Conflict bei gleichzeitigem Request)
@@ -224,7 +224,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         call_next: RequestResponseEndpoint
     ) -> Response:
         """Verarbeite Request mit Idempotency-Logik."""
-        # Nur fuer bestimmte Methoden
+        # Nur für bestimmte Methoden
         if request.method not in IDEMPOTENT_METHODS:
             return await call_next(request)
 
@@ -263,7 +263,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         # Scope-spezifischen Key erstellen (inkl. User wenn authentifiziert)
         scoped_key = self._scope_key(request, idempotency_key)
 
-        # Pruefe auf bestehende Response
+        # Prüfe auf bestehende Response
         cached = await self.store.get(scoped_key)
         if cached:
             if cached.get("in_progress"):
@@ -277,7 +277,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                     headers={"Retry-After": "5"}
                 )
 
-            # Gecachte Response zurueckgeben
+            # Gecachte Response zurückgeben
             logger.debug(
                 "idempotency_cache_hit",
                 idempotency_key=idempotency_key[:32]
@@ -357,7 +357,7 @@ def create_idempotency_middleware(
     store: Optional[Any] = None,
     require_key: bool = False
 ) -> type:
-    """Factory fuer Idempotency Middleware."""
+    """Factory für Idempotency Middleware."""
     class ConfiguredIdempotencyMiddleware(IdempotencyMiddleware):
         def __init__(self, app: ASGIApp):
             super().__init__(

@@ -482,26 +482,26 @@ class GPUManager:
         page_count: int = 1
     ) -> Dict[str, Any]:
         """
-        Vorhersage des VRAM-Verbrauchs fuer einen OCR-Task.
+        Vorhersage des VRAM-Verbrauchs für einen OCR-Task.
 
         Verwendet empirische Messungen und Heuristiken um den erwarteten
-        Speicherverbrauch zu schaetzen. Ermoeglicht proaktive OOM-Verhinderung.
+        Speicherverbrauch zu schätzen. Ermöglicht proaktive OOM-Verhinderung.
 
         Args:
             backend: OCR Backend Name
             batch_size: Anzahl der Dokumente im Batch
-            image_size_mb: Groesse des Eingabebilds in MB (optional)
-            page_count: Anzahl der Seiten (fuer Multi-Page-PDFs)
+            image_size_mb: Größe des Eingabebilds in MB (optional)
+            page_count: Anzahl der Seiten (für Multi-Page-PDFs)
 
         Returns:
             Dict mit Vorhersage:
-            - predicted_gb: Geschaetzter VRAM-Verbrauch in GB
+            - predicted_gb: Geschätzter VRAM-Verbrauch in GB
             - confidence: Konfidenz der Vorhersage (0-1)
-            - model_base_gb: Basis-VRAM fuer Model
-            - processing_gb: VRAM fuer Verarbeitung
+            - model_base_gb: Basis-VRAM für Model
+            - processing_gb: VRAM für Verarbeitung
             - overhead_gb: Overhead/Buffer
         """
-        # Basis-VRAM fuer geladenes Model (in GB)
+        # Basis-VRAM für geladenes Model (in GB)
         model_base_map = {
             "deepseek": 10.0,    # DeepSeek-Janus-Pro Model Weights
             "got_ocr": 6.0,     # GOT-OCR 2.0 Weights
@@ -523,7 +523,7 @@ class GPUManager:
             "surya": 0,         # CPU-only
         }
 
-        # Hole profiled Werte falls verfuegbar
+        # Hole profiled Werte falls verfügbar
         if hasattr(self, '_backend_profiles') and backend in self._backend_profiles:
             profile = self._backend_profiles[backend]
             measured_mb = profile.get('measured_mb_per_doc')
@@ -539,12 +539,12 @@ class GPUManager:
         model_base_gb = model_base_map.get(backend, 5.0)
         processing_mb = processing_mb_per_doc.get(backend, 500) * batch_size
 
-        # Skalierung nach Bildgroesse (groessere Bilder brauchen mehr VRAM)
+        # Skalierung nach Bildgröße (größere Bilder brauchen mehr VRAM)
         if image_size_mb > 0:
             # Faktor: 10MB Bild -> 1.0x, 50MB Bild -> 1.5x, 100MB Bild -> 2.0x
             size_factor = 1.0 + (image_size_mb / 100.0)
             processing_mb *= size_factor
-            confidence *= 0.9  # Leicht reduzierte Konfidenz bei groesseren Bildern
+            confidence *= 0.9  # Leicht reduzierte Konfidenz bei größeren Bildern
 
         # Skalierung nach Seitenanzahl
         if page_count > 1:
@@ -588,22 +588,22 @@ class GPUManager:
         safety_margin: float = 0.15
     ) -> Dict[str, Any]:
         """
-        Pruefe ob ein Task mit den aktuellen VRAM-Ressourcen verarbeitet werden kann.
+        Prüfe ob ein Task mit den aktuellen VRAM-Ressourcen verarbeitet werden kann.
 
         Args:
             backend: OCR Backend Name
-            batch_size: Batch-Groesse
-            image_size_mb: Bildgroesse in MB
+            batch_size: Batch-Größe
+            image_size_mb: Bildgröße in MB
             page_count: Seitenanzahl
             safety_margin: Sicherheitspuffer (default: 15%)
 
         Returns:
             Dict mit:
             - can_process: Bool - Ob der Task verarbeitet werden kann
-            - reason: Grund falls nicht moeglich
+            - reason: Grund falls nicht möglich
             - predicted_gb: Vorhergesagter Verbrauch
-            - available_gb: Verfuegbarer VRAM
-            - suggested_batch_size: Empfohlene Batch-Groesse falls zu gross
+            - available_gb: Verfügbarer VRAM
+            - suggested_batch_size: Empfohlene Batch-Größe falls zu groß
             - suggested_backend: Alternative Backend-Empfehlung
         """
         # Vorhersage erstellen
@@ -620,7 +620,7 @@ class GPUManager:
         if not status.get("available"):
             return {
                 "can_process": backend == "surya",  # CPU-only funktioniert immer
-                "reason": "GPU nicht verfuegbar",
+                "reason": "GPU nicht verfügbar",
                 "suggested_backend": "surya",
                 "predicted_gb": prediction["predicted_gb"],
                 "available_gb": 0.0,
@@ -638,18 +638,18 @@ class GPUManager:
         }
 
         if predicted_gb <= safe_available_gb:
-            # Genuegend VRAM verfuegbar
+            # Genügend VRAM verfügbar
             result["can_process"] = True
-            result["reason"] = "Ausreichend VRAM verfuegbar"
+            result["reason"] = "Ausreichend VRAM verfügbar"
             result["headroom_gb"] = round(safe_available_gb - predicted_gb, 2)
 
         else:
-            # Nicht genuegend VRAM
+            # Nicht genügend VRAM
             result["can_process"] = False
-            result["reason"] = f"Unzureichend VRAM: {predicted_gb:.1f}GB benoetigt, {safe_available_gb:.1f}GB verfuegbar"
+            result["reason"] = f"Unzureichend VRAM: {predicted_gb:.1f}GB benötigt, {safe_available_gb:.1f}GB verfügbar"
             result["deficit_gb"] = round(predicted_gb - safe_available_gb, 2)
 
-            # Berechne optimale Batch-Groesse
+            # Berechne optimale Batch-Größe
             suggested_batch = self._calculate_max_batch_size(
                 backend=backend,
                 available_gb=safe_available_gb,
@@ -675,8 +675,8 @@ class GPUManager:
         image_size_mb: float = 0.0,
         page_count: int = 1
     ) -> int:
-        """Berechne maximale Batch-Groesse fuer gegebenen VRAM."""
-        # Binaere Suche nach maximaler Batch-Groesse
+        """Berechne maximale Batch-Größe für gegebenen VRAM."""
+        # Binäre Suche nach maximaler Batch-Größe
         for batch_size in range(32, 0, -1):
             prediction = self.predict_memory_usage(
                 backend=backend,
@@ -693,8 +693,8 @@ class GPUManager:
         available_gb: float,
         batch_size: int = 1
     ) -> Optional[str]:
-        """Schlage alternatives Backend vor basierend auf verfuegbarem VRAM."""
-        # Sortiert nach Qualitaet (beste zuerst)
+        """Schlage alternatives Backend vor basierend auf verfügbarem VRAM."""
+        # Sortiert nach Qualität (beste zuerst)
         backend_priority = [
             ("deepseek", 12.0),
             ("got_ocr", 8.0),
@@ -706,7 +706,7 @@ class GPUManager:
         for backend, min_vram in backend_priority:
             prediction = self.predict_memory_usage(
                 backend=backend,
-                batch_size=min(batch_size, 4)  # Konservative Batch-Groesse
+                batch_size=min(batch_size, 4)  # Konservative Batch-Größe
             )
             if prediction["predicted_gb"] <= available_gb:
                 return backend
@@ -722,18 +722,18 @@ class GPUManager:
         target_throughput: str = "balanced"
     ) -> Dict[str, Any]:
         """
-        Empfehle optimale Einstellungen fuer einen OCR-Job.
+        Empfehle optimale Einstellungen für einen OCR-Job.
 
-        Beruecksichtigt:
-        - Verfuegbaren VRAM
+        Berücksichtigt:
+        - Verfügbaren VRAM
         - Anzahl der Dokumente
-        - Gewuenschten Durchsatz
-        - Backend-Faehigkeiten
+        - Gewünschten Durchsatz
+        - Backend-Fähigkeiten
 
         Args:
             preferred_backend: Bevorzugtes Backend oder "auto"
             document_count: Anzahl zu verarbeitender Dokumente
-            image_size_mb: Bildgroesse in MB
+            image_size_mb: Bildgröße in MB
             page_count: Seiten pro Dokument
             target_throughput: "fast", "balanced", oder "quality"
 
@@ -769,7 +769,7 @@ class GPUManager:
         else:
             selected_backend = preferred_backend
 
-        # Batch-Groesse optimieren
+        # Batch-Größe optimieren
         optimal_batch = self._calculate_max_batch_size(
             backend=selected_backend,
             available_gb=available_gb * 0.85,  # 15% Safety
@@ -777,7 +777,7 @@ class GPUManager:
             page_count=page_count
         )
 
-        # Batch-Groesse auf Dokumentanzahl begrenzen
+        # Batch-Größe auf Dokumentanzahl begrenzen
         optimal_batch = min(optimal_batch, document_count)
 
         # Finales Check
@@ -799,25 +799,25 @@ class GPUManager:
             "warnings": [],
         }
 
-        # Warnungen hinzufuegen
+        # Warnungen hinzufügen
         if optimal_batch < document_count:
             suggestion["warnings"].append(
-                f"Batch-Groesse auf {optimal_batch} reduziert (VRAM-Limit)"
+                f"Batch-Größe auf {optimal_batch} reduziert (VRAM-Limit)"
             )
 
         if selected_backend != preferred_backend and preferred_backend != "auto":
             suggestion["warnings"].append(
-                f"Backend von {preferred_backend} auf {selected_backend} geaendert (VRAM)"
+                f"Backend von {preferred_backend} auf {selected_backend} geändert (VRAM)"
             )
 
         if available_gb < 4:
-            suggestion["warnings"].append("Niedriger VRAM - erwaege GPU-Cache-Cleanup")
+            suggestion["warnings"].append("Niedriger VRAM - erwäge GPU-Cache-Cleanup")
 
         logger.info("optimal_settings_suggestion", **suggestion)
         return suggestion
 
     def has_gpu(self) -> bool:
-        """Pruefe ob GPU verfuegbar ist."""
+        """Prüfe ob GPU verfügbar ist."""
         if not TORCH_AVAILABLE:
             return False
         return torch.cuda.is_available()

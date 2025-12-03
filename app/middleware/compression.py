@@ -29,22 +29,22 @@ COMPRESSIBLE_TYPES: Set[str] = {
     "application/ld+json",
 }
 
-# Mindestgroesse fuer Kompression (in Bytes)
+# Mindestgröße für Kompression (in Bytes)
 MIN_SIZE_FOR_COMPRESSION: int = 1000
 
-# Maximale Groesse fuer Kompression (grosse Dateien nicht komprimieren)
+# Maximale Größe für Kompression (große Dateien nicht komprimieren)
 MAX_SIZE_FOR_COMPRESSION: int = 10 * 1024 * 1024  # 10MB
 
 
 class CompressionMiddleware(BaseHTTPMiddleware):
-    """Middleware fuer Response-Kompression.
+    """Middleware für Response-Kompression.
 
-    Unterstuetzt gzip Kompression. Brotli kann hinzugefuegt werden
+    Unterstützt gzip Kompression. Brotli kann hinzugefügt werden
     wenn die brotli-Bibliothek installiert ist.
 
     Args:
         app: ASGI Application
-        minimum_size: Mindestgroesse fuer Kompression (default: 1000)
+        minimum_size: Mindestgröße für Kompression (default: 1000)
         compression_level: gzip Level 1-9 (default: 6)
     """
 
@@ -60,7 +60,7 @@ class CompressionMiddleware(BaseHTTPMiddleware):
         self.compression_level = compression_level
         self.exclude_paths = exclude_paths or {"/health", "/metrics"}
 
-        # Brotli verfuegbar?
+        # Brotli verfügbar?
         try:
             import brotli
             self.brotli_available = True
@@ -73,12 +73,12 @@ class CompressionMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: RequestResponseEndpoint
     ) -> Response:
-        """Verarbeite Request und komprimiere Response wenn moeglich."""
-        # Ausgeschlossene Pfade ueberspringen
+        """Verarbeite Request und komprimiere Response wenn möglich."""
+        # Ausgeschlossene Pfade überspringen
         if request.url.path in self.exclude_paths:
             return await call_next(request)
 
-        # Accept-Encoding Header pruefen
+        # Accept-Encoding Header prüfen
         accept_encoding = request.headers.get("accept-encoding", "")
         supports_brotli = "br" in accept_encoding and self.brotli_available
         supports_gzip = "gzip" in accept_encoding
@@ -92,7 +92,7 @@ class CompressionMiddleware(BaseHTTPMiddleware):
         if response.headers.get("content-encoding"):
             return response
 
-        # Content-Type pruefen
+        # Content-Type prüfen
         content_type = response.headers.get("content-type", "")
         base_content_type = content_type.split(";")[0].strip()
 
@@ -108,7 +108,7 @@ class CompressionMiddleware(BaseHTTPMiddleware):
         async for chunk in response.body_iterator:
             body += chunk
 
-        # Groesse pruefen
+        # Größe prüfen
         if len(body) < self.minimum_size:
             return Response(
                 content=body,
@@ -171,10 +171,10 @@ def create_compression_middleware(
     minimum_size: int = MIN_SIZE_FOR_COMPRESSION,
     compression_level: int = 6
 ) -> Callable:
-    """Factory fuer Compression Middleware.
+    """Factory für Compression Middleware.
 
     Args:
-        minimum_size: Mindestgroesse fuer Kompression
+        minimum_size: Mindestgröße für Kompression
         compression_level: gzip Level (1-9)
 
     Returns:
