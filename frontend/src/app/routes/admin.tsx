@@ -1,11 +1,24 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Outlet, useMatches } from '@tanstack/react-router'
 import { UserManagement } from '@/features/admin/components/UserManagement'
 
 export const Route = createFileRoute('/admin')({
-    component: AdminPage,
+    component: AdminLayout,
 })
 
-function AdminPage() {
+function AdminLayout() {
+    const matches = useMatches()
+
+    // Prüfe ob wir auf einer Child-Route sind (z.B. /admin/ocr-training)
+    const isChildRoute = matches.some(match =>
+        match.routeId !== '/admin' && match.routeId.startsWith('/admin/')
+    )
+
+    // Wenn Child-Route, nur Outlet rendern
+    if (isChildRoute) {
+        return <Outlet />
+    }
+
+    // Ansonsten die Admin-Hauptseite mit UserManagement
     return (
         <div className="max-w-7xl mx-auto p-8 space-y-8">
             <div>

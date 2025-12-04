@@ -1,18 +1,19 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import {
     ArrowRight,
     Cpu,
     Zap,
     Trophy,
     BarChart3,
-    Play,
-} from 'lucide-react'
-import { trainingService } from '@/lib/api/services/training'
+    Activity,
+    Clock,
+    FileText,
+    Loader2,
+    AlertCircle,
+} from 'lucide-react';
 import {
     RadarChart,
     PolarGrid,
@@ -21,65 +22,28 @@ import {
     Radar,
     ResponsiveContainer,
     Legend,
-} from 'recharts'
+} from 'recharts';
+import {
+    BACKEND_CONFIG,
+    BACKEND_IDS,
+    getBackendDisplayName,
+    MAX_VRAM_GB,
+} from '@/features/ocr-training/constants/backend-config';
+import {
+    useBackendComparison,
+    useLearnedWeights,
+} from '@/features/ocr-training/hooks/use-training-queries';
+import { RunBenchmarkDialog } from '@/features/ocr-training/components/RunBenchmarkDialog';
 
 export const Route = createFileRoute('/admin/ocr-backends')({
     component: OCRBackendsPage,
-})
-
-// Backend-Konfiguration mit deutschen Display-Namen
-const BACKEND_CONFIG: Record<string, {
-    displayName: string
-    vramGB: number
-    requiresGPU: boolean
-    color: string
-    description: string
-}> = {
-    'deepseek-janus-pro': {
-        displayName: 'DeepSeek-Janus-Pro',
-        vramGB: 12,
-        requiresGPU: true,
-        color: '#8884d8',
-        description: 'Beste Umlaut-Genauigkeit, Fraktur, komplexe Layouts',
-    },
-    'got-ocr-2.0': {
-        displayName: 'GOT-OCR 2.0',
-        vramGB: 10,
-        requiresGPU: true,
-        color: '#82ca9d',
-        description: 'Tabellen, Formeln, schnell',
-    },
-    'surya-gpu': {
-        displayName: 'Surya GPU',
-        vramGB: 4,
-        requiresGPU: true,
-        color: '#ffc658',
-        description: 'Schnelle GPU-Variante',
-    },
-    'surya': {
-        displayName: 'Surya (CPU)',
-        vramGB: 0,
-        requiresGPU: false,
-        color: '#ff8042',
-        description: 'CPU-Fallback, Layout-Analyse',
-    },
-}
+});
 
 function OCRBackendsPage() {
-    const { data: comparison } = useQuery({
-        queryKey: ['training', 'comparison'],
-        queryFn: () => trainingService.getBackendComparison(),
-    })
+    const { data: comparison, isLoading: comparisonLoading, error: comparisonError } = useBackendComparison();
+    const { data: learnedWeights, isLoading: weightsLoading } = useLearnedWeights();
 
-    const { data: learnedWeights } = useQuery({
-        queryKey: ['training', 'learned-weights'],
-        queryFn: () => trainingService.getLearnedWeights(false),
-    })
-
-    useQuery({
-        queryKey: ['training', 'backends'],
-        queryFn: () => trainingService.getAvailableBackends(),
-    })
+    const isLoading = comparisonLoading || weightsLoading;
 
     // Radar Chart Daten vorbereiten
     const radarData = comparison ? [
@@ -123,7 +87,45 @@ function OCRBackendsPage() {
                 ])
             ),
         },
-    ] : []
+    ] : [];
+
+    // Loading State
+    if (isLoading) {
+        return (
+            <div className="max-w-7xl mx-auto p-8">
+                <div className="flex items-center justify-center h-64">
+                    <div className="flex items-center gap-3 text-muted-foreground">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                        <span>Lade Backend-Daten...</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Error State
+    if (comparisonError) {
+        return (
+            <div className="max-w-7xl mx-auto p-8">
+                <div className="flex items-center justify-center h-64">
+                    <Card className="max-w-md">
+                        <CardContent className="pt-6">
+                            <div className="flex items-start gap-3">
+                                <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-medium">Fehler beim Laden</p>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        Die Backend-Daten konnten nicht geladen werden.
+                                        Bitte versuchen Sie es später erneut.
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-7xl mx-auto p-8 space-y-8">
@@ -137,18 +139,16 @@ function OCRBackendsPage() {
                         Vergleichen Sie die Performance der 4 OCR-Engines und starten Sie Benchmarks.
                     </p>
                 </div>
-                <Button>
-                    <Play className="mr-2 h-4 w-4" />
-                    Benchmark starten
-                </Button>
+                <RunBenchmarkDialog />
             </div>
 
             {/* Backend Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Object.entries(BACKEND_CONFIG).map(([backendId, config]) => {
-                    const stats = comparison?.backends[backendId]
-                    const weight = learnedWeights?.weights?.[backendId]
-                    const isBestBackend = comparison?.best_backend === backendId
+                {BACKEND_IDS.map((backendId) => {
+                    const config = BACKEND_CONFIG[backendId];
+                    const stats = comparison?.backends[backendId];
+                    const weight = learnedWeights?.weights?.[backendId];
+                    const isBestBackend = comparison?.best_backend === backendId;
 
                     return (
                         <Link
@@ -158,7 +158,7 @@ function OCRBackendsPage() {
                             className="block"
                         >
                             <Card
-                                className={`hover:border-primary/50 transition-colors cursor-pointer ${
+                                className={`hover:border-primary/50 transition-colors cursor-pointer h-full ${
                                     isBestBackend ? 'ring-2 ring-green-500/30 bg-green-500/5' : ''
                                 }`}
                             >
@@ -166,7 +166,7 @@ function OCRBackendsPage() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div
-                                                className="w-3 h-3 rounded-full"
+                                                className="w-3 h-3 rounded-full flex-shrink-0"
                                                 style={{ backgroundColor: config.color }}
                                             />
                                             <CardTitle className="text-lg">
@@ -184,7 +184,7 @@ function OCRBackendsPage() {
                                     <CardDescription>{config.description}</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    {/* VRAM & GPU Info */}
+                                    {/* Hardware Info */}
                                     <div className="flex items-center gap-4">
                                         <div className="flex items-center gap-2">
                                             {config.requiresGPU ? (
@@ -198,7 +198,7 @@ function OCRBackendsPage() {
                                         </div>
                                         <div className="flex-1">
                                             <Progress
-                                                value={(config.vramGB / 16) * 100}
+                                                value={(config.vramGB / MAX_VRAM_GB) * 100}
                                                 className="h-2"
                                             />
                                         </div>
@@ -250,7 +250,7 @@ function OCRBackendsPage() {
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="py-4 text-center text-muted-foreground text-sm">
+                                        <div className="py-4 text-center text-muted-foreground text-sm border-t">
                                             Keine Benchmark-Daten
                                         </div>
                                     )}
@@ -269,7 +269,7 @@ function OCRBackendsPage() {
                                 </CardContent>
                             </Card>
                         </Link>
-                    )
+                    );
                 })}
             </div>
 
@@ -293,10 +293,10 @@ function OCRBackendsPage() {
                                     <PolarGrid />
                                     <PolarAngleAxis dataKey="metric" />
                                     <PolarRadiusAxis angle={30} domain={[0, 100]} />
-                                    {Object.keys(BACKEND_CONFIG).map((backendId) => (
+                                    {BACKEND_IDS.map((backendId) => (
                                         <Radar
                                             key={backendId}
-                                            name={BACKEND_CONFIG[backendId].displayName}
+                                            name={getBackendDisplayName(backendId)}
                                             dataKey={backendId}
                                             stroke={BACKEND_CONFIG[backendId].color}
                                             fill={BACKEND_CONFIG[backendId].color}
@@ -315,7 +315,8 @@ function OCRBackendsPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
                             Insgesamt Samples
                         </CardTitle>
                     </CardHeader>
@@ -327,21 +328,23 @@ function OCRBackendsPage() {
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            <Trophy className="h-4 w-4" />
                             Bester Backend
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-bold">
                             {comparison?.best_backend
-                                ? BACKEND_CONFIG[comparison.best_backend]?.displayName ?? comparison.best_backend
+                                ? getBackendDisplayName(comparison.best_backend)
                                 : '-'}
                         </p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
                             Letzte Gewichtung
                         </CardTitle>
                     </CardHeader>
@@ -355,7 +358,8 @@ function OCRBackendsPage() {
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            <Activity className="h-4 w-4" />
                             Konfidenz
                         </CardTitle>
                     </CardHeader>
@@ -369,5 +373,5 @@ function OCRBackendsPage() {
                 </Card>
             </div>
         </div>
-    )
+    );
 }

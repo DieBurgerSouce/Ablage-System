@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
     useReactTable,
     getCoreRowModel,
@@ -20,6 +20,7 @@ import {
     XCircle,
     Languages,
     Table as TableIcon,
+    Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,6 +37,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -46,6 +48,8 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { trainingService, type TrainingSample } from '@/lib/api/services/training';
+import { SampleDetailModal } from './SampleDetailModal';
+import { useSampleBenchmarks, useDeleteSample } from '../hooks/use-training-queries';
 
 const columnHelper = createColumnHelper<TrainingSample>();
 
@@ -60,7 +64,8 @@ export function SamplesList() {
     const [sorting, setSorting] = useState<SortingState>([]);
     const [statusFilter, setStatusFilter] = useState<string>('');
     const [languageFilter, setLanguageFilter] = useState<string>('');
-    const queryClient = useQueryClient();
+    const [selectedSample, setSelectedSample] = useState<TrainingSample | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     const { data, isLoading } = useQuery({
         queryKey: ['training', 'samples', statusFilter, languageFilter],
@@ -72,12 +77,24 @@ export function SamplesList() {
             }),
     });
 
-    const deleteMutation = useMutation({
-        mutationFn: trainingService.deleteSample,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['training', 'samples'] });
-        },
-    });
+    const deleteMutation = useDeleteSample();
+
+    // Lade Benchmarks für das ausgewählte Sample
+    const { data: sampleBenchmarks } = useSampleBenchmarks(
+        selectedSample?.id ?? '',
+        !!selectedSample && isDetailOpen
+    );
+
+    const handleViewSample = (sample: TrainingSample) => {
+        setSelectedSample(sample);
+        setIsDetailOpen(true);
+    };
+
+    const handleDeleteSample = (sampleId: string) => {
+        if (confirm('Sample wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+            deleteMutation.mutate(sampleId);
+        }
+    };
 
     const columns = [
         columnHelper.accessor('file_path', {
@@ -87,7 +104,7 @@ export function SamplesList() {
                 const filename = path.split(/[/\\]/).pop() || path;
                 return (
                     <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-muted-foreground" />
+                        <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                         <span className="font-medium truncate max-w-[200px]" title={path}>
                             {filename}
                         </span>
@@ -119,7 +136,11 @@ export function SamplesList() {
         }),
         columnHelper.accessor('document_type', {
             header: 'Typ',
-            cell: (info) => info.getValue() || '-',
+            cell: (info) => (
+                <span className="text-sm">
+                    {info.getValue() || '-'}
+                </span>
+            ),
         }),
         columnHelper.display({
             id: 'features',
@@ -127,15 +148,17 @@ export function SamplesList() {
             cell: ({ row }) => {
                 const sample = row.original;
                 return (
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-wrap">
                         {sample.has_umlauts && (
-                            <Badge variant="secondary" className="text-xs" title="Enthält Umlaute">
+                            <Badge variant="secondary" className="text-xs gap-1" title="Enthält Umlaute">
                                 <Languages className="w-3 h-3" />
+                                Umlaute
                             </Badge>
                         )}
                         {sample.has_tables && (
-                            <Badge variant="secondary" className="text-xs" title="Enthält Tabellen">
+                            <Badge variant="secondary" className="text-xs gap-1" title="Enthält Tabellen">
                                 <TableIcon className="w-3 h-3" />
+                                Tabellen
                             </Badge>
                         )}
                         {sample.has_fraktur && (
@@ -151,41 +174,45 @@ export function SamplesList() {
             header: 'Ground Truth',
             cell: (info) => {
                 const text = info.getValue();
-                if (!text) return <span className="text-muted-foreground">-</span>;
+                if (!text) return <span className="text-muted-foreground text-sm">-</span>;
                 return (
                     <span className="text-sm truncate max-w-[200px] block" title={text}>
-                        {text.substring(0, 50)}...
+                        {text.length > 50 ? `${text.substring(0, 50)}...` : text}
                     </span>
                 );
             },
         }),
         columnHelper.display({
             id: 'actions',
+            header: '',
             cell: ({ row }) => (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
                             <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Aktionen öffnen</span>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => console.log('View', row.original.id)}>
+                        <DropdownMenuItem onClick={() => handleViewSample(row.original)}>
                             <Eye className="mr-2 h-4 w-4" />
                             Ansehen
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => console.log('Edit', row.original.id)}>
+                        <DropdownMenuItem onClick={() => handleViewSample(row.original)}>
                             <Edit2 className="mr-2 h-4 w-4" />
                             Bearbeiten
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
-                            onClick={() => {
-                                if (confirm('Sample wirklich löschen?')) {
-                                    deleteMutation.mutate(row.original.id);
-                                }
-                            }}
+                            onClick={() => handleDeleteSample(row.original.id)}
+                            disabled={deleteMutation.isPending}
                         >
-                            <Trash2 className="mr-2 h-4 w-4" />
+                            {deleteMutation.isPending ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Trash2 className="mr-2 h-4 w-4" />
+                            )}
                             Löschen
                         </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -202,114 +229,151 @@ export function SamplesList() {
         getSortedRowModel: getSortedRowModel(),
         onSortingChange: setSorting,
         state: { sorting },
+        initialState: {
+            pagination: {
+                pageSize: 10,
+            },
+        },
     });
 
     return (
-        <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <CardTitle>Ground Truth Samples</CardTitle>
-                        <CardDescription>
-                            {data?.total || 0} Samples insgesamt
-                        </CardDescription>
+        <>
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Ground Truth Samples</CardTitle>
+                            <CardDescription>
+                                {data?.total || 0} Samples insgesamt
+                            </CardDescription>
+                        </div>
+                        <div className="flex gap-2">
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="w-[150px]">
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="">Alle Status</SelectItem>
+                                    <SelectItem value="pending">Ausstehend</SelectItem>
+                                    <SelectItem value="annotated">Annotiert</SelectItem>
+                                    <SelectItem value="verified">Verifiziert</SelectItem>
+                                    <SelectItem value="rejected">Abgelehnt</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Select value={languageFilter} onValueChange={setLanguageFilter}>
+                                <SelectTrigger className="w-[130px]">
+                                    <SelectValue placeholder="Sprache" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="">Alle Sprachen</SelectItem>
+                                    <SelectItem value="de">Deutsch</SelectItem>
+                                    <SelectItem value="en">Englisch</SelectItem>
+                                    <SelectItem value="nl">Niederländisch</SelectItem>
+                                    <SelectItem value="pl">Polnisch</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
-                    <div className="flex gap-2">
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[150px]">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="">Alle</SelectItem>
-                                <SelectItem value="pending">Ausstehend</SelectItem>
-                                <SelectItem value="annotated">Annotiert</SelectItem>
-                                <SelectItem value="verified">Verifiziert</SelectItem>
-                                <SelectItem value="rejected">Abgelehnt</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select value={languageFilter} onValueChange={setLanguageFilter}>
-                            <SelectTrigger className="w-[120px]">
-                                <SelectValue placeholder="Sprache" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="">Alle</SelectItem>
-                                <SelectItem value="de">DE</SelectItem>
-                                <SelectItem value="en">EN</SelectItem>
-                                <SelectItem value="nl">NL</SelectItem>
-                                <SelectItem value="pl">PL</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                {isLoading ? (
-                    <div className="flex items-center justify-center h-32">
-                        <div className="animate-pulse text-muted-foreground">Lade Samples...</div>
-                    </div>
-                ) : (
-                    <>
-                        <Table>
-                            <TableHeader>
-                                {table.getHeaderGroups().map((headerGroup) => (
-                                    <TableRow key={headerGroup.id}>
-                                        {headerGroup.headers.map((header) => (
-                                            <TableHead key={header.id}>
-                                                {header.isPlaceholder
-                                                    ? null
-                                                    : flexRender(header.column.columnDef.header, header.getContext())}
-                                            </TableHead>
-                                        ))}
-                                    </TableRow>
-                                ))}
-                            </TableHeader>
-                            <TableBody>
-                                {table.getRowModel().rows.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={columns.length} className="text-center text-muted-foreground">
-                                            Keine Samples gefunden
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    table.getRowModel().rows.map((row) => (
-                                        <TableRow key={row.id}>
-                                            {row.getVisibleCells().map((cell) => (
-                                                <TableCell key={cell.id}>
-                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                </TableCell>
-                                            ))}
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                        <div className="flex items-center justify-between mt-4">
-                            <div className="text-sm text-muted-foreground">
-                                Seite {table.getState().pagination.pageIndex + 1} von{' '}
-                                {table.getPageCount()}
-                            </div>
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => table.previousPage()}
-                                    disabled={!table.getCanPreviousPage()}
-                                >
-                                    Zurück
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => table.nextPage()}
-                                    disabled={!table.getCanNextPage()}
-                                >
-                                    Weiter
-                                </Button>
+                </CardHeader>
+                <CardContent>
+                    {isLoading ? (
+                        <div className="flex items-center justify-center h-32">
+                            <div className="flex items-center gap-3 text-muted-foreground">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <span>Lade Samples...</span>
                             </div>
                         </div>
-                    </>
-                )}
-            </CardContent>
-        </Card>
+                    ) : (
+                        <>
+                            <Table>
+                                <TableHeader>
+                                    {table.getHeaderGroups().map((headerGroup) => (
+                                        <TableRow key={headerGroup.id}>
+                                            {headerGroup.headers.map((header) => (
+                                                <TableHead key={header.id}>
+                                                    {header.isPlaceholder
+                                                        ? null
+                                                        : flexRender(header.column.columnDef.header, header.getContext())}
+                                                </TableHead>
+                                            ))}
+                                        </TableRow>
+                                    ))}
+                                </TableHeader>
+                                <TableBody>
+                                    {table.getRowModel().rows.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={columns.length} className="text-center text-muted-foreground py-8">
+                                                Keine Samples gefunden
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        table.getRowModel().rows.map((row) => (
+                                            <TableRow
+                                                key={row.id}
+                                                className="hover:bg-muted/50 cursor-pointer"
+                                                onClick={() => handleViewSample(row.original)}
+                                            >
+                                                {row.getVisibleCells().map((cell) => (
+                                                    <TableCell
+                                                        key={cell.id}
+                                                        onClick={(e) => {
+                                                            // Verhindere Navigation bei Klick auf Actions-Dropdown
+                                                            if (cell.column.id === 'actions') {
+                                                                e.stopPropagation();
+                                                            }
+                                                        }}
+                                                    >
+                                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                    </TableCell>
+                                                ))}
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                            <div className="flex items-center justify-between mt-4">
+                                <div className="text-sm text-muted-foreground">
+                                    Seite {table.getState().pagination.pageIndex + 1} von{' '}
+                                    {table.getPageCount() || 1}
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => table.previousPage()}
+                                        disabled={!table.getCanPreviousPage()}
+                                    >
+                                        Zurück
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => table.nextPage()}
+                                        disabled={!table.getCanNextPage()}
+                                    >
+                                        Weiter
+                                    </Button>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Sample Detail Modal */}
+            {selectedSample && (
+                <SampleDetailModal
+                    sample={selectedSample}
+                    benchmarks={sampleBenchmarks}
+                    open={isDetailOpen}
+                    onOpenChange={(open) => {
+                        setIsDetailOpen(open);
+                        if (!open) {
+                            setSelectedSample(null);
+                        }
+                    }}
+                />
+            )}
+        </>
     );
 }

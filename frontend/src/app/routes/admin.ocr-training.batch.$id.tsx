@@ -31,7 +31,7 @@ export const Route = createFileRoute('/admin/ocr-training/batch/$id')({
     component: BatchWorkflowPage,
 })
 
-// Tastaturkuerzel-Konfiguration
+// Tastaturkürzel-Konfiguration
 const KEYBOARD_SHORTCUTS = {
     save: { key: 'Enter', modifier: 'ctrl', label: 'Strg + Enter' },
     skip: { key: 's', modifier: 'ctrl', label: 'Strg + S' },
@@ -39,10 +39,10 @@ const KEYBOARD_SHORTCUTS = {
     next: { key: 'ArrowRight', modifier: 'alt', label: 'Alt + Rechts' },
 } as const
 
-// Fehlertypen fuer Markierungen
+// Fehlertypen für Markierungen
 const ERROR_TYPES = [
     { id: 'umlaut', label: 'Umlaut-Fehler', icon: Languages, description: 'ae->ä, oe->ö, ue->ü, ss->ß' },
-    { id: 'capitalization', label: 'Gross-/Kleinschreibung', icon: Type, description: 'Falsche Grossschreibung' },
+    { id: 'capitalization', label: 'Groß-/Kleinschreibung', icon: Type, description: 'Falsche Großschreibung' },
     { id: 'ocr_noise', label: 'OCR-Rauschen', icon: Image, description: 'Unlesbare oder falsche Zeichen' },
     { id: 'missing_text', label: 'Fehlender Text', icon: FileText, description: 'Text wurde nicht erkannt' },
 ] as const
@@ -56,7 +56,8 @@ function BatchWorkflowPage() {
     const [correctedText, setCorrectedText] = useState('')
     const [selectedErrorTypes, setSelectedErrorTypes] = useState<string[]>([])
     const [notes, setNotes] = useState('')
-    const [startTime, setStartTime] = useState<number>(Date.now())
+    const [startTime, setStartTime] = useState<number>(() => Date.now())
+    const [elapsedSeconds, setElapsedSeconds] = useState(0)
     const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
     const [autoSaveEnabled] = useState(true)
     const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null)
@@ -93,15 +94,26 @@ function BatchWorkflowPage() {
         return sorted[0]?.raw_text || ''
     }, [sampleBenchmarks])
 
-    // Initialisiere correctedText wenn Sample geladen wird
+    // Initialisiere Form-State wenn neues Sample geladen wird (legitimes Pattern für Form-Reset)
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (currentSample) {
             setCorrectedText(currentSample.ground_truth_text || bestOcrText || '')
             setSelectedErrorTypes([])
             setNotes('')
             setStartTime(Date.now())
+            setElapsedSeconds(0)
         }
     }, [currentSample, bestOcrText])
+    /* eslint-enable react-hooks/set-state-in-effect */
+
+    // Timer für verstrichene Zeit
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setElapsedSeconds(Math.round((Date.now() - startTime) / 1000))
+        }, 1000)
+        return () => clearInterval(interval)
+    }, [startTime])
 
     // Mutations
     const updateItemMutation = useMutation({
@@ -124,58 +136,8 @@ function BatchWorkflowPage() {
         },
     })
 
-    // Auto-Save
-    useEffect(() => {
-        if (!autoSaveEnabled || !currentSample || !correctedText) return
-
-        const interval = setInterval(() => {
-            if (correctedText !== currentSample.ground_truth_text) {
-                updateSampleMutation.mutate({
-                    ground_truth_text: correctedText,
-                    annotation_notes: notes || undefined,
-                })
-                setLastAutoSave(new Date())
-            }
-        }, 30000) // Alle 30 Sekunden
-
-        return () => clearInterval(interval)
-    }, [autoSaveEnabled, currentSample, correctedText, notes])
-
-    // Keyboard Shortcuts
-    const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        // Strg + Enter: Speichern
-        if (e.ctrlKey && e.key === 'Enter') {
-            e.preventDefault()
-            handleSaveAndNext()
-        }
-        // Strg + S: Ueberspringen
-        if (e.ctrlKey && e.key === 's') {
-            e.preventDefault()
-            handleSkip()
-        }
-        // Alt + Links: Zurueck
-        if (e.altKey && e.key === 'ArrowLeft') {
-            e.preventDefault()
-            // TODO: Previous item navigation
-        }
-        // Alt + Rechts: Weiter
-        if (e.altKey && e.key === 'ArrowRight') {
-            e.preventDefault()
-            handleSaveAndNext()
-        }
-        // ESC: Keyboard-Hilfe toggle
-        if (e.key === 'Escape') {
-            setShowKeyboardHelp((prev) => !prev)
-        }
-    }, [])
-
-    useEffect(() => {
-        window.addEventListener('keydown', handleKeyDown)
-        return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [handleKeyDown])
-
-    // Handler
-    const handleSaveAndNext = async () => {
+    // Handler (müssen vor handleKeyDown definiert werden)
+    const handleSaveAndNext = useCallback(async () => {
         if (!currentItem || !currentSample) return
 
         const validationTime = Math.round((Date.now() - startTime) / 1000)
@@ -195,16 +157,66 @@ function BatchWorkflowPage() {
                 : notes || undefined,
             validation_time_seconds: validationTime,
         })
-    }
+    }, [currentItem, currentSample, startTime, correctedText, notes, selectedErrorTypes, updateSampleMutation, updateItemMutation])
 
-    const handleSkip = async () => {
+    const handleSkip = useCallback(async () => {
         if (!currentItem) return
 
         await updateItemMutation.mutateAsync({
             status: 'skipped',
-            validation_notes: notes || 'Uebersprungen',
+            validation_notes: notes || 'Übersprungen',
         })
-    }
+    }, [currentItem, notes, updateItemMutation])
+
+    // Keyboard Shortcuts
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        // Strg + Enter: Speichern
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault()
+            handleSaveAndNext()
+        }
+        // Strg + S: Überspringen
+        if (e.ctrlKey && e.key === 's') {
+            e.preventDefault()
+            handleSkip()
+        }
+        // Alt + Links: Zurück
+        if (e.altKey && e.key === 'ArrowLeft') {
+            e.preventDefault()
+            // TODO: Previous item navigation
+        }
+        // Alt + Rechts: Weiter
+        if (e.altKey && e.key === 'ArrowRight') {
+            e.preventDefault()
+            handleSaveAndNext()
+        }
+        // ESC: Keyboard-Hilfe toggle
+        if (e.key === 'Escape') {
+            setShowKeyboardHelp((prev) => !prev)
+        }
+    }, [handleSaveAndNext, handleSkip])
+
+    useEffect(() => {
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [handleKeyDown])
+
+    // Auto-Save
+    useEffect(() => {
+        if (!autoSaveEnabled || !currentSample || !correctedText) return
+
+        const interval = setInterval(() => {
+            if (correctedText !== currentSample.ground_truth_text) {
+                updateSampleMutation.mutate({
+                    ground_truth_text: correctedText,
+                    annotation_notes: notes || undefined,
+                })
+                setLastAutoSave(new Date())
+            }
+        }, 30000) // Alle 30 Sekunden
+
+        return () => clearInterval(interval)
+    }, [autoSaveEnabled, currentSample, correctedText, notes, updateSampleMutation])
 
     // Loading State
     if (isLoadingBatch || isLoadingItem || isLoadingSample) {
@@ -244,7 +256,7 @@ function BatchWorkflowPage() {
                                 <div className="text-3xl font-bold text-yellow-600">
                                     {batch.actual_size - batch.items_completed - batch.items_pending}
                                 </div>
-                                <div className="text-sm text-muted-foreground">Uebersprungen</div>
+                                <div className="text-sm text-muted-foreground">Übersprungen</div>
                             </div>
                             <div>
                                 <div className="text-3xl font-bold">
@@ -254,7 +266,7 @@ function BatchWorkflowPage() {
                             </div>
                         </div>
                         <Button onClick={() => navigate({ to: '/admin/ocr-training' })}>
-                            Zurueck zum Dashboard
+                            Zurück zum Dashboard
                         </Button>
                     </CardContent>
                 </Card>
@@ -269,7 +281,7 @@ function BatchWorkflowPage() {
                     <AlertTriangle className="h-8 w-8 mx-auto text-yellow-500" />
                     <p className="text-muted-foreground">Batch oder Sample nicht gefunden</p>
                     <Button variant="outline" onClick={() => navigate({ to: '/admin/ocr-training' })}>
-                        Zurueck
+                        Zurück
                     </Button>
                 </div>
             </div>
@@ -290,7 +302,7 @@ function BatchWorkflowPage() {
                         onClick={() => navigate({ to: '/admin/ocr-training' })}
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Zurueck
+                        Zurück
                     </Button>
                     <div>
                         <h1 className="text-xl font-bold">{batch.name}</h1>
@@ -306,7 +318,7 @@ function BatchWorkflowPage() {
                         onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
                     >
                         <Keyboard className="mr-2 h-4 w-4" />
-                        Tastenkuerzel
+                        Tastenkürzel
                     </Button>
                     {lastAutoSave && (
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -392,7 +404,7 @@ function BatchWorkflowPage() {
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm">OCR-Ergebnisse</CardTitle>
                             <CardDescription>
-                                {sampleBenchmarks?.length || 0} Backend(s) verfuegbar
+                                {sampleBenchmarks?.length || 0} Backend(s) verfügbar
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -453,7 +465,7 @@ function BatchWorkflowPage() {
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm">Ihre Korrektur</CardTitle>
                             <CardDescription>
-                                Korrigieren Sie den OCR-Text oder bestaetigen Sie ihn
+                                Korrigieren Sie den OCR-Text oder bestätigen Sie ihn
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -464,11 +476,11 @@ function BatchWorkflowPage() {
                                 placeholder="Korrigierten Text hier eingeben..."
                             />
 
-                            {/* Diff-Anzeige wenn Text geaendert */}
+                            {/* Diff-Anzeige wenn Text geändert */}
                             {bestOcrText && correctedText !== bestOcrText && (
                                 <div className="rounded-lg border p-3">
                                     <h4 className="text-xs font-medium mb-2 text-muted-foreground">
-                                        Aenderungen:
+                                        Änderungen:
                                     </h4>
                                     <DiffView
                                         original={bestOcrText}
@@ -550,12 +562,12 @@ function BatchWorkflowPage() {
                             disabled={updateItemMutation.isPending}
                         >
                             <SkipForward className="mr-2 h-4 w-4" />
-                            Ueberspringen
+                            Überspringen
                         </Button>
                         <div className="flex gap-2">
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <Clock className="h-3 w-3" />
-                                {Math.round((Date.now() - startTime) / 1000)}s
+                                {elapsedSeconds}s
                             </div>
                             <Button
                                 onClick={handleSaveAndNext}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
     useReactTable,
@@ -22,11 +22,13 @@ import {
     FileText,
     BarChart3,
     ClipboardEdit,
+    Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Table,
     TableBody,
@@ -61,6 +63,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { trainingService, type TrainingBatch } from '@/lib/api/services/training';
+import { useCreateBatch, useStartBatch, useCompleteBatch } from '../hooks/use-training-queries';
 
 const columnHelper = createColumnHelper<TrainingBatch>();
 
@@ -94,7 +97,6 @@ export function BatchesList() {
         languages: [],
         require_umlauts: false,
     });
-    const queryClient = useQueryClient();
     const navigate = useNavigate();
 
     const { data, isLoading } = useQuery({
@@ -106,36 +108,23 @@ export function BatchesList() {
             }),
     });
 
-    const createMutation = useMutation({
-        mutationFn: trainingService.createBatch,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['training', 'batches'] });
-            setIsCreateDialogOpen(false);
-            setFormData({
-                name: '',
-                description: '',
-                batch_type: 'random',
-                target_size: 50,
-                auto_populate: true,
-                languages: [],
-                require_umlauts: false,
-            });
-        },
-    });
+    const createMutation = useCreateBatch();
+    const startMutation = useStartBatch();
+    const completeMutation = useCompleteBatch();
 
-    const startMutation = useMutation({
-        mutationFn: trainingService.startBatch,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['training', 'batches'] });
-        },
-    });
-
-    const completeMutation = useMutation({
-        mutationFn: trainingService.completeBatch,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['training', 'batches'] });
-        },
-    });
+    // Reset form on successful creation
+    const handleCreateSuccess = () => {
+        setIsCreateDialogOpen(false);
+        setFormData({
+            name: '',
+            description: '',
+            batch_type: 'random',
+            target_size: 50,
+            auto_populate: true,
+            languages: [],
+            require_umlauts: false,
+        });
+    };
 
     const columns = [
         columnHelper.accessor('name', {
@@ -218,7 +207,9 @@ export function BatchesList() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => console.log('View', batch.id)}>
+                            <DropdownMenuItem
+                                onClick={() => navigate({ to: '/admin/ocr-training/batch/$id', params: { id: batch.id } })}
+                            >
                                 <Eye className="mr-2 h-4 w-4" />
                                 Details anzeigen
                             </DropdownMenuItem>
@@ -266,17 +257,22 @@ export function BatchesList() {
     });
 
     const handleCreateBatch = () => {
-        createMutation.mutate({
-            name: formData.name,
-            description: formData.description || undefined,
-            batch_type: formData.batch_type,
-            target_size: formData.target_size,
-            auto_populate: formData.auto_populate,
-            stratification_config: {
-                languages: formData.languages.length > 0 ? formData.languages : undefined,
-                require_umlauts: formData.require_umlauts || undefined,
+        createMutation.mutate(
+            {
+                name: formData.name,
+                description: formData.description || undefined,
+                batch_type: formData.batch_type,
+                target_size: formData.target_size,
+                auto_populate: formData.auto_populate,
+                stratification_config: {
+                    languages: formData.languages.length > 0 ? formData.languages : undefined,
+                    require_umlauts: formData.require_umlauts || undefined,
+                },
             },
-        });
+            {
+                onSuccess: handleCreateSuccess,
+            }
+        );
     };
 
     return (
@@ -378,31 +374,27 @@ export function BatchesList() {
                                             />
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
                                             id="auto_populate"
                                             checked={formData.auto_populate}
-                                            onChange={(e) =>
-                                                setFormData({ ...formData, auto_populate: e.target.checked })
+                                            onCheckedChange={(checked) =>
+                                                setFormData({ ...formData, auto_populate: checked === true })
                                             }
-                                            className="h-4 w-4 rounded border-gray-300"
                                         />
-                                        <Label htmlFor="auto_populate" className="text-sm font-normal">
+                                        <Label htmlFor="auto_populate" className="text-sm font-normal cursor-pointer">
                                             Automatisch mit Samples befüllen
                                         </Label>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
                                             id="require_umlauts"
                                             checked={formData.require_umlauts}
-                                            onChange={(e) =>
-                                                setFormData({ ...formData, require_umlauts: e.target.checked })
+                                            onCheckedChange={(checked) =>
+                                                setFormData({ ...formData, require_umlauts: checked === true })
                                             }
-                                            className="h-4 w-4 rounded border-gray-300"
                                         />
-                                        <Label htmlFor="require_umlauts" className="text-sm font-normal">
+                                        <Label htmlFor="require_umlauts" className="text-sm font-normal cursor-pointer">
                                             Nur Samples mit Umlauten
                                         </Label>
                                     </div>
@@ -429,7 +421,10 @@ export function BatchesList() {
             <CardContent>
                 {isLoading ? (
                     <div className="flex items-center justify-center h-32">
-                        <div className="animate-pulse text-muted-foreground">Lade Batches...</div>
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span>Lade Batches...</span>
+                        </div>
                     </div>
                 ) : (
                     <>

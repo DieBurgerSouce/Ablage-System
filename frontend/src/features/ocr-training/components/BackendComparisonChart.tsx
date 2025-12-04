@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import {
     BarChart,
     Bar,
@@ -17,22 +16,17 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Zap, Target, Timer } from 'lucide-react';
-import { trainingService, type BackendComparison } from '@/lib/api/services/training';
+import type { BackendComparison } from '@/lib/api/services/training';
+import { getBackendColor } from '../constants/backend-config';
+import { useAvailableBackends, useLearnedWeights } from '../hooks/use-training-queries';
 
 interface BackendComparisonChartProps {
     comparison?: BackendComparison;
 }
 
 export function BackendComparisonChart({ comparison }: BackendComparisonChartProps) {
-    const { data: backends } = useQuery({
-        queryKey: ['training', 'backends'],
-        queryFn: trainingService.getAvailableBackends,
-    });
-
-    const { data: learnedWeights } = useQuery({
-        queryKey: ['training', 'learned-weights'],
-        queryFn: () => trainingService.getLearnedWeights(false),
-    });
+    const { data: backends } = useAvailableBackends();
+    const { data: learnedWeights } = useLearnedWeights();
 
     if (!comparison || Object.keys(comparison.backends).length === 0) {
         return (
@@ -99,12 +93,6 @@ export function BackendComparisonChart({ comparison }: BackendComparisonChartPro
         },
     ];
 
-    const backendColors: Record<string, string> = {
-        'deepseek-janus-pro': '#8884d8',
-        'got-ocr-2.0': '#82ca9d',
-        'surya-gpu': '#ffc658',
-        'surya': '#ff8042',
-    };
 
     return (
         <div className="space-y-6">
@@ -193,8 +181,8 @@ export function BackendComparisonChart({ comparison }: BackendComparisonChartPro
                                     key={backend}
                                     name={backend}
                                     dataKey={backend}
-                                    stroke={backendColors[backend] || '#8884d8'}
-                                    fill={backendColors[backend] || '#8884d8'}
+                                    stroke={getBackendColor(backend)}
+                                    fill={getBackendColor(backend)}
                                     fillOpacity={0.3}
                                 />
                             ))}

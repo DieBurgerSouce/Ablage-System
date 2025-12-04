@@ -773,3 +773,823 @@ CELERY_BEAT_TRAINING_SCHEDULE = {
         "options": {"queue": "default"},
     },
 }
+
+
+# ==================== Bulk OCR Processing Tasks ====================
+
+@celery_app.task(
+    bind=True,
+    base=GPUTask,
+    name="app.workers.tasks.training_tasks.run_bulk_processing_job",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 2},
+    retry_backoff=True,
+    retry_backoff_max=1800,
+    soft_time_limit=86400,  # 24 Stunden
+    time_limit=90000,  # 25 Stunden
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def run_bulk_processing_job(
+    self,
+    job_id: str,
+    resume_from_checkpoint: bool = False,
+) -> Dict[str, Any]:
+    """
+    Fuehre Bulk OCR Processing Job aus.
+
+    Verarbeitet alle Trainings-Dokumente durch alle OCR-Backends.
+    Laeuft typischerweise ueber Nacht (geschaetzte Zeit: 32 Stunden).
+
+    Args:
+        job_id: Bulk Processing Job ID
+        resume_from_checkpoint: Bei True wird vom letzten Checkpoint fortgesetzt
+
+    Returns:
+        Job-Ergebnis-Zusammenfassung
+    """
+    task_id = self.request.id
+
+    logger.info(
+        "bulk_processing_job_starting",
+        task_id=task_id,
+        job_id=job_id,
+        resume=resume_from_checkpoint,
+    )
+
+    try:
+        from app.services.bulk_ocr_processing_service import get_bulk_ocr_processing_service
+        from app.db.session import get_async_session_context
+
+        async def run_job() -> Dict[str, Any]:
+            async with get_async_session_context() as session:
+                service = get_bulk_ocr_processing_service()
+                job = await service.process_all_documents(
+                    db=session,
+                    job_id=job_id,
+                )
+                return job.to_dict()
+
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        result = loop.run_until_complete(run_job())
+
+        logger.info(
+            "bulk_processing_job_completed",
+            task_id=task_id,
+            job_id=job_id,
+            status=result["status"],
+            processed=result["processed_documents"],
+            failed=result["failed_documents"],
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception(
+            "bulk_processing_job_failed",
+            task_id=task_id,
+            job_id=job_id,
+            error=str(e),
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.training_tasks.import_training_files",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=300,
+    soft_time_limit=1800,  # 30 Minuten
+    time_limit=2100,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def import_training_files(
+    self,
+    source_directory: str,
+    file_patterns: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """
+    Importiere Trainings-Dateien aus einem Verzeichnis.
+
+    Scannt das angegebene Verzeichnis nach Dokumenten (PDF, TIF, PNG, etc.)
+    und erstellt Training Samples in der Datenbank.
+
+    Args:
+        source_directory: Quellverzeichnis (z.B. "Trainings_Data")
+        file_patterns: Datei-Muster (default: ["*.pdf", "*.tif", ...])
+
+    Returns:
+        Import-Statistiken
+    """
+    task_id = self.request.id
+
+    logger.info(
+        "import_training_files_starting",
+        task_id=task_id,
+        source_directory=source_directory,
+    )
+
+    try:
+        from app.services.bulk_ocr_processing_service import get_bulk_ocr_processing_service
+        from app.db.session import get_async_session_context
+
+        async def import_files() -> Dict[str, Any]:
+            async with get_async_session_context() as session:
+                service = get_bulk_ocr_processing_service()
+                result = await service.import_training_files(
+                    db=session,
+                    source_directory=source_directory,
+                    file_patterns=file_patterns,
+                )
+                return result
+
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        result = loop.run_until_complete(import_files())
+
+        logger.info(
+            "import_training_files_completed",
+            task_id=task_id,
+            imported=result["imported"],
+            skipped=result["skipped"],
+            errors=result["errors"],
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception(
+            "import_training_files_failed",
+            task_id=task_id,
+            error=str(e),
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=GPUTask,
+    name="app.workers.tasks.training_tasks.process_document_batch",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    retry_backoff_max=600,
+    soft_time_limit=3600,  # 1 Stunde
+    time_limit=4200,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def process_document_batch(
+    self,
+    sample_ids: List[str],
+    backend_name: str,
+    job_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Verarbeite einen Batch von Dokumenten durch ein spezifisches Backend.
+
+    Args:
+        sample_ids: Liste der Training Sample IDs
+        backend_name: OCR Backend Name
+        job_id: Optionale Bulk Job ID fuer Tracking
+
+    Returns:
+        Batch-Verarbeitungsergebnis
+    """
+    task_id = self.request.id
+
+    logger.info(
+        "process_document_batch_starting",
+        task_id=task_id,
+        sample_count=len(sample_ids),
+        backend=backend_name,
+        job_id=job_id,
+    )
+
+    try:
+        from app.services.benchmark_runner_service import get_benchmark_runner_service
+        from app.db.session import get_async_session_context
+        from app.db.models import OCRTrainingSample, OCRDocumentOutput
+        from sqlalchemy import select
+        from uuid import UUID
+
+        async def process_batch() -> Dict[str, Any]:
+            async with get_async_session_context() as session:
+                runner = get_benchmark_runner_service()
+                await runner._ensure_agents()
+
+                # Lade Samples
+                uuid_ids = [UUID(sid) for sid in sample_ids]
+                result = await session.execute(
+                    select(OCRTrainingSample).where(
+                        OCRTrainingSample.id.in_(uuid_ids)
+                    )
+                )
+                samples = list(result.scalars().all())
+
+                processed = 0
+                failed = 0
+                results = []
+
+                for sample in samples:
+                    try:
+                        benchmark_result = await runner._run_single_benchmark(
+                            sample=sample,
+                            backend_name=backend_name,
+                        )
+
+                        # Speichere Output
+                        output = OCRDocumentOutput(
+                            training_sample_id=sample.id,
+                            bulk_job_id=UUID(job_id) if job_id else None,
+                            backend_name=backend_name,
+                            raw_text=benchmark_result.raw_text,
+                            confidence_score=benchmark_result.confidence,
+                            processing_time_ms=benchmark_result.processing_time_ms,
+                            gpu_memory_mb=benchmark_result.gpu_memory_mb,
+                            success=benchmark_result.success,
+                            error_message=benchmark_result.error,
+                        )
+                        session.add(output)
+
+                        if benchmark_result.success:
+                            processed += 1
+                        else:
+                            failed += 1
+
+                        results.append({
+                            "sample_id": str(sample.id),
+                            "success": benchmark_result.success,
+                            "processing_time_ms": benchmark_result.processing_time_ms,
+                        })
+
+                    except Exception as e:
+                        failed += 1
+                        results.append({
+                            "sample_id": str(sample.id),
+                            "success": False,
+                            "error": str(e),
+                        })
+
+                await session.commit()
+
+                return {
+                    "backend": backend_name,
+                    "total": len(samples),
+                    "processed": processed,
+                    "failed": failed,
+                    "results": results,
+                }
+
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        result = loop.run_until_complete(process_batch())
+
+        logger.info(
+            "process_document_batch_completed",
+            task_id=task_id,
+            backend=backend_name,
+            processed=result["processed"],
+            failed=result["failed"],
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception(
+            "process_document_batch_failed",
+            task_id=task_id,
+            backend=backend_name,
+            error=str(e),
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.training_tasks.create_quality_snapshot",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    soft_time_limit=300,
+    time_limit=360,
+    acks_late=True,
+)
+def create_quality_snapshot(
+    self,
+    backend_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Erstelle Quality Snapshot fuer Monitoring.
+
+    Args:
+        backend_name: Optionaler Backend-Name (default: alle Backends)
+
+    Returns:
+        Snapshot-Daten
+    """
+    task_id = self.request.id
+
+    logger.info(
+        "create_quality_snapshot_starting",
+        task_id=task_id,
+        backend=backend_name,
+    )
+
+    try:
+        from app.db.session import get_async_session_context
+        from app.db.models import (
+            OCRBackendBenchmark,
+            OCRValidationCorrection,
+            OCRQualitySnapshot,
+        )
+        from sqlalchemy import select, func, and_
+        from datetime import datetime, timezone, timedelta
+
+        async def create_snapshot() -> Dict[str, Any]:
+            async with get_async_session_context() as session:
+                backends = [backend_name] if backend_name else [
+                    "deepseek-janus-pro", "got-ocr-2.0", "surya-gpu", "surya"
+                ]
+
+                snapshots_created = []
+                now = datetime.now(timezone.utc)
+                one_hour_ago = now - timedelta(hours=1)
+
+                for backend in backends:
+                    # Aggregiere Metriken
+                    result = await session.execute(
+                        select(
+                            func.count(OCRBackendBenchmark.id).label("count"),
+                            func.avg(OCRBackendBenchmark.cer).label("avg_cer"),
+                            func.avg(OCRBackendBenchmark.wer).label("avg_wer"),
+                            func.avg(OCRBackendBenchmark.umlaut_accuracy).label("avg_umlaut"),
+                            func.avg(OCRBackendBenchmark.processing_time_ms).label("avg_time"),
+                        ).where(
+                            and_(
+                                OCRBackendBenchmark.backend_name == backend,
+                                OCRBackendBenchmark.processed_at >= one_hour_ago,
+                            )
+                        )
+                    )
+                    row = result.first()
+
+                    # Zaehle Korrekturen
+                    correction_result = await session.execute(
+                        select(func.count(OCRValidationCorrection.id)).where(
+                            and_(
+                                OCRValidationCorrection.backend_used == backend,
+                                OCRValidationCorrection.created_at >= one_hour_ago,
+                            )
+                        )
+                    )
+                    correction_count = correction_result.scalar() or 0
+
+                    # Erstelle Snapshot
+                    snapshot = OCRQualitySnapshot(
+                        backend_name=backend,
+                        sample_count=row.count or 0,
+                        avg_cer=row.avg_cer,
+                        avg_wer=row.avg_wer,
+                        avg_umlaut_accuracy=row.avg_umlaut,
+                        avg_processing_time_ms=row.avg_time,
+                        correction_count=correction_count,
+                    )
+
+                    # Check Alerts
+                    if row.avg_cer and row.avg_cer > 0.10:
+                        snapshot.alert_triggered = True
+                        snapshot.alert_reason = f"CER zu hoch: {row.avg_cer:.2%}"
+                    elif row.avg_umlaut and row.avg_umlaut < 0.95:
+                        snapshot.alert_triggered = True
+                        snapshot.alert_reason = f"Umlaut-Genauigkeit zu niedrig: {row.avg_umlaut:.1%}"
+
+                    session.add(snapshot)
+                    snapshots_created.append({
+                        "backend": backend,
+                        "sample_count": row.count or 0,
+                        "avg_cer": row.avg_cer,
+                        "alert": snapshot.alert_triggered,
+                    })
+
+                await session.commit()
+
+                return {
+                    "snapshots_created": len(snapshots_created),
+                    "snapshots": snapshots_created,
+                }
+
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        result = loop.run_until_complete(create_snapshot())
+
+        logger.info(
+            "create_quality_snapshot_completed",
+            task_id=task_id,
+            snapshots_created=result["snapshots_created"],
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception(
+            "create_quality_snapshot_failed",
+            task_id=task_id,
+            error=str(e),
+        )
+        raise
+
+
+# ==================== Fine-Tuning Tasks ====================
+
+@celery_app.task(
+    bind=True,
+    base=GPUTask,
+    name="app.workers.tasks.training_tasks.run_deepseek_lora_training",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 1},
+    retry_backoff=True,
+    soft_time_limit=86400,  # 24 Stunden
+    time_limit=90000,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def run_deepseek_lora_training(
+    self,
+    train_data_path: str,
+    validation_data_path: Optional[str] = None,
+    output_version: Optional[str] = None,
+    config_overrides: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Führe DeepSeek-Janus-Pro LoRA Fine-Tuning durch.
+
+    Args:
+        train_data_path: Pfad zu train.jsonl
+        validation_data_path: Pfad zu val.jsonl
+        output_version: Optionale Version (auto-generiert wenn None)
+        config_overrides: Optionale Konfigurationsüberschreibungen
+
+    Returns:
+        Training-Ergebnis mit Metriken
+    """
+    task_id = self.request.id
+
+    logger.info(
+        "deepseek_lora_training_starting",
+        task_id=task_id,
+        train_data=train_data_path,
+        validation_data=validation_data_path,
+    )
+
+    try:
+        from app.ml.finetuning.deepseek_lora_trainer import (
+            DeepSeekLoRATrainer,
+            LoRAConfig,
+            TrainingConfig,
+        )
+        from app.ml.finetuning.checkpoint_manager import CheckpointManager
+
+        # Konfiguration erstellen
+        lora_config = LoRAConfig()
+        training_config = TrainingConfig()
+
+        if config_overrides:
+            for key, value in config_overrides.items():
+                if hasattr(training_config, key):
+                    setattr(training_config, key, value)
+                elif hasattr(lora_config, key):
+                    setattr(lora_config, key, value)
+
+        # Trainer initialisieren und ausführen
+        trainer = DeepSeekLoRATrainer(
+            lora_config=lora_config,
+            training_config=training_config
+        )
+
+        async def run_training():
+            return await trainer.train(
+                train_data_path=train_data_path,
+                validation_data_path=validation_data_path
+            )
+
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        result = loop.run_until_complete(run_training())
+
+        # Checkpoint registrieren
+        if result.get("status") == "completed":
+            checkpoint_manager = CheckpointManager()
+            version = checkpoint_manager.create_version(
+                model_name="deepseek",
+                source_path=result["output_dir"],
+                metrics={
+                    "final_loss": result.get("final_loss"),
+                    "best_validation_loss": result.get("best_validation_loss"),
+                },
+                training_config=config_overrides or {},
+                notes=f"Celery Task {task_id}"
+            )
+            result["registered_version"] = version
+
+        logger.info(
+            "deepseek_lora_training_completed",
+            task_id=task_id,
+            status=result.get("status"),
+            total_steps=result.get("total_steps"),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception(
+            "deepseek_lora_training_failed",
+            task_id=task_id,
+            error=str(e),
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=GPUTask,
+    name="app.workers.tasks.training_tasks.run_surya_hf_training",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 1},
+    retry_backoff=True,
+    soft_time_limit=86400,  # 24 Stunden
+    time_limit=90000,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def run_surya_hf_training(
+    self,
+    train_data_path: str,
+    test_data_path: Optional[str] = None,
+    output_version: Optional[str] = None,
+    config_overrides: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Führe Surya-OCR HuggingFace Training durch.
+
+    Args:
+        train_data_path: Pfad zu train.jsonl
+        test_data_path: Pfad zu test.jsonl
+        output_version: Optionale Version
+        config_overrides: Optionale Konfigurationsüberschreibungen
+
+    Returns:
+        Training-Ergebnis mit Metriken
+    """
+    task_id = self.request.id
+
+    logger.info(
+        "surya_hf_training_starting",
+        task_id=task_id,
+        train_data=train_data_path,
+        test_data=test_data_path,
+    )
+
+    try:
+        from app.ml.finetuning.surya_hf_trainer import (
+            SuryaOCRTrainer,
+            SuryaTrainingConfig,
+        )
+        from app.ml.finetuning.checkpoint_manager import CheckpointManager
+
+        # Konfiguration erstellen
+        config = SuryaTrainingConfig()
+
+        if config_overrides:
+            for key, value in config_overrides.items():
+                if hasattr(config, key):
+                    setattr(config, key, value)
+
+        # Trainer initialisieren und ausführen
+        trainer = SuryaOCRTrainer(config=config)
+
+        async def run_training():
+            return await trainer.train(
+                train_data_path=train_data_path,
+                test_data_path=test_data_path
+            )
+
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        result = loop.run_until_complete(run_training())
+
+        # Checkpoint registrieren
+        if result.get("status") == "completed":
+            checkpoint_manager = CheckpointManager()
+            version = checkpoint_manager.create_version(
+                model_name="surya",
+                source_path=result["output_dir"],
+                metrics={
+                    "train_loss": result.get("train_loss"),
+                },
+                training_config=config_overrides or {},
+                notes=f"Celery Task {task_id}"
+            )
+            result["registered_version"] = version
+
+        logger.info(
+            "surya_hf_training_completed",
+            task_id=task_id,
+            status=result.get("status"),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception(
+            "surya_hf_training_failed",
+            task_id=task_id,
+            error=str(e),
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.training_tasks.check_retraining_conditions",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    soft_time_limit=300,
+    time_limit=360,
+    acks_late=True,
+)
+def check_retraining_conditions(self) -> Dict[str, Any]:
+    """
+    Prüfe ob Retraining-Bedingungen erfüllt sind.
+
+    Wird täglich ausgeführt und prüft:
+    - Anzahl neuer Korrekturen
+    - Qualitätsverschlechterung
+    - Umlaut-Accuracy-Probleme
+
+    Returns:
+        Empfehlung mit Dringlichkeit
+    """
+    task_id = self.request.id
+
+    logger.info("check_retraining_conditions_starting", task_id=task_id)
+
+    try:
+        from app.services.quality_monitoring_service import get_quality_monitoring_service
+        from app.db.session import get_async_session_context
+
+        async def check_conditions():
+            async with get_async_session_context() as session:
+                service = await get_quality_monitoring_service(session)
+                recommendation = await service.get_retraining_recommendation()
+
+                return {
+                    "should_retrain": recommendation.should_retrain,
+                    "urgency": recommendation.urgency,
+                    "reasons": recommendation.reasons,
+                    "focus_areas": recommendation.focus_areas,
+                    "estimated_samples_needed": recommendation.estimated_samples_needed,
+                }
+
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        result = loop.run_until_complete(check_conditions())
+
+        logger.info(
+            "check_retraining_conditions_completed",
+            task_id=task_id,
+            should_retrain=result["should_retrain"],
+            urgency=result["urgency"],
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception(
+            "check_retraining_conditions_failed",
+            task_id=task_id,
+            error=str(e),
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.training_tasks.run_quality_monitoring",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    soft_time_limit=300,
+    time_limit=360,
+    acks_late=True,
+)
+def run_quality_monitoring(self) -> Dict[str, Any]:
+    """
+    Führe Qualitätsmonitoring durch und generiere Alerts.
+
+    Wird stündlich ausgeführt.
+
+    Returns:
+        Monitoring-Ergebnis mit Alerts
+    """
+    task_id = self.request.id
+
+    logger.info("run_quality_monitoring_starting", task_id=task_id)
+
+    try:
+        from app.services.quality_monitoring_service import get_quality_monitoring_service
+        from app.db.session import get_async_session_context
+
+        async def run_monitoring():
+            async with get_async_session_context() as session:
+                service = await get_quality_monitoring_service(session)
+                alerts = await service.run_quality_check()
+
+                return {
+                    "alerts_count": len(alerts),
+                    "critical_alerts": sum(1 for a in alerts if a.severity.value == "critical"),
+                    "warning_alerts": sum(1 for a in alerts if a.severity.value == "warning"),
+                    "alerts": [
+                        {
+                            "type": a.alert_type.value,
+                            "severity": a.severity.value,
+                            "message": a.message,
+                            "affected_backend": a.affected_backend,
+                        }
+                        for a in alerts
+                    ]
+                }
+
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        result = loop.run_until_complete(run_monitoring())
+
+        logger.info(
+            "run_quality_monitoring_completed",
+            task_id=task_id,
+            alerts_count=result["alerts_count"],
+            critical=result["critical_alerts"],
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception(
+            "run_quality_monitoring_failed",
+            task_id=task_id,
+            error=str(e),
+        )
+        raise
+
+
+# Erweitere Beat Schedule mit Bulk Processing und Fine-Tuning Tasks
+CELERY_BEAT_TRAINING_SCHEDULE.update({
+    "quality-snapshot-hourly": {
+        "task": "app.workers.tasks.training_tasks.create_quality_snapshot",
+        "schedule": 3600.0,  # Stündlich
+        "options": {"queue": "default"},
+    },
+    "quality-monitoring-hourly": {
+        "task": "app.workers.tasks.training_tasks.run_quality_monitoring",
+        "schedule": 3600.0,  # Stündlich
+        "options": {"queue": "default"},
+    },
+    "check-retraining-conditions-daily": {
+        "task": "app.workers.tasks.training_tasks.check_retraining_conditions",
+        "schedule": 86400.0,  # Täglich um 02:00
+        "options": {"queue": "default"},
+    },
+})

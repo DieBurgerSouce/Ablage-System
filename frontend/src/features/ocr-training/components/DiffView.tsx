@@ -131,7 +131,7 @@ export function DiffView({ original, modified, className }: DiffViewProps) {
                             </span>
                         )
 
-                    case 'replace':
+                    case 'replace': {
                         const isUmlaut = isUmlautError(segment.original, segment.modified)
                         return (
                             <span key={key}>
@@ -158,6 +158,7 @@ export function DiffView({ original, modified, className }: DiffViewProps) {
                                 </span>
                             </span>
                         )
+                    }
 
                     default:
                         return null

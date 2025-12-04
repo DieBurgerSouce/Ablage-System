@@ -1,7 +1,7 @@
 """Pydantic schemas for API request/response validation."""
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from enum import Enum
 from pathlib import Path
 import uuid
@@ -3222,3 +3222,349 @@ class TrendResponse(BaseModel):
     data_points: List[TrendDataPoint]
     trend_direction: str = Field(description="up, down, stable")
     change_percent: float
+
+
+# ============================================================================
+# BULK OCR PROCESSING SCHEMAS
+# Massenverarbeitung aller Trainings-Dokumente durch alle Backends
+# ============================================================================
+
+class BulkJobStatus(str, Enum):
+    """Status eines Bulk Processing Jobs."""
+    PENDING = "pending"
+    RUNNING = "running"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class BulkProcessingJobCreate(BaseModel):
+    """Bulk Processing Job erstellen."""
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=2000)
+    backends: List[str] = Field(
+        default=["deepseek", "got_ocr", "surya_gpu", "surya_cpu"],
+        description="Zu verwendende OCR Backends"
+    )
+    configuration: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Backend-spezifische Konfiguration"
+    )
+
+    @field_validator("backends")
+    @classmethod
+    def validate_backends(cls, v: List[str]) -> List[str]:
+        """Validiere Backend-Namen."""
+        valid_backends = {"deepseek", "got_ocr", "surya_gpu", "surya_cpu"}
+        for backend in v:
+            if backend not in valid_backends:
+                raise ValueError(f"Ungültiges Backend: {backend}. Erlaubt: {valid_backends}")
+        return v
+
+
+class BulkProcessingJobResponse(BaseModel):
+    """Bulk Processing Job Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    description: Optional[str] = None
+    status: BulkJobStatus
+    backends: List[str]
+    total_documents: int
+    processed_documents: int
+    failed_documents: int
+    current_backend: Optional[str] = None
+    current_backend_index: int = 0
+    current_document_index: int = 0
+    documents_per_backend: Dict[str, int] = {}
+    configuration: Dict[str, Any] = {}
+    error_log: List[Dict[str, Any]] = []
+    created_at: datetime
+    updated_at: datetime
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    paused_at: Optional[datetime] = None
+    last_checkpoint_at: Optional[datetime] = None
+    created_by_id: Optional[uuid.UUID] = None
+
+
+class BulkProcessingProgress(BaseModel):
+    """Fortschritt eines Bulk Processing Jobs."""
+    job_id: uuid.UUID
+    status: BulkJobStatus
+    total_documents: int
+    processed_documents: int
+    failed_documents: int
+    progress_percent: float
+    current_backend: Optional[str] = None
+    current_backend_index: int
+    total_backends: int
+    documents_per_backend: Dict[str, int] = {}
+    estimated_time_remaining_seconds: Optional[int] = None
+    processing_rate_per_minute: Optional[float] = None
+    started_at: Optional[datetime] = None
+    elapsed_seconds: Optional[int] = None
+
+
+class BulkProcessingJobListResponse(BaseModel):
+    """Liste von Bulk Processing Jobs."""
+    total: int
+    jobs: List[BulkProcessingJobResponse]
+
+
+class BulkProcessingStartResponse(BaseModel):
+    """Antwort beim Starten eines Bulk Processing Jobs."""
+    success: bool
+    job_id: uuid.UUID
+    message: str
+    total_documents: int
+    backends: List[str]
+    estimated_time_hours: Optional[float] = None
+
+
+class BulkProcessingPauseResponse(BaseModel):
+    """Antwort beim Pausieren eines Bulk Processing Jobs."""
+    success: bool
+    job_id: uuid.UUID
+    message: str
+    processed_documents: int
+    remaining_documents: int
+    can_resume: bool
+
+
+class BulkProcessingResumeResponse(BaseModel):
+    """Antwort beim Fortsetzen eines Bulk Processing Jobs."""
+    success: bool
+    job_id: uuid.UUID
+    message: str
+    resume_from_backend: str
+    resume_from_document: int
+
+
+class BulkProcessingCancelResponse(BaseModel):
+    """Antwort beim Abbrechen eines Bulk Processing Jobs."""
+    success: bool
+    job_id: uuid.UUID
+    message: str
+    documents_processed_before_cancel: int
+
+
+# --- OCR Document Output Schemas ---
+
+class OCRDocumentOutputResponse(BaseModel):
+    """OCR Output pro Dokument pro Backend."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    training_sample_id: uuid.UUID
+    bulk_job_id: Optional[uuid.UUID] = None
+    backend_name: str
+    backend_version: Optional[str] = None
+    raw_text: Optional[str] = None
+    structured_output: Optional[Dict[str, Any]] = None
+    confidence_score: Optional[float] = None
+    processing_time_ms: Optional[int] = None
+    gpu_memory_mb: Optional[int] = None
+    error_message: Optional[str] = None
+    success: bool
+    processed_at: datetime
+
+
+class OCRDocumentOutputListResponse(BaseModel):
+    """Liste von OCR Outputs fuer ein Sample."""
+    sample_id: uuid.UUID
+    outputs: List[OCRDocumentOutputResponse]
+    total_backends: int
+    successful_backends: int
+
+
+# --- Quality Snapshot Schemas ---
+
+class OCRQualitySnapshotResponse(BaseModel):
+    """Quality Snapshot Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    backend_name: str
+    snapshot_time: datetime
+    sample_count: int
+    avg_cer: Optional[float] = None
+    avg_wer: Optional[float] = None
+    avg_umlaut_accuracy: Optional[float] = None
+    avg_processing_time_ms: Optional[float] = None
+    p50_cer: Optional[float] = None
+    p90_cer: Optional[float] = None
+    p99_cer: Optional[float] = None
+    correction_count: int = 0
+    correction_types: Dict[str, int] = {}
+    alert_triggered: bool = False
+    alert_reason: Optional[str] = None
+    created_at: datetime
+
+
+class QualitySnapshotListResponse(BaseModel):
+    """Liste von Quality Snapshots."""
+    backend_name: str
+    snapshots: List[OCRQualitySnapshotResponse]
+    total: int
+
+
+# --- Model Deployment Schemas ---
+
+class ModelDeploymentCreate(BaseModel):
+    """Model Deployment erstellen."""
+    model_name: str = Field(..., min_length=1, max_length=100)
+    version: str = Field(..., min_length=1, max_length=50)
+    model_type: str = Field(..., pattern="^(base|finetuned|lora)$")
+    checkpoint_path: Optional[str] = Field(None, max_length=500)
+    training_job_id: Optional[uuid.UUID] = None
+    traffic_percentage: float = Field(0.0, ge=0.0, le=100.0)
+
+
+class ModelDeploymentResponse(BaseModel):
+    """Model Deployment Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    model_name: str
+    version: str
+    model_type: str
+    is_active: bool
+    is_default: bool
+    traffic_percentage: float
+    performance_metrics: Dict[str, Any] = {}
+    checkpoint_path: Optional[str] = None
+    training_job_id: Optional[uuid.UUID] = None
+    previous_version: Optional[str] = None
+    rollback_reason: Optional[str] = None
+    deployed_at: Optional[datetime] = None
+    deactivated_at: Optional[datetime] = None
+    created_at: datetime
+    deployed_by_id: Optional[uuid.UUID] = None
+
+
+class ModelDeploymentListResponse(BaseModel):
+    """Liste von Model Deployments."""
+    model_name: str
+    deployments: List[ModelDeploymentResponse]
+    active_version: Optional[str] = None
+    total: int
+
+
+# =============================================================================
+# Training Dataset Export Schemas
+# =============================================================================
+
+class ExportFormat(str, Enum):
+    """Unterstützte Export-Formate."""
+    DEEPSEEK_JSONL = "deepseek_jsonl"
+    SURYA_HF = "surya_hf"
+    GENERIC_JSONL = "generic_jsonl"
+    CSV = "csv"
+
+
+class SplitStrategy(str, Enum):
+    """Strategie für Train/Val/Test Split."""
+    RANDOM = "random"
+    STRATIFIED = "stratified"
+    TEMPORAL = "temporal"
+
+
+class ExportConfigRequest(BaseModel):
+    """Konfiguration für Dataset-Export."""
+    format: ExportFormat = Field(default=ExportFormat.DEEPSEEK_JSONL, description="Export-Format")
+    split_ratio: Tuple[float, float, float] = Field(
+        default=(0.8, 0.1, 0.1),
+        description="Train/Val/Test Split-Verhältnis"
+    )
+    split_strategy: SplitStrategy = Field(default=SplitStrategy.RANDOM, description="Split-Strategie")
+    filter_verified_only: bool = Field(default=True, description="Nur verifizierte Samples")
+    min_umlaut_accuracy: Optional[float] = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description="Minimale Umlaut-Genauigkeit"
+    )
+    min_cer: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Maximale CER (Character Error Rate)"
+    )
+    include_metadata: bool = Field(default=True, description="Metadata inkludieren")
+    include_image_base64: bool = Field(default=False, description="Bilder als Base64")
+    image_reference_type: str = Field(
+        default="path",
+        pattern="^(path|base64|url)$",
+        description="Typ der Bild-Referenz"
+    )
+    seed: int = Field(default=42, ge=0, description="Random Seed für Reproduzierbarkeit")
+
+    @field_validator("split_ratio")
+    @classmethod
+    def validate_split_ratio(cls, v: Tuple[float, float, float]) -> Tuple[float, float, float]:
+        """Validiert dass Split-Ratio sich zu 1.0 summiert."""
+        if not (0.99 <= sum(v) <= 1.01):
+            raise ValueError("Split-Ratio muss sich zu 1.0 summieren")
+        return v
+
+
+class DeepSeekExportRequest(BaseModel):
+    """Spezifische Konfiguration für DeepSeek-Export."""
+    prompt_type: str = Field(
+        default="full_ocr",
+        pattern="^(full_ocr|structured|full_with_structure)$",
+        description="Art des Prompts"
+    )
+    include_structured: bool = Field(default=True, description="Strukturierte Felder inkludieren")
+    split_ratio: Tuple[float, float, float] = Field(default=(0.8, 0.1, 0.1))
+    filter_verified_only: bool = Field(default=True)
+
+
+class SuryaExportRequest(BaseModel):
+    """Spezifische Konfiguration für Surya-Export."""
+    create_arrow_files: bool = Field(default=True, description="HuggingFace Arrow-Dateien erstellen")
+    split_ratio: Tuple[float, float, float] = Field(default=(0.8, 0.1, 0.1))
+    filter_verified_only: bool = Field(default=True)
+
+
+class ExportStatsResponse(BaseModel):
+    """Statistiken eines Exports."""
+    total_samples: int
+    train_samples: int
+    val_samples: int
+    test_samples: int
+    samples_with_umlauts: int
+    avg_text_length: float
+    document_types: Dict[str, int]
+    export_time_seconds: float
+    output_size_bytes: int
+
+
+class ExportResultResponse(BaseModel):
+    """Ergebnis eines Dataset-Exports."""
+    success: bool
+    export_id: str
+    output_dir: str
+    format: ExportFormat
+    stats: ExportStatsResponse
+    files_created: List[str]
+    errors: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
+
+class ExportListItemResponse(BaseModel):
+    """Einzelner Export in der Liste."""
+    export_id: str
+    created_at: Optional[str] = None
+    format: Optional[str] = None
+    total_samples: int = 0
+    output_dir: str
+
+
+class ExportListResponse(BaseModel):
+    """Liste aller Exports."""
+    exports: List[ExportListItemResponse]
+    total: int

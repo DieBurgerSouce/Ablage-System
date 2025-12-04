@@ -2476,6 +2476,9 @@ class OCRTrainingBatch(Base):
     description = Column(Text, nullable=True)
     batch_type = Column(String(30), default=BatchType.STRATIFIED.value)
 
+    # Backend-spezifische Validierung (fuer Pro-Backend Stichproben)
+    target_backend = Column(String(50), nullable=True)
+
     # Stratifikations-Konfiguration
     stratification_config = Column(CrossDBJSON, default=dict)  # {by_type: true, by_language: true, type_weights: {...}}
 
@@ -2642,4 +2645,258 @@ class OCRBackendStatsDaily(Base):
         Index("ix_ocr_backend_stats_daily_backend", "backend_name"),
         Index("ix_ocr_backend_stats_daily_date", "report_date"),
         Index("ix_ocr_backend_stats_daily_backend_date", "backend_name", "report_date", unique=True),
+    )
+
+
+# ============================================================================
+# BULK OCR PROCESSING MODELS
+# Massenverarbeitung aller Trainings-Dokumente
+# ============================================================================
+
+class BulkJobStatus(str, Enum):
+    """Status eines Bulk-Processing-Jobs."""
+    PENDING = "pending"
+    RUNNING = "running"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class OCRBulkProcessingJob(Base):
+    """
+    Bulk OCR Processing Job.
+
+    Trackt den Fortschritt der Massenverarbeitung aller
+    Trainings-Dokumente durch alle OCR-Backends.
+    """
+    __tablename__ = "ocr_bulk_processing_jobs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Job Identifikation
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Status
+    status = Column(String(20), default=BulkJobStatus.PENDING.value, nullable=False)
+
+    # Backend-Konfiguration
+    backends = Column(CrossDBJSON, nullable=False)  # ["deepseek", "got-ocr", ...]
+
+    # Fortschritt
+    total_documents = Column(Integer, default=0)
+    processed_documents = Column(Integer, default=0)
+    failed_documents = Column(Integer, default=0)
+
+    # Aktueller Stand
+    current_backend = Column(String(50), nullable=True)
+    current_backend_index = Column(Integer, default=0)
+    current_document_index = Column(Integer, default=0)
+
+    # Pro-Backend Statistiken
+    documents_per_backend = Column(CrossDBJSON, default=dict)
+
+    # Konfiguration
+    configuration = Column(CrossDBJSON, default=dict)
+
+    # Fehlerlog
+    error_log = Column(CrossDBJSON, default=list)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    paused_at = Column(DateTime(timezone=True), nullable=True)
+    last_checkpoint_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Relationships
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    outputs = relationship("OCRDocumentOutput", back_populates="bulk_job")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_ocr_bulk_processing_jobs_status", "status"),
+        Index("ix_ocr_bulk_processing_jobs_created", "created_at"),
+    )
+
+    @property
+    def progress_percent(self) -> float:
+        """Berechnet Fortschritt in Prozent."""
+        if self.total_documents == 0:
+            return 0.0
+        return (self.processed_documents / self.total_documents) * 100
+
+
+class OCRDocumentOutput(Base):
+    """
+    OCR Output fuer ein Dokument durch ein spezifisches Backend.
+
+    Speichert den OCR-Output aller Backends fuer spaetere
+    Vergleiche und Ground-Truth-Erstellung.
+    """
+    __tablename__ = "ocr_document_outputs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Referenzen
+    training_sample_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("ocr_training_samples.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    bulk_job_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("ocr_bulk_processing_jobs.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Backend Identifikation
+    backend_name = Column(String(50), nullable=False)
+    backend_version = Column(String(50), nullable=True)
+
+    # OCR Output
+    raw_text = Column(Text, nullable=True)
+    structured_output = Column(CrossDBJSON, nullable=True)
+
+    # Qualitaetsmetriken
+    confidence_score = Column(Float, nullable=True)
+    processing_time_ms = Column(Integer, nullable=True)
+    gpu_memory_mb = Column(Integer, nullable=True)
+
+    # Fehler
+    error_message = Column(Text, nullable=True)
+    success = Column(Boolean, default=True)
+
+    # Timestamps
+    processed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    training_sample = relationship("OCRTrainingSample")
+    bulk_job = relationship("OCRBulkProcessingJob", back_populates="outputs")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_ocr_document_outputs_sample", "training_sample_id"),
+        Index("ix_ocr_document_outputs_backend", "backend_name"),
+        Index("ix_ocr_document_outputs_job", "bulk_job_id"),
+        Index("ix_ocr_document_outputs_sample_backend", "training_sample_id", "backend_name", unique=True),
+    )
+
+
+class OCRQualitySnapshot(Base):
+    """
+    Stuendliche Qualitaets-Snapshots pro Backend.
+
+    Ermoeglicht Trend-Analyse und Quality-Degradation-Erkennung
+    fuer das Continuous-Learning-System.
+    """
+    __tablename__ = "ocr_quality_snapshots"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Identifikation
+    backend_name = Column(String(50), nullable=False)
+    snapshot_time = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Sample Counts
+    sample_count = Column(Integer, default=0)
+
+    # Qualitaetsmetriken
+    avg_cer = Column(Float, nullable=True)
+    avg_wer = Column(Float, nullable=True)
+    avg_umlaut_accuracy = Column(Float, nullable=True)
+    avg_processing_time_ms = Column(Float, nullable=True)
+
+    # Percentiles
+    p50_cer = Column(Float, nullable=True)
+    p90_cer = Column(Float, nullable=True)
+    p99_cer = Column(Float, nullable=True)
+
+    # Korrekturen
+    correction_count = Column(Integer, default=0)
+    correction_types = Column(CrossDBJSON, default=dict)
+
+    # Alert Status
+    alert_triggered = Column(Boolean, default=False)
+    alert_reason = Column(String(255), nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_ocr_quality_snapshots_backend", "backend_name"),
+        Index("ix_ocr_quality_snapshots_time", "snapshot_time"),
+        Index("ix_ocr_quality_snapshots_backend_time", "backend_name", "snapshot_time"),
+    )
+
+
+class ModelType(str, Enum):
+    """Typ des Modells."""
+    BASE = "base"
+    FINETUNED = "finetuned"
+    LORA = "lora"
+
+
+class OCRModelDeployment(Base):
+    """
+    Modell-Deployment-Tracking fuer A/B Testing.
+
+    Ermoeglicht Versionskontrolle und Rollback
+    fuer fine-getunte Modelle.
+    """
+    __tablename__ = "ocr_model_deployments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Model Identifikation
+    model_name = Column(String(100), nullable=False)
+    version = Column(String(50), nullable=False)
+    model_type = Column(String(50), default=ModelType.BASE.value)
+
+    # Deployment Info
+    is_active = Column(Boolean, default=False)
+    is_default = Column(Boolean, default=False)
+    traffic_percentage = Column(Float, default=0.0)  # Fuer A/B Testing
+
+    # Performance Metrics
+    performance_metrics = Column(CrossDBJSON, default=dict)
+
+    # Checkpoint Info
+    checkpoint_path = Column(String(500), nullable=True)
+    training_job_id = Column(UUID(as_uuid=True), nullable=True)
+
+    # Rollback Info
+    previous_version = Column(String(50), nullable=True)
+    rollback_reason = Column(Text, nullable=True)
+
+    # Timestamps
+    deployed_at = Column(DateTime(timezone=True), nullable=True)
+    deactivated_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Audit
+    deployed_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Relationships
+    deployed_by = relationship("User")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_ocr_model_deployments_model", "model_name"),
+        Index("ix_ocr_model_deployments_active", "is_active"),
+        Index("ix_ocr_model_deployments_model_version", "model_name", "version", unique=True),
     )

@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query'
 import {
     Dialog,
     DialogContent,
@@ -18,51 +17,36 @@ import {
     Clock,
     Cpu,
     Languages,
+    Loader2,
 } from 'lucide-react'
-import { trainingService, type TrainingSample, type BenchmarkResult } from '@/lib/api/services/training'
+import type { TrainingSample, BenchmarkResult } from '@/lib/api/services/training'
 import { DiffView, DiffStats } from './DiffView'
+import { BACKEND_CONFIG, BACKEND_IDS } from '../constants/backend-config'
+import {
+    useSampleBenchmarks,
+    useVerifySample,
+    useCreateCorrection,
+} from '../hooks/use-training-queries'
 
 interface SampleDetailModalProps {
     sample: TrainingSample | null
+    benchmarks?: BenchmarkResult[]
     open: boolean
     onOpenChange: (open: boolean) => void
 }
 
-// Backend-Konfiguration
-const BACKEND_CONFIG: Record<string, {
-    displayName: string
-    color: string
-}> = {
-    'deepseek-janus-pro': {
-        displayName: 'DeepSeek-Janus-Pro',
-        color: '#8884d8',
-    },
-    'got-ocr-2.0': {
-        displayName: 'GOT-OCR 2.0',
-        color: '#82ca9d',
-    },
-    'surya-gpu': {
-        displayName: 'Surya GPU',
-        color: '#ffc658',
-    },
-    'surya': {
-        displayName: 'Surya (CPU)',
-        color: '#ff8042',
-    },
-}
+export function SampleDetailModal({ sample, benchmarks: propBenchmarks, open, onOpenChange }: SampleDetailModalProps) {
+    // Hole Benchmark-Ergebnisse für dieses Sample (falls nicht als Prop übergeben)
+    const { data: fetchedBenchmarks, isLoading: isLoadingBenchmarks } = useSampleBenchmarks(
+        sample?.id ?? '',
+        !!sample?.id && open && !propBenchmarks
+    )
 
-export function SampleDetailModal({ sample, open, onOpenChange }: SampleDetailModalProps) {
-    // Hole Benchmark-Ergebnisse fuer dieses Sample
-    const { data: benchmarks, isLoading: isLoadingBenchmarks } = useQuery({
-        queryKey: ['training', 'sample-benchmarks', sample?.id],
-        queryFn: async () => {
-            if (!sample?.id) return []
-            // Hinweis: Dieser Endpoint muss eventuell noch implementiert werden
-            const response = await trainingService.getSampleBenchmarks(sample.id)
-            return response
-        },
-        enabled: !!sample?.id && open,
-    })
+    const benchmarks = propBenchmarks ?? fetchedBenchmarks
+
+    // Mutations für Aktionen
+    const verifyMutation = useVerifySample()
+    const correctionMutation = useCreateCorrection()
 
     if (!sample) return null
 
@@ -164,7 +148,7 @@ export function SampleDetailModal({ sample, open, onOpenChange }: SampleDetailMo
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {Object.keys(BACKEND_CONFIG).map((backendId) => {
+                                    {BACKEND_IDS.map((backendId) => {
                                         const benchmark = benchmarksByBackend[backendId]
                                         const config = BACKEND_CONFIG[backendId]
                                         const isBest = backendId === bestBackend
@@ -298,8 +282,44 @@ export function SampleDetailModal({ sample, open, onOpenChange }: SampleDetailMo
 
                             {/* Aktionen */}
                             <div className="flex justify-end gap-2 pt-4 border-t">
-                                <Button variant="outline">Korrektur einreichen</Button>
-                                <Button>Als verifiziert markieren</Button>
+                                <Button
+                                    variant="outline"
+                                    disabled={correctionMutation.isPending}
+                                    onClick={() => {
+                                        // TODO: Korrektur-Dialog öffnen
+                                        // Für jetzt: Dummy-Korrektur erstellen
+                                        if (sample && bestBackend && benchmarksByBackend[bestBackend]?.raw_text) {
+                                            correctionMutation.mutate({
+                                                document_id: sample.id,
+                                                original_text: benchmarksByBackend[bestBackend].raw_text || '',
+                                                corrected_text: groundTruth,
+                                                correction_type: 'manual',
+                                                backend_used: bestBackend,
+                                            })
+                                        }
+                                    }}
+                                >
+                                    {correctionMutation.isPending && (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    )}
+                                    Korrektur einreichen
+                                </Button>
+                                <Button
+                                    disabled={verifyMutation.isPending || sample.status === 'verified'}
+                                    onClick={() => {
+                                        if (sample) {
+                                            verifyMutation.mutate({
+                                                id: sample.id,
+                                                approved: true,
+                                            })
+                                        }
+                                    }}
+                                >
+                                    {verifyMutation.isPending && (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    )}
+                                    {sample.status === 'verified' ? 'Bereits verifiziert' : 'Als verifiziert markieren'}
+                                </Button>
                             </div>
                         </TabsContent>
 

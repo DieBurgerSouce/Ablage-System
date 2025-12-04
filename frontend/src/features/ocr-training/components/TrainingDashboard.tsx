@@ -1,58 +1,62 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
     BarChart3,
+    Brain,
     Clock,
     FileText,
     FlaskConical,
     GitCompare,
     Layers,
+    Loader2,
     TrendingUp,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { trainingService, type TrainingOverviewStats, type BackendStats } from '@/lib/api/services/training';
+import type { TrainingOverviewStats, BackendStats } from '@/lib/api/services/training';
+import {
+    useOverviewStats,
+    useBackendStats,
+    useBackendComparison,
+} from '../hooks/use-training-queries';
+import {
+    getBackendDisplayName,
+    getBackendColor,
+} from '../constants/backend-config';
 import { BackendComparisonChart } from './BackendComparisonChart';
 import { SamplesList } from './SamplesList';
 import { BatchesList } from './BatchesList';
+import { LearningInsights } from './LearningInsights';
 
 export function TrainingDashboard() {
     const [activeTab, setActiveTab] = useState('overview');
 
-    const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['training', 'overview'],
-        queryFn: trainingService.getOverviewStats,
-    });
-
-    const { data: backendStats, isLoading: backendStatsLoading } = useQuery({
-        queryKey: ['training', 'backend-stats'],
-        queryFn: () => trainingService.getBackendStats(30),
-    });
-
-    const { data: comparison } = useQuery({
-        queryKey: ['training', 'comparison'],
-        queryFn: () => trainingService.getBackendComparison(),
-    });
+    const { data: stats, isLoading: statsLoading } = useOverviewStats();
+    const { data: backendStats, isLoading: backendStatsLoading } = useBackendStats(30);
+    const { data: comparison } = useBackendComparison();
 
     return (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="overview" className="gap-2">
                     <BarChart3 className="w-4 h-4" />
-                    Übersicht
+                    <span className="hidden sm:inline">Übersicht</span>
                 </TabsTrigger>
                 <TabsTrigger value="comparison" className="gap-2">
                     <GitCompare className="w-4 h-4" />
-                    Backend-Vergleich
+                    <span className="hidden sm:inline">Backend-Vergleich</span>
                 </TabsTrigger>
                 <TabsTrigger value="samples" className="gap-2">
                     <FileText className="w-4 h-4" />
-                    Ground Truth
+                    <span className="hidden sm:inline">Ground Truth</span>
                 </TabsTrigger>
                 <TabsTrigger value="batches" className="gap-2">
                     <Layers className="w-4 h-4" />
-                    Stichproben
+                    <span className="hidden sm:inline">Stichproben</span>
+                </TabsTrigger>
+                <TabsTrigger value="learning" className="gap-2">
+                    <Brain className="w-4 h-4" />
+                    <span className="hidden sm:inline">Self-Learning</span>
                 </TabsTrigger>
             </TabsList>
 
@@ -75,6 +79,10 @@ export function TrainingDashboard() {
             <TabsContent value="batches" className="space-y-6">
                 <BatchesList />
             </TabsContent>
+
+            <TabsContent value="learning" className="space-y-6">
+                <LearningInsights />
+            </TabsContent>
         </Tabs>
     );
 }
@@ -89,7 +97,10 @@ function OverviewTab({ stats, backendStats, isLoading }: OverviewTabProps) {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-pulse text-muted-foreground">Lade Statistiken...</div>
+                <div className="flex items-center gap-3 text-muted-foreground">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span>Lade Statistiken...</span>
+                </div>
             </div>
         );
     }
@@ -137,11 +148,17 @@ function OverviewTab({ stats, backendStats, isLoading }: OverviewTabProps) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        {backendStats.map((backend) => (
-                            <BackendCard key={backend.backend_name} backend={backend} />
-                        ))}
-                    </div>
+                    {backendStats.length > 0 ? (
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            {backendStats.map((backend) => (
+                                <BackendCard key={backend.backend_name} backend={backend} />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                            Keine Backend-Statistiken verfügbar
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -149,10 +166,10 @@ function OverviewTab({ stats, backendStats, isLoading }: OverviewTabProps) {
             <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Samples nach Sprache</CardTitle>
+                        <CardTitle className="text-lg">Samples nach Sprache</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             {Object.entries(stats?.samples_by_language || {}).map(([lang, count]) => (
                                 <div key={lang} className="flex items-center justify-between">
                                     <span className="font-medium uppercase">{lang}</span>
@@ -160,7 +177,9 @@ function OverviewTab({ stats, backendStats, isLoading }: OverviewTabProps) {
                                 </div>
                             ))}
                             {Object.keys(stats?.samples_by_language || {}).length === 0 && (
-                                <p className="text-muted-foreground text-sm">Keine Daten verfügbar</p>
+                                <p className="text-muted-foreground text-sm text-center py-4">
+                                    Keine Daten verfügbar
+                                </p>
                             )}
                         </div>
                     </CardContent>
@@ -168,10 +187,10 @@ function OverviewTab({ stats, backendStats, isLoading }: OverviewTabProps) {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Samples nach Dokumenttyp</CardTitle>
+                        <CardTitle className="text-lg">Samples nach Dokumenttyp</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             {Object.entries(stats?.samples_by_document_type || {}).map(([type, count]) => (
                                 <div key={type} className="flex items-center justify-between">
                                     <span className="font-medium capitalize">{type}</span>
@@ -179,7 +198,9 @@ function OverviewTab({ stats, backendStats, isLoading }: OverviewTabProps) {
                                 </div>
                             ))}
                             {Object.keys(stats?.samples_by_document_type || {}).length === 0 && (
-                                <p className="text-muted-foreground text-sm">Keine Daten verfügbar</p>
+                                <p className="text-muted-foreground text-sm text-center py-4">
+                                    Keine Daten verfügbar
+                                </p>
                             )}
                         </div>
                     </CardContent>
@@ -199,7 +220,7 @@ interface StatsCardProps {
 
 function StatsCard({ title, value, icon, description, variant = 'default' }: StatsCardProps) {
     return (
-        <Card className={variant === 'warning' ? 'border-yellow-500/50' : ''}>
+        <Card className={variant === 'warning' ? 'border-yellow-500/50 bg-yellow-500/5' : ''}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{title}</CardTitle>
                 {icon}
@@ -225,10 +246,19 @@ function BackendCard({ backend }: BackendCardProps) {
         ? backend.avg_umlaut_accuracy >= 0.99 ? 'text-green-600' : backend.avg_umlaut_accuracy >= 0.95 ? 'text-yellow-600' : 'text-red-600'
         : 'text-muted-foreground';
 
+    const displayName = getBackendDisplayName(backend.backend_name);
+    const color = getBackendColor(backend.backend_name);
+
     return (
-        <div className="rounded-lg border p-4 space-y-3">
+        <div className="rounded-lg border p-4 space-y-3 hover:border-primary/50 transition-colors">
             <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-sm">{backend.backend_name}</h4>
+                <div className="flex items-center gap-2">
+                    <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: color }}
+                    />
+                    <h4 className="font-semibold text-sm">{displayName}</h4>
+                </div>
                 <Badge variant="outline" className="text-xs">
                     {backend.samples_processed} Samples
                 </Badge>
@@ -255,7 +285,7 @@ function BackendCard({ backend }: BackendCardProps) {
                 <div className="flex justify-between">
                     <span className="text-muted-foreground">Zeit</span>
                     <span>
-                        {backend.avg_processing_time_ms !== undefined ? `${backend.avg_processing_time_ms}ms` : '-'}
+                        {backend.avg_processing_time_ms !== undefined ? `${backend.avg_processing_time_ms.toFixed(0)}ms` : '-'}
                     </span>
                 </div>
             </div>

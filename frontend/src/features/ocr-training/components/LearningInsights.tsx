@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -13,7 +13,6 @@ import {
     Lightbulb,
     AlertTriangle,
 } from 'lucide-react'
-import { trainingService } from '@/lib/api/services/training'
 import {
     LineChart,
     Line,
@@ -24,48 +23,22 @@ import {
     Legend,
     ResponsiveContainer,
 } from 'recharts'
-import { useState } from 'react'
-
-// Backend-Konfiguration
-const BACKEND_CONFIG: Record<string, {
-    displayName: string
-    color: string
-}> = {
-    'deepseek-janus-pro': {
-        displayName: 'DeepSeek-Janus-Pro',
-        color: '#8884d8',
-    },
-    'got-ocr-2.0': {
-        displayName: 'GOT-OCR 2.0',
-        color: '#82ca9d',
-    },
-    'surya-gpu': {
-        displayName: 'Surya GPU',
-        color: '#ffc658',
-    },
-    'surya': {
-        displayName: 'Surya (CPU)',
-        color: '#ff8042',
-    },
-}
+import {
+    BACKEND_CONFIG,
+    getBackendDisplayName,
+} from '../constants/backend-config'
+import {
+    useLearnedWeights,
+    useOverviewStats,
+    useTrendData,
+} from '../hooks/use-training-queries'
 
 export function LearningInsights() {
     const [trendDays, setTrendDays] = useState<7 | 30 | 90>(30)
 
-    const { data: learnedWeights, isLoading: isLoadingWeights, refetch: refetchWeights } = useQuery({
-        queryKey: ['training', 'learned-weights'],
-        queryFn: () => trainingService.getLearnedWeights(false),
-    })
-
-    const { data: overview } = useQuery({
-        queryKey: ['training', 'overview'],
-        queryFn: trainingService.getOverviewStats,
-    })
-
-    const { data: trendData } = useQuery({
-        queryKey: ['training', 'trends', 'all', trendDays],
-        queryFn: () => trainingService.getTrendData({ days: trendDays }),
-    })
+    const { data: learnedWeights, isLoading: isLoadingWeights, refetch: refetchWeights } = useLearnedWeights()
+    const { data: overview } = useOverviewStats()
+    const { data: trendData } = useTrendData({ days: trendDays })
 
     // Berechne den besten Backend basierend auf Gewichten
     let bestBackend: string | null = null
@@ -89,7 +62,7 @@ export function LearningInsights() {
             acc[date][`${point.backend}_cer`] = point.avg_cer * 100
         }
         return acc
-    }, {} as Record<string, any>)
+    }, {} as Record<string, Record<string, string | number>>)
 
     const chartDataArray = chartData ? Object.values(chartData) : []
 
@@ -99,7 +72,7 @@ export function LearningInsights() {
     if (bestBackend && bestWeight > 0.5) {
         insights.push({
             type: 'success',
-            message: `${BACKEND_CONFIG[bestBackend]?.displayName ?? bestBackend} hat die hoechste Gewichtung (${(bestWeight * 100).toFixed(0)}%)`,
+            message: `${getBackendDisplayName(bestBackend)} hat die höchste Gewichtung (${(bestWeight * 100).toFixed(0)}%)`,
         })
     }
 
