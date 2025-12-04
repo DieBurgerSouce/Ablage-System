@@ -2838,3 +2838,387 @@ class EntityMergeRequest(BaseModel):
     )
     merge_documents: bool = Field(True, description="Dokumente zur Ziel-Entitaet verschieben")
     merge_aliases: bool = Field(True, description="Aliase zusammenfuehren")
+
+
+# ============================================================================
+# OCR TRAINING & VALIDATION SCHEMAS
+# Enterprise OCR Training System mit Self-Learning
+# ============================================================================
+
+class TrainingSampleStatus(str, Enum):
+    """Status eines Training-Samples."""
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    ANNOTATED = "annotated"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+
+
+class CorrectionType(str, Enum):
+    """Typ der OCR-Korrektur."""
+    UMLAUT = "umlaut"
+    DATE = "date"
+    AMOUNT = "amount"
+    NAME = "name"
+    IBAN = "iban"
+    VAT_ID = "vat_id"
+    GENERAL = "general"
+
+
+class TrainingBatchType(str, Enum):
+    """Typ des Stichproben-Batches."""
+    RANDOM = "random"
+    STRATIFIED = "stratified"
+    TARGETED = "targeted"
+    LOW_CONFIDENCE = "low_confidence"
+
+
+class TrainingBatchStatus(str, Enum):
+    """Status des Stichproben-Batches."""
+    DRAFT = "draft"
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+# --- Training Sample Schemas ---
+
+class TrainingSampleBase(BaseModel):
+    """Basis-Schema fuer Training Sample."""
+    language: str = Field("de", pattern="^(de|nl|pl|en)$")
+    document_type: Optional[str] = Field(None, max_length=50)
+    difficulty: str = Field("medium", pattern="^(easy|medium|hard)$")
+    has_umlauts: bool = False
+    has_fraktur: bool = False
+    has_tables: bool = False
+    has_handwriting: bool = False
+    has_stamps: bool = False
+    has_signatures: bool = False
+
+
+class TrainingSampleCreate(TrainingSampleBase):
+    """Training Sample erstellen."""
+    file_path: str = Field(..., max_length=500)
+    file_hash: str = Field(..., max_length=64)
+    thumbnail_path: Optional[str] = Field(None, max_length=500)
+    ground_truth_text: Optional[str] = None
+    umlaut_words: List[str] = Field(default_factory=list)
+    extracted_fields: Dict[str, Any] = Field(default_factory=dict)
+
+
+class TrainingSampleUpdate(BaseModel):
+    """Training Sample aktualisieren."""
+    ground_truth_text: Optional[str] = None
+    language: Optional[str] = Field(None, pattern="^(de|nl|pl|en)$")
+    document_type: Optional[str] = Field(None, max_length=50)
+    difficulty: Optional[str] = Field(None, pattern="^(easy|medium|hard)$")
+    has_umlauts: Optional[bool] = None
+    has_fraktur: Optional[bool] = None
+    has_tables: Optional[bool] = None
+    has_handwriting: Optional[bool] = None
+    umlaut_words: Optional[List[str]] = None
+    extracted_fields: Optional[Dict[str, Any]] = None
+    annotation_notes: Optional[str] = Field(None, max_length=2000)
+    status: Optional[TrainingSampleStatus] = None
+
+
+class TrainingSampleResponse(TrainingSampleBase):
+    """Training Sample Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    file_path: str
+    file_hash: str
+    thumbnail_path: Optional[str] = None
+    ground_truth_text: Optional[str] = None
+    umlaut_words: List[str] = []
+    extracted_fields: Dict[str, Any] = {}
+    status: TrainingSampleStatus
+    annotated_by_id: Optional[uuid.UUID] = None
+    verified_by_id: Optional[uuid.UUID] = None
+    annotation_notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    annotated_at: Optional[datetime] = None
+    verified_at: Optional[datetime] = None
+
+
+class TrainingSampleListResponse(BaseModel):
+    """Liste von Training Samples."""
+    total: int
+    limit: int
+    offset: int
+    samples: List[TrainingSampleResponse]
+
+
+# --- Benchmark Schemas ---
+
+class BenchmarkCreate(BaseModel):
+    """Benchmark erstellen."""
+    training_sample_id: uuid.UUID
+    backend_name: str = Field(..., pattern="^(deepseek|got_ocr|surya_gpu|surya_cpu)$")
+    backend_version: Optional[str] = Field(None, max_length=50)
+
+
+class BenchmarkResponse(BaseModel):
+    """Benchmark Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    training_sample_id: uuid.UUID
+    backend_name: str
+    backend_version: Optional[str] = None
+    raw_text: Optional[str] = None
+    confidence_score: Optional[float] = None
+    cer: Optional[float] = None
+    wer: Optional[float] = None
+    umlaut_accuracy: Optional[float] = None
+    capitalization_accuracy: Optional[float] = None
+    field_accuracies: Dict[str, float] = {}
+    error_patterns: Dict[str, int] = {}
+    insertions: int = 0
+    deletions: int = 0
+    substitutions: int = 0
+    processing_time_ms: Optional[int] = None
+    gpu_memory_mb: Optional[int] = None
+    processed_at: datetime
+
+
+class BenchmarkRunRequest(BaseModel):
+    """Anfrage zum Starten eines Benchmark-Laufs."""
+    sample_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
+    backends: List[str] = Field(
+        default=["deepseek", "got_ocr", "surya_gpu", "surya_cpu"],
+        description="Zu testende Backends"
+    )
+    force_rerun: bool = Field(False, description="Existierende Benchmarks ueberschreiben")
+
+
+class BenchmarkRunResponse(BaseModel):
+    """Antwort auf Benchmark-Lauf."""
+    success: bool
+    samples_processed: int
+    samples_failed: int
+    backends_used: List[str]
+    total_time_ms: int
+
+
+class BackendComparisonResponse(BaseModel):
+    """Backend-Vergleich Antwort."""
+    backends: Dict[str, Dict[str, Any]] = {}
+    best_backend: Optional[str] = None
+    sample_count: int = 0
+
+
+# --- Correction Schemas ---
+
+class CorrectionCreate(BaseModel):
+    """Korrektur erstellen."""
+    document_id: Optional[uuid.UUID] = None
+    original_text: str = Field(..., min_length=1)
+    corrected_text: str = Field(..., min_length=1)
+    correction_type: CorrectionType = CorrectionType.GENERAL
+    field_corrected: Optional[str] = Field(None, max_length=50)
+    backend_used: str = Field(..., pattern="^(deepseek|got_ocr|surya_gpu|surya_cpu)$")
+    confidence_before: Optional[float] = Field(None, ge=0, le=1)
+    applies_to_training: bool = True
+
+
+class CorrectionResponse(BaseModel):
+    """Korrektur Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    document_id: Optional[uuid.UUID] = None
+    original_text: str
+    corrected_text: str
+    correction_type: CorrectionType
+    field_corrected: Optional[str] = None
+    backend_used: str
+    confidence_before: Optional[float] = None
+    applies_to_training: bool
+    learning_processed: bool
+    learning_processed_at: Optional[datetime] = None
+    corrector_id: Optional[uuid.UUID] = None
+    created_at: datetime
+
+
+class CorrectionListResponse(BaseModel):
+    """Liste von Korrekturen."""
+    total: int
+    page: int
+    per_page: int
+    corrections: List[CorrectionResponse]
+
+
+# --- Training Batch Schemas ---
+
+class StratificationConfig(BaseModel):
+    """Konfiguration fuer stratifizierte Stichproben."""
+    by_document_type: bool = True
+    by_language: bool = True
+    by_difficulty: bool = False
+    type_weights: Dict[str, float] = Field(default_factory=dict)
+    language_weights: Dict[str, float] = Field(default_factory=dict)
+
+
+class BatchCreate(BaseModel):
+    """Training Batch erstellen."""
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=2000)
+    batch_type: TrainingBatchType = TrainingBatchType.STRATIFIED
+    target_size: int = Field(100, ge=10, le=1000)
+    stratification_config: Optional[StratificationConfig] = None
+
+
+class BatchResponse(BaseModel):
+    """Training Batch Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    description: Optional[str] = None
+    batch_type: TrainingBatchType
+    stratification_config: Optional[Dict[str, Any]] = None
+    target_size: int
+    actual_size: int
+    status: TrainingBatchStatus
+    items_pending: int
+    items_completed: int
+    progress_percent: float = 0.0
+    created_by_id: Optional[uuid.UUID] = None
+    created_at: datetime
+    updated_at: datetime
+    completed_at: Optional[datetime] = None
+
+
+class BatchItemResponse(BaseModel):
+    """Batch Item Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    batch_id: uuid.UUID
+    training_sample_id: uuid.UUID
+    sequence_number: int
+    assigned_to_id: Optional[uuid.UUID] = None
+    status: str
+    validation_notes: Optional[str] = None
+    validation_time_seconds: Optional[int] = None
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    # Eingebettet Sample-Info
+    sample: Optional[TrainingSampleResponse] = None
+
+
+class BatchDetailResponse(BatchResponse):
+    """Batch mit allen Items."""
+    items: List[BatchItemResponse] = []
+
+
+class BatchListResponse(BaseModel):
+    """Liste von Batches."""
+    total: int
+    batches: List[BatchResponse]
+
+
+class BatchItemUpdate(BaseModel):
+    """Batch Item aktualisieren."""
+    status: Optional[str] = Field(None, pattern="^(pending|in_progress|completed|skipped)$")
+    validation_notes: Optional[str] = Field(None, max_length=2000)
+    validation_time_seconds: Optional[int] = Field(None, ge=0)
+
+
+# --- Statistics Schemas ---
+
+class BackendStats(BaseModel):
+    """Statistiken fuer ein Backend."""
+    backend_name: str
+    samples_processed: int
+    avg_cer: Optional[float] = None
+    avg_wer: Optional[float] = None
+    avg_umlaut_accuracy: Optional[float] = None
+    avg_processing_time_ms: Optional[float] = None
+    p50_cer: Optional[float] = None
+    p90_cer: Optional[float] = None
+    p95_cer: Optional[float] = None
+
+
+class FieldAccuracyStats(BaseModel):
+    """Feld-Genauigkeitsstatistiken."""
+    field_name: str
+    avg_accuracy: float
+    sample_count: int
+    per_backend: Dict[str, float] = {}
+
+
+class LanguageStats(BaseModel):
+    """Sprach-Statistiken."""
+    language: str
+    sample_count: int
+    avg_cer: float
+    per_backend: Dict[str, float] = {}
+
+
+class DocumentTypeStats(BaseModel):
+    """Dokumenttyp-Statistiken."""
+    document_type: str
+    sample_count: int
+    avg_cer: float
+    per_backend: Dict[str, float] = {}
+
+
+class TrainingOverviewStats(BaseModel):
+    """Gesamtuebersicht Statistiken."""
+    total_samples: int
+    verified_samples: int
+    pending_annotations: int
+    active_batches: int
+    recent_corrections_24h: int
+    unprocessed_corrections: int
+    samples_by_language: Dict[str, int] = {}
+    samples_by_document_type: Dict[str, int] = {}
+
+
+class TrainingStatsResponse(BaseModel):
+    """Vollstaendige Training-Statistiken."""
+    overview: TrainingOverviewStats
+    backends: List[BackendStats]
+    field_accuracies: List[FieldAccuracyStats]
+    language_stats: List[LanguageStats]
+    document_type_stats: List[DocumentTypeStats]
+
+
+class DailyStatsResponse(BaseModel):
+    """Taegliche Statistiken."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    backend_name: str
+    report_date: datetime
+    samples_processed: int
+    samples_verified: int
+    avg_cer: Optional[float] = None
+    avg_wer: Optional[float] = None
+    avg_umlaut_accuracy: Optional[float] = None
+    avg_processing_time_ms: Optional[float] = None
+    p50_cer: Optional[float] = None
+    p90_cer: Optional[float] = None
+    p95_cer: Optional[float] = None
+    corrections_count: int = 0
+
+
+class TrendDataPoint(BaseModel):
+    """Datenpunkt fuer Trend-Analyse."""
+    date: datetime
+    value: float
+
+
+class TrendResponse(BaseModel):
+    """Trend-Analyse Antwort."""
+    metric: str
+    backend: str
+    data_points: List[TrendDataPoint]
+    trend_direction: str = Field(description="up, down, stable")
+    change_percent: float

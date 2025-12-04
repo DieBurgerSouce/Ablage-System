@@ -15,11 +15,19 @@ import { Route as SearchRouteImport } from './app/routes/search'
 import { Route as MonitoringRouteImport } from './app/routes/monitoring'
 import { Route as LoginRouteImport } from './app/routes/login'
 import { Route as JobsRouteImport } from './app/routes/jobs'
+import { Route as DocumentGroupsRouteImport } from './app/routes/document-groups'
+import { Route as BusinessEntitiesRouteImport } from './app/routes/business-entities'
 import { Route as AutomationRouteImport } from './app/routes/automation'
 import { Route as AdminRouteImport } from './app/routes/admin'
 import { Route as IndexRouteImport } from './app/routes/index'
 import { Route as ValidationQueueIdRouteImport } from './app/routes/validation-queue.$id'
 import { Route as DocumentsDocumentIdRouteImport } from './app/routes/documents.$documentId'
+import { Route as DocumentGroupsIdRouteImport } from './app/routes/document-groups.$id'
+import { Route as BusinessEntitiesIdRouteImport } from './app/routes/business-entities.$id'
+import { Route as AdminOcrTrainingRouteImport } from './app/routes/admin.ocr-training'
+import { Route as AdminOcrBackendsRouteImport } from './app/routes/admin.ocr-backends'
+import { Route as AdminOcrBackendsBackendRouteImport } from './app/routes/admin.ocr-backends.$backend'
+import { Route as AdminOcrTrainingBatchIdRouteImport } from './app/routes/admin.ocr-training.batch.$id'
 
 const ValidationQueueRoute = ValidationQueueRouteImport.update({
   id: '/validation-queue',
@@ -51,6 +59,16 @@ const JobsRoute = JobsRouteImport.update({
   path: '/jobs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocumentGroupsRoute = DocumentGroupsRouteImport.update({
+  id: '/document-groups',
+  path: '/document-groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BusinessEntitiesRoute = BusinessEntitiesRouteImport.update({
+  id: '/business-entities',
+  path: '/business-entities',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AutomationRoute = AutomationRouteImport.update({
   id: '/automation',
   path: '/automation',
@@ -76,46 +94,100 @@ const DocumentsDocumentIdRoute = DocumentsDocumentIdRouteImport.update({
   path: '/documents/$documentId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocumentGroupsIdRoute = DocumentGroupsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => DocumentGroupsRoute,
+} as any)
+const BusinessEntitiesIdRoute = BusinessEntitiesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => BusinessEntitiesRoute,
+} as any)
+const AdminOcrTrainingRoute = AdminOcrTrainingRouteImport.update({
+  id: '/ocr-training',
+  path: '/ocr-training',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOcrBackendsRoute = AdminOcrBackendsRouteImport.update({
+  id: '/ocr-backends',
+  path: '/ocr-backends',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOcrBackendsBackendRoute = AdminOcrBackendsBackendRouteImport.update({
+  id: '/$backend',
+  path: '/$backend',
+  getParentRoute: () => AdminOcrBackendsRoute,
+} as any)
+const AdminOcrTrainingBatchIdRoute = AdminOcrTrainingBatchIdRouteImport.update({
+  id: '/batch/$id',
+  path: '/batch/$id',
+  getParentRoute: () => AdminOcrTrainingRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/automation': typeof AutomationRoute
+  '/business-entities': typeof BusinessEntitiesRouteWithChildren
+  '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
+  '/business-entities/$id': typeof BusinessEntitiesIdRoute
+  '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
   '/validation-queue/$id': typeof ValidationQueueIdRoute
+  '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
+  '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/automation': typeof AutomationRoute
+  '/business-entities': typeof BusinessEntitiesRouteWithChildren
+  '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
+  '/business-entities/$id': typeof BusinessEntitiesIdRoute
+  '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
   '/validation-queue/$id': typeof ValidationQueueIdRoute
+  '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
+  '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/automation': typeof AutomationRoute
+  '/business-entities': typeof BusinessEntitiesRouteWithChildren
+  '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
+  '/business-entities/$id': typeof BusinessEntitiesIdRoute
+  '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRoute
   '/validation-queue/$id': typeof ValidationQueueIdRoute
+  '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
+  '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -123,46 +195,72 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/automation'
+    | '/business-entities'
+    | '/document-groups'
     | '/jobs'
     | '/login'
     | '/monitoring'
     | '/search'
     | '/upload'
     | '/validation-queue'
+    | '/admin/ocr-backends'
+    | '/admin/ocr-training'
+    | '/business-entities/$id'
+    | '/document-groups/$id'
     | '/documents/$documentId'
     | '/validation-queue/$id'
+    | '/admin/ocr-backends/$backend'
+    | '/admin/ocr-training/batch/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/automation'
+    | '/business-entities'
+    | '/document-groups'
     | '/jobs'
     | '/login'
     | '/monitoring'
     | '/search'
     | '/upload'
     | '/validation-queue'
+    | '/admin/ocr-backends'
+    | '/admin/ocr-training'
+    | '/business-entities/$id'
+    | '/document-groups/$id'
     | '/documents/$documentId'
     | '/validation-queue/$id'
+    | '/admin/ocr-backends/$backend'
+    | '/admin/ocr-training/batch/$id'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/automation'
+    | '/business-entities'
+    | '/document-groups'
     | '/jobs'
     | '/login'
     | '/monitoring'
     | '/search'
     | '/upload'
     | '/validation-queue'
+    | '/admin/ocr-backends'
+    | '/admin/ocr-training'
+    | '/business-entities/$id'
+    | '/document-groups/$id'
     | '/documents/$documentId'
     | '/validation-queue/$id'
+    | '/admin/ocr-backends/$backend'
+    | '/admin/ocr-training/batch/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AutomationRoute: typeof AutomationRoute
+  BusinessEntitiesRoute: typeof BusinessEntitiesRouteWithChildren
+  DocumentGroupsRoute: typeof DocumentGroupsRouteWithChildren
   JobsRoute: typeof JobsRoute
   LoginRoute: typeof LoginRoute
   MonitoringRoute: typeof MonitoringRoute
@@ -216,6 +314,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JobsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/document-groups': {
+      id: '/document-groups'
+      path: '/document-groups'
+      fullPath: '/document-groups'
+      preLoaderRoute: typeof DocumentGroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/business-entities': {
+      id: '/business-entities'
+      path: '/business-entities'
+      fullPath: '/business-entities'
+      preLoaderRoute: typeof BusinessEntitiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/automation': {
       id: '/automation'
       path: '/automation'
@@ -251,8 +363,107 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentsDocumentIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/document-groups/$id': {
+      id: '/document-groups/$id'
+      path: '/$id'
+      fullPath: '/document-groups/$id'
+      preLoaderRoute: typeof DocumentGroupsIdRouteImport
+      parentRoute: typeof DocumentGroupsRoute
+    }
+    '/business-entities/$id': {
+      id: '/business-entities/$id'
+      path: '/$id'
+      fullPath: '/business-entities/$id'
+      preLoaderRoute: typeof BusinessEntitiesIdRouteImport
+      parentRoute: typeof BusinessEntitiesRoute
+    }
+    '/admin/ocr-training': {
+      id: '/admin/ocr-training'
+      path: '/ocr-training'
+      fullPath: '/admin/ocr-training'
+      preLoaderRoute: typeof AdminOcrTrainingRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/ocr-backends': {
+      id: '/admin/ocr-backends'
+      path: '/ocr-backends'
+      fullPath: '/admin/ocr-backends'
+      preLoaderRoute: typeof AdminOcrBackendsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/ocr-backends/$backend': {
+      id: '/admin/ocr-backends/$backend'
+      path: '/$backend'
+      fullPath: '/admin/ocr-backends/$backend'
+      preLoaderRoute: typeof AdminOcrBackendsBackendRouteImport
+      parentRoute: typeof AdminOcrBackendsRoute
+    }
+    '/admin/ocr-training/batch/$id': {
+      id: '/admin/ocr-training/batch/$id'
+      path: '/batch/$id'
+      fullPath: '/admin/ocr-training/batch/$id'
+      preLoaderRoute: typeof AdminOcrTrainingBatchIdRouteImport
+      parentRoute: typeof AdminOcrTrainingRoute
+    }
   }
 }
+
+interface AdminOcrBackendsRouteChildren {
+  AdminOcrBackendsBackendRoute: typeof AdminOcrBackendsBackendRoute
+}
+
+const AdminOcrBackendsRouteChildren: AdminOcrBackendsRouteChildren = {
+  AdminOcrBackendsBackendRoute: AdminOcrBackendsBackendRoute,
+}
+
+const AdminOcrBackendsRouteWithChildren =
+  AdminOcrBackendsRoute._addFileChildren(AdminOcrBackendsRouteChildren)
+
+interface AdminOcrTrainingRouteChildren {
+  AdminOcrTrainingBatchIdRoute: typeof AdminOcrTrainingBatchIdRoute
+}
+
+const AdminOcrTrainingRouteChildren: AdminOcrTrainingRouteChildren = {
+  AdminOcrTrainingBatchIdRoute: AdminOcrTrainingBatchIdRoute,
+}
+
+const AdminOcrTrainingRouteWithChildren =
+  AdminOcrTrainingRoute._addFileChildren(AdminOcrTrainingRouteChildren)
+
+interface AdminRouteChildren {
+  AdminOcrBackendsRoute: typeof AdminOcrBackendsRouteWithChildren
+  AdminOcrTrainingRoute: typeof AdminOcrTrainingRouteWithChildren
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminOcrBackendsRoute: AdminOcrBackendsRouteWithChildren,
+  AdminOcrTrainingRoute: AdminOcrTrainingRouteWithChildren,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface BusinessEntitiesRouteChildren {
+  BusinessEntitiesIdRoute: typeof BusinessEntitiesIdRoute
+}
+
+const BusinessEntitiesRouteChildren: BusinessEntitiesRouteChildren = {
+  BusinessEntitiesIdRoute: BusinessEntitiesIdRoute,
+}
+
+const BusinessEntitiesRouteWithChildren =
+  BusinessEntitiesRoute._addFileChildren(BusinessEntitiesRouteChildren)
+
+interface DocumentGroupsRouteChildren {
+  DocumentGroupsIdRoute: typeof DocumentGroupsIdRoute
+}
+
+const DocumentGroupsRouteChildren: DocumentGroupsRouteChildren = {
+  DocumentGroupsIdRoute: DocumentGroupsIdRoute,
+}
+
+const DocumentGroupsRouteWithChildren = DocumentGroupsRoute._addFileChildren(
+  DocumentGroupsRouteChildren,
+)
 
 interface ValidationQueueRouteChildren {
   ValidationQueueIdRoute: typeof ValidationQueueIdRoute
@@ -268,8 +479,10 @@ const ValidationQueueRouteWithChildren = ValidationQueueRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AutomationRoute: AutomationRoute,
+  BusinessEntitiesRoute: BusinessEntitiesRouteWithChildren,
+  DocumentGroupsRoute: DocumentGroupsRouteWithChildren,
   JobsRoute: JobsRoute,
   LoginRoute: LoginRoute,
   MonitoringRoute: MonitoringRoute,

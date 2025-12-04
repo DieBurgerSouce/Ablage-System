@@ -2212,3 +2212,434 @@ class DocumentRelationship(Base):
             unique=True
         ),
     )
+
+
+# ============================================================================
+# OCR TRAINING & VALIDATION MODELS
+# Enterprise OCR Training System mit Self-Learning
+# ============================================================================
+
+class TrainingSampleStatus(str, Enum):
+    """Status eines Training-Samples."""
+    PENDING = "pending"           # Noch nicht annotiert
+    IN_PROGRESS = "in_progress"   # Wird gerade bearbeitet
+    ANNOTATED = "annotated"       # Annotiert, wartet auf Verifikation
+    VERIFIED = "verified"         # Von Admin verifiziert
+    REJECTED = "rejected"         # Abgelehnt (schlechte Qualitaet)
+
+
+class OCRTrainingSample(Base):
+    """
+    Ground Truth Training Sample fuer OCR-Benchmarking.
+
+    Speichert Dokumente mit manuell verifiziertem Referenztext
+    fuer die Qualitaetsmessung aller OCR-Backends.
+
+    Workflow:
+    1. Dokument wird als Sample ausgewaehlt (PENDING)
+    2. Editor annotiert Ground Truth (ANNOTATED)
+    3. Admin verifiziert (VERIFIED)
+    4. Benchmarks laufen gegen verifizierte Samples
+    """
+    __tablename__ = "ocr_training_samples"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Dokumentreferenz
+    file_path = Column(String(500), nullable=False)
+    file_hash = Column(String(64), nullable=False, index=True)  # SHA-256
+    thumbnail_path = Column(String(500), nullable=True)
+
+    # Ground Truth (manuell verifizierter Text)
+    ground_truth_text = Column(Text, nullable=True)
+
+    # Dokumentklassifikation
+    language = Column(String(10), default="de")  # de, nl, pl, en
+    document_type = Column(String(50), nullable=True)  # invoice, freight, email, letter
+    difficulty = Column(String(20), default="medium")  # easy, medium, hard
+
+    # Dokumenteigenschaften
+    has_umlauts = Column(Boolean, default=False)
+    has_fraktur = Column(Boolean, default=False)
+    has_tables = Column(Boolean, default=False)
+    has_handwriting = Column(Boolean, default=False)
+    has_stamps = Column(Boolean, default=False)
+    has_signatures = Column(Boolean, default=False)
+
+    # Umlaut-Tracking (kritisch fuer Deutsche Dokumente)
+    umlaut_words = Column(CrossDBJSON, default=list)  # ["Muenchen", "Groesse", "uebergeben"]
+
+    # Extrahierte Felder (fuer Field-Accuracy)
+    extracted_fields = Column(CrossDBJSON, default=dict)  # {invoice_number, date, amount, vat, sender, recipient}
+
+    # Workflow Status
+    status = Column(String(20), default=TrainingSampleStatus.PENDING.value, nullable=False)
+
+    # Annotation Tracking
+    annotated_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    verified_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    annotation_notes = Column(Text, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    annotated_at = Column(DateTime(timezone=True), nullable=True)
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    annotated_by = relationship("User", foreign_keys=[annotated_by_id])
+    verified_by = relationship("User", foreign_keys=[verified_by_id])
+    benchmarks = relationship("OCRBackendBenchmark", back_populates="training_sample", cascade="all, delete-orphan")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_ocr_training_samples_status", "status"),
+        Index("ix_ocr_training_samples_language", "language"),
+        Index("ix_ocr_training_samples_document_type", "document_type"),
+        Index("ix_ocr_training_samples_file_hash", "file_hash"),
+        Index("ix_ocr_training_samples_verified", "status", "verified_at"),
+    )
+
+
+class OCRBackendBenchmark(Base):
+    """
+    Benchmark-Ergebnis eines OCR-Backends gegen ein Training Sample.
+
+    Speichert:
+    - OCR-Output des Backends
+    - Qualitaetsmetriken (CER, WER, Umlaut-Accuracy)
+    - Verarbeitungszeit und Ressourcenverbrauch
+    - Feld-spezifische Genauigkeit
+    """
+    __tablename__ = "ocr_backend_benchmarks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Referenzen
+    training_sample_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("ocr_training_samples.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Backend Identifikation
+    backend_name = Column(String(50), nullable=False)  # deepseek, got_ocr, surya_gpu, surya_cpu
+    backend_version = Column(String(50), nullable=True)
+
+    # OCR Output
+    raw_text = Column(Text, nullable=True)
+
+    # Qualitaetsmetriken
+    confidence_score = Column(Float, nullable=True)  # 0.0-1.0 vom Backend
+    cer = Column(Float, nullable=True)  # Character Error Rate
+    wer = Column(Float, nullable=True)  # Word Error Rate
+    umlaut_accuracy = Column(Float, nullable=True)  # Umlaut-Genauigkeit 0.0-1.0
+    capitalization_accuracy = Column(Float, nullable=True)  # Grossschreibung
+
+    # Feld-spezifische Genauigkeit
+    field_accuracies = Column(CrossDBJSON, default=dict)  # {invoice_number: 1.0, date: 0.9, amount: 1.0}
+
+    # Fehler-Pattern-Analyse
+    error_patterns = Column(CrossDBJSON, default=dict)  # {umlaut_errors: 2, date_format: 1}
+    insertions = Column(Integer, default=0)
+    deletions = Column(Integer, default=0)
+    substitutions = Column(Integer, default=0)
+
+    # Performance-Metriken
+    processing_time_ms = Column(Integer, nullable=True)
+    gpu_memory_mb = Column(Integer, nullable=True)
+
+    # Timestamps
+    processed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    training_sample = relationship("OCRTrainingSample", back_populates="benchmarks")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_ocr_backend_benchmarks_sample", "training_sample_id"),
+        Index("ix_ocr_backend_benchmarks_backend", "backend_name"),
+        Index("ix_ocr_backend_benchmarks_sample_backend", "training_sample_id", "backend_name"),
+        Index("ix_ocr_backend_benchmarks_processed_at", "processed_at"),
+        Index("ix_ocr_backend_benchmarks_cer", "cer"),
+    )
+
+
+class CorrectionType(str, Enum):
+    """Typ der OCR-Korrektur."""
+    UMLAUT = "umlaut"           # Umlaut-Fehler (a->ae, etc.)
+    DATE = "date"               # Datumsformat
+    AMOUNT = "amount"           # Betrag/Waehrung
+    NAME = "name"               # Firmen-/Personenname
+    IBAN = "iban"               # IBAN/Bankdaten
+    VAT_ID = "vat_id"           # USt-IdNr
+    GENERAL = "general"         # Allgemeine Korrektur
+
+
+class OCRValidationCorrection(Base):
+    """
+    Feedback-Korrektur aus der Produktion.
+
+    Wenn Benutzer OCR-Fehler korrigieren, wird das Feedback
+    gesammelt und fuer Self-Learning verwendet.
+
+    Self-Learning Workflow:
+    1. Benutzer korrigiert OCR-Fehler
+    2. Korrektur wird gespeichert und analysiert
+    3. Fehler-Patterns werden pro Backend aggregiert
+    4. OCR Router passt Backend-Auswahl an
+    """
+    __tablename__ = "ocr_validation_corrections"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Dokument-Referenz (aus Produktion)
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Korrektur-Details
+    original_text = Column(Text, nullable=False)
+    corrected_text = Column(Text, nullable=False)
+    correction_type = Column(String(30), default=CorrectionType.GENERAL.value)
+    field_corrected = Column(String(50), nullable=True)  # Welches Feld korrigiert
+
+    # Backend das den Fehler gemacht hat
+    backend_used = Column(String(50), nullable=False)
+
+    # Kontext
+    confidence_before = Column(Float, nullable=True)  # Konfidenz vor Korrektur
+
+    # Self-Learning Status
+    applies_to_training = Column(Boolean, default=False)  # Soll in Training einfliessen
+    learning_processed = Column(Boolean, default=False)  # Wurde fuer Learning verarbeitet
+    learning_processed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    corrector_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    document = relationship("Document", backref="ocr_corrections")
+    corrector = relationship("User")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_ocr_validation_corrections_document", "document_id"),
+        Index("ix_ocr_validation_corrections_backend", "backend_used"),
+        Index("ix_ocr_validation_corrections_type", "correction_type"),
+        Index("ix_ocr_validation_corrections_learning", "learning_processed"),
+        Index("ix_ocr_validation_corrections_created", "created_at"),
+    )
+
+
+class BatchType(str, Enum):
+    """Typ des Stichproben-Batches."""
+    RANDOM = "random"               # Zufaellige Auswahl
+    STRATIFIED = "stratified"       # Stratifiziert nach Typ/Sprache
+    TARGETED = "targeted"           # Gezielt nach Kriterien
+    LOW_CONFIDENCE = "low_confidence"  # Niedrige Konfidenz-Dokumente
+
+
+class BatchStatus(str, Enum):
+    """Status des Stichproben-Batches."""
+    DRAFT = "draft"           # In Erstellung
+    READY = "ready"           # Bereit zum Starten
+    IN_PROGRESS = "in_progress"  # Wird gerade bearbeitet
+    ACTIVE = "active"         # Aktiv, wird bearbeitet
+    COMPLETED = "completed"   # Alle Items validiert
+    CANCELLED = "cancelled"   # Abgebrochen
+
+
+class OCRTrainingBatch(Base):
+    """
+    Stichproben-Batch fuer systematische Validierung.
+
+    Ermoeglicht:
+    - Stratifizierte Zufallsauswahl
+    - Zuweisung an Bearbeiter
+    - Fortschrittsverfolgung
+    - Qualitaetskontrolle
+    """
+    __tablename__ = "ocr_training_batches"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Batch Identifikation
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    batch_type = Column(String(30), default=BatchType.STRATIFIED.value)
+
+    # Stratifikations-Konfiguration
+    stratification_config = Column(CrossDBJSON, default=dict)  # {by_type: true, by_language: true, type_weights: {...}}
+
+    # Groesse
+    target_size = Column(Integer, default=100)  # Ziel-Anzahl
+    actual_size = Column(Integer, default=0)    # Tatsaechliche Anzahl
+
+    # Status
+    status = Column(String(20), default=BatchStatus.DRAFT.value)
+
+    # Fortschritt (wird automatisch berechnet)
+    items_pending = Column(Integer, default=0)
+    items_completed = Column(Integer, default=0)
+
+    # Audit
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    items = relationship("OCRTrainingBatchItem", back_populates="batch", cascade="all, delete-orphan")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_ocr_training_batches_status", "status"),
+        Index("ix_ocr_training_batches_type", "batch_type"),
+        Index("ix_ocr_training_batches_created", "created_at"),
+    )
+
+    @property
+    def progress_percent(self) -> float:
+        """Berechnet Fortschritt in Prozent."""
+        if self.actual_size == 0:
+            return 0.0
+        return (self.items_completed / self.actual_size) * 100
+
+
+class ItemStatus(str, Enum):
+    """Status eines Batch-Items."""
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    SKIPPED = "skipped"
+
+
+class OCRTrainingBatchItem(Base):
+    """
+    Einzelnes Item in einem Stichproben-Batch.
+
+    Verknuepft Batch mit Training Sample und trackt
+    den Validierungs-Fortschritt.
+    """
+    __tablename__ = "ocr_training_batch_items"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Referenzen
+    batch_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("ocr_training_batches.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    training_sample_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("ocr_training_samples.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Reihenfolge im Batch
+    sequence_number = Column(Integer, nullable=False)
+
+    # Zuweisung
+    assigned_to_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Status
+    status = Column(String(20), default=ItemStatus.PENDING.value)
+
+    # Validierungs-Ergebnis
+    validation_notes = Column(Text, nullable=True)
+    validation_time_seconds = Column(Integer, nullable=True)  # Wie lange hat Validierung gedauert
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    batch = relationship("OCRTrainingBatch", back_populates="items")
+    training_sample = relationship("OCRTrainingSample")
+    assigned_to = relationship("User")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_ocr_training_batch_items_batch", "batch_id"),
+        Index("ix_ocr_training_batch_items_sample", "training_sample_id"),
+        Index("ix_ocr_training_batch_items_status", "status"),
+        Index("ix_ocr_training_batch_items_assigned", "assigned_to_id"),
+        Index("ix_ocr_training_batch_items_sequence", "batch_id", "sequence_number"),
+    )
+
+
+class OCRBackendStatsDaily(Base):
+    """
+    Taegliche aggregierte Statistiken pro Backend.
+
+    Wird automatisch von Celery Beat generiert.
+    Ermoeglicht Trend-Analyse und Performance-Vergleich.
+    """
+    __tablename__ = "ocr_backend_stats_daily"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Identifikation
+    backend_name = Column(String(50), nullable=False)
+    report_date = Column(DateTime(timezone=True), nullable=False)
+
+    # Sample-Zaehler
+    samples_processed = Column(Integer, default=0)
+    samples_verified = Column(Integer, default=0)
+
+    # Durchschnittsmetriken
+    avg_cer = Column(Float, nullable=True)
+    avg_wer = Column(Float, nullable=True)
+    avg_umlaut_accuracy = Column(Float, nullable=True)
+    avg_processing_time_ms = Column(Float, nullable=True)
+
+    # Percentile fuer CER
+    p50_cer = Column(Float, nullable=True)
+    p90_cer = Column(Float, nullable=True)
+    p95_cer = Column(Float, nullable=True)
+
+    # Aufschluesselung nach Feld-Typ
+    field_accuracy_stats = Column(CrossDBJSON, default=dict)
+    # {invoice_number: {avg: 0.95, count: 50}, date: {avg: 0.88, count: 45}}
+
+    # Aufschluesselung nach Dokument-Typ
+    document_type_stats = Column(CrossDBJSON, default=dict)
+    # {invoice: {cer: 0.02, count: 100}, freight: {cer: 0.05, count: 50}}
+
+    # Aufschluesselung nach Sprache
+    language_stats = Column(CrossDBJSON, default=dict)
+    # {de: {cer: 0.02, count: 120}, nl: {cer: 0.04, count: 30}}
+
+    # Self-Learning Metriken
+    corrections_count = Column(Integer, default=0)
+    correction_types = Column(CrossDBJSON, default=dict)
+    # {umlaut: 15, date: 5, amount: 3}
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_ocr_backend_stats_daily_backend", "backend_name"),
+        Index("ix_ocr_backend_stats_daily_date", "report_date"),
+        Index("ix_ocr_backend_stats_daily_backend_date", "backend_name", "report_date", unique=True),
+    )

@@ -249,6 +249,7 @@ celery_app = Celery(
         "app.workers.tasks.ml_tasks",
         "app.workers.tasks.dlq_management_tasks",  # Dead Letter Queue Management
         "app.workers.tasks.document_intelligence_tasks",  # Document Intelligence (Grouping, Entities)
+        "app.workers.tasks.training_tasks",  # OCR Training & Benchmarking
     ]
 )
 
@@ -544,6 +545,29 @@ celery_app.conf.update(
             "task": "app.workers.tasks.document_intelligence_tasks.update_intelligence_metrics",
             "schedule": 900.0,  # Alle 15 Minuten
         },
+        # =================================================================
+        # OCR Training Tasks (Benchmarking & Self-Learning)
+        # =================================================================
+        "training-daily-stats": {
+            "task": "app.workers.tasks.training_tasks.generate_daily_stats",
+            "schedule": crontab(hour=1, minute=0),  # Taeglich um 01:00 Uhr
+        },
+        "training-feedback-queue": {
+            "task": "app.workers.tasks.training_tasks.process_feedback_queue",
+            "schedule": 3600.0,  # Stuendlich
+        },
+        "training-learned-weights": {
+            "task": "app.workers.tasks.training_tasks.update_learned_weights",
+            "schedule": crontab(hour=2, minute=0),  # Taeglich um 02:00 Uhr
+        },
+        "training-weekly-benchmarks": {
+            "task": "app.workers.tasks.training_tasks.run_scheduled_benchmarks",
+            "schedule": crontab(day_of_week=0, hour=3, minute=0),  # Sonntag 03:00 Uhr
+        },
+        "training-weekly-report": {
+            "task": "app.workers.tasks.training_tasks.generate_training_report",
+            "schedule": crontab(day_of_week=1, hour=7, minute=0),  # Montag 07:00 Uhr
+        },
     },
 
     # Queue routing
@@ -593,6 +617,14 @@ celery_app.conf.update(
         "app.workers.tasks.document_intelligence_tasks.batch_extract_entities": {"queue": "metadata", "priority": 3},
         "app.workers.tasks.document_intelligence_tasks.run_document_intelligence_pipeline": {"queue": "maintenance", "priority": 2},
         "app.workers.tasks.document_intelligence_tasks.update_intelligence_metrics": {"queue": "metrics", "priority": 1},
+        # Training tasks (GPU for benchmarks, CPU for stats)
+        "app.workers.tasks.training_tasks.run_benchmark_batch": {"queue": "ocr_normal", "priority": 4},
+        "app.workers.tasks.training_tasks.run_scheduled_benchmarks": {"queue": "ocr_normal", "priority": 3},
+        "app.workers.tasks.training_tasks.generate_daily_stats": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.training_tasks.process_feedback_queue": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.training_tasks.update_learned_weights": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.training_tasks.populate_training_batch": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.training_tasks.generate_training_report": {"queue": "maintenance", "priority": 1},
     },
 
     # Priority settings

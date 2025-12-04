@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Layers, ChevronRight, Calendar, FileText } from "lucide-react"
+import { Layers, Calendar, FileText } from "lucide-react"
 import { Link } from "@tanstack/react-router"
 
 // Mock data

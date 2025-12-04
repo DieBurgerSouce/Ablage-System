@@ -14,6 +14,16 @@ from app.workers.tasks.embedding_tasks import (
     regenerate_all_embeddings,
     check_embedding_coverage,
 )
+from app.workers.tasks.training_tasks import (
+    run_benchmark_batch,
+    run_scheduled_benchmarks,
+    generate_daily_stats,
+    process_feedback_queue,
+    update_learned_weights,
+    populate_training_batch,
+    generate_training_report,
+    CELERY_BEAT_TRAINING_SCHEDULE,
+)
 
 __all__ = [
     # OCR tasks
@@ -28,4 +38,13 @@ __all__ = [
     "batch_generate_embeddings",
     "regenerate_all_embeddings",
     "check_embedding_coverage",
+    # Training tasks
+    "run_benchmark_batch",
+    "run_scheduled_benchmarks",
+    "generate_daily_stats",
+    "process_feedback_queue",
+    "update_learned_weights",
+    "populate_training_batch",
+    "generate_training_report",
+    "CELERY_BEAT_TRAINING_SCHEDULE",
 ]

@@ -130,6 +130,62 @@ Ablage_System/
 
 ---
 
+## OCR Training & Validation System
+
+Enterprise-System für Ground-Truth-Management, Backend-Vergleich und Self-Learning.
+
+### Features
+- **Backend-Vergleich**: 4 OCR-Engines Side-by-Side mit CER/WER/Umlaut-Metriken
+- **Self-Learning**: Automatische Backend-Gewichtung aus User-Korrekturen
+- **Stichproben-Workflow**: Stratifizierte Zufallsauswahl zur Qualitätskontrolle
+- **Ground-Truth-Management**: Editoren annotieren, Admins verifizieren
+
+### Zugriff
+- **Frontend**: `/admin/ocr-training`
+- **API**: `/api/v1/training/*`
+
+### Komponenten
+```
+app/services/
+├── ocr_training_service.py      # CRUD, Batches, Stats
+├── benchmark_runner_service.py   # OCR Benchmarks
+├── feedback_learning_service.py  # Self-Learning
+└── training_migration_service.py # SQLite Migration
+
+app/workers/tasks/
+└── training_tasks.py            # 7 Celery Tasks
+
+frontend/src/features/ocr-training/
+├── components/
+│   ├── TrainingDashboard.tsx    # Hauptübersicht
+│   ├── BackendComparisonChart.tsx # Recharts Visualisierung
+│   ├── SamplesList.tsx          # Ground Truth Tabelle
+│   └── BatchesList.tsx          # Stichproben-Batches
+└── api/training-api.ts          # TypeScript Client
+```
+
+### API Endpoints
+```
+GET  /api/v1/training/samples           # Samples auflisten
+POST /api/v1/training/benchmarks/run    # Benchmarks starten
+GET  /api/v1/training/benchmarks/compare # Backend-Vergleich
+POST /api/v1/training/corrections       # Korrektur einreichen
+GET  /api/v1/training/stats/overview    # Dashboard-Statistiken
+GET  /api/v1/training/stats/learned-weights # Gelernte Gewichte
+POST /api/v1/training/migration/sqlite  # SQLite migrieren
+```
+
+### Celery Tasks (Beat Schedule)
+| Task | Zeitplan |
+|------|----------|
+| generate_daily_stats | Täglich 01:00 |
+| process_feedback_queue | Stündlich |
+| update_learned_weights | Täglich 02:00 |
+| run_scheduled_benchmarks | Sonntag 03:00 |
+| generate_training_report | Montag 07:00 |
+
+---
+
 ## Kritische Regeln
 
 1. **Deutsche Texte**: ALLE Fehlermeldungen auf Deutsch

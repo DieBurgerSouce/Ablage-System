@@ -1,10 +1,11 @@
 import { Link } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, Settings, CheckCircle, Layers } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, Settings, CheckCircle, Layers, Building2, GraduationCap, Cpu, ChevronDown } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import { useState } from 'react'
 
 export function Sidebar() {
     const [showThemeMenu, setShowThemeMenu] = useState(false)
+    const [showAdminMenu, setShowAdminMenu] = useState(true)
 
     return (
         <aside
@@ -20,12 +21,31 @@ export function Sidebar() {
                 <p className="text-xs text-muted-foreground mt-1">Enterprise Document Management</p>
             </div>
 
-            <nav className="flex-1 px-4 space-y-2" role="navigation" aria-label="Hauptmenü">
+            <nav className="flex-1 px-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Hauptmenue">
                 <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" />
                 <SidebarLink to="/upload" icon={Upload} label="Upload Wizard" />
                 <SidebarLink to="/jobs" icon={ListTodo} label="Job Queue" />
                 <SidebarLink to="/validation-queue" icon={CheckCircle} label="Validierung" />
                 <SidebarLink to="/document-groups" icon={Layers} label="Dokumentgruppen" />
+                <SidebarLink to="/business-entities" icon={Building2} label="Geschaeftspartner" />
+
+                {/* Admin Section */}
+                <div className="pt-4">
+                    <button
+                        onClick={() => setShowAdminMenu(!showAdminMenu)}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                        aria-expanded={showAdminMenu}
+                    >
+                        <span>Administration</span>
+                        <ChevronDown className={`w-4 h-4 transition-transform ${showAdminMenu ? 'rotate-180' : ''}`} />
+                    </button>
+                    {showAdminMenu && (
+                        <div className="mt-1 ml-2 space-y-1 border-l border-sidebar-border pl-2">
+                            <SidebarLink to="/admin/ocr-training" icon={GraduationCap} label="OCR Training" />
+                            <SidebarLink to="/admin/ocr-backends" icon={Cpu} label="OCR Backends" />
+                        </div>
+                    )}
+                </div>
             </nav>
 
             {/* Display Mode Toggle */}

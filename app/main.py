@@ -616,6 +616,7 @@ from app.api.v1.readiness import router as readiness_router
 from app.api.v1.log_analytics import router as log_analytics_router
 from app.api.v1.entities import router as entities_router
 from app.api.v1.groups import router as groups_router
+from app.api.v1.training import router as training_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -645,6 +646,7 @@ app.include_router(readiness_router, prefix="/api/v1")
 app.include_router(log_analytics_router, prefix="/api/v1")
 app.include_router(entities_router, prefix="/api/v1")
 app.include_router(groups_router, prefix="/api/v1")
+app.include_router(training_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================
