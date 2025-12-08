@@ -295,14 +295,14 @@ class DeepSeekAgent(OCRAgent):
             quantization_method = None
 
             if self.ENABLE_QUANTIZATION and device == "cuda":
-                if not IS_WINDOWS and BITSANDBYTES_AVAILABLE:
-                    quantization_method = "bitsandbytes"
-                elif GPTQ_AVAILABLE:
+                # BitsAndBytes ist inkompatibel mit Janus Vision Encoder (dtype mismatch)
+                # Verwende float16 direkt für beste Kompatibilität
+                if GPTQ_AVAILABLE:
                     quantization_method = "gptq"
                 elif AWQ_AVAILABLE:
                     quantization_method = "awq"
                 else:
-                    # Fall back to bfloat16 with memory optimization
+                    # Fall back to bfloat16 - Janus ist dafür konzipiert
                     quantization_method = "bfloat16"
                     self.logger.warning(
                         "deepseek_no_quantization_available",
@@ -329,18 +329,29 @@ class DeepSeekAgent(OCRAgent):
                 # See: https://huggingface.co/docs/transformers/main_classes/model#trust-remote-code
                 if quantization_method == "bitsandbytes":
                     # 4-bit quantization for RTX 4080 16GB (Linux)
+                    # Use float16 instead of bfloat16 to avoid dtype mismatch with Janus model
                     quant_config = BitsAndBytesConfig(
                         load_in_4bit=True,
-                        bnb_4bit_compute_dtype=torch.bfloat16,
+                        bnb_4bit_compute_dtype=torch.float16,
                         bnb_4bit_use_double_quant=True,
                         bnb_4bit_quant_type="nf4"
                     )
                     self.model = MultiModalityCausalLM.from_pretrained(
                         self.MODEL_NAME,
                         quantization_config=quant_config,
+                        torch_dtype=torch.float16,  # Explizit float16 um dtype-Mismatch zu vermeiden
                         trust_remote_code=True,
                         device_map="auto"
                     )
+                    # Konvertiere Vision-Encoder und andere nicht-quantisierte Module zu float16
+                    # BitsAndBytes quantisiert nur Linear Layers, Vision Encoder bleibt in bfloat16
+                    for name, module in self.model.named_modules():
+                        if hasattr(module, 'weight') and module.weight is not None:
+                            if module.weight.dtype == torch.bfloat16:
+                                module.to(torch.float16)
+                        if hasattr(module, 'bias') and module.bias is not None:
+                            if module.bias.dtype == torch.bfloat16:
+                                module.bias.data = module.bias.data.to(torch.float16)
                 elif quantization_method == "gptq":
                     # GPTQ quantization (Windows compatible)
                     self.logger.info("deepseek_loading_gptq", model=self.MODEL_NAME)
@@ -385,11 +396,12 @@ class DeepSeekAgent(OCRAgent):
                             low_cpu_mem_usage=True
                         )
                 else:
-                    # bfloat16 with memory optimization
+                    # bfloat16 - native Janus-Konfiguration
+                    # Note: Flash Attention wird von Janus nicht unterstützt
                     self.model = MultiModalityCausalLM.from_pretrained(
                         self.MODEL_NAME,
                         torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32,
-                        attn_implementation="flash_attention_2" if device == "cuda" else "eager",
+                        attn_implementation="eager",  # Janus unterstützt kein Flash Attention 2.0
                         trust_remote_code=True,
                         device_map="auto" if device == "cuda" else None,
                         low_cpu_mem_usage=True
@@ -404,13 +416,14 @@ class DeepSeekAgent(OCRAgent):
                 if quantization_method == "bitsandbytes":
                     quant_config = BitsAndBytesConfig(
                         load_in_4bit=True,
-                        bnb_4bit_compute_dtype=torch.bfloat16,
+                        bnb_4bit_compute_dtype=torch.float16,  # float16 statt bfloat16 für Janus-Kompatibilität
                         bnb_4bit_use_double_quant=True,
                         bnb_4bit_quant_type="nf4"
                     )
                     self.model = AutoModelForCausalLM.from_pretrained(
                         self.MODEL_NAME,
                         quantization_config=quant_config,
+                        torch_dtype=torch.float16,  # Explizit float16
                         trust_remote_code=True,
                         device_map="auto"
                     )
@@ -496,15 +509,39 @@ class DeepSeekAgent(OCRAgent):
             raise
 
     async def _load_image(self, image_path: Path) -> Image.Image:
-        """Load and validate image."""
+        """Load, validate and resize image for optimal Janus processing.
+
+        Janus arbeitet am besten mit Bildern bis 1536x1536 Pixel.
+        Groessere Bilder werden proportional skaliert.
+        """
         if not image_path.exists():
             raise FileNotFoundError(f"Image not found: {image_path}")
+
+        # Maximale Bildgroesse fuer Janus (verhindert OOM und lange Inference)
+        MAX_SIZE = 1536
 
         try:
             # Use context manager to ensure file handle is closed
             with Image.open(image_path) as img:
                 # Convert and create in-memory copy (detaches from file handle)
                 image = img.convert("RGB").copy()
+
+            original_size = image.size
+
+            # Skaliere grosse Bilder proportional herunter
+            if image.width > MAX_SIZE or image.height > MAX_SIZE:
+                ratio = min(MAX_SIZE / image.width, MAX_SIZE / image.height)
+                new_width = int(image.width * ratio)
+                new_height = int(image.height * ratio)
+                image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+                self.logger.info(
+                    "image_resized_for_janus",
+                    path=str(image_path),
+                    original_size=original_size,
+                    new_size=image.size,
+                    scale_ratio=round(ratio, 3)
+                )
 
             self.logger.debug(
                 "image_loaded",
@@ -696,17 +733,27 @@ class DeepSeekAgent(OCRAgent):
             confidence_data = None
 
             if hasattr(self.model, 'prepare_inputs_embeds'):
-                inputs_embeds = self.model.prepare_inputs_embeds(**inputs)
+                # Konvertiere BatchedVLChatProcessorOutput zu Dict falls nötig
+                if hasattr(inputs, '__dict__') and not isinstance(inputs, dict):
+                    inputs_dict = {k: v for k, v in inputs.__dict__.items() if v is not None}
+                else:
+                    inputs_dict = inputs if isinstance(inputs, dict) else dict(inputs)
+
+                inputs_embeds = self.model.prepare_inputs_embeds(**inputs_dict)
+
+                # Hole attention_mask sicher
+                attention_mask = inputs_dict.get('attention_mask') if isinstance(inputs_dict, dict) else getattr(inputs, 'attention_mask', None)
 
                 # Generate with language model component - mit output_scores für Confidence
-                # Mixed-precision inference for better GPU performance
-                with torch.no_grad(), torch.cuda.amp.autocast(enabled=torch.cuda.is_available(), dtype=torch.bfloat16):
+                # OPTIMIERT: max_new_tokens=512 (OCR braucht nicht mehr), use_cache=True
+                with torch.no_grad(), torch.amp.autocast('cuda', dtype=torch.bfloat16):
                     outputs = self.model.language_model.generate(
                         inputs_embeds=inputs_embeds,
-                        attention_mask=inputs.get('attention_mask'),
-                        max_new_tokens=options.get("max_tokens", 4096),
-                        do_sample=False,  # Deterministic for OCR
-                        temperature=0.1,
+                        attention_mask=attention_mask,
+                        max_new_tokens=options.get("max_tokens", 512),
+                        do_sample=False,
+                        num_beams=1,
+                        use_cache=True,
                         pad_token_id=self.tokenizer.eos_token_id,
                         eos_token_id=self.tokenizer.eos_token_id,
                         output_scores=True,
@@ -727,14 +774,14 @@ class DeepSeekAgent(OCRAgent):
                 else:
                     generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
             else:
-                # Fallback to standard generation - mit output_scores
-                # Mixed-precision inference for better GPU performance
-                with torch.no_grad(), torch.cuda.amp.autocast(enabled=torch.cuda.is_available(), dtype=torch.bfloat16):
+                # Fallback to standard generation - OPTIMIERT
+                with torch.no_grad(), torch.amp.autocast('cuda', dtype=torch.bfloat16):
                     outputs = self.model.generate(
                         **inputs,
-                        max_new_tokens=options.get("max_tokens", 4096),
+                        max_new_tokens=options.get("max_tokens", 512),
                         do_sample=False,
-                        temperature=0.1,
+                        num_beams=1,
+                        use_cache=True,
                         pad_token_id=self.tokenizer.eos_token_id if self.tokenizer else self.processor.tokenizer.eos_token_id,
                         output_scores=True,
                         return_dict_in_generate=True
@@ -772,14 +819,14 @@ class DeepSeekAgent(OCRAgent):
             inputs = {k: v.to(self.model.device) if torch.is_tensor(v) else v
                      for k, v in inputs.items()}
 
-            # Run inference - mit output_scores für Confidence
-            # Mixed-precision inference for better GPU performance
-            with torch.no_grad(), torch.cuda.amp.autocast(enabled=torch.cuda.is_available(), dtype=torch.bfloat16):
+            # Run inference - OPTIMIERT fuer schnelle Generation
+            with torch.no_grad(), torch.amp.autocast('cuda', dtype=torch.bfloat16):
                 outputs = self.model.generate(
                     **inputs,
-                    max_new_tokens=options.get("max_tokens", 4096),
-                    temperature=options.get("temperature", 0.1),
-                    do_sample=False,  # Deterministic for OCR
+                    max_new_tokens=options.get("max_tokens", 512),
+                    do_sample=False,
+                    num_beams=1,
+                    use_cache=True,
                     pad_token_id=self.processor.tokenizer.eos_token_id,
                     output_scores=True,
                     return_dict_in_generate=True
@@ -856,39 +903,14 @@ class DeepSeekAgent(OCRAgent):
         return result
 
     def _build_prompt(self, language: str, options: Dict[str, Any]) -> str:
-        """Build OCR prompt for DeepSeek."""
+        """Build simple OCR prompt for DeepSeek-Janus.
+
+        Janus arbeitet am besten mit kurzen, direkten Prompts.
+        """
         if language == "de":
-            base_prompt = """
-            Extrahiere den gesamten Text aus diesem Bild.
-
-            Wichtig:
-            - Bewahre die Formatierung (Absätze, Listen)
-            - Erkenne deutsche Umlaute korrekt (ä, ö, ü, ß)
-            - Erkenne Tabellen und strukturiere sie
-            - Extrahiere Datum, Währung, IBAN, USt-IdNr. wenn vorhanden
-
-            Text:
-            """
+            return "Lies den gesamten Text aus diesem Dokument vor. Gib nur den Text zurueck, keine Erklaerungen."
         else:
-            base_prompt = """
-            Extract all text from this image.
-
-            Important:
-            - Preserve formatting (paragraphs, lists)
-            - Recognize tables and structure them
-            - Extract dates, currency, IBAN, VAT ID if present
-
-            Text:
-            """
-
-        # Add task-specific instructions
-        if options.get("extract_tables"):
-            base_prompt += "\nFocus on accurately extracting table structures."
-
-        if options.get("extract_handwriting"):
-            base_prompt += "\nPay special attention to handwritten text."
-
-        return base_prompt.strip()
+            return "Read all the text from this document. Return only the text, no explanations."
 
     async def _postprocess_result(
         self, ocr_result: Dict[str, Any], options: Dict[str, Any]

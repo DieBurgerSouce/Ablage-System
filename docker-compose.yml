@@ -224,7 +224,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: ablage-worker
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo -Q ocr_high,ocr_normal,embedding_high,embedding_normal,embedding_low,validation,metadata,maintenance,metrics,backup,dlq
     ports:
       - "127.0.0.1:8001:8001"  # Prometheus Metrics
     environment:
@@ -246,20 +246,32 @@ services:
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
+      # JWT/Auth (fehlte - gleiche wie Backend)
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY muss gesetzt sein}
+      # Development/Production Mode
+      DEBUG: ${DEBUG:-false}
       # Non-secret configuration
       CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-0}
+      # CUDA Library Path für bitsandbytes
+      LD_LIBRARY_PATH: /usr/local/cuda-12.1/lib64:/usr/local/cuda/lib64:${LD_LIBRARY_PATH:-}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       # GPU Memory Limits (85% von 16GB = 13.6GB)
       GPU_MEMORY_LIMIT_GB: ${GPU_MEMORY_LIMIT_GB:-13.6}
+      # HuggingFace/PyTorch Model Cache - persistiert zwischen Neustarts
+      HF_HOME: /home/ablage/.cache/huggingface
+      TRANSFORMERS_CACHE: /home/ablage/.cache/huggingface
+      TORCH_HOME: /home/ablage/.cache/torch
     volumes:
       - ./app:/app/app:ro
       - ./alembic:/app/alembic:ro
       - ./alembic.ini:/app/alembic.ini:ro
       - ./scripts:/app/scripts:ro
       - ./infrastructure/vault/config/certs:/app/certs:ro
+      - ./Trainings_Data:/app/Trainings_Data:ro
       - uploads:/app/uploads
       - outputs:/app/outputs
       - backups:/var/backups/ablage
+      - model_cache:/home/ablage/.cache  # Persistenter OCR Model Cache (Surya, HuggingFace)
     depends_on:
       postgres:
         condition: service_healthy
@@ -278,6 +290,7 @@ services:
     tmpfs:
       - /tmp:size=2G,mode=1777
       - /app/cache:size=4G,mode=1777
+      # Model cache jetzt als persistentes Volume (model_cache) statt tmpfs
     deploy:
       resources:
         limits:
@@ -296,12 +309,94 @@ services:
       interval: 60s
       timeout: 30s
       retries: 3
-      start_period: 120s
+      start_period: 600s  # 10 Minuten für Modell-Download (Surya ~1.34GB)
     restart: unless-stopped
     networks:
       - backend-network
       - data-network
       - monitoring-network  # Für Prometheus Metrics Scraping
+
+  # Celery Worker CPU-only (für nicht-GPU Tasks)
+  worker-cpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ablage-worker-cpu
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo -n cpu_worker@%h -Q ocr_normal,maintenance,metadata,metrics,validation,backup,dlq
+    environment:
+      # Vault Configuration
+      VAULT_ENABLED: ${VAULT_ENABLED:-true}
+      VAULT_ADDR: https://vault:8200
+      VAULT_TOKEN: ${VAULT_TOKEN:-}
+      VAULT_SECRET_PATH: ablage-system
+      VAULT_MOUNT_POINT: secret
+      VAULT_CACERT: /app/certs/ca.crt
+      # Database
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      # Redis
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      # MinIO
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
+      # JWT/Auth
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY muss gesetzt sein}
+      # Development/Production Mode
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # HuggingFace/PyTorch Model Cache
+      HF_HOME: /home/ablage/.cache/huggingface
+      TRANSFORMERS_CACHE: /home/ablage/.cache/huggingface
+      TORCH_HOME: /home/ablage/.cache/torch
+      # CPU-only: keine GPU
+      CUDA_VISIBLE_DEVICES: ""
+    volumes:
+      - ./app:/app/app:ro
+      - ./alembic:/app/alembic:ro
+      - ./alembic.ini:/app/alembic.ini:ro
+      - ./scripts:/app/scripts:ro
+      - ./infrastructure/vault/config/certs:/app/certs:ro
+      - ./Trainings_Data:/app/Trainings_Data:ro
+      - uploads:/app/uploads
+      - outputs:/app/outputs
+      - backups:/var/backups/ablage
+      - model_cache:/home/ablage/.cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=2G,mode=1777
+      - /app/cache:size=4G,mode=1777
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "celery", "-A", "app.workers.celery_app", "inspect", "ping", "-d", "cpu_worker@$$HOSTNAME"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 600s  # 10 Minuten für Modell-Download
+    restart: unless-stopped
+    networks:
+      - backend-network
+      - data-network
 
   # Frontend Application (React + Vite) - Frontend + Backend Networks
   frontend:
@@ -727,6 +822,7 @@ volumes:
   alertmanager_data:
   vault_data:
   vault_logs:
+  model_cache:  # OCR model cache (Surya, HuggingFace, DeepSeek)
 
 networks:
   # Frontend-Netzwerk: Nur für externe Zugriffe (Nginx)

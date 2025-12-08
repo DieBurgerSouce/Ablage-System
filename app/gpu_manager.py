@@ -33,7 +33,7 @@ class GPUManager:
         """Initialize GPU manager with RTX 4080 specifications"""
         self.device_name = "RTX 4080"
         self.total_vram_bytes = 16 * 1024 * 1024 * 1024  # 16GB in bytes
-        self.safety_buffer_bytes = 4 * 1024 * 1024 * 1024  # 4GB safety buffer
+        self.safety_buffer_bytes = 2 * 1024 * 1024 * 1024  # 2GB safety buffer (reduced from 4GB for RTX 4080)
 
         # Backend VRAM requirements (in GB)
         self.backend_requirements = {
@@ -42,7 +42,12 @@ class GPUManager:
             "surya_gpu": 8.0,   # Surya GPU-accelerated needs 8GB
             "donut": 8.0,       # Donut OCR needs 8GB
             "hybrid": 12.0,     # Hybrid uses multiple backends, estimate max
-            "surya": 0.0        # CPU-only fallback
+            "surya": 0.0,       # CPU-only fallback
+            "qwen_ocr": 14.0,   # Qwen2.5-VL-7B needs 14GB
+            "chandra": 15.0,    # Chandra 9B VLM - Standard FP16
+            "chandra_8bit": 9.0,  # Chandra 9B - 8-bit Quantisierung
+            "chandra_4bit": 5.0,  # Chandra 9B - 4-bit Quantisierung
+            "olmocr": 14.0,     # OlmOCR-2 7B needs 14GB (based on Qwen2.5-VL)
         }
 
         # Track allocations (thread-safe with lock)

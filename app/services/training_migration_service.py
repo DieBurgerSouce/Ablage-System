@@ -45,7 +45,7 @@ class TrainingMigrationService:
     """
 
     # Pfade für Datenquellen
-    LEGACY_SQLITE_PATH = Path("_validation_system/training_data.db")
+    LEGACY_SQLITE_PATH = Path("Trainings_Data/_validation_system/training_data.db")
     TRAINING_DATA_DIR = Path("Trainings_Data")
 
     def __init__(self, session: AsyncSession) -> None:
@@ -185,21 +185,30 @@ class TrainingMigrationService:
         dry_run: bool,
     ) -> None:
         """Migriere Training Samples aus SQLite."""
-        # Prüfe ob Tabelle existiert
-        cursor = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='training_samples'"
-        )
-        if not cursor.fetchone():
-            logger.info("sqlite_no_training_samples_table")
+        # Prüfe ob 'training_samples' oder 'documents' Tabelle existiert
+        table_name = None
+        for tbl in ["training_samples", "documents"]:
+            cursor = conn.execute(
+                f"SELECT name FROM sqlite_master WHERE type='table' AND name='{tbl}'"
+            )
+            if cursor.fetchone():
+                table_name = tbl
+                break
+
+        if not table_name:
+            logger.info("sqlite_no_samples_or_documents_table")
             return
 
-        cursor = conn.execute("SELECT * FROM training_samples")
+        logger.info("sqlite_migrating_table", table=table_name)
+        cursor = conn.execute(f"SELECT * FROM {table_name}")
         rows = cursor.fetchall()
 
         for row in rows:
             try:
+                row_keys = row.keys()
+
                 # Prüfe ob Sample bereits existiert (anhand file_hash)
-                file_hash = row["file_hash"] if "file_hash" in row.keys() else None
+                file_hash = row["file_hash"] if "file_hash" in row_keys else None
 
                 if file_hash:
                     existing = await self.session.execute(
@@ -212,13 +221,30 @@ class TrainingMigrationService:
                         continue
 
                 if not dry_run:
+                    # Mapping: SQLite 'documents' → PostgreSQL 'ocr_training_samples'
+                    # Feld-Mapping für unterschiedliche Spaltennamen
+                    file_path = row.get("file_path", "")
+                    language = row.get("doc_language") or row.get("language", "de")
+                    document_type = row.get("doc_type") or row.get("document_type")
+                    status = row.get("ground_truth_status") or row.get("status", "pending")
+
+                    # OCR-Text als Ground Truth wenn vorhanden und verifiziert
+                    ground_truth = row.get("ground_truth_text")
+                    if not ground_truth and status == "verified":
+                        ground_truth = row.get("ocr_text")
+
+                    # Nutze existierenden Hash aus SQLite oder generiere Pfad-basierten Hash
+                    # NICHT Dateiinhalt lesen (Netzwerkpfade können Fehler verursachen)
+                    final_hash = file_hash or hashlib.sha256(file_path.encode()).hexdigest()
+
                     sample = OCRTrainingSample(
-                        id=str(uuid4()),
-                        file_path=row["file_path"] if "file_path" in row.keys() else "",
-                        file_hash=file_hash or self._generate_hash(row["file_path"]),
-                        ground_truth_text=row.get("ground_truth_text"),
-                        language=row.get("language", "de"),
-                        document_type=row.get("document_type"),
+                        id=uuid4(),
+                        file_path=file_path,
+                        file_hash=final_hash,
+                        thumbnail_path=row.get("thumbnail_path"),
+                        ground_truth_text=ground_truth,
+                        language=language or "de",
+                        document_type=document_type,
                         difficulty=row.get("difficulty", "medium"),
                         has_umlauts=bool(row.get("has_umlauts", False)),
                         has_fraktur=bool(row.get("has_fraktur", False)),
@@ -226,7 +252,7 @@ class TrainingMigrationService:
                         has_handwriting=bool(row.get("has_handwriting", False)),
                         has_stamps=bool(row.get("has_stamps", False)),
                         has_signatures=bool(row.get("has_signatures", False)),
-                        status=row.get("status", "pending"),
+                        status=self._map_status(status),
                         created_at=self._parse_datetime(row.get("created_at")),
                     )
                     self.session.add(sample)
@@ -236,6 +262,19 @@ class TrainingMigrationService:
             except Exception as e:
                 self._stats["errors"].append(f"Sample migration error: {e}")
                 logger.warning("sample_migration_error", error=str(e))
+
+    def _map_status(self, sqlite_status: Optional[str]) -> str:
+        """Map SQLite Status auf PostgreSQL TrainingSampleStatus."""
+        status_map = {
+            "pending": "pending",
+            "annotated": "annotated",
+            "verified": "verified",
+            "rejected": "rejected",
+            "needs_review": "pending",
+            None: "pending",
+            "": "pending",
+        }
+        return status_map.get(sqlite_status, "pending")
 
     async def _migrate_sqlite_benchmarks(
         self,

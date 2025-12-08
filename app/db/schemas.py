@@ -2988,7 +2988,7 @@ class BenchmarkRunRequest(BaseModel):
     """Anfrage zum Starten eines Benchmark-Laufs."""
     sample_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
     backends: List[str] = Field(
-        default=["deepseek", "got_ocr", "surya_gpu", "surya_cpu"],
+        default=["deepseek-janus-pro", "got-ocr-2.0", "surya-gpu", "surya"],
         description="Zu testende Backends"
     )
     force_rerun: bool = Field(False, description="Existierende Benchmarks ueberschreiben")
@@ -3244,7 +3244,7 @@ class BulkProcessingJobCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=2000)
     backends: List[str] = Field(
-        default=["deepseek", "got_ocr", "surya_gpu", "surya_cpu"],
+        default=["deepseek-janus-pro", "got-ocr-2.0", "surya-gpu", "surya"],
         description="Zu verwendende OCR Backends"
     )
     configuration: Dict[str, Any] = Field(
@@ -3256,7 +3256,7 @@ class BulkProcessingJobCreate(BaseModel):
     @classmethod
     def validate_backends(cls, v: List[str]) -> List[str]:
         """Validiere Backend-Namen."""
-        valid_backends = {"deepseek", "got_ocr", "surya_gpu", "surya_cpu"}
+        valid_backends = {"deepseek-janus-pro", "got-ocr-2.0", "surya-gpu", "surya"}
         for backend in v:
             if backend not in valid_backends:
                 raise ValueError(f"Ungültiges Backend: {backend}. Erlaubt: {valid_backends}")
@@ -3457,7 +3457,7 @@ class ModelDeploymentListResponse(BaseModel):
 # Training Dataset Export Schemas
 # =============================================================================
 
-class ExportFormat(str, Enum):
+class TrainingExportFormat(str, Enum):
     """Unterstützte Export-Formate."""
     DEEPSEEK_JSONL = "deepseek_jsonl"
     SURYA_HF = "surya_hf"
@@ -3474,7 +3474,7 @@ class SplitStrategy(str, Enum):
 
 class ExportConfigRequest(BaseModel):
     """Konfiguration für Dataset-Export."""
-    format: ExportFormat = Field(default=ExportFormat.DEEPSEEK_JSONL, description="Export-Format")
+    format: TrainingExportFormat = Field(default=TrainingExportFormat.DEEPSEEK_JSONL, description="Export-Format")
     split_ratio: Tuple[float, float, float] = Field(
         default=(0.8, 0.1, 0.1),
         description="Train/Val/Test Split-Verhältnis"

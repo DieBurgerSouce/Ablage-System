@@ -620,6 +620,9 @@ celery_app.conf.update(
         # Training tasks (GPU for benchmarks, CPU for stats)
         "app.workers.tasks.training_tasks.run_benchmark_batch": {"queue": "ocr_normal", "priority": 4},
         "app.workers.tasks.training_tasks.run_scheduled_benchmarks": {"queue": "ocr_normal", "priority": 3},
+        # Bulk Processing Jobs
+        "app.workers.tasks.training_tasks.run_bulk_processing_job": {"queue": "ocr_high", "priority": 6},
+        "app.workers.tasks.training_tasks.run_bulk_processing_job_cpu": {"queue": "ocr_normal", "priority": 5},
         "app.workers.tasks.training_tasks.generate_daily_stats": {"queue": "maintenance", "priority": 2},
         "app.workers.tasks.training_tasks.process_feedback_queue": {"queue": "maintenance", "priority": 3},
         "app.workers.tasks.training_tasks.update_learned_weights": {"queue": "maintenance", "priority": 2},

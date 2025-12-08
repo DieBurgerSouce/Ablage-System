@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './app/routes/__root'
 import { Route as ValidationQueueRouteImport } from './app/routes/validation-queue'
 import { Route as UploadRouteImport } from './app/routes/upload'
 import { Route as SearchRouteImport } from './app/routes/search'
+import { Route as RelationshipsRouteImport } from './app/routes/relationships'
 import { Route as MonitoringRouteImport } from './app/routes/monitoring'
 import { Route as LoginRouteImport } from './app/routes/login'
 import { Route as JobsRouteImport } from './app/routes/jobs'
@@ -26,6 +27,7 @@ import { Route as DocumentGroupsIdRouteImport } from './app/routes/document-grou
 import { Route as BusinessEntitiesIdRouteImport } from './app/routes/business-entities.$id'
 import { Route as AdminOcrTrainingRouteImport } from './app/routes/admin.ocr-training'
 import { Route as AdminOcrBackendsRouteImport } from './app/routes/admin.ocr-backends'
+import { Route as DocumentsDocumentIdRelationshipsRouteImport } from './app/routes/documents.$documentId.relationships'
 import { Route as AdminOcrBackendsBackendRouteImport } from './app/routes/admin.ocr-backends.$backend'
 import { Route as AdminOcrTrainingBatchIdRouteImport } from './app/routes/admin.ocr-training.batch.$id'
 
@@ -42,6 +44,11 @@ const UploadRoute = UploadRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelationshipsRoute = RelationshipsRouteImport.update({
+  id: '/relationships',
+  path: '/relationships',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MonitoringRoute = MonitoringRouteImport.update({
@@ -114,6 +121,12 @@ const AdminOcrBackendsRoute = AdminOcrBackendsRouteImport.update({
   path: '/ocr-backends',
   getParentRoute: () => AdminRoute,
 } as any)
+const DocumentsDocumentIdRelationshipsRoute =
+  DocumentsDocumentIdRelationshipsRouteImport.update({
+    id: '/relationships',
+    path: '/relationships',
+    getParentRoute: () => DocumentsDocumentIdRoute,
+  } as any)
 const AdminOcrBackendsBackendRoute = AdminOcrBackendsBackendRouteImport.update({
   id: '/$backend',
   path: '/$backend',
@@ -134,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
+  '/relationships': typeof RelationshipsRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
@@ -141,9 +155,10 @@ export interface FileRoutesByFullPath {
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
   '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
-  '/documents/$documentId': typeof DocumentsDocumentIdRoute
+  '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
+  '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
 }
 export interface FileRoutesByTo {
@@ -155,6 +170,7 @@ export interface FileRoutesByTo {
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
+  '/relationships': typeof RelationshipsRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
@@ -162,9 +178,10 @@ export interface FileRoutesByTo {
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
   '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
-  '/documents/$documentId': typeof DocumentsDocumentIdRoute
+  '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
+  '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
 }
 export interface FileRoutesById {
@@ -177,6 +194,7 @@ export interface FileRoutesById {
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
+  '/relationships': typeof RelationshipsRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
@@ -184,9 +202,10 @@ export interface FileRoutesById {
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
   '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
-  '/documents/$documentId': typeof DocumentsDocumentIdRoute
+  '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
+  '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
 }
 export interface FileRouteTypes {
@@ -200,6 +219,7 @@ export interface FileRouteTypes {
     | '/jobs'
     | '/login'
     | '/monitoring'
+    | '/relationships'
     | '/search'
     | '/upload'
     | '/validation-queue'
@@ -210,6 +230,7 @@ export interface FileRouteTypes {
     | '/documents/$documentId'
     | '/validation-queue/$id'
     | '/admin/ocr-backends/$backend'
+    | '/documents/$documentId/relationships'
     | '/admin/ocr-training/batch/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -221,6 +242,7 @@ export interface FileRouteTypes {
     | '/jobs'
     | '/login'
     | '/monitoring'
+    | '/relationships'
     | '/search'
     | '/upload'
     | '/validation-queue'
@@ -231,6 +253,7 @@ export interface FileRouteTypes {
     | '/documents/$documentId'
     | '/validation-queue/$id'
     | '/admin/ocr-backends/$backend'
+    | '/documents/$documentId/relationships'
     | '/admin/ocr-training/batch/$id'
   id:
     | '__root__'
@@ -242,6 +265,7 @@ export interface FileRouteTypes {
     | '/jobs'
     | '/login'
     | '/monitoring'
+    | '/relationships'
     | '/search'
     | '/upload'
     | '/validation-queue'
@@ -252,6 +276,7 @@ export interface FileRouteTypes {
     | '/documents/$documentId'
     | '/validation-queue/$id'
     | '/admin/ocr-backends/$backend'
+    | '/documents/$documentId/relationships'
     | '/admin/ocr-training/batch/$id'
   fileRoutesById: FileRoutesById
 }
@@ -264,10 +289,11 @@ export interface RootRouteChildren {
   JobsRoute: typeof JobsRoute
   LoginRoute: typeof LoginRoute
   MonitoringRoute: typeof MonitoringRoute
+  RelationshipsRoute: typeof RelationshipsRoute
   SearchRoute: typeof SearchRoute
   UploadRoute: typeof UploadRoute
   ValidationQueueRoute: typeof ValidationQueueRouteWithChildren
-  DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRoute
+  DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -291,6 +317,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relationships': {
+      id: '/relationships'
+      path: '/relationships'
+      fullPath: '/relationships'
+      preLoaderRoute: typeof RelationshipsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/monitoring': {
@@ -391,6 +424,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOcrBackendsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/documents/$documentId/relationships': {
+      id: '/documents/$documentId/relationships'
+      path: '/relationships'
+      fullPath: '/documents/$documentId/relationships'
+      preLoaderRoute: typeof DocumentsDocumentIdRelationshipsRouteImport
+      parentRoute: typeof DocumentsDocumentIdRoute
+    }
     '/admin/ocr-backends/$backend': {
       id: '/admin/ocr-backends/$backend'
       path: '/$backend'
@@ -477,6 +517,17 @@ const ValidationQueueRouteWithChildren = ValidationQueueRoute._addFileChildren(
   ValidationQueueRouteChildren,
 )
 
+interface DocumentsDocumentIdRouteChildren {
+  DocumentsDocumentIdRelationshipsRoute: typeof DocumentsDocumentIdRelationshipsRoute
+}
+
+const DocumentsDocumentIdRouteChildren: DocumentsDocumentIdRouteChildren = {
+  DocumentsDocumentIdRelationshipsRoute: DocumentsDocumentIdRelationshipsRoute,
+}
+
+const DocumentsDocumentIdRouteWithChildren =
+  DocumentsDocumentIdRoute._addFileChildren(DocumentsDocumentIdRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
@@ -486,10 +537,11 @@ const rootRouteChildren: RootRouteChildren = {
   JobsRoute: JobsRoute,
   LoginRoute: LoginRoute,
   MonitoringRoute: MonitoringRoute,
+  RelationshipsRoute: RelationshipsRoute,
   SearchRoute: SearchRoute,
   UploadRoute: UploadRoute,
   ValidationQueueRoute: ValidationQueueRouteWithChildren,
-  DocumentsDocumentIdRoute: DocumentsDocumentIdRoute,
+  DocumentsDocumentIdRoute: DocumentsDocumentIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

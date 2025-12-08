@@ -85,7 +85,7 @@ def run_benchmark_batch(
                     backends=backends or ["deepseek-janus-pro", "got-ocr-2.0", "surya-gpu", "surya"],
                     force_rerun=force_reprocess,
                 )
-                result = await runner.run_benchmark(db=session, request=request)
+                result = await runner.run_benchmark( request=request)
                 return {
                     "success": result.success,
                     "samples_processed": result.samples_processed,
@@ -263,7 +263,7 @@ def generate_daily_stats(self) -> Dict[str, Any]:
 
                 # Hole Backend-Statistiken für heute
                 today = date.today()
-                backend_stats = await training_service.get_backend_stats(db=session, days=1)
+                backend_stats = await training_service.get_backend_stats( days=1)
 
                 stats_created = 0
 
@@ -380,7 +380,7 @@ def process_feedback_queue(
 
                 # Verarbeite unverarbeitete Korrekturen
                 processed_count = await feedback_service.process_unprocessed_corrections(
-                    db=session,
+                    
                     batch_size=batch_size
                 )
 
@@ -453,7 +453,7 @@ def update_learned_weights(
                 feedback_service = get_feedback_learning_service()
 
                 weights = await feedback_service.get_learned_weights(
-                    db=session,
+                    
                     force_refresh=force_refresh
                 )
 
@@ -670,7 +670,7 @@ def generate_training_report(self) -> Dict[str, Any]:
 
                 # Sammle alle Statistiken
                 overview = await training_service.get_training_overview_stats(db=session)
-                backend_stats = await training_service.get_backend_stats(db=session, days=30)
+                backend_stats = await training_service.get_backend_stats( days=30)
                 comparison = await benchmark_runner.get_backend_comparison(db=session)
                 learned_weights = await feedback_service.get_learned_weights(db=session)
 
@@ -818,17 +818,60 @@ def run_bulk_processing_job(
     )
 
     try:
-        from app.services.bulk_ocr_processing_service import get_bulk_ocr_processing_service
+        from app.services.bulk_ocr_processing_service import (
+            get_bulk_ocr_processing_service_sync,
+            get_bulk_ocr_processing_service,
+            BulkProcessingJob,
+            _active_jobs,
+        )
         from app.db.session import get_async_session_context
+        from uuid import UUID
 
         async def run_job() -> Dict[str, Any]:
             async with get_async_session_context() as session:
-                service = get_bulk_ocr_processing_service()
-                job = await service.process_all_documents(
+                # Load job from DB first
+                db_service = await get_bulk_ocr_processing_service(session)
+                db_job = await db_service.get_job(UUID(job_id))
+                if not db_job:
+                    raise ValueError(f"Job {job_id} nicht gefunden in der Datenbank")
+
+                # Register job in in-memory store for processing
+                from app.services.bulk_ocr_processing_service import BulkJobStatus
+                backends_list = db_job.backends or ["deepseek", "got_ocr", "surya_gpu", "surya_cpu"]
+                mem_job = BulkProcessingJob(
+                    id=str(db_job.id),
+                    name=db_job.name,
+                    status=BulkJobStatus.PENDING,
+                    backends=backends_list,
+                    total_documents=db_job.total_documents,
+                    processed_documents=0,
+                    failed_documents=0,
+                    current_backend=None,
+                    current_backend_index=0,
+                    current_document_index=0,
+                    documents_per_backend={b: 0 for b in backends_list},
+                    started_at=None,
+                    completed_at=None,
+                    paused_at=None,
+                    last_checkpoint_at=None,
+                    configuration=db_job.configuration or {},
+                )
+                _active_jobs[str(db_job.id)] = mem_job
+
+                # Process using in-memory service
+                service = get_bulk_ocr_processing_service_sync()
+                processed_job = await service.process_all_documents(
                     db=session,
                     job_id=job_id,
                 )
-                return job.to_dict()
+
+                # Update DB job status
+                await db_service.update_job_status(
+                    UUID(job_id),
+                    processed_job.status.value if hasattr(processed_job.status, 'value') else processed_job.status,
+                )
+
+                return processed_job.to_dict()
 
         loop = asyncio.get_event_loop()
         if loop.is_closed():
@@ -851,6 +894,130 @@ def run_bulk_processing_job(
     except Exception as e:
         logger.exception(
             "bulk_processing_job_failed",
+            task_id=task_id,
+            job_id=job_id,
+            error=str(e),
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,  # KEIN GPU-Lock für CPU-only Backends!
+    name="app.workers.tasks.training_tasks.run_bulk_processing_job_cpu",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 2},
+    retry_backoff=True,
+    retry_backoff_max=1800,
+    soft_time_limit=86400,  # 24 Stunden
+    time_limit=90000,  # 25 Stunden
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def run_bulk_processing_job_cpu(
+    self,
+    job_id: str,
+    resume_from_checkpoint: bool = False,
+) -> Dict[str, Any]:
+    """
+    Fuehre Bulk OCR Processing Job aus - CPU-only Version.
+
+    Identisch zu run_bulk_processing_job, aber ohne GPU-Lock.
+    Fuer CPU-only Backends wie 'surya' (ohne GPU).
+
+    Args:
+        job_id: Bulk Processing Job ID
+        resume_from_checkpoint: Bei True wird vom letzten Checkpoint fortgesetzt
+
+    Returns:
+        Job-Ergebnis-Zusammenfassung
+    """
+    task_id = self.request.id
+
+    logger.info(
+        "bulk_processing_job_cpu_starting",
+        task_id=task_id,
+        job_id=job_id,
+        resume=resume_from_checkpoint,
+    )
+
+    try:
+        from app.services.bulk_ocr_processing_service import (
+            get_bulk_ocr_processing_service_sync,
+            get_bulk_ocr_processing_service,
+            BulkProcessingJob,
+            _active_jobs,
+        )
+        from app.db.session import get_async_session_context
+        from uuid import UUID
+
+        async def run_job() -> Dict[str, Any]:
+            async with get_async_session_context() as session:
+                # Load job from DB first
+                db_service = await get_bulk_ocr_processing_service(session)
+                db_job = await db_service.get_job(UUID(job_id))
+                if not db_job:
+                    raise ValueError(f"Job {job_id} nicht gefunden in der Datenbank")
+
+                # Register job in in-memory store for processing
+                from app.services.bulk_ocr_processing_service import BulkJobStatus
+                backends_list = db_job.backends or ["surya_cpu"]  # Default: nur CPU
+                mem_job = BulkProcessingJob(
+                    id=str(db_job.id),
+                    name=db_job.name,
+                    status=BulkJobStatus.PENDING,
+                    backends=backends_list,
+                    total_documents=db_job.total_documents,
+                    processed_documents=0,
+                    failed_documents=0,
+                    current_backend=None,
+                    current_backend_index=0,
+                    current_document_index=0,
+                    documents_per_backend={b: 0 for b in backends_list},
+                    started_at=None,
+                    completed_at=None,
+                    paused_at=None,
+                    last_checkpoint_at=None,
+                    configuration=db_job.configuration or {},
+                )
+                _active_jobs[str(db_job.id)] = mem_job
+
+                # Process using in-memory service
+                service = get_bulk_ocr_processing_service_sync()
+                processed_job = await service.process_all_documents(
+                    db=session,
+                    job_id=job_id,
+                )
+
+                # Update DB job status
+                await db_service.update_job_status(
+                    UUID(job_id),
+                    processed_job.status.value if hasattr(processed_job.status, 'value') else processed_job.status,
+                )
+
+                return processed_job.to_dict()
+
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        result = loop.run_until_complete(run_job())
+
+        logger.info(
+            "bulk_processing_job_cpu_completed",
+            task_id=task_id,
+            job_id=job_id,
+            status=result["status"],
+            processed=result["processed_documents"],
+            failed=result["failed_documents"],
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception(
+            "bulk_processing_job_cpu_failed",
             task_id=task_id,
             job_id=job_id,
             error=str(e),
@@ -903,9 +1070,9 @@ def import_training_files(
 
         async def import_files() -> Dict[str, Any]:
             async with get_async_session_context() as session:
-                service = get_bulk_ocr_processing_service()
+                service = await get_bulk_ocr_processing_service(session)
                 result = await service.import_training_files(
-                    db=session,
+                    
                     source_directory=source_directory,
                     file_patterns=file_patterns,
                 )

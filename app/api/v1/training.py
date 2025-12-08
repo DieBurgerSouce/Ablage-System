@@ -16,10 +16,12 @@ from typing import Optional, List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, Path
+from starlette import status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
+from app.db import schemas
 from app.db.schemas import (
     # Training Samples
     TrainingSampleCreate,
@@ -765,9 +767,17 @@ async def create_bulk_processing_job(
         created_by_id=current_user.id
     )
 
-    # Job starten (Celery Task)
-    from app.workers.tasks.training_tasks import run_bulk_processing_job
-    run_bulk_processing_job.delay(str(job.id))
+    # Job starten (Celery Task) - wähle Task basierend auf Backends
+    # GPU-Backends brauchen GPU-Lock, CPU-only Backends nicht
+    GPU_BACKENDS = {"deepseek", "deepseek-janus-pro", "got_ocr", "got-ocr-2.0", "surya_gpu", "surya-gpu"}
+    needs_gpu = any(b in GPU_BACKENDS for b in request.backends)
+
+    if needs_gpu:
+        from app.workers.tasks.training_tasks import run_bulk_processing_job
+        run_bulk_processing_job.delay(str(job.id))
+    else:
+        from app.workers.tasks.training_tasks import run_bulk_processing_job_cpu
+        run_bulk_processing_job_cpu.delay(str(job.id))
 
     # Geschätzte Zeit berechnen (ca. 3s pro Dokument pro Backend)
     estimated_seconds = job.total_documents * len(request.backends) * 3
@@ -903,9 +913,17 @@ async def resume_bulk_processing_job(
             detail=f"Job kann nicht fortgesetzt werden. Status: {job.status}"
         )
 
-    # Job fortsetzen (Celery Task)
-    from app.workers.tasks.training_tasks import run_bulk_processing_job
-    run_bulk_processing_job.delay(str(job_id), resume=True)
+    # Job fortsetzen (Celery Task) - wähle Task basierend auf Backends
+    GPU_BACKENDS = {"deepseek", "deepseek-janus-pro", "got_ocr", "got-ocr-2.0", "surya_gpu", "surya-gpu"}
+    job_backends = job.backends or []
+    needs_gpu = any(b in GPU_BACKENDS for b in job_backends)
+
+    if needs_gpu:
+        from app.workers.tasks.training_tasks import run_bulk_processing_job
+        run_bulk_processing_job.delay(str(job_id), resume_from_checkpoint=True)
+    else:
+        from app.workers.tasks.training_tasks import run_bulk_processing_job_cpu
+        run_bulk_processing_job_cpu.delay(str(job_id), resume_from_checkpoint=True)
 
     # Status aktualisieren
     await service.update_job_status(job_id, "running")
@@ -1482,7 +1500,7 @@ async def compare_umlaut_consistency(
 )
 async def list_exports(
     limit: int = Query(default=50, ge=1, le=200, description="Maximale Anzahl"),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
     """
@@ -1519,7 +1537,7 @@ async def list_exports(
 async def create_export(
     config: schemas.ExportConfigRequest,
     background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin")),
 ):
     """
@@ -1589,7 +1607,7 @@ async def create_export(
 async def export_for_deepseek(
     config: schemas.DeepSeekExportRequest,
     output_dir: str = Query(default="./exports/deepseek", description="Ausgabeverzeichnis"),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin")),
 ):
     """
@@ -1650,7 +1668,7 @@ async def export_for_deepseek(
 async def export_for_surya(
     config: schemas.SuryaExportRequest,
     output_dir: str = Query(default="./exports/surya", description="Ausgabeverzeichnis"),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin")),
 ):
     """
@@ -1709,7 +1727,7 @@ async def export_for_surya(
 )
 async def get_export_details(
     export_id: str = Path(..., description="Export-ID"),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
     """
@@ -1742,7 +1760,7 @@ async def get_export_details(
 )
 async def delete_export(
     export_id: str = Path(..., description="Export-ID"),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin")),
 ):
     """
@@ -1774,7 +1792,7 @@ async def delete_export(
     tags=["quality-monitoring"]
 )
 async def run_quality_check(
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin")),
 ):
     """
@@ -1820,7 +1838,7 @@ async def run_quality_check(
 )
 async def get_model_health(
     model_name: str = Path(..., description="Modell-Name (deepseek, surya)"),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
     """
@@ -1850,7 +1868,7 @@ async def get_model_health(
     tags=["quality-monitoring"]
 )
 async def get_retraining_recommendation(
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin")),
 ):
     """
@@ -1880,7 +1898,7 @@ async def get_retraining_recommendation(
 )
 async def create_quality_snapshot(
     backend_name: str = Path(..., description="Backend-Name"),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin")),
 ):
     """
@@ -1913,7 +1931,7 @@ async def create_quality_snapshot(
 async def execute_model_rollback(
     model_name: str = Path(..., description="Modell-Name"),
     target_version: Optional[str] = Query(default=None, description="Ziel-Version (None = vorherige)"),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin")),
 ):
     """
@@ -1944,7 +1962,7 @@ async def execute_model_rollback(
 )
 async def get_alert_history(
     hours: int = Query(default=24, ge=1, le=168, description="Stunden zurück"),
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
     """

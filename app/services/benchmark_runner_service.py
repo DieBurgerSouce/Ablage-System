@@ -84,9 +84,44 @@ AVAILABLE_BACKENDS: Dict[str, BackendConfig] = {
         vram_gb=0.0,
         agent_class="SuryaDoclingAgent",
     ),
+    "qwen-ocr": BackendConfig(
+        name="qwen-ocr",
+        display_name="Qwen2.5-VL-7B",
+        requires_gpu=True,
+        vram_gb=14.0,
+        agent_class="QwenOCRAgent",
+    ),
+    "chandra-ocr": BackendConfig(
+        name="chandra-ocr",
+        display_name="Chandra OCR (9B)",
+        requires_gpu=True,
+        vram_gb=15.0,
+        agent_class="ChandraOCRAgent",
+    ),
+    "olmocr-2": BackendConfig(
+        name="olmocr-2",
+        display_name="OlmOCR-2 (7B)",
+        requires_gpu=True,
+        vram_gb=14.0,
+        agent_class="OlmOCRAgent",
+    ),
+    "paddle-ocr-v5": BackendConfig(
+        name="paddle-ocr-v5",
+        display_name="PaddleOCR PP-OCRv5",
+        requires_gpu=False,
+        vram_gb=0.0,
+        agent_class="PaddleOCRAgent",
+    ),
+    "doctr": BackendConfig(
+        name="doctr",
+        display_name="docTR (CPU)",
+        requires_gpu=False,
+        vram_gb=0.0,
+        agent_class="DocTRAgent",
+    ),
 }
 
-DEFAULT_BACKENDS = ["deepseek-janus-pro", "got-ocr-2.0", "surya-gpu", "surya"]
+DEFAULT_BACKENDS = ["deepseek-janus-pro", "chandra-ocr", "olmocr-2", "got-ocr-2.0", "surya-gpu", "surya", "qwen-ocr", "paddle-ocr-v5", "doctr"]
 
 
 @dataclass
@@ -142,6 +177,20 @@ class BenchmarkRunnerService:
             logger.warning("surya_agent_not_available", error=str(e))
 
         try:
+            # PaddleOCR PP-OCRv5 (CPU) - immer verfügbar
+            from app.agents.ocr.paddle_ocr_agent import PaddleOCRAgent
+            self._agents["paddle-ocr-v5"] = PaddleOCRAgent()
+        except ImportError as e:
+            logger.warning("paddle_ocr_agent_not_available", error=str(e))
+
+        try:
+            # docTR (CPU) - deutsches Modell von Mindee
+            from app.agents.ocr.doctr_agent import DocTRAgent
+            self._agents["doctr"] = DocTRAgent()
+        except ImportError as e:
+            logger.warning("doctr_agent_not_available", error=str(e))
+
+        try:
             import torch
             if torch.cuda.is_available():
                 # GPU-basierte Agents
@@ -162,6 +211,24 @@ class BenchmarkRunnerService:
                     self._agents["surya-gpu"] = SuryaGPUAgent()
                 except ImportError as e:
                     logger.warning("surya_gpu_agent_not_available", error=str(e))
+
+                try:
+                    from app.agents.ocr.qwen_ocr_agent import QwenOCRAgent
+                    self._agents["qwen-ocr"] = QwenOCRAgent()
+                except ImportError as e:
+                    logger.warning("qwen_ocr_agent_not_available", error=str(e))
+
+                try:
+                    from app.agents.ocr.chandra_agent import ChandraOCRAgent
+                    self._agents["chandra-ocr"] = ChandraOCRAgent()
+                except ImportError as e:
+                    logger.warning("chandra_ocr_agent_not_available", error=str(e))
+
+                try:
+                    from app.agents.ocr.olmocr_agent import OlmOCRAgent
+                    self._agents["olmocr-2"] = OlmOCRAgent()
+                except ImportError as e:
+                    logger.warning("olmocr_agent_not_available", error=str(e))
         except ImportError:
             logger.warning("pytorch_not_available")
 
@@ -296,7 +363,10 @@ class BenchmarkRunnerService:
 
             # OCR ausführen
             ocr_result = await agent.execute(
-                input_data={"image_path": str(image_path)},
+                input_data={
+                    "image_path": str(image_path),
+                    "document_id": str(sample.id),
+                },
                 context={"backend": backend_name}
             )
 
@@ -534,15 +604,36 @@ class BenchmarkRunnerService:
         return None
 
     def _extract_text_from_result(self, result: Any) -> Optional[str]:
-        """Extrahiert Text aus verschiedenen Result-Formaten."""
+        """Extrahiert Text aus verschiedenen Result-Formaten.
+
+        Handles multiple result formats:
+        - Wrapped format from agent.execute(): {"result": {...}, "metadata": {...}}
+        - Direct result format: {"text": "...", ...}
+        - String result
+        - OCRResult object with .text attribute
+        """
         if isinstance(result, dict):
-            # Standard-Dict Format
+            # Check for wrapped format from agent.execute()
+            if "result" in result and isinstance(result["result"], dict):
+                inner_result = result["result"]
+                if "text" in inner_result:
+                    return inner_result["text"]
+                if "extracted_text" in inner_result:
+                    return inner_result["extracted_text"]
+                if "content" in inner_result:
+                    return inner_result["content"]
+                if "full_text" in inner_result:
+                    return inner_result["full_text"]
+
+            # Standard-Dict Format (direct result)
             if "text" in result:
                 return result["text"]
             if "extracted_text" in result:
                 return result["extracted_text"]
             if "content" in result:
                 return result["content"]
+            if "full_text" in result:
+                return result["full_text"]
 
         if isinstance(result, str):
             return result

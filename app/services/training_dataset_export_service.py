@@ -35,7 +35,7 @@ from app.db.models import (
 logger = logging.getLogger(__name__)
 
 
-class ExportFormat(str, Enum):
+class TrainingExportFormat(str, Enum):
     """Unterstützte Export-Formate."""
     DEEPSEEK_JSONL = "deepseek_jsonl"
     SURYA_HF = "surya_hf"
@@ -53,7 +53,7 @@ class SplitStrategy(str, Enum):
 @dataclass
 class ExportConfig:
     """Konfiguration für Dataset-Export."""
-    format: ExportFormat = ExportFormat.DEEPSEEK_JSONL
+    format: TrainingExportFormat = TrainingExportFormat.DEEPSEEK_JSONL
     split_ratio: Tuple[float, float, float] = (0.8, 0.1, 0.1)  # train/val/test
     split_strategy: SplitStrategy = SplitStrategy.RANDOM
     filter_verified_only: bool = True
@@ -86,7 +86,7 @@ class ExportResult:
     success: bool
     export_id: str
     output_dir: str
-    format: ExportFormat
+    format: TrainingExportFormat
     stats: ExportStats
     files_created: List[str]
     errors: List[str] = field(default_factory=list)
@@ -200,28 +200,28 @@ class TrainingDatasetExportService:
             files_created = []
             warnings = []
 
-            if config.format == ExportFormat.DEEPSEEK_JSONL:
+            if config.format == TrainingExportFormat.DEEPSEEK_JSONL:
                 files = await self._export_deepseek_format(
                     train_samples, val_samples, test_samples,
                     output_dir, config
                 )
                 files_created.extend(files)
 
-            elif config.format == ExportFormat.SURYA_HF:
+            elif config.format == TrainingExportFormat.SURYA_HF:
                 files = await self._export_surya_format(
                     train_samples, val_samples, test_samples,
                     output_dir, config
                 )
                 files_created.extend(files)
 
-            elif config.format == ExportFormat.GENERIC_JSONL:
+            elif config.format == TrainingExportFormat.GENERIC_JSONL:
                 files = await self._export_generic_jsonl(
                     train_samples, val_samples, test_samples,
                     output_dir, config
                 )
                 files_created.extend(files)
 
-            elif config.format == ExportFormat.CSV:
+            elif config.format == TrainingExportFormat.CSV:
                 files = await self._export_csv(
                     train_samples, val_samples, test_samples,
                     output_dir, config
@@ -286,7 +286,7 @@ class TrainingDatasetExportService:
             ExportResult
         """
         config = ExportConfig(
-            format=ExportFormat.DEEPSEEK_JSONL,
+            format=TrainingExportFormat.DEEPSEEK_JSONL,
             output_dir=output_dir,
             include_image_base64=False,
             image_reference_type="path",
@@ -315,7 +315,7 @@ class TrainingDatasetExportService:
             ExportResult
         """
         config = ExportConfig(
-            format=ExportFormat.SURYA_HF,
+            format=TrainingExportFormat.SURYA_HF,
             output_dir=output_dir,
             include_metadata=True
         )

@@ -11,8 +11,9 @@ python-multipart==0.0.9
 # to get CUDA-enabled builds. Do NOT add them here or the build will fail.
 # torch==2.1.2+cu121 -> installed in Dockerfile
 # torchvision==0.16.2+cu121 -> installed in Dockerfile
-transformers>=4.41.0  # surya-ocr>=0.4.6 requires >=4.41.0
+transformers>=4.45.0  # Qwen2.5-VL support requires >=4.45.0 (upgraded from 4.41.0)
 accelerate>=0.25.0  # Relaxed version for newer transformers compatibility
+qwen-vl-utils>=0.0.2  # Qwen VL image processing utilities
 sentence-transformers>=2.2.2  # For multilingual-e5-large embeddings
 
 # Database & ORM
@@ -45,9 +46,12 @@ surya-ocr>=0.4.0  # CPU-based OCR, no GPU required
 pypdfium2>=4.30.0  # PDF processing for Surya and Docling (docling requires >=4.30.0)
 docling==2.20.0  # Document structure extraction (requires Python 3.11+), pinned for faster builds
 pytesseract==0.3.10  # Python wrapper for Tesseract (fallback)
+paddlepaddle>=2.6.0  # PaddlePaddle ML framework (CPU)
+paddleocr>=2.8.0  # PaddleOCR PP-OCRv5 - CPU-optimiert, 106 Sprachen
+python-doctr[torch]>=0.8.0  # docTR - CPU-optimiert, deutsches Modell (Mindee)
 
 # Model quantization for large models (DeepSeek, GOT)
-bitsandbytes==0.41.3  # 4-bit and 8-bit quantization
+bitsandbytes>=0.43.0  # 4-bit and 8-bit quantization (>=0.43 für CUDA 12.x)
 # Note: GOT-OCR and DeepSeek models are loaded via transformers/HuggingFace
 
 # German Text Processing

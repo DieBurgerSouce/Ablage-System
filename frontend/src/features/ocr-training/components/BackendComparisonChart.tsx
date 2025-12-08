@@ -232,22 +232,22 @@ export function BackendComparisonChart({ comparison }: BackendComparisonChartPro
                                         </td>
                                         <td className="text-right p-2">{data.samples_processed}</td>
                                         <td className="text-right p-2">
-                                            {data.avg_cer !== undefined ? `${(data.avg_cer * 100).toFixed(2)}%` : '-'}
+                                            {data.avg_cer != null ? `${(data.avg_cer * 100).toFixed(2)}%` : '-'}
                                         </td>
                                         <td className="text-right p-2">
-                                            {data.avg_wer !== undefined ? `${(data.avg_wer * 100).toFixed(2)}%` : '-'}
+                                            {data.avg_wer != null ? `${(data.avg_wer * 100).toFixed(2)}%` : '-'}
                                         </td>
                                         <td className="text-right p-2">
-                                            {data.avg_umlaut_accuracy !== undefined ? `${(data.avg_umlaut_accuracy * 100).toFixed(1)}%` : '-'}
+                                            {data.avg_umlaut_accuracy != null ? `${(data.avg_umlaut_accuracy * 100).toFixed(1)}%` : '-'}
                                         </td>
                                         <td className="text-right p-2">
-                                            {data.p50_cer !== undefined ? `${(data.p50_cer * 100).toFixed(2)}%` : '-'}
+                                            {data.p50_cer != null ? `${(data.p50_cer * 100).toFixed(2)}%` : '-'}
                                         </td>
                                         <td className="text-right p-2">
-                                            {data.p90_cer !== undefined ? `${(data.p90_cer * 100).toFixed(2)}%` : '-'}
+                                            {data.p90_cer != null ? `${(data.p90_cer * 100).toFixed(2)}%` : '-'}
                                         </td>
                                         <td className="text-right p-2">
-                                            {data.avg_processing_time_ms !== undefined ? `${data.avg_processing_time_ms}ms` : '-'}
+                                            {data.avg_processing_time_ms != null ? `${data.avg_processing_time_ms}ms` : '-'}
                                         </td>
                                     </tr>
                                 ))}

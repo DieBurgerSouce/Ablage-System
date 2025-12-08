@@ -26,6 +26,7 @@ class HybridOCRAgent(OCRAgent):
     # Backend VRAM requirements in GB (muss mit gpu_manager.py uebereinstimmen)
     BACKEND_VRAM_MAP = {
         "deepseek": 12.0,      # DeepSeek-Janus-Pro needs 12GB
+        "chandra": 15.0,       # Chandra 9B VLM needs 15GB
         "got_ocr": 10.0,       # GOT-OCR 2.0 needs 10GB
         "surya_docling": 0.5,  # Surya+Docling is mostly CPU (minimal GPU)
     }
@@ -33,6 +34,7 @@ class HybridOCRAgent(OCRAgent):
     # Backend Prioritaet (hoeher = wichtiger, wird zuerst versucht)
     BACKEND_PRIORITY = {
         "deepseek": 3,     # Beste Qualitaet
+        "chandra": 2,      # State-of-the-Art VLM (hohe Prioritaet!)
         "got_ocr": 2,      # Gut fuer Tabellen/Formeln
         "surya_docling": 1 # CPU-Fallback
     }

@@ -27,6 +27,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 import structlog
 
+from app.db.session import get_async_session_context
+
 from app.db.models import (
     OCRTrainingSample,
     OCRBackendBenchmark,
@@ -514,6 +516,9 @@ class BulkOCRProcessingService:
         """
         total_samples = len(samples)
 
+        # Ensure OCR agents are loaded before processing
+        await self.benchmark_runner._ensure_agents()
+
         for batch_start in range(0, total_samples, batch_size):
             if _job_cancel_flags.get(job.id, False):
                 break
@@ -536,6 +541,7 @@ class BulkOCRProcessingService:
                 job.documents_per_backend[backend_name] = (
                     job.documents_per_backend.get(backend_name, 0) + successful
                 )
+                job.processed_documents += successful
                 job.failed_documents += failed
                 job.current_document_index = batch_end
 
@@ -606,9 +612,18 @@ class BulkOCRProcessingService:
                     backend_name=backend_name,
                 )
 
-                # Speichere Ergebnis
-                await self._save_benchmark_result(db, sample.id, result)
+                # Speichere Ergebnis mit FRISCHER DB-Session
+                # (verhindert Connection-Timeout bei langen OCR-Operationen)
+                async with get_async_session_context() as fresh_db:
+                    await self._save_benchmark_result(fresh_db, sample.id, result)
+
                 results.append(result)
+
+                logger.debug(
+                    "benchmark_saved",
+                    sample_id=str(sample.id)[:8],
+                    backend=backend_name,
+                )
 
             except Exception as e:
                 results.append(BenchmarkResult(
@@ -658,11 +673,16 @@ class BulkOCRProcessingService:
         sample_id: UUID,
         backend_name: str,
     ) -> Optional[OCRBackendBenchmark]:
-        """Prüft ob bereits ein Benchmark existiert."""
+        """Prüft ob bereits ein vollständiger Benchmark existiert.
+
+        Nur Benchmarks mit tatsächlichem OCR-Text werden als 'existierend'
+        betrachtet, um leere/fehlgeschlagene Einträge zu überspringen.
+        """
         query = select(OCRBackendBenchmark).where(
             and_(
                 OCRBackendBenchmark.training_sample_id == sample_id,
                 OCRBackendBenchmark.backend_name == backend_name,
+                OCRBackendBenchmark.raw_text.isnot(None),  # Only count if has actual text
             )
         )
         result = await db.execute(query)
@@ -674,25 +694,56 @@ class BulkOCRProcessingService:
         sample_id: UUID,
         result: BenchmarkResult,
     ) -> OCRBackendBenchmark:
-        """Speichert ein Benchmark-Ergebnis."""
-        benchmark = OCRBackendBenchmark(
-            training_sample_id=sample_id,
-            backend_name=result.backend_name,
-            raw_text=result.raw_text,
-            confidence_score=result.confidence,
-            cer=result.cer,
-            wer=result.wer,
-            umlaut_accuracy=result.umlaut_accuracy,
-            capitalization_accuracy=result.capitalization_accuracy,
-            processing_time_ms=result.processing_time_ms,
-            gpu_memory_mb=result.gpu_memory_mb,
-            insertions=result.insertions,
-            deletions=result.deletions,
-            substitutions=result.substitutions,
-            error_patterns=result.error_patterns,
-            field_accuracies=result.field_accuracies,
+        """Speichert oder aktualisiert ein Benchmark-Ergebnis.
+
+        Falls bereits ein (leerer) Eintrag existiert, wird dieser aktualisiert.
+        """
+        # Check for existing benchmark (including empty ones)
+        query = select(OCRBackendBenchmark).where(
+            and_(
+                OCRBackendBenchmark.training_sample_id == sample_id,
+                OCRBackendBenchmark.backend_name == result.backend_name,
+            )
         )
-        db.add(benchmark)
+        existing = await db.execute(query)
+        benchmark = existing.scalar_one_or_none()
+
+        if benchmark:
+            # Update existing benchmark
+            benchmark.raw_text = result.raw_text
+            benchmark.confidence_score = result.confidence
+            benchmark.cer = result.cer
+            benchmark.wer = result.wer
+            benchmark.umlaut_accuracy = result.umlaut_accuracy
+            benchmark.capitalization_accuracy = result.capitalization_accuracy
+            benchmark.processing_time_ms = result.processing_time_ms
+            benchmark.gpu_memory_mb = result.gpu_memory_mb
+            benchmark.insertions = result.insertions
+            benchmark.deletions = result.deletions
+            benchmark.substitutions = result.substitutions
+            benchmark.error_patterns = result.error_patterns
+            benchmark.field_accuracies = result.field_accuracies
+        else:
+            # Create new benchmark
+            benchmark = OCRBackendBenchmark(
+                training_sample_id=sample_id,
+                backend_name=result.backend_name,
+                raw_text=result.raw_text,
+                confidence_score=result.confidence,
+                cer=result.cer,
+                wer=result.wer,
+                umlaut_accuracy=result.umlaut_accuracy,
+                capitalization_accuracy=result.capitalization_accuracy,
+                processing_time_ms=result.processing_time_ms,
+                gpu_memory_mb=result.gpu_memory_mb,
+                insertions=result.insertions,
+                deletions=result.deletions,
+                substitutions=result.substitutions,
+                error_patterns=result.error_patterns,
+                field_accuracies=result.field_accuracies,
+            )
+            db.add(benchmark)
+
         await db.commit()
         return benchmark
 

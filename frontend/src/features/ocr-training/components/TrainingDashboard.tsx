@@ -267,25 +267,25 @@ function BackendCard({ backend }: BackendCardProps) {
                 <div className="flex justify-between">
                     <span className="text-muted-foreground">CER</span>
                     <span className={cerColor}>
-                        {backend.avg_cer !== undefined ? `${(backend.avg_cer * 100).toFixed(2)}%` : '-'}
+                        {backend.avg_cer != null ? `${(backend.avg_cer * 100).toFixed(2)}%` : '-'}
                     </span>
                 </div>
                 <div className="flex justify-between">
                     <span className="text-muted-foreground">WER</span>
                     <span>
-                        {backend.avg_wer !== undefined ? `${(backend.avg_wer * 100).toFixed(2)}%` : '-'}
+                        {backend.avg_wer != null ? `${(backend.avg_wer * 100).toFixed(2)}%` : '-'}
                     </span>
                 </div>
                 <div className="flex justify-between">
                     <span className="text-muted-foreground">Umlaut</span>
                     <span className={umlautColor}>
-                        {backend.avg_umlaut_accuracy !== undefined ? `${(backend.avg_umlaut_accuracy * 100).toFixed(1)}%` : '-'}
+                        {backend.avg_umlaut_accuracy != null ? `${(backend.avg_umlaut_accuracy * 100).toFixed(1)}%` : '-'}
                     </span>
                 </div>
                 <div className="flex justify-between">
                     <span className="text-muted-foreground">Zeit</span>
                     <span>
-                        {backend.avg_processing_time_ms !== undefined ? `${backend.avg_processing_time_ms.toFixed(0)}ms` : '-'}
+                        {backend.avg_processing_time_ms != null ? `${backend.avg_processing_time_ms.toFixed(0)}ms` : '-'}
                     </span>
                 </div>
             </div>

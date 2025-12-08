@@ -62,6 +62,14 @@ RUN python3.11 -m pip install --no-cache-dir -r requirements.txt
 # Install additional GPU requirements
 RUN python3.11 -m pip install --no-cache-dir -r requirements-gpu.txt
 
+# Install DeepSeek Janus library for Janus-Pro multimodal OCR
+# Required for MultiModalityCausalLM and VLChatProcessor classes
+# First install dependencies, then the package in editable mode via PYTHONPATH
+RUN git clone --depth 1 https://github.com/deepseek-ai/Janus.git /opt/janus && \
+    python3.11 -m pip install --no-cache-dir attrdict einops sentencepiece timm accelerate && \
+    echo "/opt/janus" > /usr/local/lib/python3.11/dist-packages/janus.pth && \
+    python3.11 -c "from janus.models import MultiModalityCausalLM, VLChatProcessor; print('Janus OK')"
+
 # Copy application code with correct ownership
 COPY --chown=ablage:ablage app/ ./app/
 COPY --chown=ablage:ablage test_documents/ ./test_documents/
