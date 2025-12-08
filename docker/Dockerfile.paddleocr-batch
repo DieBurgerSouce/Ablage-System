@@ -1,0 +1,188 @@
+# PaddleOCR Batch Test Container
+# Verarbeitet mehrere Dokumente und speichert Ergebnisse
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    paddlepaddle \
+    paddleocr \
+    pillow \
+    numpy
+
+# Create directories
+RUN mkdir -p /app/test_images /app/results
+
+# Create batch test script inline
+RUN cat > /app/batch_paddleocr.py << 'SCRIPT'
+# -*- coding: utf-8 -*-
+"""PaddleOCR Batch Test - verarbeitet alle TIF-Dateien im /app/test_images Ordner."""
+import time
+import os
+import sys
+import json
+import warnings
+from pathlib import Path
+warnings.filterwarnings("ignore")
+
+IMAGES_DIR = Path("/app/test_images")
+RESULTS_DIR = Path("/app/results")
+
+def process_image(image_path: Path, ocr) -> dict:
+    """Verarbeite ein Bild mit PaddleOCR."""
+    from PIL import Image
+    import numpy as np
+
+    start = time.perf_counter()
+
+    try:
+        # Load image
+        img = Image.open(image_path).convert('RGB')
+        img_np = np.array(img)
+
+        # OCR
+        result = ocr.ocr(img_np)
+
+        # Extract text from PaddleOCR 3.x result
+        text_lines = []
+        total_conf = 0.0
+        word_count = 0
+
+        if result:
+            first_page = result[0]
+            if hasattr(first_page, 'rec_texts'):
+                # PaddleOCR 3.x OCRResult object
+                rec_texts = first_page.rec_texts
+                rec_scores = first_page.rec_scores
+
+                if isinstance(rec_texts, list):
+                    for i, text_val in enumerate(rec_texts):
+                        text_lines.append(str(text_val))
+                        if isinstance(rec_scores, list) and i < len(rec_scores):
+                            total_conf += float(rec_scores[i])
+                        word_count += 1
+            elif isinstance(first_page, dict):
+                rec_texts = first_page.get('rec_texts', [])
+                rec_scores = first_page.get('rec_scores', [])
+                for i, text_val in enumerate(rec_texts):
+                    text_lines.append(str(text_val))
+                    if i < len(rec_scores):
+                        total_conf += float(rec_scores[i])
+                    word_count += 1
+
+        text = '\n'.join(text_lines)
+        confidence = total_conf / word_count if word_count > 0 else 0.0
+        elapsed = time.perf_counter() - start
+
+        return {
+            "success": True,
+            "time": elapsed,
+            "chars": len(text),
+            "words": word_count,
+            "confidence": confidence,
+            "text": text
+        }
+
+    except Exception as e:
+        elapsed = time.perf_counter() - start
+        return {
+            "success": False,
+            "time": elapsed,
+            "error": str(e)
+        }
+
+
+def main():
+    print("=" * 60)
+    print("PADDLEOCR BATCH TEST")
+    print("=" * 60)
+
+    # Find all TIF files
+    tif_files = sorted(IMAGES_DIR.glob("*.TIF")) + sorted(IMAGES_DIR.glob("*.tif"))
+
+    if not tif_files:
+        print("FEHLER: Keine TIF-Dateien gefunden in", IMAGES_DIR)
+        return
+
+    print(f"Gefunden: {len(tif_files)} TIF-Dateien")
+    print()
+
+    # Initialize PaddleOCR once
+    print("Initialisiere PaddleOCR...")
+    from paddleocr import PaddleOCR
+    ocr = PaddleOCR(lang='german')
+    print("PaddleOCR initialisiert.\n")
+
+    results = []
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    for idx, tif_path in enumerate(tif_files):
+        doc_name = tif_path.stem
+        print(f"[{idx+1}/{len(tif_files)}] {doc_name}...", end=" ", flush=True)
+
+        result = process_image(tif_path, ocr)
+        result["document"] = doc_name
+        result["path"] = str(tif_path)
+
+        if result["success"]:
+            print(f"OK ({result['time']:.1f}s, {result['chars']} chars, {result['confidence']:.1%})")
+
+            # Save text to file
+            text_file = RESULTS_DIR / f"{doc_name}_paddleocr.txt"
+            with open(text_file, "w", encoding="utf-8") as f:
+                f.write(f"Backend: PaddleOCR\n")
+                f.write(f"Dokument: {doc_name}\n")
+                f.write(f"Zeit: {result['time']:.1f}s\n")
+                f.write(f"Zeichen: {result['chars']}\n")
+                f.write(f"Woerter: {result['words']}\n")
+                f.write(f"Confidence: {result['confidence']:.1%}\n")
+                f.write(f"\n{'='*60}\n")
+                f.write(f"TEXT:\n")
+                f.write(f"{'='*60}\n\n")
+                f.write(result["text"])
+        else:
+            print(f"FEHLER: {result.get('error', 'Unknown')[:50]}")
+
+        # Store result without full text for summary
+        results.append({k: v for k, v in result.items() if k != "text"})
+
+    # Summary
+    print("\n" + "=" * 60)
+    print("ZUSAMMENFASSUNG")
+    print("=" * 60)
+
+    successful = [r for r in results if r.get("success")]
+    if successful:
+        avg_time = sum(r["time"] for r in successful) / len(successful)
+        avg_chars = sum(r["chars"] for r in successful) / len(successful)
+        avg_conf = sum(r["confidence"] for r in successful) / len(successful)
+
+        print(f"Erfolgreich: {len(successful)}/{len(results)}")
+        print(f"Durchschn. Zeit: {avg_time:.1f}s")
+        print(f"Durchschn. Zeichen: {avg_chars:.0f}")
+        print(f"Durchschn. Confidence: {avg_conf:.1%}")
+
+    # Save summary JSON
+    summary_file = RESULTS_DIR / "paddleocr_summary.json"
+    with open(summary_file, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+
+    print(f"\nErgebnisse gespeichert in: {RESULTS_DIR}")
+
+
+if __name__ == "__main__":
+    main()
+SCRIPT
+
+CMD ["python", "/app/batch_paddleocr.py"]
