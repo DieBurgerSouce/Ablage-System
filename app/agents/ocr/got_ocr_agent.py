@@ -162,12 +162,23 @@ class GOTOCRAgent(OCRAgent):
         """Allocate GPU or fallback to CPU."""
         allocation = self.gpu_manager.allocate_for_backend("got_ocr")
 
-        if allocation["success"] and allocation.get("mode") == "gpu":
+        # FIX: GPUManager gibt "mode": "cpu" nur für CPU-only Backends (vram=0) zurück
+        # Für GPU-Backends prüfen wir nur "success" und "allocated_gb" > 0
+        if allocation["success"] and allocation.get("allocated_gb", 0) > 0:
+            self.logger.info(
+                "got_ocr_gpu_mode",
+                allocated_gb=allocation.get("allocated_gb"),
+            )
             return "cuda"
+        elif allocation["success"] and allocation.get("mode") == "cpu":
+            # Explizit CPU-mode (z.B. surya ohne GPU)
+            self.logger.info("got_ocr_cpu_only_mode")
+            return "cpu"
         else:
             self.logger.warning(
-                "got_ocr_cpu_mode",
-                reason="GPU not available, using CPU (slower)",
+                "got_ocr_cpu_fallback",
+                reason=allocation.get("reason", "GPU allocation failed"),
+                fallback=allocation.get("fallback", "cpu"),
             )
             return "cpu"
 
