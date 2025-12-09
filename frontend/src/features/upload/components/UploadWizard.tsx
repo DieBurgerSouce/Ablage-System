@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { UploadState } from '../types';
 import { UnifiedUploadStep } from '../steps/UnifiedUploadStep';
 import { AnalysisStep } from '../steps/AnalysisStep';
 import { ReviewStep } from '../steps/ReviewStep';
-import { analyzeDocuments } from '@/lib/api/smart-analysis';
+import { analyzeDocuments, cleanupAnalysisResults } from '@/lib/api/smart-analysis';
 import { useNavigate } from '@tanstack/react-router';
 
 export function UploadWizard() {
@@ -17,13 +17,20 @@ export function UploadWizard() {
         groups: []
     });
 
-    const handleBackendSelect = (backendId: string) => {
-        setState(prev => ({ ...prev, selectedBackendId: backendId }));
-    };
+    // Cleanup blob URLs on unmount to prevent memory leaks
+    useEffect(() => {
+        return () => {
+            cleanupAnalysisResults(state.analysisResults);
+        };
+    }, [state.analysisResults]);
 
-    const handleTuneSelect = (tuneId: string) => {
+    const handleBackendSelect = useCallback((backendId: string) => {
+        setState(prev => ({ ...prev, selectedBackendId: backendId }));
+    }, []);
+
+    const handleTuneSelect = useCallback((tuneId: string) => {
         setState(prev => ({ ...prev, selectedTuneId: tuneId }));
-    };
+    }, []);
 
     const handleFilesAdd = async (newFiles: File[]) => {
         // Validate that backend and tune are selected
@@ -36,8 +43,8 @@ export function UploadWizard() {
         try {
             const results = await analyzeDocuments(newFiles, tuneId, backendId);
             setState(prev => ({ ...prev, analysisResults: results }));
-        } catch (error) {
-            console.error("Fehler bei der Analyse", error);
+        } catch {
+            // Analysis failed - return to upload step
             setState(prev => ({ ...prev, step: 'upload' }));
         }
     };
@@ -64,19 +71,40 @@ export function UploadWizard() {
         }));
     };
 
-    const handleRemoveFile = (fileId: string) => {
-        setState(prev => ({
-            ...prev,
-            files: prev.files.filter((_, i) => `file-${i}` !== fileId),
-            analysisResults: prev.analysisResults.filter(r => r.fileId !== fileId)
-        }));
-    };
+    const handleRemoveFile = useCallback((fileId: string) => {
+        setState(prev => {
+            // Find the result to cleanup its blob URL
+            const resultToRemove = prev.analysisResults.find(r => r.fileId === fileId);
+            if (resultToRemove) {
+                cleanupAnalysisResults([resultToRemove]);
+            }
 
-    const handleConfirm = () => {
-        console.log(`${state.analysisResults.length} Dokumente erfolgreich verarbeitet!`);
-        console.log('Final Data:', state.analysisResults);
+            // Filter analysisResults by fileId (UUID-based)
+            // Note: files array is kept in sync by fileName matching for re-uploads
+            const newAnalysisResults = prev.analysisResults.filter(r => r.fileId !== fileId);
+
+            // Also remove any children that reference this file as parent
+            const filteredResults = newAnalysisResults.filter(r => r.parentId !== fileId);
+
+            // Remove corresponding file by matching fileName
+            const removedFileName = resultToRemove?.fileName;
+            const newFiles = removedFileName
+                ? prev.files.filter(f => f.name !== removedFileName)
+                : prev.files;
+
+            return {
+                ...prev,
+                files: newFiles,
+                analysisResults: filteredResults
+            };
+        });
+    }, []);
+
+    const handleConfirm = useCallback(() => {
+        // Cleanup blob URLs before navigating away
+        cleanupAnalysisResults(state.analysisResults);
         navigate({ to: '/' });
-    };
+    }, [navigate, state.analysisResults]);
 
     return (
         <div className="max-w-7xl mx-auto py-8 px-4">

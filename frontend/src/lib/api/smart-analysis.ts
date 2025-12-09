@@ -1,45 +1,39 @@
-import type { SmartAnalysisResult, Tune } from '@/features/upload/types';
+import type { SmartAnalysisResult } from '@/features/upload/types';
 
-export const AVAILABLE_TUNES: Tune[] = [
-    {
-        id: 'invoice-tune',
-        name: 'Rechnungen & Finanzen',
-        description: 'Optimiert für Rechnungen, Belege und Steuerdokumente.',
-        icon: 'Receipt',
-        color: 'bg-emerald-500'
-    },
-    {
-        id: 'contract-tune',
-        name: 'Verträge & Rechtliches',
-        description: 'Erkennt Klauseln, Unterschriften und rechtliche Strukturen.',
-        icon: 'Scale',
-        color: 'bg-blue-500'
-    },
-    {
-        id: 'correspondence-tune',
-        name: 'Allgemeiner Schriftverkehr',
-        description: 'Für Briefe, Notizen und sonstige Korrespondenz.',
-        icon: 'Mail',
-        color: 'bg-amber-500'
-    },
-    {
-        id: 'technical-tune',
-        name: 'Technische Dokumentation',
-        description: 'Für Handbücher, Datenblätter und technische Zeichnungen.',
-        icon: 'Wrench',
-        color: 'bg-slate-500'
+/**
+ * Generates a UUID v4 string.
+ * Used for unique file identification instead of index-based IDs.
+ */
+function generateUUID(): string {
+    return crypto.randomUUID();
+}
+
+/**
+ * Cleanup function to revoke blob URLs when analysis results are no longer needed.
+ * IMPORTANT: Call this function when unmounting components or replacing analysis results
+ * to prevent memory leaks from accumulated blob URLs.
+ */
+export function cleanupAnalysisResults(results: SmartAnalysisResult[]): void {
+    for (const result of results) {
+        if (result.previewUrl && result.previewUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(result.previewUrl);
+        }
     }
-];
+}
 
-export async function analyzeDocuments(files: File[], selectedTuneId: string): Promise<SmartAnalysisResult[]> {
+export async function analyzeDocuments(files: File[], selectedTuneId: string, defaultBackendId: string): Promise<SmartAnalysisResult[]> {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 2500));
+
+    // Generate UUIDs for all files first to enable parent references
+    const fileIds = files.map(() => generateUUID());
 
     return files.map((file, index) => {
         // Mock logic for "Smart" detection
         let confidence: 'high' | 'medium' | 'low' = 'high';
         const issues: string[] = [];
-        let detectedTuneId = selectedTuneId;
+        const detectedTuneId = selectedTuneId;
+        const selectedBackendId = defaultBackendId;
 
         // Simulate some "intelligence"
         if (file.name.toLowerCase().includes('scan')) {
@@ -49,27 +43,31 @@ export async function analyzeDocuments(files: File[], selectedTuneId: string): P
 
         if (file.name.toLowerCase().includes('unknown')) {
             confidence = 'low';
-            detectedTuneId = 'correspondence-tune'; // Suggest a different tune
         }
 
-        // Simulate relationship detection (simple name matching for demo)
+        // Simulate relationship detection
         // If this file has a similar name to the previous one, mark as attachment
+        // Also check for "Anhang" or "Attachment" keywords
         let isChild = false;
-        let parentId = undefined;
+        let parentId: string | undefined = undefined;
 
         if (index > 0) {
             const prevFile = files[index - 1];
-            if (file.name.startsWith(prevFile.name.split('.')[0])) {
+            const isNameSimilar = file.name.startsWith(prevFile.name.split('.')[0]);
+            const isAttachmentKeyword = /anhang|attachment|beilage/i.test(file.name);
+
+            if (isNameSimilar || isAttachmentKeyword) {
                 isChild = true;
-                parentId = `file-${index - 1}`;
+                parentId = fileIds[index - 1]; // Reference by UUID
             }
         }
 
         return {
-            fileId: `file-${index}`,
+            fileId: fileIds[index], // UUID instead of index-based ID
             fileName: file.name,
             fileSize: file.size,
             detectedTuneId,
+            selectedBackendId,
             confidence,
             issues,
             isChild,
@@ -78,3 +76,4 @@ export async function analyzeDocuments(files: File[], selectedTuneId: string): P
         };
     });
 }
+

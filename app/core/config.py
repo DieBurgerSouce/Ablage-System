@@ -450,8 +450,9 @@ class Settings(BaseSettings):
     GPU_BATCH_SIZE: int = Field(default=32, ge=1, le=128, description="GPU batch size (1-128)")
 
     # GPU Lock Settings (Distributed locking via Redis)
-    GPU_LOCK_TIMEOUT: int = Field(default=60, description="GPU lock auto-expire timeout in seconds")
-    GPU_LOCK_ACQUIRE_TIMEOUT: int = Field(default=30, description="Max seconds to wait for GPU lock")
+    # Increased from 60s to 180s for long-running OCR tasks
+    GPU_LOCK_TIMEOUT: int = Field(default=180, description="GPU lock auto-expire timeout in seconds")
+    GPU_LOCK_ACQUIRE_TIMEOUT: int = Field(default=60, description="Max seconds to wait for GPU lock")
     GPU_LOCK_RETRY_INTERVAL: float = Field(default=0.1, description="Seconds between lock acquisition retries")
 
     # Model Pre-Loading Settings

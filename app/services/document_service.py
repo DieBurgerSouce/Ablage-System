@@ -33,18 +33,18 @@ from datetime import timedelta
 from app.core.config import settings
 from app.core.cache import invalidate_on_document_change
 
-# Split Service imports
-from app.services.document_gdpr_service import (
+# Split Service imports - using consolidated services from document_services module
+from app.services.document_services.gdpr_service import (
     DocumentGDPRService,
-    get_document_gdpr_service
+    get_gdpr_service as get_document_gdpr_service
 )
 from app.services.document_batch_service import (
     DocumentBatchService,
     get_document_batch_service
 )
-from app.services.document_export_service import (
+from app.services.document_services.export_service import (
     DocumentExportService,
-    get_document_export_service
+    get_export_service as get_document_export_service
 )
 
 logger = structlog.get_logger(__name__)

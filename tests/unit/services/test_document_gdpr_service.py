@@ -10,9 +10,10 @@ from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from app.services.document_gdpr_service import (
+# Using consolidated service from document_services module
+from app.services.document_services.gdpr_service import (
     DocumentGDPRService,
-    get_document_gdpr_service,
+    get_gdpr_service as get_document_gdpr_service,
 )
 
 

@@ -262,6 +262,63 @@ class DocumentGDPRService(DocumentServiceBase):
 
         return count
 
+    async def get_retention_info(
+        self,
+        db: AsyncSession,
+        document_id: UUID,
+        user_id: UUID
+    ) -> Optional[dict]:
+        """Gibt Informationen zur Aufbewahrungsfrist eines Dokuments zurueck.
+
+        Args:
+            db: Datenbank-Session
+            document_id: ID des Dokuments
+            user_id: ID des Benutzers
+
+        Returns:
+            Dict mit Aufbewahrungsinformationen oder None wenn nicht gefunden
+        """
+        query = select(Document).where(
+            and_(
+                Document.id == document_id,
+                Document.owner_id == user_id
+            )
+        )
+        result = await db.execute(query)
+        doc = result.scalar_one_or_none()
+
+        if not doc:
+            return None
+
+        now = datetime.now(timezone.utc)
+
+        if doc.deleted_at is None:
+            return {
+                "document_id": doc.id,
+                "is_deleted": False,
+                "can_restore": False,
+                "deleted_at": None,
+                "deletion_reason": None,
+                "days_until_permanent_deletion": None
+            }
+
+        days_since = (now - doc.deleted_at).days
+        days_until_permanent = max(0, 30 - days_since)
+        deletion_reason = (
+            doc.document_metadata.get("deletion_reason")
+            if doc.document_metadata else None
+        )
+
+        return {
+            "document_id": doc.id,
+            "is_deleted": True,
+            "can_restore": days_until_permanent > 0,
+            "deleted_at": doc.deleted_at,
+            "deletion_reason": deletion_reason,
+            "days_until_permanent_deletion": days_until_permanent,
+            "permanent_deletion_date": doc.deleted_at + timedelta(days=30)
+        }
+
 
 # Singleton-Instanz
 _gdpr_service_instance: DocumentGDPRService = None

@@ -14,6 +14,7 @@ from typing import List, Optional, Dict, Any, AsyncGenerator, Literal
 from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from enum import Enum
+from functools import wraps
 
 import httpx
 import structlog
@@ -22,6 +23,16 @@ from app.core.config import settings
 from app.db.models import RAGLLMModel, RAGLLMModelType
 
 logger = structlog.get_logger(__name__)
+
+
+# Retry configuration
+MAX_RETRIES = 3
+RETRY_DELAYS = [1.0, 2.0, 4.0]  # Exponential backoff in seconds
+RETRYABLE_ERRORS = (
+    httpx.TimeoutException,
+    httpx.ConnectError,
+    httpx.ReadError,
+)
 
 
 class LLMContextType(str, Enum):
@@ -251,65 +262,104 @@ class LLMService:
             enable_thinking=enable_thinking
         )
 
-        try:
-            client = await self._get_client()
-            response = await client.post("/api/chat", json=request_body)
-            response.raise_for_status()
+        # Retry-Loop mit exponential backoff
+        last_error: Optional[Exception] = None
 
-            data = response.json()
-            raw_content = data.get("message", {}).get("content", "")
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                client = await self._get_client()
+                response = await client.post("/api/chat", json=request_body)
+                response.raise_for_status()
 
-            # Thinking extrahieren
-            content, thinking = self._extract_thinking(raw_content)
+                data = response.json()
+                raw_content = data.get("message", {}).get("content", "")
 
-            # Metadaten
-            generation_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+                # Thinking extrahieren
+                content, thinking = self._extract_thinking(raw_content)
 
-            result = LLMResponse(
-                content=content,
-                thinking_content=thinking,
-                model=model_config.name,
-                tokens_input=data.get("prompt_eval_count", 0),
-                tokens_output=data.get("eval_count", 0),
-                generation_time_ms=int(generation_time * 1000),
-                finish_reason=data.get("done_reason", "stop")
-            )
+                # Metadaten
+                generation_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
-            logger.info(
-                "llm_generate_complete",
-                model=model_config.name,
-                tokens_input=result.tokens_input,
-                tokens_output=result.tokens_output,
-                generation_time_ms=result.generation_time_ms,
-                has_thinking=thinking is not None
-            )
+                result = LLMResponse(
+                    content=content,
+                    thinking_content=thinking,
+                    model=model_config.name,
+                    tokens_input=data.get("prompt_eval_count", 0),
+                    tokens_output=data.get("eval_count", 0),
+                    generation_time_ms=int(generation_time * 1000),
+                    finish_reason=data.get("done_reason", "stop")
+                )
 
-            return result
+                logger.info(
+                    "llm_generate_complete",
+                    model=model_config.name,
+                    tokens_input=result.tokens_input,
+                    tokens_output=result.tokens_output,
+                    generation_time_ms=result.generation_time_ms,
+                    has_thinking=thinking is not None,
+                    retry_attempt=attempt
+                )
 
-        except httpx.TimeoutException:
-            logger.error(
-                "llm_generate_timeout",
-                model=model_config.name,
-                timeout=self.timeout
-            )
-            raise RuntimeError(f"LLM Timeout nach {self.timeout}s")
+                return result
 
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                "llm_generate_http_error",
-                model=model_config.name,
-                status=e.response.status_code,
-                detail=e.response.text
-            )
-            raise RuntimeError(f"LLM HTTP Fehler: {e.response.status_code}")
+            except RETRYABLE_ERRORS as e:
+                last_error = e
+                if attempt < MAX_RETRIES:
+                    delay = RETRY_DELAYS[attempt]
+                    logger.warning(
+                        "llm_generate_retry",
+                        model=model_config.name,
+                        attempt=attempt + 1,
+                        max_retries=MAX_RETRIES,
+                        delay_seconds=delay,
+                        error=str(e)
+                    )
+                    await asyncio.sleep(delay)
+                    continue
 
-        except Exception as e:
-            logger.exception(
-                "llm_generate_error",
-                model=model_config.name,
-                error=str(e)
-            )
-            raise
+                # Max retries reached
+                logger.error(
+                    "llm_generate_max_retries",
+                    model=model_config.name,
+                    attempts=MAX_RETRIES + 1,
+                    error=str(e)
+                )
+                raise RuntimeError(
+                    f"LLM Fehler nach {MAX_RETRIES + 1} Versuchen: {e}"
+                ) from e
+
+            except httpx.HTTPStatusError as e:
+                # HTTP errors (4xx, 5xx) - retry only for 5xx
+                if e.response.status_code >= 500 and attempt < MAX_RETRIES:
+                    delay = RETRY_DELAYS[attempt]
+                    logger.warning(
+                        "llm_generate_retry_5xx",
+                        model=model_config.name,
+                        attempt=attempt + 1,
+                        status=e.response.status_code,
+                        delay_seconds=delay
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+                logger.error(
+                    "llm_generate_http_error",
+                    model=model_config.name,
+                    status=e.response.status_code,
+                    detail=e.response.text
+                )
+                raise RuntimeError(f"LLM HTTP Fehler: {e.response.status_code}") from e
+
+            except Exception as e:
+                logger.exception(
+                    "llm_generate_error",
+                    model=model_config.name,
+                    error=str(e)
+                )
+                raise
+
+        # Should not reach here, but just in case
+        raise RuntimeError(f"LLM Generierung fehlgeschlagen: {last_error}")
 
     async def generate_stream(
         self,

@@ -1,8 +1,8 @@
 from typing import List, Any
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select
 
 from app.api import dependencies
 from app.db import models
@@ -10,12 +10,13 @@ from app.api.schemas.tunes import TuneCreate, TuneUpdate, TuneResponse
 
 router = APIRouter()
 
+
 @router.get("/", response_model=List[TuneResponse])
 async def get_tunes(
     db: AsyncSession = Depends(dependencies.get_db),
     current_user: models.User = Depends(dependencies.get_current_active_user),
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0, description="Anzahl zu ueberspringender Eintraege"),
+    limit: int = Query(100, ge=1, le=200, description="Maximale Anzahl zurueckzugebender Eintraege"),
     active_only: bool = False
 ) -> Any:
     """
@@ -30,6 +31,38 @@ async def get_tunes(
     query = query.offset(skip).limit(limit)
     result = await db.execute(query)
     return result.scalars().all()
+
+
+@router.get("/{tune_id}", response_model=TuneResponse)
+async def get_tune(
+    tune_id: UUID,
+    db: AsyncSession = Depends(dependencies.get_db),
+    current_user: models.User = Depends(dependencies.get_current_active_user)
+) -> Any:
+    """
+    Ein einzelnes Tune anhand der ID abrufen.
+
+    Args:
+        tune_id: UUID des Tunes
+
+    Returns:
+        TuneResponse mit allen Tune-Details
+
+    Raises:
+        404: Wenn das Tune nicht gefunden wurde
+    """
+    query = select(models.Tune).where(models.Tune.id == tune_id)
+    result = await db.execute(query)
+    tune = result.scalars().first()
+
+    if not tune:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tune nicht gefunden"
+        )
+
+    return tune
+
 
 @router.post("/", response_model=TuneResponse, status_code=status.HTTP_201_CREATED)
 async def create_tune(

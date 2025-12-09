@@ -1,359 +1,39 @@
-"""GDPR-Service fuer Soft-Delete und Wiederherstellung.
+"""DEPRECATED: Verwende app.services.document_services.gdpr_service stattdessen.
 
-Implementiert GDPR-konforme Dokumentenlöschung mit 30-Tage-Wiederherstellungsfrist.
+Dieser Wrapper existiert für Rückwärtskompatibilität und wird in einer zukünftigen
+Version entfernt.
+
+Migration:
+    ALT:  from app.services.document_gdpr_service import DocumentGDPRService
+    NEU:  from app.services.document_services.gdpr_service import DocumentGDPRService
 """
 
-from typing import Optional, List
-from datetime import datetime, timezone, timedelta
-from uuid import UUID
+import warnings
 
-import structlog
-from sqlalchemy import select, and_, delete
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.db.models import Document
-from app.db.schemas import (
-    DocumentType,
-    SoftDeleteResponse,
-    RestoreDocumentResponse,
-    DeletedDocumentSummary,
-    DeletedDocumentsListResponse,
+# Re-export from consolidated module for backwards compatibility
+from app.services.document_services.gdpr_service import (
+    DocumentGDPRService,
+    get_gdpr_service,
 )
-from app.core.cache import invalidate_on_document_change
 
-logger = structlog.get_logger(__name__)
-
-
-class DocumentGDPRService:
-    """Service fuer GDPR-konforme Dokumentenoperationen.
-
-    Bietet Soft-Delete, Wiederherstellung und permanente Loeschung
-    nach Ablauf der Aufbewahrungsfrist.
-    """
-
-    DEFAULT_RETENTION_DAYS: int = 30
-
-    async def soft_delete_document(
-        self,
-        db: AsyncSession,
-        document_id: UUID,
-        user_id: UUID,
-        reason: Optional[str] = None
-    ) -> Optional[SoftDeleteResponse]:
-        """Dokument soft-loeschen (GDPR-konform).
-
-        Markiert Dokument als geloescht, entfernt es aber nicht.
-        Nach 30 Tagen wird es permanent geloescht (via Scheduled Task).
-
-        Args:
-            db: Datenbank-Session
-            document_id: Dokument-ID
-            user_id: Benutzer-ID
-            reason: Optionaler Loeschgrund
-
-        Returns:
-            SoftDeleteResponse oder None wenn nicht gefunden
-        """
-        query = select(Document).where(
-            and_(
-                Document.id == document_id,
-                Document.owner_id == user_id,
-                Document.deleted_at.is_(None)  # Noch nicht geloescht
-            )
-        )
-        result = await db.execute(query)
-        doc = result.scalar_one_or_none()
-
-        if not doc:
-            return None
-
-        now = datetime.now(timezone.utc)
-        doc.deleted_at = now
-        doc.deleted_by_id = user_id
-
-        # Grund in Metadaten speichern
-        if reason:
-            meta = doc.document_metadata or {}
-            meta["deletion_reason"] = reason
-            doc.document_metadata = meta
-
-        await db.commit()
-
-        logger.info(
-            "document_soft_deleted",
-            document_id=str(document_id),
-            user_id=str(user_id),
-            reason=reason
-        )
-
-        # Such-Caches invalidieren
-        await self._invalidate_caches(document_id, user_id, "soft_delete")
-
-        return SoftDeleteResponse(
-            document_id=doc.id,
-            deleted_at=doc.deleted_at,
-            deleted_by_id=doc.deleted_by_id,
-            can_restore_until=now + timedelta(days=self.DEFAULT_RETENTION_DAYS)
-        )
-
-    async def restore_document(
-        self,
-        db: AsyncSession,
-        document_id: UUID,
-        user_id: UUID
-    ) -> Optional[RestoreDocumentResponse]:
-        """Soft-geloeschtes Dokument wiederherstellen.
-
-        Stellt ein geloeschtes Dokument wieder her,
-        solange die 30-Tage-Frist nicht abgelaufen ist.
-
-        Args:
-            db: Datenbank-Session
-            document_id: Dokument-ID
-            user_id: Benutzer-ID
-
-        Returns:
-            RestoreDocumentResponse oder None wenn nicht gefunden
-
-        Raises:
-            ValueError: Wenn Wiederherstellungsfrist abgelaufen ist
-        """
-        # Nur geloeschte Dokumente des Benutzers finden
-        query = select(Document).where(
-            and_(
-                Document.id == document_id,
-                Document.owner_id == user_id,
-                Document.deleted_at.isnot(None)
-            )
-        )
-        result = await db.execute(query)
-        doc = result.scalar_one_or_none()
-
-        if not doc:
-            return None
-
-        # Pruefen ob 30-Tage-Frist noch nicht abgelaufen
-        days_since_deletion = (datetime.now(timezone.utc) - doc.deleted_at).days
-        if days_since_deletion > self.DEFAULT_RETENTION_DAYS:
-            raise ValueError(
-                f"Wiederherstellung nicht mehr moeglich. "
-                f"Dokument wurde vor {days_since_deletion} Tagen geloescht."
-            )
-
-        now = datetime.now(timezone.utc)
-        doc.deleted_at = None
-        doc.deleted_by_id = None
-
-        # Loeschgrund aus Metadaten entfernen
-        if doc.document_metadata and "deletion_reason" in doc.document_metadata:
-            meta = doc.document_metadata.copy()
-            del meta["deletion_reason"]
-            doc.document_metadata = meta
-
-        doc.updated_at = now
-        await db.commit()
-
-        logger.info(
-            "document_restored",
-            document_id=str(document_id),
-            user_id=str(user_id)
-        )
-
-        return RestoreDocumentResponse(
-            document_id=doc.id,
-            restored_at=now
-        )
-
-    async def list_deleted_documents(
-        self,
-        db: AsyncSession,
-        user_id: UUID
-    ) -> DeletedDocumentsListResponse:
-        """Alle soft-geloeschten Dokumente eines Benutzers auflisten.
-
-        Zeigt geloeschte Dokumente mit Restzeit bis zur permanenten Loeschung.
-
-        Args:
-            db: Datenbank-Session
-            user_id: Benutzer-ID
-
-        Returns:
-            DeletedDocumentsListResponse mit Liste der Dokumente
-        """
-        query = (
-            select(Document)
-            .where(
-                and_(
-                    Document.owner_id == user_id,
-                    Document.deleted_at.isnot(None)
-                )
-            )
-            .order_by(Document.deleted_at.desc())
-        )
-        result = await db.execute(query)
-        documents = result.scalars().all()
-
-        now = datetime.now(timezone.utc)
-        summaries = []
-
-        for doc in documents:
-            days_since = (now - doc.deleted_at).days
-            days_until_permanent = max(0, self.DEFAULT_RETENTION_DAYS - days_since)
-
-            summaries.append(DeletedDocumentSummary(
-                id=doc.id,
-                filename=doc.filename,
-                document_type=DocumentType(doc.document_type) if doc.document_type else DocumentType.OTHER,
-                deleted_at=doc.deleted_at,
-                deleted_by_id=doc.deleted_by_id,
-                days_until_permanent_deletion=days_until_permanent,
-                can_restore=days_until_permanent > 0
-            ))
-
-        return DeletedDocumentsListResponse(
-            total=len(summaries),
-            documents=summaries
-        )
-
-    async def permanently_delete_expired(
-        self,
-        db: AsyncSession,
-        days_threshold: int = 30
-    ) -> int:
-        """Permanent loescht alle Dokumente, deren Soft-Delete abgelaufen ist.
-
-        Sollte als Scheduled Task laufen.
-
-        Args:
-            db: Datenbank-Session
-            days_threshold: Aufbewahrungsfrist in Tagen (default: 30)
-
-        Returns:
-            Anzahl geloeschter Dokumente
-        """
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_threshold)
-
-        # Alle abgelaufenen Dokumente finden
-        query = select(Document).where(
-            and_(
-                Document.deleted_at.isnot(None),
-                Document.deleted_at < cutoff_date
-            )
-        )
-        result = await db.execute(query)
-        documents = result.scalars().all()
-
-        count = len(documents)
-
-        for doc in documents:
-            await db.delete(doc)
-
-        if count > 0:
-            await db.commit()
-            logger.info(
-                "expired_documents_permanently_deleted",
-                count=count,
-                threshold_days=days_threshold
-            )
-
-        return count
-
-    async def get_retention_info(
-        self,
-        db: AsyncSession,
-        document_id: UUID,
-        user_id: UUID
-    ) -> Optional[dict]:
-        """Gibt Informationen zur Aufbewahrungsfrist eines Dokuments zurueck.
-
-        Args:
-            db: Datenbank-Session
-            document_id: Dokument-ID
-            user_id: Benutzer-ID
-
-        Returns:
-            Dict mit Aufbewahrungsinformationen oder None
-        """
-        query = select(Document).where(
-            and_(
-                Document.id == document_id,
-                Document.owner_id == user_id
-            )
-        )
-        result = await db.execute(query)
-        doc = result.scalar_one_or_none()
-
-        if not doc:
-            return None
-
-        now = datetime.now(timezone.utc)
-
-        if doc.deleted_at is None:
-            return {
-                "document_id": doc.id,
-                "is_deleted": False,
-                "can_restore": False,
-                "deleted_at": None,
-                "deletion_reason": None,
-                "days_until_permanent_deletion": None
-            }
-
-        days_since = (now - doc.deleted_at).days
-        days_until_permanent = max(0, self.DEFAULT_RETENTION_DAYS - days_since)
-        deletion_reason = (
-            doc.document_metadata.get("deletion_reason")
-            if doc.document_metadata else None
-        )
-
-        return {
-            "document_id": doc.id,
-            "is_deleted": True,
-            "can_restore": days_until_permanent > 0,
-            "deleted_at": doc.deleted_at,
-            "deletion_reason": deletion_reason,
-            "days_until_permanent_deletion": days_until_permanent,
-            "permanent_deletion_date": doc.deleted_at + timedelta(days=self.DEFAULT_RETENTION_DAYS)
-        }
-
-    async def _invalidate_caches(
-        self,
-        document_id: UUID,
-        user_id: UUID,
-        reason: str
-    ) -> None:
-        """Invalidiert relevante Caches nach GDPR-Operationen."""
-        try:
-            # Versuche SearchService fuer Cache-Invalidierung
-            from app.services.document_service import _get_search_service
-            search_service = _get_search_service()
-            if search_service:
-                await search_service.invalidate_document_cache(
-                    document_id, user_id, reason=reason
-                )
-        except Exception as e:
-            logger.warning(
-                "cache_invalidation_failed",
-                document_id=str(document_id),
-                error=str(e)
-            )
-
-        try:
-            await invalidate_on_document_change(str(document_id), change_type="delete")
-        except Exception as e:
-            logger.warning(
-                "central_cache_invalidation_failed",
-                document_id=str(document_id),
-                error=str(e)
-            )
-
-
-# Singleton Instance
-_gdpr_service: Optional[DocumentGDPRService] = None
+# Deprecation warning on import
+warnings.warn(
+    "document_gdpr_service ist deprecated. "
+    "Verwende stattdessen: from app.services.document_services.gdpr_service import DocumentGDPRService",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 
 def get_document_gdpr_service() -> DocumentGDPRService:
-    """Document-GDPR-Service-Instanz abrufen (singleton)."""
-    global _gdpr_service
-    if _gdpr_service is None:
-        _gdpr_service = DocumentGDPRService()
-    return _gdpr_service
+    """DEPRECATED: Verwende get_gdpr_service() stattdessen."""
+    warnings.warn(
+        "get_document_gdpr_service() ist deprecated. "
+        "Verwende stattdessen: get_gdpr_service()",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return get_gdpr_service()
+
+
+__all__ = ["DocumentGDPRService", "get_document_gdpr_service"]
