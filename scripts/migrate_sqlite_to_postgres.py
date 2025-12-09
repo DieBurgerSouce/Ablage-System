@@ -4,11 +4,45 @@ SQLite to PostgreSQL Migration Script for OCR Training Samples.
 
 Migriert 9.997 Dokumente aus SQLite nach PostgreSQL.
 Verwendet psycopg2 (sync) fuer direkte Verbindung.
+
+Verwendung:
+    python scripts/migrate_sqlite_to_postgres.py
+
+Environment Variables (Required):
+    DB_HOST - PostgreSQL Host (default: localhost)
+    DB_PORT - PostgreSQL Port (default: 5434)
+    DB_NAME - Database Name (default: ablage_system)
+    DB_USER - Database User
+    DB_PASSWORD - Database Password
 """
 
 import hashlib
+import os
 import sqlite3
 from uuid import uuid4
+
+
+def get_db_config() -> dict:
+    """Lade Datenbank-Konfiguration aus Environment Variables."""
+    db_user = os.environ.get("DB_USER")
+    db_password = os.environ.get("DB_PASSWORD")
+
+    if not db_user or not db_password:
+        raise ValueError(
+            "Fehlende Datenbank-Credentials. Bitte setzen Sie die Environment Variables:\n"
+            "  export DB_USER=your_username\n"
+            "  export DB_PASSWORD=your_password\n"
+            "Oder laden Sie die .env Datei:\n"
+            "  source .env && python scripts/migrate_sqlite_to_postgres.py"
+        )
+
+    return {
+        "host": os.environ.get("DB_HOST", "localhost"),
+        "port": int(os.environ.get("DB_PORT", "5434")),
+        "database": os.environ.get("DB_NAME", "ablage_system"),
+        "user": db_user,
+        "password": db_password,
+    }
 
 
 def run_migration() -> None:
@@ -18,22 +52,22 @@ def run_migration() -> None:
 
     print("=== DIREKTE MIGRATION SQLite -> PostgreSQL ===")
 
+    # Lade Konfiguration aus Environment
+    db_config = get_db_config()
+
     # SQLite lesen
-    sqlite_path = "Trainings_Data/_validation_system/training_data.db"
+    sqlite_path = os.environ.get(
+        "SQLITE_PATH",
+        "Trainings_Data/_validation_system/training_data.db"
+    )
     conn_sqlite = sqlite3.connect(sqlite_path)
     conn_sqlite.row_factory = sqlite3.Row
     cursor = conn_sqlite.execute("SELECT * FROM documents")
     rows = cursor.fetchall()
     print(f"SQLite Dokumente: {len(rows)}")
 
-    # PostgreSQL verbinden (direkt ueber Port 5434)
-    conn_pg = psycopg2.connect(
-        host="localhost",
-        port=5434,
-        database="ablage_system",
-        user="ablage_admin",
-        password="ablage123!secure",
-    )
+    # PostgreSQL verbinden (Credentials aus Environment)
+    conn_pg = psycopg2.connect(**db_config)
     conn_pg.autocommit = False
     cur_pg = conn_pg.cursor()
 

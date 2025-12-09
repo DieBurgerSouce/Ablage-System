@@ -254,6 +254,45 @@ Dokumentation: `.claude/Docs/API/Backup_API.md`
 
 ---
 
+## Bekannte Service-Duplikate (Technische Schulden)
+
+> **Hinweis**: Diese Service-Duplikate wurden bei einer Codeanalyse im Dezember 2024 identifiziert.
+> Sie sollten bei Gelegenheit konsolidiert werden.
+
+### Export-Services (3x)
+| Datei | Beschreibung | Nutzung |
+|-------|--------------|---------|
+| `app/services/export_service.py` | Allgemeiner Export | Hauptexport-Logik |
+| `app/services/data_export_service.py` | Daten-Export | CSV/JSON Export |
+| `app/services/document_services/export_service.py` | Dokument-Export | Dokumentspezifischer Export |
+
+**Empfehlung**: Zu einem einheitlichen `ExportService` mit Strategien konsolidieren.
+
+### Batch-Services (2x)
+| Datei | Beschreibung |
+|-------|--------------|
+| `app/services/batch_service.py` | Batch-Verarbeitung |
+| `app/services/batch_job_service.py` | Batch-Job-Management |
+
+**Empfehlung**: Pruefen ob Zusammenfuehrung moeglich.
+
+### GDPR-Services (3x)
+| Datei | Beschreibung |
+|-------|--------------|
+| `app/services/gdpr_service.py` | GDPR-Compliance |
+| `app/services/gdpr_compliance_service.py` | Compliance-Checks |
+| `app/services/document_services/gdpr_service.py` | Dokument-GDPR |
+
+**Empfehlung**: Zu einem einheitlichen `GDPRService` konsolidieren.
+
+### Konsolidierungsstrategie
+1. **Phase 1**: Mapping erstellen welche Funktionen wo genutzt werden
+2. **Phase 2**: Tests fuer alle Services schreiben
+3. **Phase 3**: Schrittweise Migration mit Deprecation-Warnungen
+4. **Phase 4**: Alte Services entfernen
+
+---
+
 ## Referenzen
 
 - Detaillierte Docs: `.claude/CLAUDE.md`

@@ -13,12 +13,15 @@ router = APIRouter()
 @router.get("/", response_model=List[TuneResponse])
 async def get_tunes(
     db: AsyncSession = Depends(dependencies.get_db),
+    current_user: models.User = Depends(dependencies.get_current_active_user),
     skip: int = 0,
     limit: int = 100,
     active_only: bool = False
 ) -> Any:
     """
-    Retrieve all tunes.
+    Alle Tunes abrufen (Authentifizierung erforderlich).
+
+    Tunes definieren kontextspezifische Verarbeitungsregeln für Dokumente.
     """
     query = select(models.Tune)
     if active_only:

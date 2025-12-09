@@ -11,11 +11,37 @@ Specialized agents for different OCR backends:
 - DocTRAgent: Mindee docTR, CPU-optimiert, deutsches Modell (CPU)
 """
 
-# Always available (CPU-based)
-from .surya_docling_agent import SuryaDoclingAgent
+# Base OCR agent - always available
+__all__ = []
+
+# SuryaDocling - CPU-based, requires surya-ocr and docling
+try:
+    from .surya_docling_agent import SuryaDoclingAgent
+    __all__.append("SuryaDoclingAgent")
+except ImportError as e:
+    # surya-ocr not installed or incompatible version
+    import logging
+    logging.getLogger(__name__).warning(f"SuryaDoclingAgent nicht verfügbar: {e}")
+
+# SuryaDocling Enhanced - CPU-based, requires surya-ocr>=0.17.0 and docling
+try:
+    from .surya_docling_enhanced_agent import SuryaDoclingEnhancedAgent
+    __all__.append("SuryaDoclingEnhancedAgent")
+except ImportError as e:
+    # surya-ocr>=0.17.0 not installed (new API required)
+    import logging
+    logging.getLogger(__name__).warning(f"SuryaDoclingEnhancedAgent nicht verfügbar: {e}")
+
+# DoclingLayoutAnalyzer - CPU-based, requires docling
+try:
+    from .docling_layout_analyzer import DoclingLayoutAnalyzer
+    __all__.append("DoclingLayoutAnalyzer")
+except ImportError as e:
+    # docling not installed
+    import logging
+    logging.getLogger(__name__).warning(f"DoclingLayoutAnalyzer nicht verfügbar: {e}")
 
 # Conditionally import GPU-based agents
-__all__ = ["SuryaDoclingAgent"]
 
 try:
     import torch

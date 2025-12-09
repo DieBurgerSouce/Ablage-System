@@ -42,7 +42,7 @@ minio==7.2.3
 pillow==10.2.0
 
 # OCR Backends
-surya-ocr>=0.4.0  # CPU-based OCR, no GPU required
+surya-ocr>=0.17.0  # CPU-based OCR, no GPU required - 0.17.0 required for new API (DetectionPredictor, RecognitionPredictor)
 pypdfium2>=4.30.0  # PDF processing for Surya and Docling (docling requires >=4.30.0)
 docling==2.20.0  # Document structure extraction (requires Python 3.11+), pinned for faster builds
 pytesseract==0.3.10  # Python wrapper for Tesseract (fallback)

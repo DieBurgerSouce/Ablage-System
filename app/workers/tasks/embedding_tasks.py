@@ -18,6 +18,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, update
 
+import torch
+
 from app.workers.celery_app import celery_app, GPUTask, CPUTask
 from app.core.config import settings
 from app.db.models import Document, ProcessingStatus
@@ -26,6 +28,41 @@ from app.services.search_analytics_service import get_search_analytics_service
 from app.core.cache import invalidate_on_document_change
 
 logger = structlog.get_logger(__name__)
+
+
+def _is_oom_error(exception: Exception) -> bool:
+    """Prüfe ob Exception ein GPU OOM Error ist.
+
+    Args:
+        exception: Die zu prüfende Exception
+
+    Returns:
+        True wenn OOM-Fehler, sonst False
+    """
+    if torch.cuda.is_available() and isinstance(exception, torch.cuda.OutOfMemoryError):
+        return True
+
+    error_msg = str(exception).lower()
+    oom_indicators = [
+        "out of memory",
+        "cuda out of memory",
+        "oom",
+        "memory allocation",
+        "cannot allocate",
+        "memory exhausted",
+    ]
+    return any(indicator in error_msg for indicator in oom_indicators)
+
+
+async def _cleanup_gpu_memory() -> None:
+    """GPU-Speicher aufräumen nach OOM oder bei Bedarf."""
+    if torch.cuda.is_available():
+        try:
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+            logger.debug("gpu_memory_cleaned_embedding_tasks")
+        except Exception as e:
+            logger.warning("gpu_cleanup_failed_embedding_tasks", error=str(e))
 
 # Type variable for async return type
 T = TypeVar('T')
@@ -218,6 +255,20 @@ def generate_document_embedding(
                 raise Ignore()
 
             except Exception as e:
+                # OOM-Handling: Bei GPU-Speichermangel aufräumen und mit Fallback retry
+                if _is_oom_error(e):
+                    logger.warning(
+                        "embedding_task_oom",
+                        task_id=task_id,
+                        document_id=document_id,
+                        error=str(e)
+                    )
+                    await _cleanup_gpu_memory()
+
+                    # Versuche mit kleinerem Batch (falls Text zu lang)
+                    # Der GPUTask retry-Mechanismus wird dies automatisch handhaben
+                    raise
+
                 logger.exception(
                     "embedding_task_failed",
                     task_id=task_id,
@@ -225,6 +276,10 @@ def generate_document_embedding(
                     error=str(e)
                 )
                 raise
+
+            finally:
+                # GPU-Speicher immer aufräumen nach Verarbeitung
+                await _cleanup_gpu_memory()
 
     # Run async processing with proper event loop management
     return run_async_task(process_async())
@@ -363,20 +418,64 @@ def batch_generate_embeddings(
                         await session.commit()
 
                     except Exception as e:
-                        logger.error(
-                            "batch_embedding_error",
-                            task_id=task_id,
-                            batch_start=batch_start,
-                            error=str(e)
-                        )
-                        # Mark all as failed
-                        for doc_id in doc_ids_to_embed:
-                            failed += 1
-                            results.append({
-                                "document_id": doc_id,
-                                "success": False,
-                                "error": str(e)
-                            })
+                        # OOM-Handling: Bei GPU-Speichermangel aufräumen
+                        if _is_oom_error(e):
+                            logger.warning(
+                                "batch_embedding_oom",
+                                task_id=task_id,
+                                batch_start=batch_start,
+                                batch_size=len(texts_to_embed),
+                                error=str(e)
+                            )
+                            await _cleanup_gpu_memory()
+
+                            # Bei OOM: Batch-Größe halbieren und einzeln verarbeiten
+                            logger.info(
+                                "batch_embedding_retry_individual",
+                                task_id=task_id,
+                                document_count=len(doc_ids_to_embed)
+                            )
+                            for doc_id, text in zip(doc_ids_to_embed, texts_to_embed):
+                                try:
+                                    embedding = await embedding_service.generate_embedding_async(
+                                        text,
+                                        is_query=False
+                                    )
+                                    doc = documents[doc_id]
+                                    doc.embedding = embedding
+                                    doc.embedding_updated_at = datetime.now(timezone.utc)
+                                    doc.embedding_model = settings.EMBEDDING_MODEL
+                                    successful += 1
+                                    results.append({
+                                        "document_id": doc_id,
+                                        "success": True,
+                                        "embedding_dimension": len(embedding),
+                                        "fallback": "individual_after_oom"
+                                    })
+                                except Exception as ind_e:
+                                    await _cleanup_gpu_memory()
+                                    failed += 1
+                                    results.append({
+                                        "document_id": doc_id,
+                                        "success": False,
+                                        "error": f"OOM-Fallback fehlgeschlagen: {str(ind_e)}"
+                                    })
+                            await session.commit()
+                        else:
+                            logger.error(
+                                "batch_embedding_error",
+                                task_id=task_id,
+                                batch_start=batch_start,
+                                error=str(e)
+                            )
+                            # Mark all as failed
+                            for doc_id in doc_ids_to_embed:
+                                failed += 1
+                                results.append({
+                                    "document_id": doc_id,
+                                    "success": False,
+                                    "error": str(e)
+                                })
 
             processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 

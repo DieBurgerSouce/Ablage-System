@@ -260,6 +260,11 @@ def process_document_task(
                 # Start OCR processing
                 update_task_progress(task_id, 20, 100, "OCR-Verarbeitung läuft...")
 
+                # GPU Lock Refresh vor langem OCR-Call (Lock läuft nach 60s ab)
+                # Refresh muss synchron sein, daher via run_in_executor
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, self.refresh_lock)
+
                 ocr_result = await ocr_service.process_document(
                     image_path=document.file_path,
                     backend=backend,
@@ -268,6 +273,9 @@ def process_document_task(
                     detect_fraktur=detect_fraktur,
                     document_id=document_id  # For A/B experiment allocation
                 )
+
+                # GPU Lock Refresh nach OCR-Call (falls > 30s gedauert)
+                await loop.run_in_executor(None, self.refresh_lock)
 
                 if not ocr_result.get("success"):
                     raise RuntimeError(
@@ -743,6 +751,10 @@ def batch_process_task(
                 failed += 1
 
             results.append(result)
+
+            # GPU Lock Refresh nach jedem verarbeiteten Dokument
+            # Verhindert Lock-Timeout bei langen Batch-Jobs (Lock läuft nach 60s ab)
+            self.refresh_lock()
 
             # Update BatchJob progress
             # MEMORY FIX: asyncio.run() statt new_event_loop() - verhindert Memory Leaks

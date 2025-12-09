@@ -647,6 +647,52 @@ class Settings(BaseSettings):
     RAG_BATCH_JOB_MAX_RETRIES: int = 3
     RAG_BATCH_JOB_RETRY_DELAY: int = 60  # Sekunden
 
+    # =============================================================================
+    # Tune Settings (Dokument-Kontext-Konfiguration)
+    # =============================================================================
+    # Tunes definieren kontextspezifische Verarbeitungsregeln für Dokumente
+    # z.B. "Rechnungen", "Verträge", "Allgemeiner Schriftverkehr"
+
+    # Tune-Name Limits
+    TUNE_NAME_MIN_LENGTH: int = Field(default=1, ge=1, description="Minimale Länge des Tune-Namens")
+    TUNE_NAME_MAX_LENGTH: int = Field(default=100, ge=10, description="Maximale Länge des Tune-Namens")
+    TUNE_DESCRIPTION_MAX_LENGTH: int = Field(default=500, ge=50, description="Maximale Länge der Beschreibung")
+
+    # Prompt-Template Settings
+    TUNE_PROMPT_TEMPLATE_MAX_LENGTH: int = Field(
+        default=10000,
+        ge=100,
+        description="Maximale Länge des Prompt-Templates in Zeichen"
+    )
+    TUNE_PROMPT_TEMPLATE_REQUIRED: bool = Field(
+        default=False,
+        description="Ob ein Prompt-Template für neue Tunes erforderlich ist"
+    )
+
+    # Caching
+    TUNE_CACHE_ENABLED: bool = Field(default=True, description="Tune-Caching aktivieren")
+    TUNE_CACHE_TTL: int = Field(default=3600, ge=60, description="Cache-TTL für Tunes in Sekunden")
+    TUNE_LIST_CACHE_TTL: int = Field(default=300, ge=30, description="Cache-TTL für Tune-Liste in Sekunden")
+
+    # Defaults für neue Tunes
+    TUNE_DEFAULT_ICON: str = Field(default="FileText", description="Standard-Icon für neue Tunes (Lucide)")
+    TUNE_DEFAULT_COLOR: str = Field(default="bg-slate-500", description="Standard-Farbe für neue Tunes (Tailwind)")
+    TUNE_DEFAULT_BACKEND: Optional[str] = Field(default=None, description="Standard-OCR-Backend (None = auto)")
+
+    # System-Tunes (können nicht gelöscht werden)
+    TUNE_SYSTEM_PROTECTED: bool = Field(
+        default=True,
+        description="System-Tunes vor Löschung schützen"
+    )
+
+    # Rate Limiting für Tune-API
+    TUNE_API_RATE_LIMIT_ENABLED: bool = Field(default=True, description="Rate Limiting für Tune-API aktivieren")
+    TUNE_API_REQUESTS_PER_MINUTE: int = Field(default=60, ge=1, description="Max Requests pro Minute für Tune-API")
+
+    # Pagination Defaults
+    TUNE_LIST_DEFAULT_LIMIT: int = Field(default=100, ge=10, description="Standard-Limit für Tune-Liste")
+    TUNE_LIST_MAX_LIMIT: int = Field(default=500, ge=100, description="Maximales Limit für Tune-Liste")
+
     @model_validator(mode='after')
     def build_computed_urls(self) -> 'Settings':
         """Build database and Redis URLs from components if not provided."""

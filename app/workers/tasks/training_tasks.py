@@ -367,7 +367,7 @@ def process_feedback_queue(
 
                 # Verarbeite unverarbeitete Korrekturen
                 processed_count = await feedback_service.process_unprocessed_corrections(
-                    
+                    db=session,
                     batch_size=batch_size
                 )
 

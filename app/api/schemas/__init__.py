@@ -34,6 +34,13 @@ from app.api.schemas.extracted_data import (
     ExtractedDocumentData,
 )
 
+from app.api.schemas.tunes import (
+    TuneBase,
+    TuneCreate,
+    TuneUpdate,
+    TuneResponse,
+)
+
 __all__ = [
     # Response Schemas
     "ErrorResponse",
@@ -56,4 +63,9 @@ __all__ = [
     "ExtractedContractData",
     "DocumentClassificationResult",
     "ExtractedDocumentData",
+    # Tune Schemas
+    "TuneBase",
+    "TuneCreate",
+    "TuneUpdate",
+    "TuneResponse",
 ]
