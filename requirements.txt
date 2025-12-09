@@ -98,6 +98,9 @@ orjson==3.10.12  # Fast JSON serialization (10-15% faster than stdlib json)
 # PDF Export
 reportlab==4.0.9  # PDF generation for document export
 
+# Spreadsheet Export
+openpyxl==3.1.2  # Excel (.xlsx) export for extracted data
+
 # Optional: ML-basiertes OCR-Routing
 # XGBoost ist optional - System fällt gracefully auf regelbasiertes Routing zurück
 # Für ML-Routing: pip install xgboost>=2.0.0

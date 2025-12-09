@@ -10,13 +10,14 @@ Provides REST API endpoints for:
 Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Genauigkeit.
 """
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, and_, or_, cast, String
 from sqlalchemy.dialects.postgresql import JSONB
@@ -31,6 +32,15 @@ from app.api.schemas.extracted_data import (
     ExtractedContractData,
 )
 from app.db import models
+from app.services.export_service import (
+    export_invoices_csv,
+    export_invoices_excel,
+    export_orders_csv,
+    export_orders_excel,
+    export_contracts_csv,
+    export_contracts_excel,
+    export_all_excel,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -737,3 +747,308 @@ async def get_document_type_stats(
         stats[doc_type] = stats.get(doc_type, 0) + 1
 
     return stats
+
+
+# =============================================================================
+# EXPORT ENDPOINTS
+# =============================================================================
+
+async def _get_documents_for_export(
+    db: AsyncSession,
+    user_id: UUID,
+    document_type: Optional[str],
+    date_from: Optional[date],
+    date_to: Optional[date],
+    min_amount: Optional[Decimal],
+    max_amount: Optional[Decimal],
+) -> List[Dict[str, Any]]:
+    """Holt Dokumente fuer Export mit Filtern."""
+    query = select(models.Document).where(
+        and_(
+            models.Document.owner_id == user_id,
+            models.Document.is_deleted == False,
+            models.Document.extracted_data.isnot(None)
+        )
+    )
+
+    filters = []
+
+    if document_type:
+        filters.append(
+            models.Document.extracted_data["classification"]["document_type"].astext == document_type
+        )
+
+    if date_from:
+        filters.append(
+            or_(
+                cast(models.Document.extracted_data["invoice"]["invoice_date"].astext, String) >= date_from.isoformat(),
+                cast(models.Document.extracted_data["order"]["order_date"].astext, String) >= date_from.isoformat(),
+                cast(models.Document.extracted_data["contract"]["contract_date"].astext, String) >= date_from.isoformat()
+            )
+        )
+
+    if date_to:
+        filters.append(
+            or_(
+                cast(models.Document.extracted_data["invoice"]["invoice_date"].astext, String) <= date_to.isoformat(),
+                cast(models.Document.extracted_data["order"]["order_date"].astext, String) <= date_to.isoformat(),
+                cast(models.Document.extracted_data["contract"]["contract_date"].astext, String) <= date_to.isoformat()
+            )
+        )
+
+    if min_amount is not None:
+        filters.append(
+            cast(models.Document.extracted_data["invoice"]["gross_amount"].astext, Decimal) >= min_amount
+        )
+
+    if max_amount is not None:
+        filters.append(
+            cast(models.Document.extracted_data["invoice"]["gross_amount"].astext, Decimal) <= max_amount
+        )
+
+    if filters:
+        query = query.where(and_(*filters))
+
+    query = query.order_by(models.Document.created_at.desc())
+
+    result = await db.execute(query)
+    documents = result.scalars().all()
+
+    # Zu Dicts konvertieren
+    return [
+        {
+            "id": doc.id,
+            "filename": doc.filename,
+            "extracted_data": doc.extracted_data,
+        }
+        for doc in documents
+    ]
+
+
+@router.get("/export/csv")
+async def export_csv(
+    document_type: ExtractedDocumentType = Query(
+        ExtractedDocumentType.INVOICE,
+        description="Dokumenttyp fuer Export"
+    ),
+    date_from: Optional[date] = Query(None, description="Datum ab (inklusiv)"),
+    date_to: Optional[date] = Query(None, description="Datum bis (inklusiv)"),
+    min_amount: Optional[Decimal] = Query(None, ge=0, description="Mindestbetrag (brutto)"),
+    max_amount: Optional[Decimal] = Query(None, ge=0, description="Maximalbetrag (brutto)"),
+
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+) -> Response:
+    """
+    Exportiert extrahierte Daten als CSV.
+
+    **Format:**
+    - Semikolon-getrennt (;) fuer deutsche Excel-Versionen
+    - UTF-8 mit BOM fuer korrekte Umlaut-Darstellung
+    - Deutsche Spaltennamen
+
+    **Beispiele:**
+    - Alle Rechnungen: `?document_type=invoice`
+    - Rechnungen 2024: `?document_type=invoice&date_from=2024-01-01&date_to=2024-12-31`
+    - Rechnungen > 1000 EUR: `?document_type=invoice&min_amount=1000`
+    """
+    documents = await _get_documents_for_export(
+        db=db,
+        user_id=current_user.id,
+        document_type=document_type.value,
+        date_from=date_from,
+        date_to=date_to,
+        min_amount=min_amount,
+        max_amount=max_amount,
+    )
+
+    if not documents:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Keine Dokumente fuer Export gefunden"
+        )
+
+    # CSV generieren
+    if document_type == ExtractedDocumentType.INVOICE:
+        csv_content = export_invoices_csv(documents)
+        filename = f"rechnungen_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    elif document_type == ExtractedDocumentType.ORDER:
+        csv_content = export_orders_csv(documents)
+        filename = f"bestellungen_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    elif document_type == ExtractedDocumentType.CONTRACT:
+        csv_content = export_contracts_csv(documents)
+        filename = f"vertraege_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Export fuer Dokumenttyp '{document_type.value}' nicht unterstuetzt"
+        )
+
+    logger.info(
+        "export_csv_generated",
+        user_id=str(current_user.id),
+        document_type=document_type.value,
+        count=len(documents)
+    )
+
+    return Response(
+        content=csv_content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
+
+
+@router.get("/export/excel")
+async def export_excel(
+    document_type: ExtractedDocumentType = Query(
+        ExtractedDocumentType.INVOICE,
+        description="Dokumenttyp fuer Export"
+    ),
+    date_from: Optional[date] = Query(None, description="Datum ab (inklusiv)"),
+    date_to: Optional[date] = Query(None, description="Datum bis (inklusiv)"),
+    min_amount: Optional[Decimal] = Query(None, ge=0, description="Mindestbetrag (brutto)"),
+    max_amount: Optional[Decimal] = Query(None, ge=0, description="Maximalbetrag (brutto)"),
+
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+) -> Response:
+    """
+    Exportiert extrahierte Daten als Excel (.xlsx).
+
+    **Features:**
+    - Professionelle Formatierung (Header, Spaltenbreiten, Zahlenformate)
+    - Autofilter aktiviert
+    - Erste Zeile fixiert
+    - Deutsche Spaltennamen
+
+    **Beispiele:**
+    - Alle Rechnungen: `?document_type=invoice`
+    - Alle Bestellungen: `?document_type=order`
+    - Alle Vertraege: `?document_type=contract`
+    """
+    documents = await _get_documents_for_export(
+        db=db,
+        user_id=current_user.id,
+        document_type=document_type.value,
+        date_from=date_from,
+        date_to=date_to,
+        min_amount=min_amount,
+        max_amount=max_amount,
+    )
+
+    if not documents:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Keine Dokumente fuer Export gefunden"
+        )
+
+    # Excel generieren
+    if document_type == ExtractedDocumentType.INVOICE:
+        excel_content = export_invoices_excel(documents)
+        filename = f"rechnungen_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    elif document_type == ExtractedDocumentType.ORDER:
+        excel_content = export_orders_excel(documents)
+        filename = f"bestellungen_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    elif document_type == ExtractedDocumentType.CONTRACT:
+        excel_content = export_contracts_excel(documents)
+        filename = f"vertraege_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Export fuer Dokumenttyp '{document_type.value}' nicht unterstuetzt"
+        )
+
+    logger.info(
+        "export_excel_generated",
+        user_id=str(current_user.id),
+        document_type=document_type.value,
+        count=len(documents)
+    )
+
+    return Response(
+        content=excel_content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
+
+
+@router.get("/export/excel/all")
+async def export_all_types_excel(
+    date_from: Optional[date] = Query(None, description="Datum ab (inklusiv)"),
+    date_to: Optional[date] = Query(None, description="Datum bis (inklusiv)"),
+
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+) -> Response:
+    """
+    Exportiert ALLE Dokumenttypen in eine Excel-Datei mit separaten Tabs.
+
+    **Tabs:**
+    - Rechnungen
+    - Bestellungen
+    - Vertraege
+
+    Ideal fuer Monats-/Jahresabschluesse.
+    """
+    # Alle Dokumenttypen laden
+    invoices = await _get_documents_for_export(
+        db=db,
+        user_id=current_user.id,
+        document_type="invoice",
+        date_from=date_from,
+        date_to=date_to,
+        min_amount=None,
+        max_amount=None,
+    )
+
+    orders = await _get_documents_for_export(
+        db=db,
+        user_id=current_user.id,
+        document_type="order",
+        date_from=date_from,
+        date_to=date_to,
+        min_amount=None,
+        max_amount=None,
+    )
+
+    contracts = await _get_documents_for_export(
+        db=db,
+        user_id=current_user.id,
+        document_type="contract",
+        date_from=date_from,
+        date_to=date_to,
+        min_amount=None,
+        max_amount=None,
+    )
+
+    total_count = len(invoices) + len(orders) + len(contracts)
+
+    if total_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Keine Dokumente fuer Export gefunden"
+        )
+
+    # Kombinierte Excel generieren
+    excel_content = export_all_excel(invoices, orders, contracts)
+    filename = f"dokumente_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+    logger.info(
+        "export_all_excel_generated",
+        user_id=str(current_user.id),
+        invoices=len(invoices),
+        orders=len(orders),
+        contracts=len(contracts)
+    )
+
+    return Response(
+        content=excel_content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )

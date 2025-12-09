@@ -73,4 +73,81 @@ export const extractedDataApi = {
         );
         return response.data;
     },
+
+    /**
+     * Generiert Export-URL fuer CSV.
+     */
+    getExportCsvUrl(params: {
+        document_type?: string;
+        date_from?: string;
+        date_to?: string;
+        min_amount?: number;
+        max_amount?: number;
+    }): string {
+        const searchParams = new URLSearchParams();
+        if (params.document_type) searchParams.set("document_type", params.document_type);
+        if (params.date_from) searchParams.set("date_from", params.date_from);
+        if (params.date_to) searchParams.set("date_to", params.date_to);
+        if (params.min_amount !== undefined) searchParams.set("min_amount", params.min_amount.toString());
+        if (params.max_amount !== undefined) searchParams.set("max_amount", params.max_amount.toString());
+
+        const queryString = searchParams.toString();
+        return `${BASE_URL}/export/csv${queryString ? `?${queryString}` : ""}`;
+    },
+
+    /**
+     * Generiert Export-URL fuer Excel.
+     */
+    getExportExcelUrl(params: {
+        document_type?: string;
+        date_from?: string;
+        date_to?: string;
+        min_amount?: number;
+        max_amount?: number;
+    }): string {
+        const searchParams = new URLSearchParams();
+        if (params.document_type) searchParams.set("document_type", params.document_type);
+        if (params.date_from) searchParams.set("date_from", params.date_from);
+        if (params.date_to) searchParams.set("date_to", params.date_to);
+        if (params.min_amount !== undefined) searchParams.set("min_amount", params.min_amount.toString());
+        if (params.max_amount !== undefined) searchParams.set("max_amount", params.max_amount.toString());
+
+        const queryString = searchParams.toString();
+        return `${BASE_URL}/export/excel${queryString ? `?${queryString}` : ""}`;
+    },
+
+    /**
+     * Generiert Export-URL fuer alle Dokumenttypen (Excel mit Tabs).
+     */
+    getExportAllExcelUrl(params?: {
+        date_from?: string;
+        date_to?: string;
+    }): string {
+        const searchParams = new URLSearchParams();
+        if (params?.date_from) searchParams.set("date_from", params.date_from);
+        if (params?.date_to) searchParams.set("date_to", params.date_to);
+
+        const queryString = searchParams.toString();
+        return `${BASE_URL}/export/excel/all${queryString ? `?${queryString}` : ""}`;
+    },
+
+    /**
+     * Fuehrt einen Download aus (mit Auth-Token).
+     */
+    async downloadExport(url: string, filename: string): Promise<void> {
+        const response = await apiClient.get(url, {
+            responseType: "blob",
+        });
+
+        // Blob erstellen und downloaden
+        const blob = new Blob([response.data]);
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+    },
 };

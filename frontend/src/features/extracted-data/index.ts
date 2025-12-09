@@ -10,6 +10,7 @@ export { InvoiceDataDisplay } from "./components/InvoiceDataDisplay";
 export { PaymentTermsCard } from "./components/PaymentTermsCard";
 export { LineItemsTable } from "./components/LineItemsTable";
 export { AddressCard } from "./components/AddressCard";
+export { ExportButton } from "./components/ExportButton";
 export {
     CopyableField,
     formatCurrency,
