@@ -414,6 +414,34 @@ OPENAPI_TAGS = [
         "name": "log-analytics",
         "description": "Log-Analyse und Monitoring. Trend-Erkennung, Anomalien und Dashboard-Metriken.",
     },
+    {
+        "name": "Strukturierte Daten",
+        "description": "Strukturierte Dokumenten-Extraktion. Rechnungen, Bestellungen, Vertraege mit automatischer Feld-Extraktion und Suche.",
+    },
+    {
+        "name": "rag",
+        "description": "RAG Intelligence Layer. Semantische Suche, Document Chunking, Chat mit LLM-Unterstuetzung.",
+    },
+    {
+        "name": "rag-search",
+        "description": "RAG-basierte Suche. Semantic Search, Hybrid Search, Chunk-Retrieval.",
+    },
+    {
+        "name": "rag-chunks",
+        "description": "Document Chunking. Dokumente in semantische Chunks teilen mit Embedding-Generierung.",
+    },
+    {
+        "name": "rag-chat",
+        "description": "Chat mit RAG-Kontext. Sessions, LLM-Antworten mit Quellenangaben.",
+    },
+    {
+        "name": "rag-jobs",
+        "description": "RAG Batch-Jobs. Bulk-Chunking, Customer Card Sync, Report-Generierung.",
+    },
+    {
+        "name": "rag-customers",
+        "description": "Customer Cards. Pre-computed Kundenzusammenfassungen mit LLM-Generierung.",
+    },
 ]
 
 OPENAPI_DESCRIPTION = """
@@ -617,6 +645,9 @@ from app.api.v1.log_analytics import router as log_analytics_router
 from app.api.v1.entities import router as entities_router
 from app.api.v1.groups import router as groups_router
 from app.api.v1.training import router as training_router
+from app.api.v1.tunes import router as tunes_router
+from app.api.v1.extracted_data import router as extracted_data_router
+from app.api.v1.rag import router as rag_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -647,6 +678,9 @@ app.include_router(log_analytics_router, prefix="/api/v1")
 app.include_router(entities_router, prefix="/api/v1")
 app.include_router(groups_router, prefix="/api/v1")
 app.include_router(training_router, prefix="/api/v1")
+app.include_router(tunes_router, prefix="/api/v1/tunes", tags=["tunes"])
+app.include_router(extracted_data_router, prefix="/api/v1")
+app.include_router(rag_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================

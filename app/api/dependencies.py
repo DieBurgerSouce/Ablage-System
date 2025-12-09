@@ -775,3 +775,43 @@ def require_api_key_permission(permission: str):
         return await get_user_with_api_key_permission(permission, credentials, db)
 
     return dependency
+
+
+# ==================== Admin Authorization ====================
+
+async def require_admin(
+    current_user: User = Depends(get_current_active_user)
+) -> User:
+    """
+    Dependency fuer Admin-Berechtigungspruefung.
+
+    Prueft ob der aktuelle Benutzer Admin/Superuser ist.
+
+    Args:
+        current_user: Aktueller aktiver Benutzer
+
+    Returns:
+        Admin-Benutzer
+
+    Raises:
+        HTTPException: Wenn Benutzer kein Admin ist
+
+    Usage:
+        @app.delete("/admin/users/{user_id}")
+        async def delete_user(
+            user_id: UUID,
+            admin: User = Depends(require_admin)
+        ):
+            ...
+
+        # Oder als Router-Dependency:
+        @router.post("/admin-action", dependencies=[Depends(require_admin)])
+        async def admin_action():
+            ...
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Nur Administratoren haben Zugriff auf diese Funktion",
+        )
+    return current_user

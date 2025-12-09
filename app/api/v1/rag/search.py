@@ -1,0 +1,261 @@
+"""RAG Search API Endpoints.
+
+Chunk-basierte semantische Suche mit:
+- Semantic Search (Vektor-Similarity)
+- Hybrid Search (Semantic + Keyword)
+- Optional Reranking
+"""
+
+import structlog
+from typing import List, Optional
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models import User, RAGSectionType
+from app.api.dependencies import get_current_user, get_db
+from app.api.schemas.rag import (
+    RAGSearchRequest,
+    RAGSearchResponse,
+    RAGChunkSearchResult,
+    RAGSearchType,
+)
+from app.services.rag.search_service import get_rag_search_service, RAGSearchService
+
+logger = structlog.get_logger(__name__)
+
+router = APIRouter(prefix="/search", tags=["rag-search"])
+
+
+def get_search_service_dep() -> RAGSearchService:
+    """Dependency fuer RAGSearchService."""
+    return get_rag_search_service()
+
+
+@router.post(
+    "",
+    response_model=RAGSearchResponse,
+    summary="RAG Suche durchfuehren",
+    description="Fuehrt eine Chunk-basierte semantische Suche durch."
+)
+async def search_chunks(
+    request: RAGSearchRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    search_service: RAGSearchService = Depends(get_search_service_dep)
+) -> RAGSearchResponse:
+    """
+    Semantische Suche in Document Chunks.
+
+    Unterstuetzte Suchtypen:
+    - **semantic**: Reine Vektor-Suche (Standard)
+    - **hybrid**: Kombination aus Semantic + Keyword
+    - **keyword**: Reine Volltext-Suche
+
+    Features:
+    - Automatisches Query-Embedding
+    - Optional: Reranking mit Cross-Encoder
+    - Filterung nach Dokumenten und Section-Types
+    """
+    logger.info(
+        "rag_search_request",
+        user_id=str(current_user.id),
+        query=request.query[:100],
+        search_type=request.search_type.value,
+        limit=request.limit
+    )
+
+    try:
+        # Suchtyp-spezifische Verarbeitung
+        if request.search_type == RAGSearchType.SEMANTIC:
+            response = await search_service.semantic_search(
+                db=db,
+                query=request.query,
+                limit=request.limit,
+                threshold=request.threshold,
+                document_ids=request.document_ids,
+                section_types=request.section_types,
+                rerank=request.rerank
+            )
+        elif request.search_type == RAGSearchType.HYBRID:
+            response = await search_service.hybrid_search(
+                db=db,
+                query=request.query,
+                limit=request.limit,
+                threshold=request.threshold,
+                document_ids=request.document_ids,
+                rerank=request.rerank
+            )
+        else:  # KEYWORD
+            response = await search_service.keyword_search(
+                db=db,
+                query=request.query,
+                limit=request.limit,
+                document_ids=request.document_ids
+            )
+
+        # Response konvertieren
+        results = [
+            RAGChunkSearchResult(
+                chunk_id=r.chunk_id,
+                document_id=r.document_id,
+                chunk_text=r.chunk_text,
+                chunk_index=r.chunk_index,
+                page_number=r.page_number,
+                section_type=r.section_type,
+                similarity=r.similarity,
+                rerank_score=r.rerank_score
+            )
+            for r in response.results
+        ]
+
+        return RAGSearchResponse(
+            query=response.query,
+            search_type=response.search_type,
+            results=results,
+            total_results=response.total_results,
+            search_time_ms=response.search_time_ms,
+            embedding_time_ms=response.embedding_time_ms,
+            rerank_time_ms=response.rerank_time_ms
+        )
+
+    except Exception as e:
+        logger.exception(
+            "rag_search_failed",
+            user_id=str(current_user.id),
+            query=request.query[:50],
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Suche fehlgeschlagen: {str(e)}"
+        )
+
+
+@router.get(
+    "/semantic",
+    response_model=RAGSearchResponse,
+    summary="Semantische Suche (GET)",
+    description="Vereinfachte semantische Suche via GET."
+)
+async def semantic_search_get(
+    q: str = Query(..., min_length=1, max_length=1000, description="Suchanfrage"),
+    limit: int = Query(20, ge=1, le=100, description="Max Ergebnisse"),
+    threshold: float = Query(0.7, ge=0.0, le=1.0, description="Min Similarity"),
+    rerank: bool = Query(True, description="Reranking aktivieren"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    search_service: RAGSearchService = Depends(get_search_service_dep)
+) -> RAGSearchResponse:
+    """
+    Semantische Suche via GET-Parameter.
+
+    Fuer einfache Suchanfragen ohne Filter.
+    """
+    try:
+        response = await search_service.semantic_search(
+            db=db,
+            query=q,
+            limit=limit,
+            threshold=threshold,
+            rerank=rerank
+        )
+
+        results = [
+            RAGChunkSearchResult(
+                chunk_id=r.chunk_id,
+                document_id=r.document_id,
+                chunk_text=r.chunk_text,
+                chunk_index=r.chunk_index,
+                page_number=r.page_number,
+                section_type=r.section_type,
+                similarity=r.similarity,
+                rerank_score=r.rerank_score
+            )
+            for r in response.results
+        ]
+
+        return RAGSearchResponse(
+            query=response.query,
+            search_type=RAGSearchType.SEMANTIC,
+            results=results,
+            total_results=response.total_results,
+            search_time_ms=response.search_time_ms,
+            embedding_time_ms=response.embedding_time_ms,
+            rerank_time_ms=response.rerank_time_ms
+        )
+
+    except Exception as e:
+        logger.exception("semantic_search_get_failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Suche fehlgeschlagen: {str(e)}"
+        )
+
+
+@router.get(
+    "/hybrid",
+    response_model=RAGSearchResponse,
+    summary="Hybrid-Suche (GET)",
+    description="Kombinierte Semantic + Keyword Suche via GET."
+)
+async def hybrid_search_get(
+    q: str = Query(..., min_length=1, max_length=1000, description="Suchanfrage"),
+    limit: int = Query(20, ge=1, le=100, description="Max Ergebnisse"),
+    semantic_weight: float = Query(0.7, ge=0.0, le=1.0, description="Gewicht Semantic"),
+    keyword_weight: float = Query(0.3, ge=0.0, le=1.0, description="Gewicht Keyword"),
+    rerank: bool = Query(True, description="Reranking aktivieren"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    search_service: RAGSearchService = Depends(get_search_service_dep)
+) -> RAGSearchResponse:
+    """
+    Hybrid-Suche via GET-Parameter.
+
+    Kombiniert:
+    - Semantische Vektor-Suche
+    - Keyword-basierte Volltext-Suche
+
+    Die Gewichte bestimmen die Balance zwischen beiden Methoden.
+    """
+    try:
+        response = await search_service.hybrid_search(
+            db=db,
+            query=q,
+            limit=limit,
+            semantic_weight=semantic_weight,
+            keyword_weight=keyword_weight,
+            rerank=rerank
+        )
+
+        results = [
+            RAGChunkSearchResult(
+                chunk_id=r.chunk_id,
+                document_id=r.document_id,
+                chunk_text=r.chunk_text,
+                chunk_index=r.chunk_index,
+                page_number=r.page_number,
+                section_type=r.section_type,
+                similarity=r.similarity,
+                rerank_score=r.rerank_score
+            )
+            for r in response.results
+        ]
+
+        return RAGSearchResponse(
+            query=response.query,
+            search_type=RAGSearchType.HYBRID,
+            results=results,
+            total_results=response.total_results,
+            search_time_ms=response.search_time_ms,
+            embedding_time_ms=response.embedding_time_ms,
+            rerank_time_ms=response.rerank_time_ms
+        )
+
+    except Exception as e:
+        logger.exception("hybrid_search_get_failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Suche fehlgeschlagen: {str(e)}"
+        )

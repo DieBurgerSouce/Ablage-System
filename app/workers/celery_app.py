@@ -568,6 +568,13 @@ celery_app.conf.update(
             "task": "app.workers.tasks.training_tasks.generate_training_report",
             "schedule": crontab(day_of_week=1, hour=7, minute=0),  # Montag 07:00 Uhr
         },
+        # =================================================================
+        # RAG Intelligence Layer Tasks
+        # =================================================================
+        "rag-customer-card-sync": {
+            "task": "app.workers.tasks.rag_tasks.sync_customer_cards_scheduled",
+            "schedule": crontab(hour=3, minute=30),  # Taeglich um 03:30 Uhr
+        },
     },
 
     # Queue routing

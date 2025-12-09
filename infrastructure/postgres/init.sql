@@ -5,6 +5,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";  -- For text search
 CREATE EXTENSION IF NOT EXISTS "unaccent";  -- For German text normalization
+CREATE EXTENSION IF NOT EXISTS "vector";   -- pgvector for RAG embeddings
 
 -- Create custom types
 DO $$ BEGIN

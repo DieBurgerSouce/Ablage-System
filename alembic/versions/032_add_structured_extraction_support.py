@@ -47,10 +47,11 @@ def upgrade() -> None:
     """)
 
     # 3. Composite-Index fuer haeufige Abfragen: Typ + Datum
+    # Note: deleted_at Spalte existiert nicht, daher Index ohne WHERE-Filter
     op.execute("""
         CREATE INDEX IF NOT EXISTS ix_documents_type_created
         ON documents (document_type, created_at DESC)
-        WHERE deleted_at IS NULL
+        WHERE document_type IS NOT NULL
     """)
 
     # 4. Index fuer Suche nach Rechnungsnummer in extracted_data
@@ -69,10 +70,11 @@ def upgrade() -> None:
     """)
 
     # 6. Index fuer Klassifizierungskonfidenz
+    # Note: CAST statt :: Syntax fuer asyncpg Kompatibilitaet
     op.execute("""
         CREATE INDEX IF NOT EXISTS ix_documents_classification_confidence
         ON documents (
-            (extracted_data->'classification'->>'confidence')::float
+            CAST(extracted_data->'classification'->>'confidence' AS FLOAT)
         )
         WHERE extracted_data->'classification'->>'confidence' IS NOT NULL
     """)

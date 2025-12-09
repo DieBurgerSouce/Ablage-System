@@ -101,6 +101,10 @@ reportlab==4.0.9  # PDF generation for document export
 # Spreadsheet Export
 openpyxl==3.1.2  # Excel (.xlsx) export for extracted data
 
+# RAG Intelligence Layer
+tiktoken>=0.5.0  # Token counting for LLM chunking
+python-docx>=1.1.0  # Word document generation for reports
+
 # Optional: ML-basiertes OCR-Routing
 # XGBoost ist optional - System fällt gracefully auf regelbasiertes Routing zurück
 # Für ML-Routing: pip install xgboost>=2.0.0

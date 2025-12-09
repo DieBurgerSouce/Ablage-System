@@ -296,6 +296,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api/v1"
     DEBUG: bool = False
+    BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent  # Project root
     
     # Server
     API_HOST: str = "0.0.0.0"
@@ -601,6 +602,50 @@ class Settings(BaseSettings):
 
     # DeepL API (kostenpflichtig) - nur wenn TRANSLATION_PROVIDER="deepl"
     DEEPL_API_KEY: Optional[SecretStr] = None
+
+    # =============================================================================
+    # RAG Intelligence Layer Settings
+    # =============================================================================
+    # Document Chunking
+    RAG_CHUNK_SIZE: int = 512  # Default Tokens pro Chunk
+    RAG_CHUNK_OVERLAP: int = 50  # Ueberlappung zwischen Chunks
+    RAG_CHUNK_MIN_SIZE: int = 100  # Minimum Chunk-Groesse
+    RAG_CHUNK_MAX_SIZE: int = 2048  # Maximum Chunk-Groesse
+    RAG_CHUNKING_STRATEGY: str = "semantic"  # semantic, fixed, document_type
+
+    # LLM Inference (Ollama)
+    OLLAMA_URL: str = "http://localhost:11434"
+    OLLAMA_TIMEOUT: int = 120  # Timeout in Sekunden
+    OLLAMA_KEEP_ALIVE: str = "24h"  # Modell im Speicher halten
+    DEFAULT_LLM_REALTIME: str = "qwen3:8b-q4_K_M"  # Fuer schnelle Antworten (<15s)
+    DEFAULT_LLM_ANALYSIS: str = "qwen3:14b-q4_K_M"  # Fuer detaillierte Analyse
+    LLM_MAX_CONCURRENT_REQUESTS: int = 4
+
+    # RAG Search
+    RAG_SEARCH_DEFAULT_LIMIT: int = 20
+    RAG_SEARCH_MAX_LIMIT: int = 100
+    RAG_SEMANTIC_THRESHOLD: float = 0.7  # Minimum Cosine Similarity
+    RAG_RERANK_ENABLED: bool = True
+    RAG_RERANK_TOP_K: int = 10
+
+    # Reranker Service (HuggingFace TEI)
+    RERANKER_SERVICE_URL: Optional[str] = None
+    RERANKER_MODEL: str = "BAAI/bge-reranker-v2-m3"
+    RERANKER_TIMEOUT: int = 30
+
+    # Customer Cards
+    RAG_CUSTOMER_CARD_CACHE_TTL: int = 3600  # 1 Stunde
+    RAG_CUSTOMER_CARD_SYNC_CRON: str = "0 3 * * *"  # Taeglich 03:00 Uhr
+    RAG_CUSTOMER_CARD_BATCH_SIZE: int = 50
+    RAG_CUSTOMER_CARD_CONTEXT_CHUNKS: int = 10  # Anzahl Chunks fuer Card-Generierung
+
+    # Chat
+    RAG_CHAT_MAX_HISTORY: int = 20  # Maximale Anzahl Nachrichten pro Session
+    RAG_CHAT_CONTEXT_CHUNKS: int = 5  # Anzahl Kontext-Chunks pro Anfrage
+
+    # Batch Jobs
+    RAG_BATCH_JOB_MAX_RETRIES: int = 3
+    RAG_BATCH_JOB_RETRY_DELAY: int = 60  # Sekunden
 
     @model_validator(mode='after')
     def build_computed_urls(self) -> 'Settings':
