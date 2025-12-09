@@ -250,6 +250,8 @@ celery_app = Celery(
         "app.workers.tasks.dlq_management_tasks",  # Dead Letter Queue Management
         "app.workers.tasks.document_intelligence_tasks",  # Document Intelligence (Grouping, Entities)
         "app.workers.tasks.training_tasks",  # OCR Training & Benchmarking
+        "app.workers.tasks.extraction_tasks",  # Structured Data Extraction
+        "app.workers.tasks.rag_tasks",  # RAG Document Processing
     ]
 )
 
@@ -574,6 +576,17 @@ celery_app.conf.update(
         "rag-customer-card-sync": {
             "task": "app.workers.tasks.rag_tasks.sync_customer_cards_scheduled",
             "schedule": crontab(hour=3, minute=30),  # Taeglich um 03:30 Uhr
+        },
+        "rag-chunk-new-documents": {
+            "task": "app.workers.tasks.rag_tasks.scheduled_chunk_new_documents",
+            "schedule": crontab(hour="*/4"),  # Alle 4 Stunden
+        },
+        # =================================================================
+        # Embedding Coverage Verification
+        # =================================================================
+        "embedding-coverage-check": {
+            "task": "app.workers.tasks.embedding_tasks.check_embedding_coverage",
+            "schedule": crontab(hour=6, minute=0),  # Taeglich um 06:00 Uhr
         },
     },
 

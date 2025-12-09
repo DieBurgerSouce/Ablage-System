@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { UploadState } from '../types';
-import { TuneSelectionStep } from '../steps/TuneSelectionStep';
-import { UploadStep } from '../steps/UploadStep';
+import { UnifiedUploadStep } from '../steps/UnifiedUploadStep';
 import { AnalysisStep } from '../steps/AnalysisStep';
 import { ReviewStep } from '../steps/ReviewStep';
 import { analyzeDocuments } from '@/lib/api/smart-analysis';
@@ -10,27 +9,32 @@ import { useNavigate } from '@tanstack/react-router';
 export function UploadWizard() {
     const navigate = useNavigate();
     const [state, setState] = useState<UploadState>({
-        step: 'tune-selection',
+        step: 'upload',
+        selectedBackendId: 'deepseek-janus', // Default recommendation
         selectedTuneId: null,
         files: [],
         analysisResults: [],
         groups: []
     });
 
+    const handleBackendSelect = (backendId: string) => {
+        setState(prev => ({ ...prev, selectedBackendId: backendId }));
+    };
+
     const handleTuneSelect = (tuneId: string) => {
-        setState(prev => ({ ...prev, selectedTuneId: tuneId, step: 'upload' }));
+        setState(prev => ({ ...prev, selectedTuneId: tuneId }));
     };
 
-    const handleFilesAdd = (newFiles: File[]) => {
-        setState(prev => ({ ...prev, files: [...prev.files, ...newFiles] }));
-    };
+    const handleFilesAdd = async (newFiles: File[]) => {
+        // Validate that backend and tune are selected
+        const backendId = state.selectedBackendId || 'deepseek-janus';
+        const tuneId = state.selectedTuneId || 'default'; // Fallback if no tune selected
 
-    const handleStartAnalysis = async () => {
-        setState(prev => ({ ...prev, step: 'analysis' }));
-        // The AnalysisStep component handles the visual progress
-        // We trigger the actual (mock) API call here
+        // Immediately start analysis when files are added
+        setState(prev => ({ ...prev, files: [...prev.files, ...newFiles], step: 'analysis' }));
+
         try {
-            const results = await analyzeDocuments(state.files, state.selectedTuneId!);
+            const results = await analyzeDocuments(newFiles, tuneId, backendId);
             setState(prev => ({ ...prev, analysisResults: results }));
         } catch (error) {
             console.error("Fehler bei der Analyse", error);
@@ -51,47 +55,48 @@ export function UploadWizard() {
         }));
     };
 
+    const handleUpdateBackend = (fileId: string, backendId: string) => {
+        setState(prev => ({
+            ...prev,
+            analysisResults: prev.analysisResults.map(r =>
+                r.fileId === fileId ? { ...r, selectedBackendId: backendId } : r
+            )
+        }));
+    };
+
     const handleRemoveFile = (fileId: string) => {
         setState(prev => ({
             ...prev,
-            files: prev.files.filter((_, i) => `file-${i}` !== fileId), // Note: fileId logic in mock is index based, this is a simplification
+            files: prev.files.filter((_, i) => `file-${i}` !== fileId),
             analysisResults: prev.analysisResults.filter(r => r.fileId !== fileId)
         }));
     };
 
     const handleConfirm = () => {
-        // Here we would send the final data to the backend
         console.log(`${state.analysisResults.length} Dokumente erfolgreich verarbeitet!`);
+        console.log('Final Data:', state.analysisResults);
         navigate({ to: '/' });
     };
 
     return (
-        <div className="max-w-5xl mx-auto py-8 px-4">
-            {/* Progress Stepper (Simplified) */}
+        <div className="max-w-7xl mx-auto py-8 px-4">
+            {/* Simplified Progress Indicator */}
             <div className="flex items-center justify-center mb-12 space-x-4">
-                <StepIndicator active={state.step === 'tune-selection'} completed={state.step !== 'tune-selection'} number={1} label="Tune" />
+                <StepIndicator active={state.step === 'upload'} completed={['analysis', 'review'].includes(state.step)} number={1} label="Konfiguration & Upload" />
                 <div className="w-12 h-px bg-border" />
-                <StepIndicator active={state.step === 'upload'} completed={['analysis', 'review'].includes(state.step)} number={2} label="Upload" />
+                <StepIndicator active={state.step === 'analysis'} completed={state.step === 'review'} number={2} label="Smart Analyse" />
                 <div className="w-12 h-px bg-border" />
-                <StepIndicator active={state.step === 'analysis'} completed={state.step === 'review'} number={3} label="Analyse" />
-                <div className="w-12 h-px bg-border" />
-                <StepIndicator active={state.step === 'review'} completed={false} number={4} label="Review" />
+                <StepIndicator active={state.step === 'review'} completed={false} number={3} label="Review & Start" />
             </div>
 
             <div className="bg-background rounded-2xl border shadow-sm p-8 min-h-[600px]">
-                {state.step === 'tune-selection' && (
-                    <TuneSelectionStep
-                        selectedTuneId={state.selectedTuneId}
-                        onSelect={handleTuneSelect}
-                    />
-                )}
-
                 {state.step === 'upload' && (
-                    <UploadStep
-                        files={state.files}
+                    <UnifiedUploadStep
+                        selectedBackendId={state.selectedBackendId}
+                        onBackendSelect={handleBackendSelect}
+                        selectedTuneId={state.selectedTuneId}
+                        onTuneSelect={handleTuneSelect}
                         onFilesAdded={handleFilesAdd}
-                        onBack={() => setState(prev => ({ ...prev, step: 'tune-selection' }))}
-                        onNext={handleStartAnalysis}
                     />
                 )}
 
@@ -103,6 +108,7 @@ export function UploadWizard() {
                     <ReviewStep
                         results={state.analysisResults}
                         onUpdateTune={handleUpdateTune}
+                        onUpdateBackend={handleUpdateBackend}
                         onRemove={handleRemoveFile}
                         onBack={() => setState(prev => ({ ...prev, step: 'upload' }))}
                         onConfirm={handleConfirm}

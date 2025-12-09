@@ -1,6 +1,7 @@
-import type { SmartAnalysisResult } from '../types';
-import { AVAILABLE_TUNES } from '@/lib/api/smart-analysis';
-import { FileText, AlertCircle, Check, MoreVertical, Paperclip } from 'lucide-react';
+import type { SmartAnalysisResult, Tune } from '../types';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
+import { FileText, AlertCircle, Check, MoreVertical, Paperclip, Cpu, Sparkles, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -9,26 +10,45 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
 interface DocumentListProps {
     results: SmartAnalysisResult[];
     onUpdateTune: (fileId: string, tuneId: string) => void;
+    onUpdateBackend: (fileId: string, backendId: string) => void;
     onRemove: (fileId: string) => void;
 }
 
-export function DocumentList({ results, onUpdateTune, onRemove }: DocumentListProps) {
+const BACKEND_OPTIONS = [
+    { id: 'deepseek-janus', name: 'DeepSeek Janus', icon: Sparkles },
+    { id: 'got-ocr', name: 'GOT-OCR 2.0', icon: Zap },
+    { id: 'surya-gpu', name: 'Surya (GPU)', icon: Zap },
+    { id: 'surya-docling', name: 'Surya (CPU)', icon: Cpu },
+];
+
+export function DocumentList({ results, onUpdateTune, onUpdateBackend, onRemove }: DocumentListProps) {
+    // Fetch Tunes
+    const { data: tunes } = useQuery({
+        queryKey: ['tunes', 'active'],
+        queryFn: async () => {
+            const response = await apiClient.get('/api/v1/tunes?active_only=true');
+            return response.data as Tune[];
+        }
+    });
+
     // Group logic: Find parents and attach children
     const parents = results.filter(r => !r.isChild);
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between text-sm text-muted-foreground px-4">
+            <div className="grid grid-cols-[1fr_200px_200px_100px_40px] gap-4 text-sm text-muted-foreground px-4">
                 <span>Dokument</span>
-                <div className="flex gap-12 mr-12">
-                    <span>Erkannter Tune</span>
-                    <span>Status</span>
-                </div>
+                <span>Kontext (Tune)</span>
+                <span>OCR Engine</span>
+                <span className="text-center">Status</span>
+                <span></span>
             </div>
 
             <div className="space-y-2">
@@ -38,21 +58,22 @@ export function DocumentList({ results, onUpdateTune, onRemove }: DocumentListPr
                     return (
                         <div key={parent.fileId} className="space-y-2">
                             <DocumentRow
-                                item={parent}
+                                result={parent}
+                                tunes={tunes || []}
                                 onUpdateTune={onUpdateTune}
+                                onUpdateBackend={onUpdateBackend}
                                 onRemove={onRemove}
                             />
                             {children.map(child => (
-                                <div key={child.fileId} className="pl-8 relative">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 w-3 h-px bg-border" />
-                                    <div className="absolute left-4 top-0 bottom-1/2 w-px bg-border" />
-                                    <DocumentRow
-                                        item={child}
-                                        isChild
-                                        onUpdateTune={onUpdateTune}
-                                        onRemove={onRemove}
-                                    />
-                                </div>
+                                <DocumentRow
+                                    key={child.fileId}
+                                    result={child}
+                                    tunes={tunes || []}
+                                    onUpdateTune={onUpdateTune}
+                                    onUpdateBackend={onUpdateBackend}
+                                    onRemove={onRemove}
+                                    isChild
+                                />
                             ))}
                         </div>
                     );
@@ -62,76 +83,119 @@ export function DocumentList({ results, onUpdateTune, onRemove }: DocumentListPr
     );
 }
 
-function DocumentRow({ item, isChild, onUpdateTune, onRemove }: {
-    item: SmartAnalysisResult,
-    isChild?: boolean,
-    onUpdateTune: (id: string, tuneId: string) => void,
-    onRemove: (id: string) => void
-}) {
-    const tune = AVAILABLE_TUNES.find(t => t.id === item.detectedTuneId);
+interface DocumentRowProps {
+    result: SmartAnalysisResult;
+    tunes: Tune[];
+    onUpdateTune: (id: string, tuneId: string) => void;
+    onUpdateBackend: (id: string, backendId: string) => void;
+    onRemove: (id: string) => void;
+    isChild?: boolean;
+}
+
+function DocumentRow({ result, tunes, onUpdateTune, onUpdateBackend, onRemove, isChild }: DocumentRowProps) {
+    const tune = tunes.find(t => t.id === result.detectedTuneId);
+    const backend = BACKEND_OPTIONS.find(b => b.id === result.selectedBackendId);
 
     return (
         <div className={cn(
-            "group flex items-center justify-between p-3 rounded-lg border bg-card transition-all hover:shadow-sm",
-            isChild && "bg-muted/30 border-dashed"
+            "grid grid-cols-[1fr_200px_200px_100px_40px] gap-4 items-center p-4 rounded-xl border bg-card transition-colors",
+            isChild && "ml-8 border-l-4 border-l-primary/20 bg-muted/30"
         )}>
-            <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="flex items-center gap-3 overflow-hidden">
                 <div className={cn(
-                    "p-2 rounded flex-shrink-0",
-                    item.confidence === 'high' ? "bg-emerald-500/10 text-emerald-600" :
-                        item.confidence === 'medium' ? "bg-amber-500/10 text-amber-600" :
-                            "bg-slate-500/10 text-slate-600"
+                    "p-2 rounded-lg shrink-0",
+                    isChild ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
                 )}>
-                    {isChild ? <Paperclip className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                    {isChild ? <Paperclip className="w-4 h-4" /> : <FileText className="w-5 h-5" />}
                 </div>
                 <div className="min-w-0">
-                    <p className="font-medium truncate text-sm">{item.fileName}</p>
+                    <p className="font-medium truncate">{result.fileName}</p>
                     <p className="text-xs text-muted-foreground">
-                        {Math.round(item.fileSize / 1024)} KB
-                        {item.issues.length > 0 && (
-                            <span className="ml-2 text-amber-600 flex items-center inline-flex gap-1">
-                                <AlertCircle className="w-3 h-3" />
-                                {item.issues[0]}
-                            </span>
-                        )}
+                        {(result.fileSize / 1024 / 1024).toFixed(2)} MB
                     </p>
                 </div>
             </div>
 
-            <div className="flex items-center gap-8 mr-2">
-                <div className="w-40">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="w-full justify-start text-xs h-8">
-                                <span className="truncate">{tune?.name || 'Unbekannt'}</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                            {AVAILABLE_TUNES.map(t => (
-                                <DropdownMenuItem key={t.id} onClick={() => onUpdateTune(item.fileId, t.id)}>
-                                    <span className={cn("mr-2 w-2 h-2 rounded-full", t.color)} />
-                                    {t.name}
-                                    {t.id === item.detectedTuneId && <Check className="ml-auto w-4 h-4" />}
-                                </DropdownMenuItem>
-                            ))}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
+            {/* Tune Selector */}
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="justify-start font-normal">
+                        {tune ? (
+                            <>
+                                <div className={`w-2 h-2 rounded-full mr-2 ${tune.color}`} />
+                                <span className="truncate">{tune.name}</span>
+                            </>
+                        ) : (
+                            <span className="text-muted-foreground">Wählen...</span>
+                        )}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[200px]">
+                    <DropdownMenuLabel>Kontext ändern</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {tunes.map(t => (
+                        <DropdownMenuItem key={t.id} onClick={() => onUpdateTune(result.fileId, t.id)}>
+                            <div className={`w-2 h-2 rounded-full mr-2 ${t.color}`} />
+                            {t.name}
+                            {t.id === result.detectedTuneId && <Check className="ml-auto w-4 h-4" />}
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
 
-                <div className="w-24 flex justify-center">
-                    <Badge variant={
-                        item.confidence === 'high' ? 'default' :
-                            item.confidence === 'medium' ? 'secondary' : 'destructive'
-                    } className="text-xs">
-                        {item.confidence === 'high' ? 'Sicher' :
-                            item.confidence === 'medium' ? 'Prüfen' : 'Unsicher'}
+            {/* Backend Selector */}
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="justify-start font-normal">
+                        {backend ? (
+                            <>
+                                <backend.icon className="w-3 h-3 mr-2" />
+                                <span className="truncate">{backend.name}</span>
+                            </>
+                        ) : (
+                            <span className="text-muted-foreground">Auto</span>
+                        )}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[200px]">
+                    <DropdownMenuLabel>OCR Engine ändern</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {BACKEND_OPTIONS.map(b => (
+                        <DropdownMenuItem key={b.id} onClick={() => onUpdateBackend(result.fileId, b.id)}>
+                            <b.icon className="w-3 h-3 mr-2" />
+                            {b.name}
+                            {b.id === result.selectedBackendId && <Check className="ml-auto w-4 h-4" />}
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="text-center">
+                {result.issues.length > 0 ? (
+                    <Badge variant="destructive" className="gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        Prüfen
                     </Badge>
-                </div>
-
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => onRemove(item.fileId)}>
-                    <MoreVertical className="w-4 h-4" />
-                </Button>
+                ) : (
+                    <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">
+                        <Check className="w-3 h-3 mr-1" />
+                        Bereit
+                    </Badge>
+                )}
             </div>
+
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <MoreVertical className="w-4 h-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem className="text-destructive" onClick={() => onRemove(result.fileId)}>
+                        Entfernen
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
     );
 }

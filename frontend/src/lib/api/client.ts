@@ -1,9 +1,12 @@
 import axios from 'axios';
 
+// API Base URL from environment variable with fallback
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+
 // Create Axios instance with default config
 // Use direct backend URL to avoid nginx proxy issues
 export const apiClient = axios.create({
-    baseURL: 'http://localhost:8000/api/v1',
+    baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },

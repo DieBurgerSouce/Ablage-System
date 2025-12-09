@@ -5,26 +5,21 @@ import {
     Loader2, Check, FileText, Receipt, Scale, Mail, Wrench,
     Image, Book, Briefcase, CreditCard, DollarSign, LucideIcon
 } from 'lucide-react';
+import type { Tune } from '../types';
 
 // Type-safe icon mapping
 const ICON_MAP: Record<string, LucideIcon> = {
     Receipt, Scale, Mail, Wrench, FileText, Image, Book, Briefcase, CreditCard, DollarSign
 };
 
-interface Tune {
-    id: string;
-    name: string;
-    description: string;
-    icon: string;
-    color: string;
-}
-
 interface TuneSelectionStepProps {
     selectedTuneId: string | null;
     onSelect: (tuneId: string) => void;
+    /** When true, hides the header for embedded usage in UnifiedUploadStep */
+    embedded?: boolean;
 }
 
-export function TuneSelectionStep({ selectedTuneId, onSelect }: TuneSelectionStepProps) {
+export function TuneSelectionStep({ selectedTuneId, onSelect, embedded = false }: TuneSelectionStepProps) {
     const { data: tunes, isLoading } = useQuery({
         queryKey: ['tunes', 'active'],
         queryFn: async () => {
@@ -42,15 +37,23 @@ export function TuneSelectionStep({ selectedTuneId, onSelect }: TuneSelectionSte
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="text-center space-y-2">
-                <h2 className="text-2xl font-semibold tracking-tight">Wählen Sie einen Tune</h2>
-                <p className="text-muted-foreground">
-                    Bestimmen Sie den Kontext für die intelligente Analyse Ihrer Dokumente.
-                </p>
-            </div>
+        <div className={cn(
+            "space-y-6",
+            !embedded && "animate-in fade-in slide-in-from-bottom-4 duration-500"
+        )}>
+            {!embedded && (
+                <div className="text-center space-y-2">
+                    <h2 className="text-2xl font-semibold tracking-tight">Wählen Sie einen Tune</h2>
+                    <p className="text-muted-foreground">
+                        Bestimmen Sie den Kontext für die intelligente Analyse Ihrer Dokumente.
+                    </p>
+                </div>
+            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+            <div className={cn(
+                "grid grid-cols-1 md:grid-cols-2 gap-4",
+                !embedded && "max-w-4xl mx-auto"
+            )}>
                 {tunes?.map((tune) => {
                     // Type-safe icon lookup
                     const Icon = ICON_MAP[tune.icon] || FileText;

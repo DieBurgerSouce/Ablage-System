@@ -43,7 +43,7 @@ async def create_tune(
     if result.scalars().first():
         raise HTTPException(
             status_code=400,
-            detail="A tune with this name already exists."
+            detail="Ein Tune mit diesem Namen existiert bereits."
         )
 
     tune = models.Tune(**tune_in.model_dump())
@@ -67,7 +67,7 @@ async def update_tune(
     tune = result.scalars().first()
 
     if not tune:
-        raise HTTPException(status_code=404, detail="Tune not found")
+        raise HTTPException(status_code=404, detail="Tune nicht gefunden")
 
     update_data = tune_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -92,10 +92,10 @@ async def delete_tune(
     tune = result.scalars().first()
 
     if not tune:
-        raise HTTPException(status_code=404, detail="Tune not found")
+        raise HTTPException(status_code=404, detail="Tune nicht gefunden")
 
     if tune.is_system:
-        raise HTTPException(status_code=400, detail="System tunes cannot be deleted.")
+        raise HTTPException(status_code=400, detail="System-Tunes können nicht gelöscht werden.")
 
     await db.delete(tune)
     await db.commit()
