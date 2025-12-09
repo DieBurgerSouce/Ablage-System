@@ -25,6 +25,8 @@ import { Route as ValidationQueueIdRouteImport } from './app/routes/validation-q
 import { Route as DocumentsDocumentIdRouteImport } from './app/routes/documents.$documentId'
 import { Route as DocumentGroupsIdRouteImport } from './app/routes/document-groups.$id'
 import { Route as BusinessEntitiesIdRouteImport } from './app/routes/business-entities.$id'
+import { Route as AdminUsersRouteImport } from './app/routes/admin.users'
+import { Route as AdminTunesRouteImport } from './app/routes/admin.tunes'
 import { Route as AdminOcrTrainingRouteImport } from './app/routes/admin.ocr-training'
 import { Route as AdminOcrBackendsRouteImport } from './app/routes/admin.ocr-backends'
 import { Route as DocumentsDocumentIdRelationshipsRouteImport } from './app/routes/documents.$documentId.relationships'
@@ -111,6 +113,16 @@ const BusinessEntitiesIdRoute = BusinessEntitiesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => BusinessEntitiesRoute,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTunesRoute = AdminTunesRouteImport.update({
+  id: '/tunes',
+  path: '/tunes',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminOcrTrainingRoute = AdminOcrTrainingRouteImport.update({
   id: '/ocr-training',
   path: '/ocr-training',
@@ -153,6 +165,8 @@ export interface FileRoutesByFullPath {
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
+  '/admin/tunes': typeof AdminTunesRoute
+  '/admin/users': typeof AdminUsersRoute
   '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
@@ -176,6 +190,8 @@ export interface FileRoutesByTo {
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
+  '/admin/tunes': typeof AdminTunesRoute
+  '/admin/users': typeof AdminUsersRoute
   '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
@@ -200,6 +216,8 @@ export interface FileRoutesById {
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
+  '/admin/tunes': typeof AdminTunesRoute
+  '/admin/users': typeof AdminUsersRoute
   '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
@@ -225,6 +243,8 @@ export interface FileRouteTypes {
     | '/validation-queue'
     | '/admin/ocr-backends'
     | '/admin/ocr-training'
+    | '/admin/tunes'
+    | '/admin/users'
     | '/business-entities/$id'
     | '/document-groups/$id'
     | '/documents/$documentId'
@@ -248,6 +268,8 @@ export interface FileRouteTypes {
     | '/validation-queue'
     | '/admin/ocr-backends'
     | '/admin/ocr-training'
+    | '/admin/tunes'
+    | '/admin/users'
     | '/business-entities/$id'
     | '/document-groups/$id'
     | '/documents/$documentId'
@@ -271,6 +293,8 @@ export interface FileRouteTypes {
     | '/validation-queue'
     | '/admin/ocr-backends'
     | '/admin/ocr-training'
+    | '/admin/tunes'
+    | '/admin/users'
     | '/business-entities/$id'
     | '/document-groups/$id'
     | '/documents/$documentId'
@@ -410,6 +434,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BusinessEntitiesIdRouteImport
       parentRoute: typeof BusinessEntitiesRoute
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/tunes': {
+      id: '/admin/tunes'
+      path: '/tunes'
+      fullPath: '/admin/tunes'
+      preLoaderRoute: typeof AdminTunesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/ocr-training': {
       id: '/admin/ocr-training'
       path: '/ocr-training'
@@ -473,11 +511,15 @@ const AdminOcrTrainingRouteWithChildren =
 interface AdminRouteChildren {
   AdminOcrBackendsRoute: typeof AdminOcrBackendsRouteWithChildren
   AdminOcrTrainingRoute: typeof AdminOcrTrainingRouteWithChildren
+  AdminTunesRoute: typeof AdminTunesRoute
+  AdminUsersRoute: typeof AdminUsersRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminOcrBackendsRoute: AdminOcrBackendsRouteWithChildren,
   AdminOcrTrainingRoute: AdminOcrTrainingRouteWithChildren,
+  AdminTunesRoute: AdminTunesRoute,
+  AdminUsersRoute: AdminUsersRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

@@ -1,34 +1,62 @@
-import { createFileRoute, Outlet, useMatches } from '@tanstack/react-router'
-import { UserManagement } from '@/features/admin/components/UserManagement'
+import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router'
+import { cn } from '@/lib/utils'
+import { Users, Music, Settings, LayoutDashboard } from 'lucide-react'
 
 export const Route = createFileRoute('/admin')({
     component: AdminLayout,
 })
 
 function AdminLayout() {
-    const matches = useMatches()
+    const location = useLocation()
+    const pathname = location.pathname
 
-    // Prüfe ob wir auf einer Child-Route sind (z.B. /admin/ocr-training)
-    const isChildRoute = matches.some(match =>
-        match.routeId !== '/admin' && match.routeId.startsWith('/admin/')
-    )
+    const navItems = [
+        { href: '/admin', label: 'Übersicht', icon: LayoutDashboard, exact: true },
+        { href: '/admin/users', label: 'Benutzer', icon: Users },
+        { href: '/admin/tunes', label: 'Tunes & Kontext', icon: Music },
+        { href: '/admin/settings', label: 'Einstellungen', icon: Settings },
+    ]
 
-    // Wenn Child-Route, nur Outlet rendern
-    if (isChildRoute) {
-        return <Outlet />
-    }
-
-    // Ansonsten die Admin-Hauptseite mit UserManagement
     return (
-        <div className="max-w-7xl mx-auto p-8 space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight font-display">Administration</h1>
-                <p className="text-muted-foreground mt-2">
-                    Verwalten Sie Benutzer, Rollen und Systemeinstellungen.
-                </p>
-            </div>
+        <div className="flex min-h-screen bg-muted/10">
+            {/* Sidebar */}
+            <aside className="w-64 bg-card border-r hidden md:block fixed h-full">
+                <div className="p-6 border-b">
+                    <h1 className="text-xl font-bold tracking-tight font-display">Administration</h1>
+                    <p className="text-sm text-muted-foreground">Systemverwaltung</p>
+                </div>
+                <nav className="p-4 space-y-1">
+                    {navItems.map((item) => {
+                        const isActive = item.exact
+                            ? pathname === item.href
+                            : pathname.startsWith(item.href)
 
-            <UserManagement />
+                        return (
+                            <Link
+                                key={item.href}
+                                to={item.href}
+                                className={cn(
+                                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                                    isActive
+                                        ? "bg-primary text-primary-foreground"
+                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                )}
+                            >
+                                <item.icon className="w-4 h-4" />
+                                {item.label}
+                            </Link>
+                        )
+                    })}
+                </nav>
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-1 md:ml-64">
+                <div className="max-w-7xl mx-auto p-8">
+                    <Outlet />
+                </div>
+            </main>
         </div>
     )
 }
+

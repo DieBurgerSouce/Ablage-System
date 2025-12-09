@@ -7,12 +7,13 @@ import { ArrowLeft, CheckCircle } from 'lucide-react';
 interface ReviewStepProps {
     results: SmartAnalysisResult[];
     onUpdateTune: (fileId: string, tuneId: string) => void;
+    onUpdateBackend: (fileId: string, backendId: string) => void;
     onRemove: (fileId: string) => void;
     onBack: () => void;
     onConfirm: () => void;
 }
 
-export function ReviewStep({ results, onUpdateTune, onRemove, onBack, onConfirm }: ReviewStepProps) {
+export function ReviewStep({ results, onUpdateTune, onUpdateBackend, onRemove, onBack, onConfirm }: ReviewStepProps) {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
@@ -30,6 +31,7 @@ export function ReviewStep({ results, onUpdateTune, onRemove, onBack, onConfirm 
                 <DocumentList
                     results={results}
                     onUpdateTune={onUpdateTune}
+                    onUpdateBackend={onUpdateBackend}
                     onRemove={onRemove}
                 />
             </div>
