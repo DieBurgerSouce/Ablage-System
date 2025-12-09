@@ -14,11 +14,11 @@ from typing import Dict, Any, List
 from uuid import UUID
 
 import structlog
-from celery import shared_task
 from sqlalchemy import select, delete, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.workers.celery_app import celery_app, CPUTask
 
 logger = structlog.get_logger(__name__)
 
@@ -27,12 +27,15 @@ SOFT_DELETE_RETENTION_DAYS = 30  # GDPR: 30 Tage Aufbewahrung vor permanenter LÃ
 BATCH_SIZE = 100  # Dokumente pro Batch fÃ¼r schonende DB-Last
 
 
-@shared_task(
-    name="app.workers.tasks.cleanup_tasks.cleanup_soft_deleted_documents",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.cleanup_tasks.cleanup_soft_deleted_documents",
     max_retries=3,
     default_retry_delay=300,  # 5 Minuten Retry-Delay
-    autoretry_for=(Exception,),
+    soft_time_limit=600,  # 10 Minuten Soft-Limit
+    time_limit=660,  # 11 Minuten Hard-Limit
+    acks_late=True,  # Task bleibt in Queue bis erfolgreich abgeschlossen
 )
 def cleanup_soft_deleted_documents(
     self,
@@ -169,10 +172,14 @@ async def _cleanup_soft_deleted_async(
     return stats
 
 
-@shared_task(
-    name="app.workers.tasks.cleanup_tasks.cleanup_orphaned_files",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.cleanup_tasks.cleanup_orphaned_files",
     max_retries=1,
+    soft_time_limit=1800,  # 30 Minuten Soft-Limit (kann viele Dateien sein)
+    time_limit=1860,  # 31 Minuten Hard-Limit
+    acks_late=True,
 )
 def cleanup_orphaned_files(self) -> Dict[str, Any]:
     """
@@ -252,9 +259,13 @@ async def _cleanup_orphaned_files_async() -> Dict[str, Any]:
     return stats
 
 
-@shared_task(
-    name="app.workers.tasks.cleanup_tasks.cleanup_expired_cache",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.cleanup_tasks.cleanup_expired_cache",
+    soft_time_limit=120,  # 2 Minuten Soft-Limit
+    time_limit=180,  # 3 Minuten Hard-Limit
+    acks_late=True,
 )
 def cleanup_expired_cache(self) -> Dict[str, Any]:
     """
@@ -268,10 +279,14 @@ def cleanup_expired_cache(self) -> Dict[str, Any]:
     return asyncio.run(_cleanup_expired_cache_async())
 
 
-@shared_task(
-    name="app.workers.tasks.cleanup_tasks.cleanup_search_analytics",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.cleanup_tasks.cleanup_search_analytics",
     max_retries=2,
+    soft_time_limit=600,  # 10 Minuten Soft-Limit
+    time_limit=660,  # 11 Minuten Hard-Limit
+    acks_late=True,
 )
 def cleanup_search_analytics(
     self,
@@ -357,11 +372,15 @@ async def _cleanup_search_analytics_async(
     return stats
 
 
-@shared_task(
-    name="app.workers.tasks.cleanup_tasks.cleanup_expired_sessions",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.cleanup_tasks.cleanup_expired_sessions",
     max_retries=3,
     default_retry_delay=60,
+    soft_time_limit=300,  # 5 Minuten Soft-Limit
+    time_limit=360,  # 6 Minuten Hard-Limit
+    acks_late=True,
 )
 def cleanup_expired_sessions(self) -> Dict[str, Any]:
     """
@@ -412,11 +431,15 @@ async def _cleanup_expired_sessions_async() -> Dict[str, Any]:
     return stats
 
 
-@shared_task(
-    name="app.workers.tasks.cleanup_tasks.cleanup_expired_verification_tokens",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.cleanup_tasks.cleanup_expired_verification_tokens",
     max_retries=3,
     default_retry_delay=60,
+    soft_time_limit=300,  # 5 Minuten Soft-Limit
+    time_limit=360,  # 6 Minuten Hard-Limit
+    acks_late=True,
 )
 def cleanup_expired_verification_tokens(self) -> Dict[str, Any]:
     """

@@ -16,12 +16,12 @@ from uuid import UUID
 import hashlib
 
 import structlog
-from celery import shared_task
 from sqlalchemy import select, delete, update, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.cache import invalidate_user_cache, invalidate_all_caches
+from app.workers.celery_app import celery_app, CPUTask
 
 logger = structlog.get_logger(__name__)
 
@@ -31,12 +31,15 @@ BREACH_NOTIFICATION_HOURS = 72  # Art. 33: 72 Stunden für Breach-Meldung
 RETENTION_CHECK_BATCH_SIZE = 500
 
 
-@shared_task(
-    name="app.workers.tasks.gdpr_tasks.process_deletion_requests",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.gdpr_tasks.process_deletion_requests",
     max_retries=3,
     default_retry_delay=600,  # 10 Minuten
-    autoretry_for=(Exception,),
+    soft_time_limit=1800,  # 30 Minuten Soft-Limit (GDPR-kritisch)
+    time_limit=1860,  # 31 Minuten Hard-Limit
+    acks_late=True,
 )
 def process_deletion_requests(self) -> Dict[str, Any]:
     """
@@ -256,10 +259,14 @@ async def _delete_user_data(
     return stats
 
 
-@shared_task(
-    name="app.workers.tasks.gdpr_tasks.check_retention_compliance",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.gdpr_tasks.check_retention_compliance",
     max_retries=2,
+    soft_time_limit=1200,  # 20 Minuten Soft-Limit
+    time_limit=1260,  # 21 Minuten Hard-Limit
+    acks_late=True,
 )
 def check_retention_compliance(self, dry_run: bool = False) -> Dict[str, Any]:
     """
@@ -358,11 +365,15 @@ async def _check_retention_compliance_async(dry_run: bool) -> Dict[str, Any]:
     return stats
 
 
-@shared_task(
-    name="app.workers.tasks.gdpr_tasks.send_breach_notification",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.gdpr_tasks.send_breach_notification",
     max_retries=5,
     default_retry_delay=300,
+    soft_time_limit=600,  # 10 Minuten Soft-Limit
+    time_limit=660,  # 11 Minuten Hard-Limit
+    acks_late=True,
 )
 def send_breach_notification(
     self,
@@ -593,9 +604,13 @@ Meldung gemäß Art. 33 DSGVO
 """
 
 
-@shared_task(
-    name="app.workers.tasks.gdpr_tasks.generate_compliance_report",
+@celery_app.task(
     bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.gdpr_tasks.generate_compliance_report",
+    soft_time_limit=300,  # 5 Minuten Soft-Limit
+    time_limit=360,  # 6 Minuten Hard-Limit
+    acks_late=True,
 )
 def generate_compliance_report(self) -> Dict[str, Any]:
     """

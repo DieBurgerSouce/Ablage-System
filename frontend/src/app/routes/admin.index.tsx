@@ -2,6 +2,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FileText, Users, Cpu, HardDrive, Activity, CheckCircle } from 'lucide-react'
 
+// TanStack Router: admin.index.tsx = index route for /admin
+// This component renders inside AdminLayout's <Outlet />
 export const Route = createFileRoute('/admin/')({
     component: AdminDashboard,
 })

@@ -197,9 +197,9 @@ export function ExtractedDataPanel({
                 )}
 
                 {/* Allgemeine Entities (fallback fuer alle Typen) */}
-                {(data.ibans?.length > 0 ||
-                    data.vat_ids?.length > 0 ||
-                    data.companies?.length > 0) && (
+                {((data.ibans?.length ?? 0) > 0 ||
+                    (data.vat_ids?.length ?? 0) > 0 ||
+                    (data.companies?.length ?? 0) > 0) && (
                     <div className="mt-6 pt-6 border-t">
                         <h4 className="text-sm font-medium mb-4">
                             Weitere erkannte Entitaeten

@@ -29,8 +29,15 @@ terraform {
   # 2. Dann State migrieren:
   #    terraform init -migrate-state
   #
+  # 3. HTTPS-Konfiguration (EMPFOHLEN für Production):
+  #    terraform init -backend-config="endpoints={s3=\"https://minio.internal:9000\"}"
+  #    ODER: backend.hcl Datei mit endpoints = { s3 = "https://..." }
+  #
   # Für lokale Entwicklung kann "local" Backend verwendet werden.
-  # Für Production MUSS das S3-Backend (MinIO) aktiviert werden!
+  # Für Production MUSS das S3-Backend (MinIO) mit HTTPS aktiviert werden!
+  #
+  # SICHERHEITSHINWEIS: Der hardcoded HTTP-Endpoint unten ist nur für lokale
+  # Entwicklung gedacht. Für Production IMMER -backend-config verwenden!
 
   backend "s3" {
     # MinIO als S3-kompatibler State Store
@@ -38,13 +45,19 @@ terraform {
     key    = "ablage-system/production/terraform.tfstate"
     region = "us-east-1"  # Dummy-Region für MinIO (wird ignoriert)
 
-    # MinIO Endpoint (aus Environment: TF_VAR_minio_endpoint)
-    # Standard: http://localhost:9000
+    # MinIO Endpoint
+    # WARNUNG: HTTP nur für lokale Entwicklung!
+    # Für Production: terraform init -backend-config=backend.prod.hcl
+    # Beispiel backend.prod.hcl:
+    #   endpoints = { s3 = "https://minio.ablage-system.local:9000" }
     endpoints = {
       s3 = "http://localhost:9000"
     }
 
     # MinIO verwendet keine echten AWS-Credentials
+    # Access/Secret Keys werden via Environment übergeben:
+    #   AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
+    #   oder: -backend-config="access_key=..." -backend-config="secret_key=..."
     skip_credentials_validation = true
     skip_metadata_api_check     = true
     skip_region_validation      = true

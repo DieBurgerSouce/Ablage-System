@@ -1,8 +1,27 @@
 # Ablage-System NVIDIA Role - Handlers
+# Updated: 2025-12-09 - Added DCGM, ldconfig handlers
 ---
 - name: restart docker
   ansible.builtin.systemd:
     name: docker
+    state: restarted
+    daemon_reload: yes
+  become: yes
+
+- name: restart dcgm-exporter
+  ansible.builtin.systemd:
+    name: dcgm-exporter
+    state: restarted
+    daemon_reload: yes
+  become: yes
+
+- name: reload ldconfig
+  ansible.builtin.command: ldconfig
+  become: yes
+
+- name: restart nvidia-dcgm
+  ansible.builtin.systemd:
+    name: nvidia-dcgm
     state: restarted
     daemon_reload: yes
   become: yes

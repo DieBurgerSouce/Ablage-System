@@ -275,6 +275,7 @@ Die modularen Services unter `app/services/document_services/` sind die kanonisc
 Diese Dateien existieren nur als Wrapper fuer Rueckwaertskompatibilitaet:
 - `app/services/document_gdpr_service.py` → Nutze `document_services/gdpr_service.py`
 - `app/services/document_export_service.py` → Nutze `document_services/export_service.py`
+- `app/services/document_batch_service.py` → Nutze `document_services/batch_service.py`
 
 ### Spezialisierte Export-Services
 
@@ -283,12 +284,13 @@ Diese Dateien existieren nur als Wrapper fuer Rueckwaertskompatibilitaet:
 | `export_service.py` | Extracted Data Export (Invoice/Order/Contract → CSV/Excel) |
 | `data_export_service.py` | GDPR Art. 20 User Data Portabilitaet |
 | `document_services/export_service.py` | Batch Document Export |
+| `training_dataset_export_service.py` | OCR Training Dataset Export |
 
 ### Batch-Services
 
 | Datei | Beschreibung |
 |-------|--------------|
-| `batch_service.py` | Generische Batch-Verarbeitung |
+| `document_services/batch_service.py` | Document Bulk-Operationen (kanonisch) |
 | `batch_job_service.py` | Batch-Job Tracking und Management |
 
 ### GDPR-Services

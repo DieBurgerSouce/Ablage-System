@@ -16,8 +16,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useToast } from '@/components/ui/use-toast';
 import {
     Plus, Pencil, Trash2, Loader2, Receipt, Scale, Mail, Wrench,
-    FileText, Image, Book, Briefcase, CreditCard, DollarSign, LucideIcon
+    FileText, Image, Book, Briefcase, CreditCard, DollarSign
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import type { Tune } from '@/features/upload/types';
 

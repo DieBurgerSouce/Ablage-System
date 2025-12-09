@@ -13,7 +13,7 @@ function RootComponent() {
 
     // Show loading state while checking auth
     if (isLoading) {
-        return <div className="flex h-screen items-center justify-center">Loading...</div>
+        return <div className="flex h-screen items-center justify-center">Wird geladen...</div>
     }
 
     // Public routes that don't need auth or layout

@@ -1,5 +1,10 @@
 # Ablage-System NVIDIA Role - Default Variables
+# Updated: 2025-12-09 - Added DCGM, cuDNN options
 ---
+# =============================================================================
+# NVIDIA DRIVER SETTINGS
+# =============================================================================
+
 # NVIDIA driver version (535 series for CUDA 12.1 compatibility)
 nvidia_driver_version: "535"
 
@@ -12,12 +17,62 @@ nvidia_min_memory_mb: 8000
 # Whether to check GPU memory during verification
 nvidia_check_memory: false
 
+# =============================================================================
+# CONTAINER RUNTIME SETTINGS
+# =============================================================================
+
 # NVIDIA container runtime settings
 nvidia_visible_devices: all
 nvidia_driver_capabilities: compute,utility
 
+# =============================================================================
+# CUDA TOOLKIT SETTINGS (Optional)
+# =============================================================================
+
 # Whether to install CUDA toolkit (not just drivers)
+# Set to true for local development/builds
 nvidia_install_cuda_toolkit: false
 
 # CUDA toolkit version (if nvidia_install_cuda_toolkit is true)
 nvidia_cuda_toolkit_version: "12-1"
+
+# Whether to install cuDNN (deep learning library)
+nvidia_install_cudnn: true
+
+# =============================================================================
+# DCGM SETTINGS (GPU Metrics for Prometheus)
+# =============================================================================
+
+# Whether to install NVIDIA Data Center GPU Manager
+nvidia_install_dcgm: true
+
+# Whether to install DCGM Exporter (Prometheus metrics)
+nvidia_install_dcgm_exporter: true
+
+# DCGM Exporter settings
+dcgm_exporter_port: 9400
+dcgm_exporter_interval: 30000  # milliseconds
+dcgm_exporter_version: "3.3.5-3.4.1-ubuntu22.04"
+
+# =============================================================================
+# GPU POWER MANAGEMENT
+# =============================================================================
+
+# Set GPU persistence mode (recommended for servers)
+nvidia_persistence_mode: true
+
+# GPU power limit in watts (0 = default, set to limit power consumption)
+nvidia_power_limit: 0
+
+# =============================================================================
+# OCR-SPECIFIC SETTINGS
+# =============================================================================
+
+# Target GPU for OCR workloads (0-indexed)
+nvidia_ocr_gpu_index: 0
+
+# Reserved VRAM for system (in MB)
+nvidia_reserved_vram_mb: 2048
+
+# Maximum batch size for OCR processing
+nvidia_ocr_max_batch_size: 8

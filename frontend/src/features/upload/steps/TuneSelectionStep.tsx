@@ -3,8 +3,9 @@ import { apiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import {
     Loader2, Check, FileText, Receipt, Scale, Mail, Wrench,
-    Image, Book, Briefcase, CreditCard, DollarSign, LucideIcon
+    Image, Book, Briefcase, CreditCard, DollarSign
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { Tune } from '../types';
 
 // Type-safe icon mapping

@@ -2,11 +2,12 @@
 # Multi-stage build for optimized production image
 # Supports GPU acceleration with CUDA 12.x
 # Created: 2024-11-22
+# Updated: 2025-12-09 - CUDA 12.1 for consistency
 
 # ============================================================================
 # Stage 1: Base Python with CUDA
 # ============================================================================
-FROM nvidia/cuda:12.0.0-cudnn8-runtime-ubuntu22.04 as base
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04 as base
 
 # Prevent interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive

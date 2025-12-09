@@ -500,8 +500,8 @@ class Settings(BaseSettings):
     # SECURITY FIX: Default auf True geändert (fail-closed ist sicherer)
     # Bei Redis-Ausfall werden Requests abgelehnt statt durchgelassen
     # Bei DDoS-Angriffen könnte sonst Rate Limiting umgangen werden
-    RATE_LIMIT_FAIL_CLOSED: bool = False  # SECURITY: fail-closed für besseren Schutz (temporarily disabled)
-    RATE_LIMIT_FAIL_CLOSED_CRITICAL: bool = False  # Always fail-closed for critical endpoints (temporarily disabled)
+    RATE_LIMIT_FAIL_CLOSED: bool = True  # SECURITY: fail-closed für besseren Schutz bei Redis-Ausfall
+    RATE_LIMIT_FAIL_CLOSED_CRITICAL: bool = True  # SECURITY: Kritische Endpoints (Login, OCR) immer schützen
 
     # Session Management
     # Maximale Anzahl gleichzeitiger Sessions pro Benutzer
@@ -777,6 +777,15 @@ class Settings(BaseSettings):
                 message="localhost in CORS Origins nur für Development verwenden!",
                 origins=self.CORS_ORIGINS
             )
+            # SECURITY: Zusätzliche Warnung wenn Credentials mit localhost erlaubt sind
+            if self.CORS_ALLOW_CREDENTIALS:
+                logger.warning(
+                    "cors_localhost_with_credentials",
+                    message="CORS: localhost Origins mit CORS_ALLOW_CREDENTIALS=true ist ein Sicherheitsrisiko! "
+                            "XSS-Angriffe auf localhost könnten Credentials stehlen.",
+                    origins=self.CORS_ORIGINS,
+                    hint="Setze CORS_ALLOW_CREDENTIALS=false für Development oder verwende explizite Origins."
+                )
 
         # Production: Nur HTTPS Origins erlauben (außer für localhost in DEBUG)
         if not self.DEBUG and self.CORS_ORIGINS:
@@ -924,6 +933,40 @@ class Settings(BaseSettings):
                 auth_method="token" if has_token else "approle",
                 verify_ssl=self.VAULT_VERIFY_SSL
             )
+        else:
+            # SECURITY: In Production sollte Vault verwendet werden
+            if not self.DEBUG:
+                logger.warning(
+                    "vault_disabled_in_production",
+                    message="VAULT_ENABLED=False in Production! "
+                            "Secrets werden aus Umgebungsvariablen gelesen. "
+                            "Für bessere Sicherheit empfehlen wir Vault zu aktivieren.",
+                    hint="Setze VAULT_ENABLED=true und konfiguriere Vault-Credentials."
+                )
+
+        # ========== ENCRYPTION_KEY Validierung ==========
+        # In Production: ENCRYPTION_KEY sollte explizit gesetzt sein für TOTP-Secrets
+        if not self.DEBUG:
+            encryption_key_value = self.ENCRYPTION_KEY.get_secret_value() if self.ENCRYPTION_KEY else None
+            if not encryption_key_value:
+                logger.warning(
+                    "encryption_key_not_set_production",
+                    message="ENCRYPTION_KEY ist nicht gesetzt in Production! "
+                            "TOTP-Secrets und andere sensible Daten werden mit abgeleitetem Key verschlüsselt. "
+                            "Für maximale Sicherheit setze einen expliziten ENCRYPTION_KEY.",
+                    hint="Generiere mit: python -c \"import base64, secrets; print(base64.b64encode(secrets.token_bytes(32)).decode())\""
+                )
+            elif len(encryption_key_value) < 32:
+                raise ValueError(
+                    f"ENCRYPTION_KEY ist zu kurz ({len(encryption_key_value)} Zeichen). "
+                    "Mindestens 32 Zeichen (Base64-encoded 32 Bytes) erforderlich für AES-256."
+                )
+            else:
+                logger.info(
+                    "encryption_key_validated",
+                    key_length=len(encryption_key_value),
+                    message="ENCRYPTION_KEY für TOTP-Secrets validiert"
+                )
 
         # Build DATABASE_URL if not set
         if not self.DATABASE_URL:

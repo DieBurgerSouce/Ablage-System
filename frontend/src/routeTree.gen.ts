@@ -29,6 +29,8 @@ import { Route as AdminUsersRouteImport } from './app/routes/admin.users'
 import { Route as AdminTunesRouteImport } from './app/routes/admin.tunes'
 import { Route as AdminOcrTrainingRouteImport } from './app/routes/admin.ocr-training'
 import { Route as AdminOcrBackendsRouteImport } from './app/routes/admin.ocr-backends'
+import { Route as AdminIndexRouteImport } from './app/routes/admin.index'
+import { Route as AdminSettingsRouteImport } from './app/routes/admin.settings'
 import { Route as DocumentsDocumentIdRelationshipsRouteImport } from './app/routes/documents.$documentId.relationships'
 import { Route as AdminOcrBackendsBackendRouteImport } from './app/routes/admin.ocr-backends.$backend'
 import { Route as AdminOcrTrainingBatchIdRouteImport } from './app/routes/admin.ocr-training.batch.$id'
@@ -133,6 +135,16 @@ const AdminOcrBackendsRoute = AdminOcrBackendsRouteImport.update({
   path: '/ocr-backends',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
 const DocumentsDocumentIdRelationshipsRoute =
   DocumentsDocumentIdRelationshipsRouteImport.update({
     id: '/relationships',
@@ -153,6 +165,8 @@ const AdminOcrTrainingBatchIdRoute = AdminOcrTrainingBatchIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/admin/': typeof AdminIndexRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/automation': typeof AutomationRoute
   '/business-entities': typeof BusinessEntitiesRouteWithChildren
   '/document-groups': typeof DocumentGroupsRouteWithChildren
@@ -509,15 +523,19 @@ const AdminOcrTrainingRouteWithChildren =
   AdminOcrTrainingRoute._addFileChildren(AdminOcrTrainingRouteChildren)
 
 interface AdminRouteChildren {
+  AdminIndexRoute: typeof AdminIndexRoute
   AdminOcrBackendsRoute: typeof AdminOcrBackendsRouteWithChildren
   AdminOcrTrainingRoute: typeof AdminOcrTrainingRouteWithChildren
+  AdminSettingsRoute: typeof AdminSettingsRoute
   AdminTunesRoute: typeof AdminTunesRoute
   AdminUsersRoute: typeof AdminUsersRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminIndexRoute: AdminIndexRoute,
   AdminOcrBackendsRoute: AdminOcrBackendsRouteWithChildren,
   AdminOcrTrainingRoute: AdminOcrTrainingRouteWithChildren,
+  AdminSettingsRoute: AdminSettingsRoute,
   AdminTunesRoute: AdminTunesRoute,
   AdminUsersRoute: AdminUsersRoute,
 }

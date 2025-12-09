@@ -252,6 +252,7 @@ celery_app = Celery(
         "app.workers.tasks.training_tasks",  # OCR Training & Benchmarking
         "app.workers.tasks.extraction_tasks",  # Structured Data Extraction
         "app.workers.tasks.rag_tasks",  # RAG Document Processing
+        "app.workers.tasks.monitoring_tasks",  # Worker Health Monitoring
     ]
 )
 
@@ -499,6 +500,19 @@ celery_app.conf.update(
             "task": "app.workers.tasks.monitoring_tasks.cleanup_stuck_tasks",
             "schedule": 300.0,  # Alle 5 Minuten
         },
+        "queue-backpressure-check": {
+            "task": "app.workers.tasks.monitoring_tasks.check_queue_backpressure",
+            "schedule": 60.0,  # Jede Minute
+        },
+        # Session & Token Cleanup (Security)
+        "cleanup-expired-sessions-daily": {
+            "task": "app.workers.tasks.cleanup_tasks.cleanup_expired_sessions",
+            "schedule": crontab(hour=2, minute=15),  # Taeglich um 02:15 Uhr
+        },
+        "cleanup-expired-verification-tokens-daily": {
+            "task": "app.workers.tasks.cleanup_tasks.cleanup_expired_verification_tokens",
+            "schedule": crontab(hour=2, minute=30),  # Taeglich um 02:30 Uhr
+        },
         # ML/Drift Detection Tasks
         "ml-drift-detection": {
             "task": "app.workers.tasks.ml_tasks.run_drift_detection",
@@ -618,6 +632,21 @@ celery_app.conf.update(
         "app.workers.tasks.cleanup_tasks.cleanup_orphaned_files": {"queue": "maintenance", "priority": 1},
         "app.workers.tasks.cleanup_tasks.cleanup_expired_cache": {"queue": "maintenance", "priority": 1},
         "app.workers.tasks.cleanup_tasks.cleanup_search_analytics": {"queue": "maintenance", "priority": 1},
+        "app.workers.tasks.cleanup_tasks.cleanup_expired_sessions": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.cleanup_tasks.cleanup_expired_verification_tokens": {"queue": "maintenance", "priority": 2},
+        # GDPR tasks (Art. 17, Art. 33)
+        "app.workers.tasks.gdpr_tasks.process_deletion_requests": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.gdpr_tasks.check_retention_compliance": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.gdpr_tasks.send_breach_notification": {"queue": "maintenance", "priority": 9},  # Hohe Prioritaet - GDPR Art. 33
+        "app.workers.tasks.gdpr_tasks.generate_compliance_report": {"queue": "maintenance", "priority": 1},
+        # Monitoring tasks
+        "app.workers.tasks.monitoring_tasks.worker_health_check_task": {"queue": "metrics", "priority": 1},
+        "app.workers.tasks.monitoring_tasks.cleanup_stuck_tasks": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.monitoring_tasks.check_queue_backpressure": {"queue": "metrics", "priority": 1},
+        # Extraction tasks
+        "extraction.reprocess_all_structured_extraction": {"queue": "ocr_normal", "priority": 4},
+        "extraction.reprocess_single_document": {"queue": "ocr_high", "priority": 6},
+        "extraction.generate_extraction_stats": {"queue": "metrics", "priority": 1},
         # ML/Drift Detection tasks (CPU)
         "app.workers.tasks.ml_tasks.run_drift_detection": {"queue": "metrics", "priority": 2},
         "app.workers.tasks.ml_tasks.check_drift_and_respond": {"queue": "metrics", "priority": 3},

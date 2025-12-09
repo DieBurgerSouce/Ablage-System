@@ -1,4 +1,24 @@
-"""SQLAlchemy database models for Ablage-System."""
+"""SQLAlchemy database models for Ablage-System.
+
+HINWEIS ZU RELATIONSHIPS:
+=========================
+Dieses Modul verwendet eine Mischung aus `backref` und `back_populates`.
+Beide sind funktional aequivalent.
+
+KONVENTION FUER NEUE RELATIONSHIPS:
+- Verwende `back_populates` fuer explizite bidirektionale Beziehungen
+- Definiere die Relationship auf BEIDEN Seiten der Beziehung
+- `backref` ist weiterhin akzeptabel fuer einfache unidirektionale Referenzen
+
+Beispiel:
+    # Parent-Seite
+    class User(Base):
+        documents = relationship("Document", back_populates="owner")
+
+    # Child-Seite
+    class Document(Base):
+        owner = relationship("User", back_populates="documents")
+"""
 
 from datetime import datetime
 from typing import Optional, List, Dict, Any
@@ -2319,6 +2339,7 @@ class OCRTrainingSample(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     annotated_at = Column(DateTime(timezone=True), nullable=True)
     verified_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)  # GDPR Soft-Delete
 
     # Relationships
     annotated_by = relationship("User", foreign_keys=[annotated_by_id])
@@ -2332,7 +2353,13 @@ class OCRTrainingSample(Base):
         Index("ix_ocr_training_samples_document_type", "document_type"),
         Index("ix_ocr_training_samples_file_hash", "file_hash"),
         Index("ix_ocr_training_samples_verified", "status", "verified_at"),
+        Index("ix_ocr_training_samples_deleted_at", "deleted_at"),
     )
+
+    @property
+    def is_deleted(self) -> bool:
+        """Check if sample is soft-deleted (GDPR)."""
+        return self.deleted_at is not None
 
 
 class OCRBackendBenchmark(Base):

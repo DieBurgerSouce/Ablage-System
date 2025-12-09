@@ -38,9 +38,9 @@ from app.services.document_services.gdpr_service import (
     DocumentGDPRService,
     get_gdpr_service as get_document_gdpr_service
 )
-from app.services.document_batch_service import (
+from app.services.document_services.batch_service import (
     DocumentBatchService,
-    get_document_batch_service
+    get_batch_service as get_document_batch_service
 )
 from app.services.document_services.export_service import (
     DocumentExportService,

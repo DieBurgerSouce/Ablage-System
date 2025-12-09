@@ -1,4 +1,5 @@
 # Ablage-System NVIDIA Role - Main Tasks
+# Updated: 2025-12-09 - Added CUDA Toolkit, DCGM support
 ---
 - name: Check if NVIDIA GPU is present
   ansible.builtin.shell: lspci | grep -i nvidia
@@ -24,6 +25,25 @@
   tags:
     - nvidia
     - container-toolkit
+
+- name: Include CUDA Toolkit installation tasks (optional)
+  ansible.builtin.include_tasks: cuda-toolkit.yml
+  when:
+    - nvidia_gpu_check.rc == 0
+    - nvidia_install_cuda_toolkit | default(false)
+  tags:
+    - nvidia
+    - cuda-toolkit
+
+- name: Include DCGM installation tasks (GPU metrics)
+  ansible.builtin.include_tasks: dcgm.yml
+  when:
+    - nvidia_gpu_check.rc == 0
+    - nvidia_install_dcgm | default(true)
+  tags:
+    - nvidia
+    - dcgm
+    - monitoring
 
 - name: Include verification tasks
   ansible.builtin.include_tasks: verify.yml

@@ -13,16 +13,19 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 import structlog
-from celery import shared_task
+
+from app.workers.celery_app import celery_app, CPUTask
 
 logger = structlog.get_logger(__name__)
 
 
-@shared_task(
+@celery_app.task(
+    base=CPUTask,
     name="app.workers.tasks.monitoring_tasks.worker_health_check_task",
     queue="metrics",
     priority=1,
     ignore_result=True,
+    soft_time_limit=25,  # 25 Sekunden Soft-Limit
     time_limit=30,  # Max 30 Sekunden
 )
 def worker_health_check_task() -> Dict[str, Any]:
@@ -74,11 +77,13 @@ def worker_health_check_task() -> Dict[str, Any]:
         }
 
 
-@shared_task(
+@celery_app.task(
+    base=CPUTask,
     name="app.workers.tasks.monitoring_tasks.cleanup_stuck_tasks",
     queue="maintenance",
     priority=1,
     ignore_result=True,
+    soft_time_limit=55,  # 55 Sekunden Soft-Limit
     time_limit=60,
 )
 def cleanup_stuck_tasks() -> Dict[str, Any]:
@@ -154,11 +159,13 @@ def cleanup_stuck_tasks() -> Dict[str, Any]:
         }
 
 
-@shared_task(
+@celery_app.task(
+    base=CPUTask,
     name="app.workers.tasks.monitoring_tasks.check_queue_backpressure",
     queue="metrics",
     priority=1,
     ignore_result=True,
+    soft_time_limit=25,  # 25 Sekunden Soft-Limit
     time_limit=30,
 )
 def check_queue_backpressure() -> Dict[str, Any]:

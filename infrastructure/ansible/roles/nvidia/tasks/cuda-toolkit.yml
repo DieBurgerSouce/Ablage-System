@@ -1,0 +1,93 @@
+# Ablage-System NVIDIA Role - CUDA Toolkit Installation
+# Created: 2025-12-09 - Optional CUDA Toolkit for local builds
+---
+- name: Check if CUDA toolkit is already installed
+  ansible.builtin.stat:
+    path: /usr/local/cuda-{{ nvidia_cuda_version | regex_replace('\\.\\d+$', '') }}
+  register: cuda_toolkit_check
+
+- name: Install CUDA Toolkit if not present
+  block:
+    - name: Get system architecture for CUDA
+      ansible.builtin.command: dpkg --print-architecture
+      register: cuda_arch
+      changed_when: false
+
+    - name: Download CUDA keyring
+      ansible.builtin.get_url:
+        url: "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/{{ 'x86_64' if cuda_arch.stdout == 'amd64' else cuda_arch.stdout }}/cuda-keyring_1.1-1_all.deb"
+        dest: /tmp/cuda-keyring.deb
+        mode: '0644'
+      become: yes
+
+    - name: Install CUDA keyring
+      ansible.builtin.apt:
+        deb: /tmp/cuda-keyring.deb
+        state: present
+      become: yes
+
+    - name: Update apt cache after adding CUDA repo
+      ansible.builtin.apt:
+        update_cache: yes
+      become: yes
+
+    - name: Install CUDA Toolkit
+      ansible.builtin.apt:
+        name:
+          - "cuda-toolkit-{{ nvidia_cuda_toolkit_version }}"
+        state: present
+      become: yes
+      register: cuda_install
+
+    - name: Install cuDNN
+      ansible.builtin.apt:
+        name:
+          - libcudnn8
+          - libcudnn8-dev
+        state: present
+      become: yes
+      when: nvidia_install_cudnn | default(true)
+
+    - name: Add CUDA to system PATH
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        regexp: '^PATH='
+        line: 'PATH="/usr/local/cuda/bin:{{ ansible_env.PATH }}"'
+        state: present
+      become: yes
+
+    - name: Add CUDA library path
+      ansible.builtin.copy:
+        content: "/usr/local/cuda/lib64"
+        dest: /etc/ld.so.conf.d/cuda.conf
+        owner: root
+        group: root
+        mode: '0644'
+      become: yes
+      notify: reload ldconfig
+
+    - name: Clean up downloaded files
+      ansible.builtin.file:
+        path: /tmp/cuda-keyring.deb
+        state: absent
+
+  when:
+    - nvidia_install_cuda_toolkit | default(false)
+    - not cuda_toolkit_check.stat.exists
+
+- name: Verify CUDA installation
+  ansible.builtin.command: nvcc --version
+  register: nvcc_version
+  changed_when: false
+  failed_when: false
+  when: nvidia_install_cuda_toolkit | default(false)
+
+- name: Display CUDA Toolkit status
+  ansible.builtin.debug:
+    msg: |
+      CUDA Toolkit Status:
+      - Installed: {{ 'Yes' if nvcc_version.rc == 0 else 'No' }}
+      {% if nvcc_version.rc == 0 %}
+      - Version: {{ nvcc_version.stdout_lines[-1] | default('N/A') }}
+      {% endif %}
+  when: nvidia_install_cuda_toolkit | default(false)
