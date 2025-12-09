@@ -681,131 +681,141 @@ def batch_process_task(
     successful = 0
     failed = 0
 
-    # Helper function to update BatchJob status
-    async def update_batch_job_progress(processed: int, failed_count: int, current_doc: str):
-        if batch_job_id:
-            try:
-                from app.services.batch_job_service import get_batch_job_service
-                async with async_session_maker() as session:
-                    service = get_batch_job_service()
-                    await service.update_progress(
-                        db=session,
-                        batch_id=UUID(batch_job_id),
-                        processed=processed,
-                        failed=failed_count,
-                        current_document=current_doc
-                    )
-            except Exception as e:
-                logger.warning("batch_job_progress_update_failed", error=str(e))
+    # MEMORY FIX: Wrap entire batch processing in single async function
+    # This prevents memory leaks from multiple asyncio.run() calls in the loop
+    async def run_batch_processing() -> tuple[list, int, int, bool]:
+        """Run the entire batch processing loop asynchronously.
 
-    # Helper function to check if batch is paused
-    async def check_batch_paused() -> bool:
-        if not batch_job_id:
-            return False
-        try:
-            async with async_session_maker() as session:
-                from app.db.models import BatchJob
-                result = await session.execute(
-                    select(BatchJob).where(BatchJob.id == UUID(batch_job_id))
-                )
-                batch_job = result.scalar_one_or_none()
-                return batch_job.is_paused if batch_job else False
-        except Exception:
-            return False
+        Returns:
+            Tuple of (results, successful_count, failed_count, was_paused)
+        """
+        nonlocal results, successful, failed
+        was_paused = False
+        start_index = resume_from_index
 
-    # Start from resume index
-    start_index = resume_from_index
-
-    for idx, doc_id in enumerate(document_ids[start_index:], start=start_index):
-        # Check if batch was paused
-        # MEMORY FIX: asyncio.run() statt new_event_loop() - verhindert Memory Leaks
-        is_paused = asyncio.run(check_batch_paused())
-
-        if is_paused:
-            logger.info(
-                "batch_task_paused",
-                task_id=task_id,
-                batch_job_id=batch_job_id,
-                paused_at_document=idx
-            )
-            break
-
-        try:
-            update_task_progress(
-                task_id,
-                idx,
-                total_docs,
-                f"Verarbeite Dokument {idx + 1}/{total_docs}..."
-            )
-
-            # Process individual document
-            result = process_document_task(
-                document_id=doc_id,
-                backend=backend,
-                language=language
-            )
-
-            if result.get("success"):
-                successful += 1
-            else:
-                failed += 1
-
-            results.append(result)
-
-            # GPU Lock Refresh nach jedem verarbeiteten Dokument
-            # Verhindert Lock-Timeout bei langen Batch-Jobs (Lock läuft nach 60s ab)
-            self.refresh_lock()
-
-            # Update BatchJob progress
-            # MEMORY FIX: asyncio.run() statt new_event_loop() - verhindert Memory Leaks
-            asyncio.run(update_batch_job_progress(
-                idx + 1 - start_index + successful + failed - 1,
-                failed,
-                doc_id[:8]
-            ))
-
-        except Exception as e:
-            # GPU OOM bei Batch-Verarbeitung: Speicher aufräumen, aber weitermachen
-            if _is_oom_error(e):
-                logger.warning(
-                    "batch_document_gpu_oom",
-                    task_id=task_id,
-                    document_id=doc_id,
-                    error=str(e)
-                )
-
-                # GPU-Speicher aufräumen vor nächstem Dokument
-                if torch.cuda.is_available():
-                    try:
-                        gpu_manager = get_worker_gpu_recovery_manager()
-                        asyncio.run(gpu_manager.clear_gpu_memory())
-                    except Exception as cleanup_error:
-                        logger.warning(
-                            "batch_gpu_cleanup_failed",
-                            error=str(cleanup_error)
+        # Helper to update BatchJob progress
+        async def update_progress(processed: int, failed_count: int, current_doc: str):
+            if batch_job_id:
+                try:
+                    from app.services.batch_job_service import get_batch_job_service
+                    async with async_session_maker() as session:
+                        service = get_batch_job_service()
+                        await service.update_progress(
+                            db=session,
+                            batch_id=UUID(batch_job_id),
+                            processed=processed,
+                            failed=failed_count,
+                            current_document=current_doc
                         )
+                except Exception as e:
+                    logger.warning("batch_job_progress_update_failed", error=str(e))
 
-                failed += 1
-                results.append({
-                    "success": False,
-                    "document_id": doc_id,
-                    "error": f"GPU Out of Memory: {str(e)}",
-                    "error_type": "gpu_oom"
-                })
-            else:
-                logger.error(
-                    "batch_document_failed",
+        # Helper to check if batch is paused
+        async def is_batch_paused() -> bool:
+            if not batch_job_id:
+                return False
+            try:
+                async with async_session_maker() as session:
+                    result = await session.execute(
+                        select(BatchJob).where(BatchJob.id == UUID(batch_job_id))
+                    )
+                    batch_job = result.scalar_one_or_none()
+                    return batch_job.is_paused if batch_job else False
+            except Exception:
+                return False
+
+        # Helper to clear GPU memory
+        async def clear_gpu_memory_async():
+            if torch.cuda.is_available():
+                try:
+                    gpu_manager = get_worker_gpu_recovery_manager()
+                    await gpu_manager.clear_gpu_memory()
+                except Exception as cleanup_error:
+                    logger.warning("batch_gpu_cleanup_failed", error=str(cleanup_error))
+
+        for idx, doc_id in enumerate(document_ids[start_index:], start=start_index):
+            # Check if batch was paused
+            if await is_batch_paused():
+                logger.info(
+                    "batch_task_paused",
                     task_id=task_id,
-                    document_id=doc_id,
-                    error=str(e)
+                    batch_job_id=batch_job_id,
+                    paused_at_document=idx
                 )
-                failed += 1
-                results.append({
-                    "success": False,
-                    "document_id": doc_id,
-                    "error": str(e),
-                    "error_type": "processing_error"
-                })
+                was_paused = True
+                break
+
+            try:
+                update_task_progress(
+                    task_id,
+                    idx,
+                    total_docs,
+                    f"Verarbeite Dokument {idx + 1}/{total_docs}..."
+                )
+
+                # Process individual document (sync call)
+                result = process_document_task(
+                    document_id=doc_id,
+                    backend=backend,
+                    language=language
+                )
+
+                if result.get("success"):
+                    successful += 1
+                else:
+                    failed += 1
+
+                results.append(result)
+
+                # GPU Lock Refresh nach jedem verarbeiteten Dokument
+                self.refresh_lock()
+
+                # Update BatchJob progress
+                await update_progress(
+                    idx + 1 - start_index + successful + failed - 1,
+                    failed,
+                    doc_id[:8]
+                )
+
+            except Exception as e:
+                # GPU OOM bei Batch-Verarbeitung: Speicher aufräumen, aber weitermachen
+                if _is_oom_error(e):
+                    logger.warning(
+                        "batch_document_gpu_oom",
+                        task_id=task_id,
+                        document_id=doc_id,
+                        error=str(e)
+                    )
+
+                    # GPU-Speicher aufräumen vor nächstem Dokument
+                    await clear_gpu_memory_async()
+
+                    failed += 1
+                    results.append({
+                        "success": False,
+                        "document_id": doc_id,
+                        "error": f"GPU Out of Memory: {str(e)}",
+                        "error_type": "gpu_oom"
+                    })
+                else:
+                    logger.error(
+                        "batch_document_failed",
+                        task_id=task_id,
+                        document_id=doc_id,
+                        error=str(e)
+                    )
+                    failed += 1
+                    results.append({
+                        "success": False,
+                        "document_id": doc_id,
+                        "error": str(e),
+                        "error_type": "processing_error"
+                    })
+
+        return results, successful, failed, was_paused
+
+    # Run entire batch processing in single event loop (prevents memory leak)
+    results, successful, failed, was_paused = asyncio.run(run_batch_processing())
 
     # GPU-Speicher nach Batch-Verarbeitung aufräumen
     if torch.cuda.is_available():
@@ -833,7 +843,7 @@ def batch_process_task(
         duration_seconds=processing_time
     )
 
-    # Complete BatchJob
+    # Complete BatchJob in separate async call (only once at end)
     if batch_job_id:
         async def complete_batch():
             try:
@@ -853,7 +863,6 @@ def batch_process_task(
             except Exception as e:
                 logger.warning("batch_job_completion_failed", error=str(e))
 
-        # MEMORY FIX: asyncio.run() statt new_event_loop() - verhindert Memory Leaks
         asyncio.run(complete_batch())
 
     # GPU OOM Statistiken sammeln

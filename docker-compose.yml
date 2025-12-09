@@ -144,9 +144,9 @@ services:
       dockerfile: Dockerfile
     container_name: ablage-backend
     environment:
-      # Vault Configuration (secrets loaded from Vault when enabled)
-      # SECURITY FIX: Default auf true geändert für Production-Sicherheit
-      VAULT_ENABLED: ${VAULT_ENABLED:-true}
+      # Vault Configuration (disabled by default - enable when Vault container is running)
+      # Set VAULT_ENABLED=true in .env when using HashiCorp Vault for secrets
+      VAULT_ENABLED: ${VAULT_ENABLED:-false}
       VAULT_ADDR: https://vault:8200
       VAULT_TOKEN: ${VAULT_TOKEN:-}
       VAULT_SECRET_PATH: ablage-system
@@ -155,9 +155,9 @@ services:
       # Database (Secrets aus .env)
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
-      # Redis (mit optionalem Passwort)
-      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      # Redis (SECURITY: Passwort ist erforderlich!)
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       # MinIO (Secrets aus .env)
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
@@ -231,7 +231,7 @@ services:
     environment:
       # Vault Configuration
       # SECURITY FIX: Default auf true geändert für Production-Sicherheit
-      VAULT_ENABLED: ${VAULT_ENABLED:-true}
+      VAULT_ENABLED: ${VAULT_ENABLED:-false}
       VAULT_ADDR: https://vault:8200
       VAULT_TOKEN: ${VAULT_TOKEN:-}
       VAULT_SECRET_PATH: ablage-system
@@ -241,8 +241,8 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
       # Redis (mit optionalem Passwort)
-      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       # MinIO (Secrets aus .env)
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
@@ -326,7 +326,7 @@ services:
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo -n cpu_worker@%h -Q ocr_normal,maintenance,metadata,metrics,validation,backup,dlq
     environment:
       # Vault Configuration
-      VAULT_ENABLED: ${VAULT_ENABLED:-true}
+      VAULT_ENABLED: ${VAULT_ENABLED:-false}
       VAULT_ADDR: https://vault:8200
       VAULT_TOKEN: ${VAULT_TOKEN:-}
       VAULT_SECRET_PATH: ablage-system
@@ -336,8 +336,8 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
       # Redis
-      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       # MinIO
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
@@ -643,7 +643,7 @@ services:
     container_name: ablage-redis-exporter
     environment:
       REDIS_ADDR: redis://redis:6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}
     ports:
       - "127.0.0.1:9121:9121"  # Nur localhost
     depends_on:
