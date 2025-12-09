@@ -93,6 +93,9 @@ scripts/*.json
 # Archive directory
 ARCHIVE/
 
+# Training Data (large binary files - not for version control)
+Trainings_Data/
+
 # Security - Certificates and Keys
 *.key
 *.pem

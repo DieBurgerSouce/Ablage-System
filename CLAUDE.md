@@ -254,42 +254,61 @@ Dokumentation: `.claude/Docs/API/Backup_API.md`
 
 ---
 
-## Bekannte Service-Duplikate (Technische Schulden)
+## Service-Architektur (Stand: Dezember 2024)
 
-> **Hinweis**: Diese Service-Duplikate wurden bei einer Codeanalyse im Dezember 2024 identifiziert.
-> Sie sollten bei Gelegenheit konsolidiert werden.
+> **Hinweis**: Die Service-Struktur wurde im Dezember 2024 konsolidiert.
 
-### Export-Services (3x)
-| Datei | Beschreibung | Nutzung |
-|-------|--------------|---------|
-| `app/services/export_service.py` | Allgemeiner Export | Hauptexport-Logik |
-| `app/services/data_export_service.py` | Daten-Export | CSV/JSON Export |
-| `app/services/document_services/export_service.py` | Dokument-Export | Dokumentspezifischer Export |
+### Document Services (Kanonische Implementierung)
 
-**Empfehlung**: Zu einem einheitlichen `ExportService` mit Strategien konsolidieren.
+Die modularen Services unter `app/services/document_services/` sind die kanonischen Implementierungen:
 
-### Batch-Services (2x)
+| Service | Beschreibung |
+|---------|--------------|
+| `document_services/gdpr_service.py` | GDPR-konforme Soft-Delete, Wiederherstellung |
+| `document_services/export_service.py` | Batch Document Export (JSON/CSV/ZIP/PDF) |
+| `document_services/batch_service.py` | Bulk-Operationen fuer Dokumente |
+| `document_services/crud_service.py` | Basis-CRUD-Operationen |
+| `document_services/filter_service.py` | Query-Building und Filterung |
+
+### Deprecated Wrapper (Rueckwaertskompatibilitaet)
+
+Diese Dateien existieren nur als Wrapper fuer Rueckwaertskompatibilitaet:
+- `app/services/document_gdpr_service.py` → Nutze `document_services/gdpr_service.py`
+- `app/services/document_export_service.py` → Nutze `document_services/export_service.py`
+
+### Spezialisierte Export-Services
+
+| Service | Zweck |
+|---------|-------|
+| `export_service.py` | Extracted Data Export (Invoice/Order/Contract → CSV/Excel) |
+| `data_export_service.py` | GDPR Art. 20 User Data Portabilitaet |
+| `document_services/export_service.py` | Batch Document Export |
+
+### Batch-Services
+
 | Datei | Beschreibung |
 |-------|--------------|
-| `app/services/batch_service.py` | Batch-Verarbeitung |
-| `app/services/batch_job_service.py` | Batch-Job-Management |
+| `batch_service.py` | Generische Batch-Verarbeitung |
+| `batch_job_service.py` | Batch-Job Tracking und Management |
 
-**Empfehlung**: Pruefen ob Zusammenfuehrung moeglich.
+### GDPR-Services
 
-### GDPR-Services (3x)
-| Datei | Beschreibung |
-|-------|--------------|
-| `app/services/gdpr_service.py` | GDPR-Compliance |
-| `app/services/gdpr_compliance_service.py` | Compliance-Checks |
-| `app/services/document_services/gdpr_service.py` | Dokument-GDPR |
+| Datei | Beschreibung | Status |
+|-------|--------------|--------|
+| `gdpr_service.py` | User-Level GDPR (Art. 17 Loeschung) | Aktiv |
+| `gdpr_compliance_service.py` | Compliance-Checks, Audit-Logs | Aktiv |
+| `document_services/gdpr_service.py` | Document Soft-Delete, Restore | Kanonisch |
+| `document_gdpr_service.py` | Wrapper → `document_services/gdpr_service.py` | Deprecated |
 
-**Empfehlung**: Zu einem einheitlichen `GDPRService` konsolidieren.
+---
 
-### Konsolidierungsstrategie
-1. **Phase 1**: Mapping erstellen welche Funktionen wo genutzt werden
-2. **Phase 2**: Tests fuer alle Services schreiben
-3. **Phase 3**: Schrittweise Migration mit Deprecation-Warnungen
-4. **Phase 4**: Alte Services entfernen
+## Wichtige Konfigurationsaenderungen (Dezember 2024)
+
+| Aenderung | Wert | Grund |
+|-----------|------|-------|
+| GPU_LOCK_TIMEOUT | 60s → 180s | Lange OCR-Tasks liefen in Timeout |
+| LLM Retry-Logic | MAX_RETRIES=3 | Ollama-Verbindungsabbrueche abfangen |
+| File-IDs (Frontend) | Index → UUID | Race Conditions bei File-Entfernung |
 
 ---
 
