@@ -1,20 +1,46 @@
-import { AVAILABLE_TUNES } from '@/lib/api/smart-analysis';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { Receipt, Scale, Mail, Wrench, Check } from 'lucide-react';
+import {
+    Loader2, Check, FileText, Receipt, Scale, Mail, Wrench,
+    Image, Book, Briefcase, CreditCard, DollarSign, LucideIcon
+} from 'lucide-react';
+
+// Type-safe icon mapping
+const ICON_MAP: Record<string, LucideIcon> = {
+    Receipt, Scale, Mail, Wrench, FileText, Image, Book, Briefcase, CreditCard, DollarSign
+};
+
+interface Tune {
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    color: string;
+}
 
 interface TuneSelectionStepProps {
     selectedTuneId: string | null;
     onSelect: (tuneId: string) => void;
 }
 
-const iconMap: Record<string, any> = {
-    Receipt,
-    Scale,
-    Mail,
-    Wrench
-};
-
 export function TuneSelectionStep({ selectedTuneId, onSelect }: TuneSelectionStepProps) {
+    const { data: tunes, isLoading } = useQuery({
+        queryKey: ['tunes', 'active'],
+        queryFn: async () => {
+            const response = await apiClient.get('/api/v1/tunes?active_only=true');
+            return response.data as Tune[];
+        }
+    });
+
+    if (isLoading) {
+        return (
+            <div className="flex justify-center p-8">
+                <Loader2 className="animate-spin h-8 w-8 text-muted-foreground" />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center space-y-2">
@@ -25,8 +51,9 @@ export function TuneSelectionStep({ selectedTuneId, onSelect }: TuneSelectionSte
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
-                {AVAILABLE_TUNES.map((tune) => {
-                    const Icon = iconMap[tune.icon] || Mail;
+                {tunes?.map((tune) => {
+                    // Type-safe icon lookup
+                    const Icon = ICON_MAP[tune.icon] || FileText;
                     const isSelected = selectedTuneId === tune.id;
 
                     return (
@@ -48,19 +75,16 @@ export function TuneSelectionStep({ selectedTuneId, onSelect }: TuneSelectionSte
                             </div>
 
                             <div className="flex-1 space-y-1">
-                                <h3 className={cn("font-semibold", isSelected ? "text-primary" : "text-foreground")}>
-                                    {tune.name}
-                                </h3>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-semibold">{tune.name}</h3>
+                                    {isSelected && (
+                                        <Check className="w-5 h-5 text-primary animate-in zoom-in duration-300" />
+                                    )}
+                                </div>
                                 <p className="text-sm text-muted-foreground leading-relaxed">
                                     {tune.description}
                                 </p>
                             </div>
-
-                            {isSelected && (
-                                <div className="absolute top-4 right-4 text-primary animate-in zoom-in duration-200">
-                                    <Check className="w-5 h-5" />
-                                </div>
-                            )}
                         </button>
                     );
                 })}

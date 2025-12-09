@@ -711,13 +711,9 @@ def apply_ab_test_winners(self) -> Dict[str, Any]:
     try:
         from app.services.backend_manager import get_backend_manager
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
+        # asyncio.run() für sauberes Event-Loop Cleanup
         # Get backend manager (async initialization)
-        manager = loop.run_until_complete(get_backend_manager())
+        manager = asyncio.run(get_backend_manager())
 
         # Apply winners
         result = manager.apply_ab_test_winners()

@@ -94,13 +94,8 @@ def run_benchmark_batch(
                     "total_time_ms": result.total_time_ms,
                 }
 
-        # Event Loop für async Ausführung
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(run_benchmarks())
+        # Event Loop für async Ausführung - asyncio.run() für sauberes Cleanup
+        result = asyncio.run(run_benchmarks())
 
         logger.info(
             "benchmark_batch_completed",
@@ -199,12 +194,8 @@ def run_scheduled_benchmarks(
                     "total_time_ms": result.total_time_ms,
                 }
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(run_scheduled())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(run_scheduled())
 
         logger.info(
             "scheduled_benchmarks_completed",
@@ -313,12 +304,8 @@ def generate_daily_stats(self) -> Dict[str, Any]:
                     "pending_annotations": overview.pending_annotations,
                 }
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(generate_stats())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(generate_stats())
 
         logger.info(
             "daily_stats_completed",
@@ -389,12 +376,8 @@ def process_feedback_queue(
                     "backends_updated": [],  # Wird später implementiert
                 }
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(process_feedback())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(process_feedback())
 
         logger.info(
             "feedback_queue_processing_completed",
@@ -464,12 +447,8 @@ def update_learned_weights(
                     "confidence": weights.confidence,
                 }
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(update_weights())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(update_weights())
 
         logger.info(
             "update_learned_weights_completed",
@@ -605,12 +584,8 @@ def populate_training_batch(
                     "status": "ready",
                 }
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(populate())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(populate())
 
         logger.info(
             "populate_batch_completed",
@@ -722,12 +697,8 @@ def generate_training_report(self) -> Dict[str, Any]:
                     "recommendations": recommendations,
                 }
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(generate_report())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(generate_report())
 
         logger.info(
             "training_report_completed",
@@ -873,12 +844,8 @@ def run_bulk_processing_job(
 
                 return processed_job.to_dict()
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(run_job())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(run_job())
 
         logger.info(
             "bulk_processing_job_completed",
@@ -997,12 +964,8 @@ def run_bulk_processing_job_cpu(
 
                 return processed_job.to_dict()
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(run_job())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(run_job())
 
         logger.info(
             "bulk_processing_job_cpu_completed",
@@ -1078,12 +1041,8 @@ def import_training_files(
                 )
                 return result
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(import_files())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(import_files())
 
         logger.info(
             "import_training_files_completed",
@@ -1219,12 +1178,8 @@ def process_document_batch(
                     "results": results,
                 }
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(process_batch())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(process_batch())
 
         logger.info(
             "process_document_batch_completed",
@@ -1361,12 +1316,8 @@ def create_quality_snapshot(
                     "snapshots": snapshots_created,
                 }
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(create_snapshot())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(create_snapshot())
 
         logger.info(
             "create_quality_snapshot_completed",
@@ -1458,12 +1409,8 @@ def run_deepseek_lora_training(
                 validation_data_path=validation_data_path
             )
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(run_training())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(run_training())
 
         # Checkpoint registrieren
         if result.get("status") == "completed":
@@ -1562,12 +1509,8 @@ def run_surya_hf_training(
                 test_data_path=test_data_path
             )
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(run_training())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(run_training())
 
         # Checkpoint registrieren
         if result.get("status") == "completed":
@@ -1644,12 +1587,8 @@ def check_retraining_conditions(self) -> Dict[str, Any]:
                     "estimated_samples_needed": recommendation.estimated_samples_needed,
                 }
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(check_conditions())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(check_conditions())
 
         logger.info(
             "check_retraining_conditions_completed",
@@ -1717,12 +1656,8 @@ def run_quality_monitoring(self) -> Dict[str, Any]:
                     ]
                 }
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        result = loop.run_until_complete(run_monitoring())
+        # asyncio.run() für sauberes Event-Loop Cleanup
+        result = asyncio.run(run_monitoring())
 
         logger.info(
             "run_quality_monitoring_completed",

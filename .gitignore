@@ -78,6 +78,15 @@ lint_report*.txt
 # OCR Results (generated)
 ocr_result*.json
 
+# Temporary test directories
+temp_paddle_test/
+temp_results/
+ocr_comparison_results/
+stichproben.csv
+
+# Script output files
+scripts/*.json
+
 # Pip artifacts
 =*
 

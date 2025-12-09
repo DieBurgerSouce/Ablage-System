@@ -10,6 +10,7 @@ import os
 from dataclasses import dataclass
 
 from app.agents.ocr.surya_docling_agent import SuryaDoclingAgent
+from app.agents.ocr.surya_docling_enhanced_agent import SuryaDoclingEnhancedAgent
 from app.gpu_manager import GPUManager
 from app.ml.quality_metrics import get_quality_calculator
 from app.ml.confidence_calibration import add_calibration_sample, get_calibrator
@@ -241,6 +242,11 @@ class CostOptimizer:
             "quality_score": 0.80,
             "latency_ms_per_page": 5000,  # CPU ist langsamer
             "vram_gb": 0.0,
+        },
+        "surya_enhanced": {
+            "quality_score": 0.88,  # Besser durch Layout-Analyse
+            "latency_ms_per_page": 6000,  # Docling + Surya
+            "vram_gb": 0.0,  # CPU only
         },
         "hybrid": {
             "quality_score": 0.97,      # Höchste durch Ensemble
@@ -520,6 +526,8 @@ class BackendManager:
         self._gpu_manager = GPUManager()
         # P2: Health Check Cache für schnellere Backend-Auswahl
         self._health_cache = HealthCheckCache()
+        # Fallback chain für A/B Test Winner-Anwendung
+        self.fallback_chain: list[str] = []
         self._initialize_backends()
         logger.info("backend_manager_initialized", backend_count=len(self.backends))
 
@@ -542,6 +550,13 @@ class BackendManager:
             logger.info("surya_cpu_backend_initialized")
         except Exception as e:
             logger.error("surya_cpu_backend_init_failed", error=str(e))
+
+        # Initialize Enhanced Surya+Docling (CPU-only with layout analysis)
+        try:
+            self.backends["surya_enhanced"] = SuryaDoclingEnhancedAgent()
+            logger.info("surya_enhanced_backend_initialized")
+        except Exception as e:
+            logger.warning("surya_enhanced_backend_unavailable", error=str(e))
 
         # Try to initialize GPU-based backends if PyTorch and GPU are available
         if TORCH_AVAILABLE:
@@ -588,11 +603,21 @@ class BackendManager:
                 "System kann nicht starten. Überprüfen Sie die Abhängigkeiten."
             )
 
+        # Initialize fallback chain with all available backends
+        # Priority order: GPU-accelerated first, then CPU fallbacks
+        priority_order = ["deepseek", "got_ocr", "surya_gpu", "hybrid", "surya_enhanced", "surya", "donut"]
+        self.fallback_chain = [b for b in priority_order if b in self.backends]
+        # Add any backends not in priority list at the end
+        for backend in self.backends:
+            if backend not in self.fallback_chain:
+                self.fallback_chain.append(backend)
+
         logger.info(
             "backend_initialization_complete",
             available_backends=list(self.backends.keys()),
             gpu_available=TORCH_AVAILABLE,
-            backend_count=len(self.backends)
+            backend_count=len(self.backends),
+            fallback_chain=self.fallback_chain
         )
 
     def _has_sufficient_vram(self, backend: str) -> bool:
@@ -738,8 +763,13 @@ class BackendManager:
                 else:
                     logger.debug("got_ocr_skipped_vram", reason="insufficient_vram")
 
-        # PDF files → prefer GOT-OCR or Surya
-        if is_pdf:
+        # PDF files with potential complex layout → prefer surya_enhanced for layout analysis
+        # This handles invoices, contracts with tables, multi-column documents
+        if is_pdf and "surya_enhanced" in available_backends:
+            # Use enhanced for PDFs as they often contain complex layouts
+            logger.info("backend_selected", backend="surya_enhanced", reason="pdf_layout_analysis")
+            return _return_backend("surya_enhanced")
+        elif is_pdf:
             if "got_ocr" in available_backends:
                 logger.info("backend_selected", backend="got_ocr", reason="pdf_processing")
                 return _return_backend("got_ocr")
@@ -883,9 +913,10 @@ class BackendManager:
         # deepseek: Best for German/Fraktur and complex layouts
         # got_ocr: Fast transformer-based, good for tables/formulas
         # donut: Multilingual document understanding
+        # surya_enhanced: CPU with Docling layout analysis (tables, multi-column)
         # surya_gpu: Fast GPU-accelerated layout analysis
-        # surya: CPU fallback with layout analysis
-        priority_order = ["hybrid", "deepseek", "got_ocr", "donut", "surya_gpu", "surya"]
+        # surya: CPU fallback basic OCR
+        priority_order = ["hybrid", "deepseek", "got_ocr", "donut", "surya_enhanced", "surya_gpu", "surya"]
 
         # Build fallback chain starting with preferred
         fallback_chain = []

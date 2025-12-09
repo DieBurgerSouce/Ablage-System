@@ -58,6 +58,8 @@ class FallbackResult:
     total_time_ms: int
     confidence_metrics: Optional[ConfidenceMetrics] = None
     error: Optional[str] = None
+    # Docling-Tabellen (fuer strukturierte Extraktion)
+    tables: Optional[List[Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -71,6 +73,7 @@ class FallbackResult:
             "total_time_ms": self.total_time_ms,
             "confidence_metrics": self.confidence_metrics.to_dict() if self.confidence_metrics else None,
             "error": self.error,
+            "tables_count": len(self.tables) if self.tables else 0,
         }
 
 
@@ -356,7 +359,10 @@ class FallbackChain:
                     document_type=document_type
                 )
 
-                if should_fallback and i < len(available_backends) - 1:
+                # Fallback nur wenn noch weitere Versuche möglich sind
+                # (sowohl innerhalb max_fallbacks als auch verfügbare Backends)
+                max_attempts = min(len(available_backends), self.max_fallbacks + 1)
+                if should_fallback and i < max_attempts - 1:
                     fallback_reasons.append({
                         "backend": backend_name,
                         "reason": FallbackReason.LOW_CONFIDENCE.value,
@@ -377,6 +383,10 @@ class FallbackChain:
                 self._success_counts[backend_name] = self._success_counts.get(backend_name, 0) + 1
 
                 total_time = int((time.perf_counter() - start_time) * 1000)
+
+                # Tabellen aus Docling/Surya-Ergebnis extrahieren (falls vorhanden)
+                tables = result.get("tables", None)
+
                 return FallbackResult(
                     success=True,
                     text=result.get("text", ""),
@@ -386,7 +396,8 @@ class FallbackChain:
                     fallbacks_occurred=len(fallback_reasons),
                     fallback_reasons=fallback_reasons,
                     total_time_ms=total_time,
-                    confidence_metrics=metrics
+                    confidence_metrics=metrics,
+                    tables=tables
                 )
 
             except asyncio.TimeoutError:
@@ -463,6 +474,7 @@ class FallbackChain:
                 fallback_reasons=fallback_reasons,
                 total_time_ms=total_time,
                 confidence_metrics=last_metrics,
+                tables=last_result.get("tables", None),
                 error="Alle primären Backends fehlgeschlagen, verwende bestes verfügbares Ergebnis"
             )
 

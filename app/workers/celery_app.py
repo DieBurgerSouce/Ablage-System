@@ -659,6 +659,9 @@ class GPUTask(Task):
     Ensures only one GPU task executes at a time to prevent VRAM overflow.
     Uses Redis-based distributed lock to coordinate across multiple workers.
     Automatically manages GPU memory and provides error recovery.
+
+    For long-running tasks (>30s), call self.refresh_lock() periodically
+    to prevent lock expiration.
     """
 
     autoretry_for = (torch.cuda.OutOfMemoryError, RuntimeError)
@@ -669,11 +672,44 @@ class GPUTask(Task):
 
     # Instance variable to store lock value for release
     _current_lock_value: Optional[str] = None
+    # Track last refresh time to avoid excessive Redis calls
+    _last_lock_refresh: float = 0.0
+    # Minimum interval between refreshes (30 seconds)
+    _LOCK_REFRESH_INTERVAL: float = 30.0
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """Execute task with GPU memory management."""
         with gpu_memory_guard():
             return super().__call__(*args, **kwargs)
+
+    def refresh_lock(self) -> bool:
+        """Refresh GPU lock TTL for long-running tasks.
+
+        Call this periodically (every 30s) for tasks that run longer than 60s.
+        The lock auto-expires after 60s, so failing to refresh will cause
+        the task to lose exclusivity.
+
+        Returns:
+            True if lock was refreshed, False if refresh failed or skipped
+        """
+        if not self._current_lock_value:
+            logger.warning("refresh_lock_no_lock_held", task_name=self.name)
+            return False
+
+        # Rate limit refreshes to avoid Redis spam
+        current_time = time.time()
+        if current_time - self._last_lock_refresh < self._LOCK_REFRESH_INTERVAL:
+            return True  # Skip, too soon since last refresh
+
+        refreshed = refresh_gpu_lock(self._current_lock_value)
+        if refreshed:
+            self._last_lock_refresh = current_time
+            logger.debug(
+                "gpu_lock_refreshed_by_task",
+                task_name=self.name,
+                lock_value=self._current_lock_value
+            )
+        return refreshed
 
     def before_start(self, task_id: str, args: tuple, kwargs: dict) -> None:
         """Acquire GPU resources before task execution using distributed lock."""
@@ -681,6 +717,7 @@ class GPUTask(Task):
         # Acquire distributed GPU lock (works across all workers)
         try:
             self._current_lock_value = acquire_gpu_lock()
+            self._last_lock_refresh = time.time()  # Initialize refresh timestamp
             logger.debug("gpu_lock_acquired_for_task", task_id=task_id, lock_value=self._current_lock_value)
         except RuntimeError as e:
             logger.error("gpu_lock_acquisition_failed", task_id=task_id, error=str(e))

@@ -49,9 +49,8 @@ def process_deletion_requests(self) -> Dict[str, Any]:
         Dict mit Statistiken über verarbeitete Anfragen
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _process_deletion_requests_async()
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_process_deletion_requests_async())
 
 
 async def _process_deletion_requests_async() -> Dict[str, Any]:
@@ -276,9 +275,8 @@ def check_retention_compliance(self, dry_run: bool = False) -> Dict[str, Any]:
         Dict mit Compliance-Status
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _check_retention_compliance_async(dry_run)
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_check_retention_compliance_async(dry_run))
 
 
 async def _check_retention_compliance_async(dry_run: bool) -> Dict[str, Any]:
@@ -393,7 +391,8 @@ def send_breach_notification(
         Dict mit Benachrichtigungsstatus
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(
         _send_breach_notification_async(
             breach_id,
             breach_type,
@@ -612,9 +611,8 @@ def generate_compliance_report(self) -> Dict[str, Any]:
         Dict mit Compliance-Übersicht
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _generate_compliance_report_async()
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_generate_compliance_report_async())
 
 
 async def _generate_compliance_report_async() -> Dict[str, Any]:

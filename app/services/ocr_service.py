@@ -511,7 +511,7 @@ class OCRService:
         validator = GermanValidator()
 
         # Check various aspects
-        has_umlauts = validator.validate_umlauts(text)
+        umlaut_result = validator.validate_umlauts(text)
         dates = validator.validate_date_format(text)
         amounts = validator.validate_currency_format(text)
         terms = validator.extract_business_terms(text)
@@ -527,14 +527,21 @@ class OCRService:
                         "count": text.count(replacement)
                     })
 
+        # Determine if text contains German indicators
+        has_german_indicators = (
+            len(umlaut_result.get("umlauts_found", [])) > 0
+            or len(dates) > 0
+            or len(amounts) > 0
+        )
+
         return {
-            "valid": has_umlauts or len(dates) > 0 or len(amounts) > 0,
-            "has_umlauts": has_umlauts,
+            "valid": has_german_indicators,
+            "umlaut_validation": umlaut_result,
             "dates_found": dates,
             "amounts_found": amounts,
             "business_terms": terms,
             "potential_ocr_errors": ocr_errors,
-            "quality_score": 1.0 - (len(ocr_errors) * 0.1)  # Simple quality metric
+            "quality_score": max(0.0, 1.0 - (len(ocr_errors) * 0.1))
         }
 
     async def save_upload(self, file_content: bytes, filename: str) -> str:

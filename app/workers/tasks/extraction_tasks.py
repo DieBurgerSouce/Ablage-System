@@ -75,22 +75,16 @@ def reprocess_all_documents_structured_extraction(
             "errors": [...]
         }
     """
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    try:
-        result = loop.run_until_complete(
-            _async_reprocess_all(
-                task=self,
-                batch_size=batch_size,
-                document_type_filter=document_type_filter,
-                skip_already_processed=skip_already_processed,
-                owner_id=owner_id,
-            )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(
+        _async_reprocess_all(
+            task=self,
+            batch_size=batch_size,
+            document_type_filter=document_type_filter,
+            skip_already_processed=skip_already_processed,
+            owner_id=owner_id,
         )
-        return result
-    finally:
-        loop.close()
+    )
 
 
 async def _async_reprocess_all(
@@ -293,16 +287,8 @@ def reprocess_single_document(
             "fields_extracted": 15
         }
     """
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    try:
-        result = loop.run_until_complete(
-            _async_reprocess_single(document_id)
-        )
-        return result
-    finally:
-        loop.close()
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_async_reprocess_single(document_id))
 
 
 async def _async_reprocess_single(document_id: str) -> Dict[str, Any]:
@@ -452,14 +438,8 @@ def generate_extraction_stats() -> Dict[str, Any]:
             ...
         }
     """
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    try:
-        result = loop.run_until_complete(_async_generate_stats())
-        return result
-    finally:
-        loop.close()
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_async_generate_stats())
 
 
 async def _async_generate_stats() -> Dict[str, Any]:

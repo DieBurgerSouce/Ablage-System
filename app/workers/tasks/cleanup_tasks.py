@@ -52,9 +52,8 @@ def cleanup_soft_deleted_documents(
         Dict mit Statistiken über gelöschte Dokumente
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _cleanup_soft_deleted_async(retention_days, dry_run)
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_cleanup_soft_deleted_async(retention_days, dry_run))
 
 
 async def _cleanup_soft_deleted_async(
@@ -182,9 +181,8 @@ def cleanup_orphaned_files(self) -> Dict[str, Any]:
     Verwaiste Dateien: In MinIO vorhanden, aber kein DB-Eintrag.
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _cleanup_orphaned_files_async()
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_cleanup_orphaned_files_async())
 
 
 async def _cleanup_orphaned_files_async() -> Dict[str, Any]:
@@ -266,9 +264,8 @@ def cleanup_expired_cache(self) -> Dict[str, Any]:
     dieser Task räumt zusätzliche Artefakte auf.
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _cleanup_expired_cache_async()
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_cleanup_expired_cache_async())
 
 
 @shared_task(
@@ -294,9 +291,8 @@ def cleanup_search_analytics(
         Dict mit Statistiken
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _cleanup_search_analytics_async(retention_months, dry_run)
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_cleanup_search_analytics_async(retention_months, dry_run))
 
 
 async def _cleanup_search_analytics_async(
@@ -381,9 +377,8 @@ def cleanup_expired_sessions(self) -> Dict[str, Any]:
         Dict mit Statistiken über gelöschte Sessions
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _cleanup_expired_sessions_async()
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_cleanup_expired_sessions_async())
 
 
 async def _cleanup_expired_sessions_async() -> Dict[str, Any]:
@@ -437,9 +432,8 @@ def cleanup_expired_verification_tokens(self) -> Dict[str, Any]:
         Dict mit Statistiken über gelöschte Tokens
     """
     import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _cleanup_expired_verification_tokens_async()
-    )
+    # asyncio.run() für sauberes Event-Loop Cleanup
+    return asyncio.run(_cleanup_expired_verification_tokens_async())
 
 
 async def _cleanup_expired_verification_tokens_async() -> Dict[str, Any]:
