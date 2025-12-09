@@ -588,6 +588,20 @@ class Settings(BaseSettings):
     VAULT_VERIFY_SSL: bool = True  # Verify Vault SSL
     VAULT_SECRET_REFRESH_INTERVAL: int = 300  # Refresh secrets every 5 minutes
 
+    # =============================================================================
+    # Translation Settings (fuer mehrsprachige Dokumentenextraktion)
+    # =============================================================================
+    # Provider: "argos" (offline, empfohlen), "libretranslate" (self-hosted), "deepl" (cloud), "disabled"
+    TRANSLATION_PROVIDER: str = "argos"
+    TRANSLATION_TARGET_LANGUAGE: str = "de"  # Zielsprache fuer Extraktion
+    TRANSLATION_CACHE_ENABLED: bool = True  # Uebersetzungen cachen
+
+    # LibreTranslate (self-hosted) - nur wenn TRANSLATION_PROVIDER="libretranslate"
+    LIBRETRANSLATE_URL: Optional[str] = "http://localhost:5000"
+
+    # DeepL API (kostenpflichtig) - nur wenn TRANSLATION_PROVIDER="deepl"
+    DEEPL_API_KEY: Optional[SecretStr] = None
+
     @model_validator(mode='after')
     def build_computed_urls(self) -> 'Settings':
         """Build database and Redis URLs from components if not provided."""

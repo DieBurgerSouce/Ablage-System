@@ -21,6 +21,7 @@ from app.api.v1.admin.jobs import router as jobs_router
 from app.api.v1.admin.rate_limits import router as rate_limits_router
 from app.api.v1.admin.audit import router as audit_router
 from app.api.v1.admin.incidents import router as incidents_router
+from app.api.v1.admin.extraction import router as extraction_router
 
 # Main admin router
 router = APIRouter(prefix="/admin", tags=["Administration"])
@@ -33,5 +34,6 @@ router.include_router(jobs_router)
 router.include_router(rate_limits_router)
 router.include_router(audit_router)
 router.include_router(incidents_router)
+router.include_router(extraction_router)
 
 __all__ = ["router"]

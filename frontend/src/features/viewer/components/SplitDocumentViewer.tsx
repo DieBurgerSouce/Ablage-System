@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ScrollSync, ScrollSyncPane } from 'react-scroll-sync';
 import SplitPane from 'react-split-pane';
+import { FileText, ScanLine } from 'lucide-react';
 import { ViewerToolbar } from './ViewerToolbar';
 import { BoundingBoxOverlay, type BoundingBox } from './BoundingBoxOverlay';
 import { OCRTextPanel } from './OCRTextPanel';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ExtractedDataPanel } from '@/features/extracted-data';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -68,13 +71,32 @@ export function SplitDocumentViewer({ documentId, ocrResults, fileUrl }: SplitDo
                         </ScrollSyncPane>
 
                         <ScrollSyncPane>
-                            <div className="h-full overflow-auto p-6 bg-background">
-                                <OCRTextPanel
-                                    ocrData={ocrResults?.pages?.[currentPage - 1]}
-                                    selectedBox={selectedBox}
-                                    onBoxSelect={setSelectedBox}
-                                    onTextEdit={handleTextEdit}
-                                />
+                            <div className="h-full overflow-auto bg-background">
+                                <Tabs defaultValue="extracted" className="h-full flex flex-col">
+                                    <div className="px-4 pt-4 pb-2 border-b bg-background sticky top-0 z-10">
+                                        <TabsList className="grid w-full grid-cols-2 max-w-sm">
+                                            <TabsTrigger value="extracted" className="gap-2">
+                                                <FileText className="h-4 w-4" />
+                                                Extrahiert
+                                            </TabsTrigger>
+                                            <TabsTrigger value="ocr" className="gap-2">
+                                                <ScanLine className="h-4 w-4" />
+                                                OCR-Text
+                                            </TabsTrigger>
+                                        </TabsList>
+                                    </div>
+                                    <TabsContent value="extracted" className="flex-1 p-4 overflow-auto mt-0">
+                                        <ExtractedDataPanel documentId={documentId} />
+                                    </TabsContent>
+                                    <TabsContent value="ocr" className="flex-1 p-6 overflow-auto mt-0">
+                                        <OCRTextPanel
+                                            ocrData={ocrResults?.pages?.[currentPage - 1]}
+                                            selectedBox={selectedBox}
+                                            onBoxSelect={setSelectedBox}
+                                            onTextEdit={handleTextEdit}
+                                        />
+                                    </TabsContent>
+                                </Tabs>
                             </div>
                         </ScrollSyncPane>
                     </SplitPane>

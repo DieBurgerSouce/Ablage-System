@@ -85,12 +85,15 @@ class OCRBackend(str, Enum):
 class DocumentType(str, Enum):
     """Document type classification."""
     INVOICE = "invoice"
+    ORDER = "order"
     CONTRACT = "contract"
+    DELIVERY_NOTE = "delivery_note"
     RECEIPT = "receipt"
     FORM = "form"
     LETTER = "letter"
     REPORT = "report"
     OTHER = "other"
+    UNKNOWN = "unknown"
 
 
 class UserTier(str, Enum):
@@ -502,6 +505,37 @@ class Tag(Base):
 
     # Relationships
     documents = relationship("Document", secondary=document_tags, back_populates="tags")
+
+
+class Tune(Base):
+    """
+    Document Context / Tune configuration.
+    Defines how a document type should be analyzed and processed.
+    """
+    __tablename__ = "tunes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), unique=True, nullable=False)
+    description = Column(String(500))
+    icon = Column(String(50))  # Lucide icon name
+    color = Column(String(50))  # Tailwind class or Hex
+
+    # Intelligence Configuration
+    prompt_template = Column(Text, nullable=True)  # Custom system prompt for this tune
+    default_backend = Column(String(50), nullable=True)  # Preferred OCR backend
+
+    # Metadata
+    is_system = Column(Boolean, default=False)  # System tunes cannot be deleted
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_tunes_name", "name"),
+        Index("ix_tunes_is_active", "is_active"),
+    )
+
 
 
 class APIKey(Base):

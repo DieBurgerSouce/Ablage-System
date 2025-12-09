@@ -58,6 +58,9 @@ bitsandbytes>=0.43.0  # 4-bit and 8-bit quantization (>=0.43 für CUDA 12.x)
 spacy>=3.8.0  # Updated to resolve typer conflict with docling
 # Run after install: python -m spacy download de_core_news_sm
 
+# Translation (Multi-language OCR Support)
+argostranslate>=1.9.1  # Offline translation for non-German documents
+
 # Testing
 pytest==7.4.4
 pytest-asyncio==0.23.3

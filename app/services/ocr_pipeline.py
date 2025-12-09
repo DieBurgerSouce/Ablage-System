@@ -87,6 +87,10 @@ class OCRPipelineResult:
     # Entity Extraction (Document Intelligence)
     entity_extraction_applied: bool = False
     extracted_entities: Optional[Dict[str, Any]] = None
+    # Structured Extraction (Invoice, Order, Contract data)
+    structured_extraction_applied: bool = False
+    structured_data: Optional[Dict[str, Any]] = None
+    document_type: Optional[str] = None  # Klassifizierter Dokumenttyp
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -110,6 +114,9 @@ class OCRPipelineResult:
             "confidence_fallback_triggered": self.confidence_fallback_triggered,
             "entity_extraction_applied": self.entity_extraction_applied,
             "extracted_entities": self.extracted_entities,
+            "structured_extraction_applied": self.structured_extraction_applied,
+            "structured_data": self.structured_data,
+            "document_type": self.document_type,
         }
 
 
@@ -133,6 +140,7 @@ class OCRPipeline:
         enable_memory_guard: bool = True,
         enable_historical_normalization: bool = True,
         enable_entity_extraction: bool = True,
+        enable_structured_extraction: bool = True,
         min_confidence_threshold: float = 0.65,
         confidence_thresholds: Optional[ConfidenceThresholds] = None,
         enable_confidence_fallback: bool = True
@@ -146,6 +154,7 @@ class OCRPipeline:
             enable_memory_guard: GPU Memory Guard aktivieren
             enable_historical_normalization: Historical German Normalizer aktivieren
             enable_entity_extraction: Entity Extraction (Business Partner) aktivieren
+            enable_structured_extraction: Strukturierte Extraktion (Invoice, Order, Contract) aktivieren
             min_confidence_threshold: Minimale Confidence für Akzeptanz (legacy)
             confidence_thresholds: Konfigurierbare Schwellenwerte für Confidence
             enable_confidence_fallback: Fallback bei niedriger Confidence aktivieren
@@ -158,6 +167,7 @@ class OCRPipeline:
             settings.HISTORICAL_NORMALIZATION_ENABLED
         )
         self.enable_entity_extraction = enable_entity_extraction
+        self.enable_structured_extraction = enable_structured_extraction
         self.min_confidence_threshold = min_confidence_threshold
         self.confidence_thresholds = confidence_thresholds or ConfidenceThresholds()
         self.enable_confidence_fallback = enable_confidence_fallback
@@ -178,6 +188,9 @@ class OCRPipeline:
         # Entity Extraction Service (lazy load)
         self._entity_extraction_service = None
 
+        # Structured Extraction Service (lazy load)
+        self._structured_extraction_service = None
+
         # Backend Handlers registrieren
         self._register_default_backends()
 
@@ -188,6 +201,7 @@ class OCRPipeline:
             memory_guard=enable_memory_guard,
             historical_normalization=self.enable_historical_normalization,
             entity_extraction=enable_entity_extraction,
+            structured_extraction=enable_structured_extraction,
             min_confidence=min_confidence_threshold,
             confidence_thresholds={
                 "low": self.confidence_thresholds.low,
@@ -293,6 +307,30 @@ class OCRPipeline:
                 )
                 self.enable_entity_extraction = False
         return self._entity_extraction_service
+
+    def _get_structured_extraction_service(self):
+        """Lazy-load Structured Extraction Service."""
+        if self._structured_extraction_service is None and self.enable_structured_extraction:
+            try:
+                from app.services.structured_extraction_service import (
+                    StructuredExtractionService,
+                    get_structured_extraction_service,
+                )
+                self._structured_extraction_service = get_structured_extraction_service()
+                logger.info("structured_extraction_service_loaded")
+            except ImportError as e:
+                logger.warning(
+                    "structured_extraction_service_unavailable",
+                    error=str(e)
+                )
+                self.enable_structured_extraction = False
+            except Exception as e:
+                logger.warning(
+                    "structured_extraction_service_init_error",
+                    error=str(e)
+                )
+                self.enable_structured_extraction = False
+        return self._structured_extraction_service
 
     async def process(
         self,
@@ -706,7 +744,89 @@ class OCRPipeline:
                     )
                     # Fortfahren ohne Entity Extraction bei Fehler
 
-        # Step 6: Finale Confidence-Analyse
+        # Step 6: Structured Extraction (Rechnungen, Bestellungen, Vertraege)
+        # NEU: Unterstuetzt jetzt ALLE Sprachen durch automatische Uebersetzung nach Deutsch
+        structured_extraction_applied = False
+        structured_data = None
+        classified_document_type = None
+
+        if (self.enable_structured_extraction and
+            corrected_text):  # Sprachfilter entfernt - Uebersetzung erfolgt im Service
+
+            structured_service = self._get_structured_extraction_service()
+            if structured_service:
+                try:
+                    # Tabellen aus OCR-Ergebnis (Docling/Surya) fuer Line-Item-Extraktion
+                    ocr_tables = getattr(fallback_result, 'tables', None)
+
+                    extraction_result = await structured_service.extract(
+                        corrected_text,
+                        document_id=document_id,
+                        tables=ocr_tables,
+                        detected_language=language,  # NEU: Sprache fuer Uebersetzung uebergeben
+                    )
+
+                    if extraction_result and extraction_result.classification:
+                        structured_extraction_applied = True
+                        classified_document_type = extraction_result.classification.document_type.value
+
+                        # Zu Dict konvertieren fuer Speicherung
+                        structured_data = {
+                            "classification": {
+                                "document_type": extraction_result.classification.document_type.value,
+                                "confidence": extraction_result.classification.confidence,
+                                "matched_keywords": extraction_result.classification.matched_keywords[:10],
+                            },
+                            "overall_confidence": extraction_result.overall_confidence,
+                            "extraction_version": extraction_result.extraction_version,
+                            "extracted_at": extraction_result.extracted_at,
+                            # Uebersetzungs-Metadaten (NEU fuer Mehrsprachigkeit)
+                            "original_language": extraction_result.original_language,
+                            "was_translated": extraction_result.was_translated,
+                            "translation_confidence": extraction_result.translation_confidence,
+                        }
+
+                        # Typspezifische Daten hinzufuegen
+                        if extraction_result.invoice:
+                            structured_data["invoice"] = extraction_result.invoice.model_dump(
+                                mode="json", exclude_none=True
+                            )
+                        if extraction_result.order:
+                            structured_data["order"] = extraction_result.order.model_dump(
+                                mode="json", exclude_none=True
+                            )
+                        if extraction_result.contract:
+                            structured_data["contract"] = extraction_result.contract.model_dump(
+                                mode="json", exclude_none=True
+                            )
+
+                        # Allgemeine Entities
+                        if extraction_result.vat_ids:
+                            structured_data["vat_ids"] = extraction_result.vat_ids
+                        if extraction_result.ibans:
+                            structured_data["ibans"] = extraction_result.ibans
+                        if extraction_result.companies:
+                            structured_data["companies"] = extraction_result.companies
+
+                        logger.info(
+                            "ocr_pipeline_structured_extraction_applied",
+                            document_id=document_id,
+                            document_type=classified_document_type,
+                            classification_confidence=extraction_result.classification.confidence,
+                            overall_confidence=extraction_result.overall_confidence,
+                            original_language=extraction_result.original_language,
+                            was_translated=extraction_result.was_translated,
+                        )
+
+                except Exception as e:
+                    logger.warning(
+                        "ocr_pipeline_structured_extraction_error",
+                        document_id=document_id,
+                        error=str(e)
+                    )
+                    # Fortfahren ohne Structured Extraction bei Fehler
+
+        # Step 7: Finale Confidence-Analyse
         confidence_details = None
         if fallback_result.confidence_metrics:
             confidence_details = fallback_result.confidence_metrics.to_dict()
@@ -733,6 +853,9 @@ class OCRPipeline:
             confidence_fallback_triggered=confidence_fallback_triggered,
             entity_extraction_applied=entity_extraction_applied,
             extracted_entities=extracted_entities,
+            structured_extraction_applied=structured_extraction_applied,
+            structured_data=structured_data,
+            document_type=classified_document_type,
         )
 
         logger.info(
@@ -745,6 +868,8 @@ class OCRPipeline:
             historical_changes=historical_changes_count,
             entity_extraction=entity_extraction_applied,
             entities_found=len(extracted_entities.get("identifiers", [])) if extracted_entities else 0,
+            structured_extraction=structured_extraction_applied,
+            document_type=classified_document_type,
             time_ms=total_time,
             needs_review=needs_review,
             confidence_fallback_triggered=confidence_fallback_triggered
@@ -816,6 +941,7 @@ class OCRPipeline:
                 "memory_guard_enabled": self.enable_memory_guard,
                 "historical_normalization_enabled": self.enable_historical_normalization,
                 "entity_extraction_enabled": self.enable_entity_extraction,
+                "structured_extraction_enabled": self.enable_structured_extraction,
                 "min_confidence_threshold": self.min_confidence_threshold,
                 "confidence_thresholds": {
                     "low": self.confidence_thresholds.low,
@@ -856,6 +982,19 @@ class OCRPipeline:
             }
         else:
             status["entity_extraction"] = {"loaded": False}
+
+        # Structured Extraction Status
+        if self._structured_extraction_service:
+            status["structured_extraction"] = {
+                "loaded": True,
+                "classification_stats": (
+                    self._structured_extraction_service.classification_service.get_stats()
+                    if hasattr(self._structured_extraction_service, 'classification_service')
+                    else {}
+                ),
+            }
+        else:
+            status["structured_extraction"] = {"loaded": False}
 
         return status
 
