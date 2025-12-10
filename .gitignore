@@ -102,3 +102,6 @@ Trainings_Data/
 *.crt
 !requirements*.txt
 infrastructure/vault/config/certs/
+
+# Vault secrets (NEVER commit these!)
+infrastructure/vault/.vault*
