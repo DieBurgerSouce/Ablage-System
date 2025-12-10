@@ -37,8 +37,8 @@ listener "tcp" {
 # }
 
 # API settings - HTTPS für Production
-api_addr     = "https://0.0.0.0:8200"
-cluster_addr = "https://0.0.0.0:8201"
+api_addr     = "https://127.0.0.1:8200"
+cluster_addr = "https://127.0.0.1:8201"
 
 # UI
 ui = true
@@ -59,10 +59,10 @@ log_level = "info"
 #   kms_key_id = "your-kms-key-id"
 # }
 
-# Mlock - WICHTIG: In Production auf false setzen!
+# Mlock - In Docker-Containern auf true setzen!
 # false = Secrets werden im RAM gelockt und können nicht auf Disk geswappt werden
-# true  = Nur für Entwicklung/Container ohne CAP_IPC_LOCK
-disable_mlock = false
+# true  = Für Container empfohlen (trotz CAP_IPC_LOCK), verhindert Startup-Probleme
+disable_mlock = true
 
 # Default Lease TTL
 default_lease_ttl = "768h"

@@ -44,7 +44,7 @@ pillow==10.2.0
 # OCR Backends
 surya-ocr>=0.17.0  # CPU-based OCR, no GPU required - 0.17.0 required for new API (DetectionPredictor, RecognitionPredictor)
 pypdfium2>=4.30.0  # PDF processing for Surya and Docling (docling requires >=4.30.0)
-docling==2.20.0  # Document structure extraction (requires Python 3.11+), pinned for faster builds
+docling>=2.20.0  # Document structure extraction (requires Python 3.11+), pinned for faster builds
 pytesseract==0.3.10  # Python wrapper for Tesseract (fallback)
 paddlepaddle>=2.6.0  # PaddlePaddle ML framework (CPU)
 paddleocr>=2.8.0  # PaddleOCR PP-OCRv5 - CPU-optimiert, 106 Sprachen
@@ -99,7 +99,7 @@ orjson==3.10.12  # Fast JSON serialization (10-15% faster than stdlib json)
 reportlab==4.0.9  # PDF generation for document export
 
 # Spreadsheet Export
-openpyxl==3.1.2  # Excel (.xlsx) export for extracted data
+openpyxl>=3.1.5  # Excel (.xlsx) export for extracted data
 
 # RAG Intelligence Layer
 tiktoken>=0.5.0  # Token counting for LLM chunking

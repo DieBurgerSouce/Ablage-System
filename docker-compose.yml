@@ -701,11 +701,12 @@ services:
   vault:
     image: hashicorp/vault:1.15.4
     container_name: ablage-vault
-    command: server -config=/vault/config/vault.hcl
+    # Entrypoint fügt automatisch -config=/vault/config hinzu, daher kein command nötig
+    entrypoint: ["vault", "server", "-config=/vault/config/vault.hcl"]
     ports:
       - "8200:8200"
     volumes:
-      - ./infrastructure/vault/config:/vault/config:ro
+      - ./infrastructure/vault/config:/vault/config
       - vault_data:/vault/data
       - vault_logs:/vault/logs
     environment:
@@ -728,78 +729,16 @@ services:
           cpus: '0.1'
           memory: 128M
     healthcheck:
-      test: ["CMD", "vault", "status", "-address=https://127.0.0.1:8200", "-ca-cert=/vault/config/certs/ca.crt"]
+      # Vault gibt Exit-Code 2 wenn sealed - das ist OK beim Start
+      test: ["CMD-SHELL", "vault status -address=https://127.0.0.1:8200 -ca-cert=/vault/config/certs/ca.crt || [ $? -eq 2 ]"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 10s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
     networks:
       - backend-network
       - data-network
-
-  # ==========================================================================
-  # RAG Intelligence Layer - Ollama LLM Service
-  # ==========================================================================
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ablage-ollama
-    ports:
-      - "127.0.0.1:11434:11434"
-    volumes:
-      - ollama_models:/root/.ollama
-    environment:
-      # Modell im Speicher halten fuer schnelle Antworten
-      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-24h}
-      # Parallele Anfragen (fuer Chat + Analysis gleichzeitig)
-      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-2}
-      # GPU Layers (alle auf GPU)
-      OLLAMA_GPU_LAYERS: ${OLLAMA_GPU_LAYERS:-999}
-      # Flash Attention aktivieren
-      OLLAMA_FLASH_ATTENTION: ${OLLAMA_FLASH_ATTENTION:-1}
-    deploy:
-      resources:
-        limits:
-          memory: 32G
-        reservations:
-          memory: 16G
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    security_opt:
-      - no-new-privileges:true
-    restart: unless-stopped
-    networks:
-      - backend-network
-
-  # Ollama Model Loader - Laedt Qwen3 Modelle beim Start
-  ollama-loader:
-    image: curlimages/curl:latest
-    container_name: ablage-ollama-loader
-    depends_on:
-      ollama:
-        condition: service_healthy
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        echo "Warte auf Ollama..."
-        sleep 10
-        echo "Lade Qwen3:8b fuer Realtime-Anfragen..."
-        curl -X POST http://ollama:11434/api/pull -d '{"name":"qwen3:8b-q4_K_M"}'
-        echo "Lade Qwen3:14b fuer Analyse..."
-        curl -X POST http://ollama:11434/api/pull -d '{"name":"qwen3:14b-q4_K_M"}'
-        echo "Modelle geladen!"
-    networks:
-      - backend-network
-    profiles:
-      - init  # Nur manuell ausfuehren: docker-compose --profile init up ollama-loader
 
   # NVIDIA GPU Exporter für Prometheus-Metriken
   dcgm-exporter:
@@ -887,7 +826,6 @@ volumes:
   vault_data:
   vault_logs:
   model_cache:  # OCR model cache (Surya, HuggingFace, DeepSeek)
-  ollama_models:  # Ollama LLM models (Qwen3-8B, Qwen3-14B)
 
 networks:
   # Frontend-Netzwerk: Nur für externe Zugriffe (Nginx)
