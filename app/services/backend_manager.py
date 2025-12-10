@@ -508,6 +508,49 @@ def get_cost_optimizer(
     return _cost_optimizer
 
 
+# =============================================================================
+# Singleton BackendManager - Vermeidet Model-Reload bei jedem Task
+# =============================================================================
+
+_backend_manager: Optional["BackendManager"] = None
+
+
+def get_backend_manager() -> "BackendManager":
+    """
+    Hole Singleton-Instanz des BackendManagers.
+
+    Dies vermeidet das ~60s Model-Loading bei jedem Task, da die Backends
+    nur einmal beim ersten Aufruf initialisiert werden und dann im Speicher
+    bleiben.
+
+    Returns:
+        BackendManager Singleton-Instanz
+    """
+    global _backend_manager
+
+    if _backend_manager is None:
+        logger.info("backend_manager_singleton_initializing")
+        _backend_manager = BackendManager()
+        logger.info(
+            "backend_manager_singleton_ready",
+            backends=list(_backend_manager.backends.keys())
+        )
+
+    return _backend_manager
+
+
+def reset_backend_manager() -> None:
+    """
+    Reset BackendManager Singleton (für Tests oder Worker-Restart).
+
+    ACHTUNG: Nur verwenden wenn Models neu geladen werden müssen!
+    """
+    global _backend_manager
+    if _backend_manager is not None:
+        logger.info("backend_manager_singleton_resetting")
+        _backend_manager = None
+
+
 class BackendManager:
     """Manages OCR backend selection and processing."""
 

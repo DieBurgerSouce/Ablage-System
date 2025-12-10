@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { UploadDropzone } from './UploadDropzone';
 import { UploadFileList } from './UploadFileList';
 import { documentsService } from '@/lib/api/services/documents';
@@ -80,12 +80,20 @@ export function UploadWizard() {
         setFiles(prev => prev.filter(f => f.id !== id));
     }, []);
 
-    // Poll for OCR status and progress updates on processing files
+    // Ref für files um stable reference im polling zu haben
+    const filesRef = useRef(files);
     useEffect(() => {
-        const processingFiles = files.filter(f => f.status === 'processing' && f.documentId);
-        if (processingFiles.length === 0) return;
+        filesRef.current = files;
+    }, [files]);
 
+    // Poll for OCR status and progress updates on processing files
+    // Verwendet filesRef um unnötige Interval-Neuerstellungen zu vermeiden
+    useEffect(() => {
         const pollStatus = async () => {
+            const currentFiles = filesRef.current;
+            const processingFiles = currentFiles.filter(f => f.status === 'processing' && f.documentId);
+            if (processingFiles.length === 0) return;
+
             for (const file of processingFiles) {
                 try {
                     // Poll document status
@@ -130,9 +138,10 @@ export function UploadWizard() {
             }
         };
 
+        // Starte polling nur einmal beim Mount, nicht bei jeder files-Änderung
         const interval = setInterval(pollStatus, 1000); // Poll every 1 second
         return () => clearInterval(interval);
-    }, [files]);
+    }, []); // Leere Dependencies - Interval wird nur einmal erstellt
 
     return (
         <div className="max-w-4xl mx-auto py-8 px-4">

@@ -76,6 +76,27 @@ class PaymentPatterns:
         re.IGNORECASE
     )
 
+    # Erweitertes Payment Pattern - deckt mehr Varianten ab
+    # "NET 30", "net 30 days", "30 Tage netto", "Netto 30", "30T"
+    PAYMENT_DAYS_EXTENDED = re.compile(
+        r'(?:'
+        r'net(?:to)?\s*(\d{1,3})|'               # NET 30, netto 30
+        r'(\d{1,3})\s*(?:tage?\s*)?net(?:to)?|'  # 30 Tage netto, 30T netto
+        r'(\d{1,3})\s*days?\s*net|'              # 30 days net (englisch)
+        r'zahlungsfrist\s*(\d{1,3})|'            # Zahlungsfrist 30
+        r'payment\s*(?:within|in)\s*(\d{1,3})'   # payment within 30
+        r')',
+        re.IGNORECASE
+    )
+
+    # Sofortige Zahlung erkennen
+    PAYMENT_IMMEDIATE = re.compile(
+        r'(?:zahlbar\s*sofort|sofort\s*f[aä]llig|bar\s*bei\s*[uü]bergabe|'
+        r'zahlung\s*bei\s*lieferung|vorauskasse|vorkasse|'
+        r'due\s*(?:upon|on)\s*receipt)',
+        re.IGNORECASE
+    )
+
     # Fälligkeitsdatum direkt: "Fällig am 15.02.2024"
     DUE_DATE_DIRECT = re.compile(
         r'(?:f[aä]llig(?:keit)?|zahlbar\s*bis|zahlungsziel)[\s:]*'
@@ -511,11 +532,28 @@ class StructuredExtractionService:
 
         # === ZAHLUNGSBEDINGUNGEN (KRITISCH!) ===
 
-        # Zahlungsziel in Tagen
+        # Zahlungsziel in Tagen - versuche mehrere Patterns
         payment_days_match = PaymentPatterns.PAYMENT_DAYS.search(text)
+        days = None
         if payment_days_match:
             days = payment_days_match.group(1)
+        else:
+            # Fallback: Erweitertes Pattern für "NET 30", "30 days net", etc.
+            extended_match = PaymentPatterns.PAYMENT_DAYS_EXTENDED.search(text)
+            if extended_match:
+                # Finde die erste nicht-None Gruppe
+                for group in extended_match.groups():
+                    if group:
+                        days = group
+                        break
+
+        if days:
             invoice.payment_terms = f"{days} Tage netto"
+        else:
+            # Prüfe auf sofortige Zahlung
+            immediate_match = PaymentPatterns.PAYMENT_IMMEDIATE.search(text)
+            if immediate_match:
+                invoice.payment_terms = "Zahlbar sofort"
 
         # Zahlungsart
         payment_method_match = PaymentPatterns.PAYMENT_METHOD.search(text)

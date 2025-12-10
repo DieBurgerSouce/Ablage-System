@@ -15,12 +15,12 @@ from uuid import UUID
 import structlog
 from celery import states
 from celery.exceptions import SoftTimeLimitExceeded, Ignore
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.workers.celery_app import celery_app, GPUTask, CPUTask
 from app.core.config import settings
+from app.db.session import get_async_session_context
 from app.db.models import (
     Document,
     RAGDocumentChunk,
@@ -41,17 +41,8 @@ def run_async_task(coro: Coroutine[Any, Any, T]) -> T:
     return asyncio.run(coro)
 
 
-# Database session factory
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    pool_pre_ping=True,
-    pool_size=settings.DB_WORKER_POOL_SIZE,
-    max_overflow=settings.DB_WORKER_MAX_OVERFLOW,
-    pool_recycle=settings.DB_WORKER_POOL_RECYCLE,
-    pool_timeout=settings.DB_POOL_TIMEOUT,
-    echo=False,
-)
-async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+# NOTE: Wir nutzen get_async_session_context() aus app.db.session
+# Das vermeidet Event-Loop-Bugs da Engine INSIDE async context erstellt wird
 
 
 def update_task_progress(task_id: str, current: int, total: int, message: str) -> None:
@@ -108,7 +99,7 @@ def chunk_document(
 
         chunking_service = get_chunking_service()
 
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             try:
                 update_task_progress(task_id, 0, 100, "Starte Chunking...")
 
@@ -121,7 +112,7 @@ def chunk_document(
                 if not document:
                     raise ValueError(f"Dokument {document_id} nicht gefunden")
 
-                if not document.ocr_text:
+                if not document.extracted_text:
                     raise ValueError(f"Dokument {document_id} hat keinen OCR-Text")
 
                 update_task_progress(task_id, 20, 100, "Chunke Dokument...")
@@ -217,17 +208,17 @@ def batch_chunk_documents(
 
         chunking_service = get_chunking_service()
 
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             # Dokumente ermitteln
             if document_ids:
                 doc_uuids = [UUID(d) for d in document_ids]
                 query = select(Document).where(
                     Document.id.in_(doc_uuids),
-                    Document.ocr_text.isnot(None)
+                    Document.extracted_text.isnot(None)
                 )
             else:
                 # Alle Dokumente mit OCR-Text
-                query = select(Document).where(Document.ocr_text.isnot(None))
+                query = select(Document).where(Document.extracted_text.isnot(None))
 
                 if not force:
                     # Nur Dokumente ohne Chunks
@@ -362,7 +353,7 @@ def regenerate_chunk_embeddings(
 
         embedding_service = get_embedding_service()
 
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             # Chunks laden
             query = select(RAGDocumentChunk)
             if document_id:
@@ -467,7 +458,7 @@ def run_rag_batch_job(
     )
 
     async def process_async() -> Dict[str, Any]:
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             # Job laden
             result = await session.execute(
                 select(RAGBatchJob).where(RAGBatchJob.id == job_uuid)
@@ -560,10 +551,10 @@ async def _run_chunk_documents_job(
         doc_uuids = [UUID(d) for d in document_ids]
         query = select(Document).where(
             Document.id.in_(doc_uuids),
-            Document.ocr_text.isnot(None)
+            Document.extracted_text.isnot(None)
         )
     else:
-        query = select(Document).where(Document.ocr_text.isnot(None))
+        query = select(Document).where(Document.extracted_text.isnot(None))
 
     result = await session.execute(query)
     documents = result.scalars().all()
@@ -712,7 +703,7 @@ def get_rag_statistics(self) -> Dict[str, Any]:
     logger.info("get_rag_statistics_starting", task_id=task_id)
 
     async def collect_async() -> Dict[str, Any]:
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             # Chunk-Statistiken
             chunk_count = await session.execute(
                 select(func.count(RAGDocumentChunk.id))
@@ -740,7 +731,7 @@ def get_rag_statistics(self) -> Dict[str, Any]:
             # Gesamte Dokumente
             total_docs = await session.execute(
                 select(func.count(Document.id)).where(
-                    Document.ocr_text.isnot(None)
+                    Document.extracted_text.isnot(None)
                 )
             )
             total_documents = total_docs.scalar() or 0
@@ -808,11 +799,11 @@ def scheduled_chunk_new_documents(self) -> Dict[str, Any]:
     logger.info("scheduled_chunk_new_documents_starting", task_id=task_id)
 
     async def process_async() -> Dict[str, Any]:
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             # Dokumente ohne Chunks finden
             subquery = select(RAGDocumentChunk.document_id).distinct()
             query = select(Document.id).where(
-                Document.ocr_text.isnot(None),
+                Document.extracted_text.isnot(None),
                 Document.processing_status == ProcessingStatus.COMPLETED,
                 ~Document.id.in_(subquery)
             ).limit(50)  # Batch-Limit
@@ -867,7 +858,7 @@ def sync_customer_cards_scheduled(self) -> Dict[str, Any]:
     logger.info("sync_customer_cards_scheduled_starting", task_id=task_id)
 
     async def process_async() -> Dict[str, Any]:
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             # Batch Job erstellen
             job = RAGBatchJob(
                 job_type=RAGJobType.CUSTOMER_CARD_SYNC,

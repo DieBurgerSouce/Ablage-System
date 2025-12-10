@@ -14,8 +14,7 @@ import asyncio
 import structlog
 from celery import states
 from celery.exceptions import SoftTimeLimitExceeded, Ignore
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
 import torch
@@ -23,6 +22,7 @@ import torch
 from app.workers.celery_app import celery_app, GPUTask, CPUTask
 from app.core.config import settings
 from app.db.models import Document, ProcessingStatus
+from app.db.session import get_async_session_context
 from app.services.embedding_service import get_embedding_service
 from app.services.search_analytics_service import get_search_analytics_service
 from app.core.cache import invalidate_on_document_change
@@ -82,18 +82,8 @@ def run_async_task(coro: Coroutine[Any, Any, T]) -> T:
     """
     return asyncio.run(coro)
 
-# Database session factory mit Worker-optimiertem Connection Pool
-# Embedding-Tasks sind länger laufend, brauchen angepasste Timeouts
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    pool_pre_ping=True,
-    pool_size=settings.DB_WORKER_POOL_SIZE,
-    max_overflow=settings.DB_WORKER_MAX_OVERFLOW,
-    pool_recycle=settings.DB_WORKER_POOL_RECYCLE,
-    pool_timeout=settings.DB_POOL_TIMEOUT,
-    echo=False,
-)
-async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+# NOTE: Wir nutzen get_async_session_context() aus app.db.session
+# Das vermeidet Event-Loop-Bugs da Engine INSIDE async context erstellt wird
 
 
 def update_task_progress(task_id: str, current: int, total: int, message: str) -> None:
@@ -156,7 +146,7 @@ def generate_document_embedding(
     embedding_service = get_embedding_service()
 
     async def process_async() -> Dict[str, Any]:
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             try:
                 update_task_progress(task_id, 0, 100, "Lade Dokument...")
 
@@ -324,7 +314,7 @@ def batch_generate_embeddings(
     embedding_service = get_embedding_service()
 
     async def process_async() -> Dict[str, Any]:
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             successful = 0
             failed = 0
             skipped = 0
@@ -545,7 +535,7 @@ def regenerate_all_embeddings(
     )
 
     async def process_async() -> Dict[str, Any]:
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             # Build query to find all documents with extracted text
             query = select(Document.id).where(
                 Document.extracted_text.isnot(None),
@@ -629,7 +619,7 @@ def check_embedding_coverage(
     )
 
     async def check_async() -> Dict[str, Any]:
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             from sqlalchemy import func
 
             # Base filter
@@ -715,7 +705,7 @@ def refresh_search_analytics(self) -> Dict[str, Any]:
     analytics_service = get_search_analytics_service()
 
     async def refresh_async() -> Dict[str, Any]:
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             try:
                 success = await analytics_service.refresh_daily_statistics(session)
 

@@ -14,8 +14,8 @@ import os
 
 logger = structlog.get_logger(__name__)
 
-# Import our backend manager
-from app.services.backend_manager import BackendManager
+# Import our backend manager (Singleton für Performance)
+from app.services.backend_manager import get_backend_manager
 # Import German correction components
 from app.agents.postprocessing.german_correction_agent import GermanCorrectionAgent
 from app.utils.german_text import normalize_german_text
@@ -36,7 +36,9 @@ class OCRService:
         Args:
             enable_german_correction: Enable automatic German text correction (default: True)
         """
-        self.backend_manager = BackendManager()
+        # Verwende Singleton BackendManager für Performance
+        # Das vermeidet ~60s Model-Loading bei jedem Task
+        self.backend_manager = get_backend_manager()
         self.processing_stats = {
             "total_processed": 0,
             "total_errors": 0,

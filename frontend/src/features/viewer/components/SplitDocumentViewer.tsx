@@ -35,10 +35,6 @@ export function SplitDocumentViewer({ documentId, ocrResults, fileUrl, mimeType,
     const [scale, setScale] = useState(1.0);
     const [selectedBox, setSelectedBox] = useState<BoundingBox | null>(null);
 
-    const handleTextEdit = (id: string, text: string) => {
-        console.log('Edit text', id, text);
-    };
-
     const resolvedFileUrl = fileUrl || `/documents/${documentId}/preview`;
     const isImage = isImageMimeType(mimeType);
 
@@ -117,8 +113,6 @@ export function SplitDocumentViewer({ documentId, ocrResults, fileUrl, mimeType,
                                         <OCRTextPanel
                                             ocrData={ocrResults?.pages?.[currentPage - 1]}
                                             selectedBox={selectedBox}
-                                            onBoxSelect={setSelectedBox}
-                                            onTextEdit={handleTextEdit}
                                             extractedText={extractedText}
                                         />
                                     </TabsContent>

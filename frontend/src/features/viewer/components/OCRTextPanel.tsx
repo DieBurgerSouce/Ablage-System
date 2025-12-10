@@ -3,8 +3,6 @@ import type { BoundingBox } from "./BoundingBoxOverlay";
 interface OCRTextPanelProps {
     ocrData: { text: string; confidence: number; boxes?: BoundingBox[] } | undefined;
     selectedBox: BoundingBox | null;
-    onBoxSelect: (box: BoundingBox | null) => void;
-    onTextEdit: (id: string, text: string) => void;
     extractedText?: string;
 }
 

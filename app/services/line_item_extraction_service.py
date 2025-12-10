@@ -277,8 +277,10 @@ class LineItemExtractionService:
                 best_score = score
                 best_row = row_idx
 
-        # Mindestens 2 Header-Keywords erforderlich
-        if best_score >= 2:
+        # Mindestens 1 Header-Keyword erforderlich (gesenkt von 2)
+        # Dies verbessert die Erkennung bei einfachen Tabellen mit nur einer
+        # markanten Spalte (z.B. nur "Beschreibung" oder nur "Preis")
+        if best_score >= 1:
             return best_row
 
         return -1

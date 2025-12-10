@@ -550,10 +550,12 @@ class Tune(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    # Indexes
+    # Indexes (synchron mit Migration 031b_fix_tunes)
     __table_args__ = (
         Index("ix_tunes_name", "name"),
         Index("ix_tunes_is_active", "is_active"),
+        Index("ix_tunes_is_system", "is_system"),  # Aus Migration 031b
+        Index("ix_tunes_is_active_is_system", "is_active", "is_system"),  # Composite aus 031b
     )
 
 

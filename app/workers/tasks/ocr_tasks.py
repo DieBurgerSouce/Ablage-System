@@ -19,8 +19,7 @@ import torch
 import structlog
 from celery import states
 from celery.exceptions import SoftTimeLimitExceeded, Ignore
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from app.workers.celery_app import celery_app, GPUTask, CPUTask, gpu_memory_guard
@@ -56,19 +55,6 @@ from app.core.cache import invalidate_on_document_change
 
 logger = structlog.get_logger(__name__)
 
-# Database session factory mit Worker-optimiertem Connection Pool
-# Worker brauchen weniger Connections, aber längere Timeouts für lange Tasks
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    pool_pre_ping=True,
-    pool_size=settings.DB_WORKER_POOL_SIZE,
-    max_overflow=settings.DB_WORKER_MAX_OVERFLOW,
-    pool_recycle=settings.DB_WORKER_POOL_RECYCLE,
-    pool_timeout=settings.DB_POOL_TIMEOUT,
-    echo=False,  # Kein SQL-Logging in Production
-)
-async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
 # GPU Recovery Manager (global für Worker)
 _gpu_recovery_manager: Optional[GPURecoveryManager] = None
 
@@ -98,11 +84,6 @@ def _is_oom_error(exception: Exception) -> bool:
 
 
 # ==================== Helper Functions ====================
-
-async def get_db_session() -> AsyncSession:
-    """Get async database session."""
-    return async_session_maker()
-
 
 async def update_document_status(
     session: AsyncSession,

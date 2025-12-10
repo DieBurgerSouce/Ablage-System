@@ -19,10 +19,10 @@ import structlog
 from celery import states
 from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import select, update, and_
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.db.session import get_async_session_context
 from app.db.models import Document, ProcessingStatus
 from app.workers.celery_app import CPUTask, celery_app
 
@@ -37,17 +37,8 @@ def run_async_task(coro: Coroutine[Any, Any, T]) -> T:
     return asyncio.run(coro)
 
 
-# Database session factory
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    pool_pre_ping=True,
-    pool_size=settings.DB_WORKER_POOL_SIZE,
-    max_overflow=settings.DB_WORKER_MAX_OVERFLOW,
-    pool_recycle=settings.DB_WORKER_POOL_RECYCLE,
-    pool_timeout=settings.DB_POOL_TIMEOUT,
-    echo=False,
-)
-async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+# NOTE: Wir nutzen get_async_session_context() aus app.db.session
+# Das vermeidet Event-Loop-Bugs da Engine INSIDE async context erstellt wird
 
 
 def update_task_progress(task_id: str, current: int, total: int, message: str) -> None:
@@ -147,11 +138,11 @@ async def _detect_document_groups_async(
     """Async implementation of document group detection."""
     from app.services.document_grouping_service import DocumentGroupingService
 
-    async with async_session_maker() as session:
+    async with get_async_session_context() as session:
         # Build query based on filters
         query = select(Document).where(
             and_(
-                Document.is_deleted == False,
+                Document.deleted_at.is_(None),
                 Document.extracted_text.isnot(None),
             )
         )
@@ -268,13 +259,13 @@ async def _batch_detect_groups_async(task_id: str, limit: int) -> Dict[str, Any]
     """Async implementation of batch group detection."""
     from sqlalchemy import func
 
-    async with async_session_maker() as session:
+    async with get_async_session_context() as session:
         # Find folders with ungrouped documents
         query = (
             select(Document.folder_name, func.count(Document.id).label("doc_count"))
             .where(
                 and_(
-                    Document.is_deleted == False,
+                    Document.deleted_at.is_(None),
                     Document.group_id.is_(None),
                     Document.folder_name.isnot(None),
                 )
@@ -410,7 +401,7 @@ async def _extract_entities_async(
     """Async implementation of entity extraction."""
     from app.services.entity_extraction_service import EntityExtractionService
 
-    async with async_session_maker() as session:
+    async with get_async_session_context() as session:
         # Load document
         query = select(Document).where(Document.id == document_id)
         result = await session.execute(query)
@@ -566,10 +557,10 @@ async def _batch_extract_entities_async(
     """Async implementation of batch entity extraction."""
     from sqlalchemy.sql import text
 
-    async with async_session_maker() as session:
+    async with get_async_session_context() as session:
         # Find documents without extracted entities
         base_conditions = [
-            Document.is_deleted == False,
+            Document.deleted_at.is_(None),
             Document.extracted_text.isnot(None),
         ]
 
@@ -759,12 +750,12 @@ async def _update_metrics_async() -> Dict[str, Any]:
     """Async implementation of metrics update."""
     from sqlalchemy import func
 
-    async with async_session_maker() as session:
+    async with get_async_session_context() as session:
         # Count documents with entities
         docs_with_entities = await session.execute(
             select(func.count(Document.id)).where(
                 and_(
-                    Document.is_deleted == False,
+                    Document.deleted_at.is_(None),
                     Document.business_entity_id.isnot(None),
                 )
             )
@@ -774,7 +765,7 @@ async def _update_metrics_async() -> Dict[str, Any]:
         docs_in_groups = await session.execute(
             select(func.count(Document.id)).where(
                 and_(
-                    Document.is_deleted == False,
+                    Document.deleted_at.is_(None),
                     Document.group_id.isnot(None),
                 )
             )
@@ -784,7 +775,7 @@ async def _update_metrics_async() -> Dict[str, Any]:
         docs_with_text = await session.execute(
             select(func.count(Document.id)).where(
                 and_(
-                    Document.is_deleted == False,
+                    Document.deleted_at.is_(None),
                     Document.extracted_text.isnot(None),
                 )
             )
