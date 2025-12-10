@@ -41,6 +41,17 @@ from app.services.translation_service import (
     get_translation_service,
 )
 
+# Enhanced Extraction Integration (Feature Flag gesteuert)
+try:
+    from app.services.extraction import (
+        EnhancedExtractionAdapter,
+        ENABLE_ENHANCED_EXTRACTION,
+    )
+    _enhanced_extraction_available = True
+except ImportError:
+    _enhanced_extraction_available = False
+    ENABLE_ENHANCED_EXTRACTION = False
+
 # Lazy import fuer LineItem-Extraktion (vermeidet zirkulaere Imports)
 _line_item_service_class = None
 _line_item_service_instance = None
@@ -59,6 +70,20 @@ def _get_line_item_service():
             _line_item_service_class = LineItemExtractionService
         _line_item_service_instance = _line_item_service_class()
     return _line_item_service_instance
+
+
+# Singleton fuer Enhanced Extraction Adapter
+_enhanced_extraction_adapter: Optional["EnhancedExtractionAdapter"] = None
+
+
+def _get_enhanced_extraction_adapter() -> Optional["EnhancedExtractionAdapter"]:
+    """Lazy-Load des EnhancedExtractionAdapter."""
+    global _enhanced_extraction_adapter
+    if not _enhanced_extraction_available or not ENABLE_ENHANCED_EXTRACTION:
+        return None
+    if _enhanced_extraction_adapter is None:
+        _enhanced_extraction_adapter = EnhancedExtractionAdapter()
+    return _enhanced_extraction_adapter
 
 
 # =============================================================================
@@ -701,6 +726,94 @@ class StructuredExtractionService:
 
         # Warnungen sammeln
         invoice.extraction_warnings = list(invoice.extraction_warnings) + warnings
+
+        # === ENHANCED EXTRACTION (Optional) ===
+        # Verbessert Payment Terms, Amounts und Line Items mit erweiterten Patterns
+        enhanced_adapter = _get_enhanced_extraction_adapter()
+        if enhanced_adapter:
+            try:
+                enhanced_result = enhanced_adapter.extract_all(
+                    text=text,
+                    invoice_date=invoice.invoice_date,
+                    tables=tables,
+                )
+
+                # Payment Terms uebernehmen wenn besser
+                if enhanced_result.payment_terms:
+                    pt = enhanced_result.payment_terms
+                    # Nur uebernehmen wenn Confidence hoch oder vorher nichts gefunden
+                    if pt.payment_days is not None and (
+                        not invoice.payment_terms or pt.confidence > 0.7
+                    ):
+                        invoice.payment_terms = (
+                            f"{pt.payment_days} Tage netto"
+                            if not pt.is_immediate else "Zahlbar sofort"
+                        )
+                    if pt.due_date and not invoice.due_date:
+                        invoice.due_date = pt.due_date
+                    if pt.discount_tiers and not invoice.discount_percent:
+                        best = pt.best_discount
+                        if best:
+                            invoice.discount_percent = best.percent
+                            invoice.discount_days = best.days
+                    if pt.extraction_warnings:
+                        invoice.extraction_warnings = (
+                            list(invoice.extraction_warnings) + pt.extraction_warnings
+                        )
+
+                # Amounts uebernehmen wenn besser
+                if enhanced_result.amounts:
+                    amt = enhanced_result.amounts
+                    if amt.net_amount and (
+                        not invoice.net_amount or amt.net_confidence > 0.8
+                    ):
+                        invoice.net_amount = amt.net_amount
+                    if amt.gross_amount and (
+                        not invoice.gross_amount or amt.gross_confidence > 0.8
+                    ):
+                        invoice.gross_amount = amt.gross_amount
+                    if amt.vat_amount and (
+                        not invoice.vat_amount or amt.vat_confidence > 0.8
+                    ):
+                        invoice.vat_amount = amt.vat_amount
+                    if amt.vat_rate and not invoice.vat_rate:
+                        invoice.vat_rate = amt.vat_rate
+
+                # Line Items uebernehmen wenn mehr gefunden
+                if enhanced_result.line_items:
+                    existing_count = len(invoice.line_items) if invoice.line_items else 0
+                    if len(enhanced_result.line_items) > existing_count:
+                        # Konvertiere zu Schema-Format
+                        from app.services.extraction import convert_to_schema_line_item
+                        invoice.line_items = [
+                            ExtractedLineItem(**convert_to_schema_line_item(item))
+                            for item in enhanced_result.line_items
+                        ]
+
+                # Validierungs-Warnungen hinzufuegen
+                for v in enhanced_result.validations:
+                    if not v.is_valid:
+                        invoice.extraction_warnings = (
+                            list(invoice.extraction_warnings) + [v.message]
+                        )
+
+                if enhanced_result.needs_review:
+                    invoice.needs_review = True
+
+                logger.debug(
+                    "enhanced_extraction_applied",
+                    payment_terms_improved=enhanced_result.payment_terms is not None,
+                    amounts_improved=enhanced_result.amounts is not None,
+                    line_items_count=len(enhanced_result.line_items),
+                    confidence=enhanced_result.overall_confidence,
+                )
+
+            except Exception as e:
+                logger.warning(
+                    "enhanced_extraction_failed",
+                    error=str(e),
+                )
+                # Nicht kritisch - regulaere Extraktion bleibt erhalten
 
         # Plausibilitaetspruefung
         invoice = self._validate_invoice(invoice)
