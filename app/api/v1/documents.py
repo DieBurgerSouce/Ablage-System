@@ -575,6 +575,128 @@ async def download_document(
     )
 
 
+@router.get("/{document_id}/preview")
+async def preview_document(
+    document_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Browser-kompatible Vorschau des Dokuments.
+
+    Konvertiert Bilder (TIFF, BMP, etc.) in PNG für Browser-Anzeige.
+    PDFs werden direkt zurückgegeben.
+
+    **Response:**
+    - Content-Type: image/png (für konvertierte Bilder) oder application/pdf
+    - Inline-Anzeige (kein Download)
+    """
+    from app.services.storage_service import get_storage_service
+    from app.db.models import Document, DocumentAccess
+    from sqlalchemy import select, or_, and_
+    from PIL import Image
+    import io
+
+    # Prüfe Zugriff (Owner oder via DocumentAccess)
+    access_query = select(Document).where(
+        and_(
+            Document.id == document_id,
+            or_(
+                Document.owner_id == current_user.id,
+                Document.id.in_(
+                    select(DocumentAccess.document_id).where(
+                        and_(
+                            DocumentAccess.user_id == current_user.id,
+                            or_(
+                                DocumentAccess.access_level == "view",
+                                DocumentAccess.access_level == "comment",
+                                DocumentAccess.access_level == "edit",
+                                DocumentAccess.access_level == "manage"
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+    result = await db.execute(access_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Dokument nicht gefunden oder keine Zugriffsberechtigung"
+        )
+
+    # Datei aus Storage laden
+    storage = get_storage_service()
+    try:
+        file_content = await storage.download_document(document.file_path)
+    except Exception as e:
+        logger.error(
+            "document_preview_storage_error",
+            document_id=str(document_id),
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim Laden der Datei"
+        )
+
+    mime_type = document.mime_type or "application/octet-stream"
+
+    # Browser-native Formate direkt zurückgeben
+    browser_native = ["image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"]
+    if mime_type in browser_native:
+        return Response(
+            content=file_content,
+            media_type=mime_type,
+            headers={"Content-Disposition": "inline"}
+        )
+
+    # TIFF, BMP und andere Bilder zu PNG konvertieren
+    if mime_type.startswith("image/"):
+        try:
+            img = Image.open(io.BytesIO(file_content))
+            # Konvertiere zu RGB falls nötig (für CMYK, etc.)
+            if img.mode in ("CMYK", "P", "LA", "RGBA"):
+                img = img.convert("RGB")
+
+            output = io.BytesIO()
+            img.save(output, format="PNG", optimize=True)
+            output.seek(0)
+
+            logger.info(
+                "document_preview_converted",
+                document_id=str(document_id),
+                original_type=mime_type,
+                converted_to="image/png"
+            )
+
+            return Response(
+                content=output.getvalue(),
+                media_type="image/png",
+                headers={"Content-Disposition": "inline"}
+            )
+        except Exception as e:
+            logger.error(
+                "document_preview_conversion_error",
+                document_id=str(document_id),
+                error=str(e)
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Fehler bei der Bildkonvertierung"
+            )
+
+    # Fallback: Original zurückgeben
+    return Response(
+        content=file_content,
+        media_type=mime_type,
+        headers={"Content-Disposition": "inline"}
+    )
+
+
 @router.get("/{document_id}/stream")
 async def stream_document_download(
     document_id: UUID,

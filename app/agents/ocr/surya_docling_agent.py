@@ -60,7 +60,7 @@ class SuryaDoclingAgent(OCRAgent):
             if self._models_loaded:
                 return
 
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             try:
                 # Run sync loading in thread pool with timeout
                 await asyncio.wait_for(
@@ -225,10 +225,10 @@ class SuryaDoclingAgent(OCRAgent):
             language = input_data.get("language", "de")
 
             # Ensure models are loaded
-            await asyncio.get_event_loop().run_in_executor(None, self._load_models)
+            await asyncio.get_running_loop().run_in_executor(None, self._load_models)
 
             # Load images
-            images = await asyncio.get_event_loop().run_in_executor(
+            images = await asyncio.get_running_loop().run_in_executor(
                 None, self._load_image, image_path
             )
 
@@ -247,7 +247,7 @@ class SuryaDoclingAgent(OCRAgent):
                 logger.info("processing_page", page=idx + 1, total=len(images))
 
                 # Process image
-                result = await asyncio.get_event_loop().run_in_executor(
+                result = await asyncio.get_running_loop().run_in_executor(
                     None, self._process_single_image, image, language
                 )
 

@@ -89,9 +89,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """
         if self._redis_storage is not None:
             return self._redis_storage
-        # Fallback to app.state.redis_storage (set during lifespan startup)
-        if hasattr(self.app, 'state') and hasattr(self.app.state, 'redis_storage'):
-            return self.app.state.redis_storage
+        # Note: self.app points to next middleware, not FastAPI app.
+        # We need to access redis_storage via the request in dispatch().
+        return None
+
+    def _get_redis_storage_from_request(self, request: Request) -> Optional[RedisRateLimitStorage]:
+        """Get Redis storage from request.app.state (the actual FastAPI app)."""
+        if self._redis_storage is not None:
+            return self._redis_storage
+        # Access via request.app which is the actual FastAPI application
+        if hasattr(request.app, 'state') and hasattr(request.app.state, 'redis_storage'):
+            return request.app.state.redis_storage
         return None
 
     def is_excluded_path(self, path: str) -> bool:
@@ -312,10 +320,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             else settings.RATE_LIMIT_FAIL_CLOSED
         )
 
-        # Check Redis if available
-        if self.redis_storage and self.redis_storage.is_available:
+        # Check Redis if available (use request-based lookup for correct app.state access)
+        storage = self._get_redis_storage_from_request(request)
+        if storage and storage.is_available:
             try:
-                current_count = await self.redis_storage.increment(
+                current_count = await storage.increment(
                     rate_limit_key,
                     rate_limit["window"],
                     fail_closed=fail_closed

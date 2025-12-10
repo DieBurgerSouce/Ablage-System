@@ -765,10 +765,10 @@ class BackendManager:
 
         # PDF files with potential complex layout → prefer surya_enhanced for layout analysis
         # This handles invoices, contracts with tables, multi-column documents
-        if is_pdf and "surya_enhanced" in available_backends:
+        if is_pdf and "surya" in available_backends:
             # Use enhanced for PDFs as they often contain complex layouts
-            logger.info("backend_selected", backend="surya_enhanced", reason="pdf_layout_analysis")
-            return _return_backend("surya_enhanced")
+            logger.info("backend_selected", backend="surya", reason="pdf_fast_processing")
+            return _return_backend("surya")
         elif is_pdf:
             if "got_ocr" in available_backends:
                 logger.info("backend_selected", backend="got_ocr", reason="pdf_processing")

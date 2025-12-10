@@ -83,7 +83,7 @@ class SuryaGPUAgent(OCRAgent):
             if self._models_loaded:
                 return
 
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             try:
                 # Run sync loading in thread pool with timeout
                 await asyncio.wait_for(

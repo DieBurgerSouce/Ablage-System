@@ -54,7 +54,7 @@ COPY --chown=ablage:ablage requirements.txt .
 COPY --chown=ablage:ablage requirements-gpu.txt .
 
 # Install Python dependencies as root (for system packages)
-RUN python3.11 -m pip install --no-cache-dir -r requirements.txt
+RUN python3.11 -m pip install --no-cache-dir  -r requirements.txt
 
 # NOTE: PyTorch with CUDA support is now installed via requirements.txt (transformers pulls torch with CUDA bindings)
 # The cu121 index install was removed to avoid version conflicts - torch-2.9.1 from pypi includes nvidia-* packages

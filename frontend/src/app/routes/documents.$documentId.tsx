@@ -62,7 +62,9 @@ function DocumentViewerPage() {
                 <SplitDocumentViewer
                     documentId={documentId}
                     ocrResults={ocrResults}
-                    fileUrl={document.fileUrl || "/sample.pdf"} // Fallback for demo if no backend URL
+                    fileUrl={document.fileUrl}
+                    mimeType={document.mimeType}
+                    extractedText={document.extractedText}
                 />
             </div>
         </div>

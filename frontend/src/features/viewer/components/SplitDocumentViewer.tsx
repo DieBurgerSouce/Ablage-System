@@ -5,6 +5,7 @@ import SplitPane from 'react-split-pane';
 import { FileText, ScanLine } from 'lucide-react';
 import { ViewerToolbar } from './ViewerToolbar';
 import { BoundingBoxOverlay, type BoundingBox } from './BoundingBoxOverlay';
+import { ImageViewer } from './ImageViewer';
 import { OCRTextPanel } from './OCRTextPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExtractedDataPanel } from '@/features/extracted-data';
@@ -18,9 +19,17 @@ interface SplitDocumentViewerProps {
     documentId: string;
     ocrResults: import('@/lib/api/services/documents').Document['ocrResults'];
     fileUrl?: string;
+    mimeType?: string;
+    extractedText?: string;
 }
 
-export function SplitDocumentViewer({ documentId, ocrResults, fileUrl }: SplitDocumentViewerProps) {
+// Helper to determine if MIME type is an image
+function isImageMimeType(mimeType?: string): boolean {
+    if (!mimeType) return false;
+    return mimeType.startsWith('image/');
+}
+
+export function SplitDocumentViewer({ documentId, ocrResults, fileUrl, mimeType, extractedText }: SplitDocumentViewerProps) {
     const [numPages, setNumPages] = useState<number | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [scale, setScale] = useState(1.0);
@@ -30,11 +39,17 @@ export function SplitDocumentViewer({ documentId, ocrResults, fileUrl }: SplitDo
         console.log('Edit text', id, text);
     };
 
+    const resolvedFileUrl = fileUrl || `/documents/${documentId}/preview`;
+    const isImage = isImageMimeType(mimeType);
+
+    // For images, we only have 1 "page"
+    const effectiveNumPages = isImage ? 1 : numPages;
+
     return (
         <div className="h-full flex flex-col">
             <ViewerToolbar
                 currentPage={currentPage}
-                numPages={numPages}
+                numPages={effectiveNumPages}
                 scale={scale}
                 onPageChange={setCurrentPage}
                 onZoomIn={() => setScale(s => Math.min(s + 0.25, 3))}
@@ -46,28 +61,38 @@ export function SplitDocumentViewer({ documentId, ocrResults, fileUrl }: SplitDo
                     {/* @ts-expect-error: SplitPane types are not compatible with React 18 children */}
                     <SplitPane split="vertical" minSize={300} defaultSize="50%" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
                         <ScrollSyncPane>
+                            {isImage ? (
+                                <ImageViewer
+                                    fileUrl={resolvedFileUrl}
+                                    scale={scale}
+                                    boxes={ocrResults?.pages?.[0]?.boxes || []}
+                                    selectedBox={selectedBox}
+                                    onBoxClick={setSelectedBox}
+                                />
+                            ) : (
                             <div className="h-full overflow-auto bg-muted/30 flex justify-center p-4">
-                                <Document
-                                    file={fileUrl || `/api/documents/${documentId}/file`}
-                                    onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                                    className="shadow-lg"
-                                >
-                                    <div className="relative">
-                                        <Page
-                                            pageNumber={currentPage}
-                                            scale={scale}
-                                            renderTextLayer={true}
-                                            renderAnnotationLayer={true}
-                                        />
-                                        <BoundingBoxOverlay
-                                            boxes={ocrResults?.pages?.[currentPage - 1]?.boxes || []}
-                                            scale={scale}
-                                            selectedBox={selectedBox}
-                                            onBoxClick={setSelectedBox}
-                                        />
-                                    </div>
-                                </Document>
-                            </div>
+                                    <Document
+                                        file={resolvedFileUrl}
+                                        onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+                                        className="shadow-lg"
+                                    >
+                                        <div className="relative">
+                                            <Page
+                                                pageNumber={currentPage}
+                                                scale={scale}
+                                                renderTextLayer={true}
+                                                renderAnnotationLayer={true}
+                                            />
+                                            <BoundingBoxOverlay
+                                                boxes={ocrResults?.pages?.[currentPage - 1]?.boxes || []}
+                                                scale={scale}
+                                                selectedBox={selectedBox}
+                                                onBoxClick={setSelectedBox}
+                                            />
+                                        </div>
+                                    </Document>
+                                </div>
+                            )}
                         </ScrollSyncPane>
 
                         <ScrollSyncPane>
@@ -94,6 +119,7 @@ export function SplitDocumentViewer({ documentId, ocrResults, fileUrl }: SplitDo
                                             selectedBox={selectedBox}
                                             onBoxSelect={setSelectedBox}
                                             onTextEdit={handleTextEdit}
+                                            extractedText={extractedText}
                                         />
                                     </TabsContent>
                                 </Tabs>

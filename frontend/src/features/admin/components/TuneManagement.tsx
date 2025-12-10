@@ -47,7 +47,7 @@ export function TuneManagement() {
     const [editingTune, setEditingTune] = useState<Tune | null>(null);
 
     // Fetch Tunes
-    const { data: tunes, isLoading, error: fetchError } = useQuery({
+    const { data: tunes, isLoading } = useQuery({
         queryKey: ['tunes'],
         queryFn: async () => {
             const response = await apiClient.get('/api/v1/tunes');
@@ -247,7 +247,7 @@ export function TuneManagement() {
 
                         <div className="space-y-2">
                             <Label htmlFor="description">Beschreibung</Label>
-                            <Textarea id="description" name="description" defaultValue={editingTune?.description} />
+                            <Textarea id="description" name="description" defaultValue={editingTune?.description ?? ''} />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -290,7 +290,7 @@ export function TuneManagement() {
                             <Textarea
                                 id="prompt_template"
                                 name="prompt_template"
-                                defaultValue={editingTune?.prompt_template}
+                                defaultValue={editingTune?.prompt_template ?? ''}
                                 placeholder="Spezifische Anweisungen für die KI-Analyse..."
                                 className="font-mono text-sm h-32"
                             />

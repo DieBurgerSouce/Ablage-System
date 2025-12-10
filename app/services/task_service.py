@@ -180,7 +180,7 @@ class TaskService:
         }
 
         # Add progress info if available
-        if task_result.state == states.PROGRESS or task_result.state == "PROGRESS":
+        if task_result.state == "PROGRESS":
             info = task_result.info or {}
             status_info.update({
                 "progress": info.get("progress", 0),

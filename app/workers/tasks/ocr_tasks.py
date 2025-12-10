@@ -25,9 +25,12 @@ from sqlalchemy import select, delete
 
 from app.workers.celery_app import celery_app, GPUTask, CPUTask, gpu_memory_guard
 from app.core.config import settings
+from app.db.session import get_async_session_context
 from app.db.models import Document, ProcessingJob, OCRResult, ProcessingStatus, SystemMetrics, BatchJob
 from app.services.ocr_service import OCRService
 from app.german_validator import GermanValidator
+from app.services.storage_service import StorageService
+import tempfile
 
 # GPU Recovery und strukturierte Exceptions
 from app.core.gpu_recovery import (
@@ -235,7 +238,8 @@ def process_document_task(
     german_validator = GermanValidator()
 
     async def process_async() -> Dict[str, Any]:
-        async with async_session_maker() as session:
+        local_file_path = None  # Track temp file for cleanup
+        async with get_async_session_context() as session:
             try:
                 # Update initial status
                 update_task_progress(task_id, 0, 100, "Dokument wird geladen...")
@@ -252,10 +256,31 @@ def process_document_task(
                 if not document:
                     raise ValueError(f"Dokument {document_id} nicht gefunden")
 
-                if not document.file_path or not Path(document.file_path).exists():
+                if not document.file_path:
                     raise FileNotFoundError(
-                        f"Dokumentdatei nicht gefunden: {document.file_path}"
+                        f"Dokumentdatei-Pfad nicht gesetzt für: {document_id}"
                     )
+
+                # Download file from MinIO to temp location (sync to avoid event loop issues)
+                update_task_progress(task_id, 10, 100, "Datei wird heruntergeladen...")
+                storage = StorageService()
+
+                # Use sync MinIO client directly to avoid asyncio event loop conflicts
+                response = storage.client.get_object(
+                    bucket_name=storage.config.DOCUMENTS_BUCKET,
+                    object_name=document.file_path
+                )
+                try:
+                    file_content = response.read()
+                finally:
+                    response.close()
+                    response.release_conn()
+
+                # Save to temp file for OCR processing
+                file_ext = Path(document.file_path).suffix or '.tif'
+                with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_file:
+                    tmp_file.write(file_content)
+                    local_file_path = tmp_file.name
 
                 # Start OCR processing
                 update_task_progress(task_id, 20, 100, "OCR-Verarbeitung läuft...")
@@ -266,7 +291,7 @@ def process_document_task(
                 await loop.run_in_executor(None, self.refresh_lock)
 
                 ocr_result = await ocr_service.process_document(
-                    image_path=document.file_path,
+                    image_path=local_file_path,
                     backend=backend,
                     language=language,
                     detect_layout=detect_layout,
@@ -433,6 +458,32 @@ def process_document_task(
                             error=str(e)
                         )
 
+                # Queue structured data extraction (Invoice/Order parsing)
+                extraction_task_id = None
+                if document.extracted_text:
+                    try:
+                        from app.workers.tasks.extraction_tasks import reprocess_single_document
+                        result = reprocess_single_document.apply_async(
+                            args=[document_id],
+                            countdown=2,  # Start 2 seconds after OCR completes
+                            priority=5,
+                        )
+                        extraction_task_id = result.id
+                        logger.info(
+                            "extraction_task_queued",
+                            task_id=task_id,
+                            document_id=document_id,
+                            extraction_task_id=extraction_task_id
+                        )
+                    except Exception as e:
+                        # Don't fail OCR if extraction queuing fails
+                        logger.warning(
+                            "extraction_task_queue_failed",
+                            task_id=task_id,
+                            document_id=document_id,
+                            error=str(e)
+                        )
+
                 return {
                     "success": True,
                     "document_id": document_id,
@@ -444,6 +495,7 @@ def process_document_task(
                     "german_validation": validation_result,
                     "completed_at": datetime.now(timezone.utc).isoformat(),
                     "embedding_task_id": embedding_task_id,
+                    "extraction_task_id": extraction_task_id,
                 }
 
             except SoftTimeLimitExceeded:
@@ -468,7 +520,7 @@ def process_document_task(
 
                         # Surya-CPU als Fallback
                         ocr_result = await ocr_service.process_document(
-                            image_path=document.file_path,
+                            image_path=local_file_path,
                             backend="surya",  # CPU-Backend
                             language=language,
                             detect_layout=detect_layout,
@@ -616,6 +668,18 @@ def process_document_task(
                 )
 
             finally:
+                # Cleanup temp file
+                if local_file_path and Path(local_file_path).exists():
+                    try:
+                        Path(local_file_path).unlink()
+                    except Exception as cleanup_error:
+                        logger.warning(
+                            "temp_file_cleanup_failed",
+                            task_id=task_id,
+                            file_path=local_file_path,
+                            error=str(cleanup_error)
+                        )
+
                 # GPU-Speicher immer aufräumen nach Verarbeitung
                 if torch.cuda.is_available():
                     try:
@@ -698,7 +762,7 @@ def batch_process_task(
             if batch_job_id:
                 try:
                     from app.services.batch_job_service import get_batch_job_service
-                    async with async_session_maker() as session:
+                    async with get_async_session_context() as session:
                         service = get_batch_job_service()
                         await service.update_progress(
                             db=session,
@@ -715,7 +779,7 @@ def batch_process_task(
             if not batch_job_id:
                 return False
             try:
-                async with async_session_maker() as session:
+                async with get_async_session_context() as session:
                     result = await session.execute(
                         select(BatchJob).where(BatchJob.id == UUID(batch_job_id))
                     )
@@ -848,7 +912,7 @@ def batch_process_task(
         async def complete_batch():
             try:
                 from app.services.batch_job_service import get_batch_job_service
-                async with async_session_maker() as session:
+                async with get_async_session_context() as session:
                     service = get_batch_job_service()
                     await service.complete_batch_job(
                         db=session,
@@ -951,7 +1015,7 @@ def validate_german_text_task(
         # Update document if ID provided
         if document_id:
             async def update_doc():
-                async with async_session_maker() as session:
+                async with get_async_session_context() as session:
                     await update_document_status(
                         session,
                         UUID(document_id),
@@ -1006,7 +1070,7 @@ def extract_metadata_task(
     )
 
     async def extract_async() -> Dict[str, Any]:
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             # Get document
             result = await session.execute(
                 select(Document).where(Document.id == doc_uuid)
@@ -1081,7 +1145,7 @@ def cleanup_task(self, hours_old: int = 24) -> Dict[str, Any]:
     )
 
     async def cleanup_async() -> Dict[str, Any]:
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             # Delete old processing jobs
             result = await session.execute(
                 delete(ProcessingJob).where(
@@ -1264,7 +1328,7 @@ def update_system_metrics(self) -> Dict[str, Any]:
         })
 
     async def store_metrics() -> Dict[str, Any]:
-        async with async_session_maker() as session:
+        async with get_async_session_context() as session:
             # Store CPU metrics
             session.add(SystemMetrics(
                 metric_type="cpu_usage",

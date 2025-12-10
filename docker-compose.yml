@@ -323,7 +323,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: ablage-worker-cpu
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo -n cpu_worker@%h -Q ocr_normal,maintenance,metadata,metrics,validation,backup,dlq
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo -n cpu_worker@%h -Q ocr_high,ocr_normal,maintenance,metadata,metrics,validation,backup,dlq
     environment:
       # Vault Configuration
       VAULT_ENABLED: ${VAULT_ENABLED:-false}

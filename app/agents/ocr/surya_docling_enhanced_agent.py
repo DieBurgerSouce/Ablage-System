@@ -211,7 +211,7 @@ class SuryaDoclingEnhancedAgent(OCRAgent):
 
         logger.info("Lade Surya 0.17.0 Modelle...")
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._load_surya_models_sync)
 
         self._surya_models_loaded = True
@@ -243,7 +243,7 @@ class SuryaDoclingEnhancedAgent(OCRAgent):
 
     async def _load_images(self, document_path: Path) -> List[Image.Image]:
         """Lade Dokument als Bilder."""
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._load_images_sync, document_path)
 
     def _load_images_sync(self, document_path: Path) -> List[Image.Image]:
@@ -272,7 +272,7 @@ class SuryaDoclingEnhancedAgent(OCRAgent):
         results = []
 
         for idx, image in enumerate(images):
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             page_result = await loop.run_in_executor(
                 None, self._process_single_image, image, language
             )

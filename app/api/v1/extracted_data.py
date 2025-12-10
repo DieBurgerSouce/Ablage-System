@@ -156,7 +156,7 @@ async def get_extracted_data(
             and_(
                 models.Document.id == document_id,
                 models.Document.owner_id == current_user.id,
-                models.Document.is_deleted == False
+                models.Document.deleted_at.is_(None)
             )
         )
     )
@@ -232,7 +232,7 @@ async def search_extracted_data(
     query = select(models.Document).where(
         and_(
             models.Document.owner_id == current_user.id,
-            models.Document.is_deleted == False,
+            models.Document.deleted_at.is_(None),
             models.Document.extracted_data.isnot(None)
         )
     )
@@ -463,7 +463,7 @@ async def list_invoices(
     query = select(models.Document).where(
         and_(
             models.Document.owner_id == current_user.id,
-            models.Document.is_deleted == False,
+            models.Document.deleted_at.is_(None),
             models.Document.extracted_data["classification"]["document_type"].astext == "invoice"
         )
     )
@@ -605,7 +605,7 @@ async def get_aggregations(
     # Basis-Query
     base_filter = and_(
         models.Document.owner_id == current_user.id,
-        models.Document.is_deleted == False,
+        models.Document.deleted_at.is_(None),
         models.Document.extracted_data.isnot(None)
     )
 
@@ -732,7 +732,7 @@ async def get_document_type_stats(
     query = select(models.Document).where(
         and_(
             models.Document.owner_id == current_user.id,
-            models.Document.is_deleted == False,
+            models.Document.deleted_at.is_(None),
             models.Document.extracted_data.isnot(None)
         )
     )
@@ -766,7 +766,7 @@ async def _get_documents_for_export(
     query = select(models.Document).where(
         and_(
             models.Document.owner_id == user_id,
-            models.Document.is_deleted == False,
+            models.Document.deleted_at.is_(None),
             models.Document.extracted_data.isnot(None)
         )
     )

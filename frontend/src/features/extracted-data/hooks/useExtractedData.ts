@@ -2,7 +2,7 @@
  * TanStack Query Hooks fuer Strukturierte Dokumenten-Extraktion.
  */
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { extractedDataApi } from "../api/extracted-data-api";
 import type {
     ExtractedDataSearchParams,

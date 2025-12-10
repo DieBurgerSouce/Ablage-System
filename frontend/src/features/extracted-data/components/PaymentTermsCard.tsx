@@ -7,7 +7,7 @@
  * - Rot: Skonto abgelaufen
  */
 
-import { Clock, AlertTriangle, CheckCircle, BadgePercent } from "lucide-react";
+import { Clock, AlertTriangle, BadgePercent } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate } from "./CopyableField";

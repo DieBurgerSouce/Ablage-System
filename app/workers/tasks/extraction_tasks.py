@@ -110,13 +110,14 @@ async def _async_reprocess_all(
 
     extraction_service = get_structured_extraction_service()
 
-    async with async_session_maker() as db:
+    from app.db.session import get_async_session_context
+    async with get_async_session_context() as db:
         # Basis-Query: Alle Dokumente mit OCR-Text
         query = select(Document).where(
             and_(
                 Document.is_deleted == False,
-                Document.ocr_text.isnot(None),
-                Document.ocr_text != "",
+                Document.extracted_text.isnot(None),
+                Document.extracted_text != "",
             )
         )
 
@@ -194,7 +195,7 @@ async def _async_reprocess_all(
 
                     # Strukturierte Extraktion durchfuehren (mit Sprache fuer Uebersetzung)
                     extraction_result = await extraction_service.extract(
-                        doc.ocr_text,
+                        doc.extracted_text,
                         document_id=str(doc.id),
                         detected_language=detected_language,
                     )
@@ -296,10 +297,12 @@ async def _async_reprocess_single(document_id: str) -> Dict[str, Any]:
     from app.services.structured_extraction_service import (
         get_structured_extraction_service,
     )
+    from app.db.session import get_async_session_context
 
     extraction_service = get_structured_extraction_service()
 
-    async with async_session_maker() as db:
+    # Use get_async_session_context to avoid event loop issues
+    async with get_async_session_context() as db:
         # Dokument laden
         result = await db.execute(
             select(Document).where(Document.id == UUID(document_id))
@@ -313,7 +316,7 @@ async def _async_reprocess_single(document_id: str) -> Dict[str, Any]:
                 "error": "Dokument nicht gefunden",
             }
 
-        if not document.ocr_text:
+        if not document.extracted_text:
             return {
                 "success": False,
                 "document_id": document_id,
@@ -326,7 +329,7 @@ async def _async_reprocess_single(document_id: str) -> Dict[str, Any]:
 
             # Strukturierte Extraktion (mit Sprache fuer Uebersetzung)
             extraction_result = await extraction_service.extract(
-                document.ocr_text,
+                document.extracted_text,
                 document_id=document_id,
                 detected_language=detected_language,
             )
@@ -359,7 +362,7 @@ async def _async_reprocess_single(document_id: str) -> Dict[str, Any]:
                     "document_type": document.document_type,
                     "confidence": extraction_result.classification.confidence,
                     "fields_extracted": fields_count,
-                    "needs_review": extraction_result.needs_review,
+                    "needs_review": getattr(extraction_result, "needs_review", False),
                 }
             else:
                 return {
@@ -444,7 +447,8 @@ def generate_extraction_stats() -> Dict[str, Any]:
 
 async def _async_generate_stats() -> Dict[str, Any]:
     """Async Implementation fuer Stats-Generierung."""
-    async with async_session_maker() as db:
+    from app.db.session import get_async_session_context
+    async with get_async_session_context() as db:
         # Gesamt-Dokumente
         total_result = await db.execute(
             select(func.count()).select_from(Document).where(
