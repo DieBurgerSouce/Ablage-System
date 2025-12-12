@@ -44,6 +44,7 @@ class ExtractedIdentifier:
     position_start: int
     position_end: int
     context: str  # Umgebender Text
+    country_code: Optional[str] = None  # ISO 3166-1 Alpha-2 (z.B. "DE", "NL", "AT")
 
 
 @dataclass
@@ -102,25 +103,97 @@ class EntityMatchResult:
 class GermanPatterns:
     """Regex-Muster fuer deutsche Geschaeftsdokumente."""
 
-    # USt-IdNr: DE gefolgt von genau 9 Ziffern
+    # USt-IdNr: DE gefolgt von genau 9 Ziffern (Legacy, nur DE)
     VAT_ID = re.compile(
         r'\b(DE\s?[0-9]{3}\s?[0-9]{3}\s?[0-9]{3})\b',
         re.IGNORECASE
     )
 
-    # IBAN: DE + 2 Prüfziffern + 18 Ziffern (mit optionalen Leerzeichen)
+    # EU USt-IdNr: Alle EU-Mitgliedstaaten
+    # Formate: AT + U + 8 Ziffern, BE + 10 Ziffern, NL + 9 Zeichen + B + 2 Zeichen, etc.
+    EU_VAT_ID = re.compile(
+        r'\b(?P<country>AT|BE|BG|CY|CZ|DK|EE|FI|FR|GR|HR|HU|IE|IT|LT|LU|LV|MT|NL|PL|PT|RO|SE|SI|SK|DE)'
+        r'(?P<number>[A-Z0-9]{8,12})\b',
+        re.IGNORECASE
+    )
+
+    # Spezifischere Patterns fuer haeufige Laender (hoehere Praezision)
+    # WICHTIG: Mit optionalen Leerzeichen fuer OCR-Toleranz!
+    VAT_ID_NL = re.compile(
+        r'\b(NL\s?[0-9]{9}\s?B\s?[0-9]{2})\b',  # NL + 9 Ziffern + B + 2 Ziffern (mit optionalen Leerzeichen)
+        re.IGNORECASE
+    )
+
+    VAT_ID_AT = re.compile(
+        r'\b(ATU[0-9]{8})\b',  # AT + U + 8 Ziffern
+        re.IGNORECASE
+    )
+
+    VAT_ID_BE = re.compile(
+        r'\b(BE[01][0-9]{9})\b',  # BE + 0 oder 1 + 9 Ziffern
+        re.IGNORECASE
+    )
+
+    # =========================================================================
+    # EU-WEITE IBAN/BIC PATTERNS (KRITISCH!)
+    # =========================================================================
+    # EU IBAN - Alle Laender (ersetzt DE-only Pattern)
+    # Format: 2 Buchstaben Laendercode + 2 Pruefziffern + bis zu 30 alphanumerische Zeichen
+    # Mit optionalen Leerzeichen zwischen 4er-Gruppen
+    EU_IBAN = re.compile(
+        r'\b([A-Z]{2}\s?[0-9]{2}\s?(?:[A-Z0-9]{4}\s?){2,7}[A-Z0-9]{0,2})\b',
+        re.IGNORECASE
+    )
+
+    # Legacy: DE-only IBAN (fuer Rueckwaertskompatibilitaet)
     IBAN = re.compile(
         r'\b(DE\s?[0-9]{2}[\s]?(?:[0-9]{4}[\s]?){4}[0-9]{2})\b',
         re.IGNORECASE
     )
 
-    # Kürzere IBAN-Variante für edge cases
+    # Kürzere IBAN-Variante für edge cases (DE-only)
     IBAN_SHORT = re.compile(
         r'\b(DE[0-9]{20})\b',
         re.IGNORECASE
     )
 
-    # BIC/SWIFT Code
+    # IBAN-Laengen pro Land (ohne Leerzeichen)
+    IBAN_LENGTHS: Dict[str, int] = {
+        'DE': 22,  # Deutschland
+        'NL': 18,  # Niederlande
+        'AT': 20,  # Oesterreich
+        'BE': 16,  # Belgien
+        'FR': 27,  # Frankreich
+        'IT': 27,  # Italien
+        'ES': 24,  # Spanien
+        'CH': 21,  # Schweiz
+        'PL': 28,  # Polen
+        'CZ': 24,  # Tschechien
+        'GB': 22,  # Grossbritannien
+        'LU': 20,  # Luxemburg
+        'DK': 18,  # Daenemark
+        'SE': 24,  # Schweden
+        'NO': 15,  # Norwegen
+        'FI': 18,  # Finnland
+        'PT': 25,  # Portugal
+        'GR': 27,  # Griechenland
+        'IE': 22,  # Irland
+        'HU': 28,  # Ungarn
+        'SK': 24,  # Slowakei
+        'SI': 19,  # Slowenien
+        'HR': 21,  # Kroatien
+        'RO': 24,  # Rumaenien
+        'BG': 22,  # Bulgarien
+    }
+
+    # EU BIC/SWIFT - Alle Laender (ersetzt DE-only Pattern)
+    # Format: 4 Buchstaben Bank + 2 Buchstaben Land + 2 alphanumerische Ort + optional 3 alphanumerische Filiale
+    EU_BIC = re.compile(
+        r'\b([A-Z]{4}\s?[A-Z]{2}\s?[A-Z0-9]{2}(?:\s?[A-Z0-9]{3})?)\b',
+        re.IGNORECASE
+    )
+
+    # Legacy: DE-only BIC (fuer Rueckwaertskompatibilitaet)
     BIC = re.compile(
         r'\b([A-Z]{4}DE[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b'
     )
@@ -362,6 +435,7 @@ class EntityExtractionService:
         # 1. Identifiers extrahieren
         result.identifiers.extend(self._extract_vat_ids(text))
         result.identifiers.extend(self._extract_ibans(text))
+        result.identifiers.extend(self._extract_bics(text))  # NEU: BIC/SWIFT Extraktion
         result.identifiers.extend(self._extract_tax_numbers(text))
         result.identifiers.extend(self._extract_trade_registers(text))
 
@@ -400,15 +474,39 @@ class EntityExtractionService:
         return result
 
     def _extract_vat_ids(self, text: str) -> List[ExtractedIdentifier]:
-        """Extrahiert deutsche USt-IdNr."""
-        results = []
+        """Extrahiert EU USt-IdNr (alle Mitgliedstaaten).
 
-        for match in self.patterns.VAT_ID.finditer(text):
-            raw_value = match.group(1)
-            normalized = re.sub(r'\s', '', raw_value).upper()
+        Unterstuetzt:
+        - DE: DE + 9 Ziffern (z.B. DE200053646)
+        - NL: NL + 9 Ziffern + B + 2 Ziffern (z.B. NL820594829B01)
+        - AT: AT + U + 8 Ziffern (z.B. ATU12345678)
+        - BE: BE + 10 Ziffern (z.B. BE0123456789)
+        - Alle anderen EU-Laender: Laendercode + 8-12 alphanumerische Zeichen
+        """
+        results: List[ExtractedIdentifier] = []
+        seen_vat_ids: Set[str] = set()
 
-            # Validierung: Muss genau 11 Zeichen haben (DE + 9 Ziffern)
-            if len(normalized) == 11 and normalized.startswith('DE'):
+        # 1. Zuerst spezifische Patterns mit hoher Praezision (NL, AT, BE)
+        specific_patterns = [
+            (self.patterns.VAT_ID_NL, "NL", 14),  # NL + 9 + B + 2 = 14
+            (self.patterns.VAT_ID_AT, "AT", 11),  # AT + U + 8 = 11
+            (self.patterns.VAT_ID_BE, "BE", 12),  # BE + 10 = 12
+            (self.patterns.VAT_ID, "DE", 11),     # DE + 9 = 11
+        ]
+
+        for pattern, country, expected_len in specific_patterns:
+            for match in pattern.finditer(text):
+                raw_value = match.group(1) if match.lastindex else match.group(0)
+                normalized = re.sub(r'\s', '', raw_value).upper()
+
+                if normalized in seen_vat_ids:
+                    continue
+
+                # Laengen-Validierung
+                if len(normalized) != expected_len:
+                    continue
+
+                seen_vat_ids.add(normalized)
                 context = self._get_context(text, match.start(), match.end())
                 confidence = self._calculate_vat_confidence(normalized, context)
 
@@ -420,41 +518,262 @@ class EntityExtractionService:
                     position_start=match.start(),
                     position_end=match.end(),
                     context=context,
+                    country_code=country,
                 ))
                 self._extraction_stats["vat_ids_found"] += 1
+
+        # 2. Dann generisches EU-Pattern fuer andere Laender
+        for match in self.patterns.EU_VAT_ID.finditer(text):
+            country = match.group('country').upper()
+            number = match.group('number').upper()
+            normalized = f"{country}{number}"
+
+            if normalized in seen_vat_ids:
+                continue
+
+            # Ueberspringe bereits durch spezifische Patterns erfasste
+            if country in ("DE", "NL", "AT", "BE"):
+                continue
+
+            # Minimale Laengenvalidierung (Laendercode + mindestens 8 Zeichen)
+            if len(normalized) < 10:
+                continue
+
+            seen_vat_ids.add(normalized)
+            context = self._get_context(text, match.start(), match.end())
+            confidence = self._calculate_vat_confidence(normalized, context)
+
+            results.append(ExtractedIdentifier(
+                identifier_type="vat_id",
+                value=match.group(0),
+                normalized_value=normalized,
+                confidence=confidence,
+                position_start=match.start(),
+                position_end=match.end(),
+                context=context,
+                country_code=country,
+            ))
+            self._extraction_stats["vat_ids_found"] += 1
+
+        # Sortiere nach Position im Text (fuer spaetere Proximity-Analyse)
+        results.sort(key=lambda x: x.position_start)
 
         return results
 
     def _extract_ibans(self, text: str) -> List[ExtractedIdentifier]:
-        """Extrahiert deutsche IBANs mit Pruefziffern-Validierung."""
-        results = []
+        """Extrahiert EU-weite IBANs mit Pruefziffern-Validierung.
+
+        Unterstuetzt alle EU-Laender mit laenderspezifischer Laengenvalidierung:
+        - DE: 22 Zeichen (z.B. DE89370400440532013000)
+        - NL: 18 Zeichen (z.B. NL51INGB0658010921)
+        - AT: 20 Zeichen (z.B. AT611904300234573201)
+        - BE: 16 Zeichen (z.B. BE68539007547034)
+        - etc.
+        """
+        results: List[ExtractedIdentifier] = []
         seen_ibans: Set[str] = set()
 
-        # Beide Patterns probieren
-        for pattern in [self.patterns.IBAN, self.patterns.IBAN_SHORT]:
-            for match in pattern.finditer(text):
-                raw_value = match.group(1)
-                normalized = re.sub(r'\s', '', raw_value).upper()
+        # EU-weites IBAN Pattern (ersetzt DE-only)
+        for match in self.patterns.EU_IBAN.finditer(text):
+            raw_value = match.group(1)
+            normalized = re.sub(r'\s', '', raw_value).upper()
 
-                # Duplikate vermeiden
-                if normalized in seen_ibans:
+            # Duplikate vermeiden
+            if normalized in seen_ibans:
+                continue
+
+            # Laendercode extrahieren
+            if len(normalized) < 2:
+                continue
+            country = normalized[:2]
+
+            # Laenderspezifische Laengenvalidierung
+            expected_len = self.patterns.IBAN_LENGTHS.get(country)
+            if expected_len:
+                if len(normalized) != expected_len:
+                    # Laenge stimmt nicht - ueberspringe
+                    logger.debug(
+                        "iban_length_mismatch",
+                        country=country,
+                        expected=expected_len,
+                        actual=len(normalized),
+                        value=normalized[:8] + "***",
+                    )
                     continue
-                seen_ibans.add(normalized)
+            else:
+                # Unbekanntes Land - mindestens 15 Zeichen erforderlich
+                if len(normalized) < 15:
+                    continue
 
-                # Validierung: 22 Zeichen, IBAN-Pruefziffer
-                if len(normalized) == 22 and self._validate_iban(normalized):
-                    context = self._get_context(text, match.start(), match.end())
+            # IBAN-Pruefziffer validieren
+            if not self._validate_iban(normalized):
+                logger.debug(
+                    "iban_checksum_invalid",
+                    country=country,
+                    value=normalized[:8] + "***",
+                )
+                continue
 
-                    results.append(ExtractedIdentifier(
-                        identifier_type="iban",
-                        value=raw_value,
-                        normalized_value=normalized,
-                        confidence=0.99,  # IBAN mit gültiger Prüfziffer = sehr hohe Konfidenz
-                        position_start=match.start(),
-                        position_end=match.end(),
-                        context=context,
-                    ))
-                    self._extraction_stats["ibans_found"] += 1
+            seen_ibans.add(normalized)
+            context = self._get_context(text, match.start(), match.end())
+
+            results.append(ExtractedIdentifier(
+                identifier_type="iban",
+                value=raw_value,
+                normalized_value=normalized,
+                confidence=0.99,  # IBAN mit gueltiger Pruefziffer = sehr hohe Konfidenz
+                position_start=match.start(),
+                position_end=match.end(),
+                context=context,
+                country_code=country,  # NEU: Laendercode fuer spaetere Attribution
+            ))
+            self._extraction_stats["ibans_found"] += 1
+            logger.debug(
+                "iban_extracted",
+                country=country,
+                value=normalized[:8] + "***",
+            )
+
+        return results
+
+    def _extract_bics(self, text: str) -> List[ExtractedIdentifier]:
+        """Extrahiert BIC/SWIFT Codes (EU-weit).
+
+        BIC-Format: 4 Buchstaben Bank + 2 Buchstaben Land + 2 Zeichen Ort + optional 3 Zeichen Filiale
+        Beispiele:
+        - INGBNL2A (8 Zeichen) - ING Bank Niederlande
+        - DEUTDEFF (8 Zeichen) - Deutsche Bank Deutschland
+        - COBADEFFXXX (11 Zeichen) - Commerzbank Deutschland mit Filiale
+        """
+        results: List[ExtractedIdentifier] = []
+        seen_bics: Set[str] = set()
+
+        # Bekannte EU-Laendercodes fuer BIC-Validierung
+        valid_country_codes = {
+            'DE', 'NL', 'AT', 'BE', 'FR', 'IT', 'ES', 'PT', 'CH', 'GB',
+            'IE', 'LU', 'DK', 'SE', 'FI', 'NO', 'PL', 'CZ', 'HU', 'SK',
+            'SI', 'HR', 'RO', 'BG', 'EE', 'LV', 'LT', 'CY', 'MT', 'GR',
+        }
+
+        for match in self.patterns.EU_BIC.finditer(text):
+            raw_value = match.group(1)
+            # Leerzeichen entfernen und normalisieren (OCR kann "ING BNL 2A" liefern)
+            normalized = re.sub(r'\s', '', raw_value).upper()
+
+            # Duplikate vermeiden
+            if normalized in seen_bics:
+                continue
+
+            # Laengenvalidierung: 8 oder 11 Zeichen (nach Entfernung von Leerzeichen)
+            if len(normalized) not in (8, 11):
+                continue
+
+            # Laendercode aus BIC extrahieren (Zeichen 5-6)
+            country = normalized[4:6]
+
+            # STRENGE Validierung: Laendercode muss bekannter EU-Code sein
+            if country not in valid_country_codes:
+                continue
+
+            # Kontextbasierte Validierung
+            context = self._get_context(text, match.start(), match.end())
+
+            # NUR akzeptieren wenn BIC/SWIFT/Bank-Kontext vorhanden
+            # (Verhindert False Positives wie "BAKKENEN", "DEVENTER" etc.)
+            if not re.search(r'bic|swift|bank', context, re.IGNORECASE):
+                # Ohne Kontext nur akzeptieren wenn eindeutig ein BIC-Pattern
+                # (z.B. endet mit Zahl oder typische Bank-Kuerzel)
+                if not re.match(r'^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}[A-Z0-9]{0,3}$', normalized):
+                    continue
+                # Zusaetzlich: Muss mindestens eine Ziffer enthalten (typisch fuer BIC)
+                if not any(c.isdigit() for c in normalized):
+                    continue
+
+            # Confidence basierend auf Kontext
+            confidence = 0.85
+            if re.search(r'bic|swift', context, re.IGNORECASE):
+                confidence = 0.98
+            elif re.search(r'bank', context, re.IGNORECASE):
+                confidence = 0.92
+
+            seen_bics.add(normalized)
+
+            results.append(ExtractedIdentifier(
+                identifier_type="bic",
+                value=raw_value,
+                normalized_value=normalized,
+                confidence=confidence,
+                position_start=match.start(),
+                position_end=match.end(),
+                context=context,
+                country_code=country,
+            ))
+            logger.debug(
+                "bic_extracted",
+                country=country,
+                value=normalized,
+            )
+
+        # ZUSAETZLICH: Explizit gelabelte BICs suchen (z.B. "swift: ING BNL 2A")
+        # Diese haben oft falsche Leerzeichen durch OCR
+        # Pattern: swift/bic + optional : + lockere Zeichenkette (wird spaeter validiert)
+        # Stoppt bei Newline oder wenn zu viele Zeichen
+        labeled_bic_pattern = re.compile(
+            r'(?:swift|bic)\s*[:\.]?\s*([A-Z][A-Z0-9\s]{6,15})',
+            re.IGNORECASE
+        )
+        for match in labeled_bic_pattern.finditer(text):
+            raw_value = match.group(1).strip()
+            # Alle Leerzeichen entfernen
+            normalized = re.sub(r'\s', '', raw_value).upper()
+
+            # Wenn zu lang, versuche auf 8 zu kuerzen (Standard-BIC)
+            # 8 chars ist der Standard, 11 nur mit Branch-Code
+            if len(normalized) > 11:
+                candidate_8 = normalized[:8]
+                # Pruefe ob 8-char Version validen Laendercode hat
+                if candidate_8[4:6] in valid_country_codes:
+                    normalized = candidate_8
+                else:
+                    # Fallback: 11 chars versuchen
+                    candidate_11 = normalized[:11]
+                    if candidate_11[4:6] in valid_country_codes:
+                        normalized = candidate_11
+                    else:
+                        continue
+
+            # Muss 8 oder 11 Zeichen haben
+            if len(normalized) not in (8, 11):
+                continue
+
+            # Duplikate vermeiden
+            if normalized in seen_bics:
+                continue
+
+            # Laendercode validieren (Position 5-6)
+            country = normalized[4:6]
+            if country not in valid_country_codes:
+                continue
+
+            seen_bics.add(normalized)
+            context = self._get_context(text, match.start(), match.end())
+
+            results.append(ExtractedIdentifier(
+                identifier_type="bic",
+                value=raw_value,
+                normalized_value=normalized,
+                confidence=0.98,  # Hohe Konfidenz weil explizit gelabelt
+                position_start=match.start(),
+                position_end=match.end(),
+                context=context,
+                country_code=country,
+            ))
+            logger.debug(
+                "bic_extracted_from_label",
+                country=country,
+                value=normalized,
+                label_type="swift/bic",
+            )
 
         return results
 

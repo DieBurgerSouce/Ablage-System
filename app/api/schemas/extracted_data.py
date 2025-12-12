@@ -47,6 +47,21 @@ class Currency(str, Enum):
     CHF = "CHF"
 
 
+class AmountSource(str, Enum):
+    """Quelle eines extrahierten Betrags fuer Audit-Trail."""
+    DOCUMENT = "document"      # Direkt aus Rechnung extrahiert
+    COMPUTED = "computed"      # Berechnet (z.B. gross = net + vat)
+    NOT_FOUND = "not_found"    # Nicht gefunden
+
+
+class ValidationStatus(str, Enum):
+    """Status einer Validierungspruefung."""
+    VALID = "valid"
+    INVALID = "invalid"
+    SKIPPED = "skipped"        # Nicht durchgefuehrt (fehlende Daten)
+    PENDING = "pending"        # Async-Pruefung ausstehend (z.B. VIES)
+
+
 # =============================================================================
 # BASISMODELLE
 # =============================================================================
@@ -116,6 +131,48 @@ class ExtractedBankAccount(BaseModel):
         return v.replace(" ", "").upper()
 
 
+class ExtractionValidations(BaseModel):
+    """
+    Strukturierte Validierungsergebnisse fuer Audit und Qualitaetssicherung.
+
+    Enthaelt Pruefungsergebnisse fuer:
+    - IBAN-Checksum (MOD-97)
+    - IBAN-Land vs. Absender-Land
+    - USt-IdNr-Land vs. Absender-Land
+    - Summen-Konsistenz (Line Items vs. Netto)
+    - Field-Level Confidence
+    """
+    # === IBAN-Validierung ===
+    iban_checksum_valid: Optional[bool] = Field(
+        None, description="True wenn IBAN MOD-97 Checksum korrekt"
+    )
+    iban_country_match: Optional[bool] = Field(
+        None, description="True wenn IBAN-Land = Absender-Land"
+    )
+
+    # === USt-IdNr-Validierung ===
+    vat_country_match: Optional[bool] = Field(
+        None, description="True wenn USt-IdNr-Land = Absender-Land"
+    )
+    vies_vat_valid: Optional[bool] = Field(
+        None, description="True wenn VIES-Abfrage erfolgreich (null = nicht geprueft)"
+    )
+
+    # === Summen-Konsistenz ===
+    sums_match: Optional[bool] = Field(
+        None, description="True wenn Summe Line Items ~ Nettobetrag"
+    )
+    sums_difference: Optional[Decimal] = Field(
+        None, description="Differenz falls sums_match=False"
+    )
+
+    # === Field-Level Confidence ===
+    field_confidence: Dict[str, float] = Field(
+        default_factory=dict,
+        description="Konfidenz pro extrahiertem Feld (0.0-1.0)"
+    )
+
+
 class ExtractedLineItem(BaseModel):
     """
     Eine Rechnungs-/Bestellposition.
@@ -176,10 +233,19 @@ class ExtractedInvoiceData(BaseModel):
     order_number: Optional[str] = Field(None, description="Bestellnummer / Auftragsnummer")
     customer_number: Optional[str] = Field(None, description="Kundennummer")
     delivery_note_number: Optional[str] = Field(None, description="Lieferscheinnummer")
+    supplier_number: Optional[str] = Field(
+        None, description="Lieferantennummer/Kreditorennummer fuer ERP-Integration"
+    )
 
     # === Daten ===
     invoice_date: Optional[date] = Field(None, description="Rechnungsdatum")
+    invoice_date_raw: Optional[str] = Field(
+        None, description="Rechnungsdatum Original-String (z.B. '06.04.2020')"
+    )
     due_date: Optional[date] = Field(None, description="Faelligkeitsdatum")
+    due_date_raw: Optional[str] = Field(
+        None, description="Faelligkeitsdatum Original-String"
+    )
     service_period_start: Optional[date] = Field(None, description="Leistungszeitraum Beginn")
     service_period_end: Optional[date] = Field(None, description="Leistungszeitraum Ende")
 
@@ -196,18 +262,61 @@ class ExtractedInvoiceData(BaseModel):
     recipient: Optional[ExtractedAddress] = Field(None, description="Empfaenger / Rechnungsadresse")
     recipient_vat_id: Optional[str] = Field(None, description="USt-IdNr des Empfaengers")
 
+    # === Zusaetzliche Lieferanteninformationen ===
+    sender_tax_number_alternative: Optional[str] = Field(
+        None, description="Alternative Steuernummer des Absenders (z.B. NL-Nummer 85xxxxxx)"
+    )
+
+    # === Lieferadresse (falls abweichend von Rechnungsadresse) ===
+    delivery_address: Optional[ExtractedAddress] = Field(
+        None, description="Lieferadresse (falls abweichend von Rechnungsadresse)"
+    )
+
+    # === Lieferbedingungen ===
+    delivery_terms: Optional[str] = Field(
+        None, description="Lieferbedingungen/Incoterms (EXW, FOB, CIF, DAP, DDP)"
+    )
+
+    # === Steuerbefreiung bei innergemeinschaftlicher Lieferung ===
+    reverse_charge_note: Optional[str] = Field(
+        None, description="Hinweis auf Steuerbefreiung (z.B. 'Intra-Community supply - VAT reverse charged')"
+    )
+    is_reverse_charge: bool = Field(
+        False, description="True wenn innergemeinschaftliche Lieferung mit Reverse Charge"
+    )
+    vat_exemption_reason: Optional[str] = Field(
+        None, description="Grund fuer Steuerbefreiung (z.B. 'Intra-Community supply', 'Reverse Charge')"
+    )
+    intra_community_supply: bool = Field(
+        False, description="True bei innergemeinschaftlicher Lieferung (EU-Grenzueberschreitend)"
+    )
+
     # === Betraege ===
     net_amount: Optional[Decimal] = Field(None, ge=0, description="Nettobetrag")
     vat_rate: Optional[Decimal] = Field(None, ge=0, le=100, description="MwSt-Satz in % (7, 19)")
     vat_amount: Optional[Decimal] = Field(None, ge=0, description="MwSt-Betrag")
+    vat_amount_source: AmountSource = Field(
+        AmountSource.NOT_FOUND, description="Quelle des MwSt-Betrags"
+    )
     gross_amount: Optional[Decimal] = Field(None, ge=0, description="Bruttobetrag")
+    gross_amount_source: AmountSource = Field(
+        AmountSource.NOT_FOUND, description="Quelle des Bruttobetrags"
+    )
     currency: Currency = Field(Currency.EUR, description="Waehrung")
+    vat_reason: Optional[str] = Field(
+        None, description="Grund fuer MwSt-Hoehe (z.B. 'intra-community supply / reverse charge')"
+    )
 
     # === Positionen ===
     line_items: List[ExtractedLineItem] = Field(default_factory=list, description="Rechnungspositionen")
 
     # === Zahlungsinformationen (KRITISCH für Buchhaltung!) ===
     payment_terms: Optional[str] = Field(None, description="Zahlungsbedingungen (z.B. '30 Tage netto')")
+    payment_terms_days: Optional[int] = Field(
+        None,
+        ge=0,
+        description="Zahlungsfrist in Tagen (strukturiert fuer Berechnungen)"
+    )
     payment_method: Optional[str] = Field(None, description="Zahlungsart (Ueberweisung, Lastschrift, etc.)")
 
     # Skonto-Daten
@@ -224,6 +333,17 @@ class ExtractedInvoiceData(BaseModel):
     extraction_confidence: float = Field(0.0, ge=0.0, le=1.0, description="Extraktions-Konfidenz (0-1)")
     needs_review: bool = Field(False, description="Manuelle Pruefung erforderlich")
     extraction_warnings: List[str] = Field(default_factory=list, description="Warnungen bei der Extraktion")
+
+    # === OCR Metadaten ===
+    page_count: Optional[int] = Field(None, ge=1, description="Anzahl der Seiten im Dokument")
+    ocr_confidence_score: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="Gesamtkonfidenz der OCR-Erkennung"
+    )
+
+    # === Validierungsergebnisse ===
+    validations: Optional[ExtractionValidations] = Field(
+        None, description="Strukturierte Validierungsergebnisse"
+    )
 
     @model_validator(mode="after")
     def validate_amounts(self) -> "ExtractedInvoiceData":
@@ -391,6 +511,9 @@ class ExtractedDocumentData(BaseModel):
     extraction_version: str = Field("1.0.0", description="Version des Extraktionsalgorithmus")
     extracted_at: Optional[str] = Field(None, description="Zeitstempel der Extraktion (ISO 8601)")
     overall_confidence: float = Field(0.0, ge=0.0, le=1.0, description="Gesamtkonfidenz")
+    document_hash: Optional[str] = Field(
+        None, description="SHA256 Hash des Originaldokuments (sha256:...)"
+    )
 
     # === Uebersetzungs-Metadaten (NEU fuer Mehrsprachigkeit) ===
     original_language: Optional[str] = Field(
@@ -422,10 +545,13 @@ __all__ = [
     # Enums
     "ExtractedDocumentType",
     "Currency",
+    "AmountSource",
+    "ValidationStatus",
     # Basismodelle
     "ExtractedAddress",
     "ExtractedBankAccount",
     "ExtractedLineItem",
+    "ExtractionValidations",
     # Dokumenttypen
     "ExtractedInvoiceData",
     "ExtractedOrderData",

@@ -2,9 +2,10 @@
  * InvoiceDataDisplay - Zeigt alle extrahierten Rechnungsdaten.
  */
 
-import { Calendar, Hash, CreditCard, Building } from "lucide-react";
+import { Calendar, Hash, CreditCard, Building, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import {
     CopyableField,
     formatCurrency,
@@ -65,7 +66,7 @@ export function InvoiceDataDisplay({ invoice, className }: InvoiceDataDisplayPro
                     </dl>
 
                     {/* Zusaetzliche Referenzen */}
-                    {(invoice.order_number || invoice.delivery_note_number) && (
+                    {(invoice.order_number || invoice.delivery_note_number || invoice.customer_number || invoice.supplier_number) && (
                         <>
                             <Separator className="my-4" />
                             <dl className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -79,6 +80,18 @@ export function InvoiceDataDisplay({ invoice, className }: InvoiceDataDisplayPro
                                     <CopyableField
                                         label="Lieferscheinnummer"
                                         value={invoice.delivery_note_number}
+                                    />
+                                )}
+                                {invoice.customer_number && (
+                                    <CopyableField
+                                        label="Kundennummer"
+                                        value={invoice.customer_number}
+                                    />
+                                )}
+                                {invoice.supplier_number && (
+                                    <CopyableField
+                                        label="Lieferantennummer"
+                                        value={invoice.supplier_number}
                                     />
                                 )}
                             </dl>
@@ -150,10 +163,12 @@ export function InvoiceDataDisplay({ invoice, className }: InvoiceDataDisplayPro
 
             {/* Zahlungsbedingungen */}
             {(invoice.payment_terms ||
+                invoice.payment_terms_days ||
                 invoice.discount_percent ||
                 invoice.due_date) && (
                 <PaymentTermsCard
                     paymentTerms={invoice.payment_terms}
+                    paymentTermsDays={invoice.payment_terms_days}
                     discountPercent={invoice.discount_percent}
                     discountDays={invoice.discount_days}
                     discountAmount={invoice.discount_amount}
@@ -230,6 +245,44 @@ export function InvoiceDataDisplay({ invoice, className }: InvoiceDataDisplayPro
                                 />
                             )}
                         </dl>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Reverse Charge / Steuerbefreiung */}
+            {(invoice.is_reverse_charge || invoice.vat_exemption_reason || invoice.intra_community_supply) && (
+                <Card className="mb-4">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-amber-500" />
+                            Steuerbefreiung
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        {invoice.is_reverse_charge && (
+                            <div className="flex items-center gap-2">
+                                <Badge variant="destructive">Reverse Charge</Badge>
+                                <span className="text-sm text-muted-foreground">
+                                    Steuerschuldnerschaft beim Leistungsempfaenger
+                                </span>
+                            </div>
+                        )}
+                        {invoice.intra_community_supply && (
+                            <div className="flex items-center gap-2">
+                                <Badge variant="outline">Innergemeinschaftliche Lieferung</Badge>
+                            </div>
+                        )}
+                        {invoice.vat_exemption_reason && (
+                            <div className="text-sm">
+                                <span className="font-medium">Grund: </span>
+                                {invoice.vat_exemption_reason}
+                            </div>
+                        )}
+                        {invoice.reverse_charge_note && (
+                            <div className="text-xs text-muted-foreground italic border-l-2 border-amber-500 pl-2">
+                                {invoice.reverse_charge_note}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             )}

@@ -496,8 +496,9 @@ class SmartAmountExtractor:
             # "Total" was actually Net in Reverse Charge context
             result.net_amount = result.gross_amount
             result.net_confidence = result.gross_confidence
-            result.gross_amount = None
-            result.gross_confidence = 0.0
+            # Bei Reverse Charge: Brutto = Netto (nicht None!)
+            result.gross_amount = result.net_amount
+            result.gross_confidence = result.net_confidence
 
             # Explicitly set VAT to 0
             result.vat_amount = Decimal("0")
@@ -505,10 +506,10 @@ class SmartAmountExtractor:
             result.vat_confidence = 0.8
 
             result.extraction_warnings.append(
-                "Reverse Charge erkannt: Gesamtbetrag als Netto interpretiert"
+                "Reverse Charge erkannt: Brutto = Netto (MwSt entfaellt)"
             )
 
-        # Case 2: Net == Gross (both same value) - clear Gross
+        # Case 2: Net == Gross (both same value) - keep both
         elif (
             result.net_amount is not None
             and result.gross_amount is not None
@@ -516,13 +517,13 @@ class SmartAmountExtractor:
         ):
             logger.info(
                 "reverse_charge_detected",
-                case="clear_gross",
+                case="net_equals_gross",
                 net=result.net_amount,
-                gross_was=result.gross_amount,
+                gross=result.gross_amount,
             )
 
-            result.gross_amount = None
-            result.gross_confidence = 0.0
+            # Bei Reverse Charge: Brutto = Netto BEHALTEN (nicht loeschen!)
+            # result.gross_amount bleibt unveraendert
 
             # Ensure VAT is set to 0
             if result.vat_amount is None:
@@ -531,7 +532,7 @@ class SmartAmountExtractor:
             result.vat_confidence = 0.8
 
             result.extraction_warnings.append(
-                "Reverse Charge erkannt: Bruttobetrag entfällt (= Nettobetrag)"
+                "Reverse Charge erkannt: Brutto = Netto (MwSt entfaellt)"
             )
 
 

@@ -198,6 +198,7 @@ async def _async_reprocess_all(
                         doc.extracted_text,
                         document_id=str(doc.id),
                         detected_language=detected_language,
+                        page_count=getattr(doc, 'page_count', None),
                     )
 
                     if extraction_result:
@@ -332,6 +333,7 @@ async def _async_reprocess_single(document_id: str) -> Dict[str, Any]:
                 document.extracted_text,
                 document_id=document_id,
                 detected_language=detected_language,
+                page_count=getattr(document, 'page_count', None),
             )
 
             if extraction_result:

@@ -20,6 +20,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.api.schemas.extracted_data import (
+    AmountSource,
     Currency,
     DocumentClassificationResult,
     ExtractedAddress,
@@ -30,6 +31,7 @@ from app.api.schemas.extracted_data import (
     ExtractedInvoiceData,
     ExtractedLineItem,
     ExtractedOrderData,
+    ExtractionValidations,
 )
 from app.services.document_classification_service import (
     DocumentClassificationService,
@@ -276,9 +278,12 @@ class ReferencePatterns:
         re.IGNORECASE
     )
 
-    # Kundennummer - auch mit Bindestrich wie "KD-78901"
+    # Kundennummer - auch mit Bindestrich wie "KD-78901" und "Bill-to Customer No."
     CUSTOMER_NUMBER = re.compile(
-        r'(?:kunden?|kd\.?|customer)[\s\-\.:]?'
+        r'(?:'
+        r'(?:bill[- ]?to\s+)?'  # Optional "Bill-to" Prefix
+        r'(?:kunden?|kd\.?|customer)'
+        r')[\s\-\.:]?'
         r'(?:nr\.?|nummer|no\.?)[\s:\.]*'
         r'([A-Z0-9][-A-Z0-9]{2,20})',
         re.IGNORECASE
@@ -305,6 +310,16 @@ class ReferencePatterns:
         r'(?:angebot(?:s)?|offerte|quote|ang)[\s\-\.:]?'
         r'(?:nr\.?|nummer|no\.?)[\s:\.]*'
         r'([A-Z0-9][-A-Z0-9/\.]{2,25})',
+        re.IGNORECASE
+    )
+
+    # Lieferantennummer (fuer ERP-Integration: SAP, DATEV, etc.)
+    SUPPLIER_NUMBER = re.compile(
+        r'(?:'
+        r'lieferant(?:en)?|kreditor(?:en)?|supplier|vendor'
+        r')[\s\-\.:]?'
+        r'(?:nr\.?|nummer|no\.?|id)[\s:\.]*'
+        r'([A-Z0-9][-A-Z0-9]{2,20})',
         re.IGNORECASE
     )
 
@@ -365,6 +380,117 @@ class DatePatterns:
     )
 
 
+class DeliveryPatterns:
+    """Patterns fuer Lieferbedingungen und Incoterms."""
+
+    # Incoterms 2020 (alle 11 Standardterms)
+    INCOTERMS = re.compile(
+        r'\b(EXW|FCA|CPT|CIP|DAP|DPU|DDP|FAS|FOB|CFR|CIF)\b'
+        r'(?:\s+([A-Za-z][A-Za-z\s,\-]{2,50}?))?'  # Optional: Ort
+        r'(?:\s+(?:Incoterms?)?\s*(?:20\d{2})?)?',  # Optional: Jahr
+        re.IGNORECASE
+    )
+
+    # Deutsche Lieferbedingungen
+    DELIVERY_TERMS_DE = re.compile(
+        r'(?:lieferbedingung(?:en)?|lieferkonditionen?|versandbedingung(?:en)?|'
+        r'lieferung|versand)[\s:]*([^\n]{5,100})',
+        re.IGNORECASE
+    )
+
+    # Lieferadress-Labels
+    DELIVERY_ADDRESS_LABELS = re.compile(
+        r'\b(?:lieferadresse|lieferanschrift|deliver(?:y\s*)?(?:to|address)|'
+        r'ship\s*to|warenempf[aä]nger)\b',
+        re.IGNORECASE
+    )
+
+
+class ReverseChargePatterns:
+    """Patterns fuer Steuerbefreiung bei innergemeinschaftlicher Lieferung."""
+
+    # Reverse Charge / Innergemeinschaftliche Lieferung
+    REVERSE_CHARGE = re.compile(
+        r'(?:intra[- ]?community\s*supply|reverse\s*charge|'
+        r'innergemeinschaftliche\s*lieferung|steuerfreie?\s*lieferung|'
+        r'steuerbefreit(?:e)?(?:\s*(?:gem[aä][sß]|nach|lt\.?)?\s*(?:\xa7|§)?\s*4)?|'
+        r'vat\s*(?:exempt|0%?\s*reverse)|btw\s*verlegd|'
+        r'tax\s*free\s*(?:intra[- ]?eu|cross[- ]?border)|'
+        r'steuerfrei(?:e)?(?:\s*innergemeinschaftliche)?)',
+        re.IGNORECASE
+    )
+
+    # Volltext-Pattern fuer reverse_charge_note
+    REVERSE_CHARGE_FULLTEXT = re.compile(
+        r'((?:steuerbefreit(?:e)?|steuerfrei(?:e)?|vat\s*exempt|reverse\s*charge|'
+        r'innergemeinschaftliche\s*lieferung|intra[- ]?community\s*supply)'
+        r'[^\n]{0,100})',
+        re.IGNORECASE
+    )
+
+
+class CurrencyPatterns:
+    """Patterns fuer Waehrungserkennung."""
+
+    # Waehrungssymbole und -codes
+    CURRENCY = re.compile(
+        r'\b(EUR|USD|GBP|CHF|€|\$|£)\b',
+        re.IGNORECASE
+    )
+
+    # Waehrung in Kontext (z.B. "Total EUR", "Betrag in EUR")
+    CURRENCY_CONTEXT = re.compile(
+        r'(?:total|summe|betrag|amount|preis|price)\s*(EUR|USD|GBP|CHF|€)',
+        re.IGNORECASE
+    )
+
+    # Mapping von Symbolen zu ISO-Codes
+    CURRENCY_MAP = {
+        '€': 'EUR', 'EURO': 'EUR', 'EUR': 'EUR',
+        '$': 'USD', 'DOLLAR': 'USD', 'USD': 'USD',
+        '£': 'GBP', 'POUND': 'GBP', 'GBP': 'GBP',
+        'CHF': 'CHF', 'FRANKEN': 'CHF', 'SFR': 'CHF',
+    }
+
+
+# Laender-Mapping fuer VAT-Validierung (mehrsprachig)
+COUNTRY_NAME_TO_CODE = {
+    # Deutschland
+    'deutschland': 'DE', 'germany': 'DE', 'duitsland': 'DE',
+    'allemagne': 'DE', 'd': 'DE', 'de': 'DE',
+    # Niederlande
+    'niederlande': 'NL', 'netherlands': 'NL', 'nederland': 'NL',
+    'holland': 'NL', 'nl': 'NL',
+    # Oesterreich
+    'oesterreich': 'AT', 'österreich': 'AT', 'austria': 'AT',
+    'autriche': 'AT', 'oostenrijk': 'AT', 'a': 'AT', 'at': 'AT',
+    # Belgien
+    'belgien': 'BE', 'belgium': 'BE', 'belgique': 'BE',
+    'belgie': 'BE', 'b': 'BE', 'be': 'BE',
+    # Frankreich
+    'frankreich': 'FR', 'france': 'FR', 'francia': 'FR',
+    'f': 'FR', 'fr': 'FR',
+    # Italien
+    'italien': 'IT', 'italy': 'IT', 'italia': 'IT',
+    'i': 'IT', 'it': 'IT',
+    # Spanien
+    'spanien': 'ES', 'spain': 'ES', 'espana': 'ES', 'españa': 'ES',
+    'e': 'ES', 'es': 'ES',
+    # Polen
+    'polen': 'PL', 'poland': 'PL', 'polska': 'PL', 'pl': 'PL',
+    # Schweiz
+    'schweiz': 'CH', 'switzerland': 'CH', 'suisse': 'CH',
+    'svizzera': 'CH', 'ch': 'CH',
+    # Grossbritannien
+    'grossbritannien': 'GB', 'großbritannien': 'GB', 'united kingdom': 'GB',
+    'uk': 'GB', 'gb': 'GB', 'england': 'GB',
+    # Tschechien
+    'tschechien': 'CZ', 'czech republic': 'CZ', 'czechia': 'CZ', 'cz': 'CZ',
+    # Luxemburg
+    'luxemburg': 'LU', 'luxembourg': 'LU', 'l': 'LU', 'lu': 'LU',
+}
+
+
 # =============================================================================
 # STRUCTURED EXTRACTION SERVICE
 # =============================================================================
@@ -398,6 +524,7 @@ class StructuredExtractionService:
         document_id: Optional[str] = None,
         tables: Optional[List[Any]] = None,
         detected_language: Optional[str] = None,
+        page_count: Optional[int] = None,
     ) -> ExtractedDocumentData:
         """
         Extrahiert strukturierte Daten aus OCR-Text.
@@ -470,7 +597,7 @@ class StructuredExtractionService:
         # 4. Typspezifische Extraktion (mit uebersetztem Text)
         if classification.document_type == ExtractedDocumentType.INVOICE:
             result.invoice = await self._extract_invoice_data(
-                text_for_extraction, entities, tables
+                text_for_extraction, entities, tables, page_count=page_count
             )
         elif classification.document_type == ExtractedDocumentType.ORDER:
             result.order = await self._extract_order_data(
@@ -505,11 +632,16 @@ class StructuredExtractionService:
         self,
         text: str,
         entities: Any,
-        tables: Optional[List[Any]] = None
+        tables: Optional[List[Any]] = None,
+        page_count: Optional[int] = None,
     ) -> ExtractedInvoiceData:
         """Extrahiert Rechnungsdaten inkl. Positionen aus Tabellen."""
         invoice = ExtractedInvoiceData()
         warnings: List[str] = []
+
+        # Seitenanzahl setzen (aus OCR-Metadaten)
+        if page_count is not None and page_count > 0:
+            invoice.page_count = page_count
 
         # Referenznummern
         # WICHTIG: Zuerst REVERSE-Patterns versuchen (F-xxx vor "Invoice No.")
@@ -534,19 +666,39 @@ class StructuredExtractionService:
         invoice.customer_number = self._extract_first_match(
             ReferencePatterns.CUSTOMER_NUMBER, text
         ) or self._extract_fragmented_reference(text, [
-            'customer no', 'kundennr', 'kunden-nr', 'kd-nr'
+            'customer no', 'kundennr', 'kunden-nr', 'kd-nr',
+            'bill-to customer', 'bill to customer no'
         ])
 
         invoice.delivery_note_number = self._extract_first_match(
             ReferencePatterns.DELIVERY_NOTE, text
         )
 
-        # Daten
+        # Lieferantennummer (optional - fuer ERP-Integration)
+        invoice.supplier_number = self._extract_first_match(
+            ReferencePatterns.SUPPLIER_NUMBER, text
+        ) or self._extract_fragmented_reference(text, [
+            'supplier no', 'vendor no', 'lieferanten-nr', 'kreditor-nr'
+        ])
+
+        # Daten (mit Raw-Wert-Erfassung fuer Audit-Trail)
         invoice.invoice_date = self._extract_labeled_date(
             DatePatterns.INVOICE_DATE, text
         ) or self._extract_fragmented_date(text, [
             'factuurdatum', 'rechnungsdatum', 'invoice date', 'datum'
         ]) or self._extract_first_date(text)
+
+        # Raw-Wert fuer invoice_date extrahieren (Original-String aus Dokument)
+        if invoice.invoice_date:
+            raw_date_match = DatePatterns.INVOICE_DATE.search(text)
+            if raw_date_match:
+                invoice.invoice_date_raw = raw_date_match.group(0).strip()
+            else:
+                # Fallback: Deutsches Datumsformat suchen
+                german_date_pattern = re.compile(r'\d{1,2}\.\d{1,2}\.\d{2,4}')
+                raw_match = german_date_pattern.search(text)
+                if raw_match:
+                    invoice.invoice_date_raw = raw_match.group(0)
 
         # Faelligkeitsdatum
         due_date_match = PaymentPatterns.DUE_DATE_DIRECT.search(text)
@@ -556,6 +708,8 @@ class StructuredExtractionService:
                 due_date_match.group(2),
                 due_date_match.group(3)
             )
+            # Raw-Wert speichern (DD.MM.YYYY Format)
+            invoice.due_date_raw = f"{due_date_match.group(1)}.{due_date_match.group(2)}.{due_date_match.group(3)}"
 
         # Fallback: Fragmentiertes Due Date (Label auf separater Zeile)
         if not invoice.due_date:
@@ -569,6 +723,7 @@ class StructuredExtractionService:
             if days_match:
                 days = int(days_match.group(1))
                 invoice.due_date = invoice.invoice_date + timedelta(days=days)
+                # Due date wurde berechnet - kein Raw-Wert verfuegbar
 
         # Leistungszeitraum
         period_match = DatePatterns.SERVICE_PERIOD.search(text)
@@ -588,9 +743,12 @@ class StructuredExtractionService:
         invoice.net_amount = self._extract_labeled_amount(
             AmountPatterns.NET_AMOUNT, text
         )
-        invoice.gross_amount = self._extract_labeled_amount(
-            AmountPatterns.GROSS_AMOUNT, text
-        )
+
+        # gross_amount mit Source-Tracking
+        gross_from_doc = self._extract_labeled_amount(AmountPatterns.GROSS_AMOUNT, text)
+        if gross_from_doc:
+            invoice.gross_amount = gross_from_doc
+            invoice.gross_amount_source = AmountSource.DOCUMENT
 
         # Fallback fuer Nettobetrag: Total EUR (englisch/niederlaendisch)
         # Bei NL-Rechnungen ohne MwSt ist "Total EUR" der Nettobetrag
@@ -611,22 +769,49 @@ class StructuredExtractionService:
             if invoice.gross_amount == invoice.net_amount:
                 # Gleicher Betrag = kein separater Brutto noetig
                 invoice.gross_amount = None
+                invoice.gross_amount_source = AmountSource.NOT_FOUND
 
-        # MwSt
+        # MwSt mit Source-Tracking
         vat_with_rate = AmountPatterns.VAT_WITH_RATE.search(text)
         if vat_with_rate:
             invoice.vat_rate = Decimal(vat_with_rate.group(1))
             invoice.vat_amount = self._parse_german_amount(vat_with_rate.group(2))
+            invoice.vat_amount_source = AmountSource.DOCUMENT
         else:
             # Nur Betrag
             vat_amount_match = AmountPatterns.VAT_AMOUNT.search(text)
             if vat_amount_match:
                 invoice.vat_amount = self._parse_german_amount(vat_amount_match.group(1))
+                invoice.vat_amount_source = AmountSource.DOCUMENT
 
             # Nur Satz
             vat_rate_match = AmountPatterns.VAT_RATE.search(text)
             if vat_rate_match:
                 invoice.vat_rate = Decimal(vat_rate_match.group(1))
+
+        # === WAEHRUNGSERKENNUNG (Phase 5) ===
+        # Prioritaet: Kontextbasiert > Allgemein
+        currency_context_match = CurrencyPatterns.CURRENCY_CONTEXT.search(text)
+        if currency_context_match:
+            raw_currency = currency_context_match.group(1).upper()
+            currency_code = CurrencyPatterns.CURRENCY_MAP.get(raw_currency, raw_currency)
+            try:
+                invoice.currency = Currency(currency_code)
+                logger.debug("currency_extracted_from_context", currency=currency_code)
+            except ValueError:
+                pass  # Unbekannte Waehrung - Default bleibt EUR
+
+        # Fallback: Erste Waehrung im Text
+        if invoice.currency == Currency.EUR:
+            currency_match = CurrencyPatterns.CURRENCY.search(text)
+            if currency_match:
+                raw_currency = currency_match.group(1).upper()
+                currency_code = CurrencyPatterns.CURRENCY_MAP.get(raw_currency, raw_currency)
+                try:
+                    invoice.currency = Currency(currency_code)
+                    logger.debug("currency_extracted_fallback", currency=currency_code)
+                except ValueError:
+                    pass
 
         # === ZAHLUNGSBEDINGUNGEN (KRITISCH!) ===
 
@@ -647,11 +832,13 @@ class StructuredExtractionService:
 
         if days:
             invoice.payment_terms = f"{days} Tage netto"
+            invoice.payment_terms_days = int(days)  # Strukturiertes Feld fuer Berechnungen
         else:
             # Prüfe auf sofortige Zahlung
             immediate_match = PaymentPatterns.PAYMENT_IMMEDIATE.search(text)
             if immediate_match:
                 invoice.payment_terms = "Zahlbar sofort"
+                invoice.payment_terms_days = 0  # Sofort = 0 Tage
 
         # Zahlungsart
         payment_method_match = PaymentPatterns.PAYMENT_METHOD.search(text)
@@ -702,30 +889,91 @@ class StructuredExtractionService:
         if late_interest_match:
             invoice.late_payment_info = late_interest_match.group(1).strip()
 
-        # Absender/Empfaenger aus Entities
+        # Absender/Empfaenger aus Entities - INTELLIGENTE Zuordnung
         if entities.addresses:
-            # Erste Adresse = Absender (meist oben)
-            addr = entities.addresses[0]
-            invoice.sender = ExtractedAddress(
-                street=addr.street,
-                street_number=addr.street_number if hasattr(addr, 'street_number') else None,
-                zip_code=addr.postal_code,
-                city=addr.city,
-                country=addr.country if addr.country else "DE",
-                # Firmenname aus Adress-Kontext (ohne Rechtsform)
-                company=addr.company_name if hasattr(addr, 'company_name') else None,
-            )
+            sender_addr = None
+            recipient_addr = None
 
-            if len(entities.addresses) > 1:
-                addr2 = entities.addresses[1]
+            # 1. Pass: Explizite Rollenzuordnung aus Entity-Extraktion
+            for addr in entities.addresses:
+                role = getattr(addr, 'role', None)
+                if role == "sender" and not sender_addr:
+                    sender_addr = addr
+                    logger.debug(
+                        "address_attributed_by_role",
+                        role="sender",
+                        city=addr.city,
+                        country=getattr(addr, 'country', None),
+                    )
+                elif role == "recipient" and not recipient_addr:
+                    recipient_addr = addr
+                    logger.debug(
+                        "address_attributed_by_role",
+                        role="recipient",
+                        city=addr.city,
+                        country=getattr(addr, 'country', None),
+                    )
+
+            # 2. Pass: Cross-Border Heuristik (bei EU-Rechnungen)
+            # Non-DE Adresse = wahrscheinlich auslaendischer Sender
+            if not sender_addr and not recipient_addr and len(entities.addresses) >= 2:
+                for addr in entities.addresses:
+                    country = getattr(addr, 'country', 'DE') or 'DE'
+                    if country.upper() != 'DE' and not sender_addr:
+                        sender_addr = addr
+                        logger.debug(
+                            "address_attributed_by_crossborder",
+                            role="sender",
+                            country=country,
+                            reason="non_de_address_likely_foreign_supplier",
+                        )
+                    elif country.upper() == 'DE' and not recipient_addr:
+                        recipient_addr = addr
+                        logger.debug(
+                            "address_attributed_by_crossborder",
+                            role="recipient",
+                            country=country,
+                            reason="de_address_likely_local_recipient",
+                        )
+
+            # 3. Pass: Positionale Zuordnung (Fallback)
+            if not sender_addr and entities.addresses:
+                sender_addr = entities.addresses[0]
+                logger.debug(
+                    "address_attributed_by_position",
+                    role="sender",
+                    position=0,
+                )
+            if not recipient_addr and len(entities.addresses) > 1:
+                # Nimm die erste Adresse die NICHT sender_addr ist
+                for addr in entities.addresses:
+                    if addr != sender_addr:
+                        recipient_addr = addr
+                        logger.debug(
+                            "address_attributed_by_position",
+                            role="recipient",
+                        )
+                        break
+
+            # Zuweisen der Adressen
+            if sender_addr:
+                invoice.sender = ExtractedAddress(
+                    street=sender_addr.street,
+                    street_number=sender_addr.street_number if hasattr(sender_addr, 'street_number') else None,
+                    zip_code=sender_addr.postal_code,
+                    city=sender_addr.city,
+                    country=sender_addr.country if sender_addr.country else "DE",
+                    company=sender_addr.company_name if hasattr(sender_addr, 'company_name') else None,
+                )
+
+            if recipient_addr:
                 invoice.recipient = ExtractedAddress(
-                    street=addr2.street,
-                    street_number=addr2.street_number if hasattr(addr2, 'street_number') else None,
-                    zip_code=addr2.postal_code,
-                    city=addr2.city,
-                    country=addr2.country if addr2.country else "DE",
-                    # Firmenname aus Adress-Kontext (ohne Rechtsform)
-                    company=addr2.company_name if hasattr(addr2, 'company_name') else None,
+                    street=recipient_addr.street,
+                    street_number=recipient_addr.street_number if hasattr(recipient_addr, 'street_number') else None,
+                    zip_code=recipient_addr.postal_code,
+                    city=recipient_addr.city,
+                    country=recipient_addr.country if recipient_addr.country else "DE",
+                    company=recipient_addr.company_name if hasattr(recipient_addr, 'company_name') else None,
                 )
 
         # Firmennamen mit Rechtsform (GmbH, etc.) - ueberschreiben Kontext-Namen
@@ -737,11 +985,40 @@ class StructuredExtractionService:
             if len(entities.company_names) > 1 and invoice.recipient:
                 invoice.recipient.company = entities.company_names[1].name
 
-        # USt-IdNr
-        for identifier in entities.identifiers:
-            if identifier.identifier_type == "vat_id":
-                invoice.sender_vat_id = identifier.normalized_value
-                break
+        # USt-IdNr - Intelligente Zuordnung (sender vs. recipient)
+        vat_ids = [i for i in entities.identifiers if i.identifier_type == "vat_id"]
+        if vat_ids:
+            sender_vat, recipient_vat = self._attribute_vat_ids(
+                vat_ids,
+                entities.addresses
+            )
+            invoice.sender_vat_id = sender_vat
+            invoice.recipient_vat_id = recipient_vat
+
+            logger.debug(
+                "vat_id_attribution_result",
+                total_vat_ids=len(vat_ids),
+                sender_vat_id=sender_vat,
+                recipient_vat_id=recipient_vat,
+            )
+
+            # === LAENDER-VALIDIERUNG (Phase 3) ===
+            # Pruefe ob VAT-Laender zu Adress-Laendern passen
+            if invoice.sender_vat_id and invoice.sender:
+                sender_country = invoice.sender.country
+                if not self._validate_vat_country_match(invoice.sender_vat_id, sender_country):
+                    warnings.append(
+                        f"USt-IdNr {invoice.sender_vat_id} passt nicht zum Absender-Land {sender_country}"
+                    )
+                    invoice.needs_review = True
+
+            if invoice.recipient_vat_id and invoice.recipient:
+                recipient_country = invoice.recipient.country
+                if not self._validate_vat_country_match(invoice.recipient_vat_id, recipient_country):
+                    warnings.append(
+                        f"USt-IdNr {invoice.recipient_vat_id} passt nicht zum Empfaenger-Land {recipient_country}"
+                    )
+                    invoice.needs_review = True
 
         # Steuernummer
         for identifier in entities.identifiers:
@@ -749,13 +1026,46 @@ class StructuredExtractionService:
                 invoice.sender_tax_number = identifier.normalized_value
                 break
 
-        # IBAN
+        # IBAN + BIC (Phase 6: BIC in Bankdaten speichern)
+        # BIC mit hoechster Konfidenz waehlen (gelabelte BICs haben 0.98)
+        iban_id = None
+        bic_id = None
         for identifier in entities.identifiers:
-            if identifier.identifier_type == "iban":
-                invoice.sender_bank = ExtractedBankAccount(
-                    iban=identifier.normalized_value
-                )
-                break
+            if identifier.identifier_type == "iban" and not iban_id:
+                iban_id = identifier
+            elif identifier.identifier_type == "bic":
+                # BIC mit hoechster Konfidenz bevorzugen
+                if not bic_id or identifier.confidence > bic_id.confidence:
+                    bic_id = identifier
+
+        if iban_id or bic_id:
+            invoice.sender_bank = ExtractedBankAccount(
+                iban=iban_id.normalized_value if iban_id else None,
+                bic=bic_id.normalized_value if bic_id else None,
+            )
+            logger.debug(
+                "bank_account_extracted",
+                iban=iban_id.normalized_value[:8] + "***" if iban_id else None,
+                bic=bic_id.normalized_value if bic_id else None,
+                iban_country=iban_id.country_code if iban_id else None,
+                bic_country=bic_id.country_code if bic_id else None,
+            )
+
+            # === IBAN-LAND VALIDIERUNG (Plausibilitaetscheck) ===
+            if invoice.sender_bank.iban and invoice.sender_vat_id:
+                iban_country = invoice.sender_bank.iban[:2].upper()
+                vat_country = invoice.sender_vat_id[:2].upper()
+
+                if iban_country != vat_country:
+                    invoice.extraction_warnings.append(
+                        f"IBAN-Land ({iban_country}) != USt-IdNr-Land ({vat_country})"
+                    )
+                    invoice.needs_review = True
+                    logger.warning(
+                        "iban_vat_country_mismatch",
+                        iban_country=iban_country,
+                        vat_country=vat_country,
+                    )
 
         # E-Mail
         if entities.emails:
@@ -764,6 +1074,122 @@ class StructuredExtractionService:
         # Telefon
         if entities.phone_numbers:
             invoice.sender_phone = entities.phone_numbers[0]
+
+        # === LIEFERBEDINGUNGEN / INCOTERMS ===
+        incoterms_match = DeliveryPatterns.INCOTERMS.search(text)
+        if incoterms_match:
+            incoterm = incoterms_match.group(1).upper()
+            location = incoterms_match.group(2)
+            if location:
+                invoice.delivery_terms = f"{incoterm} {location.strip()}"
+            else:
+                invoice.delivery_terms = incoterm
+            logger.debug(
+                "incoterms_extracted",
+                incoterm=incoterm,
+                location=location,
+            )
+
+        # Fallback: Deutsche Lieferbedingungen
+        if not invoice.delivery_terms:
+            delivery_match = DeliveryPatterns.DELIVERY_TERMS_DE.search(text)
+            if delivery_match:
+                invoice.delivery_terms = delivery_match.group(1).strip()[:100]
+
+        # === LIEFERADRESSE (falls abweichend) ===
+        # Suche nach explizit gelabelter Lieferadresse
+        for addr in entities.addresses:
+            addr_position = getattr(addr, 'position_start', 0)
+            context_start = max(0, addr_position - 100)
+            context = text[context_start:addr_position]
+            if DeliveryPatterns.DELIVERY_ADDRESS_LABELS.search(context):
+                invoice.delivery_address = ExtractedAddress(
+                    street=addr.street,
+                    street_number=getattr(addr, 'street_number', None),
+                    zip_code=addr.postal_code,
+                    city=addr.city,
+                    country=addr.country if addr.country else "DE",
+                    company=getattr(addr, 'company_name', None),
+                )
+                logger.debug("delivery_address_extracted", city=addr.city)
+                break
+
+        # Fallback: Dritte Adresse ist oft Lieferadresse
+        if not invoice.delivery_address and len(entities.addresses) >= 3:
+            addr = entities.addresses[2]
+            invoice.delivery_address = ExtractedAddress(
+                street=addr.street,
+                street_number=getattr(addr, 'street_number', None),
+                zip_code=addr.postal_code,
+                city=addr.city,
+                country=addr.country if addr.country else "DE",
+                company=getattr(addr, 'company_name', None),
+            )
+
+        # === REVERSE CHARGE / INNERGEMEINSCHAFTLICHE LIEFERUNG ===
+        reverse_charge_match = ReverseChargePatterns.REVERSE_CHARGE.search(text)
+        if reverse_charge_match:
+            invoice.is_reverse_charge = True
+            # Volltext fuer reverse_charge_note extrahieren
+            fulltext_match = ReverseChargePatterns.REVERSE_CHARGE_FULLTEXT.search(text)
+            if fulltext_match:
+                invoice.reverse_charge_note = fulltext_match.group(1).strip()[:200]
+
+            # NEU: Setze vat_exemption_reason basierend auf dem Match
+            matched_text = reverse_charge_match.group(0).lower()
+            if 'intra' in matched_text or 'innergemeinschaftlich' in matched_text:
+                invoice.vat_exemption_reason = "Innergemeinschaftliche Lieferung"
+                invoice.intra_community_supply = True
+            elif 'reverse' in matched_text:
+                invoice.vat_exemption_reason = "Reverse Charge"
+            elif 'steuerbefreit' in matched_text or 'steuerfrei' in matched_text:
+                invoice.vat_exemption_reason = "Steuerbefreit"
+
+            logger.debug(
+                "reverse_charge_detected",
+                note=invoice.reverse_charge_note,
+                exemption_reason=invoice.vat_exemption_reason,
+                intra_community=invoice.intra_community_supply,
+            )
+
+        # Heuristik: Wenn sender und recipient VAT IDs unterschiedliche Laender haben
+        # und VAT-Rate 0 ist, dann ist es wahrscheinlich Reverse Charge
+        if not invoice.is_reverse_charge:
+            sender_country = invoice.sender_vat_id[:2] if invoice.sender_vat_id else None
+            recipient_country = invoice.recipient_vat_id[:2] if invoice.recipient_vat_id else None
+            if (
+                sender_country and recipient_country and
+                sender_country != recipient_country and
+                invoice.vat_rate == Decimal("0")
+            ):
+                invoice.is_reverse_charge = True
+                # Bei unterschiedlichen EU-Laendern ist es eine innergemeinschaftliche Lieferung
+                invoice.intra_community_supply = True
+                invoice.vat_exemption_reason = "Innergemeinschaftliche Lieferung (inferiert)"
+                logger.debug(
+                    "reverse_charge_inferred",
+                    sender_country=sender_country,
+                    recipient_country=recipient_country,
+                    vat_rate=str(invoice.vat_rate),
+                    intra_community=True,
+                )
+
+        # === REVERSE CHARGE: vat_amount explizit auf 0 setzen ===
+        # Bei Reverse Charge MUSS vat_amount = 0 sein, nicht null
+        if invoice.is_reverse_charge and invoice.vat_amount is None:
+            invoice.vat_amount = Decimal("0")
+            invoice.vat_rate = Decimal("0")
+            invoice.vat_amount_source = AmountSource.COMPUTED
+            # vat_reason fuer Audit-Trail setzen
+            if invoice.intra_community_supply:
+                invoice.vat_reason = "intra-community supply / reverse charge"
+            else:
+                invoice.vat_reason = "reverse charge"
+            logger.debug(
+                "reverse_charge_vat_zeroed",
+                reason="vat_amount was null, set to 0 for Reverse Charge invoice",
+                vat_reason=invoice.vat_reason,
+            )
 
         # === LINE ITEMS EXTRAKTION ===
         # Aus Docling-Tabellen extrahieren
@@ -863,11 +1289,14 @@ class StructuredExtractionService:
                         not invoice.gross_amount or amt.gross_confidence > 0.8
                     ):
                         invoice.gross_amount = amt.gross_amount
+                        invoice.gross_amount_source = AmountSource.DOCUMENT  # Aus Enhanced Extraction
                     if amt.vat_amount and (
                         not invoice.vat_amount or amt.vat_confidence > 0.8
                     ):
                         invoice.vat_amount = amt.vat_amount
-                    if amt.vat_rate and not invoice.vat_rate:
+                        invoice.vat_amount_source = AmountSource.DOCUMENT  # Aus Enhanced Extraction
+                    # Note: Decimal("0") ist falsy, also explizit auf None pruefen
+                    if amt.vat_rate is not None and invoice.vat_rate is None:
                         invoice.vat_rate = amt.vat_rate
 
                 # Line Items uebernehmen wenn BESSER (nicht nur mehr)
@@ -974,8 +1403,100 @@ class StructuredExtractionService:
                 )
                 # Nicht kritisch - regulaere Extraktion bleibt erhalten
 
+        # === REVERSE CHARGE HEURISTIK (nach Enhanced Extraction wiederholen) ===
+        # Jetzt ist vat_rate moeglicherweise aus dem AmountExtractor bekannt
+        if not invoice.is_reverse_charge:
+            sender_country = invoice.sender_vat_id[:2] if invoice.sender_vat_id else None
+            recipient_country = invoice.recipient_vat_id[:2] if invoice.recipient_vat_id else None
+
+            # Fall 1: Unterschiedliche EU-Laender + VAT Rate 0
+            if (
+                sender_country and recipient_country and
+                sender_country != recipient_country and
+                invoice.vat_rate == Decimal("0")
+            ):
+                invoice.is_reverse_charge = True
+                invoice.intra_community_supply = True
+                invoice.vat_exemption_reason = "Innergemeinschaftliche Lieferung (inferiert)"
+                logger.info(
+                    "reverse_charge_inferred_post_enhanced",
+                    sender_country=sender_country,
+                    recipient_country=recipient_country,
+                    vat_rate=str(invoice.vat_rate),
+                )
+
+            # Fall 2: Unterschiedliche EU-Laender ohne MwSt-Betrag (auch bei vat_rate=None)
+            elif (
+                sender_country and recipient_country and
+                sender_country != recipient_country and
+                not invoice.vat_amount
+            ):
+                invoice.is_reverse_charge = True
+                invoice.intra_community_supply = True
+                invoice.vat_exemption_reason = "Innergemeinschaftliche Lieferung (inferiert)"
+                logger.info(
+                    "reverse_charge_inferred_no_vat",
+                    sender_country=sender_country,
+                    recipient_country=recipient_country,
+                )
+
         # Plausibilitaetspruefung
         invoice = self._validate_invoice(invoice)
+
+        # === REVERSE CHARGE POST-VALIDATION FIX ===
+        # Falls _validate_invoice() is_reverse_charge gesetzt hat, vat_amount=0 setzen
+        if invoice.is_reverse_charge and invoice.vat_amount is None:
+            invoice.vat_amount = Decimal("0")
+            invoice.vat_rate = Decimal("0") if invoice.vat_rate is None else invoice.vat_rate
+            invoice.vat_amount_source = AmountSource.COMPUTED
+            # vat_reason setzen (wichtig fuer Audit-Trail)
+            if invoice.intra_community_supply:
+                invoice.vat_reason = "intra-community supply / reverse charge"
+            else:
+                invoice.vat_reason = "reverse charge"
+            logger.info(
+                "reverse_charge_vat_zeroed_post_validation",
+                reason="vat_amount=0 set after _validate_invoice detected RC",
+                vat_reason=invoice.vat_reason,
+            )
+
+        # === BRUTTO BERECHNUNG (falls nicht aus Dokument extrahiert) ===
+        # Wenn gross_amount nicht gefunden aber net_amount und vat_amount vorhanden
+        if (
+            invoice.gross_amount is None and
+            invoice.net_amount is not None and
+            invoice.vat_amount is not None
+        ):
+            invoice.gross_amount = invoice.net_amount + invoice.vat_amount
+            invoice.gross_amount_source = AmountSource.COMPUTED
+            logger.debug(
+                "gross_amount_computed",
+                net=str(invoice.net_amount),
+                vat=str(invoice.vat_amount),
+                gross=str(invoice.gross_amount),
+            )
+
+        # === VALIDIERUNGEN ERSTELLEN ===
+        # Field-Confidence sammeln (basierend auf Extraktion)
+        field_confidence: Dict[str, float] = {}
+        if invoice.invoice_number:
+            field_confidence["invoice_number"] = 0.95
+        if invoice.invoice_date:
+            field_confidence["invoice_date"] = 0.90
+        if invoice.net_amount:
+            field_confidence["net_amount"] = 0.85
+        if invoice.gross_amount:
+            # Confidence basierend auf Source
+            field_confidence["gross_amount"] = (
+                0.95 if invoice.gross_amount_source == AmountSource.DOCUMENT else 0.80
+            )
+        if invoice.sender_bank and invoice.sender_bank.iban:
+            field_confidence["iban"] = 0.99  # IBAN-Checksum ist sehr zuverlaessig
+        if invoice.sender_vat_id:
+            field_confidence["sender_vat_id"] = 0.95
+
+        # Validierungen erstellen
+        invoice.validations = self._build_validations(invoice, field_confidence)
 
         return invoice
 
@@ -1187,10 +1708,339 @@ class StructuredExtractionService:
                         )
                         invoice.needs_review = True
 
+        # === REVERSE CHARGE AUTO-ERKENNUNG ===
+        # Automatisch setzen bei: MwSt=0 + Cross-Border EU-Transaktion
+        if (
+            (invoice.vat_amount is None or invoice.vat_amount == Decimal("0"))
+            and invoice.sender_vat_id
+            and invoice.recipient_vat_id
+        ):
+            sender_country = invoice.sender_vat_id[:2].upper()
+            recipient_country = invoice.recipient_vat_id[:2].upper()
+
+            if sender_country != recipient_country and not invoice.is_reverse_charge:
+                warnings.append(
+                    f"MwSt=0 bei {sender_country}->{recipient_country}: "
+                    f"Reverse Charge automatisch gesetzt"
+                )
+                invoice.is_reverse_charge = True
+                invoice.intra_community_supply = True
+                if not invoice.vat_exemption_reason:
+                    invoice.vat_exemption_reason = "Innergemeinschaftliche Lieferung (auto)"
+                logger.info(
+                    "reverse_charge_auto_detected",
+                    sender_country=sender_country,
+                    recipient_country=recipient_country,
+                )
+
         invoice.extraction_confidence = min(max(confidence, 0.10), 0.99)  # Min 10%, Max 99%
         invoice.extraction_warnings = warnings
 
         return invoice
+
+    def _build_validations(
+        self,
+        invoice: ExtractedInvoiceData,
+        field_confidence: Optional[Dict[str, float]] = None,
+    ) -> ExtractionValidations:
+        """
+        Erstellt strukturierte Validierungsergebnisse fuer Audit und Qualitaetssicherung.
+
+        Prueft:
+        - IBAN MOD-97 Checksum
+        - IBAN-Land vs. Absender-Land
+        - USt-IdNr-Land vs. Absender-Land
+        - Summen-Konsistenz (Line Items vs. Netto)
+
+        Args:
+            invoice: Extrahierte Rechnungsdaten
+            field_confidence: Optional Dict mit Feld-Konfidenz (0.0-1.0)
+
+        Returns:
+            ExtractionValidations mit allen Pruefungsergebnissen
+        """
+        validations = ExtractionValidations()
+
+        # === IBAN-Validierung ===
+        if invoice.sender_bank and invoice.sender_bank.iban:
+            # Import lokale IBAN-Validierung
+            try:
+                from app.services.extraction.patterns.reference_patterns import validate_iban
+                validations.iban_checksum_valid = validate_iban(invoice.sender_bank.iban)
+            except ImportError:
+                # Fallback: Eigene MOD-97 Validierung
+                iban = invoice.sender_bank.iban.replace(" ", "").upper()
+                if len(iban) >= 5:
+                    # IBAN rearrangieren (4 Zeichen von vorne nach hinten)
+                    rearranged = iban[4:] + iban[:4]
+                    # Buchstaben zu Zahlen konvertieren (A=10, B=11, ...)
+                    numeric = ""
+                    for char in rearranged:
+                        if char.isdigit():
+                            numeric += char
+                        else:
+                            numeric += str(ord(char.upper()) - ord('A') + 10)
+                    # MOD-97 Pruefung
+                    try:
+                        validations.iban_checksum_valid = int(numeric) % 97 == 1
+                    except ValueError:
+                        validations.iban_checksum_valid = None
+
+            # IBAN-Land vs. Absender-Land
+            iban_country = invoice.sender_bank.iban[:2].upper()
+            sender_country = None
+            if invoice.sender and invoice.sender.country:
+                sender_country = invoice.sender.country.upper()
+            if sender_country:
+                validations.iban_country_match = iban_country == sender_country
+            else:
+                validations.iban_country_match = None  # Nicht pruefbar
+
+        # === USt-IdNr-Validierung ===
+        if invoice.sender_vat_id and invoice.sender:
+            vat_country = invoice.sender_vat_id[:2].upper() if len(invoice.sender_vat_id) >= 2 else None
+            sender_country = invoice.sender.country.upper() if invoice.sender.country else None
+            if vat_country and sender_country:
+                validations.vat_country_match = vat_country == sender_country
+
+        # === Summen-Konsistenz (Line Items vs. Netto) ===
+        if invoice.line_items and invoice.net_amount:
+            line_sum = sum(
+                item.total_price for item in invoice.line_items
+                if item.total_price is not None
+            )
+            if line_sum > Decimal("0"):
+                # Toleranz: max(1% vom Netto, 2 EUR)
+                tolerance = max(invoice.net_amount * Decimal("0.01"), Decimal("2.00"))
+                diff = abs(line_sum - invoice.net_amount)
+                validations.sums_match = diff <= tolerance
+                if not validations.sums_match:
+                    validations.sums_difference = diff
+
+        # === Field-Level Confidence ===
+        if field_confidence:
+            validations.field_confidence = field_confidence
+
+        return validations
+
+    # =========================================================================
+    # VAT ID ATTRIBUTION
+    # =========================================================================
+
+    def _attribute_vat_ids(
+        self,
+        vat_ids: List[Any],
+        addresses: List[Any],
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Intelligente USt-IdNr Zuordnung basierend auf:
+        1. Laendercode-Matching (NL VAT -> NL Adresse)
+        2. Adress-Rolle (sender/recipient)
+        3. Position/Proximity im Text
+        4. Cross-Border Heuristik (Non-DE = sender, DE = recipient)
+
+        Args:
+            vat_ids: Liste von ExtractedIdentifier mit identifier_type="vat_id"
+            addresses: Liste von ExtractedAddress mit role-Attribut
+
+        Returns:
+            Tuple von (sender_vat_id, recipient_vat_id)
+        """
+        sender_vat: Optional[str] = None
+        recipient_vat: Optional[str] = None
+
+        if not vat_ids:
+            return None, None
+
+        # Erstelle Lookup fuer Adressen nach Laendercode und Rolle
+        sender_countries: set = set()
+        recipient_countries: set = set()
+
+        for addr in addresses:
+            country = getattr(addr, 'country', None) or "DE"
+            role = getattr(addr, 'role', None)
+
+            if role == "sender":
+                sender_countries.add(country.upper())
+            elif role == "recipient":
+                recipient_countries.add(country.upper())
+
+        logger.debug(
+            "vat_attribution_context",
+            vat_count=len(vat_ids),
+            sender_countries=list(sender_countries),
+            recipient_countries=list(recipient_countries),
+        )
+
+        # 1. Pass: Laendercode-Matching (hoechste Prioritaet)
+        for vat in vat_ids:
+            country = getattr(vat, 'country_code', None)
+            if not country:
+                # Fallback: Extrahiere Laendercode aus normalized_value
+                normalized = vat.normalized_value
+                if len(normalized) >= 2:
+                    country = normalized[:2].upper()
+
+            if country:
+                if country in sender_countries and not sender_vat:
+                    sender_vat = vat.normalized_value
+                    logger.debug(
+                        "vat_attributed_by_country",
+                        vat_id=sender_vat,
+                        country=country,
+                        role="sender",
+                    )
+                elif country in recipient_countries and not recipient_vat:
+                    recipient_vat = vat.normalized_value
+                    logger.debug(
+                        "vat_attributed_by_country",
+                        vat_id=recipient_vat,
+                        country=country,
+                        role="recipient",
+                    )
+
+        # 2. Pass: Proximity-basierte Zuordnung (falls noch nicht zugeordnet)
+        if (not sender_vat or not recipient_vat) and addresses:
+            for vat in vat_ids:
+                if vat.normalized_value in (sender_vat, recipient_vat):
+                    continue
+
+                # Finde naechste Adresse
+                nearest_addr = self._find_nearest_address(
+                    vat.position_start, addresses
+                )
+                if nearest_addr:
+                    role = getattr(nearest_addr, 'role', None)
+                    if role == "sender" and not sender_vat:
+                        sender_vat = vat.normalized_value
+                        logger.debug(
+                            "vat_attributed_by_proximity",
+                            vat_id=sender_vat,
+                            role="sender",
+                        )
+                    elif role == "recipient" and not recipient_vat:
+                        recipient_vat = vat.normalized_value
+                        logger.debug(
+                            "vat_attributed_by_proximity",
+                            vat_id=recipient_vat,
+                            role="recipient",
+                        )
+
+        # 3. Pass: Cross-Border Heuristik (bei innergemeinschaftlichen Lieferungen)
+        # Non-DE VAT = typischerweise sender, DE VAT = recipient
+        if len(vat_ids) >= 2 and (not sender_vat or not recipient_vat):
+            de_vats = [v for v in vat_ids if v.normalized_value.startswith("DE")]
+            non_de_vats = [v for v in vat_ids if not v.normalized_value.startswith("DE")]
+
+            if non_de_vats and de_vats:
+                if not sender_vat:
+                    sender_vat = non_de_vats[0].normalized_value
+                    logger.debug(
+                        "vat_attributed_by_crossborder_heuristic",
+                        vat_id=sender_vat,
+                        role="sender",
+                        reason="non_de_vat_is_typically_foreign_supplier",
+                    )
+                if not recipient_vat:
+                    recipient_vat = de_vats[0].normalized_value
+                    logger.debug(
+                        "vat_attributed_by_crossborder_heuristic",
+                        vat_id=recipient_vat,
+                        role="recipient",
+                        reason="de_vat_is_typically_local_customer",
+                    )
+
+        # 4. Ultimate Fallback: Erste VAT-ID = sender (Rueckwaertskompatibilitaet)
+        if not sender_vat and vat_ids:
+            sender_vat = vat_ids[0].normalized_value
+            logger.debug(
+                "vat_attributed_by_fallback",
+                vat_id=sender_vat,
+                role="sender",
+                reason="first_vat_id_fallback",
+            )
+
+        return sender_vat, recipient_vat
+
+    def _find_nearest_address(
+        self,
+        position: int,
+        addresses: List[Any],
+    ) -> Optional[Any]:
+        """
+        Finde die naechste Adresse zu einer Textposition.
+
+        Args:
+            position: Position im Text
+            addresses: Liste von ExtractedAddress
+
+        Returns:
+            Naechste Adresse oder None
+        """
+        if not addresses:
+            return None
+
+        nearest = None
+        min_distance = float('inf')
+
+        for addr in addresses:
+            addr_position = getattr(addr, 'position_start', 0)
+            distance = abs(position - addr_position)
+            if distance < min_distance:
+                min_distance = distance
+                nearest = addr
+
+        return nearest
+
+    def _validate_vat_country_match(
+        self,
+        vat_id: Optional[str],
+        address_country: Optional[str],
+    ) -> bool:
+        """
+        Prueft ob USt-IdNr zum Adressland passt (Phase 3: Laender-Validierung).
+
+        Bei Mismatch wird True zurueckgegeben wenn die Validierung fehlschlaegt,
+        damit eine Warnung generiert werden kann.
+
+        Args:
+            vat_id: USt-IdNr (z.B. "NL820594829B01")
+            address_country: Land aus Adresse (z.B. "NL", "Nederland", "Niederlande")
+
+        Returns:
+            True wenn VAT und Land zusammenpassen, False bei Mismatch
+        """
+        if not vat_id or not address_country:
+            return True  # Kann nicht validieren - kein Fehler
+
+        # VAT-Laendercode extrahieren (erste 2 Zeichen)
+        vat_country = vat_id[:2].upper()
+
+        # Adress-Land normalisieren
+        addr_country = address_country.strip().upper()
+
+        # Mapping anwenden (mehrsprachige Laendernamen -> ISO Code)
+        addr_country_lower = address_country.strip().lower()
+        if addr_country_lower in COUNTRY_NAME_TO_CODE:
+            addr_country = COUNTRY_NAME_TO_CODE[addr_country_lower]
+
+        # Vergleich
+        if vat_country == addr_country:
+            return True
+
+        # Sonderfall: Wenn addr_country zu kurz ist (z.B. nur "D" fuer Deutschland)
+        # und wir keinen Match haben, versuche laengere Varianten
+        if len(addr_country) <= 2 and vat_country != addr_country:
+            logger.debug(
+                "vat_country_mismatch",
+                vat_id=vat_id,
+                vat_country=vat_country,
+                address_country=address_country,
+                normalized_addr_country=addr_country,
+            )
+            return False
+
+        return True
 
     # =========================================================================
     # ORDER EXTRACTION
@@ -1622,9 +2472,21 @@ class StructuredExtractionService:
         month: str,
         year: str
     ) -> Optional[date]:
-        """Parst Datumsgruppen zu einem date-Objekt."""
+        """Parst Datumsgruppen zu einem date-Objekt.
+
+        Behandelt 2-stellige Jahreszahlen korrekt:
+        - 00-49 → 2000-2049
+        - 50-99 → 1950-1999
+        """
         try:
-            return date(int(year), int(month), int(day))
+            year_int = int(year)
+            # 2-stellige Jahreszahl korrigieren
+            if year_int < 100:
+                if year_int >= 50:
+                    year_int += 1900  # 50-99 → 1950-1999
+                else:
+                    year_int += 2000  # 00-49 → 2000-2049
+            return date(year_int, int(month), int(day))
         except ValueError:
             return None
 

@@ -14,6 +14,7 @@ import { formatCurrency, formatDate } from "./CopyableField";
 
 interface PaymentTermsCardProps {
     paymentTerms?: string | null;
+    paymentTermsDays?: number | null;  // Zahlungsfrist in Tagen (strukturiert)
     discountPercent?: number | null;
     discountDays?: number | null;
     discountAmount?: number | null;
@@ -27,6 +28,7 @@ interface PaymentTermsCardProps {
 
 export function PaymentTermsCard({
     paymentTerms,
+    paymentTermsDays,
     discountPercent,
     discountDays,
     discountAmount,
@@ -97,8 +99,17 @@ export function PaymentTermsCard({
             </CardHeader>
             <CardContent className="space-y-4">
                 {/* Zahlungsziel */}
-                {paymentTerms && (
-                    <p className="text-sm text-muted-foreground">{paymentTerms}</p>
+                {(paymentTerms || paymentTermsDays != null) && (
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                            {paymentTerms || "Zahlungsziel"}
+                        </span>
+                        {paymentTermsDays != null && (
+                            <span className="text-sm font-medium">
+                                {paymentTermsDays} Tage
+                            </span>
+                        )}
+                    </div>
                 )}
 
                 {/* Faelligkeitsdatum */}

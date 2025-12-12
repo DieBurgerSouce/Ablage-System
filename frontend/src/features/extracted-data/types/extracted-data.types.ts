@@ -16,6 +16,16 @@ export type ExtractedDocumentType =
     | "receipt"
     | "unknown";
 
+/**
+ * Quelle eines extrahierten Betrags fuer Audit-Trail.
+ */
+export type AmountSource = "document" | "computed" | "not_found";
+
+/**
+ * Status einer Validierungspruefung.
+ */
+export type ValidationStatus = "valid" | "invalid" | "skipped" | "pending";
+
 // =============================================================================
 // ADDRESS
 // =============================================================================
@@ -47,6 +57,30 @@ export interface ExtractedLineItem {
 }
 
 // =============================================================================
+// VALIDATIONS
+// =============================================================================
+
+/**
+ * Strukturierte Validierungsergebnisse fuer Audit und Qualitaetssicherung.
+ */
+export interface ExtractionValidations {
+    // IBAN-Validierung
+    iban_checksum_valid?: boolean;
+    iban_country_match?: boolean;
+
+    // USt-IdNr-Validierung
+    vat_country_match?: boolean;
+    vies_vat_valid?: boolean;
+
+    // Summen-Konsistenz
+    sums_match?: boolean;
+    sums_difference?: number;
+
+    // Field-Level Confidence
+    field_confidence?: Record<string, number>;
+}
+
+// =============================================================================
 // INVOICE DATA
 // =============================================================================
 
@@ -58,10 +92,13 @@ export interface ExtractedInvoiceData {
     order_number?: string;
     customer_number?: string;
     delivery_note_number?: string;
+    supplier_number?: string;  // Lieferantennummer fuer ERP-Integration
 
     // Daten
     invoice_date?: string;
+    invoice_date_raw?: string;  // Original-String aus Dokument (z.B. "06.04.2020")
     due_date?: string;
+    due_date_raw?: string;      // Original-String aus Dokument
     service_period_start?: string;
     service_period_end?: string;
 
@@ -82,15 +119,34 @@ export interface ExtractedInvoiceData {
     recipient?: ExtractedAddress;
     recipient_vat_id?: string;
 
+    // Zusaetzliche Lieferanteninformationen
+    sender_tax_number_alternative?: string;
+
+    // Lieferadresse (falls abweichend)
+    delivery_address?: ExtractedAddress;
+
+    // Lieferbedingungen
+    delivery_terms?: string;
+
+    // Steuerbefreiung bei innergemeinschaftlicher Lieferung
+    reverse_charge_note?: string;
+    is_reverse_charge?: boolean;
+    vat_exemption_reason?: string;
+    intra_community_supply?: boolean;
+
     // Betraege
     net_amount?: number;
     vat_rate?: number;
     vat_amount?: number;
+    vat_amount_source?: AmountSource;  // Quelle: "document" | "computed" | "not_found"
     gross_amount?: number;
+    gross_amount_source?: AmountSource;  // Quelle des Bruttobetrags
     currency?: string;
+    vat_reason?: string;  // Grund fuer MwSt-Hoehe (z.B. "intra-community supply / reverse charge")
 
     // Zahlungsbedingungen
     payment_terms?: string;
+    payment_terms_days?: number;  // Zahlungsfrist in Tagen (strukturiert)
     payment_method?: string;
     discount_percent?: number;
     discount_days?: number;
@@ -106,6 +162,13 @@ export interface ExtractedInvoiceData {
     extraction_confidence?: number;
     needs_review?: boolean;
     extraction_warnings?: string[];
+
+    // OCR Metadaten
+    page_count?: number;
+    ocr_confidence_score?: number;
+
+    // Validierungsergebnisse
+    validations?: ExtractionValidations;
 }
 
 // =============================================================================
@@ -228,6 +291,9 @@ export interface ExtractedDocumentData {
     overall_confidence?: number;
     needs_review?: boolean;
     extraction_warnings?: string[];
+
+    // Meta (NEU)
+    document_hash?: string;  // SHA256 Hash des Originaldokuments (sha256:...)
 }
 
 // =============================================================================
