@@ -189,19 +189,34 @@ class AmountPatterns:
     )
 
     # Nettobetrag mit Label
+    # WICHTIG: Muss Dezimalstellen haben (,XX) um "Netto 10 dagen" auszuschliessen
     NET_AMOUNT = re.compile(
         r'(?:netto(?:betrag)?|zwischensumme|summe\s*netto)[\s:]*'
-        r'(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*(?:€|EUR)?',
+        r'(\d{1,3}(?:\.\d{3})*,\d{2})\s*(?:€|EUR)?',
         re.IGNORECASE
     )
 
     # Bruttobetrag mit Label (inkl. Bestellwert, Auftragswert)
+    # WICHTIG: Muss Dezimalstellen haben (,XX)
     GROSS_AMOUNT = re.compile(
-        r'(?:brutto(?:betrag)?|gesamt(?:betrag)?|endbetrag|summe|total|'
+        r'(?:brutto(?:betrag)?|gesamt(?:betrag)?|endbetrag|'
         r'zu\s*zahlen(?:der\s*betrag)?|rechnungsbetrag|'
         r'bestell(?:wert|betrag)|auftrags(?:wert|summe)|'
         r'vertrags(?:wert|summe))[\s:]*'
-        r'(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*(?:€|EUR)?',
+        r'(\d{1,3}(?:\.\d{3})*,\d{2})\s*(?:€|EUR)?',
+        re.IGNORECASE
+    )
+
+    # Total EUR (englisch/niederlaendisch) - Betrag auf gleicher oder naechster Zeile
+    # Bei NL-Rechnungen ist dies oft der EINZIGE Betrag (= Nettobetrag ohne MwSt)
+    TOTAL_EUR = re.compile(
+        r'Total\s+EUR[\s\n:]*(\d{1,3}(?:\.\d{3})*,\d{2})',
+        re.IGNORECASE
+    )
+
+    # Fragmentierter Gesamtbetrag: Betrag gefolgt von "Total EUR" Label
+    TOTAL_EUR_REVERSE = re.compile(
+        r'(\d{1,3}(?:\.\d{3})*,\d{2})\s*[V✓]?\s*\n\s*(?:<b>)?Total\s+EUR(?:</b>)?',
         re.IGNORECASE
     )
 
@@ -231,7 +246,7 @@ class AmountPatterns:
 class ReferencePatterns:
     """Patterns fuer Dokumentreferenzen."""
 
-    # Rechnungsnummer
+    # Rechnungsnummer (Standard: Label vor Wert)
     INVOICE_NUMBER = re.compile(
         r'(?:rechnung(?:s)?|re|rg|invoice|beleg|faktura)[\s\-\.:]?'
         r'(?:nr\.?|nummer|no\.?)[\s:\.]*'
@@ -239,11 +254,25 @@ class ReferencePatterns:
         re.IGNORECASE
     )
 
-    # Bestellnummer
+    # Rechnungsnummer REVERSE: "F-201401\nInvoice No." (Wert vor Label)
+    # F-xxx Pattern fuer niederlaendische/internationale Rechnungen
+    INVOICE_NUMBER_REVERSE = re.compile(
+        r'(F-\d{5,8})\s*\n\s*(?:Invoice\s*(?:No\.?|Number)|Rechnungs?-?(?:Nr\.?|nummer)|Factuurnr)',
+        re.IGNORECASE
+    )
+
+    # Bestellnummer (Standard: Label vor Wert)
     ORDER_NUMBER = re.compile(
         r'(?:bestell(?:ung)?|auftrag(?:s)?|order|po)[\s\-\.:]?'
         r'(?:nr\.?|nummer|no\.?)[\s:\.]*'
         r'([A-Z0-9][-A-Z0-9/\.]{2,25})',
+        re.IGNORECASE
+    )
+
+    # Bestellnummer REVERSE: "V-210089\nOrder No." (Wert vor Label)
+    # V-xxx Pattern fuer niederlaendische/internationale Bestellungen
+    ORDER_NUMBER_REVERSE = re.compile(
+        r'(V-\d{5,8})\s*\n\s*(?:Order\s*(?:No\.?|Number)|Bestell?-?(?:Nr\.?|nummer)|Auftragsnr)',
         re.IGNORECASE
     )
 
@@ -483,15 +512,31 @@ class StructuredExtractionService:
         warnings: List[str] = []
 
         # Referenznummern
-        invoice.invoice_number = self._extract_first_match(
-            ReferencePatterns.INVOICE_NUMBER, text
+        # WICHTIG: Zuerst REVERSE-Patterns versuchen (F-xxx vor "Invoice No.")
+        # da diese spezifischer sind als Standard-Patterns
+        invoice.invoice_number = (
+            self._extract_first_match(ReferencePatterns.INVOICE_NUMBER_REVERSE, text) or
+            self._extract_first_match(ReferencePatterns.INVOICE_NUMBER, text) or
+            self._extract_fragmented_reference(text, [
+                'invoice no', 'rechnungsnr', 'rechnungs-nr', 'factuurnr'
+            ])
         )
-        invoice.order_number = self._extract_first_match(
-            ReferencePatterns.ORDER_NUMBER, text
+
+        # WICHTIG: Zuerst REVERSE-Patterns versuchen (V-xxx vor "Order No.")
+        invoice.order_number = (
+            self._extract_first_match(ReferencePatterns.ORDER_NUMBER_REVERSE, text) or
+            self._extract_first_match(ReferencePatterns.ORDER_NUMBER, text) or
+            self._extract_fragmented_reference(text, [
+                'order no', 'bestellnr', 'bestell-nr', 'auftragsnr', 'po no'
+            ])
         )
+
         invoice.customer_number = self._extract_first_match(
             ReferencePatterns.CUSTOMER_NUMBER, text
-        )
+        ) or self._extract_fragmented_reference(text, [
+            'customer no', 'kundennr', 'kunden-nr', 'kd-nr'
+        ])
+
         invoice.delivery_note_number = self._extract_first_match(
             ReferencePatterns.DELIVERY_NOTE, text
         )
@@ -499,7 +544,9 @@ class StructuredExtractionService:
         # Daten
         invoice.invoice_date = self._extract_labeled_date(
             DatePatterns.INVOICE_DATE, text
-        ) or self._extract_first_date(text)
+        ) or self._extract_fragmented_date(text, [
+            'factuurdatum', 'rechnungsdatum', 'invoice date', 'datum'
+        ]) or self._extract_first_date(text)
 
         # Faelligkeitsdatum
         due_date_match = PaymentPatterns.DUE_DATE_DIRECT.search(text)
@@ -509,6 +556,12 @@ class StructuredExtractionService:
                 due_date_match.group(2),
                 due_date_match.group(3)
             )
+
+        # Fallback: Fragmentiertes Due Date (Label auf separater Zeile)
+        if not invoice.due_date:
+            invoice.due_date = self._extract_fragmented_date(text, [
+                'due date', 'vervaldatum', 'fällig', 'zahlbar bis'
+            ])
 
         # Oder aus Zahlungsziel berechnen
         if not invoice.due_date and invoice.invoice_date:
@@ -538,6 +591,26 @@ class StructuredExtractionService:
         invoice.gross_amount = self._extract_labeled_amount(
             AmountPatterns.GROSS_AMOUNT, text
         )
+
+        # Fallback fuer Nettobetrag: Total EUR (englisch/niederlaendisch)
+        # Bei NL-Rechnungen ohne MwSt ist "Total EUR" der Nettobetrag
+        if not invoice.net_amount:
+            total_eur_match = AmountPatterns.TOTAL_EUR.search(text)
+            if total_eur_match:
+                invoice.net_amount = self._parse_german_amount(total_eur_match.group(1))
+
+        # Fallback: Fragmentierter Gesamtbetrag (Betrag vor "Total EUR" Label)
+        if not invoice.net_amount:
+            reverse_match = AmountPatterns.TOTAL_EUR_REVERSE.search(text)
+            if reverse_match:
+                invoice.net_amount = self._parse_german_amount(reverse_match.group(1))
+
+        # Brutto nur setzen wenn explizit gefunden UND unterschiedlich von Netto
+        # (bei Rechnungen ohne MwSt-Ausweis gibt es keinen Bruttobetrag)
+        if invoice.gross_amount and invoice.net_amount:
+            if invoice.gross_amount == invoice.net_amount:
+                # Gleicher Betrag = kein separater Brutto noetig
+                invoice.gross_amount = None
 
         # MwSt
         vat_with_rate = AmountPatterns.VAT_WITH_RATE.search(text)
@@ -635,22 +708,34 @@ class StructuredExtractionService:
             addr = entities.addresses[0]
             invoice.sender = ExtractedAddress(
                 street=addr.street,
+                street_number=addr.street_number if hasattr(addr, 'street_number') else None,
                 zip_code=addr.postal_code,
                 city=addr.city,
+                country=addr.country if addr.country else "DE",
+                # Firmenname aus Adress-Kontext (ohne Rechtsform)
+                company=addr.company_name if hasattr(addr, 'company_name') else None,
             )
 
             if len(entities.addresses) > 1:
                 addr2 = entities.addresses[1]
                 invoice.recipient = ExtractedAddress(
                     street=addr2.street,
+                    street_number=addr2.street_number if hasattr(addr2, 'street_number') else None,
                     zip_code=addr2.postal_code,
                     city=addr2.city,
+                    country=addr2.country if addr2.country else "DE",
+                    # Firmenname aus Adress-Kontext (ohne Rechtsform)
+                    company=addr2.company_name if hasattr(addr2, 'company_name') else None,
                 )
 
-        # Firmenname
+        # Firmennamen mit Rechtsform (GmbH, etc.) - ueberschreiben Kontext-Namen
         if entities.company_names:
-            if invoice.sender:
+            # Erster Firmenname = Absender (ueberschreibt nur wenn vorhanden)
+            if invoice.sender and entities.company_names[0].name:
                 invoice.sender.company = entities.company_names[0].name
+            # Zweiter Firmenname = Empfaenger (falls vorhanden)
+            if len(entities.company_names) > 1 and invoice.recipient:
+                invoice.recipient.company = entities.company_names[1].name
 
         # USt-IdNr
         for identifier in entities.identifiers:
@@ -730,6 +815,12 @@ class StructuredExtractionService:
         # === ENHANCED EXTRACTION (Optional) ===
         # Verbessert Payment Terms, Amounts und Line Items mit erweiterten Patterns
         enhanced_adapter = _get_enhanced_extraction_adapter()
+        logger.warning(
+            "DEBUG_enhanced_extraction_check",
+            enhanced_adapter_available=enhanced_adapter is not None,
+            enable_flag=ENABLE_ENHANCED_EXTRACTION,
+            module_available=_enhanced_extraction_available,
+        )
         if enhanced_adapter:
             try:
                 enhanced_result = enhanced_adapter.extract_all(
@@ -779,16 +870,84 @@ class StructuredExtractionService:
                     if amt.vat_rate and not invoice.vat_rate:
                         invoice.vat_rate = amt.vat_rate
 
-                # Line Items uebernehmen wenn mehr gefunden
+                # Line Items uebernehmen wenn BESSER (nicht nur mehr)
+                existing_items = invoice.line_items or []
+
+                # DEBUG: Log existing items
+                logger.warning(
+                    "DEBUG_line_items_before_enhanced",
+                    existing_count=len(existing_items),
+                    existing_items=[
+                        {
+                            "desc": (i.description or "")[:50],
+                            "qty": str(i.quantity) if i.quantity else "None",
+                            "unit_price": str(i.unit_price) if i.unit_price else "None",
+                            "total": str(i.total_price) if i.total_price else "None",
+                        }
+                        for i in existing_items
+                    ] if existing_items else [],
+                    enhanced_count=len(enhanced_result.line_items) if enhanced_result.line_items else 0,
+                    enhanced_items=[
+                        {
+                            "desc": (i.description or "")[:50],
+                            "qty": str(i.quantity) if i.quantity else "None",
+                            "unit_price": str(i.unit_price) if i.unit_price else "None",
+                            "total": str(i.total_price) if i.total_price else "None",
+                        }
+                        for i in enhanced_result.line_items
+                    ] if enhanced_result.line_items else [],
+                )
+
                 if enhanced_result.line_items:
-                    existing_count = len(invoice.line_items) if invoice.line_items else 0
-                    if len(enhanced_result.line_items) > existing_count:
-                        # Konvertiere zu Schema-Format
+                    # Qualitaetspruefung der bestehenden Items
+                    existing_has_issues = self._has_low_quality_line_items(existing_items)
+                    enhanced_has_issues = self._has_low_quality_line_items_enhanced(
+                        enhanced_result.line_items
+                    )
+
+                    # DEBUG: Log quality check results
+                    logger.warning(
+                        "DEBUG_line_items_quality_check",
+                        existing_has_issues=existing_has_issues,
+                        enhanced_has_issues=enhanced_has_issues,
+                    )
+
+                    # Enhanced uebernehmen wenn:
+                    # 1. Bestehende Items haben Qualitaetsprobleme UND Enhanced nicht, ODER
+                    # 2. Enhanced hat mehr Items UND keine Qualitaetsprobleme
+                    should_use_enhanced = (
+                        (existing_has_issues and not enhanced_has_issues) or
+                        (len(enhanced_result.line_items) > len(existing_items)
+                         and not enhanced_has_issues)
+                    )
+
+                    logger.warning(
+                        "DEBUG_should_use_enhanced",
+                        should_use_enhanced=should_use_enhanced,
+                        condition1=existing_has_issues and not enhanced_has_issues,
+                        condition2=len(enhanced_result.line_items) > len(existing_items) and not enhanced_has_issues,
+                    )
+
+                    if should_use_enhanced:
                         from app.services.extraction import convert_to_schema_line_item
                         invoice.line_items = [
                             ExtractedLineItem(**convert_to_schema_line_item(item))
                             for item in enhanced_result.line_items
                         ]
+                        logger.info(
+                            "using_enhanced_line_items",
+                            reason="better_quality" if existing_has_issues else "more_items",
+                            existing_count=len(existing_items),
+                            enhanced_count=len(enhanced_result.line_items),
+                            existing_had_issues=existing_has_issues,
+                        )
+                    else:
+                        logger.warning(
+                            "DEBUG_keeping_existing_line_items",
+                            reason="enhanced_not_better",
+                            existing_count=len(existing_items),
+                            enhanced_count=len(enhanced_result.line_items),
+                        )
 
                 # Validierungs-Warnungen hinzufuegen
                 for v in enhanced_result.validations:
@@ -819,6 +978,115 @@ class StructuredExtractionService:
         invoice = self._validate_invoice(invoice)
 
         return invoice
+
+    def _has_low_quality_line_items(self, items: List[ExtractedLineItem]) -> bool:
+        """
+        Prueft ob Line Items verdaechtig schlecht sind.
+
+        Erkennt:
+        - Header-Text in Beschreibungen (z.B. "Description No.")
+        - Null-Preise
+        - Unplausible Mengen (Bruchzahlen wie 1.3 statt 384)
+        """
+        if not items:
+            return True
+
+        header_indicators = [
+            'description', 'beschreibung', 'quantity', 'menge',
+            'amount', 'betrag', 'price', 'preis', 'no.', 'nr.',
+            'unit', 'einheit', 'total', 'summe'
+        ]
+
+        for item in items:
+            desc = (item.description or "").lower().strip()
+
+            # Kurze Beschreibung mit Header-Text = schlecht
+            if len(desc) < 20:
+                for header in header_indicators:
+                    if header in desc:
+                        logger.debug(
+                            "low_quality_line_item_detected",
+                            reason="header_in_description",
+                            description=item.description,
+                            header_found=header,
+                        )
+                        return True
+
+            # Beide Preise 0 oder None = verdaechtig
+            total_zero = item.total_price == Decimal(0) or item.total_price is None
+            unit_zero = item.unit_price == Decimal(0) or item.unit_price is None
+            if total_zero and unit_zero:
+                logger.debug(
+                    "low_quality_line_item_detected",
+                    reason="zero_prices",
+                    description=item.description,
+                )
+                return True
+
+            # Unplausible Mengen (Bruchzahlen wie 1.3)
+            if item.quantity and Decimal(0) < item.quantity < Decimal(1):
+                logger.debug(
+                    "low_quality_line_item_detected",
+                    reason="fractional_quantity",
+                    quantity=str(item.quantity),
+                    description=item.description,
+                )
+                return True
+
+        return False
+
+    def _has_low_quality_line_items_enhanced(self, items: List) -> bool:
+        """
+        Prueft Enhanced Line Items (anderes Dataclass-Format).
+
+        Gleiche Logik wie _has_low_quality_line_items, aber fuer
+        das ExtractedLineItem-Dataclass aus dem Enhanced Extractor.
+        """
+        if not items:
+            return True
+
+        header_indicators = [
+            'description', 'beschreibung', 'quantity', 'menge',
+            'amount', 'betrag', 'price', 'preis', 'no.', 'nr.'
+        ]
+
+        for item in items:
+            desc = (item.description or "").lower().strip()
+
+            # Kurze Beschreibung mit Header-Text = schlecht
+            if len(desc) < 20:
+                for header in header_indicators:
+                    if header in desc:
+                        logger.debug(
+                            "low_quality_enhanced_item_detected",
+                            reason="header_in_description",
+                            description=item.description,
+                            header_found=header,
+                        )
+                        return True
+
+            # Beide Preise 0 oder None = verdaechtig
+            total_zero = item.total_price == Decimal(0) or item.total_price is None
+            unit_zero = item.unit_price == Decimal(0) or item.unit_price is None
+            if total_zero and unit_zero:
+                logger.debug(
+                    "low_quality_enhanced_item_detected",
+                    reason="zero_prices",
+                    description=item.description,
+                )
+                return True
+
+            # Unplausible Mengen (Bruchzahlen wie 1.3)
+            if item.quantity and Decimal(0) < item.quantity < Decimal(1):
+                logger.debug(
+                    "low_quality_enhanced_item_detected",
+                    reason="fractional_quantity",
+                    quantity=str(item.quantity),
+                    description=item.description,
+                )
+                return True
+
+        return False
 
     def _validate_invoice(self, invoice: ExtractedInvoiceData) -> ExtractedInvoiceData:
         """Prueft Plausibilitaet der Rechnungsdaten."""
@@ -874,7 +1142,52 @@ class StructuredExtractionService:
         if invoice.line_items:
             confidence += 0.05  # Bonus fuer gefundene Positionen
 
-        invoice.extraction_confidence = min(confidence, 0.99)
+            # Positionssumme vs. Gesamtbetrag validieren
+            line_items_total = sum(
+                item.total_price for item in invoice.line_items
+                if item.total_price is not None
+            )
+
+            # Vergleiche mit Netto- oder Bruttobetrag
+            reference_amount = invoice.net_amount or invoice.gross_amount
+            if line_items_total and reference_amount:
+                tolerance = Decimal("1.00")  # 1 EUR Toleranz fuer Rundungsfehler
+                difference = abs(line_items_total - reference_amount)
+
+                if difference <= tolerance:
+                    # Summen stimmen ueberein - Confidence-Boost
+                    confidence += 0.15
+                else:
+                    # Summen weichen ab - Confidence reduzieren
+                    # Je groesser die Abweichung, desto mehr Reduktion
+                    deviation_percent = (difference / reference_amount) * 100 if reference_amount else Decimal(0)
+
+                    if deviation_percent <= Decimal("5"):
+                        # Kleine Abweichung (<5%) - leichte Reduktion
+                        confidence -= 0.05
+                        warnings.append(
+                            f"Leichte Abweichung: Positionssumme ({line_items_total:.2f} €) vs. "
+                            f"Gesamtbetrag ({reference_amount:.2f} €) - Differenz: {difference:.2f} €"
+                        )
+                    elif deviation_percent <= Decimal("20"):
+                        # Mittlere Abweichung (5-20%) - deutliche Reduktion
+                        confidence -= 0.15
+                        warnings.append(
+                            f"Abweichung: Positionssumme ({line_items_total:.2f} €) weicht von "
+                            f"Gesamtbetrag ({reference_amount:.2f} €) ab - Differenz: {difference:.2f} €"
+                        )
+                        invoice.needs_review = True
+                    else:
+                        # Grosse Abweichung (>20%) - starke Reduktion
+                        confidence -= 0.25
+                        warnings.append(
+                            f"Starke Abweichung: Positionssumme ({line_items_total:.2f} €) vs. "
+                            f"Gesamtbetrag ({reference_amount:.2f} €) - Differenz: {difference:.2f} € "
+                            f"({deviation_percent:.0f}%)"
+                        )
+                        invoice.needs_review = True
+
+        invoice.extraction_confidence = min(max(confidence, 0.10), 0.99)  # Min 10%, Max 99%
         invoice.extraction_warnings = warnings
 
         return invoice
@@ -1168,6 +1481,108 @@ class StructuredExtractionService:
                 match.group(2),
                 match.group(3)
             )
+        return None
+
+    def _extract_fragmented_reference(
+        self,
+        text: str,
+        labels: List[str]
+    ) -> Optional[str]:
+        """
+        Extrahiert Referenznummer aus fragmentiertem OCR-Text.
+
+        Sucht nach Pattern wie:
+            V-210089
+            Order No.
+
+        Wo das Label NACH der Referenz auf einer separaten Zeile steht.
+        Sucht die NÄCHSTE vorherige Zeile die eine Referenz sein könnte.
+        """
+        lines = text.split('\n')
+
+        # Referenz-Pattern: Alphanumerisch mit Bindestrichen/Punkten
+        ref_pattern = re.compile(
+            r'^([A-Z][-A-Z0-9/\.]{2,25})$',  # Muss mit Buchstabe beginnen
+            re.IGNORECASE
+        )
+
+        for i, line in enumerate(lines):
+            line = line.strip()
+
+            # Prüfe ob diese Zeile ein Label ist
+            line_lower = line.lower()
+            for label in labels:
+                if label in line_lower:
+                    # Gefunden! Suche Referenz in der DIREKT vorherigen Zeile zuerst
+                    # dann weiter zurück (max 3)
+                    for j in range(i - 1, max(-1, i - 4), -1):
+                        if j < 0:
+                            break
+                        prev_line = lines[j].strip()
+                        match = ref_pattern.match(prev_line)
+                        if match:
+                            ref = match.group(1)
+                            # Validiere: Keine reinen Zahlen, keine Daten, keine anderen Labels
+                            is_date = re.match(r'^\d{2}[-./]\d{2}[-./]\d{2,4}$', ref)
+                            is_label = any(lbl in prev_line.lower() for lbl in [
+                                'no.', 'nr.', 'date', 'datum', 'bank', 'iban'
+                            ])
+                            if not is_date and not is_label:
+                                logger.debug(
+                                    "fragmented_reference_extracted",
+                                    label=label,
+                                    reference=ref,
+                                    line_index=j,
+                                )
+                                return ref
+        return None
+
+    def _extract_fragmented_date(
+        self,
+        text: str,
+        labels: List[str]
+    ) -> Optional[date]:
+        """
+        Extrahiert Datum aus fragmentiertem OCR-Text.
+
+        Sucht nach Pattern wie:
+            06-04-20
+            Factuurdatum
+
+        Wo das Label NACH dem Datum auf einer separaten Zeile steht.
+        """
+        lines = text.split('\n')
+
+        # Datum-Pattern: DD-MM-YY oder DD.MM.YY oder DD/MM/YY
+        date_pattern = re.compile(
+            r'^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})$'
+        )
+
+        for i, line in enumerate(lines):
+            line = line.strip()
+
+            # Prüfe ob diese Zeile ein Label ist
+            line_lower = line.lower()
+            for label in labels:
+                if label in line_lower:
+                    # Gefunden! Suche Datum in vorherigen Zeilen (max 3)
+                    for j in range(max(0, i - 3), i):
+                        prev_line = lines[j].strip()
+                        match = date_pattern.match(prev_line)
+                        if match:
+                            result = self._parse_date_groups(
+                                match.group(1),
+                                match.group(2),
+                                match.group(3)
+                            )
+                            if result:
+                                logger.debug(
+                                    "fragmented_date_extracted",
+                                    label=label,
+                                    date_str=prev_line,
+                                    result=str(result),
+                                )
+                                return result
         return None
 
     def _extract_all_dates(self, text: str) -> List[date]:

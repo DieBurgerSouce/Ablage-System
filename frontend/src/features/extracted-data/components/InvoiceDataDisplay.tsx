@@ -50,14 +50,18 @@ export function InvoiceDataDisplay({ invoice, className }: InvoiceDataDisplayPro
                         </div>
                         <div className="space-y-1">
                             <dt className="text-sm font-medium text-muted-foreground">
-                                Faelligkeitsdatum
+                                Fälligkeitsdatum
                             </dt>
                             <dd className="text-sm">{formatDate(invoice.due_date)}</dd>
                         </div>
-                        <CopyableField
-                            label="Kundennummer"
-                            value={invoice.customer_number}
-                        />
+                        <div className="space-y-1">
+                            <dt className="text-sm font-medium text-muted-foreground">
+                                Skontodatum
+                            </dt>
+                            <dd className="text-sm">
+                                {invoice.discount_due_date ? formatDate(invoice.discount_due_date) : "-"}
+                            </dd>
+                        </div>
                     </dl>
 
                     {/* Zusaetzliche Referenzen */}
@@ -103,15 +107,15 @@ export function InvoiceDataDisplay({ invoice, className }: InvoiceDataDisplayPro
             {/* Adressen */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <AddressCard title="Absender" address={invoice.sender} />
-                <AddressCard title="Empfaenger" address={invoice.recipient} />
+                <AddressCard title="Empfänger" address={invoice.recipient} />
             </div>
 
-            {/* Betraege */}
+            {/* Beträge */}
             <Card className="mb-4">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                         <CreditCard className="h-4 w-4" />
-                        Betraege
+                        Beträge
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -221,7 +225,7 @@ export function InvoiceDataDisplay({ invoice, className }: InvoiceDataDisplayPro
                             )}
                             {invoice.recipient_vat_id && (
                                 <CopyableField
-                                    label="USt-IdNr. Empfaenger"
+                                    label="USt-IdNr. Empfänger"
                                     value={invoice.recipient_vat_id}
                                 />
                             )}
@@ -240,13 +244,13 @@ export function InvoiceDataDisplay({ invoice, className }: InvoiceDataDisplayPro
             )}
 
             {/* Kontaktdaten */}
-            {(invoice.sender_email || invoice.sender_phone) && (
+            {(invoice.sender_email || invoice.sender_phone || invoice.sender_contact) && (
                 <Card>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium">Kontakt</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <dl className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {invoice.sender_email && (
                                 <CopyableField
                                     label="E-Mail"
@@ -259,6 +263,14 @@ export function InvoiceDataDisplay({ invoice, className }: InvoiceDataDisplayPro
                                     value={invoice.sender_phone}
                                 />
                             )}
+                            <div className="space-y-1">
+                                <dt className="text-sm font-medium text-muted-foreground">
+                                    Ansprechpartner
+                                </dt>
+                                <dd className="text-sm">
+                                    {invoice.sender_contact || "-"}
+                                </dd>
+                            </div>
                         </dl>
                     </CardContent>
                 </Card>

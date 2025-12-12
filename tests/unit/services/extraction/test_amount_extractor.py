@@ -198,3 +198,149 @@ class TestComplexInvoice:
         assert result.gross_amount == Decimal("1428.00")
         assert result.vat_rate == Decimal("19")
         assert result.is_consistent
+
+
+class TestReverseCharge:
+    """Tests for Reverse Charge / innergemeinschaftliche Lieferung."""
+
+    def test_dutch_reverse_charge_with_btw_verlegd(self, extractor: SmartAmountExtractor):
+        """Dutch invoice with BTW verlegd - Total should be Net, no Gross."""
+        text = """
+        INVOICE
+        VAT Reg. No. 820594829B01
+        VAT Registration No. DE200053646
+
+        Total EUR 1.305,60
+
+        Payment Terms: Netto 10 dagen
+        BTW verlegd / Reverse Charge
+        """
+        result = extractor.extract(text)
+
+        # Total sollte als Netto erkannt werden bei Reverse Charge
+        assert result.net_amount == Decimal("1305.60")
+        # Gross sollte None sein
+        assert result.gross_amount is None
+        # VAT sollte explizit 0 sein
+        assert result.vat_amount == Decimal("0")
+        assert result.vat_rate == Decimal("0")
+
+    def test_reverse_charge_explicit_mention(self, extractor: SmartAmountExtractor):
+        """Invoice with explicit Reverse Charge mention."""
+        text = """
+        Rechnung
+
+        Gesamtbetrag: 5.000,00 EUR
+
+        Reverse Charge - Steuerschuldnerschaft des Leistungsempfängers
+        """
+        result = extractor.extract(text)
+
+        assert result.net_amount == Decimal("5000.00")
+        assert result.gross_amount is None
+        assert result.vat_amount == Decimal("0")
+
+    def test_innergemeinschaftliche_lieferung(self, extractor: SmartAmountExtractor):
+        """German text for intra-community delivery."""
+        text = """
+        Rechnung Nr. 2024-001
+
+        Total: 2.500,00 EUR
+
+        Innergemeinschaftliche Lieferung - steuerfreie Lieferung
+        """
+        result = extractor.extract(text)
+
+        assert result.net_amount == Decimal("2500.00")
+        assert result.gross_amount is None
+
+    def test_cross_border_vat_ids_detected(self, extractor: SmartAmountExtractor):
+        """EU VAT-ID + DE VAT-ID implies Reverse Charge."""
+        text = """
+        Supplier: Company BV
+        VAT: NL123456789B01
+
+        Customer: German GmbH
+        VAT: DE123456789
+
+        Gesamtbetrag: 3.750,00 EUR
+        """
+        result = extractor.extract(text)
+
+        # Cross-border EU transaction should be detected as Reverse Charge
+        assert result.net_amount == Decimal("3750.00")
+        assert result.gross_amount is None
+
+    def test_normal_german_invoice_not_affected(self, extractor: SmartAmountExtractor):
+        """Normal German invoice with VAT should work unchanged."""
+        text = """
+        RECHNUNG
+
+        Nettobetrag: 1.000,00 EUR
+        MwSt 19%: 190,00 EUR
+        Bruttobetrag: 1.190,00 EUR
+
+        Zahlbar innerhalb 14 Tagen.
+        """
+        result = extractor.extract(text)
+
+        # Normal invoice should have all amounts
+        assert result.net_amount == Decimal("1000.00")
+        assert result.vat_amount == Decimal("190.00")
+        assert result.gross_amount == Decimal("1190.00")
+        assert result.vat_rate == Decimal("19")
+        assert result.is_consistent
+
+    def test_vat_exempt_zero_percent(self, extractor: SmartAmountExtractor):
+        """Invoice with explicit 0% VAT mention."""
+        text = """
+        Invoice Total: 800,00 EUR
+        VAT 0%: 0,00 EUR
+
+        Tax exempt delivery
+        """
+        result = extractor.extract(text)
+
+        assert result.net_amount == Decimal("800.00")
+        assert result.gross_amount is None
+
+
+class TestPaymentTermsNotAmount:
+    """Tests to ensure payment terms are not extracted as amounts."""
+
+    def test_netto_dagen_not_amount(self, extractor: SmartAmountExtractor):
+        """'Netto 10 dagen' should NOT extract 10 as net amount."""
+        text = """
+        Total EUR 1.305,60
+
+        Payment Terms: Netto 10 dagen
+        """
+        result = extractor.extract(text)
+
+        # 10 sollte NICHT als Nettobetrag extrahiert werden
+        assert result.net_amount != Decimal("10")
+        assert result.net_amount != Decimal("10.00")
+
+    def test_netto_tage_not_amount(self, extractor: SmartAmountExtractor):
+        """'Netto 30 Tage' should NOT extract 30 as net amount."""
+        text = """
+        Gesamtbetrag: 2.500,00 EUR
+
+        Zahlungsziel: Netto 30 Tage
+        """
+        result = extractor.extract(text)
+
+        assert result.net_amount != Decimal("30")
+        assert result.net_amount != Decimal("30.00")
+
+    def test_payment_days_not_net_amount(self, extractor: SmartAmountExtractor):
+        """Payment days in various formats should not be net amount."""
+        text = """
+        Total: 999,99 EUR
+
+        Zahlbar netto 14 days
+        """
+        result = extractor.extract(text)
+
+        assert result.net_amount != Decimal("14")
+        assert result.net_amount != Decimal("14.00")

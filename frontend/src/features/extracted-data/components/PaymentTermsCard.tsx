@@ -62,7 +62,7 @@ export function PaymentTermsCard({
         skontoStatus = "available";
     }
 
-    // Faelligkeitsstatus
+    // Fälligkeitsstatus
     let isDueOverdue = false;
     if (dueDate) {
         const today = new Date();
@@ -72,7 +72,7 @@ export function PaymentTermsCard({
         isDueOverdue = dueDateObj < today;
     }
 
-    // Styling basierend auf Status
+    // Styling basierend auf Status - nur linker Rand farbig, Hintergrund bleibt dunkel
     const getBorderColor = () => {
         if (isDueOverdue) return "border-l-red-500";
         if (skontoStatus === "expired") return "border-l-gray-400";
@@ -81,18 +81,11 @@ export function PaymentTermsCard({
         return "border-l-transparent";
     };
 
-    const getBackgroundColor = () => {
-        if (isDueOverdue) return "bg-red-50 dark:bg-red-950/20";
-        if (skontoStatus === "expiring") return "bg-orange-50 dark:bg-orange-950/20";
-        return "";
-    };
-
     return (
         <Card
             className={cn(
                 "border-l-4",
                 getBorderColor(),
-                getBackgroundColor(),
                 className
             )}
         >
@@ -112,7 +105,7 @@ export function PaymentTermsCard({
                 {dueDate && (
                     <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">
-                            Faelligkeit:
+                            Fälligkeit:
                         </span>
                         <span
                             className={cn(
@@ -121,19 +114,19 @@ export function PaymentTermsCard({
                             )}
                         >
                             {formatDate(dueDate)}
-                            {isDueOverdue && " (ueberfaellig)"}
+                            {isDueOverdue && " (überfällig)"}
                         </span>
                     </div>
                 )}
 
-                {/* Skonto-Box */}
+                {/* Skonto-Box - subtiler Hintergrund im dunklen Theme */}
                 {hasSkonto && (
                     <div
                         className={cn(
-                            "p-3 rounded-md",
-                            skontoStatus === "available" && "bg-green-100 dark:bg-green-900/30",
-                            skontoStatus === "expiring" && "bg-orange-100 dark:bg-orange-900/30",
-                            skontoStatus === "expired" && "bg-gray-100 dark:bg-gray-800/50"
+                            "p-3 rounded-md border",
+                            skontoStatus === "available" && "border-green-500/30 bg-green-500/10",
+                            skontoStatus === "expiring" && "border-orange-500/30 bg-orange-500/10",
+                            skontoStatus === "expired" && "border-muted bg-muted/50"
                         )}
                     >
                         <div className="flex items-start justify-between">

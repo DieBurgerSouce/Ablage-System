@@ -96,10 +96,10 @@ export function SampleDetailModal({ sample, benchmarks: propBenchmarks, open, on
                             {sample.language.toUpperCase()}
                         </span>
                         {sample.has_umlauts && (
-                            <Badge variant="outline">Enthaelt Umlaute</Badge>
+                            <Badge variant="outline">Enthält Umlaute</Badge>
                         )}
                         {sample.has_tables && (
-                            <Badge variant="outline">Enthaelt Tabellen</Badge>
+                            <Badge variant="outline">Enthält Tabellen</Badge>
                         )}
                         {sample.has_fraktur && (
                             <Badge variant="outline">Fraktur</Badge>

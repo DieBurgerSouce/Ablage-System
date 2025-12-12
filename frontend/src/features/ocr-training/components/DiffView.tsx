@@ -114,7 +114,7 @@ export function DiffView({ original, modified, className }: DiffViewProps) {
                             <span
                                 key={key}
                                 className="bg-red-100 text-red-800 line-through"
-                                title="Geloescht"
+                                title="Gelöscht"
                             >
                                 {segment.original}
                             </span>
@@ -125,7 +125,7 @@ export function DiffView({ original, modified, className }: DiffViewProps) {
                             <span
                                 key={key}
                                 className="bg-green-100 text-green-800"
-                                title="Eingefuegt"
+                                title="Eingefügt"
                             >
                                 {segment.modified}
                             </span>
@@ -227,12 +227,12 @@ export function DiffStats({ original, modified }: DiffStatsProps) {
             )}
             {stats.deletions > 0 && (
                 <span className="text-red-600">
-                    {stats.deletions} Geloescht
+                    {stats.deletions} Gelöscht
                 </span>
             )}
             {stats.insertions > 0 && (
                 <span className="text-green-600">
-                    {stats.insertions} Eingefuegt
+                    {stats.insertions} Eingefügt
                 </span>
             )}
         </div>

@@ -155,11 +155,36 @@ class EnhancedExtractionAdapter:
             if not result.amounts.is_consistent:
                 result.needs_review = True
 
-            # 3. Extract line items
+            # 3. Extract line items mit Text-Fallback
+            line_items: List[ExtractedLineItem] = []
+
             if tables:
-                result.line_items = self.extract_line_items(tables)
-            else:
-                result.line_items = self.line_item_extractor.extract_from_text(text)
+                line_items = self.extract_line_items(tables)
+                logger.debug(
+                    "table_extraction_result",
+                    item_count=len(line_items),
+                    has_quality_issues=self._has_low_quality_items(line_items),
+                )
+
+            # Fallback: Wenn keine oder schlechte Line Items, versuche Text-Extraktion
+            if not line_items or self._has_low_quality_items(line_items):
+                text_items = self.line_item_extractor.extract_from_text(text)
+                logger.debug(
+                    "text_extraction_fallback",
+                    table_items=len(line_items),
+                    text_items=len(text_items),
+                )
+
+                if text_items and self._is_better_extraction(text_items, line_items):
+                    logger.info(
+                        "using_text_extraction_over_tables",
+                        reason="text_extraction_better_quality",
+                        table_items=len(line_items),
+                        text_items=len(text_items),
+                    )
+                    line_items = text_items
+
+            result.line_items = line_items
 
             # 4. Validate
             result.validations, result.is_valid = self.validate(result, invoice_date)
@@ -260,6 +285,107 @@ class EnhancedExtractionAdapter:
         confidence -= error_count * 0.1
 
         return max(0.1, min(0.99, confidence))
+
+    def _has_low_quality_items(self, items: List[ExtractedLineItem]) -> bool:
+        """
+        Prüft ob die extrahierten Items verdächtig schlecht sind.
+
+        Erkennt typische Probleme wie:
+        - Header-Text in Beschreibung
+        - Null-Preise
+        - Unplausible Werte
+        """
+        if not items:
+            return True
+
+        # Header-Begriffe die NICHT in Beschreibungen vorkommen sollten
+        header_indicators = [
+            'description', 'beschreibung', 'quantity', 'menge',
+            'amount', 'betrag', 'price', 'preis', 'no.', 'nr.',
+            'unit', 'einheit', 'total', 'summe', 'pos.', 'artikel',
+            'article', 'item', 'position'
+        ]
+
+        for item in items:
+            desc_lower = (item.description or "").lower().strip()
+
+            # Prüfe auf Header-Text in Beschreibung
+            # Aber nur wenn die Beschreibung SEHR kurz ist (wahrscheinlich nur Header)
+            if len(desc_lower) < 20:
+                for header in header_indicators:
+                    if header in desc_lower:
+                        logger.debug(
+                            "low_quality_header_in_description",
+                            description=item.description,
+                            header_found=header,
+                        )
+                        return True
+
+            # Null-Preise bei vorhandenem Gesamtpreis = verdächtig
+            if item.total_price == Decimal(0) and item.unit_price == Decimal(0):
+                logger.debug(
+                    "low_quality_zero_prices",
+                    description=item.description,
+                )
+                return True
+
+            # Unplausible Mengen (z.B. "1.3" statt "384")
+            if item.quantity and item.quantity < Decimal(1) and item.quantity > Decimal(0):
+                logger.debug(
+                    "low_quality_fractional_quantity",
+                    quantity=str(item.quantity),
+                    description=item.description,
+                )
+                return True
+
+        return False
+
+    def _is_better_extraction(
+        self,
+        new_items: List[ExtractedLineItem],
+        old_items: List[ExtractedLineItem],
+    ) -> bool:
+        """
+        Vergleicht zwei Extraktionen und entscheidet welche besser ist.
+
+        Kriterien:
+        - Weniger Qualitätsprobleme
+        - Höhere Confidence-Werte
+        - Plausiblere Preise/Mengen
+        """
+        if not new_items:
+            return False
+        if not old_items:
+            return True
+
+        # Wenn alte Items Qualitätsprobleme haben, neue aber nicht
+        old_has_issues = self._has_low_quality_items(old_items)
+        new_has_issues = self._has_low_quality_items(new_items)
+
+        if old_has_issues and not new_has_issues:
+            return True
+        if new_has_issues and not old_has_issues:
+            return False
+
+        # Vergleiche durchschnittliche Confidence
+        old_confidence = sum(i.confidence for i in old_items) / len(old_items)
+        new_confidence = sum(i.confidence for i in new_items) / len(new_items)
+
+        if new_confidence > old_confidence + 0.1:
+            return True
+
+        # Vergleiche ob Preise plausibel sind (nicht 0)
+        old_has_prices = any(
+            i.total_price and i.total_price > Decimal(0) for i in old_items
+        )
+        new_has_prices = any(
+            i.total_price and i.total_price > Decimal(0) for i in new_items
+        )
+
+        if new_has_prices and not old_has_prices:
+            return True
+
+        return False
 
 
 def convert_to_schema_line_item(

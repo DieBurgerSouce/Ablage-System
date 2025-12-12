@@ -10,6 +10,7 @@ Context-aware extraction of monetary amounts:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import List, Optional, Set
@@ -133,7 +134,11 @@ class SmartAmountExtractor:
             # Step 5: VAT rate inference
             self._infer_vat_rate(result, text)
 
-            # Step 6: Validate consistency
+            # Step 6: Reverse Charge handling
+            # (must be before consistency check)
+            self._handle_reverse_charge(result, text)
+
+            # Step 7: Validate consistency
             self._validate_consistency(result)
 
         except Exception as e:
@@ -376,6 +381,157 @@ class SmartAmountExtractor:
                 expected=expected_gross,
                 actual=result.gross_amount,
                 diff=diff,
+            )
+
+    # =========================================================================
+    # REVERSE CHARGE HANDLING
+    # =========================================================================
+
+    # Indikatoren fuer Reverse Charge / innergemeinschaftliche Lieferung
+    REVERSE_CHARGE_INDICATORS: frozenset[str] = frozenset([
+        "reverse charge",
+        "steuerschuldnerschaft",
+        "innergemeinschaftliche lieferung",
+        "intra-community",
+        "intracommunautaire",
+        "btw verlegd",  # Dutch
+        "vat exempt",
+        "0% vat",
+        "0% mwst",
+        "vat 0%",
+        "mwst 0%",
+        "exempt from vat",
+        "steuerfreie lieferung",
+        "tax exempt",
+    ])
+
+    # Pattern fuer EU VAT-IDs (ausser DE)
+    _EU_VAT_ID_PATTERN = re.compile(
+        r'\b(AT|BE|BG|CY|CZ|DK|EE|FI|FR|GR|HR|HU|IE|IT|LT|LU|LV|MT|NL|PL|PT|RO|SE|SI|SK)'
+        r'[A-Z0-9]{8,12}\b',
+        re.IGNORECASE,
+    )
+    _DE_VAT_ID_PATTERN = re.compile(r'\bDE\d{9}\b', re.IGNORECASE)
+
+    def _detect_reverse_charge(self, text: str) -> bool:
+        """
+        Detect if invoice is Reverse Charge (no VAT applies).
+
+        Indicators:
+        - "Reverse Charge" explicit mention
+        - "Steuerschuldnerschaft des Leistungsempfängers"
+        - "innergemeinschaftliche Lieferung"
+        - "BTW verlegd" (Dutch)
+        - "0% MwSt" or "VAT 0%"
+        - Cross-border VAT-IDs (EU sender + DE recipient)
+        """
+        text_lower = text.lower()
+
+        # Check explicit indicators
+        if any(ind in text_lower for ind in self.REVERSE_CHARGE_INDICATORS):
+            return True
+
+        # Check for cross-border EU transaction (implied reverse charge)
+        # If we have both a non-DE EU VAT-ID AND a DE VAT-ID, it's likely intra-EU
+        has_eu_vat = self._EU_VAT_ID_PATTERN.search(text) is not None
+        has_de_vat = self._DE_VAT_ID_PATTERN.search(text) is not None
+
+        if has_eu_vat and has_de_vat:
+            logger.debug(
+                "cross_border_eu_transaction_detected",
+                eu_vat=has_eu_vat,
+                de_vat=has_de_vat,
+            )
+            return True
+
+        return False
+
+    def _handle_reverse_charge(
+        self,
+        result: AmountExtractionResult,
+        text: str,
+    ) -> None:
+        """
+        Reclassify amounts when Reverse Charge applies.
+
+        In Reverse Charge scenarios:
+        - No VAT on invoice
+        - "Total" = Net amount (not Gross)
+        - Gross should be None or same as Net
+
+        Only applies when:
+        - Reverse Charge indicator is present
+        - VAT amount is None or 0
+
+        Handles two cases:
+        1. Gross present, Net missing/small -> Move Gross to Net
+        2. Net == Gross (same value) -> Keep Net, clear Gross
+        """
+        # Check if Reverse Charge applies
+        if not self._detect_reverse_charge(text):
+            return
+
+        # Check if VAT is missing or zero (required for Reverse Charge)
+        vat_missing_or_zero = (
+            result.vat_amount is None or
+            result.vat_amount == Decimal("0")
+        )
+
+        if not vat_missing_or_zero:
+            # Has VAT amount > 0, not a Reverse Charge scenario
+            return
+
+        # Case 1: Gross present, Net missing/small - swap them
+        if (
+            result.gross_amount is not None
+            and (result.net_amount is None or result.net_amount < Decimal("1"))
+        ):
+            logger.info(
+                "reverse_charge_detected",
+                case="gross_to_net",
+                gross_was=result.gross_amount,
+                net_was=result.net_amount,
+            )
+
+            # "Total" was actually Net in Reverse Charge context
+            result.net_amount = result.gross_amount
+            result.net_confidence = result.gross_confidence
+            result.gross_amount = None
+            result.gross_confidence = 0.0
+
+            # Explicitly set VAT to 0
+            result.vat_amount = Decimal("0")
+            result.vat_rate = Decimal("0")
+            result.vat_confidence = 0.8
+
+            result.extraction_warnings.append(
+                "Reverse Charge erkannt: Gesamtbetrag als Netto interpretiert"
+            )
+
+        # Case 2: Net == Gross (both same value) - clear Gross
+        elif (
+            result.net_amount is not None
+            and result.gross_amount is not None
+            and result.net_amount == result.gross_amount
+        ):
+            logger.info(
+                "reverse_charge_detected",
+                case="clear_gross",
+                net=result.net_amount,
+                gross_was=result.gross_amount,
+            )
+
+            result.gross_amount = None
+            result.gross_confidence = 0.0
+
+            # Ensure VAT is set to 0
+            if result.vat_amount is None:
+                result.vat_amount = Decimal("0")
+            result.vat_rate = Decimal("0")
+            result.vat_confidence = 0.8
+
+            result.extraction_warnings.append(
+                "Reverse Charge erkannt: Bruttobetrag entfällt (= Nettobetrag)"
             )
 
 

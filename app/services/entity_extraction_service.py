@@ -56,6 +56,10 @@ class ExtractedAddress:
     country: str = "DE"
     confidence: float = 0.0
     raw_text: str = ""
+    # Neue Felder fuer intelligente Zuordnung
+    role: Optional[str] = None  # "sender" oder "recipient"
+    position_start: int = 0  # Position im Text fuer Proximity-Matching
+    company_name: Optional[str] = None  # Firmenname aus Kontext (ohne Rechtsform)
 
 
 @dataclass
@@ -126,16 +130,75 @@ class GermanPatterns:
         r'\b([0-9]{2,3}/[0-9]{3}/[0-9]{4,5})\b'
     )
 
-    # PLZ + Stadt
+    # =========================================================================
+    # MULTI-LAND PLZ PATTERNS
+    # =========================================================================
+    # Deutsche PLZ (5-stellig) + Stadt
+    # Unterstuetzt optionales Laender-Prefix: "D-42719", "DE-42719", "42719"
     PLZ_CITY = re.compile(
-        r'\b([0-9]{5})\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-Za-zäöüß]+)*)\b',
+        r'(?:^|[^\d])(?:D-|DE-)?([0-9]{5})[ \t]+([A-ZÄÖÜ][a-zäöüß]+(?:[ \t]+[A-Za-zäöüß]+)*)\b',
         re.UNICODE
     )
 
+    # Niederlaendische PLZ (4 Ziffern + 2 Buchstaben) + Stadt
+    # Unterstuetzt Leerzeichen in PLZ: "7418 HG" oder "7418HG"
+    PLZ_CITY_NL = re.compile(
+        r'\b([0-9]{4}[ \t]?[A-Z]{2})[ \t]+([A-Za-z\-]+(?:[ \t]+[A-Za-z\-]+)*)\b',
+        re.UNICODE
+    )
+
+    # Oesterreichische PLZ (4-stellig) + Stadt
+    PLZ_CITY_AT = re.compile(
+        r'\b([0-9]{4})\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-Za-zäöüß]+)*)\b',
+        re.UNICODE
+    )
+
+    # Schweizer PLZ (4-stellig) + Stadt
+    PLZ_CITY_CH = re.compile(
+        r'\b([0-9]{4})\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-Za-zäöüß]+)*)\b',
+        re.UNICODE
+    )
+
+    # Belgische PLZ (4-stellig) + Stadt
+    PLZ_CITY_BE = re.compile(
+        r'\b([0-9]{4})\s+([A-Za-z\-]+(?:\s+[A-Za-z\-]+)*)\b',
+        re.UNICODE
+    )
+
+    # =========================================================================
+    # SENDER / RECIPIENT LABELS (mit Word Boundaries!)
+    # =========================================================================
+    SENDER_LABELS = re.compile(
+        r'\b(?:von|from|sender|absender|lieferant|supplier|vendor|'
+        r'rechnungssteller|verkäufer|seller|geliefert\s+von)\b',
+        re.IGNORECASE
+    )
+
+    RECIPIENT_LABELS = re.compile(
+        r'\b(?:an|to|recipient|empfänger|empfaenger|kunde|customer|'
+        r'rechnungsempfänger|rechnungsempfaenger|käufer|kaeufer|buyer|'
+        r'bill\s*to|ship\s*to|lieferadresse|rechnungsadresse)\b',
+        re.IGNORECASE
+    )
+
     # Straße + Hausnummer
+    # Erkennt: "Van der Landeweg 6", "Albertus-Magnus-Str. 11", "Musterstraße 42"
     STREET = re.compile(
-        r'\b([A-ZÄÖÜ][a-zäöüß]+(?:str(?:aße|\.)|weg|platz|allee|ring|gasse|damm))\s*([0-9]+[a-zA-Z]?)\b',
+        # Optionales Präfix: "Van der", "De", "Am", "An der", etc.
+        r'((?:(?:Van|Von|De|Het|An|Am|Im|Auf|Bei|Zum|Zur|In)[ \t]+(?:der|den|dem|het)?[ \t]*)?'
+        # Straßenname: kann Bindestriche haben (Albertus-Magnus, Karl-Marx)
+        r'[A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß-]*'
+        # Straßentyp
+        r'(?:str(?:a[sß]e)?\.?|weg|platz|allee|ring|gasse|damm|ufer|berg|hof|steig|pfad))'
+        # Hausnummer (OPTIONAL - mit optionalem Buchstaben)
+        r'\.?(?:[ \t]+(\d+(?:[ \t]*[a-zA-Z])?))?',
         re.UNICODE | re.IGNORECASE
+    )
+
+    # Hausnummer separat (fuer fragmentierten OCR wo Nummer auf eigener Zeile)
+    HOUSE_NUMBER = re.compile(
+        r'^(\d{1,4}(?:[ \t]*[a-zA-Z])?)$',
+        re.UNICODE
     )
 
     # E-Mail
@@ -155,15 +218,79 @@ class GermanPatterns:
         re.IGNORECASE
     )
 
-    # Rechtsformen
+    # Rechtsformen (DE + EU)
     LEGAL_FORMS = re.compile(
-        r'\b(GmbH|AG|KG|OHG|UG|e\.?\s?K\.|GmbH\s*&\s*Co\.?\s*KG|mbH|SE|eG|KGaA)\b',
+        r'\b(GmbH|AG|KG|OHG|UG|e\.?\s?K\.|GmbH\s*&\s*Co\.?\s*KG|mbH|SE|eG|KGaA|'
+        r'B\.?V\.?|N\.?V\.?|S\.?A\.?|S\.?L\.?|S\.?R\.?L\.?|Ltd\.?|Inc\.?|PLC|LLC)\b',
         re.IGNORECASE
     )
 
-    # Firmenname (vor Rechtsform)
+    # =========================================================================
+    # LAENDERNAMEN MAPPING (Mehrsprachig -> ISO 3166-1 Alpha-2)
+    # =========================================================================
+    # Alle Varianten in Kleinbuchstaben fuer case-insensitive Matching
+    COUNTRY_NAMES_TO_CODE: Dict[str, str] = {
+        # Deutschland
+        "deutschland": "DE", "germany": "DE", "duitsland": "DE",
+        "allemagne": "DE", "alemania": "DE", "germania": "DE",
+        "d": "DE",  # D-42719 Prefix
+        # Niederlande
+        "niederlande": "NL", "netherlands": "NL", "nederland": "NL",
+        "holland": "NL", "pays-bas": "NL", "paesi bassi": "NL",
+        "nl": "NL",
+        # Oesterreich
+        "oesterreich": "AT", "österreich": "AT", "austria": "AT",
+        "autriche": "AT", "oostenrijk": "AT",
+        "a": "AT", "at": "AT",
+        # Schweiz
+        "schweiz": "CH", "switzerland": "CH", "suisse": "CH",
+        "svizzera": "CH", "zwitserland": "CH",
+        "ch": "CH",
+        # Belgien
+        "belgien": "BE", "belgium": "BE", "belgique": "BE",
+        "belgie": "BE", "belgio": "BE",
+        "b": "BE", "be": "BE",
+        # Frankreich
+        "frankreich": "FR", "france": "FR", "francia": "FR",
+        "frankrijk": "FR",
+        "f": "FR", "fr": "FR",
+        # Italien
+        "italien": "IT", "italy": "IT", "italia": "IT",
+        "italie": "IT",
+        "i": "IT", "it": "IT",
+        # Spanien
+        "spanien": "ES", "spain": "ES", "espana": "ES", "españa": "ES",
+        "espagne": "ES", "spanje": "ES",
+        "e": "ES", "es": "ES",
+        # Polen
+        "polen": "PL", "poland": "PL", "polska": "PL",
+        "pologne": "PL",
+        "pl": "PL",
+        # Tschechien
+        "tschechien": "CZ", "czech republic": "CZ", "czechia": "CZ",
+        "cesko": "CZ", "tsjechie": "CZ",
+        "cz": "CZ",
+        # Grossbritannien
+        "grossbritannien": "GB", "großbritannien": "GB", "united kingdom": "GB",
+        "uk": "GB", "gb": "GB", "england": "GB", "great britain": "GB",
+        "royaume-uni": "GB", "verenigd koninkrijk": "GB",
+        # Luxemburg
+        "luxemburg": "LU", "luxembourg": "LU", "lussemburgo": "LU",
+        "l": "LU", "lu": "LU",
+    }
+
+    # Pattern fuer Laendernamen im Text (nach PLZ/Stadt)
+    COUNTRY_NAME_PATTERN = re.compile(
+        r'(?:^|\n|\r)\s*([A-Za-zäöüÄÖÜßéèêëàâùûôîïç\-\s]+?)\s*(?:$|\n|\r)',
+        re.UNICODE | re.MULTILINE
+    )
+
+    # Firmenname (vor Rechtsform) - inkl. EU-Rechtsformen
+    # WICHTIG: Nur Leerzeichen (keine Newlines), Rechtsformen in Reihenfolge (GmbH vor mbH!)
     COMPANY_NAME = re.compile(
-        r'\b([A-ZÄÖÜ][A-Za-zäöüß&\-\s]{2,50})\s+(GmbH|AG|KG|OHG|UG|e\.?\s?K\.|mbH|SE|eG|KGaA)',
+        r'\b([A-ZÄÖÜ][A-Za-zäöüß&\-](?:[A-Za-zäöüß&\- ]*[A-Za-zäöüß&\-])?)[ \t]+'
+        r'(GmbH|mbH|AG|KG|OHG|UG|e\.?\s?K\.|SE|eG|KGaA|'
+        r'B\.?V\.?|N\.?V\.?|S\.?A\.?|S\.?L\.?|S\.?R\.?L\.?|Ltd\.?|Inc\.?|PLC|LLC)\b',
         re.UNICODE
     )
 
@@ -409,35 +536,198 @@ class EntityExtractionService:
         return results
 
     def _extract_addresses(self, text: str) -> List[ExtractedAddress]:
-        """Extrahiert Adressen (PLZ + Stadt + optional Strasse)."""
+        """
+        Extrahiert Adressen (PLZ + Stadt + optional Strasse).
+
+        Unterstuetzt mehrere Laender:
+        - DE: 5-stellig (12345)
+        - NL: 4 Ziffern + 2 Buchstaben (1234 AB)
+        - AT/CH/BE: 4-stellig (1234)
+
+        Weist Rollen (sender/recipient) basierend auf Kontext-Labels zu.
+        """
         results = []
+        seen_positions: Set[int] = set()  # Verhindere Duplikate
 
-        # PLZ + Stadt finden
-        for match in self.patterns.PLZ_CITY.finditer(text):
-            plz = match.group(1)
-            city = match.group(2).strip()
+        # PLZ-Patterns fuer verschiedene Laender
+        plz_patterns = [
+            (self.patterns.PLZ_CITY, "DE"),
+            (self.patterns.PLZ_CITY_NL, "NL"),
+            # AT/CH/BE nur wenn explizit im Kontext oder keine DE-Adresse
+            # (vermeidet false positives mit 4-stelligen Zahlen)
+        ]
 
-            address = ExtractedAddress(
-                postal_code=plz,
-                city=city,
-                confidence=0.85,
-                raw_text=match.group(0),
-            )
+        for pattern, country in plz_patterns:
+            for match in pattern.finditer(text):
+                # Verhindere Duplikate an gleicher Position
+                if match.start() in seen_positions:
+                    continue
+                seen_positions.add(match.start())
 
-            # Strasse in der Naehe suchen (100 Zeichen vorher)
-            search_start = max(0, match.start() - 150)
-            before_text = text[search_start:match.start()]
+                plz = match.group(1)
+                city = match.group(2).strip()
 
-            street_match = self.patterns.STREET.search(before_text)
-            if street_match:
-                address.street = street_match.group(1)
-                address.street_number = street_match.group(2)
-                address.confidence = 0.92
+                address = ExtractedAddress(
+                    postal_code=plz,
+                    city=city,
+                    country=country,
+                    confidence=0.85,
+                    raw_text=match.group(0),
+                    position_start=match.start(),
+                )
 
-            results.append(address)
-            self._extraction_stats["addresses_found"] += 1
+                # Land aus Kontext bestimmen (ueberschreibt PLZ-basiertes Land)
+                detected_country = self._detect_country_from_context(
+                    text, match.start(), match.end()
+                )
+                if detected_country:
+                    address.country = detected_country
+                    address.confidence += 0.05  # Boost fuer expliziten Laendernamen
+
+                # Strasse in der Naehe suchen (150 Zeichen vorher)
+                # WICHTIG: Letzten Match verwenden (naechster zur PLZ)
+                search_start = max(0, match.start() - 150)
+                before_text = text[search_start:match.start()]
+
+                street_matches = list(self.patterns.STREET.finditer(before_text))
+                if street_matches:
+                    # Letzten Match nehmen - der ist am naechsten zur PLZ
+                    street_match = street_matches[-1]
+                    address.street = street_match.group(1)
+                    address.street_number = street_match.group(2)  # Kann None sein
+                    address.confidence = 0.92
+
+                    # Wenn keine Hausnummer im Straßenmatch, suche in naechster Zeile
+                    if not address.street_number:
+                        # Text nach der Strasse bis zur PLZ
+                        after_street = before_text[street_match.end():].strip()
+                        lines_after = [l.strip() for l in after_street.split('\n') if l.strip()]
+                        if lines_after:
+                            # Erste Zeile nach Strasse koennte Hausnummer sein
+                            potential_number = lines_after[0]
+                            number_match = self.patterns.HOUSE_NUMBER.match(potential_number)
+                            if number_match:
+                                address.street_number = number_match.group(1)
+
+                    # Firmenname VOR der Strasse suchen (ohne Rechtsform)
+                    # Suche in den Zeilen vor der Strasse
+                    street_pos_in_before = street_match.start()
+                    text_before_street = before_text[:street_pos_in_before].strip()
+
+                    # Letzte nicht-leere Zeile vor der Strasse = potentieller Firmenname
+                    lines_before = [l.strip() for l in text_before_street.split('\n') if l.strip()]
+                    if lines_before:
+                        potential_company = lines_before[-1]
+                        # Validiere: Nicht zu kurz, nicht nur Zahlen, kein Label
+                        skip_patterns = [
+                            'absender', 'empfänger', 'empfaenger', 'sender', 'recipient',
+                            'an:', 'von:', 'to:', 'from:', 'rechnung', 'invoice',
+                            'lieferadresse', 'rechnungsadresse', 'delivery', 'billing',
+                        ]
+                        is_valid_company = (
+                            len(potential_company) >= 3 and
+                            not potential_company.isdigit() and
+                            not any(skip in potential_company.lower() for skip in skip_patterns) and
+                            not re.match(r'^\d', potential_company)  # Nicht mit Zahl beginnen
+                        )
+                        if is_valid_company:
+                            address.company_name = potential_company
+
+                # Rolle aus Kontext-Labels bestimmen (das LETZTE Label im Kontext gewinnt)
+                context_window = 120  # Zeichen vor der Adresse (erhoehte fuer mehrzeilige Adressen)
+                context_start = max(0, match.start() - context_window)
+                context_before = text[context_start:match.start()]
+
+                # Finde das letzte (naechste zur Adresse) Label
+                sender_matches = list(self.patterns.SENDER_LABELS.finditer(context_before))
+                recipient_matches = list(self.patterns.RECIPIENT_LABELS.finditer(context_before))
+
+                last_sender_pos = sender_matches[-1].end() if sender_matches else -1
+                last_recipient_pos = recipient_matches[-1].end() if recipient_matches else -1
+
+                # Das naehere Label gewinnt
+                if last_sender_pos > last_recipient_pos:
+                    address.role = "sender"
+                    address.confidence += 0.05
+                elif last_recipient_pos > last_sender_pos:
+                    address.role = "recipient"
+                    address.confidence += 0.05
+
+                results.append(address)
+                self._extraction_stats["addresses_found"] += 1
+
+        # Sortiere nach Position im Text
+        results.sort(key=lambda a: a.position_start)
 
         return results
+
+    def _detect_country_from_context(
+        self,
+        text: str,
+        plz_start: int,
+        plz_end: int,
+    ) -> Optional[str]:
+        """
+        Erkennt Laendernamen im Kontext einer Adresse.
+
+        Sucht in 3 Bereichen:
+        1. Direkt nach der PLZ/Stadt (naechste Zeile)
+        2. Vor der PLZ (D-42719 Prefix)
+        3. Im weiteren Kontext (100 Zeichen danach)
+
+        Args:
+            text: Gesamter OCR-Text
+            plz_start: Start-Position der PLZ
+            plz_end: End-Position der PLZ/Stadt
+
+        Returns:
+            ISO 3166-1 Alpha-2 Code oder None
+        """
+        # 1. Pruefe Laender-Prefix vor der PLZ (z.B. "D-42719")
+        prefix_start = max(0, plz_start - 3)
+        prefix_text = text[prefix_start:plz_start].strip()
+        if prefix_text.endswith("-") or prefix_text.endswith(" "):
+            prefix_char = prefix_text.rstrip("- ").upper()
+            if len(prefix_char) <= 2:
+                country_code = self.patterns.COUNTRY_NAMES_TO_CODE.get(
+                    prefix_char.lower()
+                )
+                if country_code:
+                    return country_code
+
+        # 2. Suche Laendernamen nach der PLZ/Stadt (naechste 100 Zeichen)
+        after_start = plz_end
+        after_end = min(len(text), plz_end + 100)
+        after_text = text[after_start:after_end]
+
+        # Suche nach Laendernamen auf einer eigenen Zeile oder nach Komma/Zeilenumbruch
+        # Typische Patterns: "42719 Solingen\nDuitsland" oder "42719 Solingen, Germany"
+        country_pattern = re.compile(
+            r'[\n\r,]\s*([A-Za-zäöüÄÖÜßéèê\-]+)\s*(?:[\n\r,]|$)',
+            re.UNICODE
+        )
+
+        for match in country_pattern.finditer(after_text):
+            potential_country = match.group(1).strip().lower()
+            # Ignoriere zu kurze oder zu lange Strings
+            if len(potential_country) < 1 or len(potential_country) > 25:
+                continue
+            # Pruefe gegen Mapping
+            country_code = self.patterns.COUNTRY_NAMES_TO_CODE.get(potential_country)
+            if country_code:
+                return country_code
+
+        # 3. Fallback: Suche nach bekannten Laendernamen als Wort im Kontext
+        context_end = min(len(text), plz_end + 80)
+        context_text = text[plz_end:context_end].lower()
+
+        for country_name, code in self.patterns.COUNTRY_NAMES_TO_CODE.items():
+            # Nur laengere Namen (mind. 4 Zeichen) als Fallback
+            if len(country_name) >= 4:
+                if re.search(r'\b' + re.escape(country_name) + r'\b', context_text):
+                    return code
+
+        return None
 
     def _extract_company_names(self, text: str) -> List[ExtractedCompanyName]:
         """Extrahiert Firmennamen mit Rechtsform."""

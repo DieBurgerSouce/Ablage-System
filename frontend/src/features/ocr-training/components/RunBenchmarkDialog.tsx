@@ -232,7 +232,7 @@ export function RunBenchmarkDialog({
                                             </div>
                                             {!isAvailable && (
                                                 <span className="text-xs text-destructive mt-1 block">
-                                                    Nicht verfuegbar
+                                                    Nicht verfügbar
                                                 </span>
                                             )}
                                         </div>
@@ -249,7 +249,7 @@ export function RunBenchmarkDialog({
                             <div className="text-sm">
                                 <p className="font-medium text-yellow-600">Hohe GPU-Auslastung</p>
                                 <p className="text-muted-foreground">
-                                    Geschaetzter VRAM: {estimatedVram}GB ({vramPercentage.toFixed(0)}%).
+                                    Geschätzter VRAM: {estimatedVram}GB ({vramPercentage.toFixed(0)}%).
                                     Backends werden sequenziell verarbeitet.
                                 </p>
                             </div>
@@ -259,7 +259,7 @@ export function RunBenchmarkDialog({
                     {/* VRAM-Anzeige */}
                     <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Geschaetzter VRAM</span>
+                            <span className="text-muted-foreground">Geschätzter VRAM</span>
                             <span className="font-medium">{estimatedVram}GB / 16GB</span>
                         </div>
                         <Progress
@@ -302,7 +302,7 @@ export function RunBenchmarkDialog({
                                         onChange={() => setSampleSelection('random')}
                                         className="text-primary"
                                     />
-                                    <span className="text-sm">Zufaellige Stichprobe</span>
+                                    <span className="text-sm">Zufällige Stichprobe</span>
                                 </label>
 
                                 {sampleSelection === 'random' && (
@@ -345,7 +345,7 @@ export function RunBenchmarkDialog({
                             <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
                             <div className="text-sm">
                                 <p className="font-medium text-blue-600">
-                                    {preselectedSampleIds.length} Sample(s) ausgewaehlt
+                                    {preselectedSampleIds.length} Sample(s) ausgewählt
                                 </p>
                             </div>
                         </div>
@@ -362,7 +362,7 @@ export function RunBenchmarkDialog({
                             htmlFor="force-reprocess"
                             className="text-sm cursor-pointer"
                         >
-                            Existierende Ergebnisse ueberschreiben
+                            Existierende Ergebnisse überschreiben
                         </label>
                     </div>
 

@@ -33,12 +33,30 @@ class ReferencePatterns:
         re.IGNORECASE,
     )
 
+    # Invoice number (reverse format): "F-201451\nInvoice No."
+    # Used when value appears BEFORE the label (common in tabular layouts)
+    INVOICE_NUMBER_REVERSE: RePattern[str] = re.compile(
+        r"(?P<number>[A-Z]-?\d{5,8})"
+        r"\s*\n\s*"
+        r"(?P<label>Invoice\s*(?:No\.?|Number)|Rechnungs?-?(?:Nr\.?|nummer))",
+        re.IGNORECASE,
+    )
+
     # Order number: "Bestellnummer: 123456"
     ORDER_NUMBER: RePattern[str] = re.compile(
         r"(?P<label>bestell?-?(?:nr\.?|nummer)|bestellung\s*nr\.?|"
         r"order\s*(?:no\.?|number|#)|auftrags?-?(?:nr\.?|nummer))"
         r"[\s:]*"
         r"(?P<number>[A-Za-z0-9\-_/]{3,30})",
+        re.IGNORECASE,
+    )
+
+    # Order number (reverse format): "V-210089\nOrder No."
+    # Used when value appears BEFORE the label (common in tabular layouts)
+    ORDER_NUMBER_REVERSE: RePattern[str] = re.compile(
+        r"(?P<number>[A-Z]-?\d{5,8})"
+        r"\s*\n\s*"
+        r"(?P<label>Order\s*(?:No\.?|Number)|Bestell?-?(?:Nr\.?|nummer)|Auftrags?-?(?:Nr\.?|nummer))",
         re.IGNORECASE,
     )
 
@@ -223,15 +241,39 @@ def get_reference_patterns() -> List[Pattern[Any]]:
 
 
 def extract_invoice_number(text: str) -> Optional[str]:
-    """Extract invoice number from text."""
+    """Extract invoice number from text.
+
+    Supports both formats:
+    - Standard: "Invoice No.: F-201451"
+    - Reverse: "F-201451\\nInvoice No." (value before label)
+    """
     patterns = ReferencePatterns()
+
+    # Try reverse format first (more specific, avoids confusion with order numbers)
+    match = patterns.INVOICE_NUMBER_REVERSE.search(text)
+    if match:
+        return match.group("number").strip()
+
+    # Fall back to standard format
     match = patterns.INVOICE_NUMBER.search(text)
     return match.group("number").strip() if match else None
 
 
 def extract_order_number(text: str) -> Optional[str]:
-    """Extract order number from text."""
+    """Extract order number from text.
+
+    Supports both formats:
+    - Standard: "Order No.: V-210089"
+    - Reverse: "V-210089\\nOrder No." (value before label)
+    """
     patterns = ReferencePatterns()
+
+    # Try reverse format first (more specific)
+    match = patterns.ORDER_NUMBER_REVERSE.search(text)
+    if match:
+        return match.group("number").strip()
+
+    # Fall back to standard format
     match = patterns.ORDER_NUMBER.search(text)
     return match.group("number").strip() if match else None
 

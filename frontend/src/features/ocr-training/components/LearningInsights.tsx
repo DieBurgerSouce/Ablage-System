@@ -285,7 +285,7 @@ export function LearningInsights() {
                             </ul>
                         ) : (
                             <p className="text-sm text-muted-foreground">
-                                Noch keine Erkenntnisse verfuegbar
+                                Noch keine Erkenntnisse verfügbar
                             </p>
                         )}
                     </CardContent>
@@ -302,7 +302,7 @@ export function LearningInsights() {
                                 Performance-Entwicklung
                             </CardTitle>
                             <CardDescription>
-                                CER (Character Error Rate) pro Backend ueber Zeit
+                                CER (Character Error Rate) pro Backend über Zeit
                             </CardDescription>
                         </div>
                         <div className="flex gap-2">
@@ -348,7 +348,7 @@ export function LearningInsights() {
                         </div>
                     ) : (
                         <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                            Keine Trend-Daten verfuegbar
+                            Keine Trend-Daten verfügbar
                         </div>
                     )}
                 </CardContent>

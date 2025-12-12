@@ -342,6 +342,82 @@ class TestRegexFallback:
         items = await service.extract_from_text(text)
         assert len(items) == 0
 
+    @pytest.mark.asyncio
+    async def test_article_number_pattern(
+        self,
+        service: LineItemExtractionService
+    ) -> None:
+        """Extraktion mit Artikelnummer-Pattern (Screenshot-Format)."""
+        text = """
+GW-E5326.00  Stapelbox 500 x 300 x 260 mm 30 liter perforiert HDPE LILA  384 Pieces  3,40  1.305,60
+        """
+
+        items = await service.extract_from_text(text)
+
+        assert len(items) == 1
+        item = items[0]
+        assert item.article_number == "GW-E5326.00"
+        assert "Stapelbox" in item.description
+        assert item.quantity == Decimal("384")
+        assert item.unit == "pieces"
+        assert item.unit_price == Decimal("3.40")
+        assert item.total_price == Decimal("1305.60")
+
+    @pytest.mark.asyncio
+    async def test_english_units_extraction(
+        self,
+        service: LineItemExtractionService
+    ) -> None:
+        """Extraktion mit englischen Einheiten (pieces, pcs, unit)."""
+        text = """
+        1  Office Chair Deluxe  5 pieces  249,00  1.245,00
+        2  Desk Lamp LED  10 pcs  35,50  355,00
+        """
+
+        items = await service.extract_from_text(text)
+
+        assert len(items) == 2
+        assert items[0].unit == "pieces"
+        assert items[0].quantity == Decimal("5")
+        assert items[1].unit == "pcs"
+        assert items[1].quantity == Decimal("10")
+
+    @pytest.mark.asyncio
+    async def test_mixed_article_numbers(
+        self,
+        service: LineItemExtractionService
+    ) -> None:
+        """Verschiedene Artikelnummer-Formate."""
+        text = """
+ABC-123  Product A  10 Stk  5,00  50,00
+XYZ-99.5  Product B  20 pcs  3,00  60,00
+A1-B2.C3  Product C  5 unit  10,00  50,00
+        """
+
+        items = await service.extract_from_text(text)
+
+        assert len(items) == 3
+        assert items[0].article_number == "ABC-123"
+        assert items[1].article_number == "XYZ-99.5"
+        assert items[2].article_number == "A1-B2.C3"
+
+    @pytest.mark.asyncio
+    async def test_price_without_thousands_separator(
+        self,
+        service: LineItemExtractionService
+    ) -> None:
+        """Preise ohne Tausendertrenner (z.B. 3,40 statt 3.400,00)."""
+        text = """
+        1  Kleine Schraube M4  100 Stk  0,15  15,00
+        2  Mutter M4          100 Stk  0,08  8,00
+        """
+
+        items = await service.extract_from_text(text)
+
+        assert len(items) == 2
+        assert items[0].unit_price == Decimal("0.15")
+        assert items[0].total_price == Decimal("15.00")
+
 
 # =============================================================================
 # TESTS: VALIDATION

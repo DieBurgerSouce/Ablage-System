@@ -31,12 +31,20 @@ class DatePatterns:
         r"(?P<day>\d{1,2})\.(?P<month>\d{1,2})\.(?P<year>\d{2,4})",
     )
 
-    # German with month name: "15. Februar 2024", "15 Feb 2024"
+    # Date with month name: "15. Februar 2024", "15 Feb 2024", "6 April 2020"
+    # Supports German, English, and Dutch month names
     GERMAN_DATE_NAMED: RePattern[str] = re.compile(
         r"(?P<day>\d{1,2})\.?\s*"
-        r"(?P<month>jan(?:uar)?|feb(?:ruar)?|m[aä]r(?:z)?|apr(?:il)?|"
-        r"mai|jun(?:i)?|jul(?:i)?|aug(?:ust)?|sep(?:tember)?|"
-        r"okt(?:ober)?|nov(?:ember)?|dez(?:ember)?)\s*"
+        r"(?P<month>"
+        # Deutsch
+        r"jan(?:uar)?|feb(?:ruar)?|m[aä]r(?:z)?|apr(?:il)?|mai|jun(?:i)?|jul(?:i)?|"
+        r"aug(?:ust)?|sep(?:tember)?|okt(?:ober)?|nov(?:ember)?|dez(?:ember)?|"
+        # Englisch
+        r"january|february|march|april|may|june|july|august|"
+        r"september|october|november|december|"
+        # Niederlaendisch
+        r"januari|februari|maart|mei|augustus|oktober"
+        r")\s*"
         r"(?P<year>\d{2,4})?",
         re.IGNORECASE,
     )
@@ -46,25 +54,30 @@ class DatePatterns:
         r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})",
     )
 
+    # Dashed format: "02-04-20", "6-4-2020" (European day-month-year)
+    DASHED_DATE: RePattern[str] = re.compile(
+        r"(?P<day>\d{1,2})-(?P<month>\d{1,2})-(?P<year>\d{2,4})",
+    )
+
     # ==========================================================================
     # LABELED DATE PATTERNS
     # ==========================================================================
 
-    # Invoice date: "Rechnungsdatum: 15.02.2024"
+    # Invoice date: "Rechnungsdatum: 15.02.2024" or "Factuurdatum" (Dutch)
     INVOICE_DATE: RePattern[str] = re.compile(
         r"(?P<label>rechnungsdatum|rechnungs-?datum|invoice\s*date|"
-        r"datum\s*der\s*rechnung|ausstellungsdatum)"
+        r"datum\s*der\s*rechnung|ausstellungsdatum|factuurdatum)"
         r"[\s:]*"
-        r"(?P<day>\d{1,2})\.(?P<month>\d{1,2})\.(?P<year>\d{2,4})",
+        r"(?P<day>\d{1,2})[.\-/](?P<month>\d{1,2})[.\-/](?P<year>\d{2,4})",
         re.IGNORECASE,
     )
 
-    # Due date: "Fällig am 15.02.2024"
+    # Due date: "Fällig am 15.02.2024" or "Due Date: 16-04-20"
     DUE_DATE: RePattern[str] = re.compile(
         r"(?P<label>f[aä]llig(?:keit(?:sdatum)?)?|zahlbar\s*bis|"
-        r"zu\s*zahlen\s*bis|due\s*date|payment\s*due)"
+        r"zu\s*zahlen\s*bis|due\s*date|payment\s*due|vervaldatum)"
         r"[\s:]*(?:am|bis|zum)?\s*"
-        r"(?P<day>\d{1,2})\.(?P<month>\d{1,2})\.(?P<year>\d{2,4})",
+        r"(?P<day>\d{1,2})[.\-/](?P<month>\d{1,2})[.\-/](?P<year>\d{2,4})",
         re.IGNORECASE,
     )
 
@@ -106,19 +119,31 @@ class DatePatterns:
     )
 
 
-# Month name to number mapping
+# Month name to number mapping (German, English, Dutch)
 MONTH_MAP: Dict[str, int] = {
-    "jan": 1, "januar": 1, "january": 1,
-    "feb": 2, "februar": 2, "february": 2,
-    "mär": 3, "mar": 3, "märz": 3, "maerz": 3, "march": 3,
+    # Januar/January/Januari
+    "jan": 1, "januar": 1, "january": 1, "januari": 1,
+    # Februar/February/Februari
+    "feb": 2, "februar": 2, "february": 2, "februari": 2,
+    # Maerz/March/Maart
+    "mär": 3, "mar": 3, "märz": 3, "maerz": 3, "march": 3, "maart": 3,
+    # April (same in all)
     "apr": 4, "april": 4,
-    "mai": 5, "may": 5,
+    # Mai/May/Mei
+    "mai": 5, "may": 5, "mei": 5,
+    # Juni/June/Juni
     "jun": 6, "juni": 6, "june": 6,
+    # Juli/July/Juli
     "jul": 7, "juli": 7, "july": 7,
-    "aug": 8, "august": 8,
+    # August/August/Augustus
+    "aug": 8, "august": 8, "augustus": 8,
+    # September (same in all)
     "sep": 9, "september": 9,
-    "okt": 10, "okt": 10, "oktober": 10, "october": 10,
+    # Oktober/October/Oktober
+    "okt": 10, "oktober": 10, "october": 10,
+    # November (same in all)
     "nov": 11, "november": 11,
+    # Dezember/December/December
     "dez": 12, "dezember": 12, "december": 12,
 }
 
@@ -227,6 +252,11 @@ def get_date_patterns() -> List[Pattern[Any]]:
             regex=patterns.ISO_DATE,
             base_confidence=0.85,
         ),
+        GermanDatePattern(
+            name="dashed_date",
+            regex=patterns.DASHED_DATE,
+            base_confidence=0.75,
+        ),
     ]
 
 
@@ -287,6 +317,19 @@ def parse_german_date(
             year = int(match.group("year"))
             month = int(match.group("month"))
             day = int(match.group("day"))
+            return date(year, month, day)
+        except ValueError:
+            pass
+
+    # Try dashed format: "02-04-20", "6-4-2020"
+    match = patterns.DASHED_DATE.search(text)
+    if match:
+        try:
+            day = int(match.group("day"))
+            month = int(match.group("month"))
+            year = int(match.group("year"))
+            if year < 100:
+                year = 2000 + year if year <= 30 else 1900 + year
             return date(year, month, day)
         except ValueError:
             pass

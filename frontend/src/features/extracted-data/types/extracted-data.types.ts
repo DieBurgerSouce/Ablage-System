@@ -23,7 +23,9 @@ export type ExtractedDocumentType =
 export interface ExtractedAddress {
     company?: string;
     name?: string;
+    person?: string;
     street?: string;
+    street_number?: string;
     zip_code?: string;
     city?: string;
     country?: string;
@@ -74,6 +76,7 @@ export interface ExtractedInvoiceData {
     };
     sender_email?: string;
     sender_phone?: string;
+    sender_contact?: string;
 
     // Empfaenger
     recipient?: ExtractedAddress;

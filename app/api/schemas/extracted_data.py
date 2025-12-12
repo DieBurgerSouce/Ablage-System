@@ -63,7 +63,8 @@ class ExtractedAddress(BaseModel):
     """
     company: Optional[str] = Field(None, description="Firmenname")
     person: Optional[str] = Field(None, description="Ansprechpartner / Name")
-    street: Optional[str] = Field(None, description="Strasse mit Hausnummer")
+    street: Optional[str] = Field(None, description="Strasse")
+    street_number: Optional[str] = Field(None, description="Hausnummer")
     zip_code: Optional[str] = Field(None, description="Postleitzahl")
     city: Optional[str] = Field(None, description="Stadt")
     country: str = Field("DE", description="Laendercode (ISO 3166-1 alpha-2)")
@@ -189,6 +190,7 @@ class ExtractedInvoiceData(BaseModel):
     sender_bank: Optional[ExtractedBankAccount] = Field(None, description="Bankverbindung des Absenders")
     sender_email: Optional[str] = Field(None, description="E-Mail des Absenders")
     sender_phone: Optional[str] = Field(None, description="Telefon des Absenders")
+    sender_contact: Optional[str] = Field(None, description="Ansprechpartner des Absenders")
 
     # === Empfaenger ===
     recipient: Optional[ExtractedAddress] = Field(None, description="Empfaenger / Rechnungsadresse")

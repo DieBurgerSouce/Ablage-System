@@ -454,22 +454,52 @@ class LineItemExtractionService:
             Liste von ExtractedLineItem-Objekten
         """
         items: List[ExtractedLineItem] = []
+        position_counter = 1
 
-        # Pattern fuer typische Positionszeilen
+        # Pattern 1: Klassische Positionszeilen mit numerischer Position
         # Format: [Pos] [Beschreibung] [Menge] [Einheit] [Preis] [Gesamt]
-        line_pattern = re.compile(
+        pattern_numeric_pos = re.compile(
             r'^\s*'
             r'(\d{1,3})\s+'  # Position (1-3 Ziffern)
             r'(.{3,80}?)\s+'  # Beschreibung (3-80 Zeichen)
             r'(\d+(?:[,\.]\d+)?)\s*'  # Menge
-            r'(stk|st|stck|kg|l|m|h|std|psch)?\s*'  # Einheit (optional)
-            r'(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*'  # Preis
+            r'(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit)?\s*'  # Einheit
+            r'(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?)\s*'  # Preis (auch 3,40)
             r'(?:€|EUR)?\s*'  # Waehrung (optional)
             r'(\d{1,3}(?:\.\d{3})*(?:,\d{2}))?',  # Gesamtpreis (optional)
             re.IGNORECASE | re.MULTILINE
         )
 
-        for match in line_pattern.finditer(text):
+        # Pattern 2: Artikelnummer-basierte Zeilen (z.B. GW-E5326.00)
+        # Format: [ArtNr] [Beschreibung] [Menge] [Einheit] [E-Preis] [Gesamt]
+        # Artikelnummer: Buchstaben/Zahlen mit Bindestrich/Punkt
+        pattern_article_nr = re.compile(
+            r'^\s*'
+            r'([A-Z0-9]{1,4}[-]?[A-Z0-9]{1,10}(?:[-\.][A-Z0-9]+)*)\s+'  # Artikelnummer (flexibler)
+            r'(.+?)\s+'  # Beschreibung (bis zur naechsten Zahl)
+            r'(\d+)\s*'  # Menge (ganze Zahl)
+            r'(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stueck)?\s+'  # Einheit (mit Whitespace danach)
+            r'(\d{1,3}(?:\.\d{3})*(?:,\d{1,2}))\s*'  # E-Preis
+            r'(?:€|EUR)?\s*'
+            r'(\d{1,3}(?:\.\d{3})*(?:,\d{2}))',  # Gesamtpreis (erforderlich)
+            re.IGNORECASE | re.MULTILINE
+        )
+
+        # Pattern 3: Einfaches Format ohne Position/Artikelnummer
+        # Format: [Beschreibung] [Menge] [Einheit] [E-Preis] [Gesamt]
+        pattern_simple = re.compile(
+            r'^\s*'
+            r'([A-Za-zäöüÄÖÜß][A-Za-zäöüÄÖÜß0-9\s,.\-/]{5,60}?)\s+'  # Beschreibung
+            r'(\d+(?:[,\.]\d+)?)\s*'  # Menge
+            r'(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stueck)?\s*'  # Einheit
+            r'(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?)\s*'  # E-Preis
+            r'(?:€|EUR)?\s*'
+            r'(\d{1,3}(?:\.\d{3})*(?:,\d{2}))',  # Gesamtpreis (erforderlich)
+            re.IGNORECASE | re.MULTILINE
+        )
+
+        # Versuch Pattern 1: Numerische Positionen
+        for match in pattern_numeric_pos.finditer(text):
             try:
                 pos = int(match.group(1))
                 desc = match.group(2).strip()
@@ -478,7 +508,6 @@ class LineItemExtractionService:
                 price = parse_german_decimal(match.group(5))
                 total = parse_german_decimal(match.group(6)) if match.group(6) else None
 
-                # Berechne Gesamtpreis falls nicht vorhanden
                 if total is None and qty and price:
                     total = qty * price
 
@@ -495,10 +524,189 @@ class LineItemExtractionService:
                     items.append(item)
 
             except Exception as e:
-                logger.debug(f"Regex-Extraktion fehlgeschlagen: {e}")
+                logger.debug(f"Pattern 1 Extraktion fehlgeschlagen: {e}")
                 continue
 
+        # Falls Pattern 1 nichts fand, versuch Pattern 2: Artikelnummern
+        if not items:
+            for match in pattern_article_nr.finditer(text):
+                try:
+                    article_nr = match.group(1).strip()
+                    desc = match.group(2).strip()
+                    qty = parse_german_decimal(match.group(3))
+                    unit = match.group(4)
+                    price = parse_german_decimal(match.group(5))
+                    total = parse_german_decimal(match.group(6)) if match.group(6) else None
+
+                    if total is None and qty and price:
+                        total = qty * price
+
+                    item = ExtractedLineItem(
+                        position=position_counter,
+                        article_number=article_nr,
+                        description=desc,
+                        quantity=qty,
+                        unit=unit.lower() if unit else None,
+                        unit_price=price,
+                        total_price=total
+                    )
+
+                    if self._is_valid_line_item(item):
+                        items.append(item)
+                        position_counter += 1
+
+                except Exception as e:
+                    logger.debug(f"Pattern 2 Extraktion fehlgeschlagen: {e}")
+                    continue
+
+        # Falls auch Pattern 2 nichts fand, versuch Pattern 3: Einfaches Format
+        if not items:
+            for match in pattern_simple.finditer(text):
+                try:
+                    desc = match.group(1).strip()
+                    qty = parse_german_decimal(match.group(2))
+                    unit = match.group(3)
+                    price = parse_german_decimal(match.group(4))
+                    total = parse_german_decimal(match.group(5)) if match.group(5) else None
+
+                    if total is None and qty and price:
+                        total = qty * price
+
+                    item = ExtractedLineItem(
+                        position=position_counter,
+                        description=desc,
+                        quantity=qty,
+                        unit=unit.lower() if unit else None,
+                        unit_price=price,
+                        total_price=total
+                    )
+
+                    if self._is_valid_line_item(item):
+                        items.append(item)
+                        position_counter += 1
+
+                except Exception as e:
+                    logger.debug(f"Pattern 3 Extraktion fehlgeschlagen: {e}")
+                    continue
+
+        # Pattern 4: Fragmentierte OCR-Ausgabe rekonstruieren
+        if not items:
+            items = self._extract_from_fragmented_ocr(text)
+
         logger.info(f"Regex-Fallback: {len(items)} Positionen extrahiert")
+        return items
+
+    def _extract_from_fragmented_ocr(self, text: str) -> List[ExtractedLineItem]:
+        """
+        Extrahiert Line Items aus fragmentierter OCR-Ausgabe.
+
+        Behandelt Fälle, in denen OCR Tabellenspalten als separate Zeilen liest:
+        1.305,60
+        3,40
+        384 Pieces
+        Stapelbox 500 x 300 x 260 mm
+        GW-E5326.00
+        ...
+        """
+        items: List[ExtractedLineItem] = []
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
+
+        # Pattern für Artikelnummern (z.B. GW-E5326.00, ABC-123)
+        article_pattern = re.compile(
+            r'^([A-Z]{1,4}[-]?[A-Z0-9]{1,10}(?:[-\.][A-Z0-9]+)*)$',
+            re.IGNORECASE
+        )
+
+        # Pattern für Menge + Einheit (z.B. "384 Pieces", "10 Stk")
+        qty_unit_pattern = re.compile(
+            r'^(\d+(?:[,\.]\d+)?)\s*(pieces?|pcs?|stk|st|stck|kg|l|m|h|std|psch|unit|stueck)$',
+            re.IGNORECASE
+        )
+
+        # Pattern für Preise (deutsches Format)
+        price_pattern = re.compile(
+            r'^(\d{1,3}(?:\.\d{3})*(?:,\d{1,2}))(?:\s*[€V✓🗸])?$'
+        )
+
+        # Pattern für einfache Dezimalzahlen (Einzelpreis wie 3,40)
+        simple_price_pattern = re.compile(r'^(\d{1,3},\d{2})$')
+
+        # Sammle potentielle Komponenten
+        article_numbers: List[str] = []
+        descriptions: List[str] = []
+        quantities: List[Decimal] = []
+        units: List[str] = []
+        prices: List[Decimal] = []
+
+        for line in lines:
+            # Skip Header-Keywords und Summenzeilen
+            line_lower = line.lower()
+            if any(kw in line_lower for kw in [
+                'description', 'no.', 'quantity', 'measure', 'unit price',
+                'amount', 'total', 'summe', 'gesamt', 'netto', 'brutto',
+                'mwst', 'ust', 'eur'
+            ]):
+                continue
+
+            # Artikelnummer?
+            if article_pattern.match(line):
+                article_numbers.append(line)
+                continue
+
+            # Menge + Einheit?
+            qty_match = qty_unit_pattern.match(line)
+            if qty_match:
+                qty = parse_german_decimal(qty_match.group(1))
+                if qty:
+                    quantities.append(qty)
+                    units.append(qty_match.group(2).lower())
+                continue
+
+            # Preis (größer)?
+            price_match = price_pattern.match(line)
+            if price_match:
+                price = parse_german_decimal(price_match.group(1))
+                if price:
+                    prices.append(price)
+                continue
+
+            # Einfacher Preis (kleiner, wie Einzelpreis)?
+            simple_match = simple_price_pattern.match(line)
+            if simple_match:
+                price = parse_german_decimal(simple_match.group(1))
+                if price:
+                    prices.append(price)
+                continue
+
+            # Sonst könnte es eine Beschreibung sein
+            if len(line) > 5 and re.search(r'[a-zA-ZäöüÄÖÜß]', line):
+                if not re.match(r'^[\d\s,\.]+$', line):
+                    descriptions.append(line)
+
+        # Versuche die Komponenten zusammenzuführen
+        if descriptions and prices:
+            sorted_prices = sorted(prices, reverse=True)
+            full_description = ' '.join(descriptions)
+
+            item = ExtractedLineItem(
+                position=1,
+                article_number=article_numbers[0] if article_numbers else None,
+                description=full_description,
+                quantity=quantities[0] if quantities else None,
+                unit=units[0] if units else None,
+                unit_price=sorted_prices[-1] if len(sorted_prices) > 1 else None,
+                total_price=sorted_prices[0] if sorted_prices else None,
+            )
+
+            if self._is_valid_line_item(item):
+                items.append(item)
+                logger.info(
+                    f"Fragmentierte OCR rekonstruiert: "
+                    f"Art={item.article_number}, "
+                    f"Menge={item.quantity}, "
+                    f"Gesamt={item.total_price}"
+                )
+
         return items
 
     def validate_against_total(

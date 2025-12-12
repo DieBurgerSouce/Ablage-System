@@ -289,7 +289,7 @@ export function GroundTruthEditor({
                                             </div>
                                             <div className="flex items-center gap-1">
                                                 {isBest && <Badge className="bg-green-600 text-xs">Bester</Badge>}
-                                                {isSelected && <Badge variant="secondary" className="text-xs">Ausgewaehlt</Badge>}
+                                                {isSelected && <Badge variant="secondary" className="text-xs">Ausgewählt</Badge>}
                                             </div>
                                         </CardTitle>
                                     </CardHeader>
@@ -325,7 +325,7 @@ export function GroundTruthEditor({
                                                 </ScrollArea>
                                                 <Button variant="ghost" size="sm" className="w-full mt-2" onClick={(e) => { e.stopPropagation(); handleCopyFromBackend(backendId) }}>
                                                     <Copy className="mr-2 h-3 w-3" />
-                                                    Als Ground Truth uebernehmen
+                                                    Als Ground Truth übernehmen
                                                 </Button>
                                             </>
                                         ) : (
@@ -353,7 +353,7 @@ export function GroundTruthEditor({
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <Textarea value={groundTruth} onChange={(e) => handleGroundTruthChange(e.target.value)} placeholder="Ground Truth Text hier eingeben oder aus einem Backend uebernehmen..." className="min-h-[200px] font-mono text-sm" />
+                    <Textarea value={groundTruth} onChange={(e) => handleGroundTruthChange(e.target.value)} placeholder="Ground Truth Text hier eingeben oder aus einem Backend übernehmen..." className="min-h-[200px] font-mono text-sm" />
                     <div className="flex justify-between">
                         <div className="flex gap-2">
                             <Button variant="outline" size="sm" onClick={handleAutoCorrectUmlauts} disabled={!hasUmlautIssues}>
@@ -365,7 +365,7 @@ export function GroundTruthEditor({
                         </div>
                         <div className="flex gap-2">
                             <Button variant="ghost" size="sm" onClick={handleReset} disabled={!isDirty}>
-                                <RotateCcw className="mr-2 h-4 w-4" />Zuruecksetzen
+                                <RotateCcw className="mr-2 h-4 w-4" />Zurücksetzen
                             </Button>
                             <Button size="sm" onClick={handleSave} disabled={isSaving || !isDirty}>
                                 <Save className="mr-2 h-4 w-4" />{isSaving ? 'Speichert...' : 'Speichern'}

@@ -27,34 +27,34 @@ class PaymentPatterns:
     # BASIC PAYMENT DAYS
     # ==========================================================================
 
-    # German: "Zahlbar innerhalb von 30 Tagen", "Zahlungsziel: 14 Tage netto"
+    # German/Dutch/English: "Zahlbar innerhalb von 30 Tagen", "Netto 10 dagen"
     PAYMENT_DAYS_BASIC: RePattern[str] = re.compile(
         r"(?:zahlbar|zahlungsziel|f[aä]llig(?:keit)?|netto)"
         r"[\s:]*(?:innerhalb\s*(?:von\s*)?)?"
         r"(?P<days>\d{1,4})\s*"  # Allow up to 4 digits for edge cases
-        r"(?:tage?n?|werktage?n?|kalendertage?n?)",
+        r"(?:tage?n?|werktage?n?|kalendertage?n?|dagen|days)",
         re.IGNORECASE,
     )
 
-    # International: "NET 30", "Net 30 days"
+    # International: "NET 30", "Net 30 days", "Netto 10 dagen"
     PAYMENT_DAYS_NET: RePattern[str] = re.compile(
-        r"(?:NET|net|netto)\s*(?P<days>\d{1,3})\s*(?:days?|tage?n?)?",
+        r"(?:NET|net|netto)\s*(?P<days>\d{1,3})\s*(?:days?|tage?n?|dagen)?",
         re.IGNORECASE,
     )
 
-    # Alternative German: "30 Tage netto", "Zahlungsfrist 30 Tage"
+    # Alternative: "30 Tage netto", "Zahlungsfrist 30 Tage", "30 dagen"
     PAYMENT_DAYS_ALT: RePattern[str] = re.compile(
         r"(?:zahlungsfrist|frist)\s*(?:von\s*)?"
-        r"(?P<days>\d{1,3})\s*(?:tage?n?|werktage?n?)",
+        r"(?P<days>\d{1,3})\s*(?:tage?n?|werktage?n?|dagen|days)",
         re.IGNORECASE,
     )
 
     # Days from invoice/delivery: "30 Tage ab Rechnungsdatum"
     PAYMENT_DAYS_RELATIVE: RePattern[str] = re.compile(
-        r"(?P<days>\d{1,3})\s*(?:tage?n?|werktage?n?)\s*"
-        r"(?:ab|nach)\s*"
+        r"(?P<days>\d{1,3})\s*(?:tage?n?|werktage?n?|dagen|days)\s*"
+        r"(?:ab|nach|from|after)\s*"
         r"(?P<reference>rechnungsdatum|rechnungseingang|lieferdatum|"
-        r"erhalt|eingang|lieferung|versand)",
+        r"erhalt|eingang|lieferung|versand|invoice|delivery|receipt)",
         re.IGNORECASE,
     )
 

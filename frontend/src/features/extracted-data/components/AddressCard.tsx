@@ -23,7 +23,7 @@ export function AddressCard({ title, address, className }: AddressCardProps) {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-sm text-muted-foreground">Nicht verfuegbar</p>
+                    <p className="text-sm text-muted-foreground">Nicht verfügbar</p>
                 </CardContent>
             </Card>
         );
@@ -44,8 +44,10 @@ export function AddressCard({ title, address, className }: AddressCardProps) {
                 {address.name && (
                     <p className="text-sm">{address.name}</p>
                 )}
-                {address.street && (
-                    <p className="text-sm text-muted-foreground">{address.street}</p>
+                {(address.street || address.street_number) && (
+                    <p className="text-sm text-muted-foreground">
+                        {address.street}{address.street_number ? ` ${address.street_number}` : ''}
+                    </p>
                 )}
                 {(address.zip_code || address.city) && (
                     <p className="text-sm text-muted-foreground">

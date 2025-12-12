@@ -89,7 +89,7 @@ export function ExtractedDataPanel({
                         <div className="text-center text-muted-foreground">
                             <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                             <p className="text-lg font-medium mb-1">
-                                Keine strukturierten Daten verfuegbar
+                                Keine strukturierten Daten verfügbar
                             </p>
                             <p className="text-sm">
                                 Dieses Dokument wurde noch nicht strukturiert verarbeitet.
@@ -116,7 +116,7 @@ export function ExtractedDataPanel({
                 <CardContent className="py-8">
                     <div className="text-center text-muted-foreground">
                         <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>Keine strukturierten Daten verfuegbar</p>
+                        <p>Keine strukturierten Daten verfügbar</p>
                     </div>
                 </CardContent>
             </Card>
@@ -149,7 +149,7 @@ export function ExtractedDataPanel({
                     <Alert variant="default" className="mt-4 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30">
                         <AlertTriangle className="h-4 w-4 text-orange-600" />
                         <AlertTitle className="text-orange-800 dark:text-orange-400">
-                            Manuelle Pruefung erforderlich
+                            Manuelle Prüfung erforderlich
                         </AlertTitle>
                         <AlertDescription className="text-orange-700 dark:text-orange-300">
                             {warnings.length > 0 ? (
@@ -159,7 +159,7 @@ export function ExtractedDataPanel({
                                     ))}
                                 </ul>
                             ) : (
-                                "Die extrahierten Daten sollten manuell ueberprueft werden."
+                                "Die extrahierten Daten sollten manuell überprüft werden."
                             )}
                         </AlertDescription>
                     </Alert>
@@ -174,7 +174,7 @@ export function ExtractedDataPanel({
 
                 {documentType === "order" && data.order && (
                     <div className="text-center text-muted-foreground py-8">
-                        <p>Bestellungsanzeige wird in einer zukuenftigen Version implementiert.</p>
+                        <p>Bestellungsanzeige wird in einer zukünftigen Version implementiert.</p>
                         <pre className="mt-4 text-xs text-left bg-muted p-4 rounded overflow-auto max-h-96">
                             {JSON.stringify(data.order, null, 2)}
                         </pre>
@@ -183,7 +183,7 @@ export function ExtractedDataPanel({
 
                 {documentType === "contract" && data.contract && (
                     <div className="text-center text-muted-foreground py-8">
-                        <p>Vertragsanzeige wird in einer zukuenftigen Version implementiert.</p>
+                        <p>Vertragsanzeige wird in einer zukünftigen Version implementiert.</p>
                         <pre className="mt-4 text-xs text-left bg-muted p-4 rounded overflow-auto max-h-96">
                             {JSON.stringify(data.contract, null, 2)}
                         </pre>
@@ -202,7 +202,7 @@ export function ExtractedDataPanel({
                     (data.companies?.length ?? 0) > 0) && (
                     <div className="mt-6 pt-6 border-t">
                         <h4 className="text-sm font-medium mb-4">
-                            Weitere erkannte Entitaeten
+                            Weitere erkannte Entitäten
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                             {data.ibans && data.ibans.length > 0 && (

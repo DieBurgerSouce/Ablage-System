@@ -221,32 +221,60 @@ class EnhancedLineItemExtractor:
         Extract line items from raw text using regex.
 
         This is Pass 4 (fallback) of the extraction strategy.
+        Uses multiple patterns to handle various formats.
         """
         items: List[ExtractedLineItem] = []
+        position_counter = 1
 
-        # Pattern 1: Standard format with position number
+        # Pattern 1: Standard format with numeric position number
         # "1  Beratungsleistung  8 Std  125,00  1.000,00"
-        pattern1 = re.compile(
+        pattern_numeric_pos = re.compile(
             r"^\s*(\d{1,3})\s+"  # Position
             r"(.{3,80}?)\s+"  # Description
             r"(\d+(?:[,\.]\d+)?)\s*"  # Quantity
-            r"(stk|st|stck|kg|l|m|h|std|psch)?\s*"  # Unit
-            r"(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*"  # Unit price
+            r"(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stueck)?\s*"  # Unit
+            r"(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?)\s*"  # Unit price
             r"(?:€|EUR)?\s*"
             r"(\d{1,3}(?:\.\d{3})*(?:,\d{2}))?",  # Total
             re.IGNORECASE | re.MULTILINE,
         )
 
-        # Pattern 2: Description-first format (common in German)
+        # Pattern 2: Article number format (e.g. GW-E5326.00)
+        # "GW-E5326.00  Stapelbox...  384 Pieces  3,40  1.305,60"
+        pattern_article_nr = re.compile(
+            r"^\s*"
+            r"([A-Z0-9]{1,4}[-]?[A-Z0-9]{1,10}(?:[-\.][A-Z0-9]+)*)\s+"  # Article number
+            r"(.+?)\s+"  # Description (greedy until quantity)
+            r"(\d+)\s*"  # Quantity (whole number)
+            r"(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stueck)?\s+"  # Unit
+            r"(\d{1,3}(?:\.\d{3})*(?:,\d{1,2}))\s*"  # Unit price
+            r"(?:€|EUR)?\s*"
+            r"(\d{1,3}(?:\.\d{3})*(?:,\d{2}))",  # Total (required)
+            re.IGNORECASE | re.MULTILINE,
+        )
+
+        # Pattern 3: Description-first format (common in German)
         # "Beratungsleistung IT                    1.000,00 EUR"
-        pattern2 = re.compile(
+        pattern_desc_first = re.compile(
             r"^\s*([A-ZÄÖÜa-zäöüß][A-Za-zäöüßÄÖÜ0-9\s\-\.]+?)\s{2,}"
             r"(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*(?:€|EUR)?\s*$",
             re.MULTILINE,
         )
 
-        # Extract with pattern 1
-        for match in pattern1.finditer(text):
+        # Pattern 4: Simple format - description, quantity, unit, price, total
+        pattern_simple = re.compile(
+            r"^\s*"
+            r"([A-Za-zäöüÄÖÜß][A-Za-zäöüÄÖÜß0-9\s,.\-/]{5,60}?)\s+"  # Description
+            r"(\d+(?:[,\.]\d+)?)\s*"  # Quantity
+            r"(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stueck)?\s*"  # Unit
+            r"(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?)\s*"  # Unit price
+            r"(?:€|EUR)?\s*"
+            r"(\d{1,3}(?:\.\d{3})*(?:,\d{2}))",  # Total (required)
+            re.IGNORECASE | re.MULTILINE,
+        )
+
+        # Try Pattern 1: Numeric positions
+        for match in pattern_numeric_pos.finditer(text):
             try:
                 description = match.group(2).strip()
                 if self._is_summary_row(description):
@@ -269,26 +297,421 @@ class EnhancedLineItemExtractor:
             except (ValueError, IndexError):
                 continue
 
-        # Extract with pattern 2 if no items found
+        # Try Pattern 2: Article numbers (if no items found)
         if not items:
-            pos = 1
-            for match in pattern2.finditer(text):
+            for match in pattern_article_nr.finditer(text):
+                try:
+                    article_nr = match.group(1).strip()
+                    description = match.group(2).strip()
+                    if self._is_summary_row(description):
+                        continue
+
+                    item = ExtractedLineItem(
+                        position=position_counter,
+                        article_number=article_nr,
+                        description=description,
+                        quantity=parse_german_decimal(match.group(3)),
+                        unit=match.group(4).lower() if match.group(4) else None,
+                        unit_price=parse_german_decimal(match.group(5)),
+                        total_price=parse_german_decimal(match.group(6)),
+                        confidence=0.75,
+                    )
+                    if item.is_complete():
+                        items.append(item)
+                        position_counter += 1
+                except (ValueError, IndexError):
+                    continue
+
+        # Try Pattern 3: Description-first (if no items found)
+        if not items:
+            for match in pattern_desc_first.finditer(text):
                 try:
                     description = match.group(1).strip()
                     if self._is_summary_row(description):
                         continue
 
                     item = ExtractedLineItem(
-                        position=pos,
+                        position=position_counter,
                         description=description,
                         total_price=parse_german_decimal(match.group(2)),
                         confidence=0.60,
                     )
                     if item.is_complete():
                         items.append(item)
-                        pos += 1
+                        position_counter += 1
                 except (ValueError, IndexError):
                     continue
+
+        # Try Pattern 4: Simple format (if no items found)
+        if not items:
+            for match in pattern_simple.finditer(text):
+                try:
+                    description = match.group(1).strip()
+                    if self._is_summary_row(description):
+                        continue
+
+                    item = ExtractedLineItem(
+                        position=position_counter,
+                        description=description,
+                        quantity=parse_german_decimal(match.group(2)),
+                        unit=match.group(3).lower() if match.group(3) else None,
+                        unit_price=parse_german_decimal(match.group(4)),
+                        total_price=parse_german_decimal(match.group(5)),
+                        confidence=0.65,
+                    )
+                    if item.is_complete():
+                        items.append(item)
+                        position_counter += 1
+                except (ValueError, IndexError):
+                    continue
+
+        # Pattern 5: Fragmented OCR - reconstruct from scattered lines
+        # This handles OCR output where table columns become separate lines
+        # WICHTIG: Auch bei schlechten Items den fragmentierten Parser versuchen!
+        fragmented_items = self._extract_from_fragmented_ocr(text)
+
+        if fragmented_items:
+            # Wenn wir keine Items haben, nimm die fragmentierten
+            if not items:
+                logger.info(
+                    "using_fragmented_extraction",
+                    reason="no_other_items_found",
+                    fragmented_count=len(fragmented_items),
+                )
+                items = fragmented_items
+            else:
+                # Vergleiche Qualität: Fragmentierte vs. bestehende
+                existing_has_header = any(
+                    any(h in (i.description or "").lower() for h in [
+                        'description', 'no.', 'quantity', 'amount', 'price'
+                    ])
+                    for i in items
+                )
+                fragmented_has_header = any(
+                    any(h in (i.description or "").lower() for h in [
+                        'description', 'no.', 'quantity', 'amount', 'price'
+                    ])
+                    for i in fragmented_items
+                )
+
+                # Fragmentierte übernehmen wenn sie besser sind
+                if existing_has_header and not fragmented_has_header:
+                    logger.info(
+                        "using_fragmented_extraction",
+                        reason="existing_has_headers",
+                        existing_count=len(items),
+                        fragmented_count=len(fragmented_items),
+                    )
+                    items = fragmented_items
+                elif (fragmented_items[0].total_price and
+                      fragmented_items[0].total_price > Decimal(100) and
+                      all(i.total_price is None or i.total_price < Decimal(10) for i in items)):
+                    # Fragmentierte haben plausiblere Preise
+                    logger.info(
+                        "using_fragmented_extraction",
+                        reason="better_prices",
+                        existing_prices=[str(i.total_price) for i in items],
+                        fragmented_price=str(fragmented_items[0].total_price),
+                    )
+                    items = fragmented_items
+
+        return items
+
+    def _extract_from_fragmented_ocr(self, text: str) -> List[ExtractedLineItem]:
+        """
+        Extract line items from fragmented OCR output.
+
+        Handles cases where OCR reads table columns as separate lines:
+        1.305,60
+        3,40
+        384 Pieces
+        Stapelbox 500 x 300 x 260 mm
+        GW-E5326.00
+        ...
+        """
+        items: List[ExtractedLineItem] = []
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
+
+        # Pattern für Artikelnummern (z.B. GW-E5326.00, ABC-123, E5326.00)
+        # Erlaubt: Buchstaben, Zahlen, Bindestriche, Punkte
+        article_pattern = re.compile(
+            r'^([A-Z]{1,4}[-]?[A-Z0-9]{1,10}(?:[-\.][A-Z0-9]+)*)$',
+            re.IGNORECASE
+        )
+        # Alternatives Pattern für Artikelnummern mit mehr Flexibilität
+        article_pattern_flex = re.compile(
+            r'^([A-Z]{1,3}[-]?[A-Z]?\d{3,6}(?:\.\d{1,2})?)$',  # z.B. GW-E5326.00, E5326.00
+            re.IGNORECASE
+        )
+
+        # Pattern für Menge + Einheit (z.B. "384 Pieces", "10 Stk")
+        qty_unit_pattern = re.compile(
+            r'^(\d+(?:[,\.]\d+)?)\s*(pieces?|pcs?|stk|st|stck|kg|l|m|h|std|psch|unit|stueck)$',
+            re.IGNORECASE
+        )
+
+        # Pattern für Preise (deutsches Format, mit optionalen Zeichen)
+        price_pattern = re.compile(
+            r'^(\d{1,3}(?:\.\d{3})*(?:,\d{1,2}))(?:\s*[€V✓🗸])?$'
+        )
+
+        # Pattern für einfache Dezimalzahlen (Einzelpreis wie 3,40)
+        simple_price_pattern = re.compile(r'^(\d{1,3},\d{2})$')
+
+        # Header-Keywords die übersprungen werden sollen (auch Einzelwörter!)
+        header_keywords = {
+            'description', 'no.', 'no', 'quantity', 'measure', 'unit price',
+            'amount', 'total', 'summe', 'gesamt', 'netto', 'brutto',
+            'mwst', 'ust', 'eur', 'pos', 'pos.', 'artikel', 'menge',
+            'einheit', 'preis', 'betrag', 'unit', 'price', 'qty',
+            '<b>unit of</b>', '<b>unit price</b>', '<b>amount</b>',
+            '<b>quantity measure</b>', 'factuurdatum', 'due date',
+            'payment terms', 'bank', 'account', 'iban', 'swift', 'btw',
+            'vat', 'invoice', 'order', 'bill-to', 'phone', 'fax'
+        }
+
+        # Sammle potentielle Komponenten
+        article_numbers: List[str] = []
+        descriptions: List[str] = []
+        quantities: List[Decimal] = []
+        units: List[str] = []
+        prices: List[Decimal] = []
+
+        logger.debug(
+            "fragmented_ocr_starting",
+            total_lines=len(lines),
+        )
+
+        for line in lines:
+            line_lower = line.lower().strip()
+
+            # Skip leere oder sehr kurze Zeilen
+            if len(line_lower) < 2:
+                continue
+
+            # Skip Header-Keywords (exakte Übereinstimmung oder enthält)
+            is_header = False
+            for kw in header_keywords:
+                if line_lower == kw or (len(kw) > 3 and kw in line_lower):
+                    is_header = True
+                    break
+            if is_header:
+                logger.debug("fragmented_ocr_skip_header", line=line)
+                continue
+
+            # Skip HTML-Tags und formatierte Header
+            if line.startswith('<') and line.endswith('>'):
+                continue
+
+            # Artikelnummer? (z.B. GW-E5326.00)
+            if article_pattern.match(line) or article_pattern_flex.match(line):
+                # Zusätzliche Validierung
+                if re.search(r'\d', line):  # Muss mindestens eine Zahl enthalten
+                    # ABER: Keine USt-IdNr, IBAN, oder reine Zahlenfolgen!
+                    # USt-IdNr beginnt mit 2 Buchstaben + Zahlen (DE123456789)
+                    is_vat_id = re.match(r'^[A-Z]{2}\d{8,12}$', line, re.IGNORECASE)
+                    is_iban = re.match(r'^[A-Z]{2}\d{2}', line, re.IGNORECASE) and len(line) > 15
+                    is_date_like = re.match(r'^\d{2}[-/.]\d{2}[-/.]\d{2,4}$', line)
+                    is_order_nr = line_lower.startswith(('v-', 'f-'))  # V-210089, F-201401
+
+                    if not is_vat_id and not is_iban and not is_date_like and not is_order_nr:
+                        article_numbers.append(line)
+                        logger.debug("fragmented_ocr_found_article", article=line)
+                        continue
+                    else:
+                        logger.debug("fragmented_ocr_skip_not_article", line=line, reason="vat_iban_date_order")
+
+            # Menge + Einheit? (z.B. "384 Pieces")
+            qty_match = qty_unit_pattern.match(line)
+            if qty_match:
+                qty = parse_german_decimal(qty_match.group(1))
+                unit = qty_match.group(2).lower()
+                quantities.append(qty)
+                units.append(unit)
+                logger.debug("fragmented_ocr_found_qty", qty=str(qty), unit=unit)
+                continue
+
+            # Preis mit Tausender-Trennzeichen (z.B. 1.305,60)?
+            price_match = price_pattern.match(line)
+            if price_match:
+                price = parse_german_decimal(price_match.group(1))
+                prices.append(price)
+                logger.debug("fragmented_ocr_found_price", price=str(price))
+                continue
+
+            # Einfacher Preis (z.B. 3,40)?
+            simple_match = simple_price_pattern.match(line)
+            if simple_match:
+                price = parse_german_decimal(simple_match.group(1))
+                prices.append(price)
+                logger.debug("fragmented_ocr_found_simple_price", price=str(price))
+                continue
+
+            # Produktbeschreibung?
+            # Muss Buchstaben enthalten, nicht nur Zahlen, mindestens 5 Zeichen
+            if (len(line) >= 5 and
+                re.search(r'[a-zA-ZäöüÄÖÜß]', line) and
+                not re.match(r'^[\d\s,\.\-€]+$', line)):
+                # Überspringe wenn es wie Adresse/Firmenname/Metadaten aussieht
+                skip_patterns = [
+                    # Adressen
+                    'str.', 'strasse', 'straße', 'weg ', 'platz', 'landeweg',
+                    'magnus', 'albertus',  # Straßennamen
+                    # Firmenformen und Firmennamen
+                    'gmbh', ' bv', ' ag', ' kg', 'firmenich', 'alpac',
+                    'kunststof', 'bakken', 'pallets', 'spargelmesser',
+                    # Kontakt - erweitert!
+                    'tel:', 'tel.', 'mail:', '@', 'fax', 'phone', 'phone no', 'fax no',
+                    # Bank/Finanzen
+                    'bank', 'iban', 'swift', 'ingb', 'account', 'ing ',
+                    # Web
+                    'www.', 'http', '.nl', '.de', '.com',
+                    # Rechtliches/IDs
+                    'vat reg', 'btw:', 'kvk', 'voorwaarden', 'gedeponeerd',
+                    'registration', 'customer no', 'bill-to', 'algemene',
+                    # Datum/Referenzen
+                    'april', 'januar', 'februar', 'märz', 'mai', 'juni',
+                    'juli', 'august', 'september', 'oktober', 'november', 'dezember',
+                    # Städte/Orte/Länder
+                    'deventer', 'solingen', 'duitsland', 'deutschland',
+                    # Dokumenttypen
+                    'invoice', 'order', 'sales',
+                    # Sonstiges
+                    'onze', 'onder nummer',
+                ]
+
+                # Nur echte Produktbeschreibungen akzeptieren
+                # Typische Produktbegriffe
+                product_indicators = [
+                    'stapel', 'box', 'container', 'kiste', 'palette',
+                    'liter', 'perforiert', 'hdpe', 'lila', 'rot', 'blau', 'grün',
+                    'mm', 'cm', 'x ',  # Maßangaben
+                    '500', '300', '260',  # Typische Maße
+                ]
+
+                is_skip = any(skip in line_lower for skip in skip_patterns)
+                is_product = any(prod in line_lower for prod in product_indicators)
+
+                # NUR echte Produktbeschreibungen akzeptieren - STRENGER Filter
+                # Muss ein Produktindikator haben ODER Maßangaben enthalten
+                has_dimensions = re.search(r'\d+\s*x\s*\d+', line)  # z.B. 500 x 300
+
+                if is_product or has_dimensions:
+                    # Zusätzlich: Überspringe wenn es wie eine Postleitzahl aussieht
+                    if not re.match(r'^\d{4,5}\s*[A-Z]{0,2}\s+\w+', line):
+                        descriptions.append(line)
+                        logger.debug("fragmented_ocr_found_desc", desc=line[:50])
+
+        # Log gesammelte Komponenten
+        logger.info(
+            "fragmented_ocr_components_collected",
+            articles=article_numbers,
+            descriptions=[d[:30] for d in descriptions],
+            quantities=[str(q) for q in quantities],
+            units=units,
+            prices=[str(p) for p in prices],
+        )
+
+        # Versuche die Komponenten zusammenzuführen
+        if descriptions or (article_numbers and prices):
+            # Sortiere Preise nach Größe (größter ist wahrscheinlich Gesamtpreis)
+            sorted_prices = sorted(prices, reverse=True) if prices else []
+
+            # Kombiniere Beschreibungen zu einer
+            # NICHT die Artikelnummer in die Beschreibung!
+            # Filtere nochmal unerwünschte Teile raus
+            clean_descriptions = []
+            unwanted_parts = [
+                'fax no', 'phone no', 'tel no', 'vat reg', 'btw:',
+                'onze algemene', 'voorwaarden', 'gedeponeerd', 'kvk',
+                'onder nummer', 'alpac', 'kunststof bakken',
+            ]
+            for desc in descriptions:
+                desc_lower = desc.lower()
+                if not any(unwanted in desc_lower for unwanted in unwanted_parts):
+                    clean_descriptions.append(desc)
+
+            full_description = ', '.join(clean_descriptions) if clean_descriptions else ""
+
+            # Bestimme Total und Unit Price
+            total_price = sorted_prices[0] if sorted_prices else None
+            unit_price = None
+            if len(sorted_prices) > 1:
+                # Kleinster Preis ist wahrscheinlich Einzelpreis
+                unit_price = sorted_prices[-1]
+                # Validiere: Unit Price sollte kleiner als Total sein
+                if unit_price and total_price and unit_price >= total_price:
+                    unit_price = None
+
+            # Einheiten ins Deutsche übersetzen
+            unit_translations = {
+                'pieces': 'Stück',
+                'piece': 'Stück',
+                'pcs': 'Stück',
+                'pc': 'Stück',
+                'unit': 'Stück',
+                'units': 'Stück',
+                'stk': 'Stück',
+                'st': 'Stück',
+                'stck': 'Stück',
+                'stueck': 'Stück',
+            }
+            translated_unit = None
+            if units:
+                raw_unit = units[0].lower()
+                translated_unit = unit_translations.get(raw_unit, units[0])
+
+            # Erstelle Line Item
+            item = ExtractedLineItem(
+                position=1,
+                article_number=article_numbers[0] if article_numbers else None,
+                description=full_description,
+                quantity=quantities[0] if quantities else None,
+                unit=translated_unit,
+                unit_price=unit_price,
+                total_price=total_price,
+                confidence=0.70,  # Höhere Confidence wenn alle Komponenten gefunden
+            )
+
+            # Validiere mathematisch wenn möglich
+            if item.quantity and item.unit_price and item.total_price:
+                expected = item.quantity * item.unit_price
+                tolerance = max(Decimal("0.01"), item.total_price * Decimal("0.01"))
+                if abs(expected - item.total_price) <= tolerance:
+                    item.confidence = 0.85  # Noch höher wenn Mathematik stimmt
+                    logger.debug(
+                        "fragmented_ocr_math_validated",
+                        qty=str(item.quantity),
+                        unit_price=str(item.unit_price),
+                        expected=str(expected),
+                        actual=str(item.total_price),
+                    )
+
+            if item.is_complete():
+                items.append(item)
+                logger.info(
+                    "fragmented_ocr_extraction_success",
+                    article=item.article_number,
+                    description=item.description[:50] if item.description else None,
+                    quantity=float(item.quantity) if item.quantity else None,
+                    unit_price=float(item.unit_price) if item.unit_price else None,
+                    total_price=float(item.total_price) if item.total_price else None,
+                    confidence=item.confidence,
+                )
+            else:
+                logger.warning(
+                    "fragmented_ocr_item_incomplete",
+                    has_description=bool(item.description),
+                    has_price=item.total_price is not None or item.unit_price is not None,
+                    description=item.description[:30] if item.description else None,
+                )
+        else:
+            logger.debug(
+                "fragmented_ocr_no_components",
+                has_descriptions=bool(descriptions),
+                has_prices=bool(prices),
+                has_articles=bool(article_numbers),
+            )
 
         return items
 
