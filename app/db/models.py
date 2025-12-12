@@ -3441,3 +3441,71 @@ class RAGAnalytics(Base):
         Index("ix_rag_analytics_user", "user_id"),
         Index("ix_rag_analytics_event_created", "event_type", "created_at"),
     )
+
+
+# ============================================================================
+# COMPANY/SYSTEM SETTINGS MODELS
+# Firmeneinstellungen fuer Rechnungserkennung und Systemkonfiguration
+# ============================================================================
+
+
+class CompanySettings(Base):
+    """
+    Singleton-Tabelle fuer Firmendetails.
+
+    Wird verwendet um zu bestimmen, ob eine hochgeladene Rechnung
+    eine Eingangsrechnung (an uns) oder Ausgangsrechnung (von uns) ist.
+
+    Diese Tabelle sollte nur einen einzigen Datensatz haben.
+    """
+    __tablename__ = "company_settings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Firmenidentifikation
+    company_name = Column(String(255), nullable=False, comment="Offizieller Firmenname")
+    alternative_names = Column(
+        CrossDBJSON,
+        default=[],
+        comment="Alternative Schreibweisen fuer Dokumentenerkennung"
+    )
+
+    # Adresse
+    street = Column(String(255), nullable=True, comment="Strasse mit Hausnummer")
+    postal_code = Column(String(20), nullable=True, comment="PLZ")
+    city = Column(String(100), nullable=True, comment="Stadt")
+    country = Column(String(100), default="Deutschland", comment="Land")
+
+    # Steueridentifikation
+    vat_id = Column(String(50), nullable=True, comment="USt-IdNr. (z.B. DE123456789)")
+    tax_number = Column(String(50), nullable=True, comment="Steuernummer")
+
+    # Bankverbindung
+    iban = Column(String(34), nullable=True, comment="IBAN")
+    bic = Column(String(11), nullable=True, comment="BIC/SWIFT")
+
+    # Kontaktdaten
+    email = Column(String(255), nullable=True, comment="Zentrale E-Mail-Adresse")
+    phone = Column(String(50), nullable=True, comment="Telefonnummer")
+    website = Column(String(255), nullable=True, comment="Webseite")
+
+    # Handelsregister
+    commercial_register = Column(String(100), nullable=True, comment="Handelsregister-Nr.")
+    court = Column(String(100), nullable=True, comment="Registergericht")
+
+    # Metadata
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Relationships
+    updated_by = relationship("User", foreign_keys=[updated_by_id])
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_company_settings_updated", "updated_at"),
+    )
