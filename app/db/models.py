@@ -512,19 +512,36 @@ class OCRResultVersion(Base):
 
 
 class Tag(Base):
-    """Document tags for categorization."""
+    """Document tags for categorization with optional Tune linking."""
     __tablename__ = "tags"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(50), unique=True, nullable=False)
     description = Column(String(255))
-    color = Column(String(7))  # Hex color code
+    icon = Column(String(50), default="Tag")  # Lucide icon name
+    color = Column(String(50))  # Tailwind class (bg-*-500) or Hex color code
+
+    # Optional link to Tune for OCR fine-tuning
+    tune_id = Column(UUID(as_uuid=True), ForeignKey("tunes.id", ondelete="SET NULL"), nullable=True)
+
+    # Admin management
+    is_system = Column(Boolean, default=False)  # System tags cannot be deleted
+    is_active = Column(Boolean, default=True)
 
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     documents = relationship("Document", secondary=document_tags, back_populates="tags")
+    tune = relationship("Tune", back_populates="tags")
+
+    # Indexes (synchron mit Migration 038)
+    __table_args__ = (
+        Index("ix_tags_is_system", "is_system"),
+        Index("ix_tags_is_active", "is_active"),
+        Index("ix_tags_tune_id", "tune_id"),
+    )
 
 
 class Tune(Base):
@@ -549,6 +566,9 @@ class Tune(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    tags = relationship("Tag", back_populates="tune")
 
     # Indexes (synchron mit Migration 031b_fix_tunes)
     __table_args__ = (

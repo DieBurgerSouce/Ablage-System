@@ -4,9 +4,11 @@
  * Provides API calls for:
  * - User settings (display, OCR, notifications, privacy)
  * - Company settings (admin only)
+ * - Tag management (admin only)
  */
 
 import { apiClient } from '../client';
+import type { Tag, TagCreate, TagUpdate } from '@/features/upload/types';
 
 // ==================== Type Definitions ====================
 
@@ -227,5 +229,51 @@ export const settingsService = {
      */
     isCompanyConfigured: (settings: CompanySettings | CompanySettingsEmpty): settings is CompanySettings => {
         return 'id' in settings && !('configured' in settings && settings.configured === false);
+    },
+
+    // ========== Tag Settings (Admin Only) ==========
+
+    /**
+     * Ruft alle Tags ab (nur Admin).
+     */
+    getTags: async (options?: { activeOnly?: boolean; systemOnly?: boolean }): Promise<Tag[]> => {
+        const params = new URLSearchParams();
+        if (options?.activeOnly) params.append('active_only', 'true');
+        if (options?.systemOnly) params.append('system_only', 'true');
+
+        const url = params.toString() ? `/admin/tags?${params.toString()}` : '/admin/tags';
+        const response = await apiClient.get<Tag[]>(url);
+        return response.data;
+    },
+
+    /**
+     * Ruft ein einzelnes Tag ab (nur Admin).
+     */
+    getTag: async (id: string): Promise<Tag> => {
+        const response = await apiClient.get<Tag>(`/admin/tags/${id}`);
+        return response.data;
+    },
+
+    /**
+     * Erstellt ein neues Tag (nur Admin).
+     */
+    createTag: async (tag: TagCreate): Promise<Tag> => {
+        const response = await apiClient.post<Tag>('/admin/tags', tag);
+        return response.data;
+    },
+
+    /**
+     * Aktualisiert ein Tag (nur Admin).
+     */
+    updateTag: async (id: string, tag: TagUpdate): Promise<Tag> => {
+        const response = await apiClient.put<Tag>(`/admin/tags/${id}`, tag);
+        return response.data;
+    },
+
+    /**
+     * Loescht ein Tag (nur Admin, System-Tags geschuetzt).
+     */
+    deleteTag: async (id: string): Promise<void> => {
+        await apiClient.delete(`/admin/tags/${id}`);
     },
 };

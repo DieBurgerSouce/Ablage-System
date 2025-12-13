@@ -1,7 +1,30 @@
 /**
  * Upload-Status für einzelne Dateien
  */
-export type UploadFileStatus = 'pending' | 'uploading' | 'processing' | 'completed' | 'failed';
+export type UploadFileStatus =
+    | 'pending'
+    | 'uploading'
+    | 'processing'
+    | 'awaiting_confirmation'  // Nach OCR, Klassifizierung anzeigen
+    | 'completed'
+    | 'failed';
+
+/**
+ * Invoice Direction (Rechnungsrichtung)
+ */
+export type InvoiceDirection = 'incoming' | 'outgoing' | 'unknown';
+
+/**
+ * Klassifizierung nach OCR-Verarbeitung
+ */
+export interface DocumentClassification {
+    /** Erkannte Rechnungsrichtung */
+    invoiceDirection: InvoiceDirection;
+    /** Konfidenz der Erkennung (0-1) */
+    confidence: number;
+    /** Begründung für die Erkennung */
+    reason?: string;
+}
 
 /**
  * Repräsentiert eine Datei im Upload-Prozess
@@ -25,6 +48,10 @@ export interface UploadingFile {
     ocrProgress?: number;
     /** OCR Status-Nachricht vom Backend */
     ocrMessage?: string;
+    /** Klassifizierung nach OCR (Eingangs-/Ausgangsrechnung) */
+    classification?: DocumentClassification;
+    /** Vom Benutzer bestätigte/korrigierte Richtung */
+    confirmedDirection?: 'incoming' | 'outgoing';
 }
 
 /**
@@ -43,6 +70,44 @@ export interface Tune {
     is_active: boolean;
     created_at?: string;
     updated_at?: string | null;
+}
+
+/**
+ * Tag Interface.
+ * Wird für Dokumenten-Kategorisierung und optionale Tune-Verknüpfung verwendet.
+ */
+export interface Tag {
+    id: string;
+    name: string;
+    description: string | null;
+    icon: string;
+    color: string | null;
+    tune_id: string | null;
+    is_system: boolean;
+    is_active: boolean;
+    created_at?: string;
+    updated_at?: string | null;
+}
+
+/**
+ * Tag Create/Update Schemas
+ */
+export interface TagCreate {
+    name: string;
+    description?: string;
+    icon?: string;
+    color?: string;
+    tune_id?: string;
+    is_active?: boolean;
+}
+
+export interface TagUpdate {
+    name?: string;
+    description?: string;
+    icon?: string;
+    color?: string;
+    tune_id?: string | null;
+    is_active?: boolean;
 }
 
 /**

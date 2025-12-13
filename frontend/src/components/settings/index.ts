@@ -9,3 +9,4 @@ export { OCRSettingsTab } from './OCRSettingsTab';
 export { NotificationSettingsTab } from './NotificationSettingsTab';
 export { PrivacySettingsTab } from './PrivacySettingsTab';
 export { CompanySettingsTab } from './CompanySettingsTab';
+export { TagSettingsTab } from './TagSettingsTab';

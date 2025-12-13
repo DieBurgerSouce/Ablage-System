@@ -2,11 +2,11 @@
  * Einstellungen Modal Komponente.
  *
  * Haupt-Modal für alle Benutzer- und Admin-Einstellungen.
- * Tabs: Konto, Anzeige, OCR, Benachrichtigungen, Datenschutz, Firmendaten (Admin)
+ * Tabs: Konto, Anzeige, OCR, Benachrichtigungen, Datenschutz, Firmendaten (Admin), Tags (Admin)
  */
 
 import { useState } from 'react';
-import { Settings, Monitor, Cpu, Bell, Shield, Building2, UserCircle } from 'lucide-react';
+import { Settings, Monitor, Cpu, Bell, Shield, Building2, UserCircle, Tag } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -23,6 +23,7 @@ import { OCRSettingsTab } from './OCRSettingsTab';
 import { NotificationSettingsTab } from './NotificationSettingsTab';
 import { PrivacySettingsTab } from './PrivacySettingsTab';
 import { CompanySettingsTab } from './CompanySettingsTab';
+import { TagSettingsTab } from './TagSettingsTab';
 
 export function SettingsModal() {
     const [open, setOpen] = useState(false);
@@ -53,7 +54,7 @@ export function SettingsModal() {
                 </DialogHeader>
 
                 <Tabs defaultValue="account" className="flex-1 overflow-hidden flex flex-col">
-                    <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-6' : 'grid-cols-5'}`}>
+                    <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-7' : 'grid-cols-5'}`}>
                         <TabsTrigger value="account" className="flex items-center gap-1.5">
                             <UserCircle className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline">Konto</span>
@@ -80,6 +81,12 @@ export function SettingsModal() {
                                 <span className="hidden sm:inline">Firma</span>
                             </TabsTrigger>
                         )}
+                        {isAdmin && (
+                            <TabsTrigger value="tags" className="flex items-center gap-1.5">
+                                <Tag className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Tags</span>
+                            </TabsTrigger>
+                        )}
                     </TabsList>
 
                     <div className="flex-1 overflow-y-auto mt-4 pr-2">
@@ -101,6 +108,11 @@ export function SettingsModal() {
                         {isAdmin && (
                             <TabsContent value="company" className="mt-0">
                                 <CompanySettingsTab />
+                            </TabsContent>
+                        )}
+                        {isAdmin && (
+                            <TabsContent value="tags" className="mt-0">
+                                <TagSettingsTab />
                             </TabsContent>
                         )}
                     </div>

@@ -41,6 +41,14 @@ from app.api.schemas.tunes import (
     TuneResponse,
 )
 
+from app.api.schemas.tags import (
+    TagBase,
+    TagCreate,
+    TagUpdate,
+    TagResponse,
+    TagListResponse,
+)
+
 __all__ = [
     # Response Schemas
     "ErrorResponse",
@@ -68,4 +76,10 @@ __all__ = [
     "TuneCreate",
     "TuneUpdate",
     "TuneResponse",
+    # Tag Schemas
+    "TagBase",
+    "TagCreate",
+    "TagUpdate",
+    "TagResponse",
+    "TagListResponse",
 ]
