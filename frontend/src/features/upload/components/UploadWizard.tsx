@@ -181,7 +181,13 @@ export function UploadWizard() {
     useEffect(() => {
         const pollStatus = async () => {
             const currentFiles = filesRef.current;
-            const processingFiles = currentFiles.filter(f => f.status === 'processing' && f.documentId);
+            // Auch awaiting_confirmation Dateien mit 'unknown' Classification weiter pollen
+            // (Quick Classification kann nach OCR-Completion fertig werden)
+            const processingFiles = currentFiles.filter(f =>
+                (f.status === 'processing' && f.documentId) ||
+                (f.status === 'awaiting_confirmation' && f.documentId &&
+                 (!f.classification || f.classification.invoiceDirection === 'unknown'))
+            );
             if (processingFiles.length === 0) return;
 
             for (const file of processingFiles) {

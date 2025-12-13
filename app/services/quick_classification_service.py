@@ -118,10 +118,12 @@ class QuickClassificationService:
     ]
 
     IBAN_PATTERNS = [
-        # Standard IBAN mit optionalen Leerzeichen
-        r'(?:IBAN[.:\s]*)?((?:DE|AT|CH|NL|BE|FR|IT|ES)\d{2}\s*(?:\d{4}\s*){4,6}\d{1,4})',
-        # Kompakte IBAN (keine Leerzeichen)
-        r'\b((?:DE|AT|CH|NL|BE|FR|IT|ES)\d{18,22})\b',
+        # Universelles IBAN-Pattern mit optionalen Leerzeichen
+        # Format: 2 Buchstaben (Land) + 2 Ziffern (Prüfung) + 11-30 alphanumerische Zeichen
+        # Unterstützt alle EU-Länder inkl. NL/BE mit Buchstaben im Bankcode (z.B. NL51 INGB...)
+        r'(?:IBAN[.:\s]*)?([A-Z]{2}\d{2}\s*[A-Z0-9]{4}\s*[A-Z0-9]{4}\s*[A-Z0-9]{2,4}(?:\s*[A-Z0-9]{4})*)',
+        # Kompakte IBAN ohne Leerzeichen (alle Formate)
+        r'\b([A-Z]{2}\d{2}[A-Z0-9]{11,27})\b',
     ]
 
     COMPANY_PATTERNS = [
@@ -148,6 +150,40 @@ class QuickClassificationService:
 
     # Maximale Textlaenge fuer Performance
     MAX_TEXT_LENGTH = 50000
+
+    # Kontext-Keywords fuer Empfaenger-Erkennung (unsere Firma dort = Eingangsrechnung)
+    # Unterstuetzt sowohl Umlaute (ä/ö/ü) als auch ASCII-Ersetzungen (ae/oe/ue)
+    RECIPIENT_CONTEXT_PATTERNS = [
+        r'rechnungsempf(?:ae|ä)nger\s*:?',
+        r'lieferanschrift\s*:?',
+        r'empf(?:ae|ä)nger\s*:',
+        r'^\s*an\s*:\s*$',  # "An:" als eigene Zeile
+        r'z\.?\s*h(?:ae|ä)n?d?\.?',  # "z.Hd.", "z.Händen", "z.Haenden"
+        r'rechnung\s+an\s*:?',
+        r'kunde\s*:',
+        r'bill\s*to\s*:?',  # Englisch
+        r'ship\s*to\s*:?',  # Englisch
+        r'rechnungsadresse\s*:?',
+        r'lieferadresse\s*:?',
+    ]
+
+    # Kontext-Keywords fuer Absender-Erkennung (unsere Firma dort = Ausgangsrechnung)
+    # Unterstuetzt sowohl Umlaute (ä/ö/ü) als auch ASCII-Ersetzungen (ae/oe/ue)
+    SENDER_CONTEXT_PATTERNS = [
+        r'gesch(?:ae|ä)ftsf(?:ue|ü)hr',  # Geschaeftsfuehrer / Geschäftsführer
+        r'handelsregister',
+        r'amtsgericht',
+        r'hrb\s*\d+',  # HRB 12345
+        r'steuer[.-]?nr\.?\s*:',
+        r'bank\s*:',  # Bankverbindung im Footer
+        r'iban\s*:',
+        r'bic\s*:',
+        r'swift\s*:',
+        r'bankverbindung',
+        r'registergericht',
+        r'sitz\s+der\s+gesellschaft',
+        r'f(?:ue|ü)r\s+r(?:ue|ü)ckfragen',  # "Fuer Rueckfragen" / "Für Rückfragen"
+    ]
 
     async def classify_document(
         self,
@@ -265,7 +301,7 @@ class QuickClassificationService:
             if company.alternative_names:
                 all_company_names.extend(company.alternative_names)
 
-            name_result = self._match_company_name(company_names, all_company_names, ocr_text)
+            name_result = self._match_company_name(company_names, all_company_names, ocr_text, ibans)
             if name_result:
                 result = QuickClassificationResult(
                     direction=name_result[0],
@@ -608,20 +644,41 @@ class QuickClassificationService:
         self,
         extracted: List[ExtractedIdentifier],
         company_names: List[str],
-        full_text: str
+        full_text: str,
+        ibans: List[ExtractedIdentifier]
     ) -> Optional[Tuple[InvoiceDirection, float, str]]:
         """
         Matched Firmennamen gegen Firmendaten.
 
-        1. Prueft extrahierte Firmennamen (mit Rechtsform-Suffix)
-        2. Sucht direkt nach konfigurierten Firmennamen im Text (ohne Suffix)
+        Priorisierung:
+        1. IBAN-Distanz-Analyse (hoechste Prioritaet)
+        2. Kontext-basierte Erkennung (Empfaenger/Absender-Keywords)
+        3. Pattern-basierte Extraktion (mit Rechtsform-Suffix)
+        4. Fallback: unknown (NICHT mehr Position-Heuristik)
         """
-        # 1. Pattern-basierte Extraktion pruefen
+        # 1. IBAN-Distanz-Analyse (hoechste Prioritaet)
+        # Logik: Der Absender einer Rechnung gibt seine IBAN an.
+        # Wenn unser Firmenname nahe der IBAN steht → wir sind Absender → Ausgangsrechnung
+        # Wenn unser Firmenname weit von der IBAN steht → wir sind Empfaenger → Eingangsrechnung
+        iban_result = self._determine_direction_by_iban_proximity(full_text, company_names, ibans)
+        if iban_result:
+            QUICK_CLASSIFICATION_MATCH_TYPE.labels(match_type="iban_proximity").inc()
+            return iban_result
+
+        # 2. Kontext-basierte Erkennung
+        # Sucht nach Empfaenger/Absender-Keywords und prueft ob Firmenname in der Naehe
+        context_result = self._find_company_in_context(full_text, company_names)
+        if context_result:
+            QUICK_CLASSIFICATION_MATCH_TYPE.labels(match_type="context").inc()
+            return context_result
+
+        # 3. Pattern-basierte Extraktion pruefen (extrahierte Firmennamen mit Rechtsform)
         for extracted_name in extracted:
             for company_name in company_names:
                 similarity = self._calculate_name_similarity(extracted_name.value, company_name)
 
                 if similarity >= 0.85:
+                    # Nutze Position-Heuristik als Fallback (mit niedrigerer Confidence)
                     direction = self._determine_direction_by_position(
                         extracted_name.relative_position,
                         full_text
@@ -630,45 +687,35 @@ class QuickClassificationService:
                     if direction == InvoiceDirection.OUTGOING:
                         return (
                             InvoiceDirection.OUTGOING,
-                            0.75,
-                            f"Firmenname im Absenderbereich gefunden ({similarity:.0%} Uebereinstimmung)"
+                            0.70,  # Niedrigere Confidence fuer Position-Heuristik
+                            f"Firmenname im Absenderbereich gefunden ({similarity:.0%} Uebereinstimmung, Position-basiert)"
                         )
                     elif direction == InvoiceDirection.INCOMING:
                         return (
                             InvoiceDirection.INCOMING,
-                            0.75,
-                            f"Firmenname im Empfaengerbereich gefunden ({similarity:.0%} Uebereinstimmung)"
+                            0.70,  # Niedrigere Confidence fuer Position-Heuristik
+                            f"Firmenname im Empfaengerbereich gefunden ({similarity:.0%} Uebereinstimmung, Position-basiert)"
                         )
 
-        # 2. Direkte Suche nach Firmennamen im Text (ohne Rechtsform-Suffix)
-        # Dies findet z.B. "Spargelmesser Firmenich" wenn "Spargelmesser Firmenich GmbH" konfiguriert ist
+        # 4. Direkte Suche: Firmenname gefunden, aber kein eindeutiger Kontext
+        # In diesem Fall KEIN automatischer Match - lieber "unknown" als falsch raten
         text_lower = full_text.lower()
 
         for company_name in company_names:
-            # Firmenname ohne Rechtsform normalisieren
             normalized_name = self._normalize_company_name(company_name)
 
             if len(normalized_name) < 5:
                 continue
 
-            # Direkte Suche im Text (case-insensitive)
-            search_pos = text_lower.find(normalized_name)
-            if search_pos != -1:
-                # WICHTIG: Wenn unser Firmenname auf einer Rechnung erscheint,
-                # sind wir in der Regel der EMPFAENGER (Eingangsrechnung).
-                # Bei Ausgangsrechnungen steht primär der Kundenname, nicht unserer.
+            if normalized_name in text_lower:
                 logger.debug(
-                    "quick_classification_direct_name_match",
+                    "quick_classification_name_found_no_context",
                     company_name=company_name,
                     normalized=normalized_name,
-                    position=search_pos
+                    message="Firmenname gefunden aber kein eindeutiger Kontext"
                 )
-
-                return (
-                    InvoiceDirection.INCOMING,
-                    0.90,
-                    f"Firmenname '{normalized_name}' als Empfaenger gefunden"
-                )
+                # Kein Return hier - lieber "unknown" als falsch raten
+                # Der User muss manuell pruefen
 
         return None
 
@@ -718,6 +765,234 @@ class QuickClassificationService:
 
         normalized = re.sub(r"\s+", " ", normalized).strip()
         return normalized
+
+    def _contains_company_name(self, text: str, company_name: str) -> bool:
+        """
+        Prueft ob ein Text den Firmennamen enthaelt (case-insensitive, normalisiert).
+
+        Args:
+            text: Text-Ausschnitt zum Pruefen
+            company_name: Zu suchender Firmenname
+
+        Returns:
+            True wenn der Firmenname im Text gefunden wurde
+        """
+        if not text or not company_name:
+            return False
+
+        normalized_name = self._normalize_company_name(company_name)
+        if len(normalized_name) < 4:
+            return False
+
+        return normalized_name in text.lower()
+
+    # Pattern fuer Adressblock-Erkennung (Strasse + PLZ + Ort)
+    # Wenn nach dem Firmennamen eine Adresse kommt, ist es wahrscheinlich der Empfaenger
+    ADDRESS_BLOCK_PATTERNS = [
+        # Deutsche PLZ + Ort: "12345 Berlin" oder "D-12345 Berlin"
+        r'(?:d-?)?\d{5}\s+[a-zäöüß]+',
+        # Strasse mit Hausnummer: "Musterstr. 123" oder "Musterstraße 12a"
+        r'(?:str(?:aße|asse)?|weg|platz|allee|ring|damm|gasse)[.\s]*\d+[a-z]?',
+        # Postfach
+        r'postfach\s*\d+',
+    ]
+
+    def _has_address_after_company(self, text: str, company_position: int) -> bool:
+        """
+        Prueft ob nach dem Firmennamen ein Adressblock folgt.
+
+        Wenn ja, ist dies sehr wahrscheinlich der Empfaenger-Bereich,
+        unabhaengig von der IBAN-Naehe.
+        """
+        # Pruefe die naechsten 300 Zeichen nach dem Firmennamen
+        context_end = min(len(text), company_position + 300)
+        context_after = text[company_position:context_end].lower()
+
+        for pattern in self.ADDRESS_BLOCK_PATTERNS:
+            if re.search(pattern, context_after, re.IGNORECASE):
+                return True
+        return False
+
+    def _determine_direction_by_iban_proximity(
+        self,
+        text: str,
+        company_names: List[str],
+        ibans: List[ExtractedIdentifier]
+    ) -> Optional[Tuple[InvoiceDirection, float, str]]:
+        """
+        Bestimmt Richtung basierend auf Distanz zwischen Firmenname und IBAN.
+
+        Logik: Auf Rechnungen gibt der ABSENDER seine IBAN an.
+        - Firmenname nahe IBAN → Wir sind Absender → Ausgangsrechnung
+        - Firmenname weit von IBAN → Wir sind Empfänger → Eingangsrechnung
+
+        ABER: Wenn nach dem Firmennamen eine Adresse folgt (Strasse, PLZ, Ort),
+        dann ist es wahrscheinlich der Empfaenger-Block, auch wenn IBAN nah ist.
+
+        Args:
+            text: OCR-Text
+            company_names: Liste konfigurierter Firmennamen
+            ibans: Extrahierte IBANs mit Positionen
+
+        Returns:
+            (direction, confidence, reason) oder None
+        """
+        if not ibans:
+            return None
+
+        text_lower = text.lower()
+
+        # Finde alle Positionen unseres Firmennamens
+        company_positions: List[int] = []
+        for company_name in company_names:
+            normalized = self._normalize_company_name(company_name)
+            if len(normalized) < 4:
+                continue
+
+            start = 0
+            while True:
+                pos = text_lower.find(normalized, start)
+                if pos == -1:
+                    break
+                company_positions.append(pos)
+                start = pos + 1
+
+        if not company_positions:
+            logger.debug(
+                "quick_classification_iban_proximity_no_company",
+                message="Firmenname nicht im Text gefunden"
+            )
+            return None
+
+        # NEUE LOGIK: Pruefe zuerst ob nach dem Firmennamen eine Adresse folgt
+        # Wenn ja, ist dies der Empfaenger-Block (Eingangsrechnung)
+        for company_pos in company_positions:
+            if self._has_address_after_company(text, company_pos):
+                logger.info(
+                    "quick_classification_address_block_detected",
+                    company_position=company_pos,
+                    message="Adresse nach Firmenname gefunden - Empfaengerblock"
+                )
+                return (
+                    InvoiceDirection.INCOMING,
+                    0.88,
+                    "Firmenname mit Adresse gefunden (Empfaengerblock) - Eingangsrechnung"
+                )
+
+        # Berechne minimalen Abstand zu irgendeiner IBAN
+        min_distance = float('inf')
+        closest_iban = ""
+        closest_company_pos = 0
+        for company_pos in company_positions:
+            for iban in ibans:
+                distance = abs(company_pos - iban.position)
+                if distance < min_distance:
+                    min_distance = distance
+                    closest_iban = iban.value
+                    closest_company_pos = company_pos
+
+        # Schwellenwert: 500 Zeichen
+        # Typische Rechnungsstruktur: Absender + IBAN sind im gleichen Block (Header/Footer)
+        # Empfaenger steht im Adressblock, weit von der IBAN entfernt
+        PROXIMITY_THRESHOLD = 500
+
+        logger.info(
+            "quick_classification_iban_proximity",
+            min_distance=int(min_distance),
+            threshold=PROXIMITY_THRESHOLD,
+            closest_iban=closest_iban[:8] + "..." if closest_iban else None,
+            company_position=closest_company_pos
+        )
+
+        if min_distance <= PROXIMITY_THRESHOLD:
+            return (
+                InvoiceDirection.OUTGOING,
+                0.85,
+                f"Firmenname nahe Bankverbindung ({int(min_distance)} Zeichen) - Ausgangsrechnung"
+            )
+        else:
+            return (
+                InvoiceDirection.INCOMING,
+                0.85,
+                f"Firmenname weit von Bankverbindung ({int(min_distance)} Zeichen) - Eingangsrechnung"
+            )
+
+    def _find_company_in_context(
+        self,
+        text: str,
+        company_names: List[str]
+    ) -> Optional[Tuple[InvoiceDirection, float, str]]:
+        """
+        Findet den Firmennamen im Text und bestimmt anhand des Kontexts die Richtung.
+
+        Diese Methode analysiert den umgebenden Text um gefundene Firmennamen
+        und erkennt ob sie im Empfaenger- oder Absender-Bereich stehen.
+
+        Args:
+            text: Vollstaendiger OCR-Text
+            company_names: Liste der konfigurierten Firmennamen
+
+        Returns:
+            (InvoiceDirection, confidence, reason) oder None wenn kein Match
+        """
+        text_lower = text.lower()
+
+        # 1. Suche nach Empfaenger-Kontext-Keywords
+        for pattern in self.RECIPIENT_CONTEXT_PATTERNS:
+            matches = list(re.finditer(pattern, text_lower, re.IGNORECASE | re.MULTILINE))
+            for match in matches:
+                # Pruefe die naechsten 300 Zeichen nach dem Keyword
+                context_start = match.end()
+                context_end = min(len(text_lower), context_start + 300)
+                context_after = text_lower[context_start:context_end]
+
+                for company_name in company_names:
+                    if self._contains_company_name(context_after, company_name):
+                        logger.info(
+                            "quick_classification_context_match",
+                            match_type="recipient_context",
+                            keyword=match.group(),
+                            company_name=company_name
+                        )
+                        return (
+                            InvoiceDirection.INCOMING,
+                            0.92,
+                            f"Firmenname im Empfaengerbereich gefunden (nach '{match.group().strip()}')"
+                        )
+
+        # 2. Suche nach Absender-Kontext-Keywords (Footer-Bereich)
+        for pattern in self.SENDER_CONTEXT_PATTERNS:
+            matches = list(re.finditer(pattern, text_lower, re.IGNORECASE))
+            for match in matches:
+                # Pruefe 250 Zeichen vor und nach dem Keyword
+                context_start = max(0, match.start() - 250)
+                context_end = min(len(text_lower), match.end() + 250)
+                context = text_lower[context_start:context_end]
+
+                for company_name in company_names:
+                    if self._contains_company_name(context, company_name):
+                        logger.info(
+                            "quick_classification_context_match",
+                            match_type="sender_context",
+                            keyword=match.group(),
+                            company_name=company_name
+                        )
+                        return (
+                            InvoiceDirection.OUTGOING,
+                            0.88,
+                            f"Firmenname im Absender-/Footerbereich gefunden (nahe '{match.group().strip()}')"
+                        )
+
+        # 3. NICHT mehr: Briefkopf-Position als Ausgangsrechnung interpretieren
+        # GRUND: Der Briefkopf zeigt den ABSENDER der Rechnung an.
+        # - Bei Eingangsrechnung: Lieferant steht im Briefkopf (nicht wir!)
+        # - Bei Ausgangsrechnung: Wir stehen im Briefkopf
+        # OHNE Kontext-Keywords koennen wir nicht unterscheiden!
+        #
+        # Stattdessen: Wenn Firmenname gefunden aber kein Kontext -> UNKNOWN
+        # Das ist besser als falsch raten.
+
+        return None
 
     def _calculate_name_similarity(self, name1: str, name2: str) -> float:
         """Berechnet die Aehnlichkeit zweier Firmennamen (0.0-1.0)."""
