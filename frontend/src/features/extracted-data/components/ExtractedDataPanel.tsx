@@ -32,6 +32,13 @@ const DOCUMENT_TYPE_LABELS: Record<ExtractedDocumentType, string> = {
     unknown: "Unbekannt",
 };
 
+// Invoice-Direction Labels (spezifischer als "Rechnung")
+const INVOICE_DIRECTION_LABELS: Record<string, string> = {
+    incoming: "Eingangsrechnung",
+    outgoing: "Ausgangsrechnung",
+    unknown: "Rechnung",
+};
+
 // Badge-Varianten je nach Dokumenttyp
 function getDocumentTypeBadgeVariant(
     type: ExtractedDocumentType
@@ -128,6 +135,12 @@ export function ExtractedDataPanel({
     const needsReview = data.needs_review || false;
     const warnings = data.extraction_warnings || [];
 
+    // Bei Rechnungen: spezifisches Label basierend auf Direction
+    const invoiceDirection = data.invoice?.invoice_direction || "unknown";
+    const displayLabel = documentType === "invoice"
+        ? INVOICE_DIRECTION_LABELS[invoiceDirection] || "Rechnung"
+        : DOCUMENT_TYPE_LABELS[documentType];
+
     return (
         <Card className={className}>
             <CardHeader>
@@ -139,7 +152,7 @@ export function ExtractedDataPanel({
                     <div className="flex items-center gap-3">
                         <ConfidenceIndicator score={confidence} />
                         <Badge variant={getDocumentTypeBadgeVariant(documentType)}>
-                            {DOCUMENT_TYPE_LABELS[documentType]}
+                            {displayLabel}
                         </Badge>
                     </div>
                 </div>
