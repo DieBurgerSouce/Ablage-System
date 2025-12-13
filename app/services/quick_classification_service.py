@@ -153,14 +153,16 @@ class QuickClassificationService:
     ]
 
     # Rechtsformen fuer Normalisierung
+    # WICHTIG: \s+ (nicht \s*) vor Kurzformen wie SE, um false positives zu vermeiden
+    # z.B. "Spargelmesse" soll nicht zu "Spargelmes" werden
     LEGAL_SUFFIXES = [
         r"\s*gmbh\s*&\s*co\.?\s*kg\s*$",
         r"\s*gmbh\s*$",
-        r"\s*ag\s*$",
-        r"\s*kg\s*$",
-        r"\s*ohg\s*$",
+        r"\s+ag\s*$",   # \s+ um "...dag" nicht zu matchen
+        r"\s+kg\s*$",   # \s+ um "...ekg" nicht zu matchen
+        r"\s+ohg\s*$",
         r"\s*ug\s*(?:\(haftungsbeschraenkt\))?\s*$",
-        r"\s*se\s*$",
+        r"\s+se\s*$",   # \s+ um "Spargelmesse" nicht zu matchen!
         r"\s*e\.?\s*k\.?\s*$",
         r"\s*b\.?\s*v\.?\s*$",
         r"\s*n\.?\s*v\.?\s*$",
@@ -326,12 +328,23 @@ class QuickClassificationService:
     # Rename-Vorschlag Generierung (fuer Eingangsrechnungen)
     # ==========================================================================
 
+    # Bestellnummern-Patterns (werden von Rechnungsnummern-Extraktion ausgeschlossen)
+    # WICHTIG: Nur eindeutige Bestellnummer-Labels, nicht "Ihre Bestellung" (kann auch Rechnungsnr sein)
+    ORDER_NUMBER_PATTERNS = [
+        # Englisch: "Order No.", "Order Number", "Order #" (NICHT "Your Order" - zu ambig)
+        r'(?:order\s*(?:no\.?|number|#))[\s:]*([A-Za-z0-9\-_/]{3,30})',
+        # Deutsch: "Bestellnummer", "Bestell-Nr." (NICHT "Ihre Bestellung" - kann auch Rechnungsnr sein)
+        r'(?:bestell(?:ung)?-?\s*(?:nr\.?|nummer))[\s:]*([A-Za-z0-9\-_/]{3,30})',
+        # Auftrags-Nr. (oft Bestellbezug)
+        r'(?:auftrags?-?\s*(?:nr\.?|nummer))[\s:]*([A-Za-z0-9\-_/]{3,30})',
+    ]
+
     def _extract_invoice_number(self, text: str) -> Optional[str]:
         """
         Extrahiert die Rechnungsnummer aus dem OCR-Text.
 
         Verwendet mehrere Patterns fuer deutsche und englische Rechnungen.
-        Gibt die erste gefundene Rechnungsnummer zurueck.
+        Schliesst explizit Bestellnummern aus, um false positives zu vermeiden.
 
         Args:
             text: OCR-Text
@@ -339,6 +352,20 @@ class QuickClassificationService:
         Returns:
             Rechnungsnummer oder None
         """
+        # Erst Bestellnummern finden und ausschliessen
+        excluded_numbers: set[str] = set()
+        for pattern in self.ORDER_NUMBER_PATTERNS:
+            for match in re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE):
+                excluded = match.group(1).strip()
+                excluded_numbers.add(excluded)
+                excluded_numbers.add(excluded.lower())  # Case-insensitive
+                logger.debug(
+                    "order_number_excluded",
+                    number=excluded,
+                    pattern=pattern[:30]
+                )
+
+        # Dann Rechnungsnummer suchen, aber ausgeschlossene ueberspringen
         for pattern in self.INVOICE_NUMBER_PATTERNS:
             match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
             if match:
@@ -346,6 +373,13 @@ class QuickClassificationService:
                 number = match.group(1).strip()
                 # Validierung: nicht zu kurz, nicht zu lang
                 if 3 <= len(number) <= 30:
+                    # Pruefen ob es eine ausgeschlossene Bestellnummer ist
+                    if number in excluded_numbers or number.lower() in excluded_numbers:
+                        logger.debug(
+                            "invoice_number_skipped_is_order",
+                            number=number
+                        )
+                        continue
                     logger.debug(
                         "invoice_number_extracted",
                         number=number,
