@@ -493,3 +493,570 @@ class TestQuickClassificationMetrics:
 
         # Sollte keine Exception werfen
         service._record_metrics(result, 1000.0, "none")
+
+
+class TestQuickClassificationContextMatching:
+    """Tests fuer Kontext-basierte Firmenname-Erkennung."""
+
+    @pytest.fixture
+    def service(self):
+        return QuickClassificationService()
+
+    def test_find_company_in_recipient_context(self, service):
+        """Findet Firmennamen nach Empfaenger-Keywords."""
+        text = """Lieferant GmbH
+Lieferantenstrasse 1
+12345 Lieferstadt
+
+Rechnungsempfaenger:
+Test Firma
+Kundenstrasse 2
+98765 Kundenstadt
+
+Rechnungspositionen:
+Position 1: 100 EUR"""
+
+        result = service._find_company_in_context(text, ["Test Firma"])
+
+        assert result is not None
+        assert result[0] == InvoiceDirection.INCOMING
+        assert result[1] >= 0.90
+        assert "Empfaenger" in result[2]
+
+    def test_find_company_in_sender_context_footer(self, service):
+        """Findet Firmennamen nahe Footer-Keywords (Geschaeftsfuehrer)."""
+        # Text ohne Empfaenger-Keywords, damit nur Footer-Match greift
+        text = """Rechnung Nr. 12345
+
+Kunde GmbH
+Kundenstrasse 1
+12345 Kundenstadt
+
+Positionen...
+
+---
+Test Firma
+Geschaeftsfuehrer: Max Mustermann
+Handelsregister: HRB 12345"""
+
+        result = service._find_company_in_context(text, ["Test Firma"])
+
+        assert result is not None
+        assert result[0] == InvoiceDirection.OUTGOING
+        assert result[1] >= 0.85
+        assert "Absender" in result[2] or "Footer" in result[2]
+
+    def test_find_company_in_header_position_returns_none(self, service):
+        """Briefkopf-Position allein reicht NICHT fuer Klassifizierung.
+
+        GRUND: Der Briefkopf zeigt den Absender der Rechnung an.
+        - Bei Eingangsrechnung: Lieferant steht im Briefkopf
+        - Bei Ausgangsrechnung: Wir stehen im Briefkopf
+        Ohne Kontext-Keywords koennen wir nicht unterscheiden!
+        """
+        # Firmenname ganz am Anfang = Briefkopf, aber KEIN Kontext-Keyword
+        text = """Test Firma
+
+Rechnung Nr. 12345
+
+Kunde GmbH
+Kundenstrasse 1
+12345 Kundenstadt
+
+Positionen folgen hier mit viel Text.
+Weitere Zeilen hier.
+Noch mehr Text."""
+
+        result = service._find_company_in_context(text, ["Test Firma"])
+
+        # Sollte None zurueckgeben - lieber "unknown" als falsch raten
+        assert result is None
+
+    def test_find_company_not_found(self, service):
+        """Kein Match wenn Firmenname nicht im Text."""
+        text = """Lieferant GmbH
+
+Rechnungsempfaenger:
+Kunde XY GmbH
+
+Positionen..."""
+
+        result = service._find_company_in_context(text, ["Andere Firma"])
+
+        assert result is None
+
+    def test_find_company_prioritizes_recipient_over_header(self, service):
+        """Empfaenger-Kontext hat Prioritaet ueber Briefkopf-Position."""
+        text = """Lieferant GmbH
+
+An:
+Test Firma
+Teststrasse 1
+
+Rechnungspositionen..."""
+
+        # Obwohl "Test Firma" auch oben steht, sollte "An:" Kontext gewinnen
+        result = service._find_company_in_context(text, ["Test Firma"])
+
+        assert result is not None
+        assert result[0] == InvoiceDirection.INCOMING
+
+    def test_contains_company_name_normalized(self, service):
+        """Prueft Firmenname auch mit Rechtsform-Unterschieden."""
+        # Service normalisiert "Test Firma GmbH" zu "test firma"
+        assert service._contains_company_name(
+            "hier steht test firma irgendwo",
+            "Test Firma GmbH"
+        )
+
+    def test_contains_company_name_too_short(self, service):
+        """Zu kurze Firmennamen werden ignoriert."""
+        assert not service._contains_company_name("abc xyz def", "XY")
+
+    def test_match_company_name_uses_context_first(self, service):
+        """_match_company_name verwendet Kontext-Erkennung vor Position."""
+        text = """Lieferant GmbH
+DE999888777
+
+Rechnungsempfaenger:
+Test Firma
+Teststrasse 1
+
+Rechnungspositionen..."""
+
+        # Extrahierte Namen (Pattern-basiert) - leer, da "Test Firma" keine Rechtsform hat
+        extracted = []
+
+        result = service._match_company_name(
+            extracted,
+            ["Test Firma GmbH"],  # Konfigurierter Name mit Rechtsform
+            text
+        )
+
+        # Sollte ueber Kontext-Erkennung matchen (nicht Position)
+        assert result is not None
+        assert result[0] == InvoiceDirection.INCOMING
+        assert result[1] >= 0.90
+
+
+class TestQuickClassificationEntityMatching:
+    """Tests fuer Business Entity Matching (Lieferanten-/Kunden-Erkennung)."""
+
+    @pytest.fixture
+    def service(self):
+        return QuickClassificationService()
+
+    @pytest.fixture
+    def mock_business_entity_supplier(self):
+        """Mock BusinessEntity als Lieferant."""
+        mock = MagicMock()
+        mock.id = uuid4()
+        mock.name = "Lieferant GmbH"
+        mock.display_name = "Lieferant GmbH & Co. KG"
+        mock.entity_type = "supplier"
+        mock.vat_id = "DE111222333"
+        mock.iban = "DE89370400440532013001"
+        mock.is_active = True
+        mock.deleted_at = None
+        return mock
+
+    @pytest.fixture
+    def mock_business_entity_customer(self):
+        """Mock BusinessEntity als Kunde."""
+        mock = MagicMock()
+        mock.id = uuid4()
+        mock.name = "Kunde AG"
+        mock.display_name = "Kunde AG"
+        mock.entity_type = "customer"
+        mock.vat_id = "DE999888777"
+        mock.iban = "DE89370400440532013002"
+        mock.is_active = True
+        mock.deleted_at = None
+        return mock
+
+    @pytest.mark.asyncio
+    async def test_match_business_entity_by_vat_id_supplier(
+        self, service, mock_business_entity_supplier
+    ):
+        """Matched Lieferant ueber USt-IdNr bei Eingangsrechnung."""
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(
+            return_value=mock_business_entity_supplier
+        )
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        vat_ids = [
+            ExtractedIdentifier(
+                value="DE111222333",
+                position=100,
+                relative_position=0.5,
+                context="USt-IdNr: DE111222333"
+            )
+        ]
+
+        result = await service._match_business_entity(
+            db=mock_db,
+            vat_ids=vat_ids,
+            ibans=[],
+            direction=InvoiceDirection.INCOMING
+        )
+
+        assert result is not None
+        entity_id, entity_name, entity_type, match_method, confidence = result
+        assert entity_id == mock_business_entity_supplier.id
+        assert entity_name == "Lieferant GmbH & Co. KG"
+        assert entity_type == "supplier"
+        assert match_method == "vat_id"
+        assert confidence == 0.95
+
+    @pytest.mark.asyncio
+    async def test_match_business_entity_by_iban_customer(
+        self, service, mock_business_entity_customer
+    ):
+        """Matched Kunde ueber IBAN bei Ausgangsrechnung."""
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(
+            return_value=mock_business_entity_customer
+        )
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        ibans = [
+            ExtractedIdentifier(
+                value="DE89370400440532013002",
+                position=200,
+                relative_position=0.8,
+                context="IBAN: DE89370400440532013002"
+            )
+        ]
+
+        result = await service._match_business_entity(
+            db=mock_db,
+            vat_ids=[],
+            ibans=ibans,
+            direction=InvoiceDirection.OUTGOING
+        )
+
+        assert result is not None
+        entity_id, entity_name, entity_type, match_method, confidence = result
+        assert entity_id == mock_business_entity_customer.id
+        assert entity_name == "Kunde AG"
+        assert entity_type == "customer"
+        assert match_method == "iban"
+        assert confidence == 0.90
+
+    @pytest.mark.asyncio
+    async def test_match_business_entity_filters_by_type_incoming(
+        self, service, mock_business_entity_customer
+    ):
+        """Bei Eingangsrechnung werden nur Lieferanten gesucht."""
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        # Gefunden, aber ist Kunde (nicht Lieferant)
+        mock_result.scalar_one_or_none = MagicMock(
+            return_value=mock_business_entity_customer
+        )
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        vat_ids = [
+            ExtractedIdentifier(
+                value="DE999888777",
+                position=100,
+                relative_position=0.5,
+                context="USt-IdNr: DE999888777"
+            )
+        ]
+
+        result = await service._match_business_entity(
+            db=mock_db,
+            vat_ids=vat_ids,
+            ibans=[],
+            direction=InvoiceDirection.INCOMING  # Sucht nach Lieferant
+        )
+
+        # Sollte None sein, weil Entity ein "customer" ist, nicht "supplier"
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_match_business_entity_unknown_direction(self, service):
+        """Bei UNKNOWN Direction kein Entity-Matching."""
+        mock_db = AsyncMock()
+
+        result = await service._match_business_entity(
+            db=mock_db,
+            vat_ids=[
+                ExtractedIdentifier(
+                    value="DE123456789",
+                    position=0,
+                    relative_position=0.0,
+                    context=""
+                )
+            ],
+            ibans=[],
+            direction=InvoiceDirection.UNKNOWN
+        )
+
+        assert result is None
+        # DB sollte nicht aufgerufen worden sein
+        mock_db.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_match_business_entity_no_match(self, service):
+        """Kein Entity gefunden bei unbekannter VAT-ID."""
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(return_value=None)
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        vat_ids = [
+            ExtractedIdentifier(
+                value="DE000000000",
+                position=100,
+                relative_position=0.5,
+                context="Unbekannte USt-IdNr"
+            )
+        ]
+
+        result = await service._match_business_entity(
+            db=mock_db,
+            vat_ids=vat_ids,
+            ibans=[],
+            direction=InvoiceDirection.INCOMING
+        )
+
+        assert result is None
+
+    def test_to_dict_includes_entity_fields(self, service):
+        """to_dict enthaelt alle neuen Entity-Felder."""
+        entity_id = uuid4()
+        result = QuickClassificationResult(
+            direction=InvoiceDirection.INCOMING,
+            confidence=0.95,
+            reason="Test Reason",
+            tag_assigned=True,
+            tag_name="Eingangsrechnung",
+            extracted_vat_ids=["DE123456789"],
+            extracted_ibans=[],
+            matched_identifier="DE123456789",
+            # Neue Entity-Felder
+            matched_entity_id=entity_id,
+            matched_entity_name="Lieferant GmbH",
+            matched_entity_type="supplier",
+            entity_match_method="vat_id",
+            entity_confidence=0.95,
+            entity_auto_linked=True
+        )
+
+        d = service.to_dict(result)
+
+        assert d["matched_entity_id"] == str(entity_id)
+        assert d["matched_entity_name"] == "Lieferant GmbH"
+        assert d["matched_entity_type"] == "supplier"
+        assert d["entity_match_method"] == "vat_id"
+        assert d["entity_confidence"] == 0.95
+        assert d["entity_auto_linked"] is True
+
+    def test_to_dict_entity_fields_null_when_not_set(self, service):
+        """to_dict gibt None fuer leere Entity-Felder zurueck."""
+        result = QuickClassificationResult(
+            direction=InvoiceDirection.INCOMING,
+            confidence=0.85,
+            reason="Test ohne Entity"
+        )
+
+        d = service.to_dict(result)
+
+        assert d["matched_entity_id"] is None
+        assert d["matched_entity_name"] is None
+        assert d["matched_entity_type"] is None
+        assert d["entity_match_method"] is None
+        assert d["entity_confidence"] == 0.0
+        assert d["entity_auto_linked"] is False
+
+    @pytest.mark.asyncio
+    async def test_enrich_with_entity_match_links_document(self, service):
+        """_enrich_with_entity_match verknuepft Dokument bei hoher Konfidenz."""
+        # Cache leeren um Interferenz mit anderen Tests zu vermeiden
+        from app.services.quick_classification_service import _business_entity_cache
+        _business_entity_cache.clear()
+
+        entity_id = uuid4()
+        document_id = uuid4()
+
+        mock_db = AsyncMock()
+
+        # Mock fuer _match_business_entity
+        mock_entity = MagicMock()
+        mock_entity.id = entity_id
+        mock_entity.name = "Unique Lieferant Test"
+        mock_entity.display_name = "Unique Lieferant Test GmbH"
+        mock_entity.entity_type = "supplier"
+        mock_entity.is_active = True
+        mock_entity.deleted_at = None
+
+        mock_entity_result = MagicMock()
+        mock_entity_result.scalar_one_or_none = MagicMock(return_value=mock_entity)
+
+        # Mock fuer _link_entity_to_document
+        mock_doc = MagicMock()
+        mock_doc.business_entity_id = None
+        mock_doc_result = MagicMock()
+        mock_doc_result.scalar_one_or_none = MagicMock(return_value=mock_doc)
+
+        mock_db.execute = AsyncMock(side_effect=[mock_entity_result, mock_doc_result])
+
+        result = QuickClassificationResult(
+            direction=InvoiceDirection.INCOMING,
+            confidence=0.95,
+            reason="Test"
+        )
+
+        # Verwende einzigartige VAT-ID die nicht in anderen Tests vorkommt
+        unique_vat = "DE555666777"
+        vat_ids = [
+            ExtractedIdentifier(
+                value=unique_vat,
+                position=100,
+                relative_position=0.5,
+                context="Test"
+            )
+        ]
+
+        await service._enrich_with_entity_match(
+            db=mock_db,
+            document_id=document_id,
+            result=result,
+            vat_ids=vat_ids,
+            ibans=[]
+        )
+
+        # Entity-Daten sollten im Result sein
+        assert result.matched_entity_id == entity_id
+        assert result.matched_entity_name == "Unique Lieferant Test GmbH"
+        assert result.matched_entity_type == "supplier"
+        assert result.entity_match_method == "vat_id"
+        assert result.entity_confidence == 0.95
+
+
+class TestQuickClassificationKeywordAnalysis:
+    """Tests fuer Keyword-Analyse und Konfidenz-Boost."""
+
+    @pytest.fixture
+    def service(self):
+        return QuickClassificationService()
+
+    # =========================================================================
+    # _analyze_document_keywords Tests
+    # =========================================================================
+
+    def test_analyze_keywords_invoice_detected(self, service):
+        """Erkennt Rechnung-Keywords und gibt Boost."""
+        text = "Rechnung Nr. 12345\nRechnungsdatum: 01.01.2025\nBetrag: 100,00 EUR"
+        doc_type, boost = service._analyze_document_keywords(text)
+
+        assert doc_type == "invoice"
+        assert boost > 0
+        assert boost <= 0.05  # Max 5%
+
+    def test_analyze_keywords_credit_note_detected(self, service):
+        """Erkennt Gutschrift-Keywords."""
+        text = "Gutschrift Nr. 54321\nStornorechnung zum Beleg 12345"
+        doc_type, boost = service._analyze_document_keywords(text)
+
+        assert doc_type == "credit_note"
+        assert boost > 0
+
+    def test_analyze_keywords_order_detected(self, service):
+        """Erkennt Bestellung/Auftrag-Keywords."""
+        text = "Bestellung Nr. 789\nAuftragsdatum: 15.12.2024\nLieferschein folgt"
+        doc_type, boost = service._analyze_document_keywords(text)
+
+        assert doc_type == "order"
+        assert boost > 0
+
+    def test_analyze_keywords_no_keywords(self, service):
+        """Ohne relevante Keywords kein Boost."""
+        text = "Dies ist ein allgemeiner Text ohne spezielle Keywords."
+        doc_type, boost = service._analyze_document_keywords(text)
+
+        assert doc_type is None
+        assert boost == 0.0
+
+    def test_analyze_keywords_multiple_keywords_higher_boost(self, service):
+        """Mehrere Keywords geben hoeheren Boost."""
+        text_single = "Rechnung Nr. 12345"
+        text_multiple = "Rechnung Nr. 12345\nRechnungsdatum: 01.01.2025\nRechnungsbetrag: 100 EUR"
+
+        _, boost_single = service._analyze_document_keywords(text_single)
+        _, boost_multiple = service._analyze_document_keywords(text_multiple)
+
+        assert boost_multiple > boost_single
+
+    def test_analyze_keywords_max_boost_capped(self, service):
+        """Boost ist bei 5% gedeckelt."""
+        # Viele Keywords im Text
+        text = """
+        Rechnung Nr. 12345
+        Rechnungsdatum: 01.01.2025
+        Rechnungsnummer: R-2025-001
+        Rechnungsbetrag: 100 EUR
+        Invoice Number: 12345
+        """
+        _, boost = service._analyze_document_keywords(text)
+
+        assert boost <= 0.05
+
+    def test_analyze_keywords_case_insensitive(self, service):
+        """Keyword-Erkennung ist case-insensitive."""
+        text_lower = "rechnung nr. 12345"
+        text_upper = "RECHNUNG NR. 12345"
+        text_mixed = "ReChNuNg Nr. 12345"
+
+        _, boost_lower = service._analyze_document_keywords(text_lower)
+        _, boost_upper = service._analyze_document_keywords(text_upper)
+        _, boost_mixed = service._analyze_document_keywords(text_mixed)
+
+        assert boost_lower > 0
+        assert boost_upper > 0
+        assert boost_mixed > 0
+
+    # =========================================================================
+    # _apply_confidence_boost Tests
+    # =========================================================================
+
+    def test_apply_confidence_boost_basic(self, service):
+        """Wendet Boost korrekt an."""
+        base = 0.85
+        boost = 0.03
+
+        result = service._apply_confidence_boost(base, boost)
+
+        assert result == 0.88
+
+    def test_apply_confidence_boost_capped_at_99(self, service):
+        """Confidence wird bei 0.99 gedeckelt."""
+        base = 0.98
+        boost = 0.05
+
+        result = service._apply_confidence_boost(base, boost)
+
+        assert result == 0.99  # Nie 1.0
+
+    def test_apply_confidence_boost_zero_boost(self, service):
+        """Zero Boost aendert nichts."""
+        base = 0.75
+
+        result = service._apply_confidence_boost(base, 0.0)
+
+        assert result == base
+
+    def test_apply_confidence_boost_high_base(self, service):
+        """Hohe Basis-Confidence mit Boost bleibt unter 1.0."""
+        base = 0.97
+        boost = 0.05
+
+        result = service._apply_confidence_boost(base, boost)
+
+        assert result == 0.99
+        assert result < 1.0

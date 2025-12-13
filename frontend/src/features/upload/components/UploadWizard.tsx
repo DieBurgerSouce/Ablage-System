@@ -230,6 +230,13 @@ export function UploadWizard() {
                                         invoiceDirection: qcResult.direction || 'unknown',
                                         confidence: qcResult.confidence || 0,
                                         reason: qcResult.reason,
+                                        // Business Entity Matching
+                                        matchedEntityId: qcResult.matchedEntityId,
+                                        matchedEntityName: qcResult.matchedEntityName,
+                                        matchedEntityType: qcResult.matchedEntityType,
+                                        entityMatchMethod: qcResult.entityMatchMethod,
+                                        entityConfidence: qcResult.entityConfidence,
+                                        entityAutoLinked: qcResult.entityAutoLinked,
                                     },
                                     // Wenn Tag automatisch zugewiesen wurde, als completed markieren
                                     // Sonst bleibt processing bis OCR fertig

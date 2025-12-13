@@ -9,7 +9,9 @@ import {
     MoreVertical,
     ArrowDownLeft,
     ArrowUpRight,
-    AlertTriangle
+    AlertTriangle,
+    Building2,
+    Link2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -139,6 +141,48 @@ function DirectionBadge({
     );
 }
 
+/**
+ * EntityBadge - Zeigt den erkannten Geschaeftspartner (Lieferant/Kunde)
+ */
+function EntityBadge({
+    entityName,
+    entityType,
+    confidence,
+    autoLinked
+}: {
+    entityName: string;
+    entityType: 'supplier' | 'customer' | 'both';
+    confidence?: number;
+    autoLinked?: boolean;
+}) {
+    const isLowConfidence = confidence !== undefined && confidence < 0.85;
+    const typeLabel = entityType === 'supplier' ? 'Lieferant' : entityType === 'customer' ? 'Kunde' : 'Partner';
+
+    return (
+        <Badge
+            variant="outline"
+            className={cn(
+                "gap-1 max-w-[200px]",
+                autoLinked
+                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400"
+                    : "bg-slate-500/10 text-slate-600 border-slate-500/30 dark:text-slate-400",
+                isLowConfidence && "border-dashed"
+            )}
+            title={`${typeLabel}: ${entityName}${autoLinked ? ' (automatisch verknuepft)' : ''}${confidence ? ` - ${Math.round(confidence * 100)}% Konfidenz` : ''}`}
+        >
+            {autoLinked ? (
+                <Link2 className="w-3 h-3 flex-shrink-0" />
+            ) : (
+                <Building2 className="w-3 h-3 flex-shrink-0" />
+            )}
+            <span className="truncate">{entityName}</span>
+            {isLowConfidence && (
+                <span className="text-xs opacity-70 flex-shrink-0">?</span>
+            )}
+        </Badge>
+    );
+}
+
 export function UploadFileList({ files, onRemove, onChangeDirection }: UploadFileListProps) {
     if (files.length === 0) {
         return null;
@@ -206,15 +250,24 @@ export function UploadFileList({ files, onRemove, onChangeDirection }: UploadFil
                                 )}
                             </div>
 
-                            {/* Classification Badge - zeigt sobald Quick Classification fertig ist (auch waehrend OCR laeuft!) */}
+                            {/* Classification Badges - zeigt sobald Quick Classification fertig ist (auch waehrend OCR laeuft!) */}
                             {(file.status === 'completed' || file.status === 'awaiting_confirmation' ||
                               (file.status === 'processing' && file.classification)) &&
                              file.classification && (
-                                <div className="flex-shrink-0">
+                                <div className="flex-shrink-0 flex items-center gap-2 flex-wrap">
                                     <DirectionBadge
                                         direction={file.confirmedDirection || file.classification.invoiceDirection}
                                         confidence={file.classification.confidence}
                                     />
+                                    {/* Entity Badge - zeigt erkannten Geschaeftspartner */}
+                                    {file.classification.matchedEntityName && file.classification.matchedEntityType && (
+                                        <EntityBadge
+                                            entityName={file.classification.matchedEntityName}
+                                            entityType={file.classification.matchedEntityType}
+                                            confidence={file.classification.entityConfidence}
+                                            autoLinked={file.classification.entityAutoLinked}
+                                        />
+                                    )}
                                 </div>
                             )}
 

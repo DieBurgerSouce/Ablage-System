@@ -24,6 +24,18 @@ export interface DocumentClassification {
     confidence: number;
     /** Begründung für die Erkennung */
     reason?: string;
+    /** Erkannter Geschäftspartner (Lieferant/Kunde) */
+    matchedEntityId?: string;
+    /** Name des erkannten Geschäftspartners */
+    matchedEntityName?: string;
+    /** Typ des Geschäftspartners: supplier | customer | both */
+    matchedEntityType?: 'supplier' | 'customer' | 'both';
+    /** Wie wurde der Geschäftspartner erkannt: vat_id | iban | name */
+    entityMatchMethod?: 'vat_id' | 'iban' | 'name';
+    /** Konfidenz der Geschäftspartner-Erkennung (0-1) */
+    entityConfidence?: number;
+    /** Wurde das Dokument automatisch mit dem Geschäftspartner verknüpft? */
+    entityAutoLinked?: boolean;
 }
 
 /**

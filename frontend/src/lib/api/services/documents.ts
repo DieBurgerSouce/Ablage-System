@@ -30,6 +30,13 @@ interface DocumentBackend {
         reason?: string;
         tag_assigned?: boolean;
         tag_name?: string;
+        // Business Entity Matching
+        matched_entity_id?: string;
+        matched_entity_name?: string;
+        matched_entity_type?: 'supplier' | 'customer' | 'both';
+        entity_match_method?: 'vat_id' | 'iban' | 'name';
+        entity_confidence?: number;
+        entity_auto_linked?: boolean;
     };
 }
 
@@ -64,6 +71,13 @@ export interface Document {
         reason?: string;
         tagAssigned?: boolean;
         tagName?: string;
+        // Business Entity Matching
+        matchedEntityId?: string;
+        matchedEntityName?: string;
+        matchedEntityType?: 'supplier' | 'customer' | 'both';
+        entityMatchMethod?: 'vat_id' | 'iban' | 'name';
+        entityConfidence?: number;
+        entityAutoLinked?: boolean;
     };
 }
 
@@ -96,6 +110,13 @@ function transformDocument(doc: DocumentBackend): Document {
             reason: doc.quick_classification_result.reason,
             tagAssigned: doc.quick_classification_result.tag_assigned,
             tagName: doc.quick_classification_result.tag_name,
+            // Business Entity Matching
+            matchedEntityId: doc.quick_classification_result.matched_entity_id,
+            matchedEntityName: doc.quick_classification_result.matched_entity_name,
+            matchedEntityType: doc.quick_classification_result.matched_entity_type,
+            entityMatchMethod: doc.quick_classification_result.entity_match_method,
+            entityConfidence: doc.quick_classification_result.entity_confidence,
+            entityAutoLinked: doc.quick_classification_result.entity_auto_linked,
         } : undefined,
     };
 }

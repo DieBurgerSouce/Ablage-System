@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.extracted_data import InvoiceDirection
 from app.core.audit_logger import get_audit_logger, SecurityEventType
-from app.db.models import CompanySettings, Document, Tag
+from app.db.models import BusinessEntity, CompanySettings, Document, Tag
 
 logger = structlog.get_logger(__name__)
 
@@ -65,6 +65,18 @@ AUSGANGSRECHNUNG_TAG_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
 _company_settings_cache: Tuple[Optional[CompanySettings], datetime] = (None, datetime.min)
 _CACHE_TTL = timedelta(minutes=1)
 
+# Cache fuer BusinessEntities (1 Minute TTL)
+# Speichert Entities nach VAT-ID und IBAN fuer schnelles Matching
+_business_entity_cache: Dict[str, Tuple[Optional[BusinessEntity], datetime]] = {}
+_ENTITY_CACHE_TTL = timedelta(minutes=1)
+
+# Prometheus Metrik fuer Entity-Matching
+QUICK_CLASSIFICATION_ENTITY_MATCH = Counter(
+    "quick_classification_entity_match_total",
+    "Anzahl der Business Entity Matches",
+    ["match_method", "entity_type", "auto_linked"]
+)
+
 
 @dataclass
 class ExtractedIdentifier:
@@ -86,6 +98,13 @@ class QuickClassificationResult:
     extracted_vat_ids: List[str] = field(default_factory=list)
     extracted_ibans: List[str] = field(default_factory=list)
     matched_identifier: Optional[str] = None
+    # Business Entity Matching (Lieferanten-/Kunden-Erkennung)
+    matched_entity_id: Optional[uuid.UUID] = None
+    matched_entity_name: Optional[str] = None
+    matched_entity_type: Optional[str] = None  # "supplier" | "customer" | "both"
+    entity_match_method: Optional[str] = None  # "vat_id" | "iban" | "name"
+    entity_confidence: float = 0.0
+    entity_auto_linked: bool = False
 
 
 class QuickClassificationService:
@@ -185,6 +204,122 @@ class QuickClassificationService:
         r'f(?:ue|ü)r\s+r(?:ue|ü)ckfragen',  # "Fuer Rueckfragen" / "Für Rückfragen"
     ]
 
+    # =========================================================================
+    # Keyword-Analyse fuer Konfidenz-Boost (Phase 2)
+    # =========================================================================
+
+    # Keywords die auf eine Rechnung hindeuten
+    INVOICE_KEYWORDS = [
+        r'\b(rechnung|invoice|factura)\b',
+        r'\b(rechnungs?nr\.?|rechnungsnummer|invoice\s*no\.?)\b',
+        r'\b(rechnungsdatum|invoice\s*date)\b',
+        r'\b(zahlungsziel|faellig|due\s*date)\b',
+        r'\b(nettobetrag|bruttobetrag|gesamtbetrag)\b',
+        r'\b(mwst|mehrwertsteuer|vat|umsatzsteuer)\b',
+    ]
+
+    # Keywords die auf eine Gutschrift hindeuten
+    CREDIT_NOTE_KEYWORDS = [
+        r'\b(gutschrift|credit\s*note|stornorechnung|storno)\b',
+        r'\b(erstattung|refund|r(?:ue|ü)ckerstattung)\b',
+        r'\b(gutschriftsnr\.?|credit\s*note\s*no\.?)\b',
+    ]
+
+    # Keywords die auf eine Bestellung hindeuten
+    ORDER_KEYWORDS = [
+        r'\b(bestellung|order|auftrag)\b',
+        r'\b(bestell?nr\.?|bestellnummer|order\s*no\.?)\b',
+        r'\b(auftragsbestaetigung|order\s*confirmation)\b',
+    ]
+
+    def _analyze_document_keywords(self, text: str) -> Tuple[Optional[str], float]:
+        """
+        Analysiert den Text auf Dokumenttyp-Keywords.
+
+        Gibt einen kleinen Konfidenz-Boost wenn eindeutige Keywords gefunden werden.
+        Dies verbessert die Genauigkeit bei Grenzfaellen.
+
+        Args:
+            text: OCR-Text zur Analyse
+
+        Returns:
+            (document_type_hint, confidence_boost)
+            - document_type_hint: "invoice" | "credit_note" | "order" | None
+            - confidence_boost: 0.0-0.05
+        """
+        text_lower = text.lower()
+
+        # Zaehle Keywords pro Kategorie
+        invoice_count = sum(
+            1 for pattern in self.INVOICE_KEYWORDS
+            if re.search(pattern, text_lower, re.IGNORECASE)
+        )
+        credit_note_count = sum(
+            1 for pattern in self.CREDIT_NOTE_KEYWORDS
+            if re.search(pattern, text_lower, re.IGNORECASE)
+        )
+        order_count = sum(
+            1 for pattern in self.ORDER_KEYWORDS
+            if re.search(pattern, text_lower, re.IGNORECASE)
+        )
+
+        # Bestimme dominanten Dokumenttyp
+        max_count = max(invoice_count, credit_note_count, order_count)
+
+        if max_count == 0:
+            return (None, 0.0)
+
+        # Berechne Boost basierend auf Anzahl gefundener Keywords
+        # Max 5% Boost bei 3+ Keywords
+        boost = min(max_count * 0.015, 0.05)
+
+        if credit_note_count == max_count and credit_note_count > 0:
+            logger.debug(
+                "keyword_analysis_result",
+                document_type="credit_note",
+                keyword_count=credit_note_count,
+                boost=boost
+            )
+            return ("credit_note", boost)
+        elif order_count == max_count and order_count > 0:
+            logger.debug(
+                "keyword_analysis_result",
+                document_type="order",
+                keyword_count=order_count,
+                boost=boost
+            )
+            return ("order", boost)
+        elif invoice_count > 0:
+            logger.debug(
+                "keyword_analysis_result",
+                document_type="invoice",
+                keyword_count=invoice_count,
+                boost=boost
+            )
+            return ("invoice", boost)
+
+        return (None, 0.0)
+
+    def _apply_confidence_boost(
+        self,
+        base_confidence: float,
+        keyword_boost: float
+    ) -> float:
+        """
+        Wendet Konfidenz-Boosts an und begrenzt auf Maximum.
+
+        Niemals 1.0 - immer etwas Unsicherheit behalten.
+
+        Args:
+            base_confidence: Urspruengliche Konfidenz
+            keyword_boost: Boost aus Keyword-Analyse
+
+        Returns:
+            Kombinierte Konfidenz (max 0.99)
+        """
+        combined = base_confidence + keyword_boost
+        return min(combined, 0.99)
+
     async def classify_document(
         self,
         document_id: uuid.UUID,
@@ -263,17 +398,31 @@ class QuickClassificationService:
             company_names_count=len(company_names)
         )
 
+        # 2b. Keyword-Analyse fuer Konfidenz-Boost
+        doc_type_hint, keyword_boost = self._analyze_document_keywords(ocr_text)
+        if keyword_boost > 0:
+            logger.debug(
+                "quick_classification_keyword_boost",
+                document_type_hint=doc_type_hint,
+                keyword_boost=keyword_boost
+            )
+
         # 3. USt-IdNr Check (hoechste Prioritaet)
         if company.vat_id:
             vat_result = self._match_vat_id(vat_ids, company.vat_id, ocr_text)
             if vat_result:
+                # Keyword-Boost anwenden
+                boosted_confidence = self._apply_confidence_boost(vat_result[1], keyword_boost)
                 result = QuickClassificationResult(
                     direction=vat_result[0],
-                    confidence=vat_result[1],
+                    confidence=boosted_confidence,
                     reason=vat_result[2],
                     extracted_vat_ids=[v.value for v in vat_ids],
+                    extracted_ibans=[i.value for i in ibans],
                     matched_identifier=company.vat_id
                 )
+                # Entity-Matching (Lieferanten-/Kunden-Erkennung)
+                await self._enrich_with_entity_match(db, document_id, result, vat_ids, ibans)
                 if auto_assign_tag and result.confidence >= self.AUTO_TAG_CONFIDENCE_THRESHOLD:
                     await self._assign_tag(db, document_id, result)
                 self._record_metrics(result, start_time, "vat_id")
@@ -283,13 +432,18 @@ class QuickClassificationService:
         if company.iban:
             iban_result = self._match_iban(ibans, company.iban)
             if iban_result:
+                # Keyword-Boost anwenden
+                boosted_confidence = self._apply_confidence_boost(iban_result[1], keyword_boost)
                 result = QuickClassificationResult(
                     direction=iban_result[0],
-                    confidence=iban_result[1],
+                    confidence=boosted_confidence,
                     reason=iban_result[2],
+                    extracted_vat_ids=[v.value for v in vat_ids],
                     extracted_ibans=[i.value for i in ibans],
                     matched_identifier=company.iban
                 )
+                # Entity-Matching (Lieferanten-/Kunden-Erkennung)
+                await self._enrich_with_entity_match(db, document_id, result, vat_ids, ibans)
                 if auto_assign_tag and result.confidence >= self.AUTO_TAG_CONFIDENCE_THRESHOLD:
                     await self._assign_tag(db, document_id, result)
                 self._record_metrics(result, start_time, "iban")
@@ -303,12 +457,18 @@ class QuickClassificationService:
 
             name_result = self._match_company_name(company_names, all_company_names, ocr_text, ibans)
             if name_result:
+                # Keyword-Boost anwenden
+                boosted_confidence = self._apply_confidence_boost(name_result[1], keyword_boost)
                 result = QuickClassificationResult(
                     direction=name_result[0],
-                    confidence=name_result[1],
+                    confidence=boosted_confidence,
                     reason=name_result[2],
+                    extracted_vat_ids=[v.value for v in vat_ids],
+                    extracted_ibans=[i.value for i in ibans],
                     matched_identifier=company.company_name
                 )
+                # Entity-Matching (Lieferanten-/Kunden-Erkennung)
+                await self._enrich_with_entity_match(db, document_id, result, vat_ids, ibans)
                 if auto_assign_tag and result.confidence >= self.AUTO_TAG_CONFIDENCE_THRESHOLD:
                     await self._assign_tag(db, document_id, result)
                 self._record_metrics(result, start_time, "company_name")
@@ -325,6 +485,71 @@ class QuickClassificationService:
         )
         self._record_metrics(result, start_time, "none")
         return result
+
+    async def _enrich_with_entity_match(
+        self,
+        db: AsyncSession,
+        document_id: uuid.UUID,
+        result: QuickClassificationResult,
+        vat_ids: List[ExtractedIdentifier],
+        ibans: List[ExtractedIdentifier]
+    ) -> None:
+        """
+        Reichert das Klassifizierungsergebnis mit Business Entity Daten an.
+
+        Diese Methode wird nach erfolgreicher Direction-Bestimmung aufgerufen und:
+        1. Sucht passende BusinessEntity basierend auf extrahierten VAT-IDs/IBANs
+        2. Fuellt Entity-Felder im Result
+        3. Verknuepft Document mit Entity bei >= 80% confidence
+
+        Args:
+            db: Datenbank-Session
+            document_id: UUID des Dokuments
+            result: Klassifizierungsergebnis (wird modifiziert)
+            vat_ids: Extrahierte USt-IdNr
+            ibans: Extrahierte IBANs
+        """
+        if result.direction == InvoiceDirection.UNKNOWN:
+            return
+
+        try:
+            entity_match = await self._match_business_entity(
+                db, vat_ids, ibans, result.direction
+            )
+
+            if entity_match:
+                entity_id, entity_name, entity_type, match_method, confidence = entity_match
+
+                # Result mit Entity-Daten anreichern
+                result.matched_entity_id = entity_id
+                result.matched_entity_name = entity_name
+                result.matched_entity_type = entity_type
+                result.entity_match_method = match_method
+                result.entity_confidence = confidence
+
+                logger.info(
+                    "quick_classification_entity_enriched",
+                    document_id=str(document_id),
+                    entity_id=str(entity_id),
+                    entity_name=entity_name,
+                    entity_type=entity_type,
+                    match_method=match_method,
+                    confidence=confidence
+                )
+
+                # Bei hoher Confidence: Document mit Entity verknuepfen
+                # Schwellenwert: 80% (etwas hoeher als Tag-Zuweisung)
+                AUTO_LINK_CONFIDENCE_THRESHOLD = 0.80
+                if confidence >= AUTO_LINK_CONFIDENCE_THRESHOLD:
+                    await self._link_entity_to_document(db, document_id, entity_id, result)
+
+        except Exception as e:
+            # Entity-Matching-Fehler sollten die Klassifizierung nicht blockieren
+            logger.warning(
+                "quick_classification_entity_match_error",
+                document_id=str(document_id),
+                error=str(e)
+            )
 
     def _record_metrics(
         self,
@@ -388,6 +613,228 @@ class QuickClassificationService:
         # Cache aktualisieren
         _company_settings_cache = (settings, datetime.now())
         return settings
+
+    async def _match_business_entity(
+        self,
+        db: AsyncSession,
+        vat_ids: List[ExtractedIdentifier],
+        ibans: List[ExtractedIdentifier],
+        direction: InvoiceDirection
+    ) -> Optional[Tuple[uuid.UUID, str, str, str, float]]:
+        """
+        Matched extrahierte Identifier gegen BusinessEntities (Lieferanten/Kunden).
+
+        Logik basierend auf Rechnungsrichtung:
+        - Eingangsrechnung -> Suche Lieferanten (SUPPLIER/BOTH) - deren Daten stehen auf der Rechnung
+        - Ausgangsrechnung -> Suche Kunden (CUSTOMER/BOTH) - deren Daten stehen auf der Rechnung
+
+        Prioritaet:
+        1. VAT-ID Match (0.95 confidence) - hoechste Praezision
+        2. IBAN Match (0.90 confidence)
+
+        Args:
+            db: Datenbank-Session
+            vat_ids: Extrahierte USt-IdNr aus dem Dokument
+            ibans: Extrahierte IBANs aus dem Dokument
+            direction: Bereits bestimmte Rechnungsrichtung
+
+        Returns:
+            (entity_id, entity_name, entity_type, match_method, confidence) oder None
+        """
+        global _business_entity_cache
+
+        if direction == InvoiceDirection.UNKNOWN:
+            return None
+
+        # Bestimme welche Entity-Typen wir suchen
+        # Bei Eingangsrechnung: Die Rechnung kommt von einem Lieferanten
+        # Bei Ausgangsrechnung: Die Rechnung geht an einen Kunden
+        if direction == InvoiceDirection.INCOMING:
+            entity_types = ["supplier", "both"]
+            search_type = "supplier"
+        else:
+            entity_types = ["customer", "both"]
+            search_type = "customer"
+
+        # 1. Prioritaet: VAT-ID Matching (hoechste Praezision)
+        for vat in vat_ids:
+            normalized_vat = self._normalize_vat_id(vat.value)
+            cache_key = f"vat:{normalized_vat}"
+
+            # Cache pruefen
+            if cache_key in _business_entity_cache:
+                cached_entity, cache_time = _business_entity_cache[cache_key]
+                if datetime.now() - cache_time < _ENTITY_CACHE_TTL and cached_entity:
+                    if cached_entity.entity_type in entity_types:
+                        logger.debug(
+                            "business_entity_cache_hit",
+                            vat_id=normalized_vat,
+                            entity_name=cached_entity.name
+                        )
+                        return (
+                            cached_entity.id,
+                            cached_entity.display_name or cached_entity.name,
+                            cached_entity.entity_type,
+                            "vat_id",
+                            0.95
+                        )
+
+            # DB-Abfrage
+            result = await db.execute(
+                select(BusinessEntity)
+                .where(BusinessEntity.vat_id == normalized_vat)
+                .where(BusinessEntity.is_active == True)
+                .where(BusinessEntity.deleted_at.is_(None))
+                .limit(1)
+            )
+            entity = result.scalar_one_or_none()
+
+            # Cache aktualisieren
+            _business_entity_cache[cache_key] = (entity, datetime.now())
+
+            if entity and entity.entity_type in entity_types:
+                logger.info(
+                    "business_entity_matched_by_vat",
+                    vat_id=normalized_vat,
+                    entity_id=str(entity.id),
+                    entity_name=entity.name,
+                    entity_type=entity.entity_type
+                )
+                return (
+                    entity.id,
+                    entity.display_name or entity.name,
+                    entity.entity_type,
+                    "vat_id",
+                    0.95
+                )
+
+        # 2. Prioritaet: IBAN Matching
+        for iban in ibans:
+            normalized_iban = self._normalize_iban(iban.value)
+            cache_key = f"iban:{normalized_iban}"
+
+            # Cache pruefen
+            if cache_key in _business_entity_cache:
+                cached_entity, cache_time = _business_entity_cache[cache_key]
+                if datetime.now() - cache_time < _ENTITY_CACHE_TTL and cached_entity:
+                    if cached_entity.entity_type in entity_types:
+                        logger.debug(
+                            "business_entity_cache_hit",
+                            iban=normalized_iban[:8] + "...",
+                            entity_name=cached_entity.name
+                        )
+                        return (
+                            cached_entity.id,
+                            cached_entity.display_name or cached_entity.name,
+                            cached_entity.entity_type,
+                            "iban",
+                            0.90
+                        )
+
+            # DB-Abfrage
+            result = await db.execute(
+                select(BusinessEntity)
+                .where(BusinessEntity.iban == normalized_iban)
+                .where(BusinessEntity.is_active == True)
+                .where(BusinessEntity.deleted_at.is_(None))
+                .limit(1)
+            )
+            entity = result.scalar_one_or_none()
+
+            # Cache aktualisieren
+            _business_entity_cache[cache_key] = (entity, datetime.now())
+
+            if entity and entity.entity_type in entity_types:
+                logger.info(
+                    "business_entity_matched_by_iban",
+                    iban=normalized_iban[:8] + "...",
+                    entity_id=str(entity.id),
+                    entity_name=entity.name,
+                    entity_type=entity.entity_type
+                )
+                return (
+                    entity.id,
+                    entity.display_name or entity.name,
+                    entity.entity_type,
+                    "iban",
+                    0.90
+                )
+
+        logger.debug(
+            "business_entity_no_match",
+            vat_ids_checked=len(vat_ids),
+            ibans_checked=len(ibans),
+            search_type=search_type
+        )
+        return None
+
+    async def _link_entity_to_document(
+        self,
+        db: AsyncSession,
+        document_id: uuid.UUID,
+        entity_id: uuid.UUID,
+        result: QuickClassificationResult
+    ) -> None:
+        """
+        Verknuepft ein Dokument mit einem BusinessEntity.
+
+        Wird nur aufgerufen wenn entity_confidence >= 80%.
+
+        Args:
+            db: Datenbank-Session
+            document_id: UUID des Dokuments
+            entity_id: UUID des BusinessEntity
+            result: Klassifizierungsergebnis (wird modifiziert)
+        """
+        try:
+            doc_result = await db.execute(
+                select(Document).where(Document.id == document_id)
+            )
+            doc = doc_result.scalar_one_or_none()
+
+            if not doc:
+                logger.warning(
+                    "entity_link_failed",
+                    reason="document_not_found",
+                    document_id=str(document_id)
+                )
+                return
+
+            # Nur verknuepfen wenn noch keine Entity gesetzt ist
+            if doc.business_entity_id is None:
+                doc.business_entity_id = entity_id
+                result.entity_auto_linked = True
+
+                logger.info(
+                    "document_entity_auto_linked",
+                    document_id=str(document_id),
+                    entity_id=str(entity_id),
+                    entity_name=result.matched_entity_name,
+                    match_method=result.entity_match_method,
+                    confidence=result.entity_confidence
+                )
+
+                # Prometheus Metrik
+                QUICK_CLASSIFICATION_ENTITY_MATCH.labels(
+                    match_method=result.entity_match_method or "unknown",
+                    entity_type=result.matched_entity_type or "unknown",
+                    auto_linked="true"
+                ).inc()
+            else:
+                logger.debug(
+                    "entity_link_skipped",
+                    reason="already_linked",
+                    document_id=str(document_id),
+                    existing_entity_id=str(doc.business_entity_id)
+                )
+
+        except Exception as e:
+            logger.error(
+                "entity_link_error",
+                document_id=str(document_id),
+                entity_id=str(entity_id),
+                error=str(e)
+            )
 
     async def _assign_tag(
         self,
@@ -1042,7 +1489,14 @@ class QuickClassificationService:
             "tag_name": result.tag_name,
             "extracted_vat_ids": result.extracted_vat_ids,
             "extracted_ibans": result.extracted_ibans,
-            "matched_identifier": result.matched_identifier
+            "matched_identifier": result.matched_identifier,
+            # Business Entity Matching
+            "matched_entity_id": str(result.matched_entity_id) if result.matched_entity_id else None,
+            "matched_entity_name": result.matched_entity_name,
+            "matched_entity_type": result.matched_entity_type,
+            "entity_match_method": result.entity_match_method,
+            "entity_confidence": result.entity_confidence,
+            "entity_auto_linked": result.entity_auto_linked,
         }
 
 
