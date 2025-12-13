@@ -194,11 +194,13 @@ async def _async_reprocess_all(
                     detected_language = getattr(doc, "detected_language", None)
 
                     # Strukturierte Extraktion durchfuehren (mit Sprache fuer Uebersetzung)
+                    # db wird fuer Eingangs-/Ausgangsrechnung-Erkennung benoetigt
                     extraction_result = await extraction_service.extract(
                         doc.extracted_text,
                         document_id=str(doc.id),
                         detected_language=detected_language,
                         page_count=getattr(doc, 'page_count', None),
+                        db=db,
                     )
 
                     if extraction_result:
@@ -329,11 +331,13 @@ async def _async_reprocess_single(document_id: str) -> Dict[str, Any]:
             detected_language = getattr(document, "detected_language", None)
 
             # Strukturierte Extraktion (mit Sprache fuer Uebersetzung)
+            # db wird fuer Eingangs-/Ausgangsrechnung-Erkennung benoetigt
             extraction_result = await extraction_service.extract(
                 document.extracted_text,
                 document_id=document_id,
                 detected_language=detected_language,
                 page_count=getattr(document, 'page_count', None),
+                db=db,
             )
 
             if extraction_result:
@@ -543,3 +547,273 @@ async def _async_generate_stats() -> Dict[str, Any]:
             },
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
+
+
+# ==================== Quick Classification Task ====================
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="extraction.quick_classify_document",
+    max_retries=1,
+    soft_time_limit=30,  # 30 Sekunden Soft-Limit
+    time_limit=45,  # 45 Sekunden Hard-Limit
+)
+def quick_classify_document(
+    self,
+    document_id: str,
+) -> Dict[str, Any]:
+    """
+    Schnelle Dokumenten-Klassifizierung - laeuft PARALLEL zum vollstaendigen OCR.
+
+    Ziel: Innerhalb von 2-5 Sekunden erkennen ob Eingangs- oder Ausgangsrechnung
+    und automatisch den passenden Tag zuweisen.
+
+    Workflow:
+    1. Dokument aus MinIO laden (nur erste Seite)
+    2. Schnelles OCR mit Surya (CPU-basiert, schneller Start)
+    3. QuickClassificationService aufrufen
+    4. Tag automatisch zuweisen wenn Confidence >= 70%
+    5. Document aktualisieren
+
+    Args:
+        document_id: UUID des Dokuments
+
+    Returns:
+        {
+            "document_id": "...",
+            "direction": "incoming" | "outgoing" | "unknown",
+            "confidence": 0.95,
+            "reason": "Firmen-USt-IdNr im Empfaengerbereich gefunden",
+            "tag_assigned": true,
+            "tag_name": "Eingangsrechnung",
+            "processing_time_ms": 2500
+        }
+    """
+    return asyncio.run(_async_quick_classify(self, document_id))
+
+
+async def _async_quick_classify(task, document_id: str) -> Dict[str, Any]:
+    """
+    Quick Classification - wartet auf OCR und nutzt vorhandenen OCR-Text.
+
+    Da Surya auf CPU 3+ Minuten braucht, laeuft Quick Classification NACH dem
+    regulaeren OCR und nutzt dessen Text. Kein eigenes OCR mehr!
+
+    Workflow:
+    1. Document laden
+    2. Warten bis OCR fertig ist (max 5 Minuten)
+    3. Vorhandenen OCR-Text nutzen
+    4. Classification durchfuehren (schnell, nur Text-Analyse)
+    5. Tag automatisch zuweisen
+    """
+    from app.services.quick_classification_service import (
+        get_quick_classification_service,
+    )
+    from app.api.schemas.extracted_data import InvoiceDirection
+    from app.db.session import get_async_session_context
+    from app.db.models import ProcessingStatus
+
+    start_time = datetime.now(timezone.utc)
+    doc_uuid = UUID(document_id)
+
+    logger.info(
+        "quick_classification_started",
+        document_id=document_id,
+        task_id=task.request.id
+    )
+
+    async with get_async_session_context() as db:
+        try:
+            # 1. Document laden und Status auf "processing" setzen
+            result = await db.execute(
+                select(Document).where(Document.id == doc_uuid)
+            )
+            doc = result.scalar_one_or_none()
+
+            if not doc:
+                logger.warning("quick_classification_document_not_found", document_id=document_id)
+                return {"error": "Dokument nicht gefunden", "document_id": document_id}
+
+            # Status auf "processing" setzen
+            doc.quick_classification_status = "processing"
+            await db.commit()
+
+            # 2. Pruefen ob OCR fertig ist (Task wird jetzt nach OCR getriggert)
+            if doc.status == ProcessingStatus.FAILED:
+                doc.quick_classification_status = "failed"
+                doc.quick_classification_result = {"error": "OCR fehlgeschlagen"}
+                await db.commit()
+                return {"error": "OCR fehlgeschlagen", "document_id": document_id}
+
+            # 3. Vorhandenen OCR-Text nutzen (kein eigenes OCR!)
+            ocr_text = doc.extracted_text
+
+            if not ocr_text or len(ocr_text.strip()) < 20:
+                # Zu wenig Text extrahiert
+                doc.quick_classification_status = "completed"
+                doc.quick_classification_result = {
+                    "direction": "unknown",
+                    "confidence": 0.0,
+                    "reason": "Zu wenig Text extrahiert",
+                    "tag_assigned": False
+                }
+                await db.commit()
+                return {
+                    "document_id": document_id,
+                    "direction": "unknown",
+                    "confidence": 0.0,
+                    "reason": "Zu wenig Text extrahiert",
+                    "tag_assigned": False
+                }
+
+            # 5. Quick Classification Service aufrufen
+            classification_service = get_quick_classification_service()
+            classification_result = await classification_service.classify_document(
+                document_id=doc_uuid,
+                ocr_text=ocr_text,
+                db=db,
+                auto_assign_tag=True
+            )
+
+            # 6. Document aktualisieren
+            # WICHTIG: doc-Objekt neu laden, da _assign_tag() evtl. ein anderes Objekt modifiziert hat
+            await db.refresh(doc)
+
+            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+            processing_ms = int(processing_time * 1000)
+
+            doc.quick_classification_status = "completed"
+            doc.quick_classification_result = classification_service.to_dict(classification_result)
+            doc.quick_classification_result["processing_time_ms"] = processing_ms
+
+            await db.commit()
+
+            logger.info(
+                "quick_classification_completed",
+                document_id=document_id,
+                direction=classification_result.direction.value if isinstance(classification_result.direction, InvoiceDirection) else classification_result.direction,
+                confidence=classification_result.confidence,
+                tag_assigned=classification_result.tag_assigned,
+                processing_time_ms=processing_ms
+            )
+
+            return {
+                "document_id": document_id,
+                "direction": classification_result.direction.value if isinstance(classification_result.direction, InvoiceDirection) else classification_result.direction,
+                "confidence": classification_result.confidence,
+                "reason": classification_result.reason,
+                "tag_assigned": classification_result.tag_assigned,
+                "tag_name": classification_result.tag_name,
+                "processing_time_ms": processing_ms
+            }
+
+        except Exception as e:
+            logger.error(
+                "quick_classification_failed",
+                document_id=document_id,
+                error=str(e)
+            )
+
+            # Status auf "failed" setzen mit sanitierter Fehlermeldung
+            sanitized_error = _sanitize_error_message(str(e))
+            try:
+                doc.quick_classification_status = "failed"
+                doc.quick_classification_result = {"error": sanitized_error}
+                await db.commit()
+            except Exception:
+                pass
+
+            return {
+                "error": sanitized_error,
+                "document_id": document_id
+            }
+
+
+async def _run_quick_ocr(image: "Image.Image") -> str:
+    """
+    DEPRECATED: Diese Funktion wird nicht mehr verwendet.
+
+    Quick Classification nutzt jetzt den vorhandenen OCR-Text des Dokuments
+    statt eigenes OCR durchzufuehren. Siehe _async_quick_classify().
+
+    Grund: Surya auf CPU dauert 3+ Minuten, was Quick Classification nutzlos macht.
+    Loesung: Warten auf regulaeres OCR und dessen Text nutzen.
+
+    ---
+    Urspruengliche Dokumentation:
+    Fuehrt schnelles OCR auf einem einzelnen Bild aus.
+    Verwendet Surya OCR (CPU-basiert) fuer schnellen Start ohne GPU-Warmup.
+    Optimiert fuer Geschwindigkeit, nicht fuer maximale Genauigkeit.
+
+    Args:
+        image: PIL Image der ersten Seite
+
+    Returns:
+        Extrahierter Text
+    """
+    import asyncio
+    from PIL import Image
+
+    try:
+        # Surya OCR Agent verwenden
+        from app.agents.ocr.surya_docling_agent import SuryaDoclingAgent
+
+        agent = SuryaDoclingAgent()
+
+        loop = asyncio.get_running_loop()
+
+        # WICHTIG: Modelle muessen erst geladen werden!
+        await loop.run_in_executor(None, agent._load_models)
+
+        # OCR ausfuehren - _process_single_image ist sync, also in executor ausfuehren
+        result = await loop.run_in_executor(
+            None,
+            agent._process_single_image,
+            image,
+            "de"  # Deutsche Dokumente als Default
+        )
+
+        if result and result.get("full_text"):
+            return result["full_text"]
+
+        return ""
+
+    except ImportError:
+        logger.warning("surya_not_available_for_quick_ocr")
+        return ""
+    except Exception as e:
+        logger.error("quick_ocr_failed", error=str(e))
+        return ""
+
+
+def _sanitize_error_message(error: str) -> str:
+    """
+    Entfernt sensible Informationen aus Fehlermeldungen.
+
+    Enterprise Refined: Keine internen Pfade oder Stack Traces in DB speichern.
+
+    Args:
+        error: Original-Fehlermeldung
+
+    Returns:
+        Bereinigte Fehlermeldung (max 200 Zeichen)
+    """
+    import re
+
+    # Pfade entfernen (Windows und Unix)
+    error = re.sub(r'[A-Za-z]:\\[^\s,;:]+', '[PATH]', error)
+    error = re.sub(r'/(?:home|usr|var|opt|tmp|etc|app)[^\s,;:]*', '[PATH]', error)
+
+    # Dateinamen mit Zeilennummern entfernen (z.B. "file.py:123")
+    error = re.sub(r'\b\w+\.py:\d+', '[FILE]', error)
+
+    # IP-Adressen entfernen
+    error = re.sub(r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', '[IP]', error)
+
+    # Auf 200 Zeichen begrenzen
+    if len(error) > 200:
+        error = error[:197] + "..."
+
+    return error.strip()

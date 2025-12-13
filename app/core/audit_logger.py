@@ -80,6 +80,10 @@ class SecurityEventType(str, Enum):
     ADMIN_USER_DELETED = "admin_user_deleted"
     ADMIN_FORCE_LOGOUT = "admin_force_logout"
 
+    # Document Classification Events (Quick Classification)
+    DOCUMENT_TAG_AUTO_ASSIGNED = "document_tag_auto_assigned"
+    DOCUMENT_TAG_MANUAL_CHANGED = "document_tag_manual_changed"
+
 
 # ==================== Integrity Functions (AP6) ====================
 

@@ -7,7 +7,7 @@
  * - ContractDataDisplay fuer Vertraege (TODO)
  */
 
-import { FileText, AlertTriangle, Loader2 } from "lucide-react";
+import { FileText, AlertTriangle, Loader2, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -15,6 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfidenceIndicator } from "@/features/validation/components/ConfidenceIndicator";
 import { useExtractedData } from "../hooks/useExtractedData";
 import { InvoiceDataDisplay } from "./InvoiceDataDisplay";
+import { useQuery } from "@tanstack/react-query";
+import { documentsService } from "@/lib/api/services/documents";
 import type { ExtractedDocumentType } from "../types/extracted-data.types";
 
 interface ExtractedDataPanelProps {
@@ -61,6 +63,15 @@ export function ExtractedDataPanel({
 }: ExtractedDataPanelProps) {
     const { data, isLoading, error, isError } = useExtractedData(documentId);
 
+    // Dokument-Status abfragen um zwischen "OCR laeuft" und "Keine Daten" zu unterscheiden
+    const { data: document } = useQuery({
+        queryKey: ["document", documentId],
+        queryFn: () => documentsService.getById(documentId),
+        enabled: !!documentId && isError, // Nur laden wenn extracted-data Fehler
+        staleTime: 10 * 1000, // 10 Sekunden - OCR-Status aendert sich
+        refetchInterval: isError ? 5000 : false, // Polling nur wenn Fehler (OCR laeuft evtl. noch)
+    });
+
     // Loading State
     if (isLoading) {
         return (
@@ -90,16 +101,50 @@ export function ExtractedDataPanel({
         const isNotFound = errorMessage.includes("404") || errorMessage.includes("nicht gefunden");
 
         if (isNotFound) {
+            // Pruefen ob OCR noch laeuft
+            const ocrStatus = document?.ocrStatus;
+            const isOcrProcessing = ocrStatus === 'processing' || ocrStatus === 'pending';
+
+            if (isOcrProcessing) {
+                // OCR laeuft noch - zeige Ladeindikator mit Info
+                return (
+                    <Card className={className}>
+                        <CardContent className="py-8">
+                            <div className="text-center text-muted-foreground">
+                                <div className="relative mx-auto mb-4 w-12 h-12">
+                                    <Clock className="h-12 w-12 opacity-50" />
+                                    <Loader2 className="h-6 w-6 animate-spin absolute bottom-0 right-0 text-primary" />
+                                </div>
+                                <p className="text-lg font-medium mb-1">
+                                    OCR-Verarbeitung laeuft...
+                                </p>
+                                <p className="text-sm">
+                                    Die strukturierte Datenextraktion startet automatisch nach Abschluss der OCR-Verarbeitung.
+                                </p>
+                                <p className="text-xs mt-2 text-muted-foreground/70">
+                                    Status: {ocrStatus === 'pending' ? 'Wartend' : 'Wird verarbeitet'}
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                );
+            }
+
+            // OCR fertig aber keine strukturierten Daten vorhanden
             return (
                 <Card className={className}>
                     <CardContent className="py-8">
                         <div className="text-center text-muted-foreground">
                             <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                             <p className="text-lg font-medium mb-1">
-                                Keine strukturierten Daten verfügbar
+                                Keine strukturierten Daten verfuegbar
                             </p>
                             <p className="text-sm">
-                                Dieses Dokument wurde noch nicht strukturiert verarbeitet.
+                                {ocrStatus === 'completed'
+                                    ? "Die strukturierte Datenextraktion wurde noch nicht durchgefuehrt."
+                                    : ocrStatus === 'failed'
+                                    ? "Die OCR-Verarbeitung ist fehlgeschlagen. Strukturierte Daten sind nicht verfuegbar."
+                                    : "Dieses Dokument wurde noch nicht strukturiert verarbeitet."}
                             </p>
                         </div>
                     </CardContent>
@@ -132,8 +177,19 @@ export function ExtractedDataPanel({
 
     const documentType = data.classification?.document_type || "unknown";
     const confidence = data.classification?.confidence || 0;
-    const needsReview = data.needs_review || false;
-    const warnings = data.extraction_warnings || [];
+
+    // needs_review und extraction_warnings sind auf den typspezifischen Daten,
+    // nicht auf Top-Level (Backend Schema)
+    const needsReview =
+        data.invoice?.needs_review ||
+        data.order?.needs_review ||
+        data.contract?.needs_review ||
+        false;
+    const warnings =
+        data.invoice?.extraction_warnings ||
+        data.order?.extraction_warnings ||
+        data.contract?.extraction_warnings ||
+        [];
 
     // Bei Rechnungen: spezifisches Label basierend auf Direction
     const invoiceDirection = data.invoice?.invoice_direction || "unknown";

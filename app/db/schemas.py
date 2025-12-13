@@ -1189,6 +1189,10 @@ class DocumentDetailResponse(BaseModel):
     download_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
 
+    # Quick Classification (schnelle Klassifizierung waehrend Upload)
+    quick_classification_status: str = "pending"
+    quick_classification_result: Optional[Dict[str, Any]] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -1204,6 +1208,10 @@ class DocumentSummary(BaseModel):
     created_at: datetime
     tags: List[str] = []
     has_embedding: bool = False
+
+    # Quick Classification (schnelle Klassifizierung waehrend Upload)
+    quick_classification_status: str = "pending"
+    quick_classification_result: Optional[Dict[str, Any]] = None
 
     model_config = ConfigDict(from_attributes=True)
 

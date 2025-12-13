@@ -3,6 +3,7 @@ import { UploadDropzone } from './UploadDropzone';
 import { UploadFileList } from './UploadFileList';
 import { documentsService } from '@/lib/api/services/documents';
 import { tasksService } from '@/lib/api/services/tasks';
+import { toast } from '@/components/ui/use-toast';
 import type { UploadingFile } from '../types';
 
 export function UploadWizard() {
@@ -43,9 +44,8 @@ export function UploadWizard() {
 
             // Check if document has completed OCR or still processing
             if (document.ocrStatus === 'completed') {
-                setFiles(prev => prev.map(f =>
-                    f.id === uploadingFile.id ? { ...f, status: 'completed' as const, ocrProgress: 100 } : f
-                ));
+                // Fetch classification data
+                await fetchClassificationAndUpdate(uploadingFile.id, document.id);
             }
             // Otherwise keep 'processing' status - polling will update when done
         } catch (error) {
@@ -53,6 +53,48 @@ export function UploadWizard() {
             setFiles(prev => prev.map(f =>
                 f.id === uploadingFile.id
                     ? { ...f, status: 'failed' as const, error: errorMessage }
+                    : f
+            ));
+        }
+    }, []);
+
+    /**
+     * Lädt die Klassifizierungsdaten und aktualisiert den File-Status
+     */
+    const fetchClassificationAndUpdate = useCallback(async (fileId: string, documentId: string) => {
+        try {
+            const extractedData = await documentsService.getExtractedData(documentId);
+
+            setFiles(prev => prev.map(f =>
+                f.id === fileId
+                    ? {
+                        ...f,
+                        status: 'awaiting_confirmation' as const,
+                        ocrProgress: 100,
+                        classification: extractedData?.invoice ? {
+                            invoiceDirection: extractedData.invoice.invoice_direction || 'unknown',
+                            confidence: extractedData.invoice.invoice_direction_confidence || 0,
+                            reason: extractedData.invoice.invoice_direction_reason,
+                        } : {
+                            invoiceDirection: 'unknown',
+                            confidence: 0,
+                        }
+                    }
+                    : f
+            ));
+        } catch {
+            // Falls keine Daten verfügbar, trotzdem als awaiting_confirmation markieren
+            setFiles(prev => prev.map(f =>
+                f.id === fileId
+                    ? {
+                        ...f,
+                        status: 'awaiting_confirmation' as const,
+                        ocrProgress: 100,
+                        classification: {
+                            invoiceDirection: 'unknown',
+                            confidence: 0,
+                        }
+                    }
                     : f
             ));
         }
@@ -80,13 +122,61 @@ export function UploadWizard() {
         setFiles(prev => prev.filter(f => f.id !== id));
     }, []);
 
+    /**
+     * Handler für Änderung der Dokumentenrichtung (Eingangs-/Ausgangsrechnung)
+     */
+    const handleChangeDirection = useCallback(async (
+        fileId: string,
+        direction: 'incoming' | 'outgoing'
+    ) => {
+        const file = files.find(f => f.id === fileId);
+        if (!file?.documentId) return;
+
+        const currentDirection = file.confirmedDirection || file.classification?.invoiceDirection;
+        const isOverridden = direction !== file.classification?.invoiceDirection;
+
+        try {
+            await documentsService.confirmClassification(file.documentId, {
+                invoice_direction: direction,
+                user_overridden: isOverridden
+            });
+
+            setFiles(prev => prev.map(f =>
+                f.id === fileId
+                    ? {
+                        ...f,
+                        confirmedDirection: direction,
+                        status: 'completed' as const
+                    }
+                    : f
+            ));
+
+            const tagName = direction === 'incoming' ? 'Eingangsrechnung' : 'Ausgangsrechnung';
+            if (currentDirection !== direction) {
+                toast({
+                    title: 'Klassifizierung geändert',
+                    description: `Dokument als ${tagName} markiert`,
+                    variant: 'success'
+                });
+            }
+        } catch (error) {
+            console.error('Classification change failed:', error);
+            toast({
+                title: 'Fehler',
+                description: 'Klassifizierung konnte nicht geändert werden',
+                variant: 'destructive'
+            });
+        }
+    }, [files]);
+
     // Ref für files um stable reference im polling zu haben
     const filesRef = useRef(files);
     useEffect(() => {
         filesRef.current = files;
     }, [files]);
 
-    // Poll for OCR status and progress updates on processing files
+    // Poll for Quick Classification AND OCR status
+    // Quick Classification ist in 2-5 Sekunden fertig, OCR dauert 30-120 Sekunden
     // Verwendet filesRef um unnötige Interval-Neuerstellungen zu vermeiden
     useEffect(() => {
         const pollStatus = async () => {
@@ -96,7 +186,7 @@ export function UploadWizard() {
 
             for (const file of processingFiles) {
                 try {
-                    // Poll document status
+                    // Poll document status (includes quick_classification_status)
                     const doc = await documentsService.getById(file.documentId!);
 
                     // Also poll task progress if we have a taskId
@@ -112,12 +202,73 @@ export function UploadWizard() {
                         }
                     }
 
-                    if (doc.ocrStatus === 'completed') {
+                    // 1. Check Quick Classification (erscheint innerhalb 2-5 Sekunden)
+                    // Zeige Badge sobald Quick Classification fertig ist, auch wenn OCR noch laeuft
+                    // WICHTIG: Quick Classification ueberschreibt auch 'unknown' Classifications
+                    const shouldUseQuickClassification =
+                        doc.quickClassificationStatus === 'completed' &&
+                        doc.quickClassificationResult &&
+                        doc.quickClassificationResult.direction !== 'unknown' &&
+                        (!file.classification || file.classification.invoiceDirection === 'unknown');
+
+                    if (shouldUseQuickClassification) {
+                        const qcResult = doc.quickClassificationResult!;
+                        // documentsService.getById() transformiert bereits tag_assigned -> tagAssigned
+                        const tagWasAssigned = qcResult.tagAssigned === true;
+
                         setFiles(prev => prev.map(f =>
                             f.id === file.id
-                                ? { ...f, status: 'completed' as const, ocrProgress: 100 }
+                                ? {
+                                    ...f,
+                                    classification: {
+                                        invoiceDirection: qcResult.direction || 'unknown',
+                                        confidence: qcResult.confidence || 0,
+                                        reason: qcResult.reason,
+                                    },
+                                    // Wenn Tag automatisch zugewiesen wurde, als completed markieren
+                                    // Sonst bleibt processing bis OCR fertig
+                                    status: tagWasAssigned ? 'completed' as const : f.status,
+                                    confirmedDirection: tagWasAssigned ? qcResult.direction as 'incoming' | 'outgoing' : undefined,
+                                }
                                 : f
                         ));
+                    }
+
+                    // 2. Check OCR Status
+                    if (doc.ocrStatus === 'completed') {
+                        // OCR fertig - Falls noch keine Classification, aus extracted_data holen
+                        const currentFile = filesRef.current.find(f => f.id === file.id);
+                        if (!currentFile?.classification) {
+                            const extractedData = await documentsService.getExtractedData(file.documentId!);
+                            setFiles(prev => prev.map(f =>
+                                f.id === file.id
+                                    ? {
+                                        ...f,
+                                        status: 'awaiting_confirmation' as const,
+                                        ocrProgress: 100,
+                                        classification: extractedData?.invoice ? {
+                                            invoiceDirection: extractedData.invoice.invoice_direction || 'unknown',
+                                            confidence: extractedData.invoice.invoice_direction_confidence || 0,
+                                            reason: extractedData.invoice.invoice_direction_reason,
+                                        } : f.classification || {
+                                            invoiceDirection: 'unknown',
+                                            confidence: 0,
+                                        }
+                                    }
+                                    : f
+                            ));
+                        } else if (currentFile.status === 'processing') {
+                            // Classification schon da (von Quick Classification), nur Status updaten
+                            setFiles(prev => prev.map(f =>
+                                f.id === file.id
+                                    ? {
+                                        ...f,
+                                        status: f.confirmedDirection ? 'completed' as const : 'awaiting_confirmation' as const,
+                                        ocrProgress: 100,
+                                    }
+                                    : f
+                            ));
+                        }
                     } else if (doc.ocrStatus === 'failed') {
                         setFiles(prev => prev.map(f =>
                             f.id === file.id
@@ -161,7 +312,11 @@ export function UploadWizard() {
                 {/* File List */}
                 {files.length > 0 && (
                     <div className="bg-background rounded-2xl border shadow-sm p-6">
-                        <UploadFileList files={files} onRemove={handleRemove} />
+                        <UploadFileList
+                            files={files}
+                            onRemove={handleRemove}
+                            onChangeDirection={handleChangeDirection}
+                        />
                     </div>
                 )}
             </div>

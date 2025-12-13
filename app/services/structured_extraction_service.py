@@ -19,6 +19,8 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Tuple
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.schemas.extracted_data import (
     AmountSource,
     Currency,
@@ -32,6 +34,7 @@ from app.api.schemas.extracted_data import (
     ExtractedLineItem,
     ExtractedOrderData,
     ExtractionValidations,
+    InvoiceDirection,
 )
 from app.services.document_classification_service import (
     DocumentClassificationService,
@@ -41,6 +44,10 @@ from app.services.entity_extraction_service import EntityExtractionService
 from app.services.translation_service import (
     TranslationService,
     get_translation_service,
+)
+from app.services.company_matching_service import (
+    CompanyMatchingService,
+    get_company_matching_service,
 )
 
 # Enhanced Extraction Integration (Feature Flag gesteuert)
@@ -525,6 +532,7 @@ class StructuredExtractionService:
         tables: Optional[List[Any]] = None,
         detected_language: Optional[str] = None,
         page_count: Optional[int] = None,
+        db: Optional[AsyncSession] = None,
     ) -> ExtractedDocumentData:
         """
         Extrahiert strukturierte Daten aus OCR-Text.
@@ -537,6 +545,7 @@ class StructuredExtractionService:
             document_id: Optionale Dokument-ID fuer Logging
             tables: Optionale Liste von TableStructure-Objekten (Docling)
             detected_language: Erkannte Sprache (ISO 639-1, z.B. "ru", "pl")
+            db: Optionale DB-Session fuer Eingangs-/Ausgangsrechnung-Erkennung
 
         Returns:
             ExtractedDocumentData mit Klassifizierung und typspezifischen Daten
@@ -606,7 +615,33 @@ class StructuredExtractionService:
         elif classification.document_type == ExtractedDocumentType.CONTRACT:
             result.contract = self._extract_contract_data(text_for_extraction, entities)
 
-        # 5. Overall Confidence berechnen
+        # 5. Eingangs-/Ausgangsrechnung-Erkennung (falls DB-Session vorhanden)
+        if result.invoice and db:
+            try:
+                matching_service = get_company_matching_service()
+                direction, confidence, reason = await matching_service.match_invoice_direction(
+                    result.invoice, db
+                )
+                result.invoice.invoice_direction = direction
+                result.invoice.invoice_direction_confidence = confidence
+                result.invoice.invoice_direction_reason = reason
+
+                if direction != InvoiceDirection.UNKNOWN:
+                    logger.info(
+                        "invoice_direction_set",
+                        document_id=document_id,
+                        direction=direction.value,
+                        confidence=confidence,
+                        reason=reason,
+                    )
+            except Exception as e:
+                logger.warning(
+                    "invoice_direction_detection_failed",
+                    document_id=document_id,
+                    error=str(e),
+                )
+
+        # 6. Overall Confidence berechnen
         result.overall_confidence = self._calculate_overall_confidence(result)
 
         # Logging

@@ -644,6 +644,7 @@ celery_app.conf.update(
         "app.workers.tasks.monitoring_tasks.cleanup_stuck_tasks": {"queue": "maintenance", "priority": 2},
         "app.workers.tasks.monitoring_tasks.check_queue_backpressure": {"queue": "metrics", "priority": 1},
         # Extraction tasks
+        "extraction.quick_classify_document": {"queue": "ocr_high", "priority": 10},  # Hoechste Prioritaet fuer schnelle Klassifizierung
         "extraction.reprocess_all_structured_extraction": {"queue": "ocr_normal", "priority": 4},
         "extraction.reprocess_single_document": {"queue": "ocr_high", "priority": 6},
         "extraction.generate_extraction_stats": {"queue": "metrics", "priority": 1},

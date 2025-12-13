@@ -663,7 +663,10 @@ class DocumentService:
             ocr_confidence=doc.ocr_confidence,
             created_at=doc.created_at,
             tags=[t.name for t in doc.tags] if doc.tags else [],
-            has_embedding=doc.embedding is not None
+            has_embedding=doc.embedding is not None,
+            # Quick Classification (schnelle Klassifizierung waehrend Upload)
+            quick_classification_status=doc.quick_classification_status or "pending",
+            quick_classification_result=doc.quick_classification_result
         )
 
     def _to_detail_response(self, doc: Document) -> DocumentDetailResponse:
@@ -706,7 +709,10 @@ class DocumentService:
             has_embedding=doc.embedding is not None,
             embedding_updated_at=doc.embedding_updated_at,
             embedding_model=doc.embedding_model,
-            owner_id=doc.owner_id
+            owner_id=doc.owner_id,
+            # Quick Classification (schnelle Klassifizierung waehrend Upload)
+            quick_classification_status=doc.quick_classification_status or "pending",
+            quick_classification_result=doc.quick_classification_result
         )
 
     # NOTE: Export helper methods (_export_json, _export_csv, _export_zip, _export_pdf)

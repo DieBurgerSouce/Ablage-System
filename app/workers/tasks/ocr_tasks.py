@@ -441,6 +441,7 @@ def process_document_task(
 
                 # Queue structured data extraction (Invoice/Order parsing)
                 extraction_task_id = None
+                quick_classification_task_id = None
                 if document.extracted_text:
                     try:
                         from app.workers.tasks.extraction_tasks import reprocess_single_document
@@ -460,6 +461,30 @@ def process_document_task(
                         # Don't fail OCR if extraction queuing fails
                         logger.warning(
                             "extraction_task_queue_failed",
+                            task_id=task_id,
+                            document_id=document_id,
+                            error=str(e)
+                        )
+
+                    # Quick Classification nach OCR starten (nutzt vorhandenen OCR-Text)
+                    try:
+                        from app.workers.tasks.extraction_tasks import quick_classify_document
+                        qc_result = quick_classify_document.apply_async(
+                            kwargs={"document_id": document_id},
+                            countdown=1,  # Start 1 second after OCR completes
+                            priority=1,   # Hohe Prioritaet fuer schnelle Badge-Anzeige
+                        )
+                        quick_classification_task_id = qc_result.id
+                        logger.info(
+                            "quick_classification_task_queued_after_ocr",
+                            task_id=task_id,
+                            document_id=document_id,
+                            quick_classification_task_id=quick_classification_task_id
+                        )
+                    except Exception as e:
+                        # Don't fail OCR if quick classification queuing fails
+                        logger.warning(
+                            "quick_classification_task_queue_failed",
                             task_id=task_id,
                             document_id=document_id,
                             error=str(e)

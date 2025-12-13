@@ -241,6 +241,12 @@ async def upload_document(
                 task_id=task.id,
                 backend=ocr_backend
             )
+
+            # Quick Classification wird jetzt vom OCR-Task nach Completion getriggert.
+            # Grund: Surya auf CPU dauert 3+ Minuten, daher nutzt Quick Classification
+            # den vorhandenen OCR-Text statt eigenes OCR durchzufuehren.
+            # Siehe: ocr_tasks.py -> quick_classification_task_queued_after_ocr
+
         except Exception as e:
             logger.warning(
                 "ocr_job_queue_failed",
@@ -472,6 +478,14 @@ async def get_document(
             status_code=404,
             detail="Dokument nicht gefunden oder keine Berechtigung"
         )
+
+    # DEBUG: Log quick classification fields
+    logger.info(
+        "document_get_response_qc_debug",
+        document_id=str(document_id),
+        quick_classification_status=document.quick_classification_status,
+        quick_classification_result=document.quick_classification_result
+    )
 
     return document
 
@@ -1633,6 +1647,107 @@ async def list_deleted_documents(
     """
     service = get_document_service()
     return await service.list_deleted_documents(db=db, user_id=current_user.id)
+
+
+# ==================== Document Classification Confirmation ====================
+
+from pydantic import BaseModel
+from typing import Literal
+
+class ClassificationConfirmRequest(BaseModel):
+    """Request zum Bestaetigen/Aendern der Dokumentklassifizierung."""
+    invoice_direction: Literal["incoming", "outgoing"]
+    user_overridden: bool = False
+
+
+@router.post("/{document_id}/confirm-classification")
+async def confirm_document_classification(
+    document_id: UUID,
+    request: ClassificationConfirmRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """Bestaetigt oder aendert die Dokumentklassifizierung (Eingangs-/Ausgangsrechnung).
+
+    Setzt den entsprechenden Tag am Dokument und aktualisiert optional
+    die extrahierten Daten wenn der Benutzer die automatische Erkennung
+    ueberschrieben hat.
+
+    **Workflow:**
+    1. Dokument laden und Berechtigung pruefen
+    2. Alten Richtungs-Tag entfernen (falls vorhanden)
+    3. Neuen Tag (Eingangsrechnung/Ausgangsrechnung) hinzufuegen
+    4. Bei Ueberschreibung: extracted_data aktualisieren
+    """
+    from app.db.models import Tag, Document
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    # Dokument direkt laden (nicht über Service, da wir das SQLAlchemy-Modell brauchen)
+    query = (
+        select(Document)
+        .options(selectinload(Document.tags))
+        .where(
+            Document.id == document_id,
+            Document.owner_id == current_user.id,
+            Document.deleted_at.is_(None)
+        )
+    )
+    result = await db.execute(query)
+    doc = result.scalar_one_or_none()
+
+    if not doc:
+        raise HTTPException(
+            status_code=404,
+            detail="Dokument nicht gefunden"
+        )
+
+    # Tag-Name basierend auf Direction
+    tag_name = "Eingangsrechnung" if request.invoice_direction == "incoming" else "Ausgangsrechnung"
+    opposite_tag_name = "Ausgangsrechnung" if request.invoice_direction == "incoming" else "Eingangsrechnung"
+
+    # Alten Richtungs-Tag entfernen falls vorhanden
+    doc.tags = [t for t in doc.tags if t.name not in [tag_name, opposite_tag_name]]
+
+    # Neuen Tag holen oder erstellen
+    query = select(Tag).where(Tag.name == tag_name)
+    result = await db.execute(query)
+    tag = result.scalar_one_or_none()
+
+    if not tag:
+        # Tag erstellen falls nicht vorhanden
+        tag = Tag(name=tag_name, description=f"Automatisch erkannte {tag_name}")
+        db.add(tag)
+        await db.flush()
+
+    # Tag zum Dokument hinzufuegen
+    doc.tags.append(tag)
+
+    # Extracted Data aktualisieren falls user_overridden
+    if request.user_overridden and doc.extracted_data:
+        extracted = dict(doc.extracted_data) if doc.extracted_data else {}
+        if "invoice" in extracted:
+            extracted["invoice"]["invoice_direction"] = request.invoice_direction
+            extracted["invoice"]["invoice_direction_user_confirmed"] = True
+            doc.extracted_data = extracted
+
+    await db.commit()
+
+    logger.info(
+        "document_classification_confirmed",
+        document_id=str(document_id),
+        user_id=str(current_user.id),
+        direction=request.invoice_direction,
+        tag_applied=tag_name,
+        user_overridden=request.user_overridden
+    )
+
+    return {
+        "status": "success",
+        "document_id": str(document_id),
+        "applied_tag": tag_name,
+        "invoice_direction": request.invoice_direction
+    }
 
 
 # ==================== Cleanup and Maintenance ====================

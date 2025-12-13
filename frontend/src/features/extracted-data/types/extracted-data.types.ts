@@ -26,6 +26,15 @@ export type AmountSource = "document" | "computed" | "not_found";
  */
 export type ValidationStatus = "valid" | "invalid" | "skipped" | "pending";
 
+/**
+ * Richtung einer Rechnung basierend auf Admin-Firmendaten.
+ *
+ * INCOMING: Eingangsrechnung - Empfaenger ist die eigene Firma
+ * OUTGOING: Ausgangsrechnung - Absender ist die eigene Firma
+ * UNKNOWN: Keine eindeutige Zuordnung moeglich
+ */
+export type InvoiceDirection = "incoming" | "outgoing" | "unknown";
+
 // =============================================================================
 // ADDRESS
 // =============================================================================
@@ -169,6 +178,11 @@ export interface ExtractedInvoiceData {
 
     // Validierungsergebnisse
     validations?: ExtractionValidations;
+
+    // Eingangs-/Ausgangsrechnung-Erkennung
+    invoice_direction?: InvoiceDirection;
+    invoice_direction_confidence?: number;
+    invoice_direction_reason?: string;
 }
 
 // =============================================================================
@@ -289,11 +303,18 @@ export interface ExtractedDocumentData {
 
     // Gesamt-Konfidenz
     overall_confidence?: number;
-    needs_review?: boolean;
-    extraction_warnings?: string[];
+    // HINWEIS: needs_review und extraction_warnings sind auf den typspezifischen
+    // Daten (invoice, order, contract), nicht auf Top-Level
 
-    // Meta (NEU)
+    // Meta
     document_hash?: string;  // SHA256 Hash des Originaldokuments (sha256:...)
+    extraction_version?: string;  // Version des Extraktionsalgorithmus
+    extracted_at?: string;  // ISO 8601 Zeitstempel
+
+    // Uebersetzungs-Metadaten
+    original_language?: string;  // ISO 639-1
+    was_translated?: boolean;
+    translation_confidence?: number;
 }
 
 // =============================================================================

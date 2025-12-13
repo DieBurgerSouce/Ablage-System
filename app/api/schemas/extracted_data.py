@@ -62,6 +62,19 @@ class ValidationStatus(str, Enum):
     PENDING = "pending"        # Async-Pruefung ausstehend (z.B. VIES)
 
 
+class InvoiceDirection(str, Enum):
+    """
+    Richtung einer Rechnung basierend auf Admin-Firmendaten.
+
+    INCOMING: Eingangsrechnung - Empfaenger ist die eigene Firma
+    OUTGOING: Ausgangsrechnung - Absender ist die eigene Firma
+    UNKNOWN: Keine eindeutige Zuordnung moeglich
+    """
+    INCOMING = "incoming"      # Eingangsrechnung (an uns)
+    OUTGOING = "outgoing"      # Ausgangsrechnung (von uns)
+    UNKNOWN = "unknown"        # Nicht bestimmbar
+
+
 # =============================================================================
 # BASISMODELLE
 # =============================================================================
@@ -345,6 +358,19 @@ class ExtractedInvoiceData(BaseModel):
         None, description="Strukturierte Validierungsergebnisse"
     )
 
+    # === Eingangs-/Ausgangsrechnung-Erkennung ===
+    invoice_direction: InvoiceDirection = Field(
+        InvoiceDirection.UNKNOWN,
+        description="Eingangsrechnung (incoming) oder Ausgangsrechnung (outgoing)"
+    )
+    invoice_direction_confidence: float = Field(
+        0.0, ge=0.0, le=1.0,
+        description="Konfidenz der Richtungserkennung (0.0-1.0)"
+    )
+    invoice_direction_reason: Optional[str] = Field(
+        None, description="Grund fuer die Klassifizierung (intern, z.B. 'VAT-ID match')"
+    )
+
     @model_validator(mode="after")
     def validate_amounts(self) -> "ExtractedInvoiceData":
         """Pruefe Plausibilitaet: Netto + MwSt = Brutto."""
@@ -547,6 +573,7 @@ __all__ = [
     "Currency",
     "AmountSource",
     "ValidationStatus",
+    "InvoiceDirection",
     # Basismodelle
     "ExtractedAddress",
     "ExtractedBankAccount",

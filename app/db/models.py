@@ -202,6 +202,20 @@ class Document(Base):
     scan_batch_id = Column(String(100), nullable=True)  # Scan-Batch ID
     original_filename_sequence = Column(Integer, nullable=True)  # Sequenznummer aus Original-Dateinamen
 
+    # Quick Classification (schnelle Klassifizierung in 2-5 Sekunden)
+    # Laeuft PARALLEL zum vollstaendigen OCR, um sofort Tags zuzuweisen
+    quick_classification_status = Column(
+        String(20),
+        default="pending",
+        nullable=False,
+        comment="Status: pending, processing, completed, failed"
+    )
+    quick_classification_result = Column(
+        CrossDBJSON,
+        nullable=True,
+        comment="Ergebnis: {direction, confidence, reason, tag_assigned, user_overridden}"
+    )
+
     # Relationships
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     owner = relationship("User", back_populates="documents", foreign_keys=[owner_id])
