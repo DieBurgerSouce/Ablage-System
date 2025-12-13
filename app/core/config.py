@@ -537,6 +537,7 @@ class Settings(BaseSettings):
     QA_CONFIDENCE_THRESHOLD_LOW: float = 0.6
 
     # Search and Embedding Settings
+    EMBEDDING_SERVICE_URL: Optional[str] = None  # HuggingFace TEI Service URL
     EMBEDDING_MODEL: str = "intfloat/multilingual-e5-large"
     EMBEDDING_DIMENSION: int = 1024
     EMBEDDING_BATCH_SIZE: int = 8  # Conservative for 16GB VRAM

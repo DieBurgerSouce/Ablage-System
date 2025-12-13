@@ -1,0 +1,155 @@
+# docker-compose.rag.yaml
+# RAG Intelligence Layer Services
+#
+# Deployment: docker-compose -f docker-compose.yml -f docker-compose.rag.yaml up -d
+#
+# Services:
+# - embedding-service: Text Embeddings Inference (multilingual-e5-large)
+# - reranker-service: Cross-Encoder Reranking (bge-reranker-v2-m3)
+# - ollama: LLM Inference (Qwen3-8B/14B)
+
+version: "3.9"
+
+services:
+  # =========================================================================
+  # EMBEDDING SERVICE
+  # Text Embeddings Inference von HuggingFace
+  # Model: intfloat/multilingual-e5-large (1024 Dimensionen)
+  # =========================================================================
+  embedding-service:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    container_name: ablage-embedding
+    command: >
+      --model-id intfloat/multilingual-e5-large
+      --port 8080
+      --max-concurrent-requests 64
+    ports:
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - embedding-cache:/data
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN:-}
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # Model laden dauert
+    restart: unless-stopped
+    networks:
+      - data-network
+
+  # =========================================================================
+  # RERANKER SERVICE
+  # Cross-Encoder fuer bessere Suchergebnisse
+  # Model: BAAI/bge-reranker-v2-m3
+  # =========================================================================
+  reranker-service:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    container_name: ablage-reranker
+    command: >
+      --model-id BAAI/bge-reranker-v2-m3
+      --port 8080
+    ports:
+      - "127.0.0.1:8082:8080"
+    volumes:
+      - reranker-cache:/data
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN:-}
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # Model laden dauert
+    restart: unless-stopped
+    networks:
+      - data-network
+
+  # =========================================================================
+  # OLLAMA LLM SERVICE
+  # Lokale LLM Inference fuer Qwen3 Modelle
+  # =========================================================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ablage-ollama
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_NUM_PARALLEL=2
+      - OLLAMA_MAX_LOADED_MODELS=2
+    deploy:
+      resources:
+        limits:
+          cpus: '8.0'
+          memory: 32G
+        reservations:
+          cpus: '2.0'
+          memory: 16G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - data-network
+
+  # =========================================================================
+  # OLLAMA MODEL LOADER
+  # Laedt die benoetigten Qwen3 Modelle beim Start
+  # =========================================================================
+  ollama-loader:
+    image: curlimages/curl:latest
+    container_name: ablage-ollama-loader
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Waiting for Ollama to be ready..."
+        sleep 10
+
+        echo "Pulling Qwen3-8B for real-time inference..."
+        curl -X POST http://ollama:11434/api/pull -d '{"name": "qwen3:8b-q4_K_M"}' || echo "Failed to pull qwen3:8b-q4_K_M"
+
+        echo "Pulling Qwen3-14B for deep analysis..."
+        curl -X POST http://ollama:11434/api/pull -d '{"name": "qwen3:14b-q4_K_M"}' || echo "Failed to pull qwen3:14b-q4_K_M"
+
+        echo "Models loaded successfully!"
+    networks:
+      - data-network
+
+volumes:
+  embedding-cache:
+    driver: local
+  reranker-cache:
+    driver: local
+  ollama-models:
+    driver: local
+
+networks:
+  data-network:
+    external: true
+    name: ablage_system_data-network
