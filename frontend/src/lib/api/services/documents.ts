@@ -37,6 +37,16 @@ interface DocumentBackend {
         entity_match_method?: 'vat_id' | 'iban' | 'name';
         entity_confidence?: number;
         entity_auto_linked?: boolean;
+        // Rename Suggestion (nur fuer Eingangsrechnungen)
+        rename_suggestion?: {
+            suggested_filename: string;
+            supplier_name: string;
+            invoice_number: string;
+            source: 'entity_match' | 'ocr_extraction';
+            confidence: number;
+            applied?: boolean;
+            applied_filename?: string;
+        };
     };
 }
 
@@ -78,6 +88,16 @@ export interface Document {
         entityMatchMethod?: 'vat_id' | 'iban' | 'name';
         entityConfidence?: number;
         entityAutoLinked?: boolean;
+        // Rename Suggestion (nur fuer Eingangsrechnungen)
+        renameSuggestion?: {
+            suggestedFilename: string;
+            supplierName: string;
+            invoiceNumber: string;
+            source: 'entity_match' | 'ocr_extraction';
+            confidence: number;
+            applied?: boolean;
+            appliedFilename?: string;
+        };
     };
 }
 
@@ -117,6 +137,16 @@ function transformDocument(doc: DocumentBackend): Document {
             entityMatchMethod: doc.quick_classification_result.entity_match_method,
             entityConfidence: doc.quick_classification_result.entity_confidence,
             entityAutoLinked: doc.quick_classification_result.entity_auto_linked,
+            // Rename Suggestion
+            renameSuggestion: doc.quick_classification_result.rename_suggestion ? {
+                suggestedFilename: doc.quick_classification_result.rename_suggestion.suggested_filename,
+                supplierName: doc.quick_classification_result.rename_suggestion.supplier_name,
+                invoiceNumber: doc.quick_classification_result.rename_suggestion.invoice_number,
+                source: doc.quick_classification_result.rename_suggestion.source,
+                confidence: doc.quick_classification_result.rename_suggestion.confidence,
+                applied: doc.quick_classification_result.rename_suggestion.applied,
+                appliedFilename: doc.quick_classification_result.rename_suggestion.applied_filename,
+            } : undefined,
         } : undefined,
     };
 }
@@ -208,5 +238,26 @@ export const documentsService = {
             // Falls keine extrahierten Daten vorhanden sind
             return null;
         }
+    },
+
+    /**
+     * Bestaetigt den Rename-Vorschlag fuer ein Dokument.
+     * Benennt das Dokument basierend auf dem Vorschlag um.
+     */
+    confirmRename: async (
+        documentId: string,
+        suggestedFilename: string
+    ): Promise<{
+        success: boolean;
+        document_id: string;
+        old_filename: string;
+        new_filename: string;
+        message: string;
+    }> => {
+        const response = await apiClient.post(
+            `/documents/${documentId}/confirm-rename`,
+            { suggested_filename: suggestedFilename }
+        );
+        return response.data;
     },
 };

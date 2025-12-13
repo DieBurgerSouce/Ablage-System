@@ -83,6 +83,7 @@ class SecurityEventType(str, Enum):
     # Document Classification Events (Quick Classification)
     DOCUMENT_TAG_AUTO_ASSIGNED = "document_tag_auto_assigned"
     DOCUMENT_TAG_MANUAL_CHANGED = "document_tag_manual_changed"
+    DOCUMENT_RENAMED = "document_renamed"
 
 
 # ==================== Integrity Functions (AP6) ====================

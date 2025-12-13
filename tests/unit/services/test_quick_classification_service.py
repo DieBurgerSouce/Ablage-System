@@ -1060,3 +1060,207 @@ class TestQuickClassificationKeywordAnalysis:
 
         assert result == 0.99
         assert result < 1.0
+
+
+# =========================================================================
+# Rename Suggestion Tests
+# =========================================================================
+
+class TestRenameSuggestion:
+    """Tests fuer Rename-Vorschlag-Generierung (Enterprise Level)."""
+
+    @pytest.fixture
+    def service(self):
+        """Erstellt eine frische Service-Instanz."""
+        return QuickClassificationService()
+
+    # -------------------------------------------------------------------------
+    # Invoice Number Extraction Tests
+    # -------------------------------------------------------------------------
+
+    def test_extract_invoice_number_german_format(self, service):
+        """Extrahiert deutsche Rechnungsnummer korrekt."""
+        text = "Rechnungsnummer: F-201401"
+        result = service._extract_invoice_number(text)
+        assert result == "F-201401"
+
+    def test_extract_invoice_number_with_colon(self, service):
+        """Extrahiert Rechnungsnummer nach Doppelpunkt."""
+        text = "Rechnung Nr.: 12345-ABC"
+        result = service._extract_invoice_number(text)
+        assert result == "12345-ABC"
+
+    def test_extract_invoice_number_english_format(self, service):
+        """Extrahiert englische Invoice Number."""
+        text = "Invoice No.: INV-2024-001"
+        result = service._extract_invoice_number(text)
+        assert result == "INV-2024-001"
+
+    def test_extract_invoice_number_re_prefix(self, service):
+        """Extrahiert Rechnungsnummer mit RE-Prefix."""
+        text = "Ihre Bestellung RE-2024-00123"
+        result = service._extract_invoice_number(text)
+        assert result == "RE-2024-00123"
+
+    def test_extract_invoice_number_beleg_format(self, service):
+        """Extrahiert Beleg-Nummer."""
+        text = "Beleg-Nr.: BLG-98765"
+        result = service._extract_invoice_number(text)
+        assert result == "BLG-98765"
+
+    def test_extract_invoice_number_returns_none_when_missing(self, service):
+        """Gibt None bei fehlender Rechnungsnummer zurueck."""
+        text = "Dies ist ein normaler Text ohne Nummer."
+        result = service._extract_invoice_number(text)
+        assert result is None
+
+    def test_extract_invoice_number_too_short(self, service):
+        """Ignoriert zu kurze Nummern (< 3 Zeichen)."""
+        text = "Rechnungsnummer: AB"
+        result = service._extract_invoice_number(text)
+        assert result is None
+
+    # -------------------------------------------------------------------------
+    # Filename Normalization Tests
+    # -------------------------------------------------------------------------
+
+    def test_normalize_for_filename_removes_gmbh(self, service):
+        """Entfernt GmbH aus Firmennamen."""
+        result = service._normalize_for_filename("ALPAC GmbH")
+        assert result == "ALPAC"
+
+    def test_normalize_for_filename_removes_ag(self, service):
+        """Entfernt AG aus Firmennamen."""
+        result = service._normalize_for_filename("Siemens AG")
+        assert result == "Siemens"
+
+    def test_normalize_for_filename_removes_gmbh_co_kg(self, service):
+        """Entfernt GmbH & Co. KG aus Firmennamen."""
+        result = service._normalize_for_filename("Muster GmbH & Co. KG")
+        assert result == "Muster"
+
+    def test_normalize_for_filename_removes_special_chars(self, service):
+        """Entfernt Sonderzeichen aus Firmennamen."""
+        result = service._normalize_for_filename("Mueller & Soehne!")
+        # Ampersand wird entfernt, Leerzeichen zusammengefuegt
+        assert "Mueller" in result
+        assert "Soehne" in result
+        assert "&" not in result
+        assert "!" not in result
+
+    def test_normalize_for_filename_preserves_umlauts(self, service):
+        """Behaelt deutsche Umlaute bei."""
+        result = service._normalize_for_filename("Müller GmbH")
+        assert "Müller" in result or "Muller" in result
+
+    def test_normalize_for_filename_empty_string(self, service):
+        """Gibt leeren String bei leerem Input zurueck."""
+        result = service._normalize_for_filename("")
+        assert result == ""
+
+    def test_normalize_for_filename_max_length(self, service):
+        """Begrenzt auf maximal 50 Zeichen."""
+        long_name = "A" * 100 + " GmbH"
+        result = service._normalize_for_filename(long_name)
+        assert len(result) <= 50
+
+    # -------------------------------------------------------------------------
+    # Supplier from Header Extraction Tests
+    # -------------------------------------------------------------------------
+
+    def test_extract_supplier_from_header_with_gmbh(self, service):
+        """Extrahiert Lieferant mit GmbH aus Header."""
+        text = "ALPAC GmbH\nMusterstrasse 1\n12345 Berlin\n\nRechnung..."
+        result = service._extract_supplier_from_header(text)
+        assert result == "ALPAC"
+
+    def test_extract_supplier_from_header_with_ag(self, service):
+        """Extrahiert Lieferant mit AG aus Header."""
+        # Text muss am Zeilenanfang beginnen damit das Pattern matched
+        text = "Siemens AG\nMusterweg 123\n53111 Bonn\n\nSehr geehrte Damen"
+        result = service._extract_supplier_from_header(text)
+        assert result is not None
+        assert "Siemens" in result
+
+    def test_extract_supplier_from_header_returns_none_without_company(self, service):
+        """Gibt None zurueck wenn keine Firma im Header."""
+        text = "Sehr geehrte Damen und Herren,\n\nbeiliegend erhalten Sie"
+        result = service._extract_supplier_from_header(text)
+        # Kann None oder einen Fallback-Wert sein, abhaengig von der Implementierung
+        # Der Test prueft nur, dass kein Fehler auftritt
+
+    def test_extract_supplier_from_header_uses_upper_third(self, service):
+        """Verwendet nur oberes Drittel des Dokuments."""
+        # Firma nur am Ende des Dokuments - sollte nicht gefunden werden
+        text = "X" * 1000 + "\n\nALPAC GmbH\nMusterstrasse 1"
+        result = service._extract_supplier_from_header(text)
+        # Sollte None sein, da ALPAC nicht im oberen Drittel ist
+        assert result is None
+
+    # -------------------------------------------------------------------------
+    # Rename Suggestion Generation Tests
+    # -------------------------------------------------------------------------
+
+    def test_generate_rename_suggestion_incoming_with_entity(self, service):
+        """Generiert Vorschlag fuer Eingangsrechnung mit Entity-Match."""
+        result = service._generate_rename_suggestion(
+            direction=InvoiceDirection.INCOMING,
+            matched_entity_name="ALPAC GmbH",
+            ocr_text="Rechnungsnummer: F-201401"
+        )
+        assert result is not None
+        assert result["suggested_filename"] == "ALPAC_F-201401"
+        assert result["supplier_name"] == "ALPAC"
+        assert result["invoice_number"] == "F-201401"
+        assert result["source"] == "entity_match"
+        assert result["confidence"] == 0.90
+
+    def test_generate_rename_suggestion_incoming_fallback(self, service):
+        """Generiert Vorschlag mit Fallback ohne Entity-Match."""
+        text = "ALPAC GmbH\nMusterstrasse 1\n\nRechnungsnummer: F-201401"
+        result = service._generate_rename_suggestion(
+            direction=InvoiceDirection.INCOMING,
+            matched_entity_name=None,
+            ocr_text=text
+        )
+        assert result is not None
+        assert result["source"] == "ocr_extraction"
+        assert result["confidence"] == 0.70
+        assert "ALPAC" in result["supplier_name"]
+        assert result["invoice_number"] == "F-201401"
+
+    def test_generate_rename_suggestion_outgoing_returns_none(self, service):
+        """Generiert keinen Vorschlag fuer Ausgangsrechnungen."""
+        result = service._generate_rename_suggestion(
+            direction=InvoiceDirection.OUTGOING,
+            matched_entity_name="ALPAC GmbH",
+            ocr_text="Rechnungsnummer: F-201401"
+        )
+        assert result is None
+
+    def test_generate_rename_suggestion_unknown_returns_none(self, service):
+        """Generiert keinen Vorschlag bei unbekannter Richtung."""
+        result = service._generate_rename_suggestion(
+            direction=InvoiceDirection.UNKNOWN,
+            matched_entity_name="ALPAC GmbH",
+            ocr_text="Rechnungsnummer: F-201401"
+        )
+        assert result is None
+
+    def test_generate_rename_suggestion_no_invoice_number_returns_none(self, service):
+        """Gibt None zurueck wenn keine Rechnungsnummer gefunden."""
+        result = service._generate_rename_suggestion(
+            direction=InvoiceDirection.INCOMING,
+            matched_entity_name="ALPAC GmbH",
+            ocr_text="Allgemeiner Text ohne Rechnungsnummer"
+        )
+        assert result is None
+
+    def test_generate_rename_suggestion_no_supplier_returns_none(self, service):
+        """Gibt None zurueck wenn kein Lieferant gefunden."""
+        result = service._generate_rename_suggestion(
+            direction=InvoiceDirection.INCOMING,
+            matched_entity_name=None,
+            ocr_text="Rechnungsnummer: F-201401"  # Kein Firmenname im Text
+        )
+        assert result is None

@@ -8,6 +8,7 @@ import type { UploadingFile } from '../types';
 
 export function UploadWizard() {
     const [files, setFiles] = useState<UploadingFile[]>([]);
+    const [renameLoadingIds, setRenameLoadingIds] = useState<string[]>([]);
 
     const uploadFile = useCallback(async (uploadingFile: UploadingFile) => {
         try {
@@ -19,7 +20,7 @@ export function UploadWizard() {
             // Upload the file with progress tracking
             const document = await documentsService.upload(
                 uploadingFile.file,
-                { ocrBackend: 'surya' },
+                { ocrBackend: 'auto' },
                 (progress) => {
                     setFiles(prev => prev.map(f =>
                         f.id === uploadingFile.id ? { ...f, progress } : f
@@ -169,6 +170,49 @@ export function UploadWizard() {
         }
     }, [files]);
 
+    /**
+     * Handler fuer Bestaetigung des Rename-Vorschlags
+     */
+    const handleConfirmRename = useCallback(async (fileId: string) => {
+        const file = files.find(f => f.id === fileId);
+        if (!file?.documentId || !file.classification?.renameSuggestion) return;
+
+        const suggestion = file.classification.renameSuggestion;
+
+        // Loading state setzen
+        setRenameLoadingIds(prev => [...prev, fileId]);
+
+        try {
+            const result = await documentsService.confirmRename(
+                file.documentId,
+                suggestion.suggestedFilename
+            );
+
+            // File-State aktualisieren
+            setFiles(prev => prev.map(f =>
+                f.id === fileId
+                    ? { ...f, renameConfirmed: true }
+                    : f
+            ));
+
+            toast({
+                title: 'Dokument umbenannt',
+                description: `Neuer Name: ${result.new_filename}`,
+                variant: 'success'
+            });
+        } catch (error) {
+            console.error('Rename confirmation failed:', error);
+            toast({
+                title: 'Fehler',
+                description: 'Umbenennung konnte nicht durchgeführt werden',
+                variant: 'destructive'
+            });
+        } finally {
+            // Loading state entfernen
+            setRenameLoadingIds(prev => prev.filter(id => id !== fileId));
+        }
+    }, [files]);
+
     // Ref für files um stable reference im polling zu haben
     const filesRef = useRef(files);
     useEffect(() => {
@@ -211,11 +255,14 @@ export function UploadWizard() {
                     // 1. Check Quick Classification (erscheint innerhalb 2-5 Sekunden)
                     // Zeige Badge sobald Quick Classification fertig ist, auch wenn OCR noch laeuft
                     // WICHTIG: Quick Classification ueberschreibt auch 'unknown' Classifications
+                    // FIX: Auch uebernehmen wenn renameSuggestion fehlt aber in QC vorhanden
                     const shouldUseQuickClassification =
                         doc.quickClassificationStatus === 'completed' &&
                         doc.quickClassificationResult &&
                         doc.quickClassificationResult.direction !== 'unknown' &&
-                        (!file.classification || file.classification.invoiceDirection === 'unknown');
+                        (!file.classification ||
+                         file.classification.invoiceDirection === 'unknown' ||
+                         (!file.classification.renameSuggestion && doc.quickClassificationResult.renameSuggestion));
 
                     if (shouldUseQuickClassification) {
                         const qcResult = doc.quickClassificationResult!;
@@ -237,6 +284,8 @@ export function UploadWizard() {
                                         entityMatchMethod: qcResult.entityMatchMethod,
                                         entityConfidence: qcResult.entityConfidence,
                                         entityAutoLinked: qcResult.entityAutoLinked,
+                                        // Rename Suggestion (nur fuer Eingangsrechnungen)
+                                        renameSuggestion: qcResult.renameSuggestion,
                                     },
                                     // Wenn Tag automatisch zugewiesen wurde, als completed markieren
                                     // Sonst bleibt processing bis OCR fertig
@@ -278,6 +327,26 @@ export function UploadWizard() {
                                         ...f,
                                         status: f.confirmedDirection ? 'completed' as const : 'awaiting_confirmation' as const,
                                         ocrProgress: 100,
+                                    }
+                                    : f
+                            ));
+                        }
+
+                        // FIX: Nachtraeglich renameSuggestion aus Quick Classification holen
+                        // falls OCR vor QC fertig wurde oder QC-Daten beim ersten Polling fehlten
+                        const updatedFile = filesRef.current.find(f => f.id === file.id);
+                        if (doc.quickClassificationStatus === 'completed' &&
+                            doc.quickClassificationResult?.renameSuggestion &&
+                            updatedFile?.classification &&
+                            !updatedFile.classification.renameSuggestion) {
+                            setFiles(prev => prev.map(f =>
+                                f.id === file.id
+                                    ? {
+                                        ...f,
+                                        classification: {
+                                            ...f.classification!,
+                                            renameSuggestion: doc.quickClassificationResult!.renameSuggestion,
+                                        }
                                     }
                                     : f
                             ));
@@ -329,6 +398,8 @@ export function UploadWizard() {
                             files={files}
                             onRemove={handleRemove}
                             onChangeDirection={handleChangeDirection}
+                            onConfirmRename={handleConfirmRename}
+                            renameLoadingIds={renameLoadingIds}
                         />
                     </div>
                 )}

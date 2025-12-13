@@ -26,11 +26,16 @@ import { cn } from '@/lib/utils';
 import type { UploadingFile, InvoiceDirection } from '../types';
 import { Link } from '@tanstack/react-router';
 import { ProgressRing } from './ProgressRing';
+import { RenameSuggestionBadge } from './RenameSuggestionBadge';
 
 interface UploadFileListProps {
     files: UploadingFile[];
     onRemove: (id: string) => void;
     onChangeDirection?: (id: string, direction: 'incoming' | 'outgoing') => void;
+    /** Callback wenn Benutzer Rename-Vorschlag bestaetigt */
+    onConfirmRename?: (id: string) => void;
+    /** IDs der Dateien bei denen Rename gerade laeuft */
+    renameLoadingIds?: string[];
 }
 
 function formatFileSize(bytes: number): string {
@@ -183,7 +188,13 @@ function EntityBadge({
     );
 }
 
-export function UploadFileList({ files, onRemove, onChangeDirection }: UploadFileListProps) {
+export function UploadFileList({
+    files,
+    onRemove,
+    onChangeDirection,
+    onConfirmRename,
+    renameLoadingIds = []
+}: UploadFileListProps) {
     if (files.length === 0) {
         return null;
     }
@@ -266,6 +277,17 @@ export function UploadFileList({ files, onRemove, onChangeDirection }: UploadFil
                                             entityType={file.classification.matchedEntityType}
                                             confidence={file.classification.entityConfidence}
                                             autoLinked={file.classification.entityAutoLinked}
+                                        />
+                                    )}
+                                    {/* Rename Suggestion Badge - nur fuer Eingangsrechnungen */}
+                                    {file.classification.renameSuggestion &&
+                                     file.classification.invoiceDirection === 'incoming' &&
+                                     onConfirmRename && (
+                                        <RenameSuggestionBadge
+                                            suggestion={file.classification.renameSuggestion}
+                                            onConfirm={() => onConfirmRename(file.id)}
+                                            isConfirmed={file.renameConfirmed}
+                                            isLoading={renameLoadingIds.includes(file.id)}
                                         />
                                     )}
                                 </div>

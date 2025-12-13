@@ -15,6 +15,26 @@ export type UploadFileStatus =
 export type InvoiceDirection = 'incoming' | 'outgoing' | 'unknown';
 
 /**
+ * Rename-Vorschlag aus Quick Classification (nur für Eingangsrechnungen)
+ */
+export interface RenameSuggestion {
+    /** Vorgeschlagener Dateiname (ohne Extension) */
+    suggestedFilename: string;
+    /** Extrahierter Lieferantenname */
+    supplierName: string;
+    /** Extrahierte Rechnungsnummer */
+    invoiceNumber: string;
+    /** Quelle des Lieferantennamens: entity_match | ocr_extraction */
+    source: 'entity_match' | 'ocr_extraction';
+    /** Konfidenz des Vorschlags (0-1) */
+    confidence: number;
+    /** Wurde die Umbenennung bereits durchgeführt? */
+    applied?: boolean;
+    /** Angewendeter Dateiname (falls applied=true) */
+    appliedFilename?: string;
+}
+
+/**
  * Klassifizierung nach OCR-Verarbeitung
  */
 export interface DocumentClassification {
@@ -36,6 +56,8 @@ export interface DocumentClassification {
     entityConfidence?: number;
     /** Wurde das Dokument automatisch mit dem Geschäftspartner verknüpft? */
     entityAutoLinked?: boolean;
+    /** Rename-Vorschlag (nur für Eingangsrechnungen) */
+    renameSuggestion?: RenameSuggestion;
 }
 
 /**
@@ -64,6 +86,8 @@ export interface UploadingFile {
     classification?: DocumentClassification;
     /** Vom Benutzer bestätigte/korrigierte Richtung */
     confirmedDirection?: 'incoming' | 'outgoing';
+    /** Wurde der Rename-Vorschlag vom Benutzer bestätigt? */
+    renameConfirmed?: boolean;
 }
 
 /**

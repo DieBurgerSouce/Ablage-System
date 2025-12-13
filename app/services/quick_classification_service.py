@@ -105,6 +105,8 @@ class QuickClassificationResult:
     entity_match_method: Optional[str] = None  # "vat_id" | "iban" | "name"
     entity_confidence: float = 0.0
     entity_auto_linked: bool = False
+    # Rename Suggestion (nur fuer Eingangsrechnungen)
+    rename_suggestion: Optional[Dict[str, Any]] = None
 
 
 class QuickClassificationService:
@@ -169,6 +171,26 @@ class QuickClassificationService:
 
     # Maximale Textlaenge fuer Performance
     MAX_TEXT_LENGTH = 50000
+
+    # ==========================================================================
+    # Rechnungsnummer-Extraktion (fuer Rename-Vorschlaege)
+    # ==========================================================================
+
+    INVOICE_NUMBER_PATTERNS = [
+        # Deutsche Patterns (hoechste Prioritaet)
+        # "Rechnungsnummer: F-201401" oder "Rechnungs-Nr.: 12345"
+        r'(?:rechnungs?-?\s*(?:nr\.?|nummer)|rechnung\s*nr\.?)[\s:]*([A-Za-z0-9\-_/]{3,30})',
+        # "Beleg-Nr.: 12345"
+        r'(?:beleg-?\s*nr\.?)[\s:]*([A-Za-z0-9\-_/]{3,30})',
+        # Englische Patterns
+        r'(?:invoice\s*(?:no\.?|number|#))[\s:]*([A-Za-z0-9\-_/]{3,30})',
+        # Reverse Format: "F-201451\nRechnungsnummer" (Tabellen)
+        r'([A-Z]-?\d{5,8})\s*\n\s*(?:Invoice|Rechnungs)',
+        # RE-Prefix (haeufig): "RE-2024-001"
+        r'\b(RE-\d{4}-\d{3,6})\b',
+        # Standard numerisch mit Prefix: "R-12345", "INV-12345"
+        r'\b([RI](?:NV)?-\d{4,10})\b',
+    ]
 
     # Kontext-Keywords fuer Empfaenger-Erkennung (unsere Firma dort = Eingangsrechnung)
     # Unterstuetzt sowohl Umlaute (ä/ö/ü) als auch ASCII-Ersetzungen (ae/oe/ue)
@@ -300,6 +322,178 @@ class QuickClassificationService:
 
         return (None, 0.0)
 
+    # ==========================================================================
+    # Rename-Vorschlag Generierung (fuer Eingangsrechnungen)
+    # ==========================================================================
+
+    def _extract_invoice_number(self, text: str) -> Optional[str]:
+        """
+        Extrahiert die Rechnungsnummer aus dem OCR-Text.
+
+        Verwendet mehrere Patterns fuer deutsche und englische Rechnungen.
+        Gibt die erste gefundene Rechnungsnummer zurueck.
+
+        Args:
+            text: OCR-Text
+
+        Returns:
+            Rechnungsnummer oder None
+        """
+        for pattern in self.INVOICE_NUMBER_PATTERNS:
+            match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
+            if match:
+                # Gruppe 1 enthaelt die Rechnungsnummer
+                number = match.group(1).strip()
+                # Validierung: nicht zu kurz, nicht zu lang
+                if 3 <= len(number) <= 30:
+                    logger.debug(
+                        "invoice_number_extracted",
+                        number=number,
+                        pattern=pattern[:50]
+                    )
+                    return number
+        return None
+
+    def _normalize_for_filename(self, name: str) -> str:
+        """
+        Normalisiert einen Firmennamen fuer die Verwendung im Dateinamen.
+
+        Entfernt Rechtsformen (GmbH, AG, etc.) und Sonderzeichen.
+
+        Args:
+            name: Firmenname
+
+        Returns:
+            Normalisierter Name (z.B. "ALPAC" statt "ALPAC GmbH")
+        """
+        if not name:
+            return ""
+
+        result = name
+
+        # Rechtsformen entfernen
+        for suffix_pattern in self.LEGAL_SUFFIXES:
+            result = re.sub(suffix_pattern, "", result, flags=re.IGNORECASE)
+
+        # Sonderzeichen entfernen (behalte nur alphanumerisch und Bindestrich)
+        result = re.sub(r'[^\w\s-]', '', result)
+
+        # Leerzeichen normalisieren und trimmen
+        result = re.sub(r'\s+', '', result).strip()
+
+        # Maximale Laenge begrenzen
+        return result[:50] if len(result) > 50 else result
+
+    def _extract_supplier_from_header(self, text: str) -> Optional[str]:
+        """
+        Fallback: Extrahiert den Lieferantennamen aus dem Header-Bereich.
+
+        Wird verwendet wenn kein BusinessEntity-Match vorhanden ist.
+        Sucht im oberen Drittel des Dokuments nach Firmennamen mit Rechtsform.
+
+        Args:
+            text: OCR-Text
+
+        Returns:
+            Extrahierter Lieferantenname oder None
+        """
+        # Nur obere 30% des Texts durchsuchen (Header-Bereich)
+        header_text = text[:int(len(text) * 0.3)]
+
+        for pattern in self.COMPANY_PATTERNS:
+            match = re.search(pattern, header_text, re.IGNORECASE | re.MULTILINE)
+            if match:
+                company_name = match.group(1).strip()
+                # Minimum-Laenge pruefen
+                if len(company_name) >= 3:
+                    normalized = self._normalize_for_filename(company_name)
+                    if normalized:
+                        logger.debug(
+                            "supplier_extracted_from_header",
+                            original=company_name,
+                            normalized=normalized
+                        )
+                        return normalized
+        return None
+
+    def _generate_rename_suggestion(
+        self,
+        direction: InvoiceDirection,
+        matched_entity_name: Optional[str],
+        ocr_text: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Generiert einen Dateinamen-Vorschlag fuer Eingangsrechnungen.
+
+        Schema: Lieferantenname_Rechnungsnummer (z.B. "ALPAC_F-201401")
+
+        Nur fuer Eingangsrechnungen - Ausgangsrechnungen werden separat behandelt.
+
+        Args:
+            direction: Erkannte Dokumentrichtung
+            matched_entity_name: Name des gematchten BusinessEntity (falls vorhanden)
+            ocr_text: OCR-Text zur Extraktion
+
+        Returns:
+            Dict mit suggested_filename, supplier_name, invoice_number, source, confidence
+            oder None wenn keine Generierung moeglich
+        """
+        # Nur fuer Eingangsrechnungen
+        if direction != InvoiceDirection.INCOMING:
+            return None
+
+        # 1. Lieferantenname ermitteln (mit Fallback)
+        supplier_name: Optional[str] = None
+        source = "ocr_extraction"
+
+        if matched_entity_name:
+            # Primaer: BusinessEntity-Name verwenden
+            supplier_name = self._normalize_for_filename(matched_entity_name)
+            source = "entity_match"
+            logger.debug(
+                "rename_suggestion_using_entity",
+                entity_name=matched_entity_name,
+                normalized=supplier_name
+            )
+
+        if not supplier_name:
+            # Fallback: Aus Header extrahieren
+            supplier_name = self._extract_supplier_from_header(ocr_text)
+            source = "ocr_extraction"
+
+        if not supplier_name:
+            logger.debug("rename_suggestion_no_supplier", reason="no_supplier_found")
+            return None
+
+        # 2. Rechnungsnummer extrahieren
+        invoice_number = self._extract_invoice_number(ocr_text)
+        if not invoice_number:
+            logger.debug("rename_suggestion_no_invoice_number", reason="no_invoice_number_found")
+            return None
+
+        # 3. Vorschlag zusammenbauen
+        suggested_filename = f"{supplier_name}_{invoice_number}"
+
+        # Confidence basierend auf Quelle
+        confidence = 0.90 if source == "entity_match" else 0.70
+
+        logger.info(
+            "rename_suggestion_generated",
+            suggested_filename=suggested_filename,
+            supplier_name=supplier_name,
+            invoice_number=invoice_number,
+            source=source,
+            confidence=confidence
+        )
+
+        return {
+            "suggested_filename": suggested_filename,
+            "supplier_name": supplier_name,
+            "invoice_number": invoice_number,
+            "source": source,
+            "confidence": confidence,
+        }
+
     def _apply_confidence_boost(
         self,
         base_confidence: float,
@@ -423,6 +617,10 @@ class QuickClassificationService:
                 )
                 # Entity-Matching (Lieferanten-/Kunden-Erkennung)
                 await self._enrich_with_entity_match(db, document_id, result, vat_ids, ibans)
+                # Rename-Vorschlag generieren (nur fuer Eingangsrechnungen)
+                result.rename_suggestion = self._generate_rename_suggestion(
+                    result.direction, result.matched_entity_name, ocr_text
+                )
                 if auto_assign_tag and result.confidence >= self.AUTO_TAG_CONFIDENCE_THRESHOLD:
                     await self._assign_tag(db, document_id, result)
                 self._record_metrics(result, start_time, "vat_id")
@@ -444,6 +642,10 @@ class QuickClassificationService:
                 )
                 # Entity-Matching (Lieferanten-/Kunden-Erkennung)
                 await self._enrich_with_entity_match(db, document_id, result, vat_ids, ibans)
+                # Rename-Vorschlag generieren (nur fuer Eingangsrechnungen)
+                result.rename_suggestion = self._generate_rename_suggestion(
+                    result.direction, result.matched_entity_name, ocr_text
+                )
                 if auto_assign_tag and result.confidence >= self.AUTO_TAG_CONFIDENCE_THRESHOLD:
                     await self._assign_tag(db, document_id, result)
                 self._record_metrics(result, start_time, "iban")
@@ -469,6 +671,10 @@ class QuickClassificationService:
                 )
                 # Entity-Matching (Lieferanten-/Kunden-Erkennung)
                 await self._enrich_with_entity_match(db, document_id, result, vat_ids, ibans)
+                # Rename-Vorschlag generieren (nur fuer Eingangsrechnungen)
+                result.rename_suggestion = self._generate_rename_suggestion(
+                    result.direction, result.matched_entity_name, ocr_text
+                )
                 if auto_assign_tag and result.confidence >= self.AUTO_TAG_CONFIDENCE_THRESHOLD:
                     await self._assign_tag(db, document_id, result)
                 self._record_metrics(result, start_time, "company_name")
@@ -1497,6 +1703,8 @@ class QuickClassificationService:
             "entity_match_method": result.entity_match_method,
             "entity_confidence": result.entity_confidence,
             "entity_auto_linked": result.entity_auto_linked,
+            # Rename Suggestion (nur fuer Eingangsrechnungen)
+            "rename_suggestion": result.rename_suggestion,
         }
 
 

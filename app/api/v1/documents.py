@@ -1651,7 +1651,7 @@ async def list_deleted_documents(
 
 # ==================== Document Classification Confirmation ====================
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Literal
 
 class ClassificationConfirmRequest(BaseModel):
@@ -1747,6 +1747,145 @@ async def confirm_document_classification(
         "document_id": str(document_id),
         "applied_tag": tag_name,
         "invoice_direction": request.invoice_direction
+    }
+
+
+# ==================== Rename Suggestion Confirmation ====================
+
+
+class RenameConfirmRequest(BaseModel):
+    """Request fuer Dokumenten-Umbenennung."""
+    suggested_filename: str = Field(
+        ...,
+        min_length=1,
+        max_length=200,
+        description="Vorgeschlagener Dateiname (ohne Extension)"
+    )
+
+
+@router.post("/{document_id}/confirm-rename")
+async def confirm_document_rename(
+    document_id: UUID,
+    request: RenameConfirmRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """Bestaetigt die Umbenennung eines Dokuments basierend auf dem Vorschlag.
+
+    Wird aufgerufen wenn der User den Umbenennungs-Vorschlag aus der
+    Quick Classification akzeptiert.
+
+    **Workflow:**
+    1. Dokument laden und Berechtigung pruefen
+    2. Dateinamen sanitisieren und Extension beibehalten
+    3. Datenbank aktualisieren (filename, quick_classification_result)
+
+    **Hinweis:** Die original_filename bleibt fuer Audit-Zwecke erhalten.
+    """
+    from app.db.models import Document
+    from sqlalchemy import select
+    from pathlib import Path
+    import re
+
+    # Dokument laden
+    query = select(Document).where(
+        Document.id == document_id,
+        Document.owner_id == current_user.id,
+        Document.deleted_at.is_(None)
+    )
+    result = await db.execute(query)
+    doc = result.scalar_one_or_none()
+
+    if not doc:
+        raise HTTPException(
+            status_code=404,
+            detail="Dokument nicht gefunden"
+        )
+
+    old_filename = doc.filename
+
+    # Extension vom alten Dateinamen beibehalten
+    ext = Path(old_filename).suffix
+
+    # Dateinamen sanitisieren (gefaehrliche Zeichen entfernen)
+    sanitized_name = re.sub(r'[<>:"/\\|?*]', '_', request.suggested_filename)
+    sanitized_name = sanitized_name[:200]  # Maximale Laenge
+
+    # Neuen Dateinamen zusammenbauen
+    new_filename = f"{sanitized_name}{ext}"
+
+    # Dateinamen aktualisieren
+    doc.filename = new_filename
+
+    # Source fuer Metriken extrahieren (vor dem Update)
+    rename_source = "unknown"
+    if doc.quick_classification_result:
+        qc_result = dict(doc.quick_classification_result)
+        if qc_result.get("rename_suggestion"):
+            rename_source = qc_result["rename_suggestion"].get("source", "unknown")
+            # Als "applied" markieren
+            qc_result["rename_suggestion"]["applied"] = True
+            qc_result["rename_suggestion"]["applied_filename"] = new_filename
+            doc.quick_classification_result = qc_result
+
+    # Datenbank-Commit mit Error Handling
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        logger.error(
+            "document_rename_failed",
+            document_id=str(document_id),
+            user_id=str(current_user.id),
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Umbenennung fehlgeschlagen"
+        )
+
+    # Audit Logging (GDPR-konform)
+    from app.core.audit_logger import AuditLogger, AuditEventType
+    try:
+        await AuditLogger.log_async(
+            db=db,
+            user_id=current_user.id,
+            action=AuditEventType.DOCUMENT_RENAMED,
+            resource_type="document",
+            resource_id=str(document_id),
+            details={
+                "old_filename": old_filename,
+                "new_filename": new_filename,
+                "source": rename_source
+            }
+        )
+    except Exception as audit_error:
+        # Audit-Fehler loggen aber nicht die Operation abbrechen
+        logger.warning(
+            "audit_log_failed",
+            document_id=str(document_id),
+            error=str(audit_error)
+        )
+
+    # Prometheus Metrics
+    from app.core.business_metrics import document_renames_total
+    document_renames_total.labels(source=rename_source).inc()
+
+    logger.info(
+        "document_renamed",
+        document_id=str(document_id),
+        user_id=str(current_user.id),
+        old_filename=old_filename,
+        new_filename=new_filename,
+        source=rename_source
+    )
+
+    return {
+        "success": True,
+        "document_id": str(document_id),
+        "old_filename": old_filename,
+        "new_filename": new_filename,
+        "message": "Dokument erfolgreich umbenannt"
     }
 
 

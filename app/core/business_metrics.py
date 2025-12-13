@@ -140,6 +140,13 @@ document_status_transitions_total = Counter(
     ["from_status", "to_status"]
 )
 
+# Dokumenten-Umbenennungen (Quick Classification)
+document_renames_total = Counter(
+    "ablage_document_renames_total",
+    "Dokument-Umbenennungen via Quick Classification Vorschlag",
+    ["source"]  # 'entity_match' oder 'ocr_extraction'
+)
+
 # Aktive Dokumente pro Status
 documents_by_status = Gauge(
     "ablage_documents_by_status",
