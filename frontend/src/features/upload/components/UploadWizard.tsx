@@ -188,10 +188,10 @@ export function UploadWizard() {
                 suggestion.suggestedFilename
             );
 
-            // File-State aktualisieren
+            // File-State aktualisieren - speichere neuen Dateinamen fuer UI-Anzeige
             setFiles(prev => prev.map(f =>
                 f.id === fileId
-                    ? { ...f, renameConfirmed: true }
+                    ? { ...f, renameConfirmed: true, renamedFilename: result.new_filename }
                     : f
             ));
 

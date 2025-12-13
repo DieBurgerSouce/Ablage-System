@@ -88,6 +88,8 @@ export interface UploadingFile {
     confirmedDirection?: 'incoming' | 'outgoing';
     /** Wurde der Rename-Vorschlag vom Benutzer bestätigt? */
     renameConfirmed?: boolean;
+    /** Neuer Dateiname nach Umbenennung (für Anzeige in UI) */
+    renamedFilename?: string;
 }
 
 /**

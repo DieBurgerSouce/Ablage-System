@@ -240,7 +240,7 @@ export function UploadFileList({
                             {/* File Info */}
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="font-medium truncate">{file.file.name}</p>
+                                    <p className="font-medium truncate">{file.renamedFilename || file.file.name}</p>
                                     <span className="text-xs text-muted-foreground flex-shrink-0">
                                         ({formatFileSize(file.file.size)})
                                     </span>
