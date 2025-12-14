@@ -66,8 +66,10 @@ export interface DocumentClassification {
 export interface UploadingFile {
     /** Eindeutige ID für React key */
     id: string;
-    /** Original File-Objekt */
-    file: File;
+    /** Original File-Objekt (null bei wiederhergestellten Dateien nach Page-Reload) */
+    file: File | null;
+    /** Originaler Dateiname (für Anzeige nach Page-Reload wenn file=null) */
+    originalFilename?: string;
     /** Aktueller Status */
     status: UploadFileStatus;
     /** Upload-Fortschritt (0-100) */

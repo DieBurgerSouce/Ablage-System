@@ -298,11 +298,13 @@ function GroupDocumentItem({
             {/* File Info */}
             <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">
-                    {file.renamedFilename || file.file.name}
+                    {file.renamedFilename || file.originalFilename || file.file?.name || 'Dokument'}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                    {formatFileSize(file.file.size)}
-                </p>
+                {file.file?.size && (
+                    <p className="text-xs text-muted-foreground">
+                        {formatFileSize(file.file.size)}
+                    </p>
+                )}
             </div>
 
             {/* Classification Badges */}

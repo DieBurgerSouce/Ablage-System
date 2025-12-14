@@ -28,16 +28,39 @@ import {
     ContextMenuSeparator,
     ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-
-// Lokaler Counter für laufende Nummern pro Entity
-const localNumberCounters: Record<string, number> = {};
+import {
+    usePersistedUploadState,
+    setupHardReloadDetection,
+    deserializeFiles,
+    serializeFiles,
+    deserializeGroups,
+    serializeGroups,
+} from '../hooks/usePersistedUploadState';
 
 export function UploadWizard() {
-    const [files, setFiles] = useState<UploadingFile[]>([]);
+    // Persistierte States - überleben normale Page-Reloads
+    const [files, setFiles] = usePersistedUploadState<UploadingFile[]>(
+        'files',
+        [],
+        { deserialize: deserializeFiles, serialize: serializeFiles }
+    );
+    const [transactionGroups, setTransactionGroups] = usePersistedUploadState<TransactionGroup[]>(
+        'transaction-groups',
+        [],
+        { deserialize: deserializeGroups, serialize: serializeGroups }
+    );
+    const [localNumberCounters, setLocalNumberCounters] = usePersistedUploadState<Record<string, number>>(
+        'number-counters',
+        {}
+    );
+
     const [renameLoadingIds, setRenameLoadingIds] = useState<string[]>([]);
 
-    // Vorgang-State
-    const [transactionGroups, setTransactionGroups] = useState<TransactionGroup[]>([]);
+    // Hard-Reload Detection einrichten
+    useEffect(() => {
+        const cleanup = setupHardReloadDetection();
+        return cleanup;
+    }, []);
 
     // Selection-State für Mehrfachauswahl
     const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
@@ -58,6 +81,12 @@ export function UploadWizard() {
     // ========== FILE UPLOAD LOGIC ==========
 
     const uploadFile = useCallback(async (uploadingFile: UploadingFile) => {
+        // Guard: File-Objekt muss vorhanden sein (bei wiederhergestellten Dateien ist es null)
+        if (!uploadingFile.file) {
+            console.warn('uploadFile called without File object, skipping');
+            return;
+        }
+
         try {
             setFiles(prev => prev.map(f =>
                 f.id === uploadingFile.id ? { ...f, status: 'uploading' as const } : f
@@ -140,6 +169,7 @@ export function UploadWizard() {
         const newUploadingFiles: UploadingFile[] = newFiles.map(file => ({
             id: crypto.randomUUID(),
             file,
+            originalFilename: file.name, // Für Persistenz nach Page-Reload
             status: 'pending' as const,
             progress: 0,
         }));
@@ -269,19 +299,23 @@ export function UploadWizard() {
             const nextNumber = await groupsService.getNextNumber(entityName);
             // Lokalen Counter aktualisieren falls höher
             if (!localNumberCounters[entityName] || nextNumber > localNumberCounters[entityName]) {
-                localNumberCounters[entityName] = nextNumber;
+                setLocalNumberCounters(prev => ({
+                    ...prev,
+                    [entityName]: nextNumber
+                }));
             }
             return nextNumber;
         } catch {
             // Fallback auf lokalen Counter
-            if (!localNumberCounters[entityName]) {
-                localNumberCounters[entityName] = 1;
-            } else {
-                localNumberCounters[entityName]++;
-            }
-            return localNumberCounters[entityName];
+            const currentCount = localNumberCounters[entityName] || 0;
+            const newCount = currentCount + 1;
+            setLocalNumberCounters(prev => ({
+                ...prev,
+                [entityName]: newCount
+            }));
+            return newCount;
         }
-    }, []);
+    }, [localNumberCounters, setLocalNumberCounters]);
 
     /**
      * Erstellt einen neuen Vorgang aus den angegebenen Dokument-IDs
@@ -965,7 +999,7 @@ export function UploadWizard() {
                     <div className="flex items-center gap-3 p-3 bg-card border rounded-lg shadow-xl">
                         <FileText className="w-5 h-5 text-primary" />
                         <span className="font-medium truncate max-w-[200px]">
-                            {draggedFile.renamedFilename || draggedFile.file.name}
+                            {draggedFile.renamedFilename || draggedFile.originalFilename || draggedFile.file?.name || 'Dokument'}
                         </span>
                         <Badge variant="secondary">Zum Vorgang</Badge>
                     </div>
