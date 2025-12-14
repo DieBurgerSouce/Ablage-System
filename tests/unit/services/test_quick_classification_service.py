@@ -257,7 +257,8 @@ Rechnungspositionen folgen hier...
         result = service._match_company_name(
             extracted,
             ["Test GmbH", "Test Gesellschaft mbH"],
-            "Test GmbH, Musterstrasse 1" + "X" * 500
+            "Test GmbH, Musterstrasse 1" + "X" * 500,
+            []  # ibans (empty)
         )
 
         assert result is not None
@@ -630,7 +631,8 @@ Rechnungspositionen..."""
         result = service._match_company_name(
             extracted,
             ["Test Firma GmbH"],  # Konfigurierter Name mit Rechtsform
-            text
+            text,
+            []  # ibans (empty)
         )
 
         # Sollte ueber Kontext-Erkennung matchen (nicht Position)

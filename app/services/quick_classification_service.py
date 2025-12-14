@@ -149,7 +149,9 @@ class QuickClassificationService:
 
     COMPANY_PATTERNS = [
         # Zeilen mit Rechtsformen
-        r'^(.+?(?:GmbH\s*&\s*Co\.?\s*KG|GmbH|AG|KG|OHG|UG|e\.K\.|SE|Ltd|Inc|B\.V\.|N\.V\.|S\.A\.)).*$',
+        # WICHTIG: Kurzformen (AG, KG, SE, BV) brauchen \s+ davor, um false positives zu vermeiden
+        # z.B. "Spargelmesse" soll nicht als "Spargelmes SE" erkannt werden
+        r'^(.+?(?:GmbH\s*&\s*Co\.?\s*KG|GmbH|\s+AG|\s+KG|OHG|UG|e\.K\.|\s+SE|Ltd\.?|Inc\.?|B\.?V\.?|N\.?V\.?|S\.?A\.?))(?:\s|$)',
     ]
 
     # Rechtsformen fuer Normalisierung
@@ -184,10 +186,12 @@ class QuickClassificationService:
         r'(?:rechnungs?-?\s*(?:nr\.?|nummer)|rechnung\s*nr\.?)[\s:]*([A-Za-z0-9\-_/]{3,30})',
         # "Beleg-Nr.: 12345"
         r'(?:beleg-?\s*nr\.?)[\s:]*([A-Za-z0-9\-_/]{3,30})',
+        # Reverse Format: "F-201401\nInvoice No." (Tabellen mit Label darunter)
+        # WICHTIG: Muss VOR dem normalen "Invoice No." Pattern kommen, da sonst
+        # die Bestellnummer nach dem Label gefunden wird statt der Rechnungsnummer davor
+        r'([A-Z]-?\d{4,8})\s*\n\s*(?:Invoice|Rechnungs)',
         # Englische Patterns
         r'(?:invoice\s*(?:no\.?|number|#))[\s:]*([A-Za-z0-9\-_/]{3,30})',
-        # Reverse Format: "F-201451\nRechnungsnummer" (Tabellen)
-        r'([A-Z]-?\d{5,8})\s*\n\s*(?:Invoice|Rechnungs)',
         # RE-Prefix (haeufig): "RE-2024-001"
         r'\b(RE-\d{4}-\d{3,6})\b',
         # Standard numerisch mit Prefix: "R-12345", "INV-12345"
@@ -392,13 +396,13 @@ class QuickClassificationService:
         """
         Normalisiert einen Firmennamen fuer die Verwendung im Dateinamen.
 
-        Entfernt Rechtsformen (GmbH, AG, etc.) und Sonderzeichen.
+        Entfernt Rechtsformen (GmbH, AG, etc.), Slogans und Sonderzeichen.
 
         Args:
             name: Firmenname
 
         Returns:
-            Normalisierter Name (z.B. "ALPAC" statt "ALPAC GmbH")
+            Normalisierter Name (z.B. "ALPAC" statt "ALPAC - kunststof bakken BV")
         """
         if not name:
             return ""
@@ -408,6 +412,11 @@ class QuickClassificationService:
         # Rechtsformen entfernen
         for suffix_pattern in self.LEGAL_SUFFIXES:
             result = re.sub(suffix_pattern, "", result, flags=re.IGNORECASE)
+
+        # Slogan/Beschreibung entfernen: "Company - Slogan" → "Company"
+        # Haeufiges Muster bei niederlaendischen/internationalen Firmen
+        if " - " in result:
+            result = result.split(" - ")[0]
 
         # Sonderzeichen entfernen (behalte nur alphanumerisch und Bindestrich)
         result = re.sub(r'[^\w\s-]', '', result)
@@ -476,12 +485,13 @@ class QuickClassificationService:
         if direction != InvoiceDirection.INCOMING:
             return None
 
-        # 1. Lieferantenname ermitteln (mit Fallback)
+        # 1. Lieferantenname ermitteln (mit Fallback-Kette)
+        # Prioritaet: 1. BusinessEntity-Name, 2. OCR-Header-Extraktion
         supplier_name: Optional[str] = None
         source = "ocr_extraction"
 
         if matched_entity_name:
-            # Primaer: BusinessEntity-Name verwenden
+            # Primaer: BusinessEntity-Name verwenden (aus Datenbank)
             supplier_name = self._normalize_for_filename(matched_entity_name)
             source = "entity_match"
             logger.debug(
