@@ -1,5 +1,5 @@
 /**
- * API Service fuer Strukturierte Dokumenten-Extraktion.
+ * API Service für Strukturierte Dokumenten-Extraktion.
  *
  * Kommuniziert mit /api/v1/extracted-data Endpoints.
  */
@@ -39,7 +39,7 @@ export const extractedDataApi = {
     },
 
     /**
-     * Listet alle Rechnungen mit Filtermoeglichkeiten.
+     * Listet alle Rechnungen mit Filtermöglichkeiten.
      */
     async listInvoices(params: InvoiceListParams): Promise<PaginatedInvoiceList> {
         const response = await apiClient.get<PaginatedInvoiceList>(
@@ -50,7 +50,7 @@ export const extractedDataApi = {
     },
 
     /**
-     * Aggregierte Statistiken ueber extrahierte Daten.
+     * Aggregierte Statistiken über extrahierte Daten.
      */
     async getAggregations(params?: {
         document_type?: string;
@@ -65,7 +65,7 @@ export const extractedDataApi = {
     },
 
     /**
-     * Statistik ueber Dokumenttypen.
+     * Statistik über Dokumenttypen.
      */
     async getDocumentTypeStats(): Promise<Record<string, number>> {
         const response = await apiClient.get<Record<string, number>>(
@@ -75,7 +75,7 @@ export const extractedDataApi = {
     },
 
     /**
-     * Generiert Export-URL fuer CSV.
+     * Generiert Export-URL für CSV.
      */
     getExportCsvUrl(params: {
         document_type?: string;
@@ -96,7 +96,7 @@ export const extractedDataApi = {
     },
 
     /**
-     * Generiert Export-URL fuer Excel.
+     * Generiert Export-URL für Excel.
      */
     getExportExcelUrl(params: {
         document_type?: string;
@@ -117,7 +117,7 @@ export const extractedDataApi = {
     },
 
     /**
-     * Generiert Export-URL fuer alle Dokumenttypen (Excel mit Tabs).
+     * Generiert Export-URL für alle Dokumenttypen (Excel mit Tabs).
      */
     getExportAllExcelUrl(params?: {
         date_from?: string;
@@ -132,7 +132,7 @@ export const extractedDataApi = {
     },
 
     /**
-     * Fuehrt einen Download aus (mit Auth-Token).
+     * Führt einen Download aus (mit Auth-Token).
      */
     async downloadExport(url: string, filename: string): Promise<void> {
         const response = await apiClient.get(url, {

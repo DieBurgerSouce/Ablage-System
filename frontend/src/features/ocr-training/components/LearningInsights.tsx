@@ -52,7 +52,7 @@ export function LearningInsights() {
         })
     }
 
-    // Gruppiere Trend-Daten nach Datum fuer den Chart
+    // Gruppiere Trend-Daten nach Datum für den Chart
     const chartData = trendData?.reduce((acc, point) => {
         const date = new Date(point.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
         if (!acc[date]) {
@@ -86,7 +86,7 @@ export function LearningInsights() {
     if (learnedWeights?.confidence && learnedWeights.confidence < 0.5) {
         insights.push({
             type: 'info',
-            message: 'Mehr Daten erforderlich fuer zuverlaessige Gewichtung',
+            message: 'Mehr Daten erforderlich für zuverlässige Gewichtung',
         })
     }
 
@@ -354,7 +354,7 @@ export function LearningInsights() {
                 </CardContent>
             </Card>
 
-            {/* Gewichtungs-Erklaerung */}
+            {/* Gewichtungs-Erklärung */}
             <Card className="bg-muted/30">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm">Wie funktioniert Self-Learning?</CardTitle>
@@ -365,9 +365,9 @@ export function LearningInsights() {
                     </p>
                     <ul className="list-disc list-inside space-y-1">
                         <li>Korrekturen werden analysiert und Fehlertypen kategorisiert</li>
-                        <li>Backends mit weniger Fehlern erhalten hoeheres Gewicht</li>
-                        <li>Umlaut-Fehler werden staerker gewichtet (kritisch fuer Deutsch)</li>
-                        <li>Die Gewichte beeinflussen die Backend-Empfehlung fuer neue Dokumente</li>
+                        <li>Backends mit weniger Fehlern erhalten höheres Gewicht</li>
+                        <li>Umlaut-Fehler werden stärker gewichtet (kritisch für Deutsch)</li>
+                        <li>Die Gewichte beeinflussen die Backend-Empfehlung für neue Dokumente</li>
                     </ul>
                 </CardContent>
             </Card>

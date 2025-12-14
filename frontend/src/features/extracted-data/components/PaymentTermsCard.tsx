@@ -2,8 +2,8 @@
  * PaymentTermsCard - Zeigt Zahlungsbedingungen und Skonto-Informationen.
  *
  * Hebt Skonto-Fristen visuell hervor:
- * - Gruen: Skonto verfuegbar
- * - Orange: Skonto laeuft bald ab (≤3 Tage)
+ * - Gruen: Skonto verfügbar
+ * - Orange: Skonto läuft bald ab (≤3 Tage)
  * - Rot: Skonto abgelaufen
  */
 

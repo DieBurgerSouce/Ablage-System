@@ -144,7 +144,7 @@ export function SampleDetailModal({ sample, benchmarks: propBenchmarks, open, on
                             ) : Object.keys(benchmarksByBackend).length === 0 ? (
                                 <div className="text-center py-8 text-muted-foreground">
                                     Keine Benchmark-Ergebnisse vorhanden.
-                                    Starten Sie einen Benchmark fuer dieses Sample.
+                                    Starten Sie einen Benchmark für dieses Sample.
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

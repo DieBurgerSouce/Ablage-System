@@ -7,18 +7,18 @@ import type { RenameSuggestion } from '../types';
 interface RenameSuggestionBadgeProps {
     /** Rename-Vorschlag aus der Quick Classification */
     suggestion: RenameSuggestion;
-    /** Callback wenn Benutzer Umbenennung bestaetigt */
+    /** Callback wenn Benutzer Umbenennung bestätigt */
     onConfirm: () => void;
-    /** Wurde die Umbenennung bereits bestaetigt? */
+    /** Wurde die Umbenennung bereits bestätigt? */
     isConfirmed?: boolean;
-    /** Laeuft gerade die Bestaetigung? */
+    /** Läuft gerade die Bestätigung? */
     isLoading?: boolean;
 }
 
 /**
- * RenameSuggestionBadge - Zeigt Rename-Vorschlag mit Bestaetigungs-Button
+ * RenameSuggestionBadge - Zeigt Rename-Vorschlag mit Bestätigungs-Button
  *
- * Wird nur fuer Eingangsrechnungen angezeigt.
+ * Wird nur für Eingangsrechnungen angezeigt.
  * Schema: Lieferantenname_Rechnungsnummer
  */
 export function RenameSuggestionBadge({
@@ -27,7 +27,7 @@ export function RenameSuggestionBadge({
     isConfirmed = false,
     isLoading = false,
 }: RenameSuggestionBadgeProps) {
-    // Bereits umbenannt (entweder im Backend oder gerade bestaetigt)
+    // Bereits umbenannt (entweder im Backend oder gerade bestätigt)
     if (suggestion.applied || isConfirmed) {
         return (
             <Badge
@@ -40,7 +40,7 @@ export function RenameSuggestionBadge({
         );
     }
 
-    // Vorschlag anzeigen mit Bestaetigungs-Button
+    // Vorschlag anzeigen mit Bestätigungs-Button
     return (
         <div className="flex items-center gap-1">
             <Badge
@@ -68,7 +68,7 @@ export function RenameSuggestionBadge({
                     onConfirm();
                 }}
                 disabled={isLoading}
-                title="Umbenennung bestaetigen"
+                title="Umbenennung bestätigen"
             >
                 {isLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

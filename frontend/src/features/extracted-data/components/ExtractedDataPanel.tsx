@@ -1,10 +1,10 @@
 /**
- * ExtractedDataPanel - Haupt-Container fuer strukturierte Dokumentendaten.
+ * ExtractedDataPanel - Haupt-Container für strukturierte Dokumentendaten.
  *
  * Zeigt je nach Dokumenttyp die entsprechende Anzeige-Komponente:
- * - InvoiceDataDisplay fuer Rechnungen
- * - OrderDataDisplay fuer Bestellungen (TODO)
- * - ContractDataDisplay fuer Vertraege (TODO)
+ * - InvoiceDataDisplay für Rechnungen
+ * - OrderDataDisplay für Bestellungen (TODO)
+ * - ContractDataDisplay für Verträge (TODO)
  */
 
 import { FileText, AlertTriangle, Loader2, Clock } from "lucide-react";
@@ -63,13 +63,13 @@ export function ExtractedDataPanel({
 }: ExtractedDataPanelProps) {
     const { data, isLoading, error, isError } = useExtractedData(documentId);
 
-    // Dokument-Status abfragen um zwischen "OCR laeuft" und "Keine Daten" zu unterscheiden
+    // Dokument-Status abfragen um zwischen "OCR läuft" und "Keine Daten" zu unterscheiden
     const { data: document } = useQuery({
         queryKey: ["document", documentId],
         queryFn: () => documentsService.getById(documentId),
         enabled: !!documentId && isError, // Nur laden wenn extracted-data Fehler
-        staleTime: 10 * 1000, // 10 Sekunden - OCR-Status aendert sich
-        refetchInterval: isError ? 5000 : false, // Polling nur wenn Fehler (OCR laeuft evtl. noch)
+        staleTime: 10 * 1000, // 10 Sekunden - OCR-Status ändert sich
+        refetchInterval: isError ? 5000 : false, // Polling nur wenn Fehler (OCR läuft evtl. noch)
     });
 
     // Loading State
@@ -101,12 +101,12 @@ export function ExtractedDataPanel({
         const isNotFound = errorMessage.includes("404") || errorMessage.includes("nicht gefunden");
 
         if (isNotFound) {
-            // Pruefen ob OCR noch laeuft
+            // Prüfen ob OCR noch läuft
             const ocrStatus = document?.ocrStatus;
             const isOcrProcessing = ocrStatus === 'processing' || ocrStatus === 'pending';
 
             if (isOcrProcessing) {
-                // OCR laeuft noch - zeige Ladeindikator mit Info
+                // OCR läuft noch - zeige Ladeindikator mit Info
                 return (
                     <Card className={className}>
                         <CardContent className="py-8">
@@ -116,7 +116,7 @@ export function ExtractedDataPanel({
                                     <Loader2 className="h-6 w-6 animate-spin absolute bottom-0 right-0 text-primary" />
                                 </div>
                                 <p className="text-lg font-medium mb-1">
-                                    OCR-Verarbeitung laeuft...
+                                    OCR-Verarbeitung läuft...
                                 </p>
                                 <p className="text-sm">
                                     Die strukturierte Datenextraktion startet automatisch nach Abschluss der OCR-Verarbeitung.
@@ -137,13 +137,13 @@ export function ExtractedDataPanel({
                         <div className="text-center text-muted-foreground">
                             <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                             <p className="text-lg font-medium mb-1">
-                                Keine strukturierten Daten verfuegbar
+                                Keine strukturierten Daten verfügbar
                             </p>
                             <p className="text-sm">
                                 {ocrStatus === 'completed'
-                                    ? "Die strukturierte Datenextraktion wurde noch nicht durchgefuehrt."
+                                    ? "Die strukturierte Datenextraktion wurde noch nicht durchgeführt."
                                     : ocrStatus === 'failed'
-                                    ? "Die OCR-Verarbeitung ist fehlgeschlagen. Strukturierte Daten sind nicht verfuegbar."
+                                    ? "Die OCR-Verarbeitung ist fehlgeschlagen. Strukturierte Daten sind nicht verfügbar."
                                     : "Dieses Dokument wurde noch nicht strukturiert verarbeitet."}
                             </p>
                         </div>
@@ -265,7 +265,7 @@ export function ExtractedDataPanel({
                     </div>
                 )}
 
-                {/* Allgemeine Entities (fallback fuer alle Typen) */}
+                {/* Allgemeine Entities (fallback für alle Typen) */}
                 {((data.ibans?.length ?? 0) > 0 ||
                     (data.vat_ids?.length ?? 0) > 0 ||
                     (data.companies?.length ?? 0) > 0) && (

@@ -29,7 +29,7 @@ function computeWordDiff(original: string, modified: string): DiffSegment[] {
         const modWord = modifiedWords[j] ?? ''
 
         if (origWord === modWord) {
-            // Gleiche Woerter
+            // Gleiche Wörter
             if (origWord) {
                 segments.push({ type: 'equal', original: origWord, modified: modWord })
             }
@@ -45,7 +45,7 @@ function computeWordDiff(original: string, modified: string): DiffSegment[] {
             i++
         } else {
             // Replacement oder komplexerer Diff
-            // Einfache Heuristik: Wenn das naechste Wort uebereinstimmt, ist es ein Replace
+            // Einfache Heuristik: Wenn das nächste Wort übereinstimmt, ist es ein Replace
             const nextOrigMatch = modifiedWords.indexOf(originalWords[i + 1], j)
             const nextModMatch = originalWords.indexOf(modifiedWords[j + 1], i)
 
@@ -70,7 +70,7 @@ function computeWordDiff(original: string, modified: string): DiffSegment[] {
 }
 
 /**
- * Prueft ob ein Wort einen Umlaut-Fehler enthaelt.
+ * Prüft ob ein Wort einen Umlaut-Fehler enthält.
  */
 function isUmlautError(original: string, modified: string): boolean {
     // Check if one could be converted to the other through umlaut substitution

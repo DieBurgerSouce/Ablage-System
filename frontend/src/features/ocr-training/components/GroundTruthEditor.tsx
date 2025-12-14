@@ -1,7 +1,7 @@
 /**
  * Ground Truth Editor Komponente
  *
- * Enterprise-grade Editor fuer Ground Truth Annotation mit:
+ * Enterprise-grade Editor für Ground Truth Annotation mit:
  * - 4-Way Side-by-Side Backend-Vergleich
  * - Editierbarer Ground Truth mit Diff-Highlighting
  * - Umlaut-Validierung und automatische Korrektur
@@ -66,24 +66,24 @@ interface GroundTruthEditorProps {
 
 // Umlaut Validation
 const KNOWN_UMLAUT_WORDS: Record<string, string> = {
-    'fuer': 'fuer',
-    'ueber': 'ueber',
-    'koennen': 'koennen',
-    'moechten': 'moechten',
-    'waehrend': 'waehrend',
-    'naechste': 'naechste',
-    'aendern': 'aendern',
-    'oeffnen': 'oeffnen',
-    'groesse': 'Groesse',
-    'strasse': 'Strasse',
-    'schliessen': 'schliessen',
-    'gebuehr': 'Gebuehr',
-    'pruefung': 'Pruefung',
-    'loeschen': 'loeschen',
-    'bestaetigen': 'bestaetigen',
-    'verfuegbar': 'verfuegbar',
-    'zurueck': 'zurueck',
-    'aehnlich': 'aehnlich',
+    'fuer': 'für',
+    'ueber': 'über',
+    'koennen': 'können',
+    'moechten': 'möchten',
+    'waehrend': 'während',
+    'naechste': 'nächste',
+    'aendern': 'ändern',
+    'oeffnen': 'öffnen',
+    'groesse': 'Größe',
+    'strasse': 'Straße',
+    'schliessen': 'schließen',
+    'gebuehr': 'Gebühr',
+    'pruefung': 'Prüfung',
+    'loeschen': 'löschen',
+    'bestaetigen': 'bestätigen',
+    'verfuegbar': 'verfügbar',
+    'zurueck': 'zurück',
+    'aehnlich': 'ähnlich',
 }
 
 function detectUmlautIssues(text: string): UmlautSuggestion[] {
@@ -107,24 +107,24 @@ function detectUmlautIssues(text: string): UmlautSuggestion[] {
 function autoCorrectUmlauts(text: string): string {
     let corrected = text
     const corrections: [RegExp, string][] = [
-        [/\bfuer\b/gi, 'fuer'],
-        [/\bueber\b/gi, 'ueber'],
-        [/\bkoennen\b/gi, 'koennen'],
-        [/\bmoechten\b/gi, 'moechten'],
-        [/\bwaehrend\b/gi, 'waehrend'],
-        [/\bnaechste\b/gi, 'naechste'],
-        [/\baendern\b/gi, 'aendern'],
-        [/\boeffnen\b/gi, 'oeffnen'],
-        [/\bgroesse\b/gi, 'Groesse'],
-        [/\bstrasse\b/gi, 'Strasse'],
-        [/\bschliessen\b/gi, 'schliessen'],
-        [/\bgebuehr\b/gi, 'Gebuehr'],
-        [/\bpruefung\b/gi, 'Pruefung'],
-        [/\bloeschen\b/gi, 'loeschen'],
-        [/\bbestaetigen\b/gi, 'bestaetigen'],
-        [/\bverfuegbar\b/gi, 'verfuegbar'],
-        [/\bzurueck\b/gi, 'zurueck'],
-        [/\baehnlich\b/gi, 'aehnlich'],
+        [/\bfuer\b/gi, 'für'],
+        [/\bueber\b/gi, 'über'],
+        [/\bkoennen\b/gi, 'können'],
+        [/\bmoechten\b/gi, 'möchten'],
+        [/\bwaehrend\b/gi, 'während'],
+        [/\bnaechste\b/gi, 'nächste'],
+        [/\baendern\b/gi, 'ändern'],
+        [/\boeffnen\b/gi, 'öffnen'],
+        [/\bgroesse\b/gi, 'Größe'],
+        [/\bstrasse\b/gi, 'Straße'],
+        [/\bschliessen\b/gi, 'schließen'],
+        [/\bgebuehr\b/gi, 'Gebühr'],
+        [/\bpruefung\b/gi, 'Prüfung'],
+        [/\bloeschen\b/gi, 'löschen'],
+        [/\bbestaetigen\b/gi, 'bestätigen'],
+        [/\bverfuegbar\b/gi, 'verfügbar'],
+        [/\bzurueck\b/gi, 'zurück'],
+        [/\baehnlich\b/gi, 'ähnlich'],
     ]
     for (const [pattern, replacement] of corrections) {
         corrected = corrected.replace(pattern, replacement)
@@ -229,7 +229,7 @@ export function GroundTruthEditor({
             {hasUmlautIssues && (
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Moegliche Umlaut-Fehler erkannt</AlertTitle>
+                    <AlertTitle>Mögliche Umlaut-Fehler erkannt</AlertTitle>
                     <AlertDescription className="mt-2">
                         <div className="flex flex-wrap gap-2 mb-2">
                             {umlautIssues.slice(0, 5).map((issue, i) => (
@@ -261,7 +261,7 @@ export function GroundTruthEditor({
                             <span className="ml-1">Diff</span>
                         </Button>
                     </CardTitle>
-                    <CardDescription>Waehlen Sie das beste Backend-Ergebnis als Ausgangspunkt</CardDescription>
+                    <CardDescription>Wählen Sie das beste Backend-Ergebnis als Ausgangspunkt</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

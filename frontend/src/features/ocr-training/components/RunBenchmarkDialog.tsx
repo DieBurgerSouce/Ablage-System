@@ -34,7 +34,7 @@ const BACKENDS = [
         vram: 12,
         requiresGpu: true,
         color: '#8884d8',
-        description: 'Beste Qualitaet fuer komplexe Dokumente',
+        description: 'Beste Qualität für komplexe Dokumente',
     },
     {
         id: 'got-ocr-2.0',
@@ -86,14 +86,14 @@ export function RunBenchmarkDialog({
     const [forceReprocess, setForceReprocess] = useState(false)
     const queryClient = useQueryClient()
 
-    // Hole Overview-Stats fuer Sample-Anzahlen
+    // Hole Overview-Stats für Sample-Anzahlen
     const { data: overview } = useQuery({
         queryKey: ['training', 'overview'],
         queryFn: trainingService.getOverviewStats,
         enabled: open,
     })
 
-    // Hole verfuegbare Backends
+    // Hole verfügbare Backends
     const { data: availableBackends } = useQuery({
         queryKey: ['training', 'available-backends'],
         queryFn: trainingService.getAvailableBackends,
@@ -116,7 +116,7 @@ export function RunBenchmarkDialog({
                 })
                 sampleIds = response.samples.map((s) => s.id)
 
-                // Bei random: zufaellige Auswahl
+                // Bei random: zufällige Auswahl
                 if (sampleSelection === 'random' && sampleIds.length > randomSampleCount) {
                     sampleIds = shuffleArray(sampleIds).slice(0, randomSampleCount)
                 }
@@ -135,12 +135,12 @@ export function RunBenchmarkDialog({
             queryClient.invalidateQueries({ queryKey: ['training', 'stats'] })
             queryClient.invalidateQueries({ queryKey: ['training', 'overview'] })
 
-            // Dialog schliessen nach kurzer Verzoegerung
+            // Dialog schließen nach kurzer Verzögerung
             setTimeout(() => setOpen(false), 2000)
         },
     })
 
-    // Berechne geschaetzte VRAM-Nutzung
+    // Berechne geschätzte VRAM-Nutzung
     const estimatedVram = selectedBackends.reduce((total, backendId) => {
         const backend = BACKENDS.find((b) => b.id === backendId)
         return total + (backend?.vram || 0)
@@ -157,7 +157,7 @@ export function RunBenchmarkDialog({
         )
     }
 
-    // Pruefe ob Backend verfuegbar ist
+    // Prüfe ob Backend verfügbar ist
     const isBackendAvailable = (backendId: string) => {
         if (!availableBackends) return true
         return availableBackends.some((b) => b.name === backendId && b.available)
@@ -180,14 +180,14 @@ export function RunBenchmarkDialog({
                         Benchmark starten
                     </DialogTitle>
                     <DialogDescription>
-                        Vergleiche die OCR-Qualitaet verschiedener Backends
+                        Vergleiche die OCR-Qualität verschiedener Backends
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6 py-4">
                     {/* Backend-Auswahl */}
                     <div className="space-y-3">
-                        <Label className="text-sm font-medium">Backends auswaehlen</Label>
+                        <Label className="text-sm font-medium">Backends auswählen</Label>
                         <div className="grid grid-cols-2 gap-3">
                             {BACKENDS.map((backend) => {
                                 const isSelected = selectedBackends.includes(backend.id)

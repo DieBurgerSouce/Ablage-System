@@ -2,7 +2,7 @@
  * CopyableField - Feld mit Copy-to-Clipboard Funktion.
  *
  * Zeigt einen Wert an mit einem Button zum Kopieren.
- * Ideal fuer IBANs, Rechnungsnummern, etc.
+ * Ideal für IBANs, Rechnungsnummern, etc.
  */
 
 import { useState } from "react";

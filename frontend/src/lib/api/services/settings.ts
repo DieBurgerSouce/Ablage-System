@@ -120,7 +120,7 @@ export const settingsService = {
     },
 
     /**
-     * Setzt alle Einstellungen auf Standardwerte zurueck.
+     * Setzt alle Einstellungen auf Standardwerte zurück.
      */
     resetSettings: async (): Promise<{ message: string; reset_at: string }> => {
         const response = await apiClient.post<{ message: string; reset_at: string }>('/settings/reset');
@@ -218,14 +218,14 @@ export const settingsService = {
     },
 
     /**
-     * Loescht Firmendaten (nur Admin).
+     * Löscht Firmendaten (nur Admin).
      */
     deleteCompanySettings: async (): Promise<void> => {
         await apiClient.delete('/admin/company');
     },
 
     /**
-     * Prueft ob Firmendaten konfiguriert sind.
+     * Prüft ob Firmendaten konfiguriert sind.
      */
     isCompanyConfigured: (settings: CompanySettings | CompanySettingsEmpty): settings is CompanySettings => {
         return 'id' in settings && !('configured' in settings && settings.configured === false);
@@ -271,7 +271,7 @@ export const settingsService = {
     },
 
     /**
-     * Loescht ein Tag (nur Admin, System-Tags geschuetzt).
+     * Löscht ein Tag (nur Admin, System-Tags geschützt).
      */
     deleteTag: async (id: string): Promise<void> => {
         await apiClient.delete(`/admin/tags/${id}`);

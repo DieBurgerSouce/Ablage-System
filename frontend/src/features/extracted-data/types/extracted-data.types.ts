@@ -1,5 +1,5 @@
 /**
- * TypeScript Types fuer Strukturierte Dokumenten-Extraktion.
+ * TypeScript Types für Strukturierte Dokumenten-Extraktion.
  *
  * Spiegelt die Pydantic-Modelle aus dem Backend wider.
  */
@@ -17,21 +17,21 @@ export type ExtractedDocumentType =
     | "unknown";
 
 /**
- * Quelle eines extrahierten Betrags fuer Audit-Trail.
+ * Quelle eines extrahierten Betrags für Audit-Trail.
  */
 export type AmountSource = "document" | "computed" | "not_found";
 
 /**
- * Status einer Validierungspruefung.
+ * Status einer Validierungsprüfung.
  */
 export type ValidationStatus = "valid" | "invalid" | "skipped" | "pending";
 
 /**
  * Richtung einer Rechnung basierend auf Admin-Firmendaten.
  *
- * INCOMING: Eingangsrechnung - Empfaenger ist die eigene Firma
+ * INCOMING: Eingangsrechnung - Empfänger ist die eigene Firma
  * OUTGOING: Ausgangsrechnung - Absender ist die eigene Firma
- * UNKNOWN: Keine eindeutige Zuordnung moeglich
+ * UNKNOWN: Keine eindeutige Zuordnung möglich
  */
 export type InvoiceDirection = "incoming" | "outgoing" | "unknown";
 
@@ -70,7 +70,7 @@ export interface ExtractedLineItem {
 // =============================================================================
 
 /**
- * Strukturierte Validierungsergebnisse fuer Audit und Qualitaetssicherung.
+ * Strukturierte Validierungsergebnisse für Audit und Qualitätssicherung.
  */
 export interface ExtractionValidations {
     // IBAN-Validierung
@@ -101,7 +101,7 @@ export interface ExtractedInvoiceData {
     order_number?: string;
     customer_number?: string;
     delivery_note_number?: string;
-    supplier_number?: string;  // Lieferantennummer fuer ERP-Integration
+    supplier_number?: string;  // Lieferantennummer für ERP-Integration
 
     // Daten
     invoice_date?: string;
@@ -124,11 +124,11 @@ export interface ExtractedInvoiceData {
     sender_phone?: string;
     sender_contact?: string;
 
-    // Empfaenger
+    // Empfänger
     recipient?: ExtractedAddress;
     recipient_vat_id?: string;
 
-    // Zusaetzliche Lieferanteninformationen
+    // Zusätzliche Lieferanteninformationen
     sender_tax_number_alternative?: string;
 
     // Lieferadresse (falls abweichend)
@@ -151,7 +151,7 @@ export interface ExtractedInvoiceData {
     gross_amount?: number;
     gross_amount_source?: AmountSource;  // Quelle des Bruttobetrags
     currency?: string;
-    vat_reason?: string;  // Grund fuer MwSt-Hoehe (z.B. "intra-community supply / reverse charge")
+    vat_reason?: string;  // Grund für MwSt-Höhe (z.B. "intra-community supply / reverse charge")
 
     // Zahlungsbedingungen
     payment_terms?: string;
@@ -311,7 +311,7 @@ export interface ExtractedDocumentData {
     extraction_version?: string;  // Version des Extraktionsalgorithmus
     extracted_at?: string;  // ISO 8601 Zeitstempel
 
-    // Uebersetzungs-Metadaten
+    // Übersetzungs-Metadaten
     original_language?: string;  // ISO 639-1
     was_translated?: boolean;
     translation_confidence?: number;

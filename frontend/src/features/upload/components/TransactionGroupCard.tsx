@@ -49,23 +49,23 @@ interface TransactionGroupCardProps {
     files: UploadingFile[];
     /** Callback wenn ein Dokument aus dem Vorgang entfernt werden soll */
     onRemoveDocument: (documentId: string) => void;
-    /** Callback wenn der Vorgang aufgeloest werden soll */
+    /** Callback wenn der Vorgang aufgelöst werden soll */
     onDissolve: () => void;
     /** Callback wenn der Vorgang umbenannt werden soll */
     onRename: (newName: string) => void;
     /** Ist dieses Element gerade ein Drop-Target? */
     isDropTarget?: boolean;
-    /** Callback fuer Dokument-Richtungsaenderung */
+    /** Callback für Dokument-Richtungsänderung */
     onChangeDocumentDirection?: (documentId: string, direction: 'incoming' | 'outgoing') => void;
-    /** Callback wenn Benutzer Rename-Vorschlag fuer Dokument bestaetigt */
+    /** Callback wenn Benutzer Rename-Vorschlag für Dokument bestätigt */
     onConfirmDocumentRename?: (documentId: string) => void;
-    /** IDs der Dokumente bei denen Rename gerade laeuft */
+    /** IDs der Dokumente bei denen Rename gerade läuft */
     renameLoadingIds?: string[];
-    /** Callback wenn Vorgang-Rename-Vorschlag bestaetigt wird */
+    /** Callback wenn Vorgang-Rename-Vorschlag bestätigt wird */
     onConfirmGroupRename?: () => void;
-    /** Laeuft gerade der Vorgang-Rename? */
+    /** Läuft gerade der Vorgang-Rename? */
     isGroupRenameLoading?: boolean;
-    /** Callback wenn ein Dokument geloescht werden soll */
+    /** Callback wenn ein Dokument gelöscht werden soll */
     onRemoveFile?: (documentId: string) => void;
 }
 
@@ -98,7 +98,7 @@ function DirectionBadge({
                 className="gap-1 bg-orange-500/10 text-orange-600 border-orange-500/30 dark:text-orange-400"
             >
                 <AlertTriangle className="w-3 h-3" />
-                Bitte pruefen
+                Bitte prüfen
             </Badge>
         );
     }
@@ -138,7 +138,7 @@ function DirectionBadge({
 }
 
 /**
- * EntityBadge - Zeigt den erkannten Geschaeftspartner
+ * EntityBadge - Zeigt den erkannten Geschäftspartner
  */
 function EntityBadge({
     entityName,
@@ -164,7 +164,7 @@ function EntityBadge({
                     : "bg-slate-500/10 text-slate-600 border-slate-500/30 dark:text-slate-400",
                 isLowConfidence && "border-dashed"
             )}
-            title={`${typeLabel}: ${entityName}${autoLinked ? ' (automatisch verknuepft)' : ''}${confidence ? ` - ${Math.round(confidence * 100)}% Konfidenz` : ''}`}
+            title={`${typeLabel}: ${entityName}${autoLinked ? ' (automatisch verknüpft)' : ''}${confidence ? ` - ${Math.round(confidence * 100)}% Konfidenz` : ''}`}
         >
             {autoLinked ? (
                 <Link2 className="w-3 h-3 flex-shrink-0" />
@@ -180,7 +180,7 @@ function EntityBadge({
 }
 
 /**
- * GroupRenameSuggestionBadge - Zeigt den Rename-Vorschlag fuer den Vorgang
+ * GroupRenameSuggestionBadge - Zeigt den Rename-Vorschlag für den Vorgang
  */
 function GroupRenameSuggestionBadge({
     suggestedName,
@@ -357,7 +357,7 @@ function GroupDocumentItem({
                     >
                         <Link to="/documents/$documentId" params={{ documentId: file.documentId }}>
                             <ExternalLink className="w-3.5 h-3.5" />
-                            <span className="sr-only sm:not-sr-only sm:text-xs">Oeffnen</span>
+                            <span className="sr-only sm:not-sr-only sm:text-xs">Öffnen</span>
                         </Link>
                     </Button>
                 )}
@@ -420,7 +420,7 @@ function GroupDocumentItem({
 
 /**
  * TransactionGroupCard - Zeigt einen Vorgang (Gruppe von Dokumenten)
- * als aufklappbare Card mit den enthaltenen Dokumenten als vollstaendige Liste.
+ * als aufklappbare Card mit den enthaltenen Dokumenten als vollständige Liste.
  */
 export function TransactionGroupCard({
     group,
@@ -440,7 +440,7 @@ export function TransactionGroupCard({
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(group.name);
 
-    // Droppable fuer @dnd-kit
+    // Droppable für @dnd-kit
     const { setNodeRef, isOver } = useDroppable({
         id: `group-${group.id}`,
         data: {
@@ -449,7 +449,7 @@ export function TransactionGroupCard({
         },
     });
 
-    // Dateien die zu dieser Gruppe gehoeren
+    // Dateien die zu dieser Gruppe gehören
     const groupFiles = files.filter(f => group.documentIds.includes(f.id));
 
     // Name-Edit Handler
@@ -469,7 +469,7 @@ export function TransactionGroupCard({
         }
     };
 
-    // Visual Feedback fuer Drop
+    // Visual Feedback für Drop
     const showDropFeedback = isDropTarget || isOver;
 
     return (
@@ -557,7 +557,7 @@ export function TransactionGroupCard({
                             </Badge>
                         )}
 
-                        {/* Rename Suggestion Badge fuer Vorgang */}
+                        {/* Rename Suggestion Badge für Vorgang */}
                         {group.suggestedGroupName && !group.suggestedGroupNameApplied && onConfirmGroupRename && (
                             <GroupRenameSuggestionBadge
                                 suggestedName={group.suggestedGroupName}
@@ -597,7 +597,7 @@ export function TransactionGroupCard({
                                 className="text-destructive focus:text-destructive"
                             >
                                 <Unlink className="w-4 h-4 mr-2" />
-                                Vorgang aufloesen
+                                Vorgang auflösen
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -652,7 +652,7 @@ export function TransactionGroupCard({
 
 /**
  * DraggableTransactionGroupCard - Wrapper mit Drag-Handle
- * (falls Vorgaenge umgeordnet werden sollen - aktuell nicht benoetigt)
+ * (falls Vorgänge umgeordnet werden sollen - aktuell nicht benötigt)
  */
 export function DraggableTransactionGroupCard(props: TransactionGroupCardProps & { dragHandleProps?: object }) {
     const { dragHandleProps, ...cardProps } = props;

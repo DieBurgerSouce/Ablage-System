@@ -1,5 +1,5 @@
 /**
- * TanStack Query Hooks fuer Strukturierte Dokumenten-Extraktion.
+ * TanStack Query Hooks für Strukturierte Dokumenten-Extraktion.
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -68,7 +68,7 @@ export function useInvoiceList(params: InvoiceListParams) {
 }
 
 /**
- * Hook fuer aggregierte Statistiken.
+ * Hook für aggregierte Statistiken.
  */
 export function useExtractedDataAggregations(params?: {
     document_type?: string;
@@ -83,7 +83,7 @@ export function useExtractedDataAggregations(params?: {
 }
 
 /**
- * Hook fuer Dokumenttyp-Statistiken.
+ * Hook für Dokumenttyp-Statistiken.
  */
 export function useDocumentTypeStats() {
     return useQuery({
@@ -94,7 +94,7 @@ export function useDocumentTypeStats() {
 }
 
 /**
- * Hook zum Invalidieren aller Extracted-Data-Queries nach Aenderungen.
+ * Hook zum Invalidieren aller Extracted-Data-Queries nach Änderungen.
  */
 export function useInvalidateExtractedData() {
     const queryClient = useQueryClient();

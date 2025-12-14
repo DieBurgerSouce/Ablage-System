@@ -1,5 +1,5 @@
 /**
- * ExportButton - Dropdown fuer CSV/Excel-Export.
+ * ExportButton - Dropdown für CSV/Excel-Export.
  *
  * Zeigt Export-Optionen basierend auf dem Dokumenttyp.
  */

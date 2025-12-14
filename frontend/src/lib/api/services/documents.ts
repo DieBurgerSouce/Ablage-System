@@ -22,7 +22,7 @@ interface DocumentBackend {
     extracted_text?: string;
     file_path?: string;
     processing_job_id?: string;
-    // Quick Classification (schnelle Klassifizierung waehrend Upload)
+    // Quick Classification (schnelle Klassifizierung während Upload)
     quick_classification_status?: 'pending' | 'processing' | 'completed' | 'failed';
     quick_classification_result?: {
         direction?: 'incoming' | 'outgoing' | 'unknown';
@@ -37,7 +37,7 @@ interface DocumentBackend {
         entity_match_method?: 'vat_id' | 'iban' | 'name';
         entity_confidence?: number;
         entity_auto_linked?: boolean;
-        // Rename Suggestion (nur fuer Eingangsrechnungen)
+        // Rename Suggestion (nur für Eingangsrechnungen)
         rename_suggestion?: {
             suggested_filename: string;
             supplier_name: string;
@@ -88,7 +88,7 @@ export interface Document {
         entityMatchMethod?: 'vat_id' | 'iban' | 'name';
         entityConfidence?: number;
         entityAutoLinked?: boolean;
-        // Rename Suggestion (nur fuer Eingangsrechnungen)
+        // Rename Suggestion (nur für Eingangsrechnungen)
         renameSuggestion?: {
             suggestedFilename: string;
             supplierName: string;
@@ -241,7 +241,7 @@ export const documentsService = {
     },
 
     /**
-     * Bestaetigt den Rename-Vorschlag fuer ein Dokument.
+     * Bestätigt den Rename-Vorschlag für ein Dokument.
      * Benennt das Dokument basierend auf dem Vorschlag um.
      */
     confirmRename: async (

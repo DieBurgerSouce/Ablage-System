@@ -29,7 +29,7 @@ import {
     ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 
-// Lokaler Counter fuer laufende Nummern pro Entity
+// Lokaler Counter für laufende Nummern pro Entity
 const localNumberCounters: Record<string, number> = {};
 
 export function UploadWizard() {
@@ -39,7 +39,7 @@ export function UploadWizard() {
     // Vorgang-State
     const [transactionGroups, setTransactionGroups] = useState<TransactionGroup[]>([]);
 
-    // Selection-State fuer Mehrfachauswahl
+    // Selection-State für Mehrfachauswahl
     const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
 
     // DnD-State
@@ -161,7 +161,7 @@ export function UploadWizard() {
         setTransactionGroups(prev => prev.map(g => ({
             ...g,
             documentIds: g.documentIds.filter(docId => docId !== id)
-        })).filter(g => g.documentIds.length >= 2)); // Gruppen mit <2 Docs aufloesen
+        })).filter(g => g.documentIds.length >= 2)); // Gruppen mit <2 Docs auflösen
         setFiles(prev => prev.filter(f => f.id !== id));
     }, []);
 
@@ -194,7 +194,7 @@ export function UploadWizard() {
             const tagName = direction === 'incoming' ? 'Eingangsrechnung' : 'Ausgangsrechnung';
             if (currentDirection !== direction) {
                 toast({
-                    title: 'Klassifizierung geaendert',
+                    title: 'Klassifizierung geändert',
                     description: `Dokument als ${tagName} markiert`,
                     variant: 'success'
                 });
@@ -203,7 +203,7 @@ export function UploadWizard() {
             console.error('Classification change failed:', error);
             toast({
                 title: 'Fehler',
-                description: 'Klassifizierung konnte nicht geaendert werden',
+                description: 'Klassifizierung konnte nicht geändert werden',
                 variant: 'destructive'
             });
         }
@@ -237,7 +237,7 @@ export function UploadWizard() {
             console.error('Rename confirmation failed:', error);
             toast({
                 title: 'Fehler',
-                description: 'Umbenennung konnte nicht durchgefuehrt werden',
+                description: 'Umbenennung konnte nicht durchgeführt werden',
                 variant: 'destructive'
             });
         } finally {
@@ -256,18 +256,18 @@ export function UploadWizard() {
             .map(f => f.classification?.matchedEntityName)
             .filter((name): name is string => !!name);
 
-        // Ersten Entity-Namen zurueckgeben (oder undefined)
+        // Ersten Entity-Namen zurückgeben (oder undefined)
         return entityNames[0];
     }, [files]);
 
     /**
-     * Holt die naechste laufende Nummer fuer einen Entity-Namen
+     * Holt die nächste laufende Nummer für einen Entity-Namen
      */
     const getNextTransactionNumber = useCallback(async (entityName: string): Promise<number> => {
         // Versuche Backend abzufragen
         try {
             const nextNumber = await groupsService.getNextNumber(entityName);
-            // Lokalen Counter aktualisieren falls hoeher
+            // Lokalen Counter aktualisieren falls höher
             if (!localNumberCounters[entityName] || nextNumber > localNumberCounters[entityName]) {
                 localNumberCounters[entityName] = nextNumber;
             }
@@ -290,13 +290,13 @@ export function UploadWizard() {
         if (documentIds.length < 2) {
             toast({
                 title: 'Hinweis',
-                description: 'Mindestens 2 Dokumente fuer einen Vorgang erforderlich',
+                description: 'Mindestens 2 Dokumente für einen Vorgang erforderlich',
                 variant: 'default'
             });
             return;
         }
 
-        // Pruefen ob Dokumente bereits in einer Gruppe sind
+        // Prüfen ob Dokumente bereits in einer Gruppe sind
         const alreadyGrouped = documentIds.filter(id => {
             const file = files.find(f => f.id === id);
             return file?.transactionGroupId;
@@ -316,7 +316,7 @@ export function UploadWizard() {
         const nextNumber = await getNextTransactionNumber(entityName);
         const name = `${entityName}_${String(nextNumber).padStart(3, '0')}`;
 
-        // Temporaere Gruppe im Frontend erstellen
+        // Temporäre Gruppe im Frontend erstellen
         const tempGroup: TransactionGroup = {
             id: crypto.randomUUID(),
             name,
@@ -332,7 +332,7 @@ export function UploadWizard() {
                 ? { ...f, transactionGroupId: tempGroup.id }
                 : f
         ));
-        setSelectedFileIds(new Set()); // Selection zuruecksetzen
+        setSelectedFileIds(new Set()); // Selection zurücksetzen
 
         // Backend-Sync (asynchron)
         try {
@@ -376,14 +376,14 @@ export function UploadWizard() {
     }, [files, getCommonEntityName, getNextTransactionNumber]);
 
     /**
-     * Fuegt ein Dokument zu einem bestehenden Vorgang hinzu
+     * Fügt ein Dokument zu einem bestehenden Vorgang hinzu
      */
     const addToTransaction = useCallback(async (groupId: string, documentId: string) => {
         const group = transactionGroups.find(g => g.id === groupId);
         const file = files.find(f => f.id === documentId);
         if (!group || !file) return;
 
-        // Pruefen ob bereits in einer Gruppe
+        // Prüfen ob bereits in einer Gruppe
         if (file.transactionGroupId) {
             if (file.transactionGroupId === groupId) return; // Schon in dieser Gruppe
             toast({
@@ -426,7 +426,7 @@ export function UploadWizard() {
 
         const newDocIds = group.documentIds.filter(id => id !== documentId);
 
-        // Wenn nur noch 1 Dokument uebrig, Gruppe aufloesen
+        // Wenn nur noch 1 Dokument übrig, Gruppe auflösen
         if (newDocIds.length < 2) {
             await dissolveTransaction(groupId);
             return;
@@ -455,7 +455,7 @@ export function UploadWizard() {
     }, [transactionGroups, files]);
 
     /**
-     * Loest einen Vorgang auf (alle Dokumente werden wieder einzeln)
+     * Löst einen Vorgang auf (alle Dokumente werden wieder einzeln)
      */
     const dissolveTransaction = useCallback(async (groupId: string) => {
         const group = transactionGroups.find(g => g.id === groupId);
@@ -474,8 +474,8 @@ export function UploadWizard() {
             try {
                 await groupsService.delete(group.backendGroupId);
                 toast({
-                    title: 'Vorgang aufgeloest',
-                    description: `${group.name} wurde aufgeloest`,
+                    title: 'Vorgang aufgelöst',
+                    description: `${group.name} wurde aufgelöst`,
                     variant: 'default'
                 });
             } catch (error) {
@@ -509,7 +509,7 @@ export function UploadWizard() {
     }, [transactionGroups]);
 
     /**
-     * Generiert einen Rename-Vorschlag fuer einen Vorgang basierend auf den Dokumentnamen
+     * Generiert einen Rename-Vorschlag für einen Vorgang basierend auf den Dokumentnamen
      */
     const generateGroupNameSuggestion = useCallback((groupId: string): string | undefined => {
         const group = transactionGroups.find(g => g.id === groupId);
@@ -517,14 +517,14 @@ export function UploadWizard() {
 
         const groupFiles = files.filter(f => group.documentIds.includes(f.id));
 
-        // Gemeinsamen Lieferantennamen finden
+        // Gemeinsamen Lieferantennamen finden (für Vorgang-Benennung)
         const supplierNames = groupFiles
             .map(f => f.classification?.renameSuggestion?.supplierName)
             .filter((name): name is string => !!name);
 
         if (supplierNames.length === 0) return undefined;
 
-        // Pruefen ob alle denselben Lieferanten haben
+        // Prüfen ob alle denselben Lieferanten haben
         const uniqueSuppliers = [...new Set(supplierNames)];
         if (uniqueSuppliers.length !== 1) return undefined;
 
@@ -538,7 +538,7 @@ export function UploadWizard() {
     }, [transactionGroups, files]);
 
     /**
-     * Bestaetigt den Rename-Vorschlag fuer einen Vorgang
+     * Bestätigt den Rename-Vorschlag für einen Vorgang
      */
     const [groupRenameLoadingId, setGroupRenameLoadingId] = useState<string | null>(null);
 
@@ -549,7 +549,7 @@ export function UploadWizard() {
         setGroupRenameLoadingId(groupId);
 
         try {
-            // Name uebernehmen
+            // Name übernehmen
             await renameTransaction(groupId, group.suggestedGroupName);
 
             // Als applied markieren
@@ -576,7 +576,7 @@ export function UploadWizard() {
         }
     }, [transactionGroups, renameTransaction]);
 
-    // Effect: Aktualisiere suggestedGroupName wenn Dateien sich aendern
+    // Effect: Aktualisiere suggestedGroupName wenn Dateien sich ändern
     useEffect(() => {
         setTransactionGroups(prev => prev.map(group => {
             // Nicht aktualisieren wenn bereits applied
@@ -593,11 +593,11 @@ export function UploadWizard() {
     // ========== SELECTION LOGIC ==========
 
     /**
-     * Handler fuer Datei-Auswahl (Shift-Klick fuer Bereich)
+     * Handler für Datei-Auswahl (Shift-Klick für Bereich)
      */
     const handleFileSelect = useCallback((fileId: string, isShiftKey: boolean) => {
         const file = files.find(f => f.id === fileId);
-        // Nur fertige Dateien ohne Gruppe koennen ausgewaehlt werden
+        // Nur fertige Dateien ohne Gruppe können ausgewählt werden
         if (!file || file.transactionGroupId) return;
         if (file.status !== 'completed' && file.status !== 'awaiting_confirmation') return;
 
@@ -605,7 +605,7 @@ export function UploadWizard() {
             const newSet = new Set(prev);
 
             if (isShiftKey && prev.size > 0) {
-                // Shift-Klick: Bereich auswaehlen
+                // Shift-Klick: Bereich auswählen
                 const ungroupedFiles = files.filter(f =>
                     !f.transactionGroupId &&
                     (f.status === 'completed' || f.status === 'awaiting_confirmation')
@@ -635,13 +635,13 @@ export function UploadWizard() {
     }, [files]);
 
     /**
-     * Handler fuer "Als Vorgang zusammenfassen" aus Kontextmenue
+     * Handler für "Als Vorgang zusammenfassen" aus Kontextmenü
      */
     const handleCreateTransactionFromSelection = useCallback(() => {
         if (selectedFileIds.size < 2) {
             toast({
                 title: 'Hinweis',
-                description: 'Mindestens 2 Dokumente auswaehlen',
+                description: 'Mindestens 2 Dokumente auswählen',
                 variant: 'default'
             });
             return;
@@ -674,7 +674,7 @@ export function UploadWizard() {
         const draggedFileId = active.id as string;
         const targetId = over.id as string;
 
-        // Pruefen ob auf TransactionGroup gedroppt
+        // Prüfen ob auf TransactionGroup gedroppt
         if (targetId.startsWith('group-')) {
             const groupId = targetId.replace('group-', '');
             await addToTransaction(groupId, draggedFileId);
@@ -687,7 +687,7 @@ export function UploadWizard() {
 
         if (!draggedFile || !targetFile) return;
 
-        // Beide duerfen nicht bereits in einer Gruppe sein
+        // Beide dürfen nicht bereits in einer Gruppe sein
         if (draggedFile.transactionGroupId || targetFile.transactionGroupId) {
             toast({
                 title: 'Hinweis',
@@ -878,12 +878,12 @@ export function UploadWizard() {
                         <UploadDropzone onFilesAdd={handleFilesAdd} />
                     </div>
 
-                    {/* Transaction Groups (Vorgaenge) */}
+                    {/* Transaction Groups (Vorgänge) */}
                     {transactionGroups.length > 0 && (
                         <div className="bg-background rounded-2xl border shadow-sm p-6 space-y-4">
                             <h3 className="text-lg font-semibold flex items-center gap-2">
                                 <Layers className="w-5 h-5" />
-                                Vorgaenge
+                                Vorgänge
                             </h3>
                             <AnimatePresence>
                                 {transactionGroups.map((group) => (
@@ -950,10 +950,10 @@ export function UploadWizard() {
                         </ContextMenu>
                     )}
 
-                    {/* Hint fuer Mehrfachauswahl */}
+                    {/* Hint für Mehrfachauswahl */}
                     {ungroupedFiles.length >= 2 && transactionGroups.length === 0 && (
                         <p className="text-sm text-muted-foreground text-center">
-                            Tipp: Ziehen Sie Dokumente aufeinander oder waehlen Sie mehrere mit Shift+Klick aus und nutzen Sie das Kontextmenue (Rechtsklick), um einen Vorgang zu erstellen.
+                            Tipp: Ziehen Sie Dokumente aufeinander oder wählen Sie mehrere mit Shift+Klick aus und nutzen Sie das Kontextmenü (Rechtsklick), um einen Vorgang zu erstellen.
                         </p>
                     )}
                 </div>

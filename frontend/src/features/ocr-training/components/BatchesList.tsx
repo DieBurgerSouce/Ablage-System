@@ -236,7 +236,7 @@ export function BatchesList() {
                                     disabled={completeMutation.isPending}
                                 >
                                     <CheckCheck className="mr-2 h-4 w-4" />
-                                    Abschliessen
+                                    Abschließen
                                 </DropdownMenuItem>
                             )}
                         </DropdownMenuContent>

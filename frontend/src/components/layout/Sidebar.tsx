@@ -50,13 +50,13 @@ export function Sidebar() {
                 <p className="text-xs text-muted-foreground mt-1">Enterprise Document Management</p>
             </div>
 
-            <nav className="flex-1 px-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Hauptmenue">
+            <nav className="flex-1 px-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Hauptmenü">
                 <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" />
                 <SidebarLink to="/upload" icon={Upload} label="Upload Wizard" />
                 <SidebarLink to="/jobs" icon={ListTodo} label="Job Queue" />
                 <SidebarLink to="/validation-queue" icon={CheckCircle} label="Validierung" />
                 <SidebarLink to="/document-groups" icon={Layers} label="Dokumentgruppen" />
-                <SidebarLink to="/business-entities" icon={Building2} label="Geschaeftspartner" />
+                <SidebarLink to="/business-entities" icon={Building2} label="Geschäftspartner" />
 
                 {/* Admin Section */}
                 <div className="pt-4">
