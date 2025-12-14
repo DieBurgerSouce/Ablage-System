@@ -90,6 +90,33 @@ export interface UploadingFile {
     renameConfirmed?: boolean;
     /** Neuer Dateiname nach Umbenennung (für Anzeige in UI) */
     renamedFilename?: string;
+    /** ID der TransactionGroup (Vorgang) falls gruppiert */
+    transactionGroupId?: string;
+}
+
+/**
+ * Repräsentiert einen Vorgang (Gruppe von zusammengehörigen Dokumenten)
+ * z.B. Angebot + Lieferschein + Rechnung vom gleichen Lieferanten
+ */
+export interface TransactionGroup {
+    /** Temporäre Frontend-ID (UUID) */
+    id: string;
+    /** Vorgangsname z.B. "Alpac_001" */
+    name: string;
+    /** IDs der enthaltenen Dateien (UploadingFile.id) */
+    documentIds: string[];
+    /** Backend-Group-ID nach Sync */
+    backendGroupId?: string;
+    /** Name des erkannten Geschäftspartners */
+    entityName?: string;
+    /** ID des erkannten Geschäftspartners */
+    entityId?: string;
+    /** Erstellungszeitpunkt */
+    createdAt: Date;
+    /** Vorgeschlagener Vorgangsname basierend auf Dokumentnamen */
+    suggestedGroupName?: string;
+    /** Wurde der Vorschlag bereits angewendet? */
+    suggestedGroupNameApplied?: boolean;
 }
 
 /**

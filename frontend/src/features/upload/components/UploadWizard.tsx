@@ -1,23 +1,68 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import {
+    DndContext,
+    DragOverlay,
+    closestCenter,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragStartEvent,
+    type DragEndEvent,
+    type DragOverEvent,
+} from '@dnd-kit/core';
 import { UploadDropzone } from './UploadDropzone';
 import { UploadFileList } from './UploadFileList';
+import { TransactionGroupCard } from './TransactionGroupCard';
 import { documentsService } from '@/lib/api/services/documents';
+import { groupsService } from '@/lib/api/services/groups';
 import { tasksService } from '@/lib/api/services/tasks';
 import { toast } from '@/components/ui/use-toast';
-import type { UploadingFile } from '../types';
+import { FileText, Layers } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { AnimatePresence } from 'framer-motion';
+import type { UploadingFile, TransactionGroup } from '../types';
+import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuSeparator,
+    ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+
+// Lokaler Counter fuer laufende Nummern pro Entity
+const localNumberCounters: Record<string, number> = {};
 
 export function UploadWizard() {
     const [files, setFiles] = useState<UploadingFile[]>([]);
     const [renameLoadingIds, setRenameLoadingIds] = useState<string[]>([]);
 
+    // Vorgang-State
+    const [transactionGroups, setTransactionGroups] = useState<TransactionGroup[]>([]);
+
+    // Selection-State fuer Mehrfachauswahl
+    const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
+
+    // DnD-State
+    const [dragActiveId, setDragActiveId] = useState<string | null>(null);
+    const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+    // DnD Sensor mit Aktivierungsschwelle
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // 8px Bewegung bevor Drag startet
+            },
+        })
+    );
+
+    // ========== FILE UPLOAD LOGIC ==========
+
     const uploadFile = useCallback(async (uploadingFile: UploadingFile) => {
         try {
-            // Update status to uploading
             setFiles(prev => prev.map(f =>
                 f.id === uploadingFile.id ? { ...f, status: 'uploading' as const } : f
             ));
 
-            // Upload the file with progress tracking
             const document = await documentsService.upload(
                 uploadingFile.file,
                 { ocrBackend: 'auto' },
@@ -28,8 +73,6 @@ export function UploadWizard() {
                 }
             );
 
-            // Update to processing (OCR is now running on backend)
-            // Store taskId for progress polling
             setFiles(prev => prev.map(f =>
                 f.id === uploadingFile.id
                     ? {
@@ -43,12 +86,9 @@ export function UploadWizard() {
                     : f
             ));
 
-            // Check if document has completed OCR or still processing
             if (document.ocrStatus === 'completed') {
-                // Fetch classification data
                 await fetchClassificationAndUpdate(uploadingFile.id, document.id);
             }
-            // Otherwise keep 'processing' status - polling will update when done
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
             setFiles(prev => prev.map(f =>
@@ -59,13 +99,9 @@ export function UploadWizard() {
         }
     }, []);
 
-    /**
-     * Lädt die Klassifizierungsdaten und aktualisiert den File-Status
-     */
     const fetchClassificationAndUpdate = useCallback(async (fileId: string, documentId: string) => {
         try {
             const extractedData = await documentsService.getExtractedData(documentId);
-
             setFiles(prev => prev.map(f =>
                 f.id === fileId
                     ? {
@@ -84,7 +120,6 @@ export function UploadWizard() {
                     : f
             ));
         } catch {
-            // Falls keine Daten verfügbar, trotzdem als awaiting_confirmation markieren
             setFiles(prev => prev.map(f =>
                 f.id === fileId
                     ? {
@@ -102,7 +137,6 @@ export function UploadWizard() {
     }, []);
 
     const handleFilesAdd = useCallback(async (newFiles: File[]) => {
-        // Create UploadingFile objects for each new file
         const newUploadingFiles: UploadingFile[] = newFiles.map(file => ({
             id: crypto.randomUUID(),
             file,
@@ -110,22 +144,27 @@ export function UploadWizard() {
             progress: 0,
         }));
 
-        // Add to state
         setFiles(prev => [...prev, ...newUploadingFiles]);
 
-        // Start uploading each file
         for (const uploadingFile of newUploadingFiles) {
             uploadFile(uploadingFile);
         }
     }, [uploadFile]);
 
     const handleRemove = useCallback((id: string) => {
+        // Auch aus Selection und Gruppen entfernen
+        setSelectedFileIds(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(id);
+            return newSet;
+        });
+        setTransactionGroups(prev => prev.map(g => ({
+            ...g,
+            documentIds: g.documentIds.filter(docId => docId !== id)
+        })).filter(g => g.documentIds.length >= 2)); // Gruppen mit <2 Docs aufloesen
         setFiles(prev => prev.filter(f => f.id !== id));
     }, []);
 
-    /**
-     * Handler für Änderung der Dokumentenrichtung (Eingangs-/Ausgangsrechnung)
-     */
     const handleChangeDirection = useCallback(async (
         fileId: string,
         direction: 'incoming' | 'outgoing'
@@ -155,7 +194,7 @@ export function UploadWizard() {
             const tagName = direction === 'incoming' ? 'Eingangsrechnung' : 'Ausgangsrechnung';
             if (currentDirection !== direction) {
                 toast({
-                    title: 'Klassifizierung geändert',
+                    title: 'Klassifizierung geaendert',
                     description: `Dokument als ${tagName} markiert`,
                     variant: 'success'
                 });
@@ -164,22 +203,17 @@ export function UploadWizard() {
             console.error('Classification change failed:', error);
             toast({
                 title: 'Fehler',
-                description: 'Klassifizierung konnte nicht geändert werden',
+                description: 'Klassifizierung konnte nicht geaendert werden',
                 variant: 'destructive'
             });
         }
     }, [files]);
 
-    /**
-     * Handler fuer Bestaetigung des Rename-Vorschlags
-     */
     const handleConfirmRename = useCallback(async (fileId: string) => {
         const file = files.find(f => f.id === fileId);
         if (!file?.documentId || !file.classification?.renameSuggestion) return;
 
         const suggestion = file.classification.renameSuggestion;
-
-        // Loading state setzen
         setRenameLoadingIds(prev => [...prev, fileId]);
 
         try {
@@ -188,7 +222,6 @@ export function UploadWizard() {
                 suggestion.suggestedFilename
             );
 
-            // File-State aktualisieren - speichere neuen Dateinamen fuer UI-Anzeige
             setFiles(prev => prev.map(f =>
                 f.id === fileId
                     ? { ...f, renameConfirmed: true, renamedFilename: result.new_filename }
@@ -204,29 +237,489 @@ export function UploadWizard() {
             console.error('Rename confirmation failed:', error);
             toast({
                 title: 'Fehler',
-                description: 'Umbenennung konnte nicht durchgeführt werden',
+                description: 'Umbenennung konnte nicht durchgefuehrt werden',
                 variant: 'destructive'
             });
         } finally {
-            // Loading state entfernen
             setRenameLoadingIds(prev => prev.filter(id => id !== fileId));
         }
     }, [files]);
 
-    // Ref für files um stable reference im polling zu haben
+    // ========== TRANSACTION GROUP LOGIC ==========
+
+    /**
+     * Holt den gemeinsamen Entity-Namen aus den Dateien
+     */
+    const getCommonEntityName = useCallback((documentIds: string[]): string | undefined => {
+        const filesInGroup = files.filter(f => documentIds.includes(f.id));
+        const entityNames = filesInGroup
+            .map(f => f.classification?.matchedEntityName)
+            .filter((name): name is string => !!name);
+
+        // Ersten Entity-Namen zurueckgeben (oder undefined)
+        return entityNames[0];
+    }, [files]);
+
+    /**
+     * Holt die naechste laufende Nummer fuer einen Entity-Namen
+     */
+    const getNextTransactionNumber = useCallback(async (entityName: string): Promise<number> => {
+        // Versuche Backend abzufragen
+        try {
+            const nextNumber = await groupsService.getNextNumber(entityName);
+            // Lokalen Counter aktualisieren falls hoeher
+            if (!localNumberCounters[entityName] || nextNumber > localNumberCounters[entityName]) {
+                localNumberCounters[entityName] = nextNumber;
+            }
+            return nextNumber;
+        } catch {
+            // Fallback auf lokalen Counter
+            if (!localNumberCounters[entityName]) {
+                localNumberCounters[entityName] = 1;
+            } else {
+                localNumberCounters[entityName]++;
+            }
+            return localNumberCounters[entityName];
+        }
+    }, []);
+
+    /**
+     * Erstellt einen neuen Vorgang aus den angegebenen Dokument-IDs
+     */
+    const createTransaction = useCallback(async (documentIds: string[]) => {
+        if (documentIds.length < 2) {
+            toast({
+                title: 'Hinweis',
+                description: 'Mindestens 2 Dokumente fuer einen Vorgang erforderlich',
+                variant: 'default'
+            });
+            return;
+        }
+
+        // Pruefen ob Dokumente bereits in einer Gruppe sind
+        const alreadyGrouped = documentIds.filter(id => {
+            const file = files.find(f => f.id === id);
+            return file?.transactionGroupId;
+        });
+
+        if (alreadyGrouped.length > 0) {
+            toast({
+                title: 'Hinweis',
+                description: 'Einige Dokumente sind bereits in einem Vorgang',
+                variant: 'default'
+            });
+            return;
+        }
+
+        // Entity-Namen und laufende Nummer ermitteln
+        const entityName = getCommonEntityName(documentIds) || 'Vorgang';
+        const nextNumber = await getNextTransactionNumber(entityName);
+        const name = `${entityName}_${String(nextNumber).padStart(3, '0')}`;
+
+        // Temporaere Gruppe im Frontend erstellen
+        const tempGroup: TransactionGroup = {
+            id: crypto.randomUUID(),
+            name,
+            documentIds,
+            entityName: entityName !== 'Vorgang' ? entityName : undefined,
+            createdAt: new Date(),
+        };
+
+        // State aktualisieren
+        setTransactionGroups(prev => [...prev, tempGroup]);
+        setFiles(prev => prev.map(f =>
+            documentIds.includes(f.id)
+                ? { ...f, transactionGroupId: tempGroup.id }
+                : f
+        ));
+        setSelectedFileIds(new Set()); // Selection zuruecksetzen
+
+        // Backend-Sync (asynchron)
+        try {
+            const filesInGroup = files.filter(f => documentIds.includes(f.id));
+            const backendDocIds = filesInGroup
+                .map(f => f.documentId)
+                .filter((id): id is string => !!id);
+
+            if (backendDocIds.length >= 2) {
+                // Entity-ID aus erstem Dokument mit Match
+                const entityId = filesInGroup.find(f => f.classification?.matchedEntityId)
+                    ?.classification?.matchedEntityId;
+
+                const response = await groupsService.create({
+                    name,
+                    group_type: 'transaction',
+                    document_ids: backendDocIds,
+                    business_entity_id: entityId,
+                });
+
+                setTransactionGroups(prev => prev.map(g =>
+                    g.id === tempGroup.id
+                        ? { ...g, backendGroupId: response.id }
+                        : g
+                ));
+
+                toast({
+                    title: 'Vorgang erstellt',
+                    description: `${name} mit ${backendDocIds.length} Dokumenten`,
+                    variant: 'success'
+                });
+            }
+        } catch (error) {
+            console.error('Backend group creation failed:', error);
+            toast({
+                title: 'Hinweis',
+                description: 'Vorgang lokal erstellt, Backend-Sync fehlgeschlagen',
+                variant: 'default'
+            });
+        }
+    }, [files, getCommonEntityName, getNextTransactionNumber]);
+
+    /**
+     * Fuegt ein Dokument zu einem bestehenden Vorgang hinzu
+     */
+    const addToTransaction = useCallback(async (groupId: string, documentId: string) => {
+        const group = transactionGroups.find(g => g.id === groupId);
+        const file = files.find(f => f.id === documentId);
+        if (!group || !file) return;
+
+        // Pruefen ob bereits in einer Gruppe
+        if (file.transactionGroupId) {
+            if (file.transactionGroupId === groupId) return; // Schon in dieser Gruppe
+            toast({
+                title: 'Hinweis',
+                description: 'Dokument ist bereits in einem anderen Vorgang',
+                variant: 'default'
+            });
+            return;
+        }
+
+        // Frontend-State aktualisieren
+        setTransactionGroups(prev => prev.map(g =>
+            g.id === groupId
+                ? { ...g, documentIds: [...g.documentIds, documentId] }
+                : g
+        ));
+        setFiles(prev => prev.map(f =>
+            f.id === documentId
+                ? { ...f, transactionGroupId: groupId }
+                : f
+        ));
+
+        // Backend-Sync
+        if (group.backendGroupId && file.documentId) {
+            try {
+                await groupsService.addDocument(group.backendGroupId, file.documentId);
+            } catch (error) {
+                console.error('Failed to add document to group:', error);
+            }
+        }
+    }, [transactionGroups, files]);
+
+    /**
+     * Entfernt ein Dokument aus einem Vorgang
+     */
+    const removeFromTransaction = useCallback(async (groupId: string, documentId: string) => {
+        const group = transactionGroups.find(g => g.id === groupId);
+        const file = files.find(f => f.id === documentId);
+        if (!group) return;
+
+        const newDocIds = group.documentIds.filter(id => id !== documentId);
+
+        // Wenn nur noch 1 Dokument uebrig, Gruppe aufloesen
+        if (newDocIds.length < 2) {
+            await dissolveTransaction(groupId);
+            return;
+        }
+
+        // Frontend-State aktualisieren
+        setTransactionGroups(prev => prev.map(g =>
+            g.id === groupId
+                ? { ...g, documentIds: newDocIds }
+                : g
+        ));
+        setFiles(prev => prev.map(f =>
+            f.id === documentId
+                ? { ...f, transactionGroupId: undefined }
+                : f
+        ));
+
+        // Backend-Sync
+        if (group.backendGroupId && file?.documentId) {
+            try {
+                await groupsService.removeDocument(group.backendGroupId, file.documentId);
+            } catch (error) {
+                console.error('Failed to remove document from group:', error);
+            }
+        }
+    }, [transactionGroups, files]);
+
+    /**
+     * Loest einen Vorgang auf (alle Dokumente werden wieder einzeln)
+     */
+    const dissolveTransaction = useCallback(async (groupId: string) => {
+        const group = transactionGroups.find(g => g.id === groupId);
+        if (!group) return;
+
+        // Frontend-State aktualisieren
+        setFiles(prev => prev.map(f =>
+            group.documentIds.includes(f.id)
+                ? { ...f, transactionGroupId: undefined }
+                : f
+        ));
+        setTransactionGroups(prev => prev.filter(g => g.id !== groupId));
+
+        // Backend-Sync
+        if (group.backendGroupId) {
+            try {
+                await groupsService.delete(group.backendGroupId);
+                toast({
+                    title: 'Vorgang aufgeloest',
+                    description: `${group.name} wurde aufgeloest`,
+                    variant: 'default'
+                });
+            } catch (error) {
+                console.error('Failed to delete group:', error);
+            }
+        }
+    }, [transactionGroups]);
+
+    /**
+     * Benennt einen Vorgang um
+     */
+    const renameTransaction = useCallback(async (groupId: string, newName: string) => {
+        const group = transactionGroups.find(g => g.id === groupId);
+        if (!group) return;
+
+        // Frontend-State aktualisieren
+        setTransactionGroups(prev => prev.map(g =>
+            g.id === groupId
+                ? { ...g, name: newName }
+                : g
+        ));
+
+        // Backend-Sync
+        if (group.backendGroupId) {
+            try {
+                await groupsService.update(group.backendGroupId, { name: newName });
+            } catch (error) {
+                console.error('Failed to rename group:', error);
+            }
+        }
+    }, [transactionGroups]);
+
+    /**
+     * Generiert einen Rename-Vorschlag fuer einen Vorgang basierend auf den Dokumentnamen
+     */
+    const generateGroupNameSuggestion = useCallback((groupId: string): string | undefined => {
+        const group = transactionGroups.find(g => g.id === groupId);
+        if (!group) return undefined;
+
+        const groupFiles = files.filter(f => group.documentIds.includes(f.id));
+
+        // Gemeinsamen Lieferantennamen finden
+        const supplierNames = groupFiles
+            .map(f => f.classification?.renameSuggestion?.supplierName)
+            .filter((name): name is string => !!name);
+
+        if (supplierNames.length === 0) return undefined;
+
+        // Pruefen ob alle denselben Lieferanten haben
+        const uniqueSuppliers = [...new Set(supplierNames)];
+        if (uniqueSuppliers.length !== 1) return undefined;
+
+        const supplierName = uniqueSuppliers[0];
+
+        // Jahr-Monat aus dem aktuellen Datum
+        const now = new Date();
+        const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+        return `${supplierName}_${yearMonth}`;
+    }, [transactionGroups, files]);
+
+    /**
+     * Bestaetigt den Rename-Vorschlag fuer einen Vorgang
+     */
+    const [groupRenameLoadingId, setGroupRenameLoadingId] = useState<string | null>(null);
+
+    const handleConfirmGroupRename = useCallback(async (groupId: string) => {
+        const group = transactionGroups.find(g => g.id === groupId);
+        if (!group || !group.suggestedGroupName) return;
+
+        setGroupRenameLoadingId(groupId);
+
+        try {
+            // Name uebernehmen
+            await renameTransaction(groupId, group.suggestedGroupName);
+
+            // Als applied markieren
+            setTransactionGroups(prev => prev.map(g =>
+                g.id === groupId
+                    ? { ...g, suggestedGroupNameApplied: true }
+                    : g
+            ));
+
+            toast({
+                title: 'Vorgang umbenannt',
+                description: `Neuer Name: ${group.suggestedGroupName}`,
+                variant: 'success'
+            });
+        } catch (error) {
+            console.error('Group rename failed:', error);
+            toast({
+                title: 'Fehler',
+                description: 'Vorgang konnte nicht umbenannt werden',
+                variant: 'destructive'
+            });
+        } finally {
+            setGroupRenameLoadingId(null);
+        }
+    }, [transactionGroups, renameTransaction]);
+
+    // Effect: Aktualisiere suggestedGroupName wenn Dateien sich aendern
+    useEffect(() => {
+        setTransactionGroups(prev => prev.map(group => {
+            // Nicht aktualisieren wenn bereits applied
+            if (group.suggestedGroupNameApplied) return group;
+
+            const suggestion = generateGroupNameSuggestion(group.id);
+            if (suggestion && suggestion !== group.suggestedGroupName) {
+                return { ...group, suggestedGroupName: suggestion };
+            }
+            return group;
+        }));
+    }, [files, generateGroupNameSuggestion]);
+
+    // ========== SELECTION LOGIC ==========
+
+    /**
+     * Handler fuer Datei-Auswahl (Shift-Klick fuer Bereich)
+     */
+    const handleFileSelect = useCallback((fileId: string, isShiftKey: boolean) => {
+        const file = files.find(f => f.id === fileId);
+        // Nur fertige Dateien ohne Gruppe koennen ausgewaehlt werden
+        if (!file || file.transactionGroupId) return;
+        if (file.status !== 'completed' && file.status !== 'awaiting_confirmation') return;
+
+        setSelectedFileIds(prev => {
+            const newSet = new Set(prev);
+
+            if (isShiftKey && prev.size > 0) {
+                // Shift-Klick: Bereich auswaehlen
+                const ungroupedFiles = files.filter(f =>
+                    !f.transactionGroupId &&
+                    (f.status === 'completed' || f.status === 'awaiting_confirmation')
+                );
+                const fileIds = ungroupedFiles.map(f => f.id);
+                const lastSelected = Array.from(prev).pop()!;
+                const lastIndex = fileIds.indexOf(lastSelected);
+                const currentIndex = fileIds.indexOf(fileId);
+
+                if (lastIndex !== -1 && currentIndex !== -1) {
+                    const [start, end] = [Math.min(lastIndex, currentIndex), Math.max(lastIndex, currentIndex)];
+                    for (let i = start; i <= end; i++) {
+                        newSet.add(fileIds[i]);
+                    }
+                }
+            } else {
+                // Einfacher Klick: Toggle
+                if (newSet.has(fileId)) {
+                    newSet.delete(fileId);
+                } else {
+                    newSet.add(fileId);
+                }
+            }
+
+            return newSet;
+        });
+    }, [files]);
+
+    /**
+     * Handler fuer "Als Vorgang zusammenfassen" aus Kontextmenue
+     */
+    const handleCreateTransactionFromSelection = useCallback(() => {
+        if (selectedFileIds.size < 2) {
+            toast({
+                title: 'Hinweis',
+                description: 'Mindestens 2 Dokumente auswaehlen',
+                variant: 'default'
+            });
+            return;
+        }
+        createTransaction(Array.from(selectedFileIds));
+    }, [selectedFileIds, createTransaction]);
+
+    // ========== DRAG & DROP HANDLERS ==========
+
+    const handleDragStart = (event: DragStartEvent) => {
+        setDragActiveId(event.active.id as string);
+    };
+
+    const handleDragOver = (event: DragOverEvent) => {
+        const overId = event.over?.id;
+        if (typeof overId === 'string') {
+            setDragOverId(overId);
+        } else {
+            setDragOverId(null);
+        }
+    };
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        setDragActiveId(null);
+        setDragOverId(null);
+
+        if (!over || active.id === over.id) return;
+
+        const draggedFileId = active.id as string;
+        const targetId = over.id as string;
+
+        // Pruefen ob auf TransactionGroup gedroppt
+        if (targetId.startsWith('group-')) {
+            const groupId = targetId.replace('group-', '');
+            await addToTransaction(groupId, draggedFileId);
+            return;
+        }
+
+        // Auf eine andere Datei gedroppt -> neuen Vorgang erstellen
+        const draggedFile = files.find(f => f.id === draggedFileId);
+        const targetFile = files.find(f => f.id === targetId);
+
+        if (!draggedFile || !targetFile) return;
+
+        // Beide duerfen nicht bereits in einer Gruppe sein
+        if (draggedFile.transactionGroupId || targetFile.transactionGroupId) {
+            toast({
+                title: 'Hinweis',
+                description: 'Eines der Dokumente ist bereits in einem Vorgang',
+                variant: 'default'
+            });
+            return;
+        }
+
+        // Nur fertige Dateien
+        const validStatuses = ['completed', 'awaiting_confirmation'];
+        if (!validStatuses.includes(draggedFile.status) || !validStatuses.includes(targetFile.status)) {
+            return;
+        }
+
+        // Neuen Vorgang erstellen
+        await createTransaction([draggedFileId, targetId]);
+    };
+
+    // Dragoverlay-Content
+    const draggedFile = dragActiveId ? files.find(f => f.id === dragActiveId) : null;
+
+    // ========== POLLING ==========
+
     const filesRef = useRef(files);
     useEffect(() => {
         filesRef.current = files;
     }, [files]);
 
-    // Poll for Quick Classification AND OCR status
-    // Quick Classification ist in 2-5 Sekunden fertig, OCR dauert 30-120 Sekunden
-    // Verwendet filesRef um unnötige Interval-Neuerstellungen zu vermeiden
     useEffect(() => {
         const pollStatus = async () => {
             const currentFiles = filesRef.current;
-            // Auch awaiting_confirmation Dateien mit 'unknown' Classification weiter pollen
-            // (Quick Classification kann nach OCR-Completion fertig werden)
             const processingFiles = currentFiles.filter(f =>
                 (f.status === 'processing' && f.documentId) ||
                 (f.status === 'awaiting_confirmation' && f.documentId &&
@@ -236,10 +729,8 @@ export function UploadWizard() {
 
             for (const file of processingFiles) {
                 try {
-                    // Poll document status (includes quick_classification_status)
                     const doc = await documentsService.getById(file.documentId!);
 
-                    // Also poll task progress if we have a taskId
                     let taskProgress: number | undefined;
                     let taskMessage: string | undefined;
                     if (file.taskId) {
@@ -248,14 +739,10 @@ export function UploadWizard() {
                             taskProgress = taskStatus.progress;
                             taskMessage = taskStatus.message;
                         } catch {
-                            // Task might not exist yet or has completed
+                            // Task might not exist yet
                         }
                     }
 
-                    // 1. Check Quick Classification (erscheint innerhalb 2-5 Sekunden)
-                    // Zeige Badge sobald Quick Classification fertig ist, auch wenn OCR noch laeuft
-                    // WICHTIG: Quick Classification ueberschreibt auch 'unknown' Classifications
-                    // FIX: Auch uebernehmen wenn renameSuggestion fehlt aber in QC vorhanden
                     const shouldUseQuickClassification =
                         doc.quickClassificationStatus === 'completed' &&
                         doc.quickClassificationResult &&
@@ -266,7 +753,6 @@ export function UploadWizard() {
 
                     if (shouldUseQuickClassification) {
                         const qcResult = doc.quickClassificationResult!;
-                        // documentsService.getById() transformiert bereits tag_assigned -> tagAssigned
                         const tagWasAssigned = qcResult.tagAssigned === true;
 
                         setFiles(prev => prev.map(f =>
@@ -277,18 +763,14 @@ export function UploadWizard() {
                                         invoiceDirection: qcResult.direction || 'unknown',
                                         confidence: qcResult.confidence || 0,
                                         reason: qcResult.reason,
-                                        // Business Entity Matching
                                         matchedEntityId: qcResult.matchedEntityId,
                                         matchedEntityName: qcResult.matchedEntityName,
                                         matchedEntityType: qcResult.matchedEntityType,
                                         entityMatchMethod: qcResult.entityMatchMethod,
                                         entityConfidence: qcResult.entityConfidence,
                                         entityAutoLinked: qcResult.entityAutoLinked,
-                                        // Rename Suggestion (nur fuer Eingangsrechnungen)
                                         renameSuggestion: qcResult.renameSuggestion,
                                     },
-                                    // Wenn Tag automatisch zugewiesen wurde, als completed markieren
-                                    // Sonst bleibt processing bis OCR fertig
                                     status: tagWasAssigned ? 'completed' as const : f.status,
                                     confirmedDirection: tagWasAssigned ? qcResult.direction as 'incoming' | 'outgoing' : undefined,
                                 }
@@ -296,9 +778,7 @@ export function UploadWizard() {
                         ));
                     }
 
-                    // 2. Check OCR Status
                     if (doc.ocrStatus === 'completed') {
-                        // OCR fertig - Falls noch keine Classification, aus extracted_data holen
                         const currentFile = filesRef.current.find(f => f.id === file.id);
                         if (!currentFile?.classification) {
                             const extractedData = await documentsService.getExtractedData(file.documentId!);
@@ -320,7 +800,6 @@ export function UploadWizard() {
                                     : f
                             ));
                         } else if (currentFile.status === 'processing') {
-                            // Classification schon da (von Quick Classification), nur Status updaten
                             setFiles(prev => prev.map(f =>
                                 f.id === file.id
                                     ? {
@@ -332,8 +811,6 @@ export function UploadWizard() {
                             ));
                         }
 
-                        // FIX: Nachtraeglich renameSuggestion aus Quick Classification holen
-                        // falls OCR vor QC fertig wurde oder QC-Daten beim ersten Polling fehlten
                         const updatedFile = filesRef.current.find(f => f.id === file.id);
                         if (doc.quickClassificationStatus === 'completed' &&
                             doc.quickClassificationResult?.renameSuggestion &&
@@ -358,7 +835,6 @@ export function UploadWizard() {
                                 : f
                         ));
                     } else if (taskProgress !== undefined) {
-                        // Update progress while still processing
                         setFiles(prev => prev.map(f =>
                             f.id === file.id
                                 ? { ...f, ocrProgress: taskProgress, ocrMessage: taskMessage }
@@ -371,39 +847,130 @@ export function UploadWizard() {
             }
         };
 
-        // Starte polling nur einmal beim Mount, nicht bei jeder files-Änderung
-        const interval = setInterval(pollStatus, 1000); // Poll every 1 second
+        const interval = setInterval(pollStatus, 1000);
         return () => clearInterval(interval);
-    }, []); // Leere Dependencies - Interval wird nur einmal erstellt
+    }, []);
+
+    // ========== RENDER ==========
+
+    // Dateien die NICHT in einer Gruppe sind
+    const ungroupedFiles = files.filter(f => !f.transactionGroupId);
 
     return (
-        <div className="max-w-4xl mx-auto py-8 px-4">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold tracking-tight">Dokumente hochladen</h1>
-                <p className="text-muted-foreground mt-2">
-                    Laden Sie Ihre Dokumente hoch. Die OCR-Verarbeitung startet automatisch.
-                </p>
-            </div>
-
-            <div className="space-y-8">
-                {/* Upload Dropzone - always visible */}
-                <div className="bg-background rounded-2xl border shadow-sm p-6">
-                    <UploadDropzone onFilesAdd={handleFilesAdd} />
+        <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+        >
+            <div className="max-w-4xl mx-auto py-8 px-4">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold tracking-tight">Dokumente hochladen</h1>
+                    <p className="text-muted-foreground mt-2">
+                        Laden Sie Ihre Dokumente hoch. Die OCR-Verarbeitung startet automatisch.
+                    </p>
                 </div>
 
-                {/* File List */}
-                {files.length > 0 && (
+                <div className="space-y-8">
+                    {/* Upload Dropzone */}
                     <div className="bg-background rounded-2xl border shadow-sm p-6">
-                        <UploadFileList
-                            files={files}
-                            onRemove={handleRemove}
-                            onChangeDirection={handleChangeDirection}
-                            onConfirmRename={handleConfirmRename}
-                            renameLoadingIds={renameLoadingIds}
-                        />
+                        <UploadDropzone onFilesAdd={handleFilesAdd} />
+                    </div>
+
+                    {/* Transaction Groups (Vorgaenge) */}
+                    {transactionGroups.length > 0 && (
+                        <div className="bg-background rounded-2xl border shadow-sm p-6 space-y-4">
+                            <h3 className="text-lg font-semibold flex items-center gap-2">
+                                <Layers className="w-5 h-5" />
+                                Vorgaenge
+                            </h3>
+                            <AnimatePresence>
+                                {transactionGroups.map((group) => (
+                                    <TransactionGroupCard
+                                        key={group.id}
+                                        group={group}
+                                        files={files}
+                                        onRemoveDocument={(docId) => removeFromTransaction(group.id, docId)}
+                                        onDissolve={() => dissolveTransaction(group.id)}
+                                        onRename={(newName) => renameTransaction(group.id, newName)}
+                                        isDropTarget={dragOverId === `group-${group.id}`}
+                                        onChangeDocumentDirection={handleChangeDirection}
+                                        onConfirmDocumentRename={handleConfirmRename}
+                                        renameLoadingIds={renameLoadingIds}
+                                        onConfirmGroupRename={() => handleConfirmGroupRename(group.id)}
+                                        isGroupRenameLoading={groupRenameLoadingId === group.id}
+                                        onRemoveFile={handleRemove}
+                                    />
+                                ))}
+                            </AnimatePresence>
+                        </div>
+                    )}
+
+                    {/* File List (nur ungruppierte) */}
+                    {ungroupedFiles.length > 0 && (
+                        <ContextMenu>
+                            <ContextMenuTrigger asChild>
+                                <div className="bg-background rounded-2xl border shadow-sm p-6">
+                                    <UploadFileList
+                                        files={ungroupedFiles}
+                                        onRemove={handleRemove}
+                                        onChangeDirection={handleChangeDirection}
+                                        onConfirmRename={handleConfirmRename}
+                                        renameLoadingIds={renameLoadingIds}
+                                        selectedFileIds={selectedFileIds}
+                                        onFileSelect={handleFileSelect}
+                                        dragOverId={dragOverId}
+                                        dragActiveId={dragActiveId}
+                                    />
+                                </div>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent>
+                                <ContextMenuItem
+                                    disabled={selectedFileIds.size < 2}
+                                    onClick={handleCreateTransactionFromSelection}
+                                    className="gap-2"
+                                >
+                                    <Layers className="w-4 h-4" />
+                                    Als Vorgang zusammenfassen
+                                    {selectedFileIds.size > 0 && (
+                                        <Badge variant="secondary" className="ml-auto">
+                                            {selectedFileIds.size}
+                                        </Badge>
+                                    )}
+                                </ContextMenuItem>
+                                <ContextMenuSeparator />
+                                <ContextMenuItem
+                                    disabled={selectedFileIds.size === 0}
+                                    onClick={() => setSelectedFileIds(new Set())}
+                                >
+                                    Auswahl aufheben
+                                </ContextMenuItem>
+                            </ContextMenuContent>
+                        </ContextMenu>
+                    )}
+
+                    {/* Hint fuer Mehrfachauswahl */}
+                    {ungroupedFiles.length >= 2 && transactionGroups.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center">
+                            Tipp: Ziehen Sie Dokumente aufeinander oder waehlen Sie mehrere mit Shift+Klick aus und nutzen Sie das Kontextmenue (Rechtsklick), um einen Vorgang zu erstellen.
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            {/* Drag Overlay */}
+            <DragOverlay>
+                {draggedFile && (
+                    <div className="flex items-center gap-3 p-3 bg-card border rounded-lg shadow-xl">
+                        <FileText className="w-5 h-5 text-primary" />
+                        <span className="font-medium truncate max-w-[200px]">
+                            {draggedFile.renamedFilename || draggedFile.file.name}
+                        </span>
+                        <Badge variant="secondary">Zum Vorgang</Badge>
                     </div>
                 )}
-            </div>
-        </div>
+            </DragOverlay>
+        </DndContext>
     );
 }
