@@ -682,7 +682,7 @@ class BackendManager:
         if not gpu_status.get("available", False):
             return False
 
-        free_gb = gpu_status.get("free_memory_gb", 0)
+        free_gb = gpu_status.get("free_gb", 0)
         has_vram = free_gb >= required_gb
 
         if not has_vram:
@@ -906,8 +906,9 @@ class BackendManager:
                     return result
 
                 # Check VRAM availability (leave 15% headroom)
-                total_gb = gpu_info.get("total_memory_gb", 0)
-                allocated_gb = gpu_info.get("allocated_memory_gb", 0)
+                # Handle different key names from various backends
+                total_gb = gpu_info.get("total_memory_gb") or gpu_info.get("total_vram_gb") or gpu_info.get("total_gb", 0)
+                allocated_gb = gpu_info.get("allocated_memory_gb") or gpu_info.get("allocated_vram_gb") or gpu_info.get("allocated_gb", 0)
                 required_gb = status.get("vram_gb", 0)
                 available_gb = total_gb - allocated_gb
 
