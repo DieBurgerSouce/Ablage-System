@@ -177,6 +177,42 @@ class QuickClassificationService:
     MAX_TEXT_LENGTH = 50000
 
     # ==========================================================================
+    # Text-Preprocessing fuer Pattern-Extraktion
+    # ==========================================================================
+
+    def _preprocess_text_for_extraction(self, text: str) -> str:
+        """
+        Bereinigt OCR-Text vor der Pattern-Extraktion.
+
+        Entfernt:
+        - HTML-Tags (<b>, <p>, <div>, etc.)
+        - Markdown-Formatierung (**bold**, _italic_)
+        - Mehrfache Leerzeilen
+
+        Args:
+            text: Roher OCR-Text
+
+        Returns:
+            Bereinigter Text
+        """
+        if not text:
+            return ""
+
+        # 1. HTML-Tags entfernen
+        result = re.sub(r'<[^>]+>', '', text)
+
+        # 2. Markdown Bold/Italic entfernen
+        result = re.sub(r'\*\*([^*]+)\*\*', r'\1', result)  # **bold** -> bold
+        result = re.sub(r'\*([^*]+)\*', r'\1', result)       # *italic* -> italic
+        result = re.sub(r'__([^_]+)__', r'\1', result)       # __bold__ -> bold
+        result = re.sub(r'_([^_]+)_', r'\1', result)         # _italic_ -> italic
+
+        # 3. Mehrfache Leerzeilen auf maximal 2 reduzieren
+        result = re.sub(r'\n{3,}', '\n\n', result)
+
+        return result.strip()
+
+    # ==========================================================================
     # Rechnungsnummer-Extraktion (fuer Rename-Vorschlaege)
     # ==========================================================================
 
@@ -196,6 +232,13 @@ class QuickClassificationService:
         r'\b(RE-\d{4}-\d{3,6})\b',
         # Standard numerisch mit Prefix: "R-12345", "INV-12345"
         r'\b([RI](?:NV)?-\d{4,10})\b',
+        # === NEUE PATTERNS (Bug-Fixes 2025-12-15) ===
+        # Asal-Format: RG + 8 Ziffern (z.B. RG20012108)
+        r'\b(RG\d{8})\b',
+        # Amefa-Format: CD + 10 Ziffern (z.B. CD4921000467)
+        r'\b(CD\d{10})\b',
+        # Standalone 6-stellige Nummer gefolgt von Datum (a.b.s. Format)
+        r'\b(\d{6})\s*\n\s*\d{2}\.\d{2}\.\d{2,4}',
     ]
 
     # Kontext-Keywords fuer Empfaenger-Erkennung (unsere Firma dort = Eingangsrechnung)
@@ -343,12 +386,68 @@ class QuickClassificationService:
         r'(?:auftrags?-?\s*(?:nr\.?|nummer))[\s:]*([A-Za-z0-9\-_/]{3,30})',
     ]
 
+    def _extract_invoice_number_from_table_layout(self, text: str) -> Optional[str]:
+        """
+        Fallback-Extraktion fuer Tabellen-Layouts.
+
+        Erkennt Layouts wie:
+            Rechnungs-Nr.    Kunden-Nr.    Datum
+            246543           310835        25.05.22
+
+        Strategie:
+        1. Finde "Rechnungs-Nr" oder aehnliches Label
+        2. Pruefe ob mehrere Labels in der Zeile (Tabellen-Header)
+        3. Extrahiere ersten numerischen Wert aus der naechsten Zeile
+
+        Args:
+            text: OCR-Text (bereits preprocessed)
+
+        Returns:
+            Rechnungsnummer oder None
+        """
+        lines = text.split('\n')
+
+        # Suche nach Label-Zeile mit "Rechnungs"
+        label_patterns = [
+            r'rechnungs?-?\s*nr\.?',
+            r'rechnungsnummer',
+            r'invoice\s*no\.?',
+        ]
+
+        for i, line in enumerate(lines):
+            line_lower = line.lower()
+
+            for pattern in label_patterns:
+                if re.search(pattern, line_lower):
+                    # Pruefe ob mehrere Labels in dieser Zeile
+                    # (Indikator fuer Tabellen-Header)
+                    label_count = sum(1 for kw in ['nr', 'datum', 'kunde', 'betrag']
+                                     if kw in line_lower)
+
+                    if label_count >= 2:
+                        # Tabellen-Layout erkannt!
+                        # Suche naechste Zeile mit Zahlen
+                        for j in range(i + 1, min(i + 5, len(lines))):
+                            value_line = lines[j].strip()
+                            # Erste Zahl in der Zeile ist wahrscheinlich Rechnungsnr
+                            match = re.search(r'\b(\d{5,10})\b', value_line)
+                            if match:
+                                logger.debug(
+                                    "invoice_number_from_table_layout",
+                                    number=match.group(1),
+                                    line_index=j
+                                )
+                                return match.group(1)
+
+        return None
+
     def _extract_invoice_number(self, text: str) -> Optional[str]:
         """
         Extrahiert die Rechnungsnummer aus dem OCR-Text.
 
         Verwendet mehrere Patterns fuer deutsche und englische Rechnungen.
         Schliesst explizit Bestellnummern aus, um false positives zu vermeiden.
+        Faellt zurueck auf Tabellen-Layout-Erkennung wenn noetig.
 
         Args:
             text: OCR-Text
@@ -356,6 +455,9 @@ class QuickClassificationService:
         Returns:
             Rechnungsnummer oder None
         """
+        # Preprocessing: HTML-Tags und Markdown entfernen
+        text = self._preprocess_text_for_extraction(text)
+
         # Erst Bestellnummern finden und ausschliessen
         excluded_numbers: set[str] = set()
         for pattern in self.ORDER_NUMBER_PATTERNS:
@@ -368,6 +470,12 @@ class QuickClassificationService:
                     number=excluded,
                     pattern=pattern[:30]
                 )
+
+        # Label-Keywords die nicht als Rechnungsnummer gelten
+        # (Bug-Fix 2025-12-15: Tabellen-Layouts matchen sonst das naechste Label)
+        label_keywords = {'datum', 'nr', 'nummer', 'kunde', 'kunden', 'betrag',
+                         'mwst', 'steuer', 'summe', 'netto', 'brutto', 'artikel',
+                         'position', 'menge', 'preis', 'date', 'amount', 'customer'}
 
         # Dann Rechnungsnummer suchen, aber ausgeschlossene ueberspringen
         for pattern in self.INVOICE_NUMBER_PATTERNS:
@@ -384,12 +492,29 @@ class QuickClassificationService:
                             number=number
                         )
                         continue
+
+                    # Pruefen ob es ein Label statt ein Wert ist (Tabellen-Layout Bug)
+                    number_lower = number.lower().replace('-', '').replace('.', '')
+                    is_label = any(kw in number_lower for kw in label_keywords)
+                    if is_label:
+                        logger.debug(
+                            "invoice_number_skipped_is_label",
+                            number=number
+                        )
+                        continue
+
                     logger.debug(
                         "invoice_number_extracted",
                         number=number,
                         pattern=pattern[:50]
                     )
                     return number
+
+        # Fallback: Tabellen-Layout Erkennung
+        table_result = self._extract_invoice_number_from_table_layout(text)
+        if table_result:
+            return table_result
+
         return None
 
     def _normalize_for_filename(self, name: str) -> str:
@@ -418,14 +543,34 @@ class QuickClassificationService:
         if " - " in result:
             result = result.split(" - ")[0]
 
-        # Sonderzeichen entfernen (behalte nur alphanumerisch und Bindestrich)
+        # Sonderzeichen entfernen (behalte nur alphanumerisch, Leerzeichen und Bindestrich)
         result = re.sub(r'[^\w\s-]', '', result)
 
-        # Leerzeichen normalisieren und trimmen
-        result = re.sub(r'\s+', '', result).strip()
+        # Leerzeichen auf eines reduzieren (NICHT entfernen!)
+        # Fix 2025-12-15: Vorher wurden alle Leerzeichen entfernt
+        result = re.sub(r'\s+', ' ', result).strip()
 
         # Maximale Laenge begrenzen
         return result[:50] if len(result) > 50 else result
+
+    def _sanitize_for_filename(self, name: str) -> str:
+        """
+        Konvertiert Namen fuer Dateinamen-Verwendung.
+
+        Ersetzt Leerzeichen durch Unterstriche fuer Dateisystem-Kompatibilitaet.
+
+        Unterschied zu _normalize_for_filename:
+        - normalize: Behaelt Leerzeichen fuer Anzeige ("Amefa Stahlwaren")
+        - sanitize: Ersetzt fuer Dateisystem ("Amefa_Stahlwaren")
+
+        Args:
+            name: Firmenname
+
+        Returns:
+            Dateiname-kompatibler Name mit Unterstrichen
+        """
+        normalized = self._normalize_for_filename(name)
+        return normalized.replace(' ', '_')
 
     def _extract_supplier_from_header(self, text: str) -> Optional[str]:
         """
@@ -440,8 +585,12 @@ class QuickClassificationService:
         Returns:
             Extrahierter Lieferantenname oder None
         """
-        # Nur obere 30% des Texts durchsuchen (Header-Bereich)
-        header_text = text[:int(len(text) * 0.3)]
+        # Obere 40% des Texts durchsuchen (Header-Bereich)
+        # Erweitert von 30% auf 40% um auch laengere Briefkoepfe zu erfassen
+        header_text = text[:int(len(text) * 0.4)]
+
+        # Preprocessing anwenden (HTML-Tags, Markdown entfernen)
+        header_text = self._preprocess_text_for_extraction(header_text)
 
         for pattern in self.COMPANY_PATTERNS:
             match = re.search(pattern, header_text, re.IGNORECASE | re.MULTILINE)
