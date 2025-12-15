@@ -757,6 +757,12 @@ class GPUTask(Task):
     def before_start(self, task_id: str, args: tuple, kwargs: dict) -> None:
         """Acquire GPU resources before task execution using distributed lock."""
         logger.info("gpu_task_starting", task_id=task_id, task_name=self.name)
+
+        # Skip GPU lock if no GPU available (CPU-only worker)
+        if not torch.cuda.is_available():
+            logger.info("gpu_lock_skipped_no_gpu", task_id=task_id, task_name=self.name)
+            self._current_lock_value = None
+            return
         # Acquire distributed GPU lock (works across all workers)
         try:
             self._current_lock_value = acquire_gpu_lock()
