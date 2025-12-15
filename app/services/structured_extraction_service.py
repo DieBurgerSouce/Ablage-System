@@ -255,6 +255,49 @@ class AmountPatterns:
 class ReferencePatterns:
     """Patterns fuer Dokumentreferenzen."""
 
+    # ==========================================================================
+    # VENDOR-SPECIFIC INVOICE NUMBER FORMATS (Added 2025-12-15)
+    # Diese Patterns haben hoechste Prioritaet, da sie sehr spezifisch sind
+    # ==========================================================================
+
+    # Asal-Format: RG + 8 Ziffern (z.B. RG20012108)
+    INVOICE_NUMBER_RG = re.compile(r'\b(RG\d{8})\b', re.IGNORECASE)
+
+    # Amefa-Format: CD + 10 Ziffern (z.B. CD4921000467)
+    INVOICE_NUMBER_CD = re.compile(r'\b(CD\d{10})\b', re.IGNORECASE)
+
+    # AUER Packaging: VK + 7 Ziffern (z.B. VK 1036735 oder VK1036735)
+    INVOICE_NUMBER_VK = re.compile(r'\bVK\s*(\d{7})\b', re.IGNORECASE)
+
+    # AUER Delivery: D + 5-6 Ziffern (z.B. D119925)
+    INVOICE_NUMBER_D = re.compile(r'\b(D\d{5,6})\b', re.IGNORECASE)
+
+    # Standalone 6-stellige Nummer gefolgt von Datum (a.b.s. Rechenzentrum Format)
+    INVOICE_NUMBER_ABS = re.compile(r'\b(\d{6})\s*\n\s*\d{2}\.\d{2}\.\d{2,4}')
+
+    # a.b.s. Rechenzentrum VERTIKALES Layout:
+    # Labels kommen zuerst vertikal, dann Werte vertikal
+    # Format:
+    #   Rechnungs-Nr.
+    #   Kunden-Nr.
+    #   Rechnungsdatum
+    #   Rechnung        <- optional header
+    #   246543          <- Invoice number (erste 5-6 stellige Zahl nach den Labels)
+    #   25.05.22        <- Date
+    #   310835          <- Customer number
+    INVOICE_NUMBER_VERTICAL_LAYOUT = re.compile(
+        r'Rechnungs-Nr\.?\s*\n'
+        r'Kunden-Nr\.?\s*\n'
+        r'Rechnungsdatum\s*\n'
+        r'(?:Rechnung\s*\n)?'  # Optional "Rechnung" header
+        r'(\d{5,8})',  # Invoice number (5-8 digits)
+        re.IGNORECASE
+    )
+
+    # ==========================================================================
+    # STANDARD PATTERNS
+    # ==========================================================================
+
     # Rechnungsnummer (Standard: Label vor Wert)
     INVOICE_NUMBER = re.compile(
         r'(?:rechnung(?:s)?|re|rg|invoice|beleg|faktura)[\s\-\.:]?'
@@ -269,6 +312,18 @@ class ReferencePatterns:
         r'(F-\d{5,8})\s*\n\s*(?:Invoice\s*(?:No\.?|Number)|Rechnungs?-?(?:Nr\.?|nummer)|Factuurnr)',
         re.IGNORECASE
     )
+
+    # ==========================================================================
+    # LABEL-SKIP KEYWORDS (zur Vermeidung von false positives)
+    # ==========================================================================
+
+    LABEL_KEYWORDS = frozenset([
+        'datum', 'nr', 'nummer', 'kunde', 'kunden', 'betrag',
+        'mwst', 'steuer', 'summe', 'netto', 'brutto', 'artikel',
+        'position', 'menge', 'preis', 'date', 'amount', 'customer',
+        'rechnungsdatum', 'lieferdatum', 'bestelldatum', 'rechnungsnummer',
+        'invoice', 'number', 'order', 'delivery', 'total',
+    ])
 
     # Bestellnummer (Standard: Label vor Wert)
     ORDER_NUMBER = re.compile(
@@ -679,15 +734,9 @@ class StructuredExtractionService:
             invoice.page_count = page_count
 
         # Referenznummern
-        # WICHTIG: Zuerst REVERSE-Patterns versuchen (F-xxx vor "Invoice No.")
-        # da diese spezifischer sind als Standard-Patterns
-        invoice.invoice_number = (
-            self._extract_first_match(ReferencePatterns.INVOICE_NUMBER_REVERSE, text) or
-            self._extract_first_match(ReferencePatterns.INVOICE_NUMBER, text) or
-            self._extract_fragmented_reference(text, [
-                'invoice no', 'rechnungsnr', 'rechnungs-nr', 'factuurnr'
-            ])
-        )
+        # FIX 2025-12-15: Erweiterte Extraktion mit vendor-spezifischen Patterns
+        # und Label-Skip-Logik um false positives zu vermeiden
+        invoice.invoice_number = self._extract_invoice_number_with_validation(text)
 
         # WICHTIG: Zuerst REVERSE-Patterns versuchen (V-xxx vor "Order No.")
         invoice.order_number = (
@@ -2319,6 +2368,107 @@ class StructuredExtractionService:
     # =========================================================================
     # HELPER METHODS
     # =========================================================================
+
+    def _is_likely_label(self, value: str) -> bool:
+        """Prueft ob ein Wert wahrscheinlich ein Label ist.
+
+        FIX 2025-12-15: Verhindert dass Labels wie "Kunden-Nr." oder
+        "Rechnungsdatum" als Rechnungsnummern extrahiert werden.
+        """
+        if not value:
+            return True
+        value_clean = value.lower().replace('-', '').replace('.', '').replace(' ', '')
+        return any(kw in value_clean for kw in ReferencePatterns.LABEL_KEYWORDS)
+
+    def _extract_invoice_number_with_validation(self, text: str) -> Optional[str]:
+        """Extrahiert Rechnungsnummer mit vendor-spezifischen Patterns und Label-Skip.
+
+        FIX 2025-12-15: Erweiterte Extraktion fuer:
+        - Asal: RG20012108
+        - Amefa: CD4921000467
+        - AUER: VK 1036735, D119925
+        - a.b.s.: 6-stellige Nummer vor Datum
+        - Standard: Rechnungsnr., Invoice No., etc.
+
+        Die Label-Skip-Logik verhindert dass Labels wie "Kunden-Nr." oder
+        "Rechnungsdatum" faelschlicherweise als Rechnungsnummern extrahiert werden.
+        """
+        # 1. Vendor-spezifische Patterns ZUERST (hoechste Prioritaet)
+        # Diese sind sehr spezifisch und daher zuverlaessig
+
+        # Asal: RG + 8 digits
+        match = ReferencePatterns.INVOICE_NUMBER_RG.search(text)
+        if match:
+            number = match.group(1).strip()
+            if not self._is_likely_label(number):
+                return number
+
+        # Amefa: CD + 10 digits
+        match = ReferencePatterns.INVOICE_NUMBER_CD.search(text)
+        if match:
+            number = match.group(1).strip()
+            if not self._is_likely_label(number):
+                return number
+
+        # AUER: VK + 7 digits
+        match = ReferencePatterns.INVOICE_NUMBER_VK.search(text)
+        if match:
+            number = f"VK{match.group(1).strip()}"
+            if not self._is_likely_label(number):
+                return number
+
+        # AUER Delivery: D + 5-6 digits
+        match = ReferencePatterns.INVOICE_NUMBER_D.search(text)
+        if match:
+            number = match.group(1).strip()
+            if not self._is_likely_label(number):
+                return number
+
+        # a.b.s. Rechenzentrum: 6-digit followed by date
+        match = ReferencePatterns.INVOICE_NUMBER_ABS.search(text)
+        if match:
+            number = match.group(1).strip()
+            if not self._is_likely_label(number):
+                return number
+
+        # a.b.s. Rechenzentrum VERTIKALES Layout:
+        # Labels vertikal, dann Werte vertikal
+        # FIX 2025-12-15: Behebt das Problem wo "Kunden-Nr." als Rechnungsnummer
+        # extrahiert wurde weil das Standard-Pattern den naechsten Text nach
+        # "Rechnungs-Nr." nahm (was bei vertikalem Layout das naechste Label war)
+        match = ReferencePatterns.INVOICE_NUMBER_VERTICAL_LAYOUT.search(text)
+        if match:
+            number = match.group(1).strip()
+            if not self._is_likely_label(number):
+                logger.debug(
+                    "vertical_layout_invoice_number_extracted",
+                    invoice_number=number,
+                    pattern="INVOICE_NUMBER_VERTICAL_LAYOUT"
+                )
+                return number
+
+        # 2. Standard REVERSE format (value before label - common in tables)
+        match = ReferencePatterns.INVOICE_NUMBER_REVERSE.search(text)
+        if match:
+            number = match.group(1).strip()
+            if not self._is_likely_label(number):
+                return number
+
+        # 3. Standard format (label before value)
+        match = ReferencePatterns.INVOICE_NUMBER.search(text)
+        if match:
+            number = match.group(1).strip()
+            if not self._is_likely_label(number):
+                return number
+
+        # 4. Fallback: Fragmentierte Referenz
+        fragmented = self._extract_fragmented_reference(text, [
+            'invoice no', 'rechnungsnr', 'rechnungs-nr', 'factuurnr'
+        ])
+        if fragmented and not self._is_likely_label(fragmented):
+            return fragmented
+
+        return None
 
     def _extract_first_match(
         self,

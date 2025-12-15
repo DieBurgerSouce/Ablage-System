@@ -151,7 +151,9 @@ class QuickClassificationService:
         # Zeilen mit Rechtsformen
         # WICHTIG: Kurzformen (AG, KG, SE, BV) brauchen \s+ davor, um false positives zu vermeiden
         # z.B. "Spargelmesse" soll nicht als "Spargelmes SE" erkannt werden
-        r'^(.+?(?:GmbH\s*&\s*Co\.?\s*KG|GmbH|\s+AG|\s+KG|OHG|UG|e\.K\.|\s+SE|Ltd\.?|Inc\.?|B\.?V\.?|N\.?V\.?|S\.?A\.?))(?:\s|$)',
+        # HINWEIS: .+ (GREEDY) statt .+? (non-greedy) um mehrteilige Namen wie
+        # "Amefa Stahlwaren GmbH" vollstaendig zu erfassen (Fix 2025-12-15)
+        r'^(.+(?:GmbH\s*&\s*Co\.?\s*KG|GmbH|\s+AG|\s+KG|OHG|UG|e\.K\.|\s+SE|Ltd\.?|Inc\.?|B\.?V\.?|N\.?V\.?|S\.?A\.?))(?:\s|$)',
     ]
 
     # Rechtsformen fuer Normalisierung
@@ -239,6 +241,13 @@ class QuickClassificationService:
         r'\b(CD\d{10})\b',
         # Standalone 6-stellige Nummer gefolgt von Datum (a.b.s. Format)
         r'\b(\d{6})\s*\n\s*\d{2}\.\d{2}\.\d{2,4}',
+        # === AUER Packaging Patterns (Post-Fix-Analyse 2025-12-15) ===
+        # AUER Pro-Forma: "VK 1036735" oder "VK1036735"
+        r'\bVK\s*(\d{7})\b',
+        # AUER Delivery: "D119925"
+        r'\b(D\d{5,6})\b',
+        # AUER kombiniert: "VK 1036735 / D119925" - erste Nummer nehmen
+        r'VK\s*(\d{7})\s*/\s*D\d{5,6}',
     ]
 
     # Kontext-Keywords fuer Empfaenger-Erkennung (unsere Firma dort = Eingangsrechnung)

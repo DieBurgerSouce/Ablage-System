@@ -360,8 +360,10 @@ class GermanPatterns:
 
     # Firmenname (vor Rechtsform) - inkl. EU-Rechtsformen
     # WICHTIG: Nur Leerzeichen (keine Newlines), Rechtsformen in Reihenfolge (GmbH vor mbH!)
+    # FIX 2025-12-15: Pattern verbessert fuer mehrteilige Namen wie "Amefa Stahlwaren"
+    # Das Pattern matcht alles vor der Rechtsform (greedy), solange es mit Grossbuchstabe beginnt
     COMPANY_NAME = re.compile(
-        r'\b([A-ZÄÖÜ][A-Za-zäöüß&\-](?:[A-Za-zäöüß&\- ]*[A-Za-zäöüß&\-])?)[ \t]+'
+        r'\b([A-ZÄÖÜ][A-Za-zäöüß&\-\.]+(?:\s+[A-Za-zäöüß&\-\.]+)*)[ \t]+'
         r'(GmbH|mbH|AG|KG|OHG|UG|e\.?\s?K\.|SE|eG|KGaA|'
         r'B\.?V\.?|N\.?V\.?|S\.?A\.?|S\.?L\.?|S\.?R\.?L\.?|Ltd\.?|Inc\.?|PLC|LLC)\b',
         re.UNICODE

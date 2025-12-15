@@ -56,16 +56,18 @@ class CompanyMatchingService:
     CONFIDENCE_THRESHOLD = 0.80
 
     # Rechtsformen die beim Namensvergleich entfernt werden
+    # FIX 2025-12-15: \s+ (nicht \s*) vor kurzen Suffixen wie AG, KG, SE, EG
+    # um false positives zu vermeiden (z.B. "Montag" → "Monta" verhindern)
     LEGAL_SUFFIXES = [
         r"\s*gmbh\s*&\s*co\.?\s*kg\s*$",
         r"\s*gmbh\s*$",
-        r"\s*ag\s*$",
-        r"\s*kg\s*$",
-        r"\s*ohg\s*$",
+        r"\s+ag\s*$",    # \s+ um "...dag" nicht zu matchen
+        r"\s+kg\s*$",    # \s+ um "...ekg" nicht zu matchen
+        r"\s+ohg\s*$",   # \s+ fuer Konsistenz
         r"\s*ug\s*(?:\(haftungsbeschraenkt\))?\s*$",
         r"\s*mbh\s*$",
-        r"\s*se\s*$",
-        r"\s*eg\s*$",
+        r"\s+se\s*$",    # \s+ um "Spargelmesse" nicht zu matchen
+        r"\s+eg\s*$",    # \s+ um false positives zu vermeiden
         r"\s*e\.?\s*v\.?\s*$",
         r"\s*gbr\s*$",
         r"\s*b\.?\s*v\.?\s*$",  # Niederlaendisch

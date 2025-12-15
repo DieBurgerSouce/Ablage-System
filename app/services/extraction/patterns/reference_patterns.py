@@ -42,6 +42,56 @@ class ReferencePatterns:
         re.IGNORECASE,
     )
 
+    # ==========================================================================
+    # VENDOR-SPECIFIC INVOICE NUMBER FORMATS (Added 2025-12-15)
+    # ==========================================================================
+
+    # Asal-Format: RG + 8 Ziffern (z.B. RG20012108)
+    INVOICE_NUMBER_RG: RePattern[str] = re.compile(
+        r"\b(?P<number>RG\d{8})\b",
+        re.IGNORECASE,
+    )
+
+    # Amefa-Format: CD + 10 Ziffern (z.B. CD4921000467)
+    INVOICE_NUMBER_CD: RePattern[str] = re.compile(
+        r"\b(?P<number>CD\d{10})\b",
+        re.IGNORECASE,
+    )
+
+    # AUER Packaging: VK + 7 Ziffern (z.B. VK 1036735 oder VK1036735)
+    INVOICE_NUMBER_VK: RePattern[str] = re.compile(
+        r"\bVK\s*(?P<number>\d{7})\b",
+        re.IGNORECASE,
+    )
+
+    # AUER Delivery: D + 5-6 Ziffern (z.B. D119925)
+    INVOICE_NUMBER_D: RePattern[str] = re.compile(
+        r"\b(?P<number>D\d{5,6})\b",
+        re.IGNORECASE,
+    )
+
+    # Standalone 6-stellige Nummer gefolgt von Datum (a.b.s. Rechenzentrum Format)
+    INVOICE_NUMBER_ABS: RePattern[str] = re.compile(
+        r"\b(?P<number>\d{6})\s*\n\s*\d{2}\.\d{2}\.\d{2,4}",
+    )
+
+    # a.b.s. Rechenzentrum VERTIKALES Layout (Added 2025-12-15):
+    # Labels kommen zuerst vertikal, dann Werte vertikal
+    # Format:
+    #   Rechnungs-Nr.
+    #   Kunden-Nr.
+    #   Rechnungsdatum
+    #   Rechnung        <- optional header
+    #   246543          <- Invoice number (erste 5-8 stellige Zahl)
+    INVOICE_NUMBER_VERTICAL: RePattern[str] = re.compile(
+        r"Rechnungs-Nr\.?\s*\n"
+        r"Kunden-Nr\.?\s*\n"
+        r"Rechnungsdatum\s*\n"
+        r"(?:Rechnung\s*\n)?"
+        r"(?P<number>\d{5,8})",
+        re.IGNORECASE,
+    )
+
     # Order number: "Bestellnummer: 123456"
     ORDER_NUMBER: RePattern[str] = re.compile(
         r"(?P<label>bestell?-?(?:nr\.?|nummer)|bestellung\s*nr\.?|"
@@ -243,20 +293,91 @@ def get_reference_patterns() -> List[Pattern[Any]]:
 def extract_invoice_number(text: str) -> Optional[str]:
     """Extract invoice number from text.
 
-    Supports both formats:
+    Supports multiple formats:
     - Standard: "Invoice No.: F-201451"
     - Reverse: "F-201451\\nInvoice No." (value before label)
+    - Vendor-specific: RG, CD, VK, D formats (Asal, Amefa, AUER)
+    - a.b.s. Rechenzentrum: 6-digit number followed by date
     """
     patterns = ReferencePatterns()
 
-    # Try reverse format first (more specific, avoids confusion with order numbers)
+    # Label-Keywords die NICHT als Rechnungsnummer akzeptiert werden
+    LABEL_KEYWORDS = frozenset([
+        'datum', 'nr', 'nummer', 'kunde', 'kunden', 'betrag',
+        'mwst', 'steuer', 'summe', 'netto', 'brutto', 'artikel',
+        'position', 'menge', 'preis', 'date', 'amount', 'customer',
+        'rechnungsdatum', 'lieferdatum', 'bestelldatum', 'rechnungsnummer',
+        'invoice', 'number', 'order', 'delivery', 'total',
+    ])
+
+    def is_likely_label(value: str) -> bool:
+        """Prueft ob ein Wert wahrscheinlich ein Label ist."""
+        if not value:
+            return True
+        value_clean = value.lower().replace('-', '').replace('.', '').replace(' ', '')
+        return any(kw in value_clean for kw in LABEL_KEYWORDS)
+
+    # 1. Try vendor-specific formats FIRST (most specific)
+    # These are very reliable because they have distinctive prefixes
+
+    # Asal: RG + 8 digits
+    match = patterns.INVOICE_NUMBER_RG.search(text)
+    if match:
+        number = match.group("number").strip()
+        if not is_likely_label(number):
+            return number
+
+    # Amefa: CD + 10 digits
+    match = patterns.INVOICE_NUMBER_CD.search(text)
+    if match:
+        number = match.group("number").strip()
+        if not is_likely_label(number):
+            return number
+
+    # AUER: VK + 7 digits
+    match = patterns.INVOICE_NUMBER_VK.search(text)
+    if match:
+        number = f"VK{match.group('number').strip()}"
+        if not is_likely_label(number):
+            return number
+
+    # AUER Delivery: D + 5-6 digits
+    match = patterns.INVOICE_NUMBER_D.search(text)
+    if match:
+        number = match.group("number").strip()
+        if not is_likely_label(number):
+            return number
+
+    # a.b.s. Rechenzentrum: 6-digit followed by date
+    match = patterns.INVOICE_NUMBER_ABS.search(text)
+    if match:
+        number = match.group("number").strip()
+        if not is_likely_label(number):
+            return number
+
+    # a.b.s. Rechenzentrum VERTIKALES Layout (Added 2025-12-15)
+    # Behebt Problem wo "Kunden-Nr." als Rechnungsnummer extrahiert wurde
+    match = patterns.INVOICE_NUMBER_VERTICAL.search(text)
+    if match:
+        number = match.group("number").strip()
+        if not is_likely_label(number):
+            return number
+
+    # 2. Try reverse format (value before label - common in tables)
     match = patterns.INVOICE_NUMBER_REVERSE.search(text)
     if match:
-        return match.group("number").strip()
+        number = match.group("number").strip()
+        if not is_likely_label(number):
+            return number
 
-    # Fall back to standard format
+    # 3. Fall back to standard format (label before value)
     match = patterns.INVOICE_NUMBER.search(text)
-    return match.group("number").strip() if match else None
+    if match:
+        number = match.group("number").strip()
+        if not is_likely_label(number):
+            return number
+
+    return None
 
 
 def extract_order_number(text: str) -> Optional[str]:
