@@ -253,6 +253,7 @@ celery_app = Celery(
         "app.workers.tasks.extraction_tasks",  # Structured Data Extraction
         "app.workers.tasks.rag_tasks",  # RAG Document Processing
         "app.workers.tasks.monitoring_tasks",  # Worker Health Monitoring
+        "app.workers.tasks.surya_improvement_tasks",  # Surya OCR Continuous Improvement
     ]
 )
 
@@ -602,6 +603,52 @@ celery_app.conf.update(
             "task": "app.workers.tasks.embedding_tasks.check_embedding_coverage",
             "schedule": crontab(hour=6, minute=0),  # Taeglich um 06:00 Uhr
         },
+        # =================================================================
+        # Qdrant Sync & A/B Testing Tasks
+        # =================================================================
+        "qdrant-sync-pending-daily": {
+            "task": "app.workers.tasks.embedding_tasks.sync_pending_to_qdrant",
+            "schedule": crontab(hour=3, minute=0),  # Taeglich um 03:00 Uhr
+            "kwargs": {"limit": 500},
+        },
+        "vector-ab-test-analysis-daily": {
+            "task": "app.workers.tasks.embedding_tasks.analyze_ab_test_metrics",
+            "schedule": crontab(hour=7, minute=0),  # Taeglich um 07:00 Uhr
+            "kwargs": {"days": 7},
+        },
+        # =================================================================
+        # Surya OCR Continuous Improvement (Self-Learning Loop)
+        # =================================================================
+        # Taeglich: Pruefe ob Retraining-Bedingungen erfuellt sind
+        "surya-check-retraining-daily": {
+            "task": "app.workers.tasks.surya_improvement_tasks.check_surya_retraining_conditions",
+            "schedule": crontab(hour=2, minute=0),  # Taeglich um 02:00 Uhr
+        },
+        # Woechentlich: Benchmark gegen Ground Truth Fixtures
+        "surya-weekly-benchmark": {
+            "task": "app.workers.tasks.surya_improvement_tasks.run_surya_benchmark",
+            "schedule": crontab(day_of_week=0, hour=3, minute=0),  # Sonntag 03:00 Uhr
+        },
+        # Taeglich: Verarbeite Surya-Korrekturen zu Training Samples
+        "surya-process-corrections": {
+            "task": "app.workers.tasks.surya_improvement_tasks.process_surya_corrections",
+            "schedule": crontab(hour=4, minute=0),  # Taeglich um 04:00 Uhr
+        },
+        # Alle 6 Stunden: Pruefe aktive A/B Tests auf Completion
+        "surya-evaluate-ab-tests": {
+            "task": "app.workers.tasks.surya_improvement_tasks.evaluate_surya_ab_test",
+            "schedule": crontab(hour="*/6"),  # Alle 6 Stunden
+        },
+        # Alle 15 Minuten: Aktualisiere Surya-Metriken fuer Monitoring
+        "surya-update-metrics": {
+            "task": "app.workers.tasks.surya_improvement_tasks.update_surya_metrics",
+            "schedule": 900.0,  # Alle 15 Minuten
+        },
+        # Monatlich: Generiere Surya Improvement Report
+        "surya-monthly-report": {
+            "task": "app.workers.tasks.surya_improvement_tasks.generate_surya_improvement_report",
+            "schedule": crontab(day_of_month=1, hour=6, minute=0),  # Monatlich am 1. um 06:00 Uhr
+        },
     },
 
     # Queue routing
@@ -620,6 +667,12 @@ celery_app.conf.update(
         "app.workers.tasks.embedding_tasks.check_embedding_coverage": {"queue": "maintenance", "priority": 1},
         # Search analytics tasks (CPU)
         "app.workers.tasks.embedding_tasks.refresh_search_analytics": {"queue": "maintenance", "priority": 1},
+        # Qdrant Sync & A/B Testing tasks (GPU for embedding, CPU for analysis)
+        "app.workers.tasks.embedding_tasks.sync_document_to_qdrant": {"queue": "embedding_normal", "priority": 6},
+        "app.workers.tasks.embedding_tasks.migrate_embeddings_to_qdrant": {"queue": "embedding_low", "priority": 3},
+        "app.workers.tasks.embedding_tasks.generate_jina_embedding": {"queue": "embedding_high", "priority": 7},
+        "app.workers.tasks.embedding_tasks.analyze_ab_test_metrics": {"queue": "metrics", "priority": 2},
+        "app.workers.tasks.embedding_tasks.sync_pending_to_qdrant": {"queue": "maintenance", "priority": 2},
         # Backup tasks (CPU)
         "app.workers.tasks.backup_tasks.backup_full_task": {"queue": "backup", "priority": 2},
         "app.workers.tasks.backup_tasks.backup_postgres_task": {"queue": "backup", "priority": 3},
@@ -647,6 +700,7 @@ celery_app.conf.update(
         "extraction.quick_classify_document": {"queue": "ocr_high", "priority": 10},  # Hoechste Prioritaet fuer schnelle Klassifizierung
         "extraction.reprocess_all_structured_extraction": {"queue": "ocr_normal", "priority": 4},
         "extraction.reprocess_single_document": {"queue": "ocr_high", "priority": 6},
+        "extraction.reprocess_quick_classification": {"queue": "ocr_normal", "priority": 5},  # Quick-Classification Re-Processing
         "extraction.generate_extraction_stats": {"queue": "metrics", "priority": 1},
         # ML/Drift Detection tasks (CPU)
         "app.workers.tasks.ml_tasks.run_drift_detection": {"queue": "metrics", "priority": 2},
@@ -678,6 +732,23 @@ celery_app.conf.update(
         "app.workers.tasks.training_tasks.update_learned_weights": {"queue": "maintenance", "priority": 2},
         "app.workers.tasks.training_tasks.populate_training_batch": {"queue": "maintenance", "priority": 3},
         "app.workers.tasks.training_tasks.generate_training_report": {"queue": "maintenance", "priority": 1},
+        # =================================================================
+        # Surya Continuous Improvement Tasks
+        # =================================================================
+        # CPU tasks for monitoring and checks
+        "app.workers.tasks.surya_improvement_tasks.check_surya_retraining_conditions": {"queue": "metrics", "priority": 2},
+        "app.workers.tasks.surya_improvement_tasks.update_surya_metrics": {"queue": "metrics", "priority": 1},
+        "app.workers.tasks.surya_improvement_tasks.evaluate_surya_ab_test": {"queue": "metrics", "priority": 2},
+        "app.workers.tasks.surya_improvement_tasks.generate_surya_improvement_report": {"queue": "maintenance", "priority": 1},
+        # CPU tasks for data processing
+        "app.workers.tasks.surya_improvement_tasks.export_surya_training_dataset": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.surya_improvement_tasks.process_surya_corrections": {"queue": "maintenance", "priority": 3},
+        # GPU tasks for training and benchmarking
+        "app.workers.tasks.surya_improvement_tasks.run_surya_benchmark": {"queue": "ocr_normal", "priority": 4},
+        "app.workers.tasks.surya_improvement_tasks.run_surya_german_finetuning": {"queue": "ocr_high", "priority": 5},
+        "app.workers.tasks.surya_improvement_tasks.evaluate_surya_model": {"queue": "ocr_normal", "priority": 4},
+        "app.workers.tasks.surya_improvement_tasks.deploy_surya_model": {"queue": "metrics", "priority": 4},
+        "app.workers.tasks.surya_improvement_tasks.rollback_surya_model": {"queue": "metrics", "priority": 8},  # Hohe Prioritaet fuer Rollback
     },
 
     # Priority settings

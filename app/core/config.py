@@ -558,7 +558,136 @@ class Settings(BaseSettings):
     EMBEDDING_AUTO_GENERATE: bool = True  # Auto-generate after OCR
     EMBEDDING_TASK_DELAY_SECONDS: int = 5  # Delay before embedding task
     EMBEDDING_TASK_PRIORITY: int = 9  # Celery priority (0-9, 9=lowest)
-    
+
+    # =============================================================================
+    # Qdrant Vector Database (Parallel zu pgvector fuer A/B Testing)
+    # =============================================================================
+    QDRANT_ENABLED: bool = Field(
+        default=False,
+        description="Qdrant als parallele Vector-DB aktivieren"
+    )
+    QDRANT_HOST: str = Field(default="localhost", description="Qdrant Host")
+    QDRANT_HTTP_PORT: int = Field(default=6333, description="Qdrant REST API Port")
+    QDRANT_GRPC_PORT: int = Field(default=6334, description="Qdrant gRPC Port")
+    QDRANT_PREFER_GRPC: bool = Field(
+        default=True,
+        description="gRPC bevorzugen (schneller als REST)"
+    )
+    QDRANT_API_KEY: Optional[SecretStr] = Field(
+        default=None,
+        description="Qdrant API Key (optional, fuer Cloud)"
+    )
+    # Collection Names
+    QDRANT_COLLECTION_DOCUMENTS: str = Field(
+        default="ablage_documents",
+        description="Collection fuer Document-Embeddings"
+    )
+    QDRANT_COLLECTION_CHUNKS: str = Field(
+        default="ablage_chunks",
+        description="Collection fuer RAG-Chunk-Embeddings"
+    )
+    # HNSW Index Konfiguration
+    QDRANT_HNSW_M: int = Field(
+        default=16,
+        ge=4, le=64,
+        description="HNSW m Parameter (Kanten pro Knoten)"
+    )
+    QDRANT_HNSW_EF_CONSTRUCT: int = Field(
+        default=128,
+        ge=16, le=512,
+        description="HNSW ef_construct (Index-Qualitaet)"
+    )
+    QDRANT_ON_DISK_PAYLOAD: bool = Field(
+        default=True,
+        description="Payloads auf Disk speichern (weniger RAM)"
+    )
+    # Quantization
+    QDRANT_QUANTIZATION_ENABLED: bool = Field(
+        default=False,
+        description="Scalar Quantization aktivieren (weniger Speicher)"
+    )
+
+    # =============================================================================
+    # Jina Embeddings (Spezialisiert fuer deutsche Dokumente)
+    # =============================================================================
+    JINA_EMBEDDING_ENABLED: bool = Field(
+        default=False,
+        description="Jina-Embeddings-v2-base-de als Alternative aktivieren"
+    )
+    JINA_EMBEDDING_MODEL: str = Field(
+        default="jinaai/jina-embeddings-v2-base-de",
+        description="Jina Embedding Modell (161M params, 8k Token-Kontext)"
+    )
+    JINA_EMBEDDING_DIMENSION: int = Field(
+        default=1024,
+        description="Jina Embedding Dimension"
+    )
+    JINA_EMBEDDING_MAX_LENGTH: int = Field(
+        default=8192,
+        description="Jina max Token-Kontext (8k vs 512 bei E5)"
+    )
+    JINA_TRUST_REMOTE_CODE: bool = Field(
+        default=True,
+        description="trust_remote_code fuer HuggingFace (required fuer Jina)"
+    )
+
+    # =============================================================================
+    # Vector Search A/B Testing
+    # =============================================================================
+    VECTOR_AB_TESTING_ENABLED: bool = Field(
+        default=False,
+        description="A/B Testing zwischen pgvector und Qdrant aktivieren"
+    )
+    VECTOR_AB_TRAFFIC_SPLIT: int = Field(
+        default=10,
+        ge=0, le=100,
+        description="Prozent Traffic zu Treatment (Qdrant) 0-100"
+    )
+    VECTOR_AB_CONTROL_BACKEND: str = Field(
+        default="pgvector",
+        description="Control Backend (pgvector oder qdrant)"
+    )
+    VECTOR_AB_TREATMENT_BACKEND: str = Field(
+        default="qdrant",
+        description="Treatment Backend (pgvector oder qdrant)"
+    )
+    VECTOR_AB_CONTROL_EMBEDDING: str = Field(
+        default="intfloat/multilingual-e5-large",
+        description="Embedding-Modell fuer Control"
+    )
+    VECTOR_AB_TREATMENT_EMBEDDING: str = Field(
+        default="jinaai/jina-embeddings-v2-base-de",
+        description="Embedding-Modell fuer Treatment"
+    )
+    VECTOR_AB_METRICS_ENABLED: bool = Field(
+        default=True,
+        description="Metriken fuer A/B Test sammeln"
+    )
+
+    # =============================================================================
+    # Dual-Write Settings (Sync zwischen pgvector und Qdrant)
+    # =============================================================================
+    VECTOR_DUAL_WRITE_ENABLED: bool = Field(
+        default=False,
+        description="Embeddings in beide Backends schreiben"
+    )
+    VECTOR_DUAL_WRITE_ASYNC: bool = Field(
+        default=True,
+        description="Qdrant-Sync asynchron (Celery Task)"
+    )
+    VECTOR_MIGRATION_BATCH_SIZE: int = Field(
+        default=1000,
+        ge=100, le=10000,
+        description="Batch-Groesse fuer Embedding-Migration"
+    )
+
+    # Auto Ground-Truth Pipeline Settings
+    # Bei 500+ Docs/Tag: High-Confidence OCR-Ergebnisse automatisch als Ground-Truth akzeptieren
+    AUTO_GROUND_TRUTH_ENABLED: bool = True  # Enable auto ground-truth generation
+    AUTO_GROUND_TRUTH_CONFIDENCE_THRESHOLD: float = 0.95  # Min confidence for auto-accept
+    AUTO_GROUND_TRUTH_SPOT_CHECK_RATE: float = 0.10  # 10% Stichproben-Review
+    AUTO_GROUND_TRUTH_TASK_DELAY_SECONDS: int = 3  # Delay after OCR before ground-truth task
+
     # Performance (Worker-Konfiguration)
     WORKER_CONNECTIONS: int = 1000
     KEEPALIVE_TIMEOUT: int = 5
@@ -619,8 +748,8 @@ class Settings(BaseSettings):
     OLLAMA_URL: str = "http://localhost:11434"
     OLLAMA_TIMEOUT: int = 120  # Timeout in Sekunden
     OLLAMA_KEEP_ALIVE: str = "24h"  # Modell im Speicher halten
-    DEFAULT_LLM_REALTIME: str = "qwen3:8b-q4_K_M"  # Fuer schnelle Antworten (<15s)
-    DEFAULT_LLM_ANALYSIS: str = "qwen3:14b-q4_K_M"  # Fuer detaillierte Analyse
+    DEFAULT_LLM_REALTIME: str = "qwen2.5:7b"  # Fuer schnelle Antworten (<15s)
+    DEFAULT_LLM_ANALYSIS: str = "qwen2.5:14b"  # Fuer detaillierte Analyse
     LLM_MAX_CONCURRENT_REQUESTS: int = 4
 
     # RAG Search
@@ -630,9 +759,40 @@ class Settings(BaseSettings):
     RAG_RERANK_ENABLED: bool = True
     RAG_RERANK_TOP_K: int = 10
 
-    # Reranker Service (HuggingFace TEI)
-    RERANKER_SERVICE_URL: Optional[str] = None
-    RERANKER_MODEL: str = "BAAI/bge-reranker-v2-m3"
+    # Reranker Dual-Stack Configuration (GPU + CPU Fallback)
+    # GPU: BGE-Reranker-v2-m3 (~1GB VRAM, multilingual)
+    # CPU: MiniLM Cross-Encoder (~300MB RAM, fallback)
+    RERANKER_GPU_MODEL: str = Field(
+        default="BAAI/bge-reranker-v2-m3",
+        description="GPU Reranker Modell (Cross-Encoder)"
+    )
+    RERANKER_CPU_MODEL: str = Field(
+        default="cross-encoder/ms-marco-MiniLM-L-12-v2",
+        description="CPU Fallback Reranker Modell"
+    )
+    RERANKER_BATCH_SIZE: int = Field(
+        default=8,
+        ge=1, le=64,
+        description="Batch-Groesse fuer Reranking"
+    )
+    RERANKER_MAX_LENGTH: int = Field(
+        default=512,
+        ge=64, le=1024,
+        description="Max Token-Laenge pro Dokument"
+    )
+    RERANKER_GPU_VRAM_GB: float = Field(
+        default=1.0,
+        description="Erwarteter VRAM-Verbrauch des GPU-Rerankers in GB"
+    )
+    RERANKER_PREFER_GPU: bool = Field(
+        default=True,
+        description="GPU bevorzugen wenn verfuegbar"
+    )
+    # Legacy: Externer HTTP-Service (optional, fuer Kompatibilitaet)
+    RERANKER_SERVICE_URL: Optional[str] = Field(
+        default=None,
+        description="Optionaler externer Reranker Service (nicht empfohlen)"
+    )
     RERANKER_TIMEOUT: int = 30
 
     # Customer Cards

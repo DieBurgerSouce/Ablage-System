@@ -675,6 +675,669 @@ def check_embedding_coverage(
     return run_async_task(check_async())
 
 
+# ==================== Qdrant Sync Tasks (A/B Testing) ====================
+
+@celery_app.task(
+    bind=True,
+    base=GPUTask,
+    name="app.workers.tasks.embedding_tasks.sync_document_to_qdrant"
+)
+def sync_document_to_qdrant(
+    self,
+    document_id: str,
+    embedding_model: Optional[str] = None,
+    force_reindex: bool = False
+) -> Dict[str, Any]:
+    """Sync single document to Qdrant (Dual-Write fuer A/B Testing).
+
+    Wird nach pgvector-Indexierung getriggert wenn Dual-Write aktiviert.
+    Generiert Embedding mit konfiguriertem Modell und indexiert in Qdrant.
+
+    Args:
+        document_id: Document UUID als String
+        embedding_model: Optional Embedding-Modell (default: Jina-DE)
+        force_reindex: Reindexieren auch wenn schon in Qdrant
+
+    Returns:
+        Dictionary mit Sync-Ergebnis
+    """
+    start_time = datetime.now(timezone.utc)
+    doc_uuid = UUID(document_id)
+    task_id = self.request.id
+
+    # Import hier um zirkulaere Importe zu vermeiden
+    from app.services.vector.qdrant_service import get_qdrant_service
+    from app.services.vector.embedding_factory import get_embedding_factory, EmbeddingModel
+
+    logger.info(
+        "qdrant_sync_starting",
+        task_id=task_id,
+        document_id=document_id,
+        model=embedding_model
+    )
+
+    # Default zu Jina-DE fuer A/B Testing (Treatment-Variante)
+    model = embedding_model or settings.VECTOR_AB_TREATMENT_EMBEDDING
+
+    async def process_async() -> Dict[str, Any]:
+        async with get_async_session_context() as session:
+            try:
+                # Dokument laden
+                result = await session.execute(
+                    select(Document).where(Document.id == doc_uuid)
+                )
+                document = result.scalar_one_or_none()
+
+                if not document:
+                    raise ValueError(f"Dokument {document_id} nicht gefunden")
+
+                if not document.extracted_text:
+                    raise ValueError(f"Dokument {document_id} hat keinen Text")
+
+                # Pruefe ob bereits in Qdrant (wenn nicht force)
+                if document.qdrant_indexed_at and not force_reindex:
+                    logger.info(
+                        "qdrant_sync_skipped_already_indexed",
+                        document_id=document_id
+                    )
+                    return {
+                        "success": True,
+                        "document_id": document_id,
+                        "skipped": True,
+                        "message": "Bereits in Qdrant indexiert"
+                    }
+
+                # Qdrant Service initialisieren
+                qdrant = await get_qdrant_service()
+                if not await qdrant.initialize():
+                    raise ValueError("Qdrant nicht verfuegbar")
+
+                # Embedding Factory initialisieren
+                embedding_factory = get_embedding_factory()
+
+                # Embedding mit gewaehltem Modell generieren
+                embedding = await embedding_factory.generate_document_embedding(
+                    document.extracted_text,
+                    model_name=model
+                )
+
+                if not embedding:
+                    raise ValueError(f"Embedding-Generierung fehlgeschlagen fuer {document_id}")
+
+                # Payload fuer Qdrant
+                payload = {
+                    "document_id": str(document.id),
+                    "owner_id": str(document.owner_id) if document.owner_id else None,
+                    "filename": document.filename,
+                    "document_type": document.document_type,
+                    "mime_type": document.mime_type,
+                    "extracted_text": document.extracted_text[:2000] if document.extracted_text else None,
+                    "embedding_model": model,
+                    "created_at": document.created_at.isoformat() if document.created_at else None,
+                }
+
+                # In Qdrant upserten
+                success = await qdrant.upsert_document(
+                    document_id=doc_uuid,
+                    embedding=embedding,
+                    payload=payload
+                )
+
+                if not success:
+                    raise ValueError(f"Qdrant upsert fehlgeschlagen fuer {document_id}")
+
+                # Dokument-Timestamp aktualisieren
+                document.qdrant_indexed_at = datetime.now(timezone.utc)
+                await session.commit()
+
+                processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+                processing_ms = int(processing_time * 1000)
+
+                logger.info(
+                    "qdrant_sync_completed",
+                    task_id=task_id,
+                    document_id=document_id,
+                    embedding_dimension=len(embedding),
+                    model=model,
+                    duration_ms=processing_ms
+                )
+
+                return {
+                    "success": True,
+                    "document_id": document_id,
+                    "embedding_dimension": len(embedding),
+                    "embedding_model": model,
+                    "processing_time_ms": processing_ms,
+                    "indexed_at": datetime.now(timezone.utc).isoformat()
+                }
+
+            except Exception as e:
+                if _is_oom_error(e):
+                    logger.warning("qdrant_sync_oom", document_id=document_id, error=str(e))
+                    await _cleanup_gpu_memory()
+                logger.exception("qdrant_sync_failed", document_id=document_id, error=str(e))
+                raise
+
+            finally:
+                await _cleanup_gpu_memory()
+
+    return run_async_task(process_async())
+
+
+@celery_app.task(
+    bind=True,
+    base=GPUTask,
+    name="app.workers.tasks.embedding_tasks.migrate_embeddings_to_qdrant",
+    soft_time_limit=3600,  # 1 Stunde
+    time_limit=3700
+)
+def migrate_embeddings_to_qdrant(
+    self,
+    batch_size: Optional[int] = None,
+    max_documents: Optional[int] = None,
+    embedding_model: Optional[str] = None
+) -> Dict[str, Any]:
+    """Batch-Migration bestehender Dokumente zu Qdrant.
+
+    Migriert alle Dokumente mit Text zu Qdrant Vector DB.
+    Fuer initiale Sync nach Qdrant-Aktivierung.
+
+    Args:
+        batch_size: Dokumente pro Batch (default: settings.VECTOR_MIGRATION_BATCH_SIZE)
+        max_documents: Maximale Anzahl zu migrierender Dokumente
+        embedding_model: Zu verwendendes Embedding-Modell
+
+    Returns:
+        Dictionary mit Migrations-Statistiken
+    """
+    start_time = datetime.now(timezone.utc)
+    task_id = self.request.id
+    batch_size = batch_size or settings.VECTOR_MIGRATION_BATCH_SIZE
+
+    from app.services.vector.qdrant_service import get_qdrant_service, QdrantPoint
+    from app.services.vector.embedding_factory import get_embedding_factory
+
+    model = embedding_model or settings.VECTOR_AB_TREATMENT_EMBEDDING
+
+    logger.info(
+        "qdrant_migration_starting",
+        task_id=task_id,
+        batch_size=batch_size,
+        max_documents=max_documents,
+        model=model
+    )
+
+    async def process_async() -> Dict[str, Any]:
+        async with get_async_session_context() as session:
+            # Qdrant initialisieren
+            qdrant = await get_qdrant_service()
+            if not await qdrant.initialize():
+                raise ValueError("Qdrant nicht verfuegbar - Migration abgebrochen")
+
+            embedding_factory = get_embedding_factory()
+
+            # Dokumente ohne Qdrant-Index finden
+            query = select(Document).where(
+                Document.extracted_text.isnot(None),
+                Document.extracted_text != "",
+                Document.qdrant_indexed_at.is_(None)
+            ).order_by(Document.created_at.desc())
+
+            if max_documents:
+                query = query.limit(max_documents)
+
+            result = await session.execute(query)
+            documents = result.scalars().all()
+
+            total_docs = len(documents)
+            successful = 0
+            failed = 0
+            skipped = 0
+
+            logger.info(
+                "qdrant_migration_found_documents",
+                task_id=task_id,
+                count=total_docs
+            )
+
+            if not documents:
+                return {
+                    "success": True,
+                    "total_documents": 0,
+                    "message": "Keine Dokumente zum Migrieren gefunden"
+                }
+
+            # In Batches verarbeiten
+            for batch_start in range(0, total_docs, batch_size):
+                batch_end = min(batch_start + batch_size, total_docs)
+                batch = documents[batch_start:batch_end]
+
+                update_task_progress(
+                    task_id,
+                    batch_start,
+                    total_docs,
+                    f"Migriere Batch {batch_start // batch_size + 1}: {batch_start + 1}-{batch_end}/{total_docs}"
+                )
+
+                try:
+                    # Texts sammeln
+                    texts = [doc.extracted_text for doc in batch]
+
+                    # Batch Embeddings generieren
+                    embeddings = await embedding_factory.generate_batch_embeddings(
+                        texts=texts,
+                        model_name=model,
+                        is_query=False,
+                        batch_size=min(8, len(texts))
+                    )
+
+                    # Qdrant Points erstellen
+                    points = []
+                    for doc, emb in zip(batch, embeddings):
+                        if emb is None:
+                            failed += 1
+                            continue
+
+                        points.append(QdrantPoint(
+                            id=str(doc.id),
+                            vector=emb,
+                            payload={
+                                "document_id": str(doc.id),
+                                "owner_id": str(doc.owner_id) if doc.owner_id else None,
+                                "filename": doc.filename,
+                                "document_type": doc.document_type,
+                                "mime_type": doc.mime_type,
+                                "extracted_text": doc.extracted_text[:2000] if doc.extracted_text else None,
+                                "embedding_model": model,
+                            }
+                        ))
+
+                    # Batch in Qdrant upserten
+                    if points:
+                        batch_success, batch_failed = await qdrant.batch_upsert_documents(
+                            points=points,
+                            batch_size=100
+                        )
+                        successful += batch_success
+                        failed += batch_failed
+
+                        # Timestamps aktualisieren
+                        now = datetime.now(timezone.utc)
+                        for doc in batch:
+                            if any(p.id == str(doc.id) for p in points):
+                                doc.qdrant_indexed_at = now
+
+                        await session.commit()
+
+                except Exception as e:
+                    if _is_oom_error(e):
+                        logger.warning(
+                            "qdrant_migration_oom",
+                            task_id=task_id,
+                            batch_start=batch_start,
+                            error=str(e)
+                        )
+                        await _cleanup_gpu_memory()
+                        # Bei OOM: Einzeln verarbeiten
+                        for doc in batch:
+                            try:
+                                emb = await embedding_factory.generate_document_embedding(
+                                    doc.extracted_text,
+                                    model_name=model
+                                )
+                                if emb:
+                                    success = await qdrant.upsert_document(
+                                        document_id=doc.id,
+                                        embedding=emb,
+                                        payload={
+                                            "document_id": str(doc.id),
+                                            "owner_id": str(doc.owner_id) if doc.owner_id else None,
+                                            "filename": doc.filename,
+                                            "document_type": doc.document_type,
+                                            "embedding_model": model,
+                                        }
+                                    )
+                                    if success:
+                                        doc.qdrant_indexed_at = datetime.now(timezone.utc)
+                                        successful += 1
+                                    else:
+                                        failed += 1
+                                else:
+                                    failed += 1
+                            except Exception:
+                                await _cleanup_gpu_memory()
+                                failed += 1
+                        await session.commit()
+                    else:
+                        logger.error(
+                            "qdrant_migration_batch_error",
+                            task_id=task_id,
+                            batch_start=batch_start,
+                            error=str(e)
+                        )
+                        failed += len(batch)
+
+            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+
+            update_task_progress(
+                task_id,
+                total_docs,
+                total_docs,
+                f"Migration abgeschlossen: {successful}/{total_docs} erfolgreich"
+            )
+
+            logger.info(
+                "qdrant_migration_completed",
+                task_id=task_id,
+                total=total_docs,
+                successful=successful,
+                failed=failed,
+                skipped=skipped,
+                duration_seconds=processing_time
+            )
+
+            return {
+                "success": True,
+                "total_documents": total_docs,
+                "successful": successful,
+                "failed": failed,
+                "skipped": skipped,
+                "embedding_model": model,
+                "processing_time_seconds": processing_time,
+                "completed_at": datetime.now(timezone.utc).isoformat()
+            }
+
+    return run_async_task(process_async())
+
+
+@celery_app.task(
+    bind=True,
+    base=GPUTask,
+    name="app.workers.tasks.embedding_tasks.generate_jina_embedding"
+)
+def generate_jina_embedding(
+    self,
+    document_id: str,
+    sync_to_qdrant: bool = True
+) -> Dict[str, Any]:
+    """Generiere Jina-DE Embedding fuer ein Dokument.
+
+    Spezifische Task fuer jina-embeddings-v2-base-de Modell.
+    Optimiert fuer deutsche Dokumente mit 8k Token-Kontext.
+
+    Args:
+        document_id: Document UUID als String
+        sync_to_qdrant: Embedding auch zu Qdrant syncen
+
+    Returns:
+        Dictionary mit Embedding-Ergebnis
+    """
+    start_time = datetime.now(timezone.utc)
+    doc_uuid = UUID(document_id)
+    task_id = self.request.id
+
+    from app.services.vector.embedding_factory import get_embedding_factory, EmbeddingModel
+
+    logger.info(
+        "jina_embedding_starting",
+        task_id=task_id,
+        document_id=document_id,
+        sync_to_qdrant=sync_to_qdrant
+    )
+
+    async def process_async() -> Dict[str, Any]:
+        async with get_async_session_context() as session:
+            try:
+                # Dokument laden
+                result = await session.execute(
+                    select(Document).where(Document.id == doc_uuid)
+                )
+                document = result.scalar_one_or_none()
+
+                if not document:
+                    raise ValueError(f"Dokument {document_id} nicht gefunden")
+
+                if not document.extracted_text:
+                    raise ValueError(f"Dokument {document_id} hat keinen Text")
+
+                # Jina-DE Embedding generieren
+                embedding_factory = get_embedding_factory()
+                embedding = await embedding_factory.generate_document_embedding(
+                    document.extracted_text,
+                    model_name=EmbeddingModel.JINA_DE
+                )
+
+                if not embedding:
+                    raise ValueError(f"Jina Embedding-Generierung fehlgeschlagen")
+
+                result_data = {
+                    "success": True,
+                    "document_id": document_id,
+                    "embedding_dimension": len(embedding),
+                    "embedding_model": EmbeddingModel.JINA_DE,
+                    "text_length": len(document.extracted_text),
+                }
+
+                # Optional zu Qdrant syncen
+                if sync_to_qdrant and settings.QDRANT_ENABLED:
+                    from app.services.vector.qdrant_service import get_qdrant_service
+
+                    qdrant = await get_qdrant_service()
+                    if await qdrant.initialize():
+                        success = await qdrant.upsert_document(
+                            document_id=doc_uuid,
+                            embedding=embedding,
+                            payload={
+                                "document_id": str(document.id),
+                                "owner_id": str(document.owner_id) if document.owner_id else None,
+                                "filename": document.filename,
+                                "document_type": document.document_type,
+                                "embedding_model": EmbeddingModel.JINA_DE,
+                            }
+                        )
+                        if success:
+                            document.qdrant_indexed_at = datetime.now(timezone.utc)
+                            await session.commit()
+                            result_data["qdrant_synced"] = True
+                        else:
+                            result_data["qdrant_synced"] = False
+                            result_data["qdrant_error"] = "Upsert fehlgeschlagen"
+
+                processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+                result_data["processing_time_ms"] = int(processing_time * 1000)
+
+                logger.info(
+                    "jina_embedding_completed",
+                    task_id=task_id,
+                    document_id=document_id,
+                    duration_ms=result_data["processing_time_ms"]
+                )
+
+                return result_data
+
+            except Exception as e:
+                if _is_oom_error(e):
+                    logger.warning("jina_embedding_oom", document_id=document_id, error=str(e))
+                    await _cleanup_gpu_memory()
+                logger.exception("jina_embedding_failed", document_id=document_id, error=str(e))
+                raise
+
+            finally:
+                await _cleanup_gpu_memory()
+
+    return run_async_task(process_async())
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.embedding_tasks.analyze_ab_test_metrics"
+)
+def analyze_ab_test_metrics(
+    self,
+    experiment_id: Optional[str] = None,
+    days: int = 7
+) -> Dict[str, Any]:
+    """Analysiere A/B Test Metriken fuer Vector Search.
+
+    Berechnet statistische Signifikanz und Latenz-Vergleiche
+    zwischen pgvector (Control) und Qdrant (Treatment).
+
+    Args:
+        experiment_id: Optional spezifisches Experiment
+        days: Anzahl Tage zurueck fuer Analyse
+
+    Returns:
+        Dictionary mit A/B Test Analyse-Ergebnissen
+    """
+    task_id = self.request.id
+    start_time = datetime.now(timezone.utc)
+
+    from app.services.vector.vector_orchestrator import get_vector_orchestrator
+
+    logger.info(
+        "ab_test_analysis_starting",
+        task_id=task_id,
+        experiment_id=experiment_id,
+        days=days
+    )
+
+    async def process_async() -> Dict[str, Any]:
+        async with get_async_session_context() as session:
+            try:
+                # Orchestrator-Metriken holen
+                orchestrator = await get_vector_orchestrator()
+                metrics_summary = orchestrator.get_metrics_summary()
+
+                # Vergleich berechnen
+                pgvector_metrics = metrics_summary.get("pgvector", {})
+                qdrant_metrics = metrics_summary.get("qdrant", {})
+
+                comparison = {
+                    "pgvector": pgvector_metrics,
+                    "qdrant": qdrant_metrics,
+                }
+
+                # Latenz-Differenz berechnen falls beide Daten haben
+                if pgvector_metrics.get("sample_count", 0) > 0 and qdrant_metrics.get("sample_count", 0) > 0:
+                    pg_avg = pgvector_metrics.get("avg_latency_ms", 0)
+                    qd_avg = qdrant_metrics.get("avg_latency_ms", 0)
+
+                    if pg_avg > 0:
+                        latency_improvement = ((pg_avg - qd_avg) / pg_avg) * 100
+                        comparison["latency_improvement_percent"] = round(latency_improvement, 2)
+                        comparison["recommendation"] = (
+                            "qdrant" if latency_improvement > 10
+                            else "pgvector" if latency_improvement < -10
+                            else "inconclusive"
+                        )
+
+                # Health Check
+                health = await orchestrator.health_check()
+                comparison["health"] = health
+
+                processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+
+                logger.info(
+                    "ab_test_analysis_completed",
+                    task_id=task_id,
+                    pgvector_samples=pgvector_metrics.get("sample_count", 0),
+                    qdrant_samples=qdrant_metrics.get("sample_count", 0),
+                    duration_seconds=processing_time
+                )
+
+                return {
+                    "success": True,
+                    "comparison": comparison,
+                    "analysis_period_days": days,
+                    "analyzed_at": datetime.now(timezone.utc).isoformat(),
+                    "processing_time_seconds": processing_time
+                }
+
+            except Exception as e:
+                logger.exception("ab_test_analysis_failed", task_id=task_id, error=str(e))
+                raise
+
+    return run_async_task(process_async())
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.embedding_tasks.sync_pending_to_qdrant"
+)
+def sync_pending_to_qdrant(
+    self,
+    limit: int = 100
+) -> Dict[str, Any]:
+    """Sync ausstehende Dokumente zu Qdrant (Periodic Task).
+
+    Findet Dokumente die in PostgreSQL aber nicht in Qdrant indexiert sind
+    und synchronisiert diese. Fuer Celery Beat Scheduling.
+
+    Args:
+        limit: Maximale Anzahl pro Durchlauf
+
+    Returns:
+        Dictionary mit Sync-Statistiken
+    """
+    task_id = self.request.id
+    start_time = datetime.now(timezone.utc)
+
+    logger.info(
+        "sync_pending_to_qdrant_starting",
+        task_id=task_id,
+        limit=limit
+    )
+
+    async def process_async() -> Dict[str, Any]:
+        async with get_async_session_context() as session:
+            # Dokumente finden die Embedding haben aber nicht in Qdrant
+            query = select(Document.id).where(
+                Document.embedding.isnot(None),
+                Document.qdrant_indexed_at.is_(None)
+            ).limit(limit)
+
+            result = await session.execute(query)
+            pending_ids = [str(row[0]) for row in result.fetchall()]
+
+            if not pending_ids:
+                return {
+                    "success": True,
+                    "synced": 0,
+                    "message": "Keine ausstehenden Dokumente"
+                }
+
+            # Jobs fuer Sync erstellen
+            from celery import group
+
+            sync_tasks = group([
+                sync_document_to_qdrant.s(doc_id)
+                for doc_id in pending_ids
+            ])
+
+            # Async ausfuehren
+            result = sync_tasks.apply_async()
+
+            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+
+            logger.info(
+                "sync_pending_to_qdrant_scheduled",
+                task_id=task_id,
+                pending_count=len(pending_ids),
+                duration_seconds=processing_time
+            )
+
+            return {
+                "success": True,
+                "scheduled": len(pending_ids),
+                "group_id": str(result.id) if result else None,
+                "processing_time_seconds": processing_time
+            }
+
+    return run_async_task(process_async())
+
+
 # ==================== Search Analytics Tasks ====================
 
 @celery_app.task(

@@ -137,6 +137,82 @@ services:
     networks:
       - data-network
 
+  # Qdrant Vector Database - Parallele Vector-DB fuer A/B Testing
+  # Rust-basiert, 48% bessere p99-Latenz als pgvector
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: ablage-qdrant
+    environment:
+      # gRPC und HTTP Ports
+      QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      # Performance-Optimierung fuer mittlere Datenmengen
+      QDRANT__STORAGE__ON_DISK_PAYLOAD: "true"
+      QDRANT__STORAGE__OPTIMIZERS__INDEXING_THRESHOLD_KB: 20000
+      # HNSW Index Konfiguration
+      QDRANT__STORAGE__HNSW_INDEX__M: 16
+      QDRANT__STORAGE__HNSW_INDEX__EF_CONSTRUCT: 128
+      # Telemetry deaktivieren
+      QDRANT__TELEMETRY_DISABLED: "true"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "127.0.0.1:6333:6333"  # REST API (nur localhost)
+      - "127.0.0.1:6334:6334"  # gRPC (nur localhost)
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:6333/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    restart: unless-stopped
+    networks:
+      - data-network
+
+  # BGE-Reranker Cross-Encoder via HuggingFace Text Embeddings Inference
+  # CPU-only (GPU reserviert fuer OCR), verbessert Suchrelevanz signifikant
+  reranker:
+    image: ghcr.io/huggingface/text-embeddings-inference:1.2
+    container_name: ablage-reranker
+    command: --model-id BAAI/bge-reranker-v2-m3 --port 8090
+    environment:
+      # CPU-only: GPU fuer OCR reserviert
+      CUDA_VISIBLE_DEVICES: ""
+      # HuggingFace Cache
+      HF_HOME: /data
+    volumes:
+      - reranker_cache:/data
+    ports:
+      - "127.0.0.1:8090:8090"  # Nur localhost
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # 2 Minuten fuer Model-Download
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    restart: unless-stopped
+    networks:
+      - backend-network
+
   # FastAPI Backend Application (Backend + Data Networks)
   backend:
     build:
@@ -815,6 +891,8 @@ volumes:
   redis_data:
   minio_data:
   clamav_data:  # ClamAV Virus-Signaturen
+  qdrant_data:  # Qdrant Vector Database Storage
+  reranker_cache:  # BGE-Reranker Model Cache
   uploads:
   outputs:
   backups:
