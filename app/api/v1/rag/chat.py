@@ -7,6 +7,8 @@ Chat-System mit RAG-Kontext:
 - Chat Historie
 """
 
+import json
+import secrets
 import structlog
 from typing import List, Optional
 from uuid import UUID, uuid4
@@ -222,6 +224,173 @@ async def send_chat_message(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Chat fehlgeschlagen: {str(e)}"
         )
+
+
+@router.post(
+    "/stream",
+    summary="Chat mit Streaming",
+    description="Sendet eine Nachricht und streamt die Antwort via SSE."
+)
+async def send_chat_message_stream(
+    request: RAGChatRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    llm_service: LLMService = Depends(get_llm_service_dep),
+    search_service: RAGSearchService = Depends(get_search_service_dep)
+) -> StreamingResponse:
+    """
+    Chat mit Dokumenten-Kontext (Streaming).
+
+    Verwendet SSE (Server-Sent Events) fuer Echtzeit-Streaming der Antwort.
+
+    Event-Typen:
+    - chunk: Text-Chunk der Antwort
+    - source: Quellen-Referenz
+    - thinking: Denk-Prozess (optional)
+    - done: Abschluss mit Session-ID
+    - error: Fehler-Meldung
+    """
+
+    async def generate_stream():
+        """Generator fuer SSE-Events."""
+        try:
+            # 1. Relevante Chunks finden
+            document_ids = None
+            if request.context_type == RAGContextType.DOCUMENT and request.context_id:
+                try:
+                    document_ids = [UUID(request.context_id)]
+                except ValueError:
+                    pass
+
+            chunks = await search_service.search_for_context(
+                db=db,
+                query=request.message,
+                context_chunks=settings.RAG_CHAT_CONTEXT_CHUNKS,
+                document_ids=document_ids
+            )
+
+            # 2. Kontext aufbauen
+            context_parts = []
+            for c in chunks:
+                page_info = f", Seite {c.get('page_number')}" if c.get('page_number') else ""
+                context_parts.append(f"[Quelle: Dokument {c['document_id']}{page_info}]\n{c['text']}")
+            context = "\n\n---\n\n".join(context_parts)
+
+            # 3. Chat Session verwalten
+            if request.session_id:
+                result = await db.execute(
+                    select(RAGChatSession).where(
+                        RAGChatSession.id == request.session_id,
+                        RAGChatSession.user_id == current_user.id
+                    )
+                )
+                session = result.scalar_one_or_none()
+                if not session:
+                    yield f"data: {json.dumps({'type': 'error', 'error': 'Session nicht gefunden'})}\n\n"
+                    return
+            else:
+                session = RAGChatSession(
+                    user_id=current_user.id,
+                    session_token=secrets.token_urlsafe(32),
+                    context_type=request.context_type.value if request.context_type else None,
+                    context_id=request.context_id,
+                    status="active",
+                )
+                db.add(session)
+                await db.flush()
+
+            # 4. User Message speichern
+            user_message = RAGChatMessage(
+                session_id=session.id,
+                role=RAGChatRole.USER,
+                content=request.message,
+            )
+            db.add(user_message)
+
+            # 5. Quellen senden
+            for c in chunks:
+                source_event = {
+                    "type": "source",
+                    "source": {
+                        "chunk_id": str(c["chunk_id"]),
+                        "document_id": str(c["document_id"]),
+                        "chunk_text": c["text"][:200] + "..." if len(c["text"]) > 200 else c["text"],
+                        "chunk_index": c.get("chunk_index", 0),
+                        "page_number": c.get("page_number"),
+                        "section_type": c.get("section_type"),
+                        "similarity": c.get("similarity"),
+                        "rerank_score": c.get("rerank_score"),
+                    }
+                }
+                yield f"data: {json.dumps(source_event)}\n\n"
+
+            # 6. LLM Context
+            llm_context = LLMContextType.REALTIME if request.realtime else LLMContextType.GENERAL
+            if request.context_type == RAGContextType.CUSTOMER:
+                llm_context = LLMContextType.CUSTOMER
+
+            # 7. LLM Streaming
+            messages = [
+                LLMMessage(
+                    role="system",
+                    content=f"""Du bist ein hilfreicher Assistent fuer ein Dokumentenmanagementsystem.
+Beantworte Fragen basierend auf dem folgenden Kontext aus den Dokumenten.
+Wenn du etwas nicht weisst, sage es ehrlich.
+Antworte auf Deutsch.
+
+KONTEXT:
+{context}"""
+                ),
+                LLMMessage(role="user", content=request.message),
+            ]
+
+            full_response = ""
+            async for chunk in llm_service.generate_stream(
+                messages=messages,
+                context_type=llm_context,
+            ):
+                full_response += chunk
+                yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+
+            # 8. Assistant Message speichern
+            assistant_message = RAGChatMessage(
+                session_id=session.id,
+                role=RAGChatRole.ASSISTANT,
+                content=full_response,
+                source_chunks=[UUID(c["chunk_id"]) for c in chunks] if chunks else None,
+            )
+            db.add(assistant_message)
+
+            # 9. Session aktualisieren
+            session.message_count = (session.message_count or 0) + 2
+            session.last_message_at = datetime.now(timezone.utc)
+
+            await db.commit()
+
+            # 10. Done Event
+            yield f"data: {json.dumps({'type': 'done', 'session_id': str(session.id), 'message_id': str(assistant_message.id)})}\n\n"
+
+            logger.info(
+                "rag_chat_stream_completed",
+                user_id=str(current_user.id),
+                session_id=str(session.id),
+                context_chunks=len(chunks),
+                response_length=len(full_response),
+            )
+
+        except Exception as e:
+            logger.error("rag_chat_stream_failed", error=str(e))
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        }
+    )
 
 
 @router.post(
