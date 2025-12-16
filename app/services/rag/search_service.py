@@ -457,45 +457,51 @@ class RAGSearchService:
         results: List[SearchResult],
         top_k: int
     ) -> List[SearchResult]:
-        """Rerankt Ergebnisse mit Cross-Encoder.
+        """Rerankt Ergebnisse mit Dual-Stack Cross-Encoder (GPU/CPU).
 
-        Falls Reranker nicht verfuegbar: Gibt Original zurueck.
+        Verwendet lokalen RerankerService fuer integriertes Reranking:
+        - Primaer: BGE-Reranker-v2-m3 (GPU, ~1GB VRAM)
+        - Fallback: MiniLM Cross-Encoder (CPU, ~300MB RAM)
+
+        Falls beide fehlschlagen: Original-Reihenfolge beibehalten.
         """
-        if not settings.RERANKER_SERVICE_URL:
-            # Kein Reranker konfiguriert
-            return results
+        if not results or not settings.RAG_RERANK_ENABLED:
+            return results[:top_k]
 
         try:
-            import httpx
+            from app.services.reranker_service import get_reranker_service
 
-            # Reranker API aufrufen
-            async with httpx.AsyncClient(timeout=settings.RERANKER_TIMEOUT) as client:
-                response = await client.post(
-                    f"{settings.RERANKER_SERVICE_URL}/rerank",
-                    json={
-                        "query": query,
-                        "documents": [r.chunk_text for r in results],
-                        "top_k": top_k
-                    }
-                )
-                response.raise_for_status()
+            reranker = get_reranker_service()
+            documents = [r.chunk_text for r in results]
 
-                rerank_data = response.json()
-                rerank_scores = rerank_data.get("scores", [])
+            # Async Reranking mit GPU/CPU Fallback
+            reranked = await reranker.rerank_async(query, documents, top_k)
 
-                # Ergebnisse mit Rerank-Scores aktualisieren
-                for i, score in enumerate(rerank_scores):
-                    if i < len(results):
-                        results[i].rerank_score = score
+            # Ergebnisse mit Rerank-Scores aktualisieren und neu sortieren
+            reranked_results = []
+            for rr in reranked:
+                original = results[rr.index]
+                reranked_results.append(SearchResult(
+                    chunk_id=original.chunk_id,
+                    document_id=original.document_id,
+                    chunk_text=original.chunk_text,
+                    chunk_index=original.chunk_index,
+                    page_number=original.page_number,
+                    section_type=original.section_type,
+                    similarity=original.similarity,
+                    rerank_score=rr.score
+                ))
 
-                # Nach Rerank-Score sortieren
-                results.sort(key=lambda x: x.rerank_score or 0, reverse=True)
+            logger.debug(
+                "rerank_complete",
+                input_count=len(results),
+                output_count=len(reranked_results),
+                top_k=top_k,
+                backend=reranker.get_stats().get("gpu_model_loaded", False)
+                    and "gpu" or "cpu"
+            )
 
-                logger.debug(
-                    "rerank_complete",
-                    results_count=len(results),
-                    top_k=top_k
-                )
+            return reranked_results
 
         except Exception as e:
             logger.warning(
@@ -503,8 +509,7 @@ class RAGSearchService:
                 error=str(e),
                 fallback="using_original_scores"
             )
-
-        return results[:top_k]
+            return results[:top_k]
 
     async def search_for_context(
         self,

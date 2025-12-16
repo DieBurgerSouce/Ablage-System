@@ -144,6 +144,39 @@ if PROMETHEUS_AVAILABLE:
         buckets=[60, 300, 600, 1800, 3600, 7200]
     )
 
+    # Reranker Metriken
+    RAG_RERANK_REQUESTS = Counter(
+        "rag_rerank_requests_total",
+        "Total reranking requests",
+        ["backend", "status"]  # backend: gpu, cpu
+    )
+
+    RAG_RERANK_LATENCY = Histogram(
+        "rag_rerank_latency_seconds",
+        "Reranking latency in seconds",
+        ["backend"],
+        buckets=[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]
+    )
+
+    RAG_RERANK_DOCUMENTS = Histogram(
+        "rag_rerank_documents_count",
+        "Number of documents reranked per request",
+        ["backend"],
+        buckets=[1, 5, 10, 20, 50, 100]
+    )
+
+    RAG_RERANK_FALLBACKS = Counter(
+        "rag_rerank_fallbacks_total",
+        "Total GPU to CPU fallbacks",
+        ["reason"]  # reason: oom, error, vram_low
+    )
+
+    RAG_RERANK_MODEL_LOADED = Gauge(
+        "rag_rerank_model_loaded",
+        "Whether reranker model is loaded",
+        ["backend", "model"]
+    )
+
     # System Info
     RAG_INFO = Info(
         "rag_system",
@@ -357,6 +390,58 @@ class RAGMetricsService:
             ).observe(duration_seconds)
 
     # -------------------------------------------------------------------------
+    # Reranker Metriken
+    # -------------------------------------------------------------------------
+
+    def record_rerank_request(
+        self,
+        backend: str,  # gpu, cpu
+        status: str = "success",
+        latency_seconds: Optional[float] = None,
+        documents_count: Optional[int] = None
+    ):
+        """Zeichnet Reranking Request auf."""
+        if not self._enabled:
+            return
+
+        RAG_RERANK_REQUESTS.labels(
+            backend=backend,
+            status=status
+        ).inc()
+
+        if latency_seconds is not None:
+            RAG_RERANK_LATENCY.labels(
+                backend=backend
+            ).observe(latency_seconds)
+
+        if documents_count is not None:
+            RAG_RERANK_DOCUMENTS.labels(
+                backend=backend
+            ).observe(documents_count)
+
+    def record_rerank_fallback(self, reason: str):
+        """Zeichnet GPU->CPU Fallback auf."""
+        if not self._enabled:
+            return
+
+        RAG_RERANK_FALLBACKS.labels(reason=reason).inc()
+
+    def set_rerank_model_loaded(
+        self,
+        backend: str,
+        model: str,
+        loaded: bool
+    ):
+        """Setzt Model-Loaded Status."""
+        if not self._enabled:
+            return
+
+        RAG_RERANK_MODEL_LOADED.labels(
+            backend=backend,
+            model=model
+        ).set(1 if loaded else 0)
+
+    # -------------------------------------------------------------------------
     # System Info
     # -------------------------------------------------------------------------
 
@@ -444,3 +529,23 @@ def record_chunking(
         latency_seconds=latency_ms / 1000,
         chunks_created=chunks
     )
+
+
+def record_rerank(
+    backend: str,
+    latency_ms: float,
+    documents_count: int,
+    status: str = "success"
+):
+    """Convenience: Reranking aufzeichnen."""
+    get_rag_metrics_service().record_rerank_request(
+        backend=backend,
+        status=status,
+        latency_seconds=latency_ms / 1000,
+        documents_count=documents_count
+    )
+
+
+def record_rerank_fallback(reason: str):
+    """Convenience: Reranker Fallback aufzeichnen."""
+    get_rag_metrics_service().record_rerank_fallback(reason=reason)
