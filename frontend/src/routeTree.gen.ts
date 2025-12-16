@@ -17,6 +17,7 @@ import { Route as MonitoringRouteImport } from './app/routes/monitoring'
 import { Route as LoginRouteImport } from './app/routes/login'
 import { Route as JobsRouteImport } from './app/routes/jobs'
 import { Route as DocumentGroupsRouteImport } from './app/routes/document-groups'
+import { Route as ChatRouteImport } from './app/routes/chat'
 import { Route as BusinessEntitiesRouteImport } from './app/routes/business-entities'
 import { Route as AutomationRouteImport } from './app/routes/automation'
 import { Route as AdminRouteImport } from './app/routes/admin'
@@ -30,6 +31,7 @@ import { Route as AdminUsersRouteImport } from './app/routes/admin.users'
 import { Route as AdminTunesRouteImport } from './app/routes/admin.tunes'
 import { Route as AdminSettingsRouteImport } from './app/routes/admin.settings'
 import { Route as AdminOcrTrainingRouteImport } from './app/routes/admin.ocr-training'
+import { Route as AdminOcrReviewRouteImport } from './app/routes/admin.ocr-review'
 import { Route as AdminOcrBackendsRouteImport } from './app/routes/admin.ocr-backends'
 import { Route as DocumentsDocumentIdRelationshipsRouteImport } from './app/routes/documents.$documentId.relationships'
 import { Route as AdminOcrBackendsBackendRouteImport } from './app/routes/admin.ocr-backends.$backend'
@@ -73,6 +75,11 @@ const JobsRoute = JobsRouteImport.update({
 const DocumentGroupsRoute = DocumentGroupsRouteImport.update({
   id: '/document-groups',
   path: '/document-groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BusinessEntitiesRoute = BusinessEntitiesRouteImport.update({
@@ -140,6 +147,11 @@ const AdminOcrTrainingRoute = AdminOcrTrainingRouteImport.update({
   path: '/ocr-training',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminOcrReviewRoute = AdminOcrReviewRouteImport.update({
+  id: '/ocr-review',
+  path: '/ocr-review',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminOcrBackendsRoute = AdminOcrBackendsRouteImport.update({
   id: '/ocr-backends',
   path: '/ocr-backends',
@@ -167,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/automation': typeof AutomationRoute
   '/business-entities': typeof BusinessEntitiesRouteWithChildren
+  '/chat': typeof ChatRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
@@ -176,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/tunes': typeof AdminTunesRoute
@@ -193,6 +207,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/automation': typeof AutomationRoute
   '/business-entities': typeof BusinessEntitiesRouteWithChildren
+  '/chat': typeof ChatRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
@@ -202,6 +217,7 @@ export interface FileRoutesByTo {
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/tunes': typeof AdminTunesRoute
@@ -221,6 +237,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/automation': typeof AutomationRoute
   '/business-entities': typeof BusinessEntitiesRouteWithChildren
+  '/chat': typeof ChatRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
@@ -230,6 +247,7 @@ export interface FileRoutesById {
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/tunes': typeof AdminTunesRoute
@@ -250,6 +268,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/automation'
     | '/business-entities'
+    | '/chat'
     | '/document-groups'
     | '/jobs'
     | '/login'
@@ -259,6 +278,7 @@ export interface FileRouteTypes {
     | '/upload'
     | '/validation-queue'
     | '/admin/ocr-backends'
+    | '/admin/ocr-review'
     | '/admin/ocr-training'
     | '/admin/settings'
     | '/admin/tunes'
@@ -276,6 +296,7 @@ export interface FileRouteTypes {
     | '/'
     | '/automation'
     | '/business-entities'
+    | '/chat'
     | '/document-groups'
     | '/jobs'
     | '/login'
@@ -285,6 +306,7 @@ export interface FileRouteTypes {
     | '/upload'
     | '/validation-queue'
     | '/admin/ocr-backends'
+    | '/admin/ocr-review'
     | '/admin/ocr-training'
     | '/admin/settings'
     | '/admin/tunes'
@@ -303,6 +325,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/automation'
     | '/business-entities'
+    | '/chat'
     | '/document-groups'
     | '/jobs'
     | '/login'
@@ -312,6 +335,7 @@ export interface FileRouteTypes {
     | '/upload'
     | '/validation-queue'
     | '/admin/ocr-backends'
+    | '/admin/ocr-review'
     | '/admin/ocr-training'
     | '/admin/settings'
     | '/admin/tunes'
@@ -331,6 +355,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AutomationRoute: typeof AutomationRoute
   BusinessEntitiesRoute: typeof BusinessEntitiesRouteWithChildren
+  ChatRoute: typeof ChatRoute
   DocumentGroupsRoute: typeof DocumentGroupsRouteWithChildren
   JobsRoute: typeof JobsRoute
   LoginRoute: typeof LoginRoute
@@ -398,6 +423,13 @@ declare module '@tanstack/react-router' {
       path: '/document-groups'
       fullPath: '/document-groups'
       preLoaderRoute: typeof DocumentGroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/business-entities': {
@@ -491,6 +523,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOcrTrainingRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/ocr-review': {
+      id: '/admin/ocr-review'
+      path: '/ocr-review'
+      fullPath: '/admin/ocr-review'
+      preLoaderRoute: typeof AdminOcrReviewRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/ocr-backends': {
       id: '/admin/ocr-backends'
       path: '/ocr-backends'
@@ -546,6 +585,7 @@ const AdminOcrTrainingRouteWithChildren =
 
 interface AdminRouteChildren {
   AdminOcrBackendsRoute: typeof AdminOcrBackendsRouteWithChildren
+  AdminOcrReviewRoute: typeof AdminOcrReviewRoute
   AdminOcrTrainingRoute: typeof AdminOcrTrainingRouteWithChildren
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminTunesRoute: typeof AdminTunesRoute
@@ -555,6 +595,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminOcrBackendsRoute: AdminOcrBackendsRouteWithChildren,
+  AdminOcrReviewRoute: AdminOcrReviewRoute,
   AdminOcrTrainingRoute: AdminOcrTrainingRouteWithChildren,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminTunesRoute: AdminTunesRoute,
@@ -615,6 +656,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AutomationRoute: AutomationRoute,
   BusinessEntitiesRoute: BusinessEntitiesRouteWithChildren,
+  ChatRoute: ChatRoute,
   DocumentGroupsRoute: DocumentGroupsRouteWithChildren,
   JobsRoute: JobsRoute,
   LoginRoute: LoginRoute,

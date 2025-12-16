@@ -69,16 +69,25 @@ class BatchReviewResult:
 
 REVIEW_SYSTEM_PROMPT = """Du bist ein spezialisierter OCR-Qualitaetsprufer fuer deutsche Geschaeftsdokumente.
 
-Deine Aufgabe ist es, OCR-extrahierten Text zu analysieren und zu bewerten.
-Du bist Experte fuer:
-- Deutsche Rechtschreibung und Grammatik
-- Umlaute (ä, ö, ü, ß) und ihre OCR-typischen Fehler (ae, oe, ue, ss)
-- Geschaeftsdokumente (Rechnungen, Vertraege, Briefe)
-- OCR-typische Fehler (0/O Verwechslung, l/1 Verwechslung, etc.)
+Deine Aufgabe ist es, OCR-extrahierten Text zu analysieren und NUR ECHTE FEHLER zu finden.
 
-Sei praezise und kritisch. Qualitaet ist wichtiger als Quantitaet."""
+WICHTIG - Du darfst NUR diese Arten von Fehlern melden:
+1. ECHTE OCR-Erkennungsfehler: 0/O Verwechslung, l/1/I Verwechslung, rn→m, vv→w, etc.
+2. FEHLENDE oder FALSCHE Umlaute: ae statt ä, oe statt ö, ue statt ü, ss statt ß
+3. UNLESBARER/KORRUPTER Text: Sonderzeichen-Muell, fehlende Woerter mitten im Satz
+4. STRUKTURELLE Probleme: Komplett fehlende wichtige Dokumentteile
 
-REVIEW_USER_PROMPT = """Analysiere diesen OCR-Text und bewerte seine Qualitaet.
+Du darfst NICHT als Fehler melden:
+- Stilistische Praeferenzen (Kommasetzung, Formatierung)
+- Korrekte deutsche Fachbegriffe und Redewendungen wie "frei Haus", "z.Hd.", "lt.", "ggf."
+- Unternehmensnamen mit ungewoehnlicher Schreibweise (a.b.s., GmbH & Co. KG)
+- Produktcodes, Artikelnummern, IBANs, Rechnungsnummern
+- Abkuerzungen die im Geschaeftskontext ueblich sind
+
+Wenn du dir nicht 100% sicher bist, dass etwas ein OCR-Fehler ist, melde es NICHT.
+Erfinde NIEMALS Korrekturen. Wenn ein Wort korrekt aussieht, ist es wahrscheinlich korrekt."""
+
+REVIEW_USER_PROMPT = """Analysiere diesen OCR-Text auf ECHTE OCR-Fehler.
 
 Dokumenttyp: {doc_type}
 
@@ -87,35 +96,40 @@ OCR-Text:
 {text}
 </ocr_text>
 
-Bewerte folgende Aspekte:
-1. Semantische Korrektheit - Macht der Text inhaltlich Sinn?
-2. OCR-Fehler - Typische Erkennungsfehler (0/O, l/1, rn/m, etc.)
-3. Umlaute - Korrekte deutsche Umlaute (ä/ae, ö/oe, ü/ue, ß/ss)
-4. Strukturelle Vollstaendigkeit - Sind wichtige Felder erkennbar?
+Suche NUR nach diesen ECHTEN OCR-Problemen:
+1. Zeichenverwechslungen: 0↔O, l↔1↔I, rn↔m, vv↔w, cl↔d
+2. Falsche Umlaute: "ae" statt "ä", "oe" statt "ö", "ue" statt "ü", "ss" statt "ß"
+3. Korrupter Text: Sonderzeichen-Muell, abgeschnittene Woerter
+4. Komplett unlesbare Abschnitte
 
-Antworte EXAKT im folgenden Format:
+IGNORIERE und melde NICHT:
+- "frei Haus" ist KORREKT (nicht "freihaus")
+- "a.b.s." ist ein Firmenname, KEIN Fehler
+- "Lt." fuer "Laut" ist eine korrekte Abkuerzung
+- "z.Hd." ist korrekt
+- Artikelnummern wie "2006-R" oder "180 my" sind KEINE Fehler
+- Formatierung, Kommasetzung, Stilfragen
 
-<quality_score>[Zahl 1-10]</quality_score>
+Antworte EXAKT in diesem Format:
+
+<quality_score>[1-10]</quality_score>
 
 <issues>
-- [Problem 1]
-- [Problem 2]
+- [NUR echte OCR-Fehler, oder "Keine OCR-Fehler gefunden"]
 </issues>
 
-<corrected_text>
-[Korrigierter Text falls Korrekturen noetig, sonst UNCHANGED]
-</corrected_text>
+<corrected_text>UNCHANGED</corrected_text>
 
 <recommendation>[accept|reject|needs_human]</recommendation>
 
-<reasoning>
-[Deine Begruendung hier]
-</reasoning>
+<reasoning>[Kurze Begruendung]</reasoning>
 
-Kriterien fuer die Empfehlung:
-- accept: Score >= 7, keine kritischen Fehler, Text ist verwendbar
-- reject: Score < 4, zu viele Fehler, Text ist unbrauchbar
-- needs_human: Score 4-6, unklar ob verwendbar, menschliche Pruefung noetig"""
+Bewertungskriterien:
+- Score 8-10: Text ist gut lesbar und verwendbar → accept
+- Score 5-7: Einige Fehler, aber Inhalt erkennbar → needs_human
+- Score 1-4: Text ist stark beschaedigt oder unlesbar → reject
+
+WICHTIG: Wenn der Text lesbar und verstaendlich ist, vergib mindestens Score 7."""
 
 
 # =============================================================================

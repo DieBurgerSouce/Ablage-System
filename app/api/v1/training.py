@@ -12,13 +12,20 @@ Endpoints für das OCR Training und Validation System:
 Feinpoliert und durchdacht - Enterprise-grade OCR Training.
 """
 
+from datetime import datetime, timezone
 from typing import Optional, List
 from uuid import UUID
+from pathlib import Path as FilePath
+import io
 
 import structlog
 from starlette import status
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Path
+from fastapi.responses import Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from PIL import Image
+import pypdfium2 as pdfium
 
 from app.db.models import User
 from app.db import schemas
@@ -140,6 +147,100 @@ async def get_training_sample(
         raise HTTPException(status_code=404, detail="Training Sample nicht gefunden")
 
     return TrainingSampleResponse.model_validate(sample)
+
+
+@router.get("/samples/{sample_id}/preview")
+async def get_sample_preview(
+    sample_id: UUID = Path(..., description="Training Sample ID"),
+    page: int = Query(0, ge=0, description="Seite bei PDFs (0-basiert)"),
+    current_user: User = Depends(require_any_role("admin", "editor")),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Liefert eine Bildvorschau des Training Sample Dokuments.
+
+    Konvertiert TIFF, PDF und andere Formate zu PNG fuer Browser-Anzeige.
+    Bei PDFs kann eine bestimmte Seite ausgewaehlt werden.
+    """
+    from app.db.models import OCRTrainingSample
+
+    # Sample laden
+    result = await db.execute(
+        select(OCRTrainingSample).where(OCRTrainingSample.id == sample_id)
+    )
+    sample = result.scalar_one_or_none()
+
+    if not sample:
+        raise HTTPException(status_code=404, detail="Training Sample nicht gefunden")
+
+    if not sample.file_path:
+        raise HTTPException(status_code=404, detail="Kein Dateipfad fuer dieses Sample")
+
+    file_path = FilePath(sample.file_path)
+
+    if not file_path.exists():
+        logger.warning(
+            "sample_preview_file_not_found",
+            sample_id=str(sample_id),
+            file_path=str(file_path)
+        )
+        raise HTTPException(status_code=404, detail="Datei nicht gefunden")
+
+    try:
+        suffix = file_path.suffix.lower()
+
+        # PDF: Rendere spezifische Seite
+        if suffix == ".pdf":
+            pdf = pdfium.PdfDocument(str(file_path))
+            if page >= len(pdf):
+                page = 0
+            pdf_page = pdf[page]
+            pil_image = pdf_page.render(scale=150/72).to_pil()  # 150 DPI
+            pdf.close()
+        else:
+            # Bilder direkt laden (TIFF, PNG, JPG, etc.)
+            pil_image = Image.open(file_path)
+
+        # Konvertiere zu RGB falls noetig
+        if pil_image.mode in ("CMYK", "P", "LA", "RGBA", "I"):
+            pil_image = pil_image.convert("RGB")
+
+        # Resize fuer schnellere Uebertragung (max 1200px)
+        max_size = 1200
+        if max(pil_image.size) > max_size:
+            pil_image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+
+        # Als PNG ausgeben
+        output = io.BytesIO()
+        pil_image.save(output, format="PNG", optimize=True)
+        output.seek(0)
+
+        logger.debug(
+            "sample_preview_generated",
+            sample_id=str(sample_id),
+            original_format=suffix,
+            size=pil_image.size
+        )
+
+        return Response(
+            content=output.getvalue(),
+            media_type="image/png",
+            headers={
+                "Content-Disposition": "inline",
+                "Cache-Control": "public, max-age=3600"
+            }
+        )
+
+    except Exception as e:
+        logger.error(
+            "sample_preview_error",
+            sample_id=str(sample_id),
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Fehler beim Generieren der Vorschau: {str(e)}"
+        )
 
 
 @router.put("/samples/{sample_id}", response_model=TrainingSampleResponse)
@@ -1992,4 +2093,592 @@ async def get_alert_history(
             }
             for a in alerts
         ]
+    }
+
+
+# ==================== Verification Queue Endpoints ====================
+
+
+@router.get(
+    "/verification-queue/next",
+    summary="Naechstes Sample zur Verifikation",
+    tags=["verification-queue"]
+)
+async def get_next_verification_item(
+    document_type: Optional[str] = Query(default=None, description="Dokumenttyp-Filter"),
+    include_spot_checks: bool = Query(default=True, description="Stichproben-Reviews einschliessen"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any_role("admin", "editor")),
+):
+    """
+    Holt das naechste Sample zur Verifikation aus der priorisierten Queue.
+
+    Priorisierung:
+    1. Coverage-Luecken (Typen unter 90% Abdeckung)
+    2. Stichproben-Reviews (10% der auto-accepted)
+    3. Business-kritische Typen (Rechnungen > Vertraege)
+    4. Niedrige Confidence
+
+    Erfordert Admin- oder Editor-Rolle.
+    """
+    from app.services.verification_queue_service import get_verification_queue_service
+
+    service = get_verification_queue_service()
+    item = await service.get_next_for_verification(
+        db=db,
+        user_id=current_user.id,
+        document_type=document_type,
+        include_spot_checks=include_spot_checks,
+    )
+
+    if not item:
+        return {"message": "Keine Samples in der Queue", "item": None}
+
+    return {
+        "item": {
+            "sample_id": str(item.sample_id),
+            "document_type": item.document_type,
+            "priority": item.priority.value,
+            "priority_score": item.priority_score,
+            "reason": item.reason,
+            "ocr_text_preview": item.ocr_text_preview,
+            "confidence": item.confidence,
+            "is_spot_check": item.is_spot_check,
+            "created_at": item.created_at,
+            "file_path": item.file_path,
+        }
+    }
+
+
+@router.get(
+    "/verification-queue/stats",
+    summary="Queue-Statistiken abrufen",
+    tags=["verification-queue"]
+)
+async def get_verification_queue_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any_role("admin", "editor")),
+):
+    """
+    Gibt detaillierte Statistiken der Verifikations-Queue zurueck.
+
+    Enthaelt:
+    - Gesamtzahl pending Samples
+    - Verteilung nach Prioritaet und Dokumenttyp
+    - Coverage-Luecken
+    - Aeltestes Sample und durchschnittliche Wartezeit
+
+    Erfordert Admin- oder Editor-Rolle.
+    """
+    from app.services.verification_queue_service import get_verification_queue_service
+
+    service = get_verification_queue_service()
+    stats = await service.get_queue_stats(db)
+
+    return {
+        "total_pending": stats.total_pending,
+        "pending_by_priority": stats.pending_by_priority,
+        "pending_by_type": stats.pending_by_type,
+        "spot_checks_pending": stats.spot_checks_pending,
+        "oldest_item_days": stats.oldest_item_days,
+        "avg_wait_time_hours": stats.avg_wait_time_hours,
+        "coverage_gaps": stats.coverage_gaps,
+    }
+
+
+@router.post(
+    "/verification-queue/{sample_id}/verify",
+    summary="Sample verifizieren",
+    tags=["verification-queue"]
+)
+async def verify_sample(
+    sample_id: UUID = Path(..., description="Sample-ID"),
+    approved: bool = Query(..., description="Ob Ground-Truth akzeptiert wird"),
+    corrected_text: Optional[str] = Query(default=None, description="Korrigierter Text"),
+    correction_notes: Optional[str] = Query(default=None, description="Notizen zur Korrektur"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any_role("admin", "editor")),
+):
+    """
+    Verifiziert ein Sample aus der Queue.
+
+    Bei Stichproben-Reviews:
+    - approved=True: Stichprobe bestanden
+    - approved=False: Korrektur erforderlich
+
+    Bei Standard-Verifikation:
+    - approved=True: Ground-Truth akzeptiert, Status -> VERIFIED
+    - approved=False mit corrected_text: Text korrigiert, Status -> ANNOTATED
+
+    Erfordert Admin- oder Editor-Rolle.
+    """
+    from app.services.verification_queue_service import get_verification_queue_service
+
+    service = get_verification_queue_service()
+
+    try:
+        result = await service.verify_sample(
+            db=db,
+            sample_id=sample_id,
+            user_id=current_user.id,
+            approved=approved,
+            corrected_text=corrected_text,
+            correction_notes=correction_notes,
+        )
+
+        return {
+            "success": True,
+            "sample_id": str(result.sample_id),
+            "approved": result.approved,
+            "verified_at": result.verified_at,
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+
+@router.get(
+    "/verification-queue/by-type/{document_type}",
+    summary="Queue-Items nach Dokumenttyp",
+    tags=["verification-queue"]
+)
+async def get_queue_items_by_type(
+    document_type: str = Path(..., description="Dokumenttyp"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any_role("admin", "editor")),
+):
+    """
+    Holt Queue-Items fuer einen bestimmten Dokumenttyp.
+
+    Erfordert Admin- oder Editor-Rolle.
+    """
+    from app.services.verification_queue_service import get_verification_queue_service
+
+    service = get_verification_queue_service()
+    items = await service.get_items_by_type(
+        db=db,
+        document_type=document_type,
+        limit=limit,
+        offset=offset,
+    )
+
+    return {
+        "document_type": document_type,
+        "count": len(items),
+        "items": [
+            {
+                "sample_id": str(item.sample_id),
+                "priority": item.priority.value,
+                "priority_score": item.priority_score,
+                "reason": item.reason,
+                "ocr_text_preview": item.ocr_text_preview,
+                "confidence": item.confidence,
+                "is_spot_check": item.is_spot_check,
+                "created_at": item.created_at,
+            }
+            for item in items
+        ]
+    }
+
+
+# ==================== Coverage Tracking Endpoints ====================
+
+
+@router.get(
+    "/coverage/status",
+    summary="Coverage-Status abrufen",
+    tags=["coverage"]
+)
+async def get_coverage_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any_role("admin", "editor")),
+):
+    """
+    Gibt den aktuellen Coverage-Status fuer alle Business-Dokumenttypen zurueck.
+
+    Zeigt:
+    - Aktuelle Coverage pro Typ (% des Ziels)
+    - Verifizierte und auto-akzeptierte Samples
+    - Luecken unter 90% Ziel
+
+    Erfordert Admin- oder Editor-Rolle.
+    """
+    from app.db.models import BusinessDocumentProfile
+
+    result = await db.execute(
+        select(BusinessDocumentProfile).where(BusinessDocumentProfile.is_active == True)
+    )
+    profiles = result.scalars().all()
+
+    coverage_data = []
+    total_weighted_coverage = 0.0
+    total_weight = 0.0
+
+    for profile in profiles:
+        target_samples = int(
+            profile.estimated_daily_volume * profile.target_coverage * 0.1
+        )
+
+        coverage_data.append({
+            "document_type": profile.document_type,
+            "display_name": profile.display_name,
+            "current_coverage": profile.coverage_percentage,
+            "target_coverage": profile.target_coverage,
+            "total_samples": profile.current_sample_count,
+            "verified_samples": profile.verified_sample_count,
+            "auto_accepted_samples": profile.auto_accepted_count,
+            "target_samples": target_samples,
+            "samples_needed": max(0, target_samples - profile.verified_sample_count),
+            "is_gap": profile.coverage_percentage < profile.target_coverage,
+        })
+
+        weight = profile.training_weight or 1.0
+        total_weighted_coverage += (profile.coverage_percentage or 0) * weight
+        total_weight += weight
+
+    weighted_coverage = total_weighted_coverage / total_weight if total_weight > 0 else 0.0
+
+    return {
+        "weighted_coverage": weighted_coverage,
+        "coverage_target": 0.90,
+        "coverage_by_type": coverage_data,
+        "gaps_count": sum(1 for c in coverage_data if c["is_gap"]),
+    }
+
+
+@router.get(
+    "/coverage/history",
+    summary="Coverage-Historie abrufen",
+    tags=["coverage"]
+)
+async def get_coverage_history(
+    days: int = Query(default=30, ge=1, le=365, description="Tage zurueck"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any_role("admin", "editor")),
+):
+    """
+    Gibt die Coverage-Historie der letzten Tage zurueck.
+
+    Basiert auf taeglichen Snapshots fuer Trend-Analyse.
+
+    Erfordert Admin- oder Editor-Rolle.
+    """
+    from app.db.models import CoverageSnapshot
+    from datetime import timedelta
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    result = await db.execute(
+        select(CoverageSnapshot)
+        .where(CoverageSnapshot.snapshot_date >= cutoff)
+        .order_by(CoverageSnapshot.snapshot_date)
+    )
+    snapshots = result.scalars().all()
+
+    return {
+        "days": days,
+        "snapshots_count": len(snapshots),
+        "history": [
+            {
+                "date": s.snapshot_date,
+                "weighted_coverage": s.weighted_coverage,
+                "coverage_by_type": s.coverage_by_type,
+                "total_processed": s.total_documents_processed,
+                "total_auto_accepted": s.total_auto_accepted,
+                "total_manually_verified": s.total_manually_verified,
+                "spot_check_success_rate": s.spot_check_success_rate,
+            }
+            for s in snapshots
+        ]
+    }
+
+
+@router.get(
+    "/business-profiles",
+    summary="Business Document Profiles abrufen",
+    tags=["coverage"]
+)
+async def get_business_profiles(
+    active_only: bool = Query(default=True, description="Nur aktive Profile"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any_role("admin", "editor")),
+):
+    """
+    Gibt alle Business Document Profiles zurueck.
+
+    Profile definieren:
+    - Dokumenttyp und Anzeigename
+    - Geschaetzte taegliche Volumen
+    - Auto-Accept Schwellenwerte
+    - Coverage-Ziele
+
+    Erfordert Admin- oder Editor-Rolle.
+    """
+    from app.db.models import BusinessDocumentProfile
+
+    query = select(BusinessDocumentProfile)
+    if active_only:
+        query = query.where(BusinessDocumentProfile.is_active == True)
+
+    result = await db.execute(query)
+    profiles = result.scalars().all()
+
+    return {
+        "count": len(profiles),
+        "profiles": [
+            {
+                "id": str(p.id),
+                "document_type": p.document_type,
+                "display_name": p.display_name,
+                "description": p.description,
+                "estimated_daily_volume": p.estimated_daily_volume,
+                "business_criticality": p.business_criticality,
+                "auto_accept_confidence": p.auto_accept_confidence,
+                "min_text_length": p.min_text_length,
+                "require_umlaut_validation": p.require_umlaut_validation,
+                "training_weight": p.training_weight,
+                "target_coverage": p.target_coverage,
+                "current_sample_count": p.current_sample_count,
+                "verified_sample_count": p.verified_sample_count,
+                "auto_accepted_count": p.auto_accepted_count,
+                "coverage_percentage": p.coverage_percentage,
+                "is_active": p.is_active,
+                "created_at": p.created_at,
+                "updated_at": p.updated_at,
+            }
+            for p in profiles
+        ]
+    }
+
+
+# ==================== LLM OCR Review Endpoints (Phase 6) ====================
+
+
+@router.post(
+    "/samples/{sample_id}/llm-review",
+    summary="LLM-Review fuer Sample",
+    tags=["llm-review"]
+)
+async def trigger_llm_review(
+    sample_id: UUID = Path(..., description="Training Sample ID"),
+    auto_correct: bool = Query(default=True, description="Automatisch korrigieren"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any_role("admin", "editor")),
+):
+    """
+    Fuehrt eine LLM-Review fuer ein einzelnes Training Sample durch.
+
+    Das LLM analysiert den OCR-Text und:
+    1. Bewertet die semantische Korrektheit
+    2. Erkennt OCR-typische Fehler
+    3. Korrigiert optional den Text
+    4. Gibt eine Empfehlung (accept/reject/needs_human)
+
+    Erfordert Admin- oder Editor-Rolle.
+    """
+    from app.services.llm_ocr_review_service import get_llm_ocr_review_service
+
+    service = get_llm_ocr_review_service()
+
+    try:
+        result = await service.review_sample_by_id(
+            db=db,
+            sample_id=sample_id,
+            auto_correct=auto_correct,
+        )
+
+        return {
+            "success": True,
+            "sample_id": str(sample_id),
+            "review_result": {
+                "quality_score": result.quality_score,
+                "recommendation": result.recommendation,
+                "issues_found": result.issues_found,
+                "corrected_text": result.corrected_text if auto_correct else None,
+                "reasoning": result.reasoning,
+                "reviewed_at": result.reviewed_at.isoformat() if result.reviewed_at else None,
+            }
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error("llm_review_failed", sample_id=str(sample_id), error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"LLM-Review fehlgeschlagen: {str(e)}"
+        )
+
+
+@router.get(
+    "/samples/llm-review/stats",
+    summary="LLM-Review Statistiken",
+    tags=["llm-review"]
+)
+async def get_llm_review_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any_role("admin", "editor")),
+):
+    """
+    Gibt Statistiken ueber LLM-Reviews zurueck.
+
+    Enthaelt:
+    - Anzahl reviewed/pending Samples
+    - Verteilung nach Recommendation (accept/reject/needs_human)
+    - Durchschnittlicher Quality Score
+    - Erfolgsrate der Korrekturen
+
+    Erfordert Admin- oder Editor-Rolle.
+    """
+    from app.services.llm_ocr_review_service import get_llm_ocr_review_service
+
+    service = get_llm_ocr_review_service()
+    stats = await service.get_review_stats(db)
+
+    return {
+        "total_reviewed": stats.get("total_reviewed", 0),
+        "pending_review": stats.get("pending_review", 0),
+        "by_recommendation": stats.get("by_recommendation", {}),
+        "avg_quality_score": stats.get("avg_quality_score"),
+        "correction_rate": stats.get("correction_rate"),
+        "last_review_at": stats.get("last_review_at"),
+    }
+
+
+@router.post(
+    "/samples/llm-review/batch",
+    summary="Batch-LLM-Review starten",
+    tags=["llm-review"]
+)
+async def trigger_llm_review_batch(
+    max_samples: int = Query(default=50, ge=1, le=200, description="Maximale Anzahl Samples"),
+    document_type: Optional[str] = Query(default=None, description="Dokumenttyp-Filter"),
+    current_user: User = Depends(require_any_role("admin")),
+):
+    """
+    Startet einen Batch-LLM-Review als Hintergrund-Task.
+
+    Verarbeitet pending Samples sortiert nach Business-Priority.
+    Der Task laeuft asynchron und die Ergebnisse werden in der DB gespeichert.
+
+    Erfordert Admin-Rolle.
+    """
+    from app.workers.tasks.training_tasks import llm_review_batch
+
+    # Celery Task starten
+    task = llm_review_batch.delay(max_samples=max_samples, document_type=document_type)
+
+    return {
+        "success": True,
+        "message": f"LLM-Review Batch gestartet fuer {max_samples} Samples",
+        "task_id": task.id,
+        "document_type_filter": document_type,
+    }
+
+
+@router.get(
+    "/samples/{sample_id}/llm-review/result",
+    summary="LLM-Review Ergebnis abrufen",
+    tags=["llm-review"]
+)
+async def get_llm_review_result(
+    sample_id: UUID = Path(..., description="Training Sample ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any_role("admin", "editor")),
+):
+    """
+    Ruft das LLM-Review Ergebnis fuer ein Sample ab.
+
+    Erfordert Admin- oder Editor-Rolle.
+    """
+    from app.db.models import OCRTrainingSample
+
+    result = await db.execute(
+        select(OCRTrainingSample).where(OCRTrainingSample.id == sample_id)
+    )
+    sample = result.scalar_one_or_none()
+
+    if not sample:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Training Sample {sample_id} nicht gefunden"
+        )
+
+    if not sample.llm_review_status or sample.llm_review_status == "pending":
+        return {
+            "sample_id": str(sample_id),
+            "llm_review_status": sample.llm_review_status or "not_reviewed",
+            "has_review": False,
+            "message": "Sample wurde noch nicht LLM-reviewed"
+        }
+
+    return {
+        "sample_id": str(sample_id),
+        "llm_review_status": sample.llm_review_status,
+        "has_review": True,
+        "llm_review_result": sample.llm_review_result,
+        "llm_corrected_text": sample.llm_corrected_text,
+        "llm_reviewed_at": sample.llm_reviewed_at.isoformat() if sample.llm_reviewed_at else None,
+    }
+
+
+@router.post(
+    "/samples/{sample_id}/llm-review/accept-correction",
+    summary="LLM-Korrektur akzeptieren",
+    tags=["llm-review"]
+)
+async def accept_llm_correction(
+    sample_id: UUID = Path(..., description="Training Sample ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any_role("admin", "editor")),
+):
+    """
+    Akzeptiert die LLM-Korrektur und uebernimmt sie als Ground-Truth.
+
+    Setzt llm_corrected_text als ground_truth_text und aktualisiert Status.
+
+    Erfordert Admin- oder Editor-Rolle.
+    """
+    from app.db.models import OCRTrainingSample
+
+    result = await db.execute(
+        select(OCRTrainingSample).where(OCRTrainingSample.id == sample_id)
+    )
+    sample = result.scalar_one_or_none()
+
+    if not sample:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Training Sample {sample_id} nicht gefunden"
+        )
+
+    if not sample.llm_corrected_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Keine LLM-Korrektur vorhanden"
+        )
+
+    # Korrektur uebernehmen
+    old_text = sample.ground_truth_text
+    sample.ground_truth_text = sample.llm_corrected_text
+    sample.llm_review_status = "accepted"
+    sample.status = "verified"
+    sample.verified_by_id = current_user.id
+    sample.verified_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(sample)
+
+    return {
+        "success": True,
+        "sample_id": str(sample_id),
+        "message": "LLM-Korrektur als Ground-Truth uebernommen",
+        "old_text_preview": old_text[:100] + "..." if old_text and len(old_text) > 100 else old_text,
+        "new_text_preview": sample.ground_truth_text[:100] + "..." if len(sample.ground_truth_text) > 100 else sample.ground_truth_text,
     }

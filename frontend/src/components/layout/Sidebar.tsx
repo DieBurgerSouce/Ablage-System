@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, Building2, GraduationCap, Cpu, ChevronDown } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, Building2, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { SettingsModal } from '@/components/settings'
@@ -52,6 +52,7 @@ export function Sidebar() {
 
             <nav className="flex-1 px-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Hauptmenü">
                 <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" />
+                <SidebarLink to="/chat" icon={MessageSquare} label="Chat" />
                 <SidebarLink to="/upload" icon={Upload} label="Upload Wizard" />
                 <SidebarLink to="/jobs" icon={ListTodo} label="Job Queue" />
                 <SidebarLink to="/validation-queue" icon={CheckCircle} label="Validierung" />
@@ -71,6 +72,7 @@ export function Sidebar() {
                     {showAdminMenu && (
                         <div className="mt-1 ml-2 space-y-1 border-l border-sidebar-border pl-2">
                             <SidebarLink to="/admin/ocr-training" icon={GraduationCap} label="OCR Training" />
+                            <SidebarLink to="/admin/ocr-review" icon={ClipboardCheck} label="OCR Review" />
                             <SidebarLink to="/admin/ocr-backends" icon={Cpu} label="OCR Backends" />
                         </div>
                     )}

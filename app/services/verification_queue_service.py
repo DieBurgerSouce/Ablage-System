@@ -149,6 +149,7 @@ class VerificationQueueService:
         coverage_status = await self._get_coverage_status(db)
 
         # Baue Query fuer pending Samples
+        # Filtere Samples ohne Text heraus (leere Platzhalter)
         query = select(OCRTrainingSample).where(
             and_(
                 or_(
@@ -162,6 +163,9 @@ class VerificationQueueService:
                     ) if include_spot_checks else False,
                 ),
                 OCRTrainingSample.deleted_at.is_(None),
+                # Nur Samples mit echtem Text (keine leeren Platzhalter)
+                OCRTrainingSample.ground_truth_text.isnot(None),
+                func.length(OCRTrainingSample.ground_truth_text) > 0,
             )
         )
 
@@ -211,7 +215,7 @@ class VerificationQueueService:
         Returns:
             QueueStats mit detaillierten Metriken
         """
-        # Zaehle pending Samples
+        # Zaehle pending Samples (nur mit echtem Text)
         total_result = await db.execute(
             select(func.count(OCRTrainingSample.id)).where(
                 and_(
@@ -220,24 +224,28 @@ class VerificationQueueService:
                         OCRTrainingSample.status == TrainingSampleStatus.ANNOTATED.value,
                     ),
                     OCRTrainingSample.deleted_at.is_(None),
+                    OCRTrainingSample.ground_truth_text.isnot(None),
+                    func.length(OCRTrainingSample.ground_truth_text) > 0,
                 )
             )
         )
         total_pending = total_result.scalar() or 0
 
-        # Zaehle pending Stichproben
+        # Zaehle pending Stichproben (nur mit echtem Text)
         spot_check_result = await db.execute(
             select(func.count(OCRTrainingSample.id)).where(
                 and_(
                     OCRTrainingSample.needs_spot_check == True,
                     OCRTrainingSample.spot_check_passed.is_(None),
                     OCRTrainingSample.deleted_at.is_(None),
+                    OCRTrainingSample.ground_truth_text.isnot(None),
+                    func.length(OCRTrainingSample.ground_truth_text) > 0,
                 )
             )
         )
         spot_checks_pending = spot_check_result.scalar() or 0
 
-        # Zaehle nach Dokumenttyp
+        # Zaehle nach Dokumenttyp (nur mit echtem Text)
         type_result = await db.execute(
             select(
                 OCRTrainingSample.document_type,
@@ -250,6 +258,8 @@ class VerificationQueueService:
                         OCRTrainingSample.status == TrainingSampleStatus.ANNOTATED.value,
                     ),
                     OCRTrainingSample.deleted_at.is_(None),
+                    OCRTrainingSample.ground_truth_text.isnot(None),
+                    func.length(OCRTrainingSample.ground_truth_text) > 0,
                 )
             )
             .group_by(OCRTrainingSample.document_type)
