@@ -56,3 +56,22 @@ async def get_async_session_context() -> AsyncGenerator[AsyncSession, None]:
     finally:
         await session.close()
         await engine.dispose()
+
+
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency for async database sessions.
+
+    Creates a fresh session for each request using the context manager.
+    This is the function imported by RAG endpoints.
+
+    Usage:
+        @router.get("/")
+        async def endpoint(db: AsyncSession = Depends(get_async_session)):
+            ...
+
+    Yields:
+        AsyncSession: Database session that auto-commits on success
+                      and rolls back on exception.
+    """
+    async with get_async_session_context() as session:
+        yield session
