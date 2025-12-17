@@ -25,7 +25,7 @@ from typing import Optional, List, Dict, Any
 from enum import Enum
 import uuid
 
-from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Boolean, Float, Text, JSON, ForeignKey, Index, Table
+from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Date, Boolean, Float, Text, JSON, ForeignKey, Index, Table, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
 from sqlalchemy.types import TypeDecorator
 from pgvector.sqlalchemy import Vector
@@ -4272,3 +4272,712 @@ class EInvoiceDocument(Base):
             "schematron_valid": self.schematron_valid,
             "pdf_a_compliant": self.pdf_a_compliant,
         }
+
+
+# =============================================================================
+# BANKING INTEGRATION MODELS
+# =============================================================================
+
+class BankAccount(Base):
+    """Bankkonto fuer Transaktions-Import und Zahlungen."""
+    __tablename__ = "bank_accounts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Konto-Identifikation
+    account_name = Column(String(255), nullable=False)
+    iban = Column(String(34), nullable=False)
+    bic = Column(String(11), nullable=True)
+    bank_name = Column(String(255), nullable=True)
+    account_holder = Column(String(255), nullable=True)
+    account_type = Column(String(50), default="checking")
+
+    # FinTS (optional)
+    blz = Column(String(8), nullable=True)
+    fints_url = Column(String(500), nullable=True)
+    fints_version = Column(String(10), default="3.0")
+    login_id_encrypted = Column(String(500), nullable=True)
+    pin_hash = Column(String(255), nullable=True)
+
+    # TAN-Konfiguration
+    tan_method = Column(String(50), nullable=True)
+    tan_media = Column(String(100), nullable=True)
+    tan_mechanism_id = Column(String(20), nullable=True)
+
+    # Sync-Konfiguration
+    last_sync_at = Column(DateTime(timezone=True), nullable=True)
+    sync_from_date = Column(DateTime(timezone=True), nullable=True)
+    auto_sync_enabled = Column(Boolean, default=False)
+    sync_interval_hours = Column(Integer, default=24)
+
+    # Saldo
+    current_balance = Column(Float, nullable=True)
+    balance_date = Column(DateTime(timezone=True), nullable=True)
+    currency = Column(String(3), default="EUR")
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    connection_status = Column(String(50), default="manual")
+    last_error = Column(Text, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    user = relationship("User", backref="bank_accounts")
+    transactions = relationship("BankTransaction", back_populates="bank_account", cascade="all, delete-orphan")
+    imports = relationship("BankImport", back_populates="bank_account")
+
+
+class BankImport(Base):
+    """Import-Historie fuer Kontoauszuege."""
+    __tablename__ = "bank_imports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    bank_account_id = Column(UUID(as_uuid=True), ForeignKey("bank_accounts.id", ondelete="SET NULL"), nullable=True)
+
+    # Import-Details
+    filename = Column(String(255), nullable=True)
+    file_hash = Column(String(64), nullable=True)
+    file_size = Column(Integer, nullable=True)
+
+    # Format
+    format = Column(String(50), nullable=False)
+    format_variant = Column(String(100), nullable=True)
+
+    # Ergebnis
+    status = Column(String(50), default="pending")
+    transaction_count = Column(Integer, default=0)
+    duplicate_count = Column(Integer, default=0)
+    error_count = Column(Integer, default=0)
+    errors = Column(CrossDBJSON, default=list)
+
+    # Zeitraum
+    date_from = Column(DateTime(timezone=True), nullable=True)
+    date_to = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    imported_at = Column(DateTime(timezone=True), server_default=func.now())
+    processing_duration_ms = Column(Integer, nullable=True)
+
+    # Relationships
+    user = relationship("User", backref="bank_imports")
+    bank_account = relationship("BankAccount", back_populates="imports")
+
+
+class BankTransaction(Base):
+    """Importierte Kontobewegungen."""
+    __tablename__ = "bank_transactions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    bank_account_id = Column(UUID(as_uuid=True), ForeignKey("bank_accounts.id", ondelete="CASCADE"), nullable=False)
+    import_id = Column(UUID(as_uuid=True), ForeignKey("bank_imports.id", ondelete="SET NULL"), nullable=True)
+
+    # Transaktions-ID
+    transaction_id = Column(String(100), nullable=True)
+    booking_date = Column(DateTime(timezone=True), nullable=False)
+    value_date = Column(DateTime(timezone=True), nullable=False)
+
+    # Betrag
+    amount = Column(Float, nullable=False)
+    currency = Column(String(3), default="EUR")
+
+    # Gegenpartei
+    counterparty_name = Column(String(255), nullable=True)
+    counterparty_iban = Column(String(34), nullable=True)
+    counterparty_bic = Column(String(11), nullable=True)
+    counterparty_bank_name = Column(String(255), nullable=True)
+
+    # Verwendungszweck
+    reference_text = Column(Text, nullable=True)
+    end_to_end_id = Column(String(35), nullable=True)
+    mandate_id = Column(String(35), nullable=True)
+    creditor_id = Column(String(35), nullable=True)
+
+    # Kategorisierung
+    transaction_type = Column(String(50), nullable=True)
+    booking_text = Column(String(100), nullable=True)
+    prima_nota = Column(String(20), nullable=True)
+
+    # Geparste Referenzen
+    parsed_invoice_numbers = Column(CrossDBJSON, default=list)
+    parsed_customer_numbers = Column(CrossDBJSON, default=list)
+    parsed_references = Column(CrossDBJSON, default=list)
+
+    # Reconciliation
+    reconciliation_status = Column(String(50), default="unmatched")
+    matched_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
+    matched_invoice_number = Column(String(100), nullable=True)
+    match_confidence = Column(Float, nullable=True)
+    match_method = Column(String(50), nullable=True)
+    matched_at = Column(DateTime(timezone=True), nullable=True)
+    matched_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Teilzahlungen
+    allocated_amount = Column(Float, nullable=True)
+    remaining_amount = Column(Float, nullable=True)
+    is_partial_payment = Column(Boolean, default=False)
+    parent_transaction_id = Column(UUID(as_uuid=True), ForeignKey("bank_transactions.id", ondelete="SET NULL"), nullable=True)
+
+    # Rohdaten
+    raw_data = Column(CrossDBJSON, nullable=True)
+
+    # Audit
+    imported_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    bank_account = relationship("BankAccount", back_populates="transactions")
+    matched_document = relationship("Document", backref="matched_transactions")
+    matched_by = relationship("User", foreign_keys=[matched_by_id])
+
+
+class PaymentBatch(Base):
+    """Sammelzahlungen."""
+    __tablename__ = "payment_batches"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    bank_account_id = Column(UUID(as_uuid=True), ForeignKey("bank_accounts.id", ondelete="CASCADE"), nullable=False)
+
+    # Batch-Details
+    batch_name = Column(String(255), nullable=True)
+    batch_type = Column(String(50), nullable=False)
+    payment_count = Column(Integer, default=0)
+    total_amount = Column(Float, default=0)
+    currency = Column(String(3), default="EUR")
+
+    # Ausfuehrung
+    requested_execution_date = Column(DateTime(timezone=True), nullable=True)
+
+    # Status
+    status = Column(String(50), default="draft")
+
+    # TAN
+    tan_required = Column(Boolean, default=False)
+    tan_challenge = Column(Text, nullable=True)
+    tan_challenge_data = Column(Text, nullable=True)
+
+    # Freigabe
+    approved_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+
+    # SEPA XML
+    sepa_xml = Column(Text, nullable=True)
+    sepa_message_id = Column(String(35), nullable=True)
+
+    # Ergebnis
+    submitted_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    successful_count = Column(Integer, default=0)
+    failed_count = Column(Integer, default=0)
+
+    # Fehler
+    last_error = Column(Text, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    approved_by = relationship("User", foreign_keys=[approved_by_id])
+    payments = relationship("PaymentOrder", back_populates="batch")
+
+
+class PaymentOrder(Base):
+    """SEPA-Zahlungsauftraege."""
+    __tablename__ = "payment_orders"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    bank_account_id = Column(UUID(as_uuid=True), ForeignKey("bank_accounts.id", ondelete="CASCADE"), nullable=False)
+
+    # Verknuepfte Rechnung
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
+    invoice_number = Column(String(100), nullable=True)
+
+    # Zahlungstyp
+    payment_type = Column(String(50), nullable=False)
+    sepa_type = Column(String(50), nullable=True)
+
+    # Empfaenger
+    beneficiary_name = Column(String(140), nullable=False)
+    beneficiary_iban = Column(String(34), nullable=False)
+    beneficiary_bic = Column(String(11), nullable=True)
+
+    # Betrag
+    amount = Column(Float, nullable=False)
+    currency = Column(String(3), default="EUR")
+
+    # Zahlungsdetails
+    reference = Column(Text, nullable=True)
+    end_to_end_id = Column(String(35), nullable=True)
+    execution_date = Column(DateTime(timezone=True), nullable=True)
+
+    # Lastschrift
+    mandate_id = Column(String(35), nullable=True)
+    mandate_date = Column(DateTime(timezone=True), nullable=True)
+    sequence_type = Column(String(10), nullable=True)
+    creditor_id = Column(String(35), nullable=True)
+
+    # Batch
+    batch_id = Column(UUID(as_uuid=True), ForeignKey("payment_batches.id", ondelete="SET NULL"), nullable=True)
+    batch_sequence = Column(Integer, nullable=True)
+
+    # Status
+    status = Column(String(50), default="draft")
+
+    # TAN
+    tan_required = Column(Boolean, default=False)
+    tan_challenge = Column(Text, nullable=True)
+    tan_challenge_data = Column(Text, nullable=True)
+    tan_entered_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Freigabe
+    approved_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Uebermittlung
+    submitted_at = Column(DateTime(timezone=True), nullable=True)
+    bank_reference = Column(String(100), nullable=True)
+
+    # Fehler
+    last_error = Column(Text, nullable=True)
+    retry_count = Column(Integer, default=0)
+
+    # Skonto
+    uses_skonto = Column(Boolean, default=False)
+    skonto_amount = Column(Float, nullable=True)
+    original_amount = Column(Float, nullable=True)
+    skonto_deadline = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    approved_by = relationship("User", foreign_keys=[approved_by_id])
+    document = relationship("Document", backref="payment_orders")
+    batch = relationship("PaymentBatch", back_populates="payments")
+
+
+class DunningRecord(Base):
+    """Mahnwesen-Tracking."""
+    __tablename__ = "dunning_records"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+
+    # Rechnungsreferenz
+    invoice_number = Column(String(100), nullable=True)
+    invoice_date = Column(DateTime(timezone=True), nullable=True)
+    due_date = Column(DateTime(timezone=True), nullable=True)
+    gross_amount = Column(Float, nullable=True)
+    outstanding_amount = Column(Float, nullable=True)
+    currency = Column(String(3), default="EUR")
+
+    # Geschaeftspartner
+    business_entity_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id", ondelete="SET NULL"), nullable=True)
+    debtor_name = Column(String(255), nullable=True)
+    debtor_email = Column(String(255), nullable=True)
+
+    # Mahnstufe
+    dunning_level = Column(Integer, default=0)
+
+    # Gebuehren
+    reminder_fee = Column(Float, default=0)
+    late_interest_rate = Column(Float, nullable=True)
+    accrued_interest = Column(Float, default=0)
+    total_outstanding = Column(Float, nullable=True)
+
+    # Timeline
+    first_reminder_at = Column(DateTime(timezone=True), nullable=True)
+    second_reminder_at = Column(DateTime(timezone=True), nullable=True)
+    final_reminder_at = Column(DateTime(timezone=True), nullable=True)
+    next_action_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Status
+    status = Column(String(50), default="pending")
+
+    # Loesung
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    resolution_notes = Column(Text, nullable=True)
+
+    # Teilzahlungen
+    partial_payment_ids = Column(CrossDBJSON, default=list)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    resolved_by = relationship("User", foreign_keys=[resolved_by_id])
+    document = relationship("Document", backref="dunning_records")
+    business_entity = relationship("BusinessEntity", backref="dunning_records")
+
+
+class CashFlowEntry(Base):
+    """Cash-Flow-Prognosen."""
+    __tablename__ = "cash_flow_entries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    bank_account_id = Column(UUID(as_uuid=True), ForeignKey("bank_accounts.id", ondelete="SET NULL"), nullable=True)
+
+    # Eintragstyp
+    entry_type = Column(String(50), nullable=False)
+    direction = Column(String(10), nullable=False)
+
+    # Referenzen
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
+    payment_order_id = Column(UUID(as_uuid=True), ForeignKey("payment_orders.id", ondelete="SET NULL"), nullable=True)
+    transaction_id = Column(UUID(as_uuid=True), ForeignKey("bank_transactions.id", ondelete="SET NULL"), nullable=True)
+
+    # Datum
+    expected_date = Column(DateTime(timezone=True), nullable=False)
+    actual_date = Column(DateTime(timezone=True), nullable=True)
+
+    # Betrag
+    expected_amount = Column(Float, nullable=False)
+    actual_amount = Column(Float, nullable=True)
+    currency = Column(String(3), default="EUR")
+
+    # Wahrscheinlichkeit
+    probability = Column(Float, default=1.0)
+
+    # Beschreibung
+    description = Column(String(255), nullable=True)
+    category = Column(String(50), nullable=True)
+
+    # Status
+    status = Column(String(50), default="expected")
+
+    # Gegenpartei
+    counterparty_name = Column(String(255), nullable=True)
+    business_entity_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id", ondelete="SET NULL"), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", backref="cash_flow_entries")
+    document = relationship("Document", backref="cash_flow_entries")
+    payment_order = relationship("PaymentOrder", backref="cash_flow_entries")
+    transaction = relationship("BankTransaction", backref="cash_flow_entries")
+    business_entity = relationship("BusinessEntity", backref="cash_flow_entries")
+
+
+# =============================================================================
+# DATEV EXPORT MODELS
+# =============================================================================
+
+
+class DATEVConfiguration(Base):
+    """
+    DATEV Export Konfiguration.
+
+    Speichert Steuerberater-Zugangsdaten und Konteneinstellungen
+    fuer den DATEV Buchungsstapel-Export.
+
+    Jeder Benutzer kann mehrere Konfigurationen haben (z.B. fuer verschiedene
+    Mandanten oder Testumgebungen).
+    """
+
+    __tablename__ = "datev_configurations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        comment="Benutzer-spezifische Konfiguration"
+    )
+
+    # DATEV Pflichtfelder
+    berater_nr = Column(
+        String(7),
+        nullable=False,
+        comment="Beraternummer (max. 7-stellig)"
+    )
+    mandanten_nr = Column(
+        String(5),
+        nullable=False,
+        comment="Mandantennummer (max. 5-stellig)"
+    )
+    wj_beginn = Column(
+        Date,
+        nullable=False,
+        comment="Wirtschaftsjahr-Beginn"
+    )
+
+    # Kontenrahmen
+    kontenrahmen = Column(
+        String(10),
+        nullable=False,
+        default="SKR03",
+        comment="SKR03 oder SKR04"
+    )
+
+    # Standardkonten Eingangsrechnungen
+    incoming_expense_account = Column(
+        String(10),
+        nullable=True,
+        comment="Aufwandskonto Eingang (z.B. 4200)"
+    )
+    incoming_creditor_account = Column(
+        String(10),
+        nullable=True,
+        comment="Kreditorenkonto Eingang (z.B. 70000)"
+    )
+
+    # Standardkonten Ausgangsrechnungen
+    outgoing_revenue_account = Column(
+        String(10),
+        nullable=True,
+        comment="Erloeskonto Ausgang (z.B. 8400)"
+    )
+    outgoing_debtor_account = Column(
+        String(10),
+        nullable=True,
+        comment="Debitorenkonto Ausgang (z.B. 10000)"
+    )
+
+    # Sammelkonten
+    sammelkonto_kreditoren = Column(
+        String(10),
+        default="1600",
+        comment="Sammelkonto Kreditoren"
+    )
+    sammelkonto_debitoren = Column(
+        String(10),
+        default="1400",
+        comment="Sammelkonto Debitoren"
+    )
+
+    # Optionale Einstellungen
+    sachkontenlange = Column(
+        Integer,
+        default=4,
+        comment="Laenge Sachkonten (4-8 Stellen)"
+    )
+    buchungstext_format = Column(
+        String(100),
+        default="{invoice_number}",
+        comment="Format fuer Buchungstext"
+    )
+
+    # Status
+    is_default = Column(Boolean, default=False, comment="Standard-Konfiguration")
+    is_active = Column(Boolean, default=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", backref="datev_configurations")
+    vendor_mappings = relationship(
+        "DATEVVendorMapping",
+        back_populates="config",
+        cascade="all, delete-orphan"
+    )
+    exports = relationship(
+        "DATEVExport",
+        back_populates="config",
+        cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        Index("ix_datev_configurations_user_id", "user_id"),
+        Index("ix_datev_configurations_is_default", "is_default"),
+        Index("ix_datev_configurations_is_active", "is_active"),
+        CheckConstraint(
+            "kontenrahmen IN ('SKR03', 'SKR04')",
+            name="ck_datev_config_kontenrahmen"
+        ),
+        CheckConstraint(
+            "sachkontenlange BETWEEN 4 AND 8",
+            name="ck_datev_config_sachkontenlange"
+        ),
+    )
+
+
+class DATEVVendorMapping(Base):
+    """
+    Lieferanten-spezifische Kontozuordnung.
+
+    Ermoeglicht individuelle Konten pro Lieferant statt Standardkonten.
+    Matching erfolgt ueber verschiedene Kriterien (Name, USt-IdNr, IBAN, Entity).
+    """
+
+    __tablename__ = "datev_vendor_mappings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    config_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("datev_configurations.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Lieferanten-Identifikation (mehrere Match-Optionen)
+    vendor_name = Column(
+        String(255),
+        nullable=True,
+        comment="Firmenname (Fuzzy-Match)"
+    )
+    vendor_vat_id = Column(
+        String(50),
+        nullable=True,
+        comment="USt-IdNr (exakter Match)"
+    )
+    vendor_iban = Column(
+        String(34),
+        nullable=True,
+        comment="IBAN (exakter Match)"
+    )
+    business_entity_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("business_entities.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Verknuepfter Geschaeftspartner"
+    )
+
+    # Kontozuordnung
+    expense_account = Column(
+        String(10),
+        nullable=False,
+        comment="Aufwandskonto"
+    )
+    creditor_account = Column(
+        String(10),
+        nullable=True,
+        comment="Personenkonto (Kreditor)"
+    )
+    cost_center = Column(
+        String(20),
+        nullable=True,
+        comment="Kostenstelle"
+    )
+    cost_object = Column(
+        String(20),
+        nullable=True,
+        comment="Kostentraeger"
+    )
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    config = relationship("DATEVConfiguration", back_populates="vendor_mappings")
+    business_entity = relationship("BusinessEntity", backref="datev_vendor_mappings")
+
+    __table_args__ = (
+        Index("ix_datev_vendor_mappings_config_id", "config_id"),
+        Index("ix_datev_vendor_mappings_vendor_vat_id", "vendor_vat_id"),
+        Index("ix_datev_vendor_mappings_vendor_iban", "vendor_iban"),
+        Index("ix_datev_vendor_mappings_business_entity_id", "business_entity_id"),
+    )
+
+
+class DATEVExport(Base):
+    """
+    DATEV Export Historie.
+
+    Protokolliert alle Exporte fuer Audit und Nachvollziehbarkeit.
+    Speichert welche Dokumente wann in welchen Export einbezogen wurden.
+    """
+
+    __tablename__ = "datev_exports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    config_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("datev_configurations.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    exported_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Export-Details
+    export_type = Column(
+        String(50),
+        nullable=False,
+        default="buchungsstapel",
+        comment="buchungsstapel, stammdaten"
+    )
+    filename = Column(String(255), nullable=False)
+    document_count = Column(Integer, default=0)
+
+    # Zeitraum
+    period_from = Column(Date, nullable=True)
+    period_to = Column(Date, nullable=True)
+
+    # Datei-Metadaten
+    content_hash = Column(
+        String(64),
+        nullable=True,
+        comment="SHA256 der Export-Datei"
+    )
+    file_size_bytes = Column(Integer, nullable=True)
+
+    # Status
+    status = Column(
+        String(20),
+        default="completed",
+        comment="completed, failed, partial"
+    )
+    error_message = Column(Text, nullable=True)
+
+    # Inkludierte Dokumente
+    included_documents = Column(
+        CrossDBJSON,
+        nullable=True,
+        default=list,
+        comment="Array von Dokument-UUIDs"
+    )
+    skipped_documents = Column(
+        CrossDBJSON,
+        nullable=True,
+        default=list,
+        comment="Array von uebersprungenen Dokument-UUIDs"
+    )
+    warnings = Column(
+        CrossDBJSON,
+        nullable=True,
+        default=list,
+        comment="Array von Warnmeldungen"
+    )
+
+    # Audit
+    exported_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    config = relationship("DATEVConfiguration", back_populates="exports")
+    exported_by = relationship("User", backref="datev_exports")
+
+    __table_args__ = (
+        Index("ix_datev_exports_config_id", "config_id"),
+        Index("ix_datev_exports_exported_by_id", "exported_by_id"),
+        Index("ix_datev_exports_exported_at", "exported_at"),
+        Index("ix_datev_exports_period", "period_from", "period_to"),
+        Index("ix_datev_exports_status", "status"),
+        CheckConstraint(
+            "status IN ('completed', 'failed', 'partial')",
+            name="ck_datev_exports_status"
+        ),
+    )

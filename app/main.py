@@ -649,6 +649,8 @@ from app.api.v1.tunes import router as tunes_router
 from app.api.v1.extracted_data import router as extracted_data_router
 from app.api.v1.rag import router as rag_router
 from app.api.v1.einvoice import router as einvoice_router
+from app.api.v1.banking import router as banking_router
+from app.api.v1.datev import router as datev_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -683,6 +685,8 @@ app.include_router(tunes_router, prefix="/api/v1/tunes", tags=["tunes"])
 app.include_router(extracted_data_router, prefix="/api/v1")
 app.include_router(rag_router, prefix="/api/v1")
 app.include_router(einvoice_router, prefix="/api/v1")
+app.include_router(banking_router, prefix="/api/v1")
+app.include_router(datev_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================
