@@ -6,6 +6,9 @@ Supported formats:
 - CSV - Bank-specific CSV formats
 """
 
+import logging
+from typing import Optional, Type
+
 from .base import (
     BaseParser,
     ParsedTransaction,
@@ -13,9 +16,31 @@ from .base import (
     ParserRegistry,
     detect_format,
 )
-from .mt940_parser import MT940Parser
-from .camt053_parser import CAMT053Parser
-from .csv_parser import GenericCSVParser
+
+logger = logging.getLogger(__name__)
+
+# Optional imports - not all dependencies may be installed
+MT940Parser: Optional[Type[BaseParser]] = None
+CAMT053Parser: Optional[Type[BaseParser]] = None
+GenericCSVParser: Optional[Type[BaseParser]] = None
+
+try:
+    from .mt940_parser import MT940Parser as _MT940Parser
+    MT940Parser = _MT940Parser
+except ImportError as e:
+    logger.warning(f"MT940Parser nicht verfuegbar: {e}")
+
+try:
+    from .camt053_parser import CAMT053Parser as _CAMT053Parser
+    CAMT053Parser = _CAMT053Parser
+except ImportError as e:
+    logger.warning(f"CAMT053Parser nicht verfuegbar: {e}")
+
+try:
+    from .csv_parser import GenericCSVParser as _GenericCSVParser
+    GenericCSVParser = _GenericCSVParser
+except ImportError as e:
+    logger.warning(f"GenericCSVParser nicht verfuegbar: {e}")
 
 __all__ = [
     "BaseParser",

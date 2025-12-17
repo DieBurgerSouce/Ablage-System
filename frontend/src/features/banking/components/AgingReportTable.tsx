@@ -25,23 +25,10 @@ import {
 } from '@/components/ui/table';
 import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { useReceivablesAging, usePayablesAging } from '../hooks/use-banking-queries';
-import type { AgingLineItem } from '@/lib/api/services/banking';
+import { formatCurrency, formatDate } from '../utils/format';
 
 interface AgingReportTableProps {
     type: 'receivables' | 'payables';
-}
-
-function formatCurrency(value: number): string {
-    return new Intl.NumberFormat('de-DE', {
-        style: 'currency',
-        currency: 'EUR',
-    }).format(value);
-}
-
-function formatDate(dateStr: string | null): string {
-    if (!dateStr) return '-';
-    const date = new Date(dateStr);
-    return new Intl.DateTimeFormat('de-DE').format(date);
 }
 
 const BUCKET_LABELS: Record<string, string> = {
@@ -73,8 +60,9 @@ export function AgingReportTable({ type }: AgingReportTableProps) {
     const [bucketFilter, setBucketFilter] = useState<string>('all');
     const pageSize = 10;
 
-    const receivablesQuery = useReceivablesAging();
-    const payablesQuery = usePayablesAging();
+    // Nur den benoetigten Query ausfuehren (Performance-Optimierung)
+    const receivablesQuery = useReceivablesAging(undefined, type === 'receivables');
+    const payablesQuery = usePayablesAging(undefined, type === 'payables');
 
     const { data, isLoading, error } = type === 'receivables' ? receivablesQuery : payablesQuery;
 

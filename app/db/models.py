@@ -25,7 +25,7 @@ from typing import Optional, List, Dict, Any
 from enum import Enum
 import uuid
 
-from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Date, Boolean, Float, Text, JSON, ForeignKey, Index, Table, CheckConstraint
+from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Date, Boolean, Float, Numeric, Text, JSON, ForeignKey, Index, Table, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
 from sqlalchemy.types import TypeDecorator
 from pgvector.sqlalchemy import Vector
@@ -737,6 +737,11 @@ class SearchAnalytics(Base):
     clicked_results = Column(Integer, default=0)
     first_click_position = Column(Integer)  # Position of first clicked result
     downloaded_count = Column(Integer, default=0)
+
+    # Position-Weighted Click Analytics
+    # Verwendet exponentiellen Decay: Position 1=1.0, Position 5=0.55, Position 10=0.26
+    weighted_click_score = Column(Float, default=0.0)  # Kumulierter gewichteter Score
+    click_positions = Column(CrossDBJSON, default=list)  # Liste aller Klick-Positionen
 
     # Session tracking
     session_id = Column(String(100))  # To group searches in a session
@@ -4312,7 +4317,7 @@ class BankAccount(Base):
     sync_interval_hours = Column(Integer, default=24)
 
     # Saldo
-    current_balance = Column(Float, nullable=True)
+    current_balance = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
     balance_date = Column(DateTime(timezone=True), nullable=True)
     currency = Column(String(3), default="EUR")
 
@@ -4383,7 +4388,7 @@ class BankTransaction(Base):
     value_date = Column(DateTime(timezone=True), nullable=False)
 
     # Betrag
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(15, 2), nullable=False)  # SECURITY: Numeric fuer Geldbetraege
     currency = Column(String(3), default="EUR")
 
     # Gegenpartei
@@ -4418,8 +4423,8 @@ class BankTransaction(Base):
     matched_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Teilzahlungen
-    allocated_amount = Column(Float, nullable=True)
-    remaining_amount = Column(Float, nullable=True)
+    allocated_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
+    remaining_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
     is_partial_payment = Column(Boolean, default=False)
     parent_transaction_id = Column(UUID(as_uuid=True), ForeignKey("bank_transactions.id", ondelete="SET NULL"), nullable=True)
 
@@ -4449,7 +4454,7 @@ class PaymentBatch(Base):
     batch_name = Column(String(255), nullable=True)
     batch_type = Column(String(50), nullable=False)
     payment_count = Column(Integer, default=0)
-    total_amount = Column(Float, default=0)
+    total_amount = Column(Numeric(15, 2), default=0)  # SECURITY: Numeric fuer Geldbetraege
     currency = Column(String(3), default="EUR")
 
     # Ausfuehrung
@@ -4512,7 +4517,7 @@ class PaymentOrder(Base):
     beneficiary_bic = Column(String(11), nullable=True)
 
     # Betrag
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(15, 2), nullable=False)  # SECURITY: Numeric fuer Geldbetraege
     currency = Column(String(3), default="EUR")
 
     # Zahlungsdetails
@@ -4553,8 +4558,8 @@ class PaymentOrder(Base):
 
     # Skonto
     uses_skonto = Column(Boolean, default=False)
-    skonto_amount = Column(Float, nullable=True)
-    original_amount = Column(Float, nullable=True)
+    skonto_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
+    original_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
     skonto_deadline = Column(DateTime(timezone=True), nullable=True)
 
     # Audit
@@ -4580,8 +4585,8 @@ class DunningRecord(Base):
     invoice_number = Column(String(100), nullable=True)
     invoice_date = Column(DateTime(timezone=True), nullable=True)
     due_date = Column(DateTime(timezone=True), nullable=True)
-    gross_amount = Column(Float, nullable=True)
-    outstanding_amount = Column(Float, nullable=True)
+    gross_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
+    outstanding_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
     currency = Column(String(3), default="EUR")
 
     # Geschaeftspartner
@@ -4593,10 +4598,10 @@ class DunningRecord(Base):
     dunning_level = Column(Integer, default=0)
 
     # Gebuehren
-    reminder_fee = Column(Float, default=0)
-    late_interest_rate = Column(Float, nullable=True)
-    accrued_interest = Column(Float, default=0)
-    total_outstanding = Column(Float, nullable=True)
+    reminder_fee = Column(Numeric(15, 2), default=0)  # SECURITY: Numeric fuer Geldbetraege
+    late_interest_rate = Column(Numeric(7, 4), nullable=True)  # Prozentsatz mit 4 Nachkommastellen
+    accrued_interest = Column(Numeric(15, 2), default=0)  # SECURITY: Numeric fuer Geldbetraege
+    total_outstanding = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
 
     # Timeline
     first_reminder_at = Column(DateTime(timezone=True), nullable=True)
@@ -4648,8 +4653,8 @@ class CashFlowEntry(Base):
     actual_date = Column(DateTime(timezone=True), nullable=True)
 
     # Betrag
-    expected_amount = Column(Float, nullable=False)
-    actual_amount = Column(Float, nullable=True)
+    expected_amount = Column(Numeric(15, 2), nullable=False)  # SECURITY: Numeric fuer Geldbetraege
+    actual_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
     currency = Column(String(3), default="EUR")
 
     # Wahrscheinlichkeit

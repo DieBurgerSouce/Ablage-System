@@ -18,18 +18,10 @@ import {
 } from 'recharts';
 import { useCashFlowScenarios } from '../hooks/use-banking-queries';
 import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import { formatCurrency } from '../utils/format';
 
 interface CashFlowScenariosProps {
     daysAhead?: number;
-}
-
-function formatCurrency(value: number): string {
-    return new Intl.NumberFormat('de-DE', {
-        style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value);
 }
 
 export function CashFlowScenarios({ daysAhead = 90 }: CashFlowScenariosProps) {

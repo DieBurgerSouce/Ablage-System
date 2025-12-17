@@ -10,14 +10,13 @@ import {
     ArrowUpRight,
     ArrowDownRight,
     Wallet,
-    Receipt,
     AlertTriangle,
     Clock,
     CheckCircle2,
-    TrendingUp,
 } from 'lucide-react';
 import { useAgingSummary, useCashFlowSummary, useDunningStats, useTransactionStats, useDSO } from '../hooks/use-banking-queries';
 import { cn } from '@/lib/utils';
+import { formatCurrency, formatPercent } from '../utils/format';
 
 interface KPICardProps {
     title: string;
@@ -85,23 +84,6 @@ function KPICard({ title, value, subtitle, icon, trend, badge, isLoading }: KPIC
             </CardContent>
         </Card>
     );
-}
-
-function formatCurrency(value: number): string {
-    return new Intl.NumberFormat('de-DE', {
-        style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value);
-}
-
-function formatPercent(value: number): string {
-    return new Intl.NumberFormat('de-DE', {
-        style: 'percent',
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1,
-    }).format(value / 100);
 }
 
 export function KPICards() {

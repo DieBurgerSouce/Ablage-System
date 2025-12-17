@@ -15,28 +15,17 @@ import {
 } from '@/components/ui/table';
 import { useTopDebtors, useTopCreditors } from '../hooks/use-banking-queries';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { formatCurrency } from '../utils/format';
 
 interface TopDebtorsTableProps {
     type?: 'debtors' | 'creditors';
     limit?: number;
 }
 
-function formatCurrency(value: number): string {
-    return new Intl.NumberFormat('de-DE', {
-        style: 'currency',
-        currency: 'EUR',
-    }).format(value);
-}
-
-function formatDate(dateStr: string | null): string {
-    if (!dateStr) return '-';
-    const date = new Date(dateStr);
-    return new Intl.DateTimeFormat('de-DE').format(date);
-}
-
 export function TopDebtorsTable({ type = 'debtors', limit = 10 }: TopDebtorsTableProps) {
-    const debtorsQuery = useTopDebtors(limit);
-    const creditorsQuery = useTopCreditors(limit);
+    // Nur den benoetigten Query ausfuehren (Performance-Optimierung)
+    const debtorsQuery = useTopDebtors(limit, type === 'debtors');
+    const creditorsQuery = useTopCreditors(limit, type === 'creditors');
 
     const { data, isLoading, error } = type === 'debtors' ? debtorsQuery : creditorsQuery;
 

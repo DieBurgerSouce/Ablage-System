@@ -14,17 +14,14 @@ import {
     Tooltip,
     ResponsiveContainer,
     Legend,
+    type TooltipProps,
 } from 'recharts';
+import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import { useAgingSummary } from '../hooks/use-banking-queries';
+import { formatCurrency } from '../utils/format';
 
-function formatCurrency(value: number): string {
-    return new Intl.NumberFormat('de-DE', {
-        style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value);
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RechartsTooltipProps = TooltipProps<ValueType, NameType> & { payload?: any[]; label?: string };
 
 const BUCKET_LABELS: Record<string, string> = {
     'current': 'Aktuell',
@@ -34,21 +31,20 @@ const BUCKET_LABELS: Record<string, string> = {
     '90+': '90+ Tage',
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CustomTooltip({ active, payload, label }: any) {
-    if (!active || !payload) return null;
+function CustomTooltip({ active, payload, label }: RechartsTooltipProps) {
+    if (!active || !payload || !label) return null;
 
     return (
         <div className="rounded-lg border bg-background p-3 shadow-md">
-            <p className="font-medium mb-2">{label}</p>
-            {payload.map((entry: { name: string; value: number; color: string }, index: number) => (
+            <p className="font-medium mb-2">{String(label)}</p>
+            {payload.map((entry: { name?: string; value?: number; color?: string }, index: number) => (
                 <div key={index} className="flex items-center gap-2 text-sm">
                     <div
                         className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: entry.color }}
                     />
                     <span className="text-muted-foreground">{entry.name}:</span>
-                    <span className="font-medium">{formatCurrency(entry.value)}</span>
+                    <span className="font-medium">{formatCurrency(Number(entry.value))}</span>
                 </div>
             ))}
         </div>

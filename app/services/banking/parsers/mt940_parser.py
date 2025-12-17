@@ -12,7 +12,7 @@ from typing import Optional, List, Union
 import logging
 import re
 
-from mt940 import MT940, parse as mt940_parse
+from mt940 import parse as mt940_parse
 from mt940.models import Transaction as MT940Transaction
 
 from .base import BaseParser, ParsedTransaction, ParseResult, ParserRegistry

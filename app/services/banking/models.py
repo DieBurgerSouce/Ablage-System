@@ -107,8 +107,8 @@ class DunningStatus(str, Enum):
 
 class CashFlowDirection(str, Enum):
     """Cash-Flow-Richtung."""
-    IN = "in"  # Einnahme
-    OUT = "out"  # Ausgabe
+    INFLOW = "inflow"  # Einnahme
+    OUTFLOW = "outflow"  # Ausgabe
 
 
 class CashFlowStatus(str, Enum):
@@ -125,6 +125,21 @@ class CashFlowEntryType(str, Enum):
     RECURRING = "recurring"  # Wiederkehrend
     MANUAL = "manual"  # Manuell
     ACTUAL = "actual"  # Ist-Wert
+
+
+class TransactionSortField(str, Enum):
+    """SECURITY: Erlaubte Sortierfelder fuer Transaktionen.
+
+    Whitelist zur Verhinderung von SQL-Injection durch
+    validierte Feldnamen.
+    """
+    BOOKING_DATE = "booking_date"
+    VALUE_DATE = "value_date"
+    AMOUNT = "amount"
+    COUNTERPARTY = "counterparty_name"
+    REFERENCE = "reference"
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
 
 
 # =============================================================================
@@ -688,3 +703,31 @@ class BankingKPIs(BaseModel):
     period_end: date
     period_inflow: Decimal
     period_outflow: Decimal
+
+
+# =============================================================================
+# FILTER & STATS SCHEMAS
+# =============================================================================
+
+class TransactionFilter(BaseModel):
+    """Filter fuer Transaktions-Abfragen."""
+    date_from: Optional[date] = None
+    date_to: Optional[date] = None
+    amount_min: Optional[Decimal] = None
+    amount_max: Optional[Decimal] = None
+    transaction_type: Optional[TransactionType] = None
+    reconciliation_status: Optional[ReconciliationStatus] = None
+    search_text: Optional[str] = None
+    counterparty_name: Optional[str] = None
+    counterparty_iban: Optional[str] = None
+
+
+class TransactionStats(BaseModel):
+    """Transaktions-Statistiken."""
+    total_count: int
+    total_credits: Decimal
+    total_debits: Decimal
+    unmatched_count: int
+    matched_count: int
+    partially_matched_count: int
+    match_rate: float  # Prozentsatz 0-100

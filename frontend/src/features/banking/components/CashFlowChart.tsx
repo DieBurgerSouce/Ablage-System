@@ -22,46 +22,34 @@ import {
     Tooltip,
     ResponsiveContainer,
     Legend,
+    type TooltipProps,
 } from 'recharts';
+import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import { useCashFlowDaily } from '../hooks/use-banking-queries';
+import { formatCurrency, formatDateShort } from '../utils/format';
 
 interface CashFlowChartProps {
     defaultDays?: number;
     showControls?: boolean;
 }
 
-function formatCurrency(value: number): string {
-    return new Intl.NumberFormat('de-DE', {
-        style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value);
-}
-
-function formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    return new Intl.DateTimeFormat('de-DE', {
-        day: '2-digit',
-        month: '2-digit',
-    }).format(date);
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CustomTooltip({ active, payload, label }: any) {
-    if (!active || !payload) return null;
+type RechartsTooltipProps = TooltipProps<ValueType, NameType> & { payload?: any[]; label?: string };
+
+function CustomTooltip({ active, payload, label }: RechartsTooltipProps) {
+    if (!active || !payload || !label) return null;
 
     return (
         <div className="rounded-lg border bg-background p-3 shadow-md">
-            <p className="font-medium mb-2">{formatDate(label)}</p>
-            {payload.map((entry: { name: string; value: number; color: string }, index: number) => (
+            <p className="font-medium mb-2">{formatDateShort(String(label))}</p>
+            {payload.map((entry: { name?: string; value?: number; color?: string }, index: number) => (
                 <div key={index} className="flex items-center gap-2 text-sm">
                     <div
                         className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: entry.color }}
                     />
                     <span className="text-muted-foreground">{entry.name}:</span>
-                    <span className="font-medium">{formatCurrency(entry.value)}</span>
+                    <span className="font-medium">{formatCurrency(Number(entry.value))}</span>
                 </div>
             ))}
         </div>

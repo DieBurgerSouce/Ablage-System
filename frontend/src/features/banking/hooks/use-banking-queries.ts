@@ -49,7 +49,8 @@ export const bankingQueryKeys = {
 
     // Transactions
     transactions: () => [...bankingQueryKeys.all, 'transactions'] as const,
-    transactionStats: () => [...bankingQueryKeys.transactions(), 'stats'] as const,
+    transactionStats: (params?: { bank_account_id?: string; date_from?: string; date_to?: string }) =>
+        [...bankingQueryKeys.transactions(), 'stats', params?.bank_account_id, params?.date_from, params?.date_to] as const,
 
     // Accounts
     accounts: () => [...bankingQueryKeys.all, 'accounts'] as const,
@@ -191,44 +192,48 @@ export function useAgingSummary() {
 /**
  * Forderungs-Altersanalyse
  */
-export function useReceivablesAging(counterparty?: string) {
+export function useReceivablesAging(counterparty?: string, enabled = true) {
     return useQuery({
         queryKey: bankingQueryKeys.agingReceivables(counterparty),
         queryFn: () => bankingService.getReceivablesAging({ counterparty }),
         staleTime: STALE_TIMES.aging,
+        enabled,
     });
 }
 
 /**
  * Verbindlichkeiten-Altersanalyse
  */
-export function usePayablesAging(counterparty?: string) {
+export function usePayablesAging(counterparty?: string, enabled = true) {
     return useQuery({
         queryKey: bankingQueryKeys.agingPayables(counterparty),
         queryFn: () => bankingService.getPayablesAging({ counterparty }),
         staleTime: STALE_TIMES.aging,
+        enabled,
     });
 }
 
 /**
  * Top-Schuldner
  */
-export function useTopDebtors(limit = 10) {
+export function useTopDebtors(limit = 10, enabled = true) {
     return useQuery({
         queryKey: bankingQueryKeys.topDebtors(limit),
         queryFn: () => bankingService.getTopDebtors(limit),
         staleTime: STALE_TIMES.aging,
+        enabled,
     });
 }
 
 /**
  * Top-Glaeubiger
  */
-export function useTopCreditors(limit = 10) {
+export function useTopCreditors(limit = 10, enabled = true) {
     return useQuery({
         queryKey: bankingQueryKeys.topCreditors(limit),
         queryFn: () => bankingService.getTopCreditors(limit),
         staleTime: STALE_TIMES.aging,
+        enabled,
     });
 }
 
@@ -250,7 +255,7 @@ export function useDSO(periodDays = 90) {
  */
 export function useTransactionStats(params?: { bank_account_id?: string; date_from?: string; date_to?: string }) {
     return useQuery({
-        queryKey: bankingQueryKeys.transactionStats(),
+        queryKey: bankingQueryKeys.transactionStats(params),
         queryFn: () => bankingService.getTransactionStats(params),
         staleTime: STALE_TIMES.transactions,
     });

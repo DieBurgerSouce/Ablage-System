@@ -35,20 +35,9 @@ import {
     ExternalLink,
     ChevronRight,
 } from 'lucide-react';
-import { useOverdueInvoices, useDunningStats, useCreateDunning, useEscalateDunning } from '../hooks/use-banking-queries';
+import { useOverdueInvoices, useDunningStats, useCreateDunning } from '../hooks/use-banking-queries';
 import { cn } from '@/lib/utils';
-
-function formatCurrency(value: number): string {
-    return new Intl.NumberFormat('de-DE', {
-        style: 'currency',
-        currency: 'EUR',
-    }).format(value);
-}
-
-function formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    return new Intl.DateTimeFormat('de-DE').format(date);
-}
+import { formatCurrency, formatDate } from '../utils/format';
 
 const LEVEL_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive'; icon: React.ReactNode }> = {
     'not_started': {
@@ -153,7 +142,7 @@ export function DunningList() {
     const { data: stats, isLoading: statsLoading } = useDunningStats();
 
     const createDunning = useCreateDunning();
-    const escalateDunning = useEscalateDunning();
+    // TODO: Implement escalation UI using useEscalateDunning()
 
     const isLoading = invoicesLoading || statsLoading;
 
