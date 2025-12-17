@@ -3572,7 +3572,7 @@ class ExportListItemResponse(BaseModel):
     output_dir: str
 
 
-class ExportListResponse(BaseModel):
-    """Liste aller Exports."""
+class TrainingExportListResponse(BaseModel):
+    """Liste aller Training-Exports."""
     exports: List[ExportListItemResponse]
     total: int

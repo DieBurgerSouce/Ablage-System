@@ -527,33 +527,33 @@ class TestOCRControlResponseModels:
         """Test OCRStartResponse Model."""
         from app.api.v1.ocr import OCRStartResponse
 
+        doc_id = uuid4()
         response = OCRStartResponse(
-            erfolg=True,
-            dokument_id=uuid4(),
-            task_id="task-abc123",
+            job_id="task-abc123",
+            document_id=doc_id,
             backend="deepseek",
-            prioritaet=8,
-            nachricht="OCR-Verarbeitung gestartet"
+            status="processing",
+            message="OCR-Verarbeitung gestartet"
         )
 
-        assert response.erfolg is True
+        assert response.job_id == "task-abc123"
         assert response.backend == "deepseek"
-        assert response.prioritaet == 8
-        assert "gestartet" in response.nachricht
+        assert response.document_id == doc_id
+        assert "gestartet" in response.message
 
     def test_ocr_cancel_response_model(self):
         """Test OCRCancelResponse Model."""
         from app.api.v1.ocr import OCRCancelResponse
 
+        doc_id = uuid4()
         response = OCRCancelResponse(
-            erfolg=True,
-            dokument_id=uuid4(),
-            task_id="task-abc123",
-            nachricht="OCR-Verarbeitung abgebrochen"
+            document_id=doc_id,
+            cancelled=True,
+            message="OCR-Verarbeitung abgebrochen"
         )
 
-        assert response.erfolg is True
-        assert "abgebrochen" in response.nachricht
+        assert response.cancelled is True
+        assert "abgebrochen" in response.message
 
 
 class TestOCRControlErrorHandling:

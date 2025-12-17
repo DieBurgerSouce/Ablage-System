@@ -28,9 +28,9 @@ class TestDocumentUpload:
     async def test_upload_document_success(self, async_client):
         """Erfolgreicher Document Upload."""
         with patch("app.api.v1.documents.check_rate_limit") as mock_auth, \
-             patch("app.api.v1.documents.get_storage_service") as mock_storage, \
-             patch("app.api.v1.documents.verify_magic_bytes") as mock_magic, \
-             patch("app.api.v1.documents.validate_file_security") as mock_security:
+             patch("app.services.storage_service.get_storage_service") as mock_storage, \
+             patch("app.core.file_validation.verify_magic_bytes") as mock_magic, \
+             patch("app.core.file_validation.validate_file_security") as mock_security:
 
             mock_auth.return_value = Mock(id=uuid4(), is_active=True)
             mock_magic.return_value = (True, None, None)
@@ -89,7 +89,7 @@ class TestDocumentUpload:
     async def test_upload_document_magic_bytes_mismatch(self, async_client):
         """Upload mit falschen Magic Bytes ablehnen (Sicherheit)."""
         with patch("app.api.v1.documents.check_rate_limit") as mock_auth, \
-             patch("app.api.v1.documents.verify_magic_bytes") as mock_magic:
+             patch("app.core.file_validation.verify_magic_bytes") as mock_magic:
 
             mock_auth.return_value = Mock(id=uuid4(), is_active=True)
             mock_magic.return_value = (False, "Magic Bytes stimmen nicht ueberein", "unknown")
@@ -110,10 +110,10 @@ class TestDocumentUpload:
     async def test_upload_document_with_ocr_start(self, async_client):
         """Upload mit automatischem OCR-Start."""
         with patch("app.api.v1.documents.check_rate_limit") as mock_auth, \
-             patch("app.api.v1.documents.get_storage_service") as mock_storage, \
-             patch("app.api.v1.documents.verify_magic_bytes") as mock_magic, \
-             patch("app.api.v1.documents.validate_file_security") as mock_security, \
-             patch("app.api.v1.documents.process_document_task") as mock_task:
+             patch("app.services.storage_service.get_storage_service") as mock_storage, \
+             patch("app.core.file_validation.verify_magic_bytes") as mock_magic, \
+             patch("app.core.file_validation.validate_file_security") as mock_security, \
+             patch("app.workers.tasks.ocr_tasks.process_document_task") as mock_task:
 
             mock_auth.return_value = Mock(id=uuid4(), is_active=True)
             mock_magic.return_value = (True, None, None)
@@ -143,9 +143,9 @@ class TestDocumentUpload:
     async def test_upload_document_with_tags(self, async_client):
         """Upload mit Tags."""
         with patch("app.api.v1.documents.check_rate_limit") as mock_auth, \
-             patch("app.api.v1.documents.get_storage_service") as mock_storage, \
-             patch("app.api.v1.documents.verify_magic_bytes") as mock_magic, \
-             patch("app.api.v1.documents.validate_file_security") as mock_security:
+             patch("app.services.storage_service.get_storage_service") as mock_storage, \
+             patch("app.core.file_validation.verify_magic_bytes") as mock_magic, \
+             patch("app.core.file_validation.validate_file_security") as mock_security:
 
             mock_auth.return_value = Mock(id=uuid4(), is_active=True)
             mock_magic.return_value = (True, None, None)

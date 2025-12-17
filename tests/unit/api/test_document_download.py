@@ -31,7 +31,7 @@ class TestDocumentDownload:
 
         with patch("app.api.v1.documents.get_current_active_user") as mock_auth, \
              patch("app.api.v1.documents.get_db") as mock_db, \
-             patch("app.api.v1.documents.get_storage_service") as mock_storage:
+             patch("app.services.storage_service.get_storage_service") as mock_storage:
 
             mock_auth.return_value = Mock(id=owner_id, is_active=True)
 
@@ -362,7 +362,7 @@ class TestDownloadResponseHeaders:
 
         with patch("app.api.v1.documents.get_current_active_user") as mock_auth, \
              patch("app.api.v1.documents.get_db") as mock_db, \
-             patch("app.api.v1.documents.get_storage_service") as mock_storage:
+             patch("app.services.storage_service.get_storage_service") as mock_storage:
 
             mock_auth.return_value = Mock(id=owner_id, is_active=True)
 
@@ -397,7 +397,7 @@ class TestDownloadResponseHeaders:
 
         with patch("app.api.v1.documents.get_current_active_user") as mock_auth, \
              patch("app.api.v1.documents.get_db") as mock_db, \
-             patch("app.api.v1.documents.get_storage_service") as mock_storage:
+             patch("app.services.storage_service.get_storage_service") as mock_storage:
 
             mock_auth.return_value = Mock(id=owner_id, is_active=True)
 
@@ -436,7 +436,7 @@ class TestDownloadErrorHandling:
 
         with patch("app.api.v1.documents.get_current_active_user") as mock_auth, \
              patch("app.api.v1.documents.get_db") as mock_db, \
-             patch("app.api.v1.documents.get_storage_service") as mock_storage:
+             patch("app.services.storage_service.get_storage_service") as mock_storage:
 
             mock_auth.return_value = Mock(id=owner_id, is_active=True)
 
@@ -471,7 +471,7 @@ class TestDownloadErrorHandling:
 
         with patch("app.api.v1.documents.get_current_active_user") as mock_auth, \
              patch("app.api.v1.documents.get_db") as mock_db, \
-             patch("app.api.v1.documents.get_storage_service") as mock_storage:
+             patch("app.services.storage_service.get_storage_service") as mock_storage:
 
             mock_auth.return_value = Mock(id=owner_id, is_active=True)
 

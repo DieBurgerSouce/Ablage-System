@@ -282,7 +282,8 @@ class TestTokenRefresh:
         mock_user_service.get_user_by_id = AsyncMock(return_value=mock_user)
 
         refresh_data = RefreshTokenRequest(
-            refresh_token="valid_refresh_token"
+            # Min 32 Zeichen erforderlich
+            refresh_token="valid_refresh_token_1234567890abc"
         )
 
         response = await refresh_token(refresh_data, mock_db_session)
@@ -304,7 +305,8 @@ class TestTokenRefresh:
         mock_security["decode_token"].side_effect = Exception("Invalid token")
 
         refresh_data = RefreshTokenRequest(
-            refresh_token="invalid_refresh_token"
+            # Min 32 Zeichen erforderlich
+            refresh_token="invalid_refresh_token_12345abcde"
         )
 
         with pytest.raises(HTTPException) as exc_info:

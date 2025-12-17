@@ -113,7 +113,7 @@ class TestGetDriftStatus:
     @pytest.mark.asyncio
     async def test_get_drift_status_success(self, mock_request, mock_current_user, mock_drift_detector):
         """Sollte Drift-Status zurueckgeben."""
-        with patch('app.api.v1.ml.get_drift_detector', return_value=mock_drift_detector):
+        with patch('app.ml.drift_detector.get_drift_detector', return_value=mock_drift_detector):
             from app.api.v1.ml import get_drift_status
 
             result = await get_drift_status(mock_request, mock_current_user)
@@ -126,7 +126,7 @@ class TestGetDriftStatus:
     @pytest.mark.asyncio
     async def test_get_drift_status_error(self, mock_request, mock_current_user):
         """Sollte HTTPException bei Fehler werfen."""
-        with patch('app.api.v1.ml.get_drift_detector') as mock_get:
+        with patch('app.ml.drift_detector.get_drift_detector') as mock_get:
             mock_get.side_effect = Exception("Detector error")
 
             from app.api.v1.ml import get_drift_status
@@ -145,7 +145,7 @@ class TestRunDriftDetection:
         """Sollte Drift-Detection durchfuehren."""
         mock_drift_detector.detect_drift = Mock(return_value=mock_drift_report)
 
-        with patch('app.api.v1.ml.get_drift_detector', return_value=mock_drift_detector):
+        with patch('app.ml.drift_detector.get_drift_detector', return_value=mock_drift_detector):
             from app.api.v1.ml import run_drift_detection
 
             result = await run_drift_detection(mock_request, mock_current_user)
@@ -158,7 +158,7 @@ class TestRunDriftDetection:
     @pytest.mark.asyncio
     async def test_run_drift_detection_error(self, mock_request, mock_current_user):
         """Sollte HTTPException bei Fehler werfen."""
-        with patch('app.api.v1.ml.get_drift_detector') as mock_get:
+        with patch('app.ml.drift_detector.get_drift_detector') as mock_get:
             mock_get.side_effect = Exception("Detection failed")
 
             from app.api.v1.ml import run_drift_detection
@@ -177,7 +177,7 @@ class TestGetDriftHistory:
         """Sollte Drift-Historie zurueckgeben."""
         mock_drift_detector.get_drift_history = Mock(return_value=[mock_drift_report])
 
-        with patch('app.api.v1.ml.get_drift_detector', return_value=mock_drift_detector):
+        with patch('app.ml.drift_detector.get_drift_detector', return_value=mock_drift_detector):
             from app.api.v1.ml import get_drift_history
 
             result = await get_drift_history(mock_request, limit=10, current_user=mock_current_user)
@@ -190,7 +190,7 @@ class TestGetDriftHistory:
         """Sollte leere Liste zurueckgeben."""
         mock_drift_detector.get_drift_history = Mock(return_value=[])
 
-        with patch('app.api.v1.ml.get_drift_detector', return_value=mock_drift_detector):
+        with patch('app.ml.drift_detector.get_drift_detector', return_value=mock_drift_detector):
             from app.api.v1.ml import get_drift_history
 
             result = await get_drift_history(mock_request, limit=10, current_user=mock_current_user)
@@ -206,7 +206,7 @@ class TestResetDriftReference:
         """Sollte Drift-Reference zuruecksetzen (Admin)."""
         mock_drift_detector.reset_reference_window = Mock()
 
-        with patch('app.api.v1.ml.get_drift_detector', return_value=mock_drift_detector):
+        with patch('app.ml.drift_detector.get_drift_detector', return_value=mock_drift_detector):
             from app.api.v1.ml import reset_drift_reference
 
             result = await reset_drift_reference(mock_request, mock_admin_user)
@@ -217,7 +217,7 @@ class TestResetDriftReference:
     @pytest.mark.asyncio
     async def test_reset_drift_reference_error(self, mock_request, mock_admin_user):
         """Sollte HTTPException bei Fehler werfen."""
-        with patch('app.api.v1.ml.get_drift_detector') as mock_get:
+        with patch('app.ml.drift_detector.get_drift_detector') as mock_get:
             mock_get.side_effect = Exception("Reset failed")
 
             from app.api.v1.ml import reset_drift_reference
@@ -248,7 +248,7 @@ class TestExplainRoutingDecision:
 
         mock_shap_explainer.explain_routing = Mock(return_value=mock_explanation)
 
-        with patch('app.api.v1.ml.get_shap_explainer', return_value=mock_shap_explainer):
+        with patch('app.ml.shap_explainer.get_shap_explainer', return_value=mock_shap_explainer):
             from app.api.v1.ml import explain_routing_decision, ExplainRoutingRequest
 
             request = ExplainRoutingRequest(
@@ -268,7 +268,7 @@ class TestExplainRoutingDecision:
     @pytest.mark.asyncio
     async def test_explain_routing_error(self, mock_request, mock_current_user):
         """Sollte HTTPException bei Fehler werfen."""
-        with patch('app.api.v1.ml.get_shap_explainer') as mock_get:
+        with patch('app.ml.shap_explainer.get_shap_explainer') as mock_get:
             mock_get.side_effect = Exception("Explainer error")
 
             from app.api.v1.ml import explain_routing_decision, ExplainRoutingRequest
@@ -304,7 +304,7 @@ class TestGetRoutingExplanation:
 
         mock_shap_explainer.get_explanation = Mock(return_value=mock_explanation)
 
-        with patch('app.api.v1.ml.get_shap_explainer', return_value=mock_shap_explainer):
+        with patch('app.ml.shap_explainer.get_shap_explainer', return_value=mock_shap_explainer):
             from app.api.v1.ml import get_routing_explanation
 
             result = await get_routing_explanation(mock_request, "doc-123", mock_current_user)
@@ -316,7 +316,7 @@ class TestGetRoutingExplanation:
         """Sollte 404 bei nicht gefundener Erklaerung werfen."""
         mock_shap_explainer.get_explanation = Mock(return_value=None)
 
-        with patch('app.api.v1.ml.get_shap_explainer', return_value=mock_shap_explainer):
+        with patch('app.ml.shap_explainer.get_shap_explainer', return_value=mock_shap_explainer):
             from app.api.v1.ml import get_routing_explanation
 
             with pytest.raises(HTTPException) as exc_info:
@@ -337,7 +337,7 @@ class TestGetGlobalFeatureImportance:
             "language": 0.20,
         })
 
-        with patch('app.api.v1.ml.get_shap_explainer', return_value=mock_shap_explainer):
+        with patch('app.ml.shap_explainer.get_shap_explainer', return_value=mock_shap_explainer):
             from app.api.v1.ml import get_global_feature_importance
 
             result = await get_global_feature_importance(mock_request, mock_current_user)
@@ -368,7 +368,7 @@ class TestCreateExperiment:
 
         mock_ab_test_manager.create_experiment = Mock(return_value=mock_experiment)
 
-        with patch('app.api.v1.ml.get_ab_test_manager', return_value=mock_ab_test_manager):
+        with patch('app.ml.ab_testing.get_ab_test_manager', return_value=mock_ab_test_manager):
             from app.api.v1.ml import create_experiment, CreateExperimentRequest, VariantConfig
 
             request = CreateExperimentRequest(
@@ -413,7 +413,7 @@ class TestStartExperiment:
         """Sollte Experiment starten (Admin)."""
         mock_ab_test_manager.start_experiment = Mock(return_value=True)
 
-        with patch('app.api.v1.ml.get_ab_test_manager', return_value=mock_ab_test_manager):
+        with patch('app.ml.ab_testing.get_ab_test_manager', return_value=mock_ab_test_manager):
             from app.api.v1.ml import start_experiment
 
             result = await start_experiment(mock_request, "exp-123", mock_admin_user)
@@ -426,7 +426,7 @@ class TestStartExperiment:
         """Sollte 400 wenn Start fehlschlaegt."""
         mock_ab_test_manager.start_experiment = Mock(return_value=False)
 
-        with patch('app.api.v1.ml.get_ab_test_manager', return_value=mock_ab_test_manager):
+        with patch('app.ml.ab_testing.get_ab_test_manager', return_value=mock_ab_test_manager):
             from app.api.v1.ml import start_experiment
 
             with pytest.raises(HTTPException) as exc_info:
@@ -454,7 +454,7 @@ class TestGetExperiment:
 
         mock_ab_test_manager.get_experiment = Mock(return_value=mock_experiment)
 
-        with patch('app.api.v1.ml.get_ab_test_manager', return_value=mock_ab_test_manager):
+        with patch('app.ml.ab_testing.get_ab_test_manager', return_value=mock_ab_test_manager):
             from app.api.v1.ml import get_experiment
 
             result = await get_experiment(mock_request, "exp-123", mock_current_user)
@@ -467,7 +467,7 @@ class TestGetExperiment:
         """Sollte 404 bei unbekanntem Experiment werfen."""
         mock_ab_test_manager.get_experiment = Mock(return_value=None)
 
-        with patch('app.api.v1.ml.get_ab_test_manager', return_value=mock_ab_test_manager):
+        with patch('app.ml.ab_testing.get_ab_test_manager', return_value=mock_ab_test_manager):
             from app.api.v1.ml import get_experiment
 
             with pytest.raises(HTTPException) as exc_info:
@@ -495,7 +495,7 @@ class TestListExperiments:
 
         mock_ab_test_manager.list_experiments = Mock(return_value=[mock_experiment])
 
-        with patch('app.api.v1.ml.get_ab_test_manager', return_value=mock_ab_test_manager):
+        with patch('app.ml.ab_testing.get_ab_test_manager', return_value=mock_ab_test_manager):
             from app.api.v1.ml import list_experiments
 
             result = await list_experiments(mock_request, status=None, current_user=mock_current_user)
@@ -508,8 +508,8 @@ class TestListExperiments:
         """Sollte nach Status filtern."""
         mock_ab_test_manager.list_experiments = Mock(return_value=[])
 
-        with patch('app.api.v1.ml.get_ab_test_manager', return_value=mock_ab_test_manager):
-            with patch('app.api.v1.ml.ExperimentStatus') as mock_status:
+        with patch('app.ml.ab_testing.get_ab_test_manager', return_value=mock_ab_test_manager):
+            with patch('app.ml.ab_testing.ExperimentStatus') as mock_status:
                 mock_status.return_value = "running"
 
                 from app.api.v1.ml import list_experiments
@@ -521,8 +521,8 @@ class TestListExperiments:
     @pytest.mark.asyncio
     async def test_list_experiments_invalid_status(self, mock_request, mock_current_user, mock_ab_test_manager):
         """Sollte 400 bei ungueltigem Status werfen."""
-        with patch('app.api.v1.ml.get_ab_test_manager', return_value=mock_ab_test_manager):
-            with patch('app.api.v1.ml.ExperimentStatus') as mock_status:
+        with patch('app.ml.ab_testing.get_ab_test_manager', return_value=mock_ab_test_manager):
+            with patch('app.ml.ab_testing.ExperimentStatus') as mock_status:
                 mock_status.side_effect = ValueError("Invalid status")
 
                 from app.api.v1.ml import list_experiments
@@ -541,7 +541,7 @@ class TestRecordExperimentResult:
         """Sollte Ergebnis erfassen."""
         mock_ab_test_manager.record_result = Mock()
 
-        with patch('app.api.v1.ml.get_ab_test_manager', return_value=mock_ab_test_manager):
+        with patch('app.ml.ab_testing.get_ab_test_manager', return_value=mock_ab_test_manager):
             from app.api.v1.ml import record_experiment_result, RecordResultRequest
 
             request = RecordResultRequest(
@@ -561,7 +561,7 @@ class TestRecordExperimentResult:
         """Sollte ValueError bei ungueltiger Variante werfen."""
         mock_ab_test_manager.record_result = Mock(side_effect=ValueError("Unknown variant"))
 
-        with patch('app.api.v1.ml.get_ab_test_manager', return_value=mock_ab_test_manager):
+        with patch('app.ml.ab_testing.get_ab_test_manager', return_value=mock_ab_test_manager):
             from app.api.v1.ml import record_experiment_result, RecordResultRequest
 
             request = RecordResultRequest(
@@ -584,7 +584,7 @@ class TestConcludeExperiment:
         """Sollte Experiment abschliessen (Admin)."""
         mock_ab_test_manager.conclude_experiment = Mock(return_value="control")
 
-        with patch('app.api.v1.ml.get_ab_test_manager', return_value=mock_ab_test_manager):
+        with patch('app.ml.ab_testing.get_ab_test_manager', return_value=mock_ab_test_manager):
             from app.api.v1.ml import conclude_experiment
 
             result = await conclude_experiment(mock_request, "exp-123", mock_admin_user)
@@ -597,7 +597,7 @@ class TestConcludeExperiment:
         """Sollte ValueError bei fehlender Signifikanz werfen."""
         mock_ab_test_manager.conclude_experiment = Mock(side_effect=ValueError("Not enough samples"))
 
-        with patch('app.api.v1.ml.get_ab_test_manager', return_value=mock_ab_test_manager):
+        with patch('app.ml.ab_testing.get_ab_test_manager', return_value=mock_ab_test_manager):
             from app.api.v1.ml import conclude_experiment
 
             with pytest.raises(HTTPException) as exc_info:
@@ -620,7 +620,7 @@ class TestGetPrometheusMetrics:
         mock_metrics.get_metrics = Mock(return_value="# HELP metric\nmetric 1.0")
         mock_metrics.get_content_type = Mock(return_value="text/plain")
 
-        with patch('app.api.v1.ml.get_ml_metrics', return_value=mock_metrics):
+        with patch('app.ml.metrics.get_ml_metrics', return_value=mock_metrics):
             from app.api.v1.ml import get_prometheus_metrics
 
             result = await get_prometheus_metrics(mock_request, mock_current_user)
@@ -643,8 +643,8 @@ class TestGetMetricsSummary:
 
         mock_ab_test_manager.get_active_experiments = Mock(return_value=[])
 
-        with patch('app.api.v1.ml.get_drift_detector', return_value=mock_drift_detector):
-            with patch('app.api.v1.ml.get_ab_test_manager', return_value=mock_ab_test_manager):
+        with patch('app.ml.drift_detector.get_drift_detector', return_value=mock_drift_detector):
+            with patch('app.ml.ab_testing.get_ab_test_manager', return_value=mock_ab_test_manager):
                 from app.api.v1.ml import get_metrics_summary
 
                 result = await get_metrics_summary(mock_request, mock_current_user)

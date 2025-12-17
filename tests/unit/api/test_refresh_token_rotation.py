@@ -80,7 +80,7 @@ class TestRefreshTokenRotation:
                 "token_type": "bearer"
             }
 
-            request = RefreshTokenRequest(refresh_token="old_refresh_token")
+            request = RefreshTokenRequest(refresh_token="old_refresh_token_12345abcdefg123")
             await refresh_token(request, mock_db)
 
             # Verify blacklist was called with old token's JTI
@@ -114,7 +114,7 @@ class TestRefreshTokenRotation:
                 "token_type": "bearer"
             }
 
-            request = RefreshTokenRequest(refresh_token="old_refresh_token")
+            request = RefreshTokenRequest(refresh_token="old_refresh_token_12345abcdefg123")
             result = await refresh_token(request, mock_db)
 
             # Verify new tokens are issued
@@ -138,7 +138,7 @@ class TestRefreshTokenRotation:
                 detail="Token wurde widerrufen"
             )
 
-            request = RefreshTokenRequest(refresh_token="blacklisted_token")
+            request = RefreshTokenRequest(refresh_token="blacklisted_token_12345abcdefg12")
 
             with pytest.raises(HTTPException) as exc:
                 await refresh_token(request, mock_db)
@@ -171,7 +171,7 @@ class TestRefreshTokenRotation:
                 "token_type": "bearer"
             }
 
-            request = RefreshTokenRequest(refresh_token="old_refresh_token")
+            request = RefreshTokenRequest(refresh_token="old_refresh_token_12345abcdefg123")
             result = await refresh_token(request, mock_db)
 
             # Refresh sollte trotzdem funktionieren
@@ -199,7 +199,7 @@ class TestRefreshTokenRotation:
                 detail="Sicherheitsdienst temporär nicht verfügbar"
             )
 
-            request = RefreshTokenRequest(refresh_token="old_refresh_token")
+            request = RefreshTokenRequest(refresh_token="old_refresh_token_12345abcdefg123")
 
             with pytest.raises(HTTPException) as exc:
                 await refresh_token(request, mock_db)
@@ -241,7 +241,7 @@ class TestRefreshTokenRotationEdgeCases:
                 "token_type": "bearer"
             }
 
-            request = RefreshTokenRequest(refresh_token="legacy_token")
+            request = RefreshTokenRequest(refresh_token="legacy_token_abcdefg12345abcdefg")
             result = await refresh_token(request, mock_db)
 
             # Sollte funktionieren, aber blacklist nicht aufrufen
@@ -279,7 +279,7 @@ class TestRefreshTokenRotationEdgeCases:
                 "token_type": "bearer"
             }
 
-            request = RefreshTokenRequest(refresh_token="token_without_exp")
+            request = RefreshTokenRequest(refresh_token="token_without_exp_abcdefg12345")
             result = await refresh_token(request, mock_db)
 
             # Sollte funktionieren, aber blacklist nicht aufrufen
@@ -303,7 +303,7 @@ class TestRefreshTokenRotationEdgeCases:
 
             mock_decode.return_value = valid_refresh_payload
 
-            request = RefreshTokenRequest(refresh_token="valid_token")
+            request = RefreshTokenRequest(refresh_token="valid_token_abcdefg12345abcdefg12")
 
             with pytest.raises(HTTPException) as exc:
                 await refresh_token(request, mock_db)
@@ -325,7 +325,7 @@ class TestRefreshTokenRotationEdgeCases:
 
             mock_decode.return_value = valid_refresh_payload
 
-            request = RefreshTokenRequest(refresh_token="valid_token")
+            request = RefreshTokenRequest(refresh_token="valid_token_abcdefg12345abcdefg12")
 
             with pytest.raises(HTTPException) as exc:
                 await refresh_token(request, mock_db)
@@ -362,7 +362,7 @@ class TestRefreshTokenRotationSecurity:
                 detail="Falscher Token-Typ. Erwartet: refresh"
             )
 
-            request = RefreshTokenRequest(refresh_token="access_token_value")
+            request = RefreshTokenRequest(refresh_token="access_token_value_abcdef12345")
 
             with pytest.raises(HTTPException) as exc:
                 await refresh_token(request, mock_db)
@@ -384,7 +384,7 @@ class TestRefreshTokenRotationSecurity:
                 detail="Token ungültig oder abgelaufen"
             )
 
-            request = RefreshTokenRequest(refresh_token="expired_token")
+            request = RefreshTokenRequest(refresh_token="expired_token_abcdefg12345abcdef")
 
             with pytest.raises(HTTPException) as exc:
                 await refresh_token(request, mock_db)
@@ -406,7 +406,7 @@ class TestRefreshTokenRotationSecurity:
                 detail="Token ungültig oder abgelaufen"
             )
 
-            request = RefreshTokenRequest(refresh_token="not.a.valid.token")
+            request = RefreshTokenRequest(refresh_token="not.a.valid.token.abcdefg12345")
 
             with pytest.raises(HTTPException) as exc:
                 await refresh_token(request, mock_db)
@@ -434,7 +434,7 @@ class TestRefreshTokenRotationSecurity:
 
             mock_decode.return_value = payload_without_sub
 
-            request = RefreshTokenRequest(refresh_token="token_without_sub")
+            request = RefreshTokenRequest(refresh_token="token_without_sub_abcdefg12345")
 
             with pytest.raises(HTTPException) as exc:
                 await refresh_token(request, mock_db)
@@ -470,7 +470,7 @@ class TestRefreshTokenRotationLogging:
                 "token_type": "bearer"
             }
 
-            request = RefreshTokenRequest(refresh_token="old_token")
+            request = RefreshTokenRequest(refresh_token="old_token_abcdefg12345abcdefg1234")
             await refresh_token(request, mock_db)
 
             # Verify info log was called
@@ -504,7 +504,7 @@ class TestRefreshTokenRotationLogging:
                 "token_type": "bearer"
             }
 
-            request = RefreshTokenRequest(refresh_token="old_token")
+            request = RefreshTokenRequest(refresh_token="old_token_abcdefg12345abcdefg1234")
             await refresh_token(request, mock_db)
 
             # Verify warning log was called

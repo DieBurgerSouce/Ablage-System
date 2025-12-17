@@ -317,4 +317,4 @@ class TestChandraModelLoading:
                         assert ChandraOCRAgent.VRAM_REQUIRED_GB == 15
                         assert ChandraOCRAgent.VRAM_8BIT_GB == 9
                         assert ChandraOCRAgent.VRAM_4BIT_GB == 5
-                        assert ChandraOCRAgent.MODEL_LOADING_TIMEOUT == 600.0
+                        assert ChandraOCRAgent.MODEL_LOADING_TIMEOUT == 1800.0  # 30 min

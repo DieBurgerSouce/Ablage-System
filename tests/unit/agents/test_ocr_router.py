@@ -155,7 +155,8 @@ class TestRuleBasedRouting:
             )
 
             assert result["backend"] == "deepseek"
-            assert result["reason"] == "complex_layout_with_tables"
+            # Reason kann _with_learning Suffix haben wenn Learning aktiviert
+            assert "complex_layout_with_tables" in result["reason"]
 
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -168,7 +169,8 @@ class TestRuleBasedRouting:
         )
 
         assert result["backend"] == "deepseek"
-        assert result["reason"] == "handwriting_detected"
+        # Reason kann _with_learning Suffix haben wenn Learning aktiviert
+        assert "handwriting_detected" in result["reason"]
 
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -263,7 +265,8 @@ class TestRuleBasedRouting:
         )
 
         assert result["backend"] == "got_ocr"
-        assert result["reason"] == "standard_document"
+        # Reason kann _with_learning Suffix haben wenn Learning aktiviert
+        assert "standard_document" in result["reason"]
 
 
 class TestLoadBalancing:

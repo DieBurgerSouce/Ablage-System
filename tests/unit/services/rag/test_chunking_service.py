@@ -422,6 +422,7 @@ Text nach der Tabelle."""
     ) -> None:
         """Test chunking document without OCR text."""
         mock_document = Mock()
+        mock_document.extracted_text = None  # Service verwendet extracted_text
         mock_document.ocr_text = None
         mock_document.id = uuid4()
 
