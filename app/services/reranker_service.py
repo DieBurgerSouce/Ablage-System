@@ -6,7 +6,7 @@ und CPU-Fallback mit MiniLM Cross-Encoder.
 Singleton-Muster fuer effiziente Modellnutzung.
 """
 
-from typing import List, Optional, TypedDict
+from typing import List, Optional, TypedDict, Dict, Any, TYPE_CHECKING, Union
 from dataclasses import dataclass
 import threading
 import asyncio
@@ -19,6 +19,10 @@ try:
 except ImportError:
     TORCH_AVAILABLE = False
     torch = None
+
+# Type hint fuer CrossEncoder (importiert nur fuer Type-Checking)
+if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
 
 from app.core.config import settings
 
@@ -40,6 +44,20 @@ class RerankerModelInfo(TypedDict, total=False):
     cpu_loaded: bool
     device: str
     gpu_vram_mb: float
+
+
+class RerankerStats(TypedDict, total=False):
+    """Typisierte Statistiken."""
+    gpu_rerank_count: int
+    cpu_rerank_count: int
+    gpu_fallback_count: int
+    total_documents_reranked: int
+    total_queries: int
+    gpu_model_loaded: bool
+    cpu_model_loaded: bool
+    gpu_available: bool
+    gpu_model: str
+    cpu_model: str
 
 
 @dataclass
@@ -317,7 +335,7 @@ class RerankerService:
 
     def _rerank_with_model(
         self,
-        model,  # CrossEncoder
+        model: 'CrossEncoder',
         query: str,
         documents: List[str],
         backend: str
@@ -379,16 +397,21 @@ class RerankerService:
             lambda: self.rerank(query, documents, top_k)
         )
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> RerankerStats:
         """Statistiken abrufen."""
-        return {
-            **self._stats,
+        stats: RerankerStats = {
+            "gpu_rerank_count": self._stats["gpu_rerank_count"],
+            "cpu_rerank_count": self._stats["cpu_rerank_count"],
+            "gpu_fallback_count": self._stats["gpu_fallback_count"],
+            "total_documents_reranked": self._stats["total_documents_reranked"],
+            "total_queries": self._stats["total_queries"],
             "gpu_model_loaded": self._gpu_model is not None,
             "cpu_model_loaded": self._cpu_model is not None,
             "gpu_available": self._gpu_available,
             "gpu_model": self.GPU_MODEL_NAME,
             "cpu_model": self.CPU_MODEL_NAME,
         }
+        return stats
 
     def get_model_info(self) -> RerankerModelInfo:
         """Detaillierte Modell-Informationen abrufen."""

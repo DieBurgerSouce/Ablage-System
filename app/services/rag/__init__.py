@@ -59,6 +59,34 @@ from app.services.rag.metrics import (
     record_search,
     record_llm,
     record_chunking,
+    record_rerank,
+    record_rerank_fallback,
+    record_ab_test,
+    record_ab_assignment,
+    record_qdrant,
+    record_embedding,
+    record_vector_sync,
+)
+from app.services.rag.qdrant_service import (
+    QdrantService,
+    QdrantPointData,
+    QdrantSearchResult,
+    get_qdrant_service,
+)
+from app.services.rag.ab_testing_router import (
+    ABTestingRouter,
+    ABAssignment,
+    ABTestContext,
+    ExperimentVariant,
+    VectorBackend,
+    get_ab_testing_router,
+)
+from app.services.rag.vector_sync_service import (
+    VectorSyncService,
+    SyncResult,
+    MigrationProgress,
+    MigrationStatus,
+    get_vector_sync_service,
 )
 
 __all__ = [
@@ -104,4 +132,29 @@ __all__ = [
     "record_search",
     "record_llm",
     "record_chunking",
+    "record_rerank",
+    "record_rerank_fallback",
+    "record_ab_test",
+    "record_ab_assignment",
+    "record_qdrant",
+    "record_embedding",
+    "record_vector_sync",
+    # Qdrant
+    "QdrantService",
+    "QdrantPointData",
+    "QdrantSearchResult",
+    "get_qdrant_service",
+    # A/B Testing
+    "ABTestingRouter",
+    "ABAssignment",
+    "ABTestContext",
+    "ExperimentVariant",
+    "VectorBackend",
+    "get_ab_testing_router",
+    # Vector Sync
+    "VectorSyncService",
+    "SyncResult",
+    "MigrationProgress",
+    "MigrationStatus",
+    "get_vector_sync_service",
 ]

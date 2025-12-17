@@ -394,25 +394,29 @@ class DocumentChunkingService:
         if not document:
             raise ValueError(f"Dokument {document_id} nicht gefunden")
 
-        if not document.ocr_text:
+        if not document.extracted_text:
             raise ValueError(f"Dokument {document_id} hat keinen OCR-Text")
 
         logger.info(
             "chunking_document",
             document_id=str(document_id),
             strategy=strategy,
-            text_length=len(document.ocr_text)
+            text_length=len(document.extracted_text)
         )
 
         # Chunk-Konfiguration basierend auf Dokumenttyp
-        doc_type = document.document_type.value if document.document_type else None
+        # document_type kann entweder Enum oder String sein
+        if document.document_type:
+            doc_type = document.document_type.value if hasattr(document.document_type, 'value') else document.document_type
+        else:
+            doc_type = None
         config = self._get_chunk_config(doc_type)
 
         # Chunking durchfuehren
         if strategy == "fixed":
-            chunks = self._fixed_split(document.ocr_text, config)
+            chunks = self._fixed_split(document.extracted_text, config)
         else:  # semantic oder document_type
-            chunks = self._semantic_split(document.ocr_text, config)
+            chunks = self._semantic_split(document.extracted_text, config)
 
         logger.info(
             "chunking_completed",

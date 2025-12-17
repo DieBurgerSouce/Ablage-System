@@ -299,11 +299,16 @@ class RAGSearchService:
         section_types: Optional[List[RAGSectionType]] = None
     ) -> List[SearchResult]:
         """Interne Vektorsuche mit pgvector."""
-        # Embedding als String fuer PostgreSQL
+        # Embedding als String fuer PostgreSQL (pgvector erwartet '[x,y,z]' Format)
         embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
 
-        # Base Query mit Cosine Similarity
-        # 1 - (embedding <=> query) gibt Similarity (0-1)
+        # Base Query mit Cosine Similarity via raw SQL
+        # pgvector: <=> ist Cosine Distance, 1 - distance = similarity
+        # CrossDBVector TypeDecorator exponiert keine pgvector-Operatoren,
+        # daher direktes SQL fuer den Distance-Ausdruck
+        from sqlalchemy import literal_column
+        similarity_expr = literal_column(f"(1 - (embedding <=> '{embedding_str}'::vector))")
+
         query = select(
             RAGDocumentChunk.id,
             RAGDocumentChunk.document_id,
@@ -311,7 +316,7 @@ class RAGSearchService:
             RAGDocumentChunk.chunk_index,
             RAGDocumentChunk.page_number,
             RAGDocumentChunk.section_type,
-            (1 - RAGDocumentChunk.embedding.cosine_distance(query_embedding)).label("similarity")
+            similarity_expr.label("similarity")
         ).where(
             RAGDocumentChunk.embedding.isnot(None)
         )
@@ -325,11 +330,16 @@ class RAGSearchService:
             query = query.where(RAGDocumentChunk.section_type.in_(section_types))
 
         # Threshold und Sortierung
-        query = query.having(
-            text("similarity >= :threshold")
-        ).params(threshold=threshold).order_by(
-            text("similarity DESC")
+        # WICHTIG: HAVING funktioniert nicht mit Aliassen ohne GROUP BY,
+        # daher verwenden wir eine Subquery
+        from sqlalchemy import select as sa_select
+        subquery = query.subquery()
+        final_query = sa_select(subquery).where(
+            subquery.c.similarity >= threshold
+        ).order_by(
+            subquery.c.similarity.desc()
         ).limit(limit)
+        query = final_query
 
         result = await db.execute(query)
         rows = result.fetchall()
@@ -341,7 +351,7 @@ class RAGSearchService:
                 chunk_text=row.chunk_text,
                 chunk_index=row.chunk_index,
                 page_number=row.page_number,
-                section_type=row.section_type.value if row.section_type else None,
+                section_type=row.section_type.value if hasattr(row.section_type, 'value') else row.section_type,
                 similarity=float(row.similarity)
             )
             for row in rows
@@ -394,7 +404,7 @@ class RAGSearchService:
                 chunk_text=row.chunk_text,
                 chunk_index=row.chunk_index,
                 page_number=row.page_number,
-                section_type=row.section_type.value if row.section_type else None,
+                section_type=row.section_type.value if hasattr(row.section_type, 'value') else row.section_type,
                 similarity=float(row.rank) / max_rank  # Normalisiert
             )
             for row in rows

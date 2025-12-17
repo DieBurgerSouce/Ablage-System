@@ -213,6 +213,45 @@ services:
     networks:
       - backend-network
 
+  # Mustang E-Invoice Service (ZUGFeRD/XRechnung)
+  # Java-basiert fuer vollstaendige XRechnung 3.0.2 Unterstuetzung inkl. UBL
+  # Siehe: https://github.com/ZUGFeRD/mustangproject
+  einvoice-mustang:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mustang
+    container_name: ablage-einvoice-mustang
+    environment:
+      # Server-Konfiguration
+      SERVER_PORT: 8091
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+      # Temp-Verzeichnis
+      TEMP_DIR: /app/temp
+    volumes:
+      - einvoice_temp:/app/temp
+      - einvoice_output:/app/output
+    ports:
+      - "127.0.0.1:8091:8091"  # Nur localhost - interner Service
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8091/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s  # 1 Minute fuer Java-Startup
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    restart: unless-stopped
+    networks:
+      - backend-network
+
   # FastAPI Backend Application (Backend + Data Networks)
   backend:
     build:
@@ -251,9 +290,11 @@ services:
       - ./alembic:/app/alembic:ro
       - ./alembic.ini:/app/alembic.ini:ro
       - ./infrastructure/vault/config/certs:/app/certs:ro
+      - ./Trainings_Data:/app/Trainings_Data:ro
       - uploads:/app/uploads
       - outputs:/app/outputs
       - backups:/var/backups/ablage
+      - model_cache:/home/ablage/.cache  # Persistent HuggingFace/Surya Model Cache
     ports:
       - "8000:8000"
     depends_on:
@@ -272,6 +313,7 @@ services:
     tmpfs:
       - /tmp:size=1G,mode=1777
       - /app/cache:size=2G,mode=1777
+      # Model Cache ist jetzt als persistentes Volume (model_cache) gemountet
     deploy:
       resources:
         limits:
@@ -893,6 +935,8 @@ volumes:
   clamav_data:  # ClamAV Virus-Signaturen
   qdrant_data:  # Qdrant Vector Database Storage
   reranker_cache:  # BGE-Reranker Model Cache
+  einvoice_temp:  # Mustang E-Invoice temporaere Dateien
+  einvoice_output:  # Mustang E-Invoice generierte Dateien
   uploads:
   outputs:
   backups:

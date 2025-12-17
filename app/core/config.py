@@ -559,6 +559,11 @@ class Settings(BaseSettings):
     EMBEDDING_TASK_DELAY_SECONDS: int = 5  # Delay before embedding task
     EMBEDDING_TASK_PRIORITY: int = 9  # Celery priority (0-9, 9=lowest)
 
+    # RAG Auto-Chunking Settings (nach OCR/Embedding)
+    AUTO_RAG_CHUNKING_ENABLED: bool = True  # Auto-chunk documents after OCR
+    RAG_CHUNKING_DELAY_SECONDS: int = 10  # Delay before chunking task
+    RAG_TASK_PRIORITY: int = 7  # Celery priority (0-9, 9=lowest)
+
     # =============================================================================
     # Qdrant Vector Database (Parallel zu pgvector fuer A/B Testing)
     # =============================================================================
@@ -758,6 +763,24 @@ class Settings(BaseSettings):
     RAG_SEMANTIC_THRESHOLD: float = 0.7  # Minimum Cosine Similarity
     RAG_RERANK_ENABLED: bool = True
     RAG_RERANK_TOP_K: int = 10
+
+    # =============================================================================
+    # E-Invoice Settings (ZUGFeRD / XRechnung)
+    # =============================================================================
+    # Mustang Microservice fuer XRechnung UBL und KoSIT-Validierung
+    MUSTANG_SERVICE_URL: str = Field(
+        default="http://einvoice-mustang:8091",
+        description="URL des Mustang E-Invoice Microservices"
+    )
+    MUSTANG_SERVICE_TIMEOUT: int = Field(
+        default=60,
+        ge=10, le=300,
+        description="Timeout fuer Mustang-Anfragen in Sekunden"
+    )
+    EINVOICE_TEMP_DIR: Path = Field(
+        default=Path("/app/temp/einvoice"),
+        description="Temporaeres Verzeichnis fuer E-Invoice Verarbeitung"
+    )
 
     # Reranker Dual-Stack Configuration (GPU + CPU Fallback)
     # GPU: BGE-Reranker-v2-m3 (~1GB VRAM, multilingual)

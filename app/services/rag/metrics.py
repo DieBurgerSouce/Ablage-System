@@ -183,6 +183,145 @@ if PROMETHEUS_AVAILABLE:
         "RAG system information"
     )
 
+    # ==========================================================================
+    # A/B Testing Metriken (Vector Backend Experiment)
+    # ==========================================================================
+
+    RAG_AB_REQUESTS = Counter(
+        "rag_ab_test_requests_total",
+        "Total A/B test requests",
+        ["variant", "backend", "embedding_model", "status"]
+    )
+
+    RAG_AB_LATENCY = Histogram(
+        "rag_ab_test_latency_seconds",
+        "A/B test search latency by variant",
+        ["variant", "backend"],
+        buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
+    )
+
+    RAG_AB_RESULTS = Histogram(
+        "rag_ab_test_results_count",
+        "Number of results in A/B test by variant",
+        ["variant", "backend"],
+        buckets=[0, 1, 5, 10, 20, 50, 100]
+    )
+
+    RAG_AB_SCORE = Histogram(
+        "rag_ab_test_avg_score",
+        "Average relevance score in A/B test by variant",
+        ["variant", "backend"],
+        buckets=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    )
+
+    RAG_AB_TRAFFIC_SPLIT = Gauge(
+        "rag_ab_test_traffic_split_percent",
+        "Current traffic split to treatment (0-100)"
+    )
+
+    RAG_AB_ASSIGNMENT = Counter(
+        "rag_ab_test_assignment_total",
+        "A/B test assignment counts",
+        ["variant", "assignment_reason"]
+    )
+
+    # ==========================================================================
+    # Qdrant Metriken
+    # ==========================================================================
+
+    RAG_QDRANT_OPERATIONS = Counter(
+        "rag_qdrant_operations_total",
+        "Total Qdrant operations",
+        ["operation", "collection", "status"]  # operation: upsert, search, delete
+    )
+
+    RAG_QDRANT_LATENCY = Histogram(
+        "rag_qdrant_operation_latency_seconds",
+        "Qdrant operation latency",
+        ["operation", "collection"],
+        buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]
+    )
+
+    RAG_QDRANT_POINTS_COUNT = Gauge(
+        "rag_qdrant_points_total",
+        "Total points in Qdrant collection",
+        ["collection"]
+    )
+
+    RAG_QDRANT_HEALTH = Gauge(
+        "rag_qdrant_healthy",
+        "Qdrant health status (1=healthy, 0=unhealthy)"
+    )
+
+    # ==========================================================================
+    # Embedding Metriken (Multi-Model)
+    # ==========================================================================
+
+    RAG_EMBEDDING_REQUESTS = Counter(
+        "rag_embedding_requests_total",
+        "Total embedding generation requests",
+        ["model", "is_query", "status"]
+    )
+
+    RAG_EMBEDDING_LATENCY = Histogram(
+        "rag_embedding_latency_seconds",
+        "Embedding generation latency",
+        ["model"],
+        buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5]
+    )
+
+    RAG_EMBEDDING_BATCH_SIZE = Histogram(
+        "rag_embedding_batch_size",
+        "Batch size for embedding generation",
+        ["model"],
+        buckets=[1, 5, 10, 20, 50, 100, 200, 500]
+    )
+
+    RAG_EMBEDDING_CACHE_HITS = Counter(
+        "rag_embedding_cache_hits_total",
+        "Embedding cache hits",
+        ["model"]
+    )
+
+    RAG_EMBEDDING_CACHE_MISSES = Counter(
+        "rag_embedding_cache_misses_total",
+        "Embedding cache misses",
+        ["model"]
+    )
+
+    # ==========================================================================
+    # Vector Sync Metriken (Dual-Write)
+    # ==========================================================================
+
+    RAG_SYNC_OPERATIONS = Counter(
+        "rag_vector_sync_operations_total",
+        "Total vector sync operations",
+        ["operation", "status"]  # operation: sync_chunk, sync_batch, migration
+    )
+
+    RAG_SYNC_LATENCY = Histogram(
+        "rag_vector_sync_latency_seconds",
+        "Vector sync operation latency",
+        ["operation"],
+        buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0]
+    )
+
+    RAG_SYNC_CHUNKS_SYNCED = Counter(
+        "rag_vector_sync_chunks_total",
+        "Total chunks synced",
+        ["status"]  # status: success, failed, skipped
+    )
+
+    RAG_MIGRATION_PROGRESS = Gauge(
+        "rag_vector_migration_progress_percent",
+        "Current migration progress (0-100)"
+    )
+
+    RAG_MIGRATION_STATUS = Gauge(
+        "rag_vector_migration_status",
+        "Migration status (0=idle, 1=running, 2=paused, 3=completed, 4=failed)"
+    )
+
 
 # =============================================================================
 # Metrics Service
@@ -465,6 +604,206 @@ class RAGMetricsService:
             "chunk_size": str(chunk_size)
         })
 
+    # -------------------------------------------------------------------------
+    # A/B Testing Metriken
+    # -------------------------------------------------------------------------
+
+    def record_ab_test_request(
+        self,
+        variant: str,
+        backend: str,
+        embedding_model: str,
+        status: str = "success",
+        latency_seconds: Optional[float] = None,
+        result_count: Optional[int] = None,
+        avg_score: Optional[float] = None
+    ):
+        """Zeichnet A/B Test Request auf."""
+        if not self._enabled:
+            return
+
+        RAG_AB_REQUESTS.labels(
+            variant=variant,
+            backend=backend,
+            embedding_model=embedding_model,
+            status=status
+        ).inc()
+
+        if latency_seconds is not None:
+            RAG_AB_LATENCY.labels(
+                variant=variant,
+                backend=backend
+            ).observe(latency_seconds)
+
+        if result_count is not None:
+            RAG_AB_RESULTS.labels(
+                variant=variant,
+                backend=backend
+            ).observe(result_count)
+
+        if avg_score is not None:
+            RAG_AB_SCORE.labels(
+                variant=variant,
+                backend=backend
+            ).observe(avg_score)
+
+    def record_ab_test_assignment(
+        self,
+        variant: str,
+        assignment_reason: str
+    ):
+        """Zeichnet A/B Test Zuordnung auf."""
+        if not self._enabled:
+            return
+
+        RAG_AB_ASSIGNMENT.labels(
+            variant=variant,
+            assignment_reason=assignment_reason
+        ).inc()
+
+    def set_ab_test_traffic_split(self, split_percent: int):
+        """Setzt aktuellen Traffic-Split."""
+        if not self._enabled:
+            return
+
+        RAG_AB_TRAFFIC_SPLIT.set(split_percent)
+
+    # -------------------------------------------------------------------------
+    # Qdrant Metriken
+    # -------------------------------------------------------------------------
+
+    def record_qdrant_operation(
+        self,
+        operation: str,
+        collection: str,
+        status: str = "success",
+        latency_seconds: Optional[float] = None
+    ):
+        """Zeichnet Qdrant Operation auf."""
+        if not self._enabled:
+            return
+
+        RAG_QDRANT_OPERATIONS.labels(
+            operation=operation,
+            collection=collection,
+            status=status
+        ).inc()
+
+        if latency_seconds is not None:
+            RAG_QDRANT_LATENCY.labels(
+                operation=operation,
+                collection=collection
+            ).observe(latency_seconds)
+
+    def set_qdrant_points_count(self, collection: str, count: int):
+        """Setzt Anzahl Points in Collection."""
+        if not self._enabled:
+            return
+
+        RAG_QDRANT_POINTS_COUNT.labels(collection=collection).set(count)
+
+    def set_qdrant_health(self, healthy: bool):
+        """Setzt Qdrant Health Status."""
+        if not self._enabled:
+            return
+
+        RAG_QDRANT_HEALTH.set(1 if healthy else 0)
+
+    # -------------------------------------------------------------------------
+    # Embedding Metriken
+    # -------------------------------------------------------------------------
+
+    def record_embedding_request(
+        self,
+        model: str,
+        is_query: bool,
+        status: str = "success",
+        latency_seconds: Optional[float] = None,
+        batch_size: Optional[int] = None
+    ):
+        """Zeichnet Embedding Request auf."""
+        if not self._enabled:
+            return
+
+        RAG_EMBEDDING_REQUESTS.labels(
+            model=model,
+            is_query=str(is_query).lower(),
+            status=status
+        ).inc()
+
+        if latency_seconds is not None:
+            RAG_EMBEDDING_LATENCY.labels(model=model).observe(latency_seconds)
+
+        if batch_size is not None:
+            RAG_EMBEDDING_BATCH_SIZE.labels(model=model).observe(batch_size)
+
+    def record_embedding_cache_hit(self, model: str):
+        """Zeichnet Embedding Cache Hit auf."""
+        if not self._enabled:
+            return
+
+        RAG_EMBEDDING_CACHE_HITS.labels(model=model).inc()
+
+    def record_embedding_cache_miss(self, model: str):
+        """Zeichnet Embedding Cache Miss auf."""
+        if not self._enabled:
+            return
+
+        RAG_EMBEDDING_CACHE_MISSES.labels(model=model).inc()
+
+    # -------------------------------------------------------------------------
+    # Vector Sync Metriken
+    # -------------------------------------------------------------------------
+
+    def record_sync_operation(
+        self,
+        operation: str,
+        status: str = "success",
+        latency_seconds: Optional[float] = None
+    ):
+        """Zeichnet Vector Sync Operation auf."""
+        if not self._enabled:
+            return
+
+        RAG_SYNC_OPERATIONS.labels(
+            operation=operation,
+            status=status
+        ).inc()
+
+        if latency_seconds is not None:
+            RAG_SYNC_LATENCY.labels(operation=operation).observe(latency_seconds)
+
+    def record_chunks_synced(
+        self,
+        success_count: int = 0,
+        failed_count: int = 0,
+        skipped_count: int = 0
+    ):
+        """Zeichnet synchronisierte Chunks auf."""
+        if not self._enabled:
+            return
+
+        if success_count > 0:
+            RAG_SYNC_CHUNKS_SYNCED.labels(status="success").inc(success_count)
+        if failed_count > 0:
+            RAG_SYNC_CHUNKS_SYNCED.labels(status="failed").inc(failed_count)
+        if skipped_count > 0:
+            RAG_SYNC_CHUNKS_SYNCED.labels(status="skipped").inc(skipped_count)
+
+    def set_migration_progress(self, progress_percent: float):
+        """Setzt Migration Progress."""
+        if not self._enabled:
+            return
+
+        RAG_MIGRATION_PROGRESS.set(progress_percent)
+
+    def set_migration_status(self, status: int):
+        """Setzt Migration Status (0=idle, 1=running, 2=paused, 3=completed, 4=failed)."""
+        if not self._enabled:
+            return
+
+        RAG_MIGRATION_STATUS.set(status)
+
 
 # Singleton
 _metrics_service: Optional[RAGMetricsService] = None
@@ -549,3 +888,88 @@ def record_rerank(
 def record_rerank_fallback(reason: str):
     """Convenience: Reranker Fallback aufzeichnen."""
     get_rag_metrics_service().record_rerank_fallback(reason=reason)
+
+
+# =============================================================================
+# A/B Testing Convenience Functions
+# =============================================================================
+
+
+def record_ab_test(
+    variant: str,
+    backend: str,
+    embedding_model: str,
+    latency_ms: float,
+    result_count: int,
+    avg_score: float = 0.0,
+    status: str = "success"
+):
+    """Convenience: A/B Test Request aufzeichnen."""
+    get_rag_metrics_service().record_ab_test_request(
+        variant=variant,
+        backend=backend,
+        embedding_model=embedding_model,
+        status=status,
+        latency_seconds=latency_ms / 1000,
+        result_count=result_count,
+        avg_score=avg_score
+    )
+
+
+def record_ab_assignment(variant: str, reason: str):
+    """Convenience: A/B Test Zuordnung aufzeichnen."""
+    get_rag_metrics_service().record_ab_test_assignment(
+        variant=variant,
+        assignment_reason=reason
+    )
+
+
+def record_qdrant(
+    operation: str,
+    collection: str,
+    latency_ms: float,
+    status: str = "success"
+):
+    """Convenience: Qdrant Operation aufzeichnen."""
+    get_rag_metrics_service().record_qdrant_operation(
+        operation=operation,
+        collection=collection,
+        status=status,
+        latency_seconds=latency_ms / 1000
+    )
+
+
+def record_embedding(
+    model: str,
+    is_query: bool,
+    latency_ms: float,
+    batch_size: int = 1,
+    status: str = "success"
+):
+    """Convenience: Embedding Request aufzeichnen."""
+    get_rag_metrics_service().record_embedding_request(
+        model=model,
+        is_query=is_query,
+        status=status,
+        latency_seconds=latency_ms / 1000,
+        batch_size=batch_size
+    )
+
+
+def record_vector_sync(
+    operation: str,
+    latency_ms: float,
+    success_count: int = 0,
+    failed_count: int = 0,
+    status: str = "success"
+):
+    """Convenience: Vector Sync Operation aufzeichnen."""
+    get_rag_metrics_service().record_sync_operation(
+        operation=operation,
+        status=status,
+        latency_seconds=latency_ms / 1000
+    )
+    get_rag_metrics_service().record_chunks_synced(
+        success_count=success_count,
+        failed_count=failed_count
+    )
