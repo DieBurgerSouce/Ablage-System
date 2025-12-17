@@ -53,6 +53,124 @@ class SuryaTrainingConfig:
 
 
 @dataclass
+class SuryaGermanConfig(SuryaTrainingConfig):
+    """
+    Optimierte Konfiguration für deutsches Fine-Tuning mit Umlaut-Fokus.
+
+    Enterprise-Grade Konfiguration für deutsche Dokumente:
+    - Umlaut-gewichtete Loss-Function (2x Penalty für ä, ö, ü, ß Fehler)
+    - Focal Loss Option für schwierige Zeichen
+    - Angepasste Learning Rate für Fine-Tuning
+    - Frakturschrift-Unterstützung
+
+    Zielmetriken:
+    - CER: < 3%
+    - WER: < 8%
+    - Umlaut-Accuracy: 100%
+    """
+
+    # UMLAUT-FOKUS EINSTELLUNGEN
+    umlaut_loss_weight: float = 2.0  # Höhere Strafe für Umlaut-Fehler
+    eszett_loss_weight: float = 2.0  # Extra Gewicht für ß
+    use_focal_loss: bool = True  # Focal Loss für schwierige Fälle
+    focal_gamma: float = 2.0  # Focal Loss Gamma
+    focal_alpha: float = 0.25  # Focal Loss Alpha
+    label_smoothing: float = 0.1  # Label Smoothing für Robustheit
+    confusion_penalty: float = 1.5  # Extra Strafe für typische Verwechslungen
+
+    # Zeichen-spezifische Gewichte
+    char_weights: Dict[str, float] = field(default_factory=lambda: {
+        "ä": 2.0, "ö": 2.0, "ü": 2.0, "ß": 2.0,
+        "Ä": 2.0, "Ö": 2.0, "Ü": 2.0,
+    })
+
+    # Deutsche Sprach-Einstellungen
+    language: str = "de"
+    detect_fraktur: bool = True
+    german_dictionary: bool = True
+
+    # Angepasste Training-Parameter für Deutsch
+    num_train_epochs: int = 5
+    learning_rate: float = 3e-5  # Etwas niedriger für Fine-Tuning
+    per_device_train_batch_size: int = 4
+    gradient_accumulation_steps: int = 4  # Effektive Batch Size: 16
+    warmup_ratio: float = 0.15  # Längere Warmup-Phase
+    fp16: bool = True
+
+    # Output
+    output_dir: str = "./models/finetuned/surya-german"
+    metric_for_best_model: str = "umlaut_accuracy"
+    greater_is_better: bool = True  # Höhere Umlaut-Accuracy ist besser
+
+    @classmethod
+    def create_default(cls) -> "SuryaGermanConfig":
+        """Erstellt Standard-Konfiguration für deutsches Fine-Tuning."""
+        return cls()
+
+    @classmethod
+    def create_aggressive_umlaut(cls) -> "SuryaGermanConfig":
+        """Erstellt aggressive Konfiguration mit maximalem Umlaut-Fokus."""
+        return cls(
+            umlaut_loss_weight=3.0,
+            eszett_loss_weight=3.0,
+            use_focal_loss=True,
+            focal_gamma=3.0,
+            confusion_penalty=2.0,
+            char_weights={
+                "ä": 3.0, "ö": 3.0, "ü": 3.0, "ß": 3.0,
+                "Ä": 3.0, "Ö": 3.0, "Ü": 3.0,
+            },
+            num_train_epochs=8,
+            learning_rate=2e-5,
+        )
+
+    @classmethod
+    def create_fraktur_focused(cls) -> "SuryaGermanConfig":
+        """Erstellt Konfiguration optimiert für Frakturschrift."""
+        return cls(
+            detect_fraktur=True,
+            umlaut_loss_weight=2.5,
+            use_focal_loss=True,
+            focal_gamma=2.5,
+            num_train_epochs=10,
+            learning_rate=2e-5,
+            per_device_train_batch_size=2,  # Kleinere Batches für komplexe Layouts
+            gradient_accumulation_steps=8,
+        )
+
+    @classmethod
+    def create_quick_finetune(cls) -> "SuryaGermanConfig":
+        """Erstellt schnelle Konfiguration für inkrementelles Training."""
+        return cls(
+            num_train_epochs=2,
+            learning_rate=5e-5,
+            use_focal_loss=False,
+            save_steps=100,
+            check_steps=50,
+            logging_steps=25,
+        )
+
+    def get_umlaut_loss_config(self) -> Dict[str, Any]:
+        """Gibt Konfiguration für UmlautWeightedCrossEntropy zurück."""
+        return {
+            "umlaut_weight": self.umlaut_loss_weight,
+            "eszett_weight": self.eszett_loss_weight,
+            "label_smoothing": self.label_smoothing,
+            "confusion_penalty": self.confusion_penalty,
+            "char_weights": self.char_weights,
+        }
+
+    def get_focal_loss_config(self) -> Dict[str, Any]:
+        """Gibt Konfiguration für FocalUmlautLoss zurück."""
+        return {
+            "gamma": self.focal_gamma,
+            "alpha": self.focal_alpha,
+            "umlaut_weight": self.umlaut_loss_weight,
+            "char_weights": self.char_weights,
+        }
+
+
+@dataclass
 class SuryaTestMetrics:
     """Metriken für Surya Testing."""
     loss: float
@@ -485,3 +603,375 @@ class SuryaOCRTrainer:
             "max_allocated_mb": torch.cuda.max_memory_allocated() / 1024**2,
             "total_mb": torch.cuda.get_device_properties(0).total_memory / 1024**2
         }
+
+
+class SuryaGermanTrainer(SuryaOCRTrainer):
+    """
+    Spezialisierter Trainer für deutsches Fine-Tuning mit Umlaut-Fokus.
+
+    Erweitert SuryaOCRTrainer um:
+    - UmlautWeightedCrossEntropy Loss-Function
+    - FocalUmlautLoss für schwierige Fälle
+    - Verbesserte Umlaut-Metriken
+    - Integration mit Feedback Learning
+
+    Verwendung:
+        trainer = SuryaGermanTrainer.create_default()
+        result = await trainer.train("train.jsonl", "test.jsonl")
+    """
+
+    def __init__(
+        self,
+        config: Optional[SuryaGermanConfig] = None,
+        device: Optional[str] = None
+    ):
+        """
+        Initialisiert den German-spezialisierten Trainer.
+
+        Args:
+            config: SuryaGermanConfig für deutsches Training
+            device: CUDA oder CPU Device
+        """
+        german_config = config or SuryaGermanConfig.create_default()
+        super().__init__(
+            model_name="vikp/surya_rec",
+            config=german_config,
+            device=device
+        )
+        self.german_config = german_config
+        self._custom_loss = None
+        logger.info(
+            f"SuryaGermanTrainer initialisiert: "
+            f"umlaut_weight={german_config.umlaut_loss_weight}, "
+            f"focal_loss={german_config.use_focal_loss}"
+        )
+
+    @classmethod
+    def create_default(cls) -> "SuryaGermanTrainer":
+        """Erstellt Trainer mit Standard-Konfiguration."""
+        return cls(config=SuryaGermanConfig.create_default())
+
+    @classmethod
+    def create_aggressive(cls) -> "SuryaGermanTrainer":
+        """Erstellt Trainer mit aggressiver Umlaut-Konfiguration."""
+        return cls(config=SuryaGermanConfig.create_aggressive_umlaut())
+
+    @classmethod
+    def create_for_fraktur(cls) -> "SuryaGermanTrainer":
+        """Erstellt Trainer für Frakturschrift."""
+        return cls(config=SuryaGermanConfig.create_fraktur_focused())
+
+    @classmethod
+    def create_quick(cls) -> "SuryaGermanTrainer":
+        """Erstellt Trainer für schnelles inkrementelles Training."""
+        return cls(config=SuryaGermanConfig.create_quick_finetune())
+
+    def _setup_custom_loss(self) -> None:
+        """Initialisiert die Umlaut-gewichtete Loss-Function."""
+        try:
+            from app.ml.finetuning.umlaut_weighted_loss import (
+                UmlautWeightedCrossEntropy,
+                FocalUmlautLoss,
+                UmlautLossConfig,
+            )
+
+            loss_config = UmlautLossConfig(
+                umlaut_weight=self.german_config.umlaut_loss_weight,
+                eszett_weight=self.german_config.eszett_loss_weight,
+                label_smoothing=self.german_config.label_smoothing,
+                confusion_penalty=self.german_config.confusion_penalty,
+                char_weights=self.german_config.char_weights,
+            )
+
+            if self.german_config.use_focal_loss:
+                self._custom_loss = FocalUmlautLoss(
+                    gamma=self.german_config.focal_gamma,
+                    alpha=self.german_config.focal_alpha,
+                    umlaut_config=loss_config,
+                )
+                logger.info("FocalUmlautLoss aktiviert")
+            else:
+                self._custom_loss = UmlautWeightedCrossEntropy(config=loss_config)
+                logger.info("UmlautWeightedCrossEntropy aktiviert")
+
+            self._custom_loss.to(self.device)
+
+        except ImportError as e:
+            logger.warning(f"Umlaut-Loss nicht verfügbar, nutze Standard-Loss: {e}")
+            self._custom_loss = None
+
+    def setup(self) -> None:
+        """Lädt Modell, Processor und Custom Loss."""
+        super().setup()
+        self._setup_custom_loss()
+
+    async def train(
+        self,
+        train_data_path: str,
+        test_data_path: Optional[str] = None,
+        resume_from_checkpoint: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Führt deutsches Fine-Tuning mit Umlaut-Fokus durch.
+
+        Args:
+            train_data_path: Pfad zu Training-JSONL
+            test_data_path: Pfad zu Test-JSONL (optional)
+            resume_from_checkpoint: Checkpoint zum Fortsetzen
+
+        Returns:
+            Training-Ergebnis mit Metriken
+        """
+        from transformers import Trainer
+
+        if self.model is None:
+            self.setup()
+
+        train_dataset = SuryaOCRDataset(
+            train_data_path, self.processor,
+            max_length=self.config.max_seq_length, is_training=True
+        )
+
+        test_dataset = None
+        if test_data_path and os.path.exists(test_data_path):
+            test_dataset = SuryaOCRDataset(
+                test_data_path, self.processor,
+                max_length=self.config.max_seq_length, is_training=False
+            )
+
+        logger.info("Starte deutsches Fine-Tuning...")
+        logger.info(f"  Epochs: {self.config.num_train_epochs}")
+        logger.info(f"  Training Samples: {len(train_dataset)}")
+        logger.info(f"  Umlaut-Gewicht: {self.german_config.umlaut_loss_weight}")
+        logger.info(f"  Focal Loss: {self.german_config.use_focal_loss}")
+
+        training_args = self._create_training_args()
+
+        def data_collator(features: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
+            batch = {}
+            for key in features[0].keys():
+                if features[0][key] is not None:
+                    batch[key] = torch.stack([f[key] for f in features if f[key] is not None])
+            return batch
+
+        # Custom Trainer mit Umlaut-Loss
+        class GermanOCRTrainer(Trainer):
+            def __init__(self, custom_loss_fn=None, **kwargs):
+                super().__init__(**kwargs)
+                self._custom_loss_fn = custom_loss_fn
+
+            def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+                labels = inputs.pop("labels", None)
+                outputs = model(**inputs)
+
+                if self._custom_loss_fn is not None and labels is not None:
+                    logits = outputs.logits if hasattr(outputs, "logits") else outputs[0]
+                    loss = self._custom_loss_fn(logits, labels)
+                elif hasattr(outputs, "loss") and outputs.loss is not None:
+                    loss = outputs.loss
+                else:
+                    from torch.nn import CrossEntropyLoss
+                    logits = outputs.logits if hasattr(outputs, "logits") else outputs[0]
+                    loss_fct = CrossEntropyLoss()
+                    loss = loss_fct(
+                        logits.view(-1, logits.size(-1)),
+                        labels.view(-1)
+                    )
+
+                return (loss, outputs) if return_outputs else loss
+
+        self.trainer = GermanOCRTrainer(
+            custom_loss_fn=self._custom_loss,
+            model=self.model,
+            args=training_args,
+            train_dataset=train_dataset,
+            eval_dataset=test_dataset,
+            data_collator=data_collator,
+            compute_metrics=self._compute_metrics if test_dataset else None,
+        )
+
+        try:
+            train_result = self.trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+            self.trainer.save_model()
+            self.processor.save_pretrained(self.config.output_dir)
+
+            metrics = train_result.metrics
+            self.trainer.log_metrics("train", metrics)
+            self.trainer.save_metrics("train", metrics)
+            self.trainer.save_state()
+
+            # Speichere German-spezifische Config
+            german_config_file = Path(self.config.output_dir) / "german_config.json"
+            with open(german_config_file, "w", encoding="utf-8") as f:
+                config_dict = {
+                    "umlaut_loss_weight": self.german_config.umlaut_loss_weight,
+                    "eszett_loss_weight": self.german_config.eszett_loss_weight,
+                    "use_focal_loss": self.german_config.use_focal_loss,
+                    "focal_gamma": self.german_config.focal_gamma,
+                    "char_weights": self.german_config.char_weights,
+                    "language": self.german_config.language,
+                    "detect_fraktur": self.german_config.detect_fraktur,
+                }
+                json.dump(config_dict, f, indent=2, ensure_ascii=False)
+
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+            return {
+                "status": "completed",
+                "train_loss": metrics.get("train_loss"),
+                "train_runtime": metrics.get("train_runtime"),
+                "train_samples_per_second": metrics.get("train_samples_per_second"),
+                "output_dir": str(self.config.output_dir),
+                "german_config": {
+                    "umlaut_weight": self.german_config.umlaut_loss_weight,
+                    "focal_loss": self.german_config.use_focal_loss,
+                },
+                "metrics_history": self._metrics_history[-50:]
+            }
+
+        except Exception as e:
+            logger.exception("Deutsches Fine-Tuning fehlgeschlagen")
+            return {"status": "failed", "error": str(e)}
+
+    def _calculate_umlaut_accuracy(self, predictions: List[str], references: List[str]) -> float:
+        """
+        Erweiterte Umlaut-Genauigkeit mit Konfusions-Analyse.
+
+        Prüft nicht nur exakte Übereinstimmung, sondern auch:
+        - Position-basierte Genauigkeit
+        - Verwechslungs-Erkennung (ä→a, ö→o, etc.)
+        """
+        umlauts = set("äöüÄÖÜß")
+        correct, total = 0, 0
+        confusion_counts: Dict[str, Dict[str, int]] = {u: {} for u in umlauts}
+
+        for pred, ref in zip(predictions, references):
+            for i, char in enumerate(ref):
+                if char in umlauts:
+                    total += 1
+                    if i < len(pred):
+                        pred_char = pred[i]
+                        if pred_char == char:
+                            correct += 1
+                        else:
+                            # Track confusion
+                            if pred_char not in confusion_counts[char]:
+                                confusion_counts[char][pred_char] = 0
+                            confusion_counts[char][pred_char] += 1
+
+        # Log top confusions
+        for umlaut, confusions in confusion_counts.items():
+            if confusions:
+                top_confusion = max(confusions.items(), key=lambda x: x[1])
+                if top_confusion[1] > 5:  # Nur signifikante Verwechslungen
+                    logger.debug(
+                        f"Umlaut-Verwechslung: {umlaut} → {top_confusion[0]} "
+                        f"({top_confusion[1]} mal)"
+                    )
+
+        return correct / total if total > 0 else 1.0
+
+    async def evaluate_umlaut_performance(
+        self,
+        test_data_path: str
+    ) -> Dict[str, Any]:
+        """
+        Detaillierte Umlaut-Performance-Analyse.
+
+        Returns:
+            Detaillierte Metriken pro Umlaut-Zeichen
+        """
+        if self.model is None:
+            self.setup()
+
+        test_dataset = SuryaOCRDataset(
+            test_data_path, self.processor,
+            max_length=self.config.max_seq_length, is_training=False
+        )
+
+        from torch.utils.data import DataLoader
+        test_loader = DataLoader(
+            test_dataset, batch_size=self.config.per_device_test_batch_size,
+            shuffle=False, num_workers=0
+        )
+
+        self.model.train(False)
+        umlauts = list("äöüÄÖÜß")
+        per_char_stats = {u: {"correct": 0, "total": 0, "confusions": {}} for u in umlauts}
+
+        with torch.no_grad():
+            for batch in test_loader:
+                batch = {k: v.to(self.device) for k, v in batch.items() if v is not None}
+
+                with torch.cuda.amp.autocast(enabled=self.config.fp16):
+                    if hasattr(self.model, "generate"):
+                        generated_ids = self.model.generate(
+                            pixel_values=batch.get("pixel_values"),
+                            max_new_tokens=self.config.max_seq_length,
+                            do_sample=False
+                        )
+                        pred_ids = generated_ids
+                    else:
+                        outputs = self.model(**batch)
+                        pred_ids = outputs.logits.argmax(-1)
+
+                predictions = self.processor.batch_decode(pred_ids, skip_special_tokens=True)
+
+                if "labels" in batch:
+                    labels = batch["labels"].clone()
+                    labels[labels == -100] = self.processor.tokenizer.pad_token_id
+                    references = self.processor.batch_decode(labels, skip_special_tokens=True)
+
+                    # Analysiere jedes Zeichen
+                    for pred, ref in zip(predictions, references):
+                        for i, char in enumerate(ref):
+                            if char in umlauts:
+                                per_char_stats[char]["total"] += 1
+                                if i < len(pred):
+                                    pred_char = pred[i]
+                                    if pred_char == char:
+                                        per_char_stats[char]["correct"] += 1
+                                    else:
+                                        if pred_char not in per_char_stats[char]["confusions"]:
+                                            per_char_stats[char]["confusions"][pred_char] = 0
+                                        per_char_stats[char]["confusions"][pred_char] += 1
+
+        # Berechne Statistiken
+        results = {
+            "overall_umlaut_accuracy": 0.0,
+            "per_character": {},
+            "total_umlauts": 0,
+            "correct_umlauts": 0,
+        }
+
+        total_correct = 0
+        total_count = 0
+
+        for char, stats in per_char_stats.items():
+            total = stats["total"]
+            correct = stats["correct"]
+            total_correct += correct
+            total_count += total
+
+            accuracy = correct / total if total > 0 else 1.0
+            top_confusions = sorted(
+                stats["confusions"].items(),
+                key=lambda x: x[1],
+                reverse=True
+            )[:3]
+
+            results["per_character"][char] = {
+                "accuracy": accuracy,
+                "total": total,
+                "correct": correct,
+                "top_confusions": top_confusions,
+            }
+
+        results["overall_umlaut_accuracy"] = total_correct / total_count if total_count > 0 else 1.0
+        results["total_umlauts"] = total_count
+        results["correct_umlauts"] = total_correct
+
+        logger.info(f"Umlaut-Performance: {results['overall_umlaut_accuracy']:.2%}")
+        return results

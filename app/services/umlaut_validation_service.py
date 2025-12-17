@@ -394,6 +394,52 @@ class UmlautValidationService:
 
         return distance / max_len if max_len > 0 else 0.0
 
+    def validate_text(self, text: str) -> UmlautValidationResult:
+        """
+        Validiert einen einzelnen Text auf Umlaut-Qualitaet.
+
+        Im Gegensatz zu validate_umlaut_consistency() erfordert diese
+        Methode keinen Ground-Truth-Vergleich, sondern prueft nur
+        den Text selbst auf potentielle Umlaut-Probleme.
+
+        Args:
+            text: Zu pruefender Text
+
+        Returns:
+            UmlautValidationResult mit Fehlerhinweisen und Korrekturvorschlaegen
+        """
+        # Erkenne potentielle Fehler
+        suggestions = self.detect_potential_umlaut_errors(text)
+
+        # Zaehle Umlaute im Text
+        umlauts_found = self._extract_umlauts(text)
+        umlaut_count = len(umlauts_found)
+
+        # Berechne eine Schaetzung der Genauigkeit basierend auf Fehlern
+        # Wenn keine Vorschlaege, ist der Text wahrscheinlich korrekt
+        if umlaut_count == 0:
+            accuracy = 1.0  # Kein Umlaut = keine Fehler moeglich
+        elif len(suggestions) == 0:
+            accuracy = 1.0  # Umlaute vorhanden, keine Fehler erkannt
+        else:
+            # Fehlerrate basierend auf gefundenen Problemen
+            error_rate = len(suggestions) / max(umlaut_count, len(suggestions))
+            accuracy = max(0.0, 1.0 - error_rate)
+
+        # Korrigierte Version erstellen falls noetig
+        corrected_text = self.auto_correct_umlauts(text) if suggestions else None
+
+        return UmlautValidationResult(
+            text=text,
+            suggestions=suggestions,
+            umlaut_accuracy=accuracy,
+            total_umlauts_expected=umlaut_count + len(suggestions),  # Schaetzung
+            total_umlauts_found=umlaut_count,
+            missing_umlauts=[s.suggested for s in suggestions],  # Was fehlt
+            extra_umlauts=[],  # Ohne Ground Truth nicht bestimmbar
+            corrected_text=corrected_text,
+        )
+
     # =========================================================================
     # Hilfsmethoden
     # =========================================================================

@@ -251,21 +251,41 @@ class OCRBackendRouter(OrchestrationAgent):
         total_ocr_queue = ocr_high_queue + ocr_normal_queue
 
         if total_ocr_queue >= settings.QUEUE_LENGTH_THRESHOLD_HIGH:
-            # Prefer got_ocr for faster throughput when queues are high
+            # Get learned weights to select best fast backend
+            learned_weights = {}
+            try:
+                learned_weights = await self.get_learned_backend_weights()
+            except Exception:
+                pass  # Use defaults if weights not available
+
             if gpu_available:
+                # Rank fast GPU backends by learned weights
+                fast_gpu_backends = ["got_ocr", "surya_gpu"]
+                if learned_weights:
+                    fast_gpu_backends.sort(
+                        key=lambda b: learned_weights.get(b, 1.0),
+                        reverse=True
+                    )
+
+                best_backend = fast_gpu_backends[0]
+                alternatives = fast_gpu_backends[1:] + ["surya"]
+
                 logger.info(
                     "load_balancing_high",
                     ocr_queue_length=total_ocr_queue,
                     threshold=settings.QUEUE_LENGTH_THRESHOLD_HIGH,
-                    action="switch_to_fast_gpu"
+                    action="switch_to_fast_gpu",
+                    selected=best_backend,
+                    learned_weights_applied=bool(learned_weights),
                 )
                 return {
-                    "backend": "got_ocr",
+                    "backend": best_backend,
                     "reason": f"queue_overload_high ({total_ocr_queue} OCR jobs)",
                     "confidence": 0.8,
-                    "alternatives": ["surya_gpu", "surya"],
+                    "alternatives": alternatives,
                     "routing_method": "load_balancing",
                     "load_balanced": True,
+                    "learned_weights_applied": bool(learned_weights),
                 }
             else:
                 logger.info(
@@ -545,6 +565,48 @@ class OCRBackendRouter(OrchestrationAgent):
         if backend not in self.BACKEND_CAPABILITIES:
             backend = "got_ocr"  # Safe default
 
+        # Apply learned weights to ML prediction
+        learned_weights_applied = False
+        try:
+            learned_weights = await self.get_learned_backend_weights()
+            if learned_weights:
+                # Adjust primary backend confidence
+                weight = learned_weights.get(backend, 1.0)
+                prediction["confidence"] = min(prediction["confidence"] * weight, 1.0)
+
+                # Check if alternatives would score higher with weights
+                alternatives = prediction.get("alternatives", [])
+                if alternatives and len(alternatives) > 0:
+                    scored_alternatives = []
+                    for alt in alternatives:
+                        alt_backend = alt.get("backend", alt) if isinstance(alt, dict) else alt
+                        alt_conf = alt.get("confidence", 0.7) if isinstance(alt, dict) else 0.7
+                        alt_weight = learned_weights.get(alt_backend, 1.0)
+                        scored_alternatives.append({
+                            "backend": alt_backend,
+                            "confidence": min(alt_conf * alt_weight, 1.0),
+                        })
+
+                    # If best alternative scores higher, switch
+                    if scored_alternatives:
+                        best_alt = max(scored_alternatives, key=lambda x: x["confidence"])
+                        if best_alt["confidence"] > prediction["confidence"]:
+                            logger.info(
+                                "ml_routing_override_by_learning",
+                                original=backend,
+                                new=best_alt["backend"],
+                                reason="learned_weights",
+                            )
+                            # Move original to alternatives
+                            original_backend = backend
+                            backend = best_alt["backend"]
+                            prediction["confidence"] = best_alt["confidence"]
+                            prediction["reason"] = f"ML + Learned Weights (ursprünglich: {original_backend})"
+
+                learned_weights_applied = True
+        except Exception as e:
+            logger.debug("ml_learned_weights_not_applied", error=str(e))
+
         # Check resource constraints
         backend_requirements = self.BACKEND_CAPABILITIES[backend]
         resource_status = resource_status or self._get_resource_status()
@@ -566,6 +628,7 @@ class OCRBackendRouter(OrchestrationAgent):
             "routing_method": "ml",
             "model_version": prediction.get("model_version"),
             "probabilities": prediction.get("probabilities"),
+            "learned_weights_applied": learned_weights_applied,
         }
 
     def get_backend_info(self, backend: str) -> Dict[str, Any]:
