@@ -329,6 +329,14 @@ class OCRTrainingService:
     # VALIDATION CORRECTIONS (Self-Learning Feedback)
     # =========================================================================
 
+    # Bekannte OCR-Backends für Validierung
+    KNOWN_BACKENDS = {
+        "deepseek", "deepseek-janus-pro",
+        "got_ocr", "got-ocr", "got-ocr-2.0",
+        "surya", "surya-gpu", "surya_gpu",
+        "hybrid",
+    }
+
     async def create_correction(
         self,
         db: AsyncSession,
@@ -345,7 +353,41 @@ class OCRTrainingService:
 
         Returns:
             Erstellte Korrektur
+
+        Raises:
+            ValueError: Bei ungültigen Korrektur-Daten
         """
+        # Validierung: corrected_text nicht leer
+        if not correction_data.corrected_text or not correction_data.corrected_text.strip():
+            raise ValueError("Korrigierter Text darf nicht leer sein")
+
+        # Validierung: original_text != corrected_text
+        if correction_data.original_text == correction_data.corrected_text:
+            raise ValueError("Korrigierter Text muss sich vom Original unterscheiden")
+
+        # Validierung: backend_used ist bekannt (mit Normalisierung)
+        backend = correction_data.backend_used
+        if backend:
+            backend_normalized = backend.lower().replace("_", "-")
+            if backend_normalized not in self.KNOWN_BACKENDS and backend not in self.KNOWN_BACKENDS:
+                logger.warning(
+                    "unknown_backend_in_correction",
+                    backend=backend,
+                    known_backends=list(self.KNOWN_BACKENDS),
+                )
+                # Erlaube trotzdem, aber logge Warnung (könnte neues Backend sein)
+
+        # Validierung: confidence_before im gültigen Bereich
+        confidence = correction_data.confidence_before
+        if confidence is not None:
+            if not 0.0 <= confidence <= 1.0:
+                logger.warning(
+                    "invalid_confidence_in_correction",
+                    confidence=confidence,
+                )
+                # Clamp auf gültigen Bereich
+                confidence = max(0.0, min(1.0, confidence))
+
         correction = OCRValidationCorrection(
             document_id=correction_data.document_id,
             original_text=correction_data.original_text,
@@ -353,7 +395,7 @@ class OCRTrainingService:
             correction_type=correction_data.correction_type.value,
             field_corrected=correction_data.field_corrected,
             backend_used=correction_data.backend_used,
-            confidence_before=correction_data.confidence_before,
+            confidence_before=confidence,
             applies_to_training=True,  # Automatisches Self-Learning
             learning_processed=False,
             corrector_id=user_id,
