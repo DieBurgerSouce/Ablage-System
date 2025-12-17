@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
-import { Users, Music, Settings, LayoutDashboard } from 'lucide-react'
+import { Users, Music, Settings, LayoutDashboard, Landmark, Brain, Eye } from 'lucide-react'
 
 export const Route = createFileRoute('/admin')({
     component: AdminLayout,
@@ -13,6 +13,9 @@ function AdminLayout() {
     const navItems = [
         { href: '/admin', label: 'Übersicht', icon: LayoutDashboard, exact: true },
         { href: '/admin/users', label: 'Benutzer', icon: Users },
+        { href: '/admin/banking', label: 'Banking', icon: Landmark },
+        { href: '/admin/ocr-training', label: 'OCR Training', icon: Brain },
+        { href: '/admin/ocr-review', label: 'OCR Review', icon: Eye },
         { href: '/admin/tunes', label: 'Tunes & Kontext', icon: Music },
         { href: '/admin/settings', label: 'Einstellungen', icon: Settings },
     ]
