@@ -21,6 +21,7 @@ from decimal import Decimal
 from typing import Optional
 
 from app.api.schemas.extracted_data import InvoiceDirection
+from ..constants import EU_MEMBER_STATES
 
 
 class TaxCodeMapper:
@@ -210,13 +211,16 @@ class TaxCodeMapper:
             return 19
 
     def _is_eu_country(self, country_code: str) -> bool:
-        """Prueft ob Laendercode ein EU-Land ist (ausser DE)."""
-        EU_COUNTRIES = {
-            "AT", "BE", "BG", "CY", "CZ", "DK", "EE", "ES", "FI", "FR",
-            "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL",
-            "PL", "PT", "RO", "SE", "SI", "SK"
-        }
-        return country_code.upper() in EU_COUNTRIES
+        """
+        Prueft ob Laendercode ein EU-Land ist (ausser DE).
+
+        Verwendet zentrale EU_MEMBER_STATES aus constants.py.
+        """
+        if not country_code:
+            return False
+        upper_code = country_code.upper()
+        # EU-Mitglied aber nicht Deutschland (DE ist der lokale Staat)
+        return upper_code in EU_MEMBER_STATES and upper_code != "DE"
 
     def get_description(self, tax_code: str) -> str:
         """Gibt Beschreibung fuer einen Steuerschluessel zurueck."""

@@ -12,7 +12,7 @@ Beruecksichtigt:
 - Vendor-Mappings fuer individuelle Kontozuordnung
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
@@ -24,6 +24,7 @@ from app.api.schemas.extracted_data import (
     InvoiceDirection,
 )
 from app.db import models
+from ..constants import is_third_country as is_third_country_code
 from ..kontenrahmen.base import BaseKontenrahmen
 from .tax_code_mapper import TaxCodeMapper
 
@@ -35,12 +36,8 @@ class MappingResult:
     """Ergebnis einer Rechnungs-Mapping-Operation."""
     success: bool
     buchung: Optional["DATEVBuchung"] = None
-    warnings: List[str] = None
+    warnings: List[str] = field(default_factory=list)  # FIX: Mutable Default vermeiden
     error: Optional[str] = None
-
-    def __post_init__(self) -> None:
-        if self.warnings is None:
-            self.warnings = []
 
 
 @dataclass
@@ -366,20 +363,16 @@ class DATEVInvoiceMapper:
     def _is_third_country(self, invoice: ExtractedInvoiceData) -> bool:
         """
         Prueft ob es sich um ein Drittlandsgeschaeft handelt.
-        """
-        EU_PLUS_DE = {
-            "DE", "AT", "BE", "BG", "CY", "CZ", "DK", "EE", "ES", "FI", "FR",
-            "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL",
-            "PL", "PT", "RO", "SE", "SI", "SK"
-        }
 
+        Verwendet zentrale EU_MEMBER_STATES aus constants.py.
+        """
         # Pruefen des Absenders/Empfaengers
         if invoice.sender and invoice.sender.country:
-            if invoice.sender.country.upper() not in EU_PLUS_DE:
+            if is_third_country_code(invoice.sender.country):
                 return True
 
         if invoice.recipient and invoice.recipient.country:
-            if invoice.recipient.country.upper() not in EU_PLUS_DE:
+            if is_third_country_code(invoice.recipient.country):
                 return True
 
         return False

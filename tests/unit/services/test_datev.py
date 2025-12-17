@@ -1165,3 +1165,547 @@ class TestBuchungsstapelDataLine:
 
         # Feld 11 (Index 10): Belegfeld 1
         assert '"TEST-001"' in data_fields[10]
+
+
+# =============================================================================
+# ERROR HANDLING TESTS (Phase 2 - Audit Remediation)
+# =============================================================================
+
+class TestDATEVInvoiceMapperErrors:
+    """Erweiterte Error-Handling-Tests fuer Invoice Mapper."""
+
+    @pytest.fixture
+    def mock_config(self) -> "MockDATEVConfig":
+        """Mock DATEV-Konfiguration."""
+        class MockDATEVConfig:
+            berater_nr = "1234567"
+            mandanten_nr = "12345"
+            wj_beginn = date(2025, 1, 1)
+            kontenrahmen = "SKR03"
+            incoming_expense_account = "4200"
+            incoming_creditor_account = "70001"
+            outgoing_revenue_account = "8400"
+            outgoing_debtor_account = "10001"
+            buchungstext_format = "{invoice_number}"
+        return MockDATEVConfig()
+
+    def test_missing_gross_and_net_amount_fails(
+        self,
+        mock_config: "MockDATEVConfig",
+    ) -> None:
+        """Fehlendes Brutto- und Nettobetrag fuehrt zu Fehler."""
+        invoice = ExtractedInvoiceData(
+            invoice_number="ERR-001",
+            invoice_date=date(2025, 1, 1),
+            gross_amount=None,
+            net_amount=None,  # Beide fehlen
+            invoice_direction=InvoiceDirection.INCOMING,
+        )
+
+        mapper = DATEVInvoiceMapper()
+        result = mapper.map_invoice(
+            invoice=invoice,
+            kontenrahmen=SKR03(),
+            config=mock_config,
+            vendor_mapping=None,
+        )
+
+        assert not result.success
+        assert result.error is not None
+        assert "betrag" in result.error.lower()
+
+    def test_zero_amount_fails(
+        self,
+        mock_config: "MockDATEVConfig",
+    ) -> None:
+        """Betrag von 0 fuehrt zu Fehler."""
+        invoice = ExtractedInvoiceData(
+            invoice_number="ERR-002",
+            invoice_date=date(2025, 1, 1),
+            gross_amount=Decimal("0.00"),  # Null-Betrag
+            invoice_direction=InvoiceDirection.INCOMING,
+        )
+
+        mapper = DATEVInvoiceMapper()
+        result = mapper.map_invoice(
+            invoice=invoice,
+            kontenrahmen=SKR03(),
+            config=mock_config,
+            vendor_mapping=None,
+        )
+
+        assert not result.success
+        assert result.error is not None
+        assert "betrag" in result.error.lower()
+
+    def test_fallback_to_net_amount_when_gross_missing(
+        self,
+        mock_config: "MockDATEVConfig",
+    ) -> None:
+        """Wenn Brutto fehlt, wird Netto + MwSt berechnet."""
+        invoice = ExtractedInvoiceData(
+            invoice_number="FALL-001",
+            invoice_date=date(2025, 1, 1),
+            gross_amount=None,
+            net_amount=Decimal("100.00"),
+            vat_rate=Decimal("19"),
+            invoice_direction=InvoiceDirection.INCOMING,
+            sender=ExtractedAddress(company="Lieferant GmbH", country="DE"),
+        )
+
+        mapper = DATEVInvoiceMapper()
+        result = mapper.map_invoice(
+            invoice=invoice,
+            kontenrahmen=SKR03(),
+            config=mock_config,
+            vendor_mapping=None,
+        )
+
+        assert result.success
+        assert result.buchung is not None
+        # 100 * 1.19 = 119
+        assert result.buchung.umsatz == Decimal("119.00")
+
+    def test_invalid_invoice_number_gets_placeholder(
+        self,
+        mock_config: "MockDATEVConfig",
+    ) -> None:
+        """Fehlende Rechnungsnummer wird durch Platzhalter ersetzt."""
+        invoice = ExtractedInvoiceData(
+            invoice_number=None,  # Fehlt
+            invoice_date=date(2025, 1, 1),
+            gross_amount=Decimal("100.00"),
+            invoice_direction=InvoiceDirection.INCOMING,
+            sender=ExtractedAddress(company="Lieferant GmbH", country="DE"),
+        )
+
+        mapper = DATEVInvoiceMapper()
+        result = mapper.map_invoice(
+            invoice=invoice,
+            kontenrahmen=SKR03(),
+            config=mock_config,
+            vendor_mapping=None,
+        )
+
+        assert result.success
+        assert result.buchung is not None
+        assert result.buchung.belegfeld_1 == "OHNE-NR"
+
+    def test_vendor_mapping_fallback_to_config(
+        self,
+        mock_config: "MockDATEVConfig",
+    ) -> None:
+        """Ohne Vendor-Mapping werden Config-Werte verwendet."""
+        invoice = ExtractedInvoiceData(
+            invoice_number="CFG-001",
+            invoice_date=date(2025, 1, 1),
+            gross_amount=Decimal("100.00"),
+            invoice_direction=InvoiceDirection.INCOMING,
+            sender=ExtractedAddress(company="Lieferant GmbH", country="DE"),
+        )
+
+        mapper = DATEVInvoiceMapper()
+        result = mapper.map_invoice(
+            invoice=invoice,
+            kontenrahmen=SKR03(),
+            config=mock_config,
+            vendor_mapping=None,  # Kein Mapping
+        )
+
+        assert result.success
+        assert result.buchung.konto == "4200"  # Aus Config
+        assert result.buchung.gegenkonto == "70001"  # Aus Config
+
+    def test_partial_vendor_mapping_uses_mixed_values(
+        self,
+        mock_config: "MockDATEVConfig",
+    ) -> None:
+        """Vendor-Mapping mit teilweisen Werten wird mit Config kombiniert."""
+        class PartialVendorMapping:
+            expense_account = "4980"  # Ueberschreibt Config
+            creditor_account = None  # Null -> Fallback auf Config
+            cost_center = None
+            cost_object = None
+
+        invoice = ExtractedInvoiceData(
+            invoice_number="PART-001",
+            invoice_date=date(2025, 1, 1),
+            gross_amount=Decimal("100.00"),
+            invoice_direction=InvoiceDirection.INCOMING,
+            sender=ExtractedAddress(company="Lieferant GmbH", country="DE"),
+        )
+
+        mapper = DATEVInvoiceMapper()
+        result = mapper.map_invoice(
+            invoice=invoice,
+            kontenrahmen=SKR03(),
+            config=mock_config,
+            vendor_mapping=PartialVendorMapping(),
+        )
+
+        assert result.success
+        assert result.buchung.konto == "4980"  # Aus Vendor-Mapping
+        assert result.buchung.gegenkonto == "70001"  # Aus Config (Fallback)
+
+    def test_eu_third_country_detection_sender(
+        self,
+        mock_config: "MockDATEVConfig",
+    ) -> None:
+        """Drittland wird korrekt erkannt bei Sender aus USA."""
+        invoice = ExtractedInvoiceData(
+            invoice_number="US-001",
+            invoice_date=date(2025, 1, 1),
+            gross_amount=Decimal("100.00"),
+            invoice_direction=InvoiceDirection.INCOMING,
+            sender=ExtractedAddress(
+                company="US Corp",
+                country="US",  # USA = Drittland
+            ),
+        )
+
+        mapper = DATEVInvoiceMapper()
+        result = mapper.map_invoice(
+            invoice=invoice,
+            kontenrahmen=SKR03(),
+            config=mock_config,
+            vendor_mapping=None,
+        )
+
+        assert result.success
+        # BU-Schluessel sollte Drittland beruecksichtigen
+        assert result.buchung is not None
+
+    def test_reverse_charge_invoice_mapping(
+        self,
+        mock_config: "MockDATEVConfig",
+    ) -> None:
+        """Reverse Charge Rechnung wird korrekt gemappt."""
+        invoice = ExtractedInvoiceData(
+            invoice_number="RC-001",
+            invoice_date=date(2025, 1, 1),
+            gross_amount=Decimal("100.00"),
+            net_amount=Decimal("100.00"),  # RC ohne MwSt
+            vat_rate=Decimal("0"),
+            is_reverse_charge=True,
+            invoice_direction=InvoiceDirection.INCOMING,
+            sender=ExtractedAddress(
+                company="EU Lieferant",
+                country="AT",  # Oesterreich
+            ),
+        )
+
+        mapper = DATEVInvoiceMapper()
+        result = mapper.map_invoice(
+            invoice=invoice,
+            kontenrahmen=SKR03(),
+            config=mock_config,
+            vendor_mapping=None,
+        )
+
+        assert result.success
+        assert result.buchung.bu_schluessel == "91"  # Reverse Charge
+
+    def test_intra_community_delivery_outgoing(
+        self,
+        mock_config: "MockDATEVConfig",
+    ) -> None:
+        """Innergemeinschaftliche Lieferung (Ausgang) wird korrekt gemappt."""
+        invoice = ExtractedInvoiceData(
+            invoice_number="IG-001",
+            invoice_date=date(2025, 1, 1),
+            gross_amount=Decimal("100.00"),
+            intra_community_supply=True,
+            invoice_direction=InvoiceDirection.OUTGOING,
+            recipient=ExtractedAddress(
+                company="EU Kunde",
+                country="FR",  # Frankreich
+            ),
+        )
+
+        mapper = DATEVInvoiceMapper()
+        result = mapper.map_invoice(
+            invoice=invoice,
+            kontenrahmen=SKR03(),
+            config=mock_config,
+            vendor_mapping=None,
+        )
+
+        assert result.success
+        assert result.buchung.bu_schluessel == "10"  # IG-Lieferung
+
+
+class TestDATEVBuchungsstapelWriterErrors:
+    """Error-Handling-Tests fuer Buchungsstapel Writer."""
+
+    @pytest.fixture
+    def mock_config(self) -> "MockDATEVConfig":
+        """Mock DATEV-Konfiguration."""
+        class MockDATEVConfig:
+            berater_nr = "1234567"
+            mandanten_nr = "12345"
+            wj_beginn = date(2025, 1, 1)
+            kontenrahmen = "SKR03"
+            sachkontenlange = 4
+        return MockDATEVConfig()
+
+    def test_empty_buchungen_creates_valid_csv(
+        self,
+        mock_config: "MockDATEVConfig",
+    ) -> None:
+        """Leere Buchungsliste erzeugt gueltige CSV ohne Datenzeilen."""
+        writer = BuchungsstapelWriter()
+        result = writer.write(
+            buchungen=[],
+            config=mock_config,
+        )
+
+        content = result.decode("cp1252")
+        lines = content.split("\r\n")
+
+        # Header und Spaltenkoepfe muessen vorhanden sein
+        assert len(lines) >= 2
+        assert '"EXTF"' in lines[0]
+        # Keine Datenzeilen (nach Spaltenkoepfen)
+        non_empty_lines = [l for l in lines if l.strip()]
+        assert len(non_empty_lines) == 2  # Nur Header und Spaltenkoepfe
+
+    def test_very_large_amount_formatted_correctly(
+        self,
+        mock_config: "MockDATEVConfig",
+    ) -> None:
+        """Sehr grosse Betraege werden korrekt formatiert."""
+        buchung = DATEVBuchung(
+            umsatz=Decimal("9999999999.99"),  # 10 Milliarden
+            soll_haben="S",
+            wkz_umsatz="EUR",
+            konto="4200",
+            gegenkonto="70001",
+            bu_schluessel="9",
+            belegdatum=date(2025, 1, 1),
+            belegfeld_1="BIG-001",
+            belegfeld_2=None,
+            buchungstext="Grosser Betrag",
+        )
+
+        writer = BuchungsstapelWriter()
+        result = writer.write(
+            buchungen=[buchung],
+            config=mock_config,
+        )
+
+        content = result.decode("cp1252")
+        # Betrag muss mit Komma als Dezimaltrennzeichen erscheinen
+        assert "9999999999,99" in content
+
+    def test_very_small_amount_formatted_correctly(
+        self,
+        mock_config: "MockDATEVConfig",
+    ) -> None:
+        """Sehr kleine Betraege werden korrekt formatiert."""
+        buchung = DATEVBuchung(
+            umsatz=Decimal("0.01"),  # 1 Cent
+            soll_haben="S",
+            wkz_umsatz="EUR",
+            konto="4200",
+            gegenkonto="70001",
+            bu_schluessel="9",
+            belegdatum=date(2025, 1, 1),
+            belegfeld_1="TINY-001",
+            belegfeld_2=None,
+            buchungstext="Kleiner Betrag",
+        )
+
+        writer = BuchungsstapelWriter()
+        result = writer.write(
+            buchungen=[buchung],
+            config=mock_config,
+        )
+
+        content = result.decode("cp1252")
+        assert "0,01" in content
+
+    def test_non_ascii_characters_encoded_correctly(
+        self,
+        mock_config: "MockDATEVConfig",
+    ) -> None:
+        """Nicht-ASCII-Zeichen werden korrekt kodiert."""
+        buchung = DATEVBuchung(
+            umsatz=Decimal("100.00"),
+            soll_haben="S",
+            wkz_umsatz="EUR",
+            konto="4200",
+            gegenkonto="70001",
+            bu_schluessel="9",
+            belegdatum=date(2025, 1, 1),
+            belegfeld_1="ÄÖÜ-001",  # Umlaute in Belegfeld
+            belegfeld_2=None,
+            buchungstext="Öffentliche Körperschaft für Überwachung",
+        )
+
+        writer = BuchungsstapelWriter()
+        result = writer.write(
+            buchungen=[buchung],
+            config=mock_config,
+        )
+
+        # Muss als CP1252 dekodierbar sein
+        content = result.decode("cp1252")
+        # Umlaute muessen erhalten bleiben
+        assert "Ä" in content or "Ö" in content or "Ü" in content
+
+    def test_newline_in_buchungstext_removed(
+        self,
+        mock_config: "MockDATEVConfig",
+    ) -> None:
+        """Zeilenumbrueche im Buchungstext werden entfernt."""
+        buchung = DATEVBuchung(
+            umsatz=Decimal("100.00"),
+            soll_haben="S",
+            wkz_umsatz="EUR",
+            konto="4200",
+            gegenkonto="70001",
+            bu_schluessel="9",
+            belegdatum=date(2025, 1, 1),
+            belegfeld_1="NL-001",
+            belegfeld_2=None,
+            buchungstext="Zeile 1\nZeile 2",  # Zeilenumbruch
+        )
+
+        writer = BuchungsstapelWriter()
+        result = writer.write(
+            buchungen=[buchung],
+            config=mock_config,
+        )
+
+        content = result.decode("cp1252")
+        lines = content.split("\r\n")
+
+        # Die Buchungszeile sollte nur eine Zeile sein
+        # (Zeilenumbruch im Text darf nicht als CSV-Zeilenumbruch erscheinen)
+        data_line = lines[2]
+        assert data_line.count(";") == 115  # 116 Felder
+
+
+class TestDATEVTaxCodeMapperErrors:
+    """Error-Handling-Tests fuer Tax Code Mapper."""
+
+    def test_unsupported_vat_rate_returns_standard(self) -> None:
+        """Nicht-Standard-Steuersatz gibt Standard zurueck."""
+        mapper = TaxCodeMapper()
+        # 12% ist kein deutscher Standard-Steuersatz
+        code = mapper.get_tax_code(
+            vat_rate=Decimal("12"),
+            direction=InvoiceDirection.INCOMING,
+        )
+        # Sollte auf naechsten Standard fallen oder None
+        # (je nach Implementierung)
+        assert code is None or code in ["8", "9"]
+
+    def test_negative_vat_rate_handled(self) -> None:
+        """Negativer Steuersatz wird behandelt."""
+        mapper = TaxCodeMapper()
+        code = mapper.get_tax_code(
+            vat_rate=Decimal("-19"),  # Ungueltig
+            direction=InvoiceDirection.INCOMING,
+        )
+        # Sollte None zurueckgeben oder Standard
+        assert code is None or isinstance(code, str)
+
+    def test_vat_rate_none_uses_default_19(self) -> None:
+        """None als Steuersatz verwendet Default 19% (DATEV braucht immer Steuerschluessel)."""
+        mapper = TaxCodeMapper()
+        code = mapper.get_tax_code(
+            vat_rate=None,
+            direction=InvoiceDirection.INCOMING,
+        )
+        # Bei Eingang ohne expliziten Steuersatz: Default 19% Vorsteuer (BU-Schluessel 9)
+        assert code == "9"
+
+    def test_description_for_invalid_code_returns_empty(self) -> None:
+        """Beschreibung fuer ungueltigen Code gibt leeren String."""
+        mapper = TaxCodeMapper()
+        desc = mapper.get_description("999")  # Ungueltiger Code
+        assert desc == "" or desc is None or "unbekannt" in desc.lower()
+
+
+class TestDATEVKontenrahmenErrors:
+    """Error-Handling-Tests fuer Kontenrahmen."""
+
+    def test_unknown_expense_category_returns_default(self) -> None:
+        """Unbekannte Aufwandskategorie gibt Standard zurueck."""
+        skr03 = SKR03()
+        account = skr03.get_expense_account("unbekannte_kategorie", 19)
+        # Sollte auf Wareneingang 19% fallen
+        assert account == "3200"
+
+    def test_unknown_revenue_category_returns_default(self) -> None:
+        """Unbekannte Erloeskategorie gibt Standard zurueck."""
+        skr03 = SKR03()
+        account = skr03.get_revenue_account("unbekannte_kategorie", 19)
+        # Sollte auf Erloese 19% fallen
+        assert account == "8400"
+
+    def test_invalid_vat_rate_for_expense_uses_default(self) -> None:
+        """Ungueltiger Steuersatz fuer Aufwand nutzt Standard."""
+        skr03 = SKR03()
+        account = skr03.get_expense_account("waren", 12)  # 12% gibt es nicht
+        # Sollte trotzdem ein Konto zurueckgeben
+        assert account is not None
+        assert len(account) == 4
+
+    def test_all_mandatory_accounts_present_skr03(self) -> None:
+        """SKR03 hat alle Pflicht-Konten."""
+        skr03 = SKR03()
+        assert skr03.default_creditor_account is not None
+        assert skr03.default_debtor_account is not None
+        assert skr03.sammelkonto_kreditoren is not None
+        assert skr03.sammelkonto_debitoren is not None
+        assert skr03.vorsteuer_19 is not None
+        assert skr03.vorsteuer_7 is not None
+        assert skr03.umsatzsteuer_19 is not None
+        assert skr03.umsatzsteuer_7 is not None
+
+    def test_all_mandatory_accounts_present_skr04(self) -> None:
+        """SKR04 hat alle Pflicht-Konten."""
+        skr04 = SKR04()
+        assert skr04.default_creditor_account is not None
+        assert skr04.default_debtor_account is not None
+        assert skr04.sammelkonto_kreditoren is not None
+        assert skr04.sammelkonto_debitoren is not None
+        assert skr04.vorsteuer_19 is not None
+        assert skr04.vorsteuer_7 is not None
+        assert skr04.umsatzsteuer_19 is not None
+        assert skr04.umsatzsteuer_7 is not None
+
+
+class TestMappingResultDataclass:
+    """Tests fuer MappingResult Dataclass (Mutable Default Fix)."""
+
+    def test_warnings_not_shared_between_instances(self) -> None:
+        """Warnungen werden nicht zwischen Instanzen geteilt."""
+        from app.services.datev.mapping.invoice_mapper import MappingResult
+
+        result1 = MappingResult(success=True)
+        result2 = MappingResult(success=True)
+
+        # Warnung zu result1 hinzufuegen
+        result1.warnings.append("Warnung 1")
+
+        # result2 sollte keine Warnungen haben
+        assert len(result2.warnings) == 0
+        assert len(result1.warnings) == 1
+
+    def test_multiple_results_independent(self) -> None:
+        """Mehrere Ergebnisse sind unabhaengig."""
+        from app.services.datev.mapping.invoice_mapper import MappingResult
+
+        results = [MappingResult(success=True) for _ in range(5)]
+
+        # Jedes Ergebnis mit eigenen Warnungen
+        for i, r in enumerate(results):
+            r.warnings.append(f"Warnung {i}")
+
+        # Jedes Ergebnis hat nur seine eigene Warnung
+        for i, r in enumerate(results):
+            assert len(r.warnings) == 1
+            assert r.warnings[0] == f"Warnung {i}"

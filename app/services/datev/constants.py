@@ -197,3 +197,70 @@ DATEV_DECIMAL_SEP = ","          # Komma als Dezimaltrenner
 DATEV_NEWLINE = "\r\n"           # Windows-Zeilenumbruch
 DATEV_DATE_FORMAT = "%d%m"       # DDMM ohne Punkte
 DATEV_QUOTE_CHAR = '"'           # Textfelder in Anfuehrungszeichen
+
+
+# =============================================================================
+# EU-MITGLIEDSTAATEN (ISO 3166-1 alpha-2)
+# =============================================================================
+
+# Alle 27 EU-Mitgliedstaaten (Stand: 2025)
+# Verwendet fuer: Innergemeinschaftliche Lieferungen, Reverse Charge, etc.
+EU_MEMBER_STATES: frozenset[str] = frozenset({
+    "AT",  # Oesterreich
+    "BE",  # Belgien
+    "BG",  # Bulgarien
+    "CY",  # Zypern
+    "CZ",  # Tschechien
+    "DE",  # Deutschland
+    "DK",  # Daenemark
+    "EE",  # Estland
+    "ES",  # Spanien
+    "FI",  # Finnland
+    "FR",  # Frankreich
+    "GR",  # Griechenland
+    "HR",  # Kroatien
+    "HU",  # Ungarn
+    "IE",  # Irland
+    "IT",  # Italien
+    "LT",  # Litauen
+    "LU",  # Luxemburg
+    "LV",  # Lettland
+    "MT",  # Malta
+    "NL",  # Niederlande
+    "PL",  # Polen
+    "PT",  # Portugal
+    "RO",  # Rumaenien
+    "SE",  # Schweden
+    "SI",  # Slowenien
+    "SK",  # Slowakei
+})
+
+
+def is_eu_country(country_code: str) -> bool:
+    """
+    Prueft ob ein Land EU-Mitglied ist.
+
+    Args:
+        country_code: ISO 3166-1 alpha-2 Laendercode (z.B. "DE", "AT")
+
+    Returns:
+        True wenn EU-Mitglied, False sonst
+    """
+    if not country_code:
+        return False
+    return country_code.upper() in EU_MEMBER_STATES
+
+
+def is_third_country(country_code: str) -> bool:
+    """
+    Prueft ob ein Land ein Drittland (nicht EU) ist.
+
+    Args:
+        country_code: ISO 3166-1 alpha-2 Laendercode
+
+    Returns:
+        True wenn Drittland, False wenn EU-Mitglied oder leer
+    """
+    if not country_code:
+        return False
+    return country_code.upper() not in EU_MEMBER_STATES

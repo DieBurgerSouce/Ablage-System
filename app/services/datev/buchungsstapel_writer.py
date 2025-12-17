@@ -38,6 +38,10 @@ from .constants import (
 )
 from .mapping.invoice_mapper import DATEVBuchung
 
+# HIGH-8 FIX: CSV-Groessenlimit
+# DATEV akzeptiert praktisch max. ~100MB, groessere Dateien werden oft abgelehnt
+MAX_CSV_SIZE_BYTES = 100_000_000  # 100 MB
+
 logger = structlog.get_logger(__name__)
 
 
@@ -93,12 +97,50 @@ class BuchungsstapelWriter:
         content = DATEV_NEWLINE.join(lines)
 
         # In CP1252 encodieren
+        # MEDIUM-8 FIX: errors='strict' statt 'replace'
+        # 'replace' erzeugt stille Datenkorrumpierung (? statt Sonderzeichen)
+        # die DATEV-Import fehlschlagen laesst ohne Benutzerhinweis
         try:
-            return content.encode(DATEV_ENCODING, errors="replace")
+            csv_bytes = content.encode(DATEV_ENCODING, errors="strict")
+        except UnicodeEncodeError as e:
+            # Problematisches Zeichen identifizieren und hilfreiche Fehlermeldung
+            problem_char = e.object[e.start:e.end]
+            logger.error(
+                "datev_encoding_error",
+                error=str(e),
+                problem_char=repr(problem_char),
+                position=e.start,
+            )
+            raise ValueError(
+                f"Zeichen '{problem_char}' (Position {e.start}) kann nicht in DATEV-Format "
+                f"(CP1252) kodiert werden. Bitte entfernen Sie Sonderzeichen aus den "
+                f"Rechnungsdaten oder ersetzen Sie sie durch ASCII-kompatible Zeichen."
+            ) from e
         except Exception as e:
-            logger.error("datev_encoding_error", error=str(e))
-            # Fallback: UTF-8 mit Zeichen-Ersetzung
-            return content.encode("utf-8", errors="replace")
+            logger.error("datev_encoding_unexpected_error", error=str(e))
+            raise ValueError(
+                f"Unerwarteter Fehler beim Kodieren der DATEV-Datei: {type(e).__name__}"
+            ) from e
+
+        # HIGH-8 FIX: CSV-Groessenlimit pruefen
+        # DATEV akzeptiert praktisch max. ~100MB
+        if len(csv_bytes) > MAX_CSV_SIZE_BYTES:
+            size_mb = len(csv_bytes) / 1024 / 1024
+            max_mb = MAX_CSV_SIZE_BYTES / 1024 / 1024
+            logger.error(
+                "datev_csv_too_large",
+                size_bytes=len(csv_bytes),
+                size_mb=size_mb,
+                max_bytes=MAX_CSV_SIZE_BYTES,
+                buchungen_count=len(buchungen),
+            )
+            raise ValueError(
+                f"CSV-Datei zu gross ({size_mb:.1f} MB). "
+                f"DATEV akzeptiert maximal {max_mb:.0f} MB. "
+                f"Bitte exportieren Sie kleinere Zeitraeume oder weniger Dokumente."
+            )
+
+        return csv_bytes
 
     def _write_header_line(
         self,
@@ -206,11 +248,14 @@ class BuchungsstapelWriter:
         fields[9] = self._format_date(buchung.belegdatum)
 
         # Feld 11: Belegfeld 1 (Rechnungsnummer)
-        fields[10] = self._quote(buchung.belegfeld_1[:36])
+        # MEDIUM-12 FIX: Belegfeld-Werte normalisieren (Whitespace entfernen)
+        belegfeld_1 = self._normalize_belegfeld(buchung.belegfeld_1, max_len=36)
+        fields[10] = self._quote(belegfeld_1 or "OHNE-NR")
 
         # Feld 12: Belegfeld 2 (optional)
-        if buchung.belegfeld_2:
-            fields[11] = self._quote(buchung.belegfeld_2[:12])
+        belegfeld_2 = self._normalize_belegfeld(buchung.belegfeld_2, max_len=12)
+        if belegfeld_2:
+            fields[11] = self._quote(belegfeld_2)
 
         # Feld 13: Skonto (optional)
         if buchung.skonto:
@@ -251,6 +296,33 @@ class BuchungsstapelWriter:
         DATEV verwendet das Jahr aus dem Header (WJ-Beginn).
         """
         return d.strftime(DATEV_DATE_FORMAT)
+
+    def _normalize_belegfeld(
+        self,
+        value: Optional[str],
+        max_len: int
+    ) -> Optional[str]:
+        """
+        Normalisiert Belegfeld-Werte.
+
+        MEDIUM-12 FIX:
+        - Entfernt fuehrende/folgende Whitespace
+        - Ersetzt mehrfache Leerzeichen durch einzelne
+        - Gibt None zurueck bei leeren/whitespace-only Werten
+        - Kuerzt auf max_len
+        """
+        if not value:
+            return None
+
+        # Whitespace normalisieren
+        normalized = " ".join(value.split())
+
+        # Leer nach Normalisierung?
+        if not normalized:
+            return None
+
+        # Auf maximale Laenge kuerzen
+        return normalized[:max_len]
 
     def _quote(self, value: str) -> str:
         """

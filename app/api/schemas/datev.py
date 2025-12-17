@@ -10,6 +10,7 @@ Definiert Request/Response Schemas fuer:
 Standards: DATEV Buchungsstapel CSV Format (Version 700)
 """
 
+import re
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
@@ -17,6 +18,22 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
+
+
+# =============================================================================
+# VALIDATION PATTERNS
+# =============================================================================
+
+# EU VAT-ID: 2 Buchstaben Laendercode + 8-12 Zeichen (Ziffern/Buchstaben je nach Land)
+# Beispiel: DE123456789, AT U12345678, FR 12345678901
+VAT_ID_PATTERN = re.compile(r'^[A-Z]{2}[A-Z0-9]{2,13}$')
+
+# IBAN: 2 Buchstaben + 2 Pruefziffern + 11-30 alphanumerische Zeichen
+# Beispiel: DE89370400440532013000
+IBAN_PATTERN = re.compile(r'^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$')
+
+# Kontonummer: 4-10 Ziffern
+ACCOUNT_NUMBER_PATTERN = re.compile(r'^[0-9]{4,10}$')
 
 
 # =============================================================================
@@ -126,6 +143,34 @@ class DATEVConfigurationBase(BaseModel):
             raise ValueError("Mandantennummer darf nur Ziffern enthalten")
         return cleaned.zfill(5)
 
+    @field_validator("wj_beginn")
+    @classmethod
+    def validate_wj_beginn(cls, v: date) -> date:
+        """
+        Validiere Wirtschaftsjahr-Beginn.
+
+        MEDIUM-10 FIX: WJ-Beginn darf nicht in der Zukunft liegen
+        und sollte ein realistisches Datum sein (nach Jahr 2000).
+        """
+        today = date.today()
+
+        # Nicht in der Zukunft (mit Toleranz fuer naechstes Jahr)
+        max_future_date = date(today.year + 1, 12, 31)
+        if v > max_future_date:
+            raise ValueError(
+                f"Wirtschaftsjahr-Beginn darf nicht mehr als ein Jahr in der Zukunft liegen "
+                f"(maximal {max_future_date.isoformat()})"
+            )
+
+        # Nicht zu weit in der Vergangenheit
+        min_date = date(2000, 1, 1)
+        if v < min_date:
+            raise ValueError(
+                f"Wirtschaftsjahr-Beginn muss nach dem {min_date.isoformat()} liegen"
+            )
+
+        return v
+
 
 class DATEVConfigurationCreate(DATEVConfigurationBase):
     """Schema zum Erstellen einer DATEV-Konfiguration."""
@@ -199,6 +244,32 @@ class DATEVConfigurationUpdate(BaseModel):
     buchungstext_format: Optional[str] = Field(None, max_length=100)
     is_default: Optional[bool] = None
 
+    @field_validator("wj_beginn")
+    @classmethod
+    def validate_wj_beginn(cls, v: Optional[date]) -> Optional[date]:
+        """Validiere Wirtschaftsjahr-Beginn (gleiche Regeln wie Base)."""
+        if v is None:
+            return None
+
+        today = date.today()
+
+        # Nicht in der Zukunft (mit Toleranz fuer naechstes Jahr)
+        max_future_date = date(today.year + 1, 12, 31)
+        if v > max_future_date:
+            raise ValueError(
+                f"Wirtschaftsjahr-Beginn darf nicht mehr als ein Jahr in der Zukunft liegen "
+                f"(maximal {max_future_date.isoformat()})"
+            )
+
+        # Nicht zu weit in der Vergangenheit
+        min_date = date(2000, 1, 1)
+        if v < min_date:
+            raise ValueError(
+                f"Wirtschaftsjahr-Beginn muss nach dem {min_date.isoformat()} liegen"
+            )
+
+        return v
+
 
 class DATEVConfigurationResponse(DATEVConfigurationBase):
     """Response-Schema fuer DATEV-Konfiguration."""
@@ -234,12 +305,12 @@ class DATEVVendorMappingCreate(BaseModel):
     vendor_vat_id: Optional[str] = Field(
         None,
         max_length=50,
-        description="USt-IdNr (exakter Match)"
+        description="USt-IdNr (exakter Match, Format: DE123456789)"
     )
     vendor_iban: Optional[str] = Field(
         None,
         max_length=34,
-        description="IBAN (exakter Match)"
+        description="IBAN (exakter Match, Format: DE89370400440532013000)"
     )
     business_entity_id: Optional[UUID] = Field(
         None,
@@ -248,12 +319,12 @@ class DATEVVendorMappingCreate(BaseModel):
     expense_account: str = Field(
         ...,
         max_length=10,
-        description="Aufwandskonto (z.B. 4200)"
+        description="Aufwandskonto (4-10 Ziffern, z.B. 4200)"
     )
     creditor_account: Optional[str] = Field(
         None,
         max_length=10,
-        description="Personenkonto/Kreditor (z.B. 70001)"
+        description="Personenkonto/Kreditor (4-10 Ziffern, z.B. 70001)"
     )
     cost_center: Optional[str] = Field(
         None,
@@ -266,6 +337,49 @@ class DATEVVendorMappingCreate(BaseModel):
         description="Kostentraeger"
     )
 
+    @field_validator("vendor_vat_id")
+    @classmethod
+    def validate_vat_id(cls, v: Optional[str]) -> Optional[str]:
+        """Validiere USt-IdNr Format (EU VAT-ID)."""
+        if v is None:
+            return None
+        # Whitespace und Sonderzeichen entfernen
+        cleaned = re.sub(r'[\s\-.]', '', v.upper())
+        if not VAT_ID_PATTERN.match(cleaned):
+            raise ValueError(
+                "Ungueltige USt-IdNr. Format: 2 Buchstaben Laendercode + 8-12 Zeichen "
+                "(z.B. DE123456789, ATU12345678)"
+            )
+        return cleaned
+
+    @field_validator("vendor_iban")
+    @classmethod
+    def validate_iban(cls, v: Optional[str]) -> Optional[str]:
+        """Validiere IBAN Format (basic, ohne Pruefsumme)."""
+        if v is None:
+            return None
+        # Whitespace entfernen und uppercase
+        cleaned = re.sub(r'\s', '', v.upper())
+        if not IBAN_PATTERN.match(cleaned):
+            raise ValueError(
+                "Ungueltige IBAN. Format: 2 Buchstaben + 2 Pruefziffern + Kontonummer "
+                "(z.B. DE89370400440532013000)"
+            )
+        return cleaned
+
+    @field_validator("expense_account", "creditor_account")
+    @classmethod
+    def validate_account_number(cls, v: Optional[str]) -> Optional[str]:
+        """Validiere Kontonummer (nur Ziffern, 4-10 Stellen)."""
+        if v is None:
+            return None
+        cleaned = v.strip()
+        if not ACCOUNT_NUMBER_PATTERN.match(cleaned):
+            raise ValueError(
+                "Ungueltige Kontonummer. Muss 4-10 Ziffern enthalten (z.B. 4200, 70001)"
+            )
+        return cleaned
+
 
 class DATEVVendorMappingUpdate(BaseModel):
     """Schema zum Aktualisieren eines Vendor-Mappings."""
@@ -277,6 +391,46 @@ class DATEVVendorMappingUpdate(BaseModel):
     creditor_account: Optional[str] = Field(None, max_length=10)
     cost_center: Optional[str] = Field(None, max_length=20)
     cost_object: Optional[str] = Field(None, max_length=20)
+
+    # Validators (gleiche wie in Create)
+    @field_validator("vendor_vat_id")
+    @classmethod
+    def validate_vat_id(cls, v: Optional[str]) -> Optional[str]:
+        """Validiere USt-IdNr Format (EU VAT-ID)."""
+        if v is None:
+            return None
+        cleaned = re.sub(r'[\s\-.]', '', v.upper())
+        if not VAT_ID_PATTERN.match(cleaned):
+            raise ValueError(
+                "Ungueltige USt-IdNr. Format: 2 Buchstaben Laendercode + 8-12 Zeichen"
+            )
+        return cleaned
+
+    @field_validator("vendor_iban")
+    @classmethod
+    def validate_iban(cls, v: Optional[str]) -> Optional[str]:
+        """Validiere IBAN Format (basic, ohne Pruefsumme)."""
+        if v is None:
+            return None
+        cleaned = re.sub(r'\s', '', v.upper())
+        if not IBAN_PATTERN.match(cleaned):
+            raise ValueError(
+                "Ungueltige IBAN. Format: 2 Buchstaben + 2 Pruefziffern + Kontonummer"
+            )
+        return cleaned
+
+    @field_validator("expense_account", "creditor_account")
+    @classmethod
+    def validate_account_number(cls, v: Optional[str]) -> Optional[str]:
+        """Validiere Kontonummer (nur Ziffern, 4-10 Stellen)."""
+        if v is None:
+            return None
+        cleaned = v.strip()
+        if not ACCOUNT_NUMBER_PATTERN.match(cleaned):
+            raise ValueError(
+                "Ungueltige Kontonummer. Muss 4-10 Ziffern enthalten"
+            )
+        return cleaned
 
 
 class DATEVVendorMappingResponse(BaseModel):

@@ -13,6 +13,7 @@ Standards: DATEV Buchungsstapel CSV Format (Version 700)
 """
 
 import logging
+import urllib.parse
 import uuid as uuid_module
 from datetime import date, datetime
 from typing import List, Optional
@@ -232,6 +233,16 @@ async def update_config(
     await db.commit()
     await db.refresh(config)
 
+    # Audit Logging
+    logger.info(
+        "datev_config_updated",
+        extra={
+            "config_id": str(config_id),
+            "user_id": str(current_user.id),
+            "updated_fields": list(update_data.keys()),
+        }
+    )
+
     return DATEVConfigurationResponse.model_validate(config)
 
 
@@ -263,6 +274,16 @@ async def delete_config(
     # Soft-Delete
     config.is_active = False
     await db.commit()
+
+    # Audit Logging
+    logger.info(
+        "datev_config_deleted",
+        extra={
+            "config_id": str(config_id),
+            "user_id": str(current_user.id),
+            "action": "soft_delete",
+        }
+    )
 
 
 # =============================================================================
@@ -322,6 +343,17 @@ async def create_vendor_mapping(
     await db.commit()
     await db.refresh(mapping)
 
+    # Audit Logging
+    logger.info(
+        "datev_vendor_mapping_created",
+        extra={
+            "mapping_id": str(mapping.id),
+            "config_id": str(config_id),
+            "user_id": str(current_user.id),
+            "vendor_name": mapping_data.vendor_name,
+        }
+    )
+
     return DATEVVendorMappingResponse.model_validate(mapping)
 
 
@@ -359,6 +391,75 @@ async def list_vendor_mappings(
     return [DATEVVendorMappingResponse.model_validate(m) for m in mappings]
 
 
+@router.put(
+    "/config/{config_id}/vendors/{mapping_id}",
+    response_model=DATEVVendorMappingResponse,
+    summary="Vendor-Mapping aktualisieren",
+    description="""
+    Aktualisiert ein bestehendes Vendor-Mapping.
+
+    Ermoeglicht Aenderung von Kontozuordnungen, Identifikationsmerkmalen
+    und Kostenstellen fuer einen Lieferanten.
+    """
+)
+async def update_vendor_mapping(
+    config_id: uuid_module.UUID,
+    mapping_id: uuid_module.UUID,
+    mapping_data: DATEVVendorMappingUpdate,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: models.User = Depends(get_current_active_user),
+) -> DATEVVendorMappingResponse:
+    """Aktualisiert ein Vendor-Mapping."""
+    # Config-Ownership pruefen
+    config_result = await db.execute(
+        select(models.DATEVConfiguration).where(
+            models.DATEVConfiguration.id == config_id,
+            models.DATEVConfiguration.user_id == current_user.id,
+        )
+    )
+    if not config_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Konfiguration nicht gefunden"
+        )
+
+    # Mapping laden
+    result = await db.execute(
+        select(models.DATEVVendorMapping).where(
+            models.DATEVVendorMapping.id == mapping_id,
+            models.DATEVVendorMapping.config_id == config_id,
+        )
+    )
+    mapping = result.scalar_one_or_none()
+
+    if not mapping:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vendor-Mapping nicht gefunden"
+        )
+
+    # Update nur gesetzte Felder
+    update_data = mapping_data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(mapping, key, value)
+
+    await db.commit()
+    await db.refresh(mapping)
+
+    # Audit Logging
+    logger.info(
+        "datev_vendor_mapping_updated",
+        extra={
+            "mapping_id": str(mapping_id),
+            "config_id": str(config_id),
+            "user_id": str(current_user.id),
+            "updated_fields": list(update_data.keys()),
+        }
+    )
+
+    return DATEVVendorMappingResponse.model_validate(mapping)
+
+
 @router.delete(
     "/config/{config_id}/vendors/{mapping_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -371,7 +472,20 @@ async def delete_vendor_mapping(
     current_user: models.User = Depends(get_current_active_user),
 ) -> None:
     """Loescht ein Vendor-Mapping."""
-    # Konfiguration und Mapping pruefen
+    # SECURITY FIX: Zuerst Config-Ownership pruefen (OWASP A07:2021)
+    config_result = await db.execute(
+        select(models.DATEVConfiguration).where(
+            models.DATEVConfiguration.id == config_id,
+            models.DATEVConfiguration.user_id == current_user.id,
+        )
+    )
+    if not config_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Konfiguration nicht gefunden"
+        )
+
+    # Mapping pruefen
     result = await db.execute(
         select(models.DATEVVendorMapping).where(
             models.DATEVVendorMapping.id == mapping_id,
@@ -388,6 +502,16 @@ async def delete_vendor_mapping(
 
     await db.delete(mapping)
     await db.commit()
+
+    # Audit Logging
+    logger.info(
+        "datev_vendor_mapping_deleted",
+        extra={
+            "mapping_id": str(mapping_id),
+            "config_id": str(config_id),
+            "user_id": str(current_user.id),
+        }
+    )
 
 
 # =============================================================================
@@ -427,9 +551,17 @@ async def preview_export(
         return preview
 
     except ValueError as e:
+        # SECURITY FIX: Keine internen Details an Client senden
+        logger.warning(
+            "datev_preview_validation_error",
+            extra={
+                "user_id": str(current_user.id),
+                "error": str(e),
+            }
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Ungueltige Eingabedaten. Bitte pruefen Sie Ihre Angaben."
         )
 
 
@@ -471,28 +603,49 @@ async def export_buchungsstapel(
             include_already_exported=request.include_already_exported,
         )
 
+        # CRITICAL FIX: Commit VOR Response senden!
+        # Bei parallelen Exporten kann sonst Transaktion A fehlschlagen
+        # wenn B zwischendurch committet (Race Condition)
         await db.commit()
+
+        # SECURITY FIX: Filename sanitizen (Path Traversal Prevention)
+        safe_filename = urllib.parse.quote(export_record.filename, safe="")
 
         return Response(
             content=csv_bytes,
             media_type="text/csv; charset=windows-1252",
             headers={
-                "Content-Disposition": f'attachment; filename="{export_record.filename}"',
+                "Content-Disposition": f'attachment; filename="{safe_filename}"',
                 "X-DATEV-Export-ID": str(export_record.id),
                 "X-DATEV-Document-Count": str(export_record.document_count),
             }
         )
 
     except ValueError as e:
+        # SECURITY FIX: Keine internen Details an Client senden
+        logger.warning(
+            "datev_export_validation_error",
+            extra={
+                "user_id": str(current_user.id),
+                "error": str(e),
+            }
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Ungueltige Eingabedaten. Bitte pruefen Sie Ihre Angaben."
         )
     except Exception as e:
-        logger.exception("datev_export_error")
+        # SECURITY FIX: Keine Exception-Details an Client senden (Information Disclosure)
+        logger.exception(
+            "datev_export_error",
+            extra={
+                "user_id": str(current_user.id),
+                "error_type": type(e).__name__,
+            }
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Export fehlgeschlagen: {str(e)}"
+            detail="Export fehlgeschlagen. Bitte kontaktieren Sie den Administrator."
         )
 
 

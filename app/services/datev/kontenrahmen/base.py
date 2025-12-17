@@ -34,24 +34,6 @@ class BaseKontenrahmen(ABC):
     # AUFWANDSKONTEN (Eingangsrechnungen)
     # =========================================================================
 
-    @abstractmethod
-    def get_expense_account(
-        self,
-        expense_type: str,
-        vat_rate: Optional[float] = None
-    ) -> str:
-        """
-        Liefert Standard-Aufwandskonto.
-
-        Args:
-            expense_type: Typ des Aufwands (waren, dienstleistung, miete, etc.)
-            vat_rate: MwSt-Satz (7 oder 19), optional fuer differenzierte Konten
-
-        Returns:
-            Kontonummer als String
-        """
-        pass
-
     @property
     @abstractmethod
     def expense_accounts(self) -> Dict[str, str]:
@@ -67,24 +49,6 @@ class BaseKontenrahmen(ABC):
     # ERLOESKONTEN (Ausgangsrechnungen)
     # =========================================================================
 
-    @abstractmethod
-    def get_revenue_account(
-        self,
-        revenue_type: str,
-        vat_rate: Optional[float] = None
-    ) -> str:
-        """
-        Liefert Standard-Erloeskonto.
-
-        Args:
-            revenue_type: Typ des Erloses (waren, dienstleistung, etc.)
-            vat_rate: MwSt-Satz (7 oder 19), optional
-
-        Returns:
-            Kontonummer als String
-        """
-        pass
-
     @property
     @abstractmethod
     def revenue_accounts(self) -> Dict[str, str]:
@@ -94,46 +58,6 @@ class BaseKontenrahmen(ABC):
         Returns:
             Dict mit {revenue_type: kontonummer}
         """
-        pass
-
-    # =========================================================================
-    # PERSONENKONTEN
-    # =========================================================================
-
-    @property
-    @abstractmethod
-    def default_creditor_account(self) -> str:
-        """Standard-Kreditorenkonto (Lieferanten)."""
-        pass
-
-    @property
-    @abstractmethod
-    def default_debtor_account(self) -> str:
-        """Standard-Debitorenkonto (Kunden)."""
-        pass
-
-    @property
-    @abstractmethod
-    def creditor_range_start(self) -> str:
-        """Beginn des Kreditoren-Nummernkreises."""
-        pass
-
-    @property
-    @abstractmethod
-    def creditor_range_end(self) -> str:
-        """Ende des Kreditoren-Nummernkreises."""
-        pass
-
-    @property
-    @abstractmethod
-    def debtor_range_start(self) -> str:
-        """Beginn des Debitoren-Nummernkreises."""
-        pass
-
-    @property
-    @abstractmethod
-    def debtor_range_end(self) -> str:
-        """Ende des Debitoren-Nummernkreises."""
         pass
 
     # =========================================================================
@@ -233,3 +157,119 @@ class BaseKontenrahmen(ABC):
             return start <= num <= end
         except ValueError:
             return False
+
+    # =========================================================================
+    # GEMEINSAME IMPLEMENTIERUNGEN (ehemals in SKR03/SKR04 dupliziert)
+    # =========================================================================
+
+    def get_expense_account(
+        self,
+        expense_type: str,
+        vat_rate: Optional[float] = None
+    ) -> str:
+        """
+        Liefert Standard-Aufwandskonto.
+
+        Args:
+            expense_type: Typ des Aufwands (waren, dienstleistung, miete, etc.)
+            vat_rate: MwSt-Satz (7 oder 19), optional fuer differenzierte Konten
+
+        Returns:
+            Kontonummer als String
+        """
+        expense_type = expense_type.lower().replace(" ", "_")
+
+        # Spezialfall: Waren mit MwSt-Differenzierung
+        if expense_type in ("waren", "wareneingang"):
+            if vat_rate == 7:
+                return self._wareneingang_7
+            return self._wareneingang_19
+
+        return self.expense_accounts.get(expense_type, self._wareneingang_19)
+
+    def get_revenue_account(
+        self,
+        revenue_type: str,
+        vat_rate: Optional[float] = None
+    ) -> str:
+        """
+        Liefert Standard-Erloeskonto.
+
+        Args:
+            revenue_type: Typ des Erloses (waren, dienstleistung, etc.)
+            vat_rate: MwSt-Satz (7 oder 19), optional
+
+        Returns:
+            Kontonummer als String
+        """
+        revenue_type = revenue_type.lower().replace(" ", "_")
+
+        # Spezialfall: Differenzierung nach MwSt
+        if revenue_type in ("waren", "dienstleistung"):
+            if vat_rate == 7:
+                return self._erloese_7
+            return self._erloese_19
+
+        return self.revenue_accounts.get(revenue_type, self._erloese_19)
+
+    # =========================================================================
+    # ABSTRAKTE KONTO-PROPERTIES (muessen in Subklassen definiert werden)
+    # =========================================================================
+
+    @property
+    @abstractmethod
+    def _wareneingang_19(self) -> str:
+        """Wareneingang 19% - fuer get_expense_account."""
+        pass
+
+    @property
+    @abstractmethod
+    def _wareneingang_7(self) -> str:
+        """Wareneingang 7% - fuer get_expense_account."""
+        pass
+
+    @property
+    @abstractmethod
+    def _erloese_19(self) -> str:
+        """Erloese 19% - fuer get_revenue_account."""
+        pass
+
+    @property
+    @abstractmethod
+    def _erloese_7(self) -> str:
+        """Erloese 7% - fuer get_revenue_account."""
+        pass
+
+    # =========================================================================
+    # GEMEINSAME PERSONENKONTEN-DEFAULTS (identisch fuer SKR03 und SKR04)
+    # =========================================================================
+
+    @property
+    def default_creditor_account(self) -> str:
+        """Standard-Kreditorenkonto (Lieferanten)."""
+        return "70000"
+
+    @property
+    def default_debtor_account(self) -> str:
+        """Standard-Debitorenkonto (Kunden)."""
+        return "10000"
+
+    @property
+    def creditor_range_start(self) -> str:
+        """Beginn des Kreditoren-Nummernkreises."""
+        return "70000"
+
+    @property
+    def creditor_range_end(self) -> str:
+        """Ende des Kreditoren-Nummernkreises."""
+        return "99999"
+
+    @property
+    def debtor_range_start(self) -> str:
+        """Beginn des Debitoren-Nummernkreises."""
+        return "10000"
+
+    @property
+    def debtor_range_end(self) -> str:
+        """Ende des Debitoren-Nummernkreises."""
+        return "69999"

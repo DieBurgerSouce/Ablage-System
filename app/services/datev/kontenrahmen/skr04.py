@@ -16,7 +16,7 @@ Gliederung (nach Abschlussgliederungsprinzip):
 - Klasse 7: Weitere Ertraege und Aufwendungen
 """
 
-from typing import Dict, Optional
+from typing import Dict
 
 from .base import BaseKontenrahmen
 
@@ -100,20 +100,14 @@ class SKR04(BaseKontenrahmen):
             "abschreibung": self.ABSCHREIBUNGEN,
         }
 
-    def get_expense_account(
-        self,
-        expense_type: str,
-        vat_rate: Optional[float] = None
-    ) -> str:
-        expense_type = expense_type.lower().replace(" ", "_")
+    # Properties fuer Base-Klassen-Methoden (get_expense_account/get_revenue_account)
+    @property
+    def _wareneingang_19(self) -> str:
+        return self.WARENEINGANG_19
 
-        # Spezialfall: Waren mit MwSt-Differenzierung
-        if expense_type in ("waren", "wareneingang"):
-            if vat_rate == 7:
-                return self.WARENEINGANG_7
-            return self.WARENEINGANG_19
-
-        return self.expense_accounts.get(expense_type, self.WARENEINGANG_19)
+    @property
+    def _wareneingang_7(self) -> str:
+        return self.WARENEINGANG_7
 
     # =========================================================================
     # ERLOESKONTEN (Klasse 4)
@@ -143,48 +137,18 @@ class SKR04(BaseKontenrahmen):
             "sonstige": self.ERLOESE_SONSTIGE,
         }
 
-    def get_revenue_account(
-        self,
-        revenue_type: str,
-        vat_rate: Optional[float] = None
-    ) -> str:
-        revenue_type = revenue_type.lower().replace(" ", "_")
+    @property
+    def _erloese_19(self) -> str:
+        return self.ERLOESE_19
 
-        # Spezialfall: Differenzierung nach MwSt
-        if revenue_type in ("waren", "dienstleistung"):
-            if vat_rate == 7:
-                return self.ERLOESE_7
-            return self.ERLOESE_19
-
-        return self.revenue_accounts.get(revenue_type, self.ERLOESE_19)
+    @property
+    def _erloese_7(self) -> str:
+        return self.ERLOESE_7
 
     # =========================================================================
-    # PERSONENKONTEN
+    # PERSONENKONTEN (Defaults aus BaseKontenrahmen uebernommen)
     # =========================================================================
-
-    @property
-    def default_creditor_account(self) -> str:
-        return "70000"  # Erster Kreditor im Standardbereich
-
-    @property
-    def default_debtor_account(self) -> str:
-        return "10000"  # Erster Debitor im Standardbereich
-
-    @property
-    def creditor_range_start(self) -> str:
-        return "70000"
-
-    @property
-    def creditor_range_end(self) -> str:
-        return "99999"
-
-    @property
-    def debtor_range_start(self) -> str:
-        return "10000"
-
-    @property
-    def debtor_range_end(self) -> str:
-        return "69999"
+    # Kreditor-/Debitoren-Ranges sind identisch zu SKR03, daher in Base definiert
 
     # =========================================================================
     # SAMMELKONTEN (Klasse 3)
