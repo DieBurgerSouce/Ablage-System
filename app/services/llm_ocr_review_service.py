@@ -14,6 +14,7 @@ Feinpoliert und durchdacht - Enterprise-grade OCR Quality Review.
 """
 
 import re
+import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any, Literal
@@ -23,6 +24,15 @@ import sqlalchemy as sa
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log,
+    RetryError,
+)
+import httpx
 
 from app.db.models import OCRTrainingSample, TrainingSampleStatus
 from app.services.rag.llm_service import (
@@ -33,6 +43,11 @@ from app.services.rag.llm_service import (
 )
 
 logger = structlog.get_logger(__name__)
+
+# LLM Retry Konfiguration
+LLM_MAX_RETRIES = 3
+LLM_RETRY_MIN_WAIT = 2  # Sekunden
+LLM_RETRY_MAX_WAIT = 10  # Sekunden
 
 
 # =============================================================================
@@ -452,13 +467,41 @@ class LLMOCRReviewService:
     # INTERNAL HELPERS
     # =========================================================================
 
-    async def _call_llm_review(
+    @retry(
+        stop=stop_after_attempt(LLM_MAX_RETRIES),
+        wait=wait_exponential(multiplier=1, min=LLM_RETRY_MIN_WAIT, max=LLM_RETRY_MAX_WAIT),
+        retry=retry_if_exception_type((
+            httpx.TimeoutException,
+            httpx.ConnectError,
+            httpx.ReadError,
+            ConnectionError,
+            asyncio.TimeoutError,
+        )),
+        before_sleep=before_sleep_log(logger, log_level=30),  # WARNING level
+        reraise=True,
+    )
+    async def _call_llm_review_with_retry(
         self,
         text: str,
         doc_type: str,
     ) -> LLMReviewResult:
-        """Ruft das LLM fuer die Review auf."""
+        """Ruft das LLM fuer die Review auf mit automatischem Retry.
 
+        Retry bei:
+        - Timeout (Ollama nicht erreichbar)
+        - Connection Errors (Service neu gestartet)
+        - Read Errors (Verbindung unterbrochen)
+
+        Args:
+            text: OCR-Text zur Pruefung
+            doc_type: Dokumenttyp
+
+        Returns:
+            LLMReviewResult mit Bewertung
+
+        Raises:
+            RetryError: Nach allen fehlgeschlagenen Versuchen
+        """
         # Prompt zusammenbauen
         user_prompt = REVIEW_USER_PROMPT.format(
             doc_type=doc_type,
@@ -481,12 +524,66 @@ class LLMOCRReviewService:
         # Antwort parsen
         return self._parse_llm_response(response.content)
 
+    async def _call_llm_review(
+        self,
+        text: str,
+        doc_type: str,
+    ) -> LLMReviewResult:
+        """Ruft das LLM fuer die Review auf.
+
+        Wrapper mit Error-Handling fuer Retry-Failures.
+        """
+        try:
+            return await self._call_llm_review_with_retry(text, doc_type)
+        except RetryError as e:
+            logger.error(
+                "llm_review_all_retries_failed",
+                doc_type=doc_type,
+                text_length=len(text),
+                error=str(e.last_attempt.exception()) if e.last_attempt else "unknown"
+            )
+            # Fallback: Menschliche Review erforderlich
+            return LLMReviewResult(
+                quality_score=0.0,
+                issues_found=["LLM-Review nach mehreren Versuchen fehlgeschlagen"],
+                recommendation="needs_human",
+                reasoning=f"Technischer Fehler: LLM nicht erreichbar nach {LLM_MAX_RETRIES} Versuchen",
+                confidence=0.0,
+            )
+        except Exception as e:
+            logger.error(
+                "llm_review_unexpected_error",
+                doc_type=doc_type,
+                error=str(e),
+            )
+            return LLMReviewResult(
+                quality_score=0.0,
+                issues_found=[f"Unerwarteter Fehler: {str(e)}"],
+                recommendation="needs_human",
+                reasoning=f"Technischer Fehler bei der LLM-Review: {str(e)}",
+                confidence=0.0,
+            )
+
     def _parse_llm_response(self, content: str) -> LLMReviewResult:
         """Parst die strukturierte LLM-Antwort."""
 
-        # Quality Score extrahieren
+        # Quality Score extrahieren mit Validierung
         quality_match = re.search(r'<quality_score>\s*(\d+(?:\.\d+)?)\s*</quality_score>', content)
-        quality_score = float(quality_match.group(1)) if quality_match else 5.0
+        quality_score = 5.0  # Default
+        if quality_match:
+            try:
+                parsed_score = float(quality_match.group(1))
+                # Validierung: Score muss zwischen 0 und 10 liegen
+                if 0.0 <= parsed_score <= 10.0:
+                    quality_score = parsed_score
+                else:
+                    logger.warning(
+                        "llm_review_invalid_quality_score",
+                        parsed_score=parsed_score,
+                        using_default=5.0
+                    )
+            except (ValueError, TypeError):
+                logger.warning("llm_review_score_parse_failed")
 
         # Issues extrahieren
         issues_match = re.search(r'<issues>(.*?)</issues>', content, re.DOTALL)

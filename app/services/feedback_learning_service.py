@@ -17,6 +17,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
 import json
+import threading
+import asyncio
 
 from sqlalchemy import select, and_, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,8 +29,13 @@ from app.db.models import (
     OCRBackendStatsDaily,
     CorrectionType,
 )
+from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
+
+# Distributed Lock Konfiguration
+FEEDBACK_PROCESSING_LOCK_KEY = "lock:feedback_learning:processing"
+FEEDBACK_LOCK_TTL_SECONDS = 300  # 5 Minuten
 
 
 # =============================================================================
@@ -150,8 +157,50 @@ class FeedbackLearningService:
         self._cached_weights: Optional[LearnedBackendWeights] = None
         self._cache_ttl = timedelta(minutes=15)
         self._last_cache_update: Optional[datetime] = None
+        self._cache_lock = threading.Lock()  # Thread-safe Cache-Zugriff
+        self._redis = None
 
         logger.info("feedback_learning_service_initialized")
+
+    async def _get_redis(self):
+        """Lazy-load Redis connection fuer Distributed Locking."""
+        if self._redis is None:
+            from app.core.redis_state import RedisStateManager
+            self._redis = RedisStateManager.get_instance()
+            await self._redis.connect()
+        return self._redis
+
+    async def _acquire_distributed_lock(self, lock_key: str, ttl_seconds: int = 300) -> bool:
+        """Versucht Distributed Lock zu erwerben.
+
+        Args:
+            lock_key: Redis Key fuer Lock
+            ttl_seconds: Lock Timeout in Sekunden
+
+        Returns:
+            True wenn Lock erworben, False sonst
+        """
+        try:
+            redis = await self._get_redis()
+            # NX = nur setzen wenn nicht existiert (atomic)
+            acquired = await redis._redis.set(
+                lock_key,
+                "locked",
+                ex=ttl_seconds,
+                nx=True
+            )
+            return bool(acquired)
+        except Exception as e:
+            logger.warning("distributed_lock_acquire_failed", lock_key=lock_key, error=str(e))
+            return False
+
+    async def _release_distributed_lock(self, lock_key: str) -> None:
+        """Gibt Distributed Lock frei."""
+        try:
+            redis = await self._get_redis()
+            await redis._redis.delete(lock_key)
+        except Exception as e:
+            logger.warning("distributed_lock_release_failed", lock_key=lock_key, error=str(e))
 
     # =========================================================================
     # CORRECTION ANALYSIS
@@ -234,6 +283,8 @@ class FeedbackLearningService:
         """
         Berechnet optimale Backend-Gewichtungen basierend auf Korrektur-Historie.
 
+        Thread-safe mit Lock fuer Cache-Zugriff.
+
         Args:
             db: Datenbank-Session
             force_refresh: Cache umgehen
@@ -243,16 +294,17 @@ class FeedbackLearningService:
         """
         now = datetime.now(timezone.utc)
 
-        # Cache prüfen
-        if (
-            not force_refresh
-            and self._cached_weights
-            and self._last_cache_update
-            and (now - self._last_cache_update) < self._cache_ttl
-        ):
-            return self._cached_weights
+        # Thread-safe Cache pruefen
+        with self._cache_lock:
+            if (
+                not force_refresh
+                and self._cached_weights
+                and self._last_cache_update
+                and (now - self._last_cache_update) < self._cache_ttl
+            ):
+                return self._cached_weights
 
-        # Analysiere Korrekturen
+        # Analysiere Korrekturen (ausserhalb Lock - kann lange dauern)
         patterns = await self.analyze_corrections(db, days=30)
 
         # Berechne Gewichtungen
@@ -288,9 +340,10 @@ class FeedbackLearningService:
             confidence=confidence,
         )
 
-        # Cache aktualisieren
-        self._cached_weights = learned
-        self._last_cache_update = now
+        # Thread-safe Cache aktualisieren
+        with self._cache_lock:
+            self._cached_weights = learned
+            self._last_cache_update = now
 
         logger.info(
             "learned_weights_calculated",
@@ -368,9 +421,10 @@ class FeedbackLearningService:
         batch_size: int = 100
     ) -> int:
         """
-        Verarbeitet noch nicht verarbeitete Korrekturen für Self-Learning.
+        Verarbeitet noch nicht verarbeitete Korrekturen fuer Self-Learning.
 
         Diese Methode wird periodisch von einem Celery Task aufgerufen.
+        Verwendet Distributed Locking um Race Conditions zu vermeiden.
 
         Args:
             db: Datenbank-Session
@@ -379,58 +433,134 @@ class FeedbackLearningService:
         Returns:
             Anzahl verarbeiteter Korrekturen
         """
-        # Hole unverarbeitete Korrekturen
-        result = await db.execute(
-            select(OCRValidationCorrection)
-            .where(
-                and_(
-                    OCRValidationCorrection.applies_to_training == True,
-                    OCRValidationCorrection.learning_processed == False
-                )
-            )
-            .order_by(OCRValidationCorrection.created_at)
-            .limit(batch_size)
+        # Distributed Lock erwerben - verhindert parallele Verarbeitung
+        lock_acquired = await self._acquire_distributed_lock(
+            FEEDBACK_PROCESSING_LOCK_KEY,
+            ttl_seconds=FEEDBACK_LOCK_TTL_SECONDS
         )
-        corrections = list(result.scalars().all())
 
-        if not corrections:
+        if not lock_acquired:
+            logger.info("feedback_processing_skipped_lock_held")
             return 0
 
-        now = datetime.now(timezone.utc)
-        processed = 0
-
-        for correction in corrections:
-            try:
-                # Hier könnte zusätzliche Verarbeitung stattfinden:
-                # - Training Sample erstellen wenn genug Kontext
-                # - Pattern-Datenbank aktualisieren
-                # - Model Fine-Tuning Queue
-
-                # Markiere als verarbeitet
-                correction.learning_processed = True
-                correction.learning_processed_at = now
-                processed += 1
-
-            except Exception as e:
-                logger.error(
-                    "correction_processing_failed",
-                    correction_id=str(correction.id)[:8],
-                    error=str(e)
+        try:
+            # Hole unverarbeitete Korrekturen
+            result = await db.execute(
+                select(OCRValidationCorrection)
+                .where(
+                    and_(
+                        OCRValidationCorrection.applies_to_training == True,
+                        OCRValidationCorrection.learning_processed == False
+                    )
                 )
+                .order_by(OCRValidationCorrection.created_at)
+                .limit(batch_size)
+            )
+            corrections = list(result.scalars().all())
 
-        await db.commit()
+            if not corrections:
+                return 0
 
-        # Cache invalidieren für neue Gewichtungen
-        self._cached_weights = None
-        self._last_cache_update = None
+            now = datetime.now(timezone.utc)
+            processed = 0
 
-        logger.info(
-            "corrections_processed",
-            processed=processed,
-            total=len(corrections)
-        )
+            # Gruppiere Korrekturen nach Backend
+            surya_corrections = [
+                c for c in corrections
+                if c.backend_used in ("surya", "surya-gpu")
+            ]
+            other_corrections = [
+                c for c in corrections
+                if c.backend_used not in ("surya", "surya-gpu")
+            ]
 
-        return processed
+            # Verarbeite Surya-Korrekturen mit spezifischer Logik
+            if surya_corrections:
+                try:
+                    # Konvertiere hochwertige Korrekturen zu Training Samples
+                    high_quality_surya = [
+                        c for c in surya_corrections
+                        if c.confidence_before is not None
+                        and c.confidence_before >= 0.5  # Mittlere+ Confidence
+                        and c.corrected_text  # Hat korrigierten Text
+                        and len(c.corrected_text) >= 10  # Genug Kontext
+                    ]
+
+                    if high_quality_surya:
+                        conversion_stats = await self.convert_corrections_to_training_samples(
+                            db=db,
+                            corrections=high_quality_surya,
+                            verify_quality=True,
+                        )
+                        logger.info(
+                            "surya_corrections_converted",
+                            samples_created=conversion_stats.get("samples_created", 0),
+                            samples_updated=conversion_stats.get("samples_updated", 0),
+                        )
+
+                except Exception as e:
+                    logger.warning(
+                        "surya_training_sample_conversion_failed",
+                        error=str(e),
+                    )
+
+            # Markiere alle Korrekturen als verarbeitet
+            for correction in corrections:
+                try:
+                    # Aktualisiere Error-Pattern-Statistiken intern
+                    # (wird für Weights-Berechnung verwendet)
+
+                    # Markiere als verarbeitet
+                    correction.learning_processed = True
+                    correction.learning_processed_at = now
+
+                    # Flush nach jedem Sample - ermoeglicht Rollback bei Fehler
+                    await db.flush()
+                    processed += 1
+
+                except Exception as e:
+                    logger.error(
+                        "correction_processing_failed",
+                        correction_id=str(correction.id)[:8],
+                        error=str(e)
+                    )
+                    # Rollback nur fuer dieses Sample, nicht den ganzen Batch
+                    await db.rollback()
+
+            await db.commit()
+
+            # Prüfe ob Retraining empfohlen wird (nach Batch-Verarbeitung)
+            if surya_corrections and len(surya_corrections) >= 10:
+                try:
+                    recommendation = await self.get_surya_retraining_recommendation(db=db)
+                    if recommendation.get("should_retrain"):
+                        logger.warning(
+                            "surya_retraining_recommended",
+                            urgency=recommendation.get("urgency"),
+                            reasons=recommendation.get("reasons"),
+                        )
+                except Exception as e:
+                    logger.debug(
+                        "retraining_check_failed",
+                        error=str(e),
+                    )
+
+            # Thread-safe Cache invalidieren
+            with self._cache_lock:
+                self._cached_weights = None
+                self._last_cache_update = None
+
+            logger.info(
+                "corrections_processed",
+                processed=processed,
+                total=len(corrections)
+            )
+
+            return processed
+
+        finally:
+            # Lock immer freigeben
+            await self._release_distributed_lock(FEEDBACK_PROCESSING_LOCK_KEY)
 
     # =========================================================================
     # DAILY STATS AGGREGATION
@@ -567,6 +697,342 @@ class FeedbackLearningService:
             })
 
         return trend_data
+
+
+    # =========================================================================
+    # SURYA-SPECIFIC FEEDBACK PROCESSING (Continuous Improvement Loop)
+    # =========================================================================
+
+    async def get_surya_corrections(
+        self,
+        db: AsyncSession,
+        days: int = 7,
+        min_confidence: float = 0.0,
+        unprocessed_only: bool = True,
+    ) -> List[OCRValidationCorrection]:
+        """
+        Holt Surya-spezifische Korrekturen fuer Training.
+
+        Filtert nach Surya und Surya-GPU Backends.
+
+        Args:
+            db: Datenbank-Session
+            days: Anzahl Tage zurueck
+            min_confidence: Minimale Confidence vor Korrektur
+            unprocessed_only: Nur unverarbeitete Korrekturen
+
+        Returns:
+            Liste der Surya-Korrektionen
+        """
+        since = datetime.now(timezone.utc) - timedelta(days=days)
+
+        conditions = [
+            OCRValidationCorrection.backend_used.in_(["surya", "surya-gpu"]),
+            OCRValidationCorrection.created_at >= since,
+        ]
+
+        if min_confidence > 0:
+            conditions.append(
+                OCRValidationCorrection.confidence_before >= min_confidence
+            )
+
+        if unprocessed_only:
+            conditions.append(
+                OCRValidationCorrection.processed_for_learning == False
+            )
+
+        result = await db.execute(
+            select(OCRValidationCorrection)
+            .where(and_(*conditions))
+            .order_by(desc(OCRValidationCorrection.created_at))
+        )
+        corrections = list(result.scalars().all())
+
+        logger.info(
+            "surya_corrections_fetched",
+            count=len(corrections),
+            days=days,
+            unprocessed_only=unprocessed_only,
+        )
+
+        return corrections
+
+    async def analyze_surya_umlaut_errors(
+        self,
+        db: AsyncSession,
+        days: int = 30,
+    ) -> Dict[str, Any]:
+        """
+        Detaillierte Analyse von Surya Umlaut-Fehlern.
+
+        Kategorisiert Fehler nach Umlaut-Typ und identifiziert
+        haeufige Verwechslungen.
+
+        Args:
+            db: Datenbank-Session
+            days: Anzahl Tage fuer Analyse
+
+        Returns:
+            Umlaut-Fehler-Analyse mit Statistiken
+        """
+        corrections = await self.get_surya_corrections(
+            db, days=days, unprocessed_only=False
+        )
+
+        # Initialisiere Statistiken
+        umlaut_chars = list("aouAOUß")
+        umlaut_stats = {
+            "total_corrections": len(corrections),
+            "umlaut_corrections": 0,
+            "per_umlaut": {
+                "ä": {"count": 0, "confusions": {}},
+                "ö": {"count": 0, "confusions": {}},
+                "ü": {"count": 0, "confusions": {}},
+                "Ä": {"count": 0, "confusions": {}},
+                "Ö": {"count": 0, "confusions": {}},
+                "Ü": {"count": 0, "confusions": {}},
+                "ß": {"count": 0, "confusions": {}},
+            },
+            "common_patterns": [],
+        }
+
+        # Analysiere Korrektionen
+        confusion_patterns: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+
+        for correction in corrections:
+            if correction.correction_type == CorrectionType.UMLAUT.value:
+                umlaut_stats["umlaut_corrections"] += 1
+
+                # Extrahiere Original und Korrektur
+                original = correction.original_text or ""
+                corrected = correction.corrected_text or ""
+
+                # Finde Umlaut-Verwechslungen
+                for i, (orig_char, corr_char) in enumerate(zip(original, corrected)):
+                    if corr_char in umlaut_stats["per_umlaut"]:
+                        if orig_char != corr_char:
+                            umlaut_stats["per_umlaut"][corr_char]["count"] += 1
+                            confusion_patterns[corr_char][orig_char] += 1
+
+        # Aggregiere Top-Verwechslungen
+        for umlaut, confusions in confusion_patterns.items():
+            top_confusions = sorted(
+                confusions.items(),
+                key=lambda x: x[1],
+                reverse=True
+            )[:5]
+            umlaut_stats["per_umlaut"][umlaut]["confusions"] = dict(top_confusions)
+
+        # Identifiziere haeufigste Muster
+        all_patterns = []
+        for umlaut, confusions in confusion_patterns.items():
+            for wrong_char, count in confusions.items():
+                all_patterns.append({
+                    "correct": umlaut,
+                    "wrong": wrong_char,
+                    "count": count,
+                })
+
+        umlaut_stats["common_patterns"] = sorted(
+            all_patterns,
+            key=lambda x: x["count"],
+            reverse=True
+        )[:10]
+
+        logger.info(
+            "surya_umlaut_analysis_completed",
+            total_corrections=umlaut_stats["total_corrections"],
+            umlaut_corrections=umlaut_stats["umlaut_corrections"],
+        )
+
+        return umlaut_stats
+
+    async def convert_corrections_to_training_samples(
+        self,
+        db: AsyncSession,
+        corrections: List[OCRValidationCorrection],
+        verify_quality: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Konvertiert Surya-Korrektionen zu Training Samples.
+
+        Erstellt oder aktualisiert OCRTrainingSample Eintraege
+        mit korrigiertem Text als Ground Truth.
+
+        Args:
+            db: Datenbank-Session
+            corrections: Liste der zu konvertierenden Korrektionen
+            verify_quality: Qualitaetspruefung aktivieren
+
+        Returns:
+            Konvertierungs-Statistiken
+        """
+        from app.db.models import OCRTrainingSample
+
+        stats = {
+            "corrections_processed": 0,
+            "samples_created": 0,
+            "samples_updated": 0,
+            "skipped_low_quality": 0,
+            "errors": [],
+        }
+
+        now = datetime.now(timezone.utc)
+
+        for correction in corrections:
+            try:
+                # Qualitaetspruefung
+                if verify_quality:
+                    if not correction.corrected_text:
+                        stats["skipped_low_quality"] += 1
+                        continue
+                    if len(correction.corrected_text) < 5:
+                        stats["skipped_low_quality"] += 1
+                        continue
+
+                # Pruefe ob Sample mit diesem Dokument existiert
+                if correction.document_id:
+                    existing_result = await db.execute(
+                        select(OCRTrainingSample).where(
+                            OCRTrainingSample.document_id == correction.document_id
+                        )
+                    )
+                    existing_sample = existing_result.scalar_one_or_none()
+
+                    if existing_sample:
+                        # Update existierendes Sample
+                        if correction.field_corrected:
+                            # Update spezifisches Feld
+                            extracted = existing_sample.extracted_fields or {}
+                            extracted[correction.field_corrected] = correction.corrected_text
+                            existing_sample.extracted_fields = extracted
+                        else:
+                            # Update Ground Truth Text
+                            existing_sample.ground_truth_text = correction.corrected_text
+
+                        existing_sample.updated_at = now
+                        existing_sample.status = "annotated"
+                        stats["samples_updated"] += 1
+                    else:
+                        # Erstelle neues Sample
+                        new_sample = OCRTrainingSample(
+                            document_id=correction.document_id,
+                            ground_truth_text=correction.corrected_text,
+                            status="pending_verification",
+                            source="user_correction",
+                            language="de",
+                            has_umlauts=any(
+                                c in (correction.corrected_text or "")
+                                for c in "äöüÄÖÜß"
+                            ),
+                            notes=f"Aus Korrektur {correction.id}",
+                        )
+                        db.add(new_sample)
+                        stats["samples_created"] += 1
+
+                # Markiere Korrektur als verarbeitet
+                correction.processed_for_learning = True
+                correction.processed_at = now
+                stats["corrections_processed"] += 1
+
+            except Exception as e:
+                stats["errors"].append({
+                    "correction_id": str(correction.id),
+                    "error": str(e),
+                })
+                logger.error(
+                    "correction_conversion_failed",
+                    correction_id=str(correction.id)[:8],
+                    error=str(e),
+                )
+
+        await db.commit()
+
+        logger.info(
+            "corrections_converted_to_samples",
+            processed=stats["corrections_processed"],
+            created=stats["samples_created"],
+            updated=stats["samples_updated"],
+        )
+
+        return stats
+
+    async def get_surya_retraining_recommendation(
+        self,
+        db: AsyncSession,
+    ) -> Dict[str, Any]:
+        """
+        Empfehlung fuer Surya-Retraining basierend auf Feedback.
+
+        Analysiert aktuelle Korrektur-Trends und gibt
+        Retraining-Empfehlung mit Dringlichkeit.
+
+        Args:
+            db: Datenbank-Session
+
+        Returns:
+            Retraining-Empfehlung mit Metriken
+        """
+        # Hole aktuelle Korrektur-Statistiken
+        corrections_7d = await self.get_surya_corrections(
+            db, days=7, unprocessed_only=False
+        )
+        corrections_30d = await self.get_surya_corrections(
+            db, days=30, unprocessed_only=False
+        )
+
+        # Umlaut-Fehler-Analyse
+        umlaut_analysis = await self.analyze_surya_umlaut_errors(db, days=30)
+
+        # Berechne Metriken
+        corrections_7d_count = len(corrections_7d)
+        corrections_30d_count = len(corrections_30d)
+        umlaut_error_rate = (
+            umlaut_analysis["umlaut_corrections"] / umlaut_analysis["total_corrections"]
+            if umlaut_analysis["total_corrections"] > 0
+            else 0.0
+        )
+
+        # Bestimme Dringlichkeit
+        should_retrain = False
+        urgency = "low"
+        reasons = []
+
+        # Bedingung 1: Viele Korrektionen in 7 Tagen
+        if corrections_7d_count >= 30:
+            should_retrain = True
+            urgency = "medium"
+            reasons.append(f"{corrections_7d_count} Korrektionen in 7 Tagen")
+
+        # Bedingung 2: Hohe Umlaut-Fehlerrate
+        if umlaut_error_rate > 0.3:  # >30% der Fehler sind Umlaute
+            should_retrain = True
+            urgency = "high"
+            reasons.append(f"Umlaut-Fehlerrate bei {umlaut_error_rate:.1%}")
+
+        # Bedingung 3: Steigende Trend
+        weekly_rate = corrections_7d_count / 7 if corrections_7d_count > 0 else 0
+        monthly_rate = corrections_30d_count / 30 if corrections_30d_count > 0 else 0
+        if weekly_rate > monthly_rate * 1.5:
+            should_retrain = True
+            reasons.append("Steigende Korrektur-Rate")
+
+        return {
+            "should_retrain": should_retrain,
+            "urgency": urgency,
+            "reasons": reasons,
+            "metrics": {
+                "corrections_7d": corrections_7d_count,
+                "corrections_30d": corrections_30d_count,
+                "umlaut_error_rate": umlaut_error_rate,
+                "weekly_correction_rate": weekly_rate,
+                "monthly_correction_rate": monthly_rate,
+            },
+            "umlaut_analysis": {
+                "total_umlaut_errors": umlaut_analysis["umlaut_corrections"],
+                "common_patterns": umlaut_analysis["common_patterns"][:5],
+            },
+        }
 
 
 # Singleton

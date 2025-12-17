@@ -83,6 +83,43 @@ def _is_oom_error(exception: Exception) -> bool:
     return any(indicator in error_msg for indicator in oom_indicators)
 
 
+# GPU Lock Refresh Konfiguration
+GPU_LOCK_REFRESH_INTERVAL = 25  # Sekunden (Lock laeuft nach 60s ab, refreshe alle 25s)
+
+
+async def _periodic_lock_refresh(
+    task: 'GPUTask',
+    interval: int = GPU_LOCK_REFRESH_INTERVAL,
+    logger_context: Optional[Dict[str, Any]] = None
+) -> None:
+    """Background-Task fuer periodisches GPU-Lock-Refresh.
+
+    Verhindert Lock-Ablauf bei langen OCR-Tasks (> 60s).
+    Wird als asyncio.Task gestartet und nach OCR gecancelt.
+
+    Args:
+        task: GPUTask-Instanz mit refresh_lock() Methode
+        interval: Refresh-Intervall in Sekunden
+        logger_context: Optionale Log-Kontextdaten
+    """
+    log_ctx = logger_context or {}
+    try:
+        while True:
+            await asyncio.sleep(interval)
+            loop = asyncio.get_running_loop()
+            refreshed = await loop.run_in_executor(None, task.refresh_lock)
+            if refreshed:
+                logger.debug("gpu_lock_background_refresh_success", **log_ctx)
+            else:
+                logger.warning("gpu_lock_background_refresh_failed", **log_ctx)
+    except asyncio.CancelledError:
+        # Normales Beenden wenn Task gecancelt wird
+        logger.debug("gpu_lock_background_refresh_stopped", **log_ctx)
+        raise
+    except Exception as e:
+        logger.error("gpu_lock_background_refresh_error", error=str(e), **log_ctx)
+
+
 # ==================== Helper Functions ====================
 
 async def update_document_status(
@@ -266,22 +303,29 @@ def process_document_task(
                 # Start OCR processing
                 update_task_progress(task_id, 20, 100, "OCR-Verarbeitung läuft...")
 
-                # GPU Lock Refresh vor langem OCR-Call (Lock läuft nach 60s ab)
-                # Refresh muss synchron sein, daher via run_in_executor
-                loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, self.refresh_lock)
-
-                ocr_result = await ocr_service.process_document(
-                    image_path=local_file_path,
-                    backend=backend,
-                    language=language,
-                    detect_layout=detect_layout,
-                    detect_fraktur=detect_fraktur,
-                    document_id=document_id  # For A/B experiment allocation
+                # Starte Background-Task fuer periodisches GPU-Lock-Refresh
+                # Verhindert Lock-Ablauf bei langen OCR-Tasks (> 60s)
+                log_context = {"document_id": str(document_id), "backend": backend}
+                lock_refresh_task = asyncio.create_task(
+                    _periodic_lock_refresh(self, logger_context=log_context)
                 )
 
-                # GPU Lock Refresh nach OCR-Call (falls > 30s gedauert)
-                await loop.run_in_executor(None, self.refresh_lock)
+                try:
+                    ocr_result = await ocr_service.process_document(
+                        image_path=local_file_path,
+                        backend=backend,
+                        language=language,
+                        detect_layout=detect_layout,
+                        detect_fraktur=detect_fraktur,
+                        document_id=document_id  # For A/B experiment allocation
+                    )
+                finally:
+                    # Background-Refresh-Task stoppen
+                    lock_refresh_task.cancel()
+                    try:
+                        await lock_refresh_task
+                    except asyncio.CancelledError:
+                        pass  # Erwartet
 
                 if not ocr_result.get("success"):
                     raise RuntimeError(
@@ -413,6 +457,43 @@ def process_document_task(
                         error=str(quality_error)
                     )
 
+                # Auto Ground-Truth Pipeline: High-Confidence OCR als Training-Sample
+                if settings.AUTO_GROUND_TRUTH_ENABLED and document.extracted_text:
+                    try:
+                        from app.services.auto_ground_truth_service import get_auto_ground_truth_service
+
+                        auto_gt_service = get_auto_ground_truth_service()
+                        gt_result = await auto_gt_service.process_document_for_training(
+                            db=session,
+                            document_id=doc_uuid,
+                            ocr_text=document.extracted_text,
+                            ocr_confidence=document.ocr_confidence or 0.0,
+                            document_type=document.document_type,
+                            file_path=document.file_path,
+                            file_hash=document.file_hash if hasattr(document, 'file_hash') else None,
+                        )
+
+                        if gt_result.auto_accepted:
+                            logger.info(
+                                "auto_ground_truth_created",
+                                document_id=document_id,
+                                sample_id=str(gt_result.sample_id),
+                                needs_spot_check=gt_result.needs_manual_review,
+                            )
+                        else:
+                            logger.debug(
+                                "auto_ground_truth_skipped",
+                                document_id=document_id,
+                                reasons=gt_result.reasons,
+                            )
+                    except Exception as gt_error:
+                        # Don't fail OCR if auto ground-truth fails
+                        logger.warning(
+                            "auto_ground_truth_failed",
+                            document_id=document_id,
+                            error=str(gt_error)
+                        )
+
                 # Queue embedding generation as low-priority background task
                 embedding_task_id = None
                 if settings.EMBEDDING_AUTO_GENERATE and document.extracted_text:
@@ -434,6 +515,33 @@ def process_document_task(
                         # Don't fail OCR if embedding queuing fails
                         logger.warning(
                             "embedding_task_queue_failed",
+                            task_id=task_id,
+                            document_id=document_id,
+                            error=str(e)
+                        )
+
+                # Queue RAG chunking as background task (fuer Chat/Suche)
+                rag_chunking_task_id = None
+                if settings.AUTO_RAG_CHUNKING_ENABLED and document.extracted_text:
+                    try:
+                        from app.workers.tasks.rag_tasks import chunk_document
+                        rag_result = chunk_document.apply_async(
+                            args=[document_id],
+                            countdown=settings.RAG_CHUNKING_DELAY_SECONDS,
+                            priority=settings.RAG_TASK_PRIORITY,
+                        )
+                        rag_chunking_task_id = rag_result.id
+                        logger.info(
+                            "rag_chunking_task_queued",
+                            task_id=task_id,
+                            document_id=document_id,
+                            rag_chunking_task_id=rag_chunking_task_id,
+                            delay_seconds=settings.RAG_CHUNKING_DELAY_SECONDS
+                        )
+                    except Exception as e:
+                        # Don't fail OCR if RAG chunking queuing fails
+                        logger.warning(
+                            "rag_chunking_task_queue_failed",
                             task_id=task_id,
                             document_id=document_id,
                             error=str(e)
@@ -502,6 +610,7 @@ def process_document_task(
                     "completed_at": datetime.now(timezone.utc).isoformat(),
                     "embedding_task_id": embedding_task_id,
                     "extraction_task_id": extraction_task_id,
+                    "rag_chunking_task_id": rag_chunking_task_id,
                 }
 
             except SoftTimeLimitExceeded:
