@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 
 import structlog
 
@@ -315,6 +315,197 @@ KONTEXT:
         raise HTTPException(status_code=500, detail=f"Chat fehlgeschlagen: {str(e)}")
 
 
+@router.post("/chat/stream")
+async def chat_with_documents_stream(
+    request: RAGChatRequest,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    """Chat mit Dokumenten-Kontext (Streaming).
+
+    Verwendet SSE (Server-Sent Events) fuer Echtzeit-Streaming der Antwort.
+
+    Event-Typen:
+    - chunk: Text-Chunk der Antwort
+    - source: Quellen-Referenz
+    - thinking: Denk-Prozess (optional)
+    - done: Abschluss mit Session-ID
+    - error: Fehler-Meldung
+    """
+    import json
+    import secrets
+
+    search_service = get_rag_search_service()
+    llm_service = get_llm_service()
+
+    async def generate_stream():
+        """Generator fuer SSE-Events."""
+        try:
+            # 1. Relevante Chunks finden
+            search_response = await search_service.semantic_search(
+                db=db,
+                query=request.message,
+                limit=settings.RAG_CHAT_CONTEXT_CHUNKS,
+                threshold=settings.RAG_SEMANTIC_THRESHOLD,
+                document_ids=None,
+                rerank=settings.RAG_RERANK_ENABLED,
+            )
+
+            # 2. Kontext aufbauen
+            context_chunks = [
+                f"[Quelle: Dokument {r.document_id}, Seite {r.page_number or 'N/A'}]\n{r.chunk_text}"
+                for r in search_response.results
+            ]
+            context = "\n\n---\n\n".join(context_chunks)
+
+            # 3. Chat Session verwalten
+            if request.session_id:
+                session = await db.get(RAGChatSession, request.session_id)
+                if not session or session.user_id != current_user.id:
+                    yield f"data: {json.dumps({'type': 'error', 'error': 'Session nicht gefunden'})}\n\n"
+                    return
+            else:
+                session = RAGChatSession(
+                    user_id=current_user.id,
+                    session_token=secrets.token_urlsafe(32),
+                    context_type=request.context_type.value if request.context_type else None,
+                    context_id=request.context_id,
+                    status="active",
+                )
+                db.add(session)
+                await db.flush()
+
+            # 4. User Message speichern
+            user_message = RAGChatMessage(
+                session_id=session.id,
+                role="user",
+                content=request.message,
+            )
+            db.add(user_message)
+
+            # 5. Quellen senden
+            for r in search_response.results:
+                source_event = {
+                    "type": "source",
+                    "source": {
+                        "chunk_id": str(r.chunk_id),
+                        "document_id": str(r.document_id),
+                        "chunk_text": r.chunk_text[:200] + "..." if len(r.chunk_text) > 200 else r.chunk_text,
+                        "chunk_index": r.chunk_index,
+                        "page_number": r.page_number,
+                        "section_type": r.section_type,
+                        "similarity": r.similarity,
+                        "rerank_score": r.rerank_score,
+                    }
+                }
+                yield f"data: {json.dumps(source_event)}\n\n"
+
+            # 6. LLM Context
+            llm_context = LLMContextType.REALTIME if request.realtime else LLMContextType.GENERAL
+
+            # 7. LLM Streaming
+            messages = [
+                LLMMessage(
+                    role="system",
+                    content=f"""Du bist ein hilfreicher Assistent fuer ein Dokumentenmanagementsystem.
+Beantworte Fragen basierend auf dem folgenden Kontext aus den Dokumenten.
+Wenn du etwas nicht weisst, sage es ehrlich.
+Antworte auf Deutsch.
+
+KONTEXT:
+{context}"""
+                ),
+                LLMMessage(role="user", content=request.message),
+            ]
+
+            full_response = ""
+            async for chunk in llm_service.generate_stream(
+                messages=messages,
+                context_type=llm_context,
+            ):
+                full_response += chunk
+                yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+
+            # 8. Assistant Message speichern
+            assistant_message = RAGChatMessage(
+                session_id=session.id,
+                role="assistant",
+                content=full_response,
+                source_chunks=[r.chunk_id for r in search_response.results],
+                source_documents=list(set(r.document_id for r in search_response.results)),
+            )
+            db.add(assistant_message)
+
+            # 9. Session aktualisieren
+            session.message_count = (session.message_count or 0) + 2
+            session.last_message_at = datetime.now(timezone.utc)
+            session.updated_at = datetime.now(timezone.utc)
+
+            await db.commit()
+
+            # 10. Done Event
+            yield f"data: {json.dumps({'type': 'done', 'session_id': str(session.id), 'message_id': str(assistant_message.id)})}\n\n"
+
+            logger.info(
+                "rag_chat_stream_completed",
+                user_id=str(current_user.id),
+                session_id=str(session.id),
+                context_chunks=len(search_response.results),
+                response_length=len(full_response),
+            )
+
+        except Exception as e:
+            logger.error("rag_chat_stream_failed", error=str(e))
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        }
+    )
+
+
+@router.delete("/chat/sessions/{session_id}")
+async def delete_chat_session(
+    session_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Loescht eine Chat-Session (soft delete)."""
+    session = await db.get(RAGChatSession, session_id)
+    if not session or session.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Session nicht gefunden")
+
+    session.status = "archived"
+    session.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    return {"status": "success", "message": "Session archiviert"}
+
+
+@router.put("/chat/sessions/{session_id}")
+async def update_chat_session(
+    session_id: UUID,
+    title: str = Query(..., min_length=1, max_length=255),
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+) -> RAGChatSessionResponse:
+    """Aktualisiert den Titel einer Chat-Session."""
+    session = await db.get(RAGChatSession, session_id)
+    if not session or session.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Session nicht gefunden")
+
+    session.title = title
+    session.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    return RAGChatSessionResponse.model_validate(session)
+
+
 @router.get("/chat/sessions", response_model=List[RAGChatSessionResponse])
 async def list_chat_sessions(
     limit: int = Query(default=20, ge=1, le=100),
@@ -335,6 +526,37 @@ async def list_chat_sessions(
     sessions = result.scalars().all()
 
     return [RAGChatSessionResponse.model_validate(s) for s in sessions]
+
+
+@router.post("/chat/sessions", response_model=RAGChatSessionResponse)
+async def create_chat_session(
+    request: RAGChatSessionCreate,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+) -> RAGChatSessionResponse:
+    """Erstellt eine neue leere Chat-Session."""
+    import secrets
+
+    session = RAGChatSession(
+        user_id=current_user.id,
+        session_token=secrets.token_urlsafe(32),
+        title=request.title,
+        context_type=request.context_type.value if request.context_type else None,
+        context_id=request.context_id,
+        status="active",
+        message_count=0,
+    )
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+
+    logger.info(
+        "rag_chat_session_created",
+        user_id=str(current_user.id),
+        session_id=str(session.id),
+    )
+
+    return RAGChatSessionResponse.model_validate(session)
 
 
 @router.get("/chat/sessions/{session_id}", response_model=RAGChatSessionWithMessages)

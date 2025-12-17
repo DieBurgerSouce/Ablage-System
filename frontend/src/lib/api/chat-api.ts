@@ -202,16 +202,26 @@ export const chatApi = {
         };
 
         try {
-            // Fetch with streaming
+            // Hole Token aus apiClient Interceptor-Logik (konsistent mit anderen API-Calls)
+            const token = localStorage.getItem('auth_token');
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+                Accept: 'text/event-stream',
+            };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            // Fetch with streaming (SSE)
+            // Verwende vollstaendige URL mit korrektem baseURL
+            const baseUrl = apiClient.defaults.baseURL || 'http://localhost:8000/api/v1';
             const response = await fetch(
-                `${apiClient.defaults.baseURL}/rag/chat/stream`,
+                `${baseUrl}/rag/chat/stream`,
                 {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-                    },
+                    headers,
                     body: JSON.stringify(request),
+                    credentials: 'include', // Fuer CORS mit Credentials (cross-origin)
                 }
             );
 
@@ -295,7 +305,8 @@ export const chatApi = {
     ): Promise<ChatSession> => {
         const response = await apiClient.put<ChatSession>(
             `/rag/chat/sessions/${sessionId}`,
-            { title }
+            null,
+            { params: { title } }
         );
         return response.data;
     },
