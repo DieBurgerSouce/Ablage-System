@@ -50,7 +50,7 @@ export function LearningProgressPanel({
     }
 
     const hasData = weights && weights.samples_analyzed > 0
-    const confidencePercent = (weights?.confidence || 0) * 100
+    const confidencePercent = Number(weights?.confidence || 0) * 100
 
     return (
         <Card>
@@ -104,15 +104,16 @@ export function LearningProgressPanel({
                         <div className="space-y-3">
                             <h4 className="text-sm font-medium">Backend-Gewichte</h4>
                             {Object.entries(weights.weights || {})
-                                .sort((a, b) => b[1] - a[1])
+                                .sort((a, b) => Number(b[1]) - Number(a[1]))
                                 .map(([backend, weight]) => {
+                                    const weightNum = Number(weight) || 0
                                     const config = BACKEND_CONFIG[backend as keyof typeof BACKEND_CONFIG]
                                     const displayName = config?.displayName || backend
                                     const color = config?.color || '#666'
 
                                     // Gewicht relativ zu 1.0 (Baseline)
-                                    const deviation = weight - 1.0
-                                    const percent = Math.min(100, Math.max(0, weight * 50))
+                                    const deviation = weightNum - 1.0
+                                    const percent = Math.min(100, Math.max(0, weightNum * 50))
 
                                     return (
                                         <div key={backend} className="space-y-1">
@@ -126,7 +127,7 @@ export function LearningProgressPanel({
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-mono font-medium">
-                                                        {weight.toFixed(2)}
+                                                        {weightNum.toFixed(2)}
                                                     </span>
                                                     <WeightTrend deviation={deviation} />
                                                 </div>
@@ -185,21 +186,22 @@ export function LearningProgressPanel({
 }
 
 function WeightTrend({ deviation }: { deviation: number }) {
-    if (Math.abs(deviation) < 0.02) {
+    const dev = Number(deviation) || 0
+    if (Math.abs(dev) < 0.02) {
         return <Minus className="h-4 w-4 text-muted-foreground" />
     }
-    if (deviation > 0) {
+    if (dev > 0) {
         return (
             <span className="flex items-center text-green-600">
                 <TrendingUp className="h-4 w-4" />
-                <span className="text-xs ml-0.5">+{(deviation * 100).toFixed(0)}%</span>
+                <span className="text-xs ml-0.5">+{(dev * 100).toFixed(0)}%</span>
             </span>
         )
     }
     return (
         <span className="flex items-center text-red-600">
             <TrendingDown className="h-4 w-4" />
-            <span className="text-xs ml-0.5">{(deviation * 100).toFixed(0)}%</span>
+            <span className="text-xs ml-0.5">{(dev * 100).toFixed(0)}%</span>
         </span>
     )
 }

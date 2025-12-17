@@ -422,15 +422,15 @@ function BatchWorkflowPage() {
                                                 <div className="flex gap-2">
                                                     {result.cer !== undefined && (
                                                         <Badge variant="outline" className="text-xs">
-                                                            CER: {(result.cer * 100).toFixed(1)}%
+                                                            CER: {(Number(result.cer) * 100).toFixed(1)}%
                                                         </Badge>
                                                     )}
                                                     {result.umlaut_accuracy !== undefined && (
                                                         <Badge
-                                                            variant={result.umlaut_accuracy >= 0.95 ? 'default' : 'secondary'}
+                                                            variant={Number(result.umlaut_accuracy) >= 0.95 ? 'default' : 'secondary'}
                                                             className="text-xs"
                                                         >
-                                                            Umlaut: {(result.umlaut_accuracy * 100).toFixed(0)}%
+                                                            Umlaut: {(Number(result.umlaut_accuracy) * 100).toFixed(0)}%
                                                         </Badge>
                                                     )}
                                                 </div>

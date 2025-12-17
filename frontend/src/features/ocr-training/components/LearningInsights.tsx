@@ -45,8 +45,9 @@ export function LearningInsights() {
     let bestWeight = 0
     if (learnedWeights?.weights) {
         Object.entries(learnedWeights.weights).forEach(([backend, weight]) => {
-            if (weight > bestWeight) {
-                bestWeight = weight
+            const weightNum = Number(weight) || 0
+            if (weightNum > bestWeight) {
+                bestWeight = weightNum
                 bestBackend = backend
             }
         })
@@ -72,7 +73,7 @@ export function LearningInsights() {
     if (bestBackend && bestWeight > 0.5) {
         insights.push({
             type: 'success',
-            message: `${getBackendDisplayName(bestBackend)} hat die höchste Gewichtung (${(bestWeight * 100).toFixed(0)}%)`,
+            message: `${getBackendDisplayName(bestBackend)} hat die höchste Gewichtung (${(Number(bestWeight) * 100).toFixed(0)}%)`,
         })
     }
 
@@ -110,20 +111,26 @@ export function LearningInsights() {
                         Automatische Backend-Optimierung basierend auf Korrekturen
                     </p>
                 </div>
-                <Button
-                    variant="outline"
-                    onClick={() => refetchWeights()}
-                    disabled={isLoadingWeights}
-                >
-                    <RefreshCw className={`mr-2 h-4 w-4 ${isLoadingWeights ? 'animate-spin' : ''}`} />
-                    Aktualisieren
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-500/30">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5 animate-pulse" />
+                        Auto-Refresh
+                    </Badge>
+                    <Button
+                        variant="outline"
+                        onClick={() => refetchWeights()}
+                        disabled={isLoadingWeights}
+                    >
+                        <RefreshCw className={`mr-2 h-4 w-4 ${isLoadingWeights ? 'animate-spin' : ''}`} />
+                        Aktualisieren
+                    </Button>
+                </div>
             </div>
 
             {/* Gewichte-Karten */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {Object.entries(BACKEND_CONFIG).map(([backendId, config]) => {
-                    const weight = learnedWeights?.weights?.[backendId] ?? 0
+                    const weight = Number(learnedWeights?.weights?.[backendId]) || 0
                     const isBest = backendId === bestBackend
 
                     return (
@@ -196,7 +203,7 @@ export function LearningInsights() {
                                 }
                             >
                                 {learnedWeights?.confidence !== undefined
-                                    ? `${(learnedWeights.confidence * 100).toFixed(0)}%`
+                                    ? `${(Number(learnedWeights.confidence) * 100).toFixed(0)}%`
                                     : '-'}
                             </Badge>
                         </div>
@@ -328,7 +335,7 @@ export function LearningInsights() {
                                     <XAxis dataKey="date" />
                                     <YAxis domain={[0, 'auto']} />
                                     <Tooltip
-                                        formatter={(value: number) => `${value.toFixed(2)}%`}
+                                        formatter={(value: number) => `${Number(value).toFixed(2)}%`}
                                     />
                                     <Legend />
                                     {Object.entries(BACKEND_CONFIG).map(([backendId, config]) => (

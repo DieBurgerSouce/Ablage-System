@@ -155,15 +155,15 @@ function BackendDetailPage() {
                     <CardContent>
                         <p
                             className={`text-3xl font-bold ${
-                                (stats?.avg_cer ?? 0) < 0.05
+                                Number(stats?.avg_cer ?? 0) < 0.05
                                     ? 'text-green-600'
-                                    : (stats?.avg_cer ?? 0) < 0.1
+                                    : Number(stats?.avg_cer ?? 0) < 0.1
                                       ? 'text-yellow-600'
                                       : 'text-red-600'
                             }`}
                         >
                             {stats?.avg_cer !== undefined
-                                ? `${(stats.avg_cer * 100).toFixed(2)}%`
+                                ? `${(Number(stats.avg_cer) * 100).toFixed(2)}%`
                                 : '-'}
                         </p>
                     </CardContent>
@@ -177,15 +177,15 @@ function BackendDetailPage() {
                     <CardContent>
                         <p
                             className={`text-3xl font-bold ${
-                                (stats?.avg_wer ?? 0) < 0.1
+                                Number(stats?.avg_wer ?? 0) < 0.1
                                     ? 'text-green-600'
-                                    : (stats?.avg_wer ?? 0) < 0.2
+                                    : Number(stats?.avg_wer ?? 0) < 0.2
                                       ? 'text-yellow-600'
                                       : 'text-red-600'
                             }`}
                         >
                             {stats?.avg_wer !== undefined
-                                ? `${(stats.avg_wer * 100).toFixed(2)}%`
+                                ? `${(Number(stats.avg_wer) * 100).toFixed(2)}%`
                                 : '-'}
                         </p>
                     </CardContent>
@@ -199,15 +199,15 @@ function BackendDetailPage() {
                     <CardContent>
                         <p
                             className={`text-3xl font-bold ${
-                                (stats?.avg_umlaut_accuracy ?? 0) >= 0.99
+                                Number(stats?.avg_umlaut_accuracy ?? 0) >= 0.99
                                     ? 'text-green-600'
-                                    : (stats?.avg_umlaut_accuracy ?? 0) >= 0.95
+                                    : Number(stats?.avg_umlaut_accuracy ?? 0) >= 0.95
                                       ? 'text-yellow-600'
                                       : 'text-red-600'
                             }`}
                         >
                             {stats?.avg_umlaut_accuracy !== undefined
-                                ? `${(stats.avg_umlaut_accuracy * 100).toFixed(1)}%`
+                                ? `${(Number(stats.avg_umlaut_accuracy) * 100).toFixed(1)}%`
                                 : '-'}
                         </p>
                     </CardContent>
@@ -351,7 +351,7 @@ function BackendDetailPage() {
                                             <XAxis dataKey="date" className="text-xs" />
                                             <YAxis domain={[0, 100]} className="text-xs" />
                                             <Tooltip
-                                                formatter={(value: number) => `${value.toFixed(2)}%`}
+                                                formatter={(value: number) => `${Number(value).toFixed(2)}%`}
                                                 contentStyle={{
                                                     backgroundColor: 'hsl(var(--card))',
                                                     border: '1px solid hsl(var(--border))',
@@ -526,7 +526,7 @@ function BackendDetailPage() {
                                     <span className="text-muted-foreground">P50 CER (Median)</span>
                                     <span className="font-medium text-lg">
                                         {stats?.p50_cer !== undefined
-                                            ? `${(stats.p50_cer * 100).toFixed(2)}%`
+                                            ? `${(Number(stats.p50_cer) * 100).toFixed(2)}%`
                                             : '-'}
                                     </span>
                                 </div>
@@ -534,7 +534,7 @@ function BackendDetailPage() {
                                     <span className="text-muted-foreground">P90 CER</span>
                                     <span className="font-medium text-lg">
                                         {stats?.p90_cer !== undefined
-                                            ? `${(stats.p90_cer * 100).toFixed(2)}%`
+                                            ? `${(Number(stats.p90_cer) * 100).toFixed(2)}%`
                                             : '-'}
                                     </span>
                                 </div>
@@ -542,7 +542,7 @@ function BackendDetailPage() {
                                     <span className="text-muted-foreground">P95 CER</span>
                                     <span className="font-medium text-lg">
                                         {stats?.p95_cer !== undefined
-                                            ? `${(stats.p95_cer * 100).toFixed(2)}%`
+                                            ? `${(Number(stats.p95_cer) * 100).toFixed(2)}%`
                                             : '-'}
                                     </span>
                                 </div>
@@ -563,7 +563,7 @@ function BackendDetailPage() {
                                     <span className="text-muted-foreground">Durchschn. Verarbeitungszeit</span>
                                     <span className="font-medium text-lg">
                                         {stats?.avg_processing_time_ms !== undefined
-                                            ? `${stats.avg_processing_time_ms.toFixed(0)} ms`
+                                            ? `${Number(stats.avg_processing_time_ms).toFixed(0)} ms`
                                             : '-'}
                                     </span>
                                 </div>
@@ -571,7 +571,7 @@ function BackendDetailPage() {
                                     <span className="text-muted-foreground">Gelernte Gewichtung</span>
                                     <div className="flex items-center gap-2">
                                         <span className="font-medium text-lg">
-                                            {weight !== undefined ? `${(weight * 100).toFixed(1)}%` : '-'}
+                                            {weight !== undefined ? `${(Number(weight) * 100).toFixed(1)}%` : '-'}
                                         </span>
                                         {isBestBackend && (
                                             <Badge variant="default" className="bg-green-600">

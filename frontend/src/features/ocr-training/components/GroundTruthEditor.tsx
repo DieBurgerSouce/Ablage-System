@@ -299,18 +299,18 @@ export function GroundTruthEditor({
                                                 <div className="grid grid-cols-3 gap-2 text-xs mb-2">
                                                     <div>
                                                         <span className="text-muted-foreground">CER</span>
-                                                        <span className={cn('ml-1 font-semibold', (benchmark.cer ?? 0) < 0.05 ? 'text-green-600' : (benchmark.cer ?? 0) < 0.1 ? 'text-yellow-600' : 'text-red-600')}>
-                                                            {benchmark.cer !== undefined ? `${(benchmark.cer * 100).toFixed(1)}%` : '-'}
+                                                        <span className={cn('ml-1 font-semibold', Number(benchmark.cer ?? 0) < 0.05 ? 'text-green-600' : Number(benchmark.cer ?? 0) < 0.1 ? 'text-yellow-600' : 'text-red-600')}>
+                                                            {benchmark.cer !== undefined ? `${(Number(benchmark.cer) * 100).toFixed(1)}%` : '-'}
                                                         </span>
                                                     </div>
                                                     <div>
                                                         <span className="text-muted-foreground">WER</span>
-                                                        <span className="ml-1 font-semibold">{benchmark.wer !== undefined ? `${(benchmark.wer * 100).toFixed(1)}%` : '-'}</span>
+                                                        <span className="ml-1 font-semibold">{benchmark.wer !== undefined ? `${(Number(benchmark.wer) * 100).toFixed(1)}%` : '-'}</span>
                                                     </div>
                                                     <div>
                                                         <span className="text-muted-foreground">Umlaut</span>
-                                                        <span className={cn('ml-1 font-semibold', (benchmark.umlaut_accuracy ?? 0) >= 0.99 ? 'text-green-600' : (benchmark.umlaut_accuracy ?? 0) >= 0.95 ? 'text-yellow-600' : 'text-red-600')}>
-                                                            {benchmark.umlaut_accuracy !== undefined ? `${(benchmark.umlaut_accuracy * 100).toFixed(0)}%` : '-'}
+                                                        <span className={cn('ml-1 font-semibold', Number(benchmark.umlaut_accuracy ?? 0) >= 0.99 ? 'text-green-600' : Number(benchmark.umlaut_accuracy ?? 0) >= 0.95 ? 'text-yellow-600' : 'text-red-600')}>
+                                                            {benchmark.umlaut_accuracy !== undefined ? `${(Number(benchmark.umlaut_accuracy) * 100).toFixed(0)}%` : '-'}
                                                         </span>
                                                     </div>
                                                 </div>

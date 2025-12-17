@@ -117,7 +117,7 @@ export function BackendComparisonChart({ comparison }: BackendComparisonChartPro
                                 <div className="text-right">
                                     <p className="text-sm text-muted-foreground">Gelernte Gewichtung</p>
                                     <p className="text-xl font-semibold">
-                                        {((learnedWeights.weights[comparison.best_backend] || 1) * 100).toFixed(0)}%
+                                        {(Number(learnedWeights.weights[comparison.best_backend] || 1) * 100).toFixed(0)}%
                                     </p>
                                 </div>
                             )}
@@ -144,7 +144,7 @@ export function BackendComparisonChart({ comparison }: BackendComparisonChartPro
                             <XAxis dataKey="name" />
                             <YAxis unit="%" />
                             <Tooltip
-                                formatter={(value: number) => `${value.toFixed(2)}%`}
+                                formatter={(value: number) => `${Number(value).toFixed(2)}%`}
                                 contentStyle={{
                                     backgroundColor: 'hsl(var(--background))',
                                     border: '1px solid hsl(var(--border))',
@@ -232,19 +232,19 @@ export function BackendComparisonChart({ comparison }: BackendComparisonChartPro
                                         </td>
                                         <td className="text-right p-2">{data.samples_processed}</td>
                                         <td className="text-right p-2">
-                                            {data.avg_cer != null ? `${(data.avg_cer * 100).toFixed(2)}%` : '-'}
+                                            {data.avg_cer != null ? `${(Number(data.avg_cer) * 100).toFixed(2)}%` : '-'}
                                         </td>
                                         <td className="text-right p-2">
-                                            {data.avg_wer != null ? `${(data.avg_wer * 100).toFixed(2)}%` : '-'}
+                                            {data.avg_wer != null ? `${(Number(data.avg_wer) * 100).toFixed(2)}%` : '-'}
                                         </td>
                                         <td className="text-right p-2">
-                                            {data.avg_umlaut_accuracy != null ? `${(data.avg_umlaut_accuracy * 100).toFixed(1)}%` : '-'}
+                                            {data.avg_umlaut_accuracy != null ? `${(Number(data.avg_umlaut_accuracy) * 100).toFixed(1)}%` : '-'}
                                         </td>
                                         <td className="text-right p-2">
-                                            {data.p50_cer != null ? `${(data.p50_cer * 100).toFixed(2)}%` : '-'}
+                                            {data.p50_cer != null ? `${(Number(data.p50_cer) * 100).toFixed(2)}%` : '-'}
                                         </td>
                                         <td className="text-right p-2">
-                                            {data.p90_cer != null ? `${(data.p90_cer * 100).toFixed(2)}%` : '-'}
+                                            {data.p90_cer != null ? `${(Number(data.p90_cer) * 100).toFixed(2)}%` : '-'}
                                         </td>
                                         <td className="text-right p-2">
                                             {data.avg_processing_time_ms != null ? `${data.avg_processing_time_ms}ms` : '-'}

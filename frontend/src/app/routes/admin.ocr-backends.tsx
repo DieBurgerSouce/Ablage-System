@@ -214,15 +214,15 @@ function OCRBackendsPage() {
                                                 <p className="text-xs text-muted-foreground">CER</p>
                                                 <p
                                                     className={`text-lg font-semibold ${
-                                                        (stats.avg_cer ?? 0) < 0.05
+                                                        Number(stats.avg_cer ?? 0) < 0.05
                                                             ? 'text-green-600'
-                                                            : (stats.avg_cer ?? 0) < 0.1
+                                                            : Number(stats.avg_cer ?? 0) < 0.1
                                                               ? 'text-yellow-600'
                                                               : 'text-red-600'
                                                     }`}
                                                 >
                                                     {stats.avg_cer !== undefined
-                                                        ? `${(stats.avg_cer * 100).toFixed(1)}%`
+                                                        ? `${(Number(stats.avg_cer) * 100).toFixed(1)}%`
                                                         : '-'}
                                                 </p>
                                             </div>
@@ -230,15 +230,15 @@ function OCRBackendsPage() {
                                                 <p className="text-xs text-muted-foreground">Umlaut</p>
                                                 <p
                                                     className={`text-lg font-semibold ${
-                                                        (stats.avg_umlaut_accuracy ?? 0) >= 0.99
+                                                        Number(stats.avg_umlaut_accuracy ?? 0) >= 0.99
                                                             ? 'text-green-600'
-                                                            : (stats.avg_umlaut_accuracy ?? 0) >= 0.95
+                                                            : Number(stats.avg_umlaut_accuracy ?? 0) >= 0.95
                                                               ? 'text-yellow-600'
                                                               : 'text-red-600'
                                                     }`}
                                                 >
                                                     {stats.avg_umlaut_accuracy !== undefined
-                                                        ? `${(stats.avg_umlaut_accuracy * 100).toFixed(0)}%`
+                                                        ? `${(Number(stats.avg_umlaut_accuracy) * 100).toFixed(0)}%`
                                                         : '-'}
                                                 </p>
                                             </div>
@@ -262,7 +262,7 @@ function OCRBackendsPage() {
                                                 Gelernte Gewichtung
                                             </span>
                                             <Badge variant="outline">
-                                                {(weight * 100).toFixed(0)}%
+                                                {(Number(weight) * 100).toFixed(0)}%
                                             </Badge>
                                         </div>
                                     )}
@@ -366,7 +366,7 @@ function OCRBackendsPage() {
                     <CardContent>
                         <p className="text-2xl font-bold">
                             {learnedWeights?.confidence !== undefined
-                                ? `${(learnedWeights.confidence * 100).toFixed(0)}%`
+                                ? `${(Number(learnedWeights.confidence) * 100).toFixed(0)}%`
                                 : '-'}
                         </p>
                     </CardContent>

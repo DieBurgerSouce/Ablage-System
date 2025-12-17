@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTaskWebSocket } from '@/lib/hooks/use-task-websocket'
 import {
     Dialog,
     DialogContent,
@@ -84,7 +85,25 @@ export function RunBenchmarkDialog({
     )
     const [randomSampleCount, setRandomSampleCount] = useState(50)
     const [forceReprocess, setForceReprocess] = useState(false)
+    const [taskId, setTaskId] = useState<string | null>(null)
     const queryClient = useQueryClient()
+
+    // WebSocket für Live-Updates
+    const {
+        status: taskStatus,
+        isConnected,
+        progress: wsProgress,
+        isComplete: taskComplete,
+        error: wsError,
+    } = useTaskWebSocket(taskId, {
+        onComplete: (_result) => {
+            // Invalidate relevante Queries nach Task-Abschluss
+            queryClient.invalidateQueries({ queryKey: ['training', 'samples'] })
+            queryClient.invalidateQueries({ queryKey: ['training', 'benchmarks'] })
+            queryClient.invalidateQueries({ queryKey: ['training', 'stats'] })
+            queryClient.invalidateQueries({ queryKey: ['training', 'overview'] })
+        },
+    })
 
     // Hole Overview-Stats für Sample-Anzahlen
     const { data: overview } = useQuery({
@@ -128,15 +147,18 @@ export function RunBenchmarkDialog({
                 force_reprocess: forceReprocess,
             })
         },
-        onSuccess: () => {
-            // Invalidate relevante Queries
-            queryClient.invalidateQueries({ queryKey: ['training', 'samples'] })
-            queryClient.invalidateQueries({ queryKey: ['training', 'benchmarks'] })
-            queryClient.invalidateQueries({ queryKey: ['training', 'stats'] })
-            queryClient.invalidateQueries({ queryKey: ['training', 'overview'] })
-
-            // Dialog schließen nach kurzer Verzögerung
-            setTimeout(() => setOpen(false), 2000)
+        onSuccess: (data) => {
+            // Task-ID speichern für WebSocket-Verbindung
+            if (data?.task_id) {
+                setTaskId(data.task_id)
+            } else {
+                // Fallback: Queries sofort invalidieren wenn keine task_id
+                queryClient.invalidateQueries({ queryKey: ['training', 'samples'] })
+                queryClient.invalidateQueries({ queryKey: ['training', 'benchmarks'] })
+                queryClient.invalidateQueries({ queryKey: ['training', 'stats'] })
+                queryClient.invalidateQueries({ queryKey: ['training', 'overview'] })
+                setTimeout(() => setOpen(false), 2000)
+            }
         },
     })
 
@@ -163,8 +185,24 @@ export function RunBenchmarkDialog({
         return availableBackends.some((b) => b.name === backendId && b.available)
     }
 
+    // Reset state beim Schließen des Dialogs
+    const handleOpenChange = (newOpen: boolean) => {
+        // Verhindere Schließen während Task läuft (aber nicht abgeschlossen)
+        if (!newOpen && taskId && !taskComplete) {
+            // Task läuft noch - Dialog NICHT schließen
+            return
+        }
+
+        if (!newOpen) {
+            // Sofort resetten, kein setTimeout (vermeidet Race Condition)
+            setTaskId(null)
+            benchmarkMutation.reset()
+        }
+        setOpen(newOpen)
+    }
+
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
                 {trigger || (
                     <Button>
@@ -249,7 +287,7 @@ export function RunBenchmarkDialog({
                             <div className="text-sm">
                                 <p className="font-medium text-yellow-600">Hohe GPU-Auslastung</p>
                                 <p className="text-muted-foreground">
-                                    Geschätzter VRAM: {estimatedVram}GB ({vramPercentage.toFixed(0)}%).
+                                    Geschätzter VRAM: {estimatedVram}GB ({Number(vramPercentage).toFixed(0)}%).
                                     Backends werden sequenziell verarbeitet.
                                 </p>
                             </div>
@@ -366,8 +404,77 @@ export function RunBenchmarkDialog({
                         </label>
                     </div>
 
-                    {/* Erfolgs-/Fehler-Anzeige */}
-                    {benchmarkMutation.isSuccess && (
+                    {/* WebSocket Live-Status */}
+                    {taskId && !taskComplete && (
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                    <span className="text-sm font-medium">
+                                        {taskStatus?.message || 'Benchmark läuft...'}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {isConnected ? (
+                                        <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-500/30">
+                                            Live
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
+                                            Verbinde...
+                                        </Badge>
+                                    )}
+                                </div>
+                            </div>
+                            <Progress value={wsProgress} className="h-2" />
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                                <span>
+                                    {taskStatus?.current ?? 0} / {taskStatus?.total ?? '?'} Samples
+                                </span>
+                                <span>{Number(wsProgress).toFixed(0)}%</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Task abgeschlossen */}
+                    {taskComplete && taskStatus?.state === 'SUCCESS' && (
+                        <div className="flex items-start gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                            <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                            <div className="text-sm">
+                                <p className="font-medium text-green-600">Benchmark abgeschlossen!</p>
+                                <p className="text-muted-foreground">
+                                    {taskStatus.total} Samples verarbeitet
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Task fehlgeschlagen */}
+                    {taskComplete && taskStatus?.state === 'FAILURE' && (
+                        <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                            <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                            <div className="text-sm">
+                                <p className="font-medium text-red-600">Benchmark fehlgeschlagen</p>
+                                <p className="text-muted-foreground">
+                                    {taskStatus.error || 'Unbekannter Fehler'}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* WebSocket Fehler */}
+                    {wsError && (
+                        <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                            <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                            <div className="text-sm">
+                                <p className="font-medium text-yellow-600">Verbindungsproblem</p>
+                                <p className="text-muted-foreground">{wsError}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Fallback: Erfolgs-/Fehler-Anzeige ohne WebSocket */}
+                    {benchmarkMutation.isSuccess && !taskId && (
                         <div className="flex items-start gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
                             <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                             <div className="text-sm">
@@ -394,33 +501,47 @@ export function RunBenchmarkDialog({
                 </div>
 
                 <DialogFooter>
-                    <Button
-                        variant="outline"
-                        onClick={() => setOpen(false)}
-                        disabled={benchmarkMutation.isPending}
-                    >
-                        Abbrechen
-                    </Button>
-                    <Button
-                        onClick={() => benchmarkMutation.mutate()}
-                        disabled={
-                            selectedBackends.length === 0 ||
-                            benchmarkMutation.isPending ||
-                            benchmarkMutation.isSuccess
-                        }
-                    >
-                        {benchmarkMutation.isPending ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Starte...
-                            </>
-                        ) : (
-                            <>
-                                <Play className="mr-2 h-4 w-4" />
-                                Benchmark starten
-                            </>
-                        )}
-                    </Button>
+                    {taskComplete ? (
+                        <Button onClick={() => setOpen(false)}>
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                            Schließen
+                        </Button>
+                    ) : (
+                        <>
+                            <Button
+                                variant="outline"
+                                onClick={() => setOpen(false)}
+                                disabled={benchmarkMutation.isPending || !!(taskId && !taskComplete)}
+                            >
+                                Abbrechen
+                            </Button>
+                            <Button
+                                onClick={() => benchmarkMutation.mutate()}
+                                disabled={
+                                    selectedBackends.length === 0 ||
+                                    benchmarkMutation.isPending ||
+                                    !!taskId
+                                }
+                            >
+                                {benchmarkMutation.isPending ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Starte...
+                                    </>
+                                ) : taskId ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Läuft...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Play className="mr-2 h-4 w-4" />
+                                        Benchmark starten
+                                    </>
+                                )}
+                            </Button>
+                        </>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

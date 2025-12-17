@@ -188,10 +188,10 @@ interface PriorityBreakdownProps {
 
 export function PriorityBreakdown({ stats }: PriorityBreakdownProps) {
     const priorities = [
-        { key: 'CRITICAL', label: 'Kritisch', color: 'bg-red-500' },
-        { key: 'HIGH', label: 'Hoch', color: 'bg-orange-500' },
-        { key: 'MEDIUM', label: 'Mittel', color: 'bg-yellow-500' },
-        { key: 'LOW', label: 'Niedrig', color: 'bg-green-500' },
+        { key: 'critical', label: 'Kritisch', color: 'bg-red-500' },
+        { key: 'high', label: 'Hoch', color: 'bg-orange-500' },
+        { key: 'medium', label: 'Mittel', color: 'bg-yellow-500' },
+        { key: 'low', label: 'Niedrig', color: 'bg-green-500' },
     ]
 
     const total = stats.total_pending || 1
@@ -206,8 +206,8 @@ export function PriorityBreakdown({ stats }: PriorityBreakdownProps) {
             </CardHeader>
             <CardContent className="space-y-2">
                 {priorities.map(({ key, label, color }) => {
-                    const count = stats.pending_by_priority?.[key] || 0
-                    const percent = (count / total) * 100
+                    const count = Number(stats.pending_by_priority?.[key]) || 0
+                    const percent = Number.isFinite(count / total) ? (count / total) * 100 : 0
 
                     return (
                         <div key={key} className="flex items-center gap-3">

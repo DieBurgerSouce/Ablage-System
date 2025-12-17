@@ -185,15 +185,15 @@ export function SampleDetailModal({ sample, benchmarks: propBenchmarks, open, on
                                                                     </span>
                                                                     <span
                                                                         className={`font-semibold ${
-                                                                            (benchmark.cer ?? 0) < 0.05
+                                                                            Number(benchmark.cer ?? 0) < 0.05
                                                                                 ? 'text-green-600'
-                                                                                : (benchmark.cer ?? 0) < 0.1
+                                                                                : Number(benchmark.cer ?? 0) < 0.1
                                                                                   ? 'text-yellow-600'
                                                                                   : 'text-red-600'
                                                                         }`}
                                                                     >
                                                                         {benchmark.cer !== undefined
-                                                                            ? `${(benchmark.cer * 100).toFixed(2)}%`
+                                                                            ? `${(Number(benchmark.cer) * 100).toFixed(2)}%`
                                                                             : '-'}
                                                                     </span>
                                                                 </div>
@@ -203,7 +203,7 @@ export function SampleDetailModal({ sample, benchmarks: propBenchmarks, open, on
                                                                     </span>
                                                                     <span className="font-semibold">
                                                                         {benchmark.wer !== undefined
-                                                                            ? `${(benchmark.wer * 100).toFixed(2)}%`
+                                                                            ? `${(Number(benchmark.wer) * 100).toFixed(2)}%`
                                                                             : '-'}
                                                                     </span>
                                                                 </div>
@@ -213,15 +213,15 @@ export function SampleDetailModal({ sample, benchmarks: propBenchmarks, open, on
                                                                     </span>
                                                                     <span
                                                                         className={`font-semibold ${
-                                                                            (benchmark.umlaut_accuracy ?? 0) >= 0.99
+                                                                            Number(benchmark.umlaut_accuracy ?? 0) >= 0.99
                                                                                 ? 'text-green-600'
-                                                                                : (benchmark.umlaut_accuracy ?? 0) >= 0.95
+                                                                                : Number(benchmark.umlaut_accuracy ?? 0) >= 0.95
                                                                                   ? 'text-yellow-600'
                                                                                   : 'text-red-600'
                                                                         }`}
                                                                     >
                                                                         {benchmark.umlaut_accuracy !== undefined
-                                                                            ? `${(benchmark.umlaut_accuracy * 100).toFixed(0)}%`
+                                                                            ? `${(Number(benchmark.umlaut_accuracy) * 100).toFixed(0)}%`
                                                                             : '-'}
                                                                     </span>
                                                                 </div>

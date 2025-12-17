@@ -1,10 +1,15 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
+    Activity,
     BarChart3,
     Brain,
     Clock,
+    Cpu,
+    ExternalLink,
     FileText,
     FlaskConical,
+    GitBranch,
     GitCompare,
     Layers,
     Loader2,
@@ -13,7 +18,9 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { TrainingOverviewStats, BackendStats } from '@/lib/api/services/training';
+import { monitoringService } from '@/lib/api/services/monitoring';
 import {
     useOverviewStats,
     useBackendStats,
@@ -28,6 +35,15 @@ import { SamplesList } from './SamplesList';
 import { BatchesList } from './BatchesList';
 import { LearningInsights } from './LearningInsights';
 
+// Icon-Mapping für Grafana Dashboards
+const dashboardIcons: Record<string, React.ReactNode> = {
+    Activity: <Activity className="h-4 w-4" />,
+    FileText: <FileText className="h-4 w-4" />,
+    Cpu: <Cpu className="h-4 w-4" />,
+    GitBranch: <GitBranch className="h-4 w-4" />,
+    Database: <Layers className="h-4 w-4" />,
+};
+
 export function TrainingDashboard() {
     const [activeTab, setActiveTab] = useState('overview');
 
@@ -35,7 +51,71 @@ export function TrainingDashboard() {
     const { data: backendStats, isLoading: backendStatsLoading } = useBackendStats(30);
     const { data: comparison } = useBackendComparison();
 
+    // Grafana Dashboard Links
+    const { data: dashboards } = useQuery({
+        queryKey: ['monitoring', 'dashboards'],
+        queryFn: monitoringService.getDashboards,
+        staleTime: 5 * 60 * 1000, // 5 Minuten
+    });
+
     return (
+        <div className="space-y-6">
+            {/* Header mit Grafana Links */}
+            {dashboards?.enabled && (
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold">OCR Training Dashboard</h1>
+                        <p className="text-muted-foreground">
+                            Ground Truth, Benchmarks & Self-Learning
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {dashboards?.dashboards?.ocr_pipeline && (
+                            <Button variant="outline" size="sm" asChild>
+                                <a
+                                    href={dashboards.dashboards.ocr_pipeline.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1.5"
+                                >
+                                    {dashboardIcons[dashboards.dashboards.ocr_pipeline.icon] || <Activity className="h-4 w-4" />}
+                                    OCR Metriken
+                                    <ExternalLink className="h-3 w-3 ml-1" />
+                                </a>
+                            </Button>
+                        )}
+                        {dashboards?.dashboards?.ml_routing && (
+                            <Button variant="outline" size="sm" asChild>
+                                <a
+                                    href={dashboards.dashboards.ml_routing.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1.5"
+                                >
+                                    {dashboardIcons[dashboards.dashboards.ml_routing.icon] || <GitBranch className="h-4 w-4" />}
+                                    ML Routing
+                                    <ExternalLink className="h-3 w-3 ml-1" />
+                                </a>
+                            </Button>
+                        )}
+                        {dashboards?.dashboards?.gpu_profiling && (
+                            <Button variant="outline" size="sm" asChild>
+                                <a
+                                    href={dashboards.dashboards.gpu_profiling.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1.5"
+                                >
+                                    {dashboardIcons[dashboards.dashboards.gpu_profiling.icon] || <Cpu className="h-4 w-4" />}
+                                    GPU
+                                    <ExternalLink className="h-3 w-3 ml-1" />
+                                </a>
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            )}
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="overview" className="gap-2">
@@ -84,6 +164,7 @@ export function TrainingDashboard() {
                 <LearningInsights />
             </TabsContent>
         </Tabs>
+        </div>
     );
 }
 
@@ -267,25 +348,25 @@ function BackendCard({ backend }: BackendCardProps) {
                 <div className="flex justify-between">
                     <span className="text-muted-foreground">CER</span>
                     <span className={cerColor}>
-                        {backend.avg_cer != null ? `${(backend.avg_cer * 100).toFixed(2)}%` : '-'}
+                        {backend.avg_cer != null ? `${(Number(backend.avg_cer) * 100).toFixed(2)}%` : '-'}
                     </span>
                 </div>
                 <div className="flex justify-between">
                     <span className="text-muted-foreground">WER</span>
                     <span>
-                        {backend.avg_wer != null ? `${(backend.avg_wer * 100).toFixed(2)}%` : '-'}
+                        {backend.avg_wer != null ? `${(Number(backend.avg_wer) * 100).toFixed(2)}%` : '-'}
                     </span>
                 </div>
                 <div className="flex justify-between">
                     <span className="text-muted-foreground">Umlaut</span>
                     <span className={umlautColor}>
-                        {backend.avg_umlaut_accuracy != null ? `${(backend.avg_umlaut_accuracy * 100).toFixed(1)}%` : '-'}
+                        {backend.avg_umlaut_accuracy != null ? `${(Number(backend.avg_umlaut_accuracy) * 100).toFixed(1)}%` : '-'}
                     </span>
                 </div>
                 <div className="flex justify-between">
                     <span className="text-muted-foreground">Zeit</span>
                     <span>
-                        {backend.avg_processing_time_ms != null ? `${backend.avg_processing_time_ms.toFixed(0)}ms` : '-'}
+                        {backend.avg_processing_time_ms != null ? `${Number(backend.avg_processing_time_ms).toFixed(0)}ms` : '-'}
                     </span>
                 </div>
             </div>

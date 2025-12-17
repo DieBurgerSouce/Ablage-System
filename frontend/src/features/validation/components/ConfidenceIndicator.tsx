@@ -19,11 +19,11 @@ export function ConfidenceIndicator({ score, className }: ConfidenceIndicatorPro
     }
 
     return (
-        <div className={cn("flex items-center gap-2", className)} title={`Konfidenz: ${(score * 100).toFixed(1)}%`}>
+        <div className={cn("flex items-center gap-2", className)} title={`Konfidenz: ${(Number(score) * 100).toFixed(1)}%`}>
             <div className="h-2 w-full max-w-[100px] bg-secondary rounded-full overflow-hidden">
                 <div
                     className={cn("h-full transition-all duration-500", color)}
-                    style={{ width: `${score * 100}%` }}
+                    style={{ width: `${Number(score) * 100}%` }}
                 />
             </div>
             <span className="text-xs text-muted-foreground font-medium">{label}</span>
