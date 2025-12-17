@@ -360,10 +360,10 @@ class GermanPatterns:
 
     # Firmenname (vor Rechtsform) - inkl. EU-Rechtsformen
     # WICHTIG: Nur Leerzeichen (keine Newlines), Rechtsformen in Reihenfolge (GmbH vor mbH!)
-    # FIX 2025-12-15: Pattern verbessert fuer mehrteilige Namen wie "Amefa Stahlwaren"
-    # Das Pattern matcht alles vor der Rechtsform (greedy), solange es mit Grossbuchstabe beginnt
+    # FIX 2025-12-17: \s+ durch [ \t]+ ersetzt - keine Zeilenumbrueche matchen!
+    # Das Pattern matcht alles vor der Rechtsform auf EINER Zeile
     COMPANY_NAME = re.compile(
-        r'\b([A-ZÄÖÜ][A-Za-zäöüß&\-\.]+(?:\s+[A-Za-zäöüß&\-\.]+)*)[ \t]+'
+        r'\b([A-ZÄÖÜ][A-Za-zäöüß&\-\.]+(?:[ \t]+[A-Za-zäöüß&\-\.]+)*)[ \t]+'
         r'(GmbH|mbH|AG|KG|OHG|UG|e\.?\s?K\.|SE|eG|KGaA|'
         r'B\.?V\.?|N\.?V\.?|S\.?A\.?|S\.?L\.?|S\.?R\.?L\.?|Ltd\.?|Inc\.?|PLC|LLC)\b',
         re.UNICODE
@@ -539,6 +539,23 @@ class EntityExtractionService:
 
             # Minimale Laengenvalidierung (Laendercode + mindestens 8 Zeichen)
             if len(normalized) < 10:
+                continue
+
+            # KRITISCH: VAT-IDs MUESSEN mindestens eine Ziffer enthalten!
+            # Filtert Woerter wie "SILBERGRAU" (SI+LBERGRAU) oder "SEITENWAND" (SE+ITENWAND)
+            if not any(c.isdigit() for c in number):
+                continue
+
+            # Zusaetzlich: Ablehne bekannte deutsche Woerter die mit Laendercodes beginnen
+            german_words_with_country_prefix = {
+                "SILBERGRAU", "SEITENWAND", "SEITE", "SEITLICH", "SILBER",
+                "DEKO", "DEKORATION", "DEKOR", "DECKEL", "DEFAULT",
+                "FREI", "FREIHEIT", "FRISCH", "FRONT", "FRONTAL",
+                "GRAU", "GRUEN", "GROSS", "GROESSE",
+                "PLATZ", "PLATTE", "PLASTIK", "PLAN",
+                "ITALIEN", "ITALIENISCH",
+            }
+            if normalized in german_words_with_country_prefix:
                 continue
 
             seen_vat_ids.add(normalized)
@@ -898,12 +915,20 @@ class EntityExtractionService:
                 )
 
                 # Land aus Kontext bestimmen (ueberschreibt PLZ-basiertes Land)
+                # ABER: Bei eindeutigem PLZ-Format (NL NNNN AA) nicht ueberschreiben!
+                # Das verhindert falsche Zuordnung wenn nachfolgende Adressen anderes Land haben.
                 detected_country = self._detect_country_from_context(
                     text, match.start(), match.end()
                 )
                 if detected_country:
-                    address.country = detected_country
-                    address.confidence += 0.05  # Boost fuer expliziten Laendernamen
+                    # NL-PLZ (4+2 Format) ist eindeutig - nicht ueberschreiben
+                    plz_is_nl_format = re.match(r'^[0-9]{4}[ 	]?[A-Z]{2}$', address.postal_code or '')
+                    if plz_is_nl_format and country == 'NL' and detected_country != 'NL':
+                        # Behalte NL - das PLZ-Format ist eindeutig
+                        pass
+                    else:
+                        address.country = detected_country
+                        address.confidence += 0.05  # Boost fuer expliziten Laendernamen
 
                 # Strasse in der Naehe suchen (150 Zeichen vorher)
                 # WICHTIG: Letzten Match verwenden (naechster zur PLZ)

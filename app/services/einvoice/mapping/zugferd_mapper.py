@@ -540,13 +540,14 @@ class ZUGFeRDMapper:
         # XML aufbauen
         root = self._build_xml(invoice, profile)
 
-        # Serialisieren
-        return etree.tostring(
+        # Serialisieren (UTF-8 mit XML Declaration)
+        xml_bytes = etree.tostring(
             root,
-            encoding="unicode",
+            encoding="UTF-8",
             pretty_print=True,
             xml_declaration=True
         )
+        return xml_bytes.decode("utf-8")
 
     def _validate_for_generation(
         self,
@@ -694,39 +695,54 @@ class ZUGFeRDMapper:
             seller_id = etree.SubElement(product, f"{{{ram}}}SellerAssignedID")
             seller_id.text = item.article_number
         name = etree.SubElement(product, f"{{{ram}}}Name")
-        name.text = item.description
+        name.text = item.description or "Position"
 
-        # SpecifiedLineTradeAgreement
+        # Berechne fehlende Werte
+        quantity = item.quantity if item.quantity is not None else Decimal("1")
+        unit_price = item.unit_price
+        total_price = item.total_price
+
+        # Berechne unit_price wenn nicht vorhanden
+        if unit_price is None:
+            if total_price is not None and quantity:
+                unit_price = total_price / quantity
+            else:
+                unit_price = total_price or Decimal("0")
+
+        # Berechne total_price wenn nicht vorhanden
+        if total_price is None:
+            total_price = unit_price * quantity if unit_price else Decimal("0")
+
+        # SpecifiedLineTradeAgreement - PFLICHT: NetPriceProductTradePrice
         agreement = etree.SubElement(line, f"{{{ram}}}SpecifiedLineTradeAgreement")
-        if item.unit_price is not None:
-            price = etree.SubElement(agreement, f"{{{ram}}}NetPriceProductTradePrice")
-            charge = etree.SubElement(price, f"{{{ram}}}ChargeAmount")
-            charge.text = str(item.unit_price)
+        price = etree.SubElement(agreement, f"{{{ram}}}NetPriceProductTradePrice")
+        charge = etree.SubElement(price, f"{{{ram}}}ChargeAmount")
+        charge.text = str(unit_price)
 
-        # SpecifiedLineTradeDelivery
+        # SpecifiedLineTradeDelivery - PFLICHT: BilledQuantity
         delivery = etree.SubElement(line, f"{{{ram}}}SpecifiedLineTradeDelivery")
-        if item.quantity is not None:
-            qty = etree.SubElement(delivery, f"{{{ram}}}BilledQuantity")
-            qty.text = str(item.quantity)
-            qty.set("unitCode", item.unit or "C62")
+        qty = etree.SubElement(delivery, f"{{{ram}}}BilledQuantity")
+        qty.text = str(quantity)
+        qty.set("unitCode", item.unit or "C62")
 
         # SpecifiedLineTradeSettlement
         settlement = etree.SubElement(line, f"{{{ram}}}SpecifiedLineTradeSettlement")
-        if item.vat_rate is not None:
-            tax = etree.SubElement(settlement, f"{{{ram}}}ApplicableTradeTax")
-            type_code = etree.SubElement(tax, f"{{{ram}}}TypeCode")
-            type_code.text = "VAT"
-            cat_code = etree.SubElement(tax, f"{{{ram}}}CategoryCode")
-            cat_code.text = "S"
-            rate = etree.SubElement(tax, f"{{{ram}}}RateApplicablePercent")
-            rate.text = str(item.vat_rate)
 
-        if item.total_price is not None:
-            summary = etree.SubElement(
-                settlement, f"{{{ram}}}SpecifiedTradeSettlementLineMonetarySummation"
-            )
-            total = etree.SubElement(summary, f"{{{ram}}}LineTotalAmount")
-            total.text = str(item.total_price)
+        # ApplicableTradeTax ist Pflicht und muss VOR SpecifiedTradeSettlementLineMonetarySummation kommen
+        tax = etree.SubElement(settlement, f"{{{ram}}}ApplicableTradeTax")
+        type_code = etree.SubElement(tax, f"{{{ram}}}TypeCode")
+        type_code.text = "VAT"
+        cat_code = etree.SubElement(tax, f"{{{ram}}}CategoryCode")
+        cat_code.text = "S"  # Standard rate
+        rate = etree.SubElement(tax, f"{{{ram}}}RateApplicablePercent")
+        rate.text = str(item.vat_rate if item.vat_rate is not None else Decimal("19.00"))
+
+        # SpecifiedTradeSettlementLineMonetarySummation - PFLICHT: LineTotalAmount
+        summary = etree.SubElement(
+            settlement, f"{{{ram}}}SpecifiedTradeSettlementLineMonetarySummation"
+        )
+        total = etree.SubElement(summary, f"{{{ram}}}LineTotalAmount")
+        total.text = str(total_price)
 
     def _add_trade_agreement(
         self,
@@ -1028,3 +1044,23 @@ class ZUGFeRDMapper:
             return Decimal(text.replace(",", "."))
         except (ValueError, ArithmeticError):
             return None
+
+
+# =============================================================================
+# FACTORY FUNCTION
+# =============================================================================
+
+_zugferd_mapper_instance: Optional[ZUGFeRDMapper] = None
+
+
+def get_zugferd_mapper() -> ZUGFeRDMapper:
+    """
+    Factory-Funktion fuer ZUGFeRDMapper (Singleton).
+
+    Returns:
+        ZUGFeRDMapper: Globale Mapper-Instanz
+    """
+    global _zugferd_mapper_instance
+    if _zugferd_mapper_instance is None:
+        _zugferd_mapper_instance = ZUGFeRDMapper()
+    return _zugferd_mapper_instance

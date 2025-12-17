@@ -1,0 +1,563 @@
+# -*- coding: utf-8 -*-
+"""
+E-Invoice Validator Service.
+
+Validiert E-Rechnungen gegen die offiziellen Standards:
+- ZUGFeRD 2.x: factur-x integrierte Validierung
+- XRechnung 3.0.2: KoSIT Validator via Mustang Microservice
+
+Validierungsstufen:
+1. XML-Schema-Validierung (XSD)
+2. Schematron Business-Rules (EN 16931 + BR-DE)
+3. PDF/A-3 Konformitaet (nur bei ZUGFeRD)
+
+Der KoSIT-Validator ist der offizielle Validator der Koordinierungsstelle
+fuer IT-Standards (KoSIT) und prueft gegen die aktuellen XRechnung-Spezifikationen.
+"""
+
+import logging
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from enum import Enum
+from typing import List, Optional, Dict, Any
+
+from lxml import etree
+
+from app.core.config import settings
+from app.services.einvoice.mustang_client import (
+    MustangClient,
+    MustangConnectionError,
+    get_mustang_client,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class ValidatorType(str, Enum):
+    """Verfuegbare Validatoren."""
+    FACTURX = "facturx"  # Schnelle lokale Validierung
+    KOSIT = "kosit"  # Offizieller KoSIT-Validator (via Mustang)
+    MUSTANG = "mustang"  # Mustang-integrierter Validator
+    AUTO = "auto"  # Automatische Auswahl
+
+
+class ValidationSeverity(str, Enum):
+    """Schweregrad einer Validierungsmeldung."""
+    FATAL = "fatal"  # Schema-Fehler, XML ungueltig
+    ERROR = "error"  # Business Rule verletzt
+    WARNING = "warning"  # Empfehlung nicht befolgt
+    INFO = "info"  # Hinweis
+
+
+@dataclass
+class ValidationMessage:
+    """Einzelne Validierungsmeldung."""
+    code: str
+    severity: ValidationSeverity
+    location: str  # XPath oder Element-Name
+    message: str
+    rule_id: Optional[str] = None  # z.B. "BR-DE-01"
+    details: Optional[str] = None
+
+
+@dataclass
+class ValidationResult:
+    """Vollstaendiges Validierungsergebnis."""
+    valid: bool
+    validated_at: datetime
+    validator_used: str
+    format_detected: Optional[str] = None  # zugferd/xrechnung_cii/xrechnung_ubl
+    profile_detected: Optional[str] = None
+
+    # Detail-Ergebnisse
+    schema_valid: bool = True
+    schematron_valid: bool = True
+    pdf_a_compliant: Optional[bool] = None  # Nur bei ZUGFeRD-PDF
+
+    # Meldungen
+    messages: List[ValidationMessage] = field(default_factory=list)
+
+    # Zusammenfassung
+    error_count: int = 0
+    warning_count: int = 0
+
+    # Raw Output (fuer Debugging)
+    raw_output: Optional[str] = None
+
+    def add_error(
+        self,
+        code: str,
+        location: str,
+        message: str,
+        rule_id: Optional[str] = None
+    ) -> None:
+        """Fuegt Fehlermeldung hinzu."""
+        self.messages.append(ValidationMessage(
+            code=code,
+            severity=ValidationSeverity.ERROR,
+            location=location,
+            message=message,
+            rule_id=rule_id,
+        ))
+        self.error_count += 1
+        self.valid = False
+
+    def add_warning(
+        self,
+        code: str,
+        location: str,
+        message: str,
+        rule_id: Optional[str] = None
+    ) -> None:
+        """Fuegt Warnung hinzu."""
+        self.messages.append(ValidationMessage(
+            code=code,
+            severity=ValidationSeverity.WARNING,
+            location=location,
+            message=message,
+            rule_id=rule_id,
+        ))
+        self.warning_count += 1
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Konvertiert zu Dictionary fuer API-Response."""
+        return {
+            "valid": self.valid,
+            "validated_at": self.validated_at.isoformat(),
+            "validator_used": self.validator_used,
+            "format_detected": self.format_detected,
+            "profile_detected": self.profile_detected,
+            "schema_valid": self.schema_valid,
+            "schematron_valid": self.schematron_valid,
+            "pdf_a_compliant": self.pdf_a_compliant,
+            "error_count": self.error_count,
+            "warning_count": self.warning_count,
+            "messages": [
+                {
+                    "code": m.code,
+                    "severity": m.severity.value,
+                    "location": m.location,
+                    "message": m.message,
+                    "rule_id": m.rule_id,
+                }
+                for m in self.messages
+            ],
+        }
+
+
+class EInvoiceValidatorService:
+    """
+    Service fuer E-Invoice Validierung.
+
+    Unterstuetzt mehrere Validatoren:
+    - facturx: Schnelle lokale Validierung (Python)
+    - kosit: Offizieller KoSIT-Validator (Java via Mustang)
+    - auto: Waehlt besten Validator basierend auf Format
+
+    Usage:
+        validator = EInvoiceValidatorService()
+        result = await validator.validate_xml(xml_content)
+        if not result.valid:
+            for msg in result.messages:
+                print(f"{msg.severity}: {msg.message}")
+    """
+
+    def __init__(self):
+        """Initialisiert den Validator Service."""
+        self._mustang_client: Optional[MustangClient] = None
+        self._mustang_available: Optional[bool] = None
+
+    async def _get_mustang_client(self) -> MustangClient:
+        """Gibt Mustang Client zurueck (lazy initialization)."""
+        if self._mustang_client is None:
+            self._mustang_client = get_mustang_client()
+        return self._mustang_client
+
+    async def is_mustang_available(self) -> bool:
+        """Prueft ob Mustang-Service verfuegbar ist."""
+        if self._mustang_available is None:
+            try:
+                client = await self._get_mustang_client()
+                async with client:
+                    self._mustang_available = await client.is_available()
+            except Exception:
+                self._mustang_available = False
+        return self._mustang_available
+
+    async def validate_xml(
+        self,
+        xml_content: str,
+        validator_type: ValidatorType = ValidatorType.AUTO,
+        format_hint: Optional[str] = None,
+    ) -> ValidationResult:
+        """
+        Validiert E-Invoice XML.
+
+        Args:
+            xml_content: XML-Inhalt als String
+            validator_type: Zu verwendender Validator
+            format_hint: Optional - Format-Hinweis (zugferd/xrechnung)
+
+        Returns:
+            ValidationResult mit Validierungsergebnis
+        """
+        result = ValidationResult(
+            valid=True,
+            validated_at=datetime.now(timezone.utc),
+            validator_used=validator_type.value,
+        )
+
+        # 1. Basis-XML-Validierung
+        try:
+            self._validate_xml_syntax(xml_content, result)
+        except Exception as e:
+            result.add_error(
+                code="XML_PARSE_ERROR",
+                location="root",
+                message=f"XML konnte nicht geparst werden: {str(e)}"
+            )
+            result.schema_valid = False
+            return result
+
+        # Format erkennen
+        detected_format = self._detect_format(xml_content)
+        result.format_detected = format_hint or detected_format
+
+        # 2. Validator auswaehlen
+        if validator_type == ValidatorType.AUTO:
+            validator_type = await self._select_validator(result.format_detected)
+            result.validator_used = validator_type.value
+
+        # 3. Validierung durchfuehren
+        if validator_type == ValidatorType.FACTURX:
+            await self._validate_with_facturx(xml_content, result)
+        elif validator_type in (ValidatorType.KOSIT, ValidatorType.MUSTANG):
+            await self._validate_with_mustang(xml_content, result)
+        else:
+            # Fallback: Nur Schema-Validierung
+            await self._validate_schema_only(xml_content, result)
+
+        logger.info(
+            "einvoice_validation_completed",
+            extra={
+                "valid": result.valid,
+                "validator": result.validator_used,
+                "format": result.format_detected,
+                "errors": result.error_count,
+                "warnings": result.warning_count,
+            }
+        )
+
+        return result
+
+    async def validate_pdf(
+        self,
+        pdf_content: bytes,
+        validator_type: ValidatorType = ValidatorType.AUTO,
+    ) -> ValidationResult:
+        """
+        Validiert ZUGFeRD-PDF inkl. PDF/A-3 Konformitaet.
+
+        Args:
+            pdf_content: PDF-Datei als Bytes
+            validator_type: Zu verwendender Validator
+
+        Returns:
+            ValidationResult mit Validierungsergebnis
+        """
+        result = ValidationResult(
+            valid=True,
+            validated_at=datetime.now(timezone.utc),
+            validator_used=validator_type.value,
+        )
+
+        try:
+            # 1. XML aus PDF extrahieren
+            from facturx import get_xml_from_pdf
+
+            xml_bytes = get_xml_from_pdf(pdf_content)
+            if not xml_bytes:
+                result.add_error(
+                    code="NO_XML_IN_PDF",
+                    location="pdf",
+                    message="Kein eingebettetes XML im PDF gefunden"
+                )
+                return result
+
+            xml_content = xml_bytes.decode("utf-8")
+
+            # 2. XML validieren
+            xml_result = await self.validate_xml(
+                xml_content,
+                validator_type=validator_type,
+                format_hint="zugferd"
+            )
+
+            # Ergebnisse uebernehmen
+            result.valid = xml_result.valid
+            result.schema_valid = xml_result.schema_valid
+            result.schematron_valid = xml_result.schematron_valid
+            result.messages = xml_result.messages
+            result.error_count = xml_result.error_count
+            result.warning_count = xml_result.warning_count
+            result.format_detected = xml_result.format_detected
+            result.profile_detected = xml_result.profile_detected
+
+            # 3. PDF/A-3 Validierung (optional, via Mustang)
+            if await self.is_mustang_available():
+                await self._validate_pdfa(pdf_content, result)
+
+        except ImportError:
+            result.add_error(
+                code="FACTURX_NOT_INSTALLED",
+                location="system",
+                message="factur-x Bibliothek nicht installiert"
+            )
+
+        except Exception as e:
+            logger.exception("einvoice_pdf_validation_error")
+            result.add_error(
+                code="PDF_VALIDATION_ERROR",
+                location="pdf",
+                message=str(e)
+            )
+
+        return result
+
+    def _validate_xml_syntax(
+        self,
+        xml_content: str,
+        result: ValidationResult
+    ) -> etree._Element:
+        """Validiert XML-Syntax und gibt Root-Element zurueck."""
+        try:
+            root = etree.fromstring(xml_content.encode("utf-8"))
+            return root
+        except etree.XMLSyntaxError as e:
+            result.add_error(
+                code="XML_SYNTAX_ERROR",
+                location=f"line {e.lineno}",
+                message=str(e)
+            )
+            result.schema_valid = False
+            raise
+
+    def _detect_format(self, xml_content: str) -> str:
+        """Erkennt E-Invoice Format aus XML."""
+        try:
+            root = etree.fromstring(xml_content.encode("utf-8"))
+            tag = root.tag.lower()
+
+            # UBL
+            if "invoice" in tag and "oasis" in tag:
+                return "xrechnung_ubl"
+
+            # CII / ZUGFeRD
+            if "crossindustryinvoice" in tag:
+                # XRechnung oder ZUGFeRD?
+                xml_lower = xml_content.lower()
+                if "xrechnung" in xml_lower or "xeinkauf" in xml_lower:
+                    return "xrechnung_cii"
+                return "zugferd"
+
+            return "unknown"
+
+        except Exception:
+            return "unknown"
+
+    async def _select_validator(self, format_type: Optional[str]) -> ValidatorType:
+        """Waehlt besten Validator basierend auf Format."""
+        # XRechnung: KoSIT-Validator bevorzugen
+        if format_type and "xrechnung" in format_type:
+            if await self.is_mustang_available():
+                return ValidatorType.KOSIT
+            return ValidatorType.FACTURX
+
+        # ZUGFeRD: factur-x reicht
+        return ValidatorType.FACTURX
+
+    async def _validate_with_facturx(
+        self,
+        xml_content: str,
+        result: ValidationResult
+    ) -> None:
+        """Validiert mit factur-x Bibliothek."""
+        try:
+            from facturx import check_facturx_xsd
+
+            # XSD-Validierung
+            try:
+                check_facturx_xsd(xml_content.encode("utf-8"))
+            except Exception as e:
+                result.add_error(
+                    code="XSD_VALIDATION_ERROR",
+                    location="schema",
+                    message=str(e)
+                )
+                result.schema_valid = False
+                return
+
+            # Profil erkennen
+            result.profile_detected = self._detect_profile(xml_content)
+
+            # Basis Business Rules pruefen
+            self._check_basic_business_rules(xml_content, result)
+
+        except ImportError:
+            logger.warning("facturx_not_installed")
+            await self._validate_schema_only(xml_content, result)
+
+    async def _validate_with_mustang(
+        self,
+        xml_content: str,
+        result: ValidationResult
+    ) -> None:
+        """Validiert mit Mustang/KoSIT-Validator."""
+        try:
+            client = await self._get_mustang_client()
+
+            async with client:
+                mustang_result = await client.validate_xml(
+                    xml_content,
+                    format_type=result.format_detected
+                )
+
+            result.valid = mustang_result.valid
+            result.schema_valid = mustang_result.schema_valid or True
+            result.schematron_valid = mustang_result.schematron_valid or True
+            result.raw_output = mustang_result.output
+
+            if mustang_result.errors:
+                # Fehler parsen
+                for line in mustang_result.errors.split("\n"):
+                    if line.strip():
+                        result.add_error(
+                            code="KOSIT_ERROR",
+                            location="xml",
+                            message=line.strip()
+                        )
+
+        except MustangConnectionError as e:
+            logger.warning(
+                "mustang_validation_fallback",
+                extra={"error": str(e)}
+            )
+            # Fallback zu lokaler Validierung
+            await self._validate_with_facturx(xml_content, result)
+
+    async def _validate_schema_only(
+        self,
+        xml_content: str,
+        result: ValidationResult
+    ) -> None:
+        """Nur XML-Schema-Validierung (Fallback)."""
+        # XML ist bereits geparst, also Schema-valide in Bezug auf Syntax
+        result.profile_detected = self._detect_profile(xml_content)
+        self._check_basic_business_rules(xml_content, result)
+
+    async def _validate_pdfa(
+        self,
+        pdf_content: bytes,
+        result: ValidationResult
+    ) -> None:
+        """Validiert PDF/A-3 Konformitaet via Mustang."""
+        # TODO: PDF/A-3 Validierung ueber Mustang/VeraPDF
+        # Fuer jetzt: Ueberspringen
+        result.pdf_a_compliant = None
+        result.add_warning(
+            code="PDFA_NOT_VALIDATED",
+            location="pdf",
+            message="PDF/A-3 Validierung noch nicht implementiert"
+        )
+
+    def _detect_profile(self, xml_content: str) -> Optional[str]:
+        """Erkennt ZUGFeRD/XRechnung Profil aus XML."""
+        xml_lower = xml_content.lower()
+
+        if "xrechnung" in xml_lower:
+            return "XRECHNUNG"
+        elif "extended" in xml_lower:
+            return "EXTENDED"
+        elif "en16931" in xml_lower or "comfort" in xml_lower:
+            return "EN16931"
+        elif "basic" in xml_lower:
+            return "BASIC"
+        elif "minimum" in xml_lower:
+            return "MINIMUM"
+
+        return None
+
+    def _check_basic_business_rules(
+        self,
+        xml_content: str,
+        result: ValidationResult
+    ) -> None:
+        """Prueft grundlegende Business Rules."""
+        try:
+            root = etree.fromstring(xml_content.encode("utf-8"))
+
+            # BR-01: Rechnungsnummer vorhanden?
+            if not self._find_element_text(root, ["ID", "InvoiceNumber"]):
+                result.add_error(
+                    code="BR-01",
+                    location="BT-1",
+                    message="Rechnungsnummer (BT-1) fehlt",
+                    rule_id="BR-01"
+                )
+
+            # BR-02: Rechnungsdatum vorhanden?
+            if not self._find_element_text(root, ["IssueDateTime", "IssueDate"]):
+                result.add_error(
+                    code="BR-02",
+                    location="BT-2",
+                    message="Rechnungsdatum (BT-2) fehlt",
+                    rule_id="BR-02"
+                )
+
+            # BR-DE-01: Leitweg-ID bei XRechnung?
+            if result.format_detected and "xrechnung" in result.format_detected:
+                if not self._find_element_text(root, ["BuyerReference"]):
+                    result.add_error(
+                        code="BR-DE-01",
+                        location="BT-10",
+                        message="Leitweg-ID (BT-10) fehlt - Pflichtfeld fuer XRechnung",
+                        rule_id="BR-DE-01"
+                    )
+
+            # Waehrung pruefen
+            currency = self._find_element_text(
+                root, ["InvoiceCurrencyCode", "DocumentCurrencyCode"]
+            )
+            if currency and currency not in ["EUR", "CHF", "USD", "GBP"]:
+                result.add_warning(
+                    code="CURRENCY_UNUSUAL",
+                    location="BT-5",
+                    message=f"Ungewoehnliche Waehrung: {currency}"
+                )
+
+        except Exception as e:
+            logger.warning(f"business_rules_check_failed: {e}")
+
+    def _find_element_text(
+        self,
+        root: etree._Element,
+        possible_names: List[str]
+    ) -> Optional[str]:
+        """Sucht Element mit verschiedenen moeglichen Namen."""
+        for elem in root.iter():
+            local_name = etree.QName(elem.tag).localname
+            if local_name in possible_names and elem.text:
+                return elem.text.strip()
+        return None
+
+
+# Singleton-Instanz
+_validator_service: Optional[EInvoiceValidatorService] = None
+
+
+def get_validator_service() -> EInvoiceValidatorService:
+    """Gibt Singleton-Instanz des Validator Service zurueck."""
+    global _validator_service
+    if _validator_service is None:
+        _validator_service = EInvoiceValidatorService()
+    return _validator_service

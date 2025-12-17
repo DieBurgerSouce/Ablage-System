@@ -33,6 +33,15 @@ from .mustang_client import (
     check_mustang_availability,
 )
 
+from .validator_service import (
+    EInvoiceValidatorService,
+    ValidationResult,
+    ValidationMessage,
+    ValidatorType,
+    ValidationSeverity,
+    get_validator_service,
+)
+
 __all__ = [
     # Services
     "EInvoiceParserService",
@@ -45,4 +54,10 @@ __all__ = [
     "MustangValidationError",
     "get_mustang_client",
     "check_mustang_availability",
+    # Validator
+    "ValidationResult",
+    "ValidationMessage",
+    "ValidatorType",
+    "ValidationSeverity",
+    "get_validator_service",
 ]
