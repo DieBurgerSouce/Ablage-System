@@ -3133,8 +3133,8 @@ class RAGDocumentChunk(Base):
     section_type = Column(String(50), nullable=True)  # header, paragraph, table, list, footer
     bounding_box = Column(CrossDBJSON, nullable=True)  # {"x": 0, "y": 0, "width": 100, "height": 50}
 
-    # Embedding (pgvector)
-    embedding = Column(CrossDBVector(1024), nullable=False)
+    # Embedding (pgvector) - nullable weil Chunks zuerst erstellt und dann asynchron embedded werden
+    embedding = Column(CrossDBVector(1024), nullable=True)
 
     # Embedding-Metadaten
     embedding_model = Column(String(100), nullable=False, default="intfloat/multilingual-e5-large")
@@ -4137,3 +4137,138 @@ class CoverageSnapshot(Base):
         Index("ix_coverage_snapshots_date", "snapshot_date"),
         Index("ix_coverage_snapshots_weighted", "weighted_coverage"),
     )
+
+
+# =============================================================================
+# E-INVOICING (ZUGFeRD / XRechnung)
+# =============================================================================
+
+class EInvoiceFormat(str, Enum):
+    """Unterstuetzte E-Rechnungsformate."""
+    ZUGFERD = "zugferd"
+    XRECHNUNG_CII = "xrechnung_cii"  # UN/CEFACT Cross Industry Invoice
+    XRECHNUNG_UBL = "xrechnung_ubl"  # Universal Business Language
+    FACTURX = "facturx"
+
+
+class EInvoiceProfile(str, Enum):
+    """ZUGFeRD/Factur-X Profile (EN 16931 Konformitaet)."""
+    MINIMUM = "MINIMUM"
+    BASIC = "BASIC"
+    BASIC_WL = "BASIC_WL"
+    EN16931 = "EN16931"
+    EXTENDED = "EXTENDED"
+    XRECHNUNG = "XRECHNUNG"
+
+
+class EInvoiceDocument(Base):
+    """
+    E-Rechnung Metadaten und XML-Speicherung.
+
+    Speichert:
+    - Extrahiertes oder generiertes XML (ZUGFeRD/XRechnung)
+    - Validierungsergebnisse (KoSIT Validator)
+    - Generierungsmetadaten
+    - Leitweg-ID fuer schnellen B2G-Lookup
+
+    Jedes Dokument kann null oder eine zugehoerige E-Rechnung haben.
+    """
+    __tablename__ = "einvoice_documents"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Referenz zum Original-Dokument
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True  # 1:1 Beziehung
+    )
+
+    # E-Invoice Format Information
+    format = Column(String(50), nullable=False)  # EInvoiceFormat Wert
+    profile = Column(String(50), nullable=True)  # EInvoiceProfile Wert
+    version = Column(String(20), nullable=True)  # z.B. "2.3.3", "3.0.2"
+
+    # XML Speicherung
+    xml_content = Column(Text, nullable=True)  # Der extrahierte oder generierte XML-Inhalt
+    xml_hash = Column(String(64), nullable=True)  # SHA256 fuer Integritaetspruefung
+
+    # Validierung
+    is_valid = Column(Boolean, nullable=True)  # null = nicht validiert
+    validation_timestamp = Column(DateTime(timezone=True), nullable=True)
+    validation_errors = Column(CrossDBJSON, default=list)  # Liste von Validierungsfehlern
+    validation_warnings = Column(CrossDBJSON, default=list)  # Liste von Warnungen
+    validator_used = Column(String(50), nullable=True)  # "kosit", "mustang", "facturx"
+
+    # Schema/Schematron Validierung separat
+    schema_valid = Column(Boolean, nullable=True)  # XSD Schema-Validierung
+    schematron_valid = Column(Boolean, nullable=True)  # Business Rules (Schematron)
+    pdf_a_compliant = Column(Boolean, nullable=True)  # PDF/A-3 Konformitaet (bei ZUGFeRD)
+
+    # B2G-spezifische Felder (schneller Lookup)
+    leitweg_id = Column(String(100), nullable=True, index=True)  # BT-10 Buyer Reference
+
+    # Generierungsmetadaten
+    was_generated = Column(Boolean, default=False)  # True wenn wir die E-Rechnung erstellt haben
+    was_extracted = Column(Boolean, default=False)  # True wenn aus PDF extrahiert
+    generation_timestamp = Column(DateTime(timezone=True), nullable=True)
+    generated_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Originalquelle (wenn extrahiert)
+    source_filename = Column(String(255), nullable=True)  # Original ZUGFeRD-PDF Name
+    extraction_method = Column(String(50), nullable=True)  # "facturx", "mustang", "manual"
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    document = relationship("Document", backref="einvoice_data")
+    generated_by = relationship("User", foreign_keys=[generated_by_id])
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_einvoice_docs_document_id", "document_id"),
+        Index("ix_einvoice_docs_format", "format"),
+        Index("ix_einvoice_docs_leitweg_id", "leitweg_id"),
+        Index("ix_einvoice_docs_is_valid", "is_valid"),
+        Index("ix_einvoice_docs_was_generated", "was_generated"),
+    )
+
+    def mark_validated(
+        self,
+        is_valid: bool,
+        validator: str,
+        errors: Optional[List[Dict[str, Any]]] = None,
+        warnings: Optional[List[Dict[str, Any]]] = None,
+        schema_valid: Optional[bool] = None,
+        schematron_valid: Optional[bool] = None
+    ) -> None:
+        """Markiert die E-Rechnung als validiert."""
+        self.is_valid = is_valid
+        self.validator_used = validator
+        self.validation_timestamp = datetime.now()
+        self.validation_errors = errors or []
+        self.validation_warnings = warnings or []
+        if schema_valid is not None:
+            self.schema_valid = schema_valid
+        if schematron_valid is not None:
+            self.schematron_valid = schematron_valid
+
+    def get_validation_summary(self) -> Dict[str, Any]:
+        """Gibt eine Zusammenfassung der Validierung zurueck."""
+        return {
+            "is_valid": self.is_valid,
+            "validator": self.validator_used,
+            "validated_at": self.validation_timestamp.isoformat() if self.validation_timestamp else None,
+            "error_count": len(self.validation_errors) if self.validation_errors else 0,
+            "warning_count": len(self.validation_warnings) if self.validation_warnings else 0,
+            "schema_valid": self.schema_valid,
+            "schematron_valid": self.schematron_valid,
+            "pdf_a_compliant": self.pdf_a_compliant,
+        }

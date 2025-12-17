@@ -186,6 +186,41 @@ class ExtractionValidations(BaseModel):
     )
 
 
+class TaxBreakdownItem(BaseModel):
+    """
+    MwSt-Aufschluesselung fuer eine Steuerkategorie.
+
+    Erforderlich fuer ZUGFeRD/XRechnung wenn mehrere MwSt-Saetze
+    auf einer Rechnung vorkommen (z.B. 7% + 19%).
+    """
+    tax_category_code: str = Field(
+        ...,
+        description="UN/CEFACT Tax Category Code (S=Standard, Z=Zero, E=Exempt, AE=Reverse Charge)"
+    )
+    tax_rate: Decimal = Field(
+        ...,
+        ge=0,
+        le=100,
+        description="Steuersatz in Prozent"
+    )
+    taxable_amount: Decimal = Field(
+        ...,
+        description="Bemessungsgrundlage (Nettobetrag fuer diese Kategorie)"
+    )
+    tax_amount: Decimal = Field(
+        ...,
+        description="Steuerbetrag"
+    )
+    exemption_reason: Optional[str] = Field(
+        None,
+        description="Steuerbefreiungsgrund (BT-120)"
+    )
+    exemption_reason_code: Optional[str] = Field(
+        None,
+        description="Code fuer Steuerbefreiung (BT-121, z.B. vatex-eu-ic)"
+    )
+
+
 class ExtractedLineItem(BaseModel):
     """
     Eine Rechnungs-/Bestellposition.
@@ -369,6 +404,96 @@ class ExtractedInvoiceData(BaseModel):
     )
     invoice_direction_reason: Optional[str] = Field(
         None, description="Grund fuer die Klassifizierung (intern, z.B. 'VAT-ID match')"
+    )
+
+    # ==========================================================================
+    # E-INVOICE / XRECHNUNG FELDER (ZUGFeRD 2.x / XRechnung 3.0.2)
+    # ==========================================================================
+
+    # === XRechnung Pflichtfelder (B2G) ===
+    buyer_reference: Optional[str] = Field(
+        None,
+        description="Leitweg-ID / Buyer Reference (BT-10) - PFLICHT fuer B2G-Rechnungen"
+    )
+    business_process_type: Optional[str] = Field(
+        None,
+        description="Geschaeftsprozesstyp (BT-23) - z.B. 'urn:fdc:peppol.eu:2017:poacc:billing:01:1.0'"
+    )
+    seller_electronic_address: Optional[str] = Field(
+        None,
+        description="Elektronische Adresse Verkaeufer (BT-34) - z.B. GLN, PEPPOL-ID, E-Mail"
+    )
+    seller_electronic_address_scheme: Optional[str] = Field(
+        None,
+        description="Schema der elektronischen Adresse (BT-34-1) - z.B. '0088' fuer GLN, '0204' fuer Leitweg-ID"
+    )
+    buyer_electronic_address: Optional[str] = Field(
+        None,
+        description="Elektronische Adresse Kaeufer (BT-49)"
+    )
+    buyer_electronic_address_scheme: Optional[str] = Field(
+        None,
+        description="Schema der elektronischen Adresse Kaeufer (BT-49-1)"
+    )
+
+    # === Rechnungstyp und Kontext ===
+    invoice_type_code: Optional[str] = Field(
+        None,
+        description="UN/CEFACT Invoice Type Code (BT-3) - 380=Rechnung, 381=Gutschrift, 384=Korrekturrechnung"
+    )
+    invoice_note: Optional[str] = Field(
+        None,
+        description="Rechnungshinweis/Bemerkung (BT-22) - Freitext"
+    )
+    contract_reference: Optional[str] = Field(
+        None,
+        description="Vertragsnummer (BT-12) - Referenz auf zugrundeliegenden Vertrag"
+    )
+    project_reference: Optional[str] = Field(
+        None,
+        description="Projektnummer (BT-11) - Referenz auf Projekt"
+    )
+    purchase_order_reference: Optional[str] = Field(
+        None,
+        description="Bestellnummer des Kaeufers (BT-13) - Referenz auf Bestellung"
+    )
+
+    # === Zahlungsdetails (erweitert fuer E-Invoice) ===
+    payment_means_code: Optional[str] = Field(
+        None,
+        description="UN/CEFACT Payment Means Code (BT-81) - 30=Ueberweisung, 58=SEPA, 59=SEPA-Lastschrift"
+    )
+    payment_reference: Optional[str] = Field(
+        None,
+        description="Verwendungszweck (BT-83) - Strukturierte Zahlungsreferenz"
+    )
+
+    # === MwSt-Aufschluesselung (mehrere Saetze) ===
+    tax_breakdown: List[TaxBreakdownItem] = Field(
+        default_factory=list,
+        description="MwSt-Aufschluesselung fuer mehrere Steuersaetze (BG-23)"
+    )
+
+    # === E-Invoice Metadaten ===
+    einvoice_format: Optional[str] = Field(
+        None,
+        description="E-Rechnungsformat: 'zugferd', 'xrechnung_cii', 'xrechnung_ubl', 'facturx'"
+    )
+    einvoice_profile: Optional[str] = Field(
+        None,
+        description="ZUGFeRD Profil: 'MINIMUM', 'BASIC', 'BASIC_WL', 'EN16931', 'EXTENDED', 'XRECHNUNG'"
+    )
+    einvoice_version: Optional[str] = Field(
+        None,
+        description="Version des E-Rechnungsstandards (z.B. '2.3.3', '3.0.2')"
+    )
+    einvoice_xml_embedded: bool = Field(
+        False,
+        description="True wenn XML in PDF eingebettet war (ZUGFeRD-PDF)"
+    )
+    einvoice_validation_status: Optional[str] = Field(
+        None,
+        description="Validierungsstatus: 'valid', 'invalid', 'not_validated'"
     )
 
     @model_validator(mode="after")
@@ -579,6 +704,7 @@ __all__ = [
     "ExtractedBankAccount",
     "ExtractedLineItem",
     "ExtractionValidations",
+    "TaxBreakdownItem",
     # Dokumenttypen
     "ExtractedInvoiceData",
     "ExtractedOrderData",
