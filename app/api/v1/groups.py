@@ -149,6 +149,53 @@ async def list_groups(
 
 
 # =============================================================================
+# NEXT NUMBER (fuer Vorgang-Benennung)
+# =============================================================================
+
+@router.get(
+    "/next-number",
+    summary="Naechste laufende Nummer fuer Entity",
+    description="Gibt die naechste freie laufende Nummer fuer einen Entity-Namen zurueck (z.B. Alpac -> 3 wenn Alpac_001 und Alpac_002 existieren)"
+)
+async def get_next_transaction_number(
+    entity: str = Query(..., min_length=1, max_length=200, description="Entity-Name (z.B. Lieferantenname)"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Ermittelt die naechste laufende Nummer fuer Vorgaenge eines Entity.
+
+    Durchsucht bestehende Gruppen nach dem Pattern `{entity}_XXX` und
+    gibt die naechste freie Nummer zurueck.
+
+    **Beispiel:**
+    - Existiert: Alpac_001, Alpac_002
+    - Rueckgabe: {"next_number": 3}
+    """
+    # Suche nach bestehenden Gruppen mit diesem Entity-Prefix
+    pattern = f"{entity}_%"
+    query = select(func.count()).select_from(DocumentGroup).where(
+        DocumentGroup.name.like(pattern),
+        DocumentGroup.owner_id == current_user.id,
+        DocumentGroup.deleted_at.is_(None),
+        DocumentGroup.group_type == "transaction"
+    )
+
+    result = await db.execute(query)
+    count = result.scalar() or 0
+
+    logger.info(
+        "next_transaction_number_calculated",
+        entity=entity,
+        existing_count=count,
+        next_number=count + 1,
+        user_id=str(current_user.id)[:8]
+    )
+
+    return {"next_number": count + 1, "entity": entity}
+
+
+# =============================================================================
 # GET SINGLE
 # =============================================================================
 

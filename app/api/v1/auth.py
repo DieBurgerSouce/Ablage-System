@@ -33,7 +33,17 @@ from app.db.schemas import (
     SessionListResponse,
     SessionRevokeRequest,
     SessionRevokeAllRequest,
-    SessionRevokeResponse
+    SessionRevokeResponse,
+    PasswordResetRequest,
+    PasswordResetValidate,
+    PasswordResetConfirm,
+    PasswordResetResponse,
+    EmailVerificationStatusResponse,
+    EmailVerificationResponse,
+    EmailVerifyResponse,
+    EmailChangeResponse,
+    EmailVerifyTokenRequest,
+    EmailChangeRequest
 )
 from app.services.user_service import UserService
 from app.core.security import (
@@ -686,7 +696,7 @@ async def change_password(
     description="Sendet eine E-Mail mit Link zum Zurücksetzen des Passworts"
 )
 async def request_password_reset(
-    reset_request: "PasswordResetRequest",
+    reset_request: PasswordResetRequest,
     request: Request,
     db: AsyncSession = Depends(get_db)
 ) -> Any:
@@ -735,12 +745,12 @@ async def request_password_reset(
 
 @router.post(
     "/validate-reset-token",
-    response_model="PasswordResetResponse",
+    response_model=PasswordResetResponse,
     summary="Reset-Token validieren",
     description="Prüft ob ein Reset-Token gültig ist"
 )
 async def validate_reset_token(
-    validate_request: "PasswordResetValidate",
+    validate_request: PasswordResetValidate,
     db: AsyncSession = Depends(get_db)
 ) -> Any:
     """
@@ -751,7 +761,6 @@ async def validate_reset_token(
     Nützlich für Frontends um zu prüfen, ob der Token noch gültig ist,
     bevor das Formular zum Setzen eines neuen Passworts angezeigt wird.
     """
-    from app.db.schemas import PasswordResetValidate, PasswordResetResponse
     from app.services.password_reset_service import get_password_reset_service
 
     reset_service = get_password_reset_service()
@@ -769,12 +778,12 @@ async def validate_reset_token(
 
 @router.post(
     "/reset-password",
-    response_model="PasswordResetResponse",
+    response_model=PasswordResetResponse,
     summary="Passwort zurücksetzen",
     description="Setzt das Passwort mit einem gültigen Reset-Token zurück"
 )
 async def reset_password(
-    reset_data: "PasswordResetConfirm",
+    reset_data: PasswordResetConfirm,
     request: Request,
     db: AsyncSession = Depends(get_db)
 ) -> Any:
@@ -793,7 +802,6 @@ async def reset_password(
 
     Nach erfolgreichem Reset werden alle anderen Reset-Tokens invalidiert.
     """
-    from app.db.schemas import PasswordResetConfirm, PasswordResetResponse
     from app.services.password_reset_service import get_password_reset_service
 
     reset_service = get_password_reset_service()
@@ -1401,7 +1409,7 @@ async def revoke_all_sessions(
 
 @router.get(
     "/email/verification-status",
-    response_model="EmailVerificationStatusResponse",
+    response_model=EmailVerificationStatusResponse,
     summary="Email-Verifizierungsstatus",
     description="Zeigt den aktuellen Verifizierungsstatus der Email-Adresse"
 )
@@ -1430,7 +1438,7 @@ async def get_email_verification_status(
 
 @router.post(
     "/email/resend-verification",
-    response_model="EmailVerificationResponse",
+    response_model=EmailVerificationResponse,
     summary="Verifizierungs-Email erneut senden",
     description="Sendet die Verifizierungs-Email erneut an die aktuelle Adresse"
 )
@@ -1488,12 +1496,12 @@ async def resend_verification_email(
 
 @router.post(
     "/email/verify",
-    response_model="EmailVerifyResponse",
+    response_model=EmailVerifyResponse,
     summary="Email verifizieren",
     description="Verifiziert die Email-Adresse mit dem Token aus der Email"
 )
 async def verify_email(
-    verify_request: "EmailVerifyTokenRequest",
+    verify_request: EmailVerifyTokenRequest,
     db: AsyncSession = Depends(get_db)
 ) -> Any:
     """
@@ -1524,13 +1532,13 @@ async def verify_email(
 
 @router.post(
     "/email/change",
-    response_model="EmailChangeResponse",
+    response_model=EmailChangeResponse,
     summary="Email-Adresse ändern",
     description="Initiiert eine Email-Änderung (erfordert Verifizierung)"
 )
 async def request_email_change(
     request: Request,
-    change_request: "EmailChangeRequest",
+    change_request: EmailChangeRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ) -> Any:

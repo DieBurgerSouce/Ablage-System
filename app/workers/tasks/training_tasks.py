@@ -254,7 +254,7 @@ def generate_daily_stats(self) -> Dict[str, Any]:
 
                 # Hole Backend-Statistiken für heute
                 today = date.today()
-                backend_stats = await training_service.get_backend_stats( days=1)
+                backend_stats = await training_service.get_backend_stats(db=session, days=1)
 
                 stats_created = 0
 
@@ -436,7 +436,7 @@ def update_learned_weights(
                 feedback_service = get_feedback_learning_service()
 
                 weights = await feedback_service.get_learned_weights(
-                    
+                    db=session,
                     force_refresh=force_refresh
                 )
 
@@ -645,7 +645,7 @@ def generate_training_report(self) -> Dict[str, Any]:
 
                 # Sammle alle Statistiken
                 overview = await training_service.get_training_overview_stats(db=session)
-                backend_stats = await training_service.get_backend_stats( days=30)
+                backend_stats = await training_service.get_backend_stats(db=session, days=30)
                 comparison = await benchmark_runner.get_backend_comparison(db=session)
                 learned_weights = await feedback_service.get_learned_weights(db=session)
 
@@ -1571,20 +1571,26 @@ def check_retraining_conditions(self) -> Dict[str, Any]:
     logger.info("check_retraining_conditions_starting", task_id=task_id)
 
     try:
-        from app.services.quality_monitoring_service import get_quality_monitoring_service
+        from app.services.feedback_learning_service import get_feedback_learning_service
         from app.db.session import get_async_session_context
 
         async def check_conditions():
             async with get_async_session_context() as session:
-                service = await get_quality_monitoring_service(session)
-                recommendation = await service.get_retraining_recommendation()
+                # TODO: Vollständigen QualityMonitoringService implementieren
+                # Vorerst nutzen wir FeedbackLearningService für Basis-Empfehlung
+                feedback_service = get_feedback_learning_service()
+
+                # Hole Surya-spezifische Retraining-Empfehlung
+                recommendation = await feedback_service.get_surya_retraining_recommendation(
+                    db=session
+                )
 
                 return {
                     "should_retrain": recommendation.should_retrain,
-                    "urgency": recommendation.urgency,
+                    "urgency": recommendation.urgency.value if hasattr(recommendation.urgency, 'value') else str(recommendation.urgency),
                     "reasons": recommendation.reasons,
-                    "focus_areas": recommendation.focus_areas,
-                    "estimated_samples_needed": recommendation.estimated_samples_needed,
+                    "focus_areas": recommendation.focus_areas if hasattr(recommendation, 'focus_areas') else [],
+                    "estimated_samples_needed": recommendation.estimated_samples if hasattr(recommendation, 'estimated_samples') else 0,
                 }
 
         # asyncio.run() für sauberes Event-Loop Cleanup
@@ -1633,27 +1639,58 @@ def run_quality_monitoring(self) -> Dict[str, Any]:
     logger.info("run_quality_monitoring_starting", task_id=task_id)
 
     try:
-        from app.services.quality_monitoring_service import get_quality_monitoring_service
+        from app.services.feedback_learning_service import get_feedback_learning_service
         from app.db.session import get_async_session_context
+        from app.db.models import OCRBackendBenchmark, OCRValidationCorrection
+        from sqlalchemy import select, func
+        from datetime import timedelta
 
         async def run_monitoring():
             async with get_async_session_context() as session:
-                service = await get_quality_monitoring_service(session)
-                alerts = await service.run_quality_check()
+                # TODO: Vollständigen QualityMonitoringService implementieren
+                # Vorerst einfache Qualitätsprüfung basierend auf letzten Benchmarks
+                alerts = []
+                now = datetime.now(timezone.utc)
+                one_hour_ago = now - timedelta(hours=1)
+
+                # Prüfe durchschnittliche CER pro Backend
+                backends = ["deepseek-janus-pro", "got-ocr-2.0", "surya-gpu", "surya"]
+                for backend in backends:
+                    result = await session.execute(
+                        select(func.avg(OCRBackendBenchmark.cer))
+                        .where(OCRBackendBenchmark.backend_name == backend)
+                        .where(OCRBackendBenchmark.processed_at >= one_hour_ago)
+                    )
+                    avg_cer = result.scalar()
+
+                    if avg_cer and avg_cer > 0.10:
+                        alerts.append({
+                            "type": "high_cer",
+                            "severity": "warning",
+                            "message": f"CER für {backend} zu hoch: {avg_cer:.2%}",
+                            "affected_backend": backend,
+                        })
+
+                # Prüfe Anzahl unverarbeiteter Korrekturen
+                result = await session.execute(
+                    select(func.count(OCRValidationCorrection.id))
+                    .where(OCRValidationCorrection.learning_processed == False)
+                )
+                unprocessed = result.scalar() or 0
+
+                if unprocessed > 100:
+                    alerts.append({
+                        "type": "backlog",
+                        "severity": "warning",
+                        "message": f"{unprocessed} Korrekturen warten auf Verarbeitung",
+                        "affected_backend": None,
+                    })
 
                 return {
                     "alerts_count": len(alerts),
-                    "critical_alerts": sum(1 for a in alerts if a.severity.value == "critical"),
-                    "warning_alerts": sum(1 for a in alerts if a.severity.value == "warning"),
-                    "alerts": [
-                        {
-                            "type": a.alert_type.value,
-                            "severity": a.severity.value,
-                            "message": a.message,
-                            "affected_backend": a.affected_backend,
-                        }
-                        for a in alerts
-                    ]
+                    "critical_alerts": sum(1 for a in alerts if a["severity"] == "critical"),
+                    "warning_alerts": sum(1 for a in alerts if a["severity"] == "warning"),
+                    "alerts": alerts,
                 }
 
         # asyncio.run() für sauberes Event-Loop Cleanup
@@ -1677,6 +1714,402 @@ def run_quality_monitoring(self) -> Dict[str, Any]:
         raise
 
 
+# ==================== Auto Ground-Truth Pipeline Tasks ====================
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.training_tasks.process_auto_ground_truth_batch",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 2},
+    retry_backoff=True,
+    retry_backoff_max=300,
+    soft_time_limit=1800,  # 30 Minuten
+    time_limit=2100,  # 35 Minuten
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def process_auto_ground_truth_batch(
+    self,
+    document_type: Optional[str] = None,
+    max_documents: int = 100,
+    min_confidence: float = 0.95,
+) -> Dict[str, Any]:
+    """
+    Verarbeitet Batch von Dokumenten fuer Auto-Ground-Truth.
+
+    Holt Dokumente ohne Training-Sample und prueft auf Auto-Accept.
+    Laeuft alle 30 Minuten via Celery Beat.
+
+    Args:
+        document_type: Optional Dokumenttyp-Filter (invoice, contract, etc.)
+        max_documents: Maximale Anzahl zu verarbeitender Dokumente
+        min_confidence: Minimum OCR Confidence fuer Auto-Accept
+
+    Returns:
+        Batch-Ergebnis-Zusammenfassung
+    """
+    task_id = self.request.id
+
+    logger.info(
+        "auto_ground_truth_batch_starting",
+        task_id=task_id,
+        document_type=document_type,
+        max_documents=max_documents,
+        min_confidence=min_confidence,
+    )
+
+    try:
+        from app.db.session import get_async_session_context
+        from app.db.models import Document, OCRTrainingSample, ProcessingStatus, TrainingSampleStatus
+        from sqlalchemy import select, and_, not_
+        from uuid import uuid4
+        import hashlib
+
+        async def process_batch() -> Dict[str, Any]:
+            async with get_async_session_context() as session:
+                # Finde Dokumente ohne Training-Sample
+                subquery = select(OCRTrainingSample.file_path)
+
+                query = select(Document).where(
+                    and_(
+                        Document.status == ProcessingStatus.COMPLETED,
+                        Document.extracted_text.isnot(None),
+                        Document.ocr_confidence >= min_confidence,
+                        not_(Document.file_path.in_(subquery)),
+                    )
+                )
+
+                if document_type:
+                    query = query.where(Document.document_type == document_type)
+
+                query = query.order_by(Document.processed_date.desc()).limit(max_documents)
+
+                result = await session.execute(query)
+                documents = list(result.scalars().all())
+
+                if not documents:
+                    return {
+                        "processed": 0,
+                        "auto_accepted": 0,
+                        "rejected": 0,
+                        "spot_check_flagged": 0,
+                        "message": "Keine passenden Dokumente gefunden",
+                    }
+
+                # Verarbeite Dokumente und erstelle Training Samples
+                auto_accepted = 0
+                rejected = 0
+                spot_check = 0
+
+                for doc in documents:
+                    try:
+                        # Berechne File-Hash für Deduplizierung
+                        file_hash = hashlib.sha256(
+                            (doc.file_path or str(doc.id)).encode()
+                        ).hexdigest()
+
+                        # Prüfe ob Sample bereits existiert
+                        existing = await session.execute(
+                            select(OCRTrainingSample).where(
+                                OCRTrainingSample.file_hash == file_hash
+                            )
+                        )
+                        if existing.scalar_one_or_none():
+                            continue
+
+                        # Erstelle neues Training Sample
+                        sample = OCRTrainingSample(
+                            id=uuid4(),
+                            file_path=doc.file_path,
+                            file_hash=file_hash,
+                            document_type=doc.document_type or "unknown",
+                            language="de",
+                            ground_truth_text=doc.extracted_text,
+                            status=TrainingSampleStatus.VERIFIED.value,
+                            auto_accepted=True,
+                            has_umlauts=any(c in (doc.extracted_text or "") for c in "äöüÄÖÜß"),
+                        )
+                        session.add(sample)
+                        auto_accepted += 1
+
+                    except Exception as e:
+                        logger.warning(
+                            "auto_ground_truth_doc_failed",
+                            doc_id=str(doc.id),
+                            error=str(e),
+                        )
+                        rejected += 1
+
+                await session.commit()
+
+                return {
+                    "processed": len(documents),
+                    "auto_accepted": auto_accepted,
+                    "rejected": rejected,
+                    "spot_check_flagged": spot_check,
+                }
+
+        # asyncio.run() fuer sauberes Event-Loop Cleanup
+        result = asyncio.run(process_batch())
+
+        logger.info(
+            "auto_ground_truth_batch_completed",
+            task_id=task_id,
+            processed=result.get("processed", 0),
+            auto_accepted=result.get("auto_accepted", 0),
+            rejected=result.get("rejected", 0),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception(
+            "auto_ground_truth_batch_failed",
+            task_id=task_id,
+            error=str(e),
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.training_tasks.generate_coverage_snapshot",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 2},
+    soft_time_limit=300,  # 5 Minuten
+    time_limit=360,  # 6 Minuten
+)
+def generate_coverage_snapshot(self) -> Dict[str, Any]:
+    """
+    Generiert taeglichen Coverage-Snapshot fuer Trend-Analyse.
+
+    Laeuft taeglich um 01:00 via Celery Beat.
+    Speichert Coverage-Metriken fuer alle Business-Dokumenttypen.
+
+    Returns:
+        Coverage-Snapshot-Zusammenfassung
+    """
+    task_id = self.request.id
+
+    logger.info(
+        "coverage_snapshot_starting",
+        task_id=task_id,
+    )
+
+    try:
+        from app.db.session import get_async_session_context
+        from app.db.models import (
+            BusinessDocumentProfile,
+            OCRTrainingSample,
+            CoverageSnapshot,
+            TrainingSampleStatus,
+        )
+        from sqlalchemy import select, func
+        from uuid import uuid4
+
+        async def create_snapshot() -> Dict[str, Any]:
+            async with get_async_session_context() as session:
+                # Hole alle aktiven Business-Profile
+                profiles_result = await session.execute(
+                    select(BusinessDocumentProfile)
+                    .where(BusinessDocumentProfile.is_active == True)
+                )
+                profiles = profiles_result.scalars().all()
+
+                coverage_by_type = {}
+                total_processed = 0
+                total_auto_accepted = 0
+                total_verified = 0
+                total_rejected = 0
+                weighted_coverage_sum = 0.0
+                total_weight = 0.0
+
+                for profile in profiles:
+                    # Zaehle Samples pro Typ
+                    samples_result = await session.execute(
+                        select(
+                            func.count(OCRTrainingSample.id),
+                            func.count(OCRTrainingSample.id).filter(
+                                OCRTrainingSample.status == TrainingSampleStatus.VERIFIED.value
+                            ),
+                            func.count(OCRTrainingSample.id).filter(
+                                OCRTrainingSample.auto_accepted == True
+                            ),
+                        )
+                        .where(OCRTrainingSample.document_type == profile.document_type)
+                        .where(OCRTrainingSample.deleted_at.is_(None))
+                    )
+                    counts = samples_result.fetchone()
+                    total_count, verified_count, auto_accepted_count = counts or (0, 0, 0)
+
+                    # Berechne Coverage
+                    target_samples = int(
+                        profile.estimated_daily_volume * profile.target_coverage * 0.1
+                    )
+                    coverage = verified_count / target_samples if target_samples > 0 else 0.0
+                    coverage = min(coverage, 1.0)
+
+                    coverage_by_type[profile.document_type] = {
+                        "coverage": coverage,
+                        "total": total_count,
+                        "verified": verified_count,
+                        "auto_accepted": auto_accepted_count,
+                        "target": target_samples,
+                    }
+
+                    # Aggregiere Gesamt-Metriken
+                    total_processed += total_count
+                    total_auto_accepted += auto_accepted_count
+                    total_verified += verified_count
+
+                    # Gewichtete Coverage
+                    weight = profile.training_weight or 1.0
+                    weighted_coverage_sum += coverage * weight
+                    total_weight += weight
+
+                # Berechne gewichtete Gesamt-Coverage
+                weighted_coverage = (
+                    weighted_coverage_sum / total_weight if total_weight > 0 else 0.0
+                )
+
+                # Erstelle Snapshot
+                snapshot = CoverageSnapshot(
+                    id=uuid4(),
+                    snapshot_date=datetime.now(timezone.utc),
+                    total_documents_processed=total_processed,
+                    total_auto_accepted=total_auto_accepted,
+                    total_manually_verified=total_verified - total_auto_accepted,
+                    total_rejected=total_rejected,
+                    coverage_by_type={k: v["coverage"] for k, v in coverage_by_type.items()},
+                    weighted_coverage=weighted_coverage,
+                )
+
+                session.add(snapshot)
+                await session.commit()
+
+                return {
+                    "snapshot_id": str(snapshot.id),
+                    "weighted_coverage": weighted_coverage,
+                    "coverage_by_type": coverage_by_type,
+                    "total_processed": total_processed,
+                    "total_auto_accepted": total_auto_accepted,
+                }
+
+        # asyncio.run() fuer sauberes Event-Loop Cleanup
+        result = asyncio.run(create_snapshot())
+
+        logger.info(
+            "coverage_snapshot_completed",
+            task_id=task_id,
+            weighted_coverage=result.get("weighted_coverage", 0.0),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception(
+            "coverage_snapshot_failed",
+            task_id=task_id,
+            error=str(e),
+        )
+        raise
+
+
+# ==================== LLM Review Pipeline Tasks (Phase 6) ====================
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.training_tasks.llm_review_batch",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 2},
+    retry_backoff=True,
+    retry_backoff_max=300,
+    soft_time_limit=3600,  # 1 Stunde
+    time_limit=4200,  # 70 Minuten
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def llm_review_batch(
+    self,
+    max_samples: int = 50,
+    document_type: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    LLM-Review fuer pending/rejected Samples.
+
+    Prueft rejected Samples mit LLM (Qwen3-8B/14B):
+    1. Semantische Validierung
+    2. Fehlerkorrektur
+    3. Qualitaetsbewertung (Score 1-10)
+    4. Entscheidung: accept|reject|needs_human
+
+    Laeuft alle 2 Stunden via Celery Beat.
+
+    Args:
+        max_samples: Maximale Anzahl zu verarbeitender Samples
+        document_type: Optional Dokumenttyp-Filter
+
+    Returns:
+        Batch-Review-Ergebnis
+    """
+    task_id = self.request.id
+
+    logger.info(
+        "llm_review_batch_starting",
+        task_id=task_id,
+        max_samples=max_samples,
+        document_type=document_type,
+    )
+
+    try:
+        from app.services.llm_ocr_review_service import get_llm_ocr_review_service
+        from app.db.session import get_async_session_context
+
+        async def run_batch_review() -> Dict[str, Any]:
+            async with get_async_session_context() as session:
+                review_service = get_llm_ocr_review_service()
+                result = await review_service.batch_review(
+                    db=session,
+                    max_samples=max_samples,
+                    document_type=document_type,
+                    only_pending=True,
+                )
+
+                return {
+                    "total_processed": result.total_processed,
+                    "accepted": result.accepted,
+                    "rejected": result.rejected,
+                    "needs_human": result.needs_human,
+                    "errors": result.errors,
+                    "avg_quality_score": result.avg_quality_score,
+                }
+
+        # asyncio.run() fuer sauberes Event-Loop Cleanup
+        result = asyncio.run(run_batch_review())
+
+        logger.info(
+            "llm_review_batch_completed",
+            task_id=task_id,
+            total_processed=result.get("total_processed", 0),
+            accepted=result.get("accepted", 0),
+            rejected=result.get("rejected", 0),
+            avg_quality_score=result.get("avg_quality_score", 0.0),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception(
+            "llm_review_batch_failed",
+            task_id=task_id,
+            error=str(e),
+        )
+        raise
+
+
 # Erweitere Beat Schedule mit Bulk Processing und Fine-Tuning Tasks
 CELERY_BEAT_TRAINING_SCHEDULE.update({
     "quality-snapshot-hourly": {
@@ -1692,6 +2125,23 @@ CELERY_BEAT_TRAINING_SCHEDULE.update({
     "check-retraining-conditions-daily": {
         "task": "app.workers.tasks.training_tasks.check_retraining_conditions",
         "schedule": 86400.0,  # Täglich um 02:00
+        "options": {"queue": "default"},
+    },
+    # Auto Ground-Truth Pipeline Tasks
+    "auto-ground-truth-batch": {
+        "task": "app.workers.tasks.training_tasks.process_auto_ground_truth_batch",
+        "schedule": 1800.0,  # Alle 30 Minuten
+        "options": {"queue": "default"},
+    },
+    "coverage-snapshot-daily": {
+        "task": "app.workers.tasks.training_tasks.generate_coverage_snapshot",
+        "schedule": 86400.0,  # Täglich um 01:00
+        "options": {"queue": "default"},
+    },
+    # LLM Review Pipeline Task (Phase 6)
+    "llm-review-batch": {
+        "task": "app.workers.tasks.training_tasks.llm_review_batch",
+        "schedule": 7200.0,  # Alle 2 Stunden
         "options": {"queue": "default"},
     },
 })

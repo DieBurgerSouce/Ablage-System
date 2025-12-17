@@ -245,3 +245,51 @@ CD4921000467
         name = "Muellers Warenhaus GmbH"
         result = service._normalize_for_filename(name)
         assert "Muellers" in result or "Mueller" in result
+
+    # =========================================================================
+    # AUER Packaging Pattern Tests (Post-Fix-Analyse 2025-12-15)
+    # =========================================================================
+
+    def test_auer_vk_format_with_space(self, service):
+        """AUER VK-Format mit Leerzeichen: VK 1036735."""
+        text = "Pro-Forma-Rechnung VK 1036735 / D119925\n16.04.2020"
+        result = service._extract_invoice_number(text)
+        assert result == "1036735"
+
+    def test_auer_vk_format_without_space(self, service):
+        """AUER VK-Format ohne Leerzeichen: VK1036735."""
+        text = "VK1036735\nAUER Packaging"
+        result = service._extract_invoice_number(text)
+        assert result == "1036735"
+
+    def test_auer_d_format(self, service):
+        """AUER D-Format: D119925."""
+        text = "Lieferschein D119925\nAUER Packaging GmbH"
+        result = service._extract_invoice_number(text)
+        assert result == "D119925"
+
+    def test_auer_combined_format(self, service):
+        """AUER kombiniertes Format: VK 1036735 / D119925."""
+        text = """
+Pro-Forma-Rechnung VK 1036735 / D119925
+16.04.2020
+BBG 1210K
+624,24 EUR
+"""
+        result = service._extract_invoice_number(text)
+        # Sollte VK-Nummer bevorzugen
+        assert result == "1036735"
+
+    def test_auer_ocr_real_example(self, service):
+        """Echter AUER OCR-Text aus der Analyse."""
+        text = """
+Pro-Forma-Rechnung VK 1036735 / D119925
+16.04.2020
+...
+BBG 1210K
+624,24 € • Netto
+118,61 € • MwSt. 19%
+742,85 € • Gesamt brutto
+"""
+        result = service._extract_invoice_number(text)
+        assert result == "1036735"

@@ -113,9 +113,11 @@ async def _async_reprocess_all(
     from app.db.session import get_async_session_context
     async with get_async_session_context() as db:
         # Basis-Query: Alle Dokumente mit OCR-Text
+        # HINWEIS: is_deleted ist eine Property, nicht eine Column!
+        # Daher muss deleted_at.is_(None) verwendet werden.
         query = select(Document).where(
             and_(
-                Document.is_deleted == False,
+                Document.deleted_at.is_(None),  # Nicht geloescht
                 Document.extracted_text.isnot(None),
                 Document.extracted_text != "",
             )
@@ -817,3 +819,199 @@ def _sanitize_error_message(error: str) -> str:
         error = error[:197] + "..."
 
     return error.strip()
+
+
+# =============================================================================
+# QUICK CLASSIFICATION RE-PROCESSING (Post-Fix 2025-12-15)
+# =============================================================================
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="extraction.reprocess_quick_classification",
+    max_retries=0,
+    soft_time_limit=3600,  # 1 Stunde Soft-Limit
+    time_limit=3900,  # 1h 5min Hard-Limit
+)
+def reprocess_quick_classification(
+    self,
+    batch_size: int = 50,
+    skip_correct: bool = False,
+    owner_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Reprocessed Quick-Classification fuer alle Dokumente.
+
+    Aktualisiert rename_suggestion und quick_classification_result
+    basierend auf dem bereits vorhandenen OCR-Text.
+
+    Args:
+        batch_size: Dokumente pro Batch (default 50)
+        skip_correct: Dokumente mit korrekter Extraktion ueberspringen
+        owner_id: Nur Dokumente eines bestimmten Users (optional)
+
+    Returns:
+        {
+            "total_processed": 293,
+            "total_updated": 250,
+            "total_skipped": 43,
+            "total_failed": 0,
+            "duration_seconds": 120,
+            "examples": [...]
+        }
+    """
+    return asyncio.run(
+        _async_reprocess_quick_classification(
+            task=self,
+            batch_size=batch_size,
+            skip_correct=skip_correct,
+            owner_id=owner_id,
+        )
+    )
+
+
+async def _async_reprocess_quick_classification(
+    task,
+    batch_size: int,
+    skip_correct: bool,
+    owner_id: Optional[str],
+) -> Dict[str, Any]:
+    """Async Implementation des Quick-Classification Reprocessing."""
+    from app.services.quick_classification_service import QuickClassificationService
+    from app.db.session import get_async_session_context
+
+    start_time = datetime.now(timezone.utc)
+    stats = {
+        "total_processed": 0,
+        "total_updated": 0,
+        "total_skipped": 0,
+        "total_failed": 0,
+        "examples": [],
+    }
+
+    qc_service = QuickClassificationService()
+
+    async with get_async_session_context() as db:
+        # Query: Alle Dokumente mit OCR-Text
+        # WICHTIG: is_deleted ist eine Property, nicht Column! Filter via deleted_at
+        query = select(Document).where(
+            and_(
+                Document.deleted_at.is_(None),  # Nicht geloescht (is_deleted property)
+                Document.extracted_text.isnot(None),
+            )
+        )
+
+        if owner_id:
+            query = query.where(Document.owner_id == UUID(owner_id))
+
+        # Sortieren nach created_at fuer konsistente Verarbeitung
+        query = query.order_by(Document.created_at.desc())
+
+        result = await db.execute(query)
+        documents = result.scalars().all()
+
+        total = len(documents)
+        logger.info(
+            "quick_classification_reprocess_started",
+            total_documents=total,
+            batch_size=batch_size,
+            skip_correct=skip_correct,
+        )
+
+        # Batch-weise verarbeiten
+        for i, doc in enumerate(documents):
+            try:
+                # Task-Progress aktualisieren
+                if hasattr(task, 'update_state'):
+                    task.update_state(
+                        state='PROGRESS',
+                        meta={
+                            'current': i + 1,
+                            'total': total,
+                            'percent': round((i + 1) / total * 100, 1),
+                        }
+                    )
+
+                # Bisherige Werte merken (aus quick_classification_result JSON)
+                old_qc = doc.quick_classification_result or {}
+                old_suggestion = old_qc.get("rename_suggestion")
+                old_invoice = old_qc.get("invoice_number")
+
+                # Quick-Classification ausfuehren
+                # classify_document generiert intern auch die Rename-Suggestion
+                qc_result_obj = await qc_service.classify_document(
+                    document_id=doc.id,
+                    ocr_text=doc.extracted_text,
+                    db=db,
+                    auto_assign_tag=False,  # Keine Tag-Zuweisung bei Reprocessing
+                )
+
+                # Result zu Dict konvertieren
+                qc_result = qc_service.to_dict(qc_result_obj)
+
+                # Pruefen ob sich etwas geaendert hat
+                new_invoice = qc_result.get("invoice_number")
+                new_suggestion = qc_result.get("rename_suggestion")
+                changed = (
+                    new_suggestion != old_suggestion or
+                    new_invoice != old_invoice
+                )
+
+                if skip_correct and not changed:
+                    stats["total_skipped"] += 1
+                    continue
+
+                # Dokument aktualisieren
+                doc.quick_classification_result = qc_result
+
+                stats["total_processed"] += 1
+                if changed:
+                    stats["total_updated"] += 1
+
+                    # Beispiele sammeln (max 10)
+                    if len(stats["examples"]) < 10:
+                        stats["examples"].append({
+                            "filename": doc.original_filename,
+                            "old_invoice": old_invoice,
+                            "new_invoice": new_invoice,
+                            "old_suggestion": old_suggestion,
+                            "new_suggestion": new_suggestion,
+                        })
+
+                # Batch-Commit
+                if (i + 1) % batch_size == 0:
+                    await db.commit()
+                    logger.info(
+                        "quick_classification_batch_committed",
+                        processed=i + 1,
+                        total=total,
+                        updated=stats["total_updated"],
+                    )
+
+            except Exception as e:
+                stats["total_failed"] += 1
+                logger.error(
+                    "quick_classification_reprocess_failed",
+                    document_id=str(doc.id),
+                    filename=doc.original_filename,
+                    error=str(e),
+                )
+
+        # Finales Commit
+        await db.commit()
+
+        # Statistiken finalisieren
+        duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+        stats["duration_seconds"] = round(duration, 2)
+
+        logger.info(
+            "quick_classification_reprocess_completed",
+            total_processed=stats["total_processed"],
+            total_updated=stats["total_updated"],
+            total_skipped=stats["total_skipped"],
+            total_failed=stats["total_failed"],
+            duration_seconds=stats["duration_seconds"],
+        )
+
+        return stats
