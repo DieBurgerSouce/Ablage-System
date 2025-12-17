@@ -28,11 +28,51 @@ import threading
 import time
 
 import structlog
+from prometheus_client import Counter, Histogram, Gauge
 
 from app.core.config import settings
 from app.services.embedding_service import EmbeddingModelType
 
 logger = structlog.get_logger(__name__)
+
+
+# ============================================================================
+# Prometheus Metriken
+# ============================================================================
+
+# Counter: Gesamtzahl der Vector-Suchen pro Variante und Backend
+vector_search_total = Counter(
+    'vector_search_total',
+    'Gesamtzahl der Vector-Suchen',
+    ['variant', 'backend']
+)
+
+# Counter: Fehler pro Variante und Backend
+vector_search_errors_total = Counter(
+    'vector_search_errors_total',
+    'Anzahl der Fehler bei Vector-Suchen',
+    ['variant', 'backend']
+)
+
+# Histogram: Latenz der Vector-Suchen in Sekunden
+vector_search_latency_seconds = Histogram(
+    'vector_search_latency_seconds',
+    'Latenz der Vector-Suchen in Sekunden',
+    ['variant', 'backend'],
+    buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+)
+
+# Gauge: A/B Testing aktiviert (0 oder 1)
+ablage_ab_testing_enabled = Gauge(
+    'ablage_ab_testing_enabled',
+    'A/B Testing aktiviert (1) oder deaktiviert (0)'
+)
+
+# Gauge: Aktueller Traffic-Split Prozentsatz (0-100)
+ablage_ab_testing_traffic_split = Gauge(
+    'ablage_ab_testing_traffic_split',
+    'Traffic-Split Prozentsatz fuer Treatment-Variante (0-100)'
+)
 
 
 # ============================================================================
@@ -153,6 +193,11 @@ class ABTestingRouter:
             ExperimentVariant.TREATMENT: ABTestMetrics(variant=ExperimentVariant.TREATMENT),
         }
         self._metrics_lock = threading.Lock()
+        self._config_lock = threading.Lock()  # Lock fuer Konfigurationsaenderungen
+
+        # Prometheus Gauges initialisieren
+        ablage_ab_testing_enabled.set(1 if self._enabled else 0)
+        ablage_ab_testing_traffic_split.set(self._traffic_split)
 
         self._initialized = True
 
@@ -311,6 +356,21 @@ class ABTestingRouter:
         if not settings.VECTOR_AB_METRICS_ENABLED:
             return
 
+        variant_str = assignment.variant.value
+        backend_str = assignment.backend.value
+
+        # Prometheus-Metriken aktualisieren
+        vector_search_total.labels(variant=variant_str, backend=backend_str).inc()
+        vector_search_latency_seconds.labels(
+            variant=variant_str, backend=backend_str
+        ).observe(query_time_ms / 1000.0)  # Millisekunden zu Sekunden
+
+        if error:
+            vector_search_errors_total.labels(
+                variant=variant_str, backend=backend_str
+            ).inc()
+
+        # In-Memory Metriken aktualisieren
         with self._metrics_lock:
             metrics = self._metrics[assignment.variant]
             metrics.total_requests += 1
@@ -323,7 +383,8 @@ class ABTestingRouter:
 
         logger.debug(
             "ab_test_result_recorded",
-            variant=assignment.variant.value,
+            variant=variant_str,
+            backend=backend_str,
             query_time_ms=query_time_ms,
             result_count=result_count,
             avg_score=avg_score,
@@ -366,6 +427,7 @@ class ABTestingRouter:
         """Traffic-Split zur Laufzeit aendern (0-100).
 
         Ermoeglicht graduelle Rollouts ohne Restart.
+        Thread-safe durch Config-Lock.
 
         Args:
             new_split: Neuer Prozentsatz fuer Treatment (0-100)
@@ -373,8 +435,11 @@ class ABTestingRouter:
         if not 0 <= new_split <= 100:
             raise ValueError(f"Traffic-Split muss zwischen 0 und 100 liegen: {new_split}")
 
-        old_split = self._traffic_split
-        self._traffic_split = new_split
+        with self._config_lock:
+            old_split = self._traffic_split
+            self._traffic_split = new_split
+            # Prometheus Gauge aktualisieren
+            ablage_ab_testing_traffic_split.set(new_split)
 
         logger.info(
             "ab_test_traffic_split_updated",
@@ -474,12 +539,10 @@ class ABTestContext:
 # ============================================================================
 
 
-_ab_testing_router: Optional[ABTestingRouter] = None
-
-
 def get_ab_testing_router() -> ABTestingRouter:
-    """A/B Testing Router Instanz abrufen (Dependency Injection)."""
-    global _ab_testing_router
-    if _ab_testing_router is None:
-        _ab_testing_router = ABTestingRouter()
-    return _ab_testing_router
+    """A/B Testing Router Instanz abrufen (Dependency Injection).
+
+    Nutzt den Klassen-Level Singleton von ABTestingRouter.
+    Thread-safe durch Double-Checked Locking in __new__.
+    """
+    return ABTestingRouter()

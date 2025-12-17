@@ -5,6 +5,12 @@ Provides Prometheus metrics scraping and custom business metrics.
 All sensitive endpoints require proper authentication.
 """
 
+from typing import Any, Dict, Optional
+from datetime import datetime, timedelta, timezone
+
+import httpx
+import structlog
+
 from fastapi import APIRouter, Response, Depends, HTTPException, status
 
 from prometheus_client import (
@@ -458,7 +464,7 @@ async def clear_ocr_cache_stats(
     return {
         "status": "erfolg" if success else "fehlgeschlagen",
         "nachricht": "OCR-Cache-Statistiken wurden zurueckgesetzt" if success else "Zuruecksetzen fehlgeschlagen",
-        "durchgefuehrt_von": str(current_user.id)
+        "durchgeführt_von": str(current_user.id)
     }
 
 
@@ -1025,7 +1031,7 @@ async def get_slo_metrics():
 @router.get("/slo/history")
 async def get_slo_history(
     days: int = 7,
-    slo_key: str = None,
+    slo_key: Optional[str] = None,
     current_user: User = Depends(get_current_active_user)
 ):
     """
@@ -1419,5 +1425,373 @@ async def reset_circuit_breaker(
         "nachricht": f"Circuit Breaker zurueckgesetzt",
         "circuits_reset": reset_count,
         "target": url[:50] if url else "alle",
-        "durchgefuehrt_von": str(current_user.id),
+        "durchgeführt_von": str(current_user.id),
+    }
+
+
+# =============================================================================
+# GRAFANA DASHBOARD LINKS
+# =============================================================================
+
+
+@router.get("/dashboards")
+async def get_dashboard_links():
+    """
+    Grafana Dashboard Links.
+
+    Gibt URLs zu allen verfuegbaren Grafana-Dashboards zurueck.
+
+    **Verfuegbare Dashboards:**
+    - **System Overview**: Allgemeine Systemmetriken, Container-Health
+    - **OCR Pipeline**: OCR-Verarbeitungsmetriken, Backend-Vergleich
+    - **GPU Profiling**: VRAM-Nutzung, Batch-Groessen, OOM-Events
+    - **ML Routing**: Backend-Auswahl, Gewichtungen, A/B Testing
+    - **Backup Monitoring**: Backup-Status, Speicherplatz, Sync-Status
+
+    Returns:
+        Dictionary mit Dashboard-URLs und Verfuegbarkeitsstatus
+    """
+    from app.core.config import settings
+
+    if not settings.GRAFANA_ENABLED:
+        return {
+            "enabled": False,
+            "message": "Grafana-Integration ist deaktiviert",
+            "dashboards": {}
+        }
+
+    base_url = settings.GRAFANA_URL.rstrip("/")
+
+    dashboards = {
+        "system_overview": {
+            "name": "System Overview",
+            "url": f"{base_url}/d/ablage-system-overview",
+            "description": "Allgemeine Systemmetriken, Container-Health, Resource-Nutzung",
+            "icon": "Activity"
+        },
+        "ocr_pipeline": {
+            "name": "OCR Pipeline",
+            "url": f"{base_url}/d/ablage-ocr-pipeline",
+            "description": "OCR-Verarbeitungsmetriken, CER/WER, Backend-Vergleich",
+            "icon": "FileText"
+        },
+        "gpu_profiling": {
+            "name": "GPU Profiling",
+            "url": f"{base_url}/d/ablage-gpu-profiling",
+            "description": "VRAM-Nutzung, Batch-Groessen, OOM-Events, Model-Loading",
+            "icon": "Cpu"
+        },
+        "ml_routing": {
+            "name": "ML Routing",
+            "url": f"{base_url}/d/ablage-ml-routing",
+            "description": "Backend-Auswahl, Gelernte Gewichtungen, A/B Testing",
+            "icon": "GitBranch"
+        },
+        "backup_monitoring": {
+            "name": "Backup Monitoring",
+            "url": f"{base_url}/d/ablage-backup-monitoring",
+            "description": "Backup-Status, Speicherplatz, Remote-Sync",
+            "icon": "Database"
+        }
+    }
+
+    return {
+        "enabled": True,
+        "grafana_base": base_url,
+        "dashboards": dashboards
+    }
+
+
+# =============================================================================
+# A/B TESTING METRIKEN (pgvector vs Qdrant)
+# =============================================================================
+
+
+@router.get("/ab-testing")
+async def get_ab_testing_metrics() -> Dict[str, Any]:
+    """
+    A/B Testing Status fuer Vector Search (pgvector vs Qdrant).
+
+    Zeigt aktuellen Status und Metriken des A/B Tests:
+
+    **Konfiguration:**
+    - enabled: Ob A/B Testing aktiv ist
+    - traffic_split: Prozentsatz fuer Treatment (Qdrant)
+    - control_backend: Kontroll-Backend (pgvector)
+    - treatment_backend: Treatment-Backend (qdrant)
+
+    **Metriken pro Variante:**
+    - total_requests: Gesamtanzahl Anfragen
+    - avg_latency_ms: Durchschnittliche Latenz
+    - avg_results: Durchschnittliche Ergebnisanzahl
+    - avg_score: Durchschnittlicher Relevanz-Score
+    - errors: Fehleranzahl
+    - error_rate: Fehlerrate
+
+    **Qdrant Status:**
+    - points_count: Anzahl Vektoren in Qdrant
+    - collection_status: Collection-Status
+
+    Nuetzlich fuer:
+    - Performance-Vergleich pgvector vs Qdrant
+    - Entscheidung fuer Migration
+    - Monitoring der Rollout-Phase
+    """
+    from app.services.rag.ab_testing_router import get_ab_testing_router
+    from app.core.config import settings
+
+    logger = structlog.get_logger(__name__)
+
+    result = {
+        "zeitstempel": datetime.now(timezone.utc).isoformat(),
+        "konfiguration": {},
+        "metriken": {},
+        "qdrant_status": {},
+        "empfehlungen": [],
+    }
+
+    # Get A/B Testing Router Status
+    try:
+        router = get_ab_testing_router()
+        status = router.get_status()
+
+        result["konfiguration"] = {
+            "aktiviert": status["enabled"],
+            "traffic_split_prozent": status["traffic_split"],
+            "kontrolle": status["control"],
+            "behandlung": status["treatment"],
+        }
+
+        result["metriken"] = status["metrics"]
+
+    except ImportError as ie:
+        logger.error("ab_testing_router_import_error", error=str(ie))
+        result["konfiguration"]["fehler"] = "A/B Testing Modul nicht verfügbar"
+    except RuntimeError as re:
+        logger.warning("ab_testing_router_runtime_error", error=str(re))
+        result["konfiguration"]["fehler"] = f"Router-Initialisierung fehlgeschlagen: {re}"
+    except Exception as e:
+        logger.error("ab_testing_router_error", error=str(e), error_type=type(e).__name__)
+        result["konfiguration"]["fehler"] = "Unerwarteter Fehler beim Abrufen des A/B Testing Status"
+
+    # Get Qdrant Status
+    try:
+        # URL-Validierung
+        qdrant_host = settings.QDRANT_HOST
+        qdrant_port = settings.QDRANT_HTTP_PORT
+
+        if not qdrant_host:
+            raise ValueError("QDRANT_HOST nicht konfiguriert")
+        if not isinstance(qdrant_port, int) or not (0 < qdrant_port <= 65535):
+            raise ValueError(f"Ungültiger QDRANT_HTTP_PORT: {qdrant_port}")
+
+        # TLS-Unterstützung prüfen (falls konfiguriert)
+        protocol = "https" if getattr(settings, 'QDRANT_USE_TLS', False) else "http"
+        qdrant_url = f"{protocol}://{qdrant_host}:{qdrant_port}"
+        collection_name = settings.QDRANT_COLLECTION_CHUNKS
+
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            # Collection Info
+            resp = await client.get(f"{qdrant_url}/collections/{collection_name}")
+            if resp.status_code == 200:
+                try:
+                    info = resp.json()
+                except ValueError as json_err:
+                    raise ValueError(f"Ungültige JSON-Antwort von Qdrant: {json_err}")
+
+                collection_info = info.get("result", {})
+                result["qdrant_status"] = {
+                    "verfuegbar": True,
+                    "collection": collection_name,
+                    "punkte_anzahl": collection_info.get("points_count", 0),
+                    "vektoren_anzahl": collection_info.get("vectors_count", 0),
+                    "status": collection_info.get("status", "unbekannt"),
+                    "konfiguration": {
+                        "vektor_groesse": collection_info.get("config", {}).get("params", {}).get("vectors", {}).get("size"),
+                        "distanz": collection_info.get("config", {}).get("params", {}).get("vectors", {}).get("distance"),
+                    },
+                    "tls_aktiviert": protocol == "https"
+                }
+            elif resp.status_code == 404:
+                result["qdrant_status"] = {
+                    "verfuegbar": True,
+                    "fehler": f"Collection '{collection_name}' existiert nicht. Führe Migration aus."
+                }
+            else:
+                result["qdrant_status"] = {
+                    "verfuegbar": False,
+                    "fehler": f"Qdrant-Fehler: HTTP {resp.status_code}"
+                }
+
+    except httpx.TimeoutException:
+        logger.warning("qdrant_timeout", timeout_seconds=5.0)
+        result["qdrant_status"] = {
+            "verfuegbar": False,
+            "fehler": "Qdrant nicht erreichbar (Timeout nach 5 Sekunden)"
+        }
+    except httpx.ConnectError:
+        logger.warning("qdrant_connection_error", host=settings.QDRANT_HOST)
+        result["qdrant_status"] = {
+            "verfuegbar": False,
+            "fehler": f"Verbindung zu Qdrant fehlgeschlagen ({settings.QDRANT_HOST}:{settings.QDRANT_HTTP_PORT})"
+        }
+    except ValueError as ve:
+        logger.warning("qdrant_config_error", error=str(ve))
+        result["qdrant_status"] = {
+            "verfuegbar": False,
+            "fehler": str(ve)
+        }
+    except Exception as e:
+        logger.error("qdrant_status_error", error=str(e), error_type=type(e).__name__)
+        result["qdrant_status"] = {
+            "verfuegbar": False,
+            "fehler": "Unerwarteter Fehler beim Qdrant-Statusabruf"
+        }
+
+    # Empfehlungen generieren
+    empfehlungen = []
+
+    # Pruefen ob A/B Testing aktiviert aber noch keine Anfragen
+    control_requests = result.get("metriken", {}).get("control", {}).get("total_requests", 0)
+    treatment_requests = result.get("metriken", {}).get("treatment", {}).get("total_requests", 0)
+
+    if result.get("konfiguration", {}).get("aktiviert") and control_requests == 0 and treatment_requests == 0:
+        empfehlungen.append({
+            "typ": "info",
+            "nachricht": "A/B Testing aktiviert, aber noch keine Anfragen. Führe RAG-Suchen durch um Daten zu sammeln."
+        })
+
+    # Latenz-Vergleich
+    if control_requests > 10 and treatment_requests > 10:
+        control_latency = result.get("metriken", {}).get("control", {}).get("avg_latency_ms", 0)
+        treatment_latency = result.get("metriken", {}).get("treatment", {}).get("avg_latency_ms", 0)
+
+        if treatment_latency > 0 and control_latency > 0:
+            if treatment_latency < control_latency * 0.8:
+                empfehlungen.append({
+                    "typ": "erfolg",
+                    "nachricht": f"Qdrant ist {((control_latency - treatment_latency) / control_latency * 100):.1f}% schneller als pgvector. Erwäge Traffic-Split zu erhöhen."
+                })
+            elif treatment_latency > control_latency * 1.2:
+                empfehlungen.append({
+                    "typ": "warnung",
+                    "nachricht": f"Qdrant ist {((treatment_latency - control_latency) / control_latency * 100):.1f}% langsamer als pgvector. Prüfe Qdrant-Konfiguration."
+                })
+
+    # Fehlerraten prüfen
+    control_error_rate = result.get("metriken", {}).get("control", {}).get("error_rate", 0)
+    treatment_error_rate = result.get("metriken", {}).get("treatment", {}).get("error_rate", 0)
+
+    if treatment_error_rate > 0.05:
+        empfehlungen.append({
+            "typ": "warnung",
+            "nachricht": f"Qdrant Fehlerrate bei {treatment_error_rate * 100:.1f}%. Prüfe Logs und Verbindung."
+        })
+
+    # Qdrant Sync-Status prüfen
+    qdrant_points = result.get("qdrant_status", {}).get("punkte_anzahl", 0)
+    if qdrant_points == 0 and result.get("konfiguration", {}).get("aktiviert"):
+        empfehlungen.append({
+            "typ": "kritisch",
+            "nachricht": "Qdrant Collection ist leer! Führe Migration aus: migrate_embeddings_to_qdrant"
+        })
+
+    result["empfehlungen"] = empfehlungen
+
+    return result
+
+
+@router.post("/ab-testing/traffic-split")
+async def update_ab_testing_traffic_split(
+    new_split: int,
+    current_user: User = Depends(get_current_superuser)
+) -> Dict[str, Any]:
+    """
+    A/B Testing Traffic-Split aendern.
+
+    **REQUIRES ADMIN AUTHENTICATION**
+
+    Aendert den Prozentsatz des Traffics, der an Qdrant (Treatment) geht.
+
+    **Parameter:**
+    - new_split: Neuer Prozentsatz (0-100)
+      - 0 = Alles pgvector
+      - 10 = 10% Qdrant, 90% pgvector
+      - 50 = 50/50 Split
+      - 100 = Alles Qdrant
+
+    **Empfohlene Rollout-Strategie:**
+    1. Start: 10% (validieren)
+    2. Phase 2: 25% (mehr Daten sammeln)
+    3. Phase 3: 50% (echte A/B Vergleichbarkeit)
+    4. Phase 4: 90% (fast vollstaendig)
+    5. Final: 100% (Migration abgeschlossen)
+
+    Returns:
+        Bestaetigung mit altem und neuem Split-Wert
+    """
+    logger = structlog.get_logger(__name__)
+
+    if new_split < 0 or new_split > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Traffic-Split muss zwischen 0 und 100 liegen"
+        )
+
+    from app.services.rag.ab_testing_router import get_ab_testing_router
+
+    router = get_ab_testing_router()
+    old_split = router._traffic_split
+
+    logger.warning(
+        "ab_testing_traffic_split_change",
+        admin_user_id=str(current_user.id),
+        admin_email=current_user.email,
+        old_split=old_split,
+        new_split=new_split
+    )
+
+    router.update_traffic_split(new_split)
+
+    return {
+        "status": "erfolg",
+        "nachricht": f"Traffic-Split von {old_split}% auf {new_split}% geaendert",
+        "alter_split": old_split,
+        "neuer_split": new_split,
+        "durchgeführt_von": str(current_user.id)
+    }
+
+
+@router.post("/ab-testing/reset-metrics")
+async def reset_ab_testing_metrics(
+    current_user: User = Depends(get_current_superuser)
+) -> Dict[str, Any]:
+    """
+    A/B Testing Metriken zuruecksetzen.
+
+    **REQUIRES ADMIN AUTHENTICATION**
+
+    Setzt alle gesammelten A/B Testing Metriken auf 0 zurueck.
+    Nuetzlich nach Konfigurationsaenderungen oder fuer neue Testphasen.
+
+    Returns:
+        Bestaetigung des Resets
+    """
+    from app.services.rag.ab_testing_router import get_ab_testing_router
+
+    logger = structlog.get_logger(__name__)
+
+    logger.warning(
+        "ab_testing_metrics_reset",
+        admin_user_id=str(current_user.id),
+        admin_email=current_user.email
+    )
+
+    router = get_ab_testing_router()
+    router.reset_metrics()
+
+    return {
+        "status": "erfolg",
+        "nachricht": "A/B Testing Metriken wurden zurueckgesetzt",
+        "durchgeführt_von": str(current_user.id)
     }

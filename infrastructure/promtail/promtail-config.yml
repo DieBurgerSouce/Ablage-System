@@ -12,6 +12,7 @@ positions:
 
 clients:
   - url: http://loki:3100/loki/api/v1/push
+    tenant_id: tenant1
     batchwait: 1s
     batchsize: 1048576
     timeout: 10s
@@ -298,37 +299,134 @@ scrape_configs:
           event:
           action:
           result:
-      - drop:
-          selector: '{audit_event!="true"}'
+
+  # ============================================================================
+  # A/B Testing Vector Search Logs
+  # Erfasst alle Vector-Suchen fuer A/B Testing Analyse (Qdrant vs pgvector)
+  # ============================================================================
+  - job_name: ab-testing-vector
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/ablage-backend'
+        action: keep
+      - source_labels: ['__meta_docker_container_name']
+        target_label: container
+        replacement: ab-testing
+    pipeline_stages:
+      # Parse JSON structured logs
+      - json:
+          expressions:
+            event: event
+            variant: variant
+            backend: backend
+            latency_ms: latency_ms
+            success: success
+            error: error
+            traffic_split: traffic_split
+            query_id: query_id
+            results_count: results_count
+            timestamp: timestamp
+      # Nur A/B Testing Events behalten
+      - match:
+          selector: '{container="ab-testing"}'
+          stages:
+            - regex:
+                expression: '(vector_search|ab_testing|variant_selection)'
+            - labels:
+                ab_testing_event: 'true'
+      # Labels fuer Filterung
+      - labels:
+          event:
+          variant:
+          backend:
+          success:
+      # Timestamp extraction
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+          fallback_formats:
+            - '2006-01-02T15:04:05.000Z'
+            - '2006-01-02 15:04:05'
+      # Metriken aus Logs extrahieren (Backup fuer Prometheus)
+      - metrics:
+          ab_testing_search_duration:
+            type: Histogram
+            description: "A/B Testing Vector-Suche Latenz in Millisekunden"
+            source: latency_ms
+            config:
+              buckets: [10, 25, 50, 100, 250, 500, 1000, 2500, 5000]
+          ab_testing_results_count:
+            type: Histogram
+            description: "Anzahl der Suchergebnisse"
+            source: results_count
+            config:
+              buckets: [0, 1, 5, 10, 20, 50, 100]
+
+  # ============================================================================
+  # A/B Testing Konfigurationsaenderungen (Audit Trail)
+  # ============================================================================
+  - job_name: ab-testing-config
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/ablage-backend'
+        action: keep
+      - source_labels: ['__meta_docker_container_name']
+        target_label: container
+        replacement: ab-testing-config
+    pipeline_stages:
+      - json:
+          expressions:
+            event: event
+            user_id: user_id
+            user_email: user_email
+            old_traffic_split: old_traffic_split
+            new_traffic_split: new_traffic_split
+            action: action
+            timestamp: timestamp
+      # Nur Konfigurationsaenderungen behalten
+      - match:
+          selector: '{container="ab-testing-config"}'
+          stages:
+            - regex:
+                expression: '(traffic_split_changed|ab_testing_enabled|ab_testing_disabled|metrics_reset)'
+            - labels:
+                config_change: 'true'
+      - labels:
+          event:
+          action:
+          user_email:
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
 
   # ============================================================================
   # GPU Monitoring Logs
+  # HINWEIS: Deaktiviert - GPU Metriken werden via DCGM Exporter gesammelt
   # ============================================================================
-  - job_name: gpu-monitor
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: gpu-monitor
-          __path__: /var/log/nvidia/*.log
-    pipeline_stages:
-      - regex:
-          expression: '^(?P<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) (?P<level>\w+): (?P<message>.*)'
-      - labels:
-          level:
+  # - job_name: gpu-monitor
+  #   static_configs:
+  #     - targets:
+  #         - localhost
+  #       labels:
+  #         job: gpu-monitor
+  #         __path__: /var/log/nvidia/*.log
+  #   (Pfad existiert nicht in Container - nutze stattdessen dcgm-exporter)
 
   # ============================================================================
   # System Logs
+  # HINWEIS: Deaktiviert - /var/log/syslog nicht im Container zugaenglich
   # ============================================================================
-  - job_name: system-logs
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: system
-          __path__: /var/log/syslog
-    pipeline_stages:
-      - regex:
-          expression: '^(?P<timestamp>\w+ \d+ \d+:\d+:\d+) (?P<hostname>\S+) (?P<program>[^\[]+)(\[(?P<pid>\d+)\])?: (?P<message>.*)'
-      - labels:
-          program:
+  # - job_name: system-logs
+  #   static_configs:
+  #     - targets:
+  #         - localhost
+  #       labels:
+  #         job: system
+  #         __path__: /var/log/syslog
+  #   (Nutze stattdessen Docker Container Logs via docker_sd_configs)

@@ -1,0 +1,284 @@
+# Qdrant Vector Database Alert Rules
+# Ablage-System OCR - A/B Testing Monitoring
+
+groups:
+  - name: qdrant-health
+    interval: 30s
+    rules:
+      # ============================================================================
+      # QDRANT AVAILABILITY
+      # ============================================================================
+
+      # Kritisch: Qdrant nicht erreichbar
+      - alert: QdrantDown
+        expr: up{job="qdrant"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: qdrant
+          service: vector-search
+        annotations:
+          summary: "KRITISCH: Qdrant Vector DB nicht erreichbar"
+          description: "Qdrant ist seit 1 Minute nicht erreichbar. A/B Testing Treatment-Variante betroffen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/qdrant-down"
+
+      # ============================================================================
+      # QDRANT COLLECTION HEALTH
+      # ============================================================================
+
+      # Warnung: Collection Punktanzahl niedrig
+      - alert: QdrantCollectionEmpty
+        expr: qdrant_collection_points_count{collection="ablage_documents"} < 100
+        for: 5m
+        labels:
+          severity: warning
+          component: qdrant
+          service: vector-search
+        annotations:
+          summary: "Qdrant Collection hat wenige Punkte"
+          description: "Collection {{ $labels.collection }} hat nur {{ $value }} Punkte. Erwartet: 674+."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/qdrant-collection-empty"
+
+      # ============================================================================
+      # QDRANT PERFORMANCE
+      # ============================================================================
+
+      # Warnung: Hohe Suchlatenzen
+      - alert: QdrantSearchLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(qdrant_search_duration_seconds_bucket[5m])) by (le, collection)
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: qdrant
+          service: vector-search
+        annotations:
+          summary: "Qdrant Suche langsam"
+          description: "95% der Qdrant-Suchen dauern laenger als 500ms."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/qdrant-latency"
+
+      # Kritisch: Sehr hohe Suchlatenzen
+      - alert: QdrantSearchLatencyCritical
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(qdrant_search_duration_seconds_bucket[5m])) by (le, collection)
+          ) > 2
+        for: 2m
+        labels:
+          severity: critical
+          component: qdrant
+          service: vector-search
+        annotations:
+          summary: "KRITISCH: Qdrant Suche sehr langsam"
+          description: "95% der Qdrant-Suchen dauern laenger als 2 Sekunden. Performance kritisch."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/qdrant-latency-critical"
+
+      # ============================================================================
+      # QDRANT MEMORY
+      # ============================================================================
+
+      # Warnung: Hoher Speicherverbrauch
+      - alert: QdrantMemoryHigh
+        expr: qdrant_memory_used_bytes / qdrant_memory_total_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: qdrant
+          resource: memory
+        annotations:
+          summary: "Qdrant Speicherverbrauch hoch"
+          description: "Qdrant nutzt {{ $value | humanizePercentage }} des verfuegbaren Speichers."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/qdrant-memory"
+
+  - name: ab-testing-alerts
+    interval: 30s
+    rules:
+      # ============================================================================
+      # A/B TESTING VECTOR SEARCH
+      # ============================================================================
+
+      # Warnung: Treatment (Qdrant) hat mehr Fehler als Control
+      - alert: ABTestingTreatmentErrors
+        expr: |
+          (vector_search_errors_total{variant="treatment"}
+           / vector_search_total{variant="treatment"})
+          >
+          (vector_search_errors_total{variant="control"}
+           / vector_search_total{variant="control"}) * 2
+        for: 10m
+        labels:
+          severity: warning
+          component: ab-testing
+          service: vector-search
+        annotations:
+          summary: "A/B Testing: Treatment hat mehr Fehler"
+          description: "Qdrant (Treatment) hat mehr als doppelt so viele Fehler wie pgvector (Control)."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ab-testing-errors"
+
+      # Info: Treatment deutlich schneller als Control
+      - alert: ABTestingTreatmentFaster
+        expr: |
+          (avg(vector_search_latency_seconds{variant="control"})
+           / avg(vector_search_latency_seconds{variant="treatment"})) > 1.5
+        for: 30m
+        labels:
+          severity: info
+          component: ab-testing
+          service: vector-search
+        annotations:
+          summary: "A/B Testing: Qdrant 50%+ schneller als pgvector"
+          description: "Treatment (Qdrant) ist {{ $value | humanize }}x schneller. Traffic-Erhoehung empfohlen."
+
+      # Warnung: Treatment langsamer als Control
+      - alert: ABTestingTreatmentSlower
+        expr: |
+          (avg(vector_search_latency_seconds{variant="treatment"})
+           / avg(vector_search_latency_seconds{variant="control"})) > 1.5
+        for: 10m
+        labels:
+          severity: warning
+          component: ab-testing
+          service: vector-search
+        annotations:
+          summary: "A/B Testing: Qdrant langsamer als pgvector"
+          description: "Treatment (Qdrant) ist {{ $value | humanize }}x langsamer als Control. Konfiguration pruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ab-testing-slow"
+
+      # ============================================================================
+      # A/B TESTING KONFIGURATION
+      # ============================================================================
+
+      # Warnung: Traffic-Split bei 0% (kein Traffic auf Qdrant)
+      - alert: ABTestingTrafficSplitZero
+        expr: ablage_ab_testing_traffic_split == 0
+        for: 24h
+        labels:
+          severity: warning
+          component: ab-testing
+          service: vector-search
+        annotations:
+          summary: "A/B Testing: Kein Traffic auf Qdrant"
+          description: "Traffic-Split steht seit 24h auf 0%. Qdrant erhaelt keinen Traffic. Ist das beabsichtigt?"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ab-testing-traffic-split"
+
+      # Warnung: Traffic-Split bei 100% (vollständige Migration)
+      - alert: ABTestingTrafficSplitFull
+        expr: ablage_ab_testing_traffic_split == 100
+        for: 24h
+        labels:
+          severity: info
+          component: ab-testing
+          service: vector-search
+        annotations:
+          summary: "A/B Testing: Vollstaendiger Qdrant-Traffic"
+          description: "Traffic-Split steht auf 100%. Alle Anfragen gehen an Qdrant. pgvector-Deaktivierung pruefen."
+
+      # Warnung: A/B Test laeuft zu lange ohne Entscheidung
+      - alert: ABTestingRunningTooLong
+        expr: |
+          (ablage_ab_testing_enabled == 1)
+          and
+          (ablage_ab_testing_traffic_split > 0)
+          and
+          (ablage_ab_testing_traffic_split < 100)
+        for: 168h  # 7 Tage
+        labels:
+          severity: warning
+          component: ab-testing
+          service: vector-search
+        annotations:
+          summary: "A/B Testing: Test laeuft seit 7+ Tagen"
+          description: "A/B Test laeuft seit ueber 7 Tagen mit Split {{ $value }}%. Zeit fuer eine Entscheidung?"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ab-testing-decision"
+
+      # Kritisch: A/B Testing deaktiviert aber Traffic-Split nicht 0
+      - alert: ABTestingConfigMismatch
+        expr: |
+          (ablage_ab_testing_enabled == 0)
+          and
+          (ablage_ab_testing_traffic_split > 0)
+        for: 5m
+        labels:
+          severity: critical
+          component: ab-testing
+          service: vector-search
+        annotations:
+          summary: "KRITISCH: A/B Testing Konfigurationsfehler"
+          description: "A/B Testing ist deaktiviert aber Traffic-Split ist {{ $value }}%. Inkonsistenter Zustand!"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ab-testing-config"
+
+      # ============================================================================
+      # CONTROL (PGVECTOR) HEALTH
+      # ============================================================================
+
+      # Kritisch: Control (pgvector) hat hohe Fehlerrate
+      - alert: ABTestingControlErrors
+        expr: |
+          (
+            rate(vector_search_errors_total{variant="control"}[5m])
+            / rate(vector_search_total{variant="control"}[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: ab-testing
+          service: vector-search
+        annotations:
+          summary: "KRITISCH: pgvector (Control) Fehlerrate hoch"
+          description: "pgvector hat eine Fehlerrate von {{ $value | humanizePercentage }}. Fallback-System betroffen!"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/pgvector-errors"
+
+      # Warnung: Control bekommt keinen Traffic (alle Tests auf Treatment)
+      - alert: ABTestingControlNoTraffic
+        expr: |
+          (ablage_ab_testing_traffic_split == 100)
+          and
+          (increase(vector_search_total{variant="control"}[1h]) == 0)
+        for: 1h
+        labels:
+          severity: info
+          component: ab-testing
+          service: vector-search
+        annotations:
+          summary: "pgvector (Control) erhaelt keinen Traffic"
+          description: "Bei 100% Traffic-Split erhaelt pgvector keinen Traffic mehr. Dual-Write noch aktiv?"
+
+      # ============================================================================
+      # COLLECTION SYNC
+      # ============================================================================
+
+      # Warnung: Qdrant Collection Drift (weniger Punkte als erwartet)
+      - alert: ABTestingCollectionDrift
+        expr: |
+          abs(
+            qdrant_collection_points_count{collection="ablage_documents"}
+            - pgvector_embeddings_count
+          ) > 50
+        for: 30m
+        labels:
+          severity: warning
+          component: ab-testing
+          service: vector-search
+        annotations:
+          summary: "A/B Testing: Collection Drift erkannt"
+          description: "Qdrant und pgvector haben unterschiedliche Embedding-Anzahlen. Sync-Problem?"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/collection-sync"
+
+      # ============================================================================
+      # A/B TESTING METRIKEN HEALTH
+      # ============================================================================
+
+      # Warnung: Keine A/B Testing Metriken (Backend nicht instrumentiert)
+      - alert: ABTestingNoMetrics
+        expr: absent(vector_search_total)
+        for: 15m
+        labels:
+          severity: warning
+          component: ab-testing
+          service: vector-search
+        annotations:
+          summary: "A/B Testing Metriken fehlen"
+          description: "Prometheus erhaelt keine vector_search_total Metriken. Backend-Instrumentierung pruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ab-testing-metrics"
