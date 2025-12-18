@@ -53,9 +53,9 @@ export function KeyboardShortcutsHelp({ open, onOpenChange }: KeyboardShortcutsH
 /**
  * Inline Shortcut Hint Badge
  */
-export function ShortcutHint({ shortcut }: { shortcut: string }) {
+export function ShortcutHint({ shortcut, className }: { shortcut: string; className?: string }) {
     return (
-        <Badge variant="outline" className="font-mono text-xs ml-2 opacity-60">
+        <Badge variant="outline" className={`font-mono text-xs ml-2 opacity-60 ${className ?? ''}`}>
             {shortcut}
         </Badge>
     )

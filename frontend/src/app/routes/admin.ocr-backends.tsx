@@ -45,8 +45,8 @@ function OCRBackendsPage() {
 
     const isLoading = comparisonLoading || weightsLoading;
 
-    // Radar Chart Daten vorbereiten
-    const radarData = comparison ? [
+    // Radar Chart Daten vorbereiten - defensive Check für comparison.backends
+    const radarData = comparison?.backends ? [
         {
             metric: 'Genauigkeit',
             ...Object.fromEntries(
@@ -274,7 +274,7 @@ function OCRBackendsPage() {
             </div>
 
             {/* Radar Chart Vergleich */}
-            {comparison && Object.keys(comparison.backends).length > 0 && (
+            {comparison?.backends && Object.keys(comparison.backends).length > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">

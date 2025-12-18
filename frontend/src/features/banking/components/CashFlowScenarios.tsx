@@ -54,7 +54,7 @@ export function CashFlowScenarios({ daysAhead = 90 }: CashFlowScenariosProps) {
         );
     }
 
-    // Normalisiere Werte fuer RadarChart (auf 0-100 Skala)
+    // Normalisiere Werte für RadarChart (auf 0-100 Skala)
     // NaN-Protection: Falls alle Werte 0 sind, verwende Fallback
     const maxInflow = Math.max(
         data.optimistic.total_inflow,

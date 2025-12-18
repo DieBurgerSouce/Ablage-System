@@ -1,14 +1,47 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, MessageSquare, Search, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { ChatInterface } from './ChatInterface';
+import { DocumentPreviewModal } from './DocumentPreviewModal';
 import { chatApi } from '@/lib/api/chat-api';
+import { documentsService } from '@/lib/api/services/documents';
+import { useToast } from '@/components/ui/use-toast';
 import type { ChatSession, ChatMessage, SourceChunk } from '@/lib/api/chat-api';
 
+/**
+ * Formatiert ein Datum als relative Zeit (z.B. "vor 23 Stunden", "vor 3 Tagen")
+ */
+function formatRelativeTime(dateString: string | null): string {
+    if (!dateString) return 'Noch keine Nachricht';
+
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMinutes < 1) return 'Gerade eben';
+    if (diffMinutes < 60) return `vor ${diffMinutes} ${diffMinutes === 1 ? 'Minute' : 'Minuten'}`;
+    if (diffHours < 24) return `vor ${diffHours} ${diffHours === 1 ? 'Stunde' : 'Stunden'}`;
+    if (diffDays < 7) return `vor ${diffDays} ${diffDays === 1 ? 'Tag' : 'Tagen'}`;
+    if (diffDays < 30) {
+        const weeks = Math.floor(diffDays / 7);
+        return `vor ${weeks} ${weeks === 1 ? 'Woche' : 'Wochen'}`;
+    }
+    if (diffDays < 365) {
+        const months = Math.floor(diffDays / 30);
+        return `vor ${months} ${months === 1 ? 'Monat' : 'Monaten'}`;
+    }
+    const years = Math.floor(diffDays / 365);
+    return `vor ${years} ${years === 1 ? 'Jahr' : 'Jahren'}`;
+}
+
 export function ChatLayout() {
+    const { toast } = useToast();
     const [sessions, setSessions] = useState<ChatSession[]>([]);
     const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -20,6 +53,24 @@ export function ChatLayout() {
     const [streamingSources, setStreamingSources] = useState<SourceChunk[]>([]);
     const [isStreaming, setIsStreaming] = useState(false);
 
+    // Document preview modal state
+    const [previewSource, setPreviewSource] = useState<SourceChunk | null>(null);
+
+    // Document upload state
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [attachedDocument, setAttachedDocument] = useState<{
+        id: string;
+        name: string;
+    } | null>(null);
+
+    // Ref für Sources - löst React Closure-Problem
+    const sourcesRef = useRef<SourceChunk[]>([]);
+    // Flag um zu verhindern, dass Messages nach Streaming neu geladen werden
+    const skipNextSessionLoad = useRef(false);
+    // AbortController für Streaming-Abbruch
+    const abortControllerRef = useRef<AbortController | null>(null);
+
     // Load Sessions
     useEffect(() => {
         chatApi.getSessions().then(setSessions).catch(console.error);
@@ -28,6 +79,11 @@ export function ChatLayout() {
     // Load Messages when session changes
     useEffect(() => {
         if (activeSessionId) {
+            // Skip reload wenn gerade eine Message mit Sources hinzugefügt wurde
+            if (skipNextSessionLoad.current) {
+                skipNextSessionLoad.current = false;
+                return;
+            }
             setMessages([]); // Clear previous messages
             chatApi
                 .getSession(activeSessionId)
@@ -40,33 +96,59 @@ export function ChatLayout() {
 
     const handleSendMessage = useCallback(
         async (content: string) => {
+            // Create new AbortController for this request
+            abortControllerRef.current = new AbortController();
+
             setIsThinking(true);
             setIsStreaming(true);
             setStreamingContent('');
             setStreamingSources([]);
+            sourcesRef.current = []; // Reset ref
+
+            // Capture attachment before clearing (for context)
+            const currentAttachment = attachedDocument;
 
             // Optimistic update - add user message immediately
+            // Include attached_document so it shows in the UI immediately
             const tempUserMsg: ChatMessage = {
                 id: crypto.randomUUID(),
                 session_id: activeSessionId || '',
                 role: 'user',
-                content,
+                content: content,
                 created_at: new Date().toISOString(),
+                attached_document: currentAttachment
+                    ? { id: currentAttachment.id, name: currentAttachment.name }
+                    : undefined,
             };
             setMessages((prev) => [...prev, tempUserMsg]);
 
-            try {
-                let fullContent = '';
+            // Clear attachment after capturing
+            if (currentAttachment) {
+                setAttachedDocument(null);
+            }
 
+            // Variable to track content for abort handling
+            let fullContent = '';
+
+            try {
                 await chatApi.sendMessageStream(content, activeSessionId || undefined, {
+                    // Document context wenn Attachment vorhanden
+                    contextType: currentAttachment ? 'document' : undefined,
+                    contextId: currentAttachment?.id,
+                    signal: abortControllerRef.current.signal,
                     onChunk: (chunk) => {
                         fullContent += chunk;
                         setStreamingContent(fullContent);
                     },
                     onSource: (source) => {
+                        // Ref UND State aktualisieren - Ref für Callback, State für UI
+                        sourcesRef.current = [...sourcesRef.current, source];
                         setStreamingSources((prev) => [...prev, source]);
                     },
                     onDone: (sessionId, messageId) => {
+                        // Verwende Ref statt State (Closure-Problem gelöst!)
+                        const finalSources = [...sourcesRef.current];
+
                         // Create final assistant message
                         const assistantMsg: ChatMessage = {
                             id: messageId || crypto.randomUUID(),
@@ -74,35 +156,65 @@ export function ChatLayout() {
                             role: 'assistant',
                             content: fullContent,
                             created_at: new Date().toISOString(),
-                            sources: streamingSources,
+                            sources: finalSources,
                         };
 
                         // Add to messages and clear streaming state
                         setMessages((prev) => [...prev, assistantMsg]);
                         setStreamingContent('');
                         setStreamingSources([]);
+                        sourcesRef.current = [];
                         setIsStreaming(false);
                         setIsThinking(false);
+                        abortControllerRef.current = null;
 
                         // If new session was created, update state
                         if (!activeSessionId || sessionId !== activeSessionId) {
+                            // Skip das automatische Neuladen der Messages (würde Sources verlieren)
+                            skipNextSessionLoad.current = true;
                             setActiveSessionId(sessionId);
                             chatApi.getSessions().then(setSessions).catch(console.error);
                         }
                     },
+                    onAbort: () => {
+                        // Streaming wurde abgebrochen - behalte bisherigen Content
+                        const finalSources = [...sourcesRef.current];
+
+                        if (fullContent.trim()) {
+                            // Füge abgebrochene Nachricht hinzu mit bisherigem Inhalt
+                            const abortedMsg: ChatMessage = {
+                                id: crypto.randomUUID(),
+                                session_id: activeSessionId || '',
+                                role: 'assistant',
+                                content: fullContent + '\n\n*[Generierung gestoppt]*',
+                                created_at: new Date().toISOString(),
+                                sources: finalSources,
+                            };
+                            setMessages((prev) => [...prev, abortedMsg]);
+                        }
+
+                        setStreamingContent('');
+                        setStreamingSources([]);
+                        sourcesRef.current = [];
+                        setIsStreaming(false);
+                        setIsThinking(false);
+                        abortControllerRef.current = null;
+                    },
                     onError: (error) => {
                         console.error('Streaming error:', error);
+                        abortControllerRef.current = null;
                         // Fallback to non-streaming
                         handleSendMessageFallback(content, tempUserMsg.id);
                     },
                 });
             } catch (error) {
                 console.error('Chat error:', error);
+                abortControllerRef.current = null;
                 // Fallback to non-streaming on connection error
                 handleSendMessageFallback(content, tempUserMsg.id);
             }
         },
-        [activeSessionId, streamingSources]
+        [activeSessionId, attachedDocument]
     );
 
     // Fallback to non-streaming if streaming fails
@@ -136,8 +248,59 @@ export function ChatLayout() {
         setMessages([]);
         setStreamingContent('');
         setStreamingSources([]);
+        setAttachedDocument(null);
         setIsMobileMenuOpen(false);
     };
+
+    const handleSourceClick = useCallback((source: SourceChunk) => {
+        // Open document preview modal instead of navigating
+        setPreviewSource(source);
+    }, []);
+
+    const handleFileUpload = useCallback(
+        async (file: File) => {
+            setIsUploading(true);
+            setUploadProgress(0);
+
+            try {
+                const document = await documentsService.upload(
+                    file,
+                    { ocrBackend: 'auto' },
+                    (progress) => setUploadProgress(progress)
+                );
+
+                toast({
+                    title: 'Dokument hochgeladen',
+                    description: `${document.name} - Du kannst jetzt Fragen dazu stellen.`,
+                });
+
+                // Dokument als Attachment speichern (nicht automatisch senden)
+                setAttachedDocument({ id: document.id, name: document.name });
+            } catch (error) {
+                const errorMessage =
+                    error instanceof Error ? error.message : 'Unbekannter Fehler';
+                toast({
+                    title: 'Upload fehlgeschlagen',
+                    description: errorMessage,
+                    variant: 'destructive',
+                });
+            } finally {
+                setIsUploading(false);
+                setUploadProgress(0);
+            }
+        },
+        [toast]
+    );
+
+    const handleRemoveAttachment = useCallback(() => {
+        setAttachedDocument(null);
+    }, []);
+
+    const handleStop = useCallback(() => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+    }, []);
 
     // Combine messages with streaming message for display
     const displayMessages = isStreaming
@@ -183,6 +346,7 @@ export function ChatLayout() {
                                 activeSessionId === session.id && 'bg-secondary'
                             )}
                             onClick={() => {
+                                setAttachedDocument(null);
                                 setActiveSessionId(session.id);
                                 setIsMobileMenuOpen(false);
                             }}
@@ -193,7 +357,7 @@ export function ChatLayout() {
                                     {session.title || 'Neue Unterhaltung'}
                                 </div>
                                 <div className="text-xs text-muted-foreground truncate">
-                                    {session.preview}
+                                    {formatRelativeTime(session.last_message_at)}
                                 </div>
                             </div>
                         </Button>
@@ -237,46 +401,29 @@ export function ChatLayout() {
                     <span className="font-semibold">Chat</span>
                 </div>
 
-                {activeSessionId || messages.length > 0 || isStreaming ? (
-                    <ChatInterface
-                        messages={displayMessages}
-                        onSendMessage={handleSendMessage}
-                        isThinking={isThinking && !isStreaming}
-                    />
-                ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
-                        <div className="bg-muted/50 p-6 rounded-full mb-6">
-                            <MessageSquare className="h-12 w-12 text-primary/50" />
-                        </div>
-                        <h3 className="text-xl font-semibold mb-2 text-foreground">
-                            Willkommen beim Dokumenten-Chat
-                        </h3>
-                        <p className="max-w-md mb-8">
-                            Stellen Sie Fragen zu Ihren Dokumenten, lassen Sie sich
-                            Zusammenfassungen erstellen oder suchen Sie nach spezifischen
-                            Informationen.
-                        </p>
-                        <div className="grid gap-2 w-full max-w-sm">
-                            <Button
-                                variant="outline"
-                                onClick={() =>
-                                    handleSendMessage('Fasse die letzten Rechnungen zusammen')
-                                }
-                            >
-                                "Fasse die letzten Rechnungen zusammen"
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() =>
-                                    handleSendMessage('Welche Verträge laufen bald aus?')
-                                }
-                            >
-                                "Welche Verträge laufen bald aus?"
-                            </Button>
-                        </div>
-                    </div>
-                )}
+                <ChatInterface
+                    messages={displayMessages}
+                    onSendMessage={handleSendMessage}
+                    isThinking={isThinking && !isStreaming}
+                    onSourceClick={handleSourceClick}
+                    onFileUpload={handleFileUpload}
+                    isUploading={isUploading}
+                    uploadProgress={uploadProgress}
+                    attachedDocument={attachedDocument}
+                    onRemoveAttachment={handleRemoveAttachment}
+                    onStop={handleStop}
+                    canStop={isStreaming}
+                />
             </main>
+
+            {/* Document Preview Modal */}
+            <DocumentPreviewModal
+                documentId={previewSource?.document_id ?? null}
+                open={!!previewSource}
+                onOpenChange={(open) => !open && setPreviewSource(null)}
+                documentName={previewSource?.document_name}
+                pageNumber={previewSource?.page_number}
+            />
         </div>
     );
 }

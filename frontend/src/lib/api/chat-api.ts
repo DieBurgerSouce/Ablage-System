@@ -23,6 +23,11 @@ export interface SourceChunk {
     rerank_score: number | null;
 }
 
+export interface AttachedDocument {
+    id: string;
+    name: string;
+}
+
 export interface ChatMessage {
     id: string;
     session_id: string;
@@ -37,6 +42,7 @@ export interface ChatMessage {
     created_at: string;
     sources?: SourceChunk[];
     is_thinking?: boolean; // UI state for streaming/processing
+    attached_document?: AttachedDocument | null; // Dokument das an User-Nachricht angehaengt wurde
 }
 
 export interface ChatSession {
@@ -94,7 +100,7 @@ export interface StreamEvent {
 
 export const chatApi = {
     /**
-     * Laedt alle Chat-Sessions des aktuellen Users
+     * Lädt alle Chat-Sessions des aktuellen Users
      */
     getSessions: async (limit = 20, offset = 0): Promise<ChatSession[]> => {
         const response = await apiClient.get<ChatSession[]>('/rag/chat/sessions', {
@@ -109,7 +115,7 @@ export const chatApi = {
     },
 
     /**
-     * Laedt eine einzelne Session mit allen Messages
+     * Lädt eine einzelne Session mit allen Messages
      */
     getSession: async (sessionId: string): Promise<ChatSessionWithMessages> => {
         const response = await apiClient.get<ChatSessionWithMessages>(
@@ -119,7 +125,7 @@ export const chatApi = {
     },
 
     /**
-     * Laedt nur die Messages einer Session (fuer Pagination)
+     * Lädt nur die Messages einer Session (für Pagination)
      */
     getMessages: async (sessionId: string): Promise<ChatMessage[]> => {
         const response = await apiClient.get<ChatSessionWithMessages>(
@@ -179,10 +185,11 @@ export const chatApi = {
      *
      * @param content - Die Nachricht
      * @param sessionId - Optional: Bestehende Session ID
-     * @param onChunk - Callback fuer jeden Text-Chunk
-     * @param onSource - Callback fuer Quellen
+     * @param onChunk - Callback für jeden Text-Chunk
+     * @param onSource - Callback für Quellen
      * @param onDone - Callback wenn fertig
      * @param onError - Callback bei Fehler
+     * @param signal - Optional: AbortSignal zum Abbrechen des Streams
      */
     sendMessageStream: async (
         content: string,
@@ -193,12 +200,18 @@ export const chatApi = {
             onSource?: (source: SourceChunk) => void;
             onDone?: (sessionId: string, messageId?: string) => void;
             onError?: (error: string) => void;
+            onAbort?: () => void;
+            contextType?: 'general' | 'customer' | 'document' | 'report';
+            contextId?: string;
+            signal?: AbortSignal;
         }
     ): Promise<void> => {
         const request: ChatRequest = {
             message: content,
             session_id: sessionId,
             stream: true,
+            context_type: callbacks?.contextType,
+            context_id: callbacks?.contextId,
         };
 
         try {
@@ -213,15 +226,16 @@ export const chatApi = {
             }
 
             // Fetch with streaming (SSE)
-            // Verwende vollstaendige URL mit korrektem baseURL
-            const baseUrl = apiClient.defaults.baseURL || 'http://localhost:8000/api/v1';
+            // Verwende vollständige URL mit korrektem baseURL (relativ für nginx proxy)
+            const baseUrl = apiClient.defaults.baseURL || '/api/v1';
             const response = await fetch(
                 `${baseUrl}/rag/chat/stream`,
                 {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(request),
-                    credentials: 'include', // Fuer CORS mit Credentials (cross-origin)
+                    credentials: 'include', // Für CORS mit Credentials (cross-origin)
+                    signal: callbacks?.signal, // AbortSignal für Abbruch
                 }
             );
 
@@ -283,6 +297,11 @@ export const chatApi = {
                 }
             }
         } catch (error) {
+            // AbortError separat behandeln (kein Fehler, sondern gewollter Abbruch)
+            if (error instanceof Error && error.name === 'AbortError') {
+                callbacks?.onAbort?.();
+                return;
+            }
             const errorMessage =
                 error instanceof Error ? error.message : 'Verbindungsfehler';
             callbacks?.onError?.(errorMessage);
@@ -290,7 +309,7 @@ export const chatApi = {
     },
 
     /**
-     * Loescht eine Session (soft delete)
+     * Löscht eine Session (soft delete)
      */
     deleteSession: async (sessionId: string): Promise<void> => {
         await apiClient.delete(`/rag/chat/sessions/${sessionId}`);
@@ -328,7 +347,7 @@ export const chatApi = {
     },
 
     /**
-     * Health Check fuer RAG Service
+     * Health Check für RAG Service
      */
     healthCheck: async (): Promise<{
         status: string;

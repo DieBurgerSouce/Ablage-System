@@ -91,7 +91,7 @@ export function formatIBAN(iban: string): string {
 }
 
 /**
- * Waehrungsbetrag formatieren.
+ * Währungsbetrag formatieren.
  */
 export function formatCurrency(
     amount: number | undefined | null,

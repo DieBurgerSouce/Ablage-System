@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { apiClient } from '@/lib/api/client'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -23,10 +23,12 @@ import {
     AlertCircle,
     Sparkles,
     Keyboard,
-    Image as ImageIcon,
     ChevronRight,
     LayoutGrid,
     AlignLeft,
+    ZoomIn,
+    ZoomOut,
+    RotateCcw,
 } from 'lucide-react'
 
 import { useNextSample, useSampleDetail, useLLMReview, useVerifySample, useSubmitCorrection } from '../hooks/use-review-queries'
@@ -36,12 +38,11 @@ import { useFieldCorrections } from '../hooks/use-field-corrections'
 import { CorrectionEditor } from './CorrectionEditor'
 import { KeyboardShortcutsHelp, ShortcutHint } from './KeyboardShortcutsHelp'
 import { StructuredReviewPanel } from './StructuredReviewPanel'
-import { FlagReasonBadges } from './FlagReasonBanner'
 import type { CorrectionType } from '../types'
 import type { ExtractedInvoiceData } from '@/features/extracted-data/types/extracted-data.types'
 
 /**
- * Extrahiert alle Feldnamen aus InvoiceData fuer Batch-Bestaetigung.
+ * Extrahiert alle Feldnamen aus InvoiceData für Batch-Bestätigung.
  */
 function getAllInvoiceFields(invoice: ExtractedInvoiceData): string[] {
     const fields: string[] = []
@@ -63,7 +64,7 @@ function getAllInvoiceFields(invoice: ExtractedInvoiceData): string[] {
     if (invoice.sender_vat_id) fields.push('sender_vat_id')
     if (invoice.sender_tax_number) fields.push('sender_tax_number')
 
-    // Empfaenger
+    // Empfänger
     if (invoice.recipient?.company) fields.push('recipient_company')
     if (invoice.recipient?.street) fields.push('recipient_street')
     if (invoice.recipient?.zip_code) fields.push('recipient_zip_code')
@@ -71,7 +72,7 @@ function getAllInvoiceFields(invoice: ExtractedInvoiceData): string[] {
     if (invoice.recipient?.country) fields.push('recipient_country')
     if (invoice.recipient_vat_id) fields.push('recipient_vat_id')
 
-    // Betraege
+    // Beträge
     if (invoice.net_amount) fields.push('net_amount')
     if (invoice.vat_amount) fields.push('vat_amount')
     if (invoice.gross_amount) fields.push('gross_amount')
@@ -119,6 +120,20 @@ export function ReviewWorkspace({
     const [previewLoading, setPreviewLoading] = useState(false)
     const [previewError, setPreviewError] = useState(false)
     const [activeTab, setActiveTab] = useState<'structured' | 'ocr-text'>('structured')
+    const [zoomLevel, setZoomLevel] = useState(100) // Zoom in Prozent
+
+    // Zoom-Funktionen
+    const handleZoomIn = useCallback(() => {
+        setZoomLevel(prev => Math.min(prev + 25, 300))
+    }, [])
+
+    const handleZoomOut = useCallback(() => {
+        setZoomLevel(prev => Math.max(prev - 25, 50))
+    }, [])
+
+    const handleZoomReset = useCallback(() => {
+        setZoomLevel(100)
+    }, [])
 
     // Queries
     const {
@@ -139,8 +154,8 @@ export function ReviewWorkspace({
 
     const {
         data: llmReview,
-        isLoading: llmLoading,
-        refetch: refetchLLM,
+        isLoading: _llmLoading,
+        refetch: _refetchLLM,
     } = useLLMReview(sampleId)
 
     // NEU: ExtractedData Hook
@@ -223,7 +238,7 @@ export function ReviewWorkspace({
         }
     }, [sampleId])
 
-    // Hat Aenderungen (OCR-Text oder strukturierte Felder)?
+    // Hat Änderungen (OCR-Text oder strukturierte Felder)?
     const hasAnyChanges = isDirty || corrections.hasCorrections
 
     // Aktionen
@@ -365,7 +380,7 @@ export function ReviewWorkspace({
                 // Would need field focus tracking in StructuredReviewPanel
                 break
             case 'confirmAll':
-                // Bestaetigt alle sichtbaren Felder (nur im Strukturiert-Tab)
+                // Bestätigt alle sichtbaren Felder (nur im Strukturiert-Tab)
                 if (activeTab === 'structured' && extractedDataReview.invoiceData) {
                     const allFields = getAllInvoiceFields(extractedDataReview.invoiceData)
                     corrections.confirmAllFields(allFields)
@@ -380,7 +395,7 @@ export function ReviewWorkspace({
         enabled: !isSubmitting,
     })
 
-    // Text-Aenderungen verarbeiten
+    // Text-Änderungen verarbeiten
     const handleTextChange = useCallback((text: string, type: CorrectionType, dirty: boolean) => {
         setCurrentText(text)
         setCorrectionType(type)
@@ -393,7 +408,7 @@ export function ReviewWorkspace({
             <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="text-center space-y-4">
                     <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
-                    <p className="text-muted-foreground">Lade naechstes Sample...</p>
+                    <p className="text-muted-foreground">Lade nächstes Sample...</p>
                 </div>
             </div>
         )
@@ -413,7 +428,7 @@ export function ReviewWorkspace({
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={onExit}>
                         <ArrowLeft className="h-4 w-4 mr-2" />
-                        Zurueck
+                        Zurück
                     </Button>
                     <Button onClick={() => refetchNext()}>
                         Erneut versuchen
@@ -431,26 +446,26 @@ export function ReviewWorkspace({
                     <Check className="h-4 w-4" />
                     <AlertTitle>Keine Samples ausstehend</AlertTitle>
                     <AlertDescription>
-                        Alle Training-Samples wurden ueberprueft. Neue Samples werden automatisch
-                        hinzugefuegt, wenn Dokumente verarbeitet werden.
+                        Alle Training-Samples wurden überprüft. Neue Samples werden automatisch
+                        hinzugefügt, wenn Dokumente verarbeitet werden.
                     </AlertDescription>
                 </Alert>
                 <Button onClick={onExit}>
                     <ArrowLeft className="h-4 w-4 mr-2" />
-                    Zurueck zum Dashboard
+                    Zurück zum Dashboard
                 </Button>
             </div>
         )
     }
 
     return (
-        <div className="space-y-4">
-            {/* Header */}
+        <div className="space-y-3 -mx-4 px-4">
+            {/* Header - kompakt */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="sm" onClick={onExit}>
                         <ArrowLeft className="h-4 w-4 mr-1" />
-                        Zurueck
+                        Zurück
                     </Button>
                     <div>
                         <div className="flex items-center gap-2">
@@ -458,7 +473,19 @@ export function ReviewWorkspace({
                                 Sample #{sessionStats.reviewed_today + 1}
                             </span>
                             <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            <Badge variant="outline">{nextSample.document_type}</Badge>
+                            <Badge variant="outline">
+                                {nextSample.document_type === 'invoice'
+                                    ? extractedDataReview.invoiceData?.invoice_direction === 'incoming'
+                                        ? 'Eingangsrechnung'
+                                        : extractedDataReview.invoiceData?.invoice_direction === 'outgoing'
+                                        ? 'Ausgangsrechnung'
+                                        : 'Rechnung'
+                                    : nextSample.document_type === 'order'
+                                    ? 'Bestellung'
+                                    : nextSample.document_type === 'contract'
+                                    ? 'Vertrag'
+                                    : nextSample.document_type}
+                            </Badge>
                             <Badge
                                 variant={
                                     nextSample.priority === 'CRITICAL'
@@ -470,8 +497,6 @@ export function ReviewWorkspace({
                             >
                                 {nextSample.reason || nextSample.priority}
                             </Badge>
-                            {/* Flag Badges */}
-                            <FlagReasonBadges reasons={extractedDataReview.flagReasons} />
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
                             Konfidenz: {(Number(nextSample.confidence ?? 0) * 100).toFixed(0)}%
@@ -490,159 +515,128 @@ export function ReviewWorkspace({
                 </Button>
             </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Linke Spalte: Dokument-Vorschau + LLM */}
-                <div className="space-y-4">
-                    {/* Dokument-Vorschau */}
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                                <ImageIcon className="h-4 w-4" />
-                                Dokument-Vorschau
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {(detailLoading || previewLoading) ? (
-                                <Skeleton className="h-64 w-full" />
-                            ) : previewImageUrl && !previewError ? (
-                                <img
-                                    src={previewImageUrl}
-                                    alt="Dokument-Vorschau"
-                                    className="max-h-96 w-full object-contain border rounded bg-white"
-                                />
-                            ) : (
-                                <div className="h-64 flex items-center justify-center bg-muted rounded border">
-                                    <div className="text-center text-muted-foreground">
-                                        <FileText className="h-12 w-12 mx-auto mb-2" />
-                                        <p>{previewError ? 'Vorschau konnte nicht geladen werden' : 'Keine Vorschau verfuegbar'}</p>
-                                    </div>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* LLM-Vorschlag */}
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm flex items-center justify-between">
-                                <span className="flex items-center gap-2">
-                                    <Sparkles className="h-4 w-4" />
-                                    LLM-Analyse
-                                </span>
-                                {llmLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {llmLoading ? (
-                                <div className="space-y-2">
-                                    <Skeleton className="h-4 w-24" />
-                                    <Skeleton className="h-16 w-full" />
-                                </div>
-                            ) : llmReview ? (
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm">Qualitaet:</span>
-                                            <Badge
-                                                variant={
-                                                    (llmReview.quality_score ?? 0) >= 8
-                                                        ? 'default'
-                                                        : (llmReview.quality_score ?? 0) >= 5
-                                                        ? 'secondary'
-                                                        : 'destructive'
-                                                }
-                                            >
-                                                {Number(llmReview.quality_score ?? 0).toFixed(1)}/10
-                                            </Badge>
-                                        </div>
-                                        <Badge
-                                            variant={
-                                                llmReview.recommendation === 'accept'
-                                                    ? 'default'
-                                                    : llmReview.recommendation === 'needs_human'
-                                                    ? 'secondary'
-                                                    : 'destructive'
-                                            }
-                                        >
-                                            {llmReview.recommendation === 'accept'
-                                                ? 'Akzeptieren'
-                                                : llmReview.recommendation === 'needs_human'
-                                                ? 'Pruefung noetig'
-                                                : 'Ablehnen'}
-                                        </Badge>
-                                    </div>
-
-                                    {llmReview.issues_found && llmReview.issues_found.length > 0 && (
-                                        <div className="space-y-1">
-                                            <p className="text-xs font-medium">Erkannte Probleme:</p>
-                                            <ul className="text-xs text-muted-foreground space-y-0.5">
-                                                {llmReview.issues_found.slice(0, 3).map((issue: string, i: number) => (
-                                                    <li key={i} className="flex items-start gap-1">
-                                                        <span className="text-yellow-500">•</span>
-                                                        {issue}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
-
-                                    {llmReview.corrected_text && llmReview.corrected_text !== currentText && (
+            {/* Main Content - Volle Breite, optimiertes Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[calc(100vh-240px)]">
+                {/* Linke Spalte: Dokument-Vorschau (8/12 = 66% Breite) */}
+                <div className="lg:col-span-8 flex flex-col">
+                    <Card className="flex-1 flex flex-col border-0 shadow-none bg-transparent">
+                        <CardHeader className="pb-1 pt-0 px-0 flex-shrink-0">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    {/* Zoom Controls */}
+                                    <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5">
                                         <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={handleApplyLLMSuggestion}
-                                            className="w-full"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={handleZoomOut}
+                                            disabled={zoomLevel <= 50}
+                                            title="Verkleinern"
                                         >
-                                            <Sparkles className="h-3 w-3 mr-1" />
-                                            LLM-Vorschlag uebernehmen
-                                            <ShortcutHint shortcut="L" />
+                                            <ZoomOut className="h-3.5 w-3.5" />
                                         </Button>
-                                    )}
+                                        <span className="text-xs font-mono w-12 text-center">{zoomLevel}%</span>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={handleZoomIn}
+                                            disabled={zoomLevel >= 300}
+                                            title="Vergrößern"
+                                        >
+                                            <ZoomIn className="h-3.5 w-3.5" />
+                                        </Button>
+                                        {zoomLevel !== 100 && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7"
+                                                onClick={handleZoomReset}
+                                                title="Zurücksetzen"
+                                            >
+                                                <RotateCcw className="h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                {/* LLM-Status kompakt */}
+                                {llmReview && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-muted-foreground">
+                                            LLM: {Number(llmReview.quality_score ?? 0).toFixed(0)}/10
+                                        </span>
+                                        {llmReview.corrected_text && llmReview.corrected_text !== currentText && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={handleApplyLLMSuggestion}
+                                                className="h-7 px-2 text-xs"
+                                            >
+                                                <Sparkles className="h-3 w-3 mr-1" />
+                                                Vorschlag
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 overflow-hidden p-0">
+                            {(detailLoading || previewLoading) ? (
+                                <Skeleton className="h-full w-full min-h-[500px]" />
+                            ) : previewImageUrl && !previewError ? (
+                                <div
+                                    className="h-full w-full bg-zinc-100 dark:bg-zinc-900 rounded border overflow-auto"
+                                    style={{ cursor: zoomLevel > 100 ? 'grab' : 'default' }}
+                                >
+                                    <img
+                                        src={previewImageUrl}
+                                        alt="Dokument-Vorschau"
+                                        className="transition-transform duration-150"
+                                        style={{
+                                            transform: `scale(${zoomLevel / 100})`,
+                                            transformOrigin: 'top left',
+                                            minHeight: '100%',
+                                            width: zoomLevel > 100 ? 'auto' : '100%',
+                                        }}
+                                    />
                                 </div>
                             ) : (
-                                <div className="text-center text-muted-foreground py-4">
-                                    <p className="text-sm">Kein LLM-Review verfuegbar</p>
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => refetchLLM()}
-                                        className="mt-2"
-                                    >
-                                        Erneut anfordern
-                                    </Button>
+                                <div className="h-full min-h-[500px] flex items-center justify-center bg-muted/30 rounded border">
+                                    <div className="text-center text-muted-foreground">
+                                        <FileText className="h-12 w-12 mx-auto mb-2 opacity-40" />
+                                        <p className="text-sm">{previewError ? 'Vorschau nicht verfügbar' : 'Kein Dokument'}</p>
+                                    </div>
                                 </div>
                             )}
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* Rechte Spalte: Tabs mit Strukturiert / OCR-Text */}
-                <div>
-                    <Tabs value={activeTab} onValueChange={handleTabChange} className="h-full">
-                        <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="structured" className="flex items-center gap-2">
-                                <LayoutGrid className="h-4 w-4" />
-                                Strukturiert
-                                <ShortcutHint shortcut="1" className="ml-1" />
+                {/* Rechte Spalte: Daten-Panel (4/12 = 33% Breite) */}
+                <div className="lg:col-span-4 flex flex-col">
+                    <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
+                        <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
+                            <TabsTrigger value="structured" className="flex items-center gap-1.5 text-sm">
+                                <LayoutGrid className="h-3.5 w-3.5" />
+                                Daten
                             </TabsTrigger>
-                            <TabsTrigger value="ocr-text" className="flex items-center gap-2">
-                                <AlignLeft className="h-4 w-4" />
+                            <TabsTrigger value="ocr-text" className="flex items-center gap-1.5 text-sm">
+                                <AlignLeft className="h-3.5 w-3.5" />
                                 OCR-Text
-                                <ShortcutHint shortcut="2" className="ml-1" />
                             </TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="structured" className="mt-4">
+                        <TabsContent value="structured" className="flex-1 mt-3 overflow-hidden">
                             <StructuredReviewPanel
                                 queueItem={nextSample}
                                 extractedDataReview={extractedDataReview}
                                 corrections={corrections}
                                 disabled={isSubmitting}
+                                className="h-full"
                             />
                         </TabsContent>
 
-                        <TabsContent value="ocr-text" className="mt-4">
+                        <TabsContent value="ocr-text" className="flex-1 mt-3">
                             <CorrectionEditor
                                 originalText={sampleDetail?.ground_truth_text || nextSample.ocr_text_preview || ''}
                                 initialText={currentText}
@@ -709,7 +703,7 @@ export function ReviewWorkspace({
                                     disabled={isSubmitting}
                                 >
                                     <SkipForward className="h-4 w-4 mr-2" />
-                                    Ueberspringen
+                                    Überspringen
                                     <ShortcutHint shortcut="S" />
                                 </Button>
 

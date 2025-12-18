@@ -146,7 +146,7 @@ export async function getSamplesByType(
 }
 
 /**
- * Generiert die URL fuer die Dokument-Vorschau eines Samples
+ * Generiert die URL für die Dokument-Vorschau eines Samples
  */
 export function getSamplePreviewUrl(sampleId: string, page: number = 0): string {
     // Nutze den apiClient baseURL für konsistente URL-Generierung

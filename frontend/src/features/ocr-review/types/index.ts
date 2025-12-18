@@ -14,6 +14,9 @@ export interface QueueItem {
     is_spot_check: boolean
     created_at: string
     file_path: string
+    document_id: string | null  // Verknüpfung zu Document für ExtractedData
+    // NEU: Extrahierte Daten direkt vom Backend (aus Document oder Sample)
+    extracted_data?: import('@/features/extracted-data/types/extracted-data.types').ExtractedDocumentData | Record<string, unknown> | null
 }
 
 // Queue Stats vom Backend
@@ -145,4 +148,90 @@ export interface NextSampleResponse {
     sample?: TrainingSampleDetail
     llm_review?: LLMReviewResult
     remaining_count: number
+}
+
+// =============================================================================
+// Strukturierte Review Types
+// =============================================================================
+
+/**
+ * Flag-Grund warum ein Sample zur Review markiert wurde
+ */
+export type FlagType = 'coverage_gap' | 'low_confidence' | 'spot_check' | 'validation_error' | 'business_critical'
+
+export interface FlagReason {
+    type: FlagType
+    label: string
+    details: string
+    severity: 'critical' | 'high' | 'medium' | 'low'
+    affectedFields?: string[]
+}
+
+/**
+ * Validierungsfehler für ein extrahiertes Feld
+ */
+export interface ValidationError {
+    field: string
+    fieldLabel: string
+    error: string
+    severity: 'error'
+}
+
+/**
+ * Zustand eines editierbaren Feldes
+ */
+export type FieldStatus = 'normal' | 'low_confidence' | 'validation_error' | 'editing' | 'confirmed'
+
+/**
+ * Korrektur für ein einzelnes Feld
+ */
+export interface FieldCorrection {
+    field: string
+    fieldLabel: string
+    originalValue: string | number | null
+    correctedValue: string | number | null
+    correctionType: CorrectionType
+    timestamp: string
+}
+
+/**
+ * Zustand der strukturierten Review
+ */
+export interface StructuredReviewState {
+    isLoading: boolean
+    hasExtractedData: boolean
+    extractedData: import('@/features/extracted-data/types/extracted-data.types').ExtractedDocumentData | null
+    flagReasons: FlagReason[]
+    validationErrors: ValidationError[]
+    lowConfidenceFields: string[]
+    fieldCorrections: Map<string, FieldCorrection>
+    confirmedFields: Set<string>
+}
+
+/**
+ * Props für editierbare Feld-Komponente
+ */
+export interface EditableFieldProps<T = string> {
+    fieldPath: string
+    fieldLabel: string
+    value: T | null | undefined
+    confidence?: number
+    confidenceThreshold?: number
+    hasValidationError?: boolean
+    validationErrorMessage?: string
+    onEdit: (value: T) => void
+    onConfirm: () => void
+    disabled?: boolean
+    type?: 'text' | 'number' | 'date' | 'currency'
+    placeholder?: string
+}
+
+/**
+ * Session-Progress für Review
+ */
+export interface ReviewProgress {
+    reviewedToday: number
+    correctionsToday: number
+    targetToday: number
+    avgReviewTimeSeconds: number
 }

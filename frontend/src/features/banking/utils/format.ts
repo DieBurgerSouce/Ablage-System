@@ -1,17 +1,17 @@
 /**
  * Banking Format Utilities
  *
- * Gemeinsame Formatierungsfunktionen fuer das Banking-Modul
+ * Gemeinsame Formatierungsfunktionen für das Banking-Modul
  */
 
 /**
- * Formatiert einen Betrag als Waehrung (EUR)
+ * Formatiert einen Betrag als Währung (EUR)
  *
  * @param value - Der zu formatierende Betrag
  * @param options - Optionale Formatierungsoptionen
- * @param options.currency - Waehrungscode (Standard: EUR)
- * @param options.decimals - Anzahl Dezimalstellen (Standard: 2, nutze 0 fuer ganze Zahlen)
- * @returns Formatierter Waehrungsstring (z.B. "1.234,56 €")
+ * @param options.currency - Währungscode (Standard: EUR)
+ * @param options.decimals - Anzahl Dezimalstellen (Standard: 2, nutze 0 für ganze Zahlen)
+ * @returns Formatierter Währungsstring (z.B. "1.234,56 €")
  */
 export function formatCurrency(
     value: number,
@@ -67,7 +67,7 @@ export function formatDateTime(dateStr: string | null | undefined): string {
 /**
  * Formatiert einen Prozentsatz
  *
- * @param value - Der Wert als Rohwert (z.B. 85 fuer 85%) oder Dezimalwert (z.B. 0.85)
+ * @param value - Der Wert als Rohwert (z.B. 85 für 85%) oder Dezimalwert (z.B. 0.85)
  * @param options - Optionale Formatierungsoptionen
  * @param options.decimals - Anzahl Dezimalstellen (Standard: 1)
  * @param options.isRawValue - Wenn true, wird value als 0-100 interpretiert (Standard: true)
