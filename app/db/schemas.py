@@ -34,12 +34,15 @@ class OCRBackend(str, Enum):
 class DocumentType(str, Enum):
     """Document type classification."""
     INVOICE = "invoice"
+    ORDER = "order"
     CONTRACT = "contract"
+    DELIVERY_NOTE = "delivery_note"
     RECEIPT = "receipt"
     FORM = "form"
     LETTER = "letter"
     REPORT = "report"
     OTHER = "other"
+    UNKNOWN = "unknown"
 
 
 class DataCategory(str, Enum):
@@ -1343,7 +1346,7 @@ class UserListRequest(BaseModel):
 
 class UserListResponse(BaseModel):
     """Paginated user list response."""
-    users: List[UserAdminView]
+    items: List[UserAdminView]
     total: int
     page: int
     per_page: int

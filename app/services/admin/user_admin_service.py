@@ -155,7 +155,7 @@ class UserAdminService:
         user_views = [UserAdminView.from_orm_with_computed(user) for user in users]
 
         return UserListResponse(
-            users=user_views,
+            items=user_views,
             total=total,
             page=page,
             per_page=per_page,

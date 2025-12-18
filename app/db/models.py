@@ -317,6 +317,9 @@ class User(Base):
     email_verified = Column(Boolean, default=False)
     email_verified_at = Column(DateTime(timezone=True), nullable=True)
 
+    # User preferences (display, OCR, notifications, privacy settings)
+    preferences = Column(CrossDBJSON, nullable=True)
+
     # Relationships
     documents = relationship("Document", back_populates="owner", foreign_keys="Document.owner_id")
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
@@ -1693,6 +1696,101 @@ class DocumentAccess(Base):
     def can_manage(self) -> bool:
         """Hat Manage-Berechtigung (Vollzugriff)."""
         return not self.is_expired and self.access_level == AccessLevel.MANAGE.value
+
+
+# =============================================================================
+# CHAT SESSION SHARING
+# =============================================================================
+
+class ChatSessionAccessLevel(str, Enum):
+    """
+    Zugriffsebenen fuer Chat Session Sharing.
+
+    - VIEW: Nur lesen (Chat und Nachrichten ansehen)
+    - CONTRIBUTE: Mitarbeiten (Nachrichten senden, mit KI interagieren)
+    - MANAGE: Verwalten (Alles + User einladen/entfernen, Chat loeschen)
+    """
+    VIEW = "view"
+    CONTRIBUTE = "contribute"
+    MANAGE = "manage"
+
+
+class ChatSessionAccess(Base):
+    """
+    Chat Session Zugriff fuer Real-time Collaboration.
+
+    Ermoeglicht:
+    - Chats mit anderen Benutzern teilen
+    - Verschiedene Zugriffsebenen (view, contribute, manage)
+    - Real-time Zusammenarbeit ueber WebSocket
+    - Audit-Trail wer geteilt hat
+    """
+    __tablename__ = "rag_chat_session_access"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Chat Session die geteilt wird
+    session_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("rag_chat_sessions.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Benutzer der Zugriff erhaelt
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Wer hat geteilt
+    granted_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Zugriffsebene
+    access_level = Column(
+        String(20),
+        nullable=False,
+        default=ChatSessionAccessLevel.VIEW.value
+    )
+
+    # Timestamps
+    granted_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    session = relationship("RAGChatSession", back_populates="shared_access")
+    user = relationship("User", foreign_keys=[user_id], backref="shared_chat_sessions")
+    granted_by = relationship("User", foreign_keys=[granted_by_id])
+
+    # Indexes und Constraints
+    __table_args__ = (
+        # Nur eine Zugriffsberechtigung pro Benutzer pro Session
+        Index(
+            "ix_chat_session_access_user_session",
+            "user_id", "session_id",
+            unique=True
+        ),
+        Index("ix_chat_session_access_session_id", "session_id"),
+        Index("ix_chat_session_access_user_id", "user_id"),
+    )
+
+    def can_view(self) -> bool:
+        """Hat mindestens View-Berechtigung."""
+        return True
+
+    def can_contribute(self) -> bool:
+        """Hat Contribute- oder hoehere Berechtigung."""
+        return self.access_level in [
+            ChatSessionAccessLevel.CONTRIBUTE.value,
+            ChatSessionAccessLevel.MANAGE.value
+        ]
+
+    def can_manage(self) -> bool:
+        """Hat Manage-Berechtigung (Vollzugriff)."""
+        return self.access_level == ChatSessionAccessLevel.MANAGE.value
 
 
 # =============================================================================
@@ -3267,6 +3365,7 @@ class RAGChatSession(Base):
     # Relationships
     user = relationship("User", backref="rag_chat_sessions")
     messages = relationship("RAGChatMessage", back_populates="session", cascade="all, delete-orphan")
+    shared_access = relationship("ChatSessionAccess", back_populates="session", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_rag_chat_sessions_user", "user_id"),
