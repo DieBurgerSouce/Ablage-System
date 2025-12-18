@@ -1,6 +1,6 @@
 /**
  * Top Debtors/Creditors Table
- * Zeigt die groessten Schuldner oder Glaeubiger
+ * Zeigt die größten Schuldner oder Gläubiger
  */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +23,7 @@ interface TopDebtorsTableProps {
 }
 
 export function TopDebtorsTable({ type = 'debtors', limit = 10 }: TopDebtorsTableProps) {
-    // Nur den benoetigten Query ausfuehren (Performance-Optimierung)
+    // Nur den benötigten Query ausführen (Performance-Optimierung)
     const debtorsQuery = useTopDebtors(limit, type === 'debtors');
     const creditorsQuery = useTopCreditors(limit, type === 'creditors');
 

@@ -38,11 +38,15 @@ export function useBackendComparison() {
 
 /**
  * Gelernte Gewichtungen abrufen
+ * @param forceRefresh - Cache umgehen
+ * @param options.refetchInterval - Auto-Refresh Intervall in ms (default: false = aus)
  */
-export function useLearnedWeights(forceRefresh = false) {
+export function useLearnedWeights(forceRefresh = false, options?: { refetchInterval?: number | false }) {
     return useQuery({
         queryKey: trainingQueryKeys.learnedWeights(forceRefresh),
         queryFn: () => trainingService.getLearnedWeights(forceRefresh),
+        refetchInterval: options?.refetchInterval ?? false, // Opt-in: Auto-refresh deaktiviert
+        refetchIntervalInBackground: false, // Nur bei aktivem Tab
     });
 }
 
@@ -58,11 +62,14 @@ export function useAvailableBackends() {
 
 /**
  * Übersichts-Statistiken abrufen
+ * @param options.refetchInterval - Auto-Refresh Intervall in ms (default: false = aus)
  */
-export function useOverviewStats() {
+export function useOverviewStats(options?: { refetchInterval?: number | false }) {
     return useQuery({
         queryKey: trainingQueryKeys.overview(),
         queryFn: () => trainingService.getOverviewStats(),
+        refetchInterval: options?.refetchInterval ?? false, // Opt-in: Auto-refresh deaktiviert
+        refetchIntervalInBackground: false, // Nur bei aktivem Tab
     });
 }
 

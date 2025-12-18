@@ -1,6 +1,6 @@
 /**
  * Banking Dashboard Hauptkomponente
- * Tabs fuer Uebersicht, Cash-Flow, Altersanalyse, Mahnwesen
+ * Tabs für Übersicht, Cash-Flow, Altersanalyse, Mahnwesen
  */
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

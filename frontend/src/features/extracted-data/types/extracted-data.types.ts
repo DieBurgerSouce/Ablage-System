@@ -51,6 +51,17 @@ export interface ExtractedAddress {
 }
 
 // =============================================================================
+// BANK ACCOUNT
+// =============================================================================
+
+export interface ExtractedBankAccount {
+    iban?: string;
+    bic?: string;
+    bank_name?: string;
+    account_holder?: string;
+}
+
+// =============================================================================
 // LINE ITEMS
 // =============================================================================
 
@@ -115,11 +126,7 @@ export interface ExtractedInvoiceData {
     sender?: ExtractedAddress;
     sender_vat_id?: string;
     sender_tax_number?: string;
-    sender_bank?: {
-        iban?: string;
-        bic?: string;
-        bank_name?: string;
-    };
+    sender_bank?: ExtractedBankAccount;
     sender_email?: string;
     sender_phone?: string;
     sender_contact?: string;

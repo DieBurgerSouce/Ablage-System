@@ -65,7 +65,7 @@ export function InvoiceDataDisplay({ invoice, className }: InvoiceDataDisplayPro
                         </div>
                     </dl>
 
-                    {/* Zusaetzliche Referenzen */}
+                    {/* Zusätzliche Referenzen */}
                     {(invoice.order_number || invoice.delivery_note_number || invoice.customer_number || invoice.supplier_number) && (
                         <>
                             <Separator className="my-4" />
@@ -263,7 +263,7 @@ export function InvoiceDataDisplay({ invoice, className }: InvoiceDataDisplayPro
                             <div className="flex items-center gap-2">
                                 <Badge variant="destructive">Reverse Charge</Badge>
                                 <span className="text-sm text-muted-foreground">
-                                    Steuerschuldnerschaft beim Leistungsempfaenger
+                                    Steuerschuldnerschaft beim Leistungsempfänger
                                 </span>
                             </div>
                         )}

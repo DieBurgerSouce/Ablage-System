@@ -2,7 +2,7 @@
  * PaymentTermsCard - Zeigt Zahlungsbedingungen und Skonto-Informationen.
  *
  * Hebt Skonto-Fristen visuell hervor:
- * - Gruen: Skonto verfügbar
+ * - Grün: Skonto verfügbar
  * - Orange: Skonto läuft bald ab (≤3 Tage)
  * - Rot: Skonto abgelaufen
  */
@@ -112,7 +112,7 @@ export function PaymentTermsCard({
                     </div>
                 )}
 
-                {/* Faelligkeitsdatum */}
+                {/* Fälligkeitsdatum */}
                 {dueDate && (
                     <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">
@@ -201,7 +201,7 @@ export function PaymentTermsCard({
                     </div>
                 )}
 
-                {/* Zusaetzliche Infos */}
+                {/* Zusätzliche Infos */}
                 {earlyPaymentInfo && !hasSkonto && (
                     <p className="text-xs text-muted-foreground">{earlyPaymentInfo}</p>
                 )}

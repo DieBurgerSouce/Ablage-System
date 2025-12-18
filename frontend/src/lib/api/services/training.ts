@@ -221,6 +221,7 @@ export const trainingService = {
             samples_failed: number;
             backends_used: string[];
             total_time_ms: number;
+            task_id?: string;
         }>('/training/benchmarks/run', data);
         return response.data;
     },

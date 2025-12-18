@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 // API Base URL from environment variable with fallback
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+// Use relative URL to go through nginx proxy (works in both dev and prod)
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 // Create Axios instance with default config
 // Use direct backend URL to avoid nginx proxy issues

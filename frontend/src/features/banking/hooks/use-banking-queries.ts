@@ -1,5 +1,5 @@
 /**
- * Zentrale Query Hooks fuer Banking Dashboard
+ * Zentrale Query Hooks für Banking Dashboard
  * Konsistente Query-Keys und wiederverwendbare Hooks
  */
 
@@ -10,11 +10,11 @@ import { bankingService } from '@/lib/api/services/banking';
 // Definiert wie lange Daten als "frisch" gelten bevor sie refetched werden
 
 const STALE_TIMES = {
-    stats: 5 * 60 * 1000,      // 5 Minuten - Stats aendern sich selten
-    aging: 2 * 60 * 1000,      // 2 Minuten - Aging kann sich durch Zahlungen aendern
-    cashflow: 5 * 60 * 1000,   // 5 Minuten - Prognosen aendern sich selten
-    dunning: 1 * 60 * 1000,    // 1 Minute - Mahnstatus kann sich schnell aendern
-    transactions: 30 * 1000,   // 30 Sekunden - Transaktionen koennen schnell kommen
+    stats: 5 * 60 * 1000,      // 5 Minuten - Stats ändern sich selten
+    aging: 2 * 60 * 1000,      // 2 Minuten - Aging kann sich durch Zahlungen ändern
+    cashflow: 5 * 60 * 1000,   // 5 Minuten - Prognosen ändern sich selten
+    dunning: 1 * 60 * 1000,    // 1 Minute - Mahnstatus kann sich schnell ändern
+    transactions: 30 * 1000,   // 30 Sekunden - Transaktionen können schnell kommen
 } as const;
 
 // ==================== Query Keys ====================
@@ -86,7 +86,7 @@ export function useCashFlowSummary(bankAccountId?: string) {
 }
 
 /**
- * Taegliche Cash-Flow-Daten fuer Charts
+ * Tägliche Cash-Flow-Daten für Charts
  */
 export function useCashFlowDaily(days = 30, bankAccountId?: string) {
     return useQuery({
@@ -121,7 +121,7 @@ export function useDunningStats() {
 }
 
 /**
- * Ueberfaellige Rechnungen abrufen
+ * Überfällige Rechnungen abrufen
  */
 export function useOverdueInvoices(params?: { min_days?: number; max_days?: number }) {
     return useQuery({
@@ -162,7 +162,7 @@ export function useEscalateDunning() {
 }
 
 /**
- * Mahnvorgang schliessen
+ * Mahnvorgang schließen
  */
 export function useCloseDunning() {
     const queryClient = useQueryClient();
@@ -226,7 +226,7 @@ export function useTopDebtors(limit = 10, enabled = true) {
 }
 
 /**
- * Top-Glaeubiger
+ * Top-Gläubiger
  */
 export function useTopCreditors(limit = 10, enabled = true) {
     return useQuery({
@@ -277,7 +277,7 @@ export function useAccountsWithStats() {
 // ==================== Reconciliation Hooks ====================
 
 /**
- * Batch-Abgleich durchfuehren
+ * Batch-Abgleich durchführen
  */
 export function useBatchReconcile() {
     const queryClient = useQueryClient();

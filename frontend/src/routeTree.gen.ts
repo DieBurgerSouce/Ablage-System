@@ -33,6 +33,7 @@ import { Route as AdminSettingsRouteImport } from './app/routes/admin.settings'
 import { Route as AdminOcrTrainingRouteImport } from './app/routes/admin.ocr-training'
 import { Route as AdminOcrReviewRouteImport } from './app/routes/admin.ocr-review'
 import { Route as AdminOcrBackendsRouteImport } from './app/routes/admin.ocr-backends'
+import { Route as AdminBankingRouteImport } from './app/routes/admin.banking'
 import { Route as DocumentsDocumentIdRelationshipsRouteImport } from './app/routes/documents.$documentId.relationships'
 import { Route as AdminOcrBackendsBackendRouteImport } from './app/routes/admin.ocr-backends.$backend'
 import { Route as AdminOcrTrainingBatchIdRouteImport } from './app/routes/admin.ocr-training.batch.$id'
@@ -157,6 +158,11 @@ const AdminOcrBackendsRoute = AdminOcrBackendsRouteImport.update({
   path: '/ocr-backends',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminBankingRoute = AdminBankingRouteImport.update({
+  id: '/banking',
+  path: '/banking',
+  getParentRoute: () => AdminRoute,
+} as any)
 const DocumentsDocumentIdRelationshipsRoute =
   DocumentsDocumentIdRelationshipsRouteImport.update({
     id: '/relationships',
@@ -188,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/admin/banking': typeof AdminBankingRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
@@ -216,6 +223,7 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/admin/banking': typeof AdminBankingRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
@@ -246,6 +254,7 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/admin/banking': typeof AdminBankingRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
@@ -277,6 +286,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/upload'
     | '/validation-queue'
+    | '/admin/banking'
     | '/admin/ocr-backends'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
@@ -305,6 +315,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/upload'
     | '/validation-queue'
+    | '/admin/banking'
     | '/admin/ocr-backends'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
@@ -334,6 +345,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/upload'
     | '/validation-queue'
+    | '/admin/banking'
     | '/admin/ocr-backends'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
@@ -537,6 +549,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOcrBackendsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/banking': {
+      id: '/admin/banking'
+      path: '/banking'
+      fullPath: '/admin/banking'
+      preLoaderRoute: typeof AdminBankingRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/documents/$documentId/relationships': {
       id: '/documents/$documentId/relationships'
       path: '/relationships'
@@ -584,6 +603,7 @@ const AdminOcrTrainingRouteWithChildren =
   AdminOcrTrainingRoute._addFileChildren(AdminOcrTrainingRouteChildren)
 
 interface AdminRouteChildren {
+  AdminBankingRoute: typeof AdminBankingRoute
   AdminOcrBackendsRoute: typeof AdminOcrBackendsRouteWithChildren
   AdminOcrReviewRoute: typeof AdminOcrReviewRoute
   AdminOcrTrainingRoute: typeof AdminOcrTrainingRouteWithChildren
@@ -594,6 +614,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminBankingRoute: AdminBankingRoute,
   AdminOcrBackendsRoute: AdminOcrBackendsRouteWithChildren,
   AdminOcrReviewRoute: AdminOcrReviewRoute,
   AdminOcrTrainingRoute: AdminOcrTrainingRouteWithChildren,

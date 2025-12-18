@@ -60,7 +60,7 @@ export function AgingReportTable({ type }: AgingReportTableProps) {
     const [bucketFilter, setBucketFilter] = useState<string>('all');
     const pageSize = 10;
 
-    // Nur den benoetigten Query ausfuehren (Performance-Optimierung)
+    // Nur den benötigten Query ausführen (Performance-Optimierung)
     const receivablesQuery = useReceivablesAging(undefined, type === 'receivables');
     const payablesQuery = usePayablesAging(undefined, type === 'payables');
 

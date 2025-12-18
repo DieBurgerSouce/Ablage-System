@@ -157,11 +157,11 @@ export function LearningInsights() {
                                     <div className="flex items-center justify-between text-sm">
                                         <span className="text-muted-foreground">Gewichtung</span>
                                         <span className="font-bold text-lg">
-                                            {(weight * 100).toFixed(0)}%
+                                            {(Number(weight) * 100).toFixed(0)}%
                                         </span>
                                     </div>
                                     <Progress
-                                        value={weight * 100}
+                                        value={Number(weight) * 100}
                                         className="h-2"
                                         style={{
                                             ['--progress-color' as string]: config.color,

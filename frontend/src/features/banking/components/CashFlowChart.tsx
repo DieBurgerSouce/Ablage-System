@@ -1,6 +1,6 @@
 /**
  * Cash-Flow Chart Komponente
- * Zeigt taegliche Einnahmen, Ausgaben und Netto als AreaChart
+ * Zeigt tägliche Einnahmen, Ausgaben und Netto als AreaChart
  */
 
 import { useState } from 'react';
@@ -140,7 +140,7 @@ export function CashFlowChart({ defaultDays = 30, showControls = true }: CashFlo
                             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                             <XAxis
                                 dataKey="date"
-                                tickFormatter={formatDate}
+                                tickFormatter={formatDateShort}
                                 tick={{ fontSize: 12 }}
                                 tickMargin={8}
                             />

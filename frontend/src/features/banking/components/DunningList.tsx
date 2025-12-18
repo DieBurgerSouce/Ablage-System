@@ -1,6 +1,6 @@
 /**
  * Dunning List Komponente
- * Zeigt ueberfaellige Rechnungen mit Mahnempfehlungen
+ * Zeigt überfällige Rechnungen mit Mahnempfehlungen
  */
 
 import { useState } from 'react';
@@ -147,7 +147,7 @@ export function DunningList() {
     const isLoading = invoicesLoading || statsLoading;
 
     const handleActionClick = (documentId: string, level: string, actionLabel: string, invoiceNumber?: string) => {
-        // Fuer kritische Aktionen (Inkasso, letzte Mahnung) Bestätigung anfordern
+        // Für kritische Aktionen (Inkasso, letzte Mahnung) Bestätigung anfordern
         const criticalActions = ['final_dunning', 'collection'];
         const levelMap: Record<string, string> = {
             'reminder': 'not_started',

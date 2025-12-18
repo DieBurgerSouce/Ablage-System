@@ -143,7 +143,7 @@ export function TrainingDashboard() {
             <TabsContent value="overview" className="space-y-6">
                 <OverviewTab
                     stats={stats}
-                    backendStats={backendStats || []}
+                    backendStats={Array.isArray(backendStats) ? backendStats : []}
                     isLoading={statsLoading || backendStatsLoading}
                 />
             </TabsContent>

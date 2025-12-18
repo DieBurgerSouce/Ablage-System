@@ -120,7 +120,7 @@ function transformDocument(doc: DocumentBackend): Document {
         ocrStatus: doc.status,
         ocrConfidence: doc.ocr_confidence,
         extractedText: doc.extracted_text,
-        fileUrl: `/documents/${doc.id}/preview`,
+        fileUrl: `${apiClient.defaults.baseURL}/documents/${doc.id}/preview`,
         taskId: doc.processing_job_id,
         // Quick Classification
         quickClassificationStatus: doc.quick_classification_status,

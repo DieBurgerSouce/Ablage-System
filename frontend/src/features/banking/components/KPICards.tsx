@@ -1,5 +1,5 @@
 /**
- * KPI Cards fuer Banking Dashboard
+ * KPI Cards für Banking Dashboard
  * Zeigt 6 wichtige Kennzahlen im Grid-Layout
  */
 
@@ -95,12 +95,12 @@ export function KPICards() {
 
     const isLoading = agingLoading || cashFlowLoading || dunningLoading || transactionLoading || dsoLoading;
 
-    // Berechne ueberfaelligen Anteil der Forderungen
+    // Berechne überfälligen Anteil der Forderungen
     const receivablesOverduePercent = agingSummary?.receivables?.total_amount
         ? (agingSummary.receivables.total_overdue / agingSummary.receivables.total_amount) * 100
         : 0;
 
-    // Liquiditaetsprognose 7 Tage
+    // Liquiditätsprognose 7 Tage
     const liquidityWarning = cashFlowSummary?.warnings && cashFlowSummary.warnings.length > 0;
     const shortTermLiquidity = cashFlowSummary?.short_term?.ending_balance ?? 0;
 
@@ -140,7 +140,7 @@ export function KPICards() {
                 isLoading={isLoading}
             />
 
-            {/* Liquiditaet 7 Tage */}
+            {/* Liquidität 7 Tage */}
             <KPICard
                 title="Liquidität 7 Tage"
                 value={formatCurrency(shortTermLiquidity)}

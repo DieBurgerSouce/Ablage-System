@@ -62,7 +62,6 @@ function DocumentViewerPage() {
                 <SplitDocumentViewer
                     documentId={documentId}
                     ocrResults={ocrResults}
-                    fileUrl={document.fileUrl}
                     mimeType={document.mimeType}
                     extractedText={document.extractedText}
                 />
