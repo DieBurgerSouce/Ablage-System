@@ -246,11 +246,43 @@ Dokumentation: `.claude/Docs/API/Backup_API.md`
 
 ## Monitoring & Debugging
 
-- **Grafana**: http://localhost:3000 (admin/admin123)
+- **Grafana**: http://localhost:3002 (admin/admin123) - Port geändert wegen Konflikt
 - **Prometheus**: http://localhost:9090
+- **Loki**: Logs via Grafana (kein eigenes UI)
 - **API Docs**: http://localhost:8000/docs
 - **MinIO Console**: http://localhost:9001
-- **Backup Dashboard**: http://localhost:3000/d/ablage-backup-monitoring
+- **Backup Dashboard**: http://localhost:3002/d/ablage-backup-monitoring
+
+---
+
+## ⚠️ Qdrant A/B Testing - WICHTIG FÜR JEDE SESSION!
+
+### Erwartetes Wachstum (Dezember 2024)
+| Zeitraum | Dokumente | Vektoren |
+|----------|-----------|----------|
+| Aktuell | ~100 | 674 |
+| Jahr 1 (2025) | 200.000 | 1-2 Mio |
+| Danach | +20-30k/Jahr | +100-200k/Jahr |
+
+### 🎯 SKALIERUNGS-ROADMAP (BEI JEDEM BESUCH PRÜFEN!)
+
+| Phase | Dokumente | Traffic Split | Aktion |
+|-------|-----------|---------------|--------|
+| 1 ✓ | 0 - 10k | 10% Qdrant | Aktuell - Monitoring |
+| 2 | 10k - 50k | 25% → 50% | Performance vergleichen |
+| 3 | 50k - 100k | 75% → 100% | pgvector als Backup |
+| 4 | 100k+ | 100% Qdrant | Full Rollout |
+
+### Befehle
+```bash
+# Status prüfen
+curl http://localhost:8000/api/v1/metrics/ab-testing
+
+# Traffic erhöhen (z.B. auf 25%)
+curl -X POST "http://localhost:8000/api/v1/metrics/ab-testing/traffic-split?new_split=25"
+```
+
+**Dokumentation**: `.claude/Docs/QDRANT_AB_TESTING_GUIDE.md`
 
 ---
 
