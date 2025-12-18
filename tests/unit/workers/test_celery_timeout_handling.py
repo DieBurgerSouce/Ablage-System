@@ -417,29 +417,29 @@ class TestTaskAcknowledgment:
 
         assert celery_app.conf.task_reject_on_worker_lost is True
 
-    def test_task_acks_on_failure_or_timeout_enabled(self):
-        """task_acks_on_failure_or_timeout ist aktiviert."""
+    def test_task_acks_on_failure_or_timeout_disabled(self):
+        """task_acks_on_failure_or_timeout ist deaktiviert (Tasks gehen bei Fehler in DLQ)."""
         from app.workers.celery_app import celery_app
 
-        assert celery_app.conf.task_acks_on_failure_or_timeout is True
+        assert celery_app.conf.task_acks_on_failure_or_timeout is False
 
 
 class TestGPULockTimeouts:
     """Tests fuer GPU Lock Timeout Verhalten."""
 
     def test_gpu_lock_timeout_defined(self):
-        """GPU Lock Timeout sollte definiert sein."""
+        """GPU Lock Timeout sollte definiert sein (erhoet fuer lange OCR-Tasks)."""
         from app.workers.celery_app import _GPU_LOCK_TIMEOUT
 
         assert _GPU_LOCK_TIMEOUT > 0
-        assert _GPU_LOCK_TIMEOUT == 60  # 60 Sekunden
+        assert _GPU_LOCK_TIMEOUT == 180  # 180 Sekunden (erhoet von 60s)
 
     def test_gpu_lock_acquire_timeout_defined(self):
-        """GPU Lock Acquire Timeout sollte definiert sein."""
+        """GPU Lock Acquire Timeout sollte definiert sein (erhoet fuer lange OCR-Tasks)."""
         from app.workers.celery_app import _GPU_LOCK_ACQUIRE_TIMEOUT
 
         assert _GPU_LOCK_ACQUIRE_TIMEOUT > 0
-        assert _GPU_LOCK_ACQUIRE_TIMEOUT == 30  # 30 Sekunden
+        assert _GPU_LOCK_ACQUIRE_TIMEOUT == 300  # 300 Sekunden (erhoet von 30s)
 
     def test_gpu_lock_retry_interval_defined(self):
         """GPU Lock Retry Interval sollte definiert sein."""

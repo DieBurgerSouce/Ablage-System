@@ -93,8 +93,8 @@ class TestGPULockFunctions:
         assert _GPU_LOCK_KEY == "ablage:gpu:lock"
 
     def test_gpu_lock_timeout_constant(self):
-        """GPU Lock Timeout sollte 60 Sekunden sein (mit Refresh-Mechanismus)."""
-        assert _GPU_LOCK_TIMEOUT == 60
+        """GPU Lock Timeout sollte 180 Sekunden sein (erhoet fuer lange OCR-Tasks)."""
+        assert _GPU_LOCK_TIMEOUT == 180
 
     @patch("app.workers.celery_app._get_redis_lock_client")
     def test_acquire_gpu_lock_success(self, mock_get_client):

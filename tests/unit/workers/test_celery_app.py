@@ -129,14 +129,14 @@ class TestGPULockContextManager:
 
     def test_gpu_lock_context_acquires_and_releases(self):
         """Context manager should acquire and release lock."""
-        from app.workers.celery_app import gpu_lock
+        from app.workers.celery_app import distributed_gpu_lock
 
         with patch('app.workers.celery_app.acquire_gpu_lock') as mock_acquire, \
              patch('app.workers.celery_app.release_gpu_lock') as mock_release:
 
             mock_acquire.return_value = "lock:123"
 
-            with gpu_lock():
+            with distributed_gpu_lock():
                 pass
 
             mock_acquire.assert_called_once()
@@ -144,7 +144,7 @@ class TestGPULockContextManager:
 
     def test_gpu_lock_context_releases_on_exception(self):
         """Context manager should release lock even on exception."""
-        from app.workers.celery_app import gpu_lock
+        from app.workers.celery_app import distributed_gpu_lock
 
         with patch('app.workers.celery_app.acquire_gpu_lock') as mock_acquire, \
              patch('app.workers.celery_app.release_gpu_lock') as mock_release:
@@ -152,7 +152,7 @@ class TestGPULockContextManager:
             mock_acquire.return_value = "lock:456"
 
             with pytest.raises(ValueError):
-                with gpu_lock():
+                with distributed_gpu_lock():
                     raise ValueError("Test error")
 
             # Lock should still be released
@@ -167,7 +167,7 @@ class TestCeleryAppConfiguration:
         from app.workers.celery_app import celery_app
 
         assert celery_app is not None
-        assert celery_app.main == "ablage-system"
+        assert celery_app.main == "ablage_system"
 
     def test_celery_broker_url_configured(self):
         """Celery broker URL should be configured."""

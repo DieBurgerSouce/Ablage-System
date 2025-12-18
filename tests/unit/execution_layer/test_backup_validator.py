@@ -19,6 +19,13 @@ import sys
 # Add Execution_Layer to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "Execution_Layer"))
 
+# Mock psycopg if not installed (for testing without database driver)
+if 'psycopg' not in sys.modules:
+    psycopg_mock = MagicMock()
+    psycopg_mock.connect = MagicMock()
+    psycopg_mock.AsyncConnection = MagicMock()
+    sys.modules['psycopg'] = psycopg_mock
+
 from Validators.backup_validator import (
     BackupValidationResult,
     BackupValidator,
