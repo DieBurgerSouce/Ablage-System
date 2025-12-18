@@ -1,15 +1,21 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, MessageSquare, Search, Menu } from 'lucide-react';
+import { Plus, MessageSquare, Search, Menu, Share2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { ChatInterface } from './ChatInterface';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
+import { ShareChatDialog } from './ShareChatDialog';
+import { PresenceIndicator } from './PresenceIndicator';
 import { chatApi } from '@/lib/api/chat-api';
 import { documentsService } from '@/lib/api/services/documents';
 import { useToast } from '@/components/ui/use-toast';
-import type { ChatSession, ChatMessage, SourceChunk } from '@/lib/api/chat-api';
+// TODO: WebSocket temporaer deaktiviert - verursacht Infinite Loop (React Error #185)
+// import { useChatWebSocket } from '../hooks/use-chat-websocket';
+import type { ChatSession, ChatMessage, SourceChunk, SharedChatSession } from '@/lib/api/chat-api';
 
 /**
  * Formatiert ein Datum als relative Zeit (z.B. "vor 23 Stunden", "vor 3 Tagen")
@@ -43,6 +49,7 @@ function formatRelativeTime(dateString: string | null): string {
 export function ChatLayout() {
     const { toast } = useToast();
     const [sessions, setSessions] = useState<ChatSession[]>([]);
+    const [sharedSessions, setSharedSessions] = useState<SharedChatSession[]>([]);
     const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isThinking, setIsThinking] = useState(false);
@@ -64,6 +71,9 @@ export function ChatLayout() {
         name: string;
     } | null>(null);
 
+    // Sharing state
+    const [shareDialogOpen, setShareDialogOpen] = useState(false);
+
     // Ref für Sources - löst React Closure-Problem
     const sourcesRef = useRef<SourceChunk[]>([]);
     // Flag um zu verhindern, dass Messages nach Streaming neu geladen werden
@@ -71,9 +81,22 @@ export function ChatLayout() {
     // AbortController für Streaming-Abbruch
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    // Load Sessions
+    // TODO: WebSocket fuer Real-time Collaboration temporaer deaktiviert
+    // Verursachte Infinite Loop (React Error #185)
+    // Muss vor Aktivierung debuggt werden
+    const wsConnected = false;
+    const wsOnlineUsers: { user_id: string; username: string; is_typing: boolean }[] = [];
+
+    // Aktive Session Info ermitteln (fuer Sharing/Presence)
+    const activeSession = sessions.find((s) => s.id === activeSessionId);
+    const activeSharedSession = sharedSessions.find((s) => s.id === activeSessionId);
+    const isSharedWithMe = !!activeSharedSession;
+    const canShare = activeSession && !isSharedWithMe; // Nur Owner kann teilen
+
+    // Load Sessions (eigene + geteilte)
     useEffect(() => {
         chatApi.getSessions().then(setSessions).catch(console.error);
+        chatApi.getSharedSessions().then(setSharedSessions).catch(console.error);
     }, []);
 
     // Load Messages when session changes
@@ -336,7 +359,11 @@ export function ChatLayout() {
                 </div>
             </div>
             <ScrollArea className="flex-1">
+                {/* Meine Chats */}
                 <div className="p-2 space-y-1">
+                    <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Meine Chats
+                    </div>
                     {sessions.map((session) => (
                         <Button
                             key={session.id}
@@ -363,6 +390,54 @@ export function ChatLayout() {
                         </Button>
                     ))}
                 </div>
+
+                {/* Mit mir geteilt */}
+                {sharedSessions.length > 0 && (
+                    <>
+                        <Separator className="my-2" />
+                        <div className="p-2 space-y-1">
+                            <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                <Users className="h-3 w-3" />
+                                Mit mir geteilt
+                            </div>
+                            {sharedSessions.map((session) => (
+                                <Button
+                                    key={session.id}
+                                    variant={activeSessionId === session.id ? 'secondary' : 'ghost'}
+                                    className={cn(
+                                        'w-full justify-start text-left h-auto py-3 px-4',
+                                        activeSessionId === session.id && 'bg-secondary'
+                                    )}
+                                    onClick={() => {
+                                        setAttachedDocument(null);
+                                        setActiveSessionId(session.id);
+                                        setIsMobileMenuOpen(false);
+                                    }}
+                                >
+                                    <MessageSquare className="h-4 w-4 mr-3 shrink-0 text-blue-500" />
+                                    <div className="overflow-hidden flex-1">
+                                        <div className="font-medium truncate flex items-center gap-2">
+                                            {session.title || 'Geteilte Unterhaltung'}
+                                            <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                                {session.access_level === 'view' && 'Ansehen'}
+                                                {session.access_level === 'contribute' && 'Mitarbeiten'}
+                                                {session.access_level === 'manage' && 'Verwalten'}
+                                            </Badge>
+                                        </div>
+                                        <div className="text-xs text-muted-foreground truncate">
+                                            {formatRelativeTime(session.last_message_at)}
+                                            {session.collaborator_count > 1 && (
+                                                <span className="ml-1">
+                                                    · {session.collaborator_count} Personen
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </Button>
+                            ))}
+                        </div>
+                    </>
+                )}
             </ScrollArea>
         </div>
     );
@@ -389,16 +464,52 @@ export function ChatLayout() {
 
             {/* Main Chat Area */}
             <main className="flex-1 flex flex-col min-w-0">
-                {/* Mobile Header */}
-                <div className="md:hidden p-4 border-b flex items-center gap-4">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setIsMobileMenuOpen(true)}
-                    >
-                        <Menu className="h-5 w-5" />
-                    </Button>
-                    <span className="font-semibold">Chat</span>
+                {/* Header mit Presence und Sharing */}
+                <div className="p-4 border-b flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        {/* Mobile Menu Button */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="md:hidden"
+                            onClick={() => setIsMobileMenuOpen(true)}
+                        >
+                            <Menu className="h-5 w-5" />
+                        </Button>
+                        <span className="font-semibold">
+                            {activeSession?.title || activeSharedSession?.title || 'Chat'}
+                        </span>
+                        {isSharedWithMe && (
+                            <Badge variant="secondary" className="text-xs">
+                                <Users className="h-3 w-3 mr-1" />
+                                Geteilt
+                            </Badge>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        {/* Presence Indicator (nur wenn aktive Session) */}
+                        {activeSessionId && (
+                            <PresenceIndicator
+                                users={wsOnlineUsers}
+                                isConnected={wsConnected}
+                                compact={false}
+                            />
+                        )}
+
+                        {/* Share Button (nur fuer eigene Chats) */}
+                        {canShare && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShareDialogOpen(true)}
+                                className="gap-2"
+                            >
+                                <Share2 className="h-4 w-4" />
+                                <span className="hidden sm:inline">Teilen</span>
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 <ChatInterface
@@ -423,6 +534,14 @@ export function ChatLayout() {
                 onOpenChange={(open) => !open && setPreviewSource(null)}
                 documentName={previewSource?.document_name}
                 pageNumber={previewSource?.page_number}
+            />
+
+            {/* Share Chat Dialog */}
+            <ShareChatDialog
+                sessionId={activeSessionId}
+                open={shareDialogOpen}
+                onOpenChange={setShareDialogOpen}
+                sessionTitle={activeSession?.title || undefined}
             />
         </div>
     );

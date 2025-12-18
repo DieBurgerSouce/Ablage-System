@@ -25,6 +25,8 @@ from app.db.models import (
     RAGChatSession,
     RAGChatMessage,
     RAGChatRole,
+    ChatSessionAccess,
+    ChatSessionAccessLevel as DBChatSessionAccessLevel,
 )
 from app.api.dependencies import get_current_user, get_db
 from app.api.schemas.rag import (
@@ -37,7 +39,12 @@ from app.api.schemas.rag import (
     RAGContextType,
     RAGChunkSearchResult,
     AttachedDocumentInfo,
+    ChatSessionShareRequest,
+    ChatSessionCollaboratorResponse,
+    ChatSessionSharedResponse,
+    ChatSessionAccessLevel,
 )
+from app.services.chat_sharing_service import ChatSharingService, get_chat_sharing_service
 from app.services.rag.llm_service import (
     get_llm_service,
     LLMService,
@@ -627,6 +634,52 @@ async def list_chat_sessions(
     ]
 
 
+# WICHTIG: Diese Route MUSS vor /sessions/{session_id} stehen,
+# sonst wird "shared" als session_id interpretiert (422 Fehler)
+@router.get(
+    "/sessions/shared",
+    response_model=List[ChatSessionSharedResponse],
+    summary="Mit mir geteilte Sessions",
+    description="Listet alle Chat-Sessions auf, die mit dem aktuellen Benutzer geteilt wurden."
+)
+async def get_shared_sessions(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> List[ChatSessionSharedResponse]:
+    """
+    Ruft alle Sessions ab, die mit dem aktuellen Benutzer geteilt wurden.
+    """
+    sharing_service = get_chat_sharing_service(db)
+    sessions = await sharing_service.get_shared_sessions(current_user.id)
+
+    result = []
+    for session in sessions:
+        # Access Level holen
+        access_level = await sharing_service.get_access_level(session.id, current_user.id)
+
+        # Collaborator Count
+        collaborators = await sharing_service.get_collaborators(session.id, current_user.id)
+
+        result.append(ChatSessionSharedResponse(
+            id=session.id,
+            user_id=session.user_id,
+            session_token=session.session_token,
+            title=session.title,
+            context_type=session.context_type,
+            context_id=session.context_id,
+            status=session.status,
+            message_count=session.message_count or 0,
+            created_at=session.created_at,
+            updated_at=session.updated_at,
+            last_message_at=session.last_message_at,
+            access_level=access_level or "view",
+            is_shared=True,
+            collaborator_count=len(collaborators)
+        ))
+
+    return result
+
+
 @router.get(
     "/sessions/{session_id}",
     response_model=RAGChatSessionWithMessages,
@@ -640,21 +693,31 @@ async def get_chat_session(
 ) -> RAGChatSessionWithMessages:
     """
     Ruft eine Chat-Session mit vollstaendigem Verlauf ab.
+
+    Unterstuetzt sowohl eigene als auch geteilte Sessions.
     """
-    # Session laden
-    result = await db.execute(
-        select(RAGChatSession).where(
-            RAGChatSession.id == session_id,
-            RAGChatSession.user_id == current_user.id
-        )
-    )
-    session = result.scalar_one_or_none()
+    # Session laden (ohne User-Filter, Zugriff wird separat geprueft)
+    session = await db.get(RAGChatSession, session_id)
 
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session nicht gefunden"
         )
+
+    # Zugriffspruefung: Owner oder Shared Access
+    if session.user_id != current_user.id:
+        sharing_service = get_chat_sharing_service(db)
+        has_access = await sharing_service.check_access(
+            session_id=session_id,
+            user_id=current_user.id,
+            required_level=DBChatSessionAccessLevel.VIEW
+        )
+        if not has_access:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session nicht gefunden"
+            )
 
     # Nachrichten laden (mit attached_document eager loading)
     messages_result = await db.execute(
@@ -943,3 +1006,141 @@ async def _get_chat_history(
         {"role": m.role.value, "content": m.content}
         for m in reversed(messages)
     ]
+
+
+# =============================================================================
+# SHARING ENDPOINTS
+# =============================================================================
+# HINWEIS: /sessions/shared wurde nach oben verschoben (vor /sessions/{session_id})
+# um korrekte Route-Priorisierung zu gewaehrleisten
+
+@router.post(
+    "/sessions/{session_id}/share",
+    response_model=ChatSessionCollaboratorResponse,
+    summary="Session teilen",
+    description="Teilt eine Chat-Session mit einem anderen Benutzer."
+)
+async def share_chat_session(
+    session_id: UUID,
+    request: ChatSessionShareRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> ChatSessionCollaboratorResponse:
+    """
+    Teilt eine Chat-Session mit einem anderen Benutzer.
+
+    Erfordert MANAGE-Berechtigung oder Ownership.
+    """
+    sharing_service = get_chat_sharing_service(db)
+
+    try:
+        # Access Level konvertieren
+        db_level = DBChatSessionAccessLevel(request.access_level.value)
+
+        access = await sharing_service.share_session(
+            session_id=session_id,
+            owner_id=current_user.id,
+            target_user_id=request.user_id,
+            access_level=db_level
+        )
+        await db.commit()
+
+        # User-Info holen
+        user = await db.get(User, request.user_id)
+
+        return ChatSessionCollaboratorResponse(
+            user_id=str(access.user_id),
+            username=user.username if user else "Unbekannt",
+            email=user.email if user else None,
+            access_level=access.access_level,
+            is_owner=False,
+            granted_at=str(access.granted_at) if access.granted_at else None
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.delete(
+    "/sessions/{session_id}/share/{user_id}",
+    summary="Zugriff entziehen",
+    description="Entzieht einem Benutzer den Zugriff auf eine Chat-Session."
+)
+async def revoke_chat_session_access(
+    session_id: UUID,
+    user_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """
+    Entzieht einem Benutzer den Zugriff auf eine Chat-Session.
+
+    Erfordert MANAGE-Berechtigung oder Ownership.
+    """
+    sharing_service = get_chat_sharing_service(db)
+
+    try:
+        revoked = await sharing_service.revoke_access(
+            session_id=session_id,
+            owner_id=current_user.id,
+            target_user_id=user_id
+        )
+        await db.commit()
+
+        if not revoked:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Zugriff nicht gefunden"
+            )
+
+        return {
+            "success": True,
+            "session_id": str(session_id),
+            "user_id": str(user_id),
+            "message": "Zugriff entzogen"
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.get(
+    "/sessions/{session_id}/collaborators",
+    response_model=List[ChatSessionCollaboratorResponse],
+    summary="Collaborators auflisten",
+    description="Listet alle Benutzer auf, die Zugriff auf eine Chat-Session haben."
+)
+async def get_chat_session_collaborators(
+    session_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> List[ChatSessionCollaboratorResponse]:
+    """
+    Listet alle Collaborators einer Chat-Session auf.
+
+    Erfordert mindestens VIEW-Berechtigung.
+    """
+    sharing_service = get_chat_sharing_service(db)
+
+    try:
+        collaborators = await sharing_service.get_collaborators(
+            session_id=session_id,
+            user_id=current_user.id
+        )
+
+        return [
+            ChatSessionCollaboratorResponse(**c)
+            for c in collaborators
+        ]
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
