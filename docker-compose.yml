@@ -10,8 +10,21 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-ablage_system}
       POSTGRES_USER: ${POSTGRES_USER:-ablage_admin}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
-      POSTGRES_MAX_CONNECTIONS: 100
-      POSTGRES_SHARED_BUFFERS: 256MB
+      # Optimierte PostgreSQL-Konfiguration für Production (16GB RAM Host)
+      POSTGRES_MAX_CONNECTIONS: "300"
+      POSTGRES_SHARED_BUFFERS: "4GB"
+    # PostgreSQL Performance-Tuning via Command-Line Args
+    command: >
+      postgres
+      -c shared_buffers=4GB
+      -c max_connections=300
+      -c effective_cache_size=12GB
+      -c maintenance_work_mem=1GB
+      -c wal_buffers=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_level=replica
+      -c max_wal_senders=3
+      -c wal_keep_size=1GB
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -39,12 +52,60 @@ services:
     networks:
       - data-network
 
+  # PgBouncer Connection Pooling für PostgreSQL
+  # Verhindert Connection Exhaustion bei hoher Last
+  pgbouncer:
+    image: bitnami/pgbouncer:1.23.0
+    container_name: ablage-pgbouncer
+    environment:
+      PGBOUNCER_DATABASE: ${POSTGRES_DB:-ablage_system}
+      POSTGRESQL_HOST: postgres
+      POSTGRESQL_PORT: 5432
+      POSTGRESQL_USERNAME: ${POSTGRES_USER:-ablage_admin}
+      POSTGRESQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
+      PGBOUNCER_PORT: 6432
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_MAX_CLIENT_CONN: 500
+      PGBOUNCER_DEFAULT_POOL_SIZE: 25
+      PGBOUNCER_MIN_POOL_SIZE: 5
+      PGBOUNCER_RESERVE_POOL_SIZE: 5
+      PGBOUNCER_RESERVE_POOL_TIMEOUT: 3
+      PGBOUNCER_SERVER_IDLE_TIMEOUT: 600
+      PGBOUNCER_SERVER_LIFETIME: 3600
+      PGBOUNCER_LOG_CONNECTIONS: 0
+      PGBOUNCER_LOG_DISCONNECTIONS: 0
+      PGBOUNCER_STATS_PERIOD: 60
+    ports:
+      - "127.0.0.1:6432:6432"  # Nur localhost - Connection Pooling Port
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432 -U ${POSTGRES_USER:-ablage_admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    restart: unless-stopped
+    networks:
+      - data-network
+
   # Redis for Cache and Queue (Data-Network only)
   redis:
     image: redis:7-alpine
     container_name: ablage-redis
     # SECURITY: REDIS_PASSWORD muss in .env gesetzt sein! Leer = unsicher
-    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+    # Memory erhöht auf 4GB für bessere Performance mit Celery + Cache + Vector-Operationen
+    command: redis-server --appendonly yes --appendfsync everysec --maxmemory 4gb --maxmemory-policy allkeys-lfu --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     volumes:
@@ -63,10 +124,10 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 2G
+          memory: 5G  # Erhöht von 2G für 4GB Redis + Overhead
         reservations:
           cpus: '0.25'
-          memory: 512M
+          memory: 1G
     restart: unless-stopped
     networks:
       - data-network
@@ -636,7 +697,7 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.time=90d'  # Erhöht von 30d für Trend-Analyse
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.enable-lifecycle'

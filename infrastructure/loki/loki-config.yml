@@ -2,9 +2,10 @@
 # Log Aggregation and Analysis
 # Updated for Loki 3.x compatibility
 
-# SECURITY FIX: Auth aktiviert um unautorisierten Log-Zugriff zu verhindern
-# Erfordert X-Scope-OrgID Header in Anfragen
-auth_enabled: true
+# Auth deaktiviert für Single-Node Setup (kein Multi-Tenant)
+# Bei Multi-Tenant aktivieren und X-Scope-OrgID Header in Promtail konfigurieren
+# HINWEIS: Zugriff nur über localhost (siehe docker-compose.yml ports)
+auth_enabled: false
 
 server:
   http_listen_port: 3100

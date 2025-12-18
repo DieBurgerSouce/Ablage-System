@@ -59,11 +59,13 @@ log_level = "info"
 #   kms_key_id = "your-kms-key-id"
 # }
 
-# Mlock - In Docker-Containern auf true setzen!
-# false = Secrets werden im RAM gelockt und können nicht auf Disk geswappt werden
-# true  = Für Container empfohlen (trotz CAP_IPC_LOCK), verhindert Startup-Probleme
+# Mlock - In Docker-Containern deaktiviert
+# HINWEIS: disable_mlock=true ist in Docker notwendig, da CAP_IPC_LOCK
+# nicht ausreicht. Der Container hat jedoch nur localhost-Zugriff.
+# Für maximale Sicherheit in Production: Vault auf dediziertem Host betreiben.
 disable_mlock = true
 
-# Default Lease TTL
-default_lease_ttl = "768h"
-max_lease_ttl     = "8760h"
+# Security-Hardening: Kürzere Lease TTLs
+# Reduziert Risiko bei kompromittierten Tokens
+default_lease_ttl = "24h"   # War: 768h (32 Tage) - jetzt 24 Stunden
+max_lease_ttl     = "168h"  # War: 8760h (1 Jahr) - jetzt 7 Tage
