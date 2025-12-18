@@ -9,14 +9,14 @@ Verwendet die pyiso20022 Bibliothek.
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional, List, Union, Dict, Any
-import logging
+import structlog
 import re
 from xml.etree import ElementTree as ET
 
 from .base import BaseParser, ParsedTransaction, ParseResult, ParserRegistry
 from ..models import ImportFormat, TransactionType
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # ISO 20022 Namespaces
 CAMT_NS = {
@@ -40,7 +40,7 @@ class CAMT053Parser(BaseParser):
         if isinstance(content, bytes):
             try:
                 content = content.decode("utf-8", errors="replace")
-            except Exception:
+            except UnicodeDecodeError:
                 return 0.0
 
         content_lower = content[:3000].lower()

@@ -9,7 +9,7 @@ Verwendet die mt-940 Bibliothek.
 from datetime import date
 from decimal import Decimal
 from typing import Optional, List, Union
-import logging
+import structlog
 import re
 
 from mt940 import parse as mt940_parse
@@ -18,7 +18,7 @@ from mt940.models import Transaction as MT940Transaction
 from .base import BaseParser, ParsedTransaction, ParseResult, ParserRegistry
 from ..models import ImportFormat, TransactionType
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @ParserRegistry.register
@@ -35,7 +35,7 @@ class MT940Parser(BaseParser):
         if isinstance(content, bytes):
             try:
                 content = content.decode("utf-8", errors="replace")
-            except Exception:
+            except UnicodeDecodeError:
                 content = content.decode("latin-1", errors="replace")
 
         # MT940 beginnt typischerweise mit :20: oder :940:
@@ -73,7 +73,7 @@ class MT940Parser(BaseParser):
             except UnicodeDecodeError:
                 try:
                     content = content.decode("latin-1")
-                except Exception:
+                except UnicodeDecodeError:
                     content = content.decode("cp1252", errors="replace")
 
         result = ParseResult(

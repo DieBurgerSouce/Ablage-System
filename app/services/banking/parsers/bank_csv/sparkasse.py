@@ -4,7 +4,7 @@ Parst CSV-Exporte der Sparkassen-Banken.
 Format: Semikolon-separiert, ISO-8859-1/Windows-1252 Encoding.
 """
 
-from typing import Optional, Union
+from typing import Optional, Union, Dict, List
 
 from ..csv_parser import GenericCSVParser
 from ..base import ParserRegistry
@@ -56,7 +56,7 @@ class SparkasseCSVParser(GenericCSVParser):
 
         return 0.0
 
-    def _map_columns(self, fieldnames):
+    def _map_columns(self, fieldnames: List[str]) -> Dict[str, str]:
         """Sparkasse-spezifisches Spalten-Mapping."""
         mapping = {}
 

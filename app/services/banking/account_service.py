@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import Optional, List, TYPE_CHECKING
 from uuid import UUID, uuid4
 import re
-import logging
+import structlog
 import base64
 import hashlib
 
@@ -32,7 +32,7 @@ from .models import (
 if TYPE_CHECKING:
     from app.db.models import BankAccount
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def _get_encryption_key() -> bytes:
@@ -56,7 +56,7 @@ def _get_encryption_key() -> bytes:
             # Pruefe ob bereits valides Fernet-Format (32 Bytes Base64)
             if len(base64.urlsafe_b64decode(key_value)) == 32:
                 return key_value.encode()
-        except Exception:
+        except (ValueError, TypeError, UnicodeDecodeError):
             pass
         # Sonst: Derive 32-Byte Key aus dem gegebenen Key
         derived = hashlib.sha256(key_value.encode()).digest()

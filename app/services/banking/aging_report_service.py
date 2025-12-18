@@ -15,17 +15,16 @@ Altersklassen:
 
 from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from enum import Enum
-from typing import Optional, Dict, Any, List, Tuple, TYPE_CHECKING
+from typing import Optional, Dict, Any, List, Tuple
 from uuid import UUID
 import structlog
 
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-if TYPE_CHECKING:
-    from app.db.models import Document
+from app.db.models import Document
 
 logger = structlog.get_logger(__name__)
 
@@ -346,9 +345,9 @@ class AgingReportService:
         # Vereinfachte Implementierung - in Produktion aus Buchhaltung
         revenue_query = select(Document).where(
             and_(
-                Document.user_id == user_id,
+                Document.owner_id == user_id,
                 Document.document_type == "invoice",
-                Document.is_deleted == False,
+                Document.deleted_at.is_(None),
                 Document.created_at >= period_start,
             )
         )
@@ -364,7 +363,7 @@ class AgingReportService:
                 if amount:
                     try:
                         total_revenue += Decimal(str(amount))
-                    except Exception:
+                    except (ValueError, TypeError, InvalidOperation):
                         pass
 
         # DSO berechnen
@@ -409,9 +408,9 @@ class AgingReportService:
         # Dokumente laden
         query = select(Document).where(
             and_(
-                Document.user_id == user_id,
+                Document.owner_id == user_id,
                 Document.document_type.in_(document_types),
-                Document.is_deleted == False,
+                Document.deleted_at.is_(None),
             )
         )
 
@@ -434,7 +433,7 @@ class AgingReportService:
 
             try:
                 amount = Decimal(str(amount))
-            except Exception:
+            except (ValueError, TypeError, InvalidOperation):
                 continue
 
             # Counterparty
@@ -450,7 +449,7 @@ class AgingReportService:
                         due_date = datetime.fromisoformat(due_date_str).date()
                     else:
                         due_date = due_date_str
-                except Exception:
+                except (ValueError, TypeError):
                     due_date = None
             else:
                 due_date = None
@@ -463,7 +462,7 @@ class AgingReportService:
                         invoice_date = datetime.fromisoformat(invoice_date_str).date()
                     else:
                         invoice_date = invoice_date_str
-                except Exception:
+                except (ValueError, TypeError):
                     invoice_date = None
             else:
                 invoice_date = None

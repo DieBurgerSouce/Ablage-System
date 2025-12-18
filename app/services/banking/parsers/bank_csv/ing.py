@@ -4,7 +4,7 @@ Parst CSV-Exporte der ING.
 Format: Semikolon-separiert, UTF-8.
 """
 
-from typing import Optional, Union
+from typing import Optional, Union, Dict, List
 
 from ..csv_parser import GenericCSVParser
 from ..base import ParserRegistry
@@ -49,7 +49,7 @@ class INGCSVParser(GenericCSVParser):
 
         return 0.0
 
-    def _map_columns(self, fieldnames):
+    def _map_columns(self, fieldnames: List[str]) -> Dict[str, str]:
         """ING-spezifisches Spalten-Mapping."""
         mapping = {}
 

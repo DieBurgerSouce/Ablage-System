@@ -23,7 +23,7 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 from typing import Optional, List, Dict, Any, Tuple, TYPE_CHECKING
 from uuid import UUID, uuid4
-import logging
+import structlog
 import re
 
 from sqlalchemy import select, func, and_, or_, update
@@ -39,7 +39,7 @@ from .models import (
 if TYPE_CHECKING:
     from app.db.models import PaymentOrder
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # IBAN-Validierung
@@ -119,7 +119,7 @@ class PaymentService:
             doc_query = select(Document).where(
                 and_(
                     Document.id == data.linked_document_id,
-                    Document.user_id == user_id,
+                    Document.owner_id == user_id,
                     Document.deleted_at.is_(None),
                 )
             )
@@ -601,7 +601,7 @@ class PaymentService:
         # Suche Rechnungen mit Skonto
         query = select(Document).where(
             and_(
-                Document.user_id == user_id,
+                Document.owner_id == user_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
@@ -850,7 +850,7 @@ class PaymentService:
 
             # MOD 97 Pruefung
             return int(numeric) % 97 == 1
-        except Exception:
+        except (ValueError, TypeError):
             return False
 
     def _validate_tan(self, tan: str) -> bool:

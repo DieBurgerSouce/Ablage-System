@@ -6,7 +6,7 @@ Supported formats:
 - CSV - Bank-specific CSV formats
 """
 
-import logging
+import structlog
 from typing import Optional, Type
 
 from .base import (
@@ -17,7 +17,7 @@ from .base import (
     detect_format,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Optional imports - not all dependencies may be installed
 MT940Parser: Optional[Type[BaseParser]] = None

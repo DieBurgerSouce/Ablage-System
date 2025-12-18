@@ -5,7 +5,7 @@ Format: Semikolon-separiert, Latin-1/ISO-8859-1 Encoding.
 Besonderheit: Header beginnt oft mit Kontoinfo.
 """
 
-from typing import Optional, Union
+from typing import Optional, Union, Dict, List
 import re
 
 from ..csv_parser import GenericCSVParser
@@ -70,7 +70,7 @@ class DKBCSVParser(GenericCSVParser):
 
         return 0.0
 
-    def parse(self, content):
+    def parse(self, content: Union[str, bytes]) -> ParseResult:
         """Parse DKB-CSV mit Metadaten-Header."""
         text = self._decode_content(content)
         if not text:
@@ -113,7 +113,7 @@ class DKBCSVParser(GenericCSVParser):
 
         return result
 
-    def _map_columns(self, fieldnames):
+    def _map_columns(self, fieldnames: List[str]) -> Dict[str, str]:
         """DKB-spezifisches Spalten-Mapping."""
         mapping = {}
 

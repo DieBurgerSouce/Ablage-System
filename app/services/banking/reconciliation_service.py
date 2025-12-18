@@ -12,11 +12,11 @@ Matching-Strategien (nach Prioritaet):
 
 from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
 import re
-import logging
+import structlog
 
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +29,7 @@ from .models import (
 )
 from .reference_parser import reference_parser
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -334,7 +334,7 @@ class ReconciliationService:
         doc_query = select(Document).where(
             and_(
                 Document.id == document_id,
-                Document.user_id == user_id,
+                Document.owner_id == user_id,
                 Document.deleted_at.is_(None),
             )
         )
@@ -471,7 +471,7 @@ class ReconciliationService:
             doc_query = select(Document).where(
                 and_(
                     Document.id == doc_id,
-                    Document.user_id == user_id,
+                    Document.owner_id == user_id,
                     Document.deleted_at.is_(None),
                 )
             )
@@ -533,7 +533,7 @@ class ReconciliationService:
         # Suche Dokumente mit passender IBAN
         query = select(Document).where(
             and_(
-                Document.user_id == user_id,
+                Document.owner_id == user_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
@@ -598,7 +598,7 @@ class ReconciliationService:
 
         query = select(Document).where(
             and_(
-                Document.user_id == user_id,
+                Document.owner_id == user_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
@@ -668,7 +668,7 @@ class ReconciliationService:
 
         query = select(Document).where(
             and_(
-                Document.user_id == user_id,
+                Document.owner_id == user_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
@@ -750,7 +750,7 @@ class ReconciliationService:
 
         query = select(Document).where(
             and_(
-                Document.user_id == user_id,
+                Document.owner_id == user_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
@@ -823,7 +823,7 @@ class ReconciliationService:
 
         query = select(Document).where(
             and_(
-                Document.user_id == user_id,
+                Document.owner_id == user_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
@@ -892,7 +892,7 @@ class ReconciliationService:
 
         try:
             return Decimal(str(gross))
-        except Exception:
+        except (ValueError, TypeError, InvalidOperation):
             return None
 
     def _amounts_match(
@@ -939,7 +939,7 @@ class ReconciliationService:
             # German Format
             elif "." in date_str:
                 return datetime.strptime(date_str[:10], "%d.%m.%Y").date()
-        except Exception:
+        except (ValueError, TypeError):
             pass
 
         return None

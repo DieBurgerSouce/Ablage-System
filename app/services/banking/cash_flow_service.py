@@ -15,7 +15,7 @@ Features:
 
 from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from enum import Enum
 from typing import Optional, Dict, Any, List, Tuple, TYPE_CHECKING
 from uuid import UUID
@@ -32,9 +32,10 @@ from app.services.banking.models import (
     PaymentStatus,
     ReconciliationStatus,
 )
+from app.db.models import Document, BankTransaction, PaymentOrder
 
 if TYPE_CHECKING:
-    from app.db.models import Document, BankTransaction, PaymentOrder
+    pass  # Imports moved above for runtime availability
 
 logger = structlog.get_logger(__name__)
 
@@ -330,9 +331,9 @@ class CashFlowService:
         # Dokumente mit offenen Betraegen (Eingangsrechnungen)
         query = select(Document).where(
             and_(
-                Document.user_id == user_id,
+                Document.owner_id == user_id,
                 Document.document_type == "invoice",
-                Document.is_deleted == False,
+                Document.deleted_at.is_(None),
             )
         )
 
@@ -353,7 +354,7 @@ class CashFlowService:
 
             try:
                 amount = Decimal(str(amount))
-            except Exception:
+            except (ValueError, TypeError, InvalidOperation):
                 continue
 
             # Faelligkeitsdatum
@@ -364,7 +365,7 @@ class CashFlowService:
                         due_date = datetime.fromisoformat(due_date_str).date()
                     else:
                         due_date = due_date_str
-                except Exception:
+                except (ValueError, TypeError):
                     due_date = date.today() + timedelta(days=14)
             else:
                 due_date = date.today() + timedelta(days=14)
@@ -407,9 +408,9 @@ class CashFlowService:
         # Dokumente mit offenen Betraegen (Ausgangsrechnungen/Lieferantenrechnungen)
         query = select(Document).where(
             and_(
-                Document.user_id == user_id,
+                Document.owner_id == user_id,
                 Document.document_type.in_(["supplier_invoice", "purchase_order"]),
-                Document.is_deleted == False,
+                Document.deleted_at.is_(None),
             )
         )
 
@@ -428,7 +429,7 @@ class CashFlowService:
 
             try:
                 amount = Decimal(str(amount))
-            except Exception:
+            except (ValueError, TypeError, InvalidOperation):
                 continue
 
             # Faelligkeitsdatum
@@ -439,7 +440,7 @@ class CashFlowService:
                         due_date = datetime.fromisoformat(due_date_str).date()
                     else:
                         due_date = due_date_str
-                except Exception:
+                except (ValueError, TypeError):
                     due_date = date.today() + timedelta(days=14)
             else:
                 due_date = date.today() + timedelta(days=14)

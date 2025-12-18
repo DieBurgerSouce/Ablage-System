@@ -14,9 +14,9 @@ import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Pattern
 from datetime import date, datetime
-import logging
+import structlog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -216,7 +216,7 @@ class ReferenceParser:
                 to_date = self._parse_simple_date(to_str)
                 if from_date and to_date:
                     return (from_date, to_date)
-            except Exception:
+            except (ValueError, TypeError):
                 pass
         return None
 

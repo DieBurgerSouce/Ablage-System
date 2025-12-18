@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import Optional, List, Tuple, BinaryIO, Union
 from uuid import UUID, uuid4
 import hashlib
-import logging
+import structlog
 
 from sqlalchemy import select, and_, or_
 from sqlalchemy.exc import IntegrityError
@@ -44,7 +44,7 @@ from .models import (
     ReconciliationStatus,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ImportService:

@@ -6,16 +6,16 @@ Definiert die gemeinsame Schnittstelle fuer alle Bank-Parser.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from enum import Enum
 from typing import Optional, List, Dict, Any, Type, BinaryIO, Union
 import re
 import hashlib
-import logging
+import structlog
 
 from ..models import ImportFormat, TransactionType
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -340,7 +340,7 @@ class BaseParser(ABC):
 
         try:
             return Decimal(cleaned)
-        except Exception:
+        except (ValueError, InvalidOperation):
             logger.warning(f"Konnte Betrag nicht parsen: {amount_str}")
             return Decimal("0")
 

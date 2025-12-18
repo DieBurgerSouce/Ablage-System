@@ -7,7 +7,7 @@ Spaltenerkennung. Basis fuer bank-spezifische Parser.
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Optional, List, Union, Dict, Any, Tuple
-import logging
+import structlog
 import re
 import csv
 import io
@@ -15,7 +15,7 @@ import io
 from .base import BaseParser, ParsedTransaction, ParseResult, ParserRegistry
 from ..models import ImportFormat, TransactionType
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # Bekannte Spaltenbezeichnungen (deutsch/englisch)

@@ -12,7 +12,7 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 from typing import Optional, List, Tuple, Dict, Any, TYPE_CHECKING
 from uuid import UUID
-import logging
+import structlog
 
 from sqlalchemy import select, func, and_, or_, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +29,7 @@ from .models import (
 if TYPE_CHECKING:
     from app.db.models import BankTransaction
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class TransactionService:

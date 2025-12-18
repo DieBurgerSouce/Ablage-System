@@ -17,9 +17,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from enum import Enum
-from typing import Optional, Dict, Any, List, Tuple, TYPE_CHECKING
+from typing import Optional, Dict, Any, List, Tuple
 from uuid import UUID, uuid4
 import structlog
 
@@ -32,10 +32,7 @@ from app.services.banking.models import (
     DunningRecordResponse,
 )
 
-from app.db.models import DunningRecord
-
-if TYPE_CHECKING:
-    from app.db.models import Document
+from app.db.models import DunningRecord, Document
 
 logger = structlog.get_logger(__name__)
 
@@ -125,9 +122,9 @@ class DunningService:
         # Offene Rechnungen mit Faelligkeitsdatum
         query = select(Document).where(
             and_(
-                Document.user_id == user_id,
+                Document.owner_id == user_id,
                 Document.document_type == "invoice",
-                Document.is_deleted == False,
+                Document.deleted_at.is_(None),
             )
         )
 
@@ -148,7 +145,7 @@ class DunningService:
 
             try:
                 amount = Decimal(str(amount))
-            except Exception:
+            except (ValueError, TypeError, InvalidOperation):
                 continue
 
             if amount < self.config.min_dunning_amount:
@@ -164,7 +161,7 @@ class DunningService:
                     due_date = datetime.fromisoformat(due_date_str).date()
                 else:
                     due_date = due_date_str
-            except Exception:
+            except (ValueError, TypeError):
                 continue
 
             # Ueberfaellig?
@@ -180,7 +177,7 @@ class DunningService:
             accumulated_fees = Decimal("0.00")
 
             if dunning_record:
-                if not include_in_progress and dunning_record.status == DunningStatus.IN_PROGRESS.value:
+                if not include_in_progress and dunning_record.status == DunningStatus.PENDING.value:
                     continue
                 current_level = DunningLevel(dunning_record.dunning_level)
                 accumulated_fees = dunning_record.total_fees or Decimal("0.00")
@@ -250,7 +247,7 @@ class DunningService:
             select(Document).where(
                 and_(
                     Document.id == document_id,
-                    Document.user_id == user_id,
+                    Document.owner_id == user_id,
                 )
             )
         )
@@ -291,13 +288,13 @@ class DunningService:
             id=uuid4(),
             user_id=user_id,
             document_id=document_id,
-            level=level.value,
-            status=DunningStatus.IN_PROGRESS.value,
-            original_amount=amount,
-            total_fees=fee,
-            late_interest=late_interest,
+            dunning_level=level.value,
+            status=DunningStatus.PENDING.value,
+            gross_amount=amount,
+            reminder_fee=fee,
+            accrued_interest=late_interest,
             due_date=due_date,
-            notes=notes,
+            resolution_notes=notes,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
@@ -339,7 +336,7 @@ class DunningService:
         if not dunning:
             raise ValueError("Mahnvorgang nicht gefunden")
 
-        if dunning.status != DunningStatus.IN_PROGRESS.value:
+        if dunning.status != DunningStatus.PENDING.value:
             raise ValueError(
                 f"Mahnvorgang kann nicht eskaliert werden (Status: {dunning.status})"
             )
@@ -358,22 +355,22 @@ class DunningService:
 
         # Neue Gebuehr hinzufuegen
         new_fee = self._get_fee_for_level(new_level)
-        total_fees = (dunning.total_fees or Decimal("0.00")) + new_fee
+        total_fees = (dunning.reminder_fee or Decimal("0.00")) + new_fee
 
         # Verzugszinsen aktualisieren
         late_interest = self._calculate_late_interest(
-            dunning.original_amount,
+            dunning.gross_amount,
             dunning.due_date,
             date.today()
         )
 
         # Aktualisieren
         dunning.dunning_level = new_level.value
-        dunning.total_fees = total_fees
-        dunning.late_interest = late_interest
+        dunning.reminder_fee = total_fees
+        dunning.accrued_interest = late_interest
         dunning.updated_at = datetime.utcnow()
         if notes:
-            dunning.notes = (dunning.notes or "") + f"\n[{datetime.now().isoformat()}] {notes}"
+            dunning.resolution_notes = (dunning.resolution_notes or "") + f"\n[{datetime.now().isoformat()}] {notes}"
 
         await db.commit()
         await db.refresh(dunning)
@@ -408,7 +405,7 @@ class DunningService:
         Returns:
             Aktualisierter DunningRecordResponse
         """
-        if status == DunningStatus.IN_PROGRESS:
+        if status == DunningStatus.PENDING:
             raise ValueError("Mahnvorgang kann nicht auf 'in_progress' gesetzt werden")
 
         dunning = await self._get_dunning_by_id(db, user_id, dunning_id)
@@ -416,10 +413,10 @@ class DunningService:
             raise ValueError("Mahnvorgang nicht gefunden")
 
         dunning.status = status.value
-        dunning.closed_at = datetime.utcnow()
+        dunning.resolved_at = datetime.utcnow()
         dunning.updated_at = datetime.utcnow()
         if notes:
-            dunning.notes = (dunning.notes or "") + f"\n[{datetime.now().isoformat()}] {notes}"
+            dunning.resolution_notes = (dunning.resolution_notes or "") + f"\n[{datetime.now().isoformat()}] {notes}"
 
         await db.commit()
         await db.refresh(dunning)
@@ -490,10 +487,10 @@ class DunningService:
 
         # Aktive Mahnverfahren
         active_result = await db.execute(
-            select(func.count(), func.sum(DunningRecord.original_amount)).where(
+            select(func.count(), func.sum(DunningRecord.gross_amount)).where(
                 and_(
                     DunningRecord.user_id == user_id,
-                    DunningRecord.status == DunningStatus.IN_PROGRESS.value,
+                    DunningRecord.status == DunningStatus.PENDING.value,
                 )
             )
         )
@@ -505,11 +502,11 @@ class DunningService:
         level_query = select(
             DunningRecord.dunning_level,
             func.count(),
-            func.sum(DunningRecord.original_amount),
+            func.sum(DunningRecord.gross_amount),
         ).where(
             and_(
                 DunningRecord.user_id == user_id,
-                DunningRecord.status == DunningStatus.IN_PROGRESS.value,
+                DunningRecord.status == DunningStatus.PENDING.value,
             )
         ).group_by(DunningRecord.dunning_level)
 
@@ -528,7 +525,7 @@ class DunningService:
             select(DunningRecord.status, func.count()).where(
                 and_(
                     DunningRecord.user_id == user_id,
-                    DunningRecord.closed_at >= thirty_days_ago,
+                    DunningRecord.resolved_at >= thirty_days_ago,
                 )
             ).group_by(DunningRecord.status)
         )
@@ -547,7 +544,7 @@ class DunningService:
             "by_level": by_level,
             "closed_last_30_days": {
                 "paid": closed_stats.get(DunningStatus.PAID.value, 0),
-                "cancelled": closed_stats.get(DunningStatus.CANCELLED.value, 0),
+                "partially_paid": closed_stats.get(DunningStatus.PARTIALLY_PAID.value, 0),
                 "written_off": closed_stats.get(DunningStatus.WRITTEN_OFF.value, 0),
             },
             "fees_collected": await self._get_collected_fees(db, user_id),
@@ -664,11 +661,11 @@ class DunningService:
         thirty_days_ago = datetime.utcnow() - timedelta(days=30)
 
         result = await db.execute(
-            select(func.sum(DunningRecord.total_fees)).where(
+            select(func.sum(DunningRecord.reminder_fee)).where(
                 and_(
                     DunningRecord.user_id == user_id,
                     DunningRecord.status == DunningStatus.PAID.value,
-                    DunningRecord.closed_at >= thirty_days_ago,
+                    DunningRecord.resolved_at >= thirty_days_ago,
                 )
             )
         )
@@ -763,23 +760,27 @@ class DunningService:
         """Konvertiere zu Response-Schema."""
         return DunningRecordResponse(
             id=dunning.id,
-            user_id=dunning.user_id,
             document_id=dunning.document_id,
-            level=dunning.dunning_level,
-            status=dunning.status,
-            original_amount=dunning.original_amount,
-            total_fees=dunning.total_fees or Decimal("0.00"),
-            late_interest=dunning.late_interest or Decimal("0.00"),
-            total_due=(
-                dunning.original_amount +
-                (dunning.total_fees or Decimal("0.00")) +
-                (dunning.late_interest or Decimal("0.00"))
-            ),
-            due_date=dunning.due_date,
-            notes=dunning.notes,
+            invoice_number=dunning.invoice_number,
+            invoice_date=dunning.invoice_date.date() if dunning.invoice_date else None,
+            due_date=dunning.due_date.date() if dunning.due_date else None,
+            gross_amount=dunning.gross_amount,
+            outstanding_amount=dunning.outstanding_amount,
+            currency=dunning.currency or "EUR",
+            debtor_name=dunning.debtor_name,
+            debtor_email=dunning.debtor_email,
+            dunning_level=DunningLevel(dunning.dunning_level),
+            status=DunningStatus(dunning.status),
+            reminder_fee=dunning.reminder_fee or Decimal("0.00"),
+            late_interest_rate=dunning.late_interest_rate,
+            accrued_interest=dunning.accrued_interest or Decimal("0.00"),
+            total_outstanding=dunning.total_outstanding,
+            first_reminder_at=dunning.first_reminder_at,
+            second_reminder_at=dunning.second_reminder_at,
+            final_reminder_at=dunning.final_reminder_at,
+            next_action_at=dunning.next_action_at,
             created_at=dunning.created_at,
             updated_at=dunning.updated_at,
-            closed_at=dunning.closed_at,
         )
 
 
