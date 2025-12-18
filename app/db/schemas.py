@@ -2959,6 +2959,16 @@ class TrainingSampleListResponse(BaseModel):
     samples: List[TrainingSampleResponse]
 
 
+class VerifySampleRequest(BaseModel):
+    """Request Body fuer Sample-Verifizierung.
+
+    Wird verwendet um Training-Samples zu verifizieren oder zu korrigieren.
+    """
+    approved: bool = Field(..., description="Ob Ground-Truth akzeptiert wird")
+    corrected_text: Optional[str] = Field(None, description="Korrigierter Text bei Ablehnung")
+    correction_notes: Optional[str] = Field(None, max_length=1000, description="Notizen zur Korrektur")
+
+
 # --- Benchmark Schemas ---
 
 class BenchmarkCreate(BaseModel):
@@ -3004,6 +3014,7 @@ class BenchmarkRunRequest(BaseModel):
 
 class BenchmarkRunResponse(BaseModel):
     """Antwort auf Benchmark-Lauf."""
+    task_id: Optional[str] = None  # Celery Task ID für WebSocket-Updates
     success: bool
     samples_processed: int
     samples_failed: int

@@ -35,6 +35,8 @@ from app.db.schemas import (
     TrainingSampleUpdate,
     TrainingSampleResponse,
     TrainingSampleListResponse,
+    # Verification
+    VerifySampleRequest,
     # Benchmarks
     BenchmarkRunRequest,
     BenchmarkRunResponse,
@@ -375,12 +377,27 @@ async def run_benchmark(
     Führt OCR auf allen angegebenen Samples mit den gewählten Backends aus
     und berechnet Qualitätsmetriken gegen Ground Truth.
 
+    Gibt sofort eine task_id zurück für WebSocket-Updates.
+
     Erfordert Admin-Rolle.
     """
-    service = get_benchmark_runner_service()
-    result = await service.run_benchmark(db=db, request=request)
+    from app.workers.tasks.training_tasks import run_benchmark_batch
 
-    return result
+    # Starte Celery Task für asynchrone Verarbeitung
+    task = run_benchmark_batch.delay(
+        sample_ids=[str(sid) for sid in request.sample_ids],
+        backends=request.backends,
+        force_reprocess=request.force_rerun,
+    )
+
+    return BenchmarkRunResponse(
+        task_id=task.id,
+        success=True,  # Task wurde gestartet
+        samples_processed=0,  # Wird via WebSocket aktualisiert
+        samples_failed=0,
+        backends_used=request.backends,
+        total_time_ms=0,
+    )
 
 
 @router.get("/benchmarks/compare", response_model=BackendComparisonResponse)
@@ -2134,6 +2151,73 @@ async def get_next_verification_item(
     if not item:
         return {"message": "Keine Samples in der Queue", "item": None}
 
+    # Extracted Data laden - erst aus Document, dann Fallback auf Sample, dann On-the-fly
+    from app.db.models import Document, OCRTrainingSample
+
+    extracted_data = None
+    sample = None
+
+    # 1. Versuch: Document.extracted_data laden (wenn document_id existiert)
+    if item.document_id:
+        doc_result = await db.execute(
+            select(Document).where(Document.id == item.document_id)
+        )
+        doc = doc_result.scalar_one_or_none()
+        if doc and doc.extracted_data:
+            extracted_data = doc.extracted_data
+
+    # 2. Fallback: Sample.extracted_fields laden
+    if not extracted_data:
+        sample_result = await db.execute(
+            select(OCRTrainingSample).where(OCRTrainingSample.id == item.sample_id)
+        )
+        sample = sample_result.scalar_one_or_none()
+        if sample and sample.extracted_fields:
+            extracted_data = sample.extracted_fields
+
+    # 3. On-the-fly Extraktion: Wenn wir OCR-Text haben aber keine extracted_data
+    # Sample laden falls noch nicht geschehen
+    if not sample:
+        sample_result = await db.execute(
+            select(OCRTrainingSample).where(OCRTrainingSample.id == item.sample_id)
+        )
+        sample = sample_result.scalar_one_or_none()
+
+    logger.info(
+        "verification_queue_extraction_check",
+        sample_id=str(item.sample_id),
+        has_sample=bool(sample),
+        has_ground_truth=bool(sample and sample.ground_truth_text),
+        ground_truth_length=len(sample.ground_truth_text) if sample and sample.ground_truth_text else 0,
+        extracted_data_is_none=extracted_data is None,
+    )
+
+    if not extracted_data and sample and sample.ground_truth_text:
+        try:
+            from app.services.structured_extraction_service import (
+                get_structured_extraction_service,
+            )
+            extraction_service = get_structured_extraction_service()
+            extraction_result = await extraction_service.extract(
+                text=sample.ground_truth_text,
+                document_id=str(item.sample_id),
+                db=db,
+            )
+            # Konvertiere zu dict fuer JSON Response
+            if extraction_result:
+                extracted_data = extraction_result.model_dump(mode="json", exclude_none=True)
+                logger.info(
+                    "on_the_fly_extraction_completed",
+                    sample_id=str(item.sample_id),
+                    document_type=extraction_result.classification.document_type.value if extraction_result.classification else None,
+                )
+        except Exception as e:
+            logger.warning(
+                "on_the_fly_extraction_failed",
+                sample_id=str(item.sample_id),
+                error=str(e),
+            )
+
     return {
         "item": {
             "sample_id": str(item.sample_id),
@@ -2146,6 +2230,8 @@ async def get_next_verification_item(
             "is_spot_check": item.is_spot_check,
             "created_at": item.created_at,
             "file_path": item.file_path,
+            "document_id": str(item.document_id) if item.document_id else None,
+            "extracted_data": extracted_data,  # NEU: Strukturierte Daten
         }
     }
 
@@ -2193,9 +2279,7 @@ async def get_verification_queue_stats(
 )
 async def verify_sample(
     sample_id: UUID = Path(..., description="Sample-ID"),
-    approved: bool = Query(..., description="Ob Ground-Truth akzeptiert wird"),
-    corrected_text: Optional[str] = Query(default=None, description="Korrigierter Text"),
-    correction_notes: Optional[str] = Query(default=None, description="Notizen zur Korrektur"),
+    request: VerifySampleRequest = ...,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
@@ -2221,9 +2305,9 @@ async def verify_sample(
             db=db,
             sample_id=sample_id,
             user_id=current_user.id,
-            approved=approved,
-            corrected_text=corrected_text,
-            correction_notes=correction_notes,
+            approved=request.approved,
+            corrected_text=request.corrected_text,
+            correction_notes=request.correction_notes,
         )
 
         return {

@@ -711,6 +711,168 @@ async def preview_document(
     )
 
 
+@router.get("/{document_id}/thumbnail")
+async def get_document_thumbnail(
+    document_id: UUID,
+    width: int = 120,
+    height: int = 160,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Generiert ein Thumbnail für das Dokument.
+
+    Erstellt ein kleines Vorschaubild für schnelle Anzeige in Listen/Chats.
+    Thumbnails werden gecached für Performance.
+
+    **Query Parameters:**
+    - width: Breite in Pixel (default: 120)
+    - height: Höhe in Pixel (default: 160)
+
+    **Response:**
+    - Content-Type: image/jpeg
+    - Inline-Anzeige
+    """
+    from app.services.storage_service import get_storage_service
+    from app.db.models import Document, DocumentAccess
+    from sqlalchemy import select, or_, and_
+    from PIL import Image
+    import io
+
+    # Limit dimensions for security
+    width = min(max(width, 50), 400)
+    height = min(max(height, 50), 600)
+
+    # Prüfe Zugriff (Owner oder via DocumentAccess)
+    access_query = select(Document).where(
+        and_(
+            Document.id == document_id,
+            or_(
+                Document.owner_id == current_user.id,
+                Document.id.in_(
+                    select(DocumentAccess.document_id).where(
+                        and_(
+                            DocumentAccess.user_id == current_user.id,
+                            or_(
+                                DocumentAccess.access_level == "view",
+                                DocumentAccess.access_level == "comment",
+                                DocumentAccess.access_level == "edit",
+                                DocumentAccess.access_level == "manage"
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+    result = await db.execute(access_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Dokument nicht gefunden oder keine Zugriffsberechtigung"
+        )
+
+    storage = get_storage_service()
+    mime_type = document.mime_type or "application/octet-stream"
+
+    try:
+        # Check for cached thumbnail first
+        cache_key = f"thumbnails/{document_id}_{width}x{height}.jpg"
+        try:
+            cached = await storage.download_document(cache_key)
+            if cached:
+                return Response(
+                    content=cached,
+                    media_type="image/jpeg",
+                    headers={
+                        "Content-Disposition": "inline",
+                        "Cache-Control": "public, max-age=86400"  # 24h cache
+                    }
+                )
+        except Exception:
+            pass  # Cache miss, generate thumbnail
+
+        # Load original file
+        file_content = await storage.download_document(document.file_path)
+
+        # Generate thumbnail based on file type
+        if mime_type == "application/pdf":
+            # PDF: render first page
+            import fitz  # PyMuPDF
+            pdf = fitz.open(stream=file_content, filetype="pdf")
+            if len(pdf) > 0:
+                page = pdf[0]
+                # Scale to fit thumbnail size
+                zoom = min(width / page.rect.width, height / page.rect.height)
+                mat = fitz.Matrix(zoom, zoom)
+                pix = page.get_pixmap(matrix=mat, alpha=False)
+                img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+            else:
+                raise HTTPException(status_code=500, detail="PDF hat keine Seiten")
+            pdf.close()
+
+        elif mime_type.startswith("image/"):
+            # Image: resize directly
+            img = Image.open(io.BytesIO(file_content))
+            if img.mode in ("CMYK", "P", "LA", "RGBA"):
+                img = img.convert("RGB")
+
+        else:
+            # Unsupported format
+            raise HTTPException(
+                status_code=400,
+                detail="Thumbnail-Generierung für diesen Dateityp nicht unterstützt"
+            )
+
+        # Resize to thumbnail maintaining aspect ratio
+        img.thumbnail((width, height), Image.Resampling.LANCZOS)
+
+        # Convert to JPEG
+        output = io.BytesIO()
+        img.save(output, format="JPEG", quality=85, optimize=True)
+        thumbnail_bytes = output.getvalue()
+
+        # Cache thumbnail (fire and forget)
+        try:
+            await storage.upload_document(
+                cache_key,
+                thumbnail_bytes,
+                content_type="image/jpeg"
+            )
+        except Exception as cache_err:
+            logger.warning("thumbnail_cache_failed", error=str(cache_err))
+
+        logger.info(
+            "thumbnail_generated",
+            document_id=str(document_id),
+            size=f"{width}x{height}"
+        )
+
+        return Response(
+            content=thumbnail_bytes,
+            media_type="image/jpeg",
+            headers={
+                "Content-Disposition": "inline",
+                "Cache-Control": "public, max-age=86400"
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "thumbnail_generation_error",
+            document_id=str(document_id),
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler bei der Thumbnail-Generierung"
+        )
+
+
 @router.get("/{document_id}/stream")
 async def stream_document_download(
     document_id: UUID,

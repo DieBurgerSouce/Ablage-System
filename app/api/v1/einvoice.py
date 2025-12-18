@@ -300,14 +300,34 @@ async def validate_einvoice(
         )
 
     try:
-        # XML-Content ermitteln
+        # Validator Service holen
+        from app.services.einvoice.validator_service import (
+            get_validator_service,
+            ValidatorType as ServiceValidatorType,
+        )
+        validator_service = get_validator_service()
+
+        # XML-Content oder PDF ermitteln
         xml_content: Optional[str] = None
+        pdf_content: Optional[bytes] = None
+        is_pdf = False
 
         if file:
             content = await file.read()
-            parser = get_parser_service()
-            result = await parser.parse_file(content, file.filename or "unknown")
-            xml_content = result.xml_content
+            filename = file.filename or "unknown"
+
+            # Pruefen ob PDF oder XML
+            if filename.lower().endswith(".pdf") or content[:4] == b"%PDF":
+                pdf_content = content
+                is_pdf = True
+            else:
+                # XML direkt oder via Parser extrahieren
+                if content.startswith(b"<?xml") or content.startswith(b"<"):
+                    xml_content = content.decode("utf-8")
+                else:
+                    parser = get_parser_service()
+                    result = await parser.parse_file(content, filename)
+                    xml_content = result.xml_content
 
         elif document_id:
             # Aus DB laden
@@ -325,47 +345,61 @@ async def validate_einvoice(
 
             xml_content = einvoice_doc.xml_content
 
-        if not xml_content:
+        if not xml_content and not pdf_content:
             raise HTTPException(
                 status_code=400,
                 detail="Kein XML-Inhalt gefunden"
             )
 
-        # Validierung durchfuehren
-        # TODO: Echte Validierung mit KoSIT/Mustang implementieren
-        # Fuer jetzt: Basis-Validierung
+        # Validator-Typ mappen
+        service_validator = ServiceValidatorType.AUTO
+        if validator == ValidatorType.FACTURX:
+            service_validator = ServiceValidatorType.FACTURX
+        elif validator == ValidatorType.KOSIT:
+            service_validator = ServiceValidatorType.KOSIT
+        elif validator == ValidatorType.MUSTANG:
+            service_validator = ServiceValidatorType.MUSTANG
 
+        # Validierung durchfuehren
+        if is_pdf and pdf_content:
+            validation_result = await validator_service.validate_pdf(
+                pdf_content, service_validator
+            )
+        else:
+            validation_result = await validator_service.validate_xml(
+                xml_content, service_validator  # type: ignore
+            )
+
+        # Ergebnis in API-Response umwandeln
         errors: list[ValidationError] = []
         warnings: list[ValidationWarning] = []
-        schema_valid = True
-        schematron_valid = True
 
-        # Einfache XML-Validierung
-        try:
-            from lxml import etree
-            etree.fromstring(xml_content.encode("utf-8"))
-        except etree.XMLSyntaxError as e:
-            schema_valid = False
-            errors.append(ValidationError(
-                code="XML_SYNTAX",
-                location="root",
-                message=str(e),
-                severity="fatal"
-            ))
-
-        is_valid = schema_valid and schematron_valid and len(errors) == 0
+        for msg in validation_result.messages:
+            if msg.severity.value in ("fatal", "error"):
+                errors.append(ValidationError(
+                    code=msg.code,
+                    location=msg.location,
+                    message=msg.message,
+                    severity=msg.severity.value
+                ))
+            else:
+                warnings.append(ValidationWarning(
+                    code=msg.code,
+                    location=msg.location,
+                    message=msg.message
+                ))
 
         return EInvoiceValidationResponse(
-            valid=is_valid,
-            validator_used=validator.value,
-            validated_at=datetime.now(timezone.utc),
-            schema_valid=schema_valid,
-            schematron_valid=schematron_valid,
-            pdf_a_compliant=None,  # Nur bei ZUGFeRD-PDF relevant
+            valid=validation_result.valid,
+            validator_used=validation_result.validator_used,
+            validated_at=validation_result.validated_at,
+            schema_valid=validation_result.schema_valid,
+            schematron_valid=validation_result.schematron_valid,
+            pdf_a_compliant=validation_result.pdf_a_compliant,
             errors=errors,
             warnings=warnings,
-            error_count=len(errors),
-            warning_count=len(warnings),
+            error_count=validation_result.error_count,
+            warning_count=validation_result.warning_count,
         )
 
     except HTTPException:
@@ -418,6 +452,68 @@ async def get_formats() -> EInvoiceFormatsResponse:
         default_format="zugferd",
         default_profile="EN16931",
     )
+
+
+@router.get(
+    "/health/mustang",
+    summary="Mustang Service Health",
+    description="Prueft ob der Mustang Microservice verfuegbar ist."
+)
+async def check_mustang_health() -> dict:
+    """Prueft Mustang Service Verfuegbarkeit."""
+    from app.services.einvoice.mustang_client import (
+        get_mustang_client,
+        MustangConnectionError,
+    )
+
+    client = get_mustang_client()
+
+    try:
+        async with client:
+            is_available = await client.is_available()
+
+            if is_available:
+                # Version abfragen
+                version_info = await client.get_version()
+                return {
+                    "status": "healthy",
+                    "service": "mustang",
+                    "available": True,
+                    "mustang_version": version_info.mustang_version,
+                    "java_version": version_info.java_version,
+                    "features": {
+                        "xrechnung_ubl": True,
+                        "kosit_validation": True,
+                        "pdf_extraction": True,
+                    }
+                }
+            else:
+                return {
+                    "status": "unavailable",
+                    "service": "mustang",
+                    "available": False,
+                    "message": "Mustang Service nicht erreichbar",
+                }
+
+    except MustangConnectionError as e:
+        return {
+            "status": "error",
+            "service": "mustang",
+            "available": False,
+            "error": str(e),
+        }
+
+    except Exception as e:
+        logger.warning(
+            "mustang_health_check_error",
+            extra={"error": str(e)}
+        )
+        return {
+            "status": "error",
+            "service": "mustang",
+            "available": False,
+            "error": str(e),
+        }
 
 
 @router.get(

@@ -30,6 +30,7 @@ from app.db.models import (
     BusinessDocumentProfile,
     TrainingSampleStatus,
     User,
+    Document,
 )
 
 logger = structlog.get_logger(__name__)
@@ -60,6 +61,7 @@ class QueueItem:
     is_spot_check: bool
     created_at: datetime
     file_path: Optional[str] = None
+    document_id: Optional[UUID] = None  # Verknuepfung zu Document fuer ExtractedData
 
 
 @dataclass
@@ -194,6 +196,9 @@ class VerificationQueueService:
         # Hole bestes Sample
         best_sample, best_score = scored_samples[0]
 
+        # Hole document_id ueber file_path Lookup
+        document_id = await self._lookup_document_id(db, best_sample.file_path)
+
         # Erstelle QueueItem
         return QueueItem(
             sample_id=best_sample.id,
@@ -206,6 +211,7 @@ class VerificationQueueService:
             is_spot_check=best_sample.needs_spot_check and best_sample.auto_accepted,
             created_at=best_sample.created_at,
             file_path=best_sample.file_path,
+            document_id=document_id,
         )
 
     async def get_queue_stats(self, db: AsyncSession) -> QueueStats:
@@ -581,6 +587,68 @@ class VerificationQueueService:
 
         service = get_auto_ground_truth_service()
         await service._update_profile_statistics(db, document_type)
+
+    async def _lookup_document_id(
+        self,
+        db: AsyncSession,
+        file_path: Optional[str],
+    ) -> Optional[UUID]:
+        """
+        Sucht document_id anhand des file_path.
+
+        Versucht verschiedene Matching-Strategien:
+        1. Exakter Pfad-Match
+        2. Endung des Pfades (Dateiname)
+
+        Args:
+            db: Datenbank-Session
+            file_path: Pfad aus OCRTrainingSample
+
+        Returns:
+            UUID des Documents oder None
+        """
+        if not file_path:
+            return None
+
+        # Strategie 1: Exakter Pfad-Match
+        result = await db.execute(
+            select(Document.id).where(Document.file_path == file_path).limit(1)
+        )
+        doc_id = result.scalar_one_or_none()
+        if doc_id:
+            return doc_id
+
+        # Strategie 2: Match ueber Dateinamen (letzter Teil des Pfades)
+        import os
+        filename = os.path.basename(file_path)
+        if filename:
+            result = await db.execute(
+                select(Document.id)
+                .where(Document.file_path.like(f"%{filename}"))
+                .limit(1)
+            )
+            doc_id = result.scalar_one_or_none()
+            if doc_id:
+                return doc_id
+
+        # Strategie 3: Match ueber original_filename
+        if filename:
+            result = await db.execute(
+                select(Document.id)
+                .where(Document.original_filename == filename)
+                .order_by(desc(Document.created_at))
+                .limit(1)
+            )
+            doc_id = result.scalar_one_or_none()
+            if doc_id:
+                return doc_id
+
+        logger.debug(
+            "document_lookup_failed",
+            file_path=file_path,
+            message="Kein Document fuer file_path gefunden",
+        )
+        return None
 
 
 # =============================================================================

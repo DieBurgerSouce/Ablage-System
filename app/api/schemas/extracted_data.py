@@ -127,6 +127,117 @@ class ExtractedAddress(BaseModel):
             parts.append(f"{self.zip_code} {self.city}")
         return ", ".join(parts)
 
+    def _clean_company_name(self, name: str) -> str:
+        """Bereinige OCR-Artefakte aus Firmennamen.
+
+        OCR extrahiert manchmal:
+        'ALPAC Sales - Invoice kunststof bakken en pallets Alpac - kunststof...'
+
+        Problem: Logo + Dokumenttyp + echter Firmenname vermischt.
+        Loesung:
+        1. Entferne Dokumenttyp-Indikatoren (Sales - Invoice, Rechnung, etc.)
+        2. Finde duplizierten Firmennamen und behalte den besseren Teil
+        """
+        if not name or len(name) < 5:
+            return name
+
+        # 1. Entferne Dokumenttyp-Indikatoren aus dem Namen
+        doc_type_patterns = [
+            "Sales - Invoice",
+            "Sales-Invoice",
+            "Invoice -",
+            "- Invoice",
+            "Rechnung -",
+            "- Rechnung",
+        ]
+        cleaned = name
+        for pattern in doc_type_patterns:
+            if pattern.lower() in cleaned.lower():
+                # Finde Position und entferne
+                idx = cleaned.lower().find(pattern.lower())
+                cleaned = cleaned[:idx] + cleaned[idx + len(pattern):]
+                cleaned = cleaned.strip(' -')
+
+        # 2. Deduplizierung: Wenn erstes Wort spaeter nochmal auftaucht
+        words = cleaned.split()
+        if len(words) >= 4:
+            first_word_lower = words[0].lower()
+            for i in range(2, len(words)):
+                if words[i].lower() == first_word_lower:
+                    # Duplikat gefunden
+                    first_part = ' '.join(words[:i]).rstrip(' -')
+                    second_part = ' '.join(words[i:])
+
+                    # Praeferiere den Teil mit Rechtsform-Suffix
+                    if any(suffix in second_part for suffix in ['BV', 'B.V.', 'GmbH', 'AG', 'Ltd', 'Inc', 'e.V.']):
+                        return second_part
+                    if any(suffix in first_part for suffix in ['BV', 'B.V.', 'GmbH', 'AG', 'Ltd', 'Inc', 'e.V.']):
+                        return first_part
+
+                    # Praeferiere "Name - Beschreibung" Format (echter Firmenname)
+                    # "Alpac - kunststof" ist besser als "ALPAC kunststof"
+                    if ' - ' in second_part:
+                        return second_part
+
+                    return first_part
+
+        return cleaned if cleaned else name
+
+    def to_multiline(self) -> List[str]:
+        """Formatiere als mehrzeilige Adresse fuer PDF."""
+        lines = []
+
+        # Bereinigung: OCR-Artefakte entfernen (Logo, Dokumenttyp, Duplikate)
+        company_text = self._clean_company_name(self.company or "")
+        person_text = self.person or ""
+
+        # Deduplizierung zwischen company und person
+        if company_text and person_text:
+            c_lower = company_text.lower().strip()
+            p_lower = person_text.lower().strip()
+
+            # 1. Exakter Substring-Check
+            if p_lower in c_lower or c_lower in p_lower:
+                person_text = ""
+            else:
+                # 2. Wort-basierte Pruefung fuer aehnliche Namen
+                c_words = set(c_lower.split())
+                p_words = set(p_lower.split())
+
+                # Wenn erstes Wort gleich -> wahrscheinlich Duplikat
+                c_first = c_lower.split()[0] if c_lower else ""
+                p_first = p_lower.split()[0] if p_lower else ""
+
+                if c_first == p_first and len(c_first) > 2:
+                    person_text = ""
+                # Oder: >50% Wort-Ueberlappung
+                elif c_words and p_words:
+                    overlap = len(c_words & p_words)
+                    smaller = min(len(c_words), len(p_words))
+                    if smaller > 0 and overlap / smaller >= 0.5:
+                        person_text = ""
+
+        if company_text:
+            lines.append(company_text)
+        if person_text:
+            lines.append(person_text)
+
+        # Strasse mit Hausnummer kombinieren
+        street_line = self.street or ""
+        if self.street_number:
+            street_line = f"{street_line} {self.street_number}".strip()
+        if street_line:
+            lines.append(street_line)
+
+        # PLZ und Stadt (immer mit Laendercode fuer Konsistenz)
+        if self.zip_code or self.city:
+            city_line = f"{self.zip_code or ''} {self.city or ''}".strip()
+            country_code = self.country.upper() if self.country else "DE"
+            city_line = f"{city_line}, {country_code}"
+            lines.append(city_line)
+
+        return lines
+
 
 class ExtractedBankAccount(BaseModel):
     """Extrahierte Bankverbindung."""

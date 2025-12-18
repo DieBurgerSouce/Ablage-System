@@ -54,7 +54,14 @@ class DatabaseConfig:
 
     @property
     def DATABASE_URL(self) -> str:
-        """Build async PostgreSQL connection string"""
+        """Get async PostgreSQL connection string.
+
+        Uses settings.DATABASE_URL if available, otherwise builds from components.
+        """
+        # Prioritaet: settings.DATABASE_URL (korrekt mit Docker-Netzwerk)
+        if settings.DATABASE_URL:
+            return settings.DATABASE_URL
+        # Fallback: Aus Komponenten bauen
         return (
             f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
@@ -197,6 +204,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 # Alias für Abwärtskompatibilität
 get_db = get_db_session
+get_async_db = get_db_session
 
 
 # ============================================================================

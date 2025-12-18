@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
+import copy
 import json
 import threading
 import asyncio
@@ -30,6 +31,7 @@ from app.db.models import (
     CorrectionType,
 )
 from app.core.config import settings
+from app.ml.metrics import get_ml_metrics
 
 logger = structlog.get_logger(__name__)
 
@@ -302,7 +304,9 @@ class FeedbackLearningService:
                 and self._last_cache_update
                 and (now - self._last_cache_update) < self._cache_ttl
             ):
-                return self._cached_weights
+                # WICHTIG: Kopie zurückgeben, nicht Referenz!
+                # Verhindert dass externe Änderungen den Cache korrumpieren
+                return copy.deepcopy(self._cached_weights)
 
         # Analysiere Korrekturen (ausserhalb Lock - kann lange dauern)
         patterns = await self.analyze_corrections(db, days=30)
@@ -518,6 +522,22 @@ class FeedbackLearningService:
                     await db.flush()
                     processed += 1
 
+                    # Prometheus-Metrik für verarbeitete Korrekturen
+                    try:
+                        metrics = get_ml_metrics()
+                        # Korrekturtyp bestimmen basierend auf backend und Inhalt
+                        correction_type = "general"
+                        if correction.backend_used in ("surya", "surya-gpu"):
+                            # Prüfe ob Umlaut-Korrektur
+                            if correction.corrected_text and any(
+                                umlaut in correction.corrected_text.lower()
+                                for umlaut in ["ä", "ö", "ü", "ß"]
+                            ):
+                                correction_type = "umlaut"
+                        metrics.record_surya_correction_processed(correction_type)
+                    except Exception:
+                        pass  # Metriken sind nicht kritisch
+
                 except Exception as e:
                     logger.error(
                         "correction_processing_failed",
@@ -532,12 +552,21 @@ class FeedbackLearningService:
             # Prüfe ob Retraining empfohlen wird (nach Batch-Verarbeitung)
             if surya_corrections and len(surya_corrections) >= 10:
                 try:
+                    # Prometheus-Metrik: Retraining-Check durchgeführt
+                    metrics = get_ml_metrics()
+                    metrics.record_surya_retraining_check()
+
                     recommendation = await self.get_surya_retraining_recommendation(db=db)
                     if recommendation.get("should_retrain"):
                         logger.warning(
                             "surya_retraining_recommended",
                             urgency=recommendation.get("urgency"),
                             reasons=recommendation.get("reasons"),
+                        )
+                        # Prometheus-Metrik: Retraining empfohlen
+                        urgency = recommendation.get("urgency", "unknown")
+                        metrics.record_surya_retraining_triggered(
+                            reason=f"auto_{urgency}"
                         )
                 except Exception as e:
                     logger.debug(

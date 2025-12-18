@@ -452,6 +452,56 @@ class EmbeddingService:
 
         return available >= required_mb
 
+    def _calculate_optimal_batch_size(self, text_count: int) -> int:
+        """Berechnet optimale Batch-Groesse basierend auf verfuegbarem GPU-Speicher.
+
+        Dynamisches Batching fuer maximale Performance bei sicherem Speicherverbrauch.
+        - Prueft aktuellen GPU-Speicher
+        - Skaliert Batch-Size basierend auf verfuegbarem Speicher
+        - Respektiert MIN/MAX Grenzen aus Config
+
+        Args:
+            text_count: Anzahl zu verarbeitender Texte
+
+        Returns:
+            Optimale Batch-Groesse fuer aktuelle Speichersituation
+        """
+        if not settings.EMBEDDING_DYNAMIC_BATCH_ENABLED:
+            return min(self.batch_size, text_count)
+
+        if self.device.type != "cuda":
+            # CPU kann mehr parallel verarbeiten (RAM ist groesser)
+            return min(settings.EMBEDDING_MAX_BATCH_SIZE, text_count)
+
+        # GPU-Speicher pruefen
+        allocated_mb = torch.cuda.memory_allocated() / 1024**2
+        total_mb = torch.cuda.get_device_properties(0).total_memory / 1024**2
+        available_mb = total_mb - allocated_mb
+
+        # Threshold aus Config (Standard: 75% GPU nutzen)
+        max_usable_mb = total_mb * settings.EMBEDDING_GPU_MEMORY_THRESHOLD
+        remaining_mb = max_usable_mb - allocated_mb
+
+        # Schaetzung: ~100-150MB pro Batch-Item fuer E5-large
+        # Konservativ: 150MB pro Item
+        mb_per_item = 150
+        max_safe_items = int(remaining_mb / mb_per_item)
+
+        optimal = max(
+            settings.EMBEDDING_MIN_BATCH_SIZE,
+            min(max_safe_items, settings.EMBEDDING_MAX_BATCH_SIZE, text_count)
+        )
+
+        logger.debug(
+            "dynamic_batch_size_calculated",
+            available_mb=round(available_mb, 1),
+            remaining_usable_mb=round(remaining_mb, 1),
+            optimal_batch=optimal,
+            text_count=text_count
+        )
+
+        return optimal
+
     def generate_embedding(
         self,
         text: str,
@@ -585,10 +635,13 @@ class EmbeddingService:
     ) -> List[List[float]]:
         """Batch-Embeddings generieren mit GPU-Speicher-Management.
 
+        Verwendet dynamisches Batching basierend auf verfuegbarem GPU-Speicher.
+        Automatische Anpassung bei Speicherknappheit.
+
         Args:
             texts: Liste von Texten
             is_query: True fuer Suchanfragen
-            batch_size: Optionale Batch-Groesse (Standard: aus Config)
+            batch_size: Optionale Batch-Groesse (Standard: dynamisch berechnet)
 
         Returns:
             Liste von Embeddings
@@ -598,7 +651,10 @@ class EmbeddingService:
 
         self._ensure_model_loaded()
 
-        batch_size = batch_size or self.batch_size
+        # Dynamische Batch-Size berechnen wenn nicht explizit angegeben
+        if batch_size is None:
+            batch_size = self._calculate_optimal_batch_size(len(texts))
+
         prefix = "query: " if is_query else "passage: "
         prefixed_texts = [prefix + t for t in texts]
 
@@ -608,12 +664,13 @@ class EmbeddingService:
             batch = prefixed_texts[i:i + batch_size]
 
             try:
-                # GPU-Speicher pruefen
+                # GPU-Speicher pruefen und ggf. Batch-Size reduzieren
                 if not self._check_gpu_memory():
-                    # Batch-Groesse reduzieren bei Speicherknappheit
-                    batch_size = max(1, batch_size // 2)
+                    old_size = batch_size
+                    batch_size = max(settings.EMBEDDING_MIN_BATCH_SIZE, batch_size // 2)
                     logger.warning(
-                        "reducing_batch_size",
+                        "reducing_batch_size_memory_pressure",
+                        old_batch_size=old_size,
                         new_batch_size=batch_size
                     )
 

@@ -3293,6 +3293,13 @@ class RAGChatMessage(Base):
         nullable=False
     )
 
+    # Optionales angehaengtes Dokument (fuer User-Nachrichten)
+    attached_document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
     # Message Content
     role = Column(String(20), nullable=False)  # user, assistant, system
     content = Column(Text, nullable=False)
@@ -3314,6 +3321,7 @@ class RAGChatMessage(Base):
 
     # Relationships
     session = relationship("RAGChatSession", back_populates="messages")
+    attached_document = relationship("Document", foreign_keys=[attached_document_id])
 
     __table_args__ = (
         Index("ix_rag_chat_messages_session", "session_id"),

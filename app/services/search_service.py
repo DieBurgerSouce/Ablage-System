@@ -30,8 +30,11 @@ from app.services.search_metrics import get_search_metrics
 from app.services.german_compound_splitter import (
     GermanCompoundSplitter,
     get_compound_splitter,
-    split_for_search
+    split_for_search,
+    expand_umlaut_variants,
+    expand_query_with_umlauts
 )
+from app.services.reranker_service import get_reranker_service, RerankerService
 
 logger = structlog.get_logger(__name__)
 
@@ -64,6 +67,14 @@ class SearchService:
         # German Compound Splitter (für verbesserte Suche)
         self._compound_splitting_enabled = settings.COMPOUND_SPLITTING_ENABLED
         self._compound_splitter: Optional[GermanCompoundSplitter] = None
+
+        # Reranker fuer verbesserte Relevanz (BGE-Reranker GPU/CPU Dual-Stack)
+        self._reranker: Optional[RerankerService] = None
+        self._rerank_enabled = settings.RAG_RERANK_ENABLED
+        self._rerank_top_k = settings.RAG_RERANK_TOP_K
+
+        # Adaptive RRF-Gewichte (Query-laengenabhaengig)
+        self._adaptive_weights_enabled = settings.ADAPTIVE_RRF_WEIGHTS_ENABLED
 
     async def _get_redis(self) -> RedisStateManager:
         """Lazy-load Redis connection."""
@@ -181,6 +192,47 @@ class SearchService:
             expanded_query = query + " " + " ".join(additional_terms[:10])  # Max 10 Zusatzterms
             return expanded_query, additional_terms
         return query, []
+
+    def _get_adaptive_weights(self, query: str) -> Tuple[float, float]:
+        """Waehlt RRF-Gewichte basierend auf Query-Laenge.
+
+        Kurze Queries (1-2 Woerter): 50/50 - Benoetigen sowohl exakte als auch semantische Matches
+        Mittlere Queries (3-5 Woerter): 30/70 - Standard, semantisch hilft bei Kontext
+        Lange Queries (6+ Woerter): 20/80 - Lange Queries sind semantischer Natur
+
+        Args:
+            query: Suchanfrage
+
+        Returns:
+            Tuple von (fts_weight, semantic_weight)
+        """
+        if not self._adaptive_weights_enabled:
+            return self.fts_weight, self.semantic_weight
+
+        word_count = len(query.split())
+
+        if word_count <= 2:  # Kurze Query
+            fts_weight = settings.HYBRID_WEIGHTS_SHORT_FTS
+            semantic_weight = settings.HYBRID_WEIGHTS_SHORT_SEMANTIC
+            weight_category = "short"
+        elif word_count <= 5:  # Mittlere Query
+            fts_weight = settings.HYBRID_WEIGHTS_MEDIUM_FTS
+            semantic_weight = settings.HYBRID_WEIGHTS_MEDIUM_SEMANTIC
+            weight_category = "medium"
+        else:  # Lange Query
+            fts_weight = settings.HYBRID_WEIGHTS_LONG_FTS
+            semantic_weight = settings.HYBRID_WEIGHTS_LONG_SEMANTIC
+            weight_category = "long"
+
+        logger.debug(
+            "adaptive_weights_selected",
+            query_words=word_count,
+            category=weight_category,
+            fts_weight=fts_weight,
+            semantic_weight=semantic_weight
+        )
+
+        return fts_weight, semantic_weight
 
     def _validate_embedding(self, embedding: List[float]) -> bool:
         """Validiert dass ein Embedding nur finite numerische Werte enthaelt.
@@ -321,7 +373,8 @@ class SearchService:
         sort_order: SortOrder = SortOrder.DESC,
         highlight: bool = True,
         similarity_threshold: Optional[float] = None,
-        skip_cache: bool = False
+        skip_cache: bool = False,
+        rerank: bool = True
     ) -> SearchResponse:
         """Dokumente durchsuchen.
 
@@ -338,6 +391,7 @@ class SearchService:
             highlight: Text-Highlighting aktivieren
             similarity_threshold: Min. Aehnlichkeit fuer semantische Suche
             skip_cache: Cache fuer diese Anfrage umgehen
+            rerank: Ergebnisse mit BGE-Reranker neu sortieren (verbessert Relevanz)
 
         Returns:
             SearchResponse mit Ergebnissen und Metadaten
@@ -386,17 +440,22 @@ class SearchService:
             except Exception as e:
                 logger.warning("search_cache_error", error=str(e), cache_key=cache_key[:50])
 
-        # Query mit Compound-Splits erweitern (fuer FTS und Hybrid)
+        # Query erweitern: Compound-Splits + Umlaut-Varianten (fuer FTS und Hybrid)
         expanded_query = query
         compound_terms: List[str] = []
+        umlaut_terms: List[str] = []
         if search_type in (SearchType.FTS, SearchType.HYBRID):
-            expanded_query, compound_terms = self._expand_query_with_compounds(query)
+            # 1. Umlaut-Varianten expandieren (z.B. "Größe" -> auch "Groesse", "Grosse")
+            expanded_query, umlaut_terms = expand_query_with_umlauts(query)
+            # 2. Compound-Splits hinzufuegen (z.B. "Finanzamt" -> "Finanz", "Amt")
+            expanded_query, compound_terms = self._expand_query_with_compounds(expanded_query)
 
         logger.info(
             "search_started",
             query=query[:100],
             expanded_query=expanded_query[:100] if expanded_query != query else None,
             compound_terms_count=len(compound_terms),
+            umlaut_terms_count=len(umlaut_terms),
             search_type=search_type.value,
             user_id=str(user_id)
         )
@@ -411,7 +470,7 @@ class SearchService:
             )
         else:  # HYBRID
             results, total = await self._search_hybrid(
-                db, expanded_query, user_id, filters, page, per_page, highlight, threshold
+                db, expanded_query, user_id, filters, page, per_page, highlight, threshold, rerank
             )
 
         # Sortierung anwenden (ausser bei Relevanz - schon sortiert)
@@ -492,11 +551,17 @@ class SearchService:
         per_page: int,
         highlight: bool
     ) -> Tuple[List[SearchResultItem], int]:
-        """PostgreSQL Full-Text Search mit German Config."""
+        """PostgreSQL Full-Text Search mit German Config und Field-Level Boosting."""
         offset = (page - 1) * per_page
 
-        # Base query mit tsvector Suche
+        # Field-Level Boost-Werte aus Config
+        filename_boost = settings.FTS_FIELD_BOOST_FILENAME
+        orig_filename_boost = settings.FTS_FIELD_BOOST_ORIGINAL_FILENAME
+        text_boost = settings.FTS_FIELD_BOOST_EXTRACTED_TEXT
+
+        # Base query mit tsvector Suche und Field-Level Boosting
         # Inkludiert eigene UND geteilte Dokumente (via DocumentAccess)
+        # Boosting: Treffer im Dateinamen ranken hoeher als im extrahierten Text
         fts_query = text("""
             WITH search_query AS (
                 SELECT plainto_tsquery('german_text', :query) AS query
@@ -526,7 +591,15 @@ class SearchService:
                     d.ocr_confidence,
                     d.owner_id,
                     d.extracted_text,
-                    ts_rank_cd(d.search_vector, sq.query) AS fts_rank,
+                    -- Field-Level Boosting: Filename-Treffer ranken hoeher
+                    ts_rank_cd(d.search_vector, sq.query) *
+                    CASE
+                        WHEN lower(d.filename) LIKE '%' || lower(:raw_query) || '%'
+                            THEN :filename_boost
+                        WHEN lower(d.original_filename) LIKE '%' || lower(:raw_query) || '%'
+                            THEN :orig_filename_boost
+                        ELSE :text_boost
+                    END AS fts_rank,
                     ts_headline('german_text', COALESCE(d.extracted_text, ''), sq.query,
                         'MaxWords=50, MinWords=25, StartSel=<mark>, StopSel=</mark>'
                     ) AS highlight
@@ -556,11 +629,18 @@ class SearchService:
                 {filters}
         """.format(filters=self._build_filter_sql(filters)))
 
+        # Extrahiere erstes Wort der Query fuer Filename-Matching (ohne Expansion)
+        raw_query_first_word = query.split()[0] if query.split() else query
+
         params = {
             "query": query,
+            "raw_query": raw_query_first_word,  # Fuer LIKE-Matching im Filename
             "user_id": str(user_id),
             "limit": per_page,
-            "offset": offset
+            "offset": offset,
+            "filename_boost": filename_boost,
+            "orig_filename_boost": orig_filename_boost,
+            "text_boost": text_boost
         }
         params.update(self._get_filter_params(filters))
 
@@ -721,9 +801,13 @@ class SearchService:
         page: int,
         per_page: int,
         highlight: bool,
-        threshold: float
+        threshold: float,
+        rerank: bool = True
     ) -> Tuple[List[SearchResultItem], int]:
-        """Hybrid-Suche mit Reciprocal Rank Fusion (RRF)."""
+        """Hybrid-Suche mit Reciprocal Rank Fusion (RRF) und optionalem Reranking."""
+        # Adaptive Gewichte basierend auf Query-Laenge waehlen
+        fts_weight, semantic_weight = self._get_adaptive_weights(query)
+
         # Beide Suchmethoden ausfuehren (mehr Ergebnisse holen fuer Fusion)
         expanded_limit = per_page * HYBRID_EXPANSION_FACTOR
 
@@ -734,24 +818,24 @@ class SearchService:
             db, query, user_id, filters, 1, expanded_limit, threshold
         )
 
-        # RRF Score berechnen mit Standard-Konstante
+        # RRF Score berechnen mit Standard-Konstante und adaptiven Gewichten
         k = RRF_K_CONSTANT
         scores: Dict[UUID, Dict[str, Any]] = {}
 
-        # FTS Scores
+        # FTS Scores (mit adaptiver Gewichtung)
         for rank, result in enumerate(fts_results):
             doc_id = result.document_id
-            rrf_score = self.fts_weight / (k + rank + 1)
+            rrf_score = fts_weight / (k + rank + 1)
             scores[doc_id] = {
                 "result": result,
                 "rrf_score": rrf_score,
                 "fts_rank": rank + 1
             }
 
-        # Semantic Scores hinzufuegen/kombinieren
+        # Semantic Scores hinzufuegen/kombinieren (mit adaptiver Gewichtung)
         for rank, result in enumerate(semantic_results):
             doc_id = result.document_id
-            rrf_contribution = self.semantic_weight / (k + rank + 1)
+            rrf_contribution = semantic_weight / (k + rank + 1)
 
             if doc_id in scores:
                 scores[doc_id]["rrf_score"] += rrf_contribution
@@ -773,7 +857,22 @@ class SearchService:
             reverse=True
         )
 
-        # Pagination anwenden
+        total = len(sorted_items)
+
+        # Reranking mit BGE-Reranker (GPU/CPU Dual-Stack)
+        if rerank and self._rerank_enabled and len(sorted_items) > 1:
+            # Top-Kandidaten fuer Reranking (max 30 fuer Performance)
+            rerank_candidates = [item["result"] for item in sorted_items[:30]]
+            reranked_results = await self._rerank_results(query, rerank_candidates, per_page)
+
+            if reranked_results:
+                # Score normalisieren
+                max_score = max(r.score for r in reranked_results) if reranked_results else 1.0
+                for r in reranked_results:
+                    r.score = r.score / max_score if max_score > 0 else r.score
+                return reranked_results, total
+
+        # Fallback: Pagination ohne Reranking
         offset = (page - 1) * per_page
         paginated = sorted_items[offset:offset + per_page]
 
@@ -785,7 +884,6 @@ class SearchService:
             result.score = item["rrf_score"] / max_score  # Normalisieren auf 0-1
             results.append(result)
 
-        total = len(sorted_items)
         return results, total
 
     async def find_similar_documents(
@@ -1080,6 +1178,75 @@ class SearchService:
         if len(text) <= max_length:
             return text
         return text[:max_length - 3] + "..."
+
+    # ==================== Reranking ====================
+
+    async def _rerank_results(
+        self,
+        query: str,
+        results: List[SearchResultItem],
+        top_k: int
+    ) -> List[SearchResultItem]:
+        """Rerankt Suchergebnisse mit BGE-Reranker (GPU/CPU Dual-Stack).
+
+        Verwendet den lokalen RerankerService fuer integriertes Reranking:
+        - Primaer: BGE-Reranker-v2-m3 (GPU, ~1GB VRAM)
+        - Fallback: MiniLM Cross-Encoder (CPU, ~300MB RAM)
+
+        Falls beide fehlschlagen: Original-Reihenfolge beibehalten.
+
+        Args:
+            query: Suchanfrage
+            results: Liste von Suchergebnissen (nach RRF sortiert)
+            top_k: Anzahl der zurueckzugebenden Ergebnisse
+
+        Returns:
+            Rerankte Liste von Suchergebnissen
+        """
+        if not results or not self._rerank_enabled:
+            return results[:top_k]
+
+        try:
+            # Lazy-load Reranker
+            if self._reranker is None:
+                self._reranker = get_reranker_service()
+
+            # Text fuer Reranking extrahieren (highlight oder text_preview)
+            documents = []
+            for r in results:
+                # Priorisiere: highlight > text_preview > filename
+                text = r.highlight or r.text_preview or r.filename
+                # Auf max. 512 Zeichen beschraenken (Reranker-Limit)
+                documents.append(text[:512] if text else "")
+
+            # Async Reranking mit GPU/CPU Fallback
+            reranked = await self._reranker.rerank_async(query, documents, top_k)
+
+            # Ergebnisse mit Rerank-Scores aktualisieren und neu sortieren
+            reranked_results = []
+            for rr in reranked:
+                original = results[rr.index]
+                # Score mit Rerank-Score aktualisieren
+                original.score = rr.score
+                reranked_results.append(original)
+
+            logger.info(
+                "search_rerank_complete",
+                input_count=len(results),
+                output_count=len(reranked_results),
+                top_k=top_k,
+                backend="gpu" if self._reranker.get_stats().get("gpu_model_loaded", False) else "cpu"
+            )
+
+            return reranked_results
+
+        except Exception as e:
+            logger.warning(
+                "search_rerank_failed",
+                error=str(e),
+                fallback="using_rrf_scores"
+            )
+            return results[:top_k]
 
     # ==================== Facets ====================
 

@@ -7,7 +7,6 @@ Erweitert die bestehende Search-Funktionalitaet um:
 - LLM-gesteuerte Query Enhancement
 """
 
-import asyncio
 from typing import List, Optional, Dict, Any, Tuple
 from uuid import UUID
 from datetime import datetime, timezone
@@ -72,7 +71,8 @@ class RAGSearchService:
         threshold: float = 0.7,
         document_ids: Optional[List[UUID]] = None,
         section_types: Optional[List[RAGSectionType]] = None,
-        rerank: bool = True
+        rerank: bool = True,
+        user_id: Optional[UUID] = None
     ) -> SearchResponse:
         """Fuehrt semantische Suche auf Chunks durch.
 
@@ -84,6 +84,7 @@ class RAGSearchService:
             document_ids: Optional: Nur in diesen Dokumenten suchen
             section_types: Optional: Nur diese Section-Typen
             rerank: Ergebnisse mit Reranker verbessern
+            user_id: Optional: Nur Dokumente dieses Users durchsuchen (Security)
 
         Returns:
             SearchResponse mit Ergebnissen und Metriken
@@ -112,7 +113,8 @@ class RAGSearchService:
             limit=limit * 2 if rerank else limit,  # Mehr Kandidaten fuer Reranking
             threshold=threshold,
             document_ids=document_ids,
-            section_types=section_types
+            section_types=section_types,
+            user_id=user_id
         )
 
         # 3. Optional: Reranking
@@ -154,7 +156,8 @@ class RAGSearchService:
         keyword_weight: float = 0.3,
         threshold: float = 0.5,
         document_ids: Optional[List[UUID]] = None,
-        rerank: bool = True
+        rerank: bool = True,
+        user_id: Optional[UUID] = None
     ) -> SearchResponse:
         """Fuehrt Hybrid-Suche durch (Semantic + Keyword).
 
@@ -171,6 +174,7 @@ class RAGSearchService:
             threshold: Minimaler kombinierter Score
             document_ids: Optional: Nur in diesen Dokumenten
             rerank: Ergebnisse reranken
+            user_id: Optional: Nur Dokumente dieses Users durchsuchen (Security)
 
         Returns:
             SearchResponse mit kombinierten Ergebnissen
@@ -189,24 +193,24 @@ class RAGSearchService:
         query_embedding = await self._embedding_service.generate_query_embedding_cached(query)
         embed_time = int((datetime.now(timezone.utc) - embed_start).total_seconds() * 1000)
 
-        # 2. Parallele Suchen
-        semantic_task = self._vector_search(
+        # 2. Sequenzielle Suchen (AsyncSession erlaubt nur eine Operation gleichzeitig)
+        # WICHTIG: asyncio.gather() mit gemeinsamer Session verursacht
+        # "session is provisioning a new connection; concurrent operations not permitted"
+        semantic_results = await self._vector_search(
             db=db,
             query_embedding=query_embedding,
             limit=limit * 2,
             threshold=0.5,  # Niedrigerer Threshold fuer Fusion
-            document_ids=document_ids
+            document_ids=document_ids,
+            user_id=user_id
         )
 
-        keyword_task = self._keyword_search(
+        keyword_results = await self._keyword_search(
             db=db,
             query=query,
             limit=limit * 2,
-            document_ids=document_ids
-        )
-
-        semantic_results, keyword_results = await asyncio.gather(
-            semantic_task, keyword_task
+            document_ids=document_ids,
+            user_id=user_id
         )
 
         # 3. Score Fusion (Reciprocal Rank Fusion)
@@ -257,7 +261,8 @@ class RAGSearchService:
         db: AsyncSession,
         query: str,
         limit: int = 20,
-        document_ids: Optional[List[UUID]] = None
+        document_ids: Optional[List[UUID]] = None,
+        user_id: Optional[UUID] = None
     ) -> SearchResponse:
         """Fuehrt reine Keyword-Suche durch.
 
@@ -266,6 +271,7 @@ class RAGSearchService:
             query: Suchanfrage
             limit: Maximale Anzahl Ergebnisse
             document_ids: Optional: Nur in diesen Dokumenten
+            user_id: Optional: Nur Dokumente dieses Users durchsuchen (Security)
 
         Returns:
             SearchResponse mit Ergebnissen
@@ -276,7 +282,8 @@ class RAGSearchService:
             db=db,
             query=query,
             limit=limit,
-            document_ids=document_ids
+            document_ids=document_ids,
+            user_id=user_id
         )
 
         total_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
@@ -296,7 +303,8 @@ class RAGSearchService:
         limit: int,
         threshold: float,
         document_ids: Optional[List[UUID]] = None,
-        section_types: Optional[List[RAGSectionType]] = None
+        section_types: Optional[List[RAGSectionType]] = None,
+        user_id: Optional[UUID] = None
     ) -> List[SearchResult]:
         """Interne Vektorsuche mit pgvector."""
         # Embedding als String fuer PostgreSQL (pgvector erwartet '[x,y,z]' Format)
@@ -320,6 +328,14 @@ class RAGSearchService:
         ).where(
             RAGDocumentChunk.embedding.isnot(None)
         )
+
+        # SECURITY: Filter nach User (Document Owner)
+        if user_id:
+            query = query.join(
+                Document, RAGDocumentChunk.document_id == Document.id
+            ).where(
+                Document.owner_id == user_id
+            )
 
         # Filter: Dokumente
         if document_ids:
@@ -362,9 +378,18 @@ class RAGSearchService:
         db: AsyncSession,
         query: str,
         limit: int,
-        document_ids: Optional[List[UUID]] = None
+        document_ids: Optional[List[UUID]] = None,
+        user_id: Optional[UUID] = None
     ) -> List[SearchResult]:
-        """Interne Keyword-Suche mit PostgreSQL FTS."""
+        """Interne Keyword-Suche mit PostgreSQL FTS.
+
+        Args:
+            db: Datenbank-Session
+            query: Suchanfrage
+            limit: Maximale Anzahl Ergebnisse
+            document_ids: Optional: Nur in diesen Dokumenten
+            user_id: Optional: Nur Dokumente dieses Users durchsuchen (Security)
+        """
         # Erstelle tsquery aus Query
         # plainto_tsquery ist robuster als to_tsquery
         search_query = select(
@@ -379,10 +404,19 @@ class RAGSearchService:
                 func.plainto_tsquery('german', query)
             ).label("rank")
         ).where(
-            func.to_tsvector('german', RAGDocumentChunk.chunk_text).match(
+            # Verwende @@ Operator direkt statt .match() um doppelten tsquery-Aufruf zu vermeiden
+            func.to_tsvector('german', RAGDocumentChunk.chunk_text).op('@@')(
                 func.plainto_tsquery('german', query)
             )
         )
+
+        # SECURITY: Filter nach User (Document Owner)
+        if user_id:
+            search_query = search_query.join(
+                Document, RAGDocumentChunk.document_id == Document.id
+            ).where(
+                Document.owner_id == user_id
+            )
 
         if document_ids:
             search_query = search_query.where(
@@ -526,7 +560,8 @@ class RAGSearchService:
         db: AsyncSession,
         query: str,
         context_chunks: int = 5,
-        document_ids: Optional[List[UUID]] = None
+        document_ids: Optional[List[UUID]] = None,
+        user_id: Optional[UUID] = None
     ) -> List[Dict[str, Any]]:
         """Sucht Chunks fuer RAG-Kontext.
 
@@ -540,6 +575,7 @@ class RAGSearchService:
             query: Suchanfrage
             context_chunks: Anzahl Kontext-Chunks
             document_ids: Optional: Nur in diesen Dokumenten
+            user_id: Optional: Nur Dokumente dieses Users durchsuchen (Security)
 
         Returns:
             Liste von Chunk-Dictionaries fuer RAG-Kontext
@@ -550,9 +586,10 @@ class RAGSearchService:
             limit=context_chunks,
             semantic_weight=0.7,
             keyword_weight=0.3,
-            threshold=0.5,
+            threshold=0.0,  # Deaktiviert - RRF-Scores sind 0.01-0.02, nicht 0-1!
             document_ids=document_ids,
-            rerank=True
+            rerank=True,
+            user_id=user_id
         )
 
         return [

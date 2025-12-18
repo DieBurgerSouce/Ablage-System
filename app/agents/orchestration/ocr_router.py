@@ -12,6 +12,8 @@ Enterprise-grade OCR backend routing with ML-based selection:
 Feinpoliert und durchdacht - Intelligente Backend-Auswahl für optimale Ergebnisse.
 """
 
+import copy
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 from datetime import datetime, timezone
@@ -20,8 +22,10 @@ import structlog
 
 from app.agents.base import OrchestrationAgent
 from app.gpu_manager import GPUManager
+from app.ml.metrics import get_ml_metrics
 
 logger = structlog.get_logger(__name__)
+audit_logger = structlog.get_logger("audit.ocr_routing")
 
 # Cache for learned weights
 _learned_weights_cache: Optional[Dict[str, Any]] = None
@@ -154,6 +158,57 @@ class OCRBackendRouter(OrchestrationAgent):
         except Exception as e:
             logger.error("ml_routing_init_fehler", error=str(e))
             self.use_ml_routing = False
+
+    def _audit_log_routing_decision(
+        self,
+        result: Dict[str, Any],
+        metadata: Dict[str, Any],
+        resource_status: Dict[str, Any],
+        learned_weights_used: Optional[Dict[str, float]] = None,
+        latency_ms: float = 0,
+    ) -> None:
+        """
+        Erstellt einen detaillierten Audit-Log-Eintrag für Routing-Entscheidungen.
+
+        Dient der Nachvollziehbarkeit und Compliance. Logs werden an den
+        separaten audit.ocr_routing Logger gesendet.
+
+        Args:
+            result: Das Routing-Ergebnis
+            metadata: Dokument-Metadaten
+            resource_status: Ressourcen-Status zum Zeitpunkt der Entscheidung
+            learned_weights_used: Verwendete gelernte Gewichte (falls vorhanden)
+            latency_ms: Routing-Latenz in Millisekunden
+        """
+        try:
+            audit_logger.info(
+                "routing_decision",
+                # Entscheidung
+                backend_selected=result.get("backend"),
+                routing_method=result.get("routing_method", "rule_based"),
+                confidence=round(result.get("confidence", 0.0), 3),
+                reason=result.get("reason"),
+                alternatives=result.get("alternatives", []),
+                # Dokument-Kontext
+                document_type=metadata.get("document_type"),
+                document_complexity=metadata.get("complexity"),
+                has_tables=metadata.get("has_tables", False),
+                has_handwriting=metadata.get("has_handwriting", False),
+                language=metadata.get("language", "de"),
+                # Ressourcen
+                gpu_available=resource_status.get("gpu_available", False),
+                gpu_memory_gb=round(resource_status.get("gpu_memory_available_gb", 0), 1),
+                total_queue_length=resource_status.get("queue_length", 0),
+                # Learning
+                learned_weights_applied=learned_weights_used is not None,
+                learned_weights=learned_weights_used,
+                # Performance
+                latency_ms=round(latency_ms, 2),
+                # Timestamp wird automatisch von structlog hinzugefügt
+            )
+        except Exception as e:
+            # Audit-Logging darf die Haupt-Logik nie unterbrechen
+            logger.debug("audit_log_failed", error=str(e))
 
     def _get_resource_status(self) -> Dict[str, Any]:
         """Get current resource availability status (sync, without queue lengths)."""
@@ -324,6 +379,9 @@ class OCRBackendRouter(OrchestrationAgent):
         """
         self.validate_input(input_data, ["document_metadata"])
 
+        # Zeitmessung für Metriken starten
+        start_time = time.time()
+
         metadata = input_data["document_metadata"]
         sla = input_data.get("sla_requirements", {})
         preferences = input_data.get("user_preferences", {})
@@ -348,6 +406,25 @@ class OCRBackendRouter(OrchestrationAgent):
         )
         if load_balanced_result:
             self._routing_stats["backend_selections"][load_balanced_result["backend"]] += 1
+            latency = time.time() - start_time
+            # Prometheus-Metriken für Load-Balanced Routing
+            try:
+                metrics = get_ml_metrics()
+                metrics.record_routing_request(
+                    method="load_balanced",
+                    backend=load_balanced_result["backend"],
+                    confidence=load_balanced_result.get("confidence", 0.8),
+                    latency_seconds=latency,
+                )
+            except Exception:
+                pass
+            # Audit-Log für Load-Balanced Routing
+            self._audit_log_routing_decision(
+                result=load_balanced_result,
+                metadata=metadata,
+                resource_status=resource_status,
+                latency_ms=latency * 1000,
+            )
             return load_balanced_result
 
         # Try ML-based selection first if enabled
@@ -378,6 +455,37 @@ class OCRBackendRouter(OrchestrationAgent):
             reason=result["reason"],
             confidence=result["confidence"],
             method=result.get("routing_method", "rule_based"),
+        )
+
+        # Prometheus-Metriken aufzeichnen
+        latency = time.time() - start_time
+        try:
+            metrics = get_ml_metrics()
+            routing_method = result.get("routing_method", "rule_based")
+            metrics.record_routing_request(
+                method=routing_method,
+                backend=result["backend"],
+                confidence=result.get("confidence", 0.0),
+                latency_seconds=latency,
+            )
+        except Exception:
+            pass  # Metriken sind nicht kritisch
+
+        # Audit-Logging für Nachvollziehbarkeit
+        # Hole verwendete Learned Weights falls vorhanden
+        learned_weights_used = None
+        try:
+            if result.get("learned_weights_applied"):
+                learned_weights_used = await self.get_learned_backend_weights()
+        except Exception:
+            pass
+
+        self._audit_log_routing_decision(
+            result=result,
+            metadata=metadata,
+            resource_status=resource_status,
+            learned_weights_used=learned_weights_used,
+            latency_ms=latency * 1000,
         )
 
         return result
@@ -868,7 +976,9 @@ class OCRBackendRouter(OrchestrationAgent):
         ):
             age_seconds = (now - _learned_weights_cache_time).total_seconds()
             if age_seconds < _LEARNED_WEIGHTS_CACHE_TTL_SECONDS:
-                return _learned_weights_cache.get("weights", {})
+                # WICHTIG: Kopie zurückgeben um Cache-Korrumpierung zu verhindern
+                cached_weights = _learned_weights_cache.get("weights", {})
+                return copy.copy(cached_weights) if cached_weights else {}
 
         # Fetch fresh weights from feedback learning service
         try:
@@ -876,8 +986,9 @@ class OCRBackendRouter(OrchestrationAgent):
             from app.db.session import get_async_session_context
 
             async with get_async_session_context() as session:
-                feedback_service = await get_feedback_learning_service(session)
+                feedback_service = get_feedback_learning_service()
                 learned_weights = await feedback_service.get_learned_weights(
+                    db=session,
                     force_refresh=force_refresh
                 )
 

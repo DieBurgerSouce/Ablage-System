@@ -8,8 +8,9 @@ Dieses Modul bietet Funktionen zur:
 """
 
 import structlog
+import math
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
 import hashlib
 import ipaddress
@@ -22,6 +23,64 @@ from app.db.models import SearchAnalytics, User
 from app.db.schemas import SearchFilters, SearchType
 
 logger = structlog.get_logger(__name__)
+
+
+# =============================================================================
+# Position-Weighted Click Analytics Functions
+# =============================================================================
+
+def calculate_position_weight(position: int, decay_rate: float = 0.15) -> float:
+    """Berechnet das Gewicht eines Klicks basierend auf der Position.
+
+    Verwendet exponentiellen Decay:
+    - Position 1: 1.0 (volle Relevanz)
+    - Position 5: ~0.55 (mittlere Relevanz)
+    - Position 10: ~0.26 (niedrige Relevanz)
+    - Position 20: ~0.07 (sehr niedrige Relevanz)
+
+    Die Idee: Ein Klick auf Position 1 zeigt starke Relevanz an,
+    waehrend ein Klick auf Position 10 weniger aussagekraeftig ist
+    (User musste weit scrollen).
+
+    Args:
+        position: 1-basierte Klick-Position (1 = erstes Ergebnis)
+        decay_rate: Abklingrate (Standard: 0.15, hoeher = schnellerer Abfall)
+
+    Returns:
+        Gewicht zwischen 0 und 1
+    """
+    if position < 1:
+        return 0.0
+    # Formel: exp(-decay_rate * (position - 1))
+    return math.exp(-decay_rate * (position - 1))
+
+
+def calculate_weighted_ctr(
+    total_searches: int,
+    weighted_score_sum: float,
+    max_possible_score: Optional[float] = None
+) -> float:
+    """Berechnet die gewichtete Click-Through-Rate.
+
+    Im Gegensatz zur einfachen CTR (Klicks / Suchen) beruecksichtigt
+    die gewichtete CTR die Position der Klicks.
+
+    Args:
+        total_searches: Anzahl der Suchanfragen
+        weighted_score_sum: Summe der gewichteten Klick-Scores
+        max_possible_score: Maximaler Score (default: total_searches * 1.0)
+
+    Returns:
+        Gewichtete CTR zwischen 0 und 1 (oder hoeher bei Mehrfachklicks)
+    """
+    if total_searches == 0:
+        return 0.0
+
+    if max_possible_score is None:
+        # Maximaler Score wenn jede Suche einen Klick auf Position 1 haette
+        max_possible_score = float(total_searches)
+
+    return weighted_score_sum / max_possible_score
 
 
 class SearchAnalyticsService:
@@ -192,13 +251,19 @@ class SearchAnalyticsService:
         result_position: int,
         is_download: bool = False,
     ) -> None:
-        """Protokolliert einen Klick auf ein Suchergebnis.
+        """Protokolliert einen Klick auf ein Suchergebnis mit Position-Weighted Score.
 
         Args:
             db: Datenbank-Session
             analytics_id: ID des Analytics-Eintrags
             result_position: Position des geklickten Ergebnisses (1-basiert)
             is_download: Ob das Dokument heruntergeladen wurde
+
+        Position-Weighted Scoring:
+            - Position 1: +1.0 zum weighted_click_score
+            - Position 5: +0.55 zum weighted_click_score
+            - Position 10: +0.26 zum weighted_click_score
+            - Formel: exp(-0.15 * (position - 1))
         """
         result = await db.execute(
             select(SearchAnalytics).where(SearchAnalytics.id == analytics_id)
@@ -209,13 +274,33 @@ class SearchAnalyticsService:
             logger.warning("analytics_not_found", analytics_id=str(analytics_id))
             return
 
+        # Klick-Zaehler aktualisieren
         analytics.clicked_results = (analytics.clicked_results or 0) + 1
 
+        # Erste Klick-Position merken
         if analytics.first_click_position is None:
             analytics.first_click_position = result_position
 
+        # Download-Zaehler
         if is_download:
             analytics.downloaded_count = (analytics.downloaded_count or 0) + 1
+
+        # Position-Weighted Click Analytics
+        # Gewicht basierend auf Position berechnen
+        position_weight = calculate_position_weight(result_position)
+
+        # Gewichteten Score kumulieren
+        current_score = analytics.weighted_click_score or 0.0
+        analytics.weighted_click_score = current_score + position_weight
+
+        # Klick-Position zur Liste hinzufuegen
+        current_positions = analytics.click_positions or []
+        if isinstance(current_positions, list):
+            current_positions.append(result_position)
+            analytics.click_positions = current_positions
+        else:
+            # Falls JSON nicht korrekt initialisiert war
+            analytics.click_positions = [result_position]
 
         await db.commit()
 
@@ -223,6 +308,8 @@ class SearchAnalyticsService:
             "search_click_logged",
             analytics_id=str(analytics_id),
             position=result_position,
+            position_weight=round(position_weight, 4),
+            total_weighted_score=round(analytics.weighted_click_score, 4),
             is_download=is_download,
         )
 
@@ -570,6 +657,231 @@ class SearchAnalyticsService:
         except Exception as e:
             logger.error("refresh_daily_statistics_error", error=str(e))
             return False
+
+    # =========================================================================
+    # Position-Weighted Click Analytics
+    # =========================================================================
+
+    async def get_weighted_ctr_statistics(
+        self,
+        db: AsyncSession,
+        days: int = 30,
+        min_searches: int = 5,
+        limit: int = 20,
+    ) -> Dict[str, Any]:
+        """Liefert Position-Weighted CTR Statistiken.
+
+        Die gewichtete CTR beruecksichtigt die Position der Klicks:
+        - Ein Klick auf Position 1 ist wertvoller als auf Position 10
+        - Ermoeglicht bessere Bewertung der Suchqualitaet
+
+        Args:
+            db: Datenbank-Session
+            days: Analysezeitraum in Tagen
+            min_searches: Mindestanzahl Suchen fuer Einbeziehung
+            limit: Maximale Anzahl Ergebnisse
+
+        Returns:
+            Dictionary mit:
+            - overall: Gesamtstatistiken (CTR, weighted CTR, etc.)
+            - by_search_type: Aufschluesselung nach Suchtyp
+            - top_queries_by_weighted_ctr: Queries mit hoechster gewichteter CTR
+            - low_performing_queries: Queries mit niedriger gewichteter CTR
+            - position_distribution: Verteilung der Klicks nach Position
+        """
+        since = datetime.now(timezone.utc) - timedelta(days=days)
+
+        result: Dict[str, Any] = {
+            "period_days": days,
+            "analysis_timestamp": datetime.now(timezone.utc).isoformat(),
+            "overall": {},
+            "by_search_type": {},
+            "top_queries_by_weighted_ctr": [],
+            "low_performing_queries": [],
+            "position_distribution": {},
+        }
+
+        try:
+            # 1. Gesamtstatistiken
+            overall_query = text("""
+                SELECT
+                    COUNT(*) as total_searches,
+                    SUM(clicked_results) as total_clicks,
+                    SUM(weighted_click_score) as total_weighted_score,
+                    AVG(weighted_click_score) as avg_weighted_score,
+                    COUNT(CASE WHEN clicked_results > 0 THEN 1 END) as searches_with_clicks,
+                    AVG(first_click_position) as avg_first_click_position
+                FROM search_analytics
+                WHERE created_at >= :since
+                  AND total_results > 0
+            """)
+            overall_result = await db.execute(overall_query, {"since": since})
+            overall_row = overall_result.one()
+
+            total_searches = overall_row.total_searches or 0
+            total_clicks = overall_row.total_clicks or 0
+            total_weighted = overall_row.total_weighted_score or 0.0
+            searches_with_clicks = overall_row.searches_with_clicks or 0
+
+            # Einfache CTR
+            simple_ctr = (searches_with_clicks / total_searches * 100) if total_searches > 0 else 0
+
+            # Gewichtete CTR (normalisiert auf Searches mit Ergebnissen)
+            weighted_ctr = calculate_weighted_ctr(total_searches, total_weighted)
+
+            result["overall"] = {
+                "total_searches": total_searches,
+                "total_clicks": total_clicks,
+                "searches_with_clicks": searches_with_clicks,
+                "simple_ctr_percent": round(simple_ctr, 2),
+                "weighted_ctr": round(weighted_ctr, 4),
+                "total_weighted_score": round(total_weighted, 2),
+                "avg_weighted_score_per_search": round(overall_row.avg_weighted_score or 0, 4),
+                "avg_first_click_position": round(overall_row.avg_first_click_position or 0, 2),
+            }
+
+            # 2. Aufschluesselung nach Suchtyp
+            type_query = text("""
+                SELECT
+                    search_type,
+                    COUNT(*) as searches,
+                    SUM(clicked_results) as clicks,
+                    SUM(weighted_click_score) as weighted_score,
+                    AVG(first_click_position) as avg_first_position
+                FROM search_analytics
+                WHERE created_at >= :since
+                  AND total_results > 0
+                GROUP BY search_type
+            """)
+            type_result = await db.execute(type_query, {"since": since})
+
+            for row in type_result:
+                type_searches = row.searches or 0
+                type_weighted = row.weighted_score or 0.0
+                type_ctr = calculate_weighted_ctr(type_searches, type_weighted)
+
+                result["by_search_type"][row.search_type] = {
+                    "searches": type_searches,
+                    "clicks": row.clicks or 0,
+                    "weighted_ctr": round(type_ctr, 4),
+                    "weighted_score": round(type_weighted, 2),
+                    "avg_first_click_position": round(row.avg_first_position or 0, 2),
+                }
+
+            # 3. Top Queries nach gewichteter CTR
+            top_queries_query = text("""
+                SELECT
+                    query,
+                    COUNT(*) as search_count,
+                    SUM(clicked_results) as total_clicks,
+                    SUM(weighted_click_score) as weighted_score,
+                    AVG(first_click_position) as avg_first_position
+                FROM search_analytics
+                WHERE created_at >= :since
+                  AND total_results > 0
+                GROUP BY query
+                HAVING COUNT(*) >= :min_searches
+                   AND SUM(weighted_click_score) > 0
+                ORDER BY SUM(weighted_click_score) / COUNT(*) DESC
+                LIMIT :limit
+            """)
+            top_result = await db.execute(
+                top_queries_query,
+                {"since": since, "min_searches": min_searches, "limit": limit}
+            )
+
+            for row in top_result:
+                q_searches = row.search_count or 1
+                q_weighted = row.weighted_score or 0.0
+                q_ctr = calculate_weighted_ctr(q_searches, q_weighted)
+
+                result["top_queries_by_weighted_ctr"].append({
+                    "query": row.query,
+                    "search_count": q_searches,
+                    "total_clicks": row.total_clicks or 0,
+                    "weighted_ctr": round(q_ctr, 4),
+                    "weighted_score": round(q_weighted, 2),
+                    "avg_first_click_position": round(row.avg_first_position or 0, 2),
+                })
+
+            # 4. Low-Performing Queries (Suchen mit Ergebnissen aber wenig/keine Klicks)
+            low_perf_query = text("""
+                SELECT
+                    query,
+                    COUNT(*) as search_count,
+                    AVG(total_results) as avg_results,
+                    SUM(clicked_results) as total_clicks,
+                    SUM(weighted_click_score) as weighted_score
+                FROM search_analytics
+                WHERE created_at >= :since
+                  AND total_results > 0
+                GROUP BY query
+                HAVING COUNT(*) >= :min_searches
+                ORDER BY COALESCE(SUM(weighted_click_score), 0) / COUNT(*) ASC
+                LIMIT :limit
+            """)
+            low_result = await db.execute(
+                low_perf_query,
+                {"since": since, "min_searches": min_searches, "limit": limit}
+            )
+
+            for row in low_result:
+                q_searches = row.search_count or 1
+                q_weighted = row.weighted_score or 0.0
+                q_ctr = calculate_weighted_ctr(q_searches, q_weighted)
+
+                result["low_performing_queries"].append({
+                    "query": row.query,
+                    "search_count": q_searches,
+                    "avg_results": round(row.avg_results or 0, 1),
+                    "total_clicks": row.total_clicks or 0,
+                    "weighted_ctr": round(q_ctr, 4),
+                    "improvement_potential": "hoch" if q_ctr < 0.1 else "mittel",
+                })
+
+            # 5. Position Distribution (aus click_positions aggregiert)
+            # Fallback auf first_click_position wenn click_positions leer
+            pos_query = text("""
+                SELECT
+                    first_click_position as position,
+                    COUNT(*) as click_count
+                FROM search_analytics
+                WHERE created_at >= :since
+                  AND first_click_position IS NOT NULL
+                GROUP BY first_click_position
+                ORDER BY first_click_position
+            """)
+            pos_result = await db.execute(pos_query, {"since": since})
+
+            total_position_clicks = 0
+            position_data = {}
+            for row in pos_result:
+                pos = row.position
+                count = row.click_count or 0
+                total_position_clicks += count
+                position_data[pos] = count
+
+            # Prozentsatz und Gewicht berechnen
+            for pos, count in position_data.items():
+                percentage = (count / total_position_clicks * 100) if total_position_clicks > 0 else 0
+                result["position_distribution"][str(pos)] = {
+                    "clicks": count,
+                    "percentage": round(percentage, 2),
+                    "position_weight": round(calculate_position_weight(pos), 4),
+                }
+
+            logger.info(
+                "weighted_ctr_statistics_generated",
+                period_days=days,
+                total_searches=total_searches,
+                weighted_ctr=round(weighted_ctr, 4),
+            )
+
+        except Exception as e:
+            logger.error("weighted_ctr_statistics_error", error=str(e), exc_info=True)
+            result["error"] = f"Fehler bei der Berechnung: {str(e)}"
+
+        return result
 
 
 # Singleton-Instanz

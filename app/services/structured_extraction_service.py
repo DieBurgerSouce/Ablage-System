@@ -96,6 +96,54 @@ def _get_enhanced_extraction_adapter() -> Optional["EnhancedExtractionAdapter"]:
 
 
 # =============================================================================
+# HTML SANITIZATION
+# =============================================================================
+
+# Regex zum Entfernen von HTML-Tags
+_HTML_TAG_PATTERN = re.compile(r'<[^>]+>')
+# Regex zum Entfernen von HTML-Entities
+_HTML_ENTITY_PATTERN = re.compile(r'&(?:#\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);')
+
+
+def sanitize_extracted_text(text: Optional[str]) -> Optional[str]:
+    """
+    Bereinigt extrahierten Text von HTML-Tags und -Entities.
+
+    Entfernt:
+    - HTML-Tags wie <b>, </b>, <br/>, etc.
+    - HTML-Entities wie &nbsp;, &#160;, etc.
+    - Mehrfache Leerzeichen
+
+    Args:
+        text: Der zu bereinigende Text
+
+    Returns:
+        Bereinigter Text oder None wenn Input None war
+    """
+    if text is None:
+        return None
+
+    # HTML-Tags entfernen
+    cleaned = _HTML_TAG_PATTERN.sub('', text)
+
+    # Gaengige HTML-Entities ersetzen
+    cleaned = cleaned.replace('&nbsp;', ' ')
+    cleaned = cleaned.replace('&amp;', '&')
+    cleaned = cleaned.replace('&lt;', '<')
+    cleaned = cleaned.replace('&gt;', '>')
+    cleaned = cleaned.replace('&quot;', '"')
+    cleaned = cleaned.replace('&apos;', "'")
+
+    # Verbleibende Entities entfernen
+    cleaned = _HTML_ENTITY_PATTERN.sub('', cleaned)
+
+    # Mehrfache Leerzeichen normalisieren
+    cleaned = ' '.join(cleaned.split())
+
+    return cleaned.strip() if cleaned else None
+
+
+# =============================================================================
 # REGEX PATTERNS
 # =============================================================================
 
@@ -131,10 +179,10 @@ class PaymentPatterns:
         re.IGNORECASE
     )
 
-    # Fälligkeitsdatum direkt: "Fällig am 15.02.2024"
+    # Fälligkeitsdatum direkt: "Fällig am 15.02.2024" oder "Due Date 14-03-20"
     DUE_DATE_DIRECT = re.compile(
-        r'(?:f[aä]llig(?:keit)?|zahlbar\s*bis|zahlungsziel)[\s:]*'
-        r'(?:am\s*)?(\d{1,2})\.(\d{1,2})\.(\d{4})',
+        r'(?:f[aä]llig(?:keit)?|zahlbar\s*bis|zahlungsziel|due\s*date|vervaldatum)[\s:]*'
+        r'(?:am\s*)?(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})',
         re.IGNORECASE
     )
 
@@ -387,40 +435,40 @@ class ReferencePatterns:
 
 
 class DatePatterns:
-    """Patterns fuer deutsche Datumsformate."""
+    """Patterns fuer deutsche und internationale Datumsformate."""
 
-    # Deutsches Datum: 15.02.2024
+    # Deutsches Datum: 15.02.2024 oder 15.02.24 oder 15-02-2024
     DATE_DE = re.compile(
-        r'\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b'
+        r'\b(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})\b'
     )
 
-    # Rechnungsdatum
+    # Rechnungsdatum (deutsch + niederlaendisch + englisch)
     INVOICE_DATE = re.compile(
-        r'(?:rechnung(?:s)?datum|datum\s*der?\s*rechnung|ausgestellt\s*am)[\s:]*'
-        r'(\d{1,2})\.(\d{1,2})\.(\d{4})',
+        r'(?:rechnung(?:s)?datum|factuurdatum|invoice\s*date|datum\s*der?\s*rechnung|ausgestellt\s*am)[\s:]*'
+        r'(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})',
         re.IGNORECASE
     )
 
     # Bestelldatum
     ORDER_DATE = re.compile(
-        r'(?:bestell(?:ung)?(?:s)?datum|datum\s*der?\s*bestellung)[\s:]*'
-        r'(\d{1,2})\.(\d{1,2})\.(\d{4})',
+        r'(?:bestell(?:ung)?(?:s)?datum|order\s*date|datum\s*der?\s*bestellung)[\s:]*'
+        r'(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})',
         re.IGNORECASE
     )
 
     # Liefertermin
     DELIVERY_DATE = re.compile(
-        r'(?:liefer(?:ung)?(?:s)?(?:termin|datum)|gew[uü]nschte?\s*lieferung)[\s:]*'
-        r'(\d{1,2})\.(\d{1,2})\.(\d{4})',
+        r'(?:liefer(?:ung)?(?:s)?(?:termin|datum)|delivery\s*date|gew[uü]nschte?\s*lieferung)[\s:]*'
+        r'(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})',
         re.IGNORECASE
     )
 
     # Leistungszeitraum: "Leistungszeitraum: 01.01.2024 - 31.01.2024"
     SERVICE_PERIOD = re.compile(
         r'(?:leistungs?zeitraum|abrechnungszeitraum|zeitraum)[\s:]*'
-        r'(\d{1,2})\.(\d{1,2})\.(\d{4})\s*'
+        r'(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})\s*'
         r'[-–bis]+\s*'
-        r'(\d{1,2})\.(\d{1,2})\.(\d{4})',
+        r'(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})',
         re.IGNORECASE
     )
 
@@ -580,6 +628,55 @@ class StructuredExtractionService:
         self.entity_service = EntityExtractionService()
         self.translation_service = get_translation_service()
 
+    def _clean_company_name(self, name: str) -> str:
+        """
+        Bereinigt OCR-Artefakte und HTML aus Firmennamen.
+
+        Behandelt:
+        - HTML-Tags und Entities (NEU!)
+        - Dokumenttyp-Indikatoren ("Sales - Invoice", etc.)
+        - Duplizierte Namensteile
+        - Bevorzugt Teil mit Rechtsform oder "Name - Beschreibung" Format
+        """
+        if not name:
+            return name
+
+        # 0. HTML-Sanitization (NEU - entfernt <b>, </b>, etc.)
+        cleaned = sanitize_extracted_text(name)
+        if not cleaned:
+            return name
+
+        # 1. Entferne Dokumenttyp-Indikatoren
+        doc_type_patterns = [
+            "Sales - Invoice", "Sales-Invoice", "Invoice -", "- Invoice",
+            "Rechnung -", "- Rechnung", "Order -", "- Order",
+            "Bestellung -", "- Bestellung"
+        ]
+        # cleaned wurde bereits durch HTML-Sanitization gesetzt
+        for pattern in doc_type_patterns:
+            if pattern.lower() in cleaned.lower():
+                idx = cleaned.lower().find(pattern.lower())
+                cleaned = cleaned[:idx] + cleaned[idx + len(pattern):]
+                cleaned = cleaned.strip(' -')
+
+        # 2. Deduplizierung: Wenn erstes Wort spaeter nochmal auftaucht
+        words = cleaned.split()
+        if len(words) >= 4:
+            first_word_lower = words[0].lower()
+            for i in range(2, len(words)):
+                if words[i].lower() == first_word_lower:
+                    first_part = ' '.join(words[:i]).rstrip(' -')
+                    second_part = ' '.join(words[i:])
+                    # Praeferiere "Name - Beschreibung" Format (mit Bindestrich)
+                    if ' - ' in second_part:
+                        return second_part
+                    if ' - ' in first_part:
+                        return first_part
+                    # Sonst zweiten Teil (oft bereinigter)
+                    return second_part
+
+        return cleaned if cleaned else name
+
     async def extract(
         self,
         text: str,
@@ -606,6 +703,14 @@ class StructuredExtractionService:
             ExtractedDocumentData mit Klassifizierung und typspezifischen Daten
         """
         start_time = datetime.now()
+
+        # Null-Check fuer text
+        if not text:
+            logger.warning("extract_called_with_empty_text", document_id=document_id)
+            return ExtractedDocumentData(
+                extraction_version="2.0.0",
+                extracted_at=datetime.now().isoformat(),
+            )
 
         # 0. Uebersetzung falls noetig (nicht-deutsche/englische Dokumente)
         original_language = detected_language
@@ -778,9 +883,9 @@ class StructuredExtractionService:
             if raw_date_match:
                 invoice.invoice_date_raw = raw_date_match.group(0).strip()
             else:
-                # Fallback: Deutsches Datumsformat suchen
-                german_date_pattern = re.compile(r'\d{1,2}\.\d{1,2}\.\d{2,4}')
-                raw_match = german_date_pattern.search(text)
+                # Fallback: Generisches Datumsformat suchen (alle Separatoren)
+                generic_date_pattern = re.compile(r'\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}')
+                raw_match = generic_date_pattern.search(text)
                 if raw_match:
                     invoice.invoice_date_raw = raw_match.group(0)
 
@@ -1039,35 +1144,43 @@ class StructuredExtractionService:
                         )
                         break
 
-            # Zuweisen der Adressen
+            # Zuweisen der Adressen (mit HTML-Sanitization)
             if sender_addr:
                 invoice.sender = ExtractedAddress(
-                    street=sender_addr.street,
-                    street_number=sender_addr.street_number if hasattr(sender_addr, 'street_number') else None,
-                    zip_code=sender_addr.postal_code,
-                    city=sender_addr.city,
+                    street=sanitize_extracted_text(sender_addr.street),
+                    street_number=sanitize_extracted_text(sender_addr.street_number) if hasattr(sender_addr, 'street_number') else None,
+                    zip_code=sanitize_extracted_text(sender_addr.postal_code),
+                    city=sanitize_extracted_text(sender_addr.city),
                     country=sender_addr.country if sender_addr.country else "DE",
-                    company=sender_addr.company_name if hasattr(sender_addr, 'company_name') else None,
+                    company=sanitize_extracted_text(sender_addr.company_name) if hasattr(sender_addr, 'company_name') else None,
                 )
 
             if recipient_addr:
                 invoice.recipient = ExtractedAddress(
-                    street=recipient_addr.street,
-                    street_number=recipient_addr.street_number if hasattr(recipient_addr, 'street_number') else None,
-                    zip_code=recipient_addr.postal_code,
-                    city=recipient_addr.city,
+                    street=sanitize_extracted_text(recipient_addr.street),
+                    street_number=sanitize_extracted_text(recipient_addr.street_number) if hasattr(recipient_addr, 'street_number') else None,
+                    zip_code=sanitize_extracted_text(recipient_addr.postal_code),
+                    city=sanitize_extracted_text(recipient_addr.city),
                     country=recipient_addr.country if recipient_addr.country else "DE",
-                    company=recipient_addr.company_name if hasattr(recipient_addr, 'company_name') else None,
+                    company=sanitize_extracted_text(recipient_addr.company_name) if hasattr(recipient_addr, 'company_name') else None,
                 )
 
         # Firmennamen mit Rechtsform (GmbH, etc.) - ueberschreiben Kontext-Namen
         if entities.company_names:
             # Erster Firmenname = Absender (ueberschreibt nur wenn vorhanden)
             if invoice.sender and entities.company_names[0].name:
-                invoice.sender.company = entities.company_names[0].name
+                company = entities.company_names[0]
+                # Bereinige und kombiniere name + legal_form
+                clean_name = self._clean_company_name(company.name)
+                full_name = f"{clean_name} {company.legal_form}" if company.legal_form else clean_name
+                invoice.sender.company = full_name
             # Zweiter Firmenname = Empfaenger (falls vorhanden)
             if len(entities.company_names) > 1 and invoice.recipient:
-                invoice.recipient.company = entities.company_names[1].name
+                company = entities.company_names[1]
+                # Bereinige und kombiniere name + legal_form
+                clean_name = self._clean_company_name(company.name)
+                full_name = f"{clean_name} {company.legal_form}" if company.legal_form else clean_name
+                invoice.recipient.company = full_name
 
         # USt-IdNr - Intelligente Zuordnung (sender vs. recipient)
         vat_ids = [i for i in entities.identifiers if i.identifier_type == "vat_id"]
@@ -2622,6 +2735,8 @@ class StructuredExtractionService:
 
     def _extract_all_dates(self, text: str) -> List[date]:
         """Extrahiert alle Daten aus dem Text."""
+        if not text:
+            return []
         dates = []
         for match in DatePatterns.DATE_DE.finditer(text):
             d = self._parse_date_groups(
@@ -2635,6 +2750,8 @@ class StructuredExtractionService:
 
     def _extract_all_amounts(self, text: str) -> List[Decimal]:
         """Extrahiert alle Betraege aus dem Text."""
+        if not text:
+            return []
         amounts = []
         for match in AmountPatterns.GERMAN_AMOUNT.finditer(text):
             amount = self._parse_german_amount(match.group(1))

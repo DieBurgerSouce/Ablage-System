@@ -49,6 +49,11 @@ LLM_MAX_RETRIES = 3
 LLM_RETRY_MIN_WAIT = 2  # Sekunden
 LLM_RETRY_MAX_WAIT = 10  # Sekunden
 
+# Circuit Breaker Konfiguration
+CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5  # Fehler bis Circuit öffnet
+CIRCUIT_BREAKER_RECOVERY_TIMEOUT = 300  # Sekunden bis Half-Open
+CIRCUIT_BREAKER_SUCCESS_THRESHOLD = 2  # Erfolge bis Circuit schließt
+
 
 # =============================================================================
 # Data Classes
@@ -160,6 +165,11 @@ class LLMOCRReviewService:
     2. Fehlerkorrektur (OCR-typische Fehler beheben)
     3. Qualitaetsbewertung (Score 1-10)
     4. Entscheidung: Accept nach Korrektur oder ablehnen
+
+    Circuit Breaker Pattern:
+    - CLOSED: Normal operation
+    - OPEN: Fast-fail after repeated failures (5 min timeout)
+    - HALF_OPEN: Test with single request
     """
 
     # Maximale Textlaenge fuer LLM-Review (Token-Limit beachten)
@@ -168,9 +178,123 @@ class LLMOCRReviewService:
     # Minimale Textlaenge fuer sinnvolle Review
     MIN_TEXT_LENGTH = 20
 
+    # Circuit Breaker States (class-level for singleton pattern)
+    _circuit_state: Literal["closed", "open", "half_open"] = "closed"
+    _failure_count: int = 0
+    _success_count: int = 0
+    _last_failure_time: Optional[datetime] = None
+
     def __init__(self, llm_service: Optional[LLMService] = None):
         """Initialisiere LLM OCR Review Service."""
         self.llm_service = llm_service or get_llm_service()
+
+    def _check_circuit_breaker(self) -> bool:
+        """
+        Prüft ob Circuit Breaker Anfragen erlaubt.
+
+        Returns:
+            True wenn Anfrage erlaubt, False wenn Circuit offen
+        """
+        if self._circuit_state == "closed":
+            return True
+
+        if self._circuit_state == "open":
+            # Prüfe ob Recovery-Timeout abgelaufen
+            if self._last_failure_time:
+                elapsed = (datetime.now(timezone.utc) - self._last_failure_time).total_seconds()
+                if elapsed >= CIRCUIT_BREAKER_RECOVERY_TIMEOUT:
+                    # Wechsel zu Half-Open - teste mit einer Anfrage
+                    LLMOCRReviewService._circuit_state = "half_open"
+                    LLMOCRReviewService._success_count = 0
+                    logger.info("circuit_breaker_half_open", elapsed_seconds=elapsed)
+                    return True
+            return False
+
+        # half_open - erlaube Anfragen zum Testen
+        return True
+
+    def _record_success(self) -> None:
+        """Aufzeichnen eines erfolgreichen Aufrufs."""
+        if self._circuit_state == "half_open":
+            LLMOCRReviewService._success_count += 1
+            if self._success_count >= CIRCUIT_BREAKER_SUCCESS_THRESHOLD:
+                # Genug Erfolge - schließe Circuit
+                LLMOCRReviewService._circuit_state = "closed"
+                LLMOCRReviewService._failure_count = 0
+                logger.info("circuit_breaker_closed", success_count=self._success_count)
+        elif self._circuit_state == "closed":
+            # Reset failure count bei Erfolg
+            LLMOCRReviewService._failure_count = 0
+
+    def _record_failure(self) -> None:
+        """Aufzeichnen eines fehlgeschlagenen Aufrufs."""
+        LLMOCRReviewService._failure_count += 1
+        LLMOCRReviewService._last_failure_time = datetime.now(timezone.utc)
+
+        if self._circuit_state == "half_open":
+            # Fehler in Half-Open - zurück zu Open
+            LLMOCRReviewService._circuit_state = "open"
+            logger.warning("circuit_breaker_reopened", failure_count=self._failure_count)
+        elif self._circuit_state == "closed":
+            if self._failure_count >= CIRCUIT_BREAKER_FAILURE_THRESHOLD:
+                # Zu viele Fehler - öffne Circuit
+                LLMOCRReviewService._circuit_state = "open"
+                logger.warning(
+                    "circuit_breaker_opened",
+                    failure_count=self._failure_count,
+                    recovery_timeout_seconds=CIRCUIT_BREAKER_RECOVERY_TIMEOUT,
+                )
+
+    def get_circuit_status(self) -> Dict[str, Any]:
+        """
+        Gibt den aktuellen Circuit Breaker Status zurück.
+
+        Nützlich für Monitoring, Health-Checks und Prometheus-Metriken.
+
+        Returns:
+            Dict mit circuit_state, failure_count, last_failure_time, etc.
+        """
+        elapsed_since_failure = None
+        time_until_recovery = None
+
+        if self._last_failure_time:
+            elapsed_since_failure = (
+                datetime.now(timezone.utc) - self._last_failure_time
+            ).total_seconds()
+            if self._circuit_state == "open":
+                time_until_recovery = max(
+                    0,
+                    CIRCUIT_BREAKER_RECOVERY_TIMEOUT - elapsed_since_failure
+                )
+
+        return {
+            "circuit_state": self._circuit_state,
+            "failure_count": self._failure_count,
+            "success_count": self._success_count,
+            "failure_threshold": CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+            "success_threshold": CIRCUIT_BREAKER_SUCCESS_THRESHOLD,
+            "recovery_timeout_seconds": CIRCUIT_BREAKER_RECOVERY_TIMEOUT,
+            "last_failure_time": self._last_failure_time.isoformat() if self._last_failure_time else None,
+            "elapsed_since_failure_seconds": elapsed_since_failure,
+            "time_until_recovery_seconds": time_until_recovery,
+            "is_accepting_requests": self._check_circuit_breaker(),
+        }
+
+    def reset_circuit_breaker(self) -> None:
+        """
+        Setzt den Circuit Breaker manuell zurück.
+
+        Sollte nur für Debugging/Admin-Zwecke verwendet werden.
+        """
+        logger.info(
+            "circuit_breaker_manual_reset",
+            previous_state=self._circuit_state,
+            previous_failure_count=self._failure_count,
+        )
+        LLMOCRReviewService._circuit_state = "closed"
+        LLMOCRReviewService._failure_count = 0
+        LLMOCRReviewService._success_count = 0
+        LLMOCRReviewService._last_failure_time = None
 
     # =========================================================================
     # MAIN API
@@ -531,16 +655,46 @@ class LLMOCRReviewService:
     ) -> LLMReviewResult:
         """Ruft das LLM fuer die Review auf.
 
-        Wrapper mit Error-Handling fuer Retry-Failures.
+        Wrapper mit Circuit Breaker und Error-Handling fuer Retry-Failures.
+        Bei geöffnetem Circuit wird direkt ein Fallback-Ergebnis zurückgegeben,
+        um Blocking zu vermeiden wenn Ollama nicht erreichbar ist.
         """
+        # Circuit Breaker prüfen
+        if not self._check_circuit_breaker():
+            logger.warning(
+                "llm_review_circuit_open",
+                doc_type=doc_type,
+                text_length=len(text),
+                circuit_state=self._circuit_state,
+            )
+            # Fast-fail: Circuit ist offen, gib Fallback zurück
+            return LLMReviewResult(
+                quality_score=5.0,  # Neutraler Score
+                issues_found=["LLM-Service temporär nicht verfügbar (Circuit Breaker offen)"],
+                recommendation="needs_human",
+                reasoning=(
+                    "Der LLM-Service ist temporär nicht erreichbar. "
+                    "Manuelle Review erforderlich. "
+                    f"Nächster Versuch in {CIRCUIT_BREAKER_RECOVERY_TIMEOUT}s."
+                ),
+                confidence=0.0,
+            )
+
         try:
-            return await self._call_llm_review_with_retry(text, doc_type)
+            result = await self._call_llm_review_with_retry(text, doc_type)
+            # Erfolg aufzeichnen
+            self._record_success()
+            return result
         except RetryError as e:
+            # Fehler aufzeichnen
+            self._record_failure()
             logger.error(
                 "llm_review_all_retries_failed",
                 doc_type=doc_type,
                 text_length=len(text),
-                error=str(e.last_attempt.exception()) if e.last_attempt else "unknown"
+                error=str(e.last_attempt.exception()) if e.last_attempt else "unknown",
+                circuit_state=self._circuit_state,
+                failure_count=self._failure_count,
             )
             # Fallback: Menschliche Review erforderlich
             return LLMReviewResult(
@@ -551,10 +705,14 @@ class LLMOCRReviewService:
                 confidence=0.0,
             )
         except Exception as e:
+            # Fehler aufzeichnen
+            self._record_failure()
             logger.error(
                 "llm_review_unexpected_error",
                 doc_type=doc_type,
                 error=str(e),
+                circuit_state=self._circuit_state,
+                failure_count=self._failure_count,
             )
             return LLMReviewResult(
                 quality_score=0.0,

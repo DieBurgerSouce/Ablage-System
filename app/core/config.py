@@ -9,7 +9,7 @@ Supports:
 Feinpoliert und durchdacht - Sichere Konfigurationsverwaltung.
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from pathlib import Path
 import secrets
 import os
@@ -540,13 +540,33 @@ class Settings(BaseSettings):
     EMBEDDING_SERVICE_URL: Optional[str] = None  # HuggingFace TEI Service URL
     EMBEDDING_MODEL: str = "intfloat/multilingual-e5-large"
     EMBEDDING_DIMENSION: int = 1024
-    EMBEDDING_BATCH_SIZE: int = 8  # Conservative for 16GB VRAM
+    EMBEDDING_BATCH_SIZE: int = 16  # Optimiert fuer RTX 4080 16GB VRAM
     EMBEDDING_MAX_LENGTH: int = 512  # Max tokens per text
+
+    # Dynamisches Batching (GPU-Speicher-basiert)
+    EMBEDDING_DYNAMIC_BATCH_ENABLED: bool = True  # Dynamische Batch-Groesse
+    EMBEDDING_MIN_BATCH_SIZE: int = 4  # Minimum bei Speicherknappheit
+    EMBEDDING_MAX_BATCH_SIZE: int = 32  # Maximum bei ausreichend Speicher
+    EMBEDDING_GPU_MEMORY_THRESHOLD: float = 0.75  # Max 75% GPU-Speicher nutzen
     SEARCH_DEFAULT_LIMIT: int = 20
     SEARCH_MAX_LIMIT: int = 100
     SEMANTIC_SIMILARITY_THRESHOLD: float = 0.5
     HYBRID_FTS_WEIGHT: float = 0.3
     HYBRID_SEMANTIC_WEIGHT: float = 0.7
+
+    # Field-Level Boosting fuer FTS (Filename-Treffer ranken hoeher)
+    FTS_FIELD_BOOST_FILENAME: float = 2.0  # Treffer im Dateinamen
+    FTS_FIELD_BOOST_ORIGINAL_FILENAME: float = 1.8  # Treffer im Original-Dateinamen
+    FTS_FIELD_BOOST_EXTRACTED_TEXT: float = 1.0  # Treffer im extrahierten Text (Basis)
+
+    # Adaptive RRF-Gewichte basierend auf Query-Laenge
+    ADAPTIVE_RRF_WEIGHTS_ENABLED: bool = True  # Dynamische Gewichtung aktivieren
+    HYBRID_WEIGHTS_SHORT_FTS: float = 0.5  # FTS-Gewicht fuer 1-2 Woerter
+    HYBRID_WEIGHTS_SHORT_SEMANTIC: float = 0.5  # Semantic-Gewicht fuer 1-2 Woerter
+    HYBRID_WEIGHTS_MEDIUM_FTS: float = 0.3  # FTS-Gewicht fuer 3-5 Woerter (Standard)
+    HYBRID_WEIGHTS_MEDIUM_SEMANTIC: float = 0.7  # Semantic-Gewicht fuer 3-5 Woerter
+    HYBRID_WEIGHTS_LONG_FTS: float = 0.2  # FTS-Gewicht fuer 6+ Woerter
+    HYBRID_WEIGHTS_LONG_SEMANTIC: float = 0.8  # Semantic-Gewicht fuer 6+ Woerter
 
     # Search Caching Settings
     SEARCH_CACHE_ENABLED: bool = True
@@ -701,6 +721,16 @@ class Settings(BaseSettings):
     # Monitoring
     ENABLE_METRICS: bool = True
     METRICS_PORT: int = 9090
+
+    # Grafana Integration
+    GRAFANA_URL: str = Field(
+        default="http://localhost:3000",
+        description="Grafana Dashboard Base URL"
+    )
+    GRAFANA_ENABLED: bool = Field(
+        default=True,
+        description="Grafana Dashboard Links aktivieren"
+    )
     
     # Email (optional, for notifications)
     SMTP_HOST: Optional[str] = None

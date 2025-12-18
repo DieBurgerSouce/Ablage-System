@@ -19,9 +19,11 @@ from sqlalchemy import select, func, text
 
 import structlog
 
-from app.db.session import get_async_session, get_async_session_context
+from app.db.session import get_async_session
+from app.api.dependencies import AsyncSessionLocal
 from app.db.models import (
     User,
+    Document,
     RAGDocumentChunk,
     RAGCustomerCard,
     RAGChatSession,
@@ -110,6 +112,7 @@ async def search_documents(
                 document_ids=request.document_ids,
                 section_types=request.section_types,
                 rerank=request.rerank,
+                user_id=current_user.id,  # SECURITY: Nur eigene Dokumente durchsuchen
             )
         elif request.search_type == RAGSearchType.HYBRID:
             response = await search_service.hybrid_search(
@@ -118,6 +121,7 @@ async def search_documents(
                 limit=request.limit,
                 document_ids=request.document_ids,
                 rerank=request.rerank,
+                user_id=current_user.id,  # SECURITY: Nur eigene Dokumente durchsuchen
             )
         else:
             # Keyword-only Search
@@ -126,6 +130,7 @@ async def search_documents(
                 query=request.query,
                 limit=request.limit,
                 document_ids=request.document_ids,
+                user_id=current_user.id,  # SECURITY: Nur eigene Dokumente durchsuchen
             )
 
         logger.info(
@@ -195,14 +200,29 @@ async def chat_with_documents(
         # PHASE 1: Alle DB-Operationen VOR dem LLM-Call (SQLAlchemy Concurrency Fix)
         # ===================================================================
 
+        # Document-Context: Wenn context_type="document", dann nur in diesem Dokument suchen
+        document_ids = None
+        search_threshold = settings.RAG_SEMANTIC_THRESHOLD
+        if request.context_type == "document" and request.context_id:
+            from uuid import UUID
+            try:
+                document_ids = [UUID(request.context_id)]
+                # Bei explizitem Dokument-Kontext: Threshold auf 0 setzen
+                # damit alle Chunks des Dokuments gefunden werden
+                search_threshold = 0.0
+                logger.info(f"Chat mit Dokument-Kontext: {request.context_id} (threshold=0)")
+            except ValueError:
+                logger.warning(f"Ungueltige Document-ID: {request.context_id}")
+
         # 1. Relevante Chunks finden
         search_response = await search_service.semantic_search(
             db=db,
             query=request.message,
             limit=settings.RAG_CHAT_CONTEXT_CHUNKS,
-            threshold=settings.RAG_SEMANTIC_THRESHOLD,
-            document_ids=None,
+            threshold=search_threshold,
+            document_ids=document_ids,
             rerank=settings.RAG_RERANK_ENABLED,
+            user_id=current_user.id,  # SECURITY: Nur eigene Dokumente durchsuchen
         )
 
         # 2. Chat Session verwalten (Load or Create)
@@ -240,28 +260,76 @@ async def chat_with_documents(
         # PHASE 2: LLM-Call (keine DB-Operationen aktiv)
         # ===================================================================
 
-        # 5. Kontext aufbauen
-        context_chunks = [
-            f"[Quelle: Dokument {r.document_id}, Seite {r.page_number or 'N/A'}]\n{r.chunk_text}"
-            for r in search_response.results
-        ]
-        context = "\n\n---\n\n".join(context_chunks)
+        # 5. Kontext aufbauen - mit Fallback auf direkten Dokument-Text
+        context = ""
+        fallback_used = False
+        fallback_doc_name = None
+
+        if search_response.results:
+            # Normal: RAG-Chunks als Kontext
+            context_chunks = [
+                f"[Quelle: Dokument {r.document_id}, Seite {r.page_number or 'N/A'}]\n{r.chunk_text}"
+                for r in search_response.results
+            ]
+            context = "\n\n---\n\n".join(context_chunks)
+        elif document_ids:
+            # Fallback: Dokument-Text direkt laden (keine Chunks vorhanden)
+            from app.db.models import Document
+            doc_result = await db.execute(
+                select(Document).where(Document.id == document_ids[0])
+            )
+            doc = doc_result.scalar_one_or_none()
+
+            if doc and doc.extracted_text:
+                # Text ggf. kuerzen (LLM-Context-Limit beachten)
+                max_chars = 15000  # ~4000 Tokens
+                text = doc.extracted_text[:max_chars]
+                if len(doc.extracted_text) > max_chars:
+                    text += "\n\n[... Text gekuerzt, Dokument hat mehr Inhalt ...]"
+
+                context = text
+                fallback_used = True
+                fallback_doc_name = doc.original_filename
+                logger.info(
+                    "chat_fallback_direct_text",
+                    document_id=str(doc.id),
+                    document_name=doc.original_filename,
+                    text_length=len(doc.extracted_text),
+                    truncated=len(doc.extracted_text) > max_chars,
+                )
+            else:
+                # Dokument existiert aber hat keinen Text (noch nicht verarbeitet)
+                logger.warning(
+                    "chat_fallback_no_text",
+                    document_id=str(document_ids[0]),
+                    has_doc=doc is not None,
+                    has_text=doc.extracted_text is not None if doc else False,
+                )
 
         # 6. LLM Context Type bestimmen
         llm_context = LLMContextType.REALTIME if request.realtime else LLMContextType.GENERAL
 
-        # 7. LLM Anfrage (lange Operation - DB ist frei)
-        messages = [
-            LLMMessage(
-                role="system",
-                content=f"""Du bist ein hilfreicher Assistent fuer ein Dokumentenmanagementsystem.
+        # 7. System-Prompt je nach Modus (Fallback vs RAG)
+        if fallback_used:
+            system_content = f"""Du bist ein hilfreicher Assistent.
+Der Benutzer hat das Dokument '{fallback_doc_name}' hochgeladen.
+Analysiere den Inhalt und beantworte Fragen dazu.
+Antworte auf Deutsch.
+
+DOKUMENTINHALT:
+{context}"""
+        else:
+            system_content = f"""Du bist ein hilfreicher Assistent fuer ein Dokumentenmanagementsystem.
 Beantworte Fragen basierend auf dem folgenden Kontext aus den Dokumenten.
 Wenn du etwas nicht weisst, sage es ehrlich.
 Antworte auf Deutsch.
 
 KONTEXT:
 {context}"""
-            ),
+
+        # 8. LLM Anfrage (lange Operation - DB ist frei)
+        messages = [
+            LLMMessage(role="system", content=system_content),
             LLMMessage(role="user", content=request.message),
         ]
 
@@ -285,8 +353,6 @@ KONTEXT:
             role="assistant",
             content=llm_response.content,
             thinking_content=llm_response.thinking_content,
-            source_chunks=[r.chunk_id for r in search_response.results],
-            source_documents=list(set(r.document_id for r in search_response.results)),
             model_used=llm_response.model,
             tokens_input=llm_response.tokens_input,
             tokens_output=llm_response.tokens_output,
@@ -371,15 +437,29 @@ async def chat_with_documents_stream(
     # ===================================================================
 
     try:
-        async with get_async_session_context() as db:
+        async with AsyncSessionLocal() as db:
+            # Document-Context: Wenn context_type="document", dann nur in diesem Dokument suchen
+            document_ids = None
+            search_threshold = settings.RAG_SEMANTIC_THRESHOLD
+            if request.context_type == "document" and request.context_id:
+                from uuid import UUID
+                try:
+                    document_ids = [UUID(request.context_id)]
+                    # Bei explizitem Dokument-Kontext: Threshold auf 0 setzen
+                    search_threshold = 0.0
+                    logger.info(f"Streaming Chat mit Dokument-Kontext: {request.context_id} (threshold=0)")
+                except ValueError:
+                    logger.warning(f"Ungueltige Document-ID: {request.context_id}")
+
             # 1. Relevante Chunks finden
             search_response = await search_service.semantic_search(
                 db=db,
                 query=request.message,
                 limit=settings.RAG_CHAT_CONTEXT_CHUNKS,
-                threshold=settings.RAG_SEMANTIC_THRESHOLD,
-                document_ids=None,
+                threshold=search_threshold,
+                document_ids=document_ids,
                 rerank=settings.RAG_RERANK_ENABLED,
+                user_id=current_user.id,  # SECURITY: Nur eigene Dokumente durchsuchen
             )
 
             # 2. Chat Session verwalten
@@ -414,9 +494,36 @@ async def chat_with_documents_stream(
             # 4. Session-ID sichern und COMMIT
             session_id = session.id
             user_id = current_user.id
+
+            # 5. Fallback: Wenn keine Chunks, aber Dokument-Kontext, Text direkt laden
+            fallback_context = None
+            fallback_doc_name = None
+            if not search_response.results and document_ids:
+                from app.db.models import Document
+                doc_result = await db.execute(
+                    select(Document).where(Document.id == document_ids[0])
+                )
+                doc = doc_result.scalar_one_or_none()
+
+                if doc and doc.extracted_text:
+                    max_chars = 15000  # ~4000 Tokens
+                    text = doc.extracted_text[:max_chars]
+                    if len(doc.extracted_text) > max_chars:
+                        text += "\n\n[... Text gekuerzt, Dokument hat mehr Inhalt ...]"
+
+                    fallback_context = text
+                    fallback_doc_name = doc.original_filename
+                    logger.info(
+                        "stream_fallback_direct_text",
+                        document_id=str(doc.id),
+                        document_name=doc.original_filename,
+                        text_length=len(doc.extracted_text),
+                        truncated=len(doc.extracted_text) > max_chars,
+                    )
+
             await db.commit()
 
-            # 5. Search results für Generator sichern (außerhalb der Session)
+            # 6. Search results für Generator sichern (außerhalb der Session)
             search_results = list(search_response.results)
 
     except Exception as e:
@@ -436,45 +543,60 @@ async def chat_with_documents_stream(
     async def generate_stream():
         """Generator fuer SSE-Events."""
         try:
-            # 6. Kontext aufbauen
-            context_chunks = [
-                f"[Quelle: Dokument {r.document_id}, Seite {r.page_number or 'N/A'}]\n{r.chunk_text}"
-                for r in search_results
-            ]
-            context = "\n\n---\n\n".join(context_chunks)
+            # 7. Kontext aufbauen - Normal oder Fallback
+            if fallback_context:
+                # Fallback-Modus: Direkter Dokumenttext
+                context = fallback_context
 
-            # 7. Quellen senden
-            for r in search_results:
-                source_event = {
-                    "type": "source",
-                    "source": {
-                        "chunk_id": str(r.chunk_id),
-                        "document_id": str(r.document_id),
-                        "chunk_text": r.chunk_text[:200] + "..." if len(r.chunk_text) > 200 else r.chunk_text,
-                        "chunk_index": r.chunk_index,
-                        "page_number": r.page_number,
-                        "section_type": r.section_type,
-                        "similarity": r.similarity,
-                        "rerank_score": r.rerank_score,
-                    }
-                }
-                yield f"data: {json.dumps(source_event)}\n\n"
+                # 8. System-Prompt fuer Fallback
+                system_content = f"""Du bist ein hilfreicher Assistent.
+Der Benutzer hat das Dokument '{fallback_doc_name}' hochgeladen.
+Analysiere den Inhalt und beantworte Fragen dazu.
+Antworte auf Deutsch.
 
-            # 8. LLM Context
-            llm_context = LLMContextType.REALTIME if request.realtime else LLMContextType.GENERAL
+DOKUMENTINHALT:
+{context}"""
+                # Keine Quellen senden bei Fallback (keine Chunks vorhanden)
+            else:
+                # Normal-Modus: RAG-Chunks
+                context_chunks = [
+                    f"[Quelle: Dokument {r.document_id}, Seite {r.page_number or 'N/A'}]\n{r.chunk_text}"
+                    for r in search_results
+                ]
+                context = "\n\n---\n\n".join(context_chunks)
 
-            # 9. LLM Streaming
-            messages = [
-                LLMMessage(
-                    role="system",
-                    content=f"""Du bist ein hilfreicher Assistent fuer ein Dokumentenmanagementsystem.
+                # 8. System-Prompt fuer RAG
+                system_content = f"""Du bist ein hilfreicher Assistent fuer ein Dokumentenmanagementsystem.
 Beantworte Fragen basierend auf dem folgenden Kontext aus den Dokumenten.
 Wenn du etwas nicht weisst, sage es ehrlich.
 Antworte auf Deutsch.
 
 KONTEXT:
 {context}"""
-                ),
+
+                # 9. Quellen senden (nur bei RAG-Modus)
+                for r in search_results:
+                    source_event = {
+                        "type": "source",
+                        "source": {
+                            "chunk_id": str(r.chunk_id),
+                            "document_id": str(r.document_id),
+                            "chunk_text": r.chunk_text[:200] + "..." if len(r.chunk_text) > 200 else r.chunk_text,
+                            "chunk_index": r.chunk_index,
+                            "page_number": r.page_number,
+                            "section_type": r.section_type,
+                            "similarity": r.similarity,
+                            "rerank_score": r.rerank_score,
+                        }
+                    }
+                    yield f"data: {json.dumps(source_event)}\n\n"
+
+            # 10. LLM Context
+            llm_context = LLMContextType.REALTIME if request.realtime else LLMContextType.GENERAL
+
+            # 11. LLM Streaming
+            messages = [
+                LLMMessage(role="system", content=system_content),
                 LLMMessage(role="user", content=request.message),
             ]
 
@@ -490,7 +612,7 @@ KONTEXT:
             # PHASE 3: Post-Stream DB-Ops mit EIGENER Session
             # ===================================================================
 
-            async with get_async_session_context() as post_db:
+            async with AsyncSessionLocal() as post_db:
                 session = await post_db.get(RAGChatSession, session_id)
                 if not session:
                     yield f"data: {json.dumps({'type': 'error', 'error': 'Session verloren'})}\n\n"
@@ -501,8 +623,6 @@ KONTEXT:
                     session_id=session.id,
                     role="assistant",
                     content=full_response,
-                    source_chunks=[r.chunk_id for r in search_results],
-                    source_documents=list(set(r.document_id for r in search_results)),
                 )
                 post_db.add(assistant_message)
 
@@ -757,7 +877,25 @@ async def chunk_document(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ) -> RAGChunkDocumentResponse:
-    """Chunked ein Dokument und generiert Embeddings."""
+    """Chunked ein Dokument und generiert Embeddings.
+
+    SECURITY: Nur eigene Dokumente koennen gechunkt werden.
+    """
+    # SECURITY: Pruefen ob User das Dokument besitzt
+    doc = await db.get(Document, request.document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
+
+    if doc.owner_id != current_user.id:
+        logger.warning(
+            "security_access_denied",
+            action="chunk_document",
+            user_id=str(current_user.id),
+            document_id=str(request.document_id),
+            owner_id=str(doc.owner_id) if doc.owner_id else None,
+        )
+        raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
+
     chunking_service = get_chunking_service()
 
     try:
@@ -797,14 +935,40 @@ async def bulk_chunk_documents(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    """Startet Bulk-Chunking als Background Task."""
-    # Batch Job erstellen
+    """Startet Bulk-Chunking als Background Task.
+
+    SECURITY: Nur eigene Dokumente koennen gechunkt werden.
+    """
+    # SECURITY: Wenn document_ids angegeben, pruefen ob alle dem User gehoeren
+    if request.document_ids:
+        query = select(func.count()).select_from(Document).where(
+            Document.id.in_(request.document_ids),
+            Document.owner_id == current_user.id
+        )
+        result = await db.execute(query)
+        valid_count = result.scalar()
+
+        if valid_count != len(request.document_ids):
+            logger.warning(
+                "security_access_denied",
+                action="bulk_chunk_documents",
+                user_id=str(current_user.id),
+                requested_count=len(request.document_ids),
+                valid_count=valid_count,
+            )
+            raise HTTPException(
+                status_code=403,
+                detail="Nicht alle angegebenen Dokumente gehoeren Ihnen"
+            )
+
+    # Batch Job erstellen - immer mit user_id fuer Filter im Background Task
     job = RAGBatchJob(
         job_type="chunk_documents",
         job_name=f"Bulk Chunking - {datetime.now(timezone.utc).isoformat()}",
         created_by_id=current_user.id,
         parameters={
             "document_ids": [str(d) for d in request.document_ids] if request.document_ids else None,
+            "user_id": str(current_user.id),  # SECURITY: User-ID fuer Filter im Background Task
             "force": request.force,
             "strategy": request.strategy,
         },
@@ -854,8 +1018,15 @@ async def list_batch_jobs(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ) -> List[RAGBatchJobSummary]:
-    """Listet Batch-Jobs auf."""
-    query = select(RAGBatchJob).order_by(RAGBatchJob.created_at.desc())
+    """Listet Batch-Jobs auf.
+
+    SECURITY: Zeigt nur Jobs an, die vom aktuellen User erstellt wurden.
+    """
+    query = (
+        select(RAGBatchJob)
+        .where(RAGBatchJob.created_by_id == current_user.id)  # SECURITY: Nur eigene Jobs
+        .order_by(RAGBatchJob.created_at.desc())
+    )
 
     if status:
         query = query.where(RAGBatchJob.status == status.value)
@@ -886,9 +1057,22 @@ async def get_batch_job(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ) -> RAGBatchJobResponse:
-    """Laedt Details eines Batch-Jobs."""
+    """Laedt Details eines Batch-Jobs.
+
+    SECURITY: Zeigt nur Jobs an, die vom aktuellen User erstellt wurden.
+    """
     job = await db.get(RAGBatchJob, job_id)
     if not job:
+        raise HTTPException(status_code=404, detail="Job nicht gefunden")
+
+    if job.created_by_id != current_user.id:
+        logger.warning(
+            "security_access_denied",
+            action="get_batch_job",
+            user_id=str(current_user.id),
+            job_id=str(job_id),
+            owner_id=str(job.created_by_id) if job.created_by_id else None,
+        )
         raise HTTPException(status_code=404, detail="Job nicht gefunden")
 
     return RAGBatchJobResponse.model_validate(job)

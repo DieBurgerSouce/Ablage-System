@@ -85,7 +85,7 @@ def run_benchmark_batch(
                     backends=backends or ["deepseek-janus-pro", "got-ocr-2.0", "surya-gpu", "surya"],
                     force_rerun=force_reprocess,
                 )
-                result = await runner.run_benchmark( request=request)
+                result = await runner.run_benchmark(db=session, request=request)
                 return {
                     "success": result.success,
                     "samples_processed": result.samples_processed,

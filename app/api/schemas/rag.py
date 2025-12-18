@@ -190,7 +190,13 @@ class RAGChatMessageBase(BaseModel):
 
 class RAGChatMessageCreate(RAGChatMessageBase):
     """Schema zum Erstellen einer Chat Message."""
-    pass
+    attached_document_id: Optional[UUID] = None
+
+
+class AttachedDocumentInfo(BaseModel):
+    """Embedded Info ueber angehaengtes Dokument."""
+    id: UUID
+    name: str
 
 
 class RAGChatMessageResponse(RAGChatMessageBase):
@@ -206,6 +212,7 @@ class RAGChatMessageResponse(RAGChatMessageBase):
     tokens_output: Optional[int]
     generation_time_ms: Optional[int]
     created_at: datetime
+    attached_document: Optional[AttachedDocumentInfo] = None
 
 
 class RAGChatSessionCreate(BaseModel):

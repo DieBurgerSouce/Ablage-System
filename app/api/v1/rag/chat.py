@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.db.models import (
     User,
@@ -35,6 +36,7 @@ from app.api.schemas.rag import (
     RAGChatMessageResponse,
     RAGContextType,
     RAGChunkSearchResult,
+    AttachedDocumentInfo,
 )
 from app.services.rag.llm_service import (
     get_llm_service,
@@ -160,11 +162,12 @@ async def send_chat_message(
         )
 
         # 7. Nachrichten speichern
-        # User-Nachricht
+        # User-Nachricht (mit optionalem attached_document)
         user_message = RAGChatMessage(
             session_id=session.id,
             role=RAGChatRole.USER,
-            content=request.message
+            content=request.message,
+            attached_document_id=document_ids[0] if document_ids else None
         )
         db.add(user_message)
 
@@ -178,7 +181,6 @@ async def send_chat_message(
             tokens_input=response.tokens_input,
             tokens_output=response.tokens_output,
             generation_time_ms=response.generation_time_ms,
-            source_chunks=[UUID(c["chunk_id"]) for c in chunks] if chunks else None
         )
         db.add(assistant_message)
 
@@ -256,11 +258,21 @@ async def send_chat_message_stream(
         try:
             # 1. Relevante Chunks finden
             document_ids = None
+            logger.debug(
+                "rag_chat_context_check",
+                context_type=request.context_type.value if request.context_type else None,
+                context_id=request.context_id,
+            )
             if request.context_type == RAGContextType.DOCUMENT and request.context_id:
                 try:
                     document_ids = [UUID(request.context_id)]
+                    logger.info(
+                        "document_context_set",
+                        context_id=request.context_id,
+                        document_ids=str(document_ids)
+                    )
                 except ValueError:
-                    pass
+                    logger.warning("invalid_context_id", context_id=request.context_id)
 
             chunks = await search_service.search_for_context(
                 db=db,
@@ -269,12 +281,111 @@ async def send_chat_message_stream(
                 document_ids=document_ids
             )
 
+            # Debug-Logging: Wurden Chunks gefunden?
+            logger.info(
+                "rag_chat_search_result",
+                query=request.message[:50],
+                chunks_found=len(chunks),
+                has_context=bool(chunks),
+                document_filter=str(document_ids) if document_ids else "none"
+            )
+
             # 2. Kontext aufbauen
             context_parts = []
             for c in chunks:
                 page_info = f", Seite {c.get('page_number')}" if c.get('page_number') else ""
                 context_parts.append(f"[Quelle: Dokument {c['document_id']}{page_info}]\n{c['text']}")
             context = "\n\n---\n\n".join(context_parts)
+
+            # Fallback wenn keine Chunks gefunden
+            fallback_used = False
+            fallback_doc_name = None
+            if not context and document_ids:
+                # Fallback: Dokument-Text direkt laden (keine Chunks vorhanden)
+                from app.db.models import Document
+                doc_result = await db.execute(
+                    select(Document).where(Document.id == document_ids[0])
+                )
+                doc = doc_result.scalar_one_or_none()
+
+                if doc and doc.extracted_text:
+                    # Text ggf. kuerzen (LLM-Context-Limit beachten)
+                    max_chars = 15000  # ~4000 Tokens
+                    text = doc.extracted_text[:max_chars]
+                    if len(doc.extracted_text) > max_chars:
+                        text += "\n\n[... Text gekuerzt, Dokument hat mehr Inhalt ...]"
+
+                    context = text
+                    fallback_used = True
+                    fallback_doc_name = doc.original_filename
+                    logger.info(
+                        "chat_fallback_direct_text",
+                        document_id=str(doc.id),
+                        document_name=doc.original_filename,
+                        text_length=len(doc.extracted_text),
+                        truncated=len(doc.extracted_text) > max_chars,
+                    )
+                else:
+                    # Fallback: Dokument aus MinIO laden und schnell Text extrahieren
+                    if doc and doc.file_path:
+                        try:
+                            from app.services.storage_service import get_storage_service
+                            from app.services.ocr import quick_ocr_preview
+                            import tempfile
+                            from pathlib import Path as FilePath
+
+                            storage = get_storage_service()
+                            file_bytes = await storage.download_document(doc.file_path)
+
+                            # Temporaere Datei fuer Text-Extraktion
+                            suffix = FilePath(doc.original_filename).suffix or ".pdf"
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                                tmp.write(file_bytes)
+                                tmp_path = FilePath(tmp.name)
+
+                            try:
+                                # Schnelle Text-Extraktion (PyMuPDF fuer embedded text)
+                                preview_text = await quick_ocr_preview(
+                                    tmp_path,
+                                    max_pages=10,
+                                    max_chars=15000
+                                )
+
+                                if preview_text and len(preview_text.strip()) > 50:
+                                    context = preview_text
+                                    fallback_used = True
+                                    fallback_doc_name = doc.original_filename
+                                    logger.info(
+                                        "chat_fallback_quick_ocr",
+                                        document_id=str(doc.id),
+                                        document_name=doc.original_filename,
+                                        text_length=len(preview_text),
+                                    )
+                                else:
+                                    context = "HINWEIS: Das Dokument wurde noch nicht verarbeitet und enthaelt keinen extrahierbaren Text. Bitte warten Sie einen Moment."
+                                    logger.warning("chat_fallback_quick_ocr_empty", document_id=str(doc.id))
+                            finally:
+                                # Cleanup temp file
+                                tmp_path.unlink(missing_ok=True)
+
+                        except Exception as e:
+                            logger.warning("chat_fallback_quick_ocr_failed", document_id=str(doc.id), error=str(e))
+                            context = "HINWEIS: Das Dokument konnte nicht gelesen werden. Bitte warten Sie bis die Verarbeitung abgeschlossen ist."
+                    else:
+                        context = "HINWEIS: Das Dokument wurde noch nicht verarbeitet. Bitte warten Sie einen Moment und versuchen Sie es erneut."
+                        logger.warning(
+                            "chat_fallback_no_text",
+                            document_id=str(document_ids[0]) if document_ids else "none",
+                            has_doc=doc is not None,
+                            has_text=doc.extracted_text is not None if doc else False,
+                        )
+            elif not context:
+                context = "HINWEIS: Es wurden keine relevanten Dokumente zu dieser Anfrage gefunden. Der Benutzer fragt moeglicherweise nach Dokumenten, die noch nicht indexiert wurden, oder die Suchanfrage ist zu allgemein."
+                logger.warning(
+                    "rag_chat_no_context",
+                    query=request.message[:50],
+                    document_filter=str(document_ids) if document_ids else "none"
+                )
 
             # 3. Chat Session verwalten
             if request.session_id:
@@ -288,6 +399,7 @@ async def send_chat_message_stream(
                 if not session:
                     yield f"data: {json.dumps({'type': 'error', 'error': 'Session nicht gefunden'})}\n\n"
                     return
+                session_is_new = False
             else:
                 session = RAGChatSession(
                     user_id=current_user.id,
@@ -298,16 +410,22 @@ async def send_chat_message_stream(
                 )
                 db.add(session)
                 await db.flush()
+                session_is_new = True
 
-            # 4. User Message speichern
+            # 4. User Message speichern (mit optionalem attached_document)
             user_message = RAGChatMessage(
                 session_id=session.id,
                 role=RAGChatRole.USER,
                 content=request.message,
+                attached_document_id=document_ids[0] if document_ids else None,
             )
             db.add(user_message)
 
             # 5. Quellen senden
+            logger.info(
+                "rag_chat_sending_sources",
+                source_count=len(chunks)
+            )
             for c in chunks:
                 source_event = {
                     "type": "source",
@@ -318,7 +436,7 @@ async def send_chat_message_stream(
                         "chunk_index": c.get("chunk_index", 0),
                         "page_number": c.get("page_number"),
                         "section_type": c.get("section_type"),
-                        "similarity": c.get("similarity"),
+                        "similarity": c.get("similarity", 0.0),
                         "rerank_score": c.get("rerank_score"),
                     }
                 }
@@ -329,18 +447,26 @@ async def send_chat_message_stream(
             if request.context_type == RAGContextType.CUSTOMER:
                 llm_context = LLMContextType.CUSTOMER
 
-            # 7. LLM Streaming
-            messages = [
-                LLMMessage(
-                    role="system",
-                    content=f"""Du bist ein hilfreicher Assistent fuer ein Dokumentenmanagementsystem.
+            # 7. LLM Streaming - System-Prompt je nach Modus
+            if fallback_used:
+                system_content = f"""Du bist ein hilfreicher Assistent.
+Der Benutzer hat das Dokument '{fallback_doc_name}' hochgeladen.
+Analysiere den Inhalt und beantworte Fragen dazu.
+Antworte auf Deutsch.
+
+DOKUMENTINHALT:
+{context}"""
+            else:
+                system_content = f"""Du bist ein hilfreicher Assistent fuer ein Dokumentenmanagementsystem.
 Beantworte Fragen basierend auf dem folgenden Kontext aus den Dokumenten.
 Wenn du etwas nicht weisst, sage es ehrlich.
 Antworte auf Deutsch.
 
 KONTEXT:
 {context}"""
-                ),
+
+            messages = [
+                LLMMessage(role="system", content=system_content),
                 LLMMessage(role="user", content=request.message),
             ]
 
@@ -357,7 +483,6 @@ KONTEXT:
                 session_id=session.id,
                 role=RAGChatRole.ASSISTANT,
                 content=full_response,
-                source_chunks=[UUID(c["chunk_id"]) for c in chunks] if chunks else None,
             )
             db.add(assistant_message)
 
@@ -365,9 +490,25 @@ KONTEXT:
             session.message_count = (session.message_count or 0) + 2
             session.last_message_at = datetime.now(timezone.utc)
 
+            # 10. Titel generieren wenn neue Session
+            if session_is_new and not session.title:
+                try:
+                    generated_title = await _generate_chat_title(
+                        llm_service=llm_service,
+                        user_message=request.message
+                    )
+                    session.title = generated_title
+                    logger.info(
+                        "chat_title_auto_generated",
+                        session_id=str(session.id),
+                        title=generated_title
+                    )
+                except Exception as e:
+                    logger.warning("chat_title_generation_skipped", error=str(e))
+
             await db.commit()
 
-            # 10. Done Event
+            # 11. Done Event
             yield f"data: {json.dumps({'type': 'done', 'session_id': str(session.id), 'message_id': str(assistant_message.id)})}\n\n"
 
             logger.info(
@@ -515,10 +656,11 @@ async def get_chat_session(
             detail="Session nicht gefunden"
         )
 
-    # Nachrichten laden
+    # Nachrichten laden (mit attached_document eager loading)
     messages_result = await db.execute(
         select(RAGChatMessage)
         .where(RAGChatMessage.session_id == session_id)
+        .options(selectinload(RAGChatMessage.attached_document))
         .order_by(RAGChatMessage.created_at)
     )
     messages = messages_result.scalars().all()
@@ -547,10 +689,71 @@ async def get_chat_session(
                 tokens_input=m.tokens_input,
                 tokens_output=m.tokens_output,
                 generation_time_ms=m.generation_time_ms,
-                created_at=m.created_at
+                created_at=m.created_at,
+                attached_document=AttachedDocumentInfo(
+                    id=m.attached_document.id,
+                    name=m.attached_document.original_filename
+                ) if m.attached_document else None
             )
             for m in messages
         ]
+    )
+
+
+@router.put(
+    "/sessions/{session_id}",
+    response_model=RAGChatSessionResponse,
+    summary="Chat-Session aktualisieren",
+    description="Aktualisiert eine Chat-Session (z.B. Titel)."
+)
+async def update_chat_session(
+    session_id: UUID,
+    title: str = Query(..., max_length=255, description="Neuer Titel der Session"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> RAGChatSessionResponse:
+    """
+    Aktualisiert eine Chat-Session.
+
+    Ermoeglicht das Setzen eines benutzerdefinierten Titels.
+    """
+    result = await db.execute(
+        select(RAGChatSession).where(
+            RAGChatSession.id == session_id,
+            RAGChatSession.user_id == current_user.id
+        )
+    )
+    session = result.scalar_one_or_none()
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session nicht gefunden"
+        )
+
+    session.title = title
+    await db.commit()
+    await db.refresh(session)
+
+    logger.info(
+        "chat_session_title_updated",
+        user_id=str(current_user.id),
+        session_id=str(session_id),
+        new_title=title
+    )
+
+    return RAGChatSessionResponse(
+        id=session.id,
+        user_id=session.user_id,
+        session_token=session.session_token,
+        title=session.title,
+        context_type=session.context_type,
+        context_id=session.context_id,
+        status=session.status,
+        message_count=session.message_count or 0,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+        last_message_at=session.last_message_at,
     )
 
 
@@ -611,6 +814,80 @@ async def delete_chat_session(
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
+async def _generate_chat_title(
+    llm_service: LLMService,
+    user_message: str
+) -> str:
+    """
+    Generiert einen kurzen Chat-Titel aus der ersten User-Nachricht.
+
+    Nutzt das lokale LLM fuer intelligente Titel-Generierung.
+    Fallback auf erste 50 Zeichen bei Fehlern.
+
+    Args:
+        llm_service: LLM Service Instanz
+        user_message: Die erste Nachricht des Users
+
+    Returns:
+        Kurzer Titel (max 50 Zeichen)
+    """
+    try:
+        # Thematischer Prompt fuer bessere Titel wie bei Claude Desktop
+        prompt = f"""Du bist ein Titel-Generator für Chat-Konversationen.
+
+Erstelle einen prägnanten, thematischen Titel der:
+- Das Kernthema in 3-6 Wörtern zusammenfasst
+- Auf Deutsch ist
+- Wie eine professionelle Überschrift klingt
+- Das Ziel/die Absicht des Users erfasst
+
+Beispiele guter Titel:
+- "Rechnungsdetails von Alpac prüfen"
+- "OCR-Optimierung für Dokumente"
+- "Vertragsanalyse Lieferanten"
+- "Zahlungsstatus offene Rechnungen"
+
+Nachricht: {user_message[:300]}
+
+Titel (NUR der Titel, ohne Anführungszeichen):"""
+
+        messages = [
+            LLMMessage(role="user", content=prompt)
+        ]
+
+        # Generierung mit ausreichend Tokens fuer thematische Titel
+        title = ""
+        async for chunk in llm_service.generate_stream(
+            messages=messages,
+            context_type=LLMContextType.GENERAL,
+            max_tokens=50,
+        ):
+            title += chunk
+
+        # Bereinigen
+        title = title.strip().strip('"').strip("'").strip()
+
+        # Auf 50 Zeichen begrenzen
+        if len(title) > 50:
+            title = title[:47] + "..."
+
+        # Fallback wenn leer
+        if not title:
+            title = user_message[:50].strip()
+            if len(user_message) > 50:
+                title = title.rsplit(' ', 1)[0] + "..."
+
+        return title
+
+    except Exception as e:
+        logger.warning("chat_title_generation_failed", error=str(e))
+        # Fallback: Erste 50 Zeichen der Nachricht
+        title = user_message[:50].strip()
+        if len(user_message) > 50:
+            title = title.rsplit(' ', 1)[0] + "..."
+        return title
+
 
 async def _get_or_create_session(
     db: AsyncSession,

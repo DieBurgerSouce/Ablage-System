@@ -21,6 +21,7 @@ from redis.exceptions import RedisError, ConnectionError as RedisConnectionError
 from app.db.models import User
 from app.api.dependencies import get_current_user, get_db
 from app.services.search_service import get_search_service, SearchService
+from app.services.search_analytics_service import get_search_analytics_service
 from app.db.schemas import (
     SearchFilters,
     SearchFacetsResponse,
@@ -718,4 +719,82 @@ async def get_search_stats(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Statistiken"
+        )
+
+
+# =============================================================================
+# Position-Weighted Click Analytics
+# =============================================================================
+
+@router.get(
+    "/analytics/weighted-ctr",
+    summary="Gewichtete CTR-Statistiken",
+    description="Gibt Position-Weighted Click-Through-Rate Statistiken zurueck."
+)
+async def get_weighted_ctr_analytics(
+    days: int = Query(30, ge=1, le=365, description="Analysezeitraum in Tagen"),
+    min_searches: int = Query(5, ge=1, le=100, description="Mindestanzahl Suchen pro Query"),
+    limit: int = Query(20, ge=1, le=100, description="Maximale Anzahl Ergebnisse pro Kategorie"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """
+    Position-Weighted CTR Statistiken.
+
+    Diese Metrik bewertet die Suchqualitaet basierend auf Klick-Positionen:
+
+    **Gewichtungsformel:**
+    - Position 1: Gewicht 1.0 (volle Relevanz)
+    - Position 5: Gewicht ~0.55 (mittlere Relevanz)
+    - Position 10: Gewicht ~0.26 (niedrige Relevanz)
+    - Formel: exp(-0.15 * (position - 1))
+
+    **Rueckgabe:**
+    - `overall`: Gesamtstatistiken (CTR, weighted CTR, avg. erste Klickposition)
+    - `by_search_type`: Aufschluesselung nach Suchtyp (fts, semantic, hybrid)
+    - `top_queries_by_weighted_ctr`: Queries mit hoechster gewichteter CTR
+    - `low_performing_queries`: Queries mit niedriger CTR (Verbesserungspotenzial)
+    - `position_distribution`: Verteilung der Klicks nach Position
+
+    **Anwendungsfaelle:**
+    - Identifikation von Queries mit schlechtem Ranking
+    - Vergleich der Suchtypen (FTS vs. Hybrid vs. Semantic)
+    - Messung der Suchqualitaet ueber Zeit
+    """
+    try:
+        analytics_service = get_search_analytics_service()
+
+        result = await analytics_service.get_weighted_ctr_statistics(
+            db=db,
+            days=days,
+            min_searches=min_searches,
+            limit=limit,
+        )
+
+        logger.info(
+            "weighted_ctr_analytics_retrieved",
+            user_id=str(current_user.id),
+            period_days=days,
+            total_searches=result.get("overall", {}).get("total_searches", 0),
+        )
+
+        return result
+
+    except OperationalError as e:
+        logger.error("weighted_ctr_db_connection_error", error_type="OperationalError", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Datenbankverbindung nicht verfuegbar"
+        )
+    except SQLAlchemyError as e:
+        logger.error("weighted_ctr_db_error", error_type=type(e).__name__, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Datenbankfehler beim Abrufen der Weighted CTR Statistiken"
+        )
+    except Exception as e:
+        logger.error("weighted_ctr_error", error_type=type(e).__name__, error=str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Abrufen der Weighted CTR Statistiken"
         )

@@ -366,7 +366,8 @@ class LLMService:
         messages: List[LLMMessage],
         model: Optional[str] = None,
         context_type: LLMContextType = LLMContextType.GENERAL,
-        enable_thinking: bool = False  # Meist deaktiviert fuer Streaming
+        enable_thinking: bool = False,  # Meist deaktiviert fuer Streaming
+        max_tokens: Optional[int] = None  # Optionales Token-Limit
     ) -> AsyncGenerator[str, None]:
         """Generiert eine Streaming-LLM-Antwort.
 
@@ -375,6 +376,7 @@ class LLMService:
             model: Optionales Modell
             context_type: Kontext-Typ
             enable_thinking: Chain-of-Thought aktivieren
+            max_tokens: Optionales Token-Limit (Ollama: num_predict)
 
         Yields:
             Text-Chunks der Antwort
@@ -389,14 +391,19 @@ class LLMService:
         # Nachrichten vorbereiten
         prepared_messages = self._prepare_messages(messages, enable_thinking)
 
+        # Options aufbauen
+        options = {
+            "temperature": model_config.temperature,
+            "top_p": model_config.top_p,
+        }
+        if max_tokens:
+            options["num_predict"] = max_tokens
+
         request_body = {
             "model": model_config.name,
             "messages": prepared_messages,
             "stream": True,
-            "options": {
-                "temperature": model_config.temperature,
-                "top_p": model_config.top_p,
-            }
+            "options": options
         }
 
         logger.info(
