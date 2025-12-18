@@ -237,6 +237,7 @@ export function ChatLayout() {
                 handleSendMessageFallback(content, tempUserMsg.id);
             }
         },
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSendMessageFallback uses same deps
         [activeSessionId, attachedDocument]
     );
 

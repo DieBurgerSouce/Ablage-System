@@ -7,6 +7,9 @@ import { AuthProvider } from '@/lib/auth/AuthContext'
 import { ThemeProvider } from '@/lib/theme/ThemeContext'
 import './index.css'
 
+// i18n Initialisierung (muss vor App-Rendering importiert werden)
+import '@/lib/i18n/config'
+
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
 

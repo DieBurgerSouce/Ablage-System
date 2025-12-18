@@ -1,0 +1,284 @@
+{
+    "common": {
+        "loading": "Wird geladen...",
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "delete": "Löschen",
+        "edit": "Bearbeiten",
+        "create": "Erstellen",
+        "search": "Suchen",
+        "filter": "Filtern",
+        "close": "Schließen",
+        "confirm": "Bestätigen",
+        "back": "Zurück",
+        "next": "Weiter",
+        "yes": "Ja",
+        "no": "Nein",
+        "all": "Alle",
+        "none": "Keine",
+        "upload": "Hochladen",
+        "download": "Herunterladen",
+        "export": "Exportieren",
+        "import": "Importieren",
+        "refresh": "Aktualisieren",
+        "settings": "Einstellungen",
+        "logout": "Abmelden",
+        "login": "Anmelden",
+        "register": "Registrieren",
+        "submit": "Absenden",
+        "reset": "Zurücksetzen",
+        "clear": "Leeren",
+        "select": "Auswählen",
+        "selected": "Ausgewählt",
+        "actions": "Aktionen",
+        "status": "Status",
+        "date": "Datum",
+        "time": "Uhrzeit",
+        "name": "Name",
+        "description": "Beschreibung",
+        "type": "Typ",
+        "size": "Größe",
+        "success": "Erfolgreich",
+        "error": "Fehler",
+        "warning": "Warnung",
+        "info": "Information"
+    },
+    "navigation": {
+        "home": "Startseite",
+        "dashboard": "Dashboard",
+        "documents": "Dokumente",
+        "upload": "Hochladen",
+        "search": "Suche",
+        "chat": "Chat",
+        "admin": "Administration",
+        "settings": "Einstellungen",
+        "profile": "Profil",
+        "help": "Hilfe",
+        "banking": "Banking",
+        "training": "OCR-Training",
+        "datev": "DATEV Export"
+    },
+    "auth": {
+        "login": {
+            "title": "Anmelden",
+            "subtitle": "Melden Sie sich bei Ihrem Konto an",
+            "email": "E-Mail-Adresse",
+            "password": "Passwort",
+            "rememberMe": "Angemeldet bleiben",
+            "forgotPassword": "Passwort vergessen?",
+            "noAccount": "Noch kein Konto?",
+            "signUp": "Registrieren",
+            "button": "Anmelden",
+            "error": "Anmeldung fehlgeschlagen. Bitte überprüfen Sie Ihre Zugangsdaten."
+        },
+        "register": {
+            "title": "Registrieren",
+            "subtitle": "Erstellen Sie ein neues Konto",
+            "username": "Benutzername",
+            "email": "E-Mail-Adresse",
+            "password": "Passwort",
+            "confirmPassword": "Passwort bestätigen",
+            "alreadyAccount": "Bereits ein Konto?",
+            "signIn": "Anmelden",
+            "button": "Registrieren",
+            "error": "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut."
+        },
+        "logout": {
+            "title": "Abmelden",
+            "message": "Möchten Sie sich wirklich abmelden?",
+            "success": "Sie wurden erfolgreich abgemeldet."
+        }
+    },
+    "documents": {
+        "title": "Dokumente",
+        "subtitle": "Verwalten Sie Ihre Dokumente",
+        "upload": {
+            "title": "Dokument hochladen",
+            "dragDrop": "Dateien hierher ziehen oder klicken zum Auswählen",
+            "selectFiles": "Dateien auswählen",
+            "supportedFormats": "Unterstützte Formate: PDF, PNG, JPG, TIFF",
+            "maxSize": "Maximale Dateigröße: 50 MB",
+            "processing": "Wird verarbeitet...",
+            "success": "Dokument erfolgreich hochgeladen",
+            "error": "Fehler beim Hochladen des Dokuments"
+        },
+        "list": {
+            "empty": "Keine Dokumente vorhanden",
+            "columns": {
+                "name": "Dateiname",
+                "type": "Typ",
+                "size": "Größe",
+                "date": "Hochgeladen am",
+                "status": "Status",
+                "actions": "Aktionen"
+            }
+        },
+        "status": {
+            "pending": "Ausstehend",
+            "processing": "Wird verarbeitet",
+            "completed": "Abgeschlossen",
+            "failed": "Fehlgeschlagen"
+        },
+        "actions": {
+            "view": "Anzeigen",
+            "download": "Herunterladen",
+            "delete": "Löschen",
+            "reprocess": "Erneut verarbeiten"
+        },
+        "delete": {
+            "title": "Dokument löschen",
+            "message": "Möchten Sie dieses Dokument wirklich löschen?",
+            "warning": "Diese Aktion kann nicht rückgängig gemacht werden.",
+            "success": "Dokument erfolgreich gelöscht",
+            "error": "Fehler beim Löschen des Dokuments"
+        }
+    },
+    "ocr": {
+        "title": "OCR-Verarbeitung",
+        "backend": {
+            "deepseek": "DeepSeek-Janus-Pro",
+            "gotocr": "GOT-OCR 2.0",
+            "surya": "Surya + Docling",
+            "suryaGpu": "Surya GPU"
+        },
+        "status": {
+            "idle": "Bereit",
+            "processing": "Wird verarbeitet",
+            "completed": "Abgeschlossen",
+            "failed": "Fehlgeschlagen"
+        },
+        "results": {
+            "title": "OCR-Ergebnisse",
+            "extractedText": "Extrahierter Text",
+            "confidence": "Konfidenz",
+            "processingTime": "Verarbeitungszeit",
+            "backend": "Verwendetes Backend"
+        },
+        "errors": {
+            "gpuOom": "GPU-Speicher voll. Fallback auf CPU wird verwendet.",
+            "backendUnavailable": "OCR-Backend nicht verfügbar",
+            "processingFailed": "OCR-Verarbeitung fehlgeschlagen"
+        }
+    },
+    "banking": {
+        "title": "Banking",
+        "accounts": {
+            "title": "Konten",
+            "add": "Konto hinzufügen",
+            "iban": "IBAN",
+            "bic": "BIC",
+            "balance": "Kontostand"
+        },
+        "transactions": {
+            "title": "Transaktionen",
+            "import": "Transaktionen importieren",
+            "export": "Transaktionen exportieren",
+            "date": "Buchungsdatum",
+            "amount": "Betrag",
+            "description": "Verwendungszweck",
+            "counterparty": "Gegenkonto"
+        },
+        "reconciliation": {
+            "title": "Kontoabstimmung",
+            "matched": "Abgestimmt",
+            "unmatched": "Nicht abgestimmt",
+            "pending": "Ausstehend"
+        },
+        "payments": {
+            "title": "Zahlungen",
+            "create": "Zahlung erstellen",
+            "status": {
+                "pending": "Ausstehend",
+                "approved": "Genehmigt",
+                "executed": "Ausgeführt",
+                "failed": "Fehlgeschlagen"
+            }
+        }
+    },
+    "chat": {
+        "title": "Chat",
+        "placeholder": "Nachricht eingeben...",
+        "send": "Senden",
+        "thinking": "Denkt nach...",
+        "sources": "Quellen",
+        "noSources": "Keine Quellen gefunden",
+        "newChat": "Neuer Chat",
+        "history": "Chatverlauf",
+        "clearHistory": "Verlauf löschen"
+    },
+    "settings": {
+        "title": "Einstellungen",
+        "general": {
+            "title": "Allgemein",
+            "language": "Sprache",
+            "theme": "Design",
+            "displayMode": "Anzeigemodus"
+        },
+        "display": {
+            "title": "Anzeige",
+            "modes": {
+                "light": "Hell",
+                "dark": "Dunkel",
+                "whitescreen": "Weißschirm (Hoher Kontrast)",
+                "blackscreen": "Schwarzschirm (OLED)"
+            }
+        },
+        "notifications": {
+            "title": "Benachrichtigungen",
+            "email": "E-Mail-Benachrichtigungen",
+            "browser": "Browser-Benachrichtigungen"
+        },
+        "security": {
+            "title": "Sicherheit",
+            "changePassword": "Passwort ändern",
+            "twoFactor": "Zwei-Faktor-Authentifizierung",
+            "sessions": "Aktive Sitzungen"
+        }
+    },
+    "admin": {
+        "title": "Administration",
+        "users": {
+            "title": "Benutzerverwaltung",
+            "add": "Benutzer hinzufügen",
+            "edit": "Benutzer bearbeiten",
+            "delete": "Benutzer löschen",
+            "roles": {
+                "admin": "Administrator",
+                "editor": "Bearbeiter",
+                "viewer": "Betrachter"
+            }
+        },
+        "system": {
+            "title": "System",
+            "health": "Systemstatus",
+            "metrics": "Metriken",
+            "logs": "Protokolle"
+        },
+        "backup": {
+            "title": "Backup",
+            "create": "Backup erstellen",
+            "restore": "Backup wiederherstellen",
+            "schedule": "Zeitplan"
+        }
+    },
+    "errors": {
+        "general": "Ein Fehler ist aufgetreten",
+        "network": "Netzwerkfehler. Bitte überprüfen Sie Ihre Internetverbindung.",
+        "unauthorized": "Nicht autorisiert. Bitte melden Sie sich erneut an.",
+        "forbidden": "Zugriff verweigert. Sie haben keine Berechtigung für diese Aktion.",
+        "notFound": "Die angeforderte Ressource wurde nicht gefunden.",
+        "serverError": "Serverfehler. Bitte versuchen Sie es später erneut.",
+        "validation": "Validierungsfehler. Bitte überprüfen Sie Ihre Eingaben.",
+        "timeout": "Die Anfrage hat das Zeitlimit überschritten.",
+        "fileTooBig": "Die Datei ist zu groß.",
+        "unsupportedFormat": "Dieses Dateiformat wird nicht unterstützt."
+    },
+    "validation": {
+        "required": "Dieses Feld ist erforderlich",
+        "email": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
+        "minLength": "Mindestens {{min}} Zeichen erforderlich",
+        "maxLength": "Maximal {{max}} Zeichen erlaubt",
+        "passwordMatch": "Passwörter stimmen nicht überein",
+        "invalidFormat": "Ungültiges Format"
+    }
+}

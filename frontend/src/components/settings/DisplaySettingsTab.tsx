@@ -92,6 +92,7 @@ export function DisplaySettingsTab() {
             }
         };
         loadSettings();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentional: only load on mount
     }, []);
 
     const handleDisplayModeChange = (mode: DisplayMode) => {

@@ -39,8 +39,9 @@ export const authService = {
         const loginResponse = await apiClient.post<LoginResponse>('/auth/login', { email, password });
 
         if (loginResponse.data.access_token) {
-            localStorage.setItem('auth_token', loginResponse.data.access_token);
-            localStorage.setItem('refresh_token', loginResponse.data.refresh_token);
+            // Phase 1.1: sessionStorage statt localStorage (XSS-Mitigation)
+            sessionStorage.setItem('auth_token', loginResponse.data.access_token);
+            sessionStorage.setItem('refresh_token', loginResponse.data.refresh_token);
 
             // Fetch user info with the new token
             const userResponse = await apiClient.get<UserResponse>('/auth/me', {
@@ -56,7 +57,7 @@ export const authService = {
                 is_active: userResponse.data.is_active,
                 role: userResponse.data.is_superuser ? 'admin' : 'viewer',
             };
-            localStorage.setItem('user', JSON.stringify(user));
+            sessionStorage.setItem('user', JSON.stringify(user));
 
             return {
                 user,
@@ -68,26 +69,26 @@ export const authService = {
     },
 
     logout: () => {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('auth_token');
+        sessionStorage.removeItem('refresh_token');
+        sessionStorage.removeItem('user');
         window.location.href = '/login';
     },
 
     refreshToken: async (): Promise<string> => {
-        const refreshToken = localStorage.getItem('refresh_token');
+        const refreshToken = sessionStorage.getItem('refresh_token');
         if (!refreshToken) throw new Error('No refresh token available');
 
         const response = await apiClient.post<LoginResponse>('/auth/refresh', { refresh_token: refreshToken });
         if (response.data.access_token) {
-            localStorage.setItem('auth_token', response.data.access_token);
-            localStorage.setItem('refresh_token', response.data.refresh_token);
+            sessionStorage.setItem('auth_token', response.data.access_token);
+            sessionStorage.setItem('refresh_token', response.data.refresh_token);
         }
         return response.data.access_token;
     },
 
     getCurrentUser: (): User | null => {
-        const userStr = localStorage.getItem('user');
+        const userStr = sessionStorage.getItem('user');
         if (!userStr) return null;
         try {
             return JSON.parse(userStr);
@@ -97,6 +98,6 @@ export const authService = {
     },
 
     isAuthenticated: (): boolean => {
-        return !!localStorage.getItem('auth_token');
+        return !!sessionStorage.getItem('auth_token');
     }
 };

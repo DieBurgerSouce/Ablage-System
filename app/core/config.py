@@ -6,6 +6,12 @@ Supports:
 - HashiCorp Vault integration for secure secrets management
 - Runtime secret rotation
 
+Structure:
+- config.py: Main Settings class (this file)
+- config/validation.py: Security helper functions
+- config/vault_client.py: Vault integration
+- config/__init__.py: Module exports
+
 Feinpoliert und durchdacht - Sichere Konfigurationsverwaltung.
 """
 
@@ -13,279 +19,26 @@ from typing import Optional, List, Dict, Any, Tuple
 from pathlib import Path
 import secrets
 import os
-import math
 
 from pydantic import Field, field_validator, SecretStr, PostgresDsn, RedisDsn, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import structlog
 
+# Import from modular config package
+from app.core.config.validation import (
+    calculate_entropy_bits,
+    validate_secret_entropy,
+    WEAK_PASSWORDS,
+    MINIO_DEFAULT_USERS,
+    MINIO_DEFAULT_PASSWORDS,
+)
+from app.core.config.vault_client import VaultClient, VAULT_AVAILABLE
+
 logger = structlog.get_logger(__name__)
 
 
-# ==================== Security Helper Functions ====================
-
-
-def calculate_entropy_bits(secret: str) -> float:
-    """
-    Berechne die Entropie eines Secrets in Bits.
-
-    Entropie = log2(Anzahl_einzigartiger_Zeichen ^ Länge)
-
-    Args:
-        secret: Der zu prüfende String
-
-    Returns:
-        Entropie in Bits
-    """
-    if not secret:
-        return 0.0
-
-    unique_chars = len(set(secret))
-    length = len(secret)
-
-    if unique_chars <= 1:
-        return 0.0
-
-    # Entropie = log2(unique_chars) * length
-    return math.log2(unique_chars) * length
-
-
-def validate_secret_entropy(
-    secret: str,
-    min_entropy_bits: float = 128.0,
-    min_unique_ratio: float = 0.3
-) -> tuple[bool, str]:
-    """
-    Validiere Entropie und Qualität eines Secrets.
-
-    Args:
-        secret: Der zu prüfende String
-        min_entropy_bits: Mindest-Entropie in Bits (default: 128 für AES-128 Sicherheit)
-        min_unique_ratio: Mindest-Verhältnis einzigartiger Zeichen (default: 30%)
-
-    Returns:
-        Tuple von (is_valid, error_message)
-    """
-    if not secret:
-        return False, "Secret darf nicht leer sein"
-
-    length = len(secret)
-    unique_chars = len(set(secret))
-    entropy = calculate_entropy_bits(secret)
-    unique_ratio = unique_chars / length if length > 0 else 0
-
-    # Prüfe Entropie
-    if entropy < min_entropy_bits:
-        return False, (
-            f"Secret hat zu wenig Entropie ({entropy:.0f} Bits). "
-            f"Mindestens {min_entropy_bits:.0f} Bits erforderlich. "
-            f"Verwende mehr einzigartige Zeichen oder eine längere Zeichenkette."
-        )
-
-    # Prüfe Einzigartigkeit (verhindert "aaaaaaa...")
-    if unique_ratio < min_unique_ratio:
-        return False, (
-            f"Secret hat zu wenig einzigartige Zeichen ({unique_ratio*100:.0f}%). "
-            f"Mindestens {min_unique_ratio*100:.0f}% einzigartige Zeichen erforderlich."
-        )
-
-    # Prüfe auf offensichtlich schwache Muster
-    weak_patterns = [
-        "12345", "password", "secret", "admin", "test",
-        "qwerty", "asdfgh", "00000", "11111", "abcde"
-    ]
-    secret_lower = secret.lower()
-    for pattern in weak_patterns:
-        if pattern in secret_lower:
-            return False, (
-                f"Secret enthält schwaches Muster: '{pattern}'. "
-                "Verwende einen sicher generierten Schlüssel: "
-                "python -c \"import secrets; print(secrets.token_urlsafe(64))\""
-            )
-
-    return True, ""
-
-# Try to import hvac for Vault integration
-try:
-    import hvac
-    VAULT_AVAILABLE = True
-except ImportError:
-    VAULT_AVAILABLE = False
-    hvac = None  # type: ignore
-    logger.debug("vault_client_not_available", message="hvac not installed, Vault integration disabled")
-
-
-class VaultClient:
-    """
-    HashiCorp Vault client for secure secrets management.
-
-    Supports:
-    - Token-based authentication
-    - AppRole authentication
-    - Kubernetes authentication
-    - Secret caching with TTL
-    """
-
-    _instance: Optional["VaultClient"] = None
-
-    def __init__(
-        self,
-        vault_addr: Optional[str] = None,
-        vault_token: Optional[str] = None,
-        vault_role_id: Optional[str] = None,
-        vault_secret_id: Optional[str] = None,
-        vault_namespace: Optional[str] = None,
-        verify_ssl: bool = True,
-    ):
-        """
-        Initialize Vault client.
-
-        Args:
-            vault_addr: Vault server address
-            vault_token: Vault token for authentication
-            vault_role_id: AppRole role ID
-            vault_secret_id: AppRole secret ID
-            vault_namespace: Vault namespace (Enterprise)
-            verify_ssl: Verify SSL certificates
-        """
-        self.vault_addr = vault_addr or os.getenv("VAULT_ADDR", "")
-        self.vault_token = vault_token or os.getenv("VAULT_TOKEN", "")
-        self.vault_role_id = vault_role_id or os.getenv("VAULT_ROLE_ID", "")
-        self.vault_secret_id = vault_secret_id or os.getenv("VAULT_SECRET_ID", "")
-        self.vault_namespace = vault_namespace or os.getenv("VAULT_NAMESPACE", "")
-        self.verify_ssl = verify_ssl
-
-        self._client: Optional[hvac.Client] = None
-        # SECURITY FIX: Cache mit TTL-Tracking (Tuple: data, timestamp)
-        self._secret_cache: Dict[str, Tuple[Dict[str, Any], float]] = {}
-        self._cache_ttl_seconds: int = 300  # 5 Minuten - rotierte Secrets werden nachgeladen
-        self._authenticated = False
-
-    @classmethod
-    def get_instance(cls) -> "VaultClient":
-        """Get singleton instance."""
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
-
-    def is_configured(self) -> bool:
-        """Check if Vault is configured."""
-        return bool(self.vault_addr and (self.vault_token or (self.vault_role_id and self.vault_secret_id)))
-
-    def connect(self) -> bool:
-        """
-        Connect to Vault and authenticate.
-
-        Returns:
-            True if connection successful
-        """
-        if not VAULT_AVAILABLE:
-            logger.warning("vault_connect_failed", reason="hvac not installed")
-            return False
-
-        if not self.is_configured():
-            logger.debug("vault_not_configured", message="Vault nicht konfiguriert")
-            return False
-
-        try:
-            self._client = hvac.Client(
-                url=self.vault_addr,
-                token=self.vault_token if self.vault_token else None,
-                namespace=self.vault_namespace if self.vault_namespace else None,
-                verify=self.verify_ssl,
-            )
-
-            # If no token, authenticate with AppRole
-            if not self.vault_token and self.vault_role_id:
-                self._authenticate_approle()
-
-            # Verify authentication
-            if self._client.is_authenticated():
-                self._authenticated = True
-                logger.info("vault_connected", address=self.vault_addr)
-                return True
-            else:
-                logger.warning("vault_authentication_failed")
-                return False
-
-        except Exception as e:
-            logger.error("vault_connection_error", error=str(e))
-            return False
-
-    def _authenticate_approle(self) -> None:
-        """Authenticate using AppRole."""
-        try:
-            response = self._client.auth.approle.login(
-                role_id=self.vault_role_id,
-                secret_id=self.vault_secret_id,
-            )
-            self._client.token = response["auth"]["client_token"]
-            logger.info("vault_approle_authenticated")
-        except Exception as e:
-            logger.error("vault_approle_auth_failed", error=str(e))
-            raise
-
-    def get_secret(
-        self,
-        path: str,
-        key: Optional[str] = None,
-        mount_point: str = "secret",
-        use_cache: bool = True,
-    ) -> Optional[Any]:
-        """
-        Get secret from Vault.
-
-        Args:
-            path: Secret path in Vault
-            key: Specific key within the secret (optional)
-            mount_point: Vault mount point
-            use_cache: Use cached value if available
-
-        Returns:
-            Secret value or None
-        """
-        if not self._authenticated:
-            if not self.connect():
-                return None
-
-        import time
-        cache_key = f"{mount_point}/{path}"
-
-        # SECURITY FIX: Check cache mit TTL-Prüfung
-        if use_cache and cache_key in self._secret_cache:
-            cached_data, cached_time = self._secret_cache[cache_key]
-            # Prüfe ob Cache noch gültig ist
-            if (time.time() - cached_time) < self._cache_ttl_seconds:
-                if key:
-                    return cached_data.get("data", {}).get("data", {}).get(key)
-                return cached_data.get("data", {}).get("data", {})
-            else:
-                # Cache abgelaufen - entfernen
-                del self._secret_cache[cache_key]
-                logger.debug("vault_cache_expired", path=path)
-
-        try:
-            # Read secret (KV v2)
-            response = self._client.secrets.kv.v2.read_secret_version(
-                path=path,
-                mount_point=mount_point,
-            )
-
-            # SECURITY FIX: Cache mit Timestamp speichern
-            self._secret_cache[cache_key] = (response, time.time())
-
-            if key:
-                return response.get("data", {}).get("data", {}).get(key)
-            return response.get("data", {}).get("data", {})
-
-        except Exception as e:
-            logger.warning("vault_secret_read_failed", path=path, error=str(e))
-            return None
-
-    def clear_cache(self) -> None:
-        """Clear secret cache."""
-        self._secret_cache.clear()
-        logger.debug("vault_cache_cleared")
+# VaultClient is now imported from app.core.config.vault_client
+# See: app/core/config/vault_client.py
 
 
 class Settings(BaseSettings):

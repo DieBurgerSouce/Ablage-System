@@ -1,0 +1,53 @@
+# Docker Compose Override for Canary Deployments
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.canary.yml up -d backend-canary
+#
+# This file defines a canary backend instance that runs alongside
+# the production backend for progressive rollouts.
+
+services:
+  # Canary Backend Instance
+  backend-canary:
+    image: ${DOCKER_REGISTRY:-ghcr.io/ablage-system}/backend:${DOCKER_TAG:-latest}
+    container_name: ablage-backend-canary
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+      - ENVIRONMENT=production
+      - INSTANCE_TYPE=canary
+      - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus
+      # Canary-specific metrics labels
+      - METRICS_INSTANCE_LABEL=backend-canary
+    volumes:
+      - ./data:/app/data
+      - /tmp/prometheus-canary:/tmp/prometheus
+    networks:
+      - ablage-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    labels:
+      - "traefik.enable=false"  # Managed by nginx canary config
+      - "prometheus.scrape=true"
+      - "prometheus.port=8000"
+      - "prometheus.path=/metrics"
+      - "deployment.type=canary"
+
+networks:
+  ablage-network:
+    external: true

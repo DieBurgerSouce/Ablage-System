@@ -91,6 +91,7 @@ export function useThinkingMessage(config: ThinkingMessagesConfig): string {
         // Nur rotieren wenn aktiv (thinking oder streaming ohne content)
         const isActive = isThinking || (isStreaming && !hasContent);
         if (!isActive) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset when becoming inactive
             setMessageIndex(0);
             return;
         }
@@ -104,6 +105,7 @@ export function useThinkingMessage(config: ThinkingMessagesConfig): string {
 
     // Reset index wenn sich die Phase ändert
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset on phase change
         setMessageIndex(0);
     }, [phase]);
 

@@ -165,7 +165,7 @@ export function useTaskWebSocket(
       setError('WebSocket-Verbindungsfehler')
     }
 
-    ws.onclose = (_event) => {
+    ws.onclose = () => {
       setIsConnected(false)
       setIsConnecting(false)
       wsRef.current = null
