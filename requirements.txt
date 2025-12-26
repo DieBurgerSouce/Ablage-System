@@ -47,7 +47,7 @@ pypdfium2>=4.30.0  # PDF processing for Surya and Docling (docling requires >=4.
 docling>=2.20.0  # Document structure extraction (requires Python 3.11+), pinned for faster builds
 pytesseract==0.3.10  # Python wrapper for Tesseract (fallback)
 paddlepaddle>=2.6.0  # PaddlePaddle ML framework (CPU)
-paddleocr>=2.8.0  # PaddleOCR PP-OCRv5 - CPU-optimiert, 106 Sprachen
+paddleocr>=3.3.2  # PaddleOCR 3.3.2 - Latest stable (released 2025-11-13), CPU-optimiert, 106 Sprachen
 python-doctr[torch]>=0.8.0  # docTR - CPU-optimiert, deutsches Modell (Mindee)
 
 # Model quantization for large models (DeepSeek, GOT)
@@ -124,3 +124,6 @@ mt-940>=4.30.0  # MT940 Bank Statement Parser (SWIFT)
 sepaxml>=2.7.0  # SEPA XML Generation (PAIN.001/008)
 pyiso20022>=1.6.0  # CAMT.053 ISO 20022 Parser
 pdfplumber>=0.11.0  # PDF Bank Statement Parsing
+
+# Mahnwesen (Dunning System)
+holidays>=0.40  # German/Austrian/Swiss holidays for scheduled Mahnlauf

@@ -297,3 +297,792 @@ class TestPaymentServiceThresholds:
     def test_max_batch_total(self, service: PaymentService):
         """Sollte korrekten Max-Batch-Betrag haben."""
         assert service.MAX_BATCH_TOTAL == Decimal("100000.00")
+
+
+class TestTANWorkflow:
+    """Tests fuer TAN-Workflow (Submit → TAN → Confirm)."""
+
+    @pytest.fixture
+    def service(self) -> PaymentService:
+        return PaymentService()
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mockt AsyncSession."""
+        db = AsyncMock()
+        db.execute = AsyncMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.fixture
+    def sample_payment_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_submit_payment_success(
+        self, service: PaymentService, mock_db, sample_user_id, sample_payment_id
+    ):
+        """Sollte Zahlung erfolgreich zur Bank senden."""
+        mock_payment = MagicMock()
+        mock_payment.id = sample_payment_id
+        mock_payment.status = PaymentStatus.APPROVED.value
+        mock_payment.amount = Decimal("100.00")
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_payment
+        mock_db.execute.return_value = mock_result
+
+        result = await service.submit_payment(mock_db, sample_user_id, sample_payment_id)
+
+        assert "payment_id" in result
+        assert result["tan_required"] is True
+        assert "expires_at" in result
+        assert mock_payment.status == PaymentStatus.PENDING_TAN.value
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_submit_payment_not_found(
+        self, service: PaymentService, mock_db, sample_user_id, sample_payment_id
+    ):
+        """Sollte Fehler werfen wenn Zahlung nicht gefunden."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute.return_value = mock_result
+
+        with pytest.raises(ValueError, match="nicht gefunden"):
+            await service.submit_payment(mock_db, sample_user_id, sample_payment_id)
+
+    @pytest.mark.asyncio
+    async def test_confirm_with_tan_success(
+        self, service: PaymentService, mock_db, sample_user_id, sample_payment_id
+    ):
+        """Sollte Zahlung mit gueltiger TAN bestaetigen."""
+        mock_payment = MagicMock()
+        mock_payment.id = sample_payment_id
+        mock_payment.status = PaymentStatus.PENDING_TAN.value
+        mock_payment.tan_attempts = 0
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_payment
+        mock_db.execute.return_value = mock_result
+
+        result = await service.confirm_with_tan(
+            mock_db, sample_user_id, sample_payment_id, "123456"
+        )
+
+        assert mock_payment.status == PaymentStatus.CONFIRMED.value
+        assert mock_payment.bank_reference is not None
+        mock_db.commit.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_confirm_with_tan_invalid_tan(
+        self, service: PaymentService, mock_db, sample_user_id, sample_payment_id
+    ):
+        """Sollte Fehler bei ungueltiger TAN werfen."""
+        mock_payment = MagicMock()
+        mock_payment.id = sample_payment_id
+        mock_payment.status = PaymentStatus.PENDING_TAN.value
+        mock_payment.tan_attempts = 0
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_payment
+        mock_db.execute.return_value = mock_result
+
+        with pytest.raises(ValueError, match="Ungueltige TAN"):
+            await service.confirm_with_tan(
+                mock_db, sample_user_id, sample_payment_id, "12345"  # Zu kurz
+            )
+
+        assert mock_payment.tan_attempts == 1
+
+    @pytest.mark.asyncio
+    async def test_confirm_with_tan_max_attempts_exceeded(
+        self, service: PaymentService, mock_db, sample_user_id, sample_payment_id
+    ):
+        """Sollte Zahlung nach 3 TAN-Versuchen ablehnen."""
+        mock_payment = MagicMock()
+        mock_payment.id = sample_payment_id
+        mock_payment.status = PaymentStatus.PENDING_TAN.value
+        mock_payment.tan_attempts = 2  # Bereits 2 Versuche
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_payment
+        mock_db.execute.return_value = mock_result
+
+        with pytest.raises(ValueError, match="Maximale TAN-Versuche"):
+            await service.confirm_with_tan(
+                mock_db, sample_user_id, sample_payment_id, "wrong1"  # 3. Versuch
+            )
+
+        assert mock_payment.status == PaymentStatus.REJECTED.value
+
+    @pytest.mark.asyncio
+    async def test_confirm_with_tan_wrong_status(
+        self, service: PaymentService, mock_db, sample_user_id, sample_payment_id
+    ):
+        """Sollte Fehler werfen wenn Status nicht PENDING_TAN ist."""
+        mock_payment = MagicMock()
+        mock_payment.id = sample_payment_id
+        mock_payment.status = PaymentStatus.DRAFT.value
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_payment
+        mock_db.execute.return_value = mock_result
+
+        with pytest.raises(ValueError, match="wartet nicht auf TAN"):
+            await service.confirm_with_tan(
+                mock_db, sample_user_id, sample_payment_id, "123456"
+            )
+
+
+class TestBatchPayments:
+    """Tests fuer Sammelzahlungen (Batches)."""
+
+    @pytest.fixture
+    def service(self) -> PaymentService:
+        return PaymentService()
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mockt AsyncSession."""
+        db = AsyncMock()
+        db.execute = AsyncMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+        db.add = MagicMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.fixture
+    def sample_account_id(self):
+        return uuid4()
+
+    @pytest.fixture
+    def sample_payments(self):
+        """Erstelle Beispiel-Zahlungen fuer Batch."""
+        return [
+            PaymentOrderCreate(
+                bank_account_id=uuid4(),
+                beneficiary_name="Lieferant A",
+                beneficiary_iban="DE89370400440532013000",
+                amount=Decimal("1000.00"),
+                reference="Rechnung A-001",
+            ),
+            PaymentOrderCreate(
+                bank_account_id=uuid4(),
+                beneficiary_name="Lieferant B",
+                beneficiary_iban="AT611904300234573201",
+                amount=Decimal("500.00"),
+                reference="Rechnung B-002",
+            ),
+        ]
+
+    @pytest.mark.asyncio
+    async def test_create_batch_success(
+        self,
+        service: PaymentService,
+        mock_db,
+        sample_user_id,
+        sample_account_id,
+        sample_payments,
+    ):
+        """Sollte Batch erfolgreich erstellen."""
+        mock_account = MagicMock()
+        mock_account.id = sample_account_id
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_account
+        mock_db.execute.return_value = mock_result
+
+        result = await service.create_batch(
+            mock_db,
+            sample_user_id,
+            sample_account_id,
+            "Dezember Rechnungen",
+            sample_payments,
+        )
+
+        assert result["payment_count"] == 2
+        assert result["total_amount"] == 1500.00
+        assert result["status"] == PaymentStatus.DRAFT.value
+        assert "batch_id" in result
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_create_batch_account_not_found(
+        self,
+        service: PaymentService,
+        mock_db,
+        sample_user_id,
+        sample_account_id,
+        sample_payments,
+    ):
+        """Sollte Fehler werfen wenn Bankkonto nicht gefunden."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute.return_value = mock_result
+
+        with pytest.raises(ValueError, match="Bankkonto nicht gefunden"):
+            await service.create_batch(
+                mock_db,
+                sample_user_id,
+                sample_account_id,
+                "Test Batch",
+                sample_payments,
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_batch_exceeds_max_total(
+        self,
+        service: PaymentService,
+        mock_db,
+        sample_user_id,
+        sample_account_id,
+    ):
+        """Sollte Fehler werfen wenn Batch-Gesamtbetrag zu hoch."""
+        mock_account = MagicMock()
+        mock_account.id = sample_account_id
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_account
+        mock_db.execute.return_value = mock_result
+
+        large_payments = [
+            PaymentOrderCreate(
+                bank_account_id=uuid4(),
+                beneficiary_name=f"Lieferant {i}",
+                beneficiary_iban="DE89370400440532013000",
+                amount=Decimal("40000.00"),  # 3 * 40000 = 120000 > 100000
+                reference=f"Rechnung {i}",
+            )
+            for i in range(3)
+        ]
+
+        with pytest.raises(ValueError, match="ueberschreitet Maximum"):
+            await service.create_batch(
+                mock_db,
+                sample_user_id,
+                sample_account_id,
+                "Grosser Batch",
+                large_payments,
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_batch_validation_errors(
+        self,
+        service: PaymentService,
+        mock_db,
+        sample_user_id,
+        sample_account_id,
+    ):
+        """Sollte Validierungsfehler sammeln."""
+        mock_account = MagicMock()
+        mock_account.id = sample_account_id
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_account
+        mock_db.execute.return_value = mock_result
+
+        invalid_payments = [
+            PaymentOrderCreate(
+                bank_account_id=uuid4(),
+                beneficiary_name="Test",
+                beneficiary_iban="INVALID_IBAN",  # Ungueltig
+                amount=Decimal("100.00"),
+            ),
+        ]
+
+        with pytest.raises(ValueError, match="Validierungsfehler"):
+            await service.create_batch(
+                mock_db,
+                sample_user_id,
+                sample_account_id,
+                "Fehlerhafter Batch",
+                invalid_payments,
+            )
+
+
+class TestSkontoOpportunities:
+    """Tests fuer Skonto-Erkennung."""
+
+    @pytest.fixture
+    def service(self) -> PaymentService:
+        return PaymentService()
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mockt AsyncSession."""
+        db = AsyncMock()
+        db.execute = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_get_skonto_opportunities_with_valid_documents(
+        self, service: PaymentService, mock_db, sample_user_id
+    ):
+        """Sollte Skonto-Moeglichkeiten finden."""
+        today = date.today()
+        skonto_date = today + timedelta(days=5)
+
+        mock_doc = MagicMock()
+        mock_doc.id = uuid4()
+        mock_doc.extracted_data = {
+            "invoice_number": "RE-2024-001",
+            "sender": {"name": "Test GmbH"},
+            "amounts": {"gross": 1000.00},
+            "payment_terms": {
+                "skonto": {
+                    "date": skonto_date.isoformat(),
+                    "percent": 2.0,
+                }
+            },
+        }
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [mock_doc]
+        mock_db.execute.return_value = mock_result
+
+        opportunities = await service.get_skonto_opportunities(
+            mock_db, sample_user_id, days_ahead=14
+        )
+
+        assert len(opportunities) == 1
+        assert opportunities[0]["skonto_percent"] == 2.0
+        assert opportunities[0]["potential_savings"] == 20.0
+        assert opportunities[0]["days_remaining"] == 5
+
+    @pytest.mark.asyncio
+    async def test_get_skonto_opportunities_expired(
+        self, service: PaymentService, mock_db, sample_user_id
+    ):
+        """Sollte abgelaufenes Skonto nicht anzeigen."""
+        yesterday = date.today() - timedelta(days=1)
+
+        mock_doc = MagicMock()
+        mock_doc.id = uuid4()
+        mock_doc.extracted_data = {
+            "invoice_number": "RE-2024-001",
+            "amounts": {"gross": 1000.00},
+            "payment_terms": {
+                "skonto": {
+                    "date": yesterday.isoformat(),
+                    "percent": 2.0,
+                }
+            },
+        }
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [mock_doc]
+        mock_db.execute.return_value = mock_result
+
+        opportunities = await service.get_skonto_opportunities(
+            mock_db, sample_user_id, days_ahead=14
+        )
+
+        assert len(opportunities) == 0
+
+    @pytest.mark.asyncio
+    async def test_get_skonto_opportunities_no_skonto(
+        self, service: PaymentService, mock_db, sample_user_id
+    ):
+        """Sollte Dokumente ohne Skonto ignorieren."""
+        mock_doc = MagicMock()
+        mock_doc.id = uuid4()
+        mock_doc.extracted_data = {
+            "invoice_number": "RE-2024-001",
+            "amounts": {"gross": 1000.00},
+            "payment_terms": {},  # Kein Skonto
+        }
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [mock_doc]
+        mock_db.execute.return_value = mock_result
+
+        opportunities = await service.get_skonto_opportunities(
+            mock_db, sample_user_id, days_ahead=14
+        )
+
+        assert len(opportunities) == 0
+
+
+class TestPendingPayments:
+    """Tests fuer ausstehende Zahlungen."""
+
+    @pytest.fixture
+    def service(self) -> PaymentService:
+        return PaymentService()
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mockt AsyncSession."""
+        db = AsyncMock()
+        db.execute = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_get_pending_payments_multiple_statuses(
+        self, service: PaymentService, mock_db, sample_user_id
+    ):
+        """Sollte Zahlungen mit verschiedenen ausstehenden Status zurueckgeben."""
+        mock_payments = []
+        for i, status in enumerate([
+            PaymentStatus.DRAFT.value,
+            PaymentStatus.APPROVED.value,
+            PaymentStatus.PENDING_TAN.value,
+        ]):
+            mock_payment = MagicMock()
+            mock_payment.id = uuid4()
+            mock_payment.bank_account_id = uuid4()
+            mock_payment.batch_id = None
+            mock_payment.payment_type = PaymentType.TRANSFER.value
+            mock_payment.status = status
+            mock_payment.creditor_name = f"Test {i}"
+            mock_payment.creditor_iban = "DE89370400440532013000"
+            mock_payment.creditor_bic = None
+            mock_payment.amount = Decimal("100.00")
+            mock_payment.currency = "EUR"
+            mock_payment.reference = f"Test {i}"
+            mock_payment.end_to_end_id = f"E2E{i}"
+            mock_payment.execution_date = date.today()
+            mock_payment.urgent = False
+            mock_payment.linked_document_id = None
+            mock_payment.linked_transaction_id = None
+            mock_payment.bank_reference = None
+            mock_payment.error_message = None
+            mock_payment.created_at = datetime.utcnow()
+            mock_payment.approved_at = None
+            mock_payment.submitted_at = None
+            mock_payment.confirmed_at = None
+            mock_payment.updated_at = None
+            mock_payments.append(mock_payment)
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = mock_payments
+        mock_db.execute.return_value = mock_result
+
+        results = await service.get_pending_payments(mock_db, sample_user_id)
+
+        assert len(results) == 3
+
+    @pytest.mark.asyncio
+    async def test_get_pending_payments_empty(
+        self, service: PaymentService, mock_db, sample_user_id
+    ):
+        """Sollte leere Liste zurueckgeben wenn keine ausstehenden Zahlungen."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute.return_value = mock_result
+
+        results = await service.get_pending_payments(mock_db, sample_user_id)
+
+        assert len(results) == 0
+
+
+class TestPaymentApproval:
+    """Tests fuer Zahlungsgenehmigung."""
+
+    @pytest.fixture
+    def service(self) -> PaymentService:
+        return PaymentService()
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mockt AsyncSession."""
+        db = AsyncMock()
+        db.execute = AsyncMock()
+        db.commit = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.fixture
+    def sample_payment_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_approve_payment_success(
+        self, service: PaymentService, mock_db, sample_user_id, sample_payment_id
+    ):
+        """Sollte Zahlung erfolgreich genehmigen."""
+        mock_payment = MagicMock()
+        mock_payment.id = sample_payment_id
+        mock_payment.bank_account_id = uuid4()
+        mock_payment.batch_id = None
+        mock_payment.payment_type = PaymentType.TRANSFER.value
+        mock_payment.status = PaymentStatus.DRAFT.value
+        mock_payment.creditor_name = "Test GmbH"
+        mock_payment.creditor_iban = "DE89370400440532013000"
+        mock_payment.creditor_bic = None
+        mock_payment.amount = Decimal("100.00")
+        mock_payment.currency = "EUR"
+        mock_payment.reference = "Test"
+        mock_payment.end_to_end_id = "E2E123"
+        mock_payment.execution_date = date.today()
+        mock_payment.urgent = False
+        mock_payment.linked_document_id = None
+        mock_payment.linked_transaction_id = None
+        mock_payment.bank_reference = None
+        mock_payment.error_message = None
+        mock_payment.created_at = datetime.utcnow()
+        mock_payment.approved_at = None
+        mock_payment.submitted_at = None
+        mock_payment.confirmed_at = None
+        mock_payment.updated_at = None
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_payment
+        mock_db.execute.return_value = mock_result
+
+        result = await service.approve_payment(mock_db, sample_user_id, sample_payment_id)
+
+        assert mock_payment.status == PaymentStatus.APPROVED.value
+        assert mock_payment.approved_at is not None
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_approve_payment_not_found(
+        self, service: PaymentService, mock_db, sample_user_id, sample_payment_id
+    ):
+        """Sollte Fehler werfen wenn Zahlung nicht gefunden."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute.return_value = mock_result
+
+        with pytest.raises(ValueError, match="nicht gefunden"):
+            await service.approve_payment(mock_db, sample_user_id, sample_payment_id)
+
+
+class TestPaymentCancellation:
+    """Tests fuer Zahlungsstornierung."""
+
+    @pytest.fixture
+    def service(self) -> PaymentService:
+        return PaymentService()
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mockt AsyncSession."""
+        db = AsyncMock()
+        db.execute = AsyncMock()
+        db.commit = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.fixture
+    def sample_payment_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_cancel_payment_from_draft(
+        self, service: PaymentService, mock_db, sample_user_id, sample_payment_id
+    ):
+        """Sollte Draft-Zahlung stornieren koennen."""
+        mock_payment = MagicMock()
+        mock_payment.id = sample_payment_id
+        mock_payment.bank_account_id = uuid4()
+        mock_payment.batch_id = None
+        mock_payment.payment_type = PaymentType.TRANSFER.value
+        mock_payment.status = PaymentStatus.DRAFT.value
+        mock_payment.creditor_name = "Test GmbH"
+        mock_payment.creditor_iban = "DE89370400440532013000"
+        mock_payment.creditor_bic = None
+        mock_payment.amount = Decimal("100.00")
+        mock_payment.currency = "EUR"
+        mock_payment.reference = "Test"
+        mock_payment.end_to_end_id = "E2E123"
+        mock_payment.execution_date = date.today()
+        mock_payment.urgent = False
+        mock_payment.linked_document_id = None
+        mock_payment.linked_transaction_id = None
+        mock_payment.bank_reference = None
+        mock_payment.error_message = None
+        mock_payment.created_at = datetime.utcnow()
+        mock_payment.approved_at = None
+        mock_payment.submitted_at = None
+        mock_payment.confirmed_at = None
+        mock_payment.updated_at = None
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_payment
+        mock_db.execute.return_value = mock_result
+
+        result = await service.cancel_payment(
+            mock_db, sample_user_id, sample_payment_id, "Nicht mehr benoetigt"
+        )
+
+        assert mock_payment.status == PaymentStatus.CANCELLED.value
+        assert mock_payment.error_message == "Nicht mehr benoetigt"
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_cancel_payment_from_pending_tan(
+        self, service: PaymentService, mock_db, sample_user_id, sample_payment_id
+    ):
+        """Sollte PENDING_TAN-Zahlung stornieren koennen."""
+        mock_payment = MagicMock()
+        mock_payment.id = sample_payment_id
+        mock_payment.bank_account_id = uuid4()
+        mock_payment.batch_id = None
+        mock_payment.payment_type = PaymentType.TRANSFER.value
+        mock_payment.status = PaymentStatus.PENDING_TAN.value
+        mock_payment.creditor_name = "Test GmbH"
+        mock_payment.creditor_iban = "DE89370400440532013000"
+        mock_payment.creditor_bic = None
+        mock_payment.amount = Decimal("100.00")
+        mock_payment.currency = "EUR"
+        mock_payment.reference = "Test"
+        mock_payment.end_to_end_id = "E2E123"
+        mock_payment.execution_date = date.today()
+        mock_payment.urgent = False
+        mock_payment.linked_document_id = None
+        mock_payment.linked_transaction_id = None
+        mock_payment.bank_reference = None
+        mock_payment.error_message = None
+        mock_payment.created_at = datetime.utcnow()
+        mock_payment.approved_at = None
+        mock_payment.submitted_at = None
+        mock_payment.confirmed_at = None
+        mock_payment.updated_at = None
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_payment
+        mock_db.execute.return_value = mock_result
+
+        result = await service.cancel_payment(mock_db, sample_user_id, sample_payment_id)
+
+        assert mock_payment.status == PaymentStatus.CANCELLED.value
+
+
+class TestListPayments:
+    """Tests fuer Zahlungslisten."""
+
+    @pytest.fixture
+    def service(self) -> PaymentService:
+        return PaymentService()
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mockt AsyncSession."""
+        db = AsyncMock()
+        db.execute = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    def _create_mock_payment(self, status: str = PaymentStatus.DRAFT.value):
+        """Erstelle Mock-Payment."""
+        mock_payment = MagicMock()
+        mock_payment.id = uuid4()
+        mock_payment.bank_account_id = uuid4()
+        mock_payment.batch_id = None
+        mock_payment.payment_type = PaymentType.TRANSFER.value
+        mock_payment.status = status
+        mock_payment.creditor_name = "Test GmbH"
+        mock_payment.creditor_iban = "DE89370400440532013000"
+        mock_payment.creditor_bic = None
+        mock_payment.amount = Decimal("100.00")
+        mock_payment.currency = "EUR"
+        mock_payment.reference = "Test"
+        mock_payment.end_to_end_id = "E2E123"
+        mock_payment.execution_date = date.today()
+        mock_payment.urgent = False
+        mock_payment.linked_document_id = None
+        mock_payment.linked_transaction_id = None
+        mock_payment.bank_reference = None
+        mock_payment.error_message = None
+        mock_payment.created_at = datetime.utcnow()
+        mock_payment.approved_at = None
+        mock_payment.submitted_at = None
+        mock_payment.confirmed_at = None
+        mock_payment.updated_at = None
+        return mock_payment
+
+    @pytest.mark.asyncio
+    async def test_list_payments_with_pagination(
+        self, service: PaymentService, mock_db, sample_user_id
+    ):
+        """Sollte Zahlungen mit Pagination zurueckgeben."""
+        mock_payments = [self._create_mock_payment() for _ in range(5)]
+
+        # Mock count query
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 10  # Gesamtanzahl
+
+        # Mock data query
+        mock_data_result = MagicMock()
+        mock_data_result.scalars.return_value.all.return_value = mock_payments
+
+        mock_db.execute.side_effect = [mock_count_result, mock_data_result]
+
+        payments, total = await service.list_payments(
+            mock_db, sample_user_id, offset=0, limit=5
+        )
+
+        assert len(payments) == 5
+        assert total == 10
+
+    @pytest.mark.asyncio
+    async def test_list_payments_filter_by_status(
+        self, service: PaymentService, mock_db, sample_user_id
+    ):
+        """Sollte Zahlungen nach Status filtern."""
+        mock_payments = [
+            self._create_mock_payment(status=PaymentStatus.CONFIRMED.value)
+            for _ in range(2)
+        ]
+
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 2
+
+        mock_data_result = MagicMock()
+        mock_data_result.scalars.return_value.all.return_value = mock_payments
+
+        mock_db.execute.side_effect = [mock_count_result, mock_data_result]
+
+        payments, total = await service.list_payments(
+            mock_db, sample_user_id, status=PaymentStatus.CONFIRMED
+        )
+
+        assert len(payments) == 2
+        assert total == 2
+
+    @pytest.mark.asyncio
+    async def test_list_payments_empty(
+        self, service: PaymentService, mock_db, sample_user_id
+    ):
+        """Sollte leere Liste zurueckgeben wenn keine Zahlungen."""
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 0
+
+        mock_data_result = MagicMock()
+        mock_data_result.scalars.return_value.all.return_value = []
+
+        mock_db.execute.side_effect = [mock_count_result, mock_data_result]
+
+        payments, total = await service.list_payments(mock_db, sample_user_id)
+
+        assert len(payments) == 0
+        assert total == 0

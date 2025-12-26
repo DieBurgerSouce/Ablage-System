@@ -1,0 +1,200 @@
+# Implementing German Mahnwesen for Enterprise Document Management
+
+A well-designed dunning system for German KMUs requires balancing legal compliance with practical workflow efficiency. This research synthesizes German legal requirements under BGB §286, industry best practices from established ERP systems, and modern technical patterns suitable for a React 19/FastAPI/PostgreSQL stack.
+
+## German legal framework shapes the entire system design
+
+The **Bürgerliches Gesetzbuch (BGB) §286** defines when Verzug (default) occurs—the critical legal trigger for dunning actions and interest claims. For **B2B transactions**, Verzug occurs automatically 30 days after the invoice due date and receipt, without requiring any formal Mahnung. For **B2C transactions**, automatic Verzug requires an explicit warning on the invoice stating the 30-day consequence; otherwise, a formal Mahnung must be sent first.
+
+The practical implication: your system should distinguish between business and consumer customers, as they follow different legal timelines. B2B invoices can proceed directly to interest and fee charging after 30 days, while B2C requires documented Mahnung delivery to establish Verzug.
+
+**Verzugszinsen (default interest) rates** as of January 1, 2025 are based on the Deutsche Bundesbank Basiszinssatz of **2.27%**: consumer transactions accrue interest at **7.27% p.a.** (base + 5 percentage points), while B2B transactions accrue **11.27% p.a.** (base + 9 percentage points). The calculation formula for pro-rata interest is `(Rechnungsbetrag × Zinssatz × Verzugstage) ÷ 365`. Your system must update these rates every January 1 and July 1 when the Basiszinssatz changes.
+
+**Critical legal distinction**: German law recognizes no difference between "Zahlungserinnerung" and "Mahnung"—both have identical legal effect as payment demands that trigger Verzug. The friendly terminology is purely a commercial courtesy for preserving customer relationships. Additionally, B2B creditors may claim a **€40 Pauschale** (flat-fee compensation per §288 Abs. 5 BGB) for each overdue payment, regardless of actual collection costs.
+
+## Client's proposed escalation intervals align with best practices
+
+The client's four-stage system—Zahlungserinnerung at 5 days, second reminder at 15 days, phone contact at 25 days, and formal letter at 35 days—represents a **customer-friendly but efficient approach**. German industry sources recommend starting the first reminder within 7-14 days of the due date, with subsequent intervals of 7-14 days between stages. Haufe finance publications actually criticize German businesses for waiting too long, noting average first contact occurs 16 days after due date.
+
+**Recommended refinement** to the proposed stages:
+
+| Stage | Days After Due | Name | Action |
+|-------|----------------|------|--------|
+| 1 | 7 | Zahlungserinnerung | Friendly email reminder, no fees |
+| 2 | 17 | 1. Mahnung | Firmer tone, announce Mahngebühren |
+| 3 | 27 | Telefonkontakt + 2. Mahnung | Phone call with documentation, written follow-up |
+| 4 | 37 | Letzte Mahnung | Registered mail, final deadline, legal warning |
+| 5 | 45-50 | External escalation | Inkasso or Mahnbescheid |
+
+**Post-Stage 4 escalation options** include Inkasso (collection agencies) or the gerichtliches Mahnverfahren (judicial dunning order) via online-mahnantrag.de. The Mahnbescheid process is efficient—typically under two weeks to receive the order—and costs start at €38 for claims up to €1,000. Most German businesses escalate to legal action after 60-90 days overdue.
+
+The **pause functionality (Mahnstopp)** is essential for handling disputes. When a customer raises a Reklamation or files a Widerspruch, the system should immediately stop automated dunning, document the dispute, and assign the case for resolution. Undisputed portions of invoices should still proceed through normal dunning.
+
+## Dashboard design should prioritize actionable clarity
+
+The most effective Mahnwesen dashboards follow a **two-tier architecture**: summary KPI cards at the top showing Total Overdue Amount, DSO, Overdue Invoices by Stage, and Mahnquote, with a detailed data table below for operational action. Using TanStack Table with shadcn/ui provides sorting, filtering, row selection, and bulk actions.
+
+**Aging bucket visualization** should use the industry-standard buckets (0-30, 31-60, 61-90, 90+ days overdue) with a stacked bar chart for trend analysis and tables for drill-down detail. Color coding follows the traffic-light pattern—green for current, yellow/amber for 31-60 days, orange for 61-90 days, red for 90+ days. For accessibility, never rely on color alone; include icons, patterns, and labels.
+
+```jsx
+// shadcn/ui badge patterns for customer status
+<Badge variant="destructive">3 overdue</Badge>  // Count of overdue invoices
+<Badge variant="warning">€5,420 AR</Badge>       // Total outstanding
+<Badge variant="outline">Mahnstufe 2</Badge>     // Current dunning stage
+```
+
+For task management, a **hybrid approach** works best: Kanban board for visualizing workflow stages ("Pending Review" → "Reminder Sent" → "Escalated" → "Resolved") with list view toggle for filtering and bulk operations. Due date highlighting should show bold text for tasks due today, red badges for overdue, and relative time displays ("2 days overdue").
+
+## Admin configuration requires a two-panel settings interface
+
+The optimal pattern uses a left navigation panel listing setting categories with the selected category's form fields displayed on the right—similar to system settings in macOS or enterprise applications like Figma. Settings should be organized into logical sections: General, Dunning Stages, Tolerances, Templates, Notifications, and Customer Overrides.
+
+**Dunning stage configuration** should use a reorderable card list with drag-and-drop (use @dnd-kit or framer-motion Reorder):
+
+```
+┌─ Dunning Stages ────────────────────────────┐
+│ [+ Add Stage]                               │
+│                                             │
+│ ⋮⋮ Stage 1: Zahlungserinnerung    [Toggle]  │
+│    Trigger: +7 days after due               │
+│    Action: Email                    [Edit]  │
+│                                             │
+│ ⋮⋮ Stage 2: 1. Mahnung            [Toggle]  │
+│    Trigger: +17 days after due              │
+│    Action: Email + Letter           [Edit]  │
+└─────────────────────────────────────────────┘
+```
+
+Each stage should be configurable with: name/label, trigger days after due date, action type (email, letter, phone call, escalation), template selection, and Mahngebühren amount. Per-customer overrides should allow setting custom payment terms, maximum Mahnstufe, preferred contact method, and exclusion from automatic dunning.
+
+**Skonto tolerance settings** should default to 3 days but warn users that legal enforcement is strict—no statutory tolerance exists, and courts have held that silent acceptance of late Skonto deductions may waive rights to later recovery.
+
+## Database schema centers on immutable audit logging
+
+The core schema requires tables for invoice tracking, Mahnung history (immutable audit log), stage configuration, global settings, customer overrides, tasks, and phone call logs.
+
+```sql
+CREATE TABLE invoices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_number VARCHAR(50) UNIQUE NOT NULL,
+    customer_id UUID NOT NULL REFERENCES customers(id),
+    due_date DATE NOT NULL,
+    amount DECIMAL(12, 2) NOT NULL,
+    status VARCHAR(20) DEFAULT 'open',
+    mahn_stufe INTEGER DEFAULT 0,
+    last_mahn_date DATE,
+    next_mahn_date DATE,
+    is_b2b BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE mahnung_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_id UUID NOT NULL REFERENCES invoices(id),
+    action_type VARCHAR(50) NOT NULL,
+    mahn_stufe INTEGER NOT NULL,
+    action_timestamp TIMESTAMPTZ DEFAULT NOW(),
+    performed_by UUID REFERENCES users(id),
+    notes TEXT,
+    outcome VARCHAR(50),
+    document_id UUID REFERENCES documents(id),
+    metadata JSONB DEFAULT '{}'
+);
+
+CREATE TABLE mahn_tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_type VARCHAR(50) NOT NULL,
+    invoice_id UUID NOT NULL REFERENCES invoices(id),
+    assigned_user_id UUID REFERENCES users(id),
+    due_date DATE NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending',
+    snoozed_until DATE,
+    snooze_count INTEGER DEFAULT 0
+);
+```
+
+The **mahnung_history** table should be append-only with database triggers preventing updates or deletes—this provides the audit trail required for legal disputes. Index on `invoice_id`, `action_timestamp`, and `mahn_stufe` for efficient querying.
+
+## Document workflow integration follows a clear category progression
+
+Documents should flow through categories: **Offene Rechnungen** (open invoices) → **Mahnungen** (in dunning process) → **Archiv** (closed/paid). When an invoice enters dunning, the system should automatically:
+
+1. Create Mahnung documents in the customer's Mahnungen folder
+2. Link the generated document to both the invoice and mahnung_history record
+3. Use consistent naming: `Mahnung_{Kundennummer}_{Rechnungsnummer}_{Datum}_Stufe{N}.docx`
+4. Store metadata including invoice_id, mahn_stufe, amounts, and generation timestamp
+
+For **Word document generation**, the recommended library is **docxtpl** (python-docx-template), which uses Jinja2 syntax and preserves Word formatting. A German Mahnung template must include:
+
+- Creditor identification and bank details (IBAN, BIC, Verwendungszweck)
+- Debtor name and address
+- Invoice reference (number, date, original amount)
+- Outstanding amount breakdown (Hauptforderung, Mahngebühren, Verzugszinsen)
+- New payment deadline with explicit date
+- For final Mahnungen: warning of legal consequences ("Ohne Zahlung bis zum [Datum] sehen wir uns gezwungen, ohne erneute Aufforderung rechtliche Schritte einzuleiten")
+
+## Scheduled jobs require German business calendar awareness
+
+Use **APScheduler with AsyncIOScheduler** for FastAPI, running the daily Mahnlauf check at 9:00 on business days only (Mon-Fri, excluding German holidays). Store jobs in PostgreSQL using SQLAlchemyJobStore for reliability.
+
+```python
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+import holidays
+
+scheduler = AsyncIOScheduler(timezone='Europe/Berlin')
+
+scheduler.add_job(
+    check_overdue_invoices,
+    CronTrigger(day_of_week='mon-fri', hour=9, timezone='Europe/Berlin'),
+    id='daily_mahnung_check',
+    replace_existing=True
+)
+```
+
+Use the **holidays** or **workalendar** library for German holiday handling, supporting all 16 Bundesländer with their regional variations. Implement idempotency using row-level locking (`SELECT ... FOR UPDATE SKIP LOCKED`) to safely handle job restarts or overlapping executions.
+
+The task system should implement a state machine with valid transitions: pending → in_progress → completed/snoozed, with snooze limited to 3 occurrences per task. Bulk actions (send all Stage 1 reminders, escalate selected invoices) should use a common endpoint pattern returning successful and failed item lists.
+
+## Competitive analysis reveals industry-standard expectations
+
+German accounting systems show consistent patterns. **SAP Business One** offers up to 10 Mahnstufen with deep accounting integration and enterprise-grade automation. **sevDesk** provides unlimited Mahnstufen with modern cloud UX—test winner 2021-2025 for Rechnungsprogramme. **Billomat** excels in automation with three levels: manual, semi-automated (drafts for approval), and fully automated (auto-send). **lexoffice** with autoMahntion add-on offers up to 6 Zahlungserinnerungsstufen plus 3 Mahnstufen with registered mail (Einwurfeinschreiben) options.
+
+**Table stakes features** (must-have): multiple Mahnstufen (minimum 3), Verzugszinsen calculation per BGB §288, configurable Mahngebühren, template customization, OPOS (open items) management, PDF generation, and email sending.
+
+**Differentiating features** include: banking integration for automatic payment matching (sevDesk, Billomat), unlimited/configurable stage count, Steuerberater portal access, DATEV export compatibility, and mobile apps with Belegerfassung.
+
+## Reporting centers on DSO and aging analysis
+
+**Days Sales Outstanding (DSO)** is the primary metric, calculated as `(Average Accounts Receivable × 360) ÷ Revenue`. German practice often uses 360 days (12 × 30) rather than 365. Industry benchmarks: retail B2C under 30 days, services B2B 30-45 days, manufacturing 45-60 days, machinery/equipment 60-90+ days. DSO above 60 days signals concern.
+
+**Mahnquote** (dunning ratio) measures collection efficiency: `(Number of invoices requiring dunning ÷ Total invoices) × 100`. Healthy performance is under 5%; above 15% requires urgent attention. Track this monthly with seasonality adjustments (holiday periods typically show higher rates).
+
+**Payment behavior analysis** per customer should calculate average payment days, identify patterns (consistent early/on-time/late, deteriorating trend), and feed into risk scoring. Predictive indicators include payment aging exceeding customer average by 1.5×, movement to higher risk category, and external signals from Creditreform or similar services.
+
+Dashboard alerting thresholds should trigger on: invoice overdue (grace period passed), dunning escalation needed, customer credit limit over 80% utilized, month-over-month DSO increase over 10%, and large single-customer exposure.
+
+## Implementation recommendations for the React/FastAPI/PostgreSQL stack
+
+**Frontend (React 19 + TanStack Router + shadcn/ui)**:
+- Use TanStack Table for all invoice and task data tables with row selection, sorting, and filtering
+- Implement drag-and-drop stage configuration with framer-motion Reorder
+- Use shadcn Form with Zod validation for all settings forms
+- Recharts for aging bucket and DSO trend visualizations
+- Sonner for toast notifications on Mahnung actions
+
+**Backend (FastAPI + PostgreSQL)**:
+- APScheduler for daily Mahnlauf with PostgreSQL job persistence
+- docxtpl for Word document generation from templates
+- holidays library for German Feiertage handling
+- Pydantic models with strict validation for all Mahnung operations
+- Append-only audit tables with database triggers
+
+**Key API endpoints**:
+- `GET /api/mahnungen` - List with status, stufe, customer, date filters
+- `PATCH /api/invoices/{id}/mahn-status` - Update dunning stage
+- `POST /api/mahnungen/bulk-action` - Generate documents, escalate, mark sent
+- `POST /api/tasks/{id}/snooze` - Postpone with reason tracking
+- `POST /api/invoices/{id}/phone-calls` - Log contact attempts
+
+The system should create tasks rather than auto-sending communications, matching the client's requirement for manual execution in external ERP. Each Mahnung action creates a task with due date, assigned user, and action type, appearing in the Mahnungen dashboard for batch processing or individual handling.

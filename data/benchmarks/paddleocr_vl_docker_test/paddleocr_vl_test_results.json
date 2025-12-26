@@ -1,0 +1,89 @@
+{
+  "test_date": "2025-12-19 19:45:31",
+  "backend": "paddleocr-vl-0.9b",
+  "test_images_count": 3,
+  "results": [
+    {
+      "backend": "paddleocr-vl-0.9b",
+      "image_path": "/app/test_images/invoice_001.png",
+      "success": true,
+      "error": null,
+      "processing_time_s": 36.36,
+      "vram_before": {
+        "allocated_gb": 0.0,
+        "reserved_gb": 0.0,
+        "total_gb": 15.99,
+        "usage_percent": 0.0
+      },
+      "vram_after": {
+        "allocated_gb": 0.0,
+        "reserved_gb": 0.0,
+        "total_gb": 15.99,
+        "usage_percent": 0.0
+      },
+      "vram_peak_gb": 0.0,
+      "text": "",
+      "text_length": 0,
+      "confidence": 0.0,
+      "has_umlauts": false,
+      "umlaut_count": 0
+    },
+    {
+      "backend": "paddleocr-vl-0.9b",
+      "image_path": "/app/test_images/invoice_002.png",
+      "success": true,
+      "error": null,
+      "processing_time_s": 2.49,
+      "vram_before": {
+        "allocated_gb": 0.0,
+        "reserved_gb": 0.0,
+        "total_gb": 15.99,
+        "usage_percent": 0.0
+      },
+      "vram_after": {
+        "allocated_gb": 0.0,
+        "reserved_gb": 0.0,
+        "total_gb": 15.99,
+        "usage_percent": 0.0
+      },
+      "vram_peak_gb": 0.0,
+      "text": "",
+      "text_length": 0,
+      "confidence": 0.0,
+      "has_umlauts": false,
+      "umlaut_count": 0
+    },
+    {
+      "backend": "paddleocr-vl-0.9b",
+      "image_path": "/app/test_images/invoice_003.png",
+      "success": true,
+      "error": null,
+      "processing_time_s": 1.55,
+      "vram_before": {
+        "allocated_gb": 0.0,
+        "reserved_gb": 0.0,
+        "total_gb": 15.99,
+        "usage_percent": 0.0
+      },
+      "vram_after": {
+        "allocated_gb": 0.0,
+        "reserved_gb": 0.0,
+        "total_gb": 15.99,
+        "usage_percent": 0.0
+      },
+      "vram_peak_gb": 0.0,
+      "text": "",
+      "text_length": 0,
+      "confidence": 0.0,
+      "has_umlauts": false,
+      "umlaut_count": 0
+    }
+  ],
+  "summary": {
+    "successful": 3,
+    "failed": 0,
+    "avg_processing_time": 13.466666666666667,
+    "avg_vram_gb": 0.0,
+    "total_umlauts": 0
+  }
+}

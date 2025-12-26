@@ -111,6 +111,65 @@ class CashFlowDirection(str, Enum):
     OUTFLOW = "outflow"  # Ausgabe
 
 
+class MahnTaskType(str, Enum):
+    """Aufgabentyp im Mahnwesen."""
+    REMINDER = "reminder"  # Mahnung versenden
+    ESCALATE = "escalate"  # Eskalieren
+    PHONE_CALL = "phone_call"  # Telefonkontakt
+    REVIEW = "review"  # Pruefung
+    COLLECTION = "collection"  # Inkasso
+
+
+class MahnTaskStatus(str, Enum):
+    """Status einer Mahnaufgabe."""
+    PENDING = "pending"  # Ausstehend
+    IN_PROGRESS = "in_progress"  # In Bearbeitung
+    COMPLETED = "completed"  # Erledigt
+    SNOOZED = "snoozed"  # Zurueckgestellt
+    CANCELLED = "cancelled"  # Abgebrochen
+
+
+class PhoneCallOutcome(str, Enum):
+    """Ergebnis eines Telefonkontakts."""
+    REACHED = "reached"  # Erreicht
+    NOT_REACHED = "not_reached"  # Nicht erreicht
+    VOICEMAIL = "voicemail"  # Mailbox
+    CALLBACK_REQUESTED = "callback_requested"  # Rueckruf erbeten
+    PAYMENT_PROMISED = "payment_promised"  # Zahlung zugesagt
+    DISPUTE_RAISED = "dispute_raised"  # Reklamation
+
+
+class DunningActionType(str, Enum):
+    """Aktionstyp fuer Mahnstufen."""
+    EMAIL = "email"  # E-Mail
+    LETTER = "letter"  # Brief
+    PHONE = "phone"  # Telefon
+    ESCALATION = "escalation"  # Eskalation/Inkasso
+
+
+class MahnungHistoryActionType(str, Enum):
+    """Aktionstypen fuer Mahnung-History."""
+    REMINDER_SENT = "reminder_sent"
+    ESCALATED = "escalated"
+    PHONE_CALL = "phone_call"
+    PAYMENT_RECEIVED = "payment_received"
+    PARTIAL_PAYMENT = "partial_payment"
+    MAHNSTOPP_SET = "mahnstopp_set"
+    MAHNSTOPP_LIFTED = "mahnstopp_lifted"
+    B2B_PAUSCHALE_CLAIMED = "b2b_pauschale_claimed"
+    TASK_CREATED = "task_created"
+    TASK_COMPLETED = "task_completed"
+    NOTE_ADDED = "note_added"
+    STATUS_CHANGED = "status_changed"
+
+
+class ContactMethod(str, Enum):
+    """Bevorzugte Kontaktmethode."""
+    EMAIL = "email"
+    PHONE = "phone"
+    LETTER = "letter"
+
+
 class CashFlowStatus(str, Enum):
     """Cash-Flow-Status."""
     EXPECTED = "expected"  # Erwartet
@@ -550,6 +609,15 @@ class DunningRecordResponse(BaseModel):
     accrued_interest: Decimal
     total_outstanding: Optional[Decimal]
 
+    # BGB §286 - B2B/B2C Unterscheidung
+    is_b2b: bool = True
+    b2b_pauschale_claimed: bool = False
+
+    # Mahnstopp (bei Reklamation)
+    mahnstopp: bool = False
+    mahnstopp_reason: Optional[str] = None
+    mahnstopp_until: Optional[datetime] = None
+
     # Timeline
     first_reminder_at: Optional[datetime]
     second_reminder_at: Optional[datetime]
@@ -595,6 +663,352 @@ class AgingReport(BaseModel):
 
     # Details
     entries: List[AgingReportEntry]
+
+
+# =============================================================================
+# MAHN-TASK SCHEMAS (Aufgabenverwaltung)
+# =============================================================================
+
+class MahnTaskCreate(BaseModel):
+    """Schema zum Erstellen einer Mahnaufgabe."""
+    dunning_record_id: UUID
+    task_type: MahnTaskType
+    due_date: date
+    assigned_user_id: Optional[UUID] = None
+    priority: int = Field(default=3, ge=1, le=5)
+
+
+class MahnTaskResponse(BaseModel):
+    """Response-Schema fuer Mahnaufgabe."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    dunning_record_id: UUID
+    task_type: MahnTaskType
+    assigned_user_id: Optional[UUID]
+    due_date: date
+    status: MahnTaskStatus
+    priority: int
+
+    # Snooze (max 3x)
+    snoozed_until: Optional[date]
+    snooze_count: int
+    snooze_reason: Optional[str]
+
+    # Completion
+    completed_at: Optional[datetime]
+    completed_by_id: Optional[UUID]
+    completion_notes: Optional[str]
+
+    created_at: datetime
+    updated_at: datetime
+
+    # Erweiterte Infos (optional befuellt)
+    invoice_number: Optional[str] = None
+    debtor_name: Optional[str] = None
+    outstanding_amount: Optional[Decimal] = None
+    days_overdue: Optional[int] = None
+
+
+class MahnTaskWithDunning(MahnTaskResponse):
+    """Mahnaufgabe mit vollstaendigen Dunning-Details."""
+    dunning_record: Optional[DunningRecordResponse] = None
+
+
+class MahnTaskFilter(BaseModel):
+    """Filter fuer Mahnaufgaben."""
+    task_type: Optional[MahnTaskType] = None
+    status: Optional[MahnTaskStatus] = None
+    assigned_user_id: Optional[UUID] = None
+    due_date_from: Optional[date] = None
+    due_date_to: Optional[date] = None
+    priority: Optional[int] = None
+    include_snoozed: bool = False
+
+
+class MahnTaskSnoozeRequest(BaseModel):
+    """Anfrage zum Zurueckstellen einer Aufgabe."""
+    snooze_until: date
+    reason: Optional[str] = Field(None, max_length=255)
+
+
+class MahnTaskCompleteRequest(BaseModel):
+    """Anfrage zum Abschliessen einer Aufgabe."""
+    notes: Optional[str] = None
+
+
+class MahnTaskBulkCompleteRequest(BaseModel):
+    """Anfrage zum Massenabschluss von Aufgaben."""
+    task_ids: List[UUID]
+    notes: Optional[str] = None
+
+
+class MahnTaskSummary(BaseModel):
+    """Zusammenfassung der Mahnaufgaben."""
+    pending_count: int
+    overdue_count: int
+    due_today_count: int
+    snoozed_count: int
+    by_type: Dict[str, int]
+    by_priority: Dict[int, int]
+
+
+# =============================================================================
+# PHONE CALL LOG SCHEMAS (Telefonprotokoll)
+# =============================================================================
+
+class PhoneCallLogCreate(BaseModel):
+    """Schema zum Erstellen eines Telefonprotokolls."""
+    dunning_record_id: UUID
+    contact_name: str = Field(..., min_length=1, max_length=255)
+    phone_number: Optional[str] = Field(None, max_length=50)
+    outcome: PhoneCallOutcome
+    notes: Optional[str] = None
+    follow_up_required: bool = False
+    follow_up_date: Optional[date] = None
+    follow_up_notes: Optional[str] = Field(None, max_length=255)
+
+
+class PhoneCallLogResponse(BaseModel):
+    """Response-Schema fuer Telefonprotokoll."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    dunning_record_id: UUID
+    called_at: datetime
+    called_by_id: Optional[UUID]
+    called_by_name: Optional[str] = None
+    contact_name: str
+    phone_number: Optional[str]
+    outcome: PhoneCallOutcome
+    notes: Optional[str]
+    follow_up_required: bool
+    follow_up_date: Optional[date]
+    follow_up_notes: Optional[str]
+
+
+class PhoneCallLogListResponse(BaseModel):
+    """Liste von Telefonprotokollen."""
+    items: List[PhoneCallLogResponse]
+    total: int
+
+
+# =============================================================================
+# DUNNING STAGE CONFIG SCHEMAS (Mahnstufen-Konfiguration)
+# =============================================================================
+
+class DunningStageConfigCreate(BaseModel):
+    """Schema zum Erstellen einer Mahnstufe."""
+    stage_number: int = Field(..., ge=1, le=10)
+    stage_name: str = Field(..., min_length=1, max_length=100)
+    trigger_days_after_due: int = Field(..., ge=0)
+    action_type: DunningActionType
+    template_id: Optional[UUID] = None
+    fee_amount: Decimal = Field(default=Decimal("0.00"), ge=0)
+
+
+class DunningStageConfigUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Mahnstufe."""
+    stage_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    trigger_days_after_due: Optional[int] = Field(None, ge=0)
+    action_type: Optional[DunningActionType] = None
+    template_id: Optional[UUID] = None
+    fee_amount: Optional[Decimal] = Field(None, ge=0)
+    is_active: Optional[bool] = None
+
+
+class DunningStageConfigResponse(BaseModel):
+    """Response-Schema fuer Mahnstufe."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    stage_number: int
+    stage_name: str
+    trigger_days_after_due: int
+    action_type: DunningActionType
+    template_id: Optional[UUID]
+    fee_amount: Decimal
+    is_active: bool
+    sort_order: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class DunningStageReorderRequest(BaseModel):
+    """Anfrage zur Neuordnung der Mahnstufen."""
+    stage_ids: List[UUID]
+
+
+class DunningStagesListResponse(BaseModel):
+    """Liste der Mahnstufen."""
+    stages: List[DunningStageConfigResponse]
+    interest_rate_b2b: Decimal
+    interest_rate_b2c: Decimal
+    b2b_pauschale: Decimal
+
+
+# =============================================================================
+# CUSTOMER DUNNING OVERRIDE SCHEMAS (Kundenspezifische Einstellungen)
+# =============================================================================
+
+class CustomerDunningOverrideCreate(BaseModel):
+    """Schema zum Erstellen kundenspezifischer Mahneinstellungen."""
+    business_entity_id: UUID
+    custom_payment_terms_days: Optional[int] = Field(None, ge=0)
+    max_mahn_stufe: Optional[int] = Field(None, ge=1, le=5)
+    preferred_contact_method: ContactMethod = ContactMethod.EMAIL
+    exclude_from_auto_dunning: bool = False
+    exclusion_reason: Optional[str] = Field(None, max_length=255)
+    notes: Optional[str] = None
+
+
+class CustomerDunningOverrideUpdate(BaseModel):
+    """Schema zum Aktualisieren kundenspezifischer Mahneinstellungen."""
+    custom_payment_terms_days: Optional[int] = Field(None, ge=0)
+    max_mahn_stufe: Optional[int] = Field(None, ge=1, le=5)
+    preferred_contact_method: Optional[ContactMethod] = None
+    exclude_from_auto_dunning: Optional[bool] = None
+    exclusion_reason: Optional[str] = Field(None, max_length=255)
+    notes: Optional[str] = None
+
+
+class CustomerDunningOverrideResponse(BaseModel):
+    """Response-Schema fuer kundenspezifische Mahneinstellungen."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    business_entity_id: UUID
+    business_entity_name: Optional[str] = None
+    custom_payment_terms_days: Optional[int]
+    max_mahn_stufe: Optional[int]
+    preferred_contact_method: ContactMethod
+    exclude_from_auto_dunning: bool
+    exclusion_reason: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+# =============================================================================
+# MAHNUNG HISTORY SCHEMAS (Audit-Log)
+# =============================================================================
+
+class MahnungHistoryResponse(BaseModel):
+    """Response-Schema fuer Mahnung-History-Eintrag."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    dunning_record_id: UUID
+    action_type: MahnungHistoryActionType
+    mahn_stufe: int
+    action_timestamp: datetime
+    performed_by_id: Optional[UUID]
+    performed_by_name: Optional[str] = None
+    notes: Optional[str]
+    outcome: Optional[str]
+    document_id: Optional[UUID]
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class MahnungHistoryListResponse(BaseModel):
+    """Liste von Mahnung-History-Eintraegen."""
+    items: List[MahnungHistoryResponse]
+    total: int
+
+
+# =============================================================================
+# MAHNSTOPP SCHEMAS
+# =============================================================================
+
+class MahnstoppSetRequest(BaseModel):
+    """Anfrage zum Setzen eines Mahnstopps."""
+    reason: str = Field(..., min_length=1, max_length=255)
+    until_date: Optional[date] = None
+
+
+class MahnstoppLiftRequest(BaseModel):
+    """Anfrage zum Aufheben eines Mahnstopps."""
+    notes: Optional[str] = None
+
+
+# =============================================================================
+# BULK ACTION SCHEMAS
+# =============================================================================
+
+class BulkEscalateRequest(BaseModel):
+    """Anfrage zur Masseneskalation."""
+    dunning_ids: List[UUID]
+    notes: Optional[str] = None
+
+
+class BulkEscalateResponse(BaseModel):
+    """Response der Masseneskalation."""
+    total: int
+    successful: int
+    failed: int
+    errors: List[Dict[str, str]]
+
+
+class BulkSendReminderRequest(BaseModel):
+    """Anfrage zum Massenversand von Mahnungen."""
+    dunning_ids: List[UUID]
+    send_email: bool = True
+    send_letter: bool = False
+
+
+class BulkSendReminderResponse(BaseModel):
+    """Response des Massenversands."""
+    total: int
+    sent: int
+    skipped: int  # Z.B. wegen Mahnstopp
+    errors: List[Dict[str, str]]
+
+
+# =============================================================================
+# B2B PAUSCHALE SCHEMA
+# =============================================================================
+
+class B2BPauschaleClaimResponse(BaseModel):
+    """Response nach Beanspruchung der B2B-Pauschale."""
+    dunning_id: UUID
+    pauschale_amount: Decimal
+    already_claimed: bool
+    success: bool
+    message: str
+
+
+# =============================================================================
+# VERZUGSZINSEN SCHEMA
+# =============================================================================
+
+class VerzugszinsenCalculation(BaseModel):
+    """Verzugszinsen-Berechnung."""
+    principal: Decimal
+    due_date: date
+    as_of_date: date
+    is_b2b: bool
+    interest_rate: Decimal  # Z.B. 11.27 fuer B2B
+    days_overdue: int
+    interest_amount: Decimal
+    total_with_interest: Decimal
+
+
+# =============================================================================
+# MAHNLAUF SCHEMAS (Daily Dunning Run)
+# =============================================================================
+
+class MahnlaufResult(BaseModel):
+    """Ergebnis des taeglichen Mahnlaufs."""
+    run_date: date
+    is_business_day: bool
+    skipped_reason: Optional[str] = None
+    candidates_found: int
+    tasks_created: int
+    skipped_mahnstopp: int
+    skipped_excluded: int
+    errors: List[Dict[str, str]]
+    duration_seconds: float
 
 
 # =============================================================================

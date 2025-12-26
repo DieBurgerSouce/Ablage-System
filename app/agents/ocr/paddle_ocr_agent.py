@@ -91,25 +91,25 @@ class PaddleOCRAgent(OCRAgent):
             return
 
         try:
-            logger.info("Loading PaddleOCR PP-OCRv5 model...")
+            logger.info("Loading PaddleOCR PP-OCRv5 model (3.3.2 API)...")
 
             from paddleocr import PaddleOCR
 
-            # Initialize PaddleOCR with German language support
-            # PaddleOCR 2.x API parameters:
-            # - use_angle_cls: Enable angle classification for rotated text
-            # - use_gpu: False = CPU mode
-            # - lang: Language model to use
-            # - show_log: Disable verbose logging
+            # Initialize PaddleOCR 3.3.2 with German language support
+            # PaddleOCR 3.3.2 API changes:
+            # - use_gpu: Removed (auto-detected)
+            # - show_log: Removed (use logging configuration)
+            # - use_angle_cls: Removed (integrated into pipeline)
+            # - lang: Still available for language selection
+            # Device (CPU/GPU) is automatically detected
             self._ocr = PaddleOCR(
-                use_angle_cls=True,
-                lang=self.default_language,
-                use_gpu=False,
-                show_log=False,
+                lang=self.default_language
+                # Note: Angle classification is integrated into pipeline in 3.3.2
+                # No cls parameter needed in .ocr() method
             )
 
             self._model_loaded = True
-            logger.info("PaddleOCR PP-OCRv5 model loaded successfully (CPU mode)")
+            logger.info("PaddleOCR PP-OCRv5 model loaded successfully (3.3.2 API, CPU mode)")
 
         except ImportError as e:
             logger.error("paddle_ocr_import_failed", error=str(e))
@@ -182,27 +182,40 @@ class PaddleOCRAgent(OCRAgent):
             Dictionary with text_blocks and full_text
         """
         try:
-            # Run OCR
-            # PaddleOCR returns: [[[box, (text, confidence)], ...], ...]
-            result = self._ocr.ocr(image, cls=True)
+            # Run OCR with PaddleOCR 3.3.2
+            # PaddleOCR 3.3.2 returns: dict with 'ocr_result' key containing [[[bbox], (text, confidence)], ...]
+            # Or list format: [[[bbox], (text, confidence)], ...] (backward compatibility)
+            ocr_result = self._ocr.ocr(image)  # cls parameter removed in 3.3.2
 
             text_blocks: List[Dict[str, Any]] = []
             all_text: List[str] = []
 
-            if result and result[0]:
-                for line in result[0]:
-                    # PaddleOCR format: [bounding_box, (text, confidence)]
-                    bbox = line[0]  # [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
-                    text = line[1][0]  # text string
-                    confidence = line[1][1]  # confidence float
+            # Handle PaddleOCR 3.3.2 dict format
+            if isinstance(ocr_result, dict) and 'ocr_result' in ocr_result:
+                result = ocr_result['ocr_result']
+            elif isinstance(ocr_result, list):
+                # Backward compatibility: list format
+                result = ocr_result[0] if ocr_result and isinstance(ocr_result[0], list) else ocr_result
+            else:
+                result = None
 
-                    if text and text.strip():
-                        text_blocks.append({
-                            "text": text.strip(),
-                            "confidence": round(float(confidence), 3),
-                            "bbox": bbox,
-                        })
-                        all_text.append(text.strip())
+            if result:
+                for line in result:
+                    if isinstance(line, (list, tuple)) and len(line) >= 2:
+                        # PaddleOCR format: [bounding_box, (text, confidence)]
+                        bbox = line[0]  # [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
+                        text_data = line[1]
+                        if isinstance(text_data, (list, tuple)) and len(text_data) >= 2:
+                            text = text_data[0]  # text string
+                            confidence = text_data[1]  # confidence float
+
+                            if text and text.strip():
+                                text_blocks.append({
+                                    "text": text.strip(),
+                                    "confidence": round(float(confidence), 3),
+                                    "bbox": bbox,
+                                })
+                                all_text.append(text.strip())
 
             logger.debug("paddle_ocr_recognition_complete", text_blocks=len(text_blocks))
 

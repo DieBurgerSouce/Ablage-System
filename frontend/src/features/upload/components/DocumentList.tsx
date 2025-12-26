@@ -33,7 +33,7 @@ export function DocumentList({ results, onUpdateTune, onUpdateBackend, onRemove 
     const { data: tunes } = useQuery({
         queryKey: ['tunes', 'active'],
         queryFn: async () => {
-            const response = await apiClient.get('/api/v1/tunes?active_only=true');
+            const response = await apiClient.get('/tunes?active_only=true');
             return response.data as Tune[];
         }
     });

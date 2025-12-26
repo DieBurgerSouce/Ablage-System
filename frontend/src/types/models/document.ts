@@ -4,7 +4,7 @@
  * Typen fuer Dokumente und dokumentbezogene Operationen.
  */
 
-import type { TimestampedEntity, SoftDeleteFields } from '../api/common';
+import type { SoftDeleteFields } from '../api/common';
 
 // ==================== Document Status ====================
 

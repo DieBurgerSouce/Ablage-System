@@ -377,3 +377,321 @@ class TestScenarioRecommendation:
         recommendation = service._get_scenario_recommendation(scenarios)
 
         assert "Vorsicht" in recommendation
+
+
+# =============================================================================
+# ASYNC DB TESTS
+# =============================================================================
+
+
+class TestAsyncCashFlowForecast:
+    """Tests fuer async get_cash_flow_forecast."""
+
+    @pytest.fixture
+    def service(self) -> CashFlowService:
+        return CashFlowService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.fixture
+    def sample_receivable_documents(self, sample_user_id):
+        """Sample Forderungs-Dokumente."""
+        today = date.today()
+        documents = []
+
+        doc1 = MagicMock()
+        doc1.id = uuid4()
+        doc1.owner_id = sample_user_id
+        doc1.document_type = "invoice"
+        doc1.deleted_at = None
+        doc1.extracted_data = {
+            "invoice_number": "RE-2024-001",
+            "creditor_name": "Kunde A",
+            "total_amount": "5000.00",
+            "due_date": (today + timedelta(days=10)).isoformat(),
+        }
+        documents.append(doc1)
+
+        doc2 = MagicMock()
+        doc2.id = uuid4()
+        doc2.owner_id = sample_user_id
+        doc2.document_type = "invoice"
+        doc2.deleted_at = None
+        doc2.extracted_data = {
+            "invoice_number": "RE-2024-002",
+            "creditor_name": "Kunde B",
+            "total_amount": "3000.00",
+            "due_date": (today + timedelta(days=20)).isoformat(),
+        }
+        documents.append(doc2)
+
+        return documents
+
+    @pytest.fixture
+    def sample_payable_documents(self, sample_user_id):
+        """Sample Verbindlichkeiten-Dokumente."""
+        today = date.today()
+        documents = []
+
+        doc1 = MagicMock()
+        doc1.id = uuid4()
+        doc1.owner_id = sample_user_id
+        doc1.document_type = "supplier_invoice"
+        doc1.deleted_at = None
+        doc1.extracted_data = {
+            "invoice_number": "LR-2024-001",
+            "creditor_name": "Lieferant A",
+            "total_amount": "2500.00",
+            "due_date": (today + timedelta(days=5)).isoformat(),
+        }
+        documents.append(doc1)
+
+        return documents
+
+    @pytest.mark.asyncio
+    async def test_get_cash_flow_forecast_empty(
+        self, service: CashFlowService, mock_db, sample_user_id
+    ):
+        """Sollte leere Prognose bei keinen Daten zurueckgeben."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        projection = await service.get_cash_flow_forecast(
+            db=mock_db,
+            user_id=sample_user_id,
+            days_ahead=30,
+        )
+
+        assert projection.total_inflow == Decimal("0.00")
+        assert projection.total_outflow == Decimal("0.00")
+        assert projection.start_date == date.today()
+
+    @pytest.mark.asyncio
+    async def test_get_cash_flow_forecast_with_starting_balance(
+        self, service: CashFlowService, mock_db, sample_user_id
+    ):
+        """Sollte Prognose mit Anfangssaldo berechnen."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        projection = await service.get_cash_flow_forecast(
+            db=mock_db,
+            user_id=sample_user_id,
+            days_ahead=7,
+            starting_balance=Decimal("10000.00"),
+        )
+
+        # Erste Tag sollte den Anfangssaldo haben
+        first_day = projection.start_date
+        assert first_day in projection.daily_balances
+
+    @pytest.mark.asyncio
+    async def test_get_cash_flow_forecast_different_scenarios(
+        self, service: CashFlowService, mock_db, sample_user_id
+    ):
+        """Sollte verschiedene Szenarien unterstuetzen."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        for scenario in [ForecastScenario.OPTIMISTIC, ForecastScenario.REALISTIC, ForecastScenario.PESSIMISTIC]:
+            projection = await service.get_cash_flow_forecast(
+                db=mock_db,
+                user_id=sample_user_id,
+                days_ahead=30,
+                scenario=scenario,
+            )
+
+            assert projection.scenario == scenario
+
+
+class TestAsyncCashFlowSummary:
+    """Tests fuer async get_cash_flow_summary."""
+
+    @pytest.fixture
+    def service(self) -> CashFlowService:
+        return CashFlowService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_get_cash_flow_summary(
+        self, service: CashFlowService, mock_db, sample_user_id
+    ):
+        """Sollte Cash-Flow-Zusammenfassung zurueckgeben."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        summary = await service.get_cash_flow_summary(
+            db=mock_db,
+            user_id=sample_user_id,
+        )
+
+        assert "short_term" in summary
+        assert "mid_term" in summary
+        assert "long_term" in summary
+        assert "alerts" in summary
+        assert "generated_at" in summary
+
+        # Perioden pruefen
+        assert summary["short_term"]["period"] == "7 Tage"
+        assert summary["mid_term"]["period"] == "30 Tage"
+        assert summary["long_term"]["period"] == "90 Tage"
+
+
+class TestAsyncDailyForecast:
+    """Tests fuer async get_daily_forecast."""
+
+    @pytest.fixture
+    def service(self) -> CashFlowService:
+        return CashFlowService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_get_daily_forecast(
+        self, service: CashFlowService, mock_db, sample_user_id
+    ):
+        """Sollte taegliche Prognose zurueckgeben."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        daily = await service.get_daily_forecast(
+            db=mock_db,
+            user_id=sample_user_id,
+            days=7,
+        )
+
+        # 7 Tage + heute = 8 Eintraege
+        assert len(daily) >= 7
+
+        # Jeder Eintrag sollte die erforderlichen Felder haben
+        for entry in daily:
+            assert "date" in entry
+            assert "inflow" in entry
+            assert "outflow" in entry
+            assert "net" in entry
+            assert "balance" in entry
+
+
+class TestAsyncCompareScenarios:
+    """Tests fuer async compare_scenarios."""
+
+    @pytest.fixture
+    def service(self) -> CashFlowService:
+        return CashFlowService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_compare_scenarios(
+        self, service: CashFlowService, mock_db, sample_user_id
+    ):
+        """Sollte Szenario-Vergleich zurueckgeben."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        comparison = await service.compare_scenarios(
+            db=mock_db,
+            user_id=sample_user_id,
+            days_ahead=30,
+        )
+
+        assert "scenarios" in comparison
+        assert "recommendation" in comparison
+        assert "period_days" in comparison
+
+        # Alle 3 Szenarien sollten vorhanden sein
+        assert "optimistic" in comparison["scenarios"]
+        assert "realistic" in comparison["scenarios"]
+        assert "pessimistic" in comparison["scenarios"]
+
+        # Jedes Szenario sollte die erforderlichen Metriken haben
+        for scenario_name, scenario_data in comparison["scenarios"].items():
+            assert "total_inflow" in scenario_data
+            assert "total_outflow" in scenario_data
+            assert "net_flow" in scenario_data
+            assert "min_balance" in scenario_data
+            assert "days_negative" in scenario_data
+
+
+class TestCashFlowPaymentBehaviorWeights:
+    """Tests fuer Zahlungsverhaltens-Gewichte."""
+
+    def test_default_weights_exist(self):
+        """Sollte Standard-Gewichte haben."""
+        service = CashFlowService()
+
+        assert "on_time" in service.PAYMENT_BEHAVIOR_WEIGHTS
+        assert "late_7" in service.PAYMENT_BEHAVIOR_WEIGHTS
+        assert "late_14" in service.PAYMENT_BEHAVIOR_WEIGHTS
+        assert "late_30" in service.PAYMENT_BEHAVIOR_WEIGHTS
+        assert "late_60" in service.PAYMENT_BEHAVIOR_WEIGHTS
+        assert "default" in service.PAYMENT_BEHAVIOR_WEIGHTS
+
+    def test_weights_are_decreasing(self):
+        """Sollte abnehmende Gewichte fuer spaetere Zahlungen haben."""
+        service = CashFlowService()
+        weights = service.PAYMENT_BEHAVIOR_WEIGHTS
+
+        assert weights["on_time"] >= weights["late_7"]
+        assert weights["late_7"] >= weights["late_14"]
+        assert weights["late_14"] >= weights["late_30"]
+        assert weights["late_30"] >= weights["late_60"]
+
+
+class TestForecastEnums:
+    """Tests fuer Forecast Enums."""
+
+    def test_forecast_period_values(self):
+        """Sollte korrekte Perioden-Werte haben."""
+        assert ForecastPeriod.DAILY.value == "daily"
+        assert ForecastPeriod.WEEKLY.value == "weekly"
+        assert ForecastPeriod.MONTHLY.value == "monthly"
+
+    def test_forecast_scenario_values(self):
+        """Sollte korrekte Szenario-Werte haben."""
+        assert ForecastScenario.OPTIMISTIC.value == "optimistic"
+        assert ForecastScenario.REALISTIC.value == "realistic"
+        assert ForecastScenario.PESSIMISTIC.value == "pessimistic"
+
+    def test_all_periods_count(self):
+        """Sollte 3 Perioden haben."""
+        assert len(ForecastPeriod) == 3
+
+    def test_all_scenarios_count(self):
+        """Sollte 3 Szenarien haben."""
+        assert len(ForecastScenario) == 3

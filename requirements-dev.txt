@@ -17,6 +17,7 @@ pytest-timeout==2.2.0
 faker==22.2.0
 factory-boy==3.3.0
 httpx==0.26.0
+hypothesis==6.92.2  # Property-based testing
 
 # Security Testing
 bandit[toml]==1.7.6

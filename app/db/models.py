@@ -4719,6 +4719,15 @@ class DunningRecord(Base):
     # Status
     status = Column(String(50), default="pending")
 
+    # B2B/B2C Unterscheidung (BGB §286 Compliance)
+    is_b2b = Column(Boolean, default=True, comment="B2B: +9% Zinsen, B2C: +5% Zinsen")
+    b2b_pauschale_claimed = Column(Boolean, default=False, comment="EUR40 Pauschale nach §288 Abs. 5 BGB")
+
+    # Mahnstopp (fuer Reklamationen/Disputes)
+    mahnstopp = Column(Boolean, default=False, comment="Stoppt automatische Mahnung")
+    mahnstopp_reason = Column(String(255), nullable=True)
+    mahnstopp_until = Column(DateTime(timezone=True), nullable=True)
+
     # Loesung
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     resolved_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -4736,6 +4745,253 @@ class DunningRecord(Base):
     resolved_by = relationship("User", foreign_keys=[resolved_by_id])
     document = relationship("Document", backref="dunning_records")
     business_entity = relationship("BusinessEntity", backref="dunning_records")
+    history_entries = relationship("MahnungHistory", back_populates="dunning_record", cascade="all, delete-orphan")
+    tasks = relationship("MahnTask", back_populates="dunning_record", cascade="all, delete-orphan")
+    phone_calls = relationship("PhoneCallLog", back_populates="dunning_record", cascade="all, delete-orphan")
+
+
+# =============================================================================
+# MAHNUNGSWESEN MODELS (Dunning System Extensions)
+# =============================================================================
+
+
+class MahnungHistory(Base):
+    """Immutable Audit-Log fuer Mahnvorgaenge.
+
+    WICHTIG: Diese Tabelle ist append-only!
+    Ein Datenbank-Trigger sollte UPDATE und DELETE verhindern.
+    """
+    __tablename__ = "mahnung_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dunning_record_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("dunning_records.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Aktion
+    action_type = Column(String(50), nullable=False, comment="reminder_sent, escalated, phone_call, payment_received, etc.")
+    mahn_stufe = Column(Integer, nullable=False, comment="Mahnstufe zum Zeitpunkt der Aktion")
+    action_timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Ausfuehrender
+    performed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Details
+    notes = Column(Text, nullable=True)
+    outcome = Column(String(50), nullable=True, comment="success, failed, pending, etc.")
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
+
+    # Zusaetzliche Metadaten (JSON)
+    metadata = Column(CrossDBJSON, default=dict)
+
+    # Relationships
+    dunning_record = relationship("DunningRecord", back_populates="history_entries")
+    performed_by = relationship("User", foreign_keys=[performed_by_id])
+    generated_document = relationship("Document", foreign_keys=[document_id])
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_mahnung_history_action_timestamp", "action_timestamp"),
+        Index("ix_mahnung_history_action_type", "action_type"),
+    )
+
+
+class MahnTask(Base):
+    """Aufgaben fuer das Mahnungswesen.
+
+    Tasks werden vom taeglichen Mahnlauf erstellt und erscheinen
+    im Dashboard zur manuellen Bearbeitung.
+    """
+    __tablename__ = "mahn_tasks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dunning_record_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("dunning_records.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Aufgabentyp
+    task_type = Column(String(50), nullable=False, comment="reminder, escalate, phone_call, review, collection")
+
+    # Zuweisung
+    assigned_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Faelligkeit
+    due_date = Column(Date, nullable=False)
+
+    # Status
+    status = Column(String(20), default="pending", nullable=False, comment="pending, in_progress, completed, snoozed, cancelled")
+
+    # Snooze (max 3x)
+    snoozed_until = Column(Date, nullable=True)
+    snooze_count = Column(Integer, default=0)
+    snooze_reason = Column(String(255), nullable=True)
+
+    # Abschluss
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    completed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    completion_notes = Column(Text, nullable=True)
+
+    # Prioritaet (1=hoechste, 5=niedrigste)
+    priority = Column(Integer, default=3)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    dunning_record = relationship("DunningRecord", back_populates="tasks")
+    assigned_user = relationship("User", foreign_keys=[assigned_user_id])
+    completed_by = relationship("User", foreign_keys=[completed_by_id])
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_mahn_tasks_status", "status"),
+        Index("ix_mahn_tasks_due_date", "due_date"),
+        Index("ix_mahn_tasks_assigned_user", "assigned_user_id"),
+    )
+
+
+class PhoneCallLog(Base):
+    """Telefonkontakt-Protokoll fuer Mahnungswesen.
+
+    Dokumentiert alle telefonischen Kontaktversuche und deren Ergebnis.
+    """
+    __tablename__ = "phone_call_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dunning_record_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("dunning_records.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Anrufdaten
+    called_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    called_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Kontakt
+    contact_name = Column(String(255), nullable=False)
+    phone_number = Column(String(50), nullable=True)
+
+    # Ergebnis
+    outcome = Column(String(50), nullable=False, comment="reached, not_reached, voicemail, callback_requested, payment_promised, dispute_raised")
+
+    # Notizen
+    notes = Column(Text, nullable=True)
+
+    # Follow-up
+    follow_up_required = Column(Boolean, default=False)
+    follow_up_date = Column(Date, nullable=True)
+    follow_up_notes = Column(String(255), nullable=True)
+
+    # Relationship
+    dunning_record = relationship("DunningRecord", back_populates="phone_calls")
+    called_by = relationship("User", foreign_keys=[called_by_id])
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_phone_call_logs_called_at", "called_at"),
+    )
+
+
+class DunningStageConfig(Base):
+    """Konfigurierbare Mahnstufen.
+
+    Admin kann eigene Mahnstufen definieren mit:
+    - Tagen nach Faelligkeit
+    - Aktionstyp (Email, Brief, Telefon)
+    - Mahngebuehr
+    - Template
+    """
+    __tablename__ = "dunning_stage_configs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Stage-Definition
+    stage_number = Column(Integer, nullable=False, comment="1-basiert: 1=erste Stufe")
+    stage_name = Column(String(100), nullable=False, comment="z.B. Zahlungserinnerung, 1. Mahnung")
+
+    # Trigger
+    trigger_days_after_due = Column(Integer, nullable=False, comment="Tage nach Faelligkeit")
+
+    # Aktion
+    action_type = Column(String(50), nullable=False, comment="email, letter, phone, escalation")
+    template_id = Column(UUID(as_uuid=True), nullable=True, comment="Template-ID fuer Dokument-Generierung")
+
+    # Gebuehren
+    fee_amount = Column(Numeric(10, 2), default=0, comment="Mahngebuehr in EUR")
+
+    # Status
+    is_active = Column(Boolean, default=True)
+
+    # Sortierung (fuer Drag-and-Drop Reorder)
+    sort_order = Column(Integer, default=0)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", backref="dunning_stage_configs")
+
+    # Indexes und Constraints
+    __table_args__ = (
+        Index("ix_dunning_stage_configs_user_id", "user_id"),
+        Index("ix_dunning_stage_configs_sort_order", "user_id", "sort_order"),
+    )
+
+
+class CustomerDunningOverride(Base):
+    """Kundenspezifische Mahneinstellungen.
+
+    Ermoeglicht Sonderbehandlung fuer bestimmte Kunden:
+    - Eigene Zahlungsfristen
+    - Max. Mahnstufe
+    - Ausschluss von automatischer Mahnung
+    """
+    __tablename__ = "customer_dunning_overrides"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    business_entity_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("business_entities.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True
+    )
+
+    # Zahlungsbedingungen
+    custom_payment_terms_days = Column(Integer, nullable=True, comment="Abweichende Zahlungsfrist")
+
+    # Mahnung
+    max_mahn_stufe = Column(Integer, nullable=True, comment="Max. Eskalationsstufe (z.B. 2 = nie Inkasso)")
+    preferred_contact_method = Column(String(50), default="email", comment="email, phone, letter")
+
+    # Ausschluss
+    exclude_from_auto_dunning = Column(Boolean, default=False, comment="Keine automatischen Mahnungen")
+    exclusion_reason = Column(String(255), nullable=True)
+
+    # Notizen
+    notes = Column(Text, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    business_entity = relationship("BusinessEntity", backref="dunning_override")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_customer_dunning_overrides_entity", "business_entity_id"),
+    )
 
 
 class CashFlowEntry(Base):

@@ -64,18 +64,31 @@ Dieses Projekt verwendet eine **optimierte Claude Code Entwicklungsstruktur**. B
 
 ---
 
+## WICHTIG: Docker-Only Entwicklung
+
+**Ab sofort wird ausschliesslich mit Docker gearbeitet!**
+- KEINE lokalen Dev-Server (`npm run dev`, `uvicorn --reload`)
+- ALLE Aenderungen werden via Docker-Container getestet
+- Frontend-Aenderungen erfordern `docker-compose build frontend && docker-compose up -d frontend`
+
 ## Wichtige Befehle
 
 ```bash
-# Development starten
+# Development starten (IMMER mit Docker!)
 docker-compose up -d
 
-# API Server (lokal)
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Frontend nach Aenderungen neu bauen
+docker-compose build frontend && docker-compose up -d frontend
 
-# Tests ausführen
-pytest tests/unit/ -v
-pytest tests/integration/ -v
+# Backend nach Aenderungen neu bauen
+docker-compose build backend && docker-compose up -d backend
+
+# Alle Container neu bauen
+docker-compose build && docker-compose up -d
+
+# Tests ausfuehren (in Docker)
+docker-compose exec backend pytest tests/unit/ -v
+docker-compose exec backend pytest tests/integration/ -v
 
 # GPU-Status
 nvidia-smi

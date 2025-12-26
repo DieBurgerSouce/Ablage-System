@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, Building2, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, Building2, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { SettingsModal } from '@/components/settings'
@@ -58,6 +58,18 @@ export function Sidebar() {
                 <SidebarLink to="/validation-queue" icon={CheckCircle} label="Validierung" />
                 <SidebarLink to="/document-groups" icon={Layers} label="Dokumentgruppen" />
                 <SidebarLink to="/business-entities" icon={Building2} label="Geschäftspartner" />
+                <SidebarLink to="/admin/datev" icon={FileSpreadsheet} label="DATEV Export" />
+
+                {/* Ablage-Struktur Section */}
+                <div className="pt-4">
+                    <div className="px-3 mb-2">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Ablage
+                        </span>
+                    </div>
+                    <SidebarLink to="/kunden" icon={Users} label="Kunden" />
+                    <SidebarLink to="/lieferanten" icon={Package} label="Lieferanten" />
+                </div>
 
                 {/* Admin Section */}
                 <div className="pt-4">

@@ -52,6 +52,8 @@ class BackendConfig:
     vram_gb: float
     agent_class: Optional[str] = None
     enabled: bool = True
+    experimental: bool = False  # Flag für experimentelle Backends
+    experimental: bool = False  # Flag für experimentelle Backends
 
 
 # Verfügbare OCR Backends
@@ -118,6 +120,15 @@ AVAILABLE_BACKENDS: Dict[str, BackendConfig] = {
         requires_gpu=False,
         vram_gb=0.0,
         agent_class="DocTRAgent",
+    ),
+    "paddle-ocr-vl-09b": BackendConfig(
+        name="paddle-ocr-vl-09b",
+        display_name="PaddleOCR-VL 0.9B (Experimental)",
+        requires_gpu=True,
+        vram_gb=10.0,  # Conservative estimate, will be validated during testing
+        agent_class="PaddleOCRVLAgentExperimental",
+        enabled=True,
+        experimental=True,  # Mark as experimental for evaluation
     ),
 }
 
@@ -229,6 +240,23 @@ class BenchmarkRunnerService:
                     self._agents["olmocr-2"] = OlmOCRAgent()
                 except ImportError as e:
                     logger.warning("olmocr_agent_not_available", error=str(e))
+
+                # Experimental: PaddleOCR-VL 0.9B (evaluation only)
+                try:
+                    from app.agents.ocr.paddle_ocr_vl_agent_experimental import (
+                        PaddleOCRVLAgentExperimental
+                    )
+                    self._agents["paddle-ocr-vl-09b"] = PaddleOCRVLAgentExperimental()
+                    logger.info(
+                        "paddleocr_vl_experimental_loaded",
+                        message="PaddleOCR-VL 0.9B experimental agent loaded for evaluation"
+                    )
+                except ImportError as e:
+                    logger.warning(
+                        "paddleocr_vl_experimental_not_available",
+                        error=str(e),
+                        message="PaddleOCR-VL 0.9B not available (experimental)"
+                    )
         except ImportError:
             logger.warning("pytorch_not_available")
 
@@ -294,7 +322,7 @@ class BenchmarkRunnerService:
                 result = await self._run_single_benchmark(
                     sample=sample,
                     backend_name=backend_name,
-                    force_reprocess=request.force_reprocess
+                    force_reprocess=request.force_rerun
                 )
                 sample_results.append(result)
 
@@ -729,6 +757,7 @@ class BenchmarkRunnerService:
                 "requires_gpu": config.requires_gpu,
                 "vram_gb": config.vram_gb,
                 "available": name in self._agents,
+                "experimental": config.experimental,  # Include experimental flag
             })
         return backends
 

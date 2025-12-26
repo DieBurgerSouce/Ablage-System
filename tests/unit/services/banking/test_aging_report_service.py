@@ -334,3 +334,463 @@ class TestReportTypeEnum:
     def test_report_type_count(self):
         """Sollte 2 Report-Typen haben."""
         assert len(ReportType) == 2
+
+
+# =============================================================================
+# ASYNC DB TESTS
+# =============================================================================
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+
+class TestAsyncReceivablesAging:
+    """Tests fuer async get_receivables_aging."""
+
+    @pytest.fixture
+    def service(self) -> AgingReportService:
+        return AgingReportService()
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mock-Datenbank-Session."""
+        db = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.fixture
+    def sample_documents(self, sample_user_id):
+        """Sample Dokumente mit extrahierten Daten."""
+        today = date.today()
+        documents = []
+
+        # Dokument 1: Aktuell (nicht faellig)
+        doc1 = MagicMock()
+        doc1.id = uuid4()
+        doc1.owner_id = sample_user_id
+        doc1.document_type = "invoice"
+        doc1.deleted_at = None
+        doc1.extracted_data = {
+            "invoice_number": "RE-2024-001",
+            "creditor_name": "Kunde A GmbH",
+            "total_amount": "1500.00",
+            "due_date": (today + timedelta(days=10)).isoformat(),
+            "invoice_date": (today - timedelta(days=20)).isoformat(),
+        }
+        documents.append(doc1)
+
+        # Dokument 2: 15 Tage ueberfaellig
+        doc2 = MagicMock()
+        doc2.id = uuid4()
+        doc2.owner_id = sample_user_id
+        doc2.document_type = "invoice"
+        doc2.deleted_at = None
+        doc2.extracted_data = {
+            "invoice_number": "RE-2024-002",
+            "creditor_name": "Kunde B AG",
+            "total_amount": "2500.00",
+            "due_date": (today - timedelta(days=15)).isoformat(),
+            "invoice_date": (today - timedelta(days=45)).isoformat(),
+        }
+        documents.append(doc2)
+
+        # Dokument 3: 45 Tage ueberfaellig
+        doc3 = MagicMock()
+        doc3.id = uuid4()
+        doc3.owner_id = sample_user_id
+        doc3.document_type = "invoice"
+        doc3.deleted_at = None
+        doc3.extracted_data = {
+            "invoice_number": "RE-2024-003",
+            "creditor_name": "Kunde A GmbH",  # Gleicher Kunde wie doc1
+            "total_amount": "3000.00",
+            "due_date": (today - timedelta(days=45)).isoformat(),
+            "invoice_date": (today - timedelta(days=75)).isoformat(),
+        }
+        documents.append(doc3)
+
+        # Dokument 4: Bereits bezahlt (sollte ignoriert werden)
+        doc4 = MagicMock()
+        doc4.id = uuid4()
+        doc4.owner_id = sample_user_id
+        doc4.document_type = "invoice"
+        doc4.deleted_at = None
+        doc4.extracted_data = {
+            "invoice_number": "RE-2024-004",
+            "creditor_name": "Kunde C",
+            "total_amount": "1000.00",
+            "due_date": (today - timedelta(days=30)).isoformat(),
+            "payment_status": "paid",
+        }
+        documents.append(doc4)
+
+        return documents
+
+    @pytest.mark.asyncio
+    async def test_get_receivables_aging_with_documents(
+        self, service: AgingReportService, mock_db, sample_user_id, sample_documents
+    ):
+        """Sollte Forderungs-Aging mit Dokumenten berechnen."""
+        # Mock DB Abfrage
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = sample_documents
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        report = await service.get_receivables_aging(
+            db=mock_db,
+            user_id=sample_user_id,
+            include_details=True,
+        )
+
+        assert report.report_type == ReportType.RECEIVABLES
+        # 3 Dokumente (bezahltes wird ignoriert)
+        assert report.total_count == 3
+        assert report.total_amount > Decimal("0.00")
+        assert len(report.buckets) == 5
+
+    @pytest.mark.asyncio
+    async def test_get_receivables_aging_empty(
+        self, service: AgingReportService, mock_db, sample_user_id
+    ):
+        """Sollte leeren Report bei keinen Dokumenten zurueckgeben."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        report = await service.get_receivables_aging(
+            db=mock_db,
+            user_id=sample_user_id,
+        )
+
+        assert report.total_count == 0
+        assert report.total_amount == Decimal("0.00")
+
+    @pytest.mark.asyncio
+    async def test_get_receivables_aging_without_details(
+        self, service: AgingReportService, mock_db, sample_user_id, sample_documents
+    ):
+        """Sollte Report ohne Details zurueckgeben."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = sample_documents
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        report = await service.get_receivables_aging(
+            db=mock_db,
+            user_id=sample_user_id,
+            include_details=False,
+        )
+
+        assert len(report.line_items) == 0
+        assert report.total_count > 0
+
+
+class TestAsyncPayablesAging:
+    """Tests fuer async get_payables_aging."""
+
+    @pytest.fixture
+    def service(self) -> AgingReportService:
+        return AgingReportService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.fixture
+    def sample_payable_documents(self, sample_user_id):
+        """Sample Verbindlichkeiten-Dokumente."""
+        today = date.today()
+        documents = []
+
+        # Lieferantenrechnung 1
+        doc1 = MagicMock()
+        doc1.id = uuid4()
+        doc1.owner_id = sample_user_id
+        doc1.document_type = "supplier_invoice"
+        doc1.deleted_at = None
+        doc1.extracted_data = {
+            "invoice_number": "LR-2024-001",
+            "creditor_name": "Lieferant A",
+            "total_amount": "5000.00",
+            "due_date": (today - timedelta(days=5)).isoformat(),
+        }
+        documents.append(doc1)
+
+        # Bestellung 2
+        doc2 = MagicMock()
+        doc2.id = uuid4()
+        doc2.owner_id = sample_user_id
+        doc2.document_type = "purchase_order"
+        doc2.deleted_at = None
+        doc2.extracted_data = {
+            "invoice_number": "BE-2024-001",
+            "supplier_name": "Lieferant B",
+            "total_amount": "2500.00",
+            "due_date": (today + timedelta(days=7)).isoformat(),
+        }
+        documents.append(doc2)
+
+        return documents
+
+    @pytest.mark.asyncio
+    async def test_get_payables_aging(
+        self, service: AgingReportService, mock_db, sample_user_id, sample_payable_documents
+    ):
+        """Sollte Verbindlichkeiten-Aging berechnen."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = sample_payable_documents
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        report = await service.get_payables_aging(
+            db=mock_db,
+            user_id=sample_user_id,
+        )
+
+        assert report.report_type == ReportType.PAYABLES
+        assert report.total_count == 2
+
+
+class TestAsyncAgingSummary:
+    """Tests fuer async get_aging_summary."""
+
+    @pytest.fixture
+    def service(self) -> AgingReportService:
+        return AgingReportService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_get_aging_summary(
+        self, service: AgingReportService, mock_db, sample_user_id
+    ):
+        """Sollte kombinierte Aging-Zusammenfassung zurueckgeben."""
+        # Mock leere Ergebnisse
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        summary = await service.get_aging_summary(
+            db=mock_db,
+            user_id=sample_user_id,
+        )
+
+        assert "receivables" in summary
+        assert "payables" in summary
+        assert "net_position" in summary
+        assert "generated_at" in summary
+
+
+class TestAsyncTopDebtors:
+    """Tests fuer async get_top_debtors."""
+
+    @pytest.fixture
+    def service(self) -> AgingReportService:
+        return AgingReportService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.fixture
+    def sample_debtor_documents(self, sample_user_id):
+        """Sample Dokumente fuer Top-Debtors Test."""
+        today = date.today()
+        documents = []
+
+        # Mehrere Rechnungen vom gleichen Kunden
+        for i in range(5):
+            doc = MagicMock()
+            doc.id = uuid4()
+            doc.owner_id = sample_user_id
+            doc.document_type = "invoice"
+            doc.deleted_at = None
+            doc.extracted_data = {
+                "invoice_number": f"RE-2024-00{i+1}",
+                "creditor_name": "Grosser Kunde GmbH",
+                "total_amount": str(1000 + i * 500),
+                "due_date": (today - timedelta(days=10 + i * 5)).isoformat(),
+            }
+            documents.append(doc)
+
+        # Ein einzelner kleinerer Kunde
+        doc_small = MagicMock()
+        doc_small.id = uuid4()
+        doc_small.owner_id = sample_user_id
+        doc_small.document_type = "invoice"
+        doc_small.deleted_at = None
+        doc_small.extracted_data = {
+            "invoice_number": "RE-2024-010",
+            "creditor_name": "Kleiner Kunde",
+            "total_amount": "500.00",
+            "due_date": (today - timedelta(days=5)).isoformat(),
+        }
+        documents.append(doc_small)
+
+        return documents
+
+    @pytest.mark.asyncio
+    async def test_get_top_debtors(
+        self, service: AgingReportService, mock_db, sample_user_id, sample_debtor_documents
+    ):
+        """Sollte Top-Schuldner zurueckgeben."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = sample_debtor_documents
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        debtors = await service.get_top_debtors(
+            db=mock_db,
+            user_id=sample_user_id,
+            limit=5,
+        )
+
+        assert len(debtors) <= 5
+        # Erster sollte der groesste sein
+        if len(debtors) >= 2:
+            assert debtors[0]["total_amount"] >= debtors[1]["total_amount"]
+
+    @pytest.mark.asyncio
+    async def test_get_top_debtors_empty(
+        self, service: AgingReportService, mock_db, sample_user_id
+    ):
+        """Sollte leere Liste bei keinen Dokumenten zurueckgeben."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        debtors = await service.get_top_debtors(
+            db=mock_db,
+            user_id=sample_user_id,
+        )
+
+        assert debtors == []
+
+
+class TestAsyncTopCreditors:
+    """Tests fuer async get_top_creditors."""
+
+    @pytest.fixture
+    def service(self) -> AgingReportService:
+        return AgingReportService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_get_top_creditors_empty(
+        self, service: AgingReportService, mock_db, sample_user_id
+    ):
+        """Sollte leere Liste bei keinen Dokumenten zurueckgeben."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        creditors = await service.get_top_creditors(
+            db=mock_db,
+            user_id=sample_user_id,
+        )
+
+        assert creditors == []
+
+
+class TestAsyncDSOCalculation:
+    """Tests fuer async calculate_dso."""
+
+    @pytest.fixture
+    def service(self) -> AgingReportService:
+        return AgingReportService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_calculate_dso_no_revenue(
+        self, service: AgingReportService, mock_db, sample_user_id
+    ):
+        """Sollte DSO 0 bei keinem Umsatz zurueckgeben."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        dso = await service.calculate_dso(
+            db=mock_db,
+            user_id=sample_user_id,
+        )
+
+        assert "dso" in dso
+        assert "period_days" in dso
+        assert "interpretation" in dso
+
+    @pytest.mark.asyncio
+    async def test_calculate_dso_with_documents(
+        self, service: AgingReportService, mock_db, sample_user_id
+    ):
+        """Sollte DSO mit Dokumenten berechnen."""
+        today = date.today()
+
+        # Offene Rechnung
+        open_invoice = MagicMock()
+        open_invoice.id = uuid4()
+        open_invoice.owner_id = sample_user_id
+        open_invoice.document_type = "invoice"
+        open_invoice.deleted_at = None
+        open_invoice.created_at = today - timedelta(days=30)
+        open_invoice.extracted_data = {
+            "total_amount": "5000.00",
+            "due_date": (today - timedelta(days=10)).isoformat(),
+        }
+
+        # Bezahlte Rechnung (fuer Umsatz)
+        paid_invoice = MagicMock()
+        paid_invoice.id = uuid4()
+        paid_invoice.owner_id = sample_user_id
+        paid_invoice.document_type = "invoice"
+        paid_invoice.deleted_at = None
+        paid_invoice.created_at = today - timedelta(days=60)
+        paid_invoice.extracted_data = {
+            "total_amount": "10000.00",
+            "payment_status": "paid",
+        }
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [open_invoice, paid_invoice]
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        dso = await service.calculate_dso(
+            db=mock_db,
+            user_id=sample_user_id,
+            period_days=90,
+        )
+
+        assert dso["period_days"] == 90
+        assert "receivables" in dso
+        assert "revenue" in dso

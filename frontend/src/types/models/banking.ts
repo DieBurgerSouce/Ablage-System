@@ -5,7 +5,7 @@
  * Mahnwesen, Cash-Flow und Skonto.
  */
 
-import type { TimestampedEntity, PaginatedResponse } from '../api/common';
+import type { PaginatedResponse } from '../api/common';
 
 // ==================== Common Banking Types ====================
 
@@ -621,4 +621,396 @@ export interface DSO {
         previous_dso: number;
         change: number;
     };
+}
+
+// ==================== Erweitertes Mahnungswesen (BGB §286) ====================
+
+/**
+ * Mahnaufgaben-Typ
+ */
+export type MahnTaskType = 'reminder' | 'escalate' | 'phone_call' | 'review' | 'collection';
+
+/**
+ * Mahnaufgaben-Status
+ */
+export type MahnTaskStatus = 'pending' | 'in_progress' | 'completed' | 'snoozed' | 'cancelled';
+
+/**
+ * Telefonkontakt-Ergebnis
+ */
+export type PhoneCallOutcome =
+    | 'reached'
+    | 'not_reached'
+    | 'voicemail'
+    | 'callback_requested'
+    | 'payment_promised'
+    | 'dispute_raised';
+
+/**
+ * Aktionstyp fuer Mahnstufen
+ */
+export type DunningActionType = 'email' | 'letter' | 'phone' | 'escalation';
+
+/**
+ * History-Aktionstyp
+ */
+export type MahnungHistoryActionType =
+    | 'reminder_sent'
+    | 'escalated'
+    | 'phone_call'
+    | 'payment_received'
+    | 'partial_payment'
+    | 'mahnstopp_set'
+    | 'mahnstopp_lifted'
+    | 'b2b_pauschale_claimed'
+    | 'task_created'
+    | 'task_completed'
+    | 'note_added'
+    | 'status_changed';
+
+/**
+ * Bevorzugte Kontaktmethode
+ */
+export type ContactMethod = 'email' | 'phone' | 'letter';
+
+/**
+ * Erweiterter Mahnvorgang mit BGB §286 Feldern
+ */
+export interface DunningRecord {
+    id: string;
+    document_id: string;
+    invoice_number: string | null;
+    invoice_date: string | null;
+    due_date: string | null;
+    gross_amount: number | null;
+    outstanding_amount: number | null;
+    currency: CurrencyCode;
+
+    // Schuldner
+    debtor_name: string | null;
+    debtor_email: string | null;
+
+    // Mahnung
+    dunning_level: number;
+    status: string;
+
+    // Gebuehren
+    reminder_fee: number;
+    late_interest_rate: number | null;
+    accrued_interest: number;
+    total_outstanding: number | null;
+
+    // BGB §286 - B2B/B2C Unterscheidung
+    is_b2b: boolean;
+    b2b_pauschale_claimed: boolean;
+
+    // Mahnstopp (bei Reklamation)
+    mahnstopp: boolean;
+    mahnstopp_reason: string | null;
+    mahnstopp_until: string | null;
+
+    // Timeline
+    first_reminder_at: string | null;
+    second_reminder_at: string | null;
+    final_reminder_at: string | null;
+    next_action_at: string | null;
+
+    created_at: string;
+    updated_at: string;
+}
+
+/**
+ * Mahnaufgabe
+ */
+export interface MahnTask {
+    id: string;
+    dunning_record_id: string;
+    task_type: MahnTaskType;
+    assigned_user_id: string | null;
+    due_date: string;
+    status: MahnTaskStatus;
+    priority: number;
+
+    // Snooze (max 3x)
+    snoozed_until: string | null;
+    snooze_count: number;
+    snooze_reason: string | null;
+
+    // Completion
+    completed_at: string | null;
+    completed_by_id: string | null;
+    completion_notes: string | null;
+
+    created_at: string;
+    updated_at: string;
+
+    // Erweiterte Infos (optional)
+    invoice_number?: string;
+    debtor_name?: string;
+    outstanding_amount?: number;
+    days_overdue?: number;
+}
+
+/**
+ * Mahnaufgabe mit vollstaendigen Dunning-Details
+ */
+export interface MahnTaskWithDunning extends MahnTask {
+    dunning_record?: DunningRecord;
+}
+
+/**
+ * Filter fuer Mahnaufgaben
+ */
+export interface MahnTaskFilter {
+    task_type?: MahnTaskType;
+    status?: MahnTaskStatus;
+    assigned_user_id?: string;
+    due_date_from?: string;
+    due_date_to?: string;
+    priority?: number;
+    include_snoozed?: boolean;
+}
+
+/**
+ * Anfrage zum Zurueckstellen einer Aufgabe
+ */
+export interface MahnTaskSnoozeRequest {
+    snooze_until: string;
+    reason?: string;
+}
+
+/**
+ * Anfrage zum Abschliessen einer Aufgabe
+ */
+export interface MahnTaskCompleteRequest {
+    notes?: string;
+}
+
+/**
+ * Zusammenfassung der Mahnaufgaben
+ */
+export interface MahnTaskSummary {
+    pending_count: number;
+    overdue_count: number;
+    due_today_count: number;
+    snoozed_count: number;
+    by_type: Record<string, number>;
+    by_priority: Record<number, number>;
+}
+
+/**
+ * Telefonprotokoll
+ */
+export interface PhoneCallLog {
+    id: string;
+    dunning_record_id: string;
+    called_at: string;
+    called_by_id: string | null;
+    called_by_name?: string;
+    contact_name: string;
+    phone_number: string | null;
+    outcome: PhoneCallOutcome;
+    notes: string | null;
+    follow_up_required: boolean;
+    follow_up_date: string | null;
+    follow_up_notes: string | null;
+}
+
+/**
+ * Anfrage zum Erstellen eines Telefonprotokolls
+ */
+export interface PhoneCallLogCreate {
+    contact_name: string;
+    phone_number?: string;
+    outcome: PhoneCallOutcome;
+    notes?: string;
+    follow_up_required?: boolean;
+    follow_up_date?: string;
+    follow_up_notes?: string;
+}
+
+/**
+ * Mahnstufen-Konfiguration
+ */
+export interface DunningStageConfig {
+    id: string;
+    user_id: string;
+    stage_number: number;
+    stage_name: string;
+    trigger_days_after_due: number;
+    action_type: DunningActionType;
+    template_id: string | null;
+    fee_amount: number;
+    is_active: boolean;
+    sort_order: number;
+    created_at: string;
+    updated_at: string;
+}
+
+/**
+ * Anfrage zum Erstellen einer Mahnstufe
+ */
+export interface DunningStageConfigCreate {
+    stage_number: number;
+    stage_name: string;
+    trigger_days_after_due: number;
+    action_type: DunningActionType;
+    template_id?: string;
+    fee_amount?: number;
+}
+
+/**
+ * Anfrage zum Aktualisieren einer Mahnstufe
+ */
+export interface DunningStageConfigUpdate {
+    stage_name?: string;
+    trigger_days_after_due?: number;
+    action_type?: DunningActionType;
+    template_id?: string;
+    fee_amount?: number;
+    is_active?: boolean;
+}
+
+/**
+ * Liste der Mahnstufen mit Zinssaetzen
+ */
+export interface DunningStagesListResponse {
+    stages: DunningStageConfig[];
+    interest_rate_b2b: number;
+    interest_rate_b2c: number;
+    b2b_pauschale: number;
+}
+
+/**
+ * Kundenspezifische Mahneinstellungen
+ */
+export interface CustomerDunningOverride {
+    id: string;
+    business_entity_id: string;
+    business_entity_name?: string;
+    custom_payment_terms_days: number | null;
+    max_mahn_stufe: number | null;
+    preferred_contact_method: ContactMethod;
+    exclude_from_auto_dunning: boolean;
+    exclusion_reason: string | null;
+    notes: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+/**
+ * Anfrage zum Setzen kundenspezifischer Mahneinstellungen
+ */
+export interface CustomerDunningOverrideUpdate {
+    custom_payment_terms_days?: number;
+    max_mahn_stufe?: number;
+    preferred_contact_method?: ContactMethod;
+    exclude_from_auto_dunning?: boolean;
+    exclusion_reason?: string;
+    notes?: string;
+}
+
+/**
+ * Mahnung-History-Eintrag (Audit-Log)
+ */
+export interface MahnungHistoryEntry {
+    id: string;
+    dunning_record_id: string;
+    action_type: MahnungHistoryActionType;
+    mahn_stufe: number;
+    action_timestamp: string;
+    performed_by_id: string | null;
+    performed_by_name?: string;
+    notes: string | null;
+    outcome: string | null;
+    document_id: string | null;
+    metadata?: Record<string, unknown>;
+}
+
+/**
+ * Anfrage zum Setzen eines Mahnstopps
+ */
+export interface MahnstoppSetRequest {
+    reason: string;
+    until_date?: string;
+}
+
+/**
+ * Anfrage zur Masseneskalation
+ */
+export interface BulkEscalateRequest {
+    dunning_ids: string[];
+    notes?: string;
+}
+
+/**
+ * Ergebnis der Masseneskalation
+ */
+export interface BulkEscalateResponse {
+    total: number;
+    successful: number;
+    failed: number;
+    errors: Array<{ dunning_id: string; error: string }>;
+}
+
+/**
+ * B2B-Pauschale Claim Response
+ */
+export interface B2BPauschaleClaimResponse {
+    dunning_id: string;
+    pauschale_amount: number;
+    already_claimed: boolean;
+    success: boolean;
+    message: string;
+}
+
+/**
+ * Verzugszinsen-Berechnung
+ */
+export interface VerzugszinsenCalculation {
+    principal: number;
+    due_date: string;
+    as_of_date: string;
+    is_b2b: boolean;
+    interest_rate: number;
+    days_overdue: number;
+    interest_amount: number;
+    total_with_interest: number;
+}
+
+/**
+ * Ergebnis des taeglichen Mahnlaufs
+ */
+export interface MahnlaufResult {
+    run_date: string;
+    is_business_day: boolean;
+    skipped_reason: string | null;
+    candidates_found: number;
+    tasks_created: number;
+    skipped_mahnstopp: number;
+    skipped_excluded: number;
+    errors: Array<{ dunning_id: string; error: string }>;
+    duration_seconds: number;
+}
+
+/**
+ * Kanban-Spalten-Status fuer Mahnwesen
+ */
+export type MahnKanbanColumn = 'pending' | 'reminder_sent' | 'escalated' | 'completed';
+
+/**
+ * Kanban-Karte fuer Mahnwesen
+ */
+export interface MahnKanbanCard {
+    id: string;
+    dunning_id: string;
+    invoice_number: string;
+    debtor_name: string;
+    outstanding_amount: number;
+    days_overdue: number;
+    dunning_level: number;
+    status: MahnKanbanColumn;
+    has_mahnstopp: boolean;
+    is_b2b: boolean;
+    priority: number;
 }

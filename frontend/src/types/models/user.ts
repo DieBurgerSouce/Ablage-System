@@ -4,7 +4,7 @@
  * Typen fuer Benutzer, Authentifizierung und Autorisierung.
  */
 
-import type { TimestampedEntity } from '../api/common';
+// Types imported from '../api/common' as needed
 
 // ==================== User Roles ====================
 

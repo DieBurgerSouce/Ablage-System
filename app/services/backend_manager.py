@@ -922,6 +922,12 @@ class BackendManager:
                         status=status,
                         reason=reason
                     )
+                    # Update Prometheus metrics
+                    try:
+                        metrics = get_ml_metrics()
+                        metrics.set_backend_healthy(backend_name, False)
+                    except Exception:
+                        pass  # Metriken sind optional
                     return result
 
             # Backend is healthy - cache positive result
@@ -932,12 +938,27 @@ class BackendManager:
                 reason=None
             )
 
+            # Update Prometheus metrics
+            try:
+                metrics = get_ml_metrics()
+                metrics.set_backend_healthy(backend_name, True)
+            except Exception:
+                pass  # Metriken sind optional
+
             return {"healthy": True, "status": status}
 
         except Exception as e:
             logger.warning("backend_health_check_failed", backend=backend_name, error=str(e))
             # Invalidate cache on error
             self._health_cache.invalidate(backend_name)
+
+            # Update Prometheus metrics
+            try:
+                metrics = get_ml_metrics()
+                metrics.set_backend_healthy(backend_name, False)
+            except Exception:
+                pass  # Metriken sind optional
+
             return {"healthy": False, "reason": str(e)}
 
     def get_fallback_order(self, preferred_backend: str) -> List[str]:
@@ -1054,6 +1075,12 @@ class BackendManager:
                         original=backend_name,
                         fallback=current_backend
                     )
+                    # Record fallback in Prometheus metrics
+                    try:
+                        metrics = get_ml_metrics()
+                        metrics.record_backend_fallback(backend_name, current_backend)
+                    except Exception:
+                        pass  # Metriken sind optional
 
                 # Record A/B test result if experiment tracking enabled
                 if experiment_info and document_id:

@@ -28,6 +28,8 @@ from app.services.banking.tan_handler_service import TANHandlerService, TANMetho
 from app.services.banking.cash_flow_service import CashFlowService, ForecastScenario
 from app.services.banking.dunning_service import DunningService, DunningAction
 from app.services.banking.aging_report_service import AgingReportService
+from app.services.banking.mahn_task_service import MahnTaskService
+from app.services.banking.dunning_stage_service import DunningStageConfigService
 from app.services.banking.models import (
     BankAccountCreate,
     BankAccountUpdate,
@@ -53,6 +55,41 @@ from app.services.banking.models import (
     DunningLevel,
     DunningStatus,
     DunningRecordResponse,
+    # Mahnungswesen Schemas
+    MahnTaskType,
+    MahnTaskStatus,
+    MahnTaskCreate,
+    MahnTaskResponse,
+    MahnTaskWithDunning,
+    MahnTaskFilter,
+    MahnTaskSnoozeRequest,
+    MahnTaskCompleteRequest,
+    MahnTaskBulkCompleteRequest,
+    MahnTaskSummary,
+    PhoneCallLogCreate,
+    PhoneCallLogResponse,
+    PhoneCallLogListResponse,
+    PhoneCallOutcome,
+    DunningActionType,
+    DunningStageConfigCreate,
+    DunningStageConfigUpdate,
+    DunningStageConfigResponse,
+    DunningStageReorderRequest,
+    DunningStagesListResponse,
+    CustomerDunningOverrideCreate,
+    CustomerDunningOverrideUpdate,
+    CustomerDunningOverrideResponse,
+    MahnungHistoryResponse,
+    MahnungHistoryListResponse,
+    MahnstoppSetRequest,
+    MahnstoppLiftRequest,
+    BulkEscalateRequest,
+    BulkEscalateResponse,
+    BulkSendReminderRequest,
+    BulkSendReminderResponse,
+    B2BPauschaleClaimResponse,
+    VerzugszinsenCalculation,
+    ContactMethod,
 )
 
 logger = structlog.get_logger(__name__)
@@ -67,6 +104,10 @@ payments_router = APIRouter(prefix="/banking/payments", tags=["Banking - Zahlung
 cashflow_router = APIRouter(prefix="/banking/cashflow", tags=["Banking - Cash-Flow"])
 dunning_router = APIRouter(prefix="/banking/dunning", tags=["Banking - Mahnwesen"])
 aging_router = APIRouter(prefix="/banking/aging", tags=["Banking - Altersanalyse"])
+# Neue Mahnungswesen Routers
+mahn_tasks_router = APIRouter(prefix="/banking/mahn-tasks", tags=["Banking - Mahnaufgaben"])
+dunning_settings_router = APIRouter(prefix="/banking/settings", tags=["Banking - Mahneinstellungen"])
+customer_dunning_router = APIRouter(prefix="/banking/customers", tags=["Banking - Kundeneinstellungen"])
 
 # Service instances
 account_service = AccountService()
@@ -78,6 +119,9 @@ tan_handler_service = TANHandlerService()
 cash_flow_service = CashFlowService()
 dunning_service = DunningService()
 aging_report_service = AgingReportService()
+# Neue Mahnungswesen Services
+mahn_task_service = MahnTaskService()
+dunning_stage_service = DunningStageConfigService()
 
 
 # ==================== SECURITY: File Upload Validation ====================
@@ -1763,6 +1807,751 @@ async def process_automatic_dunning(
     )
 
 
+# ==================== Mahnungswesen Erweiterte Endpoints ====================
+
+@dunning_router.get(
+    "/{dunning_id}/history",
+    response_model=MahnungHistoryListResponse,
+    summary="Mahnung-Historie",
+    description="Gibt die Historie eines Mahnvorgangs zurueck (Audit-Log)."
+)
+async def get_dunning_history(
+    dunning_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> MahnungHistoryListResponse:
+    """Hole Mahnung-Historie (immutables Audit-Log)."""
+    items = await dunning_service.get_history(
+        db=db,
+        user_id=current_user.id,
+        dunning_record_id=dunning_id,
+    )
+    return MahnungHistoryListResponse(items=items, total=len(items))
+
+
+@dunning_router.post(
+    "/{dunning_id}/mahnstopp",
+    response_model=DunningRecordResponse,
+    summary="Mahnstopp setzen",
+    description="Setzt einen Mahnstopp (z.B. bei Reklamation)."
+)
+async def set_mahnstopp(
+    dunning_id: UUID,
+    request: MahnstoppSetRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> DunningRecordResponse:
+    """Setze Mahnstopp fuer einen Mahnvorgang."""
+    try:
+        return await dunning_service.set_mahnstopp(
+            db=db,
+            user_id=current_user.id,
+            dunning_id=dunning_id,
+            reason=request.reason,
+            until_date=request.until_date,
+        )
+    except ValueError as e:
+        logger.warning(
+            "mahnstopp_set_failed",
+            dunning_id=str(dunning_id),
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mahnstopp konnte nicht gesetzt werden.",
+        )
+
+
+@dunning_router.delete(
+    "/{dunning_id}/mahnstopp",
+    response_model=DunningRecordResponse,
+    summary="Mahnstopp aufheben",
+    description="Hebt einen Mahnstopp auf."
+)
+async def lift_mahnstopp(
+    dunning_id: UUID,
+    notes: Optional[str] = Query(None, description="Notizen zur Aufhebung"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> DunningRecordResponse:
+    """Hebe Mahnstopp auf."""
+    try:
+        return await dunning_service.lift_mahnstopp(
+            db=db,
+            user_id=current_user.id,
+            dunning_id=dunning_id,
+            notes=notes,
+        )
+    except ValueError as e:
+        logger.warning(
+            "mahnstopp_lift_failed",
+            dunning_id=str(dunning_id),
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mahnstopp konnte nicht aufgehoben werden.",
+        )
+
+
+@dunning_router.post(
+    "/{dunning_id}/b2b-pauschale",
+    response_model=B2BPauschaleClaimResponse,
+    summary="B2B-Pauschale beanspruchen",
+    description="Beansprucht die EUR 40 Pauschale nach §288 Abs. 5 BGB."
+)
+async def claim_b2b_pauschale(
+    dunning_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> B2BPauschaleClaimResponse:
+    """Beanspruche B2B-Pauschale (EUR 40 nach BGB)."""
+    try:
+        return await dunning_service.claim_b2b_pauschale(
+            db=db,
+            user_id=current_user.id,
+            dunning_id=dunning_id,
+        )
+    except ValueError as e:
+        logger.warning(
+            "b2b_pauschale_claim_failed",
+            dunning_id=str(dunning_id),
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="B2B-Pauschale konnte nicht beansprucht werden.",
+        )
+
+
+@dunning_router.put(
+    "/{dunning_id}/b2b-status",
+    response_model=DunningRecordResponse,
+    summary="B2B-Status setzen",
+    description="Setzt den B2B/B2C-Status fuer Verzugszinsenberechnung."
+)
+async def set_b2b_status(
+    dunning_id: UUID,
+    is_b2b: bool = Query(..., description="True = B2B (11.27%), False = B2C (7.27%)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> DunningRecordResponse:
+    """Setze B2B/B2C-Status."""
+    try:
+        return await dunning_service.set_b2b_status(
+            db=db,
+            user_id=current_user.id,
+            dunning_id=dunning_id,
+            is_b2b=is_b2b,
+        )
+    except ValueError as e:
+        logger.warning(
+            "b2b_status_set_failed",
+            dunning_id=str(dunning_id),
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="B2B-Status konnte nicht gesetzt werden.",
+        )
+
+
+@dunning_router.get(
+    "/{dunning_id}/verzugszinsen",
+    response_model=VerzugszinsenCalculation,
+    summary="Verzugszinsen berechnen",
+    description="Berechnet aktuelle Verzugszinsen nach BGB §286."
+)
+async def calculate_verzugszinsen(
+    dunning_id: UUID,
+    as_of_date: Optional[date] = Query(None, description="Berechnungsdatum (Standard: heute)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> VerzugszinsenCalculation:
+    """Berechne Verzugszinsen fuer Mahnvorgang."""
+    from datetime import date as date_type
+    calc_date = as_of_date or date_type.today()
+
+    # Hole Dunning Record
+    dunnings, _ = await dunning_service.list_dunnings(
+        db=db,
+        user_id=current_user.id,
+        offset=0,
+        limit=1,
+    )
+
+    # Filter fuer dunning_id (vereinfacht)
+    dunning = None
+    dunnings_list, _ = await dunning_service.list_dunnings(
+        db=db, user_id=current_user.id, offset=0, limit=1000
+    )
+    for d in dunnings_list:
+        if str(d.id) == str(dunning_id):
+            dunning = d
+            break
+
+    if not dunning:
+        raise HTTPException(status_code=404, detail="Mahnvorgang nicht gefunden")
+
+    if not dunning.due_date or not dunning.outstanding_amount:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Faelligkeitsdatum oder Betrag fehlt."
+        )
+
+    interest_amount = dunning_service.calculate_verzugszinsen(
+        principal=dunning.outstanding_amount,
+        due_date=dunning.due_date,
+        as_of_date=calc_date,
+        is_b2b=dunning.is_b2b,
+    )
+
+    days_overdue = (calc_date - dunning.due_date).days if calc_date > dunning.due_date else 0
+
+    return VerzugszinsenCalculation(
+        principal=dunning.outstanding_amount,
+        due_date=dunning.due_date,
+        as_of_date=calc_date,
+        is_b2b=dunning.is_b2b,
+        interest_rate=dunning_service.get_verzugszinsen_rate(dunning.is_b2b),
+        days_overdue=days_overdue,
+        interest_amount=interest_amount,
+        total_with_interest=dunning.outstanding_amount + interest_amount,
+    )
+
+
+@dunning_router.post(
+    "/{dunning_id}/phone-call",
+    response_model=PhoneCallLogResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Telefonkontakt protokollieren",
+    description="Protokolliert einen Telefonkontakt zum Mahnvorgang."
+)
+async def log_phone_call(
+    dunning_id: UUID,
+    request: PhoneCallLogCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PhoneCallLogResponse:
+    """Protokolliere Telefonkontakt."""
+    try:
+        return await mahn_task_service.log_phone_call(
+            db=db,
+            user_id=current_user.id,
+            dunning_record_id=dunning_id,
+            contact_name=request.contact_name,
+            phone_number=request.phone_number,
+            outcome=request.outcome.value,
+            notes=request.notes,
+            follow_up_required=request.follow_up_required,
+            follow_up_date=request.follow_up_date,
+            follow_up_notes=request.follow_up_notes,
+        )
+    except ValueError as e:
+        logger.warning(
+            "phone_call_log_failed",
+            dunning_id=str(dunning_id),
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Telefonkontakt konnte nicht protokolliert werden.",
+        )
+
+
+@dunning_router.get(
+    "/{dunning_id}/phone-calls",
+    response_model=PhoneCallLogListResponse,
+    summary="Telefonkontakte abrufen",
+    description="Gibt alle Telefonkontakte zu einem Mahnvorgang zurueck."
+)
+async def get_phone_calls(
+    dunning_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PhoneCallLogListResponse:
+    """Hole Telefonkontakte zu Mahnvorgang."""
+    items = await mahn_task_service.get_phone_calls(
+        db=db,
+        user_id=current_user.id,
+        dunning_record_id=dunning_id,
+    )
+    return PhoneCallLogListResponse(items=items, total=len(items))
+
+
+@dunning_router.post(
+    "/bulk-escalate",
+    response_model=BulkEscalateResponse,
+    summary="Masseneskalation",
+    description="Eskaliert mehrere Mahnvorgaenge gleichzeitig."
+)
+async def bulk_escalate_dunnings(
+    request: BulkEscalateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> BulkEscalateResponse:
+    """Eskaliere mehrere Mahnvorgaenge."""
+    return await dunning_service.bulk_escalate(
+        db=db,
+        user_id=current_user.id,
+        dunning_ids=request.dunning_ids,
+        notes=request.notes,
+    )
+
+
+@dunning_router.get(
+    "/with-mahnstopp",
+    response_model=List[DunningRecordResponse],
+    summary="Mahnvorgaenge mit Mahnstopp",
+    description="Listet alle Mahnvorgaenge mit aktivem Mahnstopp."
+)
+async def get_dunnings_with_mahnstopp(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> List[DunningRecordResponse]:
+    """Hole Mahnvorgaenge mit Mahnstopp."""
+    return await dunning_service.get_dunnings_with_mahnstopp(
+        db=db,
+        user_id=current_user.id,
+    )
+
+
+# ==================== Mahn-Tasks Endpoints ====================
+
+@mahn_tasks_router.get(
+    "",
+    response_model=dict,
+    summary="Mahnaufgaben auflisten",
+    description="Listet alle Mahnaufgaben mit optionaler Filterung."
+)
+async def list_mahn_tasks(
+    task_type: Optional[MahnTaskType] = Query(None, description="Aufgabentyp"),
+    task_status: Optional[MahnTaskStatus] = Query(None, alias="status", description="Status"),
+    assigned_user_id: Optional[UUID] = Query(None, description="Zugewiesener Benutzer"),
+    due_date_from: Optional[date] = Query(None, description="Faellig ab"),
+    due_date_to: Optional[date] = Query(None, description="Faellig bis"),
+    priority: Optional[int] = Query(None, ge=1, le=5, description="Prioritaet"),
+    include_snoozed: bool = Query(False, description="Zurueckgestellte einschliessen"),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """Liste Mahnaufgaben."""
+    filters = MahnTaskFilter(
+        task_type=task_type,
+        status=task_status,
+        assigned_user_id=assigned_user_id,
+        due_date_from=due_date_from,
+        due_date_to=due_date_to,
+        priority=priority,
+        include_snoozed=include_snoozed,
+    )
+
+    tasks = await mahn_task_service.list_tasks(
+        db=db,
+        user_id=current_user.id,
+        filters=filters,
+        limit=limit,
+        offset=offset,
+    )
+
+    return {
+        "items": tasks,
+        "total": len(tasks),  # TODO: Echte Gesamtzahl
+        "offset": offset,
+        "limit": limit,
+    }
+
+
+@mahn_tasks_router.get(
+    "/summary",
+    response_model=MahnTaskSummary,
+    summary="Aufgaben-Zusammenfassung",
+    description="Gibt eine Zusammenfassung aller ausstehenden Aufgaben zurueck."
+)
+async def get_mahn_task_summary(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> MahnTaskSummary:
+    """Hole Aufgaben-Zusammenfassung."""
+    return await mahn_task_service.get_pending_tasks_summary(
+        db=db,
+        user_id=current_user.id,
+    )
+
+
+@mahn_tasks_router.post(
+    "",
+    response_model=MahnTaskResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Mahnaufgabe erstellen",
+    description="Erstellt eine neue Mahnaufgabe."
+)
+async def create_mahn_task(
+    request: MahnTaskCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> MahnTaskResponse:
+    """Erstelle neue Mahnaufgabe."""
+    try:
+        return await mahn_task_service.create_task(
+            db=db,
+            dunning_record_id=request.dunning_record_id,
+            task_type=request.task_type.value,
+            due_date=request.due_date,
+            assigned_user_id=request.assigned_user_id,
+            priority=request.priority,
+        )
+    except ValueError as e:
+        logger.warning(
+            "mahn_task_create_failed",
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mahnaufgabe konnte nicht erstellt werden.",
+        )
+
+
+@mahn_tasks_router.post(
+    "/{task_id}/assign",
+    response_model=MahnTaskResponse,
+    summary="Aufgabe zuweisen",
+    description="Weist eine Aufgabe einem Benutzer zu."
+)
+async def assign_mahn_task(
+    task_id: UUID,
+    assigned_user_id: UUID = Query(..., description="Zuzuweisender Benutzer"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> MahnTaskResponse:
+    """Weise Mahnaufgabe zu."""
+    try:
+        return await mahn_task_service.assign_task(
+            db=db,
+            user_id=current_user.id,
+            task_id=task_id,
+            assigned_user_id=assigned_user_id,
+        )
+    except ValueError as e:
+        logger.warning(
+            "mahn_task_assign_failed",
+            task_id=str(task_id),
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Aufgabe konnte nicht zugewiesen werden.",
+        )
+
+
+@mahn_tasks_router.post(
+    "/{task_id}/snooze",
+    response_model=MahnTaskResponse,
+    summary="Aufgabe zurueckstellen",
+    description="Stellt eine Aufgabe zurueck (max. 3x)."
+)
+async def snooze_mahn_task(
+    task_id: UUID,
+    request: MahnTaskSnoozeRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> MahnTaskResponse:
+    """Stelle Mahnaufgabe zurueck."""
+    try:
+        return await mahn_task_service.snooze_task(
+            db=db,
+            user_id=current_user.id,
+            task_id=task_id,
+            snooze_until=request.snooze_until,
+            reason=request.reason,
+        )
+    except ValueError as e:
+        logger.warning(
+            "mahn_task_snooze_failed",
+            task_id=str(task_id),
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),  # Snooze-Limit Meldung durchreichen
+        )
+
+
+@mahn_tasks_router.post(
+    "/{task_id}/complete",
+    response_model=MahnTaskResponse,
+    summary="Aufgabe abschliessen",
+    description="Schliesst eine Aufgabe ab."
+)
+async def complete_mahn_task(
+    task_id: UUID,
+    request: MahnTaskCompleteRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> MahnTaskResponse:
+    """Schliesse Mahnaufgabe ab."""
+    try:
+        return await mahn_task_service.complete_task(
+            db=db,
+            user_id=current_user.id,
+            task_id=task_id,
+            notes=request.notes,
+        )
+    except ValueError as e:
+        logger.warning(
+            "mahn_task_complete_failed",
+            task_id=str(task_id),
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Aufgabe konnte nicht abgeschlossen werden.",
+        )
+
+
+@mahn_tasks_router.post(
+    "/bulk-complete",
+    response_model=dict,
+    summary="Massenabschluss",
+    description="Schliesst mehrere Aufgaben gleichzeitig ab."
+)
+async def bulk_complete_mahn_tasks(
+    request: MahnTaskBulkCompleteRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """Schliesse mehrere Mahnaufgaben ab."""
+    completed = 0
+    failed = 0
+    errors = []
+
+    for task_id in request.task_ids:
+        try:
+            await mahn_task_service.complete_task(
+                db=db,
+                user_id=current_user.id,
+                task_id=task_id,
+                notes=request.notes,
+            )
+            completed += 1
+        except ValueError as e:
+            failed += 1
+            errors.append({"task_id": str(task_id), "error": str(e)})
+
+    return {
+        "total": len(request.task_ids),
+        "completed": completed,
+        "failed": failed,
+        "errors": errors,
+    }
+
+
+# ==================== Dunning Settings Endpoints (Admin) ====================
+
+@dunning_settings_router.get(
+    "/dunning-stages",
+    response_model=DunningStagesListResponse,
+    summary="Mahnstufen abrufen",
+    description="Gibt alle konfigurierten Mahnstufen zurueck."
+)
+async def get_dunning_stages(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> DunningStagesListResponse:
+    """Hole konfigurierte Mahnstufen."""
+    stages = await dunning_stage_service.get_stages(
+        db=db,
+        user_id=current_user.id,
+    )
+
+    return DunningStagesListResponse(
+        stages=stages,
+        interest_rate_b2b=dunning_stage_service.get_interest_rate(is_b2b=True),
+        interest_rate_b2c=dunning_stage_service.get_interest_rate(is_b2b=False),
+        b2b_pauschale=dunning_stage_service.B2B_PAUSCHALE,
+    )
+
+
+@dunning_settings_router.post(
+    "/dunning-stages",
+    response_model=DunningStageConfigResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Mahnstufe erstellen",
+    description="Erstellt eine neue Mahnstufe."
+)
+async def create_dunning_stage(
+    request: DunningStageConfigCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> DunningStageConfigResponse:
+    """Erstelle neue Mahnstufe."""
+    try:
+        return await dunning_stage_service.create_stage(
+            db=db,
+            user_id=current_user.id,
+            stage_number=request.stage_number,
+            stage_name=request.stage_name,
+            trigger_days_after_due=request.trigger_days_after_due,
+            action_type=request.action_type.value,
+            template_id=request.template_id,
+            fee_amount=request.fee_amount,
+        )
+    except ValueError as e:
+        logger.warning(
+            "dunning_stage_create_failed",
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mahnstufe konnte nicht erstellt werden.",
+        )
+
+
+@dunning_settings_router.put(
+    "/dunning-stages/{stage_id}",
+    response_model=DunningStageConfigResponse,
+    summary="Mahnstufe aktualisieren",
+    description="Aktualisiert eine bestehende Mahnstufe."
+)
+async def update_dunning_stage(
+    stage_id: UUID,
+    request: DunningStageConfigUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> DunningStageConfigResponse:
+    """Aktualisiere Mahnstufe."""
+    try:
+        return await dunning_stage_service.update_stage(
+            db=db,
+            user_id=current_user.id,
+            stage_id=stage_id,
+            stage_name=request.stage_name,
+            trigger_days_after_due=request.trigger_days_after_due,
+            action_type=request.action_type.value if request.action_type else None,
+            template_id=request.template_id,
+            fee_amount=request.fee_amount,
+            is_active=request.is_active,
+        )
+    except ValueError as e:
+        logger.warning(
+            "dunning_stage_update_failed",
+            stage_id=str(stage_id),
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mahnstufe konnte nicht aktualisiert werden.",
+        )
+
+
+@dunning_settings_router.put(
+    "/dunning-stages/reorder",
+    response_model=List[DunningStageConfigResponse],
+    summary="Mahnstufen neu ordnen",
+    description="Ordnet die Mahnstufen neu (Drag-and-Drop)."
+)
+async def reorder_dunning_stages(
+    request: DunningStageReorderRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> List[DunningStageConfigResponse]:
+    """Ordne Mahnstufen neu."""
+    try:
+        return await dunning_stage_service.reorder_stages(
+            db=db,
+            user_id=current_user.id,
+            stage_ids=request.stage_ids,
+        )
+    except ValueError as e:
+        logger.warning(
+            "dunning_stages_reorder_failed",
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mahnstufen konnten nicht neu geordnet werden.",
+        )
+
+
+# ==================== Customer Dunning Override Endpoints ====================
+
+@customer_dunning_router.get(
+    "/{business_entity_id}/dunning-settings",
+    response_model=CustomerDunningOverrideResponse,
+    summary="Kundenspezifische Mahneinstellungen",
+    description="Gibt kundenspezifische Mahneinstellungen zurueck."
+)
+async def get_customer_dunning_settings(
+    business_entity_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> CustomerDunningOverrideResponse:
+    """Hole kundenspezifische Mahneinstellungen."""
+    override = await dunning_stage_service.get_customer_override(
+        db=db,
+        business_entity_id=business_entity_id,
+    )
+
+    if not override:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Keine kundenspezifischen Einstellungen gefunden.",
+        )
+
+    return override
+
+
+@customer_dunning_router.put(
+    "/{business_entity_id}/dunning-settings",
+    response_model=CustomerDunningOverrideResponse,
+    summary="Kundenspezifische Mahneinstellungen setzen",
+    description="Setzt oder aktualisiert kundenspezifische Mahneinstellungen."
+)
+async def set_customer_dunning_settings(
+    business_entity_id: UUID,
+    request: CustomerDunningOverrideUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> CustomerDunningOverrideResponse:
+    """Setze kundenspezifische Mahneinstellungen."""
+    try:
+        return await dunning_stage_service.set_customer_override(
+            db=db,
+            business_entity_id=business_entity_id,
+            custom_payment_terms_days=request.custom_payment_terms_days,
+            max_mahn_stufe=request.max_mahn_stufe,
+            preferred_contact_method=request.preferred_contact_method.value if request.preferred_contact_method else None,
+            exclude_from_auto_dunning=request.exclude_from_auto_dunning,
+            exclusion_reason=request.exclusion_reason,
+            notes=request.notes,
+        )
+    except ValueError as e:
+        logger.warning(
+            "customer_dunning_settings_failed",
+            business_entity_id=str(business_entity_id),
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mahneinstellungen konnten nicht gesetzt werden.",
+        )
+
+
 # ==================== Aging Report Endpoints ====================
 
 @aging_router.get(
@@ -1960,3 +2749,7 @@ router.include_router(payments_router)
 router.include_router(cashflow_router)
 router.include_router(dunning_router)
 router.include_router(aging_router)
+# Neue Mahnungswesen Routers
+router.include_router(mahn_tasks_router)
+router.include_router(dunning_settings_router)
+router.include_router(customer_dunning_router)

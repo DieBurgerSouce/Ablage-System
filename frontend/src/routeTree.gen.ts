@@ -15,6 +15,8 @@ import { Route as SearchRouteImport } from './app/routes/search'
 import { Route as RelationshipsRouteImport } from './app/routes/relationships'
 import { Route as MonitoringRouteImport } from './app/routes/monitoring'
 import { Route as LoginRouteImport } from './app/routes/login'
+import { Route as LieferantenRouteImport } from './app/routes/lieferanten'
+import { Route as KundenRouteImport } from './app/routes/kunden'
 import { Route as JobsRouteImport } from './app/routes/jobs'
 import { Route as DocumentGroupsRouteImport } from './app/routes/document-groups'
 import { Route as ChatRouteImport } from './app/routes/chat'
@@ -22,8 +24,12 @@ import { Route as BusinessEntitiesRouteImport } from './app/routes/business-enti
 import { Route as AutomationRouteImport } from './app/routes/automation'
 import { Route as AdminRouteImport } from './app/routes/admin'
 import { Route as IndexRouteImport } from './app/routes/index'
+import { Route as LieferantenIndexRouteImport } from './app/routes/lieferanten.index'
+import { Route as KundenIndexRouteImport } from './app/routes/kunden.index'
 import { Route as AdminIndexRouteImport } from './app/routes/admin.index'
 import { Route as ValidationQueueIdRouteImport } from './app/routes/validation-queue.$id'
+import { Route as LieferantenSupplierIdRouteImport } from './app/routes/lieferanten.$supplierId'
+import { Route as KundenCustomerIdRouteImport } from './app/routes/kunden.$customerId'
 import { Route as DocumentsDocumentIdRouteImport } from './app/routes/documents.$documentId'
 import { Route as DocumentGroupsIdRouteImport } from './app/routes/document-groups.$id'
 import { Route as BusinessEntitiesIdRouteImport } from './app/routes/business-entities.$id'
@@ -33,9 +39,28 @@ import { Route as AdminSettingsRouteImport } from './app/routes/admin.settings'
 import { Route as AdminOcrTrainingRouteImport } from './app/routes/admin.ocr-training'
 import { Route as AdminOcrReviewRouteImport } from './app/routes/admin.ocr-review'
 import { Route as AdminOcrBackendsRouteImport } from './app/routes/admin.ocr-backends'
+import { Route as AdminDatevRouteImport } from './app/routes/admin.datev'
 import { Route as AdminBankingRouteImport } from './app/routes/admin.banking'
+import { Route as LieferantenSupplierIdIndexRouteImport } from './app/routes/lieferanten.$supplierId.index'
+import { Route as KundenCustomerIdIndexRouteImport } from './app/routes/kunden.$customerId.index'
+import { Route as AdminDatevIndexRouteImport } from './app/routes/admin.datev.index'
+import { Route as AdminBankingIndexRouteImport } from './app/routes/admin.banking.index'
+import { Route as LieferantenSupplierIdFolderIdRouteImport } from './app/routes/lieferanten.$supplierId.$folderId'
+import { Route as KundenCustomerIdFolderIdRouteImport } from './app/routes/kunden.$customerId.$folderId'
 import { Route as DocumentsDocumentIdRelationshipsRouteImport } from './app/routes/documents.$documentId.relationships'
 import { Route as AdminOcrBackendsBackendRouteImport } from './app/routes/admin.ocr-backends.$backend'
+import { Route as AdminDatevVendorsRouteImport } from './app/routes/admin.datev.vendors'
+import { Route as AdminDatevHistoryRouteImport } from './app/routes/admin.datev.history'
+import { Route as AdminDatevExportRouteImport } from './app/routes/admin.datev.export'
+import { Route as AdminDatevConfigRouteImport } from './app/routes/admin.datev.config'
+import { Route as AdminBankingTransactionsRouteImport } from './app/routes/admin.banking.transactions'
+import { Route as AdminBankingSkontoRouteImport } from './app/routes/admin.banking.skonto'
+import { Route as AdminBankingReconciliationRouteImport } from './app/routes/admin.banking.reconciliation'
+import { Route as AdminBankingPaymentsRouteImport } from './app/routes/admin.banking.payments'
+import { Route as AdminBankingImportRouteImport } from './app/routes/admin.banking.import'
+import { Route as AdminBankingAccountsRouteImport } from './app/routes/admin.banking.accounts'
+import { Route as LieferantenSupplierIdFolderIdCategoryRouteImport } from './app/routes/lieferanten.$supplierId.$folderId.$category'
+import { Route as KundenCustomerIdFolderIdCategoryRouteImport } from './app/routes/kunden.$customerId.$folderId.$category'
 import { Route as AdminOcrTrainingBatchIdRouteImport } from './app/routes/admin.ocr-training.batch.$id'
 
 const ValidationQueueRoute = ValidationQueueRouteImport.update({
@@ -66,6 +91,16 @@ const MonitoringRoute = MonitoringRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LieferantenRoute = LieferantenRouteImport.update({
+  id: '/lieferanten',
+  path: '/lieferanten',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KundenRoute = KundenRouteImport.update({
+  id: '/kunden',
+  path: '/kunden',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JobsRoute = JobsRouteImport.update({
@@ -103,6 +138,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LieferantenIndexRoute = LieferantenIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LieferantenRoute,
+} as any)
+const KundenIndexRoute = KundenIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => KundenRoute,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -112,6 +157,16 @@ const ValidationQueueIdRoute = ValidationQueueIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => ValidationQueueRoute,
+} as any)
+const LieferantenSupplierIdRoute = LieferantenSupplierIdRouteImport.update({
+  id: '/$supplierId',
+  path: '/$supplierId',
+  getParentRoute: () => LieferantenRoute,
+} as any)
+const KundenCustomerIdRoute = KundenCustomerIdRouteImport.update({
+  id: '/$customerId',
+  path: '/$customerId',
+  getParentRoute: () => KundenRoute,
 } as any)
 const DocumentsDocumentIdRoute = DocumentsDocumentIdRouteImport.update({
   id: '/documents/$documentId',
@@ -158,11 +213,49 @@ const AdminOcrBackendsRoute = AdminOcrBackendsRouteImport.update({
   path: '/ocr-backends',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDatevRoute = AdminDatevRouteImport.update({
+  id: '/datev',
+  path: '/datev',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminBankingRoute = AdminBankingRouteImport.update({
   id: '/banking',
   path: '/banking',
   getParentRoute: () => AdminRoute,
 } as any)
+const LieferantenSupplierIdIndexRoute =
+  LieferantenSupplierIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => LieferantenSupplierIdRoute,
+  } as any)
+const KundenCustomerIdIndexRoute = KundenCustomerIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => KundenCustomerIdRoute,
+} as any)
+const AdminDatevIndexRoute = AdminDatevIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminDatevRoute,
+} as any)
+const AdminBankingIndexRoute = AdminBankingIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminBankingRoute,
+} as any)
+const LieferantenSupplierIdFolderIdRoute =
+  LieferantenSupplierIdFolderIdRouteImport.update({
+    id: '/$folderId',
+    path: '/$folderId',
+    getParentRoute: () => LieferantenSupplierIdRoute,
+  } as any)
+const KundenCustomerIdFolderIdRoute =
+  KundenCustomerIdFolderIdRouteImport.update({
+    id: '/$folderId',
+    path: '/$folderId',
+    getParentRoute: () => KundenCustomerIdRoute,
+  } as any)
 const DocumentsDocumentIdRelationshipsRoute =
   DocumentsDocumentIdRelationshipsRouteImport.update({
     id: '/relationships',
@@ -174,6 +267,70 @@ const AdminOcrBackendsBackendRoute = AdminOcrBackendsBackendRouteImport.update({
   path: '/$backend',
   getParentRoute: () => AdminOcrBackendsRoute,
 } as any)
+const AdminDatevVendorsRoute = AdminDatevVendorsRouteImport.update({
+  id: '/vendors',
+  path: '/vendors',
+  getParentRoute: () => AdminDatevRoute,
+} as any)
+const AdminDatevHistoryRoute = AdminDatevHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => AdminDatevRoute,
+} as any)
+const AdminDatevExportRoute = AdminDatevExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => AdminDatevRoute,
+} as any)
+const AdminDatevConfigRoute = AdminDatevConfigRouteImport.update({
+  id: '/config',
+  path: '/config',
+  getParentRoute: () => AdminDatevRoute,
+} as any)
+const AdminBankingTransactionsRoute =
+  AdminBankingTransactionsRouteImport.update({
+    id: '/transactions',
+    path: '/transactions',
+    getParentRoute: () => AdminBankingRoute,
+  } as any)
+const AdminBankingSkontoRoute = AdminBankingSkontoRouteImport.update({
+  id: '/skonto',
+  path: '/skonto',
+  getParentRoute: () => AdminBankingRoute,
+} as any)
+const AdminBankingReconciliationRoute =
+  AdminBankingReconciliationRouteImport.update({
+    id: '/reconciliation',
+    path: '/reconciliation',
+    getParentRoute: () => AdminBankingRoute,
+  } as any)
+const AdminBankingPaymentsRoute = AdminBankingPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => AdminBankingRoute,
+} as any)
+const AdminBankingImportRoute = AdminBankingImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AdminBankingRoute,
+} as any)
+const AdminBankingAccountsRoute = AdminBankingAccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => AdminBankingRoute,
+} as any)
+const LieferantenSupplierIdFolderIdCategoryRoute =
+  LieferantenSupplierIdFolderIdCategoryRouteImport.update({
+    id: '/$category',
+    path: '/$category',
+    getParentRoute: () => LieferantenSupplierIdFolderIdRoute,
+  } as any)
+const KundenCustomerIdFolderIdCategoryRoute =
+  KundenCustomerIdFolderIdCategoryRouteImport.update({
+    id: '/$category',
+    path: '/$category',
+    getParentRoute: () => KundenCustomerIdFolderIdRoute,
+  } as any)
 const AdminOcrTrainingBatchIdRoute = AdminOcrTrainingBatchIdRouteImport.update({
   id: '/batch/$id',
   path: '/batch/$id',
@@ -188,13 +345,16 @@ export interface FileRoutesByFullPath {
   '/chat': typeof ChatRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/jobs': typeof JobsRoute
+  '/kunden': typeof KundenRouteWithChildren
+  '/lieferanten': typeof LieferantenRouteWithChildren
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
   '/relationships': typeof RelationshipsRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
-  '/admin/banking': typeof AdminBankingRoute
+  '/admin/banking': typeof AdminBankingRouteWithChildren
+  '/admin/datev': typeof AdminDatevRouteWithChildren
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
@@ -204,11 +364,33 @@ export interface FileRoutesByFullPath {
   '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
+  '/kunden/$customerId': typeof KundenCustomerIdRouteWithChildren
+  '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/kunden/': typeof KundenIndexRoute
+  '/lieferanten/': typeof LieferantenIndexRoute
+  '/admin/banking/accounts': typeof AdminBankingAccountsRoute
+  '/admin/banking/import': typeof AdminBankingImportRoute
+  '/admin/banking/payments': typeof AdminBankingPaymentsRoute
+  '/admin/banking/reconciliation': typeof AdminBankingReconciliationRoute
+  '/admin/banking/skonto': typeof AdminBankingSkontoRoute
+  '/admin/banking/transactions': typeof AdminBankingTransactionsRoute
+  '/admin/datev/config': typeof AdminDatevConfigRoute
+  '/admin/datev/export': typeof AdminDatevExportRoute
+  '/admin/datev/history': typeof AdminDatevHistoryRoute
+  '/admin/datev/vendors': typeof AdminDatevVendorsRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
+  '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
+  '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
+  '/admin/banking/': typeof AdminBankingIndexRoute
+  '/admin/datev/': typeof AdminDatevIndexRoute
+  '/kunden/$customerId/': typeof KundenCustomerIdIndexRoute
+  '/lieferanten/$supplierId/': typeof LieferantenSupplierIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
+  '/kunden/$customerId/$folderId/$category': typeof KundenCustomerIdFolderIdCategoryRoute
+  '/lieferanten/$supplierId/$folderId/$category': typeof LieferantenSupplierIdFolderIdCategoryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -223,7 +405,6 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
-  '/admin/banking': typeof AdminBankingRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
@@ -235,9 +416,29 @@ export interface FileRoutesByTo {
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin': typeof AdminIndexRoute
+  '/kunden': typeof KundenIndexRoute
+  '/lieferanten': typeof LieferantenIndexRoute
+  '/admin/banking/accounts': typeof AdminBankingAccountsRoute
+  '/admin/banking/import': typeof AdminBankingImportRoute
+  '/admin/banking/payments': typeof AdminBankingPaymentsRoute
+  '/admin/banking/reconciliation': typeof AdminBankingReconciliationRoute
+  '/admin/banking/skonto': typeof AdminBankingSkontoRoute
+  '/admin/banking/transactions': typeof AdminBankingTransactionsRoute
+  '/admin/datev/config': typeof AdminDatevConfigRoute
+  '/admin/datev/export': typeof AdminDatevExportRoute
+  '/admin/datev/history': typeof AdminDatevHistoryRoute
+  '/admin/datev/vendors': typeof AdminDatevVendorsRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
+  '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
+  '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
+  '/admin/banking': typeof AdminBankingIndexRoute
+  '/admin/datev': typeof AdminDatevIndexRoute
+  '/kunden/$customerId': typeof KundenCustomerIdIndexRoute
+  '/lieferanten/$supplierId': typeof LieferantenSupplierIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
+  '/kunden/$customerId/$folderId/$category': typeof KundenCustomerIdFolderIdCategoryRoute
+  '/lieferanten/$supplierId/$folderId/$category': typeof LieferantenSupplierIdFolderIdCategoryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -248,13 +449,16 @@ export interface FileRoutesById {
   '/chat': typeof ChatRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/jobs': typeof JobsRoute
+  '/kunden': typeof KundenRouteWithChildren
+  '/lieferanten': typeof LieferantenRouteWithChildren
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
   '/relationships': typeof RelationshipsRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
-  '/admin/banking': typeof AdminBankingRoute
+  '/admin/banking': typeof AdminBankingRouteWithChildren
+  '/admin/datev': typeof AdminDatevRouteWithChildren
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
@@ -264,11 +468,33 @@ export interface FileRoutesById {
   '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
+  '/kunden/$customerId': typeof KundenCustomerIdRouteWithChildren
+  '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/kunden/': typeof KundenIndexRoute
+  '/lieferanten/': typeof LieferantenIndexRoute
+  '/admin/banking/accounts': typeof AdminBankingAccountsRoute
+  '/admin/banking/import': typeof AdminBankingImportRoute
+  '/admin/banking/payments': typeof AdminBankingPaymentsRoute
+  '/admin/banking/reconciliation': typeof AdminBankingReconciliationRoute
+  '/admin/banking/skonto': typeof AdminBankingSkontoRoute
+  '/admin/banking/transactions': typeof AdminBankingTransactionsRoute
+  '/admin/datev/config': typeof AdminDatevConfigRoute
+  '/admin/datev/export': typeof AdminDatevExportRoute
+  '/admin/datev/history': typeof AdminDatevHistoryRoute
+  '/admin/datev/vendors': typeof AdminDatevVendorsRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
+  '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
+  '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
+  '/admin/banking/': typeof AdminBankingIndexRoute
+  '/admin/datev/': typeof AdminDatevIndexRoute
+  '/kunden/$customerId/': typeof KundenCustomerIdIndexRoute
+  '/lieferanten/$supplierId/': typeof LieferantenSupplierIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
+  '/kunden/$customerId/$folderId/$category': typeof KundenCustomerIdFolderIdCategoryRoute
+  '/lieferanten/$supplierId/$folderId/$category': typeof LieferantenSupplierIdFolderIdCategoryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -280,6 +506,8 @@ export interface FileRouteTypes {
     | '/chat'
     | '/document-groups'
     | '/jobs'
+    | '/kunden'
+    | '/lieferanten'
     | '/login'
     | '/monitoring'
     | '/relationships'
@@ -287,6 +515,7 @@ export interface FileRouteTypes {
     | '/upload'
     | '/validation-queue'
     | '/admin/banking'
+    | '/admin/datev'
     | '/admin/ocr-backends'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
@@ -296,11 +525,33 @@ export interface FileRouteTypes {
     | '/business-entities/$id'
     | '/document-groups/$id'
     | '/documents/$documentId'
+    | '/kunden/$customerId'
+    | '/lieferanten/$supplierId'
     | '/validation-queue/$id'
     | '/admin/'
+    | '/kunden/'
+    | '/lieferanten/'
+    | '/admin/banking/accounts'
+    | '/admin/banking/import'
+    | '/admin/banking/payments'
+    | '/admin/banking/reconciliation'
+    | '/admin/banking/skonto'
+    | '/admin/banking/transactions'
+    | '/admin/datev/config'
+    | '/admin/datev/export'
+    | '/admin/datev/history'
+    | '/admin/datev/vendors'
     | '/admin/ocr-backends/$backend'
     | '/documents/$documentId/relationships'
+    | '/kunden/$customerId/$folderId'
+    | '/lieferanten/$supplierId/$folderId'
+    | '/admin/banking/'
+    | '/admin/datev/'
+    | '/kunden/$customerId/'
+    | '/lieferanten/$supplierId/'
     | '/admin/ocr-training/batch/$id'
+    | '/kunden/$customerId/$folderId/$category'
+    | '/lieferanten/$supplierId/$folderId/$category'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -315,7 +566,6 @@ export interface FileRouteTypes {
     | '/search'
     | '/upload'
     | '/validation-queue'
-    | '/admin/banking'
     | '/admin/ocr-backends'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
@@ -327,9 +577,29 @@ export interface FileRouteTypes {
     | '/documents/$documentId'
     | '/validation-queue/$id'
     | '/admin'
+    | '/kunden'
+    | '/lieferanten'
+    | '/admin/banking/accounts'
+    | '/admin/banking/import'
+    | '/admin/banking/payments'
+    | '/admin/banking/reconciliation'
+    | '/admin/banking/skonto'
+    | '/admin/banking/transactions'
+    | '/admin/datev/config'
+    | '/admin/datev/export'
+    | '/admin/datev/history'
+    | '/admin/datev/vendors'
     | '/admin/ocr-backends/$backend'
     | '/documents/$documentId/relationships'
+    | '/kunden/$customerId/$folderId'
+    | '/lieferanten/$supplierId/$folderId'
+    | '/admin/banking'
+    | '/admin/datev'
+    | '/kunden/$customerId'
+    | '/lieferanten/$supplierId'
     | '/admin/ocr-training/batch/$id'
+    | '/kunden/$customerId/$folderId/$category'
+    | '/lieferanten/$supplierId/$folderId/$category'
   id:
     | '__root__'
     | '/'
@@ -339,6 +609,8 @@ export interface FileRouteTypes {
     | '/chat'
     | '/document-groups'
     | '/jobs'
+    | '/kunden'
+    | '/lieferanten'
     | '/login'
     | '/monitoring'
     | '/relationships'
@@ -346,6 +618,7 @@ export interface FileRouteTypes {
     | '/upload'
     | '/validation-queue'
     | '/admin/banking'
+    | '/admin/datev'
     | '/admin/ocr-backends'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
@@ -355,11 +628,33 @@ export interface FileRouteTypes {
     | '/business-entities/$id'
     | '/document-groups/$id'
     | '/documents/$documentId'
+    | '/kunden/$customerId'
+    | '/lieferanten/$supplierId'
     | '/validation-queue/$id'
     | '/admin/'
+    | '/kunden/'
+    | '/lieferanten/'
+    | '/admin/banking/accounts'
+    | '/admin/banking/import'
+    | '/admin/banking/payments'
+    | '/admin/banking/reconciliation'
+    | '/admin/banking/skonto'
+    | '/admin/banking/transactions'
+    | '/admin/datev/config'
+    | '/admin/datev/export'
+    | '/admin/datev/history'
+    | '/admin/datev/vendors'
     | '/admin/ocr-backends/$backend'
     | '/documents/$documentId/relationships'
+    | '/kunden/$customerId/$folderId'
+    | '/lieferanten/$supplierId/$folderId'
+    | '/admin/banking/'
+    | '/admin/datev/'
+    | '/kunden/$customerId/'
+    | '/lieferanten/$supplierId/'
     | '/admin/ocr-training/batch/$id'
+    | '/kunden/$customerId/$folderId/$category'
+    | '/lieferanten/$supplierId/$folderId/$category'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -370,6 +665,8 @@ export interface RootRouteChildren {
   ChatRoute: typeof ChatRoute
   DocumentGroupsRoute: typeof DocumentGroupsRouteWithChildren
   JobsRoute: typeof JobsRoute
+  KundenRoute: typeof KundenRouteWithChildren
+  LieferantenRoute: typeof LieferantenRouteWithChildren
   LoginRoute: typeof LoginRoute
   MonitoringRoute: typeof MonitoringRoute
   RelationshipsRoute: typeof RelationshipsRoute
@@ -423,6 +720,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lieferanten': {
+      id: '/lieferanten'
+      path: '/lieferanten'
+      fullPath: '/lieferanten'
+      preLoaderRoute: typeof LieferantenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kunden': {
+      id: '/kunden'
+      path: '/kunden'
+      fullPath: '/kunden'
+      preLoaderRoute: typeof KundenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/jobs': {
       id: '/jobs'
       path: '/jobs'
@@ -472,6 +783,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lieferanten/': {
+      id: '/lieferanten/'
+      path: '/'
+      fullPath: '/lieferanten/'
+      preLoaderRoute: typeof LieferantenIndexRouteImport
+      parentRoute: typeof LieferantenRoute
+    }
+    '/kunden/': {
+      id: '/kunden/'
+      path: '/'
+      fullPath: '/kunden/'
+      preLoaderRoute: typeof KundenIndexRouteImport
+      parentRoute: typeof KundenRoute
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
@@ -485,6 +810,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/validation-queue/$id'
       preLoaderRoute: typeof ValidationQueueIdRouteImport
       parentRoute: typeof ValidationQueueRoute
+    }
+    '/lieferanten/$supplierId': {
+      id: '/lieferanten/$supplierId'
+      path: '/$supplierId'
+      fullPath: '/lieferanten/$supplierId'
+      preLoaderRoute: typeof LieferantenSupplierIdRouteImport
+      parentRoute: typeof LieferantenRoute
+    }
+    '/kunden/$customerId': {
+      id: '/kunden/$customerId'
+      path: '/$customerId'
+      fullPath: '/kunden/$customerId'
+      preLoaderRoute: typeof KundenCustomerIdRouteImport
+      parentRoute: typeof KundenRoute
     }
     '/documents/$documentId': {
       id: '/documents/$documentId'
@@ -549,12 +888,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOcrBackendsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/datev': {
+      id: '/admin/datev'
+      path: '/datev'
+      fullPath: '/admin/datev'
+      preLoaderRoute: typeof AdminDatevRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/banking': {
       id: '/admin/banking'
       path: '/banking'
       fullPath: '/admin/banking'
       preLoaderRoute: typeof AdminBankingRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/lieferanten/$supplierId/': {
+      id: '/lieferanten/$supplierId/'
+      path: '/'
+      fullPath: '/lieferanten/$supplierId/'
+      preLoaderRoute: typeof LieferantenSupplierIdIndexRouteImport
+      parentRoute: typeof LieferantenSupplierIdRoute
+    }
+    '/kunden/$customerId/': {
+      id: '/kunden/$customerId/'
+      path: '/'
+      fullPath: '/kunden/$customerId/'
+      preLoaderRoute: typeof KundenCustomerIdIndexRouteImport
+      parentRoute: typeof KundenCustomerIdRoute
+    }
+    '/admin/datev/': {
+      id: '/admin/datev/'
+      path: '/'
+      fullPath: '/admin/datev/'
+      preLoaderRoute: typeof AdminDatevIndexRouteImport
+      parentRoute: typeof AdminDatevRoute
+    }
+    '/admin/banking/': {
+      id: '/admin/banking/'
+      path: '/'
+      fullPath: '/admin/banking/'
+      preLoaderRoute: typeof AdminBankingIndexRouteImport
+      parentRoute: typeof AdminBankingRoute
+    }
+    '/lieferanten/$supplierId/$folderId': {
+      id: '/lieferanten/$supplierId/$folderId'
+      path: '/$folderId'
+      fullPath: '/lieferanten/$supplierId/$folderId'
+      preLoaderRoute: typeof LieferantenSupplierIdFolderIdRouteImport
+      parentRoute: typeof LieferantenSupplierIdRoute
+    }
+    '/kunden/$customerId/$folderId': {
+      id: '/kunden/$customerId/$folderId'
+      path: '/$folderId'
+      fullPath: '/kunden/$customerId/$folderId'
+      preLoaderRoute: typeof KundenCustomerIdFolderIdRouteImport
+      parentRoute: typeof KundenCustomerIdRoute
     }
     '/documents/$documentId/relationships': {
       id: '/documents/$documentId/relationships'
@@ -570,6 +958,90 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOcrBackendsBackendRouteImport
       parentRoute: typeof AdminOcrBackendsRoute
     }
+    '/admin/datev/vendors': {
+      id: '/admin/datev/vendors'
+      path: '/vendors'
+      fullPath: '/admin/datev/vendors'
+      preLoaderRoute: typeof AdminDatevVendorsRouteImport
+      parentRoute: typeof AdminDatevRoute
+    }
+    '/admin/datev/history': {
+      id: '/admin/datev/history'
+      path: '/history'
+      fullPath: '/admin/datev/history'
+      preLoaderRoute: typeof AdminDatevHistoryRouteImport
+      parentRoute: typeof AdminDatevRoute
+    }
+    '/admin/datev/export': {
+      id: '/admin/datev/export'
+      path: '/export'
+      fullPath: '/admin/datev/export'
+      preLoaderRoute: typeof AdminDatevExportRouteImport
+      parentRoute: typeof AdminDatevRoute
+    }
+    '/admin/datev/config': {
+      id: '/admin/datev/config'
+      path: '/config'
+      fullPath: '/admin/datev/config'
+      preLoaderRoute: typeof AdminDatevConfigRouteImport
+      parentRoute: typeof AdminDatevRoute
+    }
+    '/admin/banking/transactions': {
+      id: '/admin/banking/transactions'
+      path: '/transactions'
+      fullPath: '/admin/banking/transactions'
+      preLoaderRoute: typeof AdminBankingTransactionsRouteImport
+      parentRoute: typeof AdminBankingRoute
+    }
+    '/admin/banking/skonto': {
+      id: '/admin/banking/skonto'
+      path: '/skonto'
+      fullPath: '/admin/banking/skonto'
+      preLoaderRoute: typeof AdminBankingSkontoRouteImport
+      parentRoute: typeof AdminBankingRoute
+    }
+    '/admin/banking/reconciliation': {
+      id: '/admin/banking/reconciliation'
+      path: '/reconciliation'
+      fullPath: '/admin/banking/reconciliation'
+      preLoaderRoute: typeof AdminBankingReconciliationRouteImport
+      parentRoute: typeof AdminBankingRoute
+    }
+    '/admin/banking/payments': {
+      id: '/admin/banking/payments'
+      path: '/payments'
+      fullPath: '/admin/banking/payments'
+      preLoaderRoute: typeof AdminBankingPaymentsRouteImport
+      parentRoute: typeof AdminBankingRoute
+    }
+    '/admin/banking/import': {
+      id: '/admin/banking/import'
+      path: '/import'
+      fullPath: '/admin/banking/import'
+      preLoaderRoute: typeof AdminBankingImportRouteImport
+      parentRoute: typeof AdminBankingRoute
+    }
+    '/admin/banking/accounts': {
+      id: '/admin/banking/accounts'
+      path: '/accounts'
+      fullPath: '/admin/banking/accounts'
+      preLoaderRoute: typeof AdminBankingAccountsRouteImport
+      parentRoute: typeof AdminBankingRoute
+    }
+    '/lieferanten/$supplierId/$folderId/$category': {
+      id: '/lieferanten/$supplierId/$folderId/$category'
+      path: '/$category'
+      fullPath: '/lieferanten/$supplierId/$folderId/$category'
+      preLoaderRoute: typeof LieferantenSupplierIdFolderIdCategoryRouteImport
+      parentRoute: typeof LieferantenSupplierIdFolderIdRoute
+    }
+    '/kunden/$customerId/$folderId/$category': {
+      id: '/kunden/$customerId/$folderId/$category'
+      path: '/$category'
+      fullPath: '/kunden/$customerId/$folderId/$category'
+      preLoaderRoute: typeof KundenCustomerIdFolderIdCategoryRouteImport
+      parentRoute: typeof KundenCustomerIdFolderIdRoute
+    }
     '/admin/ocr-training/batch/$id': {
       id: '/admin/ocr-training/batch/$id'
       path: '/batch/$id'
@@ -579,6 +1051,50 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminBankingRouteChildren {
+  AdminBankingAccountsRoute: typeof AdminBankingAccountsRoute
+  AdminBankingImportRoute: typeof AdminBankingImportRoute
+  AdminBankingPaymentsRoute: typeof AdminBankingPaymentsRoute
+  AdminBankingReconciliationRoute: typeof AdminBankingReconciliationRoute
+  AdminBankingSkontoRoute: typeof AdminBankingSkontoRoute
+  AdminBankingTransactionsRoute: typeof AdminBankingTransactionsRoute
+  AdminBankingIndexRoute: typeof AdminBankingIndexRoute
+}
+
+const AdminBankingRouteChildren: AdminBankingRouteChildren = {
+  AdminBankingAccountsRoute: AdminBankingAccountsRoute,
+  AdminBankingImportRoute: AdminBankingImportRoute,
+  AdminBankingPaymentsRoute: AdminBankingPaymentsRoute,
+  AdminBankingReconciliationRoute: AdminBankingReconciliationRoute,
+  AdminBankingSkontoRoute: AdminBankingSkontoRoute,
+  AdminBankingTransactionsRoute: AdminBankingTransactionsRoute,
+  AdminBankingIndexRoute: AdminBankingIndexRoute,
+}
+
+const AdminBankingRouteWithChildren = AdminBankingRoute._addFileChildren(
+  AdminBankingRouteChildren,
+)
+
+interface AdminDatevRouteChildren {
+  AdminDatevConfigRoute: typeof AdminDatevConfigRoute
+  AdminDatevExportRoute: typeof AdminDatevExportRoute
+  AdminDatevHistoryRoute: typeof AdminDatevHistoryRoute
+  AdminDatevVendorsRoute: typeof AdminDatevVendorsRoute
+  AdminDatevIndexRoute: typeof AdminDatevIndexRoute
+}
+
+const AdminDatevRouteChildren: AdminDatevRouteChildren = {
+  AdminDatevConfigRoute: AdminDatevConfigRoute,
+  AdminDatevExportRoute: AdminDatevExportRoute,
+  AdminDatevHistoryRoute: AdminDatevHistoryRoute,
+  AdminDatevVendorsRoute: AdminDatevVendorsRoute,
+  AdminDatevIndexRoute: AdminDatevIndexRoute,
+}
+
+const AdminDatevRouteWithChildren = AdminDatevRoute._addFileChildren(
+  AdminDatevRouteChildren,
+)
 
 interface AdminOcrBackendsRouteChildren {
   AdminOcrBackendsBackendRoute: typeof AdminOcrBackendsBackendRoute
@@ -603,7 +1119,8 @@ const AdminOcrTrainingRouteWithChildren =
   AdminOcrTrainingRoute._addFileChildren(AdminOcrTrainingRouteChildren)
 
 interface AdminRouteChildren {
-  AdminBankingRoute: typeof AdminBankingRoute
+  AdminBankingRoute: typeof AdminBankingRouteWithChildren
+  AdminDatevRoute: typeof AdminDatevRouteWithChildren
   AdminOcrBackendsRoute: typeof AdminOcrBackendsRouteWithChildren
   AdminOcrReviewRoute: typeof AdminOcrReviewRoute
   AdminOcrTrainingRoute: typeof AdminOcrTrainingRouteWithChildren
@@ -614,7 +1131,8 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
-  AdminBankingRoute: AdminBankingRoute,
+  AdminBankingRoute: AdminBankingRouteWithChildren,
+  AdminDatevRoute: AdminDatevRouteWithChildren,
   AdminOcrBackendsRoute: AdminOcrBackendsRouteWithChildren,
   AdminOcrReviewRoute: AdminOcrReviewRoute,
   AdminOcrTrainingRoute: AdminOcrTrainingRouteWithChildren,
@@ -649,6 +1167,92 @@ const DocumentGroupsRouteWithChildren = DocumentGroupsRoute._addFileChildren(
   DocumentGroupsRouteChildren,
 )
 
+interface KundenCustomerIdFolderIdRouteChildren {
+  KundenCustomerIdFolderIdCategoryRoute: typeof KundenCustomerIdFolderIdCategoryRoute
+}
+
+const KundenCustomerIdFolderIdRouteChildren: KundenCustomerIdFolderIdRouteChildren =
+  {
+    KundenCustomerIdFolderIdCategoryRoute:
+      KundenCustomerIdFolderIdCategoryRoute,
+  }
+
+const KundenCustomerIdFolderIdRouteWithChildren =
+  KundenCustomerIdFolderIdRoute._addFileChildren(
+    KundenCustomerIdFolderIdRouteChildren,
+  )
+
+interface KundenCustomerIdRouteChildren {
+  KundenCustomerIdFolderIdRoute: typeof KundenCustomerIdFolderIdRouteWithChildren
+  KundenCustomerIdIndexRoute: typeof KundenCustomerIdIndexRoute
+}
+
+const KundenCustomerIdRouteChildren: KundenCustomerIdRouteChildren = {
+  KundenCustomerIdFolderIdRoute: KundenCustomerIdFolderIdRouteWithChildren,
+  KundenCustomerIdIndexRoute: KundenCustomerIdIndexRoute,
+}
+
+const KundenCustomerIdRouteWithChildren =
+  KundenCustomerIdRoute._addFileChildren(KundenCustomerIdRouteChildren)
+
+interface KundenRouteChildren {
+  KundenCustomerIdRoute: typeof KundenCustomerIdRouteWithChildren
+  KundenIndexRoute: typeof KundenIndexRoute
+}
+
+const KundenRouteChildren: KundenRouteChildren = {
+  KundenCustomerIdRoute: KundenCustomerIdRouteWithChildren,
+  KundenIndexRoute: KundenIndexRoute,
+}
+
+const KundenRouteWithChildren =
+  KundenRoute._addFileChildren(KundenRouteChildren)
+
+interface LieferantenSupplierIdFolderIdRouteChildren {
+  LieferantenSupplierIdFolderIdCategoryRoute: typeof LieferantenSupplierIdFolderIdCategoryRoute
+}
+
+const LieferantenSupplierIdFolderIdRouteChildren: LieferantenSupplierIdFolderIdRouteChildren =
+  {
+    LieferantenSupplierIdFolderIdCategoryRoute:
+      LieferantenSupplierIdFolderIdCategoryRoute,
+  }
+
+const LieferantenSupplierIdFolderIdRouteWithChildren =
+  LieferantenSupplierIdFolderIdRoute._addFileChildren(
+    LieferantenSupplierIdFolderIdRouteChildren,
+  )
+
+interface LieferantenSupplierIdRouteChildren {
+  LieferantenSupplierIdFolderIdRoute: typeof LieferantenSupplierIdFolderIdRouteWithChildren
+  LieferantenSupplierIdIndexRoute: typeof LieferantenSupplierIdIndexRoute
+}
+
+const LieferantenSupplierIdRouteChildren: LieferantenSupplierIdRouteChildren = {
+  LieferantenSupplierIdFolderIdRoute:
+    LieferantenSupplierIdFolderIdRouteWithChildren,
+  LieferantenSupplierIdIndexRoute: LieferantenSupplierIdIndexRoute,
+}
+
+const LieferantenSupplierIdRouteWithChildren =
+  LieferantenSupplierIdRoute._addFileChildren(
+    LieferantenSupplierIdRouteChildren,
+  )
+
+interface LieferantenRouteChildren {
+  LieferantenSupplierIdRoute: typeof LieferantenSupplierIdRouteWithChildren
+  LieferantenIndexRoute: typeof LieferantenIndexRoute
+}
+
+const LieferantenRouteChildren: LieferantenRouteChildren = {
+  LieferantenSupplierIdRoute: LieferantenSupplierIdRouteWithChildren,
+  LieferantenIndexRoute: LieferantenIndexRoute,
+}
+
+const LieferantenRouteWithChildren = LieferantenRoute._addFileChildren(
+  LieferantenRouteChildren,
+)
+
 interface ValidationQueueRouteChildren {
   ValidationQueueIdRoute: typeof ValidationQueueIdRoute
 }
@@ -680,6 +1284,8 @@ const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRoute,
   DocumentGroupsRoute: DocumentGroupsRouteWithChildren,
   JobsRoute: JobsRoute,
+  KundenRoute: KundenRouteWithChildren,
+  LieferantenRoute: LieferantenRouteWithChildren,
   LoginRoute: LoginRoute,
   MonitoringRoute: MonitoringRoute,
   RelationshipsRoute: RelationshipsRoute,

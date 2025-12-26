@@ -87,7 +87,7 @@ export function UserManagement() {
             if (roleFilter !== 'all') params.append('role', roleFilter);
             if (statusFilter !== 'all') params.append('status', statusFilter);
 
-            const response = await apiClient.get(`/api/v1/admin/users?${params.toString()}`);
+            const response = await apiClient.get(`/admin/users?${params.toString()}`);
             return response.data as UserListResponse;
         }
     });
@@ -95,7 +95,7 @@ export function UserManagement() {
     // Mutations
     const createMutation = useMutation({
         mutationFn: async (data: CreateUserData) => {
-            await apiClient.post('/api/v1/admin/users', data);
+            await apiClient.post('/admin/users', data);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -116,7 +116,7 @@ export function UserManagement() {
 
     const updateMutation = useMutation({
         mutationFn: async (data: UpdateUserData) => {
-            await apiClient.patch(`/api/v1/admin/users/${data.id}`, data);
+            await apiClient.patch(`/admin/users/${data.id}`, data);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -139,7 +139,7 @@ export function UserManagement() {
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
             if (!confirm('Sind Sie sicher? Dieser Benutzer wird dauerhaft gelöscht.')) return;
-            await apiClient.delete(`/api/v1/admin/users/${id}`);
+            await apiClient.delete(`/admin/users/${id}`);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -160,7 +160,7 @@ export function UserManagement() {
     const toggleStatusMutation = useMutation({
         mutationFn: async (user: User) => {
             const action = user.is_active ? 'deactivate' : 'activate';
-            await apiClient.post(`/api/v1/admin/users/${user.id}/${action}`);
+            await apiClient.post(`/admin/users/${user.id}/${action}`);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -180,7 +180,7 @@ export function UserManagement() {
 
     const resetPasswordMutation = useMutation({
         mutationFn: async (id: string) => {
-            const response = await apiClient.post(`/api/v1/admin/users/${id}/reset-password`);
+            const response = await apiClient.post(`/admin/users/${id}/reset-password`);
             return response.data.temp_password as string;
         },
         onSuccess: (password) => {

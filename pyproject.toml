@@ -285,6 +285,8 @@ markers = [
     "metrics: Backend metrics tests",
     "fallback: GPU fallback scenario tests",
     "windows: Windows-specific tests",
+    "experimental: Experimental features under evaluation",
+    "gpu_required: Tests that require GPU (will skip if not available)",
 ]
 
 # Addopts - options to always use

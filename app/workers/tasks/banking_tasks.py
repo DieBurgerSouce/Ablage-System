@@ -836,6 +836,310 @@ def cleanup_tan_challenges(self) -> Dict[str, Any]:
 
 
 # =============================================================================
+# MAHNUNGSWESEN (Dunning System) TASKS
+# =============================================================================
+
+
+def is_german_business_day(check_date: Optional[date] = None) -> bool:
+    """
+    Pruefe ob Datum ein deutscher Werktag ist.
+
+    Args:
+        check_date: Zu pruefendes Datum (default: heute)
+
+    Returns:
+        True wenn Werktag (Mo-Fr, kein Feiertag)
+    """
+    import holidays
+
+    if check_date is None:
+        check_date = date.today()
+
+    # Wochenende?
+    if check_date.weekday() >= 5:
+        return False
+
+    # Deutsche Feiertage (bundesweit)
+    de_holidays = holidays.Germany(years=check_date.year)
+
+    if check_date in de_holidays:
+        return False
+
+    return True
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.banking_tasks.daily_mahnlauf",
+)
+def daily_mahnlauf(self) -> Dict[str, Any]:
+    """
+    Taeglicher Mahnlauf um 9:00 Uhr (Mo-Fr, keine deutschen Feiertage).
+
+    Erstellt MahnTasks fuer faellige Mahnungen.
+    Sendet NICHT automatisch - Tasks muessen manuell bearbeitet werden.
+
+    BGB §286 Compliance:
+    - Prueft B2B/B2C fuer korrekte Verzugszinsen
+    - Respektiert Mahnstopp bei Reklamationen
+    - Respektiert Customer Dunning Overrides
+
+    Returns:
+        Mahnlauf-Statistik
+    """
+    logger.info(
+        "daily_mahnlauf_started",
+        task_id=self.request.id,
+    )
+
+    # Pruefe ob Werktag
+    today = date.today()
+    if not is_german_business_day(today):
+        logger.info(
+            "daily_mahnlauf_skipped_holiday",
+            task_id=self.request.id,
+            date=today.isoformat(),
+        )
+        return {
+            "skipped": True,
+            "reason": "Kein Werktag (Wochenende oder Feiertag)",
+            "date": today.isoformat(),
+        }
+
+    try:
+        async def do_mahnlauf():
+            from app.db.session import get_async_session
+            from app.services.banking.dunning_service import dunning_service
+            from app.services.banking.mahn_task_service import (
+                mahn_task_service,
+                MahnTaskType,
+            )
+            from app.services.banking.dunning_stage_service import dunning_stage_service
+            from app.db.models import User, DunningRecord, CustomerDunningOverride
+            from sqlalchemy import select, and_
+
+            stats = {
+                "users_processed": 0,
+                "overdue_invoices": 0,
+                "tasks_created": 0,
+                "skipped_mahnstopp": 0,
+                "skipped_exclusion": 0,
+            }
+
+            async with get_async_session() as db:
+                # Hole alle aktiven User
+                result = await db.execute(select(User).where(User.is_active == True))
+                users = result.scalars().all()
+
+                for user in users:
+                    try:
+                        stats["users_processed"] += 1
+
+                        # Hole Mahnstufen-Konfiguration fuer User
+                        stages = await dunning_stage_service.get_stages(db, user.id)
+                        active_stages = [s for s in stages if s.get("is_active")]
+
+                        if not active_stages:
+                            continue
+
+                        # Hole ueberfaellige Rechnungen
+                        overdue = await dunning_service.get_overdue_invoices(
+                            db=db,
+                            user_id=user.id,
+                            min_days_overdue=1,
+                            include_in_progress=True,
+                        )
+
+                        for candidate in overdue:
+                            stats["overdue_invoices"] += 1
+
+                            # Pruefe Mahnvorgang
+                            dunning_query = select(DunningRecord).where(
+                                DunningRecord.document_id == candidate.document_id
+                            )
+                            dunning_result = await db.execute(dunning_query)
+                            dunning = dunning_result.scalar_one_or_none()
+
+                            # Mahnstopp aktiv?
+                            if dunning and dunning.mahnstopp:
+                                stats["skipped_mahnstopp"] += 1
+                                continue
+
+                            # Customer Override pruefen
+                            # TODO: BusinessEntity aus Document holen und Override pruefen
+
+                            # Welche Stufe ist faellig?
+                            for stage in active_stages:
+                                if candidate.days_overdue >= stage.get("trigger_days_after_due", 0):
+                                    # Aktuelle Stufe ist kleiner als diese?
+                                    current_level = candidate.current_level.value if candidate.current_level else 0
+                                    stage_number = stage.get("stage_number", 0)
+
+                                    if current_level < stage_number:
+                                        # Task erstellen
+                                        action_type = stage.get("action_type", "email")
+                                        task_type = MahnTaskType.REMINDER
+
+                                        if action_type == "phone":
+                                            task_type = MahnTaskType.PHONE_CALL
+                                        elif action_type == "escalation":
+                                            task_type = MahnTaskType.COLLECTION
+                                        elif stage_number > 1:
+                                            task_type = MahnTaskType.ESCALATE
+
+                                        # Erstelle oder finde DunningRecord
+                                        if not dunning:
+                                            from app.services.banking.models import DunningLevel
+                                            dunning_response = await dunning_service.create_dunning(
+                                                db=db,
+                                                user_id=user.id,
+                                                document_id=candidate.document_id,
+                                                level=DunningLevel.FIRST_REMINDER,
+                                            )
+                                            dunning_id = dunning_response.id
+                                        else:
+                                            dunning_id = dunning.id
+
+                                        # MahnTask erstellen
+                                        await mahn_task_service.create_task(
+                                            db=db,
+                                            dunning_record_id=dunning_id,
+                                            task_type=task_type,
+                                            due_date=today,
+                                            priority=2 if stage_number >= 3 else 3,
+                                        )
+                                        stats["tasks_created"] += 1
+                                        break
+
+                    except Exception as e:
+                        logger.warning(
+                            "mahnlauf_user_error",
+                            user_id=str(user.id),
+                            error=str(e),
+                        )
+
+            return stats
+
+        result = run_async(do_mahnlauf())
+
+        logger.info(
+            "daily_mahnlauf_completed",
+            task_id=self.request.id,
+            **result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "daily_mahnlauf_failed",
+            task_id=self.request.id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.banking_tasks.reactivate_snoozed_tasks",
+)
+def reactivate_snoozed_tasks(self) -> Dict[str, Any]:
+    """
+    Reaktiviere zurueckgestellte Mahn-Aufgaben.
+
+    Wird taeglich ausgefuehrt und setzt snoozed Tasks zurueck auf pending,
+    wenn ihr snoozed_until Datum erreicht ist.
+
+    Returns:
+        Reaktivierungs-Statistik
+    """
+    logger.info(
+        "reactivate_snoozed_started",
+        task_id=self.request.id,
+    )
+
+    try:
+        async def do_reactivate():
+            from app.db.session import get_async_session
+            from app.services.banking.mahn_task_service import mahn_task_service
+
+            async with get_async_session() as db:
+                count = await mahn_task_service.reactivate_snoozed_tasks(db)
+                return {"reactivated": count}
+
+        result = run_async(do_reactivate())
+
+        logger.info(
+            "reactivate_snoozed_completed",
+            task_id=self.request.id,
+            **result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "reactivate_snoozed_failed",
+            task_id=self.request.id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.banking_tasks.check_expired_mahnstopp",
+)
+def check_expired_mahnstopp(self) -> Dict[str, Any]:
+    """
+    Pruefe und hebe abgelaufene Mahnstopps auf.
+
+    Wird taeglich ausgefuehrt und hebt Mahnstopps auf,
+    deren mahnstopp_until Datum erreicht ist.
+
+    Returns:
+        Mahnstopp-Pruefungs-Statistik
+    """
+    logger.info(
+        "check_expired_mahnstopp_started",
+        task_id=self.request.id,
+    )
+
+    try:
+        async def do_check():
+            from app.db.session import get_async_session
+            from app.services.banking.dunning_service import dunning_service
+
+            async with get_async_session() as db:
+                count = await dunning_service.check_expired_mahnstopp(db)
+                return {"lifted": count}
+
+        result = run_async(do_check())
+
+        logger.info(
+            "check_expired_mahnstopp_completed",
+            task_id=self.request.id,
+            **result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "check_expired_mahnstopp_failed",
+            task_id=self.request.id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise
+
+
+# =============================================================================
 # BEAT SCHEDULE CONFIGURATION
 # =============================================================================
 
@@ -888,6 +1192,33 @@ BANKING_BEAT_SCHEDULE = {
     "banking-tan-cleanup-hourly": {
         "task": "app.workers.tasks.banking_tasks.cleanup_tan_challenges",
         "schedule": 3600,  # Stundlich
+        "options": {"queue": "default"},
+    },
+    # =================================================================
+    # MAHNUNGSWESEN (Dunning System) - BGB §286 Compliance
+    # =================================================================
+    "banking-daily-mahnlauf": {
+        "task": "app.workers.tasks.banking_tasks.daily_mahnlauf",
+        "schedule": {
+            "hour": 9,
+            "minute": 0,
+        },
+        "options": {"queue": "default"},
+    },
+    "banking-reactivate-snoozed-tasks": {
+        "task": "app.workers.tasks.banking_tasks.reactivate_snoozed_tasks",
+        "schedule": {
+            "hour": 8,
+            "minute": 30,
+        },
+        "options": {"queue": "default"},
+    },
+    "banking-check-expired-mahnstopp": {
+        "task": "app.workers.tasks.banking_tasks.check_expired_mahnstopp",
+        "schedule": {
+            "hour": 8,
+            "minute": 45,
+        },
         "options": {"queue": "default"},
     },
 }

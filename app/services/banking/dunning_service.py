@@ -6,12 +6,19 @@ Verwaltet das automatische Mahnwesen:
 - Mahnstufen verwalten
 - Mahngebuehren und Verzugszinsen berechnen
 - Mahnschreiben generieren
+- Mahnstopp fuer Reklamationen
+- Audit-Log (mahnung_history)
 
 Mahnstufen:
 0 - Nicht begonnen
 1 - 1. Mahnung (Zahlungserinnerung)
 2 - 2. Mahnung (+ Mahngebuehr)
 3 - Letzte Mahnung (+ Verzugszinsen, Inkasso-Androhung)
+
+BGB §286 Compliance:
+- B2B: Basiszins + 9% = 11.27% p.a.
+- B2C: Basiszins + 5% = 7.27% p.a.
+- EUR 40 Pauschale nach §288 Abs. 5 BGB
 """
 from __future__ import annotations
 
@@ -32,9 +39,29 @@ from app.services.banking.models import (
     DunningRecordResponse,
 )
 
-from app.db.models import DunningRecord, Document
+from app.db.models import DunningRecord, Document, MahnungHistory
 
 logger = structlog.get_logger(__name__)
+
+# BGB §286 Zinssaetze (Stand: Januar 2025)
+BASE_INTEREST_RATE = Decimal("2.27")  # Basiszinssatz
+B2B_INTEREST_ADDON = Decimal("9.00")  # B2B: +9%
+B2C_INTEREST_ADDON = Decimal("5.00")  # B2C: +5%
+B2B_PAUSCHALE = Decimal("40.00")  # §288 Abs. 5 BGB
+
+
+class MahnungHistoryAction(str, Enum):
+    """Aktionstypen fuer Mahnung-History."""
+    REMINDER_SENT = "reminder_sent"
+    ESCALATED = "escalated"
+    PHONE_CALL = "phone_call"
+    PAYMENT_RECEIVED = "payment_received"
+    PARTIAL_PAYMENT = "partial_payment"
+    MAHNSTOPP_SET = "mahnstopp_set"
+    MAHNSTOPP_LIFTED = "mahnstopp_lifted"
+    B2B_PAUSCHALE_CLAIMED = "b2b_pauschale_claimed"
+    WRITTEN_OFF = "written_off"
+    SENT_TO_COLLECTION = "sent_to_collection"
 
 
 class DunningAction(str, Enum):
@@ -782,6 +809,503 @@ class DunningService:
             created_at=dunning.created_at,
             updated_at=dunning.updated_at,
         )
+
+    # =========================================================================
+    # Neue Methoden fuer erweitertes Mahnungswesen (BGB §286)
+    # =========================================================================
+
+    async def log_history_event(
+        self,
+        db: AsyncSession,
+        dunning_record_id: UUID,
+        action_type: MahnungHistoryAction,
+        performed_by_id: Optional[UUID] = None,
+        notes: Optional[str] = None,
+        outcome: Optional[str] = None,
+        document_id: Optional[UUID] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Schreibe Audit-Log-Eintrag (immutable).
+
+        Args:
+            db: Datenbank-Session
+            dunning_record_id: Mahnvorgang-ID
+            action_type: Art der Aktion
+            performed_by_id: Benutzer-ID
+            notes: Notizen
+            outcome: Ergebnis (success, failed, pending)
+            document_id: Optionales verknuepftes Dokument
+            metadata: Zusaetzliche Metadaten (JSON)
+
+        Returns:
+            Erstellter History-Eintrag
+        """
+        # Aktuelle Mahnstufe ermitteln
+        dunning = await db.get(DunningRecord, dunning_record_id)
+        if not dunning:
+            raise ValueError("Mahnvorgang nicht gefunden")
+
+        history = MahnungHistory(
+            id=uuid4(),
+            dunning_record_id=dunning_record_id,
+            action_type=action_type.value,
+            mahn_stufe=dunning.dunning_level,
+            action_timestamp=datetime.utcnow(),
+            performed_by_id=performed_by_id,
+            notes=notes,
+            outcome=outcome,
+            document_id=document_id,
+            metadata=metadata or {},
+        )
+
+        db.add(history)
+        await db.commit()
+        await db.refresh(history)
+
+        logger.info(
+            "mahnung_history_logged",
+            history_id=str(history.id),
+            dunning_record_id=str(dunning_record_id),
+            action_type=action_type.value,
+        )
+
+        return {
+            "id": str(history.id),
+            "dunning_record_id": str(history.dunning_record_id),
+            "action_type": history.action_type,
+            "mahn_stufe": history.mahn_stufe,
+            "action_timestamp": history.action_timestamp.isoformat(),
+            "performed_by_id": str(history.performed_by_id) if history.performed_by_id else None,
+            "notes": history.notes,
+            "outcome": history.outcome,
+        }
+
+    async def get_history(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        dunning_record_id: UUID,
+    ) -> List[Dict[str, Any]]:
+        """Hole Mahnung-History fuer Mahnvorgang.
+
+        Args:
+            db: Datenbank-Session
+            user_id: Benutzer-ID (fuer Zugriffspruefung)
+            dunning_record_id: Mahnvorgang-ID
+
+        Returns:
+            Liste von History-Eintraegen
+        """
+        # Zugriffspruefung
+        dunning = await self._get_dunning_by_id(db, user_id, dunning_record_id)
+        if not dunning:
+            raise ValueError("Mahnvorgang nicht gefunden")
+
+        query = (
+            select(MahnungHistory)
+            .where(MahnungHistory.dunning_record_id == dunning_record_id)
+            .order_by(MahnungHistory.action_timestamp.desc())
+        )
+        result = await db.execute(query)
+        entries = result.scalars().all()
+
+        return [
+            {
+                "id": str(e.id),
+                "action_type": e.action_type,
+                "mahn_stufe": e.mahn_stufe,
+                "action_timestamp": e.action_timestamp.isoformat(),
+                "performed_by_id": str(e.performed_by_id) if e.performed_by_id else None,
+                "notes": e.notes,
+                "outcome": e.outcome,
+                "document_id": str(e.document_id) if e.document_id else None,
+                "metadata": e.metadata,
+            }
+            for e in entries
+        ]
+
+    async def set_mahnstopp(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        dunning_id: UUID,
+        reason: str,
+        until_date: Optional[date] = None,
+    ) -> DunningRecordResponse:
+        """Setze Mahnstopp (z.B. bei Reklamation).
+
+        Args:
+            db: Datenbank-Session
+            user_id: Benutzer-ID
+            dunning_id: Mahnvorgang-ID
+            reason: Grund fuer Mahnstopp
+            until_date: Optionales Enddatum
+
+        Returns:
+            Aktualisierter Mahnvorgang
+        """
+        dunning = await self._get_dunning_by_id(db, user_id, dunning_id)
+        if not dunning:
+            raise ValueError("Mahnvorgang nicht gefunden")
+
+        dunning.mahnstopp = True
+        dunning.mahnstopp_reason = reason
+        dunning.mahnstopp_until = datetime.combine(until_date, datetime.min.time()) if until_date else None
+        dunning.updated_at = datetime.utcnow()
+
+        # Audit-Log
+        await self.log_history_event(
+            db=db,
+            dunning_record_id=dunning.id,
+            action_type=MahnungHistoryAction.MAHNSTOPP_SET,
+            performed_by_id=user_id,
+            notes=f"Mahnstopp: {reason}",
+            outcome="success",
+            metadata={"until_date": until_date.isoformat() if until_date else None},
+        )
+
+        await db.commit()
+        await db.refresh(dunning)
+
+        logger.info(
+            "mahnstopp_set",
+            dunning_id=str(dunning_id),
+            reason=reason,
+        )
+
+        return self._to_response(dunning)
+
+    async def lift_mahnstopp(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        dunning_id: UUID,
+        notes: Optional[str] = None,
+    ) -> DunningRecordResponse:
+        """Hebe Mahnstopp auf.
+
+        Args:
+            db: Datenbank-Session
+            user_id: Benutzer-ID
+            dunning_id: Mahnvorgang-ID
+            notes: Optionale Notizen
+
+        Returns:
+            Aktualisierter Mahnvorgang
+        """
+        dunning = await self._get_dunning_by_id(db, user_id, dunning_id)
+        if not dunning:
+            raise ValueError("Mahnvorgang nicht gefunden")
+
+        if not dunning.mahnstopp:
+            raise ValueError("Kein aktiver Mahnstopp vorhanden")
+
+        old_reason = dunning.mahnstopp_reason
+        dunning.mahnstopp = False
+        dunning.mahnstopp_reason = None
+        dunning.mahnstopp_until = None
+        dunning.updated_at = datetime.utcnow()
+
+        # Audit-Log
+        await self.log_history_event(
+            db=db,
+            dunning_record_id=dunning.id,
+            action_type=MahnungHistoryAction.MAHNSTOPP_LIFTED,
+            performed_by_id=user_id,
+            notes=notes or f"Mahnstopp aufgehoben (vorher: {old_reason})",
+            outcome="success",
+        )
+
+        await db.commit()
+        await db.refresh(dunning)
+
+        logger.info(
+            "mahnstopp_lifted",
+            dunning_id=str(dunning_id),
+        )
+
+        return self._to_response(dunning)
+
+    async def claim_b2b_pauschale(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        dunning_id: UUID,
+    ) -> DunningRecordResponse:
+        """Fordere B2B-Pauschale nach §288 Abs. 5 BGB.
+
+        Args:
+            db: Datenbank-Session
+            user_id: Benutzer-ID
+            dunning_id: Mahnvorgang-ID
+
+        Returns:
+            Aktualisierter Mahnvorgang
+
+        Raises:
+            ValueError: Wenn nicht B2B oder bereits gefordert
+        """
+        dunning = await self._get_dunning_by_id(db, user_id, dunning_id)
+        if not dunning:
+            raise ValueError("Mahnvorgang nicht gefunden")
+
+        if not dunning.is_b2b:
+            raise ValueError("B2B-Pauschale nur fuer Geschaeftskunden moeglich")
+
+        if dunning.b2b_pauschale_claimed:
+            raise ValueError("B2B-Pauschale bereits gefordert")
+
+        dunning.b2b_pauschale_claimed = True
+        dunning.reminder_fee = (dunning.reminder_fee or Decimal("0.00")) + B2B_PAUSCHALE
+        dunning.updated_at = datetime.utcnow()
+
+        # Audit-Log
+        await self.log_history_event(
+            db=db,
+            dunning_record_id=dunning.id,
+            action_type=MahnungHistoryAction.B2B_PAUSCHALE_CLAIMED,
+            performed_by_id=user_id,
+            notes=f"B2B-Pauschale EUR {B2B_PAUSCHALE} nach §288 Abs. 5 BGB",
+            outcome="success",
+            metadata={"pauschale_amount": float(B2B_PAUSCHALE)},
+        )
+
+        await db.commit()
+        await db.refresh(dunning)
+
+        logger.info(
+            "b2b_pauschale_claimed",
+            dunning_id=str(dunning_id),
+            amount=float(B2B_PAUSCHALE),
+        )
+
+        return self._to_response(dunning)
+
+    def get_verzugszinsen_rate(self, is_b2b: bool = True) -> Decimal:
+        """Hole aktuellen Verzugszinssatz nach BGB §288.
+
+        Args:
+            is_b2b: True fuer B2B, False fuer B2C
+
+        Returns:
+            Jaehrlicher Zinssatz in Prozent
+        """
+        addon = B2B_INTEREST_ADDON if is_b2b else B2C_INTEREST_ADDON
+        return BASE_INTEREST_RATE + addon
+
+    def calculate_verzugszinsen(
+        self,
+        principal: Decimal,
+        due_date: date,
+        as_of_date: date,
+        is_b2b: bool = True,
+    ) -> Decimal:
+        """Berechne Verzugszinsen nach BGB §288.
+
+        Args:
+            principal: Hauptforderung
+            due_date: Faelligkeitsdatum
+            as_of_date: Berechnungsdatum
+            is_b2b: B2B oder B2C
+
+        Returns:
+            Verzugszinsen in EUR
+        """
+        if due_date >= as_of_date:
+            return Decimal("0.00")
+
+        days_late = (as_of_date - due_date).days
+        if days_late <= 0:
+            return Decimal("0.00")
+
+        # Jaehrlicher Zinssatz
+        annual_rate = self.get_verzugszinsen_rate(is_b2b) / Decimal("100")
+
+        # Tageszins
+        daily_rate = annual_rate / Decimal("365")
+
+        # Berechnung
+        interest = principal * daily_rate * Decimal(str(days_late))
+
+        return interest.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    async def set_b2b_status(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        dunning_id: UUID,
+        is_b2b: bool,
+    ) -> DunningRecordResponse:
+        """Setze B2B/B2C-Status fuer Mahnvorgang.
+
+        Args:
+            db: Datenbank-Session
+            user_id: Benutzer-ID
+            dunning_id: Mahnvorgang-ID
+            is_b2b: True fuer B2B, False fuer B2C
+
+        Returns:
+            Aktualisierter Mahnvorgang
+        """
+        dunning = await self._get_dunning_by_id(db, user_id, dunning_id)
+        if not dunning:
+            raise ValueError("Mahnvorgang nicht gefunden")
+
+        old_status = "B2B" if dunning.is_b2b else "B2C"
+        new_status = "B2B" if is_b2b else "B2C"
+
+        dunning.is_b2b = is_b2b
+        dunning.updated_at = datetime.utcnow()
+
+        # Verzugszinsen neu berechnen
+        if dunning.due_date:
+            dunning.accrued_interest = self.calculate_verzugszinsen(
+                principal=dunning.gross_amount or Decimal("0.00"),
+                due_date=dunning.due_date.date() if hasattr(dunning.due_date, 'date') else dunning.due_date,
+                as_of_date=date.today(),
+                is_b2b=is_b2b,
+            )
+
+        await db.commit()
+        await db.refresh(dunning)
+
+        logger.info(
+            "b2b_status_changed",
+            dunning_id=str(dunning_id),
+            old_status=old_status,
+            new_status=new_status,
+        )
+
+        return self._to_response(dunning)
+
+    async def bulk_escalate(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        dunning_ids: List[UUID],
+        notes: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Eskaliere mehrere Mahnvorgaenge.
+
+        Args:
+            db: Datenbank-Session
+            user_id: Benutzer-ID
+            dunning_ids: Liste von Mahnvorgang-IDs
+            notes: Optionale Notizen
+
+        Returns:
+            Ergebnis mit Erfolgs- und Fehlerliste
+        """
+        successful = []
+        failed = []
+
+        for dunning_id in dunning_ids:
+            try:
+                result = await self.escalate_dunning(db, user_id, dunning_id, notes)
+                successful.append(str(dunning_id))
+
+                # Audit-Log
+                await self.log_history_event(
+                    db=db,
+                    dunning_record_id=dunning_id,
+                    action_type=MahnungHistoryAction.ESCALATED,
+                    performed_by_id=user_id,
+                    notes=notes,
+                    outcome="success",
+                )
+            except Exception as e:
+                failed.append({"id": str(dunning_id), "error": str(e)})
+
+        logger.info(
+            "bulk_escalation_completed",
+            successful_count=len(successful),
+            failed_count=len(failed),
+        )
+
+        return {
+            "successful": successful,
+            "failed": failed,
+            "total_processed": len(dunning_ids),
+        }
+
+    async def get_dunnings_with_mahnstopp(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+    ) -> List[DunningRecordResponse]:
+        """Hole alle Mahnvorgaenge mit aktivem Mahnstopp.
+
+        Args:
+            db: Datenbank-Session
+            user_id: Benutzer-ID
+
+        Returns:
+            Liste von Mahnvorgaengen mit Mahnstopp
+        """
+        query = select(DunningRecord).where(
+            and_(
+                DunningRecord.user_id == user_id,
+                DunningRecord.mahnstopp == True,
+            )
+        ).order_by(DunningRecord.updated_at.desc())
+
+        result = await db.execute(query)
+        dunnings = result.scalars().all()
+
+        return [self._to_response(d) for d in dunnings]
+
+    async def check_expired_mahnstopp(
+        self,
+        db: AsyncSession,
+    ) -> int:
+        """Pruefe und hebe abgelaufene Mahnstopps auf.
+
+        Wird vom Celery Beat Task taeglich aufgerufen.
+
+        Returns:
+            Anzahl aufgehobener Mahnstopps
+        """
+        today = datetime.utcnow()
+
+        query = select(DunningRecord).where(
+            and_(
+                DunningRecord.mahnstopp == True,
+                DunningRecord.mahnstopp_until.isnot(None),
+                DunningRecord.mahnstopp_until <= today,
+            )
+        )
+
+        result = await db.execute(query)
+        dunnings = result.scalars().all()
+
+        count = 0
+        for dunning in dunnings:
+            dunning.mahnstopp = False
+            dunning.mahnstopp_reason = None
+            dunning.mahnstopp_until = None
+            dunning.updated_at = datetime.utcnow()
+
+            # Audit-Log (ohne User-ID, da automatisch)
+            history = MahnungHistory(
+                id=uuid4(),
+                dunning_record_id=dunning.id,
+                action_type=MahnungHistoryAction.MAHNSTOPP_LIFTED.value,
+                mahn_stufe=dunning.dunning_level,
+                action_timestamp=datetime.utcnow(),
+                notes="Automatisch aufgehoben (Ablaufdatum erreicht)",
+                outcome="success",
+            )
+            db.add(history)
+            count += 1
+
+        if count > 0:
+            await db.commit()
+            logger.info(
+                "expired_mahnstopp_lifted",
+                count=count,
+            )
+
+        return count
 
 
 # Singleton

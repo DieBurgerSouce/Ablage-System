@@ -353,3 +353,489 @@ class TestMinDunningAmount:
         config = DunningConfig(min_dunning_amount=Decimal("10.00"))
 
         assert config.min_dunning_amount == Decimal("10.00")
+
+
+# =============================================================================
+# ASYNC DB TESTS
+# =============================================================================
+
+from unittest.mock import AsyncMock, MagicMock, patch
+from app.services.banking.models import DunningStatus
+
+
+class TestAsyncGetOverdueInvoices:
+    """Tests fuer async get_overdue_invoices."""
+
+    @pytest.fixture
+    def service(self) -> DunningService:
+        return DunningService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.fixture
+    def sample_overdue_documents(self, sample_user_id):
+        """Sample ueberfaellige Dokumente."""
+        today = date.today()
+        documents = []
+
+        # Rechnung 1: 20 Tage ueberfaellig
+        doc1 = MagicMock()
+        doc1.id = uuid4()
+        doc1.owner_id = sample_user_id
+        doc1.document_type = "invoice"
+        doc1.deleted_at = None
+        doc1.extracted_data = {
+            "invoice_number": "RE-2024-001",
+            "creditor_name": "Kunde A GmbH",
+            "total_amount": "1500.00",
+            "due_date": (today - timedelta(days=20)).isoformat(),
+        }
+        documents.append(doc1)
+
+        # Rechnung 2: 45 Tage ueberfaellig
+        doc2 = MagicMock()
+        doc2.id = uuid4()
+        doc2.owner_id = sample_user_id
+        doc2.document_type = "invoice"
+        doc2.deleted_at = None
+        doc2.extracted_data = {
+            "invoice_number": "RE-2024-002",
+            "creditor_name": "Kunde B AG",
+            "total_amount": "2500.00",
+            "due_date": (today - timedelta(days=45)).isoformat(),
+        }
+        documents.append(doc2)
+
+        # Rechnung 3: Nicht ueberfaellig (ignorieren)
+        doc3 = MagicMock()
+        doc3.id = uuid4()
+        doc3.owner_id = sample_user_id
+        doc3.document_type = "invoice"
+        doc3.deleted_at = None
+        doc3.extracted_data = {
+            "invoice_number": "RE-2024-003",
+            "creditor_name": "Kunde C",
+            "total_amount": "500.00",
+            "due_date": (today + timedelta(days=10)).isoformat(),
+        }
+        documents.append(doc3)
+
+        # Rechnung 4: Bereits bezahlt (ignorieren)
+        doc4 = MagicMock()
+        doc4.id = uuid4()
+        doc4.owner_id = sample_user_id
+        doc4.document_type = "invoice"
+        doc4.deleted_at = None
+        doc4.extracted_data = {
+            "invoice_number": "RE-2024-004",
+            "creditor_name": "Kunde D",
+            "total_amount": "3000.00",
+            "due_date": (today - timedelta(days=30)).isoformat(),
+            "payment_status": "paid",
+        }
+        documents.append(doc4)
+
+        return documents
+
+    @pytest.mark.asyncio
+    async def test_get_overdue_invoices(
+        self, service: DunningService, mock_db, sample_user_id, sample_overdue_documents
+    ):
+        """Sollte ueberfaellige Rechnungen finden."""
+        # Mock Document-Abfrage
+        mock_doc_result = MagicMock()
+        mock_doc_result.scalars.return_value.all.return_value = sample_overdue_documents
+
+        # Mock DunningRecord-Abfrage (keine existierenden Mahnungen)
+        mock_dunning_result = MagicMock()
+        mock_dunning_result.scalar_one_or_none.return_value = None
+
+        mock_db.execute = AsyncMock(side_effect=[mock_doc_result, mock_dunning_result, mock_dunning_result])
+
+        candidates = await service.get_overdue_invoices(
+            db=mock_db,
+            user_id=sample_user_id,
+            min_days_overdue=1,
+        )
+
+        # Nur 2 ueberfaellige (nicht bezahlte) sollten zurueckgegeben werden
+        assert len(candidates) == 2
+
+    @pytest.mark.asyncio
+    async def test_get_overdue_invoices_empty(
+        self, service: DunningService, mock_db, sample_user_id
+    ):
+        """Sollte leere Liste bei keinen ueberfaelligen zurueckgeben."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        candidates = await service.get_overdue_invoices(
+            db=mock_db,
+            user_id=sample_user_id,
+        )
+
+        assert candidates == []
+
+    @pytest.mark.asyncio
+    async def test_get_overdue_invoices_with_max_days(
+        self, service: DunningService, mock_db, sample_user_id, sample_overdue_documents
+    ):
+        """Sollte max_days_overdue Filter respektieren."""
+        mock_doc_result = MagicMock()
+        mock_doc_result.scalars.return_value.all.return_value = sample_overdue_documents
+        mock_dunning_result = MagicMock()
+        mock_dunning_result.scalar_one_or_none.return_value = None
+
+        mock_db.execute = AsyncMock(side_effect=[mock_doc_result, mock_dunning_result])
+
+        candidates = await service.get_overdue_invoices(
+            db=mock_db,
+            user_id=sample_user_id,
+            min_days_overdue=1,
+            max_days_overdue=30,  # Nur bis 30 Tage
+        )
+
+        # Nur Rechnung mit 20 Tagen sollte zurueckgegeben werden
+        assert len(candidates) == 1
+
+
+class TestAsyncCreateDunning:
+    """Tests fuer async create_dunning."""
+
+    @pytest.fixture
+    def service(self) -> DunningService:
+        return DunningService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.fixture
+    def sample_document(self, sample_user_id):
+        """Sample Dokument fuer Mahnung."""
+        today = date.today()
+        doc = MagicMock()
+        doc.id = uuid4()
+        doc.owner_id = sample_user_id
+        doc.document_type = "invoice"
+        doc.deleted_at = None
+        doc.extracted_data = {
+            "invoice_number": "RE-2024-100",
+            "creditor_name": "Test Kunde",
+            "total_amount": "1000.00",
+            "due_date": (today - timedelta(days=20)).isoformat(),
+        }
+        return doc
+
+    @pytest.mark.asyncio
+    async def test_create_dunning_not_found(
+        self, service: DunningService, mock_db, sample_user_id
+    ):
+        """Sollte Fehler werfen bei nicht existierendem Dokument."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        with pytest.raises(ValueError, match="Dokument nicht gefunden"):
+            await service.create_dunning(
+                db=mock_db,
+                user_id=sample_user_id,
+                document_id=uuid4(),
+                level=DunningLevel.FIRST_REMINDER,
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_dunning_already_exists(
+        self, service: DunningService, mock_db, sample_user_id, sample_document
+    ):
+        """Sollte Fehler werfen bei existierendem Mahnverfahren."""
+        # Mock Dokument gefunden
+        mock_doc_result = MagicMock()
+        mock_doc_result.scalar_one_or_none.return_value = sample_document
+
+        # Mock existierendes Mahnverfahren
+        existing_dunning = MagicMock()
+        existing_dunning.dunning_level = DunningLevel.FIRST_REMINDER.value
+        mock_dunning_result = MagicMock()
+        mock_dunning_result.scalar_one_or_none.return_value = existing_dunning
+
+        mock_db.execute = AsyncMock(side_effect=[mock_doc_result, mock_dunning_result])
+
+        with pytest.raises(ValueError, match="existiert bereits"):
+            await service.create_dunning(
+                db=mock_db,
+                user_id=sample_user_id,
+                document_id=sample_document.id,
+                level=DunningLevel.FIRST_REMINDER,
+            )
+
+
+class TestAsyncEscalateDunning:
+    """Tests fuer async escalate_dunning."""
+
+    @pytest.fixture
+    def service(self) -> DunningService:
+        return DunningService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_escalate_dunning_not_found(
+        self, service: DunningService, mock_db, sample_user_id
+    ):
+        """Sollte Fehler werfen bei nicht existierendem Mahnvorgang."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        with pytest.raises(ValueError, match="nicht gefunden"):
+            await service.escalate_dunning(
+                db=mock_db,
+                user_id=sample_user_id,
+                dunning_id=uuid4(),
+            )
+
+    @pytest.mark.asyncio
+    async def test_escalate_dunning_wrong_status(
+        self, service: DunningService, mock_db, sample_user_id
+    ):
+        """Sollte Fehler werfen bei falschem Status."""
+        # Mock abgeschlossener Mahnvorgang
+        dunning = MagicMock()
+        dunning.id = uuid4()
+        dunning.user_id = sample_user_id
+        dunning.status = DunningStatus.PAID.value
+        dunning.dunning_level = DunningLevel.FIRST_REMINDER.value
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = dunning
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        with pytest.raises(ValueError, match="kann nicht eskaliert werden"):
+            await service.escalate_dunning(
+                db=mock_db,
+                user_id=sample_user_id,
+                dunning_id=dunning.id,
+            )
+
+
+class TestAsyncCloseDunning:
+    """Tests fuer async close_dunning."""
+
+    @pytest.fixture
+    def service(self) -> DunningService:
+        return DunningService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_close_dunning_invalid_status(
+        self, service: DunningService, mock_db, sample_user_id
+    ):
+        """Sollte Fehler werfen bei ungueltigem Status."""
+        with pytest.raises(ValueError, match="kann nicht auf"):
+            await service.close_dunning(
+                db=mock_db,
+                user_id=sample_user_id,
+                dunning_id=uuid4(),
+                status=DunningStatus.PENDING,  # Ungueltig
+            )
+
+    @pytest.mark.asyncio
+    async def test_close_dunning_not_found(
+        self, service: DunningService, mock_db, sample_user_id
+    ):
+        """Sollte Fehler werfen bei nicht existierendem Mahnvorgang."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        with pytest.raises(ValueError, match="nicht gefunden"):
+            await service.close_dunning(
+                db=mock_db,
+                user_id=sample_user_id,
+                dunning_id=uuid4(),
+                status=DunningStatus.PAID,
+            )
+
+
+class TestAsyncListDunnings:
+    """Tests fuer async list_dunnings."""
+
+    @pytest.fixture
+    def service(self) -> DunningService:
+        return DunningService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_list_dunnings_empty(
+        self, service: DunningService, mock_db, sample_user_id
+    ):
+        """Sollte leere Liste zurueckgeben."""
+        # Mock count
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 0
+
+        # Mock list
+        mock_list_result = MagicMock()
+        mock_list_result.scalars.return_value.all.return_value = []
+
+        mock_db.execute = AsyncMock(side_effect=[mock_count_result, mock_list_result])
+
+        dunnings, total = await service.list_dunnings(
+            db=mock_db,
+            user_id=sample_user_id,
+        )
+
+        assert dunnings == []
+        assert total == 0
+
+
+class TestAsyncDunningStats:
+    """Tests fuer async get_dunning_stats."""
+
+    @pytest.fixture
+    def service(self) -> DunningService:
+        return DunningService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_get_dunning_stats_empty(
+        self, service: DunningService, mock_db, sample_user_id
+    ):
+        """Sollte leere Stats zurueckgeben bei keinen Daten."""
+        # Mock fuer verschiedene Abfragen
+        mock_empty_result = MagicMock()
+        mock_empty_result.scalars.return_value.all.return_value = []
+        mock_empty_result.scalar.return_value = 0
+        mock_empty_result.one.return_value = (0, Decimal("0.00"))
+
+        mock_db.execute = AsyncMock(return_value=mock_empty_result)
+
+        stats = await service.get_dunning_stats(
+            db=mock_db,
+            user_id=sample_user_id,
+        )
+
+        assert "overdue" in stats
+        assert "active_dunnings" in stats
+        assert "by_level" in stats
+
+
+class TestAsyncAutomaticDunning:
+    """Tests fuer async process_automatic_dunning."""
+
+    @pytest.fixture
+    def service(self) -> DunningService:
+        return DunningService()
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def sample_user_id(self):
+        return uuid4()
+
+    @pytest.mark.asyncio
+    async def test_automatic_dunning_dry_run(
+        self, service: DunningService, mock_db, sample_user_id
+    ):
+        """Sollte dry_run ohne Aenderungen durchfuehren."""
+        # Mock leere Ergebnisse
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        actions = await service.process_automatic_dunning(
+            db=mock_db,
+            user_id=sample_user_id,
+            dry_run=True,
+        )
+
+        assert isinstance(actions, list)
+
+
+class TestDunningActionEnum:
+    """Tests fuer DunningAction Enum."""
+
+    def test_action_values(self):
+        """Sollte korrekte Aktions-Werte haben."""
+        assert DunningAction.REMINDER.value == "reminder"
+        assert DunningAction.FIRST_DUNNING.value == "first"
+        assert DunningAction.SECOND_DUNNING.value == "second"
+        assert DunningAction.FINAL_DUNNING.value == "final"
+        assert DunningAction.COLLECTION.value == "collection"
+        assert DunningAction.WRITE_OFF.value == "write_off"
+
+    def test_action_count(self):
+        """Sollte 6 Aktionen haben."""
+        assert len(DunningAction) == 6
+
+
+class TestDunningLevelEnum:
+    """Tests fuer DunningLevel Enum."""
+
+    def test_level_values(self):
+        """Sollte korrekte Level-Werte haben."""
+        assert DunningLevel.NOT_STARTED.value == 0
+        assert DunningLevel.FIRST_REMINDER.value == 1
+        assert DunningLevel.SECOND_REMINDER.value == 2
+        assert DunningLevel.FINAL_REMINDER.value == 3
+
+    def test_level_ordering(self):
+        """Sollte aufsteigende Reihenfolge haben."""
+        assert DunningLevel.NOT_STARTED.value < DunningLevel.FIRST_REMINDER.value
+        assert DunningLevel.FIRST_REMINDER.value < DunningLevel.SECOND_REMINDER.value
+        assert DunningLevel.SECOND_REMINDER.value < DunningLevel.FINAL_REMINDER.value

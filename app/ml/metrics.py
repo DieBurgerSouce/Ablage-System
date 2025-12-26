@@ -155,6 +155,30 @@ if PROMETHEUS_AVAILABLE:
     )
 
     # -------------------------------------------------------------------------
+    # OCR Backend Health & Fallback Metriken (NEU - Infrastructure Hardening)
+    # -------------------------------------------------------------------------
+
+    OCR_BACKEND_HEALTHY = Gauge(
+        "ablage_ocr_backend_healthy",
+        "OCR Backend Health Status (1=healthy, 0=unhealthy)",
+        ["backend"],
+        registry=ML_REGISTRY,
+    )
+
+    OCR_QUEUE_LENGTH = Gauge(
+        "ablage_ocr_queue_length",
+        "Anzahl der Dokumente in der OCR-Verarbeitungs-Queue",
+        registry=ML_REGISTRY,
+    )
+
+    OCR_FALLBACKS_TOTAL = Counter(
+        "ablage_ocr_fallbacks_total",
+        "Gesamtzahl der OCR Backend-Fallbacks",
+        ["from_backend", "to_backend"],
+        registry=ML_REGISTRY,
+    )
+
+    # -------------------------------------------------------------------------
     # Confidence Calibration Metriken
     # -------------------------------------------------------------------------
 
@@ -625,6 +649,60 @@ class MLMetrics:
         """Setze aktuelle Queue-Größe."""
         if self.enabled:
             BACKEND_QUEUE_SIZE.labels(backend=backend).set(size)
+
+    # -------------------------------------------------------------------------
+    # OCR Backend Health & Fallback Metriken
+    # -------------------------------------------------------------------------
+
+    def set_backend_healthy(self, backend: str, healthy: bool) -> None:
+        """
+        Setze Health-Status für OCR Backend.
+
+        Args:
+            backend: Backend-Name (deepseek, got_ocr, surya, etc.)
+            healthy: True wenn Backend gesund, False sonst
+        """
+        if self.enabled:
+            OCR_BACKEND_HEALTHY.labels(backend=backend).set(1 if healthy else 0)
+        else:
+            logger.debug("backend_health_status", backend=backend, healthy=healthy)
+
+    def set_ocr_queue_length(self, length: int) -> None:
+        """
+        Setze aktuelle OCR Queue-Länge.
+
+        Args:
+            length: Anzahl der Dokumente in der Queue
+        """
+        if self.enabled:
+            OCR_QUEUE_LENGTH.set(length)
+        else:
+            logger.debug("ocr_queue_length", length=length)
+
+    def record_backend_fallback(self, from_backend: str, to_backend: str) -> None:
+        """
+        Erfasse OCR Backend-Fallback.
+
+        Args:
+            from_backend: Original Backend das fehlgeschlagen ist
+            to_backend: Fallback Backend das verwendet wird
+        """
+        if self.enabled:
+            OCR_FALLBACKS_TOTAL.labels(
+                from_backend=from_backend,
+                to_backend=to_backend,
+            ).inc()
+            logger.info(
+                "ocr_backend_fallback",
+                from_backend=from_backend,
+                to_backend=to_backend,
+            )
+        else:
+            logger.warning(
+                "ocr_backend_fallback",
+                from_backend=from_backend,
+                to_backend=to_backend,
+            )
 
     def inc_backend_active(self, backend: str) -> None:
         """Erhöhe aktive Anfragen."""

@@ -50,7 +50,7 @@ export function TuneManagement() {
     const { data: tunes, isLoading } = useQuery({
         queryKey: ['tunes'],
         queryFn: async () => {
-            const response = await apiClient.get('/api/v1/tunes');
+            const response = await apiClient.get('/tunes');
             return response.data as Tune[];
         }
     });
@@ -58,7 +58,7 @@ export function TuneManagement() {
     // Create Mutation
     const createMutation = useMutation({
         mutationFn: async (data: Partial<Tune>) => {
-            await apiClient.post('/api/v1/tunes', data);
+            await apiClient.post('/tunes', data);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tunes'] });
@@ -80,7 +80,7 @@ export function TuneManagement() {
     // Update Mutation
     const updateMutation = useMutation({
         mutationFn: async (data: Partial<Tune>) => {
-            await apiClient.put(`/api/v1/tunes/${data.id}`, data);
+            await apiClient.put(`/tunes/${data.id}`, data);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tunes'] });
@@ -103,7 +103,7 @@ export function TuneManagement() {
     // Delete Mutation
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            await apiClient.delete(`/api/v1/tunes/${id}`);
+            await apiClient.delete(`/tunes/${id}`);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tunes'] });

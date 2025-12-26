@@ -420,3 +420,40 @@ class RAGLLMModelResponse(BaseModel):
     is_active: bool
     avg_tokens_per_second: Optional[float]
     avg_latency_ms: Optional[int]
+
+
+# ============================================================================
+# CHAT SHARING
+# ============================================================================
+
+class ChatSessionAccessLevel(str, Enum):
+    """Zugriffsebenen fuer Chat Session Sharing."""
+    VIEW = "view"
+    CONTRIBUTE = "contribute"
+    MANAGE = "manage"
+
+
+class ChatSessionShareRequest(BaseModel):
+    """Request zum Teilen einer Chat Session."""
+    user_id: UUID = Field(..., description="ID des Benutzers der Zugriff erhaelt")
+    access_level: ChatSessionAccessLevel = Field(
+        default=ChatSessionAccessLevel.VIEW,
+        description="Zugriffsebene: view, contribute, manage"
+    )
+
+
+class ChatSessionCollaboratorResponse(BaseModel):
+    """Response fuer einen Collaborator."""
+    user_id: str
+    username: str
+    email: Optional[str]
+    access_level: str
+    is_owner: bool
+    granted_at: Optional[str]
+
+
+class ChatSessionSharedResponse(RAGChatSessionResponse):
+    """Chat Session Response mit Sharing-Infos."""
+    access_level: str = Field(..., description="Eigenes Zugriffslevel")
+    is_shared: bool = Field(default=True, description="Session ist geteilt")
+    collaborator_count: int = Field(default=0, description="Anzahl Collaborators")

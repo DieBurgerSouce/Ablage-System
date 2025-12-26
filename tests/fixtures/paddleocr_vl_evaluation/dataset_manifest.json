@@ -1,0 +1,250 @@
+{
+  "dataset_name": "PaddleOCR-VL 0.9B Evaluation Dataset",
+  "created": "2025-12-20",
+  "purpose": "Comprehensive evaluation of PaddleOCR-VL 0.9B for German business documents",
+  "total_documents": 20,
+  "document_distribution": {
+    "invoices": 8,
+    "contracts": 4,
+    "bank_statements": 4,
+    "delivery_notes": 2,
+    "letters": 2
+  },
+  "quality_distribution": {
+    "high": 7,
+    "medium": 9,
+    "low": 4
+  },
+  "documents": [
+    {
+      "id": "eval_001",
+      "type": "invoice",
+      "source": "tests/fixtures/german_docs/invoices/invoice_001.png",
+      "ground_truth": "tests/fixtures/german_docs/invoices/invoice_001.json",
+      "quality": "high",
+      "has_umlauts": true,
+      "has_tables": false,
+      "description": "Standard invoice with IBAN, VAT ID, dates"
+    },
+    {
+      "id": "eval_002",
+      "type": "invoice",
+      "source": "tests/fixtures/german_docs/invoices/invoice_002.png",
+      "ground_truth": "tests/fixtures/german_docs/invoices/invoice_002.json",
+      "quality": "high",
+      "has_umlauts": true,
+      "has_tables": false,
+      "description": "Invoice with multiple line items"
+    },
+    {
+      "id": "eval_003",
+      "type": "invoice",
+      "source": "tests/fixtures/german_docs/invoices/invoice_003.png",
+      "ground_truth": "tests/fixtures/german_docs/invoices/invoice_003.json",
+      "quality": "medium",
+      "has_umlauts": true,
+      "has_tables": false,
+      "description": "Invoice with payment terms"
+    },
+    {
+      "id": "eval_004",
+      "type": "invoice",
+      "source": "tests/fixtures/german_docs/invoices/invoice_004.png",
+      "ground_truth": "tests/fixtures/german_docs/invoices/invoice_004.json",
+      "quality": "medium",
+      "has_umlauts": true,
+      "has_tables": false,
+      "description": "Invoice with discounts"
+    },
+    {
+      "id": "eval_005",
+      "type": "invoice",
+      "source": "tests/fixtures/german_docs/invoices/invoice_005.png",
+      "ground_truth": "tests/fixtures/german_docs/invoices/invoice_005.json",
+      "quality": "high",
+      "has_umlauts": true,
+      "has_tables": false,
+      "description": "Complex invoice with multiple sections"
+    },
+    {
+      "id": "eval_006",
+      "type": "invoice",
+      "source": "tests/fixtures/german_docs/invoices/invoice_006.png",
+      "ground_truth": "tests/fixtures/german_docs/invoices/invoice_006.json",
+      "quality": "medium",
+      "has_umlauts": true,
+      "has_tables": false,
+      "description": "Invoice with tax breakdown"
+    },
+    {
+      "id": "eval_007",
+      "type": "invoice",
+      "source": "tests/fixtures/german_docs/tables/table_001.png",
+      "ground_truth": "tests/fixtures/german_docs/tables/table_001.json",
+      "quality": "high",
+      "has_umlauts": true,
+      "has_tables": true,
+      "description": "Invoice-like document with structured table (used as invoice)"
+    },
+    {
+      "id": "eval_008",
+      "type": "invoice",
+      "source": "tests/fixtures/german_docs/tables/table_002.png",
+      "ground_truth": "tests/fixtures/german_docs/tables/table_002.json",
+      "quality": "medium",
+      "has_umlauts": true,
+      "has_tables": true,
+      "description": "Table-based invoice format"
+    },
+    {
+      "id": "eval_009",
+      "type": "contract",
+      "source": "tests/fixtures/german_docs/contracts/contract_001.png",
+      "ground_truth": "tests/fixtures/german_docs/contracts/contract_001.json",
+      "quality": "high",
+      "has_umlauts": true,
+      "has_tables": false,
+      "description": "Service contract with multiple paragraphs"
+    },
+    {
+      "id": "eval_010",
+      "type": "contract",
+      "source": "tests/fixtures/german_docs/contracts/contract_002.png",
+      "ground_truth": "tests/fixtures/german_docs/contracts/contract_002.json",
+      "quality": "high",
+      "has_umlauts": true,
+      "has_tables": false,
+      "description": "Employment contract"
+    },
+    {
+      "id": "eval_011",
+      "type": "contract",
+      "source": "tests/fixtures/german_docs/contracts/contract_003.png",
+      "ground_truth": "tests/fixtures/german_docs/contracts/contract_003.json",
+      "quality": "medium",
+      "has_umlauts": true,
+      "has_tables": false,
+      "description": "Rental agreement"
+    },
+    {
+      "id": "eval_012",
+      "type": "contract",
+      "source": "tests/fixtures/german_docs/contracts/contract_004.png",
+      "ground_truth": "tests/fixtures/german_docs/contracts/contract_004.json",
+      "quality": "medium",
+      "has_umlauts": true,
+      "has_tables": false,
+      "description": "Purchase agreement"
+    },
+    {
+      "id": "eval_013",
+      "type": "bank_statement",
+      "source": "tests/fixtures/german_docs/tables/table_003.png",
+      "ground_truth": "tests/fixtures/german_docs/tables/table_003.json",
+      "quality": "high",
+      "has_umlauts": true,
+      "has_tables": true,
+      "description": "Bank statement with transaction table (table document used as bank statement)"
+    },
+    {
+      "id": "eval_014",
+      "type": "bank_statement",
+      "source": "tests/fixtures/german_docs/tables/table_004.png",
+      "ground_truth": "tests/fixtures/german_docs/tables/table_004.json",
+      "quality": "high",
+      "has_umlauts": true,
+      "has_tables": true,
+      "description": "Account statement with multiple transactions"
+    },
+    {
+      "id": "eval_015",
+      "type": "bank_statement",
+      "source": "tests/fixtures/german_docs/tables/table_005.png",
+      "ground_truth": "tests/fixtures/german_docs/tables/table_005.json",
+      "quality": "medium",
+      "has_umlauts": true,
+      "has_tables": true,
+      "description": "Monthly account summary"
+    },
+    {
+      "id": "eval_016",
+      "type": "bank_statement",
+      "source": "tests/fixtures/german_docs/tables/table_006.png",
+      "ground_truth": "tests/fixtures/german_docs/tables/table_006.json",
+      "quality": "medium",
+      "has_umlauts": true,
+      "has_tables": true,
+      "description": "Detailed transaction list"
+    },
+    {
+      "id": "eval_017",
+      "type": "delivery_note",
+      "source": "tests/fixtures/german_docs/mixed/mixed_001.png",
+      "ground_truth": "tests/fixtures/german_docs/mixed/mixed_001.json",
+      "quality": "medium",
+      "has_umlauts": true,
+      "has_tables": true,
+      "description": "Delivery note with mixed content (mixed document used as delivery note)"
+    },
+    {
+      "id": "eval_018",
+      "type": "delivery_note",
+      "source": "tests/fixtures/german_docs/mixed/mixed_002.png",
+      "ground_truth": "tests/fixtures/german_docs/mixed/mixed_002.json",
+      "quality": "low",
+      "has_umlauts": true,
+      "has_tables": true,
+      "description": "Shipping document with items list"
+    },
+    {
+      "id": "eval_019",
+      "type": "letter",
+      "source": "tests/fixtures/german_docs/forms/form_001.png",
+      "ground_truth": "tests/fixtures/german_docs/forms/form_001.json",
+      "quality": "high",
+      "has_umlauts": true,
+      "has_tables": false,
+      "description": "Formal business letter (form document used as letter)"
+    },
+    {
+      "id": "eval_020",
+      "type": "letter",
+      "source": "tests/fixtures/german_docs/forms/form_002.png",
+      "ground_truth": "tests/fixtures/german_docs/forms/form_002.json",
+      "quality": "low",
+      "has_umlauts": true,
+      "has_tables": false,
+      "description": "Official correspondence"
+    }
+  ],
+  "evaluation_criteria": {
+    "umlaut_accuracy": {
+      "target": ">=95%",
+      "critical": true,
+      "description": "Accuracy for German umlauts (ä, ö, ü, ß)"
+    },
+    "cer": {
+      "target": "<5%",
+      "description": "Character Error Rate"
+    },
+    "wer": {
+      "target": "<10%",
+      "description": "Word Error Rate"
+    },
+    "processing_time": {
+      "target": "<5s per page",
+      "description": "Processing time per page"
+    },
+    "vram_usage": {
+      "target": "<14GB",
+      "critical": true,
+      "description": "Peak VRAM usage on RTX 4080"
+    }
+  },
+  "comparison_backends": [
+    "paddle-ocr-v5",
+    "surya-gpu",
+    "deepseek-janus-pro"
+  ]
+}
+

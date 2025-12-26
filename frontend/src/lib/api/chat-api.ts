@@ -95,6 +95,106 @@ export interface StreamEvent {
 }
 
 // ============================================================================
+// SHARING TYPES
+// ============================================================================
+
+export type ChatAccessLevel = 'view' | 'contribute' | 'manage' | 'owner';
+
+export interface ChatCollaborator {
+    user_id: string;
+    username: string;
+    email: string | null;
+    access_level: ChatAccessLevel;
+    is_owner: boolean;
+    granted_at: string | null;
+}
+
+export interface ShareChatRequest {
+    user_id: string;
+    access_level: 'view' | 'contribute' | 'manage';
+}
+
+export interface SharedChatSession extends ChatSession {
+    access_level: ChatAccessLevel;
+    is_shared: boolean;
+    collaborator_count: number;
+}
+
+// WebSocket Message Types
+export type WSMessageType =
+    | 'new_message'
+    | 'message_updated'
+    | 'typing_start'
+    | 'typing_stop'
+    | 'presence'
+    | 'user_joined'
+    | 'user_left'
+    | 'ai_streaming'
+    | 'ai_chunk'
+    | 'ai_done'
+    | 'error'
+    | 'pong';
+
+export interface WSMessage {
+    type: WSMessageType;
+    [key: string]: unknown;
+}
+
+export interface WSPresenceUser {
+    user_id: string;
+    username: string;
+    is_typing: boolean;
+    connected_at?: string;
+}
+
+export interface WSPresenceUpdate extends WSMessage {
+    type: 'presence';
+    users: WSPresenceUser[];
+    timestamp: string;
+}
+
+export interface WSNewMessage extends WSMessage {
+    type: 'new_message';
+    message: {
+        id: string;
+        user_id: string;
+        username: string;
+        content: string;
+        role: 'user' | 'assistant';
+        created_at: string;
+    };
+    timestamp: string;
+}
+
+export interface WSTypingUpdate extends WSMessage {
+    type: 'typing_start' | 'typing_stop';
+    user_id: string;
+    username: string;
+    timestamp: string;
+}
+
+export interface WSUserJoinLeave extends WSMessage {
+    type: 'user_joined' | 'user_left';
+    user_id: string;
+    username: string;
+    timestamp: string;
+}
+
+export interface WSAIChunk extends WSMessage {
+    type: 'ai_chunk';
+    chunk: string;
+    message_id?: string;
+    timestamp: string;
+}
+
+export interface WSAIDone extends WSMessage {
+    type: 'ai_done';
+    message_id: string;
+    full_content: string;
+    timestamp: string;
+}
+
+// ============================================================================
 // API SERVICE
 // ============================================================================
 
@@ -354,6 +454,65 @@ export const chatApi = {
         components: Record<string, unknown>;
     }> => {
         const response = await apiClient.get('/rag/health');
+        return response.data;
+    },
+
+    // =========================================================================
+    // SHARING METHODS
+    // =========================================================================
+
+    /**
+     * Lädt alle Sessions die mit dem User geteilt wurden
+     */
+    getSharedSessions: async (): Promise<SharedChatSession[]> => {
+        const response = await apiClient.get<SharedChatSession[]>(
+            '/rag/chat/sessions/shared'
+        );
+        return response.data.map((session) => ({
+            ...session,
+            preview: session.title || 'Geteilte Unterhaltung',
+        }));
+    },
+
+    /**
+     * Teilt eine Session mit einem anderen User
+     */
+    shareSession: async (
+        sessionId: string,
+        userId: string,
+        accessLevel: 'view' | 'contribute' | 'manage'
+    ): Promise<ChatCollaborator> => {
+        const response = await apiClient.post<ChatCollaborator>(
+            `/rag/chat/sessions/${sessionId}/share`,
+            {
+                user_id: userId,
+                access_level: accessLevel,
+            }
+        );
+        return response.data;
+    },
+
+    /**
+     * Entzieht einem User den Zugriff auf eine Session
+     */
+    revokeAccess: async (
+        sessionId: string,
+        userId: string
+    ): Promise<void> => {
+        await apiClient.delete(
+            `/rag/chat/sessions/${sessionId}/share/${userId}`
+        );
+    },
+
+    /**
+     * Lädt alle Collaborators einer Session
+     */
+    getCollaborators: async (
+        sessionId: string
+    ): Promise<ChatCollaborator[]> => {
+        const response = await apiClient.get<ChatCollaborator[]>(
+            `/rag/chat/sessions/${sessionId}/collaborators`
+        );
         return response.data;
     },
 };

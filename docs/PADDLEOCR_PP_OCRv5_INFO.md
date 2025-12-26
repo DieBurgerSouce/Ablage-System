@@ -1,8 +1,9 @@
 # PaddleOCR PP-OCRv5 - CPU OCR Alternative
 
-**Stand:** 08. Dezember 2025
+**Stand:** 19. Dezember 2025
+**Aktuelle Version:** 3.3.2 (released 2025-11-13)
 **Entwickler:** Baidu (PaddlePaddle Team)
-**Release:** Mai 2025
+**API Version:** 3.x (Pipeline-based)
 
 ---
 
