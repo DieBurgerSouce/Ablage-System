@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\shortest_paths\generic.py
+# hypothesis_version: 6.148.7
+
+['all_shortest_paths', 'bellman-ford', 'dijkstra', 'floyd-warshall', 'floyd-warshall-numpy', 'has_path', 'shortest_path', 'shortest_path_length', 'unweighted', 'weight']

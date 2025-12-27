@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\export\pt2_archive\_package.py
+# hypothesis_version: 6.148.7
+
+[b'pt2', '.pt2', '.so', '/', '0', 'AOTICompiledModel', 'PT2ArchiveReader', 'PT2ArchiveWriter', 'model', 'rb', 'weights_config.json', '{}']

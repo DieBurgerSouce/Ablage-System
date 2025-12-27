@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\covariance\_robust_covariance.py
+# hypothesis_version: 6.148.7
+
+[1e-08, 0.025, 0.5, 300, 500, 1500, 'MinCovDet', 'fast_mcd', 'random_state', 'right', 'support_fraction']

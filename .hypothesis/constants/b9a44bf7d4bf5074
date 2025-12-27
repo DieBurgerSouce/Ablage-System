@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\kernel\flex\flex_cpu.py
+# hypothesis_version: 6.148.7
+
+['ATEN_CPU_CAPABILITY', 'OUTPUT_LOGSUMEXP', 'SKIP_MASK_SCORE', 'b', 'darwin', 'default', 'dtype', 'flex_attention', 'h', 'inf', 'kv_idx', 'mask_others', 'output', 'q_idx', 'qk_data', 'score', 'score_others']

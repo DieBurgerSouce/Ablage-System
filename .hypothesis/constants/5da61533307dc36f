@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\linalg\attrmatrix.py
+# hypothesis_version: 6.148.7
+
+['attr_matrix', 'attr_sparse_matrix', 'edge_attr', 'node_attr', 'weight']

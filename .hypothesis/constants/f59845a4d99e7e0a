@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\classification\resnet\pytorch.py
+# hypothesis_version: 6.148.7
+
+[0.296, 0.299, 0.301, 0.693, 0.694, 0.695, 128, 256, 512, 1000, 1024, '10.bias', '10.weight', '13.bias', '13.weight', 'ResNet', 'classes', 'fan_out', 'fc.bias', 'fc.weight', 'french', 'input_shape', 'mean', 'num_classes', 'relu', 'resnet18', 'resnet31', 'resnet34', 'resnet34_wide', 'resnet50', 'resnet_stage', 'std', 'url']

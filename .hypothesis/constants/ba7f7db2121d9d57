@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\quantizers\quantizer_vptq.py
+# hypothesis_version: 6.148.7
+
+['PreTrainedModel', 'cpu', 'device_availability', 'torch.dtype', 'vptq']

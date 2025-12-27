@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\app\base.py
+# hypothesis_version: 6.148.7
+
+['BaseModel', 'CELERY_LOADER', 'Celery', 'Task', '__annotations__', '__doc__', '__header__', '__module__', '__reduce__', '__reduce_args__', '__wrapped__', '_app', '_data', '_decorated', 'amqp', 'app', 'app.on_after_fork', 'app.on_configure', 'args', 'autodiscover_tasks', 'backend', 'broker_url', 'broker_use_ssl', 'callback', 'celery', 'celery.app.amqp:AMQP', 'celery.app.task:Task', 'celery_app', 'celery_delayed_27', 'celery_task_name', 'changes', 'config_source', 'control', 'direct', 'events', 'exchange', 'exchange_type', 'expiration', 'fixups', 'ignore_result', 'include', 'json', 'kwargs', 'lazy', 'loader', 'log', 'main', 'mode', 'name', 'namespace', 'options', 'priority', 'pydantic', 'queue', 'result_backend', 'routing_key', 'run', 'schedule', 'source', 'stamped_headers', 'task', 'task_cls', 'tasks', 'topic', 'worker']

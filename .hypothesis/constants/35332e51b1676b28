@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\explainers\_explainer.py
+# hypothesis_version: 6.148.7
+
+[' explainer', '...', '.save', 'Feature ', 'KernelExplainer', '__len__', 'additive', 'auto', 'clustering', 'data', 'data_transform', 'deep', 'default_batch_size', 'error_std', 'exact', 'expected_values', 'feature_names', 'hierarchical_values', 'image_data', 'linear', 'link', 'main_effects', 'mask_shapes', 'masker', 'mean', 'model', 'output_indices', 'output_names', 'partition', 'permutation', 'shap.Explainer', 'shap.maskers.Image', 'shap.maskers.Text', 'shap.models.TopKLM', 'text', 'text_data', 'tree', 'values']

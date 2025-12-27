@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\admin\rate_limit_service.py
+# hypothesis_version: 6.148.7
+
+[100, 1000, 10000, 100000, 'api_per_minute', 'batch_hourly', 'change_tier', 'count', 'defaults', 'documents_today', 'email', 'free', 'new_tier', 'ocr_daily', 'ocr_hourly', 'old_tier', 'previous_ocr_daily', 'previous_ocr_hourly', 'reason', 'user_id', 'user_tier_changed', 'valid_until']

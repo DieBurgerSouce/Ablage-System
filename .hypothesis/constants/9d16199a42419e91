@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\utils\data\datapipes\_hook_iterator.py
+# hypothesis_version: 6.148.7
+
+[', ', 'IterDataPipe', 'MapDataPipe', '__iter__', '__len__', '__next__', '_is_child_datapipe', '_profile_name']

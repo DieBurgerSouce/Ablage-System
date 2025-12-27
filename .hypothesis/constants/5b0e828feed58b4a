@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\bitsandbytes\__init__.py
+# hypothesis_version: 6.148.7
+
+['0.48.2', 'cpu', 'cuda', 'habana_frameworks', 'hpu', 'libbitsandbytes', 'mps', 'multi_backend', 'npu', 'xpu']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\compile_worker\subproc_pool.py
+# hypothesis_version: 6.148.7
+
+[300, '0', '<unknown>', 'Error in subprocess', 'InductorSubproc', 'LD_LIBRARY_PATH', 'SubprocException', 'SubprocPool closed', 'TORCH_WARM_POOL', '_P', '_T', '__main__.py', 'fork', 'nnn', 'rb', 'spawn', 'utf-8', 'w', 'wb']

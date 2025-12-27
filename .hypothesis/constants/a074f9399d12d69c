@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\runtime\triton_helpers.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 2147483648, '-inf', '_T', '_builder', '_obj', 'acquire', 'bool', 'cpu', 'relaxed', 'release']

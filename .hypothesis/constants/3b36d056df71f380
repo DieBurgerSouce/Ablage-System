@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\feature_extraction\image.py
+# hypothesis_version: 6.148.7
+
+['PatchExtractor', 'array-like', 'dtype', 'extract_patches_2d', 'grid_to_graph', 'image', 'image_size', 'img', 'img_to_graph', 'left', 'mask', 'max_patches', 'n_x', 'n_y', 'n_z', 'neither', 'no_validation', 'patch_size', 'patches', 'random_state', 'return_as']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\app\autoretry.py
+# hypothesis_version: 6.148.7
+
+[1.0, 600, '_orig_run', 'autoretry_for', 'countdown', 'dont_autoretry_for', 'max_retries', 'override_max_retries', 'retry_backoff', 'retry_backoff_max', 'retry_jitter', 'retry_kwargs']

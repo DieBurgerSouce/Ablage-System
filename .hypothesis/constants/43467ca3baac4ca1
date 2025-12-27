@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\dummy.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 50.0, 100.0, 'array-like', 'both', 'constant', 'coo', 'csc', 'csr', 'mean', 'median', 'most_frequent', 'neither', 'prior', 'quantile', 'random_state', 'strategy', 'stratified', 'uniform', 'y', 'y must not be empty.']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\zoo.py
+# hypothesis_version: 6.148.7
+
+[128, 'crnn_vgg16_bn', 'fast_base', 'kie_predictor', 'ocr_predictor']

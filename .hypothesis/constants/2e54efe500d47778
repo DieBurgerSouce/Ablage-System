@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\admin\company.py
+# hypothesis_version: 6.148.7
+
+[100, 255, '/company', 'Admin - Firmendaten', 'BIC/SWIFT', 'DE', 'Deutschland', 'Firmendaten abrufen', 'Firmendaten loeschen', 'Handelsregister-Nr.', 'IBAN', 'Land', 'PLZ', 'Registergericht', 'Stadt', 'Steuernummer', 'Telefonnummer', 'Webseite', 'bic', 'iban', 'vat_id']

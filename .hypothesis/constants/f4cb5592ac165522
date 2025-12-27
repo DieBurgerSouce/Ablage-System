@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_export\pass_base.py
+# hypothesis_version: 6.148.7
+
+['__module__', '_initialized', '_operator', 'args', 'builtins', 'call_function', 'constant', 'cpu', 'get_attr', 'math', 'meta', 'output', 'placeholder', 'stack_trace', 'tensor_meta', 'unbacked_bindings', 'val']

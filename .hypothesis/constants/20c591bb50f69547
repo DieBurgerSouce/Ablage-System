@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\distance_measures.py
+# hypothesis_version: 6.148.7
+
+[1.0, 'attr', 'barycenter', 'center', 'csr', 'diameter', 'directed', 'eccentricities', 'eccentricity', 'harmonic_diameter', 'ignore', 'inf', 'kemeny_constant', 'periphery', 'radius', 'resistance_distance', 'weight']

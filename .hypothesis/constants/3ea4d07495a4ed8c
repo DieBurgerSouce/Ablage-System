@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_dynamo\backends\common.py
+# hypothesis_version: 6.148.7
+
+['P', 'R', 'aot_autograd', 'bw_compiler', 'compiler_fn', 'cpu', 'decompositions', 'device', 'dtype', 'fw_compiler', 'inference_compiler', 'not_ok', 'ok', 'partition_fn', 'total']

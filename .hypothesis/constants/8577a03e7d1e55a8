@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_dynamo\polyfills\loader.py
+# hypothesis_version: 6.148.7
+
+['ModuleType', '_collections', 'builtins', 'functools', 'fx', 'itertools', 'operator', 'os', 'pytree', 'struct', 'sys', 'tensor']

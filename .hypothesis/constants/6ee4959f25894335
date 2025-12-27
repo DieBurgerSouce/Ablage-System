@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\datasets\_covtype.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, ',', 'Aspect', 'Cover_Type', 'Elevation', 'Hillshade_3pm', 'Hillshade_9am', 'Hillshade_Noon', 'Slope', 'as_frame', 'boolean', 'covertype', 'covtype.data.gz', 'covtype.rst', 'data_home', 'delay', 'download_if_missing', 'fetch_covtype', 'left', 'n_retries', 'neither', 'random_state', 'return_X_y', 'samples', 'shuffle', 'targets']

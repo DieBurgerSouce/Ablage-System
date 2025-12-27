@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\linalg\algebraicconnectivity.py
+# hypothesis_version: 6.148.7
+
+[-1.0, 0.0, 1e-08, 1.0, 2.0, 'Equil', 'F', 'MMD_AT_PLUS_A', 'SM', 'SymmetricMode', 'csc', 'csr', 'directed', 'fiedler_vector', 'graph is empty.', 'lanczos', 'lobpcg', 'spectral_bisection', 'spectral_ordering', 'tracemin', 'tracemin_lu', 'tracemin_pcg', 'weight']

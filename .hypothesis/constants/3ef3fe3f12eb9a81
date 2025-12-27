@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\opt_einsum\backends\tensorflow.py
+# hypothesis_version: 6.148.7
+
+['Placeholder', 'build_expression', 'cpu', 'evaluate_constants', 'tensorflow', 'to_tensorflow']

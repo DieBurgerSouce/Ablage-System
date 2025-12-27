@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\fx_passes\joint_graph.py
+# hypothesis_version: 6.148.7
+
+['alpha', 'arg', 'call_function', 'device', 'dim', 'dtype', 'dtype1', 'dtype2', 'get_attr', 'inductor', 'inp', 'joint_graph_passes', 'keepdim', 'layout', 'length', 'memory_format', 'meta', 'other', 'output', 'overloadpacket', 'perm1', 'perm2', 'pin_memory', 'placeholder', 'quant_options', 'remove_noop_ops', 'requires_grad', 'shape', 'size', 'size1', 'size2', 'start', 'step', 'val']

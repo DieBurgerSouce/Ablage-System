@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\runtime\triton_compat.py
+# hypothesis_version: 6.148.7
+
+['ASTSource', 'CompiledKernel', 'Config', 'GPUTarget', 'KernelInterface', 'OutOfResources', 'PTXASError', '__init__', '_log2', '_semantic', 'async_task', 'cc_warp_size', 'cuda', 'gfx10', 'gfx11', 'intel', 'knobs', 'libdevice', 'math', 'num_consumer_groups', 'tl', 'triton', 'triton_key']

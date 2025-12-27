@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\validators\hashes.py
+# hypothesis_version: 6.148.7
+
+['^[0-9a-f]{128}$', '^[0-9a-f]{32}$', '^[0-9a-f]{40}$', '^[0-9a-f]{56}$', '^[0-9a-f]{64}$', '^[0-9a-f]{96}$']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_dynamo\device_interface.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1000, ':', 'MPSProperties', 'amd', 'cpu', 'cuda', 'intel', 'mps', 'mtia', 'nvidia', 'xpu']

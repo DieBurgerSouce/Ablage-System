@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\openpyxl\styles\alignment.py
+# hypothesis_version: 6.148.7
+
+[-255, 181, 255, 'alignment', 'bottom', 'center', 'centerContinuous', 'distributed', 'fill', 'general', 'justify', 'left', 'right', 'shrinkToFit', 'textRotation', 'top', 'wrapText']

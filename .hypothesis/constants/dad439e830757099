@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\readiness.py
+# hypothesis_version: 6.148.7
+
+[100, 400, '/blockers', '/category/{category}', '/check', '/checklist', '/readiness', '/recommendations', '/status', '/summary', 'KRITISCH', 'NICHT_BEREIT', 'OK', 'UNBEKANNT', 'WARNUNG', 'blockers', 'by_category', 'category', 'checklist', 'critical', 'critical_count', 'deployment_blocked', 'empfehlung', 'empfehlungen', 'failed', 'kategorie', 'message', 'nachricht', 'naechste_aktion', 'name', 'not_ready', 'not_ready_count', 'overall_score', 'overall_status', 'passed', 'percent', 'prioritaet', 'readiness', 'ready', 'ready_for_production', 'recommendation', 'schweregrad', 'status', 'status_icon', 'summary', 'timestamp', 'total', 'total_blockers', 'total_empfehlungen', 'warnings']

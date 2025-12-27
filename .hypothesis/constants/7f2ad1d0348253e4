@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\xgboost\compat.py
+# hypothesis_version: 6.148.7
+
+['DataFrame', 'LazyFrame', 'Series', 'Table', '_FastSlowProxyMeta', 'csc', 'csr', 'cudf', 'cudf.core.dataframe', 'cudf.core.series', 'cupy', 'modin.pandas.series', 'pa.Table', 'pandas', 'pandas.core.frame', 'pandas.core.series', 'pd.DataFrame', 'pd.Series', 'polars.series.series', 'pyarrow', 'pyarrow.lib', 'utf-8']

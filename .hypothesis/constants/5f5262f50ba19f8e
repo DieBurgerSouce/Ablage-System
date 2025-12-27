@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\compose\_column_transformer.py
+# hypothesis_version: 6.148.7
+
+[0.3, ', ...]', 'ColumnTransformer', '__array__', '__dataframe__', '__len__', '_remainder', '_transformers', 'allow-nan', 'bool', 'boolean', 'both', 'dense', 'deprecated', 'drop', 'dtype', 'feature_names_in_', 'fit', 'fit_transform', 'iloc', 'int', 'make_column_selector', 'n_jobs', 'na_value', 'ndim', 'one-to-one', 'pandas', 'parallel', 'passthrough', 'remainder', 'shape', 'sparse_threshold', 'str', 'transform', 'transformer_weights', 'transformers', 'transformers_', 'verbose']

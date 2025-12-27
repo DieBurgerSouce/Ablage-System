@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\detection\linknet\pytorch.py
+# hypothesis_version: 6.148.7
+
+[1e-08, 0.1, 0.264, 0.2749, 0.287, 0.5, 0.772, 0.785, 0.798, 1.0, 2.0, 512, 1024, 'LinkNet', 'class_names', 'classifier.6.bias', 'classifier.6.weight', 'fan_out', 'feat_extractor.', 'input_shape', 'layer1', 'layer2', 'layer3', 'layer4', 'linknet_resnet18', 'linknet_resnet34', 'linknet_resnet50', 'logits', 'loss', 'mean', 'none', 'out_map', 'preds', 'relu', 'std', 'url']

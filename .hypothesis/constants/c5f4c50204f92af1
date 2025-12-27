@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\ensemble\_gb.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-150, 0.0001, 0.1, 0.5, 0.9, 1.0, 60.0, 100, '%10s ', '%16s ', 'C', 'Iter', 'OOB Improve', 'Remaining Time', 'Train Loss', '_rng', 'absolute_error', 'alpha', 'auto', 'best', 'boolean', 'coo', 'criterion', 'csc', 'csr', 'estimators_', 'exponential', 'fit', 'friedman_mse', 'huber', 'init', 'init_', 'learning_rate', 'left', 'log_loss', 'loss', 'mean', 'monotonic_cst', 'n_estimators', 'n_iter_no_change', 'neither', 'oob_improvement_', 'oob_score_', 'oob_scores_', 'predict', 'predict_proba', 'prior', 'quantile', 'right', 'splitter', 'sqrt', 'squared_error', 'subsample', 'tol', 'train_score_', 'validation_fraction', 'verbose', 'warm_start', 'zero', '{0:.2f}m', '{0:.2f}s', '{iter:>10d}', '{oob_impr:>16.4f}', '{train_score:>16.4f}']

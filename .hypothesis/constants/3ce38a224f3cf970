@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\fx_passes\micro_pipeline_tp.py
+# hypothesis_version: 6.148.7
+
+['_Matmul', '_ScaledMatmul', 'call_function', 'gather_dim', 'group_name', 'input', 'list[_ScaledMatmul]', 'output', 'placeholder', 'primal', 'reduce_op', 'return_A', 'scatter_dim', 'shard', 'torch.fx.Node', 'val']

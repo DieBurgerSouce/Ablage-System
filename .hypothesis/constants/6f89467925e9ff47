@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\einvoice\mustang_client.py
+# hypothesis_version: 6.148.7
+
+[60.0, 200, 501, '/convert', '/extract', '/formats', '/generate/xrechnung', '/health', '/validate', '/version', 'Content-Type', 'MUSTANG_SERVICE_URL', 'MustangClient', 'X-Format-Type', 'application/pdf', 'application/xml', 'buyer_reference', 'cii', 'error', 'errors', 'format', 'invoice_data', 'java_version', 'message', 'mustang_version', 'output', 'schema_valid', 'schematron_valid', 'source_format', 'success', 'target_format', 'ubl', 'unbekannt', 'utf-8', 'valid', 'xml']

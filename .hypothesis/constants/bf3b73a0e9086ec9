@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\middleware\profiling.py
+# hypothesis_version: 6.148.7
+
+[500, 1000, 1024, '/api/v1/health', '/api/v1/metrics', '/docs', '/favicon.ico', '/health', '/metrics', '/openapi.json', '/redoc', 'X-Response-Time', 'request_id', 'user']

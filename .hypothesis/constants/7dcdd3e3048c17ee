@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\prometheus_client\registry.py
+# hypothesis_version: 6.148.7
+
+['RestrictedRegistry', 'Target metadata', '_bucket', '_count', '_created', '_gcount', '_gsum', '_info', '_sum', '_total', 'counter', 'gaugehistogram', 'histogram', 'info', 'summary', 'target', 'target_info']

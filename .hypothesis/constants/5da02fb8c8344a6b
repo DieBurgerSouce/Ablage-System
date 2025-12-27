@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\ensemble\_hist_gradient_boosting\predictor.py
+# hypothesis_version: 6.148.7
+
+['depth', 'is_leaf', 'same_kind']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\opt_einsum\blas.py
+# hypothesis_version: 6.148.7
+
+['->', 'DOT', 'DOT/EINSUM', 'GEMM', 'GEMV/EINSUM', 'OUTER/EINSUM', 'TDOT', 'can_blas', 'tensor_blas']

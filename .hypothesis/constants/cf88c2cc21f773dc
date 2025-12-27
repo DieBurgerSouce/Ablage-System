@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_export\passes\lift_constants_pass.py
+# hypothesis_version: 6.148.7
+
+['.', '<unknown stack>', 'LoweredBackendModule', '_', 'call_function', 'get_attr', 'nn_module_stack', 'placeholder', 'stack_trace', 'val']

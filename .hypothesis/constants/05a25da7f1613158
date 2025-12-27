@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\feature_extraction\__init__.py
+# hypothesis_version: 6.148.7
+
+['DictVectorizer', 'FeatureHasher', 'grid_to_graph', 'image', 'img_to_graph', 'text']

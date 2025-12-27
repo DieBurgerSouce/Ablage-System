@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\datasets\imgur5k.py
+# hypothesis_version: 6.148.7
+
+[0.9, '*.png', ', ', '.', 'IMGUR5K', 'Poly_', '[ ]', 'ann_id', 'bounding_box', 'index_to_ann_map', 'r', 'w', 'word']

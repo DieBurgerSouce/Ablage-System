@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\versions.py
+# hypothesis_version: 6.148.7
+
+[100, '/', '/compare', '/current', '/rollback', '/{version_number}', 'Aktuelle Version', 'Fehler beim Rollback', 'Version-Details', 'list_versions_error', 'rollback_error', 'version_rollback', 'versions', 'versions_compared', 'versions_listed']

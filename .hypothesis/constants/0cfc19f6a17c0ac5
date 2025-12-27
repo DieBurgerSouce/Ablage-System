@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\scipy\fft\_pocketfft\basic.py
+# hypothesis_version: 6.148.7
+
+['c', 'fft', 'fftn', 'hfft', 'hfftn', 'ifft', 'ifftn', 'ihfft', 'ihfftn', 'irfft', 'irfft_fftpack', 'irfftn', 'rfft', 'rfft_fftpack', 'rfftn']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\asyncpg\serverversion.py
+# hypothesis_version: 6.148.7
+
+['final', 'major', 'micro', 'minor', 'releaselevel', 'serial']

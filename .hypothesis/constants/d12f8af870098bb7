@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\utils\_array_api.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.145, 1.0, 100, '1', '1.14.0', '2024.12', 'C', 'CPU_DEVICE', 'SCIPY_ARRAY_API', '__dlpack__', 'array_api_dispatch', 'array_api_strict', 'bincount', 'bool', 'complex floating', 'complex128', 'complex64', 'cpu', 'cuda', 'cupy', 'device', 'device1', 'device2', 'dtype', 'float16', 'float32', 'float64', 'ignore', 'integral', 'left', 'mps', 'numeric', 'numpy', 'real floating', 'searchsorted', 'signed integer', 'torch', 'unsigned integer', 'xpx']

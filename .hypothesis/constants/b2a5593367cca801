@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_higher_order_ops\scan.py
+# hypothesis_version: 6.148.7
+
+['call_function', 'carry', 'combine_fn', 'example_value', 'init', 'mode', 'output', 'placeholder', 'scan', 'scan_combine_graph', 'val']

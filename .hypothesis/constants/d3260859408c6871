@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\nn\utils\_expanded_weights\conv_expanded_weights.py
+# hypothesis_version: 6.148.7
+
+['_P', '_R', 'bias', 'dilation', 'groups', 'padding', 'same', 'stride']

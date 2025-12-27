@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\amqp\channel.py
+# hypothesis_version: 6.148.7
+
+['BsBB', 'Bsb', 'Bsbb', 'Bsbbb', 'BsbbbbbF', 'Bssbb', 'BssbbbbF', 'BssbbbbbF', 'Bsss', 'BsssF', 'BsssbF', 'Channel', 'Channel open', 'Closed channel #%s', 'Lb', 'Lbssl', '_confirm_selected', 'active', 'amqp', 'b', 'basic_ack', 'basic_nack', 'basic_return', 'callbacks', 'cancel_callbacks', 'capabilities', 'confirm_timeout', 'connection.blocked', 'consumer_tag', 'delivery_tag', 'events', 'exchange', 'is_open', 'l', 'lBb', 'message_count', 'no_ack_consumers', 'on_open', 'redelivered', 'returned_messages', 'routing_key', 's', 'sLbss', 'sb', 'sll', 'timeout', 'using channel_id: %s']

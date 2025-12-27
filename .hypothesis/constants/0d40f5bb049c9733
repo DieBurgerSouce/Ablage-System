@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\ao\quantization\backend_config\_common_operator_config_utils.py
+# hypothesis_version: 6.148.7
+
+[1.0, 2.0, 256.0, 128, 255, '_ConvMetadata', 'bias', 'bn', 'bn_qat', 'bn_relu_qat', 'clamp', 'contiguous', 'detach', 'detach_', 'func', 'func_transpose', 'fused_conv_bn', 'fused_conv_bn_relu', 'fused_conv_relu', 'hardsigmoid', 'hardsigmoid_', 'mean', 'permute', 'qat', 'reference', 'relu', 'relu_', 'relu_qat', 'repeat', 'repeat_interleave', 'reshape', 'resize_', 'root', 'shape', 'sigmoid', 'sigmoid_', 'size', 'squeeze', 'squeeze_', 'tanh', 'tanh_', 'transpose', 'transpose_reference', 'unsqueeze', 'unsqueeze_', 'view', 'weight']

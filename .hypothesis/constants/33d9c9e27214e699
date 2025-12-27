@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\nn\modules\flatten.py
+# hypothesis_version: 6.148.7
+
+['Flatten', 'Unflatten', 'dim', 'end_dim', 'start_dim', 'unflattened_size']

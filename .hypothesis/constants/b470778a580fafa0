@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\incident_response_service.py
+# hypothesis_version: 6.148.7
+
+[365, '1', 'Admin benachrichtigt', 'Sicherheitswarnung', 'access_count', 'actions_taken', 'block_ip_permanent', 'block_ip_temporary', 'brute_force_attack', 'brute_force_detected', 'count', 'created_at', 'critical', 'description', 'details', 'dlq_critical', 'failed_login_count', 'high', 'id', 'incident_logged', 'ip_address', 'ip_blocked', 'lock_account', 'log_only', 'low', 'medium', 'no_event_loop', 'notify_admin', 'notify_user', 'rate_limit_abuse', 'rate_limit_count', 'rate_limit_threshold', 'require_2fa', 'revoke_all_sessions', 'revoke_api_keys', 'session_anomaly', 'severity', 'threshold', 'type', 'user_id']

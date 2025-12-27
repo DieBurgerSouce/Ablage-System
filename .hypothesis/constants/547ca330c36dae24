@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\exceptions.py
+# hypothesis_version: 6.148.7
+
+['ConvergenceWarning', 'EfficiencyWarning', 'FitFailedWarning', 'Not expected to fail', 'NotFittedError', 'SkipTestWarning']

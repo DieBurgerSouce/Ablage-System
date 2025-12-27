@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\openpyxl\worksheet\cell_range.py
+# hypothesis_version: 6.148.7
+
+[18278, 1048576, '!', '<{cls} {coord}>', 'columns', 'max_col', 'max_row', 'min_col', 'min_row', 'rows', 'title', '{coord}', '{min_col}{min_row}', '{title}!{coord}']

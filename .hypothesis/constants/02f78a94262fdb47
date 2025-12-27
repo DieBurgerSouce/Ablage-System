@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\cluster.py
+# hypothesis_version: 6.148.7
+
+['average_clustering', 'clustering', 'directed', 'generalized_degree', 'multigraph', 'square_clustering', 'transitivity', 'triangles', 'weight']

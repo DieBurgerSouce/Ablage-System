@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\dag.py
+# hypothesis_version: 6.148.7
+
+['Graph has no nodes.', 'ancestors', 'antichains', 'compute_v_structures', 'dag_longest_path', 'dag_to_branching', 'default_weight', 'descendants', 'is_aperiodic', 'multigraph', 'topological_sort', 'transitive_closure', 'transitive_reduction', 'undirected', 'weight']

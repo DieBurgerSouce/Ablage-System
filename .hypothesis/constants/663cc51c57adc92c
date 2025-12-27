@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\bitsandbytes\triton\quantize_global.py
+# hypothesis_version: 6.148.7
+
+[1.0, 127.0, 128, 1024, 2048, 'BLOCK_M', 'BLOCK_N', 'BLOCK_SIZE', 'GROUP_M', 'M', 'N', 'cuda', 'n_elements']

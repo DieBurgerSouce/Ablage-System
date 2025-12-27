@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sympy\simplify\hyperexpand.py
+# hypothesis_version: 6.148.7
+
+['  Found an origin: ', '  Reduced order to ', '3/2', 'A', 'B', 'C', 'a b c, z', 'abcz', 'default', 'nonrep', 'nonrepsmall', 'p should be monomial', 'rho', 's', 't', 'unrecognised form %s', 'x', 'z', 'z0']

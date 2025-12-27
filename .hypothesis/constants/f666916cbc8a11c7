@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\amqp\serialization.py
+# hypothesis_version: 6.148.7
+
+[b'A', b'D', b'F', b'I', b'L', b'S', b'T', b'V', b'd', b't', -2147483647, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 2147483647, '>B', '>H', '>HxxQ', '>I', '>Q', '>b', '>cB', '>cBi', '>cI', '>cQ', '>cd', '>ci', '>cq', '>d', '>f', '>h', '>i', '>q', 'A', 'B', 'D', 'F', 'I', 'L', 'S', 'T', 'U', 'V', '__dict__', '__setstate__', '__weakref__', '_pending_chunks', 'app_id', 'application_headers', 'b', 'bit', 'body_received', 'body_size', 'cluster_id', 'content_encoding', 'content_type', 'correlation_id', 'd', 'delivery_mode', 'dummy', 'expiration', 'f', 'frame_args', 'frame_method', 'i', 'l', 'message_id', 'o', 'priority', 'properties', 'ready', 'reply_to', 's', 'surrogatepass', 't', 'timestamp', 'type', 'u', 'user_id', 'utf-8', 'x']

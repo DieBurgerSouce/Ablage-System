@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pdfminer\cmapdb.py
+# hypothesis_version: 6.148.7
+
+[b'beginbfchar', b'beginbfrange', b'begincidchar', b'begincidrange', b'begincmap', b'begincodespacerange', b'beginnotdefrange', b'def', b'endbfchar', b'endbfrange', b'endcidchar', b'endcidrange', b'endcmap', b'endcodespacerange', b'endnotdefrange', b'usecmap', '\x00', '%s.pickle.gz', '/usr/share/pdfminer/', '<CMap: %s>', '<UnicodeMap: %s>', '>%dB', '>%dH', '>L', 'CMAP_PATH', 'CMapBase', 'CMapName', 'Identity-H', 'Identity-V', 'OneByteIdentityH', 'OneByteIdentityV', 'UTF-16BE', 'WMode', 'cid %d = unicode %r\n', 'cmap', 'code %r = cid %d\n', 'decode: %r, %r', 'get_unichr: %r, %r', 'ignore', 'loading: %r', 'to-unicode-%s']

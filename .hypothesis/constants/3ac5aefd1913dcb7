@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\bitsandbytes\optim\ademamix.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-08, 0.001, 0.01, 0.5, 0.9, 0.999, 0.9999, 1.0, 5.0, 100000.0, 100, 256, 4096, 'absmax1', 'absmax2', 'ademamix', 'alpha', 'betas', 'dynamic', 'eps', 'lr', 'm1_m2', 'max_unorm', 'min_8bit_size', 'nu', 'optim_bits', 'params', 'qmap1', 'qmap2', 'skip_zeros', 'state1', 'state2', 'step', 't_alpha', 't_beta3', 'udynamic', 'unorm_vec', 'weight_decay']

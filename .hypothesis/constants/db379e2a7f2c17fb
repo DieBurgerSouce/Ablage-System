@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\onnx\__init__.py
+# hypothesis_version: 6.148.7
+
+['.', 'ONNXProgram', 'OnnxExporterError', 'autograd_inlining', 'custom_opsets', 'do_constant_folding', 'errors', 'export', 'is_in_onnx_export', 'operator_export_type', 'ops', 'pytorch', 'torch.onnx', 'training']

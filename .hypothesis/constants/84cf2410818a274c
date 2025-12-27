@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\fx_passes\reinplace.py
+# hypothesis_version: 6.148.7
+
+['_all_bases', 'call_function', 'eager_input_vals', 'get_attr', 'kernel_idx', 'kwargs', 'placeholder', 'target', 'tensors_to_clone', 'val']

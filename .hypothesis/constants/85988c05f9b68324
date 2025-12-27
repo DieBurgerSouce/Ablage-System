@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\rocm\ck_tile_universal_gemm_template.py
+# hypothesis_version: 6.148.7
+
+[256, ', ', 'BF16', 'CKTileGemmOperation', 'CShuffle', 'Col', 'CompV3', 'CompV4', 'Default', 'Epilogue must be set', 'Even', 'FP16', 'Full', 'Interwave', 'Intrawave', 'K', 'LDA', 'LDB', 'LDC', 'M', 'Mem', 'N', 'Odd', 'Row', 'Three', 'Two', 'X, W, Y', '_', 'epilogue_nodes', 'false', 'int32_t', 'kBatch', 'template_buffer_node', 'true']

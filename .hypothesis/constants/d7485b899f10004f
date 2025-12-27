@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\runtime\compile_tasks.py
+# hypothesis_version: 6.148.7
+
+[1000, 'TRITON_PTXAS_PATH', 'bin', 'exec', 'ptxas']

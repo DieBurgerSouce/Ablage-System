@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torchvision\ops\_register_onnx_ops.py
+# hypothesis_version: 6.148.7
+
+['Cast', 'Constant', 'MaxRoiPool', 'NonMaxSuppression', 'RoiAlign', 'f', 'half_pixel', 'i', 'output_half_pixel', 'torchvision::nms', 'v']

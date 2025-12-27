@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\german_messages.py
+# hypothesis_version: 6.148.7
+
+['Abgebrochen', 'Abgeschlossen', 'Aktuelle Version', 'Aufgabe abgebrochen', 'Aufgabe gestartet', 'Ausstehend', 'Betriebsbereit', 'Cache-Sicherung', 'Datenbank-Sicherung', 'Dokumenten-Sicherung', 'Eingeschränkt', 'Fehlgeschlagen', 'GPU nicht verfügbar', 'Gesund', 'Hochladen...', 'In Warteschlange', 'Konto deaktiviert', 'Nachbearbeitung...', 'Nicht verfügbar', 'Ressourcenkonflikt', 'Rollback-Version', 'Sicherung gestartet', 'Sicherung läuft...', 'Speichern...', 'Ungültige Anfrage', 'Ungültige IBAN', 'Ungültige USt-IdNr.', 'Ungültiger Betrag', 'Validierung...', 'Versionsdetails', 'Versionshistorie', 'Versionsvergleich', 'Vorverarbeitung...', 'Wiederholung...', 'Zugriff verweigert', 'cancelled', 'completed', 'failed', 'pending', 'processing', 'queued', 'retrying']

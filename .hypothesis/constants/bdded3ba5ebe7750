@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\ensemble\_iforest.py
+# hypothesis_version: 6.148.7
+
+[-0.5, 0.0, 0.5, 1.0, 2.0, 100.0, 100, 256, 'IsolationForest', 'auto', 'boolean', 'bootstrap', 'contamination', 'csc', 'csr', 'f', 'left', 'max_features', 'max_samples', 'n_estimators', 'n_jobs', 'prefer', 'random', 'random_state', 'right', 'sharedmem', 'threads', 'verbose', 'warm_start']

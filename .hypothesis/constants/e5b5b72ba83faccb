@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torchvision\ops\feature_pyramid_network.py
+# hypothesis_version: 6.148.7
+
+['bias', 'inner_blocks', 'layer_blocks', 'nearest', 'p6', 'p7', 'pool', 'version', 'weight']

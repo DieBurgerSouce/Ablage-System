@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\bitsandbytes\triton\int8_matmul_rowwise_dequantize.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 127.0, 128, 256, 'BLOCK_K', 'BLOCK_M', 'BLOCK_N', 'C', 'EVEN_K', 'K', 'M', 'N', 'SPLIT_K', 'early_config_prune', 'perf_model', 'top_k']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\ao\quantization\fx\_decomposed.py
+# hypothesis_version: 6.148.7
+
+[1e-05, 1.0, -128, 127, 128, 'Autograd', 'DEF', 'Meta', 'dequantize_per_token', 'quantize_per_channel', 'quantize_per_tensor', 'quantize_per_token', 'quantized_decomposed']

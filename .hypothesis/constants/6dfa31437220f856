@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numba\core\decorators.py
+# hypothesis_version: 6.148.7
+
+['_target', 'argtypes', 'boundscheck', 'cpu', 'cuda', 'forceobj', 'nopython', 'npyufunc', 'pipeline_class', 'restype']

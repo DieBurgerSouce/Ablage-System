@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\openpyxl\chart\scatter_chart.py
+# hypothesis_version: 6.148.7
+
+['axId', 'dLbls', 'line', 'lineMarker', 'marker', 'scatter', 'scatterChart', 'scatterStyle', 'ser', 'smooth', 'smoothMarker', 'varyColors']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\transforms\modules\pytorch.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.2, 0.3, 0.5, 0.8, 0.9, 1.0, 4.0, 255, 'ChannelShuffle', 'GaussianBlur', 'GaussianNoise', 'RandomHorizontalFlip', 'RandomResize', 'RandomShadow', 'Resize', 'reflect']

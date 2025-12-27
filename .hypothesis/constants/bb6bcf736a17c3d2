@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\triton_bundler.py
+# hypothesis_version: 6.148.7
+
+[b'[REPLACE]', '.json', '.lock', 'CachingAutotuner', 'inductor', 'kernel_name', 'rb', 'triton_bundling', 'unknown_kernel', 'wb']

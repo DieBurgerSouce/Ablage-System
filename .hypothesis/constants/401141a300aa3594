@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\community\leiden.py
+# hypothesis_version: 6.148.7
+
+['directed', 'leiden_communities', 'leiden_partitions', 'seed', 'weight']

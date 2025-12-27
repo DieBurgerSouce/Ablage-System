@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\scipy\special\_logsumexp.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 'complex floating', 'ignore', 'log_softmax', 'logsumexp', 'real floating', 'softmax']

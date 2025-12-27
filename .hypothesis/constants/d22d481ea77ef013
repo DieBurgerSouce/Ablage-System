@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\config\validation.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.3, 128.0, '00000', '11111', '12345', '123456', 'abcde', 'admin', 'asdfgh', 'changeme', 'minio', 'minio123', 'minioadmin', 'minioadmin123', 'password', 'postgres', 'qwerty', 'root', 'secret', 'test']

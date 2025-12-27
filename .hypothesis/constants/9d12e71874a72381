@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\config\vault_client.py
+# hypothesis_version: 6.148.7
+
+[300, 'VAULT_ADDR', 'VAULT_NAMESPACE', 'VAULT_ROLE_ID', 'VAULT_SECRET_ID', 'VAULT_TOKEN', 'VaultClient', 'auth', 'client_token', 'data', 'hvac not installed', 'hvac.Client', 'secret', 'vault_cache_cleared', 'vault_cache_expired', 'vault_connect_failed', 'vault_connected', 'vault_not_configured']

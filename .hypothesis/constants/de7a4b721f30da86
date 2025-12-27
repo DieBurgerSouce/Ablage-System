@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\virtualized.py
+# hypothesis_version: 6.148.7
+
+['T', 'aot_compilation', 'choices', 'current_node', 'debug', 'extern_kernel_nodes', 'fake_mode', 'graph', 'interpreter', 'kernel', 'local_buffer_context', 'ops', 'real_inputs', 'tl.int32', 'tl.int64']

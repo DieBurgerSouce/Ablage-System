@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\ao\quantization\backend_config\backend_config.py
+# hypothesis_version: 6.148.7
+
+['BackendConfig', 'BackendPatternConfig', 'DTypeConfig', 'DTypeWithConstraints', 'ObservationType', 'bias_dtype', 'configs', 'dtype_configs', 'extra_inputs_getter', 'fused_module', 'fuser_method', 'input_dtype', 'input_type_to_index', 'is_dynamic', 'name', 'observation_type', 'output_dtype', 'pattern', 'qat_module', 'root_module', 'root_node_getter', 'weight_dtype']

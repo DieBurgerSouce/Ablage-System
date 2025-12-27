@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\totp.py
+# hypothesis_version: 6.148.7
+
+['***', '****', '-', '...', 'PNG', 'SHA1', 'backup_codes', 'black', 'encrypted_secret', 'hashed_backup_codes', 'provisioning_uri', 'qr_code', 'qrcode_not_available', 'secret', 'totp_invalid_format', 'totp_not_available', 'totp_setup_initiated', 'totp_verification', 'utf-8', 'white']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\image_processing_utils.py
+# hypothesis_version: 6.148.7
+
+['height', 'image_processor_type', 'inf', 'longest_edge', 'max_height', 'max_width', 'processor_class', 'shortest_edge', 'size', 'vision', 'width']

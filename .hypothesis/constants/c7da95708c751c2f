@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\datasets\_california_housing.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 100000.0, ',', 'AveBedrms', 'AveOccup', 'AveRooms', 'HouseAge', 'Latitude', 'Longitude', 'MedHouseVal', 'MedInc', 'Population', 'as_frame', 'boolean', 'cal_housing.pkz', 'cal_housing.tgz', 'data_home', 'delay', 'download_if_missing', 'left', 'n_retries', 'neither', 'r:gz', 'return_X_y']

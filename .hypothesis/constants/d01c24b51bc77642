@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_functorch\_activation_checkpointing\knapsack_evaluator.py
+# hypothesis_version: 6.148.7
+
+[0.001, 0.1, 0.5, 100, 'memory_budget', 'non_ac_peak_memory', 'peak_memory']

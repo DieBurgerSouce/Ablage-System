@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\xgboost\callback.py
+# hypothesis_version: 6.148.7
+
+[0.0, 100, '-', '.pkl', ':', 'CallbackContainer', 'EarlyStopping', 'EvaluationMonitor', 'TrainingCallback', 'TrainingCheckPoint', '_', '_ART', 'auc', 'auc@', 'aucpr', 'aucpr@', 'learning_rate', 'map', 'map@', 'mape', 'model', 'ndcg', 'ndcg@', 'pre', 'pre@', 'ubj', 'wb']

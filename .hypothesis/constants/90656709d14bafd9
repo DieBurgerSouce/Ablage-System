@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\scipy\special\_support_alternative_backends.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 1.0, 1000, 'betainc', 'cupy', 'gammainc', 'gammaincc', 'ignore', 'jax.numpy', 'scipy.special', 'special', 'stdtr']

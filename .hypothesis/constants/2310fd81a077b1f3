@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\embedding_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 150, 1024, 2000, 3600, 'EmbeddingProvider', 'EmbeddingService', 'JinaEmbeddingService', '_initialized', 'ab_testing_enabled', 'active_model', 'cpu', 'cuda', 'device', 'dimension', 'e5', 'e5_model', 'falling_back_to_cpu', 'gpu_memory_high', 'gpu_memory_total_mb', 'gpu_name', 'gpu_oom_batch', 'jina', 'jina_enabled', 'jina_gpu_memory_high', 'jina_gpu_oom_batch', 'jina_model', 'jina_model_loaded', 'jina_model_loading', 'jina_model_unloaded', 'loaded', 'max_length', 'model_name', 'model_type', 'passage: ', 'query: ', 'single_embedding_oom', 'warmup']

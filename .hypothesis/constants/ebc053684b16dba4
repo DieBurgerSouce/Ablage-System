@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pgvector\sqlalchemy\halfvec.py
+# hypothesis_version: 6.148.7
+
+['<#>', '<+>', '<->', '<=>', 'HALFVEC', 'HALFVEC(%d)', 'halfvec']

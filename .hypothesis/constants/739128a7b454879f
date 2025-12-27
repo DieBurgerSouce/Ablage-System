@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\metrics\_scorer.py
+# hypothesis_version: 6.148.7
+
+[1.0, ', ', '__module__', 'allow_none', 'binary', 'boolean', 'decision_function', 'default', 'estimator', 'f1', 'fit', 'greater_is_better', 'jaccard', 'macro', 'max_error', 'micro', 'ovo', 'ovr', 'pos_label', 'precision', 'predict', 'predict_proba', 'raise_exc', 'recall', 'response_method', 'sample_weight', 'samples', 'score', 'score_func', 'scoring', 'sklearn.metrics.', 'startswith', 'weighted', '{0}_{1}']

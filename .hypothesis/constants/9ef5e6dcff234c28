@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\integrations\accelerate.py
+# hypothesis_version: 6.148.7
+
+['device', 'empty', 'full', 'meta', 'nn.Module', 'ones', 'requires_grad', 'torch.device', 'zeros']

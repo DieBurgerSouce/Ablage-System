@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_numpy\_dtypes_impl.py
+# hypothesis_version: 6.148.7
+
+['DefaultDTypes', 'arctan2', 'complex_dtype', 'copysign', 'float_dtype', 'fmax', 'fmin', 'fmod', 'gcd', 'heaviside', 'hypot', 'int_dtype', 'lcm', 'logaddexp', 'logaddexp2', 'maximum', 'minimum']

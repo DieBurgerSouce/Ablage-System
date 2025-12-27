@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sympy\sets\sets.py
+# hypothesis_version: 6.148.7
+
+[100, '(%s)._inf', '(%s)._measure', '(%s)._sup', '+inf', '-inf', '1.5', 'Set', 'SetKind(%s)', 'SetKind()', 'd', 'evaluate', 'exp', 'nargs', 'other', 'u', 'x', 'x y', 'x%i']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shapely\measurement.py
+# hypothesis_version: 6.148.7
+
+['area', 'bounds', 'distance', 'frechet_distance', 'hausdorff_distance', 'ignore', 'length', 'minimum_clearance', 'total_bounds']

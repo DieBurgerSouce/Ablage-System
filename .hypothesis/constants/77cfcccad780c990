@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\rapidfuzz\distance\metrics_py.py
+# hypothesis_version: 6.148.7
+
+['flags', 'get_scorer_flags', 'hamming_distance', 'hamming_editops', 'hamming_opcodes', 'hamming_similarity', 'indel_distance', 'indel_editops', 'indel_opcodes', 'indel_similarity', 'jaro_distance', 'jaro_similarity', 'lcs_seq_distance', 'lcs_seq_editops', 'lcs_seq_opcodes', 'lcs_seq_similarity', 'levenshtein_distance', 'levenshtein_editops', 'levenshtein_opcodes', 'optimal_score', 'osa_distance', 'osa_similarity', 'postfix_distance', 'postfix_similarity', 'prefix_distance', 'prefix_similarity', 'worst_score']

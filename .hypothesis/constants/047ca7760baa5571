@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\retry_strategy.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 15.0, 30.0, 60.0, 'RetryContext', 'T', 'attempts', 'classification', 'exceptions_count', 'ocr', 'phase', 'postprocessing', 'preprocessing', 'qa', 'retry_attempt', 'retry_exhausted', 'retry_scheduled', 'retry_succeeded', 'storage', 'total_time']

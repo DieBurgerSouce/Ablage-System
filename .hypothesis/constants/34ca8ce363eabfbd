@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\maskers\__init__.py
+# hypothesis_version: 6.148.7
+
+['Composite', 'Fixed', 'FixedComposite', 'Image', 'Impute', 'Independent', 'Masker', 'OutputComposite', 'Partition', 'Text']

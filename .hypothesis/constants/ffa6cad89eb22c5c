@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\community\quality.py
+# hypothesis_version: 6.148.7
+
+[-1.0, 'modularity', 'partition_quality', 'weight']

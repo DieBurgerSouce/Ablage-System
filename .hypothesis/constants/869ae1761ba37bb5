@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\admin\__init__.py
+# hypothesis_version: 6.148.7
+
+['/admin', 'Administration', 'router']

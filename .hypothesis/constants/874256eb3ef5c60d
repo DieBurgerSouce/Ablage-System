@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\distributed\fsdp\wrap.py
+# hypothesis_version: 6.148.7
+
+[100000000.0, 'CustomPolicy', 'ModuleWrapPolicy', '_wrap_overrides', 'always_wrap_policy', 'enable_wrap', 'mixed_precision', 'wrap', 'wrapper_cls']

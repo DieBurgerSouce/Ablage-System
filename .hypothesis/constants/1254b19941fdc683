@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\fx_passes\split_cat.py
+# hypothesis_version: 6.148.7
+
+[',', '->', 'add', 'axis', 'call_function', 'call_method', 'clamp', 'decompose_mm_pass', 'detach', 'dim', 'example_value', 'first_split_input', 'first_split_sections', 'index', 'inductor', 'input', 'max', 'merge_splits_pass', 'min', 'mutate_cat_pass', 'negative index', 'next_split_sections', 'normalization_pass', 'pad_aten_mm_pass', 'reshape', 'scmerge_cat_added', 'scmerge_cat_removed', 'scmerge_split_added', 'select_cat_aten_pass', 'split', 'split not normalized', 'split_cat_aten_pass', 'split_cat_pass', 'split_input', 'split_sections', 'split_size', 'split_sizes', 'squeeze', 'tensor', 'tensors', 'threshold_to_cat', 'unbind', 'unbind_input', 'unbind_stack_pass', 'val']

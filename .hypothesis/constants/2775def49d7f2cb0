@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\circuit_breaker.py
+# hypothesis_version: 6.148.7
+
+[30.0, 45.0, 60.0, 90.0, 120.0, 'T', 'closed', 'consecutive_failures', 'database', 'failures', 'half_open', 'last_failure', 'last_success', 'minio', 'ocr_deepseek', 'ocr_got', 'ocr_surya', 'ocr_surya_gpu', 'open', 'redis', 'rejected_calls', 'service', 'state', 'state_changes', 'successes', 'total_calls']

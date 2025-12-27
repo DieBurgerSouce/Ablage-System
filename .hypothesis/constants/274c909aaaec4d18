@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\scipy\ndimage\_support_alternative_backends.py
+# hypothesis_version: 6.148.7
+
+['_signature', 'map_coordinates', 'ndimage', 'vectorized_filter']

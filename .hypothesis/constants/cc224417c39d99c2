@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\cuda\cuda_kernel.py
+# hypothesis_version: 6.148.7
+
+[',', ', ', '-', '.item()', 'ArgInfo', 'B', 'Bias', 'CUDA', 'CUDATemplate', 'CUDATemplateBuffer', 'K', 'M', 'N', 'None', 'W', 'X', 'Y', 'backend', 'const int', 'element_accumulator', 'epilogue_schedule', 'instruction_shape', 'kernel_schedule', 'lda', 'ldb', 'ldc', 'ldd', 'nullptr', 'op', 'op_arch', 'op_conf_name', 'op_name', 'op_type', 'size', 'size_t*', 'stride', 'swizzle', 'tile_shape', 'uint8_t*', 'unknown', 'void', '{}*{}']

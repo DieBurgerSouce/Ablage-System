@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\utils\_response.py
+# hypothesis_version: 6.148.7
+
+['auto', 'binary', 'decision_function', 'multiclass', 'multilabel-indicator', 'predict', 'predict_log_proba', 'predict_proba']

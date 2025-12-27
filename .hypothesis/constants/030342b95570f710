@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\ua_parser\user_agent_parser.py
+# hypothesis_version: 6.148.7
+
+[200, 'Chrome Frame (%s %s)', 'Chrome/', 'No use case anymore', 'Other', 'UA_PARSER_YAML', 'Use PrettyUserAgent', '\\$(\\d)', '\\$1', 'brand', 'brand_replacement', 'chromeframe', 'device', 'device_parsers', 'device_replacement', 'family', 'family_replacement', 'i', 'js_user_agent_family', 'js_user_agent_string', 'js_user_agent_v1', 'js_user_agent_v2', 'js_user_agent_v3', 'major', 'minor', 'model', 'model_replacement', 'os', 'os_parsers', 'os_replacement', 'os_v1_replacement', 'os_v2_replacement', 'os_v3_replacement', 'os_v4_replacement', 'patch', 'patch_minor', 'rb', 'regex', 'regex_flag', 'string', 'user_agent', 'user_agent_parsers', 'v1_replacement', 'v2_replacement']

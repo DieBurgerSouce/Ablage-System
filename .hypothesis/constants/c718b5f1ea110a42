@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\flow\boykovkolmogorov.py
+# hypothesis_version: 6.148.7
+
+['algorithm', 'boykov_kolmogorov', 'capacity', 'flow', 'flow_value', 'inf', 'trees']

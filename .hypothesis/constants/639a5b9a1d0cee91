@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\kombu\transport\native_delayed_delivery.py
+# hypothesis_version: 6.148.7
+
+[1000, '#', '*.', '.', '0.#', '1.#', 'at-least-once', 'classic', 'direct', 'quorum', 'reject-publish', 'topic', 'x-message-ttl', 'x-overflow', 'x-queue-type']

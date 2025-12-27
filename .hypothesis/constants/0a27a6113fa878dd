@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_dynamo\debug_utils.py
+# hypothesis_version: 6.148.7
+
+['"""', '# CUDA Info: \n', '# nvcc not found\n', ',', ', ', ', device="cuda"', '--version', '.py', '//', '@mode/dev-nosan', 'DYNAMO', 'INDUCTOR', 'Sym\\((s\\d+)\\)', 'T', 'TARGETS', 'TORCH', 'TRITON', 'TRITON_LIBCUDA_PATH', 'TRITON_PTXAS_PATH', '_boxed_call', 'buck2', 'call_function', 'cpu', 'cuda', 'dtype', 'fbcode.', 'fbcode/', 'fbcode:', 'meta', 'minifier', 'minifier_launcher.py', 'nvcc', 'reader.tensor(', 'return', 'run', 's', 'self', 'w', 'zero_grad', '|']

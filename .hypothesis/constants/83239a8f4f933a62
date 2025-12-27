@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pypdfium2\_helpers\pageobjects.py
+# hypothesis_version: 6.148.7
+
+['1', 'ASCII85Decode', 'ASCIIHexDecode', 'CMYK', 'DCTDecode', 'FlateDecode', 'ImageInfo', 'JPXDecode', 'L', 'LZWDecode', 'PdfImage', 'PdfObject', 'RGB', 'RunLengthDecode', 'jp2', 'jpg', 'png', 'r', 'raw', 'rb', 'tiff', 'utf-8', 'w', 'wb']

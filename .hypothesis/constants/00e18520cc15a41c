@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\datasets\_rcv1.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 103, 23149, 47236, 804414, 'Downloading %s', 'RCV1', 'all', 'ascii', 'boolean', 'data_home', 'delay', 'download_if_missing', 'left', 'n_retries', 'neither', 'random_state', 'rb', 'rcv1.rst', 'return_X_y', 'sample_id.pkl', 'sample_topics.pkl', 'samples.pkl', 'shuffle', 'subset', 'test', 'topics_names.pkl', 'train']

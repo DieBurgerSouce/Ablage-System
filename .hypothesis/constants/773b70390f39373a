@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\assortativity\mixing.py
+# hypothesis_version: 6.148.7
+
+[0.0, 'attribute', 'degree_mixing_dict', 'degree_mixing_matrix', 'in', 'mixing_dict', 'out', 'weight']

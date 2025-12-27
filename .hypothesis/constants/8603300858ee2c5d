@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\kombu\transport\__init__.py
+# hypothesis_version: 6.148.7
+
+['.', ':', 'SLMQ', 'SQS', 'amqp', 'amqps', 'azureservicebus', 'azurestoragequeues', 'confluentkafka', 'consul', 'default', 'etcd', 'filesystem', 'gcpubsub', 'kafka', 'librabbitmq', 'memory', 'mongodb', 'pyamqp', 'pyro', 'qpid', 'redis', 'rediss', 'sentinel', 'slmq', 'sqla', 'sqlalchemy', 'sqs', 'zookeeper']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\flow\networksimplex.py
+# hypothesis_version: 6.148.7
+
+['capacity', 'demand', 'graph has no nodes', 'inf', 'network_simplex', 'undirected', 'weight']

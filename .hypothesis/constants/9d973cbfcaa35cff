@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\ao\nn\quantizable\modules\__init__.py
+# hypothesis_version: 6.148.7
+
+['LSTM', 'LSTMCell', 'MultiheadAttention']

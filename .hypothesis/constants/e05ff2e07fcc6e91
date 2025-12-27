@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\quantizers\quantizer_compressed_tensors.py
+# hypothesis_version: 6.148.7
+
+['compressed_tensors', 'local_colwise', 'local_rowwise', 'torch.dtype']

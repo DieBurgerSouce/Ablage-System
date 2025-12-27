@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\manifold\_mds.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-06, 1e-05, 1.0, 300, '__array__', 'array-like', 'auto', 'boolean', 'clip', 'dissimilarities', 'dissimilarity', 'eps', 'euclidean', 'init', 'left', 'max_iter', 'metric', 'n_components', 'n_init', 'n_jobs', 'normalized_stress', 'precomputed', 'random_state', 'return_n_iter', 'verbose', 'warn']

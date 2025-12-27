@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\document_services\crud_service.py
+# hypothesis_version: 6.148.7
+
+['add', 'delete', 'document_delete', 'document_deleted', 'document_type', 'document_update', 'document_updated', 'language', 'metadata', 'partial_update', 'remove', 'set', 'value']

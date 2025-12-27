@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\runtime\coordinate_descent_tuner.py
+# hypothesis_version: 6.148.7
+
+[0.001, 1024, '  CACHED', 'BLOCK', 'BLOCK_K', 'BLOCK_M', 'BLOCK_N', 'Got exception %s', 'R0_BLOCK', 'R1_BLOCK', 'Try config %s', 'XBLOCK', 'YBLOCK', 'ZBLOCK', 'inf', 'is_hip', 'num_stages', 'num_warps', 'triton.Config', 'unknown', 'waves_per_eu']

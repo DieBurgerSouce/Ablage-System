@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\utils\data\datapipes\iter\selecting.py
+# hypothesis_version: 6.148.7
+
+['FilterIterDataPipe', '_T', '_T_co', 'filter']

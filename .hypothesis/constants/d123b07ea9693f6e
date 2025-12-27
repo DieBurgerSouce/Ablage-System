@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\datev\kontenrahmen\base.py
+# hypothesis_version: 6.148.7
+
+['10000', '69999', '70000', '99999', '_', 'aufwand', 'debitor_default', 'debitor_end', 'debitor_start', 'debitoren', 'dienstleistung', 'erloes', 'kreditor_default', 'kreditor_end', 'kreditor_start', 'kreditoren', 'personenkonten', 'sammelkonten', 'steuer', 'umsatzsteuer_19', 'umsatzsteuer_7', 'vorsteuer_19', 'vorsteuer_7', 'waren', 'wareneingang']

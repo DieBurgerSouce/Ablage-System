@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\amqp\basic_message.py
+# hypothesis_version: 6.148.7
+
+['F', 'L', 'Message', 'app_id', 'application_headers', 'body', 'channel', 'cluster_id', 'content_encoding', 'content_type', 'correlation_id', 'delivery_info', 'delivery_mode', 'delivery_tag', 'expiration', 'message_id', 'o', 'priority', 'reply_to', 's', 'timestamp', 'type', 'user_id']

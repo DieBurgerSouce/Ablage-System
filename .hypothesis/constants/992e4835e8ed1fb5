@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\validators\crypto_addresses\bsc_address.py
+# hypothesis_version: 6.148.7
+
+['0x[a-fA-F0-9]{40}']

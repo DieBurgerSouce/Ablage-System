@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\fx\experimental\optimization.py
+# hypothesis_version: 6.148.7
+
+['.', 'MklSubgraph', 'UnionFind', 'call_function', 'call_method', 'call_module', 'color', 'conv_bn_fuse', 'cpu', 'end_color', 'extract_subgraph', 'fuse', 'gen_mkl_autotuner', 'heuristic', 'modules_to_mkldnn', 'remove_dropout', 'replace_node_module', 'reset_modules', 'start_color', 'to_dense', 'to_mkldnn', 'use_mkl_length']

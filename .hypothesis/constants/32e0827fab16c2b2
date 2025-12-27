@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_functorch\_activation_checkpointing\graph_info_provider.py
+# hypothesis_version: 6.148.7
+
+[0.5, 300, 'GraphInfoProvider', 'Memory', 'Parsed Nodes', 'bold', 'full_nx_joint_graph', 'fx_joint_graph', 'index', 'memory', 'output']

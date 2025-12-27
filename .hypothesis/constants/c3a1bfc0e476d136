@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\isomorphism\tree_isomorphism.py
+# hypothesis_version: 6.148.7
+
+['directed', 'multigraph', 't1', 't1 is not a tree', 't2', 't2 is not a tree', 'tree_isomorphism']

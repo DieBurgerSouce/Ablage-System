@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\bitsandbytes\nn\triton_based_modules.py
+# hypothesis_version: 6.148.7
+
+['W_int8', 'state_W']

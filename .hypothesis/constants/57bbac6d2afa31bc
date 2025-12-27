@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\ua_parser\loaders.py
+# hypothesis_version: 6.148.7
+
+['DeviceDict', 'MatchersData', 'OSDict', 'UserAgentDict', 'brand_replacement', 'device_parsers', 'device_replacement', 'family_replacement', 'i', 'load_builtins', 'load_data', 'load_json', 'load_lazy', 'load_lazy_builtins', 'load_yaml', 'model_replacement', 'os_parsers', 'os_replacement', 'os_v1_replacement', 'os_v2_replacement', 'os_v3_replacement', 'os_v4_replacement', 'regex', 'regex_flag', 'user_agent_parsers', 'v1_replacement', 'v2_replacement', 'v3_replacement', 'v4_replacement']

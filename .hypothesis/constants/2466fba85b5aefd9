@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\h5py\_hl\group.py
+# hypothesis_version: 6.148.7
+
+[b'/', '"%s"', '%s is not a GroupID', '(anonymous)', '.', '<Closed HDF5 group>', '<SoftLink to "%s">', 'Unknown link type', 'Unknown object type', '_path_valid', 'chunks', 'compression', 'compression_opts', 'dtype', 'efile_prefix', 'fillvalue', 'fletcher32', 'maxshape', 'r', 'scaleoffset', 'shape', 'shuffle', 'track_order', 'track_times', 'virtual_prefix']

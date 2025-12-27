@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\tasks.py
+# hypothesis_version: 6.148.7
+
+[100, 200, 300, 400, 408, 500, 1011, '/', '/tasks', '/ws/status', '/ws/{task_id}', '/{task_id}', '/{task_id}/result', 'FAILURE', 'PENDING', 'STARTED', 'SUCCESS', 'active_tasks', 'cancelled', 'error', 'list_tasks_error', 'message', 'ready', 'result', 'state', 'successful', 'task_id', 'task_result_error', 'task_status_error', 'tasks', 'total', 'total_connections', 'user_id', 'user_tasks_listed', 'websocket_connected', 'websocket_error', 'websocket_send_error']

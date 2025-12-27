@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sympy\tensor\array\__init__.py
+# hypothesis_version: 6.148.7
+
+['Array', 'ArrayComprehension', 'ArrayKind', 'DenseNDimArray', 'NDimArray', 'SparseNDimArray', 'derive_by_array', 'permutedims', 'tensorcontraction', 'tensordiagonal', 'tensorproduct']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\admin\jobs.py
+# hypothesis_version: 6.148.7
+
+[100, '/bulk/cancel', '/jobs', '/queue/clear', '/stats/summary', '/{job_id}', '/{job_id}/cancel', '/{job_id}/retry', 'Auftraege auflisten', 'Auftrag abbrechen', 'Auftrag abrufen', 'Auftrag wiederholen', 'Auftragsstatistiken', 'Eintraege pro Seite', 'Grund fuer Abbruch', 'Nach Backend filtern', 'Nach Status filtern', 'Neue Prioritaet', 'Seitennummer', 'Sortierfeld', 'Sortierrichtung', 'Warteschlange leeren', 'failed', 'failed_count', 'job_id', 'reason', 'status', 'status_summary', 'success', 'success_count', 'total', 'total_jobs']

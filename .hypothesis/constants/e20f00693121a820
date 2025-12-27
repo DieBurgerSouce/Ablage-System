@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\ensemble\_weight_boosting.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 1.0, 'AdaBoostClassifier', 'AdaBoostRegressor', 'SAMME', 'algorithm', 'classes_', 'csc', 'csr', 'deprecated', 'estimator', 'exponential', 'fit', 'learning_rate', 'left', 'linear', 'loss', 'n_estimators', 'neither', 'predict', 'random_state', 'sample_weight', 'square']

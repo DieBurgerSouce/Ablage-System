@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\metrics.py
+# hypothesis_version: 6.148.7
+
+['(', '):', ',', 'a', 'common_buffer_names', 'def ', 'failure_reason', 'for ', 'foreach', 'fused_kernel_latency', 'fused_kernel_path', 'graph_id', 'graph_stats', 'kernel0_latency', 'kernel0_path', 'kernel1_latency', 'kernel1_path', 'kernel2_latency', 'kernel2_path', 'kernel3_latency', 'kernel3_path', 'kernel_args_num_gb', 'kernel_category', 'kernel_metadata', 'kernel_name', 'kernel_path', 'line_of_code', 'model_name', 'node1_debug_str', 'node1_name', 'node2_debug_str', 'node2_name', 'num_args', 'num_atomic_add', 'num_for_loop', 'num_load', 'num_store', 'persistent_red_perf', 'persistent_reduction', 'post_grad_graph_id', 'pre_grad_graph_id', 'reduction', 'reduction_hint', 'rnumel', 'size_hints', 'size_hints missing!', 'slow_down_ratio', 'slow_fusion', 'tl.atomic_add', 'tl.load', 'tl.store', 'w', 'xnumel', 'ynumel']

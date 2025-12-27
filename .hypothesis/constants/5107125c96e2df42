@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numba\core\runtime\nrt.py
+# hypothesis_version: 6.148.7
+
+['NRT_', '_', 'alloc', 'free', 'mi_alloc', 'mi_free', 'nrt_mstats']

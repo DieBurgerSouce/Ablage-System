@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\parsers\bank_csv\dkb.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.6, 0.7, 0.85, 0.95, 'amount', 'auftraggeber', 'begünstigter', 'betrag', 'betrag (eur)', 'bic', 'blz', 'booking_date', 'booking_text', 'buchungstag', 'buchungstext', 'counterparty_bic', 'counterparty_iban', 'counterparty_name', 'dkb', 'encoding_error', 'iban', 'kontonummer', 'message', 'reference_text', 'type', 'value_date', 'verwendungszweck', 'wertstellung']

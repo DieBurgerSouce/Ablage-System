@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\lowering.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 1.0, 125, '-inf', 'CI', '_P', '_T', '_c10d_functional', 'add', 'allow_indexing', 'amax', 'amin', 'any', 'argmax', 'argmin', 'aten::index_add', 'atomic_add', 'call_function', 'ceil', 'copy_', 'cpu', 'current_node', 'dst_dtype', 'dtype', 'dtypes', 'expect scales 1 dim', 'floor', 'frexp', 'fx_node', 'generator', 'identity', 'inductor', 'inf', 'inner_fn', 'inner_fns', 'inplace_padding', 'int', 'isinf', 'isnan', 'lift_fresh', 'lift_fresh_copy', 'logical_not', 'logical_or', 'max', 'mean', 'min', 'multiply', 'named tensors', 'nan', 'not impl', 'out', 'output', 'pin_memory', 'placeholder', 'prod', 'quant_options', 'rand', 'randn', 'ranges', 'reduction_ranges', 'right', 'round', 'src_dtype', 'stack_trace', 'sum', 'trunc', 'two', 'unbacked_bindings', 'val', 'value', 'welford_reduce', 'xor_sum']

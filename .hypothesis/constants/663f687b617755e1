@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\ao\quantization\quantizer\quantizer.py
+# hypothesis_version: 6.148.7
+
+['Ch_axis is < 0.', 'EdgeOrNode', 'QuantizationSpec', 'QuantizationSpecBase', 'Quantizer']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\rocm\ck_universal_gemm_template.py
+# hypothesis_version: 6.148.7
+
+[128, 32768, '(', ')', ',', ',\n', ', ', '0', '::', '<executable_name>', '<source_file_name>', 'B', 'BF16', 'Bias', 'Bilinear', 'CKGemmOperation', 'Col', 'F16', 'F32', 'InductorROCmOp', 'K', 'LDA', 'LDB', 'LDC', 'LDD', 'M', 'MultiplyMultiply', 'MultiplyMultiply {}', 'MultiplyMultiplyAdd', 'N', 'PassThrough', 'PassThrough {}', 'Row', 'Scale', 'ScaleAdd', 'ck_gemm_template', 'ds', 'epilogue_nodes', 'exe', 'inv_scale_w', 'inv_scale_x', 'kBatch', 'op', 'template_buffer_node']

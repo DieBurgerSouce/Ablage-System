@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\xgboost\_data_utils.py
+# hypothesis_version: 6.148.7
+
+[b'U', b'u', b'vu', '\x00', '<i4', '<t1', 'A', 'ArrayInf', 'CudaArrayInf', 'CudaStringArray', 'DictionaryArray', 'StringArray', 'array', 'buffers', 'categories', 'children', 'codes', 'columns', 'data', 'device_id', 'device_type', 'dictionary', 'dtype', 'flags', 'format', 'hasobject', 'length', 'mask', 'metadata', 'n_buffers', 'n_children', 'name', 'null_count', 'offset', 'offsets', 'pa.Array', 'pa.DictionaryArray', 'pa.IntegerArray', 'pa.StringArray', 'pd.Index', 'pd.Series', 'private_data', 'pyarrow.lib', 'read', 'ref_categories', 'release', 'reserved', 'shape', 'stream', 'strides', 'sync_event', 'typestr', 'utf-8', 'values', 'version', '|i1']

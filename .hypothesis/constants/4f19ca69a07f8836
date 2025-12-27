@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torchvision\datasets\usps.py
+# hypothesis_version: 6.148.7
+
+[255, ':', 'L', 'test', 'train', 'usps.bz2', 'usps.t.bz2']

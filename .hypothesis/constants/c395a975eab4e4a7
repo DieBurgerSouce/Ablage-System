@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\kombu\serialization.py
+# hypothesis_version: 6.148.7
+
+['/', 'PICKLE_PROTOCOL', 'application/data', 'application/json', 'application/text', 'application/x-yaml', 'ascii-8bit', 'binary', 'codec', 'content_encoding', 'content_type', 'disabled', 'dumps', 'encoder', 'java', 'json', 'kombu.serializers', 'loads', 'msgpack', 'pickle', 'raw', 'register', 'text/plain', 'unregister', 'untrusted', 'utf-8', 'yaml']

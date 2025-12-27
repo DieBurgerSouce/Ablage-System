@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\__init__.py
+# hypothesis_version: 6.148.7
+
+['1.0.0', 'BaseAgent', 'IntelligenceAgent', 'MonitoringAgent', 'OCRAgent', 'OrchestrationAgent', 'PostprocessingAgent', 'PreprocessingAgent']

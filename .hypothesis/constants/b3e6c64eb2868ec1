@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\utils\nodenames.py
+# hypothesis_version: 6.148.7
+
+['-', '.', '0', '@', 'C.dq2', 'I', 'anon_nodename', 'celery', 'd', 'default_nodename', 'gen', 'gethostname', 'h', 'host_format', 'i', 'n', 'node_format', 'nodename', 'nodesplit', 'worker_direct', '{hostname}.dq2']

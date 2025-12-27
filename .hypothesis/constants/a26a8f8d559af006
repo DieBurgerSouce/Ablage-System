@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\admin\incidents.py
+# hypothesis_version: 6.148.7
+
+[364, 365, 500, 1440, 8760, '...', '/analyze', '/blocked-ips', '/config/security', '/incidents', '/stats', '/{incident_id}', 'IP entsperren', 'IP manuell sperren', 'Incident Response', 'Incident schließen', 'Incident-Details', 'Incident-Statistiken', 'Permanente Sperre', 'admin_ip_unblocked', 'incident_thresholds', 'response_rules', 'session_config', 'session_expiry_hours', 'session_limit_mode', 'severity', 'type']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\bitsandbytes\backends\default\ops.py
+# hypothesis_version: 6.148.7
+
+[0.0, 6.200124e-05, 1.0, 127.0, 'adagrad', 'adam', 'ademamix', 'constant', 'default', 'fp4', 'lion', 'momentum', 'nf4', 'rmsprop']

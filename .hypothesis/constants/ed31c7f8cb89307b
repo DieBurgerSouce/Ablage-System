@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\rag\excel_generator.py
+# hypothesis_version: 6.148.7
+
+[100, '#,##0.00 €', '4472C4', '666666', 'A', 'A1', 'A1:F1', 'A2', 'Anzahl', 'B', 'Beginn', 'Betrag', 'D2', 'Datum', 'Dokumente', 'Dokumenttypen', 'Ende', 'FFFFFF', 'Faelligkeit', 'H2', 'Kennzahlen', 'Rechnungen', 'Rechnungsnr.', 'Sheet', 'Status', 'Titel', 'Typ', 'Unbekannt', 'Vertraege', 'Vertragsnr.', 'Wert', 'Workbook', 'Zusammenfassung', 'amount', 'bar', 'cat_col', 'center', 'charts', 'currency_columns', 'data_range', 'date', 'due_date', 'end_date', 'excel_report_saved', 'headers', 'line', 'max_col', 'max_row', 'metrics', 'min_col', 'min_row', 'number', 'pie', 'position', 'right', 'rows', 'sheet', 'sheets', 'solid', 'start_date', 'status', 'summary', 'text', 'title', 'type', 'value']

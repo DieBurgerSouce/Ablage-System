@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\_serializable.py
+# hypothesis_version: 6.148.7
+
+[100, '.save', 'END_BLOCK___', 'auto', 'block_name = %s', 'block_version = %d', 'cloudpickle.dump', 'custom_encoder', 'encoder_name = %s', 'end_token = %s', 'loaded_name', 'loaded_name = %s', 'name = %s', 'no_encoder', 'numpy.save', 'pickle.dump', 'save', 'serializable.save', 'shap', 'value = %s']

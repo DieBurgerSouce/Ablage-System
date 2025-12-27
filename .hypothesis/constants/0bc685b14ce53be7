@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\ao\quantization\fx\utils.py
+# hypothesis_version: 6.148.7
+
+['.', 'EMPTY_ARG_DICT', 'NodeInfo', '_', 'activation', 'bias', 'bias_index', 'call_function', 'call_method', 'call_module', 'dequant_stub_', 'eps', 'get_attr', 'get_qconv_prepack_op', 'masked_fill', 'ndim', 'node_arg_is_bias', 'node_arg_is_weight', 'op target', 'permute', 'placeholder', 'quant_max', 'quant_min', 'repeat', 'reshape', 'return_arg_list', 'shape', 'size', 'target_dtype_info', 'transpose', 'unsqueeze', 'unsqueeze_', 'view', 'weight', 'weight_index']

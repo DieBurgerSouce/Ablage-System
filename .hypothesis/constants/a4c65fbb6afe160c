@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\app\__init__.py
+# hypothesis_version: 6.148.7
+
+['AppPickler', 'Celery', 'app_or_default', 'bugreport', 'default_app', 'disable_trace', 'enable_trace', 'name', 'pop_current_task', 'push_current_task', 'shared_task']

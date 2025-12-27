@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\dill\temp.py
+# hypothesis_version: 6.148.7
+
+['\n#NAME: %s\n', '#NAME:', '%s', '.py', 'alias', 'capture', 'delete', 'dump', 'dumpIO', 'dumpIO_source', 'dump_source', 'getvalue', 'load', 'loadIO', 'loadIO_source', 'load_source', 'mode', 'name', 'r', 'rb', 'stdout', 'suffix']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\structlog\twisted.py
+# hypothesis_version: 6.148.7
+
+['_structlog', '_stuff', '_why', 'err', 'error', 'event', 'exception', 'message', 'msg', 'system', 'verbose']

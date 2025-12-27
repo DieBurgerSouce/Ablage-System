@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numpy\f2py\common_rules.py
+# hypothesis_version: 6.148.7
+
+['\tPy_DECREF(tmp);', '\tint i_f2py=0;', '\t{NULL}\n};', '"\t/%s/ %s\\n"', '"COMMON blocks:\\n"', '%s\n      %s', '%s\n%s', '(%s)', ',', '--- %s', '-1', 'F_FUNC', 'F_FUNC_US', '\\_', '\\begin{description}', '\\end{description}', '_', '_BLNK_', 'body', 'call setupfunc(%s)', 'char *', 'char*', 'common', 'common %s', 'common /%s/ %s', 'commonhooks', 'dims', 'docs', 'end\n', 'external setupfunc', 'initcommonhooks', 'latexdoc', 'note', 'rank', 'vars', '}', '}\n']

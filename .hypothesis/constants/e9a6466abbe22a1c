@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\recognition\parseq\pytorch.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-05, 0.02, 0.1, 0.296, 0.299, 0.301, 0.693, 0.694, 0.695, 128, 384, 2048, '1', '<eos>', 'PARSeq', 'feat_extractor.', 'features', 'french', 'head.bias', 'head.weight', 'ignore_keys', 'input_shape', 'logits', 'loss', 'mean', 'out_map', 'parseq', 'patch_size', 'preds', 'pretrained_backbone', 'std', 'url', 'vocab']

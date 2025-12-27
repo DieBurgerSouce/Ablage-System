@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\ops_handler.py
+# hypothesis_version: 6.148.7
+
+[', ', 'MockHandler', 'NoopHandler', 'T', '_', '_.*|paren', 'allow_indexing', 'any', 'argmax', 'argmin', 'atomic_add', 'bucketize', 'index', 'indirect_indexing', 'load', 'load_seed', 'max', 'min', 'prod', 'rindex', 'self', 'sum', 'welford_combine', 'welford_reduce', 'xor_sum']

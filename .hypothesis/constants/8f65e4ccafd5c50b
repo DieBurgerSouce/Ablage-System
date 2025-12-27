@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\maskers\_text.py
+# hypothesis_version: 6.148.7
+
+[100, 1000, '!', '##', "'", '(', ')', ',', '.', '...', '?', '[', '[\\s]+', '\\W+', ']', '^.*\\W$', '^[A-Za-z]', '_', 'and', 'auto', 'but', 'collapse_mask_token', 'input_ids', 'keep_prefix', 'keep_suffix', 'mask_token', 'mask_token_id', 'offset_mapping', 'or', 'output_type', 's', 'sep_token', 'sep_token_id', 'shap.maskers.Text', 'string', 't', 'tokenizer', '▁']

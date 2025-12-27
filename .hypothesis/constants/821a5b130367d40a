@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\datev\buchungsstapel_writer.py
+# hypothesis_version: 6.148.7
+
+[1024, 100000000, '""', '%Y%m%d', '%Y%m%d%H%M%S', '.', '0', '000', 'EUR', 'OHNE-NR', 'datev_csv_too_large', 'datev_encoding_error', 'strict']

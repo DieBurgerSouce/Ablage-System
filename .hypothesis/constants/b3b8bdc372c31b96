@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\llvmlite\utils.py
+# hypothesis_version: 6.148.7
+
+['darwin', 'libllvmlite.dylib', 'libllvmlite.so', 'llvmlite.dll', 'msvcp120.dll', 'msvcr120.dll', 'nt', 'posix']

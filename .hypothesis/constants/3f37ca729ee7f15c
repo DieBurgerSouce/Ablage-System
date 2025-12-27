@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\scipy\io\_harwell_boeing\hb.py
+# hypothesis_version: 6.148.7
+
+['0', 'A', 'AllFloat', 'AllInteger', 'C', 'Default title', 'E', 'H', 'I', 'No Title', 'P', 'R', 'S', 'U', 'Z', 'assembled', 'complex', 'elemental', 'hb_read', 'hb_write', 'hermitian', 'integer', 'pattern', 'read', 'real', 'rectangular', 'skewsymmetric', 'symmetric', 'unsymmetric', 'w', 'write', '|No Key']

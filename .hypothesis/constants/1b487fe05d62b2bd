@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\fx_passes\post_grad.py
+# hypothesis_version: 6.148.7
+
+[4096, 'CPP', '_P', '_T', 'artifact', 'aten', 'background_val', 'bucket_all_gathers', 'call_function', 'cpu', 'cuda', 'device', 'dim', 'dtype', 'encoding', 'fill_value', 'fsdp', 'get_attr', 'inductor', 'inp', 'input', 'input_', 'is_cuda', 'keepdim', 'mat1', 'mat2', 'mat3', 'mat4', 'name', 'none', 'output', 'placeholder', 'post_grad_passes', 'prims', 'reduced_dims', 'remove_assert_ops', 'remove_noop_ops', 'reorder_for_locality', 'selector', 'shape', 'size', 'split_sizes', 'stable_sort', 'string', 'tensor_meta', 'triton', 'val', 'x']

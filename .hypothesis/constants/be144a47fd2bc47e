@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\_loss\__init__.py
+# hypothesis_version: 6.148.7
+
+['AbsoluteError', 'HalfBinomialLoss', 'HalfGammaLoss', 'HalfMultinomialLoss', 'HalfPoissonLoss', 'HalfSquaredError', 'HalfTweedieLoss', 'HuberLoss', 'PinballLoss']

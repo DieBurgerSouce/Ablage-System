@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\settings.py
+# hypothesis_version: 6.148.7
+
+[100, 400, '/', '/display', '/notifications', '/ocr', '/privacy', '/reset', '/settings', 'Elemente pro Seite', 'Sprache: de, en', 'Standard-Priorität', 'auto', 'auto_start_ocr', 'blackscreen', 'compact_view', 'daily', 'dark', 'de', 'deepseek', 'default_backend', 'default_language', 'default_priority', 'display', 'display_mode', 'email_digest', 'email_on_ocr_failed', 'email_on_share', 'en', 'got_ocr', 'items_per_page', 'language', 'last_updated', 'light', 'message', 'none', 'notifications', 'ocr', 'ocr_settings_updated', 'privacy', 'reset_at', 'settings', 'share_analytics', 'show_previews', 'surya', 'user_settings_reset', 'weekly', 'whitescreen']

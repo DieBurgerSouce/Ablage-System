@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\local.py
+# hypothesis_version: 6.148.7
+
+['.', 'PromiseProxy', 'Proxy', 'TaskConsumer', '_Proxy__args', '_Proxy__kwargs', '_Proxy__local', '__all__', '__args', '__custom_name__', '__dict__', '__doc__', '__file__', '__get__', '__kwargs', '__local', '__members__', '__module__', '__new__', '__path__', '__pending__', '__release_local__', '__thing', '__weakref__', '_all_by_module', '_compat_modules', '_direct', '_object_origins', 'amqp.TaskConsumer', 'celery', 'connection', 'doc', 'establish_connection', 'execute', 'get_consumer_set', 'get_default_logger', 'log', 'maybe_evaluate', 'messaging', 'module', 'name', 'qualname', 'registry', 'send_task', 'subtask', 'tasks', 'try_import']

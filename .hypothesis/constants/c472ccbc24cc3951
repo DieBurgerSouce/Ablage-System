@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\ao\quantization\fx\_equalize.py
+# hypothesis_version: 6.148.7
+
+[0.0, 'EqualizationQConfig', '_equalization_scale', 'bias', 'call_function', 'call_module', 'fp32', 'fqn', 'funs_unmatchable', 'get_attr', 'input_activation', 'int8', 'module_name', 'node_output', 'relu', 'sqnr', 'weight']

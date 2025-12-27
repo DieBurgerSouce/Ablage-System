@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\cuda\_utils.py
+# hypothesis_version: 6.148.7
+
+['.', 'Unknown CUDA error', '_CudaKernel', 'cpu', 'cuda', 'extern "C"', 'libcuda.so.1', 'libnvrtc.so', 'nvcuda.dll', 'utf-8', 'win32']

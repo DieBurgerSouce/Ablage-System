@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\runtime\autotune_cache.py
+# hypothesis_version: 6.148.7
+
+[1000000, '#.*$', 'RemoteAutotuneCache', 'autotune', 'autotune_local_cache', 'backend_hash', 'bundled-autotune-v1', 'configs_hash', 'coordesc', 'found_by_coordesc', 'heuristic', 'is_fbcode', 'is_hip', 'num_consumer_groups', 'num_stages', 'num_warps', 'rb', 'remote_cache', 'time_saved_ns', 'time_taken_ms', 'triton_cache_hash', 'utf-8']

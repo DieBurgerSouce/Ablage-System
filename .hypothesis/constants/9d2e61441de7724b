@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\bitsandbytes\optim\lars.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.01, 0.02, 1.0, 100, 4096, 'dampening', 'lars', 'lr', 'max_unorm', 'momentum', 'momentum_buffer', 'nesterov', 'params', 'weight_decay']

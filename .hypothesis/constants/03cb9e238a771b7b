@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_dynamo\variables\constant.py
+# hypothesis_version: 6.148.7
+
+['VariableTracker', '__contains__', '__len__', '__round__', 'call_function', 'decode', 'format', 'join', 'source']

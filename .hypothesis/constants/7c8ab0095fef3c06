@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\amqp\protocol.py
+# hypothesis_version: 6.148.7
+
+['basic_return_t', 'consumer_count', 'exchange', 'message', 'message_count', 'queue', 'queue_declare_ok_t', 'reply_code', 'reply_text', 'routing_key']

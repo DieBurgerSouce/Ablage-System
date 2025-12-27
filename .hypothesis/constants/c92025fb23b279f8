@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\tournament.py
+# hypothesis_version: 6.148.7
+
+[0.5, 'G', 'hamiltonian_path', 'is_reachable', 'is_tournament', 'multigraph', 'random_tournament', 'score_sequence', 'tournament_matrix', 'undirected', 'weight']

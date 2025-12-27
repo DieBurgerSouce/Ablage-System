@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_dynamo\repro\after_dynamo.py
+# hypothesis_version: 6.148.7
+
+[0.5, '--accuracy', '--autocast', '--backend', '--no-accuracy', '--no-autocast', '--no-isolate', '--no-save-dir', '--only-fwd', '--save-dir', 'BACKEND', 'DIR', 'Dynamo failed', 'Eager itself failed', 'Loading inputs', '__name__', '_version', 'accuracy', 'aot', 'autocast', 'checkpoints', 'command', 'compiler_name', 'cuda', 'dynamo', 'get_compiler_config', 'inductor', 'isolate', 'just run the repro', 'minifier_launcher.py', 'minify', 'repro.py', 'run', 'save_dir', 'store_const', 'store_false', 'store_true', 'test accuracy', 'w', '{run,minify}']

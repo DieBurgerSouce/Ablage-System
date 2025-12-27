@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\ua_parser\core.py
+# hypothesis_version: 6.148.7
+
+['DefaultedResult', 'Device', 'Domain', 'Matchers', 'OS', 'Other', 'PartialResult', 'Resolver', 'Result', 'T', 'UserAgent', 'brand', 'device', 'domains', 'family', 'major', 'minor', 'model', 'os', 'patch', 'patch_minor', 'string', 'user_agent']

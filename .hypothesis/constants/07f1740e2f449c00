@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\canvas.py
+# hypothesis_version: 6.148.7
+
+[1.0, ' | ', '%', '%({} | {!r})', 'Body task of chord.', 'Name of task.', 'Signature', 'Task UUID', 'Task parent UUID.', 'Task root UUID.', 'Tasks in chain.', 'Tasks in group.', 'Type of signature', 'app', 'args', 'body', 'celery.chain', 'celery.chord', 'celery.chunks', 'celery.group', 'celery.map', 'celery.starmap', 'chain', 'chord', 'chunks', 'group', 'group(<empty>)', 'group_id', 'group_index', 'header', 'immutable', 'it', 'kwargs', 'kwargs.body', 'kwargs.header', 'kwargs.tasks', 'link', 'link_error', 'maybe_signature', 'n', 'name', 'options', 'options.parent_id', 'options.root_id', 'options.task_id', 'parent_id', 'reply_to', 'root_id', 'signature', 'stamped_headers', 'subtask_type', 'task', 'task_id', 'tasks', 'use_link', 'xmap', 'xstarmap']

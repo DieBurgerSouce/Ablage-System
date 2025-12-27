@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\billiard\context.py
+# hypothesis_version: 6.148.7
+
+['/usr', 'NUMBER_OF_PROCESSORS', 'SC_NPROCESSORS_ONLN', '_', 'bsd', 'cpu_count', 'darwin', 'fork', 'forkserver', 'frozen', 'lock', 'spawn', 'spawning_popen', 'win32']

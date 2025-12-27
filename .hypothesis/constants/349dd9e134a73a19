@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\externals\array_api_extra\_lib\_backends.py
+# hypothesis_version: 6.148.7
+
+['Backend', 'array_api_strict', 'cupy', 'dask.array', 'jax.numpy', 'numpy', 'numpy_readonly', 'sparse', 'torch']

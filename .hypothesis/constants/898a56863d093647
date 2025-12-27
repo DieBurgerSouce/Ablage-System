@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\explainers\_kernel.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-10, 1e-08, 1e-07, 0.2, 1.0, 2.0, 100, "'numpy.ndarray'>", '1.2.0', '2.0.0', 'Using ', '__len__', 'aic', 'auto', 'bic', 'data_feature_names', 'dtype', 'gc_collect', 'identity', 'int64', 'keep_index', 'keep_index_ordered', 'l1_reg', 'nsamples', 'num_features(', 'num_features(10)', 'shap', 'silent']

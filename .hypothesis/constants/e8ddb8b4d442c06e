@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\huggingface_hub\_login.py
+# hypothesis_version: 6.148.7
+
+['*', '-', '1.0', '50%', '<not set>', 'Connecting...', 'Login', 'Login successful.', 'Not logged in!', 'Token:', 'accessToken', 'api_org', 'auth', 'center', 'column', 'displayName', 'flex', 'name', 'nt', 'role', 'token', 'write_permission', '|']

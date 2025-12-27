@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_export\serde\schema.py
+# hypothesis_version: 6.148.7
+
+[100, 101, 110, 120, 130, 140, 150, 160, 170, 180, 182, 184, 190, 200, 210, 220, 230, 240, 250, 260, '<=2.4', 'Graph']

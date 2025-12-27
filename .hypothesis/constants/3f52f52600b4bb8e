@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\ao\quantization\fx\prepare.py
+# hypothesis_version: 6.148.7
+
+[10000, 'PerChannel', 'bias', 'bias_index', 'bias_obs_or_fq_ctr', 'call_function', 'call_method', 'call_module', 'ch_axis', 'derive_qparams_fn', 'dtype', 'is_dynamic', 'obs_or_fqs', 'output', 'placeholder', 'prepare', 'qscheme', 'quant_max', 'quant_min', 'target_dtype_info', 'val', 'weight', 'weight_index', 'weight_obs_or_fq_ctr']

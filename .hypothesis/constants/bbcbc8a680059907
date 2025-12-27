@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shapely\geometry\geo.py
+# hypothesis_version: 6.148.7
+
+['__geo_interface__', 'coordinates', 'feature', 'geometries', 'geometry', 'geometrycollection', 'linearring', 'linestring', 'multilinestring', 'multipoint', 'multipolygon', 'point', 'polygon', 'type']

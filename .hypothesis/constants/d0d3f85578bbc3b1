@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\chordal.py
+# hypothesis_version: 6.148.7
+
+['Graph has no nodes.', 'directed', 'find_induced_nodes', 'is_chordal', 'multigraph']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\compiler_bisector.py
+# hypothesis_version: 6.148.7
+
+['=', 'TORCH_BISECT_BACKEND', 'TORCH_BISECT_MAX', '__main__', 'aot_eager', 'backend=', 'bad', 'bisect', 'bisect_status.txt', 'cse', 'decomposition', 'eager', 'end', 'fallback_random', 'find_max_bounds', 'good', 'high=', 'inductor', 'joint_graph_passes', 'layout_optimization', 'low=', 'lowerings', 'post_grad_passes', 'start', 'subsystem=', 'test_disable', 'w']

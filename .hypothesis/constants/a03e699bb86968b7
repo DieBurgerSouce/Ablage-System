@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\dependencies.py
+# hypothesis_version: 6.148.7
+
+['MemoryDep', 'ReadWrites', 'StarDep', 'T', 'WeakDep', 'allow_indexing', 'c', 'd', 'indirect|tmp', 't']

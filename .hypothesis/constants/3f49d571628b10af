@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\kernel\flex\flex_decoding.py
+# hypothesis_version: 6.148.7
+
+[1.0, 128, 'BLOCK_M', 'BLOCK_N', 'GQA_SHARED_HEADS', 'HAS_FULL_BLOCKS', 'IS_DIVISIBLE', 'OUTPUT_MAX', 'SAFE_M_BOUNDARY', 'SAFE_N_BOUNDARY', 'SM_SCALE', 'SPARSE_KV_BLOCK_SIZE', 'SPLIT_KV', 'USE_TMA', 'bwd_', 'common', 'cuda', 'flex_decode', 'flex_decoding', 'fwd_', 'inf', 'kpack', 'matrix_instr_nonkdim', 'num_consumer_groups', 'num_stages', 'num_warps', 'utilities', 'waves_per_eu', 'xpu']

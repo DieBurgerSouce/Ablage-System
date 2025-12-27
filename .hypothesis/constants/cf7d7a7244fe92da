@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\openpyxl\chart\layout.py
+# hypothesis_version: 6.148.7
+
+['edge', 'factor', 'h', 'hMode', 'inner', 'layout', 'layoutTarget', 'manualLayout', 'outer', 'w', 'wMode', 'x', 'xMode', 'y', 'yMode']

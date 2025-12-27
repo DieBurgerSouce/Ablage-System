@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\validators\domain.py
+# hypothesis_version: 6.148.7
+
+['$', '.', 'BR', 'COM', 'DE', 'FR', 'IT', 'JP', 'NET', 'ONION', 'ORG', 'PYVLD_CACHE_TLD', 'RU', 'True', 'UK', '\\.?$', '\\s|__+', '_', '_tld.txt', 'idna', 'utf-8']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\llvmlite\binding\executionengine.py
+# hypothesis_version: 6.148.7
+
+['aarch64', 'arm64', 'ascii', 'buf_len', 'buf_ptr', 'module_ptr']

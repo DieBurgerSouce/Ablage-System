@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\gdpr_service.py
+# hypothesis_version: 6.148.7
+
+['%d.%m.%Y', '...', '0.0.0.0', 'DELETED_GDPR_ART17', '[GELÖSCHT]', 'api_keys', 'audit_logs', 'can_cancel', 'days_remaining', 'deletion_requested', 'documents', 'minio_files', 'nachricht', 'unbekannt']

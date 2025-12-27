@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sympy\solvers\ode\nonhomogeneous.py
+# hypothesis_version: 6.148.7
+
+[' (Wronskian == 0)', 'Cannot find ', 'Value should be 1', 'a', 'b', 'coeff', 'exp', 'list', 'sol', 'test', 'trialset', 'x']

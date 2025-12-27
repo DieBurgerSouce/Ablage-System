@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\gdpr.py
+# hypothesis_version: 6.148.7
+
+['%d.%m.%Y', '***@***', '...', '/admin/gdpr', '/cancel-deletion', '/deletion-status', '/exports', '/exports/{export_id}', '/pending-deletions', '/request-deletion', '/request-export', '/users/me/gdpr', '/users/{user_id}', 'Admin - GDPR', 'Export herunterladen', 'GDPR', 'Löschstatus abfragen', 'Unbekannter Status', 'api_keys', 'application/zip', 'audit_logs', 'completed', 'documents', 'email', 'expired', 'failed', 'pending', 'pending_deletions', 'processing', 'reason', 'total', 'user_id']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\parsers\__init__.py
+# hypothesis_version: 6.148.7
+
+['BaseParser', 'CAMT053Parser', 'GenericCSVParser', 'MT940Parser', 'ParseResult', 'ParsedTransaction', 'ParserRegistry', 'detect_format']

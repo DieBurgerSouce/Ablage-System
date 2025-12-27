@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\rocm\rocm_template.py
+# hypothesis_version: 6.148.7
+
+['KERNEL_NAME', 'buf_out', 'get_dtype', 'size_args']

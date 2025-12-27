@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\utils\pytorch.py
+# hypothesis_version: 6.148.7
+
+['_CompiledModule', '_bf16_to_float32', '_copy_tensor', 'batch_size', 'bias', 'conv_sequence_pt', 'cpu', 'export_model_to_onnx', 'input', 'logits', 'models', 'set_device_and_dtype']

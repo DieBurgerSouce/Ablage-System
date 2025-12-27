@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\scipy\io\matlab\mio5.py
+# hypothesis_version: 6.148.7
+
+['MatReadError', 'MatReadWarning', 'MatWriteError', 'MatlabFunction', 'MatlabObject', '_mio5', 'io.matlab', 'mat_struct', 'mio5', 'varmats_from_mat']

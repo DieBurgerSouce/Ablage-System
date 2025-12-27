@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numba\core\externals.py
+# hypothesis_version: 6.148.7
+
+[128, 4294967295, '__fixunsdfdi', '__fixunssfdi', '__multi3', '_ftol', '_ftol2', 'fptoui', 'fptouif', 'linux', 'multi3', 'win32']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\mt940\tags.py
+# hypothesis_version: 6.148.7
+
+[330, '([A-Z][a-z]+)', '60F', '60M', '62F', '62M', '90C', '90D', 'C', 'D', 'NS', '_', '_floor_limit', 'amount', 'c_floor_limit', 'currency', 'd_floor_limit', 'date', 'entry_date', 'entry_day', 'entry_month', 'guessed_entry_date', 'non_swift', 'non_swift_', 'non_swift_text', 'ns_data', 'ns_id', 'status']

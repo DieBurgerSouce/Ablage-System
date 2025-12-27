@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\kombu\exceptions.py
+# hypothesis_version: 6.148.7
+
+['BaseExceptionType', 'ChannelError', 'ChannelLimitExceeded', 'ConnectionError', 'DecodeError', 'EncodeError', 'HttpError', 'InconsistencyError', 'KombuError', 'LimitExceeded', 'MessageStateError', 'NotBoundError', 'OperationalError', 'ResourceError', 'SerializationError', 'TimeoutError', 'VersionMismatch', 'reraise']

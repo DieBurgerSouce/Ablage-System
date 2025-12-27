@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\covariance\_shrunk_covariance.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 1.0, 2.0, 1000, 'X', 'array-like', 'assume_centered', 'block_size', 'boolean', 'both', 'emp_cov', 'left', 'shrinkage']

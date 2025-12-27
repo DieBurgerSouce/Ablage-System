@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\feature_extraction\_hash.py
+# hypothesis_version: 6.148.7
+
+['alternate_sign', 'boolean', 'both', 'dict', 'dtype', 'input_type', 'iteritems', 'n_features', 'no_validation', 'pair', 'raw_X', 'string']

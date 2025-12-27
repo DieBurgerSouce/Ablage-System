@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\sizevars.py
+# hypothesis_version: 6.148.7
+
+[256, 'SimplifyIndexing', '_merge_tester1', '_merge_tester2', '_rest', 'base', 'divisor', 'failed on: %s', 'modulus', 'modulus2', 'scale', 'sizevars.expect_true']

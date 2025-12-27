@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\cpp_gemm_template.py
+# hypothesis_version: 6.148.7
+
+[0.5, 0.8, 1.0, 8.0, ',', 'K', 'N', 'VNNI2', 'VNNI4', 'W', 'X', '_BMatrixCompens', '_T', '_x_w_compens', 'bias_add', 'fake_buffers', 'get_attr', 'get_dtype', 'get_size', 'inductor', 'is_dynamic_M', 'micro_gemm', 'packed_gemm']

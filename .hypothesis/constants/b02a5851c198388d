@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\utils\threads.py
+# hypothesis_version: 6.148.7
+
+['<{} storages: {}>', 'Local', 'LocalManager', 'LocalStack', 'USE_FAST_LOCALS', '__ident_func__', '__storage__', 'bgThread', 'get_ident', 'object unbound', 'stack', '{0!r} crashed: {1!r}']

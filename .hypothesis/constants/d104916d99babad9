@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\classes\filters.py
+# hypothesis_version: 6.148.7
+
+['hide_diedges', 'hide_edges', 'hide_multidiedges', 'hide_multiedges', 'hide_nodes', 'no_filter', 'show_diedges', 'show_edges', 'show_multidiedges', 'show_multiedges', 'show_nodes']

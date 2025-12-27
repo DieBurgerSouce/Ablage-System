@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\admin\job_admin_service.py
+# hypothesis_version: 6.148.7
+
+[1000, 'backend', 'cancel', 'cancel_job', 'clear_queue', 'cleared_count', 'created_at', 'job_id', 'job_retried_by_admin', 'new_job_id', 'original_job_id', 'previous_status', 'priority', 'reason', 'retry', 'retry_job', 'status', 'value']

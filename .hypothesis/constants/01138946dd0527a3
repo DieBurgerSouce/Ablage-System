@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torchvision\datasets\country211.py
+# hypothesis_version: 6.148.7
+
+['country211', 'split', 'test', 'train', 'valid']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\middleware\security_headers.py
+# hypothesis_version: 6.148.7
+
+[31536000, "'self'", ', ', '1; mode=block', '; ', 'DENY', 'Permissions-Policy', 'Referrer-Policy', 'X-Download-Options', 'X-Frame-Options', 'X-Request-ID', 'X-XSS-Protection', 'accelerometer=()', 'autoplay=()', "base-uri 'self'", 'camera=()', "connect-src 'self'", "default-src 'self'", 'display-capture=()', 'encrypted-media=()', "font-src 'self'", "form-action 'self'", 'fullscreen=()', 'geolocation=()', 'gyroscope=()', 'keyboard-map=()', 'magnetometer=()', 'microphone=()', 'midi=()', 'none', 'noopen', 'nosniff', "object-src 'none'", 'off', 'payment=()', 'same-origin', 'screen-wake-lock=()', "script-src 'self'", 'sync-xhr=()', 'usb=()', 'web-share=()']

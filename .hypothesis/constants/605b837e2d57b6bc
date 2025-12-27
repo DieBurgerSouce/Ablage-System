@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\constant_folding.py
+# hypothesis_version: 6.148.7
+
+['MODULE_TYPE', '_CONST_MODULE', '_MAIN_MODULE', '_frozen_param_count', 'call_function', 'get_attr', 'meta', 'output', 'placeholder', 'val']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\idempotency.py
+# hypothesis_version: 6.148.7
+
+[200, 300, 409, 86400, ':', 'Idempotency-Key', 'T', 'X-Idempotency-Key', 'auto', 'cached_at', 'error', 'idempotency:', 'idempotency_key', 'nachricht', 'processing', 'request_in_progress', 'response', 'status_code', 'user']

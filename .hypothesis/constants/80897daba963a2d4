@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\opt_einsum\path_random.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 128, 'RandomGreedy', '_managing_executor', 'flops', 'inf', 'random_greedy', 'random_greedy_128', 'size', 'ssa_path']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\xgboost\__init__.py
+# hypothesis_version: 6.148.7
+
+['Booster', 'DMatrix', 'DataIter', 'QuantileDMatrix', 'RabitTracker', 'XGBClassifier', 'XGBModel', 'XGBRFClassifier', 'XGBRFRegressor', 'XGBRanker', 'XGBRegressor', 'build_info', 'collective', 'config_context', 'cv', 'get_config', 'plot_importance', 'plot_tree', 'set_config', 'to_graphviz', 'train']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\utils\flop_counter.py
+# hypothesis_version: 6.148.7
+
+[999999, ' - ', '% Total', '.', '0', '0%', 'B', 'FLOP', 'FlopCounterMode', 'Global', 'K', 'M', 'Module', 'T', '_P', '_T', '_get_raw', 'left', 'meta', 'right']

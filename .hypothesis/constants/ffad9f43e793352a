@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\classification\vgg\pytorch.py
+# hypothesis_version: 6.148.7
+
+[0.296, 0.299, 0.301, 0.693, 0.694, 0.695, 512, 'classes', 'classifier.bias', 'classifier.weight', 'french', 'input_shape', 'mean', 'num_classes', 'std', 'url', 'vgg16_bn', 'vgg16_bn_r']

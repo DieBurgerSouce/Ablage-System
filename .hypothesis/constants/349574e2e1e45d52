@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\document_grouping_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.03, 0.1, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.98, 0.99, 1.0, 'Neue Dokumentgruppe', 'auto_confirmed', 'common_references', 'completeness', 'confidence', 'content_similarity', 'create_group_no_db', 'details', 'detection_method', 'document_count', 'document_group_split', 'end_sequence', 'filename_sequence', 'first_timestamp', 'found_pages', 'general', 'grouped_documents', 'groups_found', 'header_match', 'invoice', 'last_timestamp', 'load_documents_no_db', 'multi_page', 'needs_review', 'order', 'page_numbering', 'reference_match', 'reference_type', 'references', 'relationships_found', 'same_sender', 'sequence_end', 'sequence_length', 'sequence_start', 'stapled', 'start_sequence', 'time_span_seconds', 'timestamp_proximity', 'total_detections', 'total_documents', 'total_pages', 'type', 'user_split']

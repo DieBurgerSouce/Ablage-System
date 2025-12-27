@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\document_services\__init__.py
+# hypothesis_version: 6.148.7
+
+['DocumentBatchService', 'DocumentCRUDService', 'DocumentGDPRService', 'get_export_service', 'get_gdpr_service']

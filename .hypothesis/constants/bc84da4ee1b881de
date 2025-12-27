@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\ao\quantization\fx\convert.py
+# hypothesis_version: 6.148.7
+
+['_axis_', '_dtype_', '_eps_', '_input', '_quant_max_', '_quant_min_', '_reduce_range_', '_scale_', '_zero_point_', 'call_function', 'call_method', 'call_module', 'convert', 'dequantize', 'eps', 'fbgemm', 'is_decomposed', 'is_dynamic', 'out_dtype', 'output', 'placeholder', 'qscheme', 'to', 'val', 'weight', 'weight_hh', 'weight_ih', 'x86']

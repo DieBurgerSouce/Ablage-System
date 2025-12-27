@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\utils\functional.py
+# hypothesis_version: 6.148.7
+
+['*', ', ', '...', '<{}: [{}{}]>', 'LRUCache', '__name__', 'chunks', 'dictfilter', 'first', 'firstmethod', 'fun_accepts_kwargs', 'head_from_fun', 'is_list', 'lazy', 'mattrgetter', 'maybe', 'maybe_evaluate', 'maybe_list', 'memoize', 'mlazy', 'noop', 'padlist', 'regen', 'uniq']

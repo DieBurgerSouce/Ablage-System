@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\nn\utils\_expanded_weights\instance_norm_expanded_weights.py
+# hypothesis_version: 6.148.7
+
+['bias', 'eps', 'ni...->ni', 'running_mean', 'running_var', 'weight']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\ensemble\_base.py
+# hypothesis_version: 6.148.7
+
+['__random_state', 'drop', 'estimators', 'random_state', 'sample_weight']

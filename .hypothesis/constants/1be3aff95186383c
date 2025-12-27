@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pandas\core\arrays\string_arrow.py
+# hypothesis_version: 6.148.7
+
+['\\\\\\d', '\\g<', 'all', 'any', 'argmax', 'argmin', 'float64', 'max', 'min', 'pyarrow', 'string', 'sum', '|']

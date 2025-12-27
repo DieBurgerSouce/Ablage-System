@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\fx\passes\fake_tensor_prop.py
+# hypothesis_version: 6.148.7
+
+['FakeTensorProp', 'call_function', 'get_attr', 'unbacked_bindings', 'val']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\tree\__init__.py
+# hypothesis_version: 6.148.7
+
+['BaseDecisionTree', 'ExtraTreeClassifier', 'ExtraTreeRegressor', 'export_graphviz', 'export_text', 'plot_tree']

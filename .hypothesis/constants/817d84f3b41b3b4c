@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\batch_jobs.py
+# hypothesis_version: 6.148.7
+
+[100, 201, 400, 403, 404, 500, '/active', '/batch-jobs', '/{batch_id}', '/{batch_id}/cancel', '/{batch_id}/pause', '/{batch_id}/progress', '/{batch_id}/resume', 'Eintraege pro Seite', 'Nach Job-Typ filtern', 'Nach Status filtern', '^(de|en)$', 'action', 'auto', 'backend', 'batch-jobs', 'batch_id', 'batch_job_id', 'batch_job_paused_api', 'cancel', 'de', 'document_ids', 'embedding', 'failed', 'failed_documents', 'id', 'is_paused', 'language', 'message', 'ocr', 'pause', 'processed', 'processed_documents', 'progress', 'resume', 'status', 'success', 'total', 'total_documents', 'user_id']

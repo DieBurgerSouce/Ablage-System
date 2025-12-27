@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_functorch\eager_transforms.py
+# hypothesis_version: 6.148.7
+
+['error', 'inputs', 'jacfwd', 'jacrev', 'mutations', 'mutations_and_views', 'outputs', 'primals', 'tangents', 'torch.func', 'vjp(f, *primals)']

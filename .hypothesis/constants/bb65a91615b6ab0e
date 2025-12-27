@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\_state.py
+# hypothesis_version: 6.148.7
+
+['-- USES CURRENT_APP', 'CELERY_LOADER', 'CELERY_TRACE_APP', 'C_STRICT_APP', 'C_WARN_APP', 'DEFAULT APP', 'MainProcess', 'USES CURRENT APP', 'current_app', 'current_task', 'default', 'get_current_app', 'get_current_task', 'set_default_app']

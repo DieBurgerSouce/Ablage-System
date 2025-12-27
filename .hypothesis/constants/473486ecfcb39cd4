@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\redis\typing.py
+# hypothesis_version: 6.148.7
+
+['AnyChannelT', 'AnyFieldT', 'AnyKeyT', 'Encoder']

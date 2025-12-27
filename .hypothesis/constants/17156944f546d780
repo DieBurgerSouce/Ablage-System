@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numba\np\ufunc\decorators.py
+# hypothesis_version: 6.148.7
+
+['cache', 'cpu', 'identity', 'is_dynamic', 'parallel', 'target', 'writable_args']

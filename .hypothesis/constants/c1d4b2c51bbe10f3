@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\quantizers\quantizer_eetq.py
+# hypothesis_version: 6.148.7
+
+['PreTrainedModel', 'accelerate', 'bias', 'cpu', 'device_map', 'disk', 'eetq', 'from_flax', 'from_tf', 'shard_checkpoint', 'torch.Tensor', 'torch.device', 'torch.dtype', 'weight', 'weight_scale', 'weight_scales']

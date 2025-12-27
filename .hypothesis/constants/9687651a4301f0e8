@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\distributed\tensor\_ops\_matrix_ops.py
+# hypothesis_version: 6.148.7
+
+['bmk,bkn->bmn', 'i,i->', 'mk,kn->mn']

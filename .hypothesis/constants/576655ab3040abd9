@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\memory.py
+# hypothesis_version: 6.148.7
+
+[' -> ', '%s peak memory: %d', '_', 'arg', 'baseline', 'bwd_rng_state', 'fwd_rng_state', 'indegree', 'inductor', 'memory', 'memory_to_free', 'order', 'orm', 'outdegree', 'primals_']

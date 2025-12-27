@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\cpp_template.py
+# hypothesis_version: 6.148.7
+
+['Generated Code:\n%s', 'allow_indexing', 'get_dtype', 'linux', 'win32']

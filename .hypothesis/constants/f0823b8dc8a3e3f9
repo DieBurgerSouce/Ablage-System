@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\ua_parser\__init__.py
+# hypothesis_version: 6.148.7
+
+[2000, 'BasicResolver', 'Cache', 'CachingResolver', 'DefaultedResult', 'Device', 'Domain', 'Matchers', 'OS', 'PartialResult', 'Resolver', 'Result', 'UserAgent', 'load_builtins', 'load_lazy_builtins', 'parse', 'parse_device', 'parse_os', 'parse_user_agent', 'parser', 're2', 'ua_parser_rs']

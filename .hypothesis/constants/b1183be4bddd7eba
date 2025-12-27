@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\explainers\other\_maple.py
+# hypothesis_version: 6.148.7
+
+[0.001, 0.2, 0.5, 1.0, 200, 'Unknown FE type ', 'coefs', 'gbdt', 'gbrt', 'pred', 'rf', 'weights']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pgvector\sqlalchemy\__init__.py
+# hypothesis_version: 6.148.7
+
+['BIT', 'HALFVEC', 'HalfVector', 'SPARSEVEC', 'SparseVector', 'VECTOR', 'Vector', 'avg', 'sum']

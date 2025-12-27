@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\h5py\_hl\dataset.py
+# hypothesis_version: 6.148.7
+
+['"%s"', '(anonymous)', ', ', '=f4', 'C', 'Dataset', 'O', 'S', 'T', 'V', '_fast_reader', '_selector', 'fletcher32', 'gzip', 'lzf', 'scaleoffset', 'shape', 'shuffle', 'size', 'strict', 'szip', 'utf-8']

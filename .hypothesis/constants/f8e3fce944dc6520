@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\cuda\streams.py
+# hypothesis_version: 6.148.7
+
+['_CudaEventBase', '_CudaStreamBase', 'device_index', 'stream_id']

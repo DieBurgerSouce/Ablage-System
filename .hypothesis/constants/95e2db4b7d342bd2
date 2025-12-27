@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\accelerate\utils\transformer_engine.py
+# hypothesis_version: 6.148.7
+
+['LayerNorm', '__func__', 'amax_compute_algo', 'amax_history_len', 'fp8_format']

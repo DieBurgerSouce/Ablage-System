@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\rag\jobs.py
+# hypothesis_version: 6.148.7
+
+[100, '/jobs', '/stats/overview', '/{job_id}', '/{job_id}/cancel', 'Batch-Jobs auflisten', 'Eintraege pro Seite', 'Job abbrechen', 'Job geloescht', 'Job loeschen', 'Job nicht gefunden', 'Job-Status abrufen', 'Nach Job-Typ filtern', 'Nach Status filtern', 'Seite', 'avg_duration_seconds', 'batch_job_cancelled', 'batch_job_created', 'batch_job_deleted', 'created_at', 'error_rate_percent', 'failed', 'id', 'job_id', 'job_type', 'message', 'progress_percent', 'rag-jobs', 'recent_jobs', 'status', 'status_counts', 'success', 'total_jobs']

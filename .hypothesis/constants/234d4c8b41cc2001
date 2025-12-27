@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\ensemble\_stacking.py
+# hypothesis_version: 6.148.7
+
+['auto', 'boolean', 'cv', 'cv_object', 'decision_function', 'drop', 'estimators', 'feature_names_in_', 'final_estimator', 'final_estimator_', 'fit', 'multilabel-indicator', 'n_features_in_', 'n_jobs', 'parallel', 'passthrough', 'predict', 'predict_proba', 'prefit', 'random_state', 'sample_weight', 'serial', 'stack_method', 'verbose']

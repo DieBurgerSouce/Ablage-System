@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\export\pt2_archive\__init__.py
+# hypothesis_version: 6.148.7
+
+['PT2ArchiveReader', 'PT2ArchiveWriter', 'is_pt2_package']

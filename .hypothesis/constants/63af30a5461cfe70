@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\fx\immutable_collections.py
+# hypothesis_version: 6.148.7
+
+['_KT', '_T', '_VT', 'immutable_dict', 'immutable_list']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sympy\simplify\powsimp.py
+# hypothesis_version: 6.148.7
+
+['all', 'base', 'combine', 'deep', 'exp', 'force', 'measure', 'y']

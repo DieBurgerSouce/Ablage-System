@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\contrib\artefacts.py
+# hypothesis_version: 6.148.7
+
+[0.5, 255.0, 1024, 'ArtefactDetector', 'bar_code', 'box', 'confidence', 'input_shape', 'label', 'labels', 'logo', 'matplotlib', 'photo', 'qr_code', 'red', 'url', 'yolov8_artefact']

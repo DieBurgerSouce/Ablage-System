@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\ensemble\_hist_gradient_boosting\grower.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.001, 1.0, 256, '+inf', '-inf', 'bin_threshold', 'bitset_idx', 'count', 'depth', 'feature_idx', 'gain', 'is_categorical', 'is_leaf', 'left', 'missing_go_to_left', 'num_threshold', 'right', 'sum_gradients', 'sum_hessians', 'value']

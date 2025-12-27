@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numba\misc\special.py
+# hypothesis_version: 6.148.7
+
+['"%s"', ',', '_gdb_func_injection', 'as_numba_type', 'gdb', 'gdb_breakpoint', 'gdb_init', 'literal_unroll', 'literally', 'pndindex', 'prange', 'typeof']

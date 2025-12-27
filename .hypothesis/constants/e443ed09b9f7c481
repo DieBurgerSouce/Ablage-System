@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\quantizers\quantizer_auto_round.py
+# hypothesis_version: 6.148.7
+
+['PreTrainedModel', 'auto_round', 'device_map', 'input_ids', 'torch.dtype']

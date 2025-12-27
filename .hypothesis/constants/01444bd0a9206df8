@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\discriminant_analysis.py
+# hypothesis_version: 6.148.7
+
+[-0.5, 0.0, 1e-05, 0.0001, 1.0, 'array-like', 'auto', 'boolean', 'both', 'covariance_', 'covariance_estimator', 'eigen', 'empirical', 'fit', 'left', 'lsqr', 'n_components', 'priors', 'reg_param', 'shrinkage', 'smallest_normal', 'solver', 'store_covariance', 'svd', 'tol']

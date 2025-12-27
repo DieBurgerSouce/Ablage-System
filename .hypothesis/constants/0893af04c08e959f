@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\explainers\_partition.py
+# hypothesis_version: 6.148.7
+
+[1.0, 500, 'auto', 'clustering', 'expected_values', 'fixed_background', 'hierarchical_values', 'main_effects', 'mask_shapes', 'max(', 'max(abs(', 'min(', 'output_indices', 'output_names', 'partition', 'shap.models.Model', 'shape', 'values']

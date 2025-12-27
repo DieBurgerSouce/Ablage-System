@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\autotune_process.py
+# hypothesis_version: 6.148.7
+
+[0.0, 120.0, ',', '0', '1', 'CUDA_VISIBLE_DEVICES', 'Done precompiling %s', 'LD_LIBRARY_PATH', 'Precompiling %s', 'TORCH_WARM_POOL', '__autotune_main__.py', 'autotuning', 'close', 'cpu', 'cuda', 'device', 'dtype', 'fake', 'inf', 'offset', 'rb', 'sizes', 'so', 'strides', 'warmup', 'wb']

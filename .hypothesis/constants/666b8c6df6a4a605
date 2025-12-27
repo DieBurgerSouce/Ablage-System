@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\comm_analysis.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.6, 1.0, 2.7, 3.0, 4.0, 5.0, 6.6, 6.8, 19.0, 20.4, 22.5, 39.0, 87.7, 1000.0, 1000000.0, 1000000000.0, 1024, 'A100', 'H100', 'V100', 'all_gather', 'all_reduce', 'python_kernel_name', 'reduce_scatter']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\quantized_lowerings.py
+# hypothesis_version: 6.148.7
+
+[255, '_weight_int8pack_mm', 'mul']

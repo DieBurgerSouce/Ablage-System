@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\ao\quantization\fx\lower_to_fbgemm.py
+# hypothesis_version: 6.148.7
+
+['lower_to_fbgemm']

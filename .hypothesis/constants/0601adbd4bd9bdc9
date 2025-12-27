@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_dynamo\backends\debugging.py
+# hypothesis_version: 6.148.7
+
+['    User Stack:\n', 'Break Reasons:\n', 'Ops per Graph:\n', 'Out Guards:\n', 'ReluRuntimeError', 'Target', 'all', 'aot_eager', 'aot_ts', 'aten', 'call_function', 'custom_ops', 'inductor', 'prim', 'prims', 'ts', 'unlift_effect_tokens']

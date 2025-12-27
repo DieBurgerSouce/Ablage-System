@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\accelerate\commands\config\config.py
+# hypothesis_version: 6.148.7
+
+['--config_file', '.json', 'This machine', '__main__', 'config']

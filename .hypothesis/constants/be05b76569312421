@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\io\elements.py
+# hypothesis_version: 6.148.7
+
+['Artefact', 'Block', 'Content-Type', 'Document', 'Element', 'KIEPage', 'Line', 'Page', 'Prediction', 'Word', 'artefacts', 'blocks', 'body', 'class', 'confidence', 'content', 'crop_orientation', 'dimensions', 'div', 'en', 'geometry', 'head', 'html', 'http-equiv', 'id', 'language', 'lines', 'matplotlib', 'meta', 'mplcursors', 'name', 'objectness_score', 'ocr-capabilities', 'ocr-system', 'ocr_carea', 'ocr_line', 'ocr_page', 'ocr_par', 'ocrx_word', 'orientation', 'p', 'page_idx', 'pages', 'predictions', 'span', 'title', 'type', 'utf-8', 'value', 'words', 'xml', 'xml:lang', 'xmlns']

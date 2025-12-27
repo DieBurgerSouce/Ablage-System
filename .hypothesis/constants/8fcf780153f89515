@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\shap\explainers\_coalition.py
+# hypothesis_version: 6.148.7
+
+[100, 500, 'Root', 'auto', 'clustering', 'expected_values', 'fixed_background', 'hierarchical_values', 'isin', 'main_effects', 'mask_shapes', 'output_indices', 'output_names', 'partition', 'shap.models.Model', 'shape', 'values']

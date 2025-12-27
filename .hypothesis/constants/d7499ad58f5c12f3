@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\admin\system.py
+# hypothesis_version: 6.148.7
+
+[4.0, 10.0, 12.0, '/backends', '/dashboard', '/gpu', '/gpu/clear-cache', '/health', '/queue', '/restart/{service}', '/stats', '/system', 'Admin - Systemstatus', 'Backend-Status', 'DeepSeek-Janus-Pro', 'Dienst neustarten', 'GOT-OCR 2.0', 'GPU-Cache leeren', 'GPU-Status', 'Gesundheitsstatus', 'Speicher freigegeben', 'Surya + Docling', 'Surya GPU', 'System-Dashboard', 'Warteschlangenstatus', 'available', 'backends', 'celery', 'deepseek_janus', 'description', 'got_ocr', 'gpu_available', 'gpu_memory_total_gb', 'gpu_memory_used_gb', 'message', 'name', 'status', 'surya', 'surya_gpu', 'unavailable', 'vram_required_gb']

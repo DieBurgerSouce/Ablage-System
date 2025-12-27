@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\entities.py
+# hypothesis_version: 6.148.7
+
+[0.7, 1.0, 100, '/entities', '/extract', '/merge', '/suggestions', '/{entity_id}', '/{entity_id}/verify', 'Business Entities', 'Dokumente mitladen', 'Eintraege pro Seite', 'Entity verifizieren', 'Entity-Vorschlaege', 'Nach PLZ filtern', 'Nach Stadt filtern', 'Seitennummer', 'Sortierrichtung', 'addresses', 'city', 'company_names', 'confidence', 'created_at', 'document_filename', 'document_id', 'document_type', 'extraction', 'fetch', 'filename', 'iban', 'ibans', 'id', 'items', 'legal_form', 'name', 'normalized', 'page', 'per_page', 'postal_code', 'status', 'street', 'street_number', 'suggestions', 'total', 'type', 'value', 'vat_id', 'vat_ids']

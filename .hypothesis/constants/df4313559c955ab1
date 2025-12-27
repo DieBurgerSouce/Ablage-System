@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\cpp_template_kernel.py
+# hypothesis_version: 6.148.7
+
+['-', '<DEF_KERNEL>', 'CPP', 'CppTemplate', '_', 'backend', 'cpu', 'float', 'graph_', 'max_parallel_depth', 'op_type', 'unknown']

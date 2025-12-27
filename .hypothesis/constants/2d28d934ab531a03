@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\ocr\models\layout_models.py
+# hypothesis_version: 6.148.7
+
+[0.0, ' |', ' | ', '---', 'BoundingBox', 'bbox', 'caption', 'cells', 'code', 'col', 'col_span', 'confidence', 'element_count', 'element_type', 'elements', 'figure', 'figure_count', 'footer', 'footnote', 'formula', 'grid', 'has_footer', 'has_header', 'header', 'heading', 'height', 'is_header', 'list', 'markdown', 'metadata', 'num_cols', 'num_columns', 'num_rows', 'page_count', 'page_number', 'pages', 'reading_order', 'reading_order_valid', 'rotation', 'row', 'row_span', 'table', 'table_count', 'text', 'total_elements', 'unknown', 'width', 'x0', 'x1', 'y0', 'y1', '| ']

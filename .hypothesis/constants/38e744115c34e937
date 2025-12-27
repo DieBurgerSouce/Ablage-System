@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\gpu_metrics_service.py
+# hypothesis_version: 6.148.7
+
+[0.1, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 100, 1024, '0', '0.0', 'Aktive GPU-Tasks', 'GPU Informationen', 'Geladene Modelle', 'OCR-Fehler nach Typ', 'ablage_gpu', 'ablage_gpu_available', 'available', 'backend', 'batch_reduction', 'compute_capability', 'cuda:0', 'cuda_version', 'device', 'device_name', 'error', 'error_type', 'failure', 'free_bytes', 'gpu', 'gpu-metrics-updater', 'gpu_metrics', 'gpu_oom_recorded', 'l1', 'l2', 'last_update', 'level', 'model_load_recorded', 'model_name', 'none', 'ocr_request_recorded', 'oom', 'operation', 'registry', 'reserved_bytes', 'status', 'strategy', 'success', 'total_bytes', 'total_memory_gb', 'trigger', 'unavailable', 'unknown', 'usage_percent', 'used_bytes', 'worker']

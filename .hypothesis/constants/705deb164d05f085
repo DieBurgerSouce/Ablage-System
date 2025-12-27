@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\tokenization_utils.py
+# hypothesis_version: 6.148.7
+
+[123, 126, '(', '(.+?)', ')|', 'C', 'P', 'Zs', 'added_tokens.json', 'added_tokens_decoder', 'do_lower_case', 'normalized', 'special', 'split_special_tokens', 'use_source_tokenizer', '|']

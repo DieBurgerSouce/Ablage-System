@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\opt_einsum\paths.py
+# hypothesis_version: 6.148.7
+
+[0.01, 1.0, '1', 'BranchBound', 'DynamicProgramming', '_first_call_args', 'auto', 'auto-hq', 'auto_hq', 'branch', 'branch-1', 'branch-2', 'branch-all', 'dp', 'dynamic-programming', 'dynamic_programming', 'eager', 'flops', 'get_path_fn', 'greedy', 'inf', 'memory-removed', 'opportunistic', 'optimal', 'size', 'ssa_path']

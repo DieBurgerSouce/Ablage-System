@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\ocr\donut_agent.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.85, 1.0, 1000, 1920, '<s_classification>', '<s_cord-v2>', 'RGB', '\\{.*\\}', 'auto', 'classification', 'confidence', 'cpu', 'cs', 'cuda', 'de', 'detected', 'device', 'document_id', 'docvqa', 'donut', 'donut_modell_geladen', 'donut_ocr_agent', 'en', 'es', 'fr', 'image_path', 'it', 'ja', 'ko', 'lade_donut_modell', 'language', 'language_detected', 'model', 'nl', 'ocr', 'options', 'parsed', 'parsing', 'pl', 'processing_time_ms', 'pt', 'question', 'raw_output', 'ru', 'scores', 'structure', 'success', 'task', 'text', 'uk', 'zh', '{']

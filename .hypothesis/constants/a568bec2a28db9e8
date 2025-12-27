@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\isolate.py
+# hypothesis_version: 6.148.7
+
+['is_isolate', 'isolates', 'number_of_isolates']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\kombu\common.py
+# hypothesis_version: 6.148.7
+
+[65535, 'Broadcast', 'bcast', 'channel disconnected', 'collect_replies', 'content_encoding', 'correlation_id', 'drain_consumer', 'eventloop', 'fanout', 'insured', 'itermessages', 'maybe_declare', 'no_ack', 'queue', 'reply_to', 'routing_key', 'send_reply', 'serializer', 'uuid', '{:x}-{:x}-{:x}-{:x}', '{}.{}']

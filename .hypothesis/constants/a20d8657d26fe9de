@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numba\np\npdatetime_helpers.py
+# hypothesis_version: 6.148.7
+
+[365, 400, 1000, 'D', 'M', 'W', 'Y', 'as', 'fs', 'h', 'm', 'ms', 'nat', 'ns', 'ps', 's', 'us']

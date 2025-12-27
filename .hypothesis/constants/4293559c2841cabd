@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\utils\metrics.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 'DetectionMetric', 'OCRMetric', 'TextMatch', 'box_iou', 'nms', 'polygon_iou']

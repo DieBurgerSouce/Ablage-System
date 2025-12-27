@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\fx\interpreter.py
+# hypothesis_version: 6.148.7
+
+['*', '.', 'Interpreter', 'Target', 'Transformer', 'artifact', 'call_function', 'encoding', 'fx_interpreter_error', 'get_attr', 'name', 'output', 'placeholder', 'string']

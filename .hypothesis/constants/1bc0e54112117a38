@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\encryption.py
+# hypothesis_version: 6.148.7
+
+[b'ablage-system-encryption-kdf-v1', 100000, '...', ':', 'Data too short', 'ENCRYPTION_KEY', 'SECRET_KEY', 'already_current', 'data_decrypted', 'data_encrypted', 'decryption_failed', 'encryption_failed', 'error', 'errors', 'failed', 'get_secret_value', 'key_rotation_failed', 'migrated', 'skipped', 'total', 'total_users', 'user_id', 'utf-8', 'v']

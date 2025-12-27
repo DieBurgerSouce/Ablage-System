@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\runtime\benchmarking.py
+# hypothesis_version: 6.148.7
+
+[100, 1000, 'P', 'T', 'all', 'benchmarking', 'cpu', 'cuda', 'inductor', 'median', 'min', 'quantiles', 'requires Triton', 'return_mode']

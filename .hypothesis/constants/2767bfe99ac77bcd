@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\triton_utils.py
+# hypothesis_version: 6.148.7
+
+['*', '*fp8e4b8', '*fp8e4nv', '*fp8e5', '*fp8e5b16', '*i8', 'bf16', 'constexpr', 'cpu', 'experimental', 'fp16', 'fp32', 'i1', 'i32', 'i64', 'ks', 'load_seed_offset', 'nvTmaDesc', 'stable', 'tl.int32', 'tl.int64']

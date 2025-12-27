@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\openpyxl\styles\stylesheet.py
+# hypothesis_version: 6.148.7
+
+['Normal', 'borders', 'cellStyleXfs', 'cellStyles', 'cellXfs', 'colors', 'dxfs', 'fills', 'fonts', 'numFmts', 'styleSheet', 'tableStyles', 'xmlns']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\bipartite\matching.py
+# hypothesis_version: 6.148.7
+
+['coo', 'eppstein_matching', 'inf', 'maximum_matching', 'to_vertex_cover', 'weight']

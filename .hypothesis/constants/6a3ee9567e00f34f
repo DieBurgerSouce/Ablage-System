@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\detection\fast\pytorch.py
+# hypothesis_version: 6.148.7
+
+[1e-06, 0.1, 0.264, 0.2749, 0.287, 0.5, 0.772, 0.785, 0.798, 1.0, 128, 1024, '3', '4', '5', '6', 'FAST', 'bilinear', 'class_names', 'fan_out', 'fast_base', 'fast_small', 'fast_tiny', 'feat_extractor.', 'input_shape', 'logits', 'loss', 'mean', 'out_map', 'preds', 'prob_head.2.weight', 'relu', 'reparameterize', 'reparameterize_layer', 'std', 'url']

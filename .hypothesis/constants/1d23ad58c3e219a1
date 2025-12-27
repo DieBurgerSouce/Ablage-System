@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_functorch\aot_autograd.py
+# hypothesis_version: 6.148.7
+
+['_backend_id', '_orig_mod', 'aot_collect_metadata', 'backend_compile', 'val']

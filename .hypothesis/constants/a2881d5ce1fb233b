@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\parsers\camt053_parser.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.4, 0.5, 0.7, 0.9, 0.95, 3000, '%Y-%m-%d', '.', './/Stmt', '.camt', '.camt053', '.xml', '/', '20022', '<?xml', '<acct>', '<bal>', '<ntry>', '<stmt>', '<txdtls>', 'Acct', 'AcctSvcrRef', 'AddtlNtryInf', 'Amt', 'Bal', 'BkTxCd/Prtry/Cd', 'BookgDt/Dt', 'CLAV', 'CLBD', 'Ccy', 'CdtDbtInd', 'CdtrRefInf/Ref', 'DBIT', 'Dt/Dt', 'EUR', 'Id/IBAN', 'Nm', 'Ntry', 'NtryDtls/TxDtls', 'OPBD', 'Refs/EndToEndId', 'Refs/MndtId', 'RltdPties/Cdtr', 'RltdPties/Dbtr', 'RmtInf', 'Stmt', 'Strd', 'Svcr/FinInstnId/BIC', 'Tp/CdOrPrtry/Cd', 'Ustrd', 'ValDt/Dt', 'bktocstmrstmt', 'camt', 'camt.053', 'camt04', 'camt08', 'camt_acct_svcr_ref', 'camt_cdt_dbt_ind', 'customer_numbers', 'invoice_numbers', 'iso:std:iso:20022', 'message', 'order_numbers', 'parse_error', 'replace', 'type', 'utf-8', 'xml_error', '{', '}']

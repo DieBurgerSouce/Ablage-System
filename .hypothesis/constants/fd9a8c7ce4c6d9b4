@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torchvision\datasets\clevr.py
+# hypothesis_version: 6.148.7
+
+['*', 'clevr', 'image_filename', 'images', 'objects', 'scenes', 'split', 'test', 'train', 'val']

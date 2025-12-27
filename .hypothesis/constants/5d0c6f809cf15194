@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\relabel.py
+# hypothesis_version: 6.148.7
+
+['decreasing degree', 'default', 'increasing degree', 'not copy', 'relabel_nodes', 'sorted']

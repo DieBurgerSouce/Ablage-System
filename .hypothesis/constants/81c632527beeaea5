@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\video_processing_utils.py
+# hypothesis_version: 6.148.7
+
+[255.0, 255, 'AutoVideoProcessor', 'F.InterpolationMode', '_from_auto', '_from_pipeline', '_processor_class', '_valid_kwargs_names', 'cache_dir', 'commit_message', 'crop_size', 'data_format', 'default_to_square', 'device', 'do_sample_frames', 'file_type', 'force_download', 'from_auto_class', 'input_data_format', 'local_files_only', 'main', 'pixel_values_videos', 'processor_class', 'proxies', 'r', 'repo_id', 'resume_download', 'return_metadata', 'return_tensors', 'return_unused_kwargs', 'revision', 'size', 'subfolder', 'token', 'torch.Tensor', 'torchcodec', 'torchvision', 'use_auth_token', 'using_pipeline', 'utf-8', 'video processor', 'video processor file', 'video_metadata', 'video_processor', 'video_processor_type', 'vision', 'w']

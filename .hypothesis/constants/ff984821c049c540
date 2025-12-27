@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\opt_einsum\sharing.py
+# hypothesis_version: 6.148.7
+
+[',', '->', 'backend', 'count_cached_ops', 'currently_sharing', 'einsum', 'einsum_cache_wrap', 'get_sharing_cache', 'numpy', 'shared_intermediates', 'tensor', 'tensordot', 'transpose', 'transpose_cache_wrap']

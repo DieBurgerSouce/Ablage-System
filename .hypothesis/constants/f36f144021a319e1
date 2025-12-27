@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_export\pass_infra\node_metadata.py
+# hypothesis_version: 6.148.7
+
+['NodeMetadata', 'debug_handle', 'nn_module_stack', 'stack_trace', 'tensor_meta', 'val']

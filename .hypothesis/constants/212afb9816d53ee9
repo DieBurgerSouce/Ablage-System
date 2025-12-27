@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\einvoice\parser_service.py
+# hypothesis_version: 6.148.7
+
+[b'%PDF', b'<', b'<?xml', '.pdf', '.xml', '1.', '2.0', '2.1', '2.2', '2.3', '3.', 'BASIC', 'COMFORT', 'EN16931', 'EXTENDED', 'MINIMUM', 'WL', 'XRECHNUNG', '_', 'document_id', 'einvoice_id', 'einvoice_stored', 'error', 'facturx', 'filename', 'format', 'invoice_number', 'profile', 'size_bytes', 'unknown', 'utf-8', 'version', 'xrechnung_cii', 'zugferd']

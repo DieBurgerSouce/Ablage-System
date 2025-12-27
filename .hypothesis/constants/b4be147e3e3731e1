@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torchvision\tv_tensors\_bounding_boxes.py
+# hypothesis_version: 6.148.7
+
+['CXCYWH', 'CXCYWHR', 'XYWH', 'XYWHR', 'XYXY', 'XYXYXYXY', 'hard', 'soft']

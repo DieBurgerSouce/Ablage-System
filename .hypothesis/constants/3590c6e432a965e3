@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\donut\processing_donut.py
+# hypothesis_version: 6.148.7
+
+['/>', '<', '</s_', '<s_', '<sep/>', '>', 'AutoImageProcessor', 'AutoTokenizer', 'DonutProcessor', 'add_special_tokens', 'feature_extractor', 'image_processor', 'images_kwargs', 'input_ids', 'labels', 'text_kwargs', 'text_sequence', 'tokenizer']

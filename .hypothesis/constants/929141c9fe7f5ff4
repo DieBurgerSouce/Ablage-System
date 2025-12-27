@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\mt940\_compat.py
+# hypothesis_version: 6.148.7
+
+['BytesIO', 'PY2', 'StringIO', '__stdout__', '_identity', 'ascii_lowercase', 'cmp', 'configparser', 'console_to_str', 'imap', 'input', 'integer_types', 'iteritems', 'iterkeys', 'itervalues', 'izip', 'number_types', 'pickle', 'range_type', 'reraise', 'string_types', 'text_to_native', 'text_type', 'unichr', 'urllib', 'urlparse', 'urlretrieve', 'utf_8']

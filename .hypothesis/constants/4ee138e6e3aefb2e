@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\flow\preflowpush.py
+# hypothesis_version: 6.148.7
+
+['algorithm', 'capacity', 'curr_edge', 'excess', 'flow', 'flow_value', 'height', 'inf', 'preflow_push']

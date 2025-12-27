@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\kombu\utils\json.py
+# hypothesis_version: 6.148.7
+
+['EncodedT', 'T', 'Unsupported type', '__json__', '__type__', '__value__', 'base64', 'bytes', 'date', 'datetime', 'decimal', 'hex', 'time', 'utf-8', 'uuid']

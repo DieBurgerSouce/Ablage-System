@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\fastapi\temp_pydantic_v1_params.py
+# hypothesis_version: 6.148.7
+
+['application/json', 'deprecated', 'examples', 'multipart/form-data', 'regex']

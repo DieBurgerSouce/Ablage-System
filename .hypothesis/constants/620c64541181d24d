@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\numba\core\cpu_options.py
+# hypothesis_version: 6.148.7
+
+[', ', '__call__', 'afn', 'always', 'arcp', 'comprehension', 'contract', 'enabled', 'fast', 'fusion', 'inplace_binop', 'never', 'ninf', 'nnan', 'nsz', 'numpy', 'prange', 'reassoc', 'reduction', 'setitem', 'stencil']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\base.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 'OCRResult', 'PROCESSING_ERROR', 'agent', 'agent_task_completed', 'agent_task_failed', 'agent_task_retry', 'agent_task_started', 'backend', 'bounding_boxes', 'category', 'char_count', 'confidence', 'de', 'duration_seconds', 'error', 'error_code', 'failed', 'gpu_required', 'has_umlauts', 'idle', 'initialized', 'integration', 'intelligence', 'language', 'layout', 'metadata', 'monitoring', 'name', 'ocr', 'orchestration', 'page_count', 'pages', 'postprocessing', 'preprocessing', 'processing_time_ms', 'result', 'retrying', 'running', 'status', 'success', 'task_id', 'text', 'timestamp', 'unknown', 'vram_gb', 'word_count']

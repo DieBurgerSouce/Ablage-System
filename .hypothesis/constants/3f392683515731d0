@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\codegen\cuda\cutlass_utils.py
+# hypothesis_version: 6.148.7
+
+[100, '100', '70', '75', '80', '90', 'Arch ', 'CACHE_FILE', 'GenerateSM', 'GenerateSM100', '__half', '__nv_bfloat16', '__nv_fp8_e4m3', '_inductor', 'all', 'codegen', 'cuda', 'cutlass', 'cutlass_library', 'cutlass_mock_imports', 'exe', 'gemm', 'pycute', 'pydot', 'python', 'scipy', 'torch_cutlass']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\recognition\master\pytorch.py
+# hypothesis_version: 6.148.7
+
+[0.2, 0.296, 0.299, 0.301, 0.693, 0.694, 0.695, 128, 512, 2048, '10', '<eos>', 'MASTER', 'decoder.embed.weight', 'fan_out', 'feat_extractor.', 'features', 'french', 'input_shape', 'linear.bias', 'linear.weight', 'logits', 'loss', 'master', 'mean', 'none', 'out_map', 'preds', 'relu', 'std', 'url', 'vocab']

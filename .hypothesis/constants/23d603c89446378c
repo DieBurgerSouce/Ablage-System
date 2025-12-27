@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\quantizers\quantizer_fp_quant.py
+# hypothesis_version: 6.148.7
+
+['.bias', '.dqweight', '.qweight', '.weight', 'PreTrainedModel', 'cpu', 'disk', 'dqweight', 'fp_quant', 'qweight', 'torch.Tensor', 'torch.device', 'torch.dtype', 'weight']

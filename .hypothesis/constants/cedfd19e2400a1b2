@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sklearn\linear_model\_glm\_newton_solver.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.0001, 0.00048828125, 0.5, 100, '  Check Convergence', 'F', 'L-BFGS-B', 'error', 'ftol', 'gtol', 'iprint', 'lbfgs', 'maxiter', 'maxls', 'sym']

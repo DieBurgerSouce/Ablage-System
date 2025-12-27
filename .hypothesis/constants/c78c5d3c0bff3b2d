@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\amqp\platform.py
+# hypothesis_version: 6.148.7
+
+['(\\d+).+', '.', 'KNOWN_TCP_OPTS', 'LINUX_VERSION', 'Microsoft', 'SOL_TCP', 'TCP_CORK', 'TCP_DEFER_ACCEPT', 'TCP_KEEPCNT', 'TCP_KEEPIDLE', 'TCP_KEEPINTVL', 'TCP_LINGER2', 'TCP_MAXSEG', 'TCP_NODELAY', 'TCP_QUICKACK', 'TCP_SYNCNT', 'TCP_USER_TIMEOUT', 'TCP_WINDOW_CLAMP', 'aix', 'bsd', 'cygwin', 'darwin', 'linux', 'sunos', 'win']

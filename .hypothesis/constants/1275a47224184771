@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\admin\roles.py
+# hypothesis_version: 6.148.7
+
+[100, 500, '#6B7280', '/me/permissions', '/me/roles', '/permissions', '/roles', '/{role_id}', '/{role_id}/users', 'Anzeigename', 'Benutzer-ID', 'Beschreibung', 'Hex-Farbcode', 'Neue Rolle erstellen', 'Rolle aktualisieren', 'Rolle löschen', 'Rolle nicht gefunden', 'Rollen', '^#[0-9A-Fa-f]{6}$', 'action', 'changes', 'created_at', 'documents:read', 'email', 'full_name', 'id', 'is_active', 'message', 'permissions', 'role', 'role_assigned', 'role_created', 'role_deleted', 'role_id', 'role_name', 'role_removed', 'role_updated', 'roles:delete', 'roles:manage', 'roles:read', 'roles:write', 'target_user_email', 'target_user_id', 'user', 'user_id', 'username', 'users', 'users:manage', 'users:read']

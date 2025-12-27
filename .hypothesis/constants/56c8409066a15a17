@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\_inductor\fx_passes\misc_patterns.py
+# hypothesis_version: 6.148.7
+
+['a', 'axis', 'call_function', 'cpu', 'cuda', 'dim', 'inductor', 'input', 'keepdim', 'keepdims', 'other', 'slice_shape', 'x', 'x1', 'x2']

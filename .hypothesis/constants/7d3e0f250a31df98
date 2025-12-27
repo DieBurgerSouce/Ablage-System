@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\celery\states.py
+# hypothesis_version: 6.148.7
+
+['EXCEPTION_STATES', 'FAILURE', 'IGNORED', 'PENDING', 'PROPAGATE_STATES', 'READY_STATES', 'RECEIVED', 'REJECTED', 'RETRY', 'REVOKED', 'STARTED', 'SUCCESS', 'UNREADY_STATES', 'precedence', 'state']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\kombu\compression.py
+# hypothesis_version: 6.148.7
+
+['application/x-brotli', 'application/x-bz2', 'application/x-gzip', 'application/x-lzma', 'application/zstd', 'brotli', 'bzip', 'bzip2', 'compress', 'decompress', 'encoders', 'get_decoder', 'get_encoder', 'gzip', 'lzma', 'register', 'xz', 'zlib', 'zstandard', 'zstd']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\torch\fx\passes\_tensorify_python_scalars.py
+# hypothesis_version: 6.148.7
+
+['%s', '0', 'FALSE', 'call_function', 'dtype', 'graph_code_verbose', 'output', 'placeholder', 'val']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\middleware\ip_blocking.py
+# hypothesis_version: 6.148.7
+
+[403, ',', '/', '/docs', '/health', '/openapi.json', '/redoc', '127.0.0.1', '::1', 'Cache-Control', 'IP_BLOCKED', 'X-Blocked-Reason', 'Zugriff verweigert', 'code', 'fehler', 'localhost', 'nachricht', 'no-store', 'redis_block', 'suspicious_activity', 'unknown', 'x-forwarded-for', 'x-real-ip', 'zeitstempel']

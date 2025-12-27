@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\mpmath\matrices\eigen_symmetric.py
+# hypothesis_version: 6.148.7
+
+['chebyshev1', 'chebyshev2', 'glaguerre', 'hermite', 'jacobi', 'laguerre', 'legendre', 'legendre01']

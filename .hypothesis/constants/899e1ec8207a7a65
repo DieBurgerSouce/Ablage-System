@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\scipy\spatial\kdtree.py
+# hypothesis_version: 6.148.7
+
+['KDTree', 'Rectangle', '_kdtree', 'cKDTree', 'distance_matrix', 'kdtree', 'minkowski_distance', 'minkowski_distance_p', 'spatial']

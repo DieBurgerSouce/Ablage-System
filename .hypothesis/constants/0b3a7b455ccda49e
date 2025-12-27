@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\limits\storage\redis.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1000, '*', '3.0', '4.3', '6.0', 'LIMITS', 'redis', 'redis+unix', 'rediss', 'unix', 'valkey', 'valkey+unix', 'valkeys']

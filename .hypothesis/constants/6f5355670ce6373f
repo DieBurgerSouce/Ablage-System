@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\ua_parser\lazy.py
+# hypothesis_version: 6.148.7
+
+['$1', '$2', '$3', '$4', '$5', ', "i"', 'DeviceMatcher', 'OSMatcher', 'UserAgentMatcher', 'brand', 'family', 'i', 'major', 'minor', 'model', 'patch', 'patch_minor']

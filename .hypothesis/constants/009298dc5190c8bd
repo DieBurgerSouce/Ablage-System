@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\networkx\algorithms\polynomials.py
+# hypothesis_version: 6.148.7
+
+['chromatic_polynomial', 'contraction_idx', 'directed', 'tutte_polynomial', 'x', 'y']

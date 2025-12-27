@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\schemas\responses.py
+# hypothesis_version: 6.148.7
+
+[100, 300, 400, 401, 403, 404, 413, 422, 429, 500, 503, 599, '/api/v1/documents', '/api/v1/ocr/process', 'E001', 'E002', 'E003', 'E004', 'E005', 'E006', 'E007', 'E008', 'E009', 'E010', 'E011', 'E012', 'E013', 'E014', 'Erkannte Sprache', 'Extrahierter Text', 'Fehlermeldung', 'Fehlertyp', 'GPU nicht verfügbar', 'HTTP-Statuscode', 'Nicht autorisiert', 'Nicht gefunden', 'OCR-Backend Timeout', 'Pflichtfeld fehlt', 'Status der Operation', 'Validierungsfehler', '^E\\d{3}$', 'body', 'datenbank', 'de', 'deepseek', 'degraded', 'description', 'email', 'en', 'erfolg', 'examples', 'fehler', 'fehler_code', 'got_ocr', 'gpu', 'healthy', 'json_schema_extra', 'model', 'nachricht', 'ok', 'page', 'pfad', 'query', 'redis', 'retry_after', 'status_code', 'surya', 'teilweise_erfolg', 'type_error.string', 'unhealthy', 'value_error.missing', 'zeitstempel']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\models\classification\mobilenet\pytorch.py
+# hypothesis_version: 6.148.7
+
+[0.296, 0.299, 0.301, 0.693, 0.694, 0.695, 180, 256, 512, '.', 'MobileNetV3', 'classes', 'classifier.3.bias', 'classifier.3.weight', 'features.2.block.1.0', 'features.4.block.1.0', 'features.7.block.1.0', 'features.9.block.1.0', 'french', 'input_shape', 'mean', 'mobilenet_v3_large', 'mobilenet_v3_large_r', 'mobilenet_v3_small', 'mobilenet_v3_small_r', 'num_classes', 'std', 'url']

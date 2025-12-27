@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\doctr\io\image\pytorch.py
+# hypothesis_version: 6.148.7
+
+[255, 'RGB', 'decode_img_as_tensor', 'get_img_shape', 'r', 'read_img_as_tensor', 'tensor_from_numpy', 'tensor_from_pil']
