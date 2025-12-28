@@ -55,33 +55,28 @@ services:
   # PgBouncer Connection Pooling für PostgreSQL
   # Verhindert Connection Exhaustion bei hoher Last
   pgbouncer:
-    image: bitnami/pgbouncer:1.23.0
+    image: edoburu/pgbouncer:latest
     container_name: ablage-pgbouncer
     environment:
-      PGBOUNCER_DATABASE: ${POSTGRES_DB:-ablage_system}
-      POSTGRESQL_HOST: postgres
-      POSTGRESQL_PORT: 5432
-      POSTGRESQL_USERNAME: ${POSTGRES_USER:-ablage_admin}
-      POSTGRESQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
-      PGBOUNCER_PORT: 6432
-      PGBOUNCER_POOL_MODE: transaction
-      PGBOUNCER_MAX_CLIENT_CONN: 500
-      PGBOUNCER_DEFAULT_POOL_SIZE: 25
-      PGBOUNCER_MIN_POOL_SIZE: 5
-      PGBOUNCER_RESERVE_POOL_SIZE: 5
-      PGBOUNCER_RESERVE_POOL_TIMEOUT: 3
-      PGBOUNCER_SERVER_IDLE_TIMEOUT: 600
-      PGBOUNCER_SERVER_LIFETIME: 3600
-      PGBOUNCER_LOG_CONNECTIONS: 0
-      PGBOUNCER_LOG_DISCONNECTIONS: 0
-      PGBOUNCER_STATS_PERIOD: 60
+      DATABASE_URL: postgres://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 500
+      DEFAULT_POOL_SIZE: 25
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+      SERVER_IDLE_TIMEOUT: 600
+      SERVER_LIFETIME: 3600
+      LOG_CONNECTIONS: 0
+      LOG_DISCONNECTIONS: 0
+      STATS_PERIOD: 60
     ports:
-      - "127.0.0.1:6432:6432"  # Nur localhost - Connection Pooling Port
+      - "127.0.0.1:6432:5432"  # Nur localhost - Connection Pooling Port (edoburu nutzt 5432 intern)
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432 -U ${POSTGRES_USER:-ablage_admin}"]
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U ${POSTGRES_USER:-ablage_admin}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -533,7 +528,7 @@ services:
               capabilities: [gpu]
     # SECURITY FIX: Healthcheck für Worker
     healthcheck:
-      test: ["CMD", "celery", "-A", "app.workers.celery_app", "inspect", "ping", "-d", "celery@$$HOSTNAME"]
+      test: ["CMD", "celery", "-A", "app.workers.celery_app", "inspect", "ping", "--timeout", "10"]
       interval: 60s
       timeout: 30s
       retries: 3
