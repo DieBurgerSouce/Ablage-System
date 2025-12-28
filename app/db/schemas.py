@@ -3590,3 +3590,262 @@ class TrainingExportListResponse(BaseModel):
     """Liste aller Training-Exports."""
     exports: List[ExportListItemResponse]
     total: int
+
+
+# ============================================================================
+# ABLAGE (DOCUMENT CATEGORY) SCHEMAS
+# ============================================================================
+
+class DocumentPaymentStatus(str, Enum):
+    """Zahlungsstatus fuer Dokumente (Rechnungen, Bestellungen).
+
+    Unterscheidet sich von banking.PaymentStatus (Zahlungsauftraege).
+    """
+    OFFEN = "offen"  # Noch nicht bezahlt
+    BEZAHLT = "bezahlt"  # Vollstaendig bezahlt
+    UEBERFAELLIG = "ueberfaellig"  # Faelligkeitsdatum ueberschritten
+    TEILBEZAHLT = "teilbezahlt"  # Teilweise bezahlt
+
+
+class EntityType(str, Enum):
+    """Entitaetstyp fuer Ablage-Navigation."""
+    CUSTOMER = "customer"  # Kunde
+    SUPPLIER = "supplier"  # Lieferant
+
+
+class CategoryDocumentFilter(BaseModel):
+    """Filter fuer Kategorie-Dokumentenliste.
+
+    Ermoeglicht umfangreiche Filterung nach:
+    - Geschaeftspartner (Kunde/Lieferant)
+    - Ordner (z.B. Jahr oder Projekt)
+    - Kategorie (Rechnungen, Angebote, etc.)
+    - Zeitraum, Betrag, Status
+    """
+    # Pflicht: Kontext
+    business_entity_id: uuid.UUID = Field(..., description="Kunden- oder Lieferanten-ID")
+    folder_id: str = Field(..., description="Ordner-ID (z.B. '2024' oder 'projekt-xyz')")
+    category: str = Field(..., description="Kategorie (rechnungen, angebote, vertraege, etc.)")
+    entity_type: EntityType = Field(EntityType.CUSTOMER, description="Kunde oder Lieferant")
+
+    # Optional: Textsuche
+    search: Optional[str] = Field(None, max_length=200, description="Suche in Dateiname, Dokumentnummer")
+
+    # Optional: Datumsfilter
+    date_from: Optional[datetime] = Field(None, description="Dokumentdatum ab")
+    date_to: Optional[datetime] = Field(None, description="Dokumentdatum bis")
+
+    # Optional: Betragsfilter
+    amount_min: Optional[float] = Field(None, ge=0, description="Mindestbetrag")
+    amount_max: Optional[float] = Field(None, ge=0, description="Hoechstbetrag")
+
+    # Optional: Statusfilter
+    processing_status: Optional[List[ProcessingStatus]] = Field(
+        None, description="Verarbeitungsstatus (pending, completed, etc.)"
+    )
+    payment_status: Optional[List[DocumentPaymentStatus]] = Field(
+        None, description="Zahlungsstatus (nur fuer Rechnungen)"
+    )
+
+    # Optional: Tags
+    tags: Optional[List[str]] = Field(None, max_length=10, description="Filter nach Tags")
+
+    # Pagination
+    page: int = Field(0, ge=0, description="Seitennummer (0-basiert)")
+    page_size: int = Field(25, ge=1, le=100, description="Eintraege pro Seite")
+
+    # Sortierung
+    sort_by: str = Field("document_date", description="Sortierfeld")
+    sort_order: str = Field("desc", pattern="^(asc|desc)$", description="Sortierrichtung")
+
+
+class ExtractedDocumentData(BaseModel):
+    """Extrahierte Daten aus einem Dokument.
+
+    Diese Struktur spiegelt die JSONB-Daten in extracted_data.
+    """
+    # Allgemein
+    document_number: Optional[str] = Field(None, description="Dokumentnummer (Rechnungsnr, Bestellnr)")
+    document_date: Optional[datetime] = Field(None, description="Dokumentdatum")
+
+    # Finanzielle Daten
+    total_amount: Optional[float] = Field(None, description="Gesamtbetrag")
+    net_amount: Optional[float] = Field(None, description="Nettobetrag")
+    vat_amount: Optional[float] = Field(None, description="MwSt-Betrag")
+    currency: str = Field("EUR", description="Waehrung")
+
+    # Faelligkeit
+    due_date: Optional[datetime] = Field(None, description="Faelligkeitsdatum")
+
+    # Zahlungsstatus (manuell oder automatisch)
+    payment_status: DocumentPaymentStatus = Field(
+        DocumentPaymentStatus.OFFEN, description="Zahlungsstatus"
+    )
+    paid_amount: Optional[float] = Field(None, description="Bezahlter Betrag")
+    payment_date: Optional[datetime] = Field(None, description="Zahlungsdatum")
+
+    # Geschaeftspartner
+    partner_name: Optional[str] = Field(None, description="Name des Geschaeftspartners")
+    partner_address: Optional[str] = Field(None, description="Adresse")
+
+    # Bankdaten
+    iban: Optional[str] = Field(None, description="IBAN")
+    bic: Optional[str] = Field(None, description="BIC")
+
+    model_config = ConfigDict(extra="allow")  # Erlaube zusaetzliche Felder
+
+
+class CategoryDocumentResponse(BaseModel):
+    """Einzelnes Dokument in der Kategorie-Ansicht.
+
+    Optimiert fuer Tabellendarstellung mit allen relevanten Spalten.
+    """
+    id: uuid.UUID
+    filename: str
+    original_filename: str
+
+    # Typ und Status
+    document_type: DocumentType
+    processing_status: ProcessingStatus
+
+    # Metadaten
+    file_size: int
+    page_count: int
+    mime_type: Optional[str] = None
+
+    # Zeitstempel
+    created_at: datetime
+    updated_at: datetime
+    document_date: Optional[datetime] = Field(None, description="Datum im Dokument")
+
+    # OCR-Ergebnis
+    ocr_confidence: Optional[float] = None
+
+    # Extrahierte Daten (Subset fuer Tabelle)
+    document_number: Optional[str] = None
+    total_amount: Optional[float] = None
+    currency: str = "EUR"
+    due_date: Optional[datetime] = None
+    payment_status: DocumentPaymentStatus = DocumentPaymentStatus.OFFEN
+    paid_amount: Optional[float] = None
+    partner_name: Optional[str] = None
+
+    # Tags
+    tags: List[str] = Field(default_factory=list)
+
+    # Vorschau-URLs
+    thumbnail_url: Optional[str] = None
+    preview_url: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CategoryDocumentListResponse(BaseModel):
+    """Paginierte Liste von Kategorie-Dokumenten."""
+    items: List[CategoryDocumentResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+    # Angewandte Filter (fuer Frontend-Synchronisation)
+    filters_applied: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CategoryAggregations(BaseModel):
+    """Aggregierte Statistiken fuer eine Kategorie.
+
+    Ermoeglicht Summen-Karten und Uebersichtsgrafiken.
+    """
+    # Anzahlen
+    total_documents: int = 0
+    documents_by_status: Dict[str, int] = Field(default_factory=dict)
+    documents_by_payment_status: Dict[str, int] = Field(default_factory=dict)
+
+    # Betraege
+    total_amount: float = 0.0
+    total_paid: float = 0.0
+    total_open: float = 0.0
+    total_overdue: float = 0.0
+    currency: str = "EUR"
+
+    # Zeitraum-Info
+    earliest_date: Optional[datetime] = None
+    latest_date: Optional[datetime] = None
+
+    # Ueberfaellige Dokumente
+    overdue_count: int = 0
+    overdue_documents: List[uuid.UUID] = Field(default_factory=list, max_length=10)
+
+
+# --- Bulk Operations for Ablage ---
+
+class BulkDownloadZipRequest(BaseModel):
+    """Request fuer ZIP-Download mehrerer Dokumente."""
+    document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
+    filename: Optional[str] = Field(None, max_length=200, description="Optionaler Dateiname")
+
+
+class BulkExportCsvRequest(BaseModel):
+    """Request fuer CSV-Export von Dokument-Metadaten."""
+    document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=500)
+    columns: Optional[List[str]] = Field(
+        None, description="Spezifische Spalten (None = alle)"
+    )
+    include_amounts: bool = Field(True, description="Betraege inkludieren")
+    include_dates: bool = Field(True, description="Daten inkludieren")
+    delimiter: str = Field(";", pattern="^[,;\\t]$", description="CSV-Trennzeichen")
+
+
+class BulkMarkAsPaidRequest(BaseModel):
+    """Request zum Markieren mehrerer Dokumente als bezahlt."""
+    document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
+    payment_date: Optional[datetime] = Field(None, description="Zahlungsdatum (Standard: jetzt)")
+
+
+class BulkMoveCategoryRequest(BaseModel):
+    """Request zum Verschieben von Dokumenten in andere Kategorie."""
+    document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
+    target_category: str = Field(..., min_length=1, max_length=100)
+
+
+class BulkSetTagsRequest(BaseModel):
+    """Request zum Setzen von Tags fuer mehrere Dokumente."""
+    document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
+    tags: List[str] = Field(..., min_length=1, max_length=20)
+    mode: TagOperation = Field(TagOperation.ADD, description="add, remove, oder set")
+
+
+class UpdatePaymentStatusRequest(BaseModel):
+    """Request zum Aktualisieren des Zahlungsstatus eines Dokuments."""
+    status: DocumentPaymentStatus
+    paid_amount: Optional[float] = Field(None, ge=0, description="Bezahlter Betrag")
+    payment_date: Optional[datetime] = Field(None, description="Zahlungsdatum")
+
+    @model_validator(mode="after")
+    def validate_paid_amount(self) -> "UpdatePaymentStatusRequest":
+        """Validiere paid_amount bei teilbezahlt."""
+        if self.status == DocumentPaymentStatus.TEILBEZAHLT and self.paid_amount is None:
+            raise ValueError("Bei Teilzahlung muss paid_amount angegeben werden")
+        return self
+
+
+class UpdatePaymentStatusResponse(BaseModel):
+    """Response nach Zahlungsstatus-Update."""
+    document_id: uuid.UUID
+    old_status: DocumentPaymentStatus
+    new_status: DocumentPaymentStatus
+    paid_amount: Optional[float] = None
+    payment_date: Optional[datetime] = None
+    message: str
+
+
+class BulkOperationResultAblage(BaseModel):
+    """Ergebnis einer Bulk-Operation in der Ablage."""
+    success: bool
+    operation: str
+    success_count: int
+    failed_count: int
+    failed_ids: List[uuid.UUID] = Field(default_factory=list)
+    errors: List[str] = Field(default_factory=list)
+    message: str  # Deutsche Nachricht

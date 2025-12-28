@@ -1,17 +1,15 @@
 /**
- * MahnungDetailSheet - Detailansicht fuer einen Mahnvorgang
+ * MahnungDetailSheet - Detailansicht für einen Mahnvorgang
  *
  * Slideout-Panel mit:
- * - Vollstaendige Rechnungsdetails
+ * - Vollständige Rechnungsdetails
  * - Mahnung-Timeline (aus History)
  * - Telefon-Protokoll
- * - Notizen hinzufuegen
+ * - Notizen hinzufügen
  * - Aktionen (Eskalieren, Mahnstopp, B2B Pauschale, etc.)
  */
 
 import { useState } from 'react';
-import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
 import {
     Sheet,
     SheetContent,
@@ -19,6 +17,17 @@ import {
     SheetTitle,
     SheetDescription,
 } from '@/components/ui/sheet';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -32,7 +41,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
+import { useToast } from '@/components/ui/use-toast';
 import {
     Building2,
     User,
@@ -43,17 +52,24 @@ import {
     Mail,
     FileText,
     Euro,
-    Calendar,
+    Calendar as CalendarIcon,
     Clock,
     History,
     AlertTriangle,
     CheckCircle2,
-    XCircle,
     Loader2,
     Copy,
-    ExternalLink,
 } from 'lucide-react';
-import type { DunningRecord, MahnungHistory, PhoneCallLog } from '@/types/models/banking';
+
+// Date formatting helper (replaces date-fns)
+function formatDateWithTime(dateStr: string, pattern: 'datetime' | 'date' = 'datetime'): string {
+    const date = new Date(dateStr);
+    if (pattern === 'date') {
+        return date.toLocaleDateString('de-DE');
+    }
+    return date.toLocaleDateString('de-DE') + ' ' + date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+}
+import type { DunningRecord, PhoneCallLog, MahnungHistoryEntry, MahnungHistory } from '@/types/models/banking';
 import {
     useDunningHistory,
     usePhoneCalls,
@@ -73,6 +89,12 @@ interface MahnungDetailSheetProps {
     onOpenChange: (open: boolean) => void;
     onLogPhoneCall?: () => void;
     onEscalate?: () => void;
+}
+
+interface MahnstoppDialogState {
+    open: boolean;
+    reason: string;
+    until?: string;
 }
 
 // ==================== Helper Components ====================
@@ -141,7 +163,7 @@ function HistoryItem({ entry }: { entry: MahnungHistory }) {
                 <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {format(new Date(entry.action_timestamp), 'dd.MM.yyyy HH:mm', { locale: de })}
+                        {formatDateWithTime(entry.action_timestamp)}
                     </span>
                     {entry.outcome && (
                         <Badge variant={entry.outcome === 'success' ? 'default' : 'secondary'} className="text-xs">
@@ -175,7 +197,7 @@ function PhoneCallItem({ call }: { call: PhoneCallLog }) {
             'reached': 'Erreicht',
             'not_reached': 'Nicht erreicht',
             'voicemail': 'Mailbox',
-            'callback_requested': 'Rueckruf erbeten',
+            'callback_requested': 'Rückruf erbeten',
             'payment_promised': 'Zahlung zugesagt',
             'dispute_raised': 'Reklamation',
         };
@@ -204,13 +226,13 @@ function PhoneCallItem({ call }: { call: PhoneCallLog }) {
                 )}
                 <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {format(new Date(call.called_at), 'dd.MM.yyyy HH:mm', { locale: de })}
+                        <CalendarIcon className="h-3 w-3" />
+                        {formatDate(call.called_at)}
                     </span>
                     {call.follow_up_required && call.follow_up_date && (
                         <span className="flex items-center gap-1 text-orange-600">
                             <AlertTriangle className="h-3 w-3" />
-                            Follow-up: {format(new Date(call.follow_up_date), 'dd.MM.yyyy', { locale: de })}
+                            Follow-up: {formatDateWithTime(call.follow_up_date, 'date')}
                         </span>
                     )}
                 </div>
@@ -220,10 +242,28 @@ function PhoneCallItem({ call }: { call: PhoneCallLog }) {
 }
 
 function VerzugszinsenCard({ dunningId }: { dunningId: string }) {
-    const { data, isLoading } = useVerzugszinsen(dunningId);
+    const { data, isLoading, isError, error } = useVerzugszinsen(dunningId);
 
     if (isLoading) {
         return <Skeleton className="h-24" />;
+    }
+
+    if (isError) {
+        return (
+            <Card className="border-red-200 bg-red-50/50">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2 text-red-600">
+                        <AlertTriangle className="h-4 w-4" />
+                        Fehler beim Laden der Verzugszinsen
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                        {error instanceof Error ? error.message : 'Die Verzugszinsen konnten nicht berechnet werden.'}
+                    </p>
+                </CardContent>
+            </Card>
+        );
     }
 
     if (!data) return null;
@@ -239,18 +279,18 @@ function VerzugszinsenCard({ dunningId }: { dunningId: string }) {
             <CardContent className="space-y-2">
                 <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Basiszins:</span>
-                    <span>{data.base_rate_percent}%</span>
+                    <span>{data.base_rate_percent ?? 0}%</span>
                 </div>
                 <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
                         Aufschlag ({data.is_b2b ? 'B2B +9%' : 'B2C +5%'}):
                     </span>
-                    <span>{data.zusatz_rate_percent}%</span>
+                    <span>{data.zusatz_rate_percent ?? 0}%</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-medium">
                     <span>Gesamtzins p.a.:</span>
-                    <span>{data.total_rate_percent}%</span>
+                    <span>{data.total_rate_percent ?? data.interest_rate}%</span>
                 </div>
                 <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
@@ -272,7 +312,13 @@ export function MahnungDetailSheet({
     onLogPhoneCall,
     onEscalate,
 }: MahnungDetailSheetProps) {
+    const { toast } = useToast();
     const [activeTab, setActiveTab] = useState('details');
+    const [mahnstoppDialog, setMahnstoppDialog] = useState<MahnstoppDialogState>({
+        open: false,
+        reason: '',
+        until: undefined,
+    });
 
     // Queries
     const historyQuery = useDunningHistory(dunning?.id || '');
@@ -290,36 +336,77 @@ export function MahnungDetailSheet({
     // ==================== Handlers ====================
 
     const handleToggleMahnstopp = async () => {
-        try {
-            if (dunning.mahnstopp) {
+        if (dunning.mahnstopp) {
+            // Mahnstopp aufheben - direkt ausführen
+            try {
                 await liftMahnstopp.mutateAsync(dunning.id);
-                toast.success('Mahnstopp aufgehoben');
-            } else {
-                await setMahnstopp.mutateAsync({
-                    dunningId: dunning.id,
-                    reason: 'Manuell gesetzt',
+                toast({
+                    title: 'Mahnstopp aufgehoben',
+                    description: 'Die automatische Mahnung ist wieder aktiviert.',
                 });
-                toast.success('Mahnstopp gesetzt');
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+                toast({
+                    title: 'Mahnstopp konnte nicht aufgehoben werden',
+                    description: errorMessage,
+                    variant: 'destructive',
+                });
             }
+        } else {
+            // Mahnstopp setzen - Dialog öffnen
+            setMahnstoppDialog({ open: true, reason: '', until: undefined });
+        }
+    };
+
+    const handleConfirmMahnstopp = async () => {
+        if (!mahnstoppDialog.reason.trim()) {
+            toast({
+                title: 'Bitte Grund angeben',
+                description: 'Ein Grund für den Mahnstopp ist erforderlich.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        try {
+            await setMahnstopp.mutateAsync({
+                dunningId: dunning.id,
+                reason: mahnstoppDialog.reason,
+                until: mahnstoppDialog.until,
+            });
+            toast({
+                title: 'Mahnstopp gesetzt',
+                description: 'Der Mahnvorgang wurde pausiert.',
+            });
+            setMahnstoppDialog({ open: false, reason: '', until: undefined });
         } catch (error) {
-            toast.error('Aktion fehlgeschlagen');
+            const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+            toast({
+                title: 'Mahnstopp konnte nicht gesetzt werden',
+                description: errorMessage,
+                variant: 'destructive',
+            });
         }
     };
 
     const handleClaimPauschale = async () => {
         try {
             await claimPauschale.mutateAsync(dunning.id);
-            toast.success('40€ Pauschale beansprucht', {
-                description: 'Pauschale nach §288 Abs. 5 BGB wird zur Forderung hinzugefuegt.',
+            toast({
+                title: '40€ Pauschale beansprucht',
+                description: 'Pauschale nach §288 Abs. 5 BGB wird zur Forderung hinzugefügt.',
             });
-        } catch (error) {
-            toast.error('Pauschale konnte nicht beansprucht werden');
+        } catch {
+            toast({
+                title: 'Pauschale konnte nicht beansprucht werden',
+                variant: 'destructive',
+            });
         }
     };
 
     const handleCopyInvoiceNumber = () => {
         navigator.clipboard.writeText(dunning.invoice_number || '');
-        toast.success('Rechnungsnummer kopiert');
+        toast({ title: 'Rechnungsnummer kopiert' });
     };
 
     // ==================== Render ====================
@@ -329,6 +416,7 @@ export function MahnungDetailSheet({
         : 0;
 
     return (
+        <>
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent className="w-full sm:max-w-xl overflow-hidden flex flex-col">
                 <SheetHeader className="space-y-1">
@@ -375,7 +463,7 @@ export function MahnungDetailSheet({
                         )}
                         {daysOverdue > 0 && (
                             <Badge variant="destructive">
-                                +{daysOverdue} Tage ueberfaellig
+                                +{daysOverdue} Tage überfällig
                             </Badge>
                         )}
                     </SheetDescription>
@@ -451,17 +539,17 @@ export function MahnungDetailSheet({
                         <TabsTrigger value="details">Details</TabsTrigger>
                         <TabsTrigger value="history">
                             Verlauf
-                            {historyQuery.data && historyQuery.data.length > 0 && (
+                            {historyQuery.data?.items && historyQuery.data.items.length > 0 && (
                                 <Badge variant="secondary" className="ml-1.5 h-5 w-5 p-0 text-xs">
-                                    {historyQuery.data.length}
+                                    {historyQuery.data.items.length}
                                 </Badge>
                             )}
                         </TabsTrigger>
                         <TabsTrigger value="calls">
                             Anrufe
-                            {phoneCallsQuery.data && phoneCallsQuery.data.length > 0 && (
+                            {phoneCallsQuery.data?.items && phoneCallsQuery.data.items.length > 0 && (
                                 <Badge variant="secondary" className="ml-1.5 h-5 w-5 p-0 text-xs">
-                                    {phoneCallsQuery.data.length}
+                                    {phoneCallsQuery.data.items.length}
                                 </Badge>
                             )}
                         </TabsTrigger>
@@ -482,8 +570,8 @@ export function MahnungDetailSheet({
                                         icon={<User className="h-4 w-4" />}
                                     />
                                     <InfoRow
-                                        label="Kundennummer"
-                                        value={dunning.debtor_id || '-'}
+                                        label="E-Mail"
+                                        value={dunning.debtor_email || '-'}
                                     />
                                     <InfoRow
                                         label="Kundentyp"
@@ -510,10 +598,10 @@ export function MahnungDetailSheet({
                                     <InfoRow
                                         label="Rechnungsdatum"
                                         value={dunning.invoice_date ? formatDate(dunning.invoice_date) : '-'}
-                                        icon={<Calendar className="h-4 w-4" />}
+                                        icon={<CalendarIcon className="h-4 w-4" />}
                                     />
                                     <InfoRow
-                                        label="Faelligkeit"
+                                        label="Fälligkeit"
                                         value={
                                             <div className="flex items-center gap-2">
                                                 <span>{dunning.due_date ? formatDate(dunning.due_date) : '-'}</span>
@@ -532,20 +620,20 @@ export function MahnungDetailSheet({
                             {/* Amount Info */}
                             <Card>
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm">Betraege</CardTitle>
+                                    <CardTitle className="text-sm">Beträge</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
                                     <InfoRow
                                         label="Offener Betrag"
                                         value={
                                             <span className="font-mono text-lg">
-                                                {formatCurrency(dunning.outstanding_amount)}
+                                                {formatCurrency(dunning.outstanding_amount ?? 0)}
                                             </span>
                                         }
                                         icon={<Euro className="h-4 w-4" />}
                                     />
                                     <InfoRow
-                                        label="Mahngebuehren"
+                                        label="Mahngebühren"
                                         value={formatCurrency(dunning.reminder_fee)}
                                     />
                                     <InfoRow
@@ -567,7 +655,7 @@ export function MahnungDetailSheet({
                                         label="Gesamtforderung"
                                         value={
                                             <span className="font-mono text-lg font-bold text-primary">
-                                                {formatCurrency(dunning.total_outstanding ?? dunning.outstanding_amount)}
+                                                {formatCurrency(dunning.total_outstanding ?? dunning.outstanding_amount ?? 0)}
                                             </span>
                                         }
                                     />
@@ -610,16 +698,16 @@ export function MahnungDetailSheet({
                                         <Skeleton key={i} className="h-20" />
                                     ))}
                                 </div>
-                            ) : historyQuery.data && historyQuery.data.length > 0 ? (
+                            ) : historyQuery.data?.items && historyQuery.data.items.length > 0 ? (
                                 <div className="space-y-0">
-                                    {historyQuery.data.map((entry) => (
+                                    {historyQuery.data.items.map((entry: MahnungHistoryEntry) => (
                                         <HistoryItem key={entry.id} entry={entry} />
                                     ))}
                                 </div>
                             ) : (
                                 <div className="text-center py-8 text-muted-foreground">
                                     <History className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                                    <p>Noch keine Verlaufseintraege</p>
+                                    <p>Noch keine Verlaufseinträge</p>
                                 </div>
                             )}
                         </TabsContent>
@@ -642,9 +730,9 @@ export function MahnungDetailSheet({
                                         <Skeleton key={i} className="h-24" />
                                     ))}
                                 </div>
-                            ) : phoneCallsQuery.data && phoneCallsQuery.data.length > 0 ? (
+                            ) : phoneCallsQuery.data?.items && phoneCallsQuery.data.items.length > 0 ? (
                                 <div>
-                                    {phoneCallsQuery.data.map((call) => (
+                                    {phoneCallsQuery.data.items.map((call: PhoneCallLog) => (
                                         <PhoneCallItem key={call.id} call={call} />
                                     ))}
                                 </div>
@@ -659,5 +747,87 @@ export function MahnungDetailSheet({
                 </Tabs>
             </SheetContent>
         </Sheet>
+
+        {/* Mahnstopp Dialog */}
+        <Dialog
+            open={mahnstoppDialog.open}
+            onOpenChange={(open) => setMahnstoppDialog({ ...mahnstoppDialog, open })}
+        >
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Mahnstopp setzen</DialogTitle>
+                    <DialogDescription>
+                        Setzen Sie einen Mahnstopp für diesen Mahnvorgang. Während des
+                        Mahnstopps werden keine automatischen Mahnungen versendet.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="mahnstopp-reason">
+                            Grund <span className="text-destructive">*</span>
+                        </Label>
+                        <Textarea
+                            id="mahnstopp-reason"
+                            placeholder="z.B. Reklamation, Zahlungsvereinbarung, Prüfung..."
+                            value={mahnstoppDialog.reason}
+                            onChange={(e) =>
+                                setMahnstoppDialog({
+                                    ...mahnstoppDialog,
+                                    reason: e.target.value,
+                                })
+                            }
+                            rows={3}
+                        />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label>Mahnstopp bis (optional)</Label>
+                        <div className="relative">
+                            <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="date"
+                                value={mahnstoppDialog.until || ''}
+                                onChange={(e) =>
+                                    setMahnstoppDialog({
+                                        ...mahnstoppDialog,
+                                        until: e.target.value || undefined,
+                                    })
+                                }
+                                min={new Date().toISOString().split('T')[0]}
+                                className="pl-10"
+                            />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Leer lassen für unbefristeten Mahnstopp
+                        </p>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button
+                        variant="outline"
+                        onClick={() =>
+                            setMahnstoppDialog({ open: false, reason: '', until: undefined })
+                        }
+                    >
+                        Abbrechen
+                    </Button>
+                    <Button
+                        onClick={handleConfirmMahnstopp}
+                        disabled={setMahnstopp.isPending || !mahnstoppDialog.reason.trim()}
+                        className="bg-orange-600 hover:bg-orange-700"
+                    >
+                        {setMahnstopp.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                            <PauseCircle className="h-4 w-4 mr-2" />
+                        )}
+                        Mahnstopp setzen
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    </>
     );
 }

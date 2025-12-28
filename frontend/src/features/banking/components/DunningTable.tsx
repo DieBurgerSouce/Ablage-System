@@ -10,11 +10,13 @@
  */
 
 import { useState, useMemo } from 'react';
-import {
+import type {
     ColumnDef,
     ColumnFiltersState,
     SortingState,
     VisibilityState,
+} from '@tanstack/react-table';
+import {
     flexRender,
     getCoreRowModel,
     getFilteredRowModel,
@@ -129,8 +131,8 @@ function B2BBadge({ isB2B }: { isB2B: boolean }) {
                 </TooltipTrigger>
                 <TooltipContent>
                     {isB2B
-                        ? 'Geschaeftskunde: Basiszins + 9% = 11.27% p.a.'
-                        : 'Privatkunde: Basiszins + 5% = 7.27% p.a.'
+                        ? 'Geschäftskunde: Basiszins + 9% = 11,27% p.a.'
+                        : 'Privatkunde: Basiszins + 5% = 7,27% p.a.'
                     }
                 </TooltipContent>
             </Tooltip>
@@ -175,14 +177,14 @@ function getColumns(onRowClick?: (dunning: DunningRecord) => void): ColumnDef<Du
                         (table.getIsSomePageRowsSelected() && 'indeterminate')
                     }
                     onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-                    aria-label="Alle auswaehlen"
+                    aria-label="Alle auswählen"
                 />
             ),
             cell: ({ row }) => (
                 <Checkbox
                     checked={row.getIsSelected()}
                     onCheckedChange={(value) => row.toggleSelected(!!value)}
-                    aria-label="Zeile auswaehlen"
+                    aria-label="Zeile auswählen"
                     onClick={(e) => e.stopPropagation()}
                 />
             ),
@@ -247,7 +249,7 @@ function getColumns(onRowClick?: (dunning: DunningRecord) => void): ColumnDef<Du
                     onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
                     className="-ml-4"
                 >
-                    Faelligkeit
+                    Fälligkeit
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             ),
@@ -333,7 +335,7 @@ function getColumns(onRowClick?: (dunning: DunningRecord) => void): ColumnDef<Du
                         <div className="font-mono font-medium">{formatCurrency(total)}</div>
                         {fees > 0 && (
                             <div className="text-xs text-muted-foreground">
-                                inkl. {formatCurrency(fees)} Gebuehren
+                                inkl. {formatCurrency(fees)} Gebühren
                             </div>
                         )}
                         {dunning.b2b_pauschale_claimed && (
@@ -384,6 +386,9 @@ export function DunningTable({
     const table = useReactTable({
         data,
         columns,
+        // WICHTIG: Verwende die Dunning-ID als Row-ID statt Array-Index
+        // Das behebt den Pagination + Selection Bug
+        getRowId: (row) => row.id,
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
         getCoreRowModel: getCoreRowModel(),
@@ -396,9 +401,11 @@ export function DunningTable({
             setRowSelection(newSelection);
 
             // Notify parent of selection changes
+            // Da wir getRowId verwenden, sind die Keys jetzt die echten IDs
             if (onSelectionChange) {
-                const selectedRows = Object.keys(newSelection).filter((key) => newSelection[key as keyof typeof newSelection]);
-                const selectedIds = selectedRows.map((idx) => data[parseInt(idx)]?.id).filter(Boolean) as string[];
+                const selectedIds = Object.keys(newSelection).filter(
+                    (key) => newSelection[key as keyof typeof newSelection]
+                );
                 onSelectionChange(selectedIds);
             }
         },
@@ -468,7 +475,7 @@ export function DunningTable({
 
                 {selectedCount > 0 && (
                     <div className="text-sm text-muted-foreground">
-                        {selectedCount} ausgewaehlt
+                        {selectedCount} ausgewählt
                     </div>
                 )}
 
@@ -488,7 +495,7 @@ export function DunningTable({
                                     invoice_number: 'Rechnung',
                                     debtor_name: 'Debitor',
                                     outstanding_amount: 'Betrag',
-                                    due_date: 'Faelligkeit',
+                                    due_date: 'Fälligkeit',
                                     dunning_level: 'Mahnstufe',
                                     is_b2b: 'Kundentyp',
                                     status: 'Status',
@@ -516,7 +523,7 @@ export function DunningTable({
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => (
-                                    <TableHead key={header.id}>
+                                    <TableHead key={header.id} scope="col">
                                         {header.isPlaceholder
                                             ? null
                                             : flexRender(
@@ -569,7 +576,7 @@ export function DunningTable({
                 <div className="text-sm text-muted-foreground">
                     Seite {table.getState().pagination.pageIndex + 1} von{' '}
                     {table.getPageCount()}
-                    {' '}({data.length} Eintraege)
+                    {' '}({data.length} Einträge)
                 </div>
                 <div className="flex items-center space-x-2">
                     <Button

@@ -195,6 +195,30 @@ export type ImportFormat =
     | 'pdf';
 
 /**
+ * Vorschau einer zu importierenden Transaktion
+ */
+export interface ImportTransactionPreview {
+    booking_date: string;
+    value_date?: string;
+    amount: number;
+    currency?: CurrencyCode;
+    counterparty_name?: string;
+    counterparty_iban?: string;
+    reference_text?: string;
+    booking_text?: string;
+}
+
+/**
+ * Import-Fehler mit Details
+ */
+export interface ImportError {
+    row?: number;
+    field?: string;
+    message: string;
+    raw_data?: string;
+}
+
+/**
  * Import preview
  */
 export interface ImportPreview {
@@ -205,7 +229,7 @@ export interface ImportPreview {
     date_to: string | null;
     total_credits: number;
     total_debits: number;
-    sample_transactions: Record<string, unknown>[];
+    sample_transactions: ImportTransactionPreview[];
     warnings: string[];
 }
 
@@ -225,7 +249,7 @@ export interface ImportResponse {
     date_to: string | null;
     imported_at: string;
     processing_duration_ms: number | null;
-    errors: Record<string, unknown>[];
+    errors: ImportError[];
 }
 
 /**
@@ -241,6 +265,19 @@ export interface SupportedFormat {
 // ==================== Reconciliation ====================
 
 /**
+ * Details zum Abgleich (Matching)
+ */
+export interface MatchDetails {
+    amount_match?: boolean;
+    amount_difference?: number;
+    name_similarity?: number;
+    iban_match?: boolean;
+    reference_match?: boolean;
+    date_proximity_days?: number;
+    rules_applied?: string[];
+}
+
+/**
  * Match candidate for reconciliation
  */
 export interface MatchCandidate {
@@ -253,7 +290,7 @@ export interface MatchCandidate {
     counterparty_iban: string | null;
     confidence: number;
     match_method: string;
-    match_details: Record<string, unknown>;
+    match_details: MatchDetails;
 }
 
 /**
@@ -497,21 +534,42 @@ export interface ScenarioComparison {
 // ==================== Dunning (Mahnwesen) ====================
 
 /**
- * Dunning level
+ * Numerischer Mahnstufen-Level (entspricht Datenbank-Werten)
+ * 0 = Neu, 1 = Erinnerung, 2 = 1. Mahnung, 3 = 2. Mahnung, 4 = Letzte Mahnung, 5 = Inkasso
+ */
+export type DunningLevelNumber = 0 | 1 | 2 | 3 | 4 | 5;
+
+/**
+ * String-basierter Dunning Level (für Legacy-Kompatibilität)
+ * @deprecated Nutze DunningLevelNumber für neue Implementierungen
  */
 export type DunningLevel = 'first_reminder' | 'second_reminder' | 'final_reminder';
+
+/**
+ * Mapping von Mahnstufe zu Anzeigenamen (Deutsch)
+ */
+export const DUNNING_LEVEL_NAMES: Record<DunningLevelNumber, string> = {
+    0: 'Neu',
+    1: 'Erinnerung',
+    2: '1. Mahnung',
+    3: '2. Mahnung',
+    4: 'Letzte Mahnung',
+    5: 'Inkasso',
+};
 
 /**
  * Dunning statistics
  */
 export interface DunningStats {
     total_active: number;
-    by_level: Record<DunningLevel, number>;
+    by_level: Record<DunningLevelNumber, number>;
     total_amount_overdue: number;
     total_fees: number;
     total_interest: number;
     avg_days_overdue: number;
     success_rate_30d: number;
+    /** Anzahl Mahnvorgänge mit aktivem Mahnstopp */
+    mahnstopp_count?: number;
 }
 
 /**
@@ -691,7 +749,7 @@ export interface DunningRecord {
     debtor_email: string | null;
 
     // Mahnung
-    dunning_level: number;
+    dunning_level: DunningLevelNumber;
     status: string;
 
     // Gebuehren
@@ -727,7 +785,7 @@ export interface MahnTask {
     dunning_record_id: string;
     task_type: MahnTaskType;
     assigned_user_id: string | null;
-    due_date: string;
+    due_date: string | null;
     status: MahnTaskStatus;
     priority: number;
 
@@ -749,6 +807,8 @@ export interface MahnTask {
     debtor_name?: string;
     outstanding_amount?: number;
     days_overdue?: number;
+    /** Aufgabenbeschreibung (UI-Anzeige) */
+    description?: string;
 }
 
 /**
@@ -845,6 +905,17 @@ export interface DunningStageConfig {
     sort_order: number;
     created_at: string;
     updated_at: string;
+    // Erweiterte Felder fuer UI
+    /** @deprecated Nutze stage_number */
+    stage_level?: number;
+    /** Alias fuer trigger_days_after_due */
+    days_after_previous?: number;
+    /** Kommunikationskanal (email, letter, phone, none) */
+    communication_channel?: 'email' | 'letter' | 'phone' | 'none';
+    /** Automatische Eskalation aktiviert */
+    auto_escalate?: boolean;
+    /** Freigabe erforderlich vor Eskalation */
+    requires_approval?: boolean;
 }
 
 /**
@@ -911,6 +982,28 @@ export interface CustomerDunningOverrideUpdate {
 }
 
 /**
+ * Metadata für History-Einträge
+ */
+export interface MahnungHistoryMetadata {
+    /** Vorheriger Wert (z.B. bei Status-Änderung) */
+    previous_value?: string | number;
+    /** Neuer Wert */
+    new_value?: string | number;
+    /** Kanal der Kommunikation */
+    channel?: 'email' | 'letter' | 'phone';
+    /** Betrag bei Zahlung */
+    payment_amount?: number;
+    /** Mahnstopp-Grund */
+    mahnstopp_reason?: string;
+    /** Mahnstopp-Bis-Datum */
+    mahnstopp_until?: string;
+    /** Telefon-Ergebnis */
+    call_outcome?: PhoneCallOutcome;
+    /** Zusätzliche Hinweise */
+    additional_info?: string;
+}
+
+/**
  * Mahnung-History-Eintrag (Audit-Log)
  */
 export interface MahnungHistoryEntry {
@@ -924,8 +1017,13 @@ export interface MahnungHistoryEntry {
     notes: string | null;
     outcome: string | null;
     document_id: string | null;
-    metadata?: Record<string, unknown>;
+    metadata?: MahnungHistoryMetadata;
 }
+
+/**
+ * Alias fuer MahnungHistoryEntry (Kompatibilitaet)
+ */
+export type MahnungHistory = MahnungHistoryEntry;
 
 /**
  * Anfrage zum Setzen eines Mahnstopps
@@ -976,6 +1074,12 @@ export interface VerzugszinsenCalculation {
     days_overdue: number;
     interest_amount: number;
     total_with_interest: number;
+    /** Basiszinssatz der Bundesbank */
+    base_rate_percent?: number;
+    /** Zusatzsatz (B2B: 9%, B2C: 5%) */
+    zusatz_rate_percent?: number;
+    /** Gesamtzinssatz */
+    total_rate_percent?: number;
 }
 
 /**

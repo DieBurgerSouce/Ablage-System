@@ -4785,7 +4785,8 @@ class MahnungHistory(Base):
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
 
     # Zusaetzliche Metadaten (JSON)
-    metadata = Column(CrossDBJSON, default=dict)
+    # HINWEIS: 'metadata' ist in SQLAlchemy reserviert, daher 'action_metadata'
+    action_metadata = Column(CrossDBJSON, default=dict)
 
     # Relationships
     dunning_record = relationship("DunningRecord", back_populates="history_entries")

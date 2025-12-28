@@ -187,13 +187,17 @@ export function useCreateDunning() {
 
 /**
  * Mahnvorgang eskalieren
+ * Akzeptiert entweder einen String (dunningId) oder ein Objekt { dunningId, notes }
  */
 export function useEscalateDunning() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ dunningId, notes }: { dunningId: string; notes?: string }) =>
-            bankingService.escalateDunning(dunningId, notes),
+        mutationFn: (params: string | { dunningId: string; notes?: string }) => {
+            const dunningId = typeof params === 'string' ? params : params.dunningId;
+            const notes = typeof params === 'string' ? undefined : params.notes;
+            return bankingService.escalateDunning(dunningId, notes);
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: bankingQueryKeys.dunning() });
         },
@@ -946,8 +950,8 @@ export function useSnoozeMahnTask() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ taskId, snoozeUntil, reason }: { taskId: string; snoozeUntil: string; reason?: string }) =>
-            bankingService.snoozeMahnTask(taskId, snoozeUntil, reason),
+        mutationFn: ({ taskId, newDueDate, reason }: { taskId: string; newDueDate: string; reason?: string }) =>
+            bankingService.snoozeMahnTask(taskId, newDueDate, reason),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: mahnungswesenQueryKeys.mahnTasks() });
         },
@@ -961,8 +965,8 @@ export function useCompleteMahnTask() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ taskId, notes }: { taskId: string; notes?: string }) =>
-            bankingService.completeMahnTask(taskId, notes),
+        mutationFn: ({ taskId, outcome, notes }: { taskId: string; outcome?: string; notes?: string }) =>
+            bankingService.completeMahnTask(taskId, outcome, notes),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: mahnungswesenQueryKeys.mahnTasks() });
         },
@@ -1007,8 +1011,8 @@ export function useSetMahnstopp() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ dunningId, reason, untilDate }: { dunningId: string; reason: string; untilDate?: string }) =>
-            bankingService.setMahnstopp(dunningId, reason, untilDate),
+        mutationFn: ({ dunningId, reason, until }: { dunningId: string; reason: string; until?: string }) =>
+            bankingService.setMahnstopp(dunningId, reason, until),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: bankingQueryKeys.dunning() });
         },
@@ -1017,13 +1021,17 @@ export function useSetMahnstopp() {
 
 /**
  * Mahnstopp aufheben
+ * Akzeptiert entweder einen String (dunningId) oder ein Objekt { dunningId, notes }
  */
 export function useLiftMahnstopp() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ dunningId, notes }: { dunningId: string; notes?: string }) =>
-            bankingService.liftMahnstopp(dunningId, notes),
+        mutationFn: (params: string | { dunningId: string; notes?: string }) => {
+            const dunningId = typeof params === 'string' ? params : params.dunningId;
+            const notes = typeof params === 'string' ? undefined : params.notes;
+            return bankingService.liftMahnstopp(dunningId, notes);
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: bankingQueryKeys.dunning() });
         },
@@ -1118,7 +1126,7 @@ export function useLogPhoneCall() {
 // ==================== Bulk Action Hooks ====================
 
 /**
- * Mehrere Mahnvorgaenge eskalieren
+ * Mehrere Mahnvorgänge eskalieren
  */
 export function useBulkEscalateDunnings() {
     const queryClient = useQueryClient();
@@ -1126,6 +1134,24 @@ export function useBulkEscalateDunnings() {
     return useMutation({
         mutationFn: ({ dunningIds, notes }: { dunningIds: string[]; notes?: string }) =>
             bankingService.bulkEscalateDunnings(dunningIds, notes),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bankingQueryKeys.dunning() });
+        },
+    });
+}
+
+/**
+ * Mahnungen für mehrere Vorgänge versenden
+ */
+export function useBulkSendReminders() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ dunningIds, channel, notes }: {
+            dunningIds: string[];
+            channel?: 'email' | 'letter' | 'both';
+            notes?: string;
+        }) => bankingService.bulkSendReminders(dunningIds, { channel, notes }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: bankingQueryKeys.dunning() });
         },
@@ -1215,6 +1241,62 @@ export function useSetCustomerDunningSettings() {
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: mahnungswesenQueryKeys.customerDunningSettings(variables.businessEntityId) });
             queryClient.invalidateQueries({ queryKey: bankingQueryKeys.dunning() });
+        },
+    });
+}
+
+// ==================== Dunning Records Hook ====================
+
+/**
+ * Alle Mahnvorgaenge auflisten
+ */
+export function useDunningRecords(params?: {
+    status?: string;
+    mahnstopp?: boolean;
+    dunning_level?: number;
+    is_b2b?: boolean;
+    business_entity_id?: string;
+    offset?: number;
+    limit?: number;
+}) {
+    return useQuery({
+        queryKey: [...bankingQueryKeys.dunning(), 'records', params],
+        queryFn: async () => {
+            const result = await bankingService.getDunningRecords(params);
+            return result;
+        },
+        staleTime: STALE_TIMES.dunning,
+    });
+}
+
+// ==================== Dunning Stage Config Aliases ====================
+
+/**
+ * Mahnstufen-Konfiguration abrufen (Alias)
+ */
+export function useDunningStageConfigs() {
+    return useDunningStages();
+}
+
+/**
+ * Mahnstufe aktualisieren (Alias mit alternativer Signatur)
+ */
+export function useUpdateDunningStageConfig() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ configId, data }: {
+            configId: string;
+            data: {
+                days_after_previous?: number;
+                fee_amount?: number;
+                communication_channel?: string;
+                auto_escalate?: boolean;
+                requires_approval?: boolean;
+            };
+        }) => bankingService.updateDunningStage(configId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: mahnungswesenQueryKeys.dunningStages() });
         },
     });
 }

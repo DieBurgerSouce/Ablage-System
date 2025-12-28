@@ -1,21 +1,19 @@
 /**
- * Dunning List Komponente
- * Zeigt überfällige Rechnungen mit Mahnempfehlungen
+ * Dunning List Komponente (Aktualisiert)
+ *
+ * Vollstaendige Mahnungsverwaltung mit:
+ * - DunningTable mit TanStack Table
+ * - BulkActionsBar fuer Massenaktionen
+ * - MahnungDetailSheet fuer Details
+ * - TelefonProtokollDialog fuer Anrufprotokolle
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -29,193 +27,234 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import {
     AlertTriangle,
-    Mail,
-    FileWarning,
-    Gavel,
-    ExternalLink,
-    ChevronRight,
+    TrendingUp,
+    Building2,
+    User,
+    PauseCircle,
+    RefreshCw,
 } from 'lucide-react';
-import { useOverdueInvoices, useDunningStats, useCreateDunning } from '../hooks/use-banking-queries';
-import { cn } from '@/lib/utils';
-import { formatCurrency, formatDate } from '../utils/format';
+import {
+    useDunningRecords,
+    useDunningStats,
+    useEscalateDunning,
+} from '../hooks/use-banking-queries';
+import type { DunningRecord } from '@/lib/api/services/banking';
+import { formatCurrency } from '../utils/format';
 
-const LEVEL_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive'; icon: React.ReactNode }> = {
-    'not_started': {
-        label: 'Nicht begonnen',
-        variant: 'outline',
-        icon: null,
-    },
-    'first_reminder': {
-        label: '1. Mahnung',
-        variant: 'secondary',
-        icon: <Mail className="h-3 w-3" />,
-    },
-    'second_reminder': {
-        label: '2. Mahnung',
-        variant: 'secondary',
-        icon: <FileWarning className="h-3 w-3" />,
-    },
-    'final_reminder': {
-        label: 'Letzte Mahnung',
-        variant: 'destructive',
-        icon: <AlertTriangle className="h-3 w-3" />,
-    },
-};
+// Sub-components
+import { DunningTable } from './DunningTable';
+import { BulkActionsBar } from './BulkActionsBar';
+import { MahnungDetailSheet } from './MahnungDetailSheet';
+import { TelefonProtokollDialog } from './TelefonProtokollDialog';
 
-const ACTION_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-    'reminder': {
-        label: 'Erinnerung senden',
-        icon: <Mail className="h-4 w-4" />,
-        color: 'text-blue-600',
-    },
-    'first_dunning': {
-        label: '1. Mahnung',
-        icon: <Mail className="h-4 w-4" />,
-        color: 'text-yellow-600',
-    },
-    'second_dunning': {
-        label: '2. Mahnung',
-        icon: <FileWarning className="h-4 w-4" />,
-        color: 'text-orange-600',
-    },
-    'final_dunning': {
-        label: 'Letzte Mahnung',
-        icon: <AlertTriangle className="h-4 w-4" />,
-        color: 'text-red-600',
-    },
-    'collection': {
-        label: 'Inkasso',
-        icon: <Gavel className="h-4 w-4" />,
-        color: 'text-red-700',
-    },
-};
+// ==================== Stats Cards ====================
 
-function LevelBadge({ level }: { level: string }) {
-    const config = LEVEL_CONFIG[level] ?? LEVEL_CONFIG['not_started'];
-    return (
-        <Badge variant={config.variant} className="gap-1">
-            {config.icon}
-            {config.label}
-        </Badge>
-    );
-}
-
-function ActionButton({
-    action,
-    documentId,
-    invoiceNumber,
-    onAction
-}: {
-    action: string;
-    documentId: string;
-    invoiceNumber?: string;
-    onAction: (documentId: string, action: string, label: string, invoiceNumber?: string) => void;
+function StatsCards({ stats, isLoading }: {
+    stats?: {
+        total_active: number;
+        total_amount_overdue: number;
+        total_fees: number;
+        avg_days_overdue: number;
+        by_level?: Record<number, number>;
+        b2b_count?: number;
+        b2c_count?: number;
+        mahnstopp_count?: number;
+    };
+    isLoading: boolean;
 }) {
-    const config = ACTION_CONFIG[action] ?? ACTION_CONFIG['reminder'];
-
-    return (
-        <Button
-            variant="outline"
-            size="sm"
-            className={cn('gap-1', config.color)}
-            onClick={() => onAction(documentId, action, config.label, invoiceNumber)}
-        >
-            {config.icon}
-            {config.label}
-            <ChevronRight className="h-3 w-3" />
-        </Button>
-    );
-}
-
-interface PendingAction {
-    documentId: string;
-    level: string;
-    actionLabel: string;
-    invoiceNumber?: string;
-}
-
-export function DunningList() {
-    const { toast } = useToast();
-    const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
-
-    const { data: overdueInvoices, isLoading: invoicesLoading, error: invoicesError } = useOverdueInvoices({ min_days: 1 });
-    const { data: stats, isLoading: statsLoading } = useDunningStats();
-
-    const createDunning = useCreateDunning();
-    // TODO: Implement escalation UI using useEscalateDunning()
-
-    const isLoading = invoicesLoading || statsLoading;
-
-    const handleActionClick = (documentId: string, level: string, actionLabel: string, invoiceNumber?: string) => {
-        // Für kritische Aktionen (Inkasso, letzte Mahnung) Bestätigung anfordern
-        const criticalActions = ['final_dunning', 'collection'];
-        const levelMap: Record<string, string> = {
-            'reminder': 'not_started',
-            'first_dunning': 'first_reminder',
-            'second_dunning': 'second_reminder',
-            'final_dunning': 'final_reminder',
-            'collection': 'final_reminder',
-        };
-        const mappedLevel = levelMap[level] ?? 'first_reminder';
-
-        if (criticalActions.includes(level)) {
-            setPendingAction({ documentId, level: mappedLevel, actionLabel, invoiceNumber });
-        } else {
-            executeAction(documentId, mappedLevel, actionLabel);
-        }
-    };
-
-    const executeAction = (documentId: string, level: string, actionLabel: string) => {
-        createDunning.mutate(
-            { document_id: documentId, level },
-            {
-                onSuccess: () => {
-                    toast({
-                        title: 'Mahnung erstellt',
-                        description: `${actionLabel} wurde erfolgreich erstellt.`,
-                    });
-                },
-                onError: (error: Error) => {
-                    toast({
-                        title: 'Fehler',
-                        description: error.message || 'Die Mahnung konnte nicht erstellt werden.',
-                        variant: 'destructive',
-                    });
-                },
-            }
-        );
-    };
-
-    const confirmAction = () => {
-        if (pendingAction) {
-            executeAction(pendingAction.documentId, pendingAction.level, pendingAction.actionLabel);
-            setPendingAction(null);
-        }
-    };
-
     if (isLoading) {
         return (
-            <Card>
-                <CardHeader>
-                    <Skeleton className="h-6 w-32" />
-                    <Skeleton className="h-4 w-64" />
-                </CardHeader>
-                <CardContent>
-                    <Skeleton className="h-[400px] w-full" />
-                </CardContent>
-            </Card>
+            <div className="grid gap-4 md:grid-cols-4">
+                {[1, 2, 3, 4].map((i) => (
+                    <Card key={i}>
+                        <CardContent className="pt-6">
+                            <Skeleton className="h-8 w-24 mb-2" />
+                            <Skeleton className="h-4 w-32" />
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
         );
     }
 
-    if (invoicesError || !overdueInvoices) {
+    if (!stats) return null;
+
+    return (
+        <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-5">
+            <Card>
+                <CardContent className="pt-6">
+                    <div className="text-2xl font-bold">{stats.total_active}</div>
+                    <p className="text-sm text-muted-foreground">Aktive Mahnungen</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardContent className="pt-6">
+                    <div className="text-2xl font-bold text-destructive">
+                        {formatCurrency(stats.total_amount_overdue)}
+                    </div>
+                    <p className="text-sm text-muted-foreground">Offene Forderungen</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardContent className="pt-6">
+                    <div className="text-2xl font-bold text-green-600">
+                        {formatCurrency(stats.total_fees)}
+                    </div>
+                    <p className="text-sm text-muted-foreground">Mahngebuehren</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardContent className="pt-6">
+                    <div className="text-2xl font-bold">
+                        {Math.round(stats.avg_days_overdue)} Tage
+                    </div>
+                    <p className="text-sm text-muted-foreground">Ø Ueberfaelligkeit</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardContent className="pt-6">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1">
+                            <Building2 className="h-4 w-4 text-blue-600" />
+                            <span className="font-bold">{stats.b2b_count ?? 0}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <User className="h-4 w-4 text-gray-600" />
+                            <span className="font-bold">{stats.b2c_count ?? 0}</span>
+                        </div>
+                        {(stats.mahnstopp_count ?? 0) > 0 && (
+                            <div className="flex items-center gap-1">
+                                <PauseCircle className="h-4 w-4 text-orange-600" />
+                                <span className="font-bold">{stats.mahnstopp_count}</span>
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">B2B / B2C / Mahnstopp</p>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+// ==================== Main Component ====================
+
+export function DunningList() {
+    // Toast Hook
+    const { toast } = useToast();
+
+    // State
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [selectedDunning, setSelectedDunning] = useState<DunningRecord | null>(null);
+    const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+    const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
+    const [escalateDialogOpen, setEscalateDialogOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<'all' | 'active' | 'mahnstopp'>('active');
+
+    // Queries
+    const queryResult = useDunningRecords({
+        status: activeTab === 'mahnstopp' ? undefined : activeTab === 'active' ? 'active' : undefined,
+        mahnstopp: activeTab === 'mahnstopp' ? true : undefined,
+    });
+    const dunningRecords = queryResult.data as { items: DunningRecord[]; total: number } | undefined;
+    const recordsLoading = queryResult.isLoading;
+    const recordsError = queryResult.error;
+    const refetchRecords = queryResult.refetch;
+
+    const { data: stats, isLoading: statsLoading } = useDunningStats();
+
+    // Mutations
+    const escalateDunning = useEscalateDunning();
+
+    // Handlers
+    const handleRowClick = useCallback((dunning: DunningRecord) => {
+        setSelectedDunning(dunning);
+        setDetailSheetOpen(true);
+    }, []);
+
+    const handleSelectionChange = useCallback((ids: string[]) => {
+        setSelectedIds(ids);
+    }, []);
+
+    const handleClearSelection = useCallback(() => {
+        setSelectedIds([]);
+    }, []);
+
+    const handleActionComplete = useCallback(() => {
+        refetchRecords();
+    }, [refetchRecords]);
+
+    const handleLogPhoneCall = useCallback(() => {
+        if (selectedDunning) {
+            setPhoneDialogOpen(true);
+        }
+    }, [selectedDunning]);
+
+    const handleEscalate = useCallback(() => {
+        if (selectedDunning) {
+            setEscalateDialogOpen(true);
+        }
+    }, [selectedDunning]);
+
+    const confirmEscalate = async () => {
+        if (!selectedDunning) return;
+
+        try {
+            await escalateDunning.mutateAsync(selectedDunning.id);
+            toast({
+                title: 'Mahnung eskaliert',
+                description: `Mahnvorgang ${selectedDunning.invoice_number} wurde auf die naechste Stufe eskaliert.`,
+            });
+            setEscalateDialogOpen(false);
+            refetchRecords();
+        } catch {
+            toast({
+                variant: 'destructive',
+                title: 'Eskalation fehlgeschlagen',
+                description: 'Der Mahnvorgang konnte nicht eskaliert werden.',
+            });
+        }
+    };
+
+    // Filter data based on tab
+    const filteredRecords = dunningRecords?.items ?? [];
+
+    // Loading state
+    if (recordsLoading && !dunningRecords?.items) {
+        return (
+            <div className="space-y-6">
+                <StatsCards stats={undefined} isLoading={true} />
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-6 w-48" />
+                        <Skeleton className="h-4 w-64" />
+                    </CardHeader>
+                    <CardContent>
+                        <Skeleton className="h-[400px] w-full" />
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    // Error state
+    if (recordsError) {
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>Mahnwesen</CardTitle>
-                    <CardDescription className="text-destructive">
-                        Fehler beim Laden der Daten
+                    <CardTitle className="flex items-center gap-2 text-destructive">
+                        <AlertTriangle className="h-5 w-5" />
+                        Fehler beim Laden
+                    </CardTitle>
+                    <CardDescription>
+                        Die Mahnungsdaten konnten nicht geladen werden. Bitte versuchen Sie es erneut.
                     </CardDescription>
                 </CardHeader>
+                <CardContent>
+                    <Button onClick={() => refetchRecords()} variant="outline">
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Erneut versuchen
+                    </Button>
+                </CardContent>
             </Card>
         );
     }
@@ -223,136 +262,121 @@ export function DunningList() {
     return (
         <div className="space-y-6">
             {/* Stats Summary */}
-            {stats && (
-                <div className="grid gap-4 md:grid-cols-4">
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="text-2xl font-bold">{stats.total_active}</div>
-                            <p className="text-sm text-muted-foreground">Aktive Mahnungen</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="text-2xl font-bold">{formatCurrency(stats.total_amount_overdue)}</div>
-                            <p className="text-sm text-muted-foreground">Überfälliger Betrag</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="text-2xl font-bold">{formatCurrency(stats.total_fees)}</div>
-                            <p className="text-sm text-muted-foreground">Mahngebühren</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="text-2xl font-bold">{Math.round(stats.avg_days_overdue)} Tage</div>
-                            <p className="text-sm text-muted-foreground">Ø Überfälligkeit</p>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
+            <StatsCards stats={stats} isLoading={statsLoading} />
 
-            {/* Overdue Invoices Table */}
+            {/* Bulk Actions Bar (shows when items are selected) */}
+            <BulkActionsBar
+                selectedIds={selectedIds}
+                onClearSelection={handleClearSelection}
+                onActionComplete={handleActionComplete}
+            />
+
+            {/* Main Content Card */}
             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-destructive" />
-                        Überfällige Rechnungen
-                    </CardTitle>
-                    <CardDescription>
-                        {overdueInvoices.length} Rechnungen erfordern Maßnahmen
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="rounded-md border overflow-x-auto">
-                        <Table className="min-w-[900px]">
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Rechnung</TableHead>
-                                    <TableHead>Debitor</TableHead>
-                                    <TableHead className="text-right">Betrag</TableHead>
-                                    <TableHead>Fälligkeit</TableHead>
-                                    <TableHead className="text-right">Tage</TableHead>
-                                    <TableHead>Mahnstufe</TableHead>
-                                    <TableHead className="text-right">Gesamt</TableHead>
-                                    <TableHead>Empfehlung</TableHead>
-                                    <TableHead className="w-[50px]"></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {overdueInvoices.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                                            Keine überfälligen Rechnungen
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    overdueInvoices.map((invoice) => (
-                                        <TableRow key={invoice.document_id}>
-                                            <TableCell className="font-medium">
-                                                {invoice.invoice_number || '-'}
-                                            </TableCell>
-                                            <TableCell>{invoice.creditor_name || '-'}</TableCell>
-                                            <TableCell className="text-right font-mono">
-                                                {formatCurrency(invoice.amount)}
-                                            </TableCell>
-                                            <TableCell>{formatDate(invoice.due_date)}</TableCell>
-                                            <TableCell className="text-right">
-                                                <span className="text-destructive font-medium">
-                                                    +{invoice.days_overdue}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell>
-                                                <LevelBadge level={invoice.current_level} />
-                                            </TableCell>
-                                            <TableCell className="text-right font-mono">
-                                                <div className="text-sm">
-                                                    {formatCurrency(invoice.total_due)}
-                                                </div>
-                                                {(invoice.accumulated_fees > 0 || invoice.late_interest > 0) && (
-                                                    <div className="text-xs text-muted-foreground">
-                                                        +{formatCurrency(invoice.accumulated_fees + invoice.late_interest)}
-                                                    </div>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <ActionButton
-                                                    action={invoice.recommended_action}
-                                                    documentId={invoice.document_id}
-                                                    invoiceNumber={invoice.invoice_number}
-                                                    onAction={handleActionClick}
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Button variant="ghost" size="icon" asChild>
-                                                    <a href={`/documents/${invoice.document_id}`} target="_blank" rel="noopener">
-                                                        <ExternalLink className="h-4 w-4" />
-                                                    </a>
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
+                <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <AlertTriangle className="h-5 w-5 text-destructive" />
+                                Mahnungsverwaltung
+                            </CardTitle>
+                            <CardDescription>
+                                {filteredRecords.length} Mahnvorgaenge
+                                {selectedIds.length > 0 && (
+                                    <Badge variant="secondary" className="ml-2">
+                                        {selectedIds.length} ausgewaehlt
+                                    </Badge>
                                 )}
-                            </TableBody>
-                        </Table>
+                            </CardDescription>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => refetchRecords()}
+                            disabled={recordsLoading}
+                        >
+                            <RefreshCw className={`h-4 w-4 mr-2 ${recordsLoading ? 'animate-spin' : ''}`} />
+                            Aktualisieren
+                        </Button>
                     </div>
+                </CardHeader>
+
+                <CardContent>
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+                        <TabsList className="mb-4">
+                            <TabsTrigger value="active">
+                                Aktiv
+                                {stats && (
+                                    <Badge variant="secondary" className="ml-1.5">
+                                        {stats.total_active}
+                                    </Badge>
+                                )}
+                            </TabsTrigger>
+                            <TabsTrigger value="mahnstopp">
+                                <PauseCircle className="h-4 w-4 mr-1" />
+                                Mahnstopp
+                                {stats?.mahnstopp_count && stats.mahnstopp_count > 0 && (
+                                    <Badge variant="outline" className="ml-1.5 border-orange-500 text-orange-600">
+                                        {stats.mahnstopp_count}
+                                    </Badge>
+                                )}
+                            </TabsTrigger>
+                            <TabsTrigger value="all">Alle</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value={activeTab} className="mt-0">
+                            <DunningTable
+                                data={filteredRecords}
+                                isLoading={recordsLoading}
+                                onRowClick={handleRowClick}
+                                onSelectionChange={handleSelectionChange}
+                            />
+                        </TabsContent>
+                    </Tabs>
                 </CardContent>
             </Card>
 
-            {/* Bestätigungsdialog für kritische Aktionen */}
-            <AlertDialog open={!!pendingAction} onOpenChange={(open) => !open && setPendingAction(null)}>
+            {/* Detail Sheet */}
+            <MahnungDetailSheet
+                dunning={selectedDunning}
+                open={detailSheetOpen}
+                onOpenChange={setDetailSheetOpen}
+                onLogPhoneCall={handleLogPhoneCall}
+                onEscalate={handleEscalate}
+            />
+
+            {/* Phone Call Dialog */}
+            <TelefonProtokollDialog
+                dunningId={selectedDunning?.id ?? ''}
+                debtorName={selectedDunning?.debtor_name ?? undefined}
+                open={phoneDialogOpen}
+                onOpenChange={setPhoneDialogOpen}
+                onSuccess={handleActionComplete}
+            />
+
+            {/* Escalation Confirmation Dialog */}
+            <AlertDialog open={escalateDialogOpen} onOpenChange={setEscalateDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Mahnung bestätigen</AlertDialogTitle>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-orange-600" />
+                            Mahnung eskalieren?
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Möchten Sie wirklich "{pendingAction?.actionLabel}" für
-                            {pendingAction?.invoiceNumber
-                                ? ` Rechnung ${pendingAction.invoiceNumber}`
-                                : ' diese Rechnung'
-                            } ausführen?
-                            {pendingAction?.level === 'final_reminder' && (
+                            Moechten Sie den Mahnvorgang{' '}
+                            <span className="font-medium">
+                                {selectedDunning?.invoice_number}
+                            </span>{' '}
+                            auf die naechste Mahnstufe eskalieren?
+                            <br /><br />
+                            <span className="text-muted-foreground">
+                                Aktuelle Stufe: {selectedDunning?.dunning_level ?? 0}
+                                {' → '}
+                                Neue Stufe: {(selectedDunning?.dunning_level ?? 0) + 1}
+                            </span>
+                            {selectedDunning?.dunning_level && selectedDunning.dunning_level >= 3 && (
                                 <span className="block mt-2 text-destructive font-medium">
-                                    Dies ist eine kritische Aktion und kann rechtliche Konsequenzen haben.
+                                    Achtung: Ab Stufe 4 wird die letzte Mahnung vor Inkasso versendet.
                                 </span>
                             )}
                         </AlertDialogDescription>
@@ -360,10 +384,12 @@ export function DunningList() {
                     <AlertDialogFooter>
                         <AlertDialogCancel>Abbrechen</AlertDialogCancel>
                         <AlertDialogAction
-                            onClick={confirmAction}
-                            className={pendingAction?.level === 'final_reminder' ? 'bg-destructive hover:bg-destructive/90' : ''}
+                            onClick={confirmEscalate}
+                            className="bg-orange-600 hover:bg-orange-700"
+                            disabled={escalateDunning.isPending}
                         >
-                            Bestätigen
+                            <TrendingUp className="h-4 w-4 mr-2" />
+                            Eskalieren
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

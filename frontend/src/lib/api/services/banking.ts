@@ -1,5 +1,16 @@
 import { apiClient } from '../client';
 
+// Import Union Types from models
+import type {
+    CurrencyCode,
+    MahnTaskType,
+    MahnTaskStatus,
+    PhoneCallOutcome,
+    DunningActionType,
+    MahnungHistoryActionType,
+    DunningLevelNumber,
+} from '@/types/models/banking';
+
 // ==================== Types ====================
 
 // Cash-Flow Types
@@ -74,16 +85,14 @@ export interface ScenarioComparison {
 // Dunning Types
 export interface DunningStats {
     total_active: number;
-    by_level: {
-        first_reminder: number;
-        second_reminder: number;
-        final_reminder: number;
-    };
+    by_level: Record<number, number>;
     total_amount_overdue: number;
     total_fees: number;
     total_interest: number;
     avg_days_overdue: number;
     success_rate_30d: number;
+    /** Anzahl Mahnvorgaenge mit aktivem Mahnstopp */
+    mahnstopp_count?: number;
 }
 
 export interface OverdueInvoice {
@@ -495,6 +504,25 @@ export const bankingService = {
 
     // ==================== Dunning ====================
 
+    /**
+     * Alle Mahnvorgänge auflisten mit optionalen Filtern
+     */
+    getDunningRecords: async (params?: {
+        status?: string;
+        mahnstopp?: boolean;
+        dunning_level?: number;
+        is_b2b?: boolean;
+        business_entity_id?: string;
+        offset?: number;
+        limit?: number;
+    }): Promise<{ items: DunningRecord[]; total: number; offset: number; limit: number }> => {
+        const response = await apiClient.get<{ items: DunningRecord[]; total: number; offset: number; limit: number }>(
+            '/banking/dunning',
+            { params }
+        );
+        return response.data;
+    },
+
     getDunningStats: async () => {
         const response = await apiClient.get<DunningStats>('/banking/dunning/stats');
         return response.data;
@@ -803,8 +831,8 @@ export const bankingService = {
         return response.data;
     },
 
-    completeMahnTask: async (taskId: string, notes?: string) => {
-        const response = await apiClient.post<MahnTask>(`/banking/mahn-tasks/${taskId}/complete`, { notes });
+    completeMahnTask: async (taskId: string, outcome?: string, notes?: string) => {
+        const response = await apiClient.post<MahnTask>(`/banking/mahn-tasks/${taskId}/complete`, { outcome, notes });
         return response.data;
     },
 
@@ -892,6 +920,26 @@ export const bankingService = {
         return response.data;
     },
 
+    /**
+     * Mahnungen für mehrere Vorgänge versenden
+     */
+    bulkSendReminders: async (dunningIds: string[], options?: {
+        channel?: 'email' | 'letter' | 'both';
+        notes?: string;
+    }): Promise<{
+        total: number;
+        sent: number;
+        failed: number;
+        errors: Array<{ dunning_id: string; error: string }>;
+    }> => {
+        const response = await apiClient.post('/banking/dunning/bulk-send-reminders', {
+            dunning_ids: dunningIds,
+            channel: options?.channel ?? 'email',
+            notes: options?.notes,
+        });
+        return response.data;
+    },
+
     // Dunning Stage Config (Admin)
     getDunningStages: async () => {
         const response = await apiClient.get<DunningStagesListResponse>('/banking/settings/dunning-stages');
@@ -953,10 +1001,10 @@ export const bankingService = {
 export interface MahnTask {
     id: string;
     dunning_record_id: string;
-    task_type: string;
+    task_type: MahnTaskType;
     assigned_user_id: string | null;
-    due_date: string;
-    status: string;
+    due_date: string | null;
+    status: MahnTaskStatus;
     priority: number;
     snoozed_until: string | null;
     snooze_count: number;
@@ -984,7 +1032,7 @@ export interface MahnTaskSummary {
 export interface MahnungHistoryEntry {
     id: string;
     dunning_record_id: string;
-    action_type: string;
+    action_type: MahnungHistoryActionType;
     mahn_stufe: number;
     action_timestamp: string;
     performed_by_id: string | null;
@@ -1003,10 +1051,10 @@ export interface DunningRecord {
     due_date: string | null;
     gross_amount: number | null;
     outstanding_amount: number | null;
-    currency: string;
+    currency: CurrencyCode;
     debtor_name: string | null;
     debtor_email: string | null;
-    dunning_level: number;
+    dunning_level: DunningLevelNumber;
     status: string;
     reminder_fee: number;
     late_interest_rate: number | null;
@@ -1033,7 +1081,7 @@ export interface PhoneCallLog {
     called_by_name?: string;
     contact_name: string;
     phone_number: string | null;
-    outcome: string;
+    outcome: PhoneCallOutcome;
     notes: string | null;
     follow_up_required: boolean;
     follow_up_date: string | null;
@@ -1043,7 +1091,7 @@ export interface PhoneCallLog {
 export interface PhoneCallLogCreate {
     contact_name: string;
     phone_number?: string;
-    outcome: string;
+    outcome: PhoneCallOutcome;
     notes?: string;
     follow_up_required?: boolean;
     follow_up_date?: string;
@@ -1067,6 +1115,12 @@ export interface VerzugszinsenCalculation {
     days_overdue: number;
     interest_amount: number;
     total_with_interest: number;
+    /** Basiszinssatz der Bundesbank */
+    base_rate_percent?: number;
+    /** Zusatzsatz (B2B: 9%, B2C: 5%) */
+    zusatz_rate_percent?: number;
+    /** Gesamtzinssatz */
+    total_rate_percent?: number;
 }
 
 export interface BulkEscalateResponse {
@@ -1082,7 +1136,7 @@ export interface DunningStageConfig {
     stage_number: number;
     stage_name: string;
     trigger_days_after_due: number;
-    action_type: string;
+    action_type: DunningActionType;
     template_id: string | null;
     fee_amount: number;
     is_active: boolean;

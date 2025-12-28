@@ -39,16 +39,24 @@ import { Route as AdminSettingsRouteImport } from './app/routes/admin.settings'
 import { Route as AdminOcrTrainingRouteImport } from './app/routes/admin.ocr-training'
 import { Route as AdminOcrReviewRouteImport } from './app/routes/admin.ocr-review'
 import { Route as AdminOcrBackendsRouteImport } from './app/routes/admin.ocr-backends'
+import { Route as AdminMahnungenRouteImport } from './app/routes/admin.mahnungen'
 import { Route as AdminDatevRouteImport } from './app/routes/admin.datev'
 import { Route as AdminBankingRouteImport } from './app/routes/admin.banking'
 import { Route as LieferantenSupplierIdIndexRouteImport } from './app/routes/lieferanten.$supplierId.index'
 import { Route as KundenCustomerIdIndexRouteImport } from './app/routes/kunden.$customerId.index'
+import { Route as AdminMahnungenIndexRouteImport } from './app/routes/admin.mahnungen.index'
 import { Route as AdminDatevIndexRouteImport } from './app/routes/admin.datev.index'
 import { Route as AdminBankingIndexRouteImport } from './app/routes/admin.banking.index'
 import { Route as LieferantenSupplierIdFolderIdRouteImport } from './app/routes/lieferanten.$supplierId.$folderId'
 import { Route as KundenCustomerIdFolderIdRouteImport } from './app/routes/kunden.$customerId.$folderId'
 import { Route as DocumentsDocumentIdRelationshipsRouteImport } from './app/routes/documents.$documentId.relationships'
 import { Route as AdminOcrBackendsBackendRouteImport } from './app/routes/admin.ocr-backends.$backend'
+import { Route as AdminMahnungenMahnstoppRouteImport } from './app/routes/admin.mahnungen.mahnstopp'
+import { Route as AdminMahnungenKanbanRouteImport } from './app/routes/admin.mahnungen.kanban'
+import { Route as AdminMahnungenEskalationRouteImport } from './app/routes/admin.mahnungen.eskalation'
+import { Route as AdminMahnungenEinstellungenRouteImport } from './app/routes/admin.mahnungen.einstellungen'
+import { Route as AdminMahnungenAufgabenRouteImport } from './app/routes/admin.mahnungen.aufgaben'
+import { Route as AdminMahnungenAktivRouteImport } from './app/routes/admin.mahnungen.aktiv'
 import { Route as AdminDatevVendorsRouteImport } from './app/routes/admin.datev.vendors'
 import { Route as AdminDatevHistoryRouteImport } from './app/routes/admin.datev.history'
 import { Route as AdminDatevExportRouteImport } from './app/routes/admin.datev.export'
@@ -213,6 +221,11 @@ const AdminOcrBackendsRoute = AdminOcrBackendsRouteImport.update({
   path: '/ocr-backends',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminMahnungenRoute = AdminMahnungenRouteImport.update({
+  id: '/mahnungen',
+  path: '/mahnungen',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDatevRoute = AdminDatevRouteImport.update({
   id: '/datev',
   path: '/datev',
@@ -233,6 +246,11 @@ const KundenCustomerIdIndexRoute = KundenCustomerIdIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => KundenCustomerIdRoute,
+} as any)
+const AdminMahnungenIndexRoute = AdminMahnungenIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminMahnungenRoute,
 } as any)
 const AdminDatevIndexRoute = AdminDatevIndexRouteImport.update({
   id: '/',
@@ -266,6 +284,38 @@ const AdminOcrBackendsBackendRoute = AdminOcrBackendsBackendRouteImport.update({
   id: '/$backend',
   path: '/$backend',
   getParentRoute: () => AdminOcrBackendsRoute,
+} as any)
+const AdminMahnungenMahnstoppRoute = AdminMahnungenMahnstoppRouteImport.update({
+  id: '/mahnstopp',
+  path: '/mahnstopp',
+  getParentRoute: () => AdminMahnungenRoute,
+} as any)
+const AdminMahnungenKanbanRoute = AdminMahnungenKanbanRouteImport.update({
+  id: '/kanban',
+  path: '/kanban',
+  getParentRoute: () => AdminMahnungenRoute,
+} as any)
+const AdminMahnungenEskalationRoute =
+  AdminMahnungenEskalationRouteImport.update({
+    id: '/eskalation',
+    path: '/eskalation',
+    getParentRoute: () => AdminMahnungenRoute,
+  } as any)
+const AdminMahnungenEinstellungenRoute =
+  AdminMahnungenEinstellungenRouteImport.update({
+    id: '/einstellungen',
+    path: '/einstellungen',
+    getParentRoute: () => AdminMahnungenRoute,
+  } as any)
+const AdminMahnungenAufgabenRoute = AdminMahnungenAufgabenRouteImport.update({
+  id: '/aufgaben',
+  path: '/aufgaben',
+  getParentRoute: () => AdminMahnungenRoute,
+} as any)
+const AdminMahnungenAktivRoute = AdminMahnungenAktivRouteImport.update({
+  id: '/aktiv',
+  path: '/aktiv',
+  getParentRoute: () => AdminMahnungenRoute,
 } as any)
 const AdminDatevVendorsRoute = AdminDatevVendorsRouteImport.update({
   id: '/vendors',
@@ -355,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/admin/banking': typeof AdminBankingRouteWithChildren
   '/admin/datev': typeof AdminDatevRouteWithChildren
+  '/admin/mahnungen': typeof AdminMahnungenRouteWithChildren
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
@@ -380,12 +431,19 @@ export interface FileRoutesByFullPath {
   '/admin/datev/export': typeof AdminDatevExportRoute
   '/admin/datev/history': typeof AdminDatevHistoryRoute
   '/admin/datev/vendors': typeof AdminDatevVendorsRoute
+  '/admin/mahnungen/aktiv': typeof AdminMahnungenAktivRoute
+  '/admin/mahnungen/aufgaben': typeof AdminMahnungenAufgabenRoute
+  '/admin/mahnungen/einstellungen': typeof AdminMahnungenEinstellungenRoute
+  '/admin/mahnungen/eskalation': typeof AdminMahnungenEskalationRoute
+  '/admin/mahnungen/kanban': typeof AdminMahnungenKanbanRoute
+  '/admin/mahnungen/mahnstopp': typeof AdminMahnungenMahnstoppRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
   '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
   '/admin/banking/': typeof AdminBankingIndexRoute
   '/admin/datev/': typeof AdminDatevIndexRoute
+  '/admin/mahnungen/': typeof AdminMahnungenIndexRoute
   '/kunden/$customerId/': typeof KundenCustomerIdIndexRoute
   '/lieferanten/$supplierId/': typeof LieferantenSupplierIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
@@ -428,12 +486,19 @@ export interface FileRoutesByTo {
   '/admin/datev/export': typeof AdminDatevExportRoute
   '/admin/datev/history': typeof AdminDatevHistoryRoute
   '/admin/datev/vendors': typeof AdminDatevVendorsRoute
+  '/admin/mahnungen/aktiv': typeof AdminMahnungenAktivRoute
+  '/admin/mahnungen/aufgaben': typeof AdminMahnungenAufgabenRoute
+  '/admin/mahnungen/einstellungen': typeof AdminMahnungenEinstellungenRoute
+  '/admin/mahnungen/eskalation': typeof AdminMahnungenEskalationRoute
+  '/admin/mahnungen/kanban': typeof AdminMahnungenKanbanRoute
+  '/admin/mahnungen/mahnstopp': typeof AdminMahnungenMahnstoppRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
   '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
   '/admin/banking': typeof AdminBankingIndexRoute
   '/admin/datev': typeof AdminDatevIndexRoute
+  '/admin/mahnungen': typeof AdminMahnungenIndexRoute
   '/kunden/$customerId': typeof KundenCustomerIdIndexRoute
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
@@ -459,6 +524,7 @@ export interface FileRoutesById {
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/admin/banking': typeof AdminBankingRouteWithChildren
   '/admin/datev': typeof AdminDatevRouteWithChildren
+  '/admin/mahnungen': typeof AdminMahnungenRouteWithChildren
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
@@ -484,12 +550,19 @@ export interface FileRoutesById {
   '/admin/datev/export': typeof AdminDatevExportRoute
   '/admin/datev/history': typeof AdminDatevHistoryRoute
   '/admin/datev/vendors': typeof AdminDatevVendorsRoute
+  '/admin/mahnungen/aktiv': typeof AdminMahnungenAktivRoute
+  '/admin/mahnungen/aufgaben': typeof AdminMahnungenAufgabenRoute
+  '/admin/mahnungen/einstellungen': typeof AdminMahnungenEinstellungenRoute
+  '/admin/mahnungen/eskalation': typeof AdminMahnungenEskalationRoute
+  '/admin/mahnungen/kanban': typeof AdminMahnungenKanbanRoute
+  '/admin/mahnungen/mahnstopp': typeof AdminMahnungenMahnstoppRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
   '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
   '/admin/banking/': typeof AdminBankingIndexRoute
   '/admin/datev/': typeof AdminDatevIndexRoute
+  '/admin/mahnungen/': typeof AdminMahnungenIndexRoute
   '/kunden/$customerId/': typeof KundenCustomerIdIndexRoute
   '/lieferanten/$supplierId/': typeof LieferantenSupplierIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
@@ -516,6 +589,7 @@ export interface FileRouteTypes {
     | '/validation-queue'
     | '/admin/banking'
     | '/admin/datev'
+    | '/admin/mahnungen'
     | '/admin/ocr-backends'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
@@ -541,12 +615,19 @@ export interface FileRouteTypes {
     | '/admin/datev/export'
     | '/admin/datev/history'
     | '/admin/datev/vendors'
+    | '/admin/mahnungen/aktiv'
+    | '/admin/mahnungen/aufgaben'
+    | '/admin/mahnungen/einstellungen'
+    | '/admin/mahnungen/eskalation'
+    | '/admin/mahnungen/kanban'
+    | '/admin/mahnungen/mahnstopp'
     | '/admin/ocr-backends/$backend'
     | '/documents/$documentId/relationships'
     | '/kunden/$customerId/$folderId'
     | '/lieferanten/$supplierId/$folderId'
     | '/admin/banking/'
     | '/admin/datev/'
+    | '/admin/mahnungen/'
     | '/kunden/$customerId/'
     | '/lieferanten/$supplierId/'
     | '/admin/ocr-training/batch/$id'
@@ -589,12 +670,19 @@ export interface FileRouteTypes {
     | '/admin/datev/export'
     | '/admin/datev/history'
     | '/admin/datev/vendors'
+    | '/admin/mahnungen/aktiv'
+    | '/admin/mahnungen/aufgaben'
+    | '/admin/mahnungen/einstellungen'
+    | '/admin/mahnungen/eskalation'
+    | '/admin/mahnungen/kanban'
+    | '/admin/mahnungen/mahnstopp'
     | '/admin/ocr-backends/$backend'
     | '/documents/$documentId/relationships'
     | '/kunden/$customerId/$folderId'
     | '/lieferanten/$supplierId/$folderId'
     | '/admin/banking'
     | '/admin/datev'
+    | '/admin/mahnungen'
     | '/kunden/$customerId'
     | '/lieferanten/$supplierId'
     | '/admin/ocr-training/batch/$id'
@@ -619,6 +707,7 @@ export interface FileRouteTypes {
     | '/validation-queue'
     | '/admin/banking'
     | '/admin/datev'
+    | '/admin/mahnungen'
     | '/admin/ocr-backends'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
@@ -644,12 +733,19 @@ export interface FileRouteTypes {
     | '/admin/datev/export'
     | '/admin/datev/history'
     | '/admin/datev/vendors'
+    | '/admin/mahnungen/aktiv'
+    | '/admin/mahnungen/aufgaben'
+    | '/admin/mahnungen/einstellungen'
+    | '/admin/mahnungen/eskalation'
+    | '/admin/mahnungen/kanban'
+    | '/admin/mahnungen/mahnstopp'
     | '/admin/ocr-backends/$backend'
     | '/documents/$documentId/relationships'
     | '/kunden/$customerId/$folderId'
     | '/lieferanten/$supplierId/$folderId'
     | '/admin/banking/'
     | '/admin/datev/'
+    | '/admin/mahnungen/'
     | '/kunden/$customerId/'
     | '/lieferanten/$supplierId/'
     | '/admin/ocr-training/batch/$id'
@@ -888,6 +984,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOcrBackendsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/mahnungen': {
+      id: '/admin/mahnungen'
+      path: '/mahnungen'
+      fullPath: '/admin/mahnungen'
+      preLoaderRoute: typeof AdminMahnungenRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/datev': {
       id: '/admin/datev'
       path: '/datev'
@@ -915,6 +1018,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/kunden/$customerId/'
       preLoaderRoute: typeof KundenCustomerIdIndexRouteImport
       parentRoute: typeof KundenCustomerIdRoute
+    }
+    '/admin/mahnungen/': {
+      id: '/admin/mahnungen/'
+      path: '/'
+      fullPath: '/admin/mahnungen/'
+      preLoaderRoute: typeof AdminMahnungenIndexRouteImport
+      parentRoute: typeof AdminMahnungenRoute
     }
     '/admin/datev/': {
       id: '/admin/datev/'
@@ -957,6 +1067,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/ocr-backends/$backend'
       preLoaderRoute: typeof AdminOcrBackendsBackendRouteImport
       parentRoute: typeof AdminOcrBackendsRoute
+    }
+    '/admin/mahnungen/mahnstopp': {
+      id: '/admin/mahnungen/mahnstopp'
+      path: '/mahnstopp'
+      fullPath: '/admin/mahnungen/mahnstopp'
+      preLoaderRoute: typeof AdminMahnungenMahnstoppRouteImport
+      parentRoute: typeof AdminMahnungenRoute
+    }
+    '/admin/mahnungen/kanban': {
+      id: '/admin/mahnungen/kanban'
+      path: '/kanban'
+      fullPath: '/admin/mahnungen/kanban'
+      preLoaderRoute: typeof AdminMahnungenKanbanRouteImport
+      parentRoute: typeof AdminMahnungenRoute
+    }
+    '/admin/mahnungen/eskalation': {
+      id: '/admin/mahnungen/eskalation'
+      path: '/eskalation'
+      fullPath: '/admin/mahnungen/eskalation'
+      preLoaderRoute: typeof AdminMahnungenEskalationRouteImport
+      parentRoute: typeof AdminMahnungenRoute
+    }
+    '/admin/mahnungen/einstellungen': {
+      id: '/admin/mahnungen/einstellungen'
+      path: '/einstellungen'
+      fullPath: '/admin/mahnungen/einstellungen'
+      preLoaderRoute: typeof AdminMahnungenEinstellungenRouteImport
+      parentRoute: typeof AdminMahnungenRoute
+    }
+    '/admin/mahnungen/aufgaben': {
+      id: '/admin/mahnungen/aufgaben'
+      path: '/aufgaben'
+      fullPath: '/admin/mahnungen/aufgaben'
+      preLoaderRoute: typeof AdminMahnungenAufgabenRouteImport
+      parentRoute: typeof AdminMahnungenRoute
+    }
+    '/admin/mahnungen/aktiv': {
+      id: '/admin/mahnungen/aktiv'
+      path: '/aktiv'
+      fullPath: '/admin/mahnungen/aktiv'
+      preLoaderRoute: typeof AdminMahnungenAktivRouteImport
+      parentRoute: typeof AdminMahnungenRoute
     }
     '/admin/datev/vendors': {
       id: '/admin/datev/vendors'
@@ -1096,6 +1248,30 @@ const AdminDatevRouteWithChildren = AdminDatevRoute._addFileChildren(
   AdminDatevRouteChildren,
 )
 
+interface AdminMahnungenRouteChildren {
+  AdminMahnungenAktivRoute: typeof AdminMahnungenAktivRoute
+  AdminMahnungenAufgabenRoute: typeof AdminMahnungenAufgabenRoute
+  AdminMahnungenEinstellungenRoute: typeof AdminMahnungenEinstellungenRoute
+  AdminMahnungenEskalationRoute: typeof AdminMahnungenEskalationRoute
+  AdminMahnungenKanbanRoute: typeof AdminMahnungenKanbanRoute
+  AdminMahnungenMahnstoppRoute: typeof AdminMahnungenMahnstoppRoute
+  AdminMahnungenIndexRoute: typeof AdminMahnungenIndexRoute
+}
+
+const AdminMahnungenRouteChildren: AdminMahnungenRouteChildren = {
+  AdminMahnungenAktivRoute: AdminMahnungenAktivRoute,
+  AdminMahnungenAufgabenRoute: AdminMahnungenAufgabenRoute,
+  AdminMahnungenEinstellungenRoute: AdminMahnungenEinstellungenRoute,
+  AdminMahnungenEskalationRoute: AdminMahnungenEskalationRoute,
+  AdminMahnungenKanbanRoute: AdminMahnungenKanbanRoute,
+  AdminMahnungenMahnstoppRoute: AdminMahnungenMahnstoppRoute,
+  AdminMahnungenIndexRoute: AdminMahnungenIndexRoute,
+}
+
+const AdminMahnungenRouteWithChildren = AdminMahnungenRoute._addFileChildren(
+  AdminMahnungenRouteChildren,
+)
+
 interface AdminOcrBackendsRouteChildren {
   AdminOcrBackendsBackendRoute: typeof AdminOcrBackendsBackendRoute
 }
@@ -1121,6 +1297,7 @@ const AdminOcrTrainingRouteWithChildren =
 interface AdminRouteChildren {
   AdminBankingRoute: typeof AdminBankingRouteWithChildren
   AdminDatevRoute: typeof AdminDatevRouteWithChildren
+  AdminMahnungenRoute: typeof AdminMahnungenRouteWithChildren
   AdminOcrBackendsRoute: typeof AdminOcrBackendsRouteWithChildren
   AdminOcrReviewRoute: typeof AdminOcrReviewRoute
   AdminOcrTrainingRoute: typeof AdminOcrTrainingRouteWithChildren
@@ -1133,6 +1310,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBankingRoute: AdminBankingRouteWithChildren,
   AdminDatevRoute: AdminDatevRouteWithChildren,
+  AdminMahnungenRoute: AdminMahnungenRouteWithChildren,
   AdminOcrBackendsRoute: AdminOcrBackendsRouteWithChildren,
   AdminOcrReviewRoute: AdminOcrReviewRoute,
   AdminOcrTrainingRoute: AdminOcrTrainingRouteWithChildren,

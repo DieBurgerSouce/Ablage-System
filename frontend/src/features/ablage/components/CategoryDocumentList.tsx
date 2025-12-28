@@ -1,294 +1,250 @@
-import { useParams, Link } from '@tanstack/react-router'
-import { ArrowLeft, FolderOpen, FileText, Upload, Filter, SortAsc, Eye, Download, MoreHorizontal } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+/**
+ * CategoryDocumentList - Hauptkomponente fuer Kategorie-Dokumente
+ *
+ * Orchestriert die Unterkomponenten:
+ * - CategoryHeader (Breadcrumb, Titel)
+ * - CategoryAggregations (Summen-Karten)
+ * - DocumentFilterBar (Filter)
+ * - DocumentsTable (Tabelle)
+ * - BulkActionsToolbar (Bulk-Aktionen)
+ */
+
+import { useState, useMemo, useCallback } from 'react';
+import { useParams } from '@tanstack/react-router';
+import { type SortingState, type RowSelectionState } from '@tanstack/react-table';
+import { Card, CardContent } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+  CUSTOMER_CATEGORIES,
+  SUPPLIER_CATEGORIES,
+  CATEGORIES_WITH_PAYMENT_STATUS,
+  DEFAULT_CATEGORY_FILTER,
+  type CategoryDocumentFilter,
+} from '../types';
+import { useCategoryPage } from '../hooks/use-ablage-queries';
+import { CategoryHeader } from './CategoryHeader';
+import { CategoryAggregations } from './CategoryAggregations';
+import { DocumentFilterBar } from './DocumentFilterBar';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { CUSTOMER_CATEGORIES, SUPPLIER_CATEGORIES } from '../types'
-import {
-  getCustomerById,
-  getCustomerFolder,
-  getSupplierById,
-  getSupplierFolder,
-} from '../mockData'
+  DocumentsTable,
+  DocumentsEmptyState,
+  DocumentsPagination,
+} from './DocumentsTable';
+import { BulkActionsToolbar } from './BulkActionsToolbar';
+
+// ==================== Types ====================
 
 interface CategoryDocumentListProps {
-  entityType: 'customer' | 'supplier'
+  entityType: 'customer' | 'supplier';
 }
 
-// Mock documents for demonstration
-const MOCK_DOCUMENTS = [
-  {
-    id: 'doc-1',
-    filename: 'RG-2024-00123.pdf',
-    documentNumber: 'RG-2024-00123',
-    documentType: 'invoice',
-    date: '2024-12-15',
-    amount: 1234.56,
-    status: 'processed',
-    createdAt: '2024-12-15T10:30:00',
-  },
-  {
-    id: 'doc-2',
-    filename: 'RG-2024-00124.pdf',
-    documentNumber: 'RG-2024-00124',
-    documentType: 'invoice',
-    date: '2024-12-18',
-    amount: 567.89,
-    status: 'pending',
-    createdAt: '2024-12-18T14:22:00',
-  },
-  {
-    id: 'doc-3',
-    filename: 'RG-2024-00125.pdf',
-    documentNumber: 'RG-2024-00125',
-    documentType: 'invoice',
-    date: '2024-12-20',
-    amount: 2345.0,
-    status: 'processed',
-    createdAt: '2024-12-20T09:15:00',
-  },
-  {
-    id: 'doc-4',
-    filename: 'RG-2024-00126.pdf',
-    documentNumber: 'RG-2024-00126',
-    documentType: 'invoice',
-    date: '2024-12-22',
-    amount: 789.0,
-    status: 'review',
-    createdAt: '2024-12-22T16:45:00',
-  },
-]
+// ==================== Main Component ====================
 
 export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) {
-  const params = useParams({ strict: false })
-  const isCustomer = entityType === 'customer'
+  const params = useParams({ strict: false });
+  const isCustomer = entityType === 'customer';
 
-  const entityId = isCustomer ? params.customerId : params.supplierId
-  const folderId = params.folderId
-  const category = params.category
+  // Extract route params
+  const entityId = isCustomer ? params.customerId : params.supplierId;
+  const folderId = params.folderId;
+  const category = params.category;
 
-  const categories = isCustomer ? CUSTOMER_CATEGORIES : SUPPLIER_CATEGORIES
-  const basePath = isCustomer ? '/kunden' : '/lieferanten'
-  const colorClass = isCustomer ? 'text-amber-500' : 'text-blue-500'
+  // Category metadata
+  const categories = isCustomer ? CUSTOMER_CATEGORIES : SUPPLIER_CATEGORIES;
+  const categoryInfo = categories.find((c) => c.id === category);
+  const showPaymentStatus = CATEGORIES_WITH_PAYMENT_STATUS.includes(category || '');
 
-  // Get entity and folder info
-  const entity = isCustomer
-    ? (entityId ? getCustomerById(entityId) : null)
-    : (entityId ? getSupplierById(entityId) : null)
+  // ==================== State ====================
 
-  const folder = isCustomer
-    ? (entityId && folderId ? getCustomerFolder(entityId, folderId) : null)
-    : (entityId && folderId ? getSupplierFolder(entityId, folderId) : null)
+  const [filter, setFilter] = useState<Partial<CategoryDocumentFilter>>(() => ({
+    ...DEFAULT_CATEGORY_FILTER,
+    businessEntityId: entityId || '',
+    folderId: folderId || '',
+    category: category || '',
+    entityType,
+  }));
 
-  const entityName = entity?.displayName || (isCustomer ? 'Kunde' : 'Lieferant')
-  const folderName = folder?.name || 'Ordner'
-  const categoryInfo = categories.find((c) => c.id === category)
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: 'documentDate', desc: true },
+  ]);
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+  // ==================== Data Query ====================
+
+  const {
+    documents,
+    aggregations,
+    isLoading,
+    isLoadingAggregations,
+    isError,
+    error,
+  } = useCategoryPage(
+    {
+      businessEntityId: entityId || '',
+      folderId: folderId || '',
+      category: category || '',
+      entityType,
+      search: filter.search,
+      dateFrom: filter.dateFrom,
+      dateTo: filter.dateTo,
+      amountMin: filter.amountMin,
+      amountMax: filter.amountMax,
+      processingStatus: filter.processingStatus,
+      paymentStatus: filter.paymentStatus,
+      tags: filter.tags,
+      sortBy: filter.sortBy,
+      sortOrder: filter.sortOrder,
+      page: filter.page,
+      pageSize: filter.pageSize,
+    },
+    { enabled: !!entityId && !!folderId && !!category }
+  );
+
+  const documentList = documents?.items || [];
+  const totalCount = documents?.total || 0;
+  const totalPages = documents?.totalPages || 0;
+  const currentPage = filter.page || 0;
+
+  // Get selected document IDs
+  const selectedIds = useMemo(() => Object.keys(rowSelection), [rowSelection]);
+
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(
+    () =>
+      !!(
+        filter.search ||
+        filter.dateFrom ||
+        filter.dateTo ||
+        filter.processingStatus?.length ||
+        filter.paymentStatus?.length
+      ),
+    [filter]
+  );
+
+  // ==================== Handlers ====================
+
+  const handlePageChange = useCallback((newPage: number) => {
+    setFilter((prev) => ({ ...prev, page: newPage }));
+    setRowSelection({}); // Clear selection on page change
+  }, []);
+
+  const handleFilterChange = useCallback(
+    (newFilter: Partial<CategoryDocumentFilter>) => {
+      setFilter((prev) => ({ ...prev, ...newFilter, page: 0 })); // Reset page on filter change
+      setRowSelection({}); // Clear selection on filter change
+    },
+    []
+  );
+
+  const handleClearSelection = useCallback(() => {
+    setRowSelection({});
+  }, []);
+
+  const handleUploadClick = useCallback(() => {
+    // TODO: Implement upload modal/drawer
+    console.log('Upload clicked');
+  }, []);
+
+  // ==================== Render ====================
+
+  // Missing required params
+  if (!entityId || !folderId || !category) {
+    return (
+      <div className="p-8">
+        <Card>
+          <CardContent className="py-8">
+            <p className="text-center text-muted-foreground">
+              Ungueltige Parameter. Bitte waehlen Sie eine Kategorie aus.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
-
-  const formatAmount = (amount: number) => {
-    return amount.toLocaleString('de-DE', {
-      style: 'currency',
-      currency: 'EUR',
-    })
-  }
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'processed':
-        return (
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-            Verarbeitet
-          </Badge>
-        )
-      case 'pending':
-        return (
-          <Badge variant="secondary">
-            Ausstehend
-          </Badge>
-        )
-      case 'review':
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-            Zur Pruefung
-          </Badge>
-        )
-      default:
-        return <Badge variant="outline">{status}</Badge>
-    }
-  }
-
-  // Build paths for breadcrumbs
-  const folderPath = isCustomer
-    ? '/kunden/$customerId/$folderId'
-    : '/lieferanten/$supplierId/$folderId'
-  const folderParams = isCustomer
-    ? { customerId: entityId!, folderId: folderId! }
-    : { supplierId: entityId!, folderId: folderId! }
-  const entityPath = isCustomer
-    ? '/kunden/$customerId'
-    : '/lieferanten/$supplierId'
-  const entityParams = isCustomer
-    ? { customerId: entityId! }
-    : { supplierId: entityId! }
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-8 space-y-6 pb-24">
       {/* Header with Breadcrumb */}
-      <div className="flex items-center gap-4">
-        <Link to={folderPath} params={folderParams}>
-          <Button variant="ghost" size="icon" aria-label="Zurueck zur Ordner-Uebersicht">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-        </Link>
-        <div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <Link to={basePath} className="hover:text-foreground transition-colors">
-              {isCustomer ? 'Kunden' : 'Lieferanten'}
-            </Link>
-            <span>/</span>
-            <Link to={entityPath} params={entityParams} className="hover:text-foreground transition-colors">
-              {entityName}
-            </Link>
-            <span>/</span>
-            <Link to={folderPath} params={folderParams} className="hover:text-foreground transition-colors">
-              {folderName}
-            </Link>
-            <span>/</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <FolderOpen className={`w-8 h-8 ${colorClass}`} />
-            {categoryInfo?.label}
-            {categoryInfo?.shortCode && (
-              <span className="text-lg text-muted-foreground">({categoryInfo.shortCode})</span>
-            )}
-          </h1>
-        </div>
-      </div>
+      <CategoryHeader
+        entityType={entityType}
+        entityId={entityId}
+        entityName={entityId} // TODO: Load entity name from API
+        folderId={folderId}
+        folderName={folderId} // TODO: Load folder name from API
+        categoryInfo={categoryInfo}
+        onUploadClick={handleUploadClick}
+      />
 
-      {/* Actions Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Filter className="w-4 h-4" />
-            Filter
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <SortAsc className="w-4 h-4" />
-            Sortieren
-          </Button>
-        </div>
-        <div className="flex gap-2">
-          <Badge variant="outline" className="py-1.5">
-            {MOCK_DOCUMENTS.length} Dokumente
-          </Badge>
-          <Button className="gap-2">
-            <Upload className="w-4 h-4" />
-            Dokument hochladen
-          </Button>
-        </div>
-      </div>
+      {/* Aggregations */}
+      <CategoryAggregations
+        aggregations={aggregations}
+        isLoading={isLoadingAggregations}
+        showPaymentInfo={showPaymentStatus}
+      />
 
-      {/* Document Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px]"></TableHead>
-                <TableHead>Dateiname</TableHead>
-                <TableHead>Dokumentnummer</TableHead>
-                <TableHead>Datum</TableHead>
-                <TableHead className="text-right">Betrag</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right w-[100px]">Aktionen</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {MOCK_DOCUMENTS.map((doc) => (
-                <TableRow key={doc.id} className="group">
-                  <TableCell>
-                    <FileText className="w-4 h-4 text-muted-foreground" />
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    <Link
-                      to="/documents/$documentId"
-                      params={{ documentId: doc.id }}
-                      className="hover:underline hover:text-primary transition-colors"
-                    >
-                      {doc.filename}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {doc.documentNumber}
-                  </TableCell>
-                  <TableCell>{formatDate(doc.date)}</TableCell>
-                  <TableCell className="text-right font-mono">
-                    {formatAmount(doc.amount)}
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(doc.status)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="gap-2">
-                          <Eye className="w-4 h-4" />
-                          Anzeigen
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2">
-                          <Download className="w-4 h-4" />
-                          Herunterladen
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Filter Bar */}
+      <DocumentFilterBar
+        category={category}
+        filter={filter}
+        onChange={handleFilterChange}
+        totalCount={totalCount}
+      />
 
-      {/* Empty State */}
-      {MOCK_DOCUMENTS.length === 0 && (
-        <div className="text-center py-16 text-muted-foreground">
-          <FolderOpen className="w-16 h-16 mx-auto mb-4 opacity-30" />
-          <p className="text-lg font-medium">Keine Dokumente vorhanden</p>
-          <p className="text-sm mt-2">
-            Laden Sie Dokumente in diese Kategorie hoch
-          </p>
-          <Button className="mt-4 gap-2">
-            <Upload className="w-4 h-4" />
-            Erstes Dokument hochladen
-          </Button>
-        </div>
+      {/* Error State */}
+      {isError && (
+        <Card>
+          <CardContent className="py-8">
+            <p className="text-center text-destructive" role="alert">
+              Fehler beim Laden der Dokumente: {(error as Error)?.message ?? 'Unbekannter Fehler'}
+            </p>
+          </CardContent>
+        </Card>
       )}
+
+      {/* Content */}
+      {!isError && (
+        <>
+          {/* Empty State */}
+          {!isLoading && documentList.length === 0 && (
+            <DocumentsEmptyState
+              hasFilters={hasActiveFilters}
+              onUploadClick={handleUploadClick}
+            />
+          )}
+
+          {/* Document Table */}
+          {(isLoading || documentList.length > 0) && (
+            <DocumentsTable
+              documents={documentList}
+              showPaymentStatus={showPaymentStatus}
+              isLoading={isLoading}
+              sorting={sorting}
+              onSortingChange={setSorting}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
+            />
+          )}
+
+          {/* Pagination */}
+          {!isLoading && documentList.length > 0 && (
+            <DocumentsPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              onPageChange={handlePageChange}
+            />
+          )}
+        </>
+      )}
+
+      {/* Bulk Actions Toolbar */}
+      <BulkActionsToolbar
+        selectedIds={selectedIds}
+        category={category}
+        onClearSelection={handleClearSelection}
+      />
     </div>
-  )
+  );
 }
+
+export default CategoryDocumentList;

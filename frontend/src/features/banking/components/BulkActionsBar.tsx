@@ -36,11 +36,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { useToast } from '@/components/ui/use-toast';
 import {
     Mail,
     TrendingUp,
@@ -51,8 +47,7 @@ import {
     CheckCircle2,
     Loader2,
 } from 'lucide-react';
-import { useBulkEscalateDunnings, useSetMahnstopp, useLiftMahnstopp } from '../hooks/use-banking-queries';
-import { cn } from '@/lib/utils';
+import { useBulkEscalateDunnings, useBulkSendReminders, useSetMahnstopp, useLiftMahnstopp } from '../hooks/use-banking-queries';
 
 // ==================== Types ====================
 
@@ -65,7 +60,7 @@ interface BulkActionsBarProps {
 interface MahnstoppDialogData {
     open: boolean;
     reason: string;
-    until?: Date;
+    until?: string;  // ISO date string statt Date
 }
 
 // ==================== Main Component ====================
@@ -75,6 +70,7 @@ export function BulkActionsBar({
     onClearSelection,
     onActionComplete,
 }: BulkActionsBarProps) {
+    const { toast } = useToast();
     const [showEscalateConfirm, setShowEscalateConfirm] = useState(false);
     const [mahnstoppDialog, setMahnstoppDialog] = useState<MahnstoppDialogData>({
         open: false,
@@ -85,10 +81,11 @@ export function BulkActionsBar({
 
     // Mutations
     const bulkEscalate = useBulkEscalateDunnings();
+    const bulkSendReminders = useBulkSendReminders();
     const setMahnstopp = useSetMahnstopp();
     const liftMahnstopp = useLiftMahnstopp();
 
-    const isLoading = bulkEscalate.isPending || setMahnstopp.isPending || liftMahnstopp.isPending;
+    const isLoading = bulkEscalate.isPending || bulkSendReminders.isPending || setMahnstopp.isPending || liftMahnstopp.isPending;
     const count = selectedIds.length;
 
     if (count === 0) return null;
@@ -96,34 +93,50 @@ export function BulkActionsBar({
     // ==================== Handlers ====================
 
     const handleSendReminder = async () => {
-        // Mahnung senden - aktuell noch nicht implementiert
-        // TODO: Implement bulk send reminder endpoint
-        toast.info('Mahnungen werden gesendet...', {
-            description: `${count} Mahnvorgaenge werden bearbeitet.`,
-        });
-
-        // Placeholder for actual implementation
-        setTimeout(() => {
-            toast.success('Mahnungen gesendet', {
-                description: `${count} Mahnungen wurden erfolgreich versendet.`,
+        try {
+            const result = await bulkSendReminders.mutateAsync({
+                dunningIds: selectedIds,
+                channel: 'email',
             });
+
+            if (result.failed > 0) {
+                toast({
+                    title: 'Mahnungen teilweise versendet',
+                    description: `${result.sent} von ${result.total} Mahnungen wurden versendet. ${result.failed} fehlgeschlagen.`,
+                });
+            } else {
+                toast({
+                    title: 'Mahnungen versendet',
+                    description: `${result.sent} Mahnungen wurden erfolgreich versendet.`,
+                });
+            }
             onClearSelection();
             onActionComplete?.();
-        }, 1500);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+            toast({
+                variant: 'destructive',
+                title: 'Fehler beim Versenden der Mahnungen',
+                description: errorMessage,
+            });
+        }
     };
 
     const handleEscalate = async () => {
         try {
             await bulkEscalate.mutateAsync({
-                dunning_ids: selectedIds,
+                dunningIds: selectedIds,
             });
-            toast.success('Eskalation erfolgreich', {
+            toast({
+                title: 'Eskalation erfolgreich',
                 description: `${count} Mahnvorgaenge wurden eskaliert.`,
             });
             onClearSelection();
             onActionComplete?.();
-        } catch (error) {
-            toast.error('Fehler bei der Eskalation', {
+        } catch {
+            toast({
+                variant: 'destructive',
+                title: 'Fehler bei der Eskalation',
                 description: 'Die Mahnvorgaenge konnten nicht eskaliert werden.',
             });
         } finally {
@@ -133,7 +146,9 @@ export function BulkActionsBar({
 
     const handleSetMahnstopp = async () => {
         if (!mahnstoppDialog.reason.trim()) {
-            toast.error('Bitte Grund angeben', {
+            toast({
+                variant: 'destructive',
+                title: 'Bitte Grund angeben',
                 description: 'Ein Grund fuer den Mahnstopp ist erforderlich.',
             });
             return;
@@ -146,17 +161,20 @@ export function BulkActionsBar({
                     setMahnstopp.mutateAsync({
                         dunningId: id,
                         reason: mahnstoppDialog.reason,
-                        until: mahnstoppDialog.until?.toISOString(),
+                        until: mahnstoppDialog.until,
                     })
                 )
             );
-            toast.success('Mahnstopp gesetzt', {
+            toast({
+                title: 'Mahnstopp gesetzt',
                 description: `${count} Mahnvorgaenge wurden pausiert.`,
             });
             onClearSelection();
             onActionComplete?.();
-        } catch (error) {
-            toast.error('Fehler beim Setzen des Mahnstopps', {
+        } catch {
+            toast({
+                variant: 'destructive',
+                title: 'Fehler beim Setzen des Mahnstopps',
                 description: 'Der Mahnstopp konnte nicht gesetzt werden.',
             });
         } finally {
@@ -169,13 +187,16 @@ export function BulkActionsBar({
             await Promise.all(
                 selectedIds.map((id) => liftMahnstopp.mutateAsync(id))
             );
-            toast.success('Mahnstopp aufgehoben', {
+            toast({
+                title: 'Mahnstopp aufgehoben',
                 description: `${count} Mahnvorgaenge wurden wieder aktiviert.`,
             });
             onClearSelection();
             onActionComplete?.();
-        } catch (error) {
-            toast.error('Fehler beim Aufheben des Mahnstopps', {
+        } catch {
+            toast({
+                variant: 'destructive',
+                title: 'Fehler beim Aufheben des Mahnstopps',
                 description: 'Der Mahnstopp konnte nicht aufgehoben werden.',
             });
         } finally {
@@ -193,7 +214,7 @@ export function BulkActionsBar({
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-md">
                     <CheckCircle2 className="h-4 w-4 text-primary" />
                     <span className="font-medium text-sm">
-                        {count} ausgewaehlt
+                        {count} ausgewählt
                     </span>
                 </div>
 
@@ -281,16 +302,16 @@ export function BulkActionsBar({
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            Mahnvorgaenge eskalieren?
+                            Mahnvorgänge eskalieren?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                             Sie sind dabei, {count} Mahnvorgang
-                            {count !== 1 ? 'e' : ''} auf die naechste Mahnstufe zu
-                            eskalieren. Diese Aktion kann nicht rueckgaengig gemacht
+                            {count !== 1 ? 'e' : ''} auf die nächste Mahnstufe zu
+                            eskalieren. Diese Aktion kann nicht rückgängig gemacht
                             werden.
                             <br />
                             <br />
-                            Die betroffenen Kunden werden ueber die Eskalation
+                            Die betroffenen Kunden werden über die Eskalation
                             informiert.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -322,8 +343,8 @@ export function BulkActionsBar({
                     <DialogHeader>
                         <DialogTitle>Mahnstopp setzen</DialogTitle>
                         <DialogDescription>
-                            Setzen Sie einen Mahnstopp fuer {count} Mahnvorgang
-                            {count !== 1 ? 'e' : ''}. Waehrend des Mahnstopps werden
+                            Setzen Sie einen Mahnstopp für {count} Mahnvorgang
+                            {count !== 1 ? 'e' : ''}. Während des Mahnstopps werden
                             keine automatischen Mahnungen versendet.
                         </DialogDescription>
                     </DialogHeader>
@@ -349,41 +370,23 @@ export function BulkActionsBar({
 
                         <div className="grid gap-2">
                             <Label>Mahnstopp bis (optional)</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        className={cn(
-                                            'justify-start text-left font-normal',
-                                            !mahnstoppDialog.until && 'text-muted-foreground'
-                                        )}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {mahnstoppDialog.until ? (
-                                            format(mahnstoppDialog.until, 'PPP', { locale: de })
-                                        ) : (
-                                            <span>Datum waehlen</span>
-                                        )}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar
-                                        mode="single"
-                                        selected={mahnstoppDialog.until}
-                                        onSelect={(date) =>
-                                            setMahnstoppDialog({
-                                                ...mahnstoppDialog,
-                                                until: date,
-                                            })
-                                        }
-                                        disabled={(date) => date < new Date()}
-                                        locale={de}
-                                        initialFocus
-                                    />
-                                </PopoverContent>
-                            </Popover>
+                            <div className="relative">
+                                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    type="date"
+                                    value={mahnstoppDialog.until || ''}
+                                    onChange={(e) =>
+                                        setMahnstoppDialog({
+                                            ...mahnstoppDialog,
+                                            until: e.target.value || undefined,
+                                        })
+                                    }
+                                    min={new Date().toISOString().split('T')[0]}
+                                    className="pl-10"
+                                />
+                            </div>
                             <p className="text-xs text-muted-foreground">
-                                Leer lassen fuer unbefristeten Mahnstopp
+                                Leer lassen für unbefristeten Mahnstopp
                             </p>
                         </div>
                     </div>
@@ -421,7 +424,7 @@ export function BulkActionsBar({
                             Mahnstopp aufheben?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Sie sind dabei, den Mahnstopp fuer {count} Mahnvorgang
+                            Sie sind dabei, den Mahnstopp für {count} Mahnvorgang
                             {count !== 1 ? 'e' : ''} aufzuheben. Die automatische
                             Mahnung wird wieder aktiviert.
                         </AlertDialogDescription>

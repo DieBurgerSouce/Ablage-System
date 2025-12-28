@@ -2702,3 +2702,660 @@ async def get_document_access_log(
             status_code=500,
             detail="Fehler beim Abrufen des Zugriffs-Logs"
         )
+
+
+# ==================== Ablage (Category) Endpoints ====================
+
+@router.get("/category", response_model=None)
+async def get_category_documents(
+    business_entity_id: UUID = Query(..., description="Kunden- oder Lieferanten-ID"),
+    folder_id: str = Query(..., description="Ordner-ID (z.B. '2024')"),
+    category: str = Query(..., description="Kategorie (rechnungen, angebote, etc.)"),
+    entity_type: str = Query("customer", pattern="^(customer|supplier)$", description="Kunde oder Lieferant"),
+    search: Optional[str] = Query(None, max_length=200, description="Textsuche"),
+    date_from: Optional[str] = Query(None, description="Datum ab (ISO)"),
+    date_to: Optional[str] = Query(None, description="Datum bis (ISO)"),
+    amount_min: Optional[float] = Query(None, ge=0, description="Mindestbetrag"),
+    amount_max: Optional[float] = Query(None, ge=0, description="Hoechstbetrag"),
+    processing_status: Optional[List[str]] = Query(None, description="Verarbeitungsstatus"),
+    payment_status: Optional[List[str]] = Query(None, description="Zahlungsstatus"),
+    tags: Optional[List[str]] = Query(None, description="Tags"),
+    page: int = Query(0, ge=0, description="Seitennummer (0-basiert)"),
+    page_size: int = Query(25, ge=1, le=100, description="Eintraege pro Seite"),
+    sort_by: str = Query("document_date", description="Sortierfeld"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sortierrichtung"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Dokumente fuer eine Kategorie-Ansicht abrufen.
+
+    Ermoeglicht gefilterte, paginierte Dokumentenliste fuer die Ablage-Ansicht.
+    Unterstuetzt Filterung nach Datum, Betrag, Status, Tags und Volltextsuche.
+
+    **Beispiel:**
+    ```
+    GET /api/v1/documents/category?business_entity_id=<uuid>&folder_id=2024&category=rechnungen
+    ```
+    """
+    from app.services.document_services.ablage_service import get_ablage_service
+    from app.db.schemas import (
+        CategoryDocumentFilter,
+        CategoryDocumentListResponse,
+        EntityType,
+        ProcessingStatus as SchemaProcessingStatus,
+        DocumentPaymentStatus,
+    )
+
+    ablage_service = get_ablage_service()
+
+    # Filter aufbauen
+    try:
+        # Datumsfelder parsen
+        parsed_date_from = None
+        parsed_date_to = None
+        if date_from:
+            parsed_date_from = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+        if date_to:
+            parsed_date_to = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+
+        # Status-Enums parsen
+        parsed_processing_status = None
+        if processing_status:
+            parsed_processing_status = [
+                SchemaProcessingStatus(s) for s in processing_status
+            ]
+
+        parsed_payment_status = None
+        if payment_status:
+            parsed_payment_status = [
+                DocumentPaymentStatus(s) for s in payment_status
+            ]
+
+        filter_params = CategoryDocumentFilter(
+            business_entity_id=business_entity_id,
+            folder_id=folder_id,
+            category=category,
+            entity_type=EntityType(entity_type),
+            search=search,
+            date_from=parsed_date_from,
+            date_to=parsed_date_to,
+            amount_min=amount_min,
+            amount_max=amount_max,
+            processing_status=parsed_processing_status,
+            payment_status=parsed_payment_status,
+            tags=tags,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ungueltiger Filterwert: {str(e)}"
+        )
+
+    try:
+        result = await ablage_service.get_category_documents(
+            db=db,
+            user_id=current_user.id,
+            filter_params=filter_params,
+        )
+
+        logger.debug(
+            "category_documents_retrieved",
+            user_id=str(current_user.id),
+            category=category,
+            total=result.total
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "category_documents_error",
+            user_id=str(current_user.id),
+            category=category,
+            error=str(e),
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim Abrufen der Dokumente"
+        )
+
+
+@router.get("/category/aggregations", response_model=None)
+async def get_category_aggregations(
+    business_entity_id: UUID = Query(..., description="Kunden- oder Lieferanten-ID"),
+    folder_id: str = Query(..., description="Ordner-ID"),
+    category: str = Query(..., description="Kategorie"),
+    entity_type: str = Query("customer", pattern="^(customer|supplier)$"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Aggregierte Statistiken fuer eine Kategorie abrufen.
+
+    Liefert Summen, Anzahlen und Status-Verteilungen fuer Dashboard-Karten.
+
+    **Beispiel:**
+    ```
+    GET /api/v1/documents/category/aggregations?business_entity_id=<uuid>&folder_id=2024&category=rechnungen
+    ```
+    """
+    from app.services.document_services.ablage_service import get_ablage_service
+    from app.db.schemas import EntityType
+
+    ablage_service = get_ablage_service()
+
+    try:
+        result = await ablage_service.get_category_aggregations(
+            db=db,
+            user_id=current_user.id,
+            business_entity_id=business_entity_id,
+            folder_id=folder_id,
+            category=category,
+            entity_type=EntityType(entity_type),
+        )
+
+        logger.debug(
+            "category_aggregations_retrieved",
+            user_id=str(current_user.id),
+            category=category,
+            total_documents=result.total_documents
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "category_aggregations_error",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim Berechnen der Aggregationen"
+        )
+
+
+@router.post("/bulk/download-zip")
+async def bulk_download_zip(
+    request: Request,
+    current_user: User = Depends(check_batch_rate_limit),
+    db: AsyncSession = Depends(get_db)
+):
+    """Mehrere Dokumente als ZIP-Archiv herunterladen.
+
+    **Request Body:**
+    ```json
+    {
+        "document_ids": ["uuid1", "uuid2", ...],
+        "filename": "optional_name.zip"
+    }
+    ```
+    """
+    from app.services.document_services.ablage_service import get_ablage_service
+    from app.db.schemas import BulkDownloadZipRequest
+
+    body = await request.json()
+
+    try:
+        req = BulkDownloadZipRequest(**body)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ungueltige Anfrage: {str(e)}"
+        )
+
+    ablage_service = get_ablage_service()
+
+    try:
+        zip_bytes, filename = await ablage_service.bulk_download_zip(
+            db=db,
+            user_id=current_user.id,
+            document_ids=req.document_ids,
+            filename=req.filename,
+        )
+
+        logger.info(
+            "bulk_zip_download",
+            user_id=str(current_user.id),
+            document_count=len(req.document_ids),
+            filename=filename
+        )
+
+        return StreamingResponse(
+            io.BytesIO(zip_bytes),
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(zip_bytes)),
+            }
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(
+            "bulk_zip_download_error",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim Erstellen des ZIP-Archivs"
+        )
+
+
+@router.post("/bulk/export-csv")
+async def bulk_export_csv(
+    request: Request,
+    current_user: User = Depends(check_batch_rate_limit),
+    db: AsyncSession = Depends(get_db)
+):
+    """Dokument-Metadaten als CSV exportieren.
+
+    **Request Body:**
+    ```json
+    {
+        "document_ids": ["uuid1", "uuid2", ...],
+        "columns": ["dateiname", "gesamtbetrag", ...],
+        "include_amounts": true,
+        "include_dates": true,
+        "delimiter": ";"
+    }
+    ```
+    """
+    from app.services.document_services.ablage_service import get_ablage_service
+    from app.db.schemas import BulkExportCsvRequest
+
+    body = await request.json()
+
+    try:
+        req = BulkExportCsvRequest(**body)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ungueltige Anfrage: {str(e)}"
+        )
+
+    ablage_service = get_ablage_service()
+
+    try:
+        csv_bytes, filename = await ablage_service.bulk_export_csv(
+            db=db,
+            user_id=current_user.id,
+            document_ids=req.document_ids,
+            columns=req.columns,
+            include_amounts=req.include_amounts,
+            include_dates=req.include_dates,
+            delimiter=req.delimiter,
+        )
+
+        logger.info(
+            "bulk_csv_export",
+            user_id=str(current_user.id),
+            document_count=len(req.document_ids),
+            filename=filename
+        )
+
+        return StreamingResponse(
+            io.BytesIO(csv_bytes),
+            media_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(csv_bytes)),
+            }
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(
+            "bulk_csv_export_error",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim CSV-Export"
+        )
+
+
+@router.patch("/{document_id}/payment-status", response_model=None)
+async def update_payment_status(
+    document_id: UUID,
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Zahlungsstatus eines Dokuments aktualisieren.
+
+    **Request Body:**
+    ```json
+    {
+        "status": "bezahlt",
+        "paid_amount": 1234.56,
+        "payment_date": "2024-01-15T10:30:00Z"
+    }
+    ```
+
+    **Status-Werte:**
+    - `offen`: Noch nicht bezahlt
+    - `bezahlt`: Vollstaendig bezahlt
+    - `ueberfaellig`: Faelligkeitsdatum ueberschritten
+    - `teilbezahlt`: Teilweise bezahlt (paid_amount erforderlich)
+    """
+    from app.services.document_services.ablage_service import get_ablage_service
+    from app.db.schemas import UpdatePaymentStatusRequest, DocumentPaymentStatus
+
+    body = await request.json()
+
+    try:
+        req = UpdatePaymentStatusRequest(**body)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ungueltige Anfrage: {str(e)}"
+        )
+
+    ablage_service = get_ablage_service()
+
+    try:
+        result = await ablage_service.update_payment_status(
+            db=db,
+            user_id=current_user.id,
+            document_id=document_id,
+            status=req.status,
+            paid_amount=req.paid_amount,
+            payment_date=req.payment_date,
+        )
+
+        logger.info(
+            "payment_status_updated",
+            user_id=str(current_user.id),
+            document_id=str(document_id),
+            new_status=req.status.value
+        )
+
+        return result
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(
+            "payment_status_update_error",
+            document_id=str(document_id),
+            error=str(e),
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim Aktualisieren des Zahlungsstatus"
+        )
+
+
+@router.post("/bulk/mark-as-paid", response_model=None)
+async def bulk_mark_as_paid(
+    request: Request,
+    current_user: User = Depends(check_batch_rate_limit),
+    db: AsyncSession = Depends(get_db)
+):
+    """Mehrere Dokumente als bezahlt markieren.
+
+    **Request Body:**
+    ```json
+    {
+        "document_ids": ["uuid1", "uuid2", ...],
+        "payment_date": "2024-01-15T10:30:00Z"
+    }
+    ```
+    """
+    from app.services.document_services.ablage_service import get_ablage_service
+    from app.db.schemas import BulkMarkAsPaidRequest
+
+    body = await request.json()
+
+    try:
+        req = BulkMarkAsPaidRequest(**body)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ungueltige Anfrage: {str(e)}"
+        )
+
+    ablage_service = get_ablage_service()
+
+    try:
+        result = await ablage_service.bulk_mark_as_paid(
+            db=db,
+            user_id=current_user.id,
+            document_ids=req.document_ids,
+            payment_date=req.payment_date,
+        )
+
+        logger.info(
+            "bulk_mark_as_paid",
+            user_id=str(current_user.id),
+            success_count=result.success_count,
+            failed_count=result.failed_count
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "bulk_mark_as_paid_error",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim Markieren als bezahlt"
+        )
+
+
+@router.post("/bulk/move-category", response_model=None)
+async def bulk_move_category(
+    request: Request,
+    current_user: User = Depends(check_batch_rate_limit),
+    db: AsyncSession = Depends(get_db)
+):
+    """Dokumente in andere Kategorie verschieben.
+
+    **Request Body:**
+    ```json
+    {
+        "document_ids": ["uuid1", "uuid2", ...],
+        "target_category": "vertraege"
+    }
+    ```
+    """
+    from app.services.document_services.ablage_service import get_ablage_service
+    from app.db.schemas import BulkMoveCategoryRequest
+
+    body = await request.json()
+
+    try:
+        req = BulkMoveCategoryRequest(**body)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ungueltige Anfrage: {str(e)}"
+        )
+
+    ablage_service = get_ablage_service()
+
+    try:
+        result = await ablage_service.bulk_move_category(
+            db=db,
+            user_id=current_user.id,
+            document_ids=req.document_ids,
+            target_category=req.target_category,
+        )
+
+        logger.info(
+            "bulk_move_category",
+            user_id=str(current_user.id),
+            target_category=req.target_category,
+            success_count=result.success_count
+        )
+
+        return result
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(
+            "bulk_move_category_error",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim Verschieben der Dokumente"
+        )
+
+
+@router.post("/bulk/set-tags", response_model=None)
+async def bulk_set_tags(
+    request: Request,
+    current_user: User = Depends(check_batch_rate_limit),
+    db: AsyncSession = Depends(get_db)
+):
+    """Tags fuer mehrere Dokumente setzen/entfernen.
+
+    **Request Body:**
+    ```json
+    {
+        "document_ids": ["uuid1", "uuid2", ...],
+        "tags": ["wichtig", "archiv"],
+        "mode": "add"
+    }
+    ```
+
+    **Mode-Werte:**
+    - `add`: Tags hinzufuegen
+    - `remove`: Tags entfernen
+    - `set`: Alle Tags ersetzen
+    """
+    from app.services.document_services.ablage_service import get_ablage_service
+    from app.db.schemas import BulkSetTagsRequest
+
+    body = await request.json()
+
+    try:
+        req = BulkSetTagsRequest(**body)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ungueltige Anfrage: {str(e)}"
+        )
+
+    ablage_service = get_ablage_service()
+
+    try:
+        result = await ablage_service.bulk_set_tags(
+            db=db,
+            user_id=current_user.id,
+            document_ids=req.document_ids,
+            tags=req.tags,
+            mode=req.mode,
+        )
+
+        logger.info(
+            "bulk_set_tags",
+            user_id=str(current_user.id),
+            mode=req.mode.value,
+            tags=req.tags,
+            success_count=result.success_count
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "bulk_set_tags_error",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim Setzen der Tags"
+        )
+
+
+@router.delete("/bulk/delete", response_model=None)
+async def bulk_delete_documents(
+    request: Request,
+    current_user: User = Depends(check_batch_rate_limit),
+    db: AsyncSession = Depends(get_db)
+):
+    """Mehrere Dokumente soft-loeschen (GDPR-konform).
+
+    **Request Body:**
+    ```json
+    {
+        "document_ids": ["uuid1", "uuid2", ...],
+        "reason": "Nicht mehr benoetigt"
+    }
+    ```
+    """
+    from app.services.document_services.ablage_service import get_ablage_service
+
+    body = await request.json()
+    document_ids = body.get("document_ids", [])
+    reason = body.get("reason")
+
+    if not document_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="document_ids erforderlich"
+        )
+
+    # UUIDs validieren
+    try:
+        parsed_ids = [UUID(str(doc_id)) for doc_id in document_ids]
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Ungueltige document_id(s)"
+        )
+
+    ablage_service = get_ablage_service()
+
+    try:
+        result = await ablage_service.bulk_delete(
+            db=db,
+            user_id=current_user.id,
+            document_ids=parsed_ids,
+            reason=reason,
+        )
+
+        logger.info(
+            "bulk_delete",
+            user_id=str(current_user.id),
+            success_count=result.success_count,
+            failed_count=result.failed_count
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "bulk_delete_error",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim Loeschen der Dokumente"
+        )

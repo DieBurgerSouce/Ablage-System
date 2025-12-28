@@ -1,7 +1,7 @@
 /**
  * TelefonProtokollDialog - Dialog zur Protokollierung von Telefonkontakten
  *
- * Formular fuer:
+ * Formular für:
  * - Kontaktname
  * - Telefonnummer
  * - Ergebnis (Dropdown)
@@ -10,11 +10,6 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
 import {
     Dialog,
     DialogContent,
@@ -35,18 +30,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-    Form,
-    FormControl,
-    FormDescription,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from '@/components/ui/form';
-import { toast } from 'sonner';
+import { useToast } from '@/components/ui/use-toast';
 import {
     Phone,
     User,
@@ -61,7 +45,6 @@ import {
 } from 'lucide-react';
 import { useLogPhoneCall } from '../hooks/use-banking-queries';
 import type { PhoneCallOutcome } from '@/types/models/banking';
-import { cn } from '@/lib/utils';
 
 // ==================== Types ====================
 
@@ -73,28 +56,15 @@ interface TelefonProtokollDialogProps {
     onSuccess?: () => void;
 }
 
-// ==================== Schema ====================
-
-const phoneCallSchema = z.object({
-    contact_name: z.string().min(1, 'Kontaktname ist erforderlich'),
-    phone_number: z.string().optional(),
-    outcome: z.enum([
-        'reached',
-        'not_reached',
-        'voicemail',
-        'callback_requested',
-        'payment_promised',
-        'dispute_raised',
-    ] as const, {
-        required_error: 'Bitte waehlen Sie ein Ergebnis',
-    }),
-    notes: z.string().optional(),
-    follow_up_required: z.boolean().default(false),
-    follow_up_date: z.date().optional().nullable(),
-    follow_up_notes: z.string().optional(),
-});
-
-type PhoneCallFormData = z.infer<typeof phoneCallSchema>;
+interface FormState {
+    contact_name: string;
+    phone_number: string;
+    outcome: PhoneCallOutcome | '';
+    notes: string;
+    follow_up_required: boolean;
+    follow_up_date: string;
+    follow_up_notes: string;
+}
 
 // ==================== Outcome Configuration ====================
 
@@ -123,8 +93,8 @@ const OUTCOME_CONFIG: Record<PhoneCallOutcome, {
         color: 'text-orange-600',
     },
     callback_requested: {
-        label: 'Rueckruf erbeten',
-        description: 'Kunde bittet um Rueckruf',
+        label: 'Rückruf erbeten',
+        description: 'Kunde bittet um Rückruf',
         icon: <PhoneCall className="h-4 w-4" />,
         color: 'text-blue-600',
     },
@@ -136,11 +106,19 @@ const OUTCOME_CONFIG: Record<PhoneCallOutcome, {
     },
     dispute_raised: {
         label: 'Reklamation',
-        description: 'Kunde erhebt Einwaende',
+        description: 'Kunde erhebt Einwände',
         icon: <AlertTriangle className="h-4 w-4" />,
         color: 'text-red-600',
     },
 };
+
+// ==================== Helper Functions ====================
+
+function getDefaultFollowUpDate(): string {
+    const date = new Date();
+    date.setDate(date.getDate() + 3);
+    return date.toISOString().split('T')[0];
+}
 
 // ==================== Main Component ====================
 
@@ -151,76 +129,104 @@ export function TelefonProtokollDialog({
     onOpenChange,
     onSuccess,
 }: TelefonProtokollDialogProps) {
+    const { toast } = useToast();
     const logPhoneCall = useLogPhoneCall();
 
-    const form = useForm<PhoneCallFormData>({
-        resolver: zodResolver(phoneCallSchema),
-        defaultValues: {
-            contact_name: debtorName || '',
-            phone_number: '',
-            outcome: undefined,
-            notes: '',
-            follow_up_required: false,
-            follow_up_date: null,
-            follow_up_notes: '',
-        },
+    const [formState, setFormState] = useState<FormState>({
+        contact_name: debtorName || '',
+        phone_number: '',
+        outcome: '',
+        notes: '',
+        follow_up_required: false,
+        follow_up_date: '',
+        follow_up_notes: '',
     });
 
-    const watchFollowUp = form.watch('follow_up_required');
-    const watchOutcome = form.watch('outcome');
+    const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
     // Reset form when dialog opens with new debtor
     useEffect(() => {
         if (open) {
-            form.reset({
+            setFormState({
                 contact_name: debtorName || '',
                 phone_number: '',
-                outcome: undefined,
+                outcome: '',
                 notes: '',
                 follow_up_required: false,
-                follow_up_date: null,
+                follow_up_date: '',
                 follow_up_notes: '',
             });
+            setErrors({});
         }
-    }, [open, debtorName, form]);
+    }, [open, debtorName]);
 
     // Auto-suggest follow-up for certain outcomes
     useEffect(() => {
-        if (watchOutcome === 'callback_requested' || watchOutcome === 'payment_promised') {
-            form.setValue('follow_up_required', true);
-            if (!form.getValues('follow_up_date')) {
-                // Set default follow-up to 3 days from now
-                const followUpDate = new Date();
-                followUpDate.setDate(followUpDate.getDate() + 3);
-                form.setValue('follow_up_date', followUpDate);
-            }
+        if (formState.outcome === 'callback_requested' || formState.outcome === 'payment_promised') {
+            setFormState(prev => ({
+                ...prev,
+                follow_up_required: true,
+                follow_up_date: prev.follow_up_date || getDefaultFollowUpDate(),
+            }));
         }
-    }, [watchOutcome, form]);
+    }, [formState.outcome]);
 
-    const onSubmit = async (data: PhoneCallFormData) => {
+    const updateField = <K extends keyof FormState>(field: K, value: FormState[K]) => {
+        setFormState(prev => ({ ...prev, [field]: value }));
+        // Clear error when field is updated
+        if (errors[field]) {
+            setErrors(prev => ({ ...prev, [field]: undefined }));
+        }
+    };
+
+    const validate = (): boolean => {
+        const newErrors: Partial<Record<keyof FormState, string>> = {};
+
+        if (!formState.contact_name.trim()) {
+            newErrors.contact_name = 'Kontaktname ist erforderlich';
+        }
+
+        if (!formState.outcome) {
+            newErrors.outcome = 'Bitte wählen Sie ein Ergebnis';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!validate()) {
+            return;
+        }
+
         try {
             await logPhoneCall.mutateAsync({
                 dunningId,
                 data: {
-                    contact_name: data.contact_name,
-                    phone_number: data.phone_number || undefined,
-                    outcome: data.outcome,
-                    notes: data.notes || undefined,
-                    follow_up_required: data.follow_up_required,
-                    follow_up_date: data.follow_up_date?.toISOString().split('T')[0],
-                    follow_up_notes: data.follow_up_notes || undefined,
+                    contact_name: formState.contact_name,
+                    phone_number: formState.phone_number || undefined,
+                    outcome: formState.outcome as PhoneCallOutcome,
+                    notes: formState.notes || undefined,
+                    follow_up_required: formState.follow_up_required,
+                    follow_up_date: formState.follow_up_date || undefined,
+                    follow_up_notes: formState.follow_up_notes || undefined,
                 },
             });
 
-            toast.success('Anruf protokolliert', {
-                description: `Telefonkontakt mit ${data.contact_name} wurde gespeichert.`,
+            toast({
+                title: 'Anruf protokolliert',
+                description: `Telefonkontakt mit ${formState.contact_name} wurde gespeichert.`,
             });
 
             onOpenChange(false);
             onSuccess?.();
-        } catch (error) {
-            toast.error('Fehler beim Speichern', {
+        } catch {
+            toast({
+                title: 'Fehler beim Speichern',
                 description: 'Der Telefonkontakt konnte nicht gespeichert werden.',
+                variant: 'destructive',
             });
         }
     };
@@ -238,229 +244,163 @@ export function TelefonProtokollDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        {/* Contact Name */}
-                        <FormField
-                            control={form.control}
-                            name="contact_name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>
-                                        Kontaktname <span className="text-destructive">*</span>
-                                    </FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input
-                                                {...field}
-                                                placeholder="Name der kontaktierten Person"
-                                                className="pl-10"
-                                            />
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Contact Name */}
+                    <div className="space-y-2">
+                        <Label htmlFor="contact_name">
+                            Kontaktname <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                id="contact_name"
+                                value={formState.contact_name}
+                                onChange={(e) => updateField('contact_name', e.target.value)}
+                                placeholder="Name der kontaktierten Person"
+                                className="pl-10"
+                            />
+                        </div>
+                        {errors.contact_name && (
+                            <p className="text-sm text-destructive">{errors.contact_name}</p>
+                        )}
+                    </div>
+
+                    {/* Phone Number */}
+                    <div className="space-y-2">
+                        <Label htmlFor="phone_number">Telefonnummer</Label>
+                        <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                id="phone_number"
+                                value={formState.phone_number}
+                                onChange={(e) => updateField('phone_number', e.target.value)}
+                                placeholder="+49 ..."
+                                className="pl-10"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Outcome */}
+                    <div className="space-y-2">
+                        <Label>
+                            Ergebnis <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                            value={formState.outcome}
+                            onValueChange={(value) => updateField('outcome', value as PhoneCallOutcome)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Wählen Sie das Ergebnis..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Object.entries(OUTCOME_CONFIG).map(([key, config]) => (
+                                    <SelectItem key={key} value={key}>
+                                        <div className="flex items-center gap-2">
+                                            <span className={config.color}>
+                                                {config.icon}
+                                            </span>
+                                            <div>
+                                                <div className="font-medium">{config.label}</div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {config.description}
+                                                </div>
+                                            </div>
                                         </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.outcome && (
+                            <p className="text-sm text-destructive">{errors.outcome}</p>
+                        )}
+                    </div>
+
+                    {/* Notes */}
+                    <div className="space-y-2">
+                        <Label htmlFor="notes">Notizen</Label>
+                        <div className="relative">
+                            <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Textarea
+                                id="notes"
+                                value={formState.notes}
+                                onChange={(e) => updateField('notes', e.target.value)}
+                                placeholder="Gesprächsinhalt, Vereinbarungen, Anmerkungen..."
+                                className="pl-10 min-h-[100px]"
+                            />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Beschreiben Sie den Inhalt des Gesprächs
+                        </p>
+                    </div>
+
+                    {/* Follow-up Required */}
+                    <div className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <Checkbox
+                            id="follow_up_required"
+                            checked={formState.follow_up_required}
+                            onCheckedChange={(checked) => updateField('follow_up_required', !!checked)}
                         />
+                        <div className="space-y-1 leading-none">
+                            <Label htmlFor="follow_up_required">
+                                Follow-up erforderlich
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                                Wiedervorlage für erneuten Kontaktversuch planen
+                            </p>
+                        </div>
+                    </div>
 
-                        {/* Phone Number */}
-                        <FormField
-                            control={form.control}
-                            name="phone_number"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Telefonnummer</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input
-                                                {...field}
-                                                placeholder="+49 ..."
-                                                className="pl-10"
-                                            />
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                    {/* Follow-up Date (conditional) */}
+                    {formState.follow_up_required && (
+                        <div className="space-y-4 rounded-md border p-4 bg-muted/30">
+                            <div className="space-y-2">
+                                <Label htmlFor="follow_up_date">Wiedervorlage am</Label>
+                                <div className="relative">
+                                    <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="follow_up_date"
+                                        type="date"
+                                        value={formState.follow_up_date}
+                                        onChange={(e) => updateField('follow_up_date', e.target.value)}
+                                        min={new Date().toISOString().split('T')[0]}
+                                        className="pl-10"
+                                    />
+                                </div>
+                            </div>
 
-                        {/* Outcome */}
-                        <FormField
-                            control={form.control}
-                            name="outcome"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>
-                                        Ergebnis <span className="text-destructive">*</span>
-                                    </FormLabel>
-                                    <Select
-                                        onValueChange={field.onChange}
-                                        value={field.value}
-                                    >
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Waehlen Sie das Ergebnis..." />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {Object.entries(OUTCOME_CONFIG).map(([key, config]) => (
-                                                <SelectItem key={key} value={key}>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={config.color}>
-                                                            {config.icon}
-                                                        </span>
-                                                        <div>
-                                                            <div className="font-medium">{config.label}</div>
-                                                            <div className="text-xs text-muted-foreground">
-                                                                {config.description}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        {/* Notes */}
-                        <FormField
-                            control={form.control}
-                            name="notes"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Notizen</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                            <Textarea
-                                                {...field}
-                                                placeholder="Gespraechsinhalt, Vereinbarungen, Anmerkungen..."
-                                                className="pl-10 min-h-[100px]"
-                                            />
-                                        </div>
-                                    </FormControl>
-                                    <FormDescription>
-                                        Beschreiben Sie den Inhalt des Gespraechs
-                                    </FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        {/* Follow-up Required */}
-                        <FormField
-                            control={form.control}
-                            name="follow_up_required"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                                    <FormControl>
-                                        <Checkbox
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                    </FormControl>
-                                    <div className="space-y-1 leading-none">
-                                        <FormLabel>
-                                            Follow-up erforderlich
-                                        </FormLabel>
-                                        <FormDescription>
-                                            Wiedervorlage fuer erneuten Kontaktversuch planen
-                                        </FormDescription>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
-
-                        {/* Follow-up Date (conditional) */}
-                        {watchFollowUp && (
-                            <div className="space-y-4 rounded-md border p-4 bg-muted/30">
-                                <FormField
-                                    control={form.control}
-                                    name="follow_up_date"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-col">
-                                            <FormLabel>Wiedervorlage am</FormLabel>
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <FormControl>
-                                                        <Button
-                                                            variant="outline"
-                                                            className={cn(
-                                                                'w-full pl-3 text-left font-normal',
-                                                                !field.value && 'text-muted-foreground'
-                                                            )}
-                                                        >
-                                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                                            {field.value ? (
-                                                                format(field.value, 'PPP', { locale: de })
-                                                            ) : (
-                                                                <span>Datum waehlen</span>
-                                                            )}
-                                                        </Button>
-                                                    </FormControl>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0" align="start">
-                                                    <Calendar
-                                                        mode="single"
-                                                        selected={field.value ?? undefined}
-                                                        onSelect={field.onChange}
-                                                        disabled={(date) => date < new Date()}
-                                                        locale={de}
-                                                        initialFocus
-                                                    />
-                                                </PopoverContent>
-                                            </Popover>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <FormField
-                                    control={form.control}
-                                    name="follow_up_notes"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Follow-up Notiz</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    {...field}
-                                                    placeholder="z.B. Zahlungseingang pruefen, erneut anrufen..."
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
+                            <div className="space-y-2">
+                                <Label htmlFor="follow_up_notes">Follow-up Notiz</Label>
+                                <Input
+                                    id="follow_up_notes"
+                                    value={formState.follow_up_notes}
+                                    onChange={(e) => updateField('follow_up_notes', e.target.value)}
+                                    placeholder="z.B. Zahlungseingang prüfen, erneut anrufen..."
                                 />
                             </div>
-                        )}
+                        </div>
+                    )}
 
-                        <DialogFooter className="pt-4">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => onOpenChange(false)}
-                            >
-                                Abbrechen
-                            </Button>
-                            <Button
-                                type="submit"
-                                disabled={logPhoneCall.isPending}
-                            >
-                                {logPhoneCall.isPending ? (
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                ) : (
-                                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                                )}
-                                Speichern
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
+                    <DialogFooter className="pt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => onOpenChange(false)}
+                        >
+                            Abbrechen
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={logPhoneCall.isPending}
+                        >
+                            {logPhoneCall.isPending ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                            )}
+                            Speichern
+                        </Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );

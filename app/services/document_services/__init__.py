@@ -6,6 +6,7 @@ Split-Architektur fuer bessere Wartbarkeit und Testbarkeit:
 - DocumentBatchService: Bulk-Operationen fuer mehrere Dokumente
 - DocumentExportService: Export in verschiedene Formate
 - DocumentFilterService: Filterung und Query-Bau
+- AblageService: Kategorie-basierte Dokumentenverwaltung (Ablage-Ansicht)
 
 Diese modularen Services sind die kanonischen Implementierungen.
 Die Standalone-Dateien (document_gdpr_service.py, document_export_service.py)
@@ -17,6 +18,7 @@ from app.services.document_services.gdpr_service import DocumentGDPRService, get
 from app.services.document_services.batch_service import DocumentBatchService
 from app.services.document_services.export_service import DocumentExportService, get_export_service
 from app.services.document_services.filter_service import DocumentFilterService
+from app.services.document_services.ablage_service import AblageService, get_ablage_service
 
 __all__ = [
     "DocumentCRUDService",
@@ -26,4 +28,6 @@ __all__ = [
     "DocumentExportService",
     "get_export_service",
     "DocumentFilterService",
+    "AblageService",
+    "get_ablage_service",
 ]
