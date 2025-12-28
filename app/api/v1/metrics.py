@@ -28,6 +28,7 @@ from app.db.models import User
 from app.services.search_metrics import get_search_metrics
 from app.services.backup_metrics_service import get_backup_metrics
 from app.services.gpu_metrics_service import get_gpu_metrics_service
+from app.services.datev.metrics import get_datev_metrics_service
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -140,6 +141,59 @@ async def backup_metrics_summary():
     Useful for custom dashboards and health monitoring.
     """
     metrics = get_backup_metrics()
+    return metrics.get_summary()
+
+
+# =============================================================================
+# DATEV METRICS
+# =============================================================================
+
+
+@router.get("/datev", response_class=Response)
+async def datev_metrics_prometheus():
+    """
+    Prometheus metrics for DATEV functionality.
+
+    Returns DATEV-specific metrics in Prometheus text format:
+    - datev_exports_total: Anzahl Exports nach Status/Kontenrahmen
+    - datev_export_duration_seconds: Export-Dauer als Histogram
+    - datev_export_documents_total: Exportierte Dokumente
+    - datev_config_count: Anzahl aktiver Konfigurationen
+    - datev_vendor_mappings_count: Anzahl Vendor-Mappings
+    - datev_export_errors_total: Export-Fehler nach Typ
+    - datev_rate_limit_hits_total: Rate-Limit-Treffer
+
+    Example Prometheus config:
+    ```yaml
+    scrape_configs:
+      - job_name: 'ablage-datev'
+        static_configs:
+          - targets: ['localhost:8000']
+        metrics_path: '/api/v1/metrics/datev'
+    ```
+    """
+    metrics = get_datev_metrics_service()
+    return Response(
+        content=metrics.get_metrics(),
+        media_type=metrics.get_content_type(),
+    )
+
+
+@router.get("/datev/summary")
+async def datev_metrics_summary():
+    """
+    DATEV metrics summary (JSON format).
+
+    Returns DATEV-specific metrics for dashboards:
+    - Verfuegbare Metriken-Typen
+    - Prometheus-Endpoint
+
+    Nuetzlich fuer:
+    - DATEV-Monitoring Dashboards
+    - Export-Tracking
+    - Performance-Analyse
+    """
+    metrics = get_datev_metrics_service()
     return metrics.get_summary()
 
 

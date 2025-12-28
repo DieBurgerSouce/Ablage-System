@@ -38,7 +38,7 @@ from app.api.schemas.datev import (
     Kontenrahmen,
     KontenrahmenInfo,
 )
-from app.api.dependencies import get_current_active_user
+from app.api.dependencies import get_current_active_user, check_datev_export_rate_limit
 from app.db import models
 from app.db.database import get_async_db
 from app.services.datev import get_datev_export_service, SKR03, SKR04
@@ -333,10 +333,38 @@ async def create_vendor_mapping(
             detail="Mindestens ein Identifikationsmerkmal erforderlich (Name, USt-IdNr, IBAN oder Entity)"
         )
 
+    # Optionale VIES-Validierung der USt-IdNr
+    vies_validation_result = None
+    if mapping_data.verify_vat_with_vies and mapping_data.vendor_vat_id:
+        from app.services.vies_service import get_vies_service, VIESValidationStatus
+
+        vies_service = get_vies_service()
+        vies_validation_result = await vies_service.validate_vat_id(
+            mapping_data.vendor_vat_id
+        )
+
+        if vies_validation_result.status == VIESValidationStatus.INVALID:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"USt-IdNr ungueltig: {vies_validation_result.error_message or 'VIES-Pruefung fehlgeschlagen'}"
+            )
+        elif vies_validation_result.status == VIESValidationStatus.ERROR:
+            # Bei Service-Fehlern nur warnen, nicht blockieren
+            logger.warning(
+                "vies_validation_error",
+                extra={
+                    "vat_id": mapping_data.vendor_vat_id,
+                    "error": vies_validation_result.error_message,
+                }
+            )
+
+    # verify_vat_with_vies aus dem Mapping entfernen (nicht in DB speichern)
+    mapping_dict = mapping_data.model_dump(exclude={"verify_vat_with_vies"})
+
     mapping = models.DATEVVendorMapping(
         id=uuid_module.uuid4(),
         config_id=config_id,
-        **mapping_data.model_dump()
+        **mapping_dict
     )
 
     db.add(mapping)
@@ -351,6 +379,8 @@ async def create_vendor_mapping(
             "config_id": str(config_id),
             "user_id": str(current_user.id),
             "vendor_name": mapping_data.vendor_name,
+            "vies_validated": vies_validation_result is not None,
+            "vies_status": vies_validation_result.status.value if vies_validation_result else None,
         }
     )
 
@@ -587,7 +617,7 @@ async def preview_export(
 async def export_buchungsstapel(
     request: DATEVExportRequest = Body(...),
     db: AsyncSession = Depends(get_async_db),
-    current_user: models.User = Depends(get_current_active_user),
+    current_user: models.User = Depends(check_datev_export_rate_limit),
 ) -> Response:
     """Exportiert DATEV-Buchungsstapel als CSV-Download."""
     service = get_datev_export_service()
@@ -688,6 +718,51 @@ async def get_export_history(
         page=page,
         page_size=page_size,
     )
+
+
+# =============================================================================
+# VIES VAT-ID VALIDATION
+# =============================================================================
+
+@router.get(
+    "/vies/validate/{vat_id}",
+    summary="USt-IdNr gegen VIES validieren",
+    description="""
+    Validiert eine EU USt-IdNr gegen die VIES-Datenbank der EU-Kommission.
+
+    **Format:** 2 Buchstaben Laendercode + Nummer (z.B. DE123456789)
+
+    **Antwort:**
+    - valid: USt-IdNr ist gueltig und aktiv
+    - invalid: USt-IdNr ist ungueltig oder nicht registriert
+    - error: VIES-Service nicht erreichbar (Ergebnis gecached falls moeglich)
+
+    **Hinweis:** VIES kann gelegentlich nicht erreichbar sein. Bei Fehlern
+    wird empfohlen, es spaeter erneut zu versuchen.
+    """
+)
+async def validate_vat_id(
+    vat_id: str,
+    current_user: models.User = Depends(get_current_active_user),
+) -> dict:
+    """Validiert eine USt-IdNr gegen VIES."""
+    from app.services.vies_service import get_vies_service
+
+    vies_service = get_vies_service()
+    result = await vies_service.validate_vat_id(vat_id)
+
+    return {
+        "vat_id": result.vat_id,
+        "status": result.status.value,
+        "valid": result.valid,
+        "company_name": result.company_name,
+        "company_address": result.company_address,
+        "country_code": result.country_code,
+        "vat_number": result.vat_number,
+        "request_date": result.request_date.isoformat() if result.request_date else None,
+        "cached": result.cached,
+        "error_message": result.error_message,
+    }
 
 
 # =============================================================================

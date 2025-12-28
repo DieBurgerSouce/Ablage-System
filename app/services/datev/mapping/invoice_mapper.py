@@ -232,6 +232,9 @@ class DATEVInvoiceMapper:
         # Buchungstext generieren
         buchungstext = self._generate_buchungstext(invoice, config)
 
+        # Skonto-Betrag ermitteln
+        skonto_betrag = self._get_skonto_betrag(invoice)
+
         buchung = DATEVBuchung(
             umsatz=abs(betrag),
             soll_haben="S",  # Aufwand = Soll
@@ -245,6 +248,7 @@ class DATEVInvoiceMapper:
             buchungstext=buchungstext,
             kostenstelle_1=kostenstelle,
             kostentraeger=kostentraeger,
+            skonto=skonto_betrag,
         )
 
         return buchung, warnings
@@ -292,6 +296,9 @@ class DATEVInvoiceMapper:
         # Buchungstext generieren
         buchungstext = self._generate_buchungstext(invoice, config)
 
+        # Skonto-Betrag ermitteln
+        skonto_betrag = self._get_skonto_betrag(invoice)
+
         buchung = DATEVBuchung(
             umsatz=abs(betrag),
             soll_haben="S",  # Debitor = Soll (Forderung)
@@ -303,6 +310,7 @@ class DATEVInvoiceMapper:
             belegfeld_1=self._get_belegfeld_1(invoice),
             belegfeld_2=self._get_belegfeld_2(invoice),
             buchungstext=buchungstext,
+            skonto=skonto_betrag,
         )
 
         return buchung, warnings
@@ -376,3 +384,29 @@ class DATEVInvoiceMapper:
                 return True
 
         return False
+
+    def _get_skonto_betrag(self, invoice: ExtractedInvoiceData) -> Optional[Decimal]:
+        """
+        Ermittelt den Skonto-Betrag aus den extrahierten Rechnungsdaten.
+
+        Prioritaet:
+        1. Direkt extrahierter discount_amount
+        2. Berechnung aus discount_percent und gross_amount
+
+        Returns:
+            Skonto-Betrag oder None wenn keine Skonto-Daten vorhanden
+        """
+        # Prioritaet 1: Direkt extrahierter Skonto-Betrag
+        if invoice.discount_amount:
+            return Decimal(str(invoice.discount_amount)).quantize(Decimal("0.01"))
+
+        # Prioritaet 2: Berechnung aus Prozentsatz
+        if invoice.discount_percent and invoice.gross_amount:
+            skonto = (
+                Decimal(str(invoice.gross_amount)) *
+                Decimal(str(invoice.discount_percent)) /
+                Decimal("100")
+            ).quantize(Decimal("0.01"))
+            return skonto
+
+        return None

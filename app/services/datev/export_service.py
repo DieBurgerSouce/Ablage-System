@@ -53,6 +53,7 @@ from app.db import models
 from .buchungsstapel_writer import BuchungsstapelWriter
 from .kontenrahmen import SKR03, SKR04, BaseKontenrahmen
 from .mapping.invoice_mapper import DATEVBuchung, DATEVInvoiceMapper
+from .metrics import get_datev_metrics_service
 
 logger = structlog.get_logger(__name__)
 
@@ -154,6 +155,9 @@ class DATEVExportService:
         Raises:
             ValueError: Bei fehlender Konfiguration oder Daten
         """
+        import time
+        start_time = time.perf_counter()
+        metrics = get_datev_metrics_service()
         export_date = datetime.now()
 
         # Konfiguration laden
@@ -271,12 +275,22 @@ class DATEVExportService:
 
         db.add(export_record)
 
+        # Metriken aufzeichnen
+        duration = time.perf_counter() - start_time
+        metrics.record_export(
+            status=status.value,
+            kontenrahmen=config.kontenrahmen,
+            document_count=len(included_docs),
+            duration_seconds=duration,
+        )
+
         logger.info(
             "datev_export_completed",
             export_id=str(export_record.id),
             document_count=len(included_docs),
             skipped_count=len(skipped_docs),
             file_size=len(csv_bytes),
+            duration_seconds=round(duration, 3),
         )
 
         return csv_bytes, export_record

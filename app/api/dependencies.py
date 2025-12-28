@@ -779,6 +779,68 @@ def require_api_key_permission(permission: str):
 
 # ==================== Admin Authorization ====================
 
+async def check_datev_export_rate_limit(
+    request: Request,
+    current_user: User = Depends(get_current_active_user)
+) -> User:
+    """
+    Dependency fuer DATEV-Export-spezifisches Rate Limiting.
+
+    DATEV-Exporte sind ressourcenintensive Operationen mit ThreadPool-Execution.
+    Limit: 10 Exports pro Stunde pro User (Admins: 100).
+
+    Args:
+        request: FastAPI request object
+        current_user: Current active user
+
+    Returns:
+        User if within DATEV rate limits
+
+    Raises:
+        HTTPException: If DATEV export rate limit exceeded
+    """
+    from app.core.rate_limiting import (
+        get_redis_storage,
+        rate_limit_metrics,
+    )
+
+    rate_limit_metrics.record_request()
+
+    storage = await get_redis_storage()
+    if not storage or not storage.is_available:
+        # Redis unavailable - fail open (allow request)
+        return current_user
+
+    # DATEV export limits - stricter due to CPU-intensive ThreadPool operations
+    is_admin = current_user.is_superuser
+
+    if is_admin:
+        hourly_limit = 100
+    else:
+        hourly_limit = 10
+
+    # Check hourly limit
+    hourly_key = f"datev_export_limit:{current_user.id}:hourly"
+    hourly_count = await storage.increment(hourly_key, 3600)
+
+    if hourly_count > hourly_limit:
+        rate_limit_metrics.record_rate_limited()
+        logger.warning(
+            "datev_export_rate_limited",
+            user_id=str(current_user.id),
+            count=hourly_count,
+            limit=hourly_limit,
+        )
+        raise HTTPException(
+            status_code=429,
+            detail=f"DATEV-Export-Limit erreicht ({hourly_limit} Exports/Stunde). "
+                   f"Bitte versuchen Sie es in einer Stunde erneut.",
+            headers={"Retry-After": "3600"},
+        )
+
+    return current_user
+
+
 async def require_admin(
     current_user: User = Depends(get_current_active_user)
 ) -> User:

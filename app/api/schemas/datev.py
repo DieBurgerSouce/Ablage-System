@@ -307,6 +307,10 @@ class DATEVVendorMappingCreate(BaseModel):
         max_length=50,
         description="USt-IdNr (exakter Match, Format: DE123456789)"
     )
+    verify_vat_with_vies: bool = Field(
+        False,
+        description="USt-IdNr gegen EU VIES-Datenbank validieren (optional)"
+    )
     vendor_iban: Optional[str] = Field(
         None,
         max_length=34,
