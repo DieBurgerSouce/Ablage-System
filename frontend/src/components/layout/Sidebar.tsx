@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, Building2, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, Building2, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { SettingsModal } from '@/components/settings'
@@ -72,6 +72,7 @@ export function Sidebar() {
                     <SidebarLink to="/finanzen" icon={Landmark} label="Finanzen" />
                     <SidebarLink to="/kasse" icon={Wallet} label="Kassenbuch" />
                     <SidebarLink to="/spesen" icon={Receipt} label="Spesen" />
+                    <SidebarLink to="/streckengeschaeft" icon={GitBranch} label="Streckengeschaeft" />
                 </div>
 
                 {/* Admin Section */}

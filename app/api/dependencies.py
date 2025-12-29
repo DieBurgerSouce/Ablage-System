@@ -877,3 +877,98 @@ async def require_admin(
             detail="Nur Administratoren haben Zugriff auf diese Funktion",
         )
     return current_user
+
+
+class RateLimitDependency:
+    """
+    Konfigurierbare Rate-Limit-Dependency fuer FastAPI.
+
+    Ermoeglicht das Erstellen von benutzerdefinierten Rate-Limits
+    fuer verschiedene Endpunkte mit individuellen Limits und Zeitfenstern.
+
+    Usage:
+        # In Router-Datei:
+        check_read_rate_limit = RateLimitDependency(
+            requests_per_hour=100,
+            key_prefix="my_endpoint_read"
+        )
+
+        @router.get("/items", dependencies=[Depends(check_read_rate_limit)])
+        async def list_items():
+            ...
+    """
+
+    def __init__(
+        self,
+        requests_per_hour: int = 100,
+        key_prefix: str = "rate_limit",
+    ):
+        """
+        Initialisiert die Rate-Limit-Dependency.
+
+        Args:
+            requests_per_hour: Maximale Anfragen pro Stunde
+            key_prefix: Prefix fuer den Redis-Key
+        """
+        self.requests_per_hour = requests_per_hour
+        self.key_prefix = key_prefix
+        self.window = 3600  # 1 Stunde in Sekunden
+
+    async def __call__(
+        self,
+        request: Request,
+        current_user: User = Depends(get_current_active_user),
+    ) -> User:
+        """
+        Prueft das Rate-Limit fuer den aktuellen Benutzer.
+
+        Args:
+            request: FastAPI Request-Objekt
+            current_user: Aktueller aktiver Benutzer
+
+        Returns:
+            Benutzer wenn innerhalb des Limits
+
+        Raises:
+            HTTPException: Wenn Rate-Limit ueberschritten
+        """
+        from app.core.rate_limiting import (
+            get_redis_storage,
+            ip_whitelist,
+            get_remote_address,
+            rate_limit_metrics,
+        )
+
+        # Request in Metriken erfassen
+        rate_limit_metrics.record_request()
+
+        # Whitelist pruefen
+        ip = get_remote_address(request)
+        if ip_whitelist.is_whitelisted(ip):
+            rate_limit_metrics.record_whitelisted()
+            return current_user
+
+        # Redis-Speicher holen
+        storage = await get_redis_storage()
+        if not storage or not storage.is_available:
+            # Redis nicht verfuegbar - Request erlauben (fail open)
+            return current_user
+
+        # Admins haben effektiv unbegrenzte Anfragen
+        if current_user.is_superuser:
+            return current_user
+
+        # Rate-Limit pruefen
+        key = f"{self.key_prefix}:{current_user.id}:{self.window}"
+        current_count = await storage.increment(key, self.window)
+
+        if current_count > self.requests_per_hour:
+            rate_limit_metrics.record_rate_limited()
+            raise HTTPException(
+                status_code=429,
+                detail=f"Ratenlimit ueberschritten ({self.requests_per_hour} Anfragen/Stunde). "
+                       f"Bitte versuchen Sie es spaeter erneut.",
+                headers={"Retry-After": str(self.window)},
+            )
+
+        return current_user

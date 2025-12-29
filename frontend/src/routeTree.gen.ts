@@ -11,12 +11,15 @@
 import { Route as rootRouteImport } from './app/routes/__root'
 import { Route as ValidationQueueRouteImport } from './app/routes/validation-queue'
 import { Route as UploadRouteImport } from './app/routes/upload'
+import { Route as StreckengeschaeftRouteImport } from './app/routes/streckengeschaeft'
+import { Route as SpesenRouteImport } from './app/routes/spesen'
 import { Route as SearchRouteImport } from './app/routes/search'
 import { Route as RelationshipsRouteImport } from './app/routes/relationships'
 import { Route as MonitoringRouteImport } from './app/routes/monitoring'
 import { Route as LoginRouteImport } from './app/routes/login'
 import { Route as LieferantenRouteImport } from './app/routes/lieferanten'
 import { Route as KundenRouteImport } from './app/routes/kunden'
+import { Route as KasseRouteImport } from './app/routes/kasse'
 import { Route as JobsRouteImport } from './app/routes/jobs'
 import { Route as FinanzenRouteImport } from './app/routes/finanzen'
 import { Route as DocumentGroupsRouteImport } from './app/routes/document-groups'
@@ -25,11 +28,17 @@ import { Route as BusinessEntitiesRouteImport } from './app/routes/business-enti
 import { Route as AutomationRouteImport } from './app/routes/automation'
 import { Route as AdminRouteImport } from './app/routes/admin'
 import { Route as IndexRouteImport } from './app/routes/index'
+import { Route as StreckengeschaeftIndexRouteImport } from './app/routes/streckengeschaeft.index'
+import { Route as SpesenIndexRouteImport } from './app/routes/spesen.index'
 import { Route as LieferantenIndexRouteImport } from './app/routes/lieferanten.index'
 import { Route as KundenIndexRouteImport } from './app/routes/kunden.index'
+import { Route as KasseIndexRouteImport } from './app/routes/kasse.index'
 import { Route as FinanzenIndexRouteImport } from './app/routes/finanzen.index'
 import { Route as AdminIndexRouteImport } from './app/routes/admin.index'
 import { Route as ValidationQueueIdRouteImport } from './app/routes/validation-queue.$id'
+import { Route as StreckengeschaeftZmRouteImport } from './app/routes/streckengeschaeft.zm'
+import { Route as StreckengeschaeftClassificationIdRouteImport } from './app/routes/streckengeschaeft.$classificationId'
+import { Route as SpesenReportIdRouteImport } from './app/routes/spesen.$reportId'
 import { Route as LieferantenSupplierIdRouteImport } from './app/routes/lieferanten.$supplierId'
 import { Route as KundenCustomerIdRouteImport } from './app/routes/kunden.$customerId'
 import { Route as FinanzenYearRouteImport } from './app/routes/finanzen.$year'
@@ -53,6 +62,7 @@ import { Route as AdminDatevIndexRouteImport } from './app/routes/admin.datev.in
 import { Route as AdminBankingIndexRouteImport } from './app/routes/admin.banking.index'
 import { Route as LieferantenSupplierIdFolderIdRouteImport } from './app/routes/lieferanten.$supplierId.$folderId'
 import { Route as KundenCustomerIdFolderIdRouteImport } from './app/routes/kunden.$customerId.$folderId'
+import { Route as KasseBuchRegisterIdRouteImport } from './app/routes/kasse.buch.$registerId'
 import { Route as FinanzenYearCategoryRouteImport } from './app/routes/finanzen.$year.$category'
 import { Route as DocumentsDocumentIdRelationshipsRouteImport } from './app/routes/documents.$documentId.relationships'
 import { Route as AdminOcrBackendsBackendRouteImport } from './app/routes/admin.ocr-backends.$backend'
@@ -86,6 +96,16 @@ const UploadRoute = UploadRouteImport.update({
   path: '/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StreckengeschaeftRoute = StreckengeschaeftRouteImport.update({
+  id: '/streckengeschaeft',
+  path: '/streckengeschaeft',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SpesenRoute = SpesenRouteImport.update({
+  id: '/spesen',
+  path: '/spesen',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
@@ -114,6 +134,11 @@ const LieferantenRoute = LieferantenRouteImport.update({
 const KundenRoute = KundenRouteImport.update({
   id: '/kunden',
   path: '/kunden',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KasseRoute = KasseRouteImport.update({
+  id: '/kasse',
+  path: '/kasse',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JobsRoute = JobsRouteImport.update({
@@ -156,6 +181,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StreckengeschaeftIndexRoute = StreckengeschaeftIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => StreckengeschaeftRoute,
+} as any)
+const SpesenIndexRoute = SpesenIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SpesenRoute,
+} as any)
 const LieferantenIndexRoute = LieferantenIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -165,6 +200,11 @@ const KundenIndexRoute = KundenIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => KundenRoute,
+} as any)
+const KasseIndexRoute = KasseIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => KasseRoute,
 } as any)
 const FinanzenIndexRoute = FinanzenIndexRouteImport.update({
   id: '/',
@@ -180,6 +220,22 @@ const ValidationQueueIdRoute = ValidationQueueIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => ValidationQueueRoute,
+} as any)
+const StreckengeschaeftZmRoute = StreckengeschaeftZmRouteImport.update({
+  id: '/zm',
+  path: '/zm',
+  getParentRoute: () => StreckengeschaeftRoute,
+} as any)
+const StreckengeschaeftClassificationIdRoute =
+  StreckengeschaeftClassificationIdRouteImport.update({
+    id: '/$classificationId',
+    path: '/$classificationId',
+    getParentRoute: () => StreckengeschaeftRoute,
+  } as any)
+const SpesenReportIdRoute = SpesenReportIdRouteImport.update({
+  id: '/$reportId',
+  path: '/$reportId',
+  getParentRoute: () => SpesenRoute,
 } as any)
 const LieferantenSupplierIdRoute = LieferantenSupplierIdRouteImport.update({
   id: '/$supplierId',
@@ -299,6 +355,11 @@ const KundenCustomerIdFolderIdRoute =
     path: '/$folderId',
     getParentRoute: () => KundenCustomerIdRoute,
   } as any)
+const KasseBuchRegisterIdRoute = KasseBuchRegisterIdRouteImport.update({
+  id: '/buch/$registerId',
+  path: '/buch/$registerId',
+  getParentRoute: () => KasseRoute,
+} as any)
 const FinanzenYearCategoryRoute = FinanzenYearCategoryRouteImport.update({
   id: '/$category',
   path: '/$category',
@@ -426,12 +487,15 @@ export interface FileRoutesByFullPath {
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/finanzen': typeof FinanzenRouteWithChildren
   '/jobs': typeof JobsRoute
+  '/kasse': typeof KasseRouteWithChildren
   '/kunden': typeof KundenRouteWithChildren
   '/lieferanten': typeof LieferantenRouteWithChildren
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
   '/relationships': typeof RelationshipsRoute
   '/search': typeof SearchRoute
+  '/spesen': typeof SpesenRouteWithChildren
+  '/streckengeschaeft': typeof StreckengeschaeftRouteWithChildren
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/admin/banking': typeof AdminBankingRouteWithChildren
@@ -449,11 +513,17 @@ export interface FileRoutesByFullPath {
   '/finanzen/$year': typeof FinanzenYearRouteWithChildren
   '/kunden/$customerId': typeof KundenCustomerIdRouteWithChildren
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
+  '/spesen/$reportId': typeof SpesenReportIdRoute
+  '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
+  '/streckengeschaeft/zm': typeof StreckengeschaeftZmRoute
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin/': typeof AdminIndexRoute
   '/finanzen/': typeof FinanzenIndexRoute
+  '/kasse/': typeof KasseIndexRoute
   '/kunden/': typeof KundenIndexRoute
   '/lieferanten/': typeof LieferantenIndexRoute
+  '/spesen/': typeof SpesenIndexRoute
+  '/streckengeschaeft/': typeof StreckengeschaeftIndexRoute
   '/admin/banking/accounts': typeof AdminBankingAccountsRoute
   '/admin/banking/import': typeof AdminBankingImportRoute
   '/admin/banking/payments': typeof AdminBankingPaymentsRoute
@@ -473,6 +543,7 @@ export interface FileRoutesByFullPath {
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
   '/finanzen/$year/$category': typeof FinanzenYearCategoryRoute
+  '/kasse/buch/$registerId': typeof KasseBuchRegisterIdRoute
   '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
   '/admin/banking/': typeof AdminBankingIndexRoute
@@ -507,11 +578,17 @@ export interface FileRoutesByTo {
   '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
+  '/spesen/$reportId': typeof SpesenReportIdRoute
+  '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
+  '/streckengeschaeft/zm': typeof StreckengeschaeftZmRoute
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin': typeof AdminIndexRoute
   '/finanzen': typeof FinanzenIndexRoute
+  '/kasse': typeof KasseIndexRoute
   '/kunden': typeof KundenIndexRoute
   '/lieferanten': typeof LieferantenIndexRoute
+  '/spesen': typeof SpesenIndexRoute
+  '/streckengeschaeft': typeof StreckengeschaeftIndexRoute
   '/admin/banking/accounts': typeof AdminBankingAccountsRoute
   '/admin/banking/import': typeof AdminBankingImportRoute
   '/admin/banking/payments': typeof AdminBankingPaymentsRoute
@@ -531,6 +608,7 @@ export interface FileRoutesByTo {
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
   '/finanzen/$year/$category': typeof FinanzenYearCategoryRoute
+  '/kasse/buch/$registerId': typeof KasseBuchRegisterIdRoute
   '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
   '/admin/banking': typeof AdminBankingIndexRoute
@@ -553,12 +631,15 @@ export interface FileRoutesById {
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/finanzen': typeof FinanzenRouteWithChildren
   '/jobs': typeof JobsRoute
+  '/kasse': typeof KasseRouteWithChildren
   '/kunden': typeof KundenRouteWithChildren
   '/lieferanten': typeof LieferantenRouteWithChildren
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
   '/relationships': typeof RelationshipsRoute
   '/search': typeof SearchRoute
+  '/spesen': typeof SpesenRouteWithChildren
+  '/streckengeschaeft': typeof StreckengeschaeftRouteWithChildren
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/admin/banking': typeof AdminBankingRouteWithChildren
@@ -576,11 +657,17 @@ export interface FileRoutesById {
   '/finanzen/$year': typeof FinanzenYearRouteWithChildren
   '/kunden/$customerId': typeof KundenCustomerIdRouteWithChildren
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
+  '/spesen/$reportId': typeof SpesenReportIdRoute
+  '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
+  '/streckengeschaeft/zm': typeof StreckengeschaeftZmRoute
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin/': typeof AdminIndexRoute
   '/finanzen/': typeof FinanzenIndexRoute
+  '/kasse/': typeof KasseIndexRoute
   '/kunden/': typeof KundenIndexRoute
   '/lieferanten/': typeof LieferantenIndexRoute
+  '/spesen/': typeof SpesenIndexRoute
+  '/streckengeschaeft/': typeof StreckengeschaeftIndexRoute
   '/admin/banking/accounts': typeof AdminBankingAccountsRoute
   '/admin/banking/import': typeof AdminBankingImportRoute
   '/admin/banking/payments': typeof AdminBankingPaymentsRoute
@@ -600,6 +687,7 @@ export interface FileRoutesById {
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
   '/finanzen/$year/$category': typeof FinanzenYearCategoryRoute
+  '/kasse/buch/$registerId': typeof KasseBuchRegisterIdRoute
   '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
   '/admin/banking/': typeof AdminBankingIndexRoute
@@ -623,12 +711,15 @@ export interface FileRouteTypes {
     | '/document-groups'
     | '/finanzen'
     | '/jobs'
+    | '/kasse'
     | '/kunden'
     | '/lieferanten'
     | '/login'
     | '/monitoring'
     | '/relationships'
     | '/search'
+    | '/spesen'
+    | '/streckengeschaeft'
     | '/upload'
     | '/validation-queue'
     | '/admin/banking'
@@ -646,11 +737,17 @@ export interface FileRouteTypes {
     | '/finanzen/$year'
     | '/kunden/$customerId'
     | '/lieferanten/$supplierId'
+    | '/spesen/$reportId'
+    | '/streckengeschaeft/$classificationId'
+    | '/streckengeschaeft/zm'
     | '/validation-queue/$id'
     | '/admin/'
     | '/finanzen/'
+    | '/kasse/'
     | '/kunden/'
     | '/lieferanten/'
+    | '/spesen/'
+    | '/streckengeschaeft/'
     | '/admin/banking/accounts'
     | '/admin/banking/import'
     | '/admin/banking/payments'
@@ -670,6 +767,7 @@ export interface FileRouteTypes {
     | '/admin/ocr-backends/$backend'
     | '/documents/$documentId/relationships'
     | '/finanzen/$year/$category'
+    | '/kasse/buch/$registerId'
     | '/kunden/$customerId/$folderId'
     | '/lieferanten/$supplierId/$folderId'
     | '/admin/banking/'
@@ -704,11 +802,17 @@ export interface FileRouteTypes {
     | '/business-entities/$id'
     | '/document-groups/$id'
     | '/documents/$documentId'
+    | '/spesen/$reportId'
+    | '/streckengeschaeft/$classificationId'
+    | '/streckengeschaeft/zm'
     | '/validation-queue/$id'
     | '/admin'
     | '/finanzen'
+    | '/kasse'
     | '/kunden'
     | '/lieferanten'
+    | '/spesen'
+    | '/streckengeschaeft'
     | '/admin/banking/accounts'
     | '/admin/banking/import'
     | '/admin/banking/payments'
@@ -728,6 +832,7 @@ export interface FileRouteTypes {
     | '/admin/ocr-backends/$backend'
     | '/documents/$documentId/relationships'
     | '/finanzen/$year/$category'
+    | '/kasse/buch/$registerId'
     | '/kunden/$customerId/$folderId'
     | '/lieferanten/$supplierId/$folderId'
     | '/admin/banking'
@@ -749,12 +854,15 @@ export interface FileRouteTypes {
     | '/document-groups'
     | '/finanzen'
     | '/jobs'
+    | '/kasse'
     | '/kunden'
     | '/lieferanten'
     | '/login'
     | '/monitoring'
     | '/relationships'
     | '/search'
+    | '/spesen'
+    | '/streckengeschaeft'
     | '/upload'
     | '/validation-queue'
     | '/admin/banking'
@@ -772,11 +880,17 @@ export interface FileRouteTypes {
     | '/finanzen/$year'
     | '/kunden/$customerId'
     | '/lieferanten/$supplierId'
+    | '/spesen/$reportId'
+    | '/streckengeschaeft/$classificationId'
+    | '/streckengeschaeft/zm'
     | '/validation-queue/$id'
     | '/admin/'
     | '/finanzen/'
+    | '/kasse/'
     | '/kunden/'
     | '/lieferanten/'
+    | '/spesen/'
+    | '/streckengeschaeft/'
     | '/admin/banking/accounts'
     | '/admin/banking/import'
     | '/admin/banking/payments'
@@ -796,6 +910,7 @@ export interface FileRouteTypes {
     | '/admin/ocr-backends/$backend'
     | '/documents/$documentId/relationships'
     | '/finanzen/$year/$category'
+    | '/kasse/buch/$registerId'
     | '/kunden/$customerId/$folderId'
     | '/lieferanten/$supplierId/$folderId'
     | '/admin/banking/'
@@ -818,12 +933,15 @@ export interface RootRouteChildren {
   DocumentGroupsRoute: typeof DocumentGroupsRouteWithChildren
   FinanzenRoute: typeof FinanzenRouteWithChildren
   JobsRoute: typeof JobsRoute
+  KasseRoute: typeof KasseRouteWithChildren
   KundenRoute: typeof KundenRouteWithChildren
   LieferantenRoute: typeof LieferantenRouteWithChildren
   LoginRoute: typeof LoginRoute
   MonitoringRoute: typeof MonitoringRoute
   RelationshipsRoute: typeof RelationshipsRoute
   SearchRoute: typeof SearchRoute
+  SpesenRoute: typeof SpesenRouteWithChildren
+  StreckengeschaeftRoute: typeof StreckengeschaeftRouteWithChildren
   UploadRoute: typeof UploadRoute
   ValidationQueueRoute: typeof ValidationQueueRouteWithChildren
   DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRouteWithChildren
@@ -843,6 +961,20 @@ declare module '@tanstack/react-router' {
       path: '/upload'
       fullPath: '/upload'
       preLoaderRoute: typeof UploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/streckengeschaeft': {
+      id: '/streckengeschaeft'
+      path: '/streckengeschaeft'
+      fullPath: '/streckengeschaeft'
+      preLoaderRoute: typeof StreckengeschaeftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/spesen': {
+      id: '/spesen'
+      path: '/spesen'
+      fullPath: '/spesen'
+      preLoaderRoute: typeof SpesenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search': {
@@ -885,6 +1017,13 @@ declare module '@tanstack/react-router' {
       path: '/kunden'
       fullPath: '/kunden'
       preLoaderRoute: typeof KundenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kasse': {
+      id: '/kasse'
+      path: '/kasse'
+      fullPath: '/kasse'
+      preLoaderRoute: typeof KasseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/jobs': {
@@ -943,6 +1082,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/streckengeschaeft/': {
+      id: '/streckengeschaeft/'
+      path: '/'
+      fullPath: '/streckengeschaeft/'
+      preLoaderRoute: typeof StreckengeschaeftIndexRouteImport
+      parentRoute: typeof StreckengeschaeftRoute
+    }
+    '/spesen/': {
+      id: '/spesen/'
+      path: '/'
+      fullPath: '/spesen/'
+      preLoaderRoute: typeof SpesenIndexRouteImport
+      parentRoute: typeof SpesenRoute
+    }
     '/lieferanten/': {
       id: '/lieferanten/'
       path: '/'
@@ -956,6 +1109,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/kunden/'
       preLoaderRoute: typeof KundenIndexRouteImport
       parentRoute: typeof KundenRoute
+    }
+    '/kasse/': {
+      id: '/kasse/'
+      path: '/'
+      fullPath: '/kasse/'
+      preLoaderRoute: typeof KasseIndexRouteImport
+      parentRoute: typeof KasseRoute
     }
     '/finanzen/': {
       id: '/finanzen/'
@@ -977,6 +1137,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/validation-queue/$id'
       preLoaderRoute: typeof ValidationQueueIdRouteImport
       parentRoute: typeof ValidationQueueRoute
+    }
+    '/streckengeschaeft/zm': {
+      id: '/streckengeschaeft/zm'
+      path: '/zm'
+      fullPath: '/streckengeschaeft/zm'
+      preLoaderRoute: typeof StreckengeschaeftZmRouteImport
+      parentRoute: typeof StreckengeschaeftRoute
+    }
+    '/streckengeschaeft/$classificationId': {
+      id: '/streckengeschaeft/$classificationId'
+      path: '/$classificationId'
+      fullPath: '/streckengeschaeft/$classificationId'
+      preLoaderRoute: typeof StreckengeschaeftClassificationIdRouteImport
+      parentRoute: typeof StreckengeschaeftRoute
+    }
+    '/spesen/$reportId': {
+      id: '/spesen/$reportId'
+      path: '/$reportId'
+      fullPath: '/spesen/$reportId'
+      preLoaderRoute: typeof SpesenReportIdRouteImport
+      parentRoute: typeof SpesenRoute
     }
     '/lieferanten/$supplierId': {
       id: '/lieferanten/$supplierId'
@@ -1138,6 +1319,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/kunden/$customerId/$folderId'
       preLoaderRoute: typeof KundenCustomerIdFolderIdRouteImport
       parentRoute: typeof KundenCustomerIdRoute
+    }
+    '/kasse/buch/$registerId': {
+      id: '/kasse/buch/$registerId'
+      path: '/buch/$registerId'
+      fullPath: '/kasse/buch/$registerId'
+      preLoaderRoute: typeof KasseBuchRegisterIdRouteImport
+      parentRoute: typeof KasseRoute
     }
     '/finanzen/$year/$category': {
       id: '/finanzen/$year/$category'
@@ -1465,6 +1653,18 @@ const FinanzenRouteWithChildren = FinanzenRoute._addFileChildren(
   FinanzenRouteChildren,
 )
 
+interface KasseRouteChildren {
+  KasseIndexRoute: typeof KasseIndexRoute
+  KasseBuchRegisterIdRoute: typeof KasseBuchRegisterIdRoute
+}
+
+const KasseRouteChildren: KasseRouteChildren = {
+  KasseIndexRoute: KasseIndexRoute,
+  KasseBuchRegisterIdRoute: KasseBuchRegisterIdRoute,
+}
+
+const KasseRouteWithChildren = KasseRoute._addFileChildren(KasseRouteChildren)
+
 interface KundenCustomerIdFolderIdRouteChildren {
   KundenCustomerIdFolderIdCategoryRoute: typeof KundenCustomerIdFolderIdCategoryRoute
 }
@@ -1551,6 +1751,35 @@ const LieferantenRouteWithChildren = LieferantenRoute._addFileChildren(
   LieferantenRouteChildren,
 )
 
+interface SpesenRouteChildren {
+  SpesenReportIdRoute: typeof SpesenReportIdRoute
+  SpesenIndexRoute: typeof SpesenIndexRoute
+}
+
+const SpesenRouteChildren: SpesenRouteChildren = {
+  SpesenReportIdRoute: SpesenReportIdRoute,
+  SpesenIndexRoute: SpesenIndexRoute,
+}
+
+const SpesenRouteWithChildren =
+  SpesenRoute._addFileChildren(SpesenRouteChildren)
+
+interface StreckengeschaeftRouteChildren {
+  StreckengeschaeftClassificationIdRoute: typeof StreckengeschaeftClassificationIdRoute
+  StreckengeschaeftZmRoute: typeof StreckengeschaeftZmRoute
+  StreckengeschaeftIndexRoute: typeof StreckengeschaeftIndexRoute
+}
+
+const StreckengeschaeftRouteChildren: StreckengeschaeftRouteChildren = {
+  StreckengeschaeftClassificationIdRoute:
+    StreckengeschaeftClassificationIdRoute,
+  StreckengeschaeftZmRoute: StreckengeschaeftZmRoute,
+  StreckengeschaeftIndexRoute: StreckengeschaeftIndexRoute,
+}
+
+const StreckengeschaeftRouteWithChildren =
+  StreckengeschaeftRoute._addFileChildren(StreckengeschaeftRouteChildren)
+
 interface ValidationQueueRouteChildren {
   ValidationQueueIdRoute: typeof ValidationQueueIdRoute
 }
@@ -1583,12 +1812,15 @@ const rootRouteChildren: RootRouteChildren = {
   DocumentGroupsRoute: DocumentGroupsRouteWithChildren,
   FinanzenRoute: FinanzenRouteWithChildren,
   JobsRoute: JobsRoute,
+  KasseRoute: KasseRouteWithChildren,
   KundenRoute: KundenRouteWithChildren,
   LieferantenRoute: LieferantenRouteWithChildren,
   LoginRoute: LoginRoute,
   MonitoringRoute: MonitoringRoute,
   RelationshipsRoute: RelationshipsRoute,
   SearchRoute: SearchRoute,
+  SpesenRoute: SpesenRouteWithChildren,
+  StreckengeschaeftRoute: StreckengeschaeftRouteWithChildren,
   UploadRoute: UploadRoute,
   ValidationQueueRoute: ValidationQueueRouteWithChildren,
   DocumentsDocumentIdRoute: DocumentsDocumentIdRouteWithChildren,
