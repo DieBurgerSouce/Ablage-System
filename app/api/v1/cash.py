@@ -101,7 +101,7 @@ async def list_registers(
     )
 
     return CashRegisterListResponse(
-        registers=[
+        items=[
             CashRegisterResponse(
                 id=r.id,
                 company_id=r.company_id,

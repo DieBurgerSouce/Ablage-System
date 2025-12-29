@@ -52,7 +52,7 @@ export function CashRegisterList({
   showInactive = false,
 }: CashRegisterListProps) {
   const { data: response, isLoading, error } = useRegisters(showInactive);
-  const registers = response?.registers ?? [];
+  const registers = response?.items ?? [];
 
   if (isLoading) {
     return (

@@ -73,7 +73,7 @@ export interface CashRegisterUpdate {
  * Kassenliste Response
  */
 export interface CashRegisterListResponse {
-  registers: CashRegister[];
+  items: CashRegister[];
   total: number;
 }
 
