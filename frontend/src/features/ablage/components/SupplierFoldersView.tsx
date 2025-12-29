@@ -28,7 +28,7 @@ export function SupplierFoldersView() {
             Der gesuchte Lieferant existiert nicht.
           </p>
           <Link to="/lieferanten">
-            <Button variant="outline">Zurueck zur Lieferantenliste</Button>
+            <Button variant="outline">Zurück zur Lieferantenliste</Button>
           </Link>
         </div>
       </div>
@@ -58,7 +58,7 @@ export function SupplierFoldersView() {
       {/* Header with Breadcrumb */}
       <div className="flex items-center gap-4">
         <Link to="/lieferanten">
-          <Button variant="ghost" size="icon" aria-label="Zurueck zur Lieferantenliste">
+          <Button variant="ghost" size="icon" aria-label="Zurück zur Lieferantenliste">
             <ArrowLeft className="w-5 h-5" />
           </Button>
         </Link>
@@ -104,7 +104,7 @@ export function SupplierFoldersView() {
 
       {/* Folder Selection */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Waehle einen Ablage-Ordner:</h2>
+        <h2 className="text-lg font-semibold mb-4">Wähle einen Ablage-Ordner:</h2>
         <div className="space-y-4">
           {supplier.folders.map((folder) => {
             const openCount = folder.documentCounts.offene_rechnungen ?? 0

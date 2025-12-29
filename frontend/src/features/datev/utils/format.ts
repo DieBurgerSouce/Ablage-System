@@ -1,7 +1,7 @@
 /**
  * DATEV Formatierungs-Utilities
  *
- * Hilfsfunktionen fuer die Anzeige von DATEV-Daten.
+ * Hilfsfunktionen für die Anzeige von DATEV-Daten.
  */
 
 import type { DATEVExportStatus, Kontenrahmen } from '@/lib/api/services/datev';
@@ -11,7 +11,7 @@ import type { DATEVExportStatus, Kontenrahmen } from '@/lib/api/services/datev';
 // =============================================================================
 
 /**
- * Formatiert Kontenrahmen-Name fuer Anzeige
+ * Formatiert Kontenrahmen-Name für Anzeige
  */
 export function formatKontenrahmen(kontenrahmen: Kontenrahmen): string {
     switch (kontenrahmen) {
@@ -25,14 +25,14 @@ export function formatKontenrahmen(kontenrahmen: Kontenrahmen): string {
 }
 
 /**
- * Gibt die vollstaendige Beschreibung eines Kontenrahmens zurueck
+ * Gibt die vollständige Beschreibung eines Kontenrahmens zurück
  */
 export function getKontenrahmenDescription(kontenrahmen: Kontenrahmen): string {
     switch (kontenrahmen) {
         case 'SKR03':
-            return 'Standardkontenrahmen fuer Industrie, Handel und Handwerk (prozessorientiert)';
+            return 'Standardkontenrahmen für Industrie, Handel und Handwerk (prozessorientiert)';
         case 'SKR04':
-            return 'Standardkontenrahmen fuer bilanzierende Unternehmen (abschlussorientiert)';
+            return 'Standardkontenrahmen für bilanzierende Unternehmen (abschlussorientiert)';
         default:
             return '';
     }
@@ -43,7 +43,7 @@ export function getKontenrahmenDescription(kontenrahmen: Kontenrahmen): string {
 // =============================================================================
 
 /**
- * Formatiert Export-Status fuer Anzeige
+ * Formatiert Export-Status für Anzeige
  */
 export function formatExportStatus(status: DATEVExportStatus): string {
     switch (status) {
@@ -59,7 +59,7 @@ export function formatExportStatus(status: DATEVExportStatus): string {
 }
 
 /**
- * Gibt die Farbe/Variante fuer einen Export-Status zurueck
+ * Gibt die Farbe/Variante für einen Export-Status zurück
  */
 export function getExportStatusVariant(
     status: DATEVExportStatus
@@ -81,7 +81,7 @@ export function getExportStatusVariant(
 // =============================================================================
 
 /**
- * Formatiert einen Betrag als Waehrung (EUR)
+ * Formatiert einen Betrag als Währung (EUR)
  */
 export function formatCurrency(amount: number | null | undefined): string {
     if (amount == null) return '–';
@@ -100,7 +100,7 @@ export function formatNumber(value: number | null | undefined): string {
 }
 
 /**
- * Formatiert Bytes als lesbare Groesse
+ * Formatiert Bytes als lesbare Größe
  */
 export function formatFileSize(bytes: number | null | undefined): string {
     if (bytes == null) return '–';
@@ -166,7 +166,7 @@ export function formatPeriod(from: string | null, to: string | null): string {
  */
 export function formatAccountNumber(account: string | null | undefined): string {
     if (!account) return '–';
-    // Fuer kurze Kontonummern keine Formatierung
+    // Für kurze Kontonummern keine Formatierung
     if (account.length <= 4) return account;
     // Sonst von rechts alle 4 Stellen ein Leerzeichen
     return account.replace(/(\d)(?=(\d{4})+$)/g, '$1 ');
@@ -181,7 +181,7 @@ export function formatIban(iban: string | null | undefined): string {
 }
 
 /**
- * Formatiert eine USt-IdNr (Laendercode + Nummer getrennt)
+ * Formatiert eine USt-IdNr (Ländercode + Nummer getrennt)
  */
 export function formatVatId(vatId: string | null | undefined): string {
     if (!vatId || vatId.length < 3) return vatId || '–';
@@ -195,7 +195,7 @@ export function formatVatId(vatId: string | null | undefined): string {
 // =============================================================================
 
 /**
- * Kuerzt einen Text auf maximale Laenge mit Ellipsis
+ * Kürzt einen Text auf maximale Länge mit Ellipsis
  */
 export function truncateText(text: string | null | undefined, maxLength: number): string {
     if (!text) return '–';
@@ -204,7 +204,7 @@ export function truncateText(text: string | null | undefined, maxLength: number)
 }
 
 /**
- * Formatiert einen Firmennamen (entfernt uebermaessige Whitespaces)
+ * Formatiert einen Firmennamen (entfernt übermäßige Whitespaces)
  */
 export function formatCompanyName(name: string | null | undefined): string {
     if (!name) return '–';

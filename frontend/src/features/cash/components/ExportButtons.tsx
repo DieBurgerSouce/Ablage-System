@@ -1,7 +1,7 @@
 /**
  * Export Buttons
  *
- * Dropdown-Menu fuer CSV, PDF und DATEV Export.
+ * Dropdown-Menu für CSV, PDF und DATEV Export.
  * Integriert sich nahtlos in die Kassenbuch-Toolbar.
  */
 
@@ -45,7 +45,7 @@ const EXPORT_FORMATS: { value: ExportFormat; label: string; icon: React.ReactNod
     value: 'datev',
     label: 'DATEV Export',
     icon: <FileDigit className="h-4 w-4" aria-hidden="true" />,
-    description: 'Fuer Steuerberater',
+    description: 'Für Steuerberater',
   },
 ];
 

@@ -1,8 +1,8 @@
 /**
- * Zentrale Query Hooks fuer Kassenbuch
+ * Zentrale Query Hooks für Kassenbuch
  * Konsistente Query-Keys und wiederverwendbare Hooks
  *
- * Alle Mutations beinhalten Toast-Messages fuer User-Feedback.
+ * Alle Mutations beinhalten Toast-Messages für User-Feedback.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -22,8 +22,8 @@ import type {
 
 const STALE_TIMES = {
   registers: 5 * 60 * 1000,    // 5 Minuten
-  entries: 30 * 1000,          // 30 Sekunden - Eintraege koennen schnell kommen
-  categories: 10 * 60 * 1000,  // 10 Minuten - Kategorien aendern sich selten
+  entries: 30 * 1000,          // 30 Sekunden - Eintraege können schnell kommen
+  categories: 10 * 60 * 1000,  // 10 Minuten - Kategorien ändern sich selten
   counts: 5 * 60 * 1000,       // 5 Minuten
   summary: 2 * 60 * 1000,      // 2 Minuten
 } as const;
@@ -385,8 +385,8 @@ export function useDailySummaries(
 // ==================== Toast Messages ====================
 
 /**
- * Standard-Toast-Nachrichten fuer Kassen-Operationen.
- * Verwendung in Komponenten fuer konsistentes deutsches Feedback.
+ * Standard-Toast-Nachrichten für Kassen-Operationen.
+ * Verwendung in Komponenten für konsistentes deutsches Feedback.
  */
 export const CASH_TOAST_MESSAGES = {
   createEntry: {
@@ -398,7 +398,7 @@ export const CASH_TOAST_MESSAGES = {
     error: 'Fehler beim Stornieren der Buchung',
   },
   cashCount: {
-    success: 'Kassensturz erfolgreich durchgefuehrt',
+    success: 'Kassensturz erfolgreich durchgeführt',
     successWithDifference: 'Kassensturz erfolgreich - Ausgleichsbuchung erstellt',
     error: 'Fehler beim Kassensturz',
   },

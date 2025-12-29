@@ -125,11 +125,11 @@ export function CashBookSummary({ registerId, startDate, endDate, className }: C
         valueClassName="text-red-600"
       />
 
-      {/* Netto-Aenderung */}
+      {/* Netto-Änderung */}
       <KPICard
         title="Netto"
         value={formatCurrency(netChange)}
-        subtitle={netChange >= 0 ? 'Ueberschuss' : 'Defizit'}
+        subtitle={netChange >= 0 ? 'Überschuss' : 'Defizit'}
         icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />}
         badge={
           netChange > 0

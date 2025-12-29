@@ -1,6 +1,6 @@
 /**
  * Payments Page
- * SEPA-Zahlungen verwalten und ausfuehren
+ * SEPA-Zahlungen verwalten und ausführen
  */
 
 import { useState } from 'react';
@@ -58,7 +58,7 @@ const STATUS_OPTIONS: { value: PaymentStatus | 'all'; label: string }[] = [
     { value: 'approved', label: 'Freigegeben' },
     { value: 'pending_tan', label: 'TAN erforderlich' },
     { value: 'submitted', label: 'Eingereicht' },
-    { value: 'executed', label: 'Ausgefuehrt' },
+    { value: 'executed', label: 'Ausgeführt' },
     { value: 'failed', label: 'Fehlgeschlagen' },
     { value: 'cancelled', label: 'Storniert' },
 ];
@@ -84,7 +84,7 @@ export function PaymentsPage() {
             await approvePayment.mutateAsync(paymentId);
             toast({
                 title: 'Zahlung freigegeben',
-                description: 'Die Zahlung wurde zur Ausfuehrung freigegeben.',
+                description: 'Die Zahlung wurde zur Ausführung freigegeben.',
             });
         } catch {
             toast({
@@ -96,7 +96,7 @@ export function PaymentsPage() {
     };
 
     const handleCancel = async (paymentId: string) => {
-        if (!confirm('Moechten Sie diese Zahlung wirklich stornieren?')) return;
+        if (!confirm('Möchten Sie diese Zahlung wirklich stornieren?')) return;
 
         try {
             await cancelPayment.mutateAsync({ id: paymentId });
@@ -132,7 +132,7 @@ export function PaymentsPage() {
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight">Zahlungen</h2>
                     <p className="text-muted-foreground">
-                        SEPA-Ueberweisungen erstellen und verwalten.
+                        SEPA-Überweisungen erstellen und verwalten.
                     </p>
                 </div>
                 <Button onClick={() => setCreateDialogOpen(true)}>
@@ -194,10 +194,10 @@ export function PaymentsPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Send className="h-5 w-5" />
-                        Zahlungsauftraege ({payments?.length ?? 0})
+                        Zahlungsaufträge ({payments?.length ?? 0})
                     </CardTitle>
                     <CardDescription>
-                        Alle SEPA-Ueberweisungen und deren Status.
+                        Alle SEPA-Überweisungen und deren Status.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -212,7 +212,7 @@ export function PaymentsPage() {
                             <Send className="mx-auto h-12 w-12 text-muted-foreground/50" />
                             <h3 className="mt-4 text-lg font-semibold">Keine Zahlungen</h3>
                             <p className="text-muted-foreground">
-                                Erstellen Sie Ihre erste SEPA-Ueberweisung.
+                                Erstellen Sie Ihre erste SEPA-Überweisung.
                             </p>
                             <Button className="mt-4" onClick={() => setCreateDialogOpen(true)}>
                                 <Plus className="mr-2 h-4 w-4" />
@@ -224,10 +224,10 @@ export function PaymentsPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Erstellt</TableHead>
-                                    <TableHead>Empfaenger</TableHead>
+                                    <TableHead>Empfänger</TableHead>
                                     <TableHead>IBAN</TableHead>
                                     <TableHead className="text-right">Betrag</TableHead>
-                                    <TableHead>Ausfuehrung</TableHead>
+                                    <TableHead>Ausführung</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Dokument</TableHead>
                                     <TableHead className="w-[70px]"></TableHead>

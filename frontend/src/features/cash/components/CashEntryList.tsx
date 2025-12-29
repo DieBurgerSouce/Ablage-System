@@ -176,7 +176,7 @@ export function CashEntryList({
                 setEndDate('');
               }}
             >
-              Filter zuruecksetzen
+              Filter zurücksetzen
             </Button>
           )}
         </div>
@@ -233,7 +233,7 @@ export function CashEntryList({
                     disabled={page === 0}
                   >
                     <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                    Zurueck
+                    Zurück
                   </Button>
                   <Button
                     variant="outline"

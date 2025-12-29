@@ -1,5 +1,5 @@
 /**
- * FinanceErrorBoundary - Enterprise-grade Error Handling fuer Finanzen-Modul
+ * FinanceErrorBoundary - Enterprise-grade Error Handling für Finanzen-Modul
  *
  * Features:
  * - Differenzierte Fehlerdarstellung (Network, 404, 500, Validation)
@@ -34,7 +34,7 @@ export function classifyError(error: unknown): FinanceError {
     return {
       type: 'network',
       message: 'Netzwerkfehler',
-      details: 'Die Verbindung zum Server konnte nicht hergestellt werden. Bitte ueberpruefen Sie Ihre Internetverbindung.',
+      details: 'Die Verbindung zum Server konnte nicht hergestellt werden. Bitte überprüfen Sie Ihre Internetverbindung.',
       retryable: true,
     }
   }
@@ -61,7 +61,7 @@ export function classifyError(error: unknown): FinanceError {
         type: 'validation',
         message: 'Validierungsfehler',
         statusCode: status,
-        details: (err.message as string) || 'Die eingegebenen Daten sind ungueltig.',
+        details: (err.message as string) || 'Die eingegebenen Daten sind ungültig.',
         retryable: false,
       }
     }
@@ -71,7 +71,7 @@ export function classifyError(error: unknown): FinanceError {
         type: 'validation',
         message: 'Zugriff verweigert',
         statusCode: status,
-        details: 'Sie haben keine Berechtigung fuer diese Aktion.',
+        details: 'Sie haben keine Berechtigung für diese Aktion.',
         retryable: false,
       }
     }
@@ -179,7 +179,7 @@ export function FinanceErrorCard({ error, onRetry, onGoHome, showDetails = true 
         {onGoHome && (
           <Button onClick={onGoHome} variant="outline" className="gap-2">
             <Home className="h-4 w-4" />
-            Zur Uebersicht
+            Zur Übersicht
           </Button>
         )}
       </CardFooter>

@@ -1,7 +1,7 @@
 /**
- * Admin Mahnungen Index (Uebersicht)
+ * Admin Mahnungen Index (Übersicht)
  *
- * Zeigt das Mahnungs-Dashboard mit allen aktiven Mahnvorgaengen
+ * Zeigt das Mahnungs-Dashboard mit allen aktiven Mahnvorgängen
  */
 
 import { createFileRoute } from '@tanstack/react-router';

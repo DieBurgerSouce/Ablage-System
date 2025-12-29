@@ -1,5 +1,5 @@
 /**
- * Presence Indicator fuer Chat Real-time Collaboration.
+ * Presence Indicator für Chat Real-time Collaboration.
  *
  * Zeigt an:
  * - Online-Benutzer mit Avataren
@@ -183,7 +183,7 @@ export function PresenceIndicator({
     const displayedUsers = filteredUsers.slice(0, maxAvatars);
     const hiddenCount = filteredUsers.length - displayedUsers.length;
 
-    // Typing Users (fuer separate Anzeige)
+    // Typing Users (für separate Anzeige)
     const typingUsers = filteredUsers.filter((u) => u.is_typing);
 
     if (compact) {

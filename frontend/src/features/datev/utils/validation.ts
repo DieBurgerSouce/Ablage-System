@@ -1,7 +1,7 @@
 /**
  * DATEV Validation Schemas
  *
- * Zod-Schemas fuer Formularvalidierung.
+ * Zod-Schemas für Formularvalidierung.
  * Alle Fehlermeldungen auf Deutsch.
  */
 
@@ -13,14 +13,14 @@ import { z } from 'zod';
 
 /**
  * EU VAT-ID Pattern
- * 2 Buchstaben Laendercode + 8-13 alphanumerische Zeichen
+ * 2 Buchstaben Ländercode + 8-13 alphanumerische Zeichen
  * Beispiele: DE123456789, ATU12345678, FR12345678901
  */
 const VAT_ID_PATTERN = /^[A-Z]{2}[A-Z0-9]{2,13}$/;
 
 /**
  * IBAN Pattern
- * 2 Buchstaben + 2 Pruefziffern + 11-30 alphanumerische Zeichen
+ * 2 Buchstaben + 2 Prüfziffern + 11-30 alphanumerische Zeichen
  * Beispiel: DE89370400440532013000
  */
 const IBAN_PATTERN = /^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/;
@@ -51,7 +51,7 @@ export const configurationSchema = z.object({
     wj_beginn: z.string().min(1, 'Wirtschaftsjahr-Beginn ist erforderlich'),
 
     kontenrahmen: z.enum(['SKR03', 'SKR04'], {
-        message: 'Bitte Kontenrahmen waehlen',
+        message: 'Bitte Kontenrahmen wählen',
     }),
 
     incoming_expense_account: z
@@ -111,7 +111,7 @@ export const vendorMappingSchema = z
             .transform((val) => (val ? val.replace(/[\s\-.]/g, '').toUpperCase() : val))
             .refine(
                 (val) => !val || VAT_ID_PATTERN.test(val),
-                'Ungueltige USt-IdNr (z.B. DE123456789)'
+                'Ungültige USt-IdNr (z.B. DE123456789)'
             )
             .optional()
             .or(z.literal('')),
@@ -119,7 +119,7 @@ export const vendorMappingSchema = z
         vendor_iban: z
             .string()
             .transform((val) => (val ? val.replace(/\s/g, '').toUpperCase() : val))
-            .refine((val) => !val || IBAN_PATTERN.test(val), 'Ungueltige IBAN')
+            .refine((val) => !val || IBAN_PATTERN.test(val), 'Ungültige IBAN')
             .optional()
             .or(z.literal('')),
 
@@ -186,7 +186,7 @@ export type ExportRequestFormData = z.infer<typeof exportRequestSchema>;
 // =============================================================================
 
 /**
- * Validiert eine USt-IdNr und gibt das normalisierte Ergebnis zurueck
+ * Validiert eine USt-IdNr und gibt das normalisierte Ergebnis zurück
  */
 export function validateVatId(vatId: string): { valid: boolean; normalized: string | null } {
     const normalized = vatId.replace(/[\s\-.]/g, '').toUpperCase();
@@ -195,7 +195,7 @@ export function validateVatId(vatId: string): { valid: boolean; normalized: stri
 }
 
 /**
- * Validiert eine IBAN und gibt das normalisierte Ergebnis zurueck
+ * Validiert eine IBAN und gibt das normalisierte Ergebnis zurück
  */
 export function validateIban(iban: string): { valid: boolean; normalized: string | null } {
     const normalized = iban.replace(/\s/g, '').toUpperCase();

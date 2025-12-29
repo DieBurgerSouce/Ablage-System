@@ -1,14 +1,14 @@
 /**
- * FinanceExportDialog - Export Dialog fuer Finanz-Dokumente
+ * FinanceExportDialog - Export Dialog für Finanz-Dokumente
  *
- * Ermoeglicht den Export von ausgewaehlten Finanz-Dokumenten
+ * Ermöglicht den Export von ausgewählten Finanz-Dokumenten
  * in verschiedenen Formaten (JSON, CSV, ZIP, Excel, PDF).
  *
  * Features:
  * - Format-Auswahl
  * - Filter-Optionen (Text, Metadaten)
  * - Async Export mit Progress-Tracking
- * - WebSocket fuer Echtzeit-Updates
+ * - WebSocket für Echtzeit-Updates
  * - Accessibility-konform (WCAG 2.1 AA)
  */
 
@@ -156,8 +156,8 @@ export const FinanceExportDialog = memo(function FinanceExportDialog({
   const handleStartExport = useCallback(async () => {
     if (documentIds.length === 0) {
       toast({
-        title: 'Keine Dokumente ausgewaehlt',
-        description: 'Bitte waehlen Sie mindestens ein Dokument aus.',
+        title: 'Keine Dokumente ausgewählt',
+        description: 'Bitte wählen Sie mindestens ein Dokument aus.',
         variant: 'destructive',
       })
       return
@@ -368,7 +368,7 @@ export const FinanceExportDialog = memo(function FinanceExportDialog({
               <Label htmlFor="export-format">Format</Label>
               <Select value={format} onValueChange={(v) => setFormat(v as ExportFormat)}>
                 <SelectTrigger id="export-format">
-                  <SelectValue placeholder="Format waehlen" />
+                  <SelectValue placeholder="Format wählen" />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(FORMAT_CONFIG).map(([key, config]) => {
@@ -393,7 +393,7 @@ export const FinanceExportDialog = memo(function FinanceExportDialog({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="include-text">OCR-Text einschliessen</Label>
+                  <Label htmlFor="include-text">OCR-Text einschließen</Label>
                   <p className="text-xs text-muted-foreground">
                     Extrahierter Text aus OCR
                   </p>
@@ -407,9 +407,9 @@ export const FinanceExportDialog = memo(function FinanceExportDialog({
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="include-metadata">Metadaten einschliessen</Label>
+                  <Label htmlFor="include-metadata">Metadaten einschließen</Label>
                   <p className="text-xs text-muted-foreground">
-                    Kategorie, Datum, Betraege etc.
+                    Kategorie, Datum, Beträge etc.
                   </p>
                 </div>
                 <Switch
@@ -521,7 +521,7 @@ export const FinanceExportDialog = memo(function FinanceExportDialog({
           {(isComplete || isFailed) && (
             <>
               <Button variant="outline" onClick={onClose}>
-                Schliessen
+                Schließen
               </Button>
               {isComplete && exportStatus?.downloadUrl && (
                 <Button onClick={handleDownload}>

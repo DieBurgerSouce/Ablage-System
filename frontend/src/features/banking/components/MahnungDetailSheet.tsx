@@ -548,7 +548,7 @@ export function MahnungDetailSheet({
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                    Individuelle Mahneinstellungen fuer diesen Kunden
+                                    Individuelle Mahneinstellungen für diesen Kunden
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>

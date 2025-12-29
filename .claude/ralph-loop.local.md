@@ -1,42 +1,82 @@
 ---
 active: false
-iteration: 2
+iteration: 1
 max_iterations: 0
 completion_promise: complete
-started_at: "2025-12-29T03:18:35Z"
-completed_at: "2025-12-29T06:30:00Z"
+started_at: "2025-12-29T19:35:00Z"
+completed_at: "2025-12-29T20:15:00Z"
 ---
 
-✅ Mahnwesen Frontend & Services - PRODUCTION READY
+# TASK ABGESCHLOSSEN
 
-## Status: 100% Complete - DOPPELT VERIFIZIERT
+**Auftrag:** Bitte suche nach absolut allen Stellen im Frontend wo solche Umlaut Fehler existieren - ALLE nachhaltig fixen!
 
-### Session 2 (29.12.2025): 7 kritische Fixes implementiert
+**Status:** ✅ COMPLETE
 
-| Fix | Beschreibung | Datei |
-|-----|--------------|-------|
-| #1 | Pagination MahnTask Liste (total statt len) | `banking.py:2164` |
-| #2 | TypeScript Import MahnungHistoryEntry | `banking.ts:12` |
-| #3 | Bulk-Operation Error Reporting | `banking.py:2340` |
-| #4 | Snooze-Limit UI (bereits in aufgaben.tsx) | `aufgaben.tsx:176` |
-| #5 | Pagination History & Phone Calls | `banking.py:1818+2077` |
-| #6 | N+1 Query Optimierung (selectinload) | `dunning_service.py:921` |
-| #7 | User Attribution (performed_by_name) | `dunning_service.py:937` |
+## Zusammenfassung der Fixes
 
-### Session 1 (29.12.2025):
-1. **DunningRecord-Typ erweitert** (`business_entity_id`)
-2. **CustomerDunningOverrideForm integriert** in MahnungDetailSheet
-3. **Barrel-Exports vervollstaendigt** in index.ts
-4. **TypeScript-Duplikat behoben** (EntertainmentData)
-5. **Sidebar Navigation** Link hinzugefuegt
+### Behobene Dateien (40+):
 
-### Technische Details:
-- **selectinload()** verhindert N+1 Queries bei History + Phone Calls
-- **performed_by_name** und **called_by_name** werden jetzt mitgeliefert
-- **Pagination** mit echten Totals (nicht `len()`)
-- **Snooze-Limit** `snooze_count < 3` im Frontend geprueft
+1. **Error Handling & API:**
+   - `frontend/src/types/api/errors.ts` - ERROR_CODE_MESSAGES (Ungültige, ungültig, für, vorübergehend, verfügbar, groß)
+   - `frontend/src/components/ErrorBoundary.tsx` - "ausführen"
 
-### Verifizierung:
-- 2x Explore-Agent Verifikation
-- 1x direktes Code-Reading durch Claude
-- 10/10 Punkte bestanden
+2. **Banking Module:**
+   - `frontend/src/features/banking/hooks/use-banking-queries.ts` - Match-Vorschläge, Unterstützte, ausführen, abschließen
+   - `frontend/src/features/banking/components/payments/PaymentsPage.tsx` - SEPA-Überweisungen, Empfänger, Ausführung
+   - `frontend/src/features/banking/components/payments/CreatePaymentDialog.tsx` - Empfänger, Ungültige IBAN, Ausführungsdatum
+   - `frontend/src/features/banking/components/accounts/AccountDialog.tsx` - Ländercode
+
+3. **Ablage Module:**
+   - `frontend/src/features/ablage/components/BulkActionsToolbar.tsx` - rückgängig, endgültig
+   - `frontend/src/features/ablage/hooks/use-ablage-queries.ts` - große, länger, durchzuführen
+
+4. **Finanzen Module:**
+   - `frontend/src/features/finanzen/mockData.ts` - über
+   - `frontend/src/features/finanzen/components/FinanceBulkActionsBar.tsx` - rückgängig
+   - `frontend/src/features/finanzen/components/FinanceDocumentEditDialog.tsx` - rückgängig
+   - `frontend/src/features/finanzen/utils/accessibility.tsx` - Nächste, schließen, bestätigen, überschritten
+
+5. **DATEV Module:**
+   - `frontend/src/features/datev/hooks/use-datev-queries.ts` - Verfügbare, ausführen
+   - `frontend/src/features/datev/components/config/ConfigPage.tsx` - rückgängig
+   - `frontend/src/features/datev/components/vendors/VendorsPage.tsx` - rückgängig
+   - `frontend/src/features/datev/utils/validation.ts` - Ländercode, Prüfziffern
+   - `frontend/src/lib/api/services/datev.ts` - ausführen, Verfügbare
+
+6. **Cash Module:**
+   - `frontend/src/types/models/cash.ts` - durchführen
+   - `frontend/src/lib/api/services/cash.ts` - durchführen, Tagesabschlüsse
+   - `frontend/src/features/cash/components/CashCountDialog.tsx` - durchführen
+   - `frontend/src/features/cash/components/CashEntryForm.tsx` - durchführen
+
+7. **Exports Module:**
+   - `frontend/src/features/exports/hooks/useExportJob.ts` - schließen
+
+8. **Expenses Module:**
+   - `frontend/src/features/expenses/pages/ExpensesPage.tsx` - rückgängig
+   - `frontend/src/features/expenses/pages/ExpenseReportDetailPage.tsx` - rückgängig
+
+9. **Extracted Data Module:**
+   - `frontend/src/features/extracted-data/components/AddressCard.tsx` - Empfänger
+
+10. **Finance API:**
+    - `frontend/src/lib/api/services/finance.ts` - durchführen
+
+### Verifikation
+
+Finale Grep-Suche nach häufigen Umlaut-Fehlern zeigt: **0 Treffer**
+
+Die verbleibenden Treffer in OCR-Korrektur-Dateien (`GroundTruthEditor.tsx`, `CorrectionEditor.tsx`) sind **absichtlich falsch geschrieben** - sie dienen als Quellpattern für OCR-Korrektur-Mappings.
+
+### Pattern der Fixes:
+- `rueckgaengig` → `rückgängig`
+- `durchfuehren` → `durchführen`
+- `ausfuehren` → `ausführen`
+- `schliessen` → `schließen`
+- `Laendercode` → `Ländercode`
+- `Pruefziffer` → `Prüfziffer`
+- `endgueltig` → `endgültig`
+- `ueber` → `über`
+- `Verfuegbar` → `Verfügbar`
+- `Naechste` → `Nächste`

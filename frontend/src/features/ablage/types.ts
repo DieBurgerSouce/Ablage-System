@@ -1,8 +1,8 @@
-// Dokumentkategorien fuer die Ablage-Struktur
+// Dokumentkategorien für die Ablage-Struktur
 export type CustomerDocumentCategory =
   | 'anfragen'
   | 'angebote'
-  | 'auftragsbestaetigung'
+  | 'auftragsbestätigung'
   | 'lieferscheine'
   | 'rechnungen'
   | 'storno'
@@ -26,14 +26,14 @@ export interface DocumentCategoryInfo {
   shortCode?: string;  // z.B. "AG", "AB", "LS", "RG", "ST", "B"
   icon: string;        // Lucide Icon Name
   color?: string;      // Badge Farbe
-  isOpenStatus?: boolean;  // Fuer "Offene X" Kategorien
+  isOpenStatus?: boolean;  // Für "Offene X" Kategorien
 }
 
 // Kunden-Kategorien Definition
 export const CUSTOMER_CATEGORIES: DocumentCategoryInfo[] = [
   { id: 'anfragen', label: 'Anfragen', icon: 'HelpCircle' },
   { id: 'angebote', label: 'Angebote', shortCode: 'AG', icon: 'FileText' },
-  { id: 'auftragsbestaetigung', label: 'Auftragsbestaetigung', shortCode: 'AB', icon: 'FileCheck' },
+  { id: 'auftragsbestätigung', label: 'Auftragsbestätigung', shortCode: 'AB', icon: 'FileCheck' },
   { id: 'lieferscheine', label: 'Lieferscheine', shortCode: 'LS', icon: 'Truck' },
   { id: 'rechnungen', label: 'Rechnungen', shortCode: 'RG', icon: 'Receipt' },
   { id: 'storno', label: 'Storno', shortCode: 'ST', icon: 'XCircle', color: 'destructive' },
@@ -50,7 +50,7 @@ export const CUSTOMER_CATEGORIES: DocumentCategoryInfo[] = [
 export const SUPPLIER_CATEGORIES: DocumentCategoryInfo[] = [
   { id: 'anfragen', label: 'Anfragen', icon: 'HelpCircle' },
   { id: 'angebote', label: 'Angebote', shortCode: 'AG', icon: 'FileText' },
-  { id: 'auftragsbestaetigung', label: 'Auftragsbestaetigung', shortCode: 'AB', icon: 'FileCheck' },
+  { id: 'auftragsbestätigung', label: 'Auftragsbestätigung', shortCode: 'AB', icon: 'FileCheck' },
   { id: 'lieferscheine', label: 'Lieferscheine', shortCode: 'LS', icon: 'Truck' },
   { id: 'rechnungen', label: 'Rechnungen', shortCode: 'RG', icon: 'Receipt' },
   { id: 'bestellungen', label: 'Bestellungen', shortCode: 'B', icon: 'ShoppingCart' },  // NUR Lieferanten!
@@ -93,12 +93,12 @@ export type DocumentProcessingStatus =
   | 'cancelled';
 
 /**
- * Zahlungsstatus fuer Rechnungen
+ * Zahlungsstatus für Rechnungen
  */
-export type PaymentStatus = 'offen' | 'bezahlt' | 'ueberfaellig' | 'teilbezahlt';
+export type PaymentStatus = 'offen' | 'bezahlt' | 'überfällig' | 'teilbezahlt';
 
 /**
- * Sortier-Optionen fuer Dokumente
+ * Sortier-Optionen für Dokumente
  */
 export type DocumentSortField =
   | 'document_date'
@@ -111,7 +111,7 @@ export type DocumentSortField =
 export type SortOrder = 'asc' | 'desc';
 
 /**
- * Filter fuer Kategorie-Dokumente
+ * Filter für Kategorie-Dokumente
  * Wird von der API als Query-Parameter verwendet
  */
 export interface CategoryDocumentFilter {
@@ -177,7 +177,7 @@ export interface CategoryDocumentResponse {
 }
 
 /**
- * Aggregationen fuer die Dokumenten-Liste
+ * Aggregationen für die Dokumenten-Liste
  */
 export interface CategoryDocumentAggregations {
   totalDocuments: number;
@@ -194,7 +194,7 @@ export interface CategoryDocumentAggregations {
 }
 
 /**
- * API Response fuer Kategorie-Dokumente
+ * API Response für Kategorie-Dokumente
  */
 export interface CategoryDocumentListResponse {
   items: CategoryDocumentResponse[];
@@ -224,7 +224,7 @@ export const DEFAULT_CATEGORY_FILTER: Omit<CategoryDocumentFilter, 'businessEnti
 };
 
 /**
- * Status-Konfiguration fuer Badges
+ * Status-Konfiguration für Badges
  */
 export const PROCESSING_STATUS_CONFIG: Record<DocumentProcessingStatus, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
   pending: { label: 'Ausstehend', variant: 'secondary' },
@@ -238,7 +238,7 @@ export const PROCESSING_STATUS_CONFIG: Record<DocumentProcessingStatus, { label:
 export const PAYMENT_STATUS_CONFIG: Record<PaymentStatus, { label: string; className: string }> = {
   offen: { label: 'Offen', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
   bezahlt: { label: 'Bezahlt', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-  ueberfaellig: { label: 'Ueberfaellig', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
+  überfällig: { label: 'Überfällig', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
   teilbezahlt: { label: 'Teilbezahlt', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
 };
 
@@ -253,7 +253,7 @@ export const CATEGORIES_WITH_PAYMENT_STATUS = ['rechnungen', 'offene_rechnungen'
 export const CATEGORY_TO_DOCUMENT_TYPE: Record<string, string> = {
   anfragen: 'inquiry',
   angebote: 'offer',
-  auftragsbestaetigung: 'order_confirmation',
+  auftragsbestätigung: 'order_confirmation',
   lieferscheine: 'delivery_note',
   rechnungen: 'invoice',
   bestellungen: 'order',

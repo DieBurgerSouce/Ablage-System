@@ -1,7 +1,7 @@
 /**
  * Admin Mahnungen Layout
  *
- * Hauptlayout fuer das Mahnungswesen mit Sub-Navigation
+ * Hauptlayout für das Mahnungswesen mit Sub-Navigation
  */
 
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router';
@@ -21,7 +21,7 @@ export const Route = createFileRoute('/admin/mahnungen')({
 });
 
 const mahnungenNavItems = [
-    { href: '/admin/mahnungen', label: 'Uebersicht', icon: LayoutDashboard, exact: true },
+    { href: '/admin/mahnungen', label: 'Übersicht', icon: LayoutDashboard, exact: true },
     { href: '/admin/mahnungen/aktiv', label: 'Aktive Mahnungen', icon: AlertTriangle },
     { href: '/admin/mahnungen/kanban', label: 'Kanban', icon: Kanban },
     { href: '/admin/mahnungen/aufgaben', label: 'Aufgaben', icon: ClipboardList },
@@ -43,7 +43,7 @@ function MahnungenLayout() {
                     Mahnungswesen
                 </h1>
                 <p className="text-muted-foreground mt-2">
-                    Mahnungen verwalten, Eskalationsstufen konfigurieren und ueberfaellige Forderungen eintreiben.
+                    Mahnungen verwalten, Eskalationsstufen konfigurieren und überfällige Forderungen eintreiben.
                 </p>
             </div>
 

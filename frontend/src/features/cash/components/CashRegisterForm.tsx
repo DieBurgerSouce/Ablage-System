@@ -70,7 +70,7 @@ export function CashRegisterForm({
     },
   });
 
-  // Formular zuruecksetzen wenn Register wechselt
+  // Formular zurücksetzen wenn Register wechselt
   React.useEffect(() => {
     if (open) {
       form.reset({
@@ -122,7 +122,7 @@ export function CashRegisterForm({
           <DialogDescription>
             {isEditing
               ? 'Aendern Sie die Kassendetails.'
-              : 'Erstellen Sie eine neue Barkasse fuer Ihr Unternehmen.'}
+              : 'Erstellen Sie eine neue Barkasse für Ihr Unternehmen.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -195,7 +195,7 @@ export function CashRegisterForm({
                     <div className="space-y-0.5">
                       <FormLabel>Aktiv</FormLabel>
                       <FormDescription>
-                        Inaktive Kassen koennen keine neuen Buchungen erhalten
+                        Inaktive Kassen können keine neuen Buchungen erhalten
                       </FormDescription>
                     </div>
                     <FormControl>

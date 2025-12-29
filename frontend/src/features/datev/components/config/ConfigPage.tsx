@@ -1,7 +1,7 @@
 /**
  * DATEV Konfigurations-Seite
  *
- * Listet alle Konfigurationen auf und ermoeglicht Erstellen/Bearbeiten/Loeschen.
+ * Listet alle Konfigurationen auf und ermöglicht Erstellen/Bearbeiten/Löschen.
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -50,18 +50,18 @@ export function ConfigPage() {
     const [editingConfig, setEditingConfig] = useState<DATEVConfigurationResponse | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<DATEVConfigurationResponse | null>(null);
 
-    // Refs fuer Focus Management nach Dialog-Schliessung
+    // Refs für Focus Management nach Dialog-Schliessung
     const createButtonRef = useRef<HTMLButtonElement>(null);
     const lastTriggerRef = useRef<'create' | 'edit'>('create');
 
-    // Error-Toast fuer fehlgeschlagene Operationen (mit Cleanup)
+    // Error-Toast für fehlgeschlagene Operationen (mit Cleanup)
     useEffect(() => {
         let isMounted = true;
 
         if (deleteConfig.isError && isMounted) {
             toast({
-                title: 'Loeschen fehlgeschlagen',
-                description: deleteConfig.error?.message || 'Die Konfiguration konnte nicht geloescht werden.',
+                title: 'Löschen fehlgeschlagen',
+                description: deleteConfig.error?.message || 'Die Konfiguration konnte nicht gelöscht werden.',
                 variant: 'destructive',
             });
         }
@@ -101,14 +101,14 @@ export function ConfigPage() {
         setDialogOpen(true);
     };
 
-    // Focus Management: Focus zurueck zum Trigger-Button nach Dialog-Close
+    // Focus Management: Focus zurück zum Trigger-Button nach Dialog-Close
     const handleDialogClose = (open: boolean) => {
         setDialogOpen(open);
         if (!open && lastTriggerRef.current === 'create') {
-            // Focus zurueck zum Create-Button
+            // Focus zurück zum Create-Button
             setTimeout(() => createButtonRef.current?.focus(), 0);
         }
-        // Bei Edit: Focus geht automatisch zur Tabelle zurueck (akzeptables Verhalten)
+        // Bei Edit: Focus geht automatisch zur Tabelle zurück (akzeptables Verhalten)
     };
 
     const handleDelete = async () => {
@@ -185,7 +185,7 @@ export function ConfigPage() {
                             </h3>
                             <p className="text-sm text-muted-foreground mb-4">
                                 Erstellen Sie Ihre erste DATEV-Konfiguration, um Buchungsstapel
-                                exportieren zu koennen.
+                                exportieren zu können.
                             </p>
                             <Button onClick={handleCreate}>
                                 <Plus className="mr-2 h-4 w-4" />
@@ -255,7 +255,7 @@ export function ConfigPage() {
                                                         className="text-destructive focus:text-destructive"
                                                     >
                                                         <Trash2 className="mr-2 h-4 w-4" />
-                                                        Loeschen
+                                                        Löschen
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -275,20 +275,20 @@ export function ConfigPage() {
                 config={editingConfig}
             />
 
-            {/* Loesch-Bestaetigung */}
+            {/* Loesch-Bestätigung */}
             <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Konfiguration loeschen?</AlertDialogTitle>
+                        <AlertDialogTitle>Konfiguration löschen?</AlertDialogTitle>
                         <AlertDialogDescription>
                             {deleteConfirm?.is_default && (
                                 <span className="block mb-2 text-destructive font-medium">
                                     Achtung: Dies ist Ihre Standard-Konfiguration!
                                 </span>
                             )}
-                            Moechten Sie die Konfiguration fuer Berater {deleteConfirm?.berater_nr}{' '}
-                            / Mandant {deleteConfirm?.mandanten_nr} wirklich loeschen? Diese Aktion
-                            kann nicht rueckgaengig gemacht werden.
+                            Möchten Sie die Konfiguration für Berater {deleteConfirm?.berater_nr}{' '}
+                            / Mandant {deleteConfirm?.mandanten_nr} wirklich löschen? Diese Aktion
+                            kann nicht rückgängig gemacht werden.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -297,7 +297,7 @@ export function ConfigPage() {
                             onClick={handleDelete}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                            Loeschen
+                            Löschen
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

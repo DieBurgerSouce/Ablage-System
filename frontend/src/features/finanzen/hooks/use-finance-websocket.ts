@@ -1,7 +1,7 @@
 /**
- * Finance WebSocket Hook - Echtzeit-Updates fuer Finanz-Dokumente
+ * Finance WebSocket Hook - Echtzeit-Updates für Finanz-Dokumente
  *
- * Verbindet sich mit dem Backend WebSocket-Endpoint fuer:
+ * Verbindet sich mit dem Backend WebSocket-Endpoint für:
  * - Dokument-Verarbeitungsstatus
  * - OCR-Abschluss-Benachrichtigungen
  * - Export-Fortschritt
@@ -9,7 +9,7 @@
  *
  * Features:
  * - Auto-Reconnect mit Exponential Backoff
- * - Heartbeat-Ping zur Verbindungspruefung
+ * - Heartbeat-Ping zur Verbindungsprüfung
  * - Event-basierte Architektur
  * - Query-Cache-Invalidation
  */

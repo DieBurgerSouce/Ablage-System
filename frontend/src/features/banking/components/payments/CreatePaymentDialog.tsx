@@ -75,14 +75,14 @@ export function CreatePaymentDialog({
         const newErrors: Partial<Record<keyof PaymentFormData, string>> = {};
 
         if (!formData.bank_account_id) {
-            newErrors.bank_account_id = 'Bitte Quellkonto waehlen';
+            newErrors.bank_account_id = 'Bitte Quellkonto wählen';
         }
         if (!formData.beneficiary_name || formData.beneficiary_name.length > 70) {
-            newErrors.beneficiary_name = 'Name des Empfaengers erforderlich (max. 70 Zeichen)';
+            newErrors.beneficiary_name = 'Name des Empfängers erforderlich (max. 70 Zeichen)';
         }
         const cleanIban = formData.beneficiary_iban.replace(/\s/g, '').toUpperCase();
         if (!ibanRegex.test(cleanIban)) {
-            newErrors.beneficiary_iban = 'Ungueltige IBAN';
+            newErrors.beneficiary_iban = 'Ungültige IBAN';
         }
         if (formData.amount <= 0) {
             newErrors.amount = 'Betrag muss positiv sein';
@@ -163,7 +163,7 @@ export function CreatePaymentDialog({
                             onValueChange={(v) => updateField('bank_account_id', v)}
                         >
                             <SelectTrigger>
-                                <SelectValue placeholder="Konto waehlen..." />
+                                <SelectValue placeholder="Konto wählen..." />
                             </SelectTrigger>
                             <SelectContent>
                                 {accounts?.map((account) => (
@@ -180,10 +180,10 @@ export function CreatePaymentDialog({
 
                     {/* Recipient Name */}
                     <div className="space-y-2">
-                        <Label htmlFor="beneficiary_name">Empfaenger</Label>
+                        <Label htmlFor="beneficiary_name">Empfänger</Label>
                         <Input
                             id="beneficiary_name"
-                            placeholder="Name des Empfaengers"
+                            placeholder="Name des Empfängers"
                             value={formData.beneficiary_name}
                             onChange={(e) => updateField('beneficiary_name', e.target.value)}
                         />
@@ -270,7 +270,7 @@ export function CreatePaymentDialog({
 
                     {/* Execution Date */}
                     <div className="space-y-2">
-                        <Label htmlFor="execution_date">Ausfuehrungsdatum (optional)</Label>
+                        <Label htmlFor="execution_date">Ausführungsdatum (optional)</Label>
                         <Input
                             id="execution_date"
                             type="date"

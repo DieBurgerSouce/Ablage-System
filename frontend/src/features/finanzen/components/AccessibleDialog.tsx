@@ -3,9 +3,9 @@
  *
  * Features:
  * - Focus Trap (automatisch durch radix-ui)
- * - ESC zum Schliessen
- * - Bestaetigung bei ungespeicherten Aenderungen
- * - Screen Reader Ankuendigungen
+ * - ESC zum Schließen
+ * - Bestätigung bei ungespeicherten Änderungen
+ * - Screen Reader Ankündigungen
  * - Keyboard Navigation
  */
 
@@ -40,12 +40,12 @@ interface AccessibleDialogProps {
   children: React.ReactNode
   footer?: React.ReactNode
   /**
-   * Wenn true, wird beim Schliessen mit ungespeicherten Aenderungen
-   * ein Bestaetigungsdialog angezeigt
+   * Wenn true, wird beim Schließen mit ungespeicherten Änderungen
+   * ein Bestätigungsdialog angezeigt
    */
   confirmOnClose?: boolean
   /**
-   * Gibt an, ob es ungespeicherte Aenderungen gibt
+   * Gibt an, ob es ungespeicherte Änderungen gibt
    */
   isDirty?: boolean
   /**
@@ -53,19 +53,19 @@ interface AccessibleDialogProps {
    */
   onConfirmClose?: () => void
   /**
-   * Groesse des Dialogs
+   * Größe des Dialogs
    */
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
   /**
-   * Zusaetzliche CSS-Klassen
+   * Zusätzliche CSS-Klassen
    */
   className?: string
   /**
-   * Aria Label ID fuer den Dialog
+   * Aria Label ID für den Dialog
    */
   ariaLabelledBy?: string
   /**
-   * Aria Described By ID fuer den Dialog
+   * Aria Described By ID für den Dialog
    */
   ariaDescribedBy?: string
 }
@@ -162,10 +162,10 @@ export function AccessibleDialog({
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Ungespeicherte Aenderungen</AlertDialogTitle>
+            <AlertDialogTitle>Ungespeicherte Änderungen</AlertDialogTitle>
             <AlertDialogDescription>
-              Sie haben ungespeicherte Aenderungen. Moechten Sie den Dialog wirklich schliessen?
-              Alle Aenderungen gehen verloren.
+              Sie haben ungespeicherte Änderungen. Möchten Sie den Dialog wirklich schließen?
+              Alle Änderungen gehen verloren.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -173,7 +173,7 @@ export function AccessibleDialog({
               Abbrechen
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmClose}>
-              Schliessen ohne Speichern
+              Schließen ohne Speichern
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -253,7 +253,7 @@ interface LiveRegionProps {
 }
 
 /**
- * Live Region fuer Screen Reader Ankuendigungen
+ * Live Region für Screen Reader Ankuendigungen
  */
 export function LiveRegion({ message, priority = 'polite' }: LiveRegionProps) {
   return (

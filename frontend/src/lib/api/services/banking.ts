@@ -7,7 +7,6 @@ import type {
     MahnTaskStatus,
     PhoneCallOutcome,
     DunningActionType,
-    MahnungHistoryActionType,
     DunningLevelNumber,
     MahnungHistoryEntry,
 } from '@/types/models/banking';
@@ -92,7 +91,7 @@ export interface DunningStats {
     total_interest: number;
     avg_days_overdue: number;
     success_rate_30d: number;
-    /** Anzahl Mahnvorgaenge mit aktivem Mahnstopp */
+    /** Anzahl Mahnvorgänge mit aktivem Mahnstopp */
     mahnstopp_count?: number;
 }
 
@@ -997,7 +996,7 @@ export const bankingService = {
     },
 };
 
-// ==================== Zusaetzliche Types fuer erweitertes Mahnungswesen ====================
+// ==================== Zusätzliche Types für erweitertes Mahnungswesen ====================
 
 export interface MahnTask {
     id: string;
@@ -1030,19 +1029,7 @@ export interface MahnTaskSummary {
     by_priority: Record<number, number>;
 }
 
-export interface MahnungHistoryEntry {
-    id: string;
-    dunning_record_id: string;
-    action_type: MahnungHistoryActionType;
-    mahn_stufe: number;
-    action_timestamp: string;
-    performed_by_id: string | null;
-    performed_by_name?: string;
-    notes: string | null;
-    outcome: string | null;
-    document_id: string | null;
-    metadata?: Record<string, unknown>;
-}
+// MahnungHistoryEntry is imported from @/types/models/banking
 
 export interface DunningRecord {
     id: string;

@@ -66,7 +66,7 @@ export function AccountSettingsTab({ onClose }: AccountSettingsTabProps) {
             return;
         }
         if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
-            setPasswordError('Das Passwort muss Gross-/Kleinbuchstaben und Zahlen enthalten.');
+            setPasswordError('Das Passwort muss Groß-/Kleinbuchstaben und Zahlen enthalten.');
             return;
         }
 
@@ -232,7 +232,7 @@ export function AccountSettingsTab({ onClose }: AccountSettingsTabProps) {
                         </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                        Das Passwort muss mindestens 8 Zeichen haben und Gross-/Kleinbuchstaben sowie Zahlen enthalten.
+                        Das Passwort muss mindestens 8 Zeichen haben und Groß-/Kleinbuchstaben sowie Zahlen enthalten.
                     </p>
                     <Button
                         onClick={handlePasswordChange}

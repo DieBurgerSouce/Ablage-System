@@ -1,7 +1,7 @@
 /**
  * Centralized Type Definitions
  *
- * Zentrales Modul fuer alle TypeScript-Typen im Frontend.
+ * Zentrales Modul für alle TypeScript-Typen im Frontend.
  * Importiere Typen von hier statt aus den Service-Dateien.
  *
  * @example

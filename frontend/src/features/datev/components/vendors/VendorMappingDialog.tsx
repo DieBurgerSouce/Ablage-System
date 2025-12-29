@@ -70,7 +70,7 @@ export function VendorMappingDialog({
         },
     });
 
-    // Live Error Clearing: Fehler loeschen wenn Nutzer Feld korrigiert
+    // Live Error Clearing: Fehler löschen wenn Nutzer Feld korrigiert
     useEffect(() => {
         const subscription = watch((_, { name }) => {
             if (name && errors[name as keyof typeof errors]) {
@@ -131,7 +131,7 @@ export function VendorMappingDialog({
                 });
                 toast({
                     title: 'Zuordnung aktualisiert',
-                    description: `Die Zuordnung fuer ${vendorIdentifier} wurde aktualisiert.`,
+                    description: `Die Zuordnung für ${vendorIdentifier} wurde aktualisiert.`,
                 });
             } else {
                 await createMapping.mutateAsync({
@@ -140,7 +140,7 @@ export function VendorMappingDialog({
                 });
                 toast({
                     title: 'Zuordnung erstellt',
-                    description: `Neue Zuordnung fuer ${vendorIdentifier} wurde erstellt.`,
+                    description: `Neue Zuordnung für ${vendorIdentifier} wurde erstellt.`,
                 });
             }
             onOpenChange(false);
@@ -187,7 +187,7 @@ export function VendorMappingDialog({
                                 </p>
                             )}
                             <p className="text-xs text-muted-foreground">
-                                Wird case-insensitiv gematcht (Gross-/Kleinschreibung egal)
+                                Wird case-insensitiv gematcht (Groß-/Kleinschreibung egal)
                             </p>
                         </div>
 
@@ -242,7 +242,7 @@ export function VendorMappingDialog({
                                     </p>
                                 )}
                                 <p className="text-xs text-muted-foreground">
-                                    Sachkonto fuer diesen Lieferanten
+                                    Sachkonto für diesen Lieferanten
                                 </p>
                             </div>
 

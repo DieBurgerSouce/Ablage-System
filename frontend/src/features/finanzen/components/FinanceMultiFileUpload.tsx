@@ -108,7 +108,7 @@ export function FinanceMultiFileUpload({
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return `Datei zu gross. Maximum: ${MAX_FILE_SIZE / 1024 / 1024} MB`
+      return `Datei zu groß. Maximum: ${MAX_FILE_SIZE / 1024 / 1024} MB`
     }
 
     return null
@@ -163,7 +163,7 @@ export function FinanceMultiFileUpload({
 
       if (errors.length > 0) {
         toast({
-          title: 'Einige Dateien wurden uebersprungen',
+          title: 'Einige Dateien wurden übersprungen',
           description: errors.slice(0, 3).join('\n') + (errors.length > 3 ? '\n...' : ''),
           variant: 'destructive',
         })
@@ -463,8 +463,8 @@ export function FinanceMultiFileUpload({
             <DialogTitle>Dokumente hochladen</DialogTitle>
             <DialogDescription>
               Laden Sie Dokumente in die Kategorie{' '}
-              <span className="font-medium">{categoryInfo?.label || categoryId}</span> fuer das Jahr{' '}
-              <span className="font-medium">{yearId}</span> hoch. Mehrfachauswahl moeglich.
+              <span className="font-medium">{categoryInfo?.label || categoryId}</span> für das Jahr{' '}
+              <span className="font-medium">{yearId}</span> hoch. Mehrfachauswahl möglich.
             </DialogDescription>
           </DialogHeader>
 
@@ -611,7 +611,7 @@ export function FinanceMultiFileUpload({
 
           <DialogFooter className="pt-4 border-t">
             <Button type="button" variant="outline" onClick={handleClose} disabled={isUploading}>
-              {allComplete ? 'Schliessen' : 'Abbrechen'}
+              {allComplete ? 'Schließen' : 'Abbrechen'}
             </Button>
             {hasPendingFiles && (
               <Button onClick={uploadAllFiles} disabled={isUploading} className="gap-2">
@@ -651,7 +651,7 @@ export function FinanceMultiFileUpload({
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setPreviewFile(null)}>
-                Schliessen
+                Schließen
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -1,7 +1,7 @@
 /**
  * API Types
  *
- * Zentrale Exports fuer alle API-bezogenen Typen.
+ * Zentrale Exports für alle API-bezogenen Typen.
  */
 
 export * from './common';

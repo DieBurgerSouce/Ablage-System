@@ -1,7 +1,7 @@
 /**
  * API Error Types
  *
- * Typen fuer API-Fehler und Fehlerbehandlung.
+ * Typen für API-Fehler und Fehlerbehandlung.
  * Alle Fehlermeldungen sind auf Deutsch.
  */
 
@@ -59,18 +59,18 @@ export type ApiErrorCode =
  * HTTP status codes with German descriptions
  */
 export const HTTP_STATUS_MESSAGES: Record<number, string> = {
-    400: 'Ungueltige Anfrage',
+    400: 'Ungültige Anfrage',
     401: 'Authentifizierung erforderlich',
     403: 'Zugriff verweigert',
     404: 'Nicht gefunden',
     409: 'Konflikt - Ressource existiert bereits',
-    413: 'Datei zu gross',
+    413: 'Datei zu groß',
     422: 'Validierungsfehler',
     429: 'Zu viele Anfragen',
     500: 'Interner Serverfehler',
     502: 'Server nicht erreichbar',
-    503: 'Service nicht verfuegbar',
-    504: 'Zeitueberschreitung',
+    503: 'Service nicht verfügbar',
+    504: 'Zeitüberschreitung',
 };
 
 /**
@@ -78,19 +78,19 @@ export const HTTP_STATUS_MESSAGES: Record<number, string> = {
  */
 export const ERROR_CODE_MESSAGES: Record<ApiErrorCode, string> = {
     AUTHENTICATION_REQUIRED: 'Bitte melden Sie sich an',
-    INVALID_CREDENTIALS: 'Ungueltige Anmeldedaten',
+    INVALID_CREDENTIALS: 'Ungültige Anmeldedaten',
     TOKEN_EXPIRED: 'Sitzung abgelaufen - bitte erneut anmelden',
-    FORBIDDEN: 'Sie haben keine Berechtigung fuer diese Aktion',
+    FORBIDDEN: 'Sie haben keine Berechtigung für diese Aktion',
     NOT_FOUND: 'Die angeforderte Ressource wurde nicht gefunden',
-    VALIDATION_ERROR: 'Die eingegebenen Daten sind ungueltig',
+    VALIDATION_ERROR: 'Die eingegebenen Daten sind ungültig',
     DUPLICATE_ENTRY: 'Ein Eintrag mit diesen Daten existiert bereits',
     RATE_LIMIT_EXCEEDED: 'Zu viele Anfragen - bitte warten Sie einen Moment',
     SERVER_ERROR: 'Ein unerwarteter Fehler ist aufgetreten',
-    SERVICE_UNAVAILABLE: 'Der Dienst ist voruebergehend nicht verfuegbar',
+    SERVICE_UNAVAILABLE: 'Der Dienst ist vorübergehend nicht verfügbar',
     OCR_PROCESSING_FAILED: 'Die OCR-Verarbeitung ist fehlgeschlagen',
-    GPU_UNAVAILABLE: 'GPU nicht verfuegbar - Fallback auf CPU',
-    FILE_TOO_LARGE: 'Die Datei ist zu gross (max. 50 MB)',
-    INVALID_FILE_TYPE: 'Ungueltiger Dateityp',
+    GPU_UNAVAILABLE: 'GPU nicht verfügbar - Fallback auf CPU',
+    FILE_TOO_LARGE: 'Die Datei ist zu groß (max. 50 MB)',
+    INVALID_FILE_TYPE: 'Ungültiger Dateityp',
 };
 
 /**

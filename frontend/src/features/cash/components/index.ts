@@ -1,7 +1,7 @@
 /**
  * Cash Components
  *
- * Exports fuer alle Kassenbuch-Komponenten.
+ * Exports für alle Kassenbuch-Komponenten.
  */
 
 export { CashBookSummary } from './CashBookSummary';

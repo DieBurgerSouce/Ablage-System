@@ -1,8 +1,8 @@
 /**
  * DATEV Query Hooks
  *
- * Zentrale Query-Verwaltung fuer das DATEV-Feature.
- * Verwendet TanStack Query fuer Server-State-Management.
+ * Zentrale Query-Verwaltung für das DATEV-Feature.
+ * Verwendet TanStack Query für Server-State-Management.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -23,8 +23,8 @@ import {
 const STALE_TIMES = {
     configs: 5 * 60 * 1000,      // 5 Minuten
     vendors: 5 * 60 * 1000,      // 5 Minuten
-    kontenrahmen: 30 * 60 * 1000, // 30 Minuten (nicht Infinity - kann sich bei Updates aendern)
-    history: 30 * 1000,          // 30 Sekunden (haeufiger aktualisiert nach Exports)
+    kontenrahmen: 30 * 60 * 1000, // 30 Minuten (nicht Infinity - kann sich bei Updates ändern)
+    history: 30 * 1000,          // 30 Sekunden (häufiger aktualisiert nach Exports)
 } as const;
 
 // =============================================================================
@@ -136,7 +136,7 @@ export function useUpdateConfig() {
 }
 
 /**
- * Konfiguration loeschen
+ * Konfiguration löschen
  */
 export function useDeleteConfig() {
     const queryClient = useQueryClient();
@@ -148,7 +148,7 @@ export function useDeleteConfig() {
         },
         onError: (error, id) => {
             if (import.meta.env.DEV) {
-                console.error('[DATEV] Config loeschen fehlgeschlagen:', id, error);
+                console.error('[DATEV] Config löschen fehlgeschlagen:', id, error);
             }
         },
     });
@@ -231,7 +231,7 @@ export function useUpdateVendorMapping() {
 }
 
 /**
- * Vendor-Mapping loeschen
+ * Vendor-Mapping löschen
  */
 export function useDeleteVendorMapping() {
     const queryClient = useQueryClient();
@@ -248,7 +248,7 @@ export function useDeleteVendorMapping() {
         },
         onError: (error, variables) => {
             if (import.meta.env.DEV) {
-                console.error('[DATEV] Vendor-Mapping loeschen fehlgeschlagen:', variables.mappingId, error);
+                console.error('[DATEV] Vendor-Mapping löschen fehlgeschlagen:', variables.mappingId, error);
             }
         },
     });
@@ -273,7 +273,7 @@ export function useExportPreview() {
 }
 
 /**
- * Export ausfuehren und CSV herunterladen
+ * Export ausführen und CSV herunterladen
  */
 export function useExecuteExport() {
     const queryClient = useQueryClient();
@@ -289,7 +289,7 @@ export function useExecuteExport() {
         },
         onError: (error) => {
             if (import.meta.env.DEV) {
-                console.error('[DATEV] Export ausfuehren fehlgeschlagen:', error);
+                console.error('[DATEV] Export ausführen fehlgeschlagen:', error);
             }
         },
     });
@@ -311,7 +311,7 @@ export function useExportHistory(params?: { page?: number; page_size?: number })
 // =============================================================================
 
 /**
- * Verfuegbare Kontenrahmen abrufen
+ * Verfügbare Kontenrahmen abrufen
  */
 export function useKontenrahmen() {
     return useQuery({

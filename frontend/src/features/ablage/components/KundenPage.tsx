@@ -38,7 +38,7 @@ export function KundenPage() {
           Kunden
         </h1>
         <p className="text-muted-foreground mt-2">
-          Waehle einen Kunden um die Dokumentenablage zu oeffnen
+          Wähle einen Kunden um die Dokumentenablage zu öffnen
         </p>
       </div>
 

@@ -1,10 +1,10 @@
 /**
- * FinanceBulkActionsBar - Aktionsleiste fuer Bulk-Operationen
+ * FinanceBulkActionsBar - Aktionsleiste für Bulk-Operationen
  *
- * Wird angezeigt wenn Dokumente ausgewaehlt sind.
- * Ermoeglicht:
+ * Wird angezeigt wenn Dokumente ausgewählt sind.
+ * Ermöglicht:
  * - Bulk Delete
- * - Bulk Edit (Kategorie/Jahr aendern)
+ * - Bulk Edit (Kategorie/Jahr ändern)
  * - Export
  */
 
@@ -82,13 +82,13 @@ export function FinanceBulkActionsBar({
       if (result.failedCount > 0) {
         toast({
           title: 'Teilerfolg',
-          description: `${result.deletedCount} geloescht, ${result.failedCount} fehlgeschlagen`,
+          description: `${result.deletedCount} gelöscht, ${result.failedCount} fehlgeschlagen`,
           variant: 'default',
         })
       } else {
         toast({
-          title: 'Erfolgreich geloescht',
-          description: `${result.deletedCount} Dokumente wurden geloescht`,
+          title: 'Erfolgreich gelöscht',
+          description: `${result.deletedCount} Dokumente wurden gelöscht`,
         })
       }
 
@@ -114,8 +114,8 @@ export function FinanceBulkActionsBar({
 
     if (!updateData.category && !updateData.year) {
       toast({
-        title: 'Keine Aenderungen',
-        description: 'Bitte waehlen Sie mindestens ein Feld zum Aendern',
+        title: 'Keine Änderungen',
+        description: 'Bitte wählen Sie mindestens ein Feld zum Aendern',
         variant: 'destructive',
       })
       return
@@ -169,7 +169,7 @@ export function FinanceBulkActionsBar({
         description: result.message,
       })
 
-      // In Produktion: Polling fuer Download-URL oder WebSocket
+      // In Produktion: Polling für Download-URL oder WebSocket
       onClearSelection()
     } catch (error) {
       toast({
@@ -185,7 +185,7 @@ export function FinanceBulkActionsBar({
 
   if (count === 0) return null
 
-  // Jahre fuer Dropdown (letzten 10 Jahre)
+  // Jahre für Dropdown (letzten 10 Jahre)
   const years = Array.from({ length: 10 }, (_, i) => {
     const year = new Date().getFullYear() - i
     return { value: String(year), label: String(year) }
@@ -208,7 +208,7 @@ export function FinanceBulkActionsBar({
             {count}
           </Badge>
           <span className="text-sm text-muted-foreground">
-            {count === 1 ? 'Dokument' : 'Dokumente'} ausgewaehlt
+            {count === 1 ? 'Dokument' : 'Dokumente'} ausgewählt
           </span>
         </div>
 
@@ -247,10 +247,10 @@ export function FinanceBulkActionsBar({
             className="gap-2 text-destructive hover:text-destructive"
             onClick={() => setShowDeleteDialog(true)}
             disabled={isDeleting}
-            aria-label={`${count} Dokumente loeschen`}
+            aria-label={`${count} Dokumente löschen`}
           >
             <Trash2 className="w-4 h-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Loeschen</span>
+            <span className="hidden sm:inline">Löschen</span>
           </Button>
         </div>
 
@@ -275,11 +275,11 @@ export function FinanceBulkActionsBar({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-destructive" />
-              {count} Dokumente loeschen?
+              {count} Dokumente löschen?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Diese Aktion kann nicht rueckgaengig gemacht werden.
-              Die ausgewaehlten Dokumente werden dauerhaft geloescht.
+              Diese Aktion kann nicht rückgängig gemacht werden.
+              Die ausgewählten Dokumente werden dauerhaft gelöscht.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -297,7 +297,7 @@ export function FinanceBulkActionsBar({
               ) : (
                 <>
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Loeschen
+                  Löschen
                 </>
               )}
             </AlertDialogAction>
@@ -313,7 +313,7 @@ export function FinanceBulkActionsBar({
               {count} Dokumente bearbeiten
             </DialogTitle>
             <DialogDescription>
-              Waehlen Sie die Felder aus, die fuer alle ausgewaehlten Dokumente geaendert werden sollen.
+              Wählen Sie die Felder aus, die für alle ausgewählten Dokumente geändert werden sollen.
             </DialogDescription>
           </DialogHeader>
 
@@ -322,7 +322,7 @@ export function FinanceBulkActionsBar({
               <Label htmlFor="edit-category">Kategorie</Label>
               <Select value={editCategory} onValueChange={setEditCategory}>
                 <SelectTrigger id="edit-category">
-                  <SelectValue placeholder="Kategorie auswaehlen..." />
+                  <SelectValue placeholder="Kategorie auswählen..." />
                 </SelectTrigger>
                 <SelectContent>
                   {FINANCE_PACKAGES.map((pkg) => (
@@ -345,7 +345,7 @@ export function FinanceBulkActionsBar({
               <Label htmlFor="edit-year">Jahr</Label>
               <Select value={editYear} onValueChange={setEditYear}>
                 <SelectTrigger id="edit-year">
-                  <SelectValue placeholder="Jahr auswaehlen..." />
+                  <SelectValue placeholder="Jahr auswählen..." />
                 </SelectTrigger>
                 <SelectContent>
                   {years.map((y) => (
@@ -387,7 +387,7 @@ export function FinanceBulkActionsBar({
               {count} Dokumente exportieren
             </DialogTitle>
             <DialogDescription>
-              Die ausgewaehlten Dokumente werden als ZIP-Archiv exportiert.
+              Die ausgewählten Dokumente werden als ZIP-Archiv exportiert.
             </DialogDescription>
           </DialogHeader>
 

@@ -1,6 +1,6 @@
 /**
  * Account Management Page
- * Konten auflisten, erstellen, bearbeiten, loeschen
+ * Konten auflisten, erstellen, bearbeiten, löschen
  */
 
 import { useState } from 'react';
@@ -59,20 +59,20 @@ export function AccountsPage() {
     };
 
     const handleDelete = async (account: BankAccount) => {
-        if (!confirm(`Moechten Sie das Konto "${account.account_name}" wirklich loeschen?`)) {
+        if (!confirm(`Möchten Sie das Konto "${account.account_name}" wirklich löschen?`)) {
             return;
         }
 
         try {
             await deleteAccount.mutateAsync(account.id);
             toast({
-                title: 'Konto geloescht',
-                description: `${account.account_name} wurde erfolgreich geloescht.`,
+                title: 'Konto gelöscht',
+                description: `${account.account_name} wurde erfolgreich gelöscht.`,
             });
         } catch {
             toast({
                 title: 'Fehler',
-                description: 'Das Konto konnte nicht geloescht werden.',
+                description: 'Das Konto konnte nicht gelöscht werden.',
                 variant: 'destructive',
             });
         }
@@ -102,7 +102,7 @@ export function AccountsPage() {
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight">Bankkonten</h2>
                     <p className="text-muted-foreground">
-                        Verwalten Sie Ihre Bankkonten fuer Import und Zahlungen.
+                        Verwalten Sie Ihre Bankkonten für Import und Zahlungen.
                     </p>
                 </div>
                 <Button onClick={handleCreate}>
@@ -131,7 +131,7 @@ export function AccountsPage() {
                         Konten ({accounts?.length ?? 0})
                     </CardTitle>
                     <CardDescription>
-                        Alle registrierten Bankkonten fuer Transaktionsimport und SEPA-Zahlungen.
+                        Alle registrierten Bankkonten für Transaktionsimport und SEPA-Zahlungen.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -218,7 +218,7 @@ export function AccountsPage() {
                                                         onClick={() => handleDelete(account)}
                                                     >
                                                         <Trash2 className="mr-2 h-4 w-4" />
-                                                        Loeschen
+                                                        Löschen
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>

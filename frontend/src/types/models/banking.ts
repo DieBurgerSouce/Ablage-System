@@ -1,7 +1,7 @@
 /**
  * Banking Model Types
  *
- * Typen fuer Banking-Funktionen: Konten, Transaktionen, Zahlungen,
+ * Typen für Banking-Funktionen: Konten, Transaktionen, Zahlungen,
  * Mahnwesen, Cash-Flow und Skonto.
  */
 
@@ -705,7 +705,7 @@ export type PhoneCallOutcome =
     | 'dispute_raised';
 
 /**
- * Aktionstyp fuer Mahnstufen
+ * Aktionstyp für Mahnstufen
  */
 export type DunningActionType = 'email' | 'letter' | 'phone' | 'escalation';
 
@@ -820,7 +820,7 @@ export interface MahnTaskWithDunning extends MahnTask {
 }
 
 /**
- * Filter fuer Mahnaufgaben
+ * Filter für Mahnaufgaben
  */
 export interface MahnTaskFilter {
     task_type?: MahnTaskType;
@@ -833,7 +833,7 @@ export interface MahnTaskFilter {
 }
 
 /**
- * Anfrage zum Zurueckstellen einer Aufgabe
+ * Anfrage zum Zurückstellen einer Aufgabe
  */
 export interface MahnTaskSnoozeRequest {
     snooze_until: string;
@@ -841,7 +841,7 @@ export interface MahnTaskSnoozeRequest {
 }
 
 /**
- * Anfrage zum Abschliessen einer Aufgabe
+ * Anfrage zum Abschließen einer Aufgabe
  */
 export interface MahnTaskCompleteRequest {
     notes?: string;
@@ -906,10 +906,10 @@ export interface DunningStageConfig {
     sort_order: number;
     created_at: string;
     updated_at: string;
-    // Erweiterte Felder fuer UI
+    // Erweiterte Felder für UI
     /** @deprecated Nutze stage_number */
     stage_level?: number;
-    /** Alias fuer trigger_days_after_due */
+    /** Alias für trigger_days_after_due */
     days_after_previous?: number;
     /** Kommunikationskanal (email, letter, phone, none) */
     communication_channel?: 'email' | 'letter' | 'phone' | 'none';
@@ -1022,7 +1022,7 @@ export interface MahnungHistoryEntry {
 }
 
 /**
- * Alias fuer MahnungHistoryEntry (Kompatibilitaet)
+ * Alias für MahnungHistoryEntry (Kompatibilitaet)
  */
 export type MahnungHistory = MahnungHistoryEntry;
 
@@ -1099,12 +1099,12 @@ export interface MahnlaufResult {
 }
 
 /**
- * Kanban-Spalten-Status fuer Mahnwesen
+ * Kanban-Spalten-Status für Mahnwesen
  */
 export type MahnKanbanColumn = 'pending' | 'reminder_sent' | 'escalated' | 'completed';
 
 /**
- * Kanban-Karte fuer Mahnwesen
+ * Kanban-Karte für Mahnwesen
  */
 export interface MahnKanbanCard {
     id: string;

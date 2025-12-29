@@ -3,9 +3,9 @@
  *
  * Vollstaendige Mahnungsverwaltung mit:
  * - DunningTable mit TanStack Table
- * - BulkActionsBar fuer Massenaktionen
- * - MahnungDetailSheet fuer Details
- * - TelefonProtokollDialog fuer Anrufprotokolle
+ * - BulkActionsBar für Massenaktionen
+ * - MahnungDetailSheet für Details
+ * - TelefonProtokollDialog für Anrufprotokolle
  */
 
 import { useState, useCallback } from 'react';
@@ -108,7 +108,7 @@ function StatsCards({ stats, isLoading }: {
                     <div className="text-2xl font-bold">
                         {Math.round(stats.avg_days_overdue)} Tage
                     </div>
-                    <p className="text-sm text-muted-foreground">Ø Ueberfaelligkeit</p>
+                    <p className="text-sm text-muted-foreground">Ø Überfälligkeit</p>
                 </CardContent>
             </Card>
             <Card>
@@ -202,7 +202,7 @@ export function DunningList() {
             await escalateDunning.mutateAsync(selectedDunning.id);
             toast({
                 title: 'Mahnung eskaliert',
-                description: `Mahnvorgang ${selectedDunning.invoice_number} wurde auf die naechste Stufe eskaliert.`,
+                description: `Mahnvorgang ${selectedDunning.invoice_number} wurde auf die nächste Stufe eskaliert.`,
             });
             setEscalateDialogOpen(false);
             refetchRecords();
@@ -281,10 +281,10 @@ export function DunningList() {
                                 Mahnungsverwaltung
                             </CardTitle>
                             <CardDescription>
-                                {filteredRecords.length} Mahnvorgaenge
+                                {filteredRecords.length} Mahnvorgänge
                                 {selectedIds.length > 0 && (
                                     <Badge variant="secondary" className="ml-2">
-                                        {selectedIds.length} ausgewaehlt
+                                        {selectedIds.length} ausgewählt
                                     </Badge>
                                 )}
                             </CardDescription>
@@ -363,11 +363,11 @@ export function DunningList() {
                             Mahnung eskalieren?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Moechten Sie den Mahnvorgang{' '}
+                            Möchten Sie den Mahnvorgang{' '}
                             <span className="font-medium">
                                 {selectedDunning?.invoice_number}
                             </span>{' '}
-                            auf die naechste Mahnstufe eskalieren?
+                            auf die nächste Mahnstufe eskalieren?
                             <br /><br />
                             <span className="text-muted-foreground">
                                 Aktuelle Stufe: {selectedDunning?.dunning_level ?? 0}

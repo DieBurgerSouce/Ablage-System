@@ -19,10 +19,10 @@ import { FinanceDeadlineAlert, type DeadlineItem } from './FinanceDeadlineAlert'
 import { FinanceDeadlineCalendar } from './FinanceDeadlineCalendar'
 
 /**
- * FinanzenPage - Dashboard mit Jahr-Ordnern fuer Finanzdokumente
+ * FinanzenPage - Dashboard mit Jahr-Ordnern für Finanzdokumente
  *
- * Zeigt alle verfuegbaren Jahre als klickbare Ordner-Cards.
- * Klick auf ein Jahr navigiert zur Kategorien-Uebersicht.
+ * Zeigt alle verfügbaren Jahre als klickbare Ordner-Cards.
+ * Klick auf ein Jahr navigiert zur Kategorien-Übersicht.
  *
  * Route: /finanzen
  */

@@ -76,7 +76,7 @@ export function FinanzenYearCategoriesView() {
                 {error instanceof Error ? error.message : 'Jahr konnte nicht geladen werden.'}
               </p>
               <Button variant="link" className="p-0 mt-2" onClick={() => navigate({ to: '/finanzen' })}>
-                Zurueck zur Uebersicht
+                Zurück zur Übersicht
               </Button>
             </div>
           </CardContent>
@@ -92,7 +92,7 @@ export function FinanzenYearCategoriesView() {
         <div className="text-center py-12">
           <h2 className="text-xl font-semibold text-muted-foreground">Jahr nicht gefunden</h2>
           <Button variant="link" onClick={() => navigate({ to: '/finanzen' })}>
-            Zurueck zur Uebersicht
+            Zurück zur Übersicht
           </Button>
         </div>
       </div>
@@ -104,7 +104,7 @@ export function FinanzenYearCategoriesView() {
       {/* Header with Breadcrumb */}
       <div className="flex items-center gap-4">
         <Link to="/finanzen">
-          <Button variant="ghost" size="icon" aria-label="Zurueck zur Finanzen-Uebersicht">
+          <Button variant="ghost" size="icon" aria-label="Zurück zur Finanzen-Übersicht">
             <ArrowLeft className="w-5 h-5" />
           </Button>
         </Link>

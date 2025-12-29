@@ -2,7 +2,7 @@
  * Cancel Entry Dialog
  *
  * Dialog zum Stornieren eines Kassenbucheintrags.
- * GoBD-konform: Erstellt eine Gegenbuchung statt den Eintrag zu loeschen.
+ * GoBD-konform: Erstellt eine Gegenbuchung statt den Eintrag zu löschen.
  */
 
 import * as React from 'react';
@@ -66,7 +66,7 @@ export function CancelEntryDialog({
     },
   });
 
-  // Formular zuruecksetzen wenn Dialog oeffnet
+  // Formular zurücksetzen wenn Dialog oeffnet
   React.useEffect(() => {
     if (open) {
       form.reset({
@@ -105,8 +105,8 @@ export function CancelEntryDialog({
             Eintrag stornieren
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Dieser Eintrag wird nicht geloescht, sondern durch eine Gegenbuchung
-            neutralisiert. Dies ist erforderlich fuer die GoBD-konforme
+            Dieser Eintrag wird nicht gelöscht, sondern durch eine Gegenbuchung
+            neutralisiert. Dies ist erforderlich für die GoBD-konforme
             Kassenbuchfuehrung.
           </AlertDialogDescription>
         </AlertDialogHeader>

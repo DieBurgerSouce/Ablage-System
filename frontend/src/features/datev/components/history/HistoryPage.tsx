@@ -141,7 +141,7 @@ export function HistoryPage() {
                                             disabled={page === 1}
                                         >
                                             <ChevronLeft className="h-4 w-4 mr-1" />
-                                            Zurueck
+                                            Zurück
                                         </Button>
                                         <Button
                                             variant="outline"

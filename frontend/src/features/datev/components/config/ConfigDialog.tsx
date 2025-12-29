@@ -71,7 +71,7 @@ export function ConfigDialog({ open, onOpenChange, config }: ConfigDialogProps) 
         },
     });
 
-    // Live Error Clearing: Fehler loeschen wenn Nutzer Feld korrigiert
+    // Live Error Clearing: Fehler löschen wenn Nutzer Feld korrigiert
     useEffect(() => {
         const subscription = watch((_, { name }) => {
             if (name && errors[name as keyof typeof errors]) {
@@ -139,7 +139,7 @@ export function ConfigDialog({ open, onOpenChange, config }: ConfigDialogProps) 
                 await createConfig.mutateAsync(cleanData);
                 toast({
                     title: 'Konfiguration erstellt',
-                    description: `Neue Konfiguration fuer Berater ${data.berater_nr} wurde erstellt.`,
+                    description: `Neue Konfiguration für Berater ${data.berater_nr} wurde erstellt.`,
                 });
             }
             onOpenChange(false);
@@ -231,7 +231,7 @@ export function ConfigDialog({ open, onOpenChange, config }: ConfigDialogProps) 
                                 setValue('kontenrahmen', value as 'SKR03' | 'SKR04')
                             }
                             className="grid grid-cols-2 gap-4"
-                            aria-label="Kontenrahmen auswaehlen"
+                            aria-label="Kontenrahmen auswählen"
                         >
                             <div
                                 className={`flex items-start space-x-3 p-4 rounded-lg border ${

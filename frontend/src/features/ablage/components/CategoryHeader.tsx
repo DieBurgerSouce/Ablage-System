@@ -1,5 +1,5 @@
 /**
- * CategoryHeader - Breadcrumb und Titel fuer Kategorie-Seiten
+ * CategoryHeader - Breadcrumb und Titel für Kategorie-Seiten
  */
 
 import { Link } from '@tanstack/react-router';
@@ -30,7 +30,7 @@ export function CategoryHeader({
   const basePath = isCustomer ? '/kunden' : '/lieferanten';
   const colorClass = isCustomer ? 'text-amber-500' : 'text-blue-500';
 
-  // Pfade fuer Breadcrumb
+  // Pfade für Breadcrumb
   const folderPath = isCustomer
     ? '/kunden/$customerId/$folderId'
     : '/lieferanten/$supplierId/$folderId';
@@ -45,7 +45,7 @@ export function CategoryHeader({
   return (
     <div className="flex items-center gap-4">
       <Link to={folderPath} params={folderParams}>
-        <Button variant="ghost" size="icon" aria-label="Zurueck zur Ordner-Uebersicht">
+        <Button variant="ghost" size="icon" aria-label="Zurück zur Ordner-Übersicht">
           <ArrowLeft className="w-5 h-5" />
         </Button>
       </Link>

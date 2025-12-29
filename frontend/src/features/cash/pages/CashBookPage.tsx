@@ -78,7 +78,7 @@ export function CashBookPage() {
           Die angeforderte Kasse konnte nicht gefunden werden.
         </p>
         <Button onClick={handleBack} className="mt-4">
-          Zurueck zur Uebersicht
+          Zurück zur Übersicht
         </Button>
       </div>
     );

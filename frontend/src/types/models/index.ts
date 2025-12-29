@@ -1,7 +1,7 @@
 /**
  * Model Types
  *
- * Zentrale Exports fuer alle Domain-Model-Typen.
+ * Zentrale Exports für alle Domain-Model-Typen.
  */
 
 export * from './document';
@@ -11,7 +11,7 @@ export * from './ocr';
 export * from './company';
 // Cash exports (EntertainmentData ist hier definiert)
 export * from './cash';
-// Expense exports - EntertainmentData ueberschrieben von cash.ts, daher selektive Exports
+// Expense exports - EntertainmentData überschrieben von cash.ts, daher selektive Exports
 export {
     type ExpenseReportStatus,
     type ExpenseType,

@@ -38,7 +38,7 @@ export function LieferantenPage() {
           Lieferanten
         </h1>
         <p className="text-muted-foreground mt-2">
-          Waehle einen Lieferanten um die Dokumentenablage zu oeffnen
+          Wähle einen Lieferanten um die Dokumentenablage zu öffnen
         </p>
       </div>
 

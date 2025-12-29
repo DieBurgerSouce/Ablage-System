@@ -1,6 +1,6 @@
 /**
  * Manual Match Dialog
- * Dialog fuer manuelles Matching von Transaktion zu Dokument
+ * Dialog für manuelles Matching von Transaktion zu Dokument
  */
 
 import { useState, useMemo } from 'react';
@@ -97,7 +97,7 @@ export function ManualMatchDialog({
                 <DialogHeader>
                     <DialogTitle>Manuelles Matching</DialogTitle>
                     <DialogDescription>
-                        Waehlen Sie ein Dokument fuer diese Transaktion aus.
+                        Wählen Sie ein Dokument für diese Transaktion aus.
                     </DialogDescription>
                 </DialogHeader>
 

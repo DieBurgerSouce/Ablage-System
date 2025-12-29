@@ -98,7 +98,7 @@ function getTaskTypeLabel(taskType: string) {
         'send_reminder': 'Mahnung senden',
         'escalate': 'Eskalieren',
         'follow_up': 'Nachfassen',
-        'review': 'Pruefen',
+        'review': 'Prüfen',
     };
     return labels[taskType] || taskType;
 }
@@ -108,7 +108,7 @@ function getDueDateLabel(dateStr: string | null) {
     const date = new Date(dateStr);
     if (isToday(date)) return 'Heute';
     if (isTomorrow(date)) return 'Morgen';
-    if (isPast(date)) return `Ueberfaellig (${formatDateDe(date, 'short')})`;
+    if (isPast(date)) return `Überfällig (${formatDateDe(date, 'short')})`;
     return formatDateDe(date, 'full');
 }
 
@@ -217,7 +217,7 @@ function AufgabenPage() {
             toast({ title: 'Aufgabe erledigt' });
             refetch();
         } catch {
-            toast({ variant: 'destructive', title: 'Fehler beim Abschliessen der Aufgabe' });
+            toast({ variant: 'destructive', title: 'Fehler beim Abschließen der Aufgabe' });
         }
     };
 
@@ -276,7 +276,7 @@ function AufgabenPage() {
                         <div className="flex items-center gap-3">
                             <AlertTriangle className="h-5 w-5 text-destructive" />
                             <span className="font-medium text-destructive">
-                                {overdueTasks.length} ueberfaellige Aufgabe{overdueTasks.length !== 1 ? 'n' : ''}
+                                {overdueTasks.length} überfällige Aufgabe{overdueTasks.length !== 1 ? 'n' : ''}
                             </span>
                         </div>
                     </CardContent>
@@ -290,7 +290,7 @@ function AufgabenPage() {
                         Mahnaufgaben
                     </CardTitle>
                     <CardDescription>
-                        Anstehende Aufgaben fuer das Mahnwesen (Anrufe, Erinnerungen, Eskalationen)
+                        Anstehende Aufgaben für das Mahnwesen (Anrufe, Erinnerungen, Eskalationen)
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -311,7 +311,7 @@ function AufgabenPage() {
                                 )}
                             </TabsTrigger>
                             <TabsTrigger value="overdue">
-                                Ueberfaellig
+                                Überfällig
                                 {overdueTasks.length > 0 && (
                                     <Badge variant="destructive" className="ml-1.5">
                                         {overdueTasks.length}
@@ -337,8 +337,8 @@ function AufgabenPage() {
                                                 <TableHead>Typ</TableHead>
                                                 <TableHead>Vorgang</TableHead>
                                                 <TableHead>Beschreibung</TableHead>
-                                                <TableHead>Faellig</TableHead>
-                                                <TableHead>Prioritaet</TableHead>
+                                                <TableHead>Fällig</TableHead>
+                                                <TableHead>Priorität</TableHead>
                                                 <TableHead>Verschoben</TableHead>
                                                 <TableHead className="w-[50px]"></TableHead>
                                             </TableRow>

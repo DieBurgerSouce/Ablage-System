@@ -1,7 +1,7 @@
 /**
  * useMediaQuery - Responsive Breakpoint Detection Hook
  *
- * Ermoeglicht Media-Query-basierte Responsive-Logik in Komponenten.
+ * Ermöglicht Media-Query-basierte Responsive-Logik in Komponenten.
  *
  * Verwendung:
  * - const isMobile = useMediaQuery('(max-width: 640px)')
@@ -12,7 +12,7 @@
 import { useState, useEffect, useCallback } from 'react'
 
 /**
- * Hook fuer Media-Query-basierte Responsive-Logik
+ * Hook für Media-Query-basierte Responsive-Logik
  *
  * @param query - CSS Media Query String
  * @returns boolean - true wenn Query zutrifft
@@ -31,7 +31,7 @@ export function useMediaQuery(query: string): boolean {
   useEffect(() => {
     const mediaQueryList = window.matchMedia(query)
 
-    // Handler fuer Media-Query-Aenderungen
+    // Handler für Media-Query-Änderungen
     const handleChange = (event: MediaQueryListEvent) => {
       setMatches(event.matches)
     }
@@ -39,11 +39,11 @@ export function useMediaQuery(query: string): boolean {
     // Initial setzen
     setMatches(mediaQueryList.matches)
 
-    // Event Listener hinzufuegen (moderne API)
+    // Event Listener hinzufügen (moderne API)
     if (mediaQueryList.addEventListener) {
       mediaQueryList.addEventListener('change', handleChange)
     } else {
-      // Fallback fuer aeltere Browser
+      // Fallback für ältere Browser
       mediaQueryList.addListener(handleChange)
     }
 
@@ -92,14 +92,14 @@ export function useResponsiveBreakpoints() {
     isMobile,
     isTablet,
     isDesktop,
-    // Zusaetzliche Convenience-Props
+    // Zusätzliche Convenience-Props
     isMobileOrTablet: isMobile || isTablet,
     isTabletOrDesktop: isTablet || isDesktop,
   }
 }
 
 /**
- * Hook fuer Touch-Device-Erkennung
+ * Hook für Touch-Device-Erkennung
  *
  * @returns boolean - true wenn Touch-Device
  */

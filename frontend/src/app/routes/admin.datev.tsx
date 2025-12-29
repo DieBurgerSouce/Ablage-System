@@ -1,7 +1,7 @@
 /**
  * DATEV Export - Parent Layout
  *
- * Definiert das Layout und die Sub-Navigation fuer den DATEV-Bereich.
+ * Definiert das Layout und die Sub-Navigation für den DATEV-Bereich.
  */
 
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router';
@@ -14,7 +14,7 @@ export const Route = createFileRoute('/admin/datev')({
 });
 
 const datevNavItems = [
-    { href: '/admin/datev', label: 'Uebersicht', icon: LayoutDashboard, exact: true },
+    { href: '/admin/datev', label: 'Übersicht', icon: LayoutDashboard, exact: true },
     { href: '/admin/datev/config', label: 'Konfiguration', icon: Settings },
     { href: '/admin/datev/vendors', label: 'Lieferanten', icon: Users },
     { href: '/admin/datev/export', label: 'Export', icon: Download },
@@ -31,7 +31,7 @@ function DATEVLayout() {
             <div>
                 <h1 className="text-3xl font-bold tracking-tight font-display">DATEV Export</h1>
                 <p className="text-muted-foreground mt-2">
-                    Buchungsstapel fuer DATEV erstellen und exportieren.
+                    Buchungsstapel für DATEV erstellen und exportieren.
                 </p>
             </div>
 
@@ -42,7 +42,7 @@ function DATEVLayout() {
                         ? pathname === item.href
                         : pathname.startsWith(item.href) && pathname !== '/admin/datev';
 
-                    // Fuer die Uebersicht: nur aktiv wenn exakt /admin/datev
+                    // Für die Übersicht: nur aktiv wenn exakt /admin/datev
                     const isOverviewActive = item.exact && pathname === item.href;
                     const finalIsActive = item.exact ? isOverviewActive : isActive;
 

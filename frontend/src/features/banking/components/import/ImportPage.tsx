@@ -64,7 +64,7 @@ export function ImportPage() {
         if (!selectedFile || !selectedAccount) {
             toast({
                 title: 'Fehlende Angaben',
-                description: 'Bitte waehlen Sie eine Datei und ein Konto aus.',
+                description: 'Bitte wählen Sie eine Datei und ein Konto aus.',
                 variant: 'destructive',
             });
             return;
@@ -135,13 +135,13 @@ export function ImportPage() {
                 <span
                     className={`flex items-center gap-1 ${step === 'upload' ? 'text-primary font-medium' : 'text-muted-foreground'}`}
                 >
-                    1. Datei waehlen
+                    1. Datei wählen
                 </span>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 <span
                     className={`flex items-center gap-1 ${step === 'preview' ? 'text-primary font-medium' : 'text-muted-foreground'}`}
                 >
-                    2. Vorschau pruefen
+                    2. Vorschau prüfen
                 </span>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 <span
@@ -160,7 +160,7 @@ export function ImportPage() {
                             Datei hochladen
                         </CardTitle>
                         <CardDescription>
-                            Unterstuetzte Formate: MT940, CAMT.053, CSV (Sparkasse, Volksbank,
+                            Unterstützte Formate: MT940, CAMT.053, CSV (Sparkasse, Volksbank,
                             Generisch)
                         </CardDescription>
                     </CardHeader>
@@ -194,14 +194,14 @@ export function ImportPage() {
                                             setSelectedFile(null);
                                         }}
                                     >
-                                        Andere Datei waehlen
+                                        Andere Datei wählen
                                     </Button>
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center gap-2">
                                     <Upload className="h-12 w-12 text-muted-foreground" />
                                     <p className="font-medium">
-                                        Datei hierher ziehen oder klicken zum Auswaehlen
+                                        Datei hierher ziehen oder klicken zum Auswählen
                                     </p>
                                     <p className="text-sm text-muted-foreground">
                                         MT940, CAMT.053 oder CSV-Datei
@@ -221,7 +221,7 @@ export function ImportPage() {
                                 <Label>Zielkonto</Label>
                                 <Select value={selectedAccount} onValueChange={setSelectedAccount}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Konto waehlen..." />
+                                        <SelectValue placeholder="Konto wählen..." />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {accounts?.map((account) => (
@@ -264,7 +264,7 @@ export function ImportPage() {
 
                     <div className="flex justify-between">
                         <Button variant="outline" onClick={handleReset}>
-                            Zurueck
+                            Zurück
                         </Button>
                         <Button
                             onClick={handleImport}

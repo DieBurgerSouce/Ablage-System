@@ -2,13 +2,13 @@
  * Exports API Service
  *
  * Kommuniziert mit den /api/v1/exports Endpoints
- * fuer Export-Job Verwaltung und Echtzeit-Updates.
+ * für Export-Job Verwaltung und Echtzeit-Updates.
  *
  * Features:
  * - Export-Jobs erstellen (async via Celery)
  * - Export-Job Status abfragen (Polling)
  * - Export-Job abbrechen/pausieren/fortsetzen
- * - WebSocket fuer Echtzeit-Updates
+ * - WebSocket für Echtzeit-Updates
  */
 
 import { AxiosError } from 'axios';
@@ -307,7 +307,7 @@ export const exportsService = {
   },
 
   /**
-   * Erstellt eine WebSocket-Verbindung fuer Echtzeit-Updates
+   * Erstellt eine WebSocket-Verbindung für Echtzeit-Updates
    */
   createWebSocketConnection: (
     jobId: string,

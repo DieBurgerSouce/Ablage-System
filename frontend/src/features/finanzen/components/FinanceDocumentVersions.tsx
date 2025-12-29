@@ -1,7 +1,7 @@
 /**
  * FinanceDocumentVersions - OCR Version Management Component
  *
- * Ermoeglicht die Verwaltung von OCR-Versionen eines Finanz-Dokuments.
+ * Ermöglicht die Verwaltung von OCR-Versionen eines Finanz-Dokuments.
  *
  * Features:
  * - Versionsliste mit Details (Backend, Konfidenz, Wortanzahl)
@@ -218,7 +218,7 @@ const VersionItem = memo(function VersionItem({
             size="sm"
             onClick={() => onCompareSelect(version.versionNumber)}
             aria-pressed={isCompareSelected}
-            aria-label={`Version ${version.versionNumber} zum Vergleich ${isCompareSelected ? 'abwaehlen' : 'auswaehlen'}`}
+            aria-label={`Version ${version.versionNumber} zum Vergleich ${isCompareSelected ? 'abwählen' : 'auswählen'}`}
           >
             <GitCompare className="h-4 w-4" aria-hidden="true" />
           </Button>
@@ -302,7 +302,7 @@ const DiffView = memo(function DiffView({ compareResult }: DiffViewProps) {
             </div>
 
             <div className="text-center p-2 bg-muted/30 rounded">
-              <p className="text-xs text-muted-foreground">Backend geaendert</p>
+              <p className="text-xs text-muted-foreground">Backend geändert</p>
               <p className="font-medium">
                 {differences.backendChanged ? 'Ja' : 'Nein'}
               </p>
@@ -420,7 +420,7 @@ const RollbackDialog = memo(function RollbackDialog({
             </Label>
             <Textarea
               id="rollback-note"
-              placeholder="Grund fuer den Rollback..."
+              placeholder="Grund für den Rollback..."
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={500}
@@ -439,7 +439,7 @@ const RollbackDialog = memo(function RollbackDialog({
             onClick={handleRollback}
             disabled={rollbackMutation.isPending}
           >
-            {rollbackMutation.isPending ? 'Wird ausgefuehrt...' : 'Rollback durchfuehren'}
+            {rollbackMutation.isPending ? 'Wird ausgeführt...' : 'Rollback durchführen'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -578,7 +578,7 @@ export const FinanceDocumentVersions = memo(function FinanceDocumentVersions({
               }}
               className="text-xs"
             >
-              Zuruecksetzen
+              Zurücksetzen
             </Button>
           </div>
         )}

@@ -2,7 +2,7 @@
  * FinanceDocumentEditDialog
  *
  * Dialog zum Bearbeiten von Finanz-Dokumenten.
- * Ermoeglicht die Bearbeitung von Metadaten und Finanz-spezifischen Feldern.
+ * Ermöglicht die Bearbeitung von Metadaten und Finanz-spezifischen Feldern.
  */
 
 import { useEffect, useState } from 'react'
@@ -176,8 +176,8 @@ export function FinanceDocumentEditDialog({
 
       if (Object.keys(updateData).length === 0) {
         toast({
-          title: 'Keine Aenderungen',
-          description: 'Es wurden keine Aenderungen vorgenommen.',
+          title: 'Keine Änderungen',
+          description: 'Es wurden keine Änderungen vorgenommen.',
         })
         return
       }
@@ -189,7 +189,7 @@ export function FinanceDocumentEditDialog({
 
       toast({
         title: 'Dokument aktualisiert',
-        description: 'Die Aenderungen wurden erfolgreich gespeichert.',
+        description: 'Die Änderungen wurden erfolgreich gespeichert.',
       })
 
       onOpenChange(false)
@@ -214,8 +214,8 @@ export function FinanceDocumentEditDialog({
       })
 
       toast({
-        title: 'Dokument geloescht',
-        description: 'Das Dokument wurde erfolgreich geloescht.',
+        title: 'Dokument gelöscht',
+        description: 'Das Dokument wurde erfolgreich gelöscht.',
       })
 
       setShowDeleteConfirm(false)
@@ -223,7 +223,7 @@ export function FinanceDocumentEditDialog({
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unbekannter Fehler'
       toast({
-        title: 'Fehler beim Loeschen',
+        title: 'Fehler beim Löschen',
         description: errorMessage,
         variant: 'destructive',
       })
@@ -254,12 +254,12 @@ export function FinanceDocumentEditDialog({
           </DialogHeader>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Kategorie aendern */}
+            {/* Kategorie ändern */}
             <div className="space-y-2">
               <Label>Kategorie</Label>
               <Select value={category} onValueChange={(value) => setValue('category', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Kategorie waehlen" />
+                  <SelectValue placeholder="Kategorie wählen" />
                 </SelectTrigger>
                 <SelectContent>
                   {FINANCE_CATEGORIES.map((cat) => (
@@ -365,7 +365,7 @@ export function FinanceDocumentEditDialog({
                     onValueChange={(value) => setValue('steuerart', value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Steuerart waehlen" />
+                      <SelectValue placeholder="Steuerart wählen" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">Keine</SelectItem>
@@ -417,7 +417,7 @@ export function FinanceDocumentEditDialog({
                 className="gap-2"
               >
                 <Trash2 className="w-4 h-4" />
-                Loeschen
+                Löschen
               </Button>
 
               <div className="flex gap-2">
@@ -444,11 +444,11 @@ export function FinanceDocumentEditDialog({
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Dokument loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Dokument löschen?</AlertDialogTitle>
             <AlertDialogDescription>
               Sind Sie sicher, dass Sie das Dokument{' '}
-              <span className="font-medium">{document.originalFilename}</span> loeschen moechten?
-              Diese Aktion kann nicht rueckgaengig gemacht werden.
+              <span className="font-medium">{document.originalFilename}</span> löschen möchten?
+              Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -461,10 +461,10 @@ export function FinanceDocumentEditDialog({
               {deleteMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Loeschen...
+                  Löschen...
                 </>
               ) : (
-                'Loeschen'
+                'Löschen'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

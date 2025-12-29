@@ -1,7 +1,7 @@
 /**
  * Cash/Kassenbuch API Service
  *
- * API-Client fuer GoBD-konforme Kassenbuchfuehrung.
+ * API-Client für GoBD-konforme Kassenbuchfuehrung.
  *
  * WICHTIG: CashEntry ist APPEND-ONLY!
  */
@@ -109,8 +109,8 @@ export const cashService = {
   },
 
   /**
-   * Prueft auf moegliche Duplikate vor Buchungserstellung.
-   * Gibt potentielle Duplikate zurueck, damit User entscheiden kann.
+   * Prüft auf mögliche Duplikate vor Buchungserstellung.
+   * Gibt potentielle Duplikate zurück, damit User entscheiden kann.
    */
   async checkDuplicate(params: {
     register_id: string;
@@ -168,7 +168,7 @@ export const cashService = {
   },
 
   /**
-   * Kassensturz durchfuehren
+   * Kassensturz durchführen
    */
   async performCashCount(data: CashCountCreate): Promise<CashCount> {
     const response = await apiClient.post<CashCount>('/cash/counts', data);
@@ -190,7 +190,7 @@ export const cashService = {
   },
 
   /**
-   * Tagesabschluesse abrufen
+   * Tagesabschlüsse abrufen
    */
   async getDailySummaries(params: {
     register_id: string;

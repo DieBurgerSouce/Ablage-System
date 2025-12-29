@@ -138,7 +138,7 @@ export function ImportPreview({ preview }: ImportPreviewProps) {
                         Bereit zum Import
                     </AlertTitle>
                     <AlertDescription className="text-green-600 dark:text-green-400">
-                        {preview.transaction_count} Transaktionen koennen importiert werden.
+                        {preview.transaction_count} Transaktionen können importiert werden.
                         Format erkannt: {preview.format_detected} ({Math.round(preview.format_confidence * 100)}% Konfidenz)
                     </AlertDescription>
                 </Alert>

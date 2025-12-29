@@ -1,7 +1,7 @@
 /**
  * Admin Mahnungen - Eskalation
  *
- * Zeigt Mahnvorgaenge gruppiert nach Eskalationsstufe
+ * Zeigt Mahnvorgänge gruppiert nach Eskalationsstufe
  */
 
 import { createFileRoute } from '@tanstack/react-router';
@@ -95,7 +95,7 @@ function EskalationPage() {
                         Eskalationsstufen
                     </CardTitle>
                     <CardDescription>
-                        Mahnvorgaenge nach Eskalationsstufe filtern
+                        Mahnvorgänge nach Eskalationsstufe filtern
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

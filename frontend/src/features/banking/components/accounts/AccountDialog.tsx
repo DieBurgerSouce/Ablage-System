@@ -239,7 +239,7 @@ export function AccountDialog({ open, onOpenChange, account }: AccountDialogProp
                             }
                         >
                             <SelectTrigger>
-                                <SelectValue placeholder="Kontotyp waehlen" />
+                                <SelectValue placeholder="Kontotyp wählen" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="checking">Girokonto</SelectItem>
@@ -305,19 +305,19 @@ function validateIBAN(iban: string): string | true {
     }
 
     if (!/^[A-Z]{2}[0-9]{2}/.test(cleaned)) {
-        return 'IBAN muss mit Laendercode (z.B. DE) und 2 Ziffern beginnen';
+        return 'IBAN muss mit Ländercode (z.B. DE) und 2 Ziffern beginnen';
     }
 
-    // MOD-97 Pruefung
+    // MOD-97 Prüfung
     try {
         const rearranged = cleaned.slice(4) + cleaned.slice(0, 4);
         const numeric = rearranged.replace(/[A-Z]/g, (c) => (c.charCodeAt(0) - 55).toString());
         const checksum = BigInt(numeric) % 97n;
         if (checksum !== 1n) {
-            return 'IBAN-Pruefsumme ist ungueltig';
+            return 'IBAN-Prüfsumme ist ungültig';
         }
     } catch {
-        return 'IBAN-Format ist ungueltig';
+        return 'IBAN-Format ist ungültig';
     }
 
     return true;

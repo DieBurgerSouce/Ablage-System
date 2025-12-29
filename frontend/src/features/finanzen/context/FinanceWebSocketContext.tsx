@@ -74,8 +74,8 @@ export function FinanceWebSocketProvider({
 
         case 'deadline.overdue':
           toast({
-            title: 'Frist ueberschritten',
-            description: event.data.message || 'Eine Frist wurde ueberschritten',
+            title: 'Frist überschritten',
+            description: event.data.message || 'Eine Frist wurde überschritten',
             variant: 'destructive',
           })
           break

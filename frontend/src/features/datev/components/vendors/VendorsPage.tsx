@@ -54,7 +54,7 @@ export function VendorsPage() {
     const { data: configs, isLoading: configsLoading } = useConfigs();
     const [selectedConfigId, setSelectedConfigId] = useState<string>('');
 
-    // Automatisch erste Konfiguration auswaehlen wenn vorhanden
+    // Automatisch erste Konfiguration auswählen wenn vorhanden
     const effectiveConfigId =
         selectedConfigId || (configs && configs.length > 0 ? configs[0].id : '');
 
@@ -70,7 +70,7 @@ export function VendorsPage() {
     const [editingMapping, setEditingMapping] = useState<DATEVVendorMappingResponse | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<DATEVVendorMappingResponse | null>(null);
 
-    // Refs fuer Focus Management nach Dialog-Schliessung
+    // Refs für Focus Management nach Dialog-Schliessung
     const createButtonRef = useRef<HTMLButtonElement>(null);
     const lastTriggerRef = useRef<'create' | 'edit'>('create');
 
@@ -88,7 +88,7 @@ export function VendorsPage() {
         setDialogOpen(true);
     };
 
-    // Focus Management: Focus zurueck zum Trigger-Button nach Dialog-Close
+    // Focus Management: Focus zurück zum Trigger-Button nach Dialog-Close
     const handleDialogClose = (open: boolean) => {
         setDialogOpen(open);
         if (!open && lastTriggerRef.current === 'create') {
@@ -117,7 +117,7 @@ export function VendorsPage() {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Keine Konfiguration vorhanden</AlertTitle>
                 <AlertDescription>
-                    Bevor Sie Lieferanten-Zuordnungen erstellen koennen, muessen Sie zuerst eine
+                    Bevor Sie Lieferanten-Zuordnungen erstellen können, müssen Sie zuerst eine
                     DATEV-Konfiguration anlegen.
                 </AlertDescription>
             </Alert>
@@ -148,9 +148,9 @@ export function VendorsPage() {
                             >
                                 <SelectTrigger
                                     className="w-48"
-                                    aria-label="DATEV-Konfiguration fuer Vendor-Mappings auswaehlen"
+                                    aria-label="DATEV-Konfiguration für Vendor-Mappings auswählen"
                                 >
-                                    <SelectValue placeholder="Konfiguration waehlen" />
+                                    <SelectValue placeholder="Konfiguration wählen" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {configs?.map((config) => (
@@ -263,7 +263,7 @@ export function VendorsPage() {
                                                         className="text-destructive focus:text-destructive"
                                                     >
                                                         <Trash2 className="mr-2 h-4 w-4" />
-                                                        Loeschen
+                                                        Löschen
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -286,15 +286,15 @@ export function VendorsPage() {
                 />
             )}
 
-            {/* Loesch-Bestaetigung */}
+            {/* Loesch-Bestätigung */}
             <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Zuordnung loeschen?</AlertDialogTitle>
+                        <AlertDialogTitle>Zuordnung löschen?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Moechten Sie die Zuordnung fuer{' '}
+                            Möchten Sie die Zuordnung für{' '}
                             {deleteConfirm?.vendor_name || deleteConfirm?.vendor_vat_id || 'diesen Lieferanten'}{' '}
-                            wirklich loeschen? Diese Aktion kann nicht rueckgaengig gemacht werden.
+                            wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -303,7 +303,7 @@ export function VendorsPage() {
                             onClick={handleDelete}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                            Loeschen
+                            Löschen
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

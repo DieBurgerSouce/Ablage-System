@@ -1,7 +1,7 @@
 /**
  * DATEV Export Warnungen Komponente
  *
- * Zeigt Warnungen und uebersprungene Dokumente an.
+ * Zeigt Warnungen und übersprungene Dokumente an.
  */
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -41,14 +41,14 @@ export function ExportWarnings({ warnings, skippedCount, skippedReasons }: Expor
                 </Alert>
             )}
 
-            {/* Uebersprungene Dokumente */}
+            {/* Übersprungene Dokumente */}
             {skippedCount > 0 && (
                 <Collapsible>
                     <Alert variant="default" className="border-orange-200 bg-orange-50">
                         <FileX className="h-4 w-4 text-orange-600" />
                         <AlertTitle className="text-orange-800 flex items-center justify-between">
                             <span>
-                                {skippedCount} Dokument{skippedCount !== 1 ? 'e' : ''} uebersprungen
+                                {skippedCount} Dokument{skippedCount !== 1 ? 'e' : ''} übersprungen
                             </span>
                             <CollapsibleTrigger asChild>
                                 <Button
@@ -81,7 +81,7 @@ export function ExportWarnings({ warnings, skippedCount, skippedReasons }: Expor
 }
 
 /**
- * Formatiert den Grund fuer uebersprungene Dokumente
+ * Formatiert den Grund für übersprungene Dokumente
  */
 function formatSkippedReason(reason: string): string {
     const reasonMap: Record<string, string> = {
@@ -89,9 +89,9 @@ function formatSkippedReason(reason: string): string {
         no_invoice_date: 'Kein Rechnungsdatum',
         no_invoice_number: 'Keine Rechnungsnummer',
         already_exported: 'Bereits exportiert',
-        invalid_document_type: 'Ungueltiger Dokumenttyp',
+        invalid_document_type: 'Ungültiger Dokumenttyp',
         missing_vendor_info: 'Fehlende Lieferantendaten',
-        invalid_tax_rate: 'Ungueltiger Steuersatz',
+        invalid_tax_rate: 'Ungültiger Steuersatz',
     };
 
     return reasonMap[reason] || reason;

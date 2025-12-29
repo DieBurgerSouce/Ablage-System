@@ -20,9 +20,9 @@ import {
 interface UseExportJobOptions {
   /** Job-ID zum Verfolgen */
   jobId: string;
-  /** Polling-Intervall in ms (Fallback wenn WebSocket nicht verfuegbar) */
+  /** Polling-Intervall in ms (Fallback wenn WebSocket nicht verfügbar) */
   pollingInterval?: number;
-  /** Aktiviert WebSocket fuer Echtzeit-Updates */
+  /** Aktiviert WebSocket für Echtzeit-Updates */
   useWebSocket?: boolean;
   /** Callback wenn Job abgeschlossen */
   onComplete?: (status: ExportJobStatusResponse) => void;
@@ -50,7 +50,7 @@ interface UseExportJobReturn {
 }
 
 /**
- * Hook fuer Export-Job Verwaltung mit Echtzeit-Updates
+ * Hook für Export-Job Verwaltung mit Echtzeit-Updates
  */
 export function useExportJob(options: UseExportJobOptions): UseExportJobReturn {
   const {
@@ -127,7 +127,7 @@ export function useExportJob(options: UseExportJobOptions): UseExportJobReturn {
         setStatus(data);
 
         if (isJobComplete(data.status)) {
-          // WebSocket schliessen wenn abgeschlossen
+          // WebSocket schließen wenn abgeschlossen
           if (wsRef.current) {
             wsRef.current.close();
             wsRef.current = null;
@@ -166,7 +166,7 @@ export function useExportJob(options: UseExportJobOptions): UseExportJobReturn {
         }
       };
     } else {
-      // WebSocket nicht verfuegbar, Fallback zu Polling
+      // WebSocket nicht verfügbar, Fallback zu Polling
       startPolling();
     }
   }, [jobId, useWebSocket, isJobComplete, onComplete]);
@@ -245,7 +245,7 @@ export function useExportJob(options: UseExportJobOptions): UseExportJobReturn {
         pollingRef.current = null;
       }
     };
-  }, [jobId]); // Nur bei jobId-Aenderung neu initialisieren
+  }, [jobId]); // Nur bei jobId-Änderung neu initialisieren
 
   // WebSocket setup nach initialem Fetch
   useEffect(() => {
@@ -267,7 +267,7 @@ export function useExportJob(options: UseExportJobOptions): UseExportJobReturn {
 }
 
 /**
- * Hook fuer Export-Job Liste
+ * Hook für Export-Job Liste
  */
 export function useExportJobList(
   statusFilter?: ExportJobStatus,

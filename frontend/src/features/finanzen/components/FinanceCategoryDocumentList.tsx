@@ -1,5 +1,5 @@
 /**
- * FinanceCategoryDocumentList - Dokumentenliste fuer Finanz-Kategorien
+ * FinanceCategoryDocumentList - Dokumentenliste für Finanz-Kategorien
  *
  * Zeigt Dokumente einer Finanz-Kategorie (z.B. Steuerbescheide, Lohn/Gehalt).
  * Analog zu CategoryDocumentList, aber mit Finanz-spezifischen Features.
@@ -89,7 +89,7 @@ export function FinanceCategoryDocumentList() {
   // Multi-Select State
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  // Query Invalidation fuer Bulk Actions
+  // Query Invalidation für Bulk Actions
   const { invalidateCategoryDocuments } = useInvalidateFinanceQueries()
 
   // Get category info
@@ -215,7 +215,7 @@ export function FinanceCategoryDocumentList() {
         <div className="text-center py-12">
           <h2 className="text-xl font-semibold text-muted-foreground">Kategorie nicht gefunden</h2>
           <Button variant="link" onClick={() => navigate({ to: '/finanzen' })}>
-            Zurueck zur Uebersicht
+            Zurück zur Übersicht
           </Button>
         </div>
       </div>
@@ -230,7 +230,7 @@ export function FinanceCategoryDocumentList() {
       {/* Header with Breadcrumb */}
       <div className="flex items-center gap-4">
         <Link to="/finanzen/$year" params={{ year: yearId! }}>
-          <Button variant="ghost" size="icon" aria-label="Zurueck zum Jahr">
+          <Button variant="ghost" size="icon" aria-label="Zurück zum Jahr">
             <ArrowLeft className="w-5 h-5" />
           </Button>
         </Link>
@@ -369,7 +369,7 @@ export function FinanceCategoryDocumentList() {
                             }
                           }}
                           onCheckedChange={handleToggleSelectAll}
-                          aria-label="Alle auswaehlen"
+                          aria-label="Alle auswählen"
                         />
                       </TableHead>
                       <TableHead className="min-w-[200px]">Dateiname</TableHead>
@@ -391,7 +391,7 @@ export function FinanceCategoryDocumentList() {
                           <Checkbox
                             checked={selectedIds.has(doc.id)}
                             onCheckedChange={() => handleToggleSelect(doc.id)}
-                            aria-label={`${doc.originalFilename || doc.filename} auswaehlen`}
+                            aria-label={`${doc.originalFilename || doc.filename} auswählen`}
                           />
                         </TableCell>
                         <TableCell
@@ -508,14 +508,14 @@ export function FinanceCategoryDocumentList() {
               disabled={page === 0}
               aria-label="Vorherige Seite"
             >
-              Zurueck
+              Zurück
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setPage(p => Math.min(documents.totalPages - 1, p + 1))}
               disabled={page >= documents.totalPages - 1}
-              aria-label="Naechste Seite"
+              aria-label="Nächste Seite"
             >
               Weiter
             </Button>

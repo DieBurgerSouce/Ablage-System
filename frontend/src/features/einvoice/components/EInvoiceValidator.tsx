@@ -267,7 +267,7 @@ function ValidationResultDisplay({
                 </Badge>
                 {result.pdfACompliant !== null && (
                     <Badge variant={result.pdfACompliant ? "default" : "secondary"}>
-                        PDF/A-3: {result.pdfACompliant ? "OK" : "Nicht geprueft"}
+                        PDF/A-3: {result.pdfACompliant ? "OK" : "Nicht geprüft"}
                     </Badge>
                 )}
             </div>

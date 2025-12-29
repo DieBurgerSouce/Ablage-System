@@ -1,8 +1,8 @@
 /**
  * FinanceDeadlineAlert - Deadline Warning Banner
  *
- * Zeigt Warnungen fuer:
- * - Ueberfaellige Fristen (rot)
+ * Zeigt Warnungen für:
+ * - Überfällige Fristen (rot)
  * - Bald ablaufende Fristen (gelb/orange)
  * - Kommende Fristen (blau)
  */
@@ -94,7 +94,7 @@ function formatDate(dateString: string): string {
 function formatRelativeTime(days: number): string {
   if (days === 0) return 'Heute'
   if (days === 1) return 'Morgen'
-  if (days < 0) return `${Math.abs(days)} Tage ueberfaellig`
+  if (days < 0) return `${Math.abs(days)} Tage überfällig`
   if (days <= 7) return `in ${days} Tagen`
   if (days <= 30) return `in ${Math.ceil(days / 7)} Wochen`
   return `in ${Math.ceil(days / 30)} Monaten`
@@ -134,7 +134,7 @@ export function FinanceDeadlineAlert({
       aria-live="polite"
       aria-label={
         hasOverdue
-          ? `Warnung: ${overdue.length} ueberfaellige Fristen`
+          ? `Warnung: ${overdue.length} überfällige Fristen`
           : hasUrgent
             ? `Achtung: ${urgent.length} dringende Fristen`
             : `Hinweis: ${upcoming.length} anstehende Fristen`
@@ -147,7 +147,7 @@ export function FinanceDeadlineAlert({
           size="icon"
           className="absolute right-2 top-2 h-6 w-6"
           onClick={onDismiss}
-          aria-label="Warnung schliessen"
+          aria-label="Warnung schließen"
         >
           <X className="h-4 w-4" />
         </Button>
@@ -173,7 +173,7 @@ export function FinanceDeadlineAlert({
           )}
         >
           {hasOverdue
-            ? `${overdue.length} ueberfaellige Frist${overdue.length > 1 ? 'en' : ''}`
+            ? `${overdue.length} überfällige Frist${overdue.length > 1 ? 'en' : ''}`
             : hasUrgent
               ? `${urgent.length} dringende Frist${urgent.length > 1 ? 'en' : ''}`
               : `${upcoming.length} anstehende Frist${upcoming.length > 1 ? 'en' : ''}`}
@@ -189,7 +189,7 @@ export function FinanceDeadlineAlert({
             ))}
             {overdue.length > 3 && (
               <p className="text-sm text-red-600 dark:text-red-400">
-                + {overdue.length - 3} weitere ueberfaellige Fristen
+                + {overdue.length - 3} weitere überfällige Fristen
               </p>
             )}
           </div>

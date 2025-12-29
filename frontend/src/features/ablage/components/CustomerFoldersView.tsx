@@ -28,7 +28,7 @@ export function CustomerFoldersView() {
             Der gesuchte Kunde existiert nicht.
           </p>
           <Link to="/kunden">
-            <Button variant="outline">Zurueck zur Kundenliste</Button>
+            <Button variant="outline">Zurück zur Kundenliste</Button>
           </Link>
         </div>
       </div>
@@ -58,7 +58,7 @@ export function CustomerFoldersView() {
       {/* Header with Breadcrumb */}
       <div className="flex items-center gap-4">
         <Link to="/kunden">
-          <Button variant="ghost" size="icon" aria-label="Zurueck zur Kundenliste">
+          <Button variant="ghost" size="icon" aria-label="Zurück zur Kundenliste">
             <ArrowLeft className="w-5 h-5" />
           </Button>
         </Link>
@@ -104,7 +104,7 @@ export function CustomerFoldersView() {
 
       {/* Folder Selection */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Waehle einen Ablage-Ordner:</h2>
+        <h2 className="text-lg font-semibold mb-4">Wähle einen Ablage-Ordner:</h2>
         <div className="space-y-4">
           {customer.folders.map((folder) => {
             const openCount = folder.documentCounts.offene_rechnungen ?? 0

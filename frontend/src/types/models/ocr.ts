@@ -1,7 +1,7 @@
 /**
  * OCR Model Types
  *
- * Typen fuer OCR-Verarbeitung, Backends und Training.
+ * Typen für OCR-Verarbeitung, Backends und Training.
  */
 
 // ==================== OCR Backends ====================
@@ -34,7 +34,7 @@ export const OCR_BACKENDS: Record<OcrBackend, OcrBackendInfo> = {
         description: 'Automatische Backend-Auswahl basierend auf Dokumenttyp',
         gpu_required: false,
         vram_gb: 0,
-        strengths: ['Optimal fuer jeden Dokumenttyp'],
+        strengths: ['Optimal für jeden Dokumenttyp'],
         recommended_for: ['Gemischte Dokumente', 'Unbekannte Layouts'],
     },
     deepseek: {

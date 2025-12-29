@@ -81,13 +81,13 @@ export function ChatLayout() {
     // AbortController für Streaming-Abbruch
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    // TODO: WebSocket fuer Real-time Collaboration temporaer deaktiviert
+    // TODO: WebSocket für Real-time Collaboration temporaer deaktiviert
     // Verursachte Infinite Loop (React Error #185)
     // Muss vor Aktivierung debuggt werden
     const wsConnected = false;
     const wsOnlineUsers: { user_id: string; username: string; is_typing: boolean }[] = [];
 
-    // Aktive Session Info ermitteln (fuer Sharing/Presence)
+    // Aktive Session Info ermitteln (für Sharing/Presence)
     const activeSession = sessions.find((s) => s.id === activeSessionId);
     const activeSharedSession = sharedSessions.find((s) => s.id === activeSessionId);
     const isSharedWithMe = !!activeSharedSession;
@@ -498,7 +498,7 @@ export function ChatLayout() {
                             />
                         )}
 
-                        {/* Share Button (nur fuer eigene Chats) */}
+                        {/* Share Button (nur für eigene Chats) */}
                         {canShare && (
                             <Button
                                 variant="outline"

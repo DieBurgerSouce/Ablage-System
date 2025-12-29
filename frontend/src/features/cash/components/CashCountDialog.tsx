@@ -1,8 +1,8 @@
 /**
  * Cash Count Dialog
  *
- * Dialog fuer Kassensturz (Zaehlprotokoll).
- * Ermoeglicht das Erfassen des tatsaechlichen Kassenbestands und
+ * Dialog für Kassensturz (Zaehlprotokoll).
+ * Ermöglicht das Erfassen des tatsaechlichen Kassenbestands und
  * erstellt bei Differenz automatisch eine Differenzbuchung.
  */
 
@@ -38,7 +38,7 @@ import { formatCurrency } from '../utils/format';
 import type { CashRegister, CashCount, CashCountCreate } from '@/types/models/cash';
 import { cn } from '@/lib/utils';
 
-// Muenzstaeckelungen
+// Muenzstäckelungen
 const COIN_DENOMINATIONS = [
   { value: 0.01, label: '1 Cent' },
   { value: 0.02, label: '2 Cent' },
@@ -50,7 +50,7 @@ const COIN_DENOMINATIONS = [
   { value: 2.00, label: '2 Euro' },
 ];
 
-// Scheinstaeckelungen
+// Scheinstäckelungen
 const NOTE_DENOMINATIONS = [
   { value: 5, label: '5 Euro' },
   { value: 10, label: '10 Euro' },
@@ -102,7 +102,7 @@ export function CashCountDialog({
   const expectedBalance = currentRegister?.current_balance ?? register?.current_balance ?? 0;
   const difference = countedAmount - expectedBalance;
 
-  // Berechne Summe aus Staeckelungen
+  // Berechne Summe aus Stäckelungen
   const calculatedTotal = React.useMemo(() => {
     let total = 0;
     for (const [denom, count] of Object.entries(denominationCounts)) {
@@ -111,14 +111,14 @@ export function CashCountDialog({
     return Math.round(total * 100) / 100;
   }, [denominationCounts]);
 
-  // Aktualisiere counted_amount wenn sich Staeckelungen aendern
+  // Aktualisiere counted_amount wenn sich Stäckelungen ändern
   React.useEffect(() => {
     if (showDetailedCount) {
       form.setValue('counted_amount', calculatedTotal);
     }
   }, [calculatedTotal, showDetailedCount, form]);
 
-  // Formular zuruecksetzen wenn Dialog oeffnet
+  // Formular zurücksetzen wenn Dialog oeffnet
   React.useEffect(() => {
     if (open) {
       form.reset({
@@ -215,7 +215,7 @@ export function CashCountDialog({
                     >
                       {showDetailedCount
                         ? 'Direkteingabe verwenden'
-                        : 'Mit Staeckelungen zaehlen'}
+                        : 'Mit Stäckelungen zaehlen'}
                     </Button>
                   </FormDescription>
                   <FormMessage />
@@ -223,7 +223,7 @@ export function CashCountDialog({
               )}
             />
 
-            {/* Detailliertes Zaehlen nach Staeckelungen */}
+            {/* Detailliertes Zaehlen nach Stäckelungen */}
             {showDetailedCount && (
               <Card>
                 <CardContent className="pt-4 space-y-4">
@@ -255,13 +255,13 @@ export function CashCountDialog({
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 e.preventDefault();
-                                // Fokus auf naechstes Feld
+                                // Fokus auf nächstes Feld
                                 const nextIndex = index + 1;
                                 if (nextIndex < NOTE_DENOMINATIONS.length) {
                                   const nextId = `note-${NOTE_DENOMINATIONS[nextIndex].value}`;
                                   document.getElementById(nextId)?.focus();
                                 } else {
-                                  // Wechsel zu Muenzen
+                                  // Wechsel zu Münzen
                                   document.getElementById(`coin-${COIN_DENOMINATIONS[0].value}`)?.focus();
                                 }
                               }
@@ -358,7 +358,7 @@ export function CashCountDialog({
                       </span>
                       {difference !== 0 && (
                         <Badge variant={difference > 0 ? 'default' : 'destructive'}>
-                          {difference > 0 ? 'Ueberschuss' : 'Fehlbetrag'}
+                          {difference > 0 ? 'Überschuss' : 'Fehlbetrag'}
                         </Badge>
                       )}
                     </div>
@@ -404,7 +404,7 @@ export function CashCountDialog({
                 {performCashCount.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
                 )}
-                Kassensturz durchfuehren
+                Kassensturz durchführen
               </Button>
             </DialogFooter>
           </form>

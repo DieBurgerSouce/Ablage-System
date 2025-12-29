@@ -1,7 +1,7 @@
 /**
  * Cash/Kassenbuch Model Types
  *
- * Typen fuer GoBD-konforme Kassenbuchfuehrung.
+ * Typen für GoBD-konforme Kassenbuchfuehrung.
  *
  * WICHTIG: CashEntry ist APPEND-ONLY!
  * - Keine Updates oder Deletes
@@ -22,14 +22,14 @@ export type CashEntryType =
   | 'travel'           // Reisekosten
   | 'office'           // Buerokosten
   | 'fuel'             // Tankkosten
-  | 'parking'          // Parkgebuehren
+  | 'parking'          // Parkgebühren
   | 'postage'          // Porto
   | 'tips'             // Trinkgeld
   | 'gifts'            // Geschenke
   | 'difference_plus'  // Kassendifferenz (+)
   | 'difference_minus' // Kassendifferenz (-)
   | 'cancellation'     // Stornobuchung
-  | 'opening';         // Eroeffnungsbuchung
+  | 'opening';         // Eröffnungsbuchung
 
 // ==================== Cash Register ====================
 
@@ -147,7 +147,7 @@ export interface CashEntryCancelRequest {
 }
 
 /**
- * Kassenbucheintraege Response
+ * Kassenbucheinträge Response
  */
 export interface CashEntryListResponse {
   entries: CashEntry[];
@@ -155,7 +155,7 @@ export interface CashEntryListResponse {
 }
 
 /**
- * Duplikat-Pruefung Ergebnis
+ * Duplikat-Prüfung Ergebnis
  */
 export interface DuplicateCheckResult {
   is_duplicate: boolean;
@@ -245,7 +245,7 @@ export interface CashCount {
 }
 
 /**
- * Kassensturz durchfuehren
+ * Kassensturz durchführen
  */
 export interface CashCountCreate {
   register_id: string;

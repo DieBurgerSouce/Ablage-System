@@ -15,7 +15,7 @@ export const Route = createFileRoute('/admin/banking')({
 });
 
 const bankingNavItems = [
-    { href: '/admin/banking', label: 'Uebersicht', icon: LayoutDashboard, exact: true },
+    { href: '/admin/banking', label: 'Übersicht', icon: LayoutDashboard, exact: true },
     { href: '/admin/banking/accounts', label: 'Konten', icon: Building2 },
     { href: '/admin/banking/transactions', label: 'Transaktionen', icon: ArrowLeftRight },
     { href: '/admin/banking/import', label: 'Import', icon: Upload },
@@ -45,7 +45,7 @@ function BankingLayout() {
                         ? pathname === item.href
                         : pathname.startsWith(item.href) && pathname !== '/admin/banking';
 
-                    // Fuer die Uebersicht: nur aktiv wenn exakt /admin/banking
+                    // Für die Übersicht: nur aktiv wenn exakt /admin/banking
                     const isOverviewActive = item.exact && pathname === item.href;
                     const finalIsActive = item.exact ? isOverviewActive : isActive;
 

@@ -1,7 +1,7 @@
 /**
  * Cash Dashboard
  *
- * Hauptseite fuer das Kassenbuch-Modul.
+ * Hauptseite für das Kassenbuch-Modul.
  * Zeigt alle Kassen und deren Status.
  */
 

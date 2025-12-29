@@ -1,5 +1,5 @@
 /**
- * Formatierungsfunktionen fuer Kassenbuch
+ * Formatierungsfunktionen für Kassenbuch
  */
 
 /**
@@ -64,7 +64,7 @@ export function formatEntryType(type: string): string {
 }
 
 /**
- * Gibt die passende Farbe fuer einen Eintragstyp zurueck
+ * Gibt die passende Farbe für einen Eintragstyp zurück
  */
 export function getEntryTypeColor(type: string): 'green' | 'red' | 'yellow' | 'blue' | 'gray' {
   const incomeTypes = ['income', 'deposit', 'difference_plus', 'opening'];

@@ -68,7 +68,7 @@ export function FolderCategoriesView({ entityType }: FolderCategoriesViewProps) 
       {/* Header with Breadcrumb */}
       <div className="flex items-center gap-4">
         <Link to={parentPath} params={parentParams}>
-          <Button variant="ghost" size="icon" aria-label="Zurueck zum Kunden/Lieferanten">
+          <Button variant="ghost" size="icon" aria-label="Zurück zum Kunden/Lieferanten">
             <ArrowLeft className="w-5 h-5" />
           </Button>
         </Link>

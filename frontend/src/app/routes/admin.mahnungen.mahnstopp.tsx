@@ -1,7 +1,7 @@
 /**
  * Admin Mahnungen - Mahnstopp
  *
- * Zeigt Mahnvorgaenge mit aktivem Mahnstopp
+ * Zeigt Mahnvorgänge mit aktivem Mahnstopp
  */
 
 import { createFileRoute } from '@tanstack/react-router';
@@ -38,8 +38,8 @@ function MahnstoppPage() {
             <Alert className="border-orange-200 bg-orange-50">
                 <PauseCircle className="h-4 w-4 text-orange-600" />
                 <AlertDescription className="text-orange-700">
-                    Mahnvorgaenge mit Mahnstopp werden vom automatischen Mahnlauf ausgenommen.
-                    Pruefen Sie regelmaessig, ob die Mahnstopp-Gruende noch bestehen.
+                    Mahnvorgänge mit Mahnstopp werden vom automatischen Mahnlauf ausgenommen.
+                    Prüfen Sie regelmäßig, ob die Mahnstopp-Gründe noch bestehen.
                 </AlertDescription>
             </Alert>
 
@@ -47,10 +47,10 @@ function MahnstoppPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <PauseCircle className="h-5 w-5 text-orange-600" />
-                        Mahnvorgaenge mit Mahnstopp
+                        Mahnvorgänge mit Mahnstopp
                     </CardTitle>
                     <CardDescription>
-                        {records?.items?.length ?? 0} Mahnvorgaenge sind pausiert (z.B. wegen Reklamation oder Zahlungsvereinbarung).
+                        {records?.items?.length ?? 0} Mahnvorgänge sind pausiert (z.B. wegen Reklamation oder Zahlungsvereinbarung).
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

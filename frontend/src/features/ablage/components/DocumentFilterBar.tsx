@@ -1,12 +1,12 @@
 /**
- * DocumentFilterBar - Erweiterte Filter-Leiste fuer Kategorie-Dokumente
+ * DocumentFilterBar - Erweiterte Filter-Leiste für Kategorie-Dokumente
  *
  * Features:
  * - Debounced Search Input
  * - Datum-Range (Von/Bis)
  * - Betrags-Range (Min/Max)
  * - Status Multi-Select
- * - Zahlungsstatus Multi-Select (nur fuer Rechnungen)
+ * - Zahlungsstatus Multi-Select (nur für Rechnungen)
  * - Filter-Reset
  */
 
@@ -216,10 +216,10 @@ export function DocumentFilterBar({
             size="sm"
             className="h-9 text-muted-foreground hover:text-destructive"
             onClick={handleReset}
-            aria-label={`Alle ${activeFilterCount} Filter zuruecksetzen`}
+            aria-label={`Alle ${activeFilterCount} Filter zurücksetzen`}
           >
             <RotateCcw className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
-            Zuruecksetzen
+            Zurücksetzen
             <Badge variant="secondary" className="ml-2 h-5 px-1.5" aria-hidden="true">
               {activeFilterCount}
             </Badge>
@@ -275,7 +275,7 @@ function DateRangePopover({ dateFrom, dateTo, onChange }: DateRangePopoverProps)
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72" align="start" aria-label="Zeitraum auswaehlen">
+      <PopoverContent className="w-72" align="start" aria-label="Zeitraum auswählen">
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="date-from">Von</Label>
@@ -297,7 +297,7 @@ function DateRangePopover({ dateFrom, dateTo, onChange }: DateRangePopoverProps)
             />
           </div>
           <p id="date-range-hint" className="sr-only">
-            Waehlen Sie einen Zeitraum um Dokumente nach Datum zu filtern
+            Wählen Sie einen Zeitraum um Dokumente nach Datum zu filtern
           </p>
           {hasValue && (
             <Button
@@ -305,9 +305,9 @@ function DateRangePopover({ dateFrom, dateTo, onChange }: DateRangePopoverProps)
               size="sm"
               className="w-full"
               onClick={() => onChange(undefined, undefined)}
-              aria-label="Datumsfilter zuruecksetzen"
+              aria-label="Datumsfilter zurücksetzen"
             >
-              Zuruecksetzen
+              Zurücksetzen
             </Button>
           )}
         </div>
@@ -405,7 +405,7 @@ function AmountRangePopover({ amountMin, amountMax, onChange }: AmountRangePopov
                 onChange(undefined, undefined);
               }}
             >
-              Zuruecksetzen
+              Zurücksetzen
             </Button>
           )}
         </div>
@@ -457,7 +457,7 @@ function StatusMultiSelect<T extends string>({
             'h-9 border-dashed',
             hasValue && 'border-primary bg-primary/5 text-primary border-solid'
           )}
-          aria-label={hasValue ? `${label}: ${selected.length} ausgewaehlt` : `${label} filtern`}
+          aria-label={hasValue ? `${label}: ${selected.length} ausgewählt` : `${label} filtern`}
         >
           <Icon className="h-4 w-4 mr-2" aria-hidden="true" />
           {label}
@@ -468,7 +468,7 @@ function StatusMultiSelect<T extends string>({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-2" align="start" aria-label={`${label} auswaehlen`}>
+      <PopoverContent className="w-56 p-2" align="start" aria-label={`${label} auswählen`}>
         <div className="space-y-1" role="group" aria-labelledby={listId}>
           <span id={listId} className="sr-only">{label} Optionen</span>
           {options.map((option) => {
@@ -506,9 +506,9 @@ function StatusMultiSelect<T extends string>({
             size="sm"
             className="w-full mt-2"
             onClick={() => onChange([])}
-            aria-label={`Alle ${label} Filter abwaehlen`}
+            aria-label={`Alle ${label} Filter abwählen`}
           >
-            Alle abwaehlen
+            Alle abwählen
           </Button>
         )}
       </PopoverContent>

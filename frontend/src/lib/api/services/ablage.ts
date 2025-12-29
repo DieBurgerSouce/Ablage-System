@@ -2,13 +2,13 @@
  * Ablage API Service
  *
  * Kommuniziert mit den /api/v1/documents/category Endpoints
- * fuer kategorie-basierte Dokumentenverwaltung.
+ * für kategorie-basierte Dokumentenverwaltung.
  *
  * Features:
  * - Kategorie-Dokumentenliste mit umfangreicher Filterung
  * - Bulk-Aktionen (ZIP, CSV, Delete, Tags)
  * - Zahlungsstatus-Verwaltung
- * - Aggregationen fuer Dashboard-Karten
+ * - Aggregationen für Dashboard-Karten
  */
 
 import { AxiosError } from 'axios';
@@ -58,7 +58,7 @@ interface CategoryDocumentBackend {
   total_amount: number | null;
   currency: string;
   due_date: string | null;
-  payment_status: 'offen' | 'bezahlt' | 'ueberfaellig' | 'teilbezahlt';
+  payment_status: 'offen' | 'bezahlt' | 'überfällig' | 'teilbezahlt';
   paid_amount: number | null;
   partner_name: string | null;
   tags: string[];
@@ -182,12 +182,12 @@ function handleApiError(error: unknown, context: string): never {
     const statusCode = error.response?.status;
     const message = error.response?.data?.detail || error.message;
 
-    // Spezielle Behandlung fuer 404
+    // Spezielle Behandlung für 404
     if (statusCode === 404) {
       throw new AblageApiError(`${context}: Nicht gefunden`, 404, error);
     }
 
-    // Spezielle Behandlung fuer 400
+    // Spezielle Behandlung für 400
     if (statusCode === 400) {
       throw new AblageApiError(`${context}: ${message}`, 400, error);
     }
@@ -256,7 +256,7 @@ export const ablageService = {
   // ==================== Kategorie-Dokumente ====================
 
   /**
-   * Holt Dokumente fuer eine Kategorie mit Filterung und Pagination
+   * Holt Dokumente für eine Kategorie mit Filterung und Pagination
    */
   getCategoryDocuments: async (
     filter: Partial<CategoryDocumentFilter>
@@ -271,7 +271,7 @@ export const ablageService = {
 
       return transformListResponse(response.data);
     } catch (error) {
-      // Bei 404: Leere Liste zurueckgeben
+      // Bei 404: Leere Liste zurückgeben
       if (error instanceof AxiosError && error.response?.status === 404) {
         return {
           items: [],
@@ -286,7 +286,7 @@ export const ablageService = {
   },
 
   /**
-   * Holt Aggregationen fuer eine Kategorie
+   * Holt Aggregationen für eine Kategorie
    */
   getCategoryAggregations: async (
     filter: Pick<CategoryDocumentFilter, 'businessEntityId' | 'folderId' | 'category' | 'entityType'>
@@ -306,7 +306,7 @@ export const ablageService = {
 
       return transformAggregations(response.data);
     } catch (error) {
-      // Bei 404: Leere Aggregationen zurueckgeben
+      // Bei 404: Leere Aggregationen zurückgeben
       if (error instanceof AxiosError && error.response?.status === 404) {
         return {
           totalDocuments: 0,
@@ -413,7 +413,7 @@ export const ablageService = {
       );
       return transformBulkResult(response.data);
     } catch (error) {
-      handleApiError(error, 'Dokumente loeschen');
+      handleApiError(error, 'Dokumente löschen');
     }
   },
 
@@ -439,7 +439,7 @@ export const ablageService = {
   },
 
   /**
-   * Setzt Tags fuer mehrere Dokumente
+   * Setzt Tags für mehrere Dokumente
    */
   bulkSetTags: async (
     documentIds: string[],
@@ -468,7 +468,7 @@ export const ablageService = {
    */
   updatePaymentStatus: async (
     documentId: string,
-    status: 'offen' | 'bezahlt' | 'ueberfaellig' | 'teilbezahlt',
+    status: 'offen' | 'bezahlt' | 'überfällig' | 'teilbezahlt',
     paidAmount?: number
   ): Promise<{ oldStatus: string; newStatus: string; message: string }> => {
     try {
@@ -514,7 +514,7 @@ export const ablageService = {
   // ==================== Helper ====================
 
   /**
-   * Erstellt Download-Link fuer Blob und triggert Download
+   * Erstellt Download-Link für Blob und triggert Download
    */
   downloadBlob: (blob: Blob, filename: string): void => {
     const url = window.URL.createObjectURL(blob);

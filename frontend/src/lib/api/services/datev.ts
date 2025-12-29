@@ -1,7 +1,7 @@
 /**
  * DATEV Export API Service
  *
- * Stellt alle API-Aufrufe fuer das DATEV-Modul bereit.
+ * Stellt alle API-Aufrufe für das DATEV-Modul bereit.
  * Basiert auf dem Backend unter /api/v1/datev/
  */
 
@@ -207,7 +207,7 @@ export interface KontenrahmenInfo {
     name: Kontenrahmen;
     beschreibung: string;
     standard_konten: Record<string, string>;
-    verfuegbare_kategorien: string[];
+    verfügbare_kategorien: string[];
 }
 
 // =============================================================================
@@ -286,7 +286,7 @@ export const datevService = {
     },
 
     /**
-     * Konfiguration loeschen (Soft-Delete)
+     * Konfiguration löschen (Soft-Delete)
      */
     deleteConfig: async (id: string): Promise<void> => {
         await apiClient.delete(`${BASE_URL}/config/${id}`);
@@ -336,7 +336,7 @@ export const datevService = {
     },
 
     /**
-     * Vendor-Mapping loeschen
+     * Vendor-Mapping löschen
      */
     deleteVendorMapping: async (configId: string, mappingId: string): Promise<void> => {
         await apiClient.delete(`${BASE_URL}/config/${configId}/vendors/${mappingId}`);
@@ -358,7 +358,7 @@ export const datevService = {
     },
 
     /**
-     * Export ausfuehren und CSV herunterladen
+     * Export ausführen und CSV herunterladen
      */
     executeExport: async (data: DATEVExportRequest): Promise<DATEVExportDownloadResult> => {
         const response = await apiClient.post(`${BASE_URL}/export`, data, {
@@ -403,7 +403,7 @@ export const datevService = {
     // =========================================================================
 
     /**
-     * Verfuegbare Kontenrahmen abrufen
+     * Verfügbare Kontenrahmen abrufen
      */
     getKontenrahmen: async (): Promise<KontenrahmenInfo[]> => {
         const response = await apiClient.get<KontenrahmenInfo[]>(`${BASE_URL}/kontenrahmen`);
@@ -430,7 +430,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
 }
 
 /**
- * Formatiert einen Kontenrahmen-Namen fuer die Anzeige
+ * Formatiert einen Kontenrahmen-Namen für die Anzeige
  */
 export function formatKontenrahmenName(kontenrahmen: Kontenrahmen): string {
     switch (kontenrahmen) {
@@ -444,7 +444,7 @@ export function formatKontenrahmenName(kontenrahmen: Kontenrahmen): string {
 }
 
 /**
- * Formatiert den Export-Status fuer die Anzeige
+ * Formatiert den Export-Status für die Anzeige
  */
 export function formatExportStatus(status: DATEVExportStatus): string {
     switch (status) {

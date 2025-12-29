@@ -1,5 +1,5 @@
 /**
- * FinanceDeadlineCalendar - Kalender-Ansicht fuer Fristen
+ * FinanceDeadlineCalendar - Kalender-Ansicht für Fristen
  *
  * Features:
  * - Monatsansicht mit Frist-Markierungen
@@ -226,7 +226,7 @@ export function FinanceDeadlineCalendar({ deadlines, className }: FinanceDeadlin
                 size="icon"
                 className="h-8 w-8"
                 onClick={goToNextMonth}
-                aria-label="Naechster Monat"
+                aria-label="Nächster Monat"
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>
@@ -303,7 +303,7 @@ export function FinanceDeadlineCalendar({ deadlines, className }: FinanceDeadlin
           <div className="flex flex-wrap items-center justify-center gap-3 mt-4 pt-4 border-t">
             <div className="flex items-center gap-1.5 text-xs">
               <div className="w-3 h-3 rounded bg-red-100 dark:bg-red-950/30 border border-red-300" />
-              <span>Ueberfaellig</span>
+              <span>Überfällig</span>
             </div>
             <div className="flex items-center gap-1.5 text-xs">
               <div className="w-3 h-3 rounded bg-amber-100 dark:bg-amber-950/30 border border-amber-300" />

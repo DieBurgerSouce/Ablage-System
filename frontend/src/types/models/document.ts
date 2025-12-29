@@ -1,7 +1,7 @@
 /**
  * Document Model Types
  *
- * Typen fuer Dokumente und dokumentbezogene Operationen.
+ * Typen für Dokumente und dokumentbezogene Operationen.
  */
 
 import type { SoftDeleteFields } from '../api/common';

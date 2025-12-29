@@ -336,7 +336,7 @@ export function useBatchReconcile() {
 }
 
 /**
- * Match-Vorschlaege fuer eine Transaktion abrufen
+ * Match-Vorschläge für eine Transaktion abrufen
  */
 export function useMatchSuggestions(transactionId: string, limit = 5, enabled = true) {
     return useQuery({
@@ -397,7 +397,7 @@ export function useSplitTransaction() {
 }
 
 /**
- * Auto-Abgleich fuer einzelne Transaktion
+ * Auto-Abgleich für einzelne Transaktion
  */
 export function useAutoReconcileSingle() {
     const queryClient = useQueryClient();
@@ -467,7 +467,7 @@ export function useUpdateAccount() {
 }
 
 /**
- * Bankkonto loeschen
+ * Bankkonto löschen
  */
 export function useDeleteAccount() {
     const queryClient = useQueryClient();
@@ -550,13 +550,13 @@ export function useMonthlyTransactionSummary(bankAccountId?: string) {
 // ==================== Import Hooks ====================
 
 /**
- * Unterstuetzte Import-Formate abrufen
+ * Unterstützte Import-Formate abrufen
  */
 export function useSupportedFormats() {
     return useQuery({
         queryKey: bankingQueryKeys.supportedFormats(),
         queryFn: () => bankingService.getSupportedFormats(),
-        staleTime: Infinity, // Formate aendern sich nie
+        staleTime: Infinity, // Formate ändern sich nie
     });
 }
 
@@ -571,7 +571,7 @@ export function useImportPreview() {
 }
 
 /**
- * Import ausfuehren
+ * Import ausführen
  */
 export function useExecuteImport() {
     const queryClient = useQueryClient();
@@ -694,7 +694,7 @@ export function useSubmitPayment() {
 }
 
 /**
- * TAN bestaetigen
+ * TAN bestätigen
  */
 export function useConfirmPaymentTAN() {
     const queryClient = useQueryClient();
@@ -710,13 +710,13 @@ export function useConfirmPaymentTAN() {
 }
 
 /**
- * Verfuegbare TAN-Methoden abrufen
+ * Verfügbare TAN-Methoden abrufen
  */
 export function useTANMethods() {
     return useQuery({
         queryKey: bankingQueryKeys.tanMethods(),
         queryFn: () => bankingService.getTANMethods(),
-        staleTime: Infinity, // TAN-Methoden aendern sich selten
+        staleTime: Infinity, // TAN-Methoden ändern sich selten
     });
 }
 
@@ -737,7 +737,7 @@ export function useSkontoOpportunities(params?: { days_ahead?: number; include_e
 // ==================== Additional Reconciliation Hooks ====================
 
 /**
- * Match-Vorschlaege mit Filterparametern
+ * Match-Vorschläge mit Filterparametern
  */
 export function useMatchSuggestionsFiltered(params?: { bank_account_id?: string; limit?: number }) {
     return useQuery({
@@ -817,7 +817,7 @@ export function useRejectMatch() {
 }
 
 /**
- * Nicht-verknuepfte Dokumente abrufen
+ * Nicht-verknüpfte Dokumente abrufen
  */
 export function useUnmatchedDocuments() {
     return useQuery({
@@ -840,7 +840,7 @@ export function useUnmatchedDocuments() {
 
 // ==================== Erweitertes Mahnungswesen (BGB §286) Hooks ====================
 
-// Query Keys fuer erweitertes Mahnungswesen
+// Query Keys für erweitertes Mahnungswesen
 export const mahnungswesenQueryKeys = {
     // Mahn-Tasks
     mahnTasks: () => [...bankingQueryKeys.dunning(), 'mahn-tasks'] as const,
@@ -944,7 +944,7 @@ export function useAssignMahnTask() {
 }
 
 /**
- * Mahnaufgabe zurueckstellen (max 3x)
+ * Mahnaufgabe zurückstellen (max 3x)
  */
 export function useSnoozeMahnTask() {
     const queryClient = useQueryClient();
@@ -959,7 +959,7 @@ export function useSnoozeMahnTask() {
 }
 
 /**
- * Mahnaufgabe abschliessen
+ * Mahnaufgabe abschließen
  */
 export function useCompleteMahnTask() {
     const queryClient = useQueryClient();
@@ -974,7 +974,7 @@ export function useCompleteMahnTask() {
 }
 
 /**
- * Mehrere Mahnaufgaben abschliessen
+ * Mehrere Mahnaufgaben abschließen
  */
 export function useBulkCompleteMahnTasks() {
     const queryClient = useQueryClient();
@@ -1039,7 +1039,7 @@ export function useLiftMahnstopp() {
 }
 
 /**
- * Mahnvorgaenge mit Mahnstopp abrufen
+ * Mahnvorgänge mit Mahnstopp abrufen
  */
 export function useDunningsWithMahnstopp() {
     return useQuery({
@@ -1167,7 +1167,7 @@ export function useDunningStages() {
     return useQuery({
         queryKey: mahnungswesenQueryKeys.dunningStages(),
         queryFn: () => bankingService.getDunningStages(),
-        staleTime: STALE_TIMES.stats, // Admin-Einstellungen aendern sich selten
+        staleTime: STALE_TIMES.stats, // Admin-Einstellungen ändern sich selten
     });
 }
 
@@ -1248,7 +1248,7 @@ export function useSetCustomerDunningSettings() {
 // ==================== Dunning Records Hook ====================
 
 /**
- * Alle Mahnvorgaenge auflisten
+ * Alle Mahnvorgänge auflisten
  */
 export function useDunningRecords(params?: {
     status?: string;

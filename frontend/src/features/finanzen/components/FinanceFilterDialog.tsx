@@ -273,7 +273,7 @@ export function FinanceFilterDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="desc">Absteigend (neueste zuerst)</SelectItem>
-                    <SelectItem value="asc">Aufsteigend (aelteste zuerst)</SelectItem>
+                    <SelectItem value="asc">Aufsteigend (älteste zuerst)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -288,7 +288,7 @@ export function FinanceFilterDialog({
               className="gap-2 text-muted-foreground"
             >
               <X className="w-4 h-4" />
-              Filter zuruecksetzen
+              Filter zurücksetzen
             </Button>
 
             <div className="flex gap-2">

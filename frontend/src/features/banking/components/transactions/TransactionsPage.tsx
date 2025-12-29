@@ -47,7 +47,7 @@ export function TransactionsPage() {
     const [filters, setFilters] = useState<TransactionFilter>({});
     const [searchText, setSearchText] = useState('');
 
-    // Accounts fuer Filter-Dropdown
+    // Accounts für Filter-Dropdown
     const { data: accounts } = useAccounts();
 
     // Aktuelle Filter mit Pagination
@@ -274,7 +274,7 @@ export function TransactionsPage() {
                                             disabled={page === 0}
                                         >
                                             <ChevronLeft className="h-4 w-4" />
-                                            Zurueck
+                                            Zurück
                                         </Button>
                                         <Button
                                             variant="outline"

@@ -1,7 +1,7 @@
 /**
  * FinanceReportPanel - Finanz-Reports & Statistiken
  *
- * Zeigt aggregierte Finanz-Daten und ermoeglicht Report-Downloads.
+ * Zeigt aggregierte Finanz-Daten und ermöglicht Report-Downloads.
  *
  * Features:
  * - KPI-Karten (Gesamt, Nachzahlung, Erstattung, Saldo)
@@ -175,7 +175,7 @@ const DeadlineSummary = memo(function DeadlineSummary({
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
           <Clock className="h-4 w-4" aria-hidden="true" />
-          Fristen-Uebersicht
+          Fristen-Übersicht
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -184,7 +184,7 @@ const DeadlineSummary = memo(function DeadlineSummary({
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-red-600" aria-hidden="true" />
               <span className="text-sm font-medium text-red-700 dark:text-red-400">
-                Ueberfaellig
+                Überfällig
               </span>
             </div>
             <Badge variant="destructive">{overdueCount}</Badge>
@@ -462,7 +462,7 @@ export const FinanceReportPanel = memo(function FinanceReportPanel({
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Calendar className="h-4 w-4" aria-hidden="true" />
-              Jahre-Uebersicht
+              Jahre-Übersicht
             </CardTitle>
           </CardHeader>
           <CardContent>

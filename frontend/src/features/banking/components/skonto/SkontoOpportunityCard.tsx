@@ -73,7 +73,7 @@ export function SkontoOpportunityCard({ opportunity, onCreatePayment }: SkontoOp
                                 {isExpired
                                     ? 'Skonto-Frist abgelaufen'
                                     : daysRemaining === 0
-                                      ? 'Letzer Tag fuer Skonto!'
+                                      ? 'Letzer Tag für Skonto!'
                                       : daysRemaining === 1
                                         ? 'Noch 1 Tag'
                                         : `Noch ${daysRemaining} Tage`}

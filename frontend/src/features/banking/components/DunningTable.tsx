@@ -2,7 +2,7 @@
  * DunningTable - Erweiterte Mahnungstabelle mit TanStack Table
  *
  * Features:
- * - Checkbox-Selektion pro Zeile fuer Bulk-Actions
+ * - Checkbox-Selektion pro Zeile für Bulk-Actions
  * - Sortierbare Spalten
  * - Filter (Status, Mahnstufe, B2B/B2C)
  * - Pagination
@@ -563,7 +563,7 @@ export function DunningTable({
                         ) : (
                             <TableRow>
                                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                                    Keine Mahnvorgaenge gefunden
+                                    Keine Mahnvorgänge gefunden
                                 </TableCell>
                             </TableRow>
                         )}

@@ -2,7 +2,7 @@
  * Cash Entry Form
  *
  * Formular zum Erstellen eines neuen Kassenbucheintrags.
- * Unterstuetzt alle Eintragstypen inkl. Bewirtungskosten.
+ * Unterstützt alle Eintragstypen inkl. Bewirtungskosten.
  */
 
 import * as React from 'react';
@@ -66,24 +66,24 @@ const ENTRY_TYPES: { value: CashEntryType; label: string; isExpense: boolean }[]
   { value: 'withdrawal', label: 'Entnahme (zur Bank)', isExpense: true },
   { value: 'entertainment', label: 'Bewirtungskosten', isExpense: true },
   { value: 'travel', label: 'Reisekosten', isExpense: true },
-  { value: 'office', label: 'Buerobedarf', isExpense: true },
+  { value: 'office', label: 'Bürobedarf', isExpense: true },
   { value: 'fuel', label: 'Kraftstoff', isExpense: true },
-  { value: 'parking', label: 'Parkgebuehren', isExpense: true },
+  { value: 'parking', label: 'Parkgebühren', isExpense: true },
   { value: 'postage', label: 'Porto', isExpense: true },
   { value: 'tips', label: 'Trinkgeld', isExpense: true },
   { value: 'gifts', label: 'Geschenke', isExpense: true },
 ];
 
-// MwSt-Saetze
+// MwSt-Sätze
 const TAX_RATES = [
   { value: 0, label: '0% (keine MwSt)' },
-  { value: 7, label: '7% (ermaessigt)' },
+  { value: 7, label: '7% (ermäßigt)' },
   { value: 19, label: '19% (Standard)' },
 ];
 
 // Bewirtungs-Schema
 const entertainmentSchema = z.object({
-  business_reason: z.string().min(1, 'Geschaeftlicher Anlass ist erforderlich'),
+  business_reason: z.string().min(1, 'Geschäftlicher Anlass ist erforderlich'),
   location: z.string().min(1, 'Ort ist erforderlich'),
   guests: z.array(z.object({
     name: z.string().min(1, 'Name ist erforderlich'),
@@ -176,7 +176,7 @@ export function CashEntryForm({
     }
   }, [isEntertainment, form]);
 
-  // Formular zuruecksetzen wenn Dialog oeffnet
+  // Formular zurücksetzen wenn Dialog oeffnet
   React.useEffect(() => {
     if (open) {
       form.reset({
@@ -219,7 +219,7 @@ export function CashEntryForm({
   const onSubmit = async (data: EntryFormData) => {
     setIsCheckingDuplicate(true);
     try {
-      // Duplikat-Check durchfuehren
+      // Duplikat-Check durchführen
       const duplicateCheck = await cashService.checkDuplicate({
         register_id: registerId,
         amount: data.amount,
@@ -247,7 +247,7 @@ export function CashEntryForm({
     }
   };
 
-  // Duplikat-Warnung bestaetigen
+  // Duplikat-Warnung bestätigen
   const handleDuplicateConfirm = async () => {
     if (duplicateWarning.pendingData) {
       await saveEntry(duplicateWarning.pendingData);
@@ -283,7 +283,7 @@ export function CashEntryForm({
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Typ waehlen" />
+                          <SelectValue placeholder="Typ wählen" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -353,8 +353,8 @@ export function CashEntryForm({
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-xs">
                             <div className="space-y-1 text-sm">
-                              <p><strong>19%</strong> - Standard fuer Waren und Dienstleistungen</p>
-                              <p><strong>7%</strong> - Ermaessigt fuer Lebensmittel, Buecher, Zeitungen</p>
+                              <p><strong>19%</strong> - Standard für Waren und Dienstleistungen</p>
+                              <p><strong>7%</strong> - Ermäßigt für Lebensmittel, Bücher, Zeitungen</p>
                               <p><strong>0%</strong> - Steuerfreie Umsaetze</p>
                             </div>
                           </TooltipContent>
@@ -367,7 +367,7 @@ export function CashEntryForm({
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="MwSt waehlen" />
+                          <SelectValue placeholder="MwSt wählen" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -420,7 +420,7 @@ export function CashEntryForm({
                           <TooltipContent side="top" className="max-w-xs">
                             <div className="text-sm">
                               <p>Ordnet die Buchung einem Buchungskonto zu (SKR03/SKR04).</p>
-                              <p className="mt-1 text-muted-foreground">Wird fuer DATEV-Export verwendet.</p>
+                              <p className="mt-1 text-muted-foreground">Wird für DATEV-Export verwendet.</p>
                             </div>
                           </TooltipContent>
                         </Tooltip>
@@ -429,7 +429,7 @@ export function CashEntryForm({
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Kategorie waehlen" />
+                          <SelectValue placeholder="Kategorie wählen" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -461,7 +461,7 @@ export function CashEntryForm({
                           <TooltipContent side="top" className="max-w-xs">
                             <div className="text-sm">
                               <p>Externe Referenz wie Rechnungsnummer oder Quittungsnummer.</p>
-                              <p className="mt-1 text-muted-foreground">Optional - wird fuer GoBD-Compliance empfohlen.</p>
+                              <p className="mt-1 text-muted-foreground">Optional - wird für GoBD-Compliance empfohlen.</p>
                             </div>
                           </TooltipContent>
                         </Tooltip>
@@ -510,12 +510,12 @@ export function CashEntryForm({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" aria-hidden="true" />
-              Moegliches Duplikat erkannt
+              Mögliches Duplikat erkannt
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p>
-                  Es existiert bereits eine aehnliche Buchung:
+                  Es existiert bereits eine ähnliche Buchung:
                 </p>
                 {duplicateWarning.data?.existing_entry && (
                   <div className="rounded-md border bg-muted/50 p-3 text-sm">
@@ -548,7 +548,7 @@ export function CashEntryForm({
                   </div>
                 )}
                 <p className="text-amber-600">
-                  Moechten Sie die Buchung trotzdem erstellen?
+                  Möchten Sie die Buchung trotzdem erstellen?
                 </p>
               </div>
             </AlertDialogDescription>

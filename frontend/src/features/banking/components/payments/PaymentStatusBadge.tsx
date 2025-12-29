@@ -49,7 +49,7 @@ const STATUS_CONFIG: Record<PaymentStatus, {
         icon: Send,
     },
     executed: {
-        label: 'Ausgefuehrt',
+        label: 'Ausgeführt',
         variant: 'default',
         icon: CheckCircle,
     },

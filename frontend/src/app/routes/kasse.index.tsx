@@ -1,7 +1,7 @@
 /**
  * Kasse Index Route
  *
- * Hauptseite fuer das Kassenbuch mit Dashboard.
+ * Hauptseite für das Kassenbuch mit Dashboard.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

@@ -1,5 +1,5 @@
 /**
- * Accessibility Utilities fuer Finanzen-Modul
+ * Accessibility Utilities für Finanzen-Modul
  *
  * WCAG 2.1 AA Compliance:
  * - Focus Management
@@ -13,8 +13,8 @@ import { useEffect, useRef, useCallback } from 'react'
 // ==================== FOCUS TRAP HOOK ====================
 
 /**
- * Hook fuer Focus Trap in Dialogen/Modals
- * Haelt den Fokus innerhalb eines Containers
+ * Hook für Focus Trap in Dialogen/Modals
+ * Hält den Fokus innerhalb eines Containers
  */
 export function useFocusTrap(isActive: boolean) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -87,7 +87,7 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
 // ==================== KEYBOARD NAVIGATION HOOK ====================
 
 /**
- * Hook fuer Keyboard-Navigation in Listen/Tabellen
+ * Hook für Keyboard-Navigation in Listen/Tabellen
  */
 export function useKeyboardNavigation<T>(
   items: T[],
@@ -189,7 +189,7 @@ export function useKeyboardNavigation<T>(
 // ==================== ANNOUNCE HOOK ====================
 
 /**
- * Hook fuer Screen Reader Ankuendigungen (aria-live)
+ * Hook für Screen Reader Ankündigungen (aria-live)
  */
 export function useAnnounce() {
   const announce = useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
@@ -223,7 +223,7 @@ export function getAriaDescribedBy(prefix: string, ...ids: (string | undefined |
 }
 
 /**
- * Erzeugt eindeutige ID fuer Accessibility
+ * Erzeugt eindeutige ID für Accessibility
  */
 let idCounter = 0
 export function generateA11yId(prefix: string): string {
@@ -241,7 +241,7 @@ export interface SkipLinkProps {
 }
 
 /**
- * Skip Link fuer Keyboard-Navigation
+ * Skip Link für Keyboard-Navigation
  * Erlaubt es Usern, direkt zum Hauptinhalt zu springen
  */
 export function SkipLink({ targetId, children }: SkipLinkProps) {
@@ -268,7 +268,7 @@ export function SkipLink({ targetId, children }: SkipLinkProps) {
 // ==================== VISUALLY HIDDEN COMPONENT ====================
 
 /**
- * Visuell versteckt aber fuer Screen Reader sichtbar
+ * Visuell versteckt aber für Screen Reader sichtbar
  */
 export function VisuallyHidden({ children }: { children: React.ReactNode }) {
   return <span className="sr-only">{children}</span>
@@ -277,7 +277,7 @@ export function VisuallyHidden({ children }: { children: React.ReactNode }) {
 // ==================== CONSTANTS ====================
 
 /**
- * Keyboard Key Codes fuer Navigation
+ * Keyboard Key Codes für Navigation
  */
 export const KEYS = {
   ENTER: 'Enter',
@@ -297,19 +297,19 @@ export const KEYS = {
  */
 export const ARIA_LABELS = {
   // Navigation
-  backToOverview: 'Zurueck zur Uebersicht',
-  backToYear: 'Zurueck zum Jahr',
-  nextPage: 'Naechste Seite',
+  backToOverview: 'Zurück zur Übersicht',
+  backToYear: 'Zurück zum Jahr',
+  nextPage: 'Nächste Seite',
   previousPage: 'Vorherige Seite',
 
   // Actions
   uploadDocument: 'Dokument hochladen',
   editDocument: 'Dokument bearbeiten',
-  deleteDocument: 'Dokument loeschen',
+  deleteDocument: 'Dokument löschen',
   filterDocuments: 'Dokumente filtern',
   searchDocuments: 'Dokumente durchsuchen',
-  selectDocument: 'Dokument auswaehlen',
-  selectAllDocuments: 'Alle Dokumente auswaehlen',
+  selectDocument: 'Dokument auswählen',
+  selectAllDocuments: 'Alle Dokumente auswählen',
 
   // Status
   loading: 'Wird geladen...',
@@ -318,13 +318,13 @@ export const ARIA_LABELS = {
   success: 'Erfolgreich',
 
   // Dialogs
-  closeDialog: 'Dialog schliessen',
-  confirmAction: 'Aktion bestaetigen',
+  closeDialog: 'Dialog schließen',
+  confirmAction: 'Aktion bestätigen',
   cancelAction: 'Aktion abbrechen',
 
   // Document States
   deadlinePending: 'Frist ausstehend',
-  deadlineOverdue: 'Frist ueberschritten',
+  deadlineOverdue: 'Frist überschritten',
   documentProcessed: 'Dokument verarbeitet',
   documentPending: 'Dokument in Bearbeitung',
 } as const

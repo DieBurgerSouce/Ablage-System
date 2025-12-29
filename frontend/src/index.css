@@ -103,6 +103,11 @@
         --destructive: oklch(0.5 0.3 29);    /* High contrast red */
         --destructive-foreground: oklch(1 0 0);
 
+        /* Semantic colors for whitescreen - darker for high contrast */
+        --warning: oklch(0.65 0.2 75);       /* Darker orange for visibility */
+        --success: oklch(0.45 0.25 145);     /* Darker green for WCAG AAA */
+        --info: oklch(0.45 0.31 264);        /* Same as primary */
+
         /* Sidebar in whitescreen mode */
         --sidebar: oklch(0.95 0 0);
         --sidebar-foreground: oklch(0 0 0);
@@ -132,6 +137,11 @@
         --accent-foreground: oklch(0 0 0);
         --destructive: oklch(0.65 0.3 29);   /* Bright red on black */
         --destructive-foreground: oklch(0 0 0);
+
+        /* Semantic colors for blackscreen - brighter for visibility on black */
+        --warning: oklch(0.9 0.2 75);        /* Bright orange/amber */
+        --success: oklch(0.87 0.3 142);      /* Same as primary (bright green) */
+        --info: oklch(0.7 0.25 264);         /* Bright blue */
 
         /* Sidebar in blackscreen mode */
         --sidebar: oklch(0 0 0);

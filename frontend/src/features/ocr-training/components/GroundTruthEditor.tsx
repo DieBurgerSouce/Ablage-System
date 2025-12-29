@@ -66,23 +66,23 @@ interface GroundTruthEditorProps {
 
 // Umlaut Validation
 const KNOWN_UMLAUT_WORDS: Record<string, string> = {
-    'fuer': 'für',
+    'für': 'für',
     'ueber': 'über',
-    'koennen': 'können',
-    'moechten': 'möchten',
+    'können': 'können',
+    'möchten': 'möchten',
     'waehrend': 'während',
     'naechste': 'nächste',
-    'aendern': 'ändern',
-    'oeffnen': 'öffnen',
+    'ändern': 'ändern',
+    'öffnen': 'öffnen',
     'groesse': 'Größe',
     'strasse': 'Straße',
     'schliessen': 'schließen',
     'gebuehr': 'Gebühr',
-    'pruefung': 'Prüfung',
-    'loeschen': 'löschen',
+    'prüfung': 'Prüfung',
+    'löschen': 'löschen',
     'bestaetigen': 'bestätigen',
     'verfuegbar': 'verfügbar',
-    'zurueck': 'zurück',
+    'zurück': 'zurück',
     'aehnlich': 'ähnlich',
 }
 
@@ -107,23 +107,23 @@ function detectUmlautIssues(text: string): UmlautSuggestion[] {
 function autoCorrectUmlauts(text: string): string {
     let corrected = text
     const corrections: [RegExp, string][] = [
-        [/\bfuer\b/gi, 'für'],
+        [/\bfür\b/gi, 'für'],
         [/\bueber\b/gi, 'über'],
-        [/\bkoennen\b/gi, 'können'],
-        [/\bmoechten\b/gi, 'möchten'],
+        [/\bkönnen\b/gi, 'können'],
+        [/\bmöchten\b/gi, 'möchten'],
         [/\bwaehrend\b/gi, 'während'],
         [/\bnaechste\b/gi, 'nächste'],
-        [/\baendern\b/gi, 'ändern'],
-        [/\boeffnen\b/gi, 'öffnen'],
+        [/\bändern\b/gi, 'ändern'],
+        [/\böffnen\b/gi, 'öffnen'],
         [/\bgroesse\b/gi, 'Größe'],
         [/\bstrasse\b/gi, 'Straße'],
         [/\bschliessen\b/gi, 'schließen'],
         [/\bgebuehr\b/gi, 'Gebühr'],
-        [/\bpruefung\b/gi, 'Prüfung'],
-        [/\bloeschen\b/gi, 'löschen'],
+        [/\bprüfung\b/gi, 'Prüfung'],
+        [/\blöschen\b/gi, 'löschen'],
         [/\bbestaetigen\b/gi, 'bestätigen'],
         [/\bverfuegbar\b/gi, 'verfügbar'],
-        [/\bzurueck\b/gi, 'zurück'],
+        [/\bzurück\b/gi, 'zurück'],
         [/\baehnlich\b/gi, 'ähnlich'],
     ]
     for (const [pattern, replacement] of corrections) {

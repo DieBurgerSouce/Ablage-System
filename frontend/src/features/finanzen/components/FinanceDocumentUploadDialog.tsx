@@ -123,7 +123,7 @@ export function FinanceDocumentUploadDialog({
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return `Datei zu gross. Maximum: ${MAX_FILE_SIZE / 1024 / 1024} MB`
+      return `Datei zu groß. Maximum: ${MAX_FILE_SIZE / 1024 / 1024} MB`
     }
 
     return null
@@ -183,7 +183,7 @@ export function FinanceDocumentUploadDialog({
     if (!selectedFile) {
       toast({
         title: 'Keine Datei',
-        description: 'Bitte waehlen Sie eine Datei zum Hochladen aus.',
+        description: 'Bitte wählen Sie eine Datei zum Hochladen aus.',
         variant: 'destructive',
       })
       return
@@ -253,7 +253,7 @@ export function FinanceDocumentUploadDialog({
           <DialogTitle>Dokument hochladen</DialogTitle>
           <DialogDescription>
             Laden Sie ein Dokument in die Kategorie{' '}
-            <span className="font-medium">{categoryInfo?.label || categoryId}</span> fuer das Jahr{' '}
+            <span className="font-medium">{categoryInfo?.label || categoryId}</span> für das Jahr{' '}
             <span className="font-medium">{yearId}</span> hoch.
           </DialogDescription>
         </DialogHeader>
@@ -415,7 +415,7 @@ export function FinanceDocumentUploadDialog({
                     onValueChange={(value) => setValue('steuerart', value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Steuerart waehlen" />
+                      <SelectValue placeholder="Steuerart wählen" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="einkommensteuer">Einkommensteuer</SelectItem>
@@ -460,7 +460,7 @@ export function FinanceDocumentUploadDialog({
                   onCheckedChange={(checked) => setValue('skipOcr', checked === true)}
                 />
                 <Label htmlFor="skipOcr" className="text-sm">
-                  OCR-Verarbeitung ueberspringen (manuelle Dateneingabe)
+                  OCR-Verarbeitung überspringen (manuelle Dateneingabe)
                 </Label>
               </div>
             </div>

@@ -1,11 +1,11 @@
 /**
- * CategoryAggregations - Summen-Karten fuer Kategorie-Seiten
+ * CategoryAggregations - Summen-Karten für Kategorie-Seiten
  *
  * Zeigt aggregierte Daten wie:
  * - Gesamtanzahl Dokumente
  * - Gesamtbetrag (bei Rechnungen)
  * - Offene Betraege
- * - Ueberfaellige Dokumente
+ * - Überfällige Dokumente
  */
 
 import { FileText, Euro, AlertTriangle, Clock } from 'lucide-react';
@@ -131,14 +131,14 @@ export function CategoryAggregations({
           />
 
           <AggregationCard
-            title="Ueberfaellig"
+            title="Überfällig"
             value={aggregations.overdueCount}
             icon={AlertTriangle}
             variant={aggregations.overdueCount > 0 ? 'destructive' : 'default'}
             description={
               aggregations.overdueCount > 0
                 ? formatAmount(aggregations.totalOverdue, aggregations.currency)
-                : 'Keine ueberfaelligen Rechnungen'
+                : 'Keine überfälligen Rechnungen'
             }
           />
         </>

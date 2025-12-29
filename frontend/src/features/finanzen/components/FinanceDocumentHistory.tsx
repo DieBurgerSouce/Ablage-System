@@ -1,13 +1,13 @@
 /**
  * FinanceDocumentHistory - Audit Trail Komponente
  *
- * Zeigt die vollstaendige Aenderungs-History eines Finanz-Dokuments.
+ * Zeigt die vollstaendige Änderungs-History eines Finanz-Dokuments.
  *
  * Features:
  * - Chronologische Timeline
  * - Aktionstyp-Icons
  * - Benutzer-Info
- * - Aenderungsdetails (diff-View)
+ * - Änderungsdetails (diff-View)
  * - Accessibility-konform
  */
 
@@ -73,7 +73,7 @@ const ACTION_CONFIG: Record<ActionType, {
     bgColor: 'bg-blue-100 dark:bg-blue-900/30',
   },
   deleted: {
-    label: 'Geloescht',
+    label: 'Gelöscht',
     icon: Trash2,
     color: 'text-red-600',
     bgColor: 'bg-red-100 dark:bg-red-900/30',
@@ -85,13 +85,13 @@ const ACTION_CONFIG: Record<ActionType, {
     bgColor: 'bg-purple-100 dark:bg-purple-900/30',
   },
   category_changed: {
-    label: 'Kategorie geaendert',
+    label: 'Kategorie geändert',
     icon: FolderSync,
     color: 'text-amber-600',
     bgColor: 'bg-amber-100 dark:bg-amber-900/30',
   },
   year_changed: {
-    label: 'Jahr geaendert',
+    label: 'Jahr geändert',
     icon: Calendar,
     color: 'text-amber-600',
     bgColor: 'bg-amber-100 dark:bg-amber-900/30',
@@ -255,7 +255,7 @@ const HistoryItem = memo(function HistoryItem({ item, isLast }: HistoryItemProps
               ) : (
                 <ChevronDown className="h-3 w-3" aria-hidden="true" />
               )}
-              {item.changedFields.length} Feld(er) geaendert
+              {item.changedFields.length} Feld(er) geändert
             </CollapsibleTrigger>
           )}
 
@@ -264,7 +264,7 @@ const HistoryItem = memo(function HistoryItem({ item, isLast }: HistoryItemProps
               <div
                 className="text-sm border rounded-md overflow-hidden"
                 role="table"
-                aria-label="Geaenderte Felder"
+                aria-label="Geänderte Felder"
               >
                 <div className="bg-muted/50 px-3 py-1.5 border-b">
                   <div className="grid grid-cols-3 gap-2 text-xs font-medium text-muted-foreground">
@@ -369,7 +369,7 @@ export const FinanceDocumentHistory = memo(function FinanceDocumentHistory({
     >
       <div className="mb-4">
         <h3 className="text-sm font-medium text-muted-foreground">
-          {data.total} Aenderung{data.total !== 1 ? 'en' : ''}
+          {data.total} Änderung{data.total !== 1 ? 'en' : ''}
         </h3>
       </div>
 

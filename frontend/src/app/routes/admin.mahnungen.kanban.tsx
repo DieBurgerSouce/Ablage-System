@@ -1,7 +1,7 @@
 /**
  * Admin Mahnungen - Kanban Board
  *
- * Visualisiert Mahnvorgaenge als Kanban-Board nach Eskalationsstufe
+ * Visualisiert Mahnvorgänge als Kanban-Board nach Eskalationsstufe
  */
 
 import { createFileRoute } from '@tanstack/react-router';

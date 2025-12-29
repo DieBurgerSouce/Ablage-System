@@ -1,9 +1,9 @@
-// Finanzen-Modul: Mock-Daten fuer Jahr-Ordner und Kategorien
+// Finanzen-Modul: Mock-Daten für Jahr-Ordner und Kategorien
 
 import type { FinanceYear, FinanceDocumentCategory, FinanceAggregations, FinancePackageType } from './types';
 
 /**
- * Mock-Daten fuer Finanz-Jahre
+ * Mock-Daten für Finanz-Jahre
  */
 export const MOCK_FINANCE_YEARS: FinanceYear[] = [
   {
@@ -127,7 +127,7 @@ export const MOCK_FINANCE_YEARS: FinanceYear[] = [
 // ==================== HELPER FUNCTIONS ====================
 
 /**
- * Gibt alle Finanz-Jahre zurueck (sortiert nach Jahr absteigend)
+ * Gibt alle Finanz-Jahre zurück (sortiert nach Jahr absteigend)
  */
 export function getAllFinanceYears(): FinanceYear[] {
   return [...MOCK_FINANCE_YEARS].sort((a, b) => b.year - a.year);
@@ -141,14 +141,14 @@ export function getFinanceYearById(yearId: string): FinanceYear | undefined {
 }
 
 /**
- * Gibt die Gesamtzahl der Dokumente eines Jahres zurueck
+ * Gibt die Gesamtzahl der Dokumente eines Jahres zurück
  */
 export function getFinanceYearTotalDocuments(year: FinanceYear): number {
   return year.totalDocuments;
 }
 
 /**
- * Gibt die Anzahl offener Fristen eines Jahres zurueck
+ * Gibt die Anzahl offener Fristen eines Jahres zurück
  */
 export function getFinanceYearPendingDeadlines(year: FinanceYear): number {
   return year.pendingDeadlines;
@@ -162,7 +162,7 @@ export function getFinanceYearSaldo(year: FinanceYear): number {
 }
 
 /**
- * Gibt die Dokumentanzahl fuer eine Kategorie in einem Jahr zurueck
+ * Gibt die Dokumentanzahl für eine Kategorie in einem Jahr zurück
  */
 export function getFinanceYearCategoryCount(
   year: FinanceYear,
@@ -172,7 +172,7 @@ export function getFinanceYearCategoryCount(
 }
 
 /**
- * Berechnet Aggregationen ueber alle Jahre
+ * Berechnet Aggregationen über alle Jahre
  */
 export function getFinanceOverallAggregations(): FinanceAggregations {
   const years = getAllFinanceYears();
@@ -248,7 +248,7 @@ export function getFinanceOverallAggregations(): FinanceAggregations {
 }
 
 /**
- * Berechnet Aggregationen fuer ein einzelnes Jahr
+ * Berechnet Aggregationen für ein einzelnes Jahr
  */
 export function getFinanceYearAggregations(year: FinanceYear): FinanceAggregations {
   const documentsByPackage: Record<FinancePackageType, number> = {
@@ -309,7 +309,7 @@ export function getFinanceYearAggregations(year: FinanceYear): FinanceAggregatio
 }
 
 /**
- * Formatiert einen Geldbetrag fuer die Anzeige
+ * Formatiert einen Geldbetrag für die Anzeige
  */
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('de-DE', {
@@ -332,7 +332,7 @@ export function formatSaldo(saldo: number): string {
 }
 
 /**
- * Formatiert ein Datum fuer die Anzeige
+ * Formatiert ein Datum für die Anzeige
  */
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);

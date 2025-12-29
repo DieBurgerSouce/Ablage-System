@@ -1,5 +1,5 @@
 /**
- * AddressCard - Zeigt eine Adresse (Sender/Empfaenger) an.
+ * AddressCard - Zeigt eine Adresse (Sender/Empfänger) an.
  */
 
 import { Building2 } from "lucide-react";

@@ -38,7 +38,7 @@ export type FinanceDocumentCategory =
   | 'darlehen';
 
 /**
- * Steuerart fuer Steuerdokumente
+ * Steuerart für Steuerdokumente
  */
 export type TaxType =
   | 'einkommensteuer'
@@ -53,7 +53,7 @@ export type TaxType =
   | 'sonstige';
 
 /**
- * Paket-Typ fuer Kategorien-Gruppierung
+ * Paket-Typ für Kategorien-Gruppierung
  */
 export type FinancePackageType = 'steuern' | 'personal' | 'versicherung' | 'bank';
 
@@ -67,7 +67,7 @@ export interface FinanceCategoryInfo extends DocumentCategoryInfo {
 }
 
 /**
- * Paket-Definition fuer UI-Gruppierung
+ * Paket-Definition für UI-Gruppierung
  */
 export interface FinanceCategoryPackage {
   id: FinancePackageType;
@@ -84,7 +84,7 @@ export interface FinanceCategoryPackage {
  */
 export interface FinanceExtractedData {
   // Fristen
-  faelligkeitsdatum?: string;
+  fälligkeitsdatum?: string;
   einspruchsfrist?: string;
 
   // Finanzamt-Referenzen
@@ -107,7 +107,7 @@ export interface FinanceExtractedData {
 }
 
 /**
- * Jahr-Ordner fuer Finanzen
+ * Jahr-Ordner für Finanzen
  */
 export interface FinanceYear {
   id: string;
@@ -122,7 +122,7 @@ export interface FinanceYear {
 }
 
 /**
- * Aggregationen fuer Finanzen-Dashboard
+ * Aggregationen für Finanzen-Dashboard
  */
 export interface FinanceAggregations {
   totalDocuments: number;
@@ -308,7 +308,7 @@ export const FINANCE_PACKAGES: FinanceCategoryPackage[] = [
 ];
 
 /**
- * Kategorien mit Fristen (fuer spezielle Behandlung)
+ * Kategorien mit Fristen (für spezielle Behandlung)
  */
 export const FINANCE_CATEGORIES_WITH_DEADLINES = [
   'grundabgabenbescheid',
@@ -356,7 +356,7 @@ export const FINANCE_CATEGORY_TO_DOCUMENT_TYPE: Record<FinanceDocumentCategory, 
 };
 
 /**
- * Steuerart-Labels fuer UI
+ * Steuerart-Labels für UI
  */
 export const TAX_TYPE_LABELS: Record<TaxType, string> = {
   einkommensteuer: 'Einkommensteuer',
@@ -374,7 +374,7 @@ export const TAX_TYPE_LABELS: Record<TaxType, string> = {
 // ==================== STRICT TYPES FOR TABLE/SORT ====================
 
 /**
- * Strict Union Type fuer Sortier-Felder
+ * Strict Union Type für Sortier-Felder
  */
 export type FinanceSortField = 'document_date' | 'created_at' | 'filename' | 'amount' | 'category';
 
@@ -384,7 +384,7 @@ export type FinanceSortField = 'document_date' | 'created_at' | 'filename' | 'am
 export type SortOrder = 'asc' | 'desc';
 
 /**
- * Type-safe Icon Map fuer alle Kategorien
+ * Type-safe Icon Map für alle Kategorien
  */
 export const CATEGORY_ICON_MAP: Record<FinanceDocumentCategory, string> = {
   grundabgabenbescheid: 'Landmark',

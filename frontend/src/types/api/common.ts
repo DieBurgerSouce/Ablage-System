@@ -1,7 +1,7 @@
 /**
  * Common API Types
  *
- * Gemeinsame Typen fuer API-Anfragen und -Antworten.
+ * Gemeinsame Typen für API-Anfragen und -Antworten.
  * Diese Typen werden von allen API-Services verwendet.
  */
 

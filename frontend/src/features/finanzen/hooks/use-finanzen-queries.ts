@@ -60,7 +60,7 @@ export interface FinanceCategoryFilter {
 // ==================== STALE TIMES ====================
 
 const STALE_TIMES = {
-  years: 5 * 60 * 1000,           // 5 Minuten - Jahre aendern sich selten
+  years: 5 * 60 * 1000,           // 5 Minuten - Jahre ändern sich selten
   aggregations: 60 * 1000,        // 1 Minute
   documents: 30 * 1000,           // 30 Sekunden
 }
@@ -264,7 +264,7 @@ export function useFinanceCategoryPage(yearId: string | undefined, category: str
 // ==================== MUTATIONS ====================
 
 /**
- * Hook: Cache invalidieren nach Aenderungen
+ * Hook: Cache invalidieren nach Änderungen
  */
 export function useInvalidateFinanceQueries() {
   const queryClient = useQueryClient()
@@ -334,11 +334,11 @@ export function useFinanceDocument(documentId: string | undefined) {
 /**
  * Hook: Dokument-History (Audit Trail) abrufen
  *
- * Zeigt alle Aenderungen an einem Finanz-Dokument:
+ * Zeigt alle Änderungen an einem Finanz-Dokument:
  * - Erstellung, Bearbeitung, Loeschung
- * - Kategorie- und Jahr-Aenderungen
+ * - Kategorie- und Jahr-Änderungen
  * - OCR-Verarbeitung
- * - Frist-Aenderungen
+ * - Frist-Änderungen
  */
 export function useFinanceDocumentHistory(documentId: string | undefined, limit?: number) {
   return useQuery({
@@ -524,7 +524,7 @@ export interface DeleteDocumentParams {
 }
 
 /**
- * Hook: Finanz-Dokument loeschen
+ * Hook: Finanz-Dokument löschen
  */
 export function useDeleteFinanceDocument() {
   const queryClient = useQueryClient()
@@ -554,7 +554,7 @@ export function useDeleteFinanceDocument() {
 }
 
 /**
- * Default-Filter-Werte fuer Kategorie-Dokumente
+ * Default-Filter-Werte für Kategorie-Dokumente
  */
 export const DEFAULT_FINANCE_CATEGORY_FILTER: Omit<FinanceCategoryFilter, 'yearId' | 'category'> = {
   sortBy: 'document_date',

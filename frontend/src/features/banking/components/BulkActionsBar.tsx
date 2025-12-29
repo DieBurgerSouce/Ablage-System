@@ -1,7 +1,7 @@
 /**
- * BulkActionsBar - Aktionsleiste fuer Bulk-Operationen auf Mahnvorgaenge
+ * BulkActionsBar - Aktionsleiste für Bulk-Operationen auf Mahnvorgänge
  *
- * Erscheint wenn Zeilen in der DunningTable ausgewaehlt sind.
+ * Erscheint wenn Zeilen in der DunningTable ausgewählt sind.
  * Bietet Schnellaktionen wie Mahnung senden, Eskalieren, Mahnstopp setzen.
  */
 
@@ -129,7 +129,7 @@ export function BulkActionsBar({
             });
             toast({
                 title: 'Eskalation erfolgreich',
-                description: `${count} Mahnvorgaenge wurden eskaliert.`,
+                description: `${count} Mahnvorgänge wurden eskaliert.`,
             });
             onClearSelection();
             onActionComplete?.();
@@ -137,7 +137,7 @@ export function BulkActionsBar({
             toast({
                 variant: 'destructive',
                 title: 'Fehler bei der Eskalation',
-                description: 'Die Mahnvorgaenge konnten nicht eskaliert werden.',
+                description: 'Die Mahnvorgänge konnten nicht eskaliert werden.',
             });
         } finally {
             setShowEscalateConfirm(false);
@@ -149,7 +149,7 @@ export function BulkActionsBar({
             toast({
                 variant: 'destructive',
                 title: 'Bitte Grund angeben',
-                description: 'Ein Grund fuer den Mahnstopp ist erforderlich.',
+                description: 'Ein Grund für den Mahnstopp ist erforderlich.',
             });
             return;
         }
@@ -167,7 +167,7 @@ export function BulkActionsBar({
             );
             toast({
                 title: 'Mahnstopp gesetzt',
-                description: `${count} Mahnvorgaenge wurden pausiert.`,
+                description: `${count} Mahnvorgänge wurden pausiert.`,
             });
             onClearSelection();
             onActionComplete?.();
@@ -189,7 +189,7 @@ export function BulkActionsBar({
             );
             toast({
                 title: 'Mahnstopp aufgehoben',
-                description: `${count} Mahnvorgaenge wurden wieder aktiviert.`,
+                description: `${count} Mahnvorgänge wurden wieder aktiviert.`,
             });
             onClearSelection();
             onActionComplete?.();
@@ -356,7 +356,7 @@ export function BulkActionsBar({
                             </Label>
                             <Textarea
                                 id="reason"
-                                placeholder="z.B. Reklamation, Zahlungsvereinbarung, Pruefung..."
+                                placeholder="z.B. Reklamation, Zahlungsvereinbarung, Prüfung..."
                                 value={mahnstoppDialog.reason}
                                 onChange={(e) =>
                                     setMahnstoppDialog({

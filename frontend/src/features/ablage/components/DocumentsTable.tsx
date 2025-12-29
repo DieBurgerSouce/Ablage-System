@@ -129,7 +129,7 @@ export function DocumentsTableSkeleton({
               <TableHead>Betrag</TableHead>
               <TableHead>Status</TableHead>
               {showPaymentStatus && <TableHead>Zahlung</TableHead>}
-              {showPaymentStatus && <TableHead>Faellig</TableHead>}
+              {showPaymentStatus && <TableHead>Fällig</TableHead>}
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
@@ -211,14 +211,14 @@ export function DocumentsPagination({
           aria-label="Vorherige Seite"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-          Zurueck
+          Zurück
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages - 1}
-          aria-label="Naechste Seite"
+          aria-label="Nächste Seite"
         >
           Weiter
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -251,14 +251,14 @@ export function DocumentsTable({
         <Checkbox
           checked={table.getIsAllPageRowsSelected()}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Alle Dokumente auf dieser Seite auswaehlen"
+          aria-label="Alle Dokumente auf dieser Seite auswählen"
         />
       ),
       cell: ({ row }) => (
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label={`Dokument ${row.original.filename} auswaehlen`}
+          aria-label={`Dokument ${row.original.filename} auswählen`}
         />
       ),
       enableSorting: false,
@@ -389,7 +389,7 @@ export function DocumentsTable({
 
     // Due date column (conditional)
     const dueDateColumn = columnHelper.accessor('dueDate', {
-      header: 'Faellig',
+      header: 'Fällig',
       cell: (info) => {
         const dueDate = info.getValue();
         if (!dueDate) return '-';
@@ -415,7 +415,7 @@ export function DocumentsTable({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                aria-label={`Aktionen fuer ${row.original.filename}`}
+                aria-label={`Aktionen für ${row.original.filename}`}
               >
                 <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
               </Button>

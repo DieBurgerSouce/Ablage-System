@@ -154,7 +154,7 @@ export function FinanzenAggregations({
 }
 
 /**
- * Skeleton fuer Ladeindikator
+ * Skeleton für Ladeindikator
  */
 function FinanzenAggregationsSkeleton() {
   return (

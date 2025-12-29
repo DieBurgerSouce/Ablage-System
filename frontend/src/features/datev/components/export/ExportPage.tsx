@@ -48,7 +48,7 @@ export function ExportPage() {
     const exportPreviewMutation = useExportPreview();
     const executeExportMutation = useExecuteExport();
 
-    // Effektive Konfiguration (ausgewaehlte oder Default)
+    // Effektive Konfiguration (ausgewählte oder Default)
     const effectiveConfigId = selectedConfigId || defaultConfig?.id || '';
     const selectedConfig = configs?.find((c) => c.id === effectiveConfigId);
 
@@ -79,7 +79,7 @@ export function ExportPage() {
                 include_already_exported: includeAlreadyExported,
             });
             setExportSuccess(true);
-            // Preview zuruecksetzen nach erfolgreichem Export
+            // Preview zurücksetzen nach erfolgreichem Export
             setPreview(null);
         } catch (error) {
             // Error wird von TanStack Query behandelt und via isError angezeigt
@@ -100,7 +100,7 @@ export function ExportPage() {
                             Keine Konfiguration vorhanden
                         </h3>
                         <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-                            Bevor Sie einen Export erstellen koennen, muessen Sie zuerst eine
+                            Bevor Sie einen Export erstellen können, müssen Sie zuerst eine
                             DATEV-Konfiguration mit Beraternummer und Mandantennummer anlegen.
                         </p>
                         <Button asChild>
@@ -133,7 +133,7 @@ export function ExportPage() {
                 <CardHeader>
                     <CardTitle>Neuen Export erstellen</CardTitle>
                     <CardDescription>
-                        Waehlen Sie eine Konfiguration und optional einen Zeitraum fuer den Export.
+                        Wählen Sie eine Konfiguration und optional einen Zeitraum für den Export.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -149,9 +149,9 @@ export function ExportPage() {
                             >
                                 <SelectTrigger
                                     id="config"
-                                    aria-label="DATEV-Konfiguration auswaehlen"
+                                    aria-label="DATEV-Konfiguration auswählen"
                                 >
-                                    <SelectValue placeholder="Konfiguration waehlen" />
+                                    <SelectValue placeholder="Konfiguration wählen" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {configs?.map((config) => (
@@ -200,7 +200,7 @@ export function ExportPage() {
                             </div>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            Wenn leer, werden alle verfuegbaren Dokumente exportiert.
+                            Wenn leer, werden alle verfügbaren Dokumente exportiert.
                         </p>
                     </div>
 
@@ -216,7 +216,7 @@ export function ExportPage() {
                                 }
                             />
                             <Label htmlFor="include_already_exported" className="cursor-pointer">
-                                Bereits exportierte Dokumente einschliessen
+                                Bereits exportierte Dokumente einschließen
                             </Label>
                         </div>
                     </div>

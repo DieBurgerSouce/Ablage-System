@@ -1,6 +1,6 @@
 /**
  * Skonto Page
- * Skonto-Moeglichkeiten anzeigen und nutzen
+ * Skonto-Möglichkeiten anzeigen und nutzen
  */
 
 import { useState, useMemo } from 'react';
@@ -102,7 +102,7 @@ export function SkontoPage() {
             <Card>
                 <CardContent className="py-8">
                     <p className="text-center text-destructive">
-                        Fehler beim Laden der Skonto-Moeglichkeiten: {error.message}
+                        Fehler beim Laden der Skonto-Möglichkeiten: {error.message}
                     </p>
                 </CardContent>
             </Card>
@@ -113,9 +113,9 @@ export function SkontoPage() {
         <div className="space-y-6">
             {/* Header */}
             <div>
-                <h2 className="text-2xl font-bold tracking-tight">Skonto-Moeglichkeiten</h2>
+                <h2 className="text-2xl font-bold tracking-tight">Skonto-Möglichkeiten</h2>
                 <p className="text-muted-foreground">
-                    Nutzen Sie Fruehzahlerrabatte und sparen Sie bares Geld.
+                    Nutzen Sie Frühzahlerrabatte und sparen Sie bares Geld.
                 </p>
             </div>
 
@@ -129,7 +129,7 @@ export function SkontoPage() {
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardDescription>Moegliche Ersparnis</CardDescription>
+                        <CardDescription>Mögliche Ersparnis</CardDescription>
                         <CardTitle className="text-2xl text-green-600">
                             {formatCurrency(stats.totalSavings)}
                         </CardTitle>
@@ -155,8 +155,8 @@ export function SkontoPage() {
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Dringende Skonto-Fristen</AlertTitle>
                     <AlertDescription>
-                        {stats.urgent} Skonto-Moeglichkeit{stats.urgent > 1 ? 'en' : ''} lauf{stats.urgent > 1 ? 'en' : 't'}{' '}
-                        in den naechsten 3 Tagen ab. Handeln Sie jetzt, um die Ersparnis zu sichern!
+                        {stats.urgent} Skonto-Möglichkeit{stats.urgent > 1 ? 'en' : ''} lauf{stats.urgent > 1 ? 'en' : 't'}{' '}
+                        in den nächsten 3 Tagen ab. Handeln Sie jetzt, um die Ersparnis zu sichern!
                     </AlertDescription>
                 </Alert>
             )}
@@ -175,9 +175,9 @@ export function SkontoPage() {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="deadline">Frist (naechste zuerst)</SelectItem>
-                                    <SelectItem value="amount">Ersparnis (hoechste zuerst)</SelectItem>
-                                    <SelectItem value="percent">Prozent (hoechste zuerst)</SelectItem>
+                                    <SelectItem value="deadline">Frist (nächste zuerst)</SelectItem>
+                                    <SelectItem value="amount">Ersparnis (höchste zuerst)</SelectItem>
+                                    <SelectItem value="percent">Prozent (höchste zuerst)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -205,7 +205,7 @@ export function SkontoPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Percent className="h-5 w-5" />
-                        Skonto-Moeglichkeiten ({sortedOpportunities.length})
+                        Skonto-Möglichkeiten ({sortedOpportunities.length})
                     </CardTitle>
                     <CardDescription>
                         Rechnungen mit Skonto-Option nach Frist sortiert.
@@ -221,7 +221,7 @@ export function SkontoPage() {
                     ) : sortedOpportunities.length === 0 ? (
                         <div className="py-8 text-center">
                             <Percent className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                            <h3 className="mt-4 text-lg font-semibold">Keine Skonto-Moeglichkeiten</h3>
+                            <h3 className="mt-4 text-lg font-semibold">Keine Skonto-Möglichkeiten</h3>
                             <p className="text-muted-foreground">
                                 Aktuell gibt es keine offenen Rechnungen mit Skonto-Option.
                             </p>

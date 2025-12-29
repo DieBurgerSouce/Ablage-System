@@ -107,7 +107,7 @@ export function DocumentPreviewModal({
     const [scale, setScale] = useState(1.0);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-    // Reset beim Oeffnen - bewusstes Pattern zum Zuruecksetzen des States
+    // Reset beim Öffnen - bewusstes Pattern zum Zurücksetzen des States
     useEffect(() => {
         if (open) {
             // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset on dialog open

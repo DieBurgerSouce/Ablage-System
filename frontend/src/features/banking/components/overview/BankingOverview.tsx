@@ -1,6 +1,6 @@
 /**
  * Banking Overview
- * Einfache Uebersicht mit KPIs und wichtigsten Charts (ohne Tabs)
+ * Einfache Übersicht mit KPIs und wichtigsten Charts (ohne Tabs)
  */
 
 import { KPICards } from '../KPICards';

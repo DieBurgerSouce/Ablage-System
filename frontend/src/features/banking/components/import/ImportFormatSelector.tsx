@@ -1,6 +1,6 @@
 /**
  * Import Format Selector
- * Auswahl des Importformats fuer Banktransaktionen
+ * Auswahl des Importformats für Banktransaktionen
  */
 
 import { Label } from '@/components/ui/label';
@@ -52,7 +52,7 @@ export function ImportFormatSelector({ value, onChange }: ImportFormatSelectorPr
             <Label>Importformat</Label>
             <Select value={value} onValueChange={onChange}>
                 <SelectTrigger>
-                    <SelectValue placeholder="Format waehlen..." />
+                    <SelectValue placeholder="Format wählen..." />
                 </SelectTrigger>
                 <SelectContent>
                     {FORMAT_OPTIONS.map((option) => (

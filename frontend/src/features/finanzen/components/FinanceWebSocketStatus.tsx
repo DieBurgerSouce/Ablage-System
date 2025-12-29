@@ -1,7 +1,7 @@
 /**
  * FinanceWebSocketStatus - WebSocket Connection Status Indicator
  *
- * Zeigt den Status der WebSocket-Verbindung fuer Echtzeit-Updates an.
+ * Zeigt den Status der WebSocket-Verbindung für Echtzeit-Updates an.
  *
  * Features:
  * - Verbindungsstatus-Anzeige (verbunden/verbindend/getrennt)
@@ -225,7 +225,7 @@ export const FinanceWebSocketStatus = memo(function FinanceWebSocketStatus({
 
 /**
  * Minimale Status-Anzeige als Punkt
- * Fuer Header-Bars oder kompakte Layouts
+ * Für Header-Bars oder kompakte Layouts
  */
 export const FinanceWebSocketDot = memo(function FinanceWebSocketDot({
   className,

@@ -1,7 +1,7 @@
 /**
  * Entertainment Fields
  *
- * Felder fuer Bewirtungskosten-Dokumentation (steuerlich absetzbar zu 70%).
+ * Felder für Bewirtungskosten-Dokumentation (steuerlich absetzbar zu 70%).
  */
 
 import * as React from 'react';
@@ -49,17 +49,17 @@ export function EntertainmentFields({ form, amount = 0, className }: Entertainme
           Bewirtungskosten-Dokumentation
         </CardTitle>
         <CardDescription className="text-xs">
-          Erforderlich fuer steuerliche Absetzbarkeit (70%)
+          Erforderlich für steuerliche Absetzbarkeit (70%)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Geschaeftlicher Anlass */}
+        {/* Geschäftlicher Anlass */}
         <FormField
           control={form.control}
           name="entertainment_data.business_reason"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Geschaeftlicher Anlass *</FormLabel>
+              <FormLabel>Geschäftlicher Anlass *</FormLabel>
               <FormControl>
                 <Textarea
                   placeholder="z.B. Projektbesprechung, Vertragsverhandlung..."
@@ -93,13 +93,13 @@ export function EntertainmentFields({ form, amount = 0, className }: Entertainme
             <FormLabel>Teilnehmer *</FormLabel>
             <Button type="button" variant="outline" size="sm" onClick={addGuest}>
               <Plus className="mr-1 h-3 w-3" aria-hidden="true" />
-              Hinzufuegen
+              Hinzufügen
             </Button>
           </div>
 
           {fields.length === 0 ? (
             <p className="text-sm text-muted-foreground py-2">
-              Keine Teilnehmer hinzugefuegt.
+              Keine Teilnehmer hinzugefügt.
             </p>
           ) : (
             <div className="space-y-2">
@@ -144,10 +144,10 @@ export function EntertainmentFields({ form, amount = 0, className }: Entertainme
           )}
         </div>
 
-        {/* Steuerliche Aufschluesselung */}
+        {/* Steuerliche Aufschlüsselung */}
         {amount > 0 && (
           <div className="rounded-lg bg-muted p-3 space-y-1 text-sm">
-            <div className="font-medium">Steuerliche Aufschluesselung</div>
+            <div className="font-medium">Steuerliche Aufschlüsselung</div>
             <div className="flex justify-between text-muted-foreground">
               <span>Absetzbar (70%)</span>
               <span className="text-green-600">{formatCurrency(deductibleAmount)}</span>

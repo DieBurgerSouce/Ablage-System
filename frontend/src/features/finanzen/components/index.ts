@@ -1,7 +1,7 @@
 /**
  * Finanzen Feature Components - Barrel Export
  *
- * Alle Komponenten fuer das Finanzen-Modul
+ * Alle Komponenten für das Finanzen-Modul
  */
 
 // Main Pages

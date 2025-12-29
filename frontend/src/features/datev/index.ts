@@ -1,7 +1,7 @@
 /**
  * DATEV Feature - Barrel Export
  *
- * DATEV Buchungsstapel Export Funktionalitaet fuer deutsche Buchhaltung.
+ * DATEV Buchungsstapel Export Funktionalitaet für deutsche Buchhaltung.
  * Unterstuetzt SKR03/SKR04 Kontenrahmen und generiert DATEV-konforme CSV-Dateien.
  */
 

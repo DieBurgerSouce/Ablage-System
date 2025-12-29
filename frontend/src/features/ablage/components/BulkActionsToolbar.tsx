@@ -1,11 +1,11 @@
 /**
- * BulkActionsToolbar - Fixed Bottom Bar fuer Bulk-Aktionen
+ * BulkActionsToolbar - Fixed Bottom Bar für Bulk-Aktionen
  *
  * Features:
  * - Wird nur angezeigt wenn selectedCount > 0
  * - Download als ZIP
  * - Export als CSV
- * - Loeschen mit Bestaetigung
+ * - Löschen mit Bestätigung
  * - Selection-Counter und Clear-Button
  * - Animiertes Ein/Ausblenden
  * - WCAG 2.1 AA konform (Focus-Management, ARIA)
@@ -89,7 +89,7 @@ export function BulkActionsToolbar({
       announcement.setAttribute('role', 'status');
       announcement.setAttribute('aria-live', 'polite');
       announcement.className = 'sr-only';
-      announcement.textContent = `${selectedIds.length} Dokumente ausgewaehlt. Bulk-Aktionen verfuegbar.`;
+      announcement.textContent = `${selectedIds.length} Dokumente ausgewählt. Bulk-Aktionen verfügbar.`;
       document.body.appendChild(announcement);
       setTimeout(() => announcement.remove(), 1000);
     }
@@ -139,14 +139,14 @@ export function BulkActionsToolbar({
           className
         )}
         role="toolbar"
-        aria-label={`Bulk-Aktionen fuer ${selectedIds.length} ausgewaehlte Dokumente`}
+        aria-label={`Bulk-Aktionen für ${selectedIds.length} ausgewählte Dokumente`}
       >
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-4">
             {/* Selection Info */}
             <div className="flex items-center gap-3">
               <Badge variant="secondary" className="h-7 px-3 text-sm" aria-live="polite">
-                {selectedIds.length} ausgewaehlt
+                {selectedIds.length} ausgewählt
               </Badge>
               <Button
                 variant="ghost"
@@ -161,7 +161,7 @@ export function BulkActionsToolbar({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2" role="group" aria-label="Verfuegbare Aktionen">
+            <div className="flex items-center gap-2" role="group" aria-label="Verfügbare Aktionen">
               {/* Mark as Paid (only for invoices) */}
               {showPaymentActions && (
                 <Button
@@ -220,14 +220,14 @@ export function BulkActionsToolbar({
                 onClick={() => setDeleteDialogOpen(true)}
                 disabled={isLoading}
                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                aria-label={`${selectedIds.length} Dokumente loeschen`}
+                aria-label={`${selectedIds.length} Dokumente löschen`}
               >
                 {bulkDelete.isPending ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
                 ) : (
                   <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
                 )}
-                {bulkDelete.isPending ? 'Wird geloescht...' : 'Loeschen'}
+                {bulkDelete.isPending ? 'Wird gelöscht...' : 'Löschen'}
               </Button>
             </div>
           </div>
@@ -237,7 +237,7 @@ export function BulkActionsToolbar({
             <div className="mt-2 flex items-center gap-2 text-sm text-destructive" role="alert" aria-live="assertive">
               <AlertTriangle className="h-4 w-4" aria-hidden="true" />
               <span>
-                Fehler bei der Ausfuehrung. Bitte versuchen Sie es erneut.
+                Fehler bei der Ausführung. Bitte versuchen Sie es erneut.
               </span>
             </div>
           )}
@@ -247,7 +247,7 @@ export function BulkActionsToolbar({
             <div className="mt-2 flex items-center gap-2 text-sm text-green-600" role="status" aria-live="polite">
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               <span>
-                {bulkDelete.data.successCount} Dokumente geloescht
+                {bulkDelete.data.successCount} Dokumente gelöscht
                 {bulkDelete.data.failedCount > 0 && `, ${bulkDelete.data.failedCount} fehlgeschlagen`}
               </span>
             </div>
@@ -261,12 +261,12 @@ export function BulkActionsToolbar({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <Trash2 className="h-5 w-5 text-destructive" aria-hidden="true" />
-              Dokumente loeschen?
+              Dokumente löschen?
             </AlertDialogTitle>
             <AlertDialogDescription id="delete-dialog-description">
-              Moechten Sie wirklich{' '}
+              Möchten Sie wirklich{' '}
               <span className="font-semibold">{selectedIds.length} Dokumente</span>{' '}
-              loeschen? Diese Aktion kann nicht rueckgaengig gemacht werden.
+              löschen? Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -277,14 +277,14 @@ export function BulkActionsToolbar({
               onClick={handleDelete}
               disabled={bulkDelete.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              aria-label={`${selectedIds.length} Dokumente endgueltig loeschen`}
+              aria-label={`${selectedIds.length} Dokumente endgültig löschen`}
             >
               {bulkDelete.isPending ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
               ) : (
                 <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
               )}
-              {bulkDelete.isPending ? 'Wird geloescht...' : 'Endgueltig loeschen'}
+              {bulkDelete.isPending ? 'Wird gelöscht...' : 'Endgültig löschen'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -4,7 +4,7 @@
  * Wird auf mobilen Geraeten anstelle der Tabelle verwendet.
  * Zeigt alle wichtigen Dokument-Informationen in kompakter Form.
  *
- * Optimiert mit React.memo fuer bessere Performance bei langen Listen.
+ * Optimiert mit React.memo für bessere Performance bei langen Listen.
  */
 
 import { memo, useCallback } from 'react'
@@ -141,7 +141,7 @@ export const FinanceDocumentCard = FinanceDocumentCardInner
 
 /**
  * Mobile Dokument-Liste als Card-Grid
- * Optimiert mit useCallback fuer stabile Referenzen
+ * Optimiert mit useCallback für stabile Referenzen
  */
 interface FinanceDocumentCardListProps {
   documents: FinanceCategoryDocument[]

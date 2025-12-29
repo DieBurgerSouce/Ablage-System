@@ -1,5 +1,5 @@
 /**
- * DATEV Export - Uebersicht (Index Route)
+ * DATEV Export - Übersicht (Index Route)
  *
  * Dashboard mit Quick-Stats, letzten Exports und Quick-Actions.
  */
@@ -49,7 +49,7 @@ function DATEVOverviewPage() {
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Konfiguration erforderlich</AlertTitle>
                     <AlertDescription>
-                        Bevor Sie DATEV-Exporte erstellen koennen, muessen Sie eine Konfiguration
+                        Bevor Sie DATEV-Exporte erstellen können, müssen Sie eine Konfiguration
                         mit Beraternummer, Mandantennummer und Kontenrahmen anlegen.
                         <Link to="/admin/datev/config" className="ml-2 underline">
                             Jetzt konfigurieren
@@ -164,7 +164,7 @@ function DATEVOverviewPage() {
                     <CardHeader>
                         <CardTitle>Schnellaktionen</CardTitle>
                         <CardDescription>
-                            Haeufig verwendete Funktionen fuer den DATEV-Export.
+                            Häufig verwendete Funktionen für den DATEV-Export.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">

@@ -1,7 +1,7 @@
 /**
  * User Model Types
  *
- * Typen fuer Benutzer, Authentifizierung und Autorisierung.
+ * Typen für Benutzer, Authentifizierung und Autorisierung.
  */
 
 // Types imported from '../api/common' as needed

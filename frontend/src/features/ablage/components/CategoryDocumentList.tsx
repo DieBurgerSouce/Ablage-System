@@ -1,5 +1,5 @@
 /**
- * CategoryDocumentList - Hauptkomponente fuer Kategorie-Dokumente
+ * CategoryDocumentList - Hauptkomponente für Kategorie-Dokumente
  *
  * Orchestriert die Unterkomponenten:
  * - CategoryHeader (Breadcrumb, Titel)
@@ -154,7 +154,7 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
         <Card>
           <CardContent className="py-8">
             <p className="text-center text-muted-foreground">
-              Ungueltige Parameter. Bitte waehlen Sie eine Kategorie aus.
+              Ungültige Parameter. Bitte wählen Sie eine Kategorie aus.
             </p>
           </CardContent>
         </Card>

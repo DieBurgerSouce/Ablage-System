@@ -1,7 +1,7 @@
 /**
  * Admin Mahnungen - Aktive Mahnungen
  *
- * Zeigt nur aktive (nicht abgeschlossene) Mahnvorgaenge
+ * Zeigt nur aktive (nicht abgeschlossene) Mahnvorgänge
  */
 
 import { createFileRoute } from '@tanstack/react-router';
@@ -40,7 +40,7 @@ function AktiveMahnungenPage() {
                     Aktive Mahnungen
                 </CardTitle>
                 <CardDescription>
-                    {records?.items?.length ?? 0} aktive Mahnvorgaenge, die Bearbeitung erfordern.
+                    {records?.items?.length ?? 0} aktive Mahnvorgänge, die Bearbeitung erfordern.
                 </CardDescription>
             </CardHeader>
             <CardContent>

@@ -2,7 +2,7 @@
  * Finance API Service
  *
  * Kommuniziert mit den /api/v1/finance Endpoints
- * fuer Jahr-basierte Finanz-Dokumentenverwaltung.
+ * für Jahr-basierte Finanz-Dokumentenverwaltung.
  *
  * Features:
  * - Finanz-Jahre mit Dokument-Counts
@@ -491,7 +491,7 @@ export const financeService = {
       const response = await apiClient.get<FinanceYearListBackend>('/finance/years');
       return transformYears(response.data);
     } catch (error) {
-      // Bei 404: Leere Liste zurueckgeben
+      // Bei 404: Leere Liste zurückgeben
       if (error instanceof AxiosError && error.response?.status === 404) {
         return [];
       }
@@ -500,7 +500,7 @@ export const financeService = {
   },
 
   /**
-   * Holt Details fuer ein spezifisches Jahr
+   * Holt Details für ein spezifisches Jahr
    */
   getYear: async (year: string): Promise<FinanceYear | null> => {
     try {
@@ -517,14 +517,14 @@ export const financeService = {
   // ==================== Aggregationen ====================
 
   /**
-   * Holt Gesamt-Aggregationen ueber alle Jahre
+   * Holt Gesamt-Aggregationen über alle Jahre
    */
   getOverallAggregations: async (): Promise<FinanceAggregations> => {
     try {
       const response = await apiClient.get<FinanceAggregationsBackend>('/finance/aggregations');
       return transformAggregations(response.data);
     } catch (error) {
-      // Bei Fehler: Default-Aggregationen zurueckgeben
+      // Bei Fehler: Default-Aggregationen zurückgeben
       if (error instanceof AxiosError && error.response?.status === 404) {
         return {
           totalDocuments: 0,
@@ -545,7 +545,7 @@ export const financeService = {
   },
 
   /**
-   * Holt Aggregationen fuer ein Jahr
+   * Holt Aggregationen für ein Jahr
    */
   getYearAggregations: async (year: string): Promise<FinanceAggregations> => {
     try {
@@ -576,7 +576,7 @@ export const financeService = {
   // ==================== Kategorie-Dokumente ====================
 
   /**
-   * Holt Dokumente fuer eine Finanz-Kategorie
+   * Holt Dokumente für eine Finanz-Kategorie
    */
   getCategoryDocuments: async (
     year: string,
@@ -605,7 +605,7 @@ export const financeService = {
   },
 
   /**
-   * Holt Aggregationen fuer eine Kategorie
+   * Holt Aggregationen für eine Kategorie
    */
   getCategoryAggregations: async (
     year: string,
@@ -748,7 +748,7 @@ export const financeService = {
         message: response.data.message,
       };
     } catch (error) {
-      handleApiError(error, 'Dokument loeschen');
+      handleApiError(error, 'Dokument löschen');
     }
   },
 
@@ -1369,7 +1369,7 @@ export const financeVersionApi = {
         message: response.data.message,
       };
     } catch (error) {
-      handleApiError(error, 'Rollback durchfuehren');
+      handleApiError(error, 'Rollback durchführen');
     }
   },
 };

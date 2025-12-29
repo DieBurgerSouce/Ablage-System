@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 // ==================== SKELETON VARIANTS ====================
 
 /**
- * Dashboard-Skeleton fuer die Hauptseite
+ * Dashboard-Skeleton für die Hauptseite
  */
 export function FinanceDashboardSkeleton() {
   return (

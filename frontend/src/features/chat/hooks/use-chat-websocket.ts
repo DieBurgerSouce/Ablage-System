@@ -1,5 +1,5 @@
 /**
- * WebSocket Hook fuer Chat Real-time Collaboration.
+ * WebSocket Hook für Chat Real-time Collaboration.
  *
  * Bietet:
  * - Automatische Verbindung/Reconnection
@@ -36,13 +36,13 @@ interface UseChatWebSocketOptions {
     onPresenceUpdate?: (users: WSPresenceUser[]) => void;
     /** Callback wenn User beitritt */
     onUserJoined?: (userId: string, username: string) => void;
-    /** Callback wenn User verlaesst */
+    /** Callback wenn User verlässt */
     onUserLeft?: (userId: string, username: string) => void;
-    /** Callback fuer AI-Streaming-Chunk */
+    /** Callback für AI-Streaming-Chunk */
     onAIChunk?: (chunk: string, messageId?: string) => void;
     /** Callback wenn AI-Streaming fertig */
     onAIDone?: (messageId: string, fullContent: string) => void;
-    /** Callback bei Verbindungsstatus-Aenderung */
+    /** Callback bei Verbindungsstatus-Änderung */
     onConnectionChange?: (connected: boolean) => void;
     /** Callback bei Fehler */
     onError?: (error: string) => void;
@@ -99,7 +99,7 @@ export function useChatWebSocket(
     const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    // Refs fuer Callbacks um sie nicht in Dependencies aufnehmen zu muessen
+    // Refs für Callbacks um sie nicht in Dependencies aufnehmen zu müssen
     const callbacksRef = useRef({
         onNewMessage,
         onTypingUpdate,
@@ -247,7 +247,7 @@ export function useChatWebSocket(
         }
     }, []);
 
-    // Verbindung aufbauen wenn sessionId sich aendert
+    // Verbindung aufbauen wenn sessionId sich ändert
     // WICHTIG: Nur sessionId und enabled als Dependencies!
     useEffect(() => {
         // Nicht verbinden wenn deaktiviert

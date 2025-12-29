@@ -1,11 +1,11 @@
 /**
- * Zentrale Query Hooks fuer Ablage Dokumenten-Verwaltung
+ * Zentrale Query Hooks für Ablage Dokumenten-Verwaltung
  * Konsistente Query-Keys und wiederverwendbare Hooks
  *
  * Features:
  * - Differenzierte Stale-Times (documents: 30s, aggregations: 60s, detail: 5min)
- * - Optimistic Updates fuer bessere UX
- * - Infinite Query fuer grosse Listen
+ * - Optimistic Updates für bessere UX
+ * - Infinite Query für große Listen
  * - Error Retry mit Backoff
  * - Prefetch auf Hover
  */
@@ -25,14 +25,14 @@ import type {
 // ==================== Konfiguration ====================
 
 const STALE_TIMES = {
-  documents: 30 * 1000,       // 30 Sekunden - Dokumente koennen sich schnell aendern
-  aggregations: 60 * 1000,    // 1 Minute - Aggregationen aendern sich seltener
-  detail: 5 * 60 * 1000,      // 5 Minuten - Einzelnes Dokument aendert sich selten
+  documents: 30 * 1000,       // 30 Sekunden - Dokumente können sich schnell ändern
+  aggregations: 60 * 1000,    // 1 Minute - Aggregationen ändern sich seltener
+  detail: 5 * 60 * 1000,      // 5 Minuten - Einzelnes Dokument ändert sich selten
 } as const;
 
 const GC_TIMES = {
   documents: 5 * 60 * 1000,   // 5 Minuten - Listen aus Cache entfernen
-  aggregations: 10 * 60 * 1000, // 10 Minuten - Aggregationen laenger halten
+  aggregations: 10 * 60 * 1000, // 10 Minuten - Aggregationen länger halten
   detail: 30 * 60 * 1000,     // 30 Minuten - Details lange halten
 } as const;
 
@@ -90,7 +90,7 @@ export function useCategoryDocuments(
 }
 
 /**
- * Infinite Query fuer grosse Dokumentenlisten (Lazy Loading)
+ * Infinite Query für große Dokumentenlisten (Lazy Loading)
  */
 export function useCategoryDocumentsInfinite(
   filter: Omit<Partial<CategoryDocumentFilter>, 'page'>,
@@ -113,7 +113,7 @@ export function useCategoryDocumentsInfinite(
 }
 
 /**
- * Aggregationen fuer eine Kategorie abrufen
+ * Aggregationen für eine Kategorie abrufen
  */
 export function useCategoryAggregations(
   filter: Pick<CategoryDocumentFilter, 'businessEntityId' | 'folderId' | 'category' | 'entityType'>,
@@ -194,7 +194,7 @@ export function useBulkExportCsv() {
 }
 
 /**
- * Mehrere Dokumente loeschen (Soft-Delete)
+ * Mehrere Dokumente löschen (Soft-Delete)
  */
 export function useBulkDelete() {
   const queryClient = useQueryClient();
@@ -241,7 +241,7 @@ export function useBulkMoveCategory() {
 }
 
 /**
- * Tags fuer mehrere Dokumente setzen
+ * Tags für mehrere Dokumente setzen
  */
 export function useBulkSetTags() {
   const queryClient = useQueryClient();
@@ -277,7 +277,7 @@ export function useUpdatePaymentStatus() {
       paidAmount,
     }: {
       documentId: string;
-      status: 'offen' | 'bezahlt' | 'ueberfaellig' | 'teilbezahlt';
+      status: 'offen' | 'bezahlt' | 'überfällig' | 'teilbezahlt';
       paidAmount?: number;
     }) => {
       return ablageService.updatePaymentStatus(documentId, status, paidAmount);
@@ -316,7 +316,7 @@ export function useBulkMarkAsPaid() {
 // ==================== Optimistic Updates Helpers ====================
 
 /**
- * Hilfsfunktion um optimistische Updates fuer Dokumente durchzufuehren
+ * Hilfsfunktion um optimistische Updates für Dokumente durchzuführen
  */
 export function useOptimisticDocumentUpdate() {
   const queryClient = useQueryClient();
@@ -379,7 +379,7 @@ export function useOptimisticDocumentUpdate() {
 // ==================== Combined Hooks ====================
 
 /**
- * Filter-Parameter fuer Kategorie-Seite
+ * Filter-Parameter für Kategorie-Seite
  */
 export interface CategoryPageFilter {
   businessEntityId: string;
@@ -401,8 +401,8 @@ export interface CategoryPageFilter {
 }
 
 /**
- * Kombinierter Hook fuer Kategorie-Seite
- * Laedt sowohl Dokumente als auch Aggregationen
+ * Kombinierter Hook für Kategorie-Seite
+ * Lädt sowohl Dokumente als auch Aggregationen
  */
 export function useCategoryPage(
   filter: CategoryPageFilter,
@@ -453,8 +453,8 @@ export function useCategoryPage(
 // ==================== Combined Mutation Hook ====================
 
 /**
- * Kombinierter Hook fuer alle Dokument-Mutationen
- * Praktisch fuer Komponenten die mehrere Bulk-Aktionen brauchen
+ * Kombinierter Hook für alle Dokument-Mutationen
+ * Praktisch für Komponenten die mehrere Bulk-Aktionen brauchen
  */
 export function useDocumentMutations() {
   const bulkDelete = useBulkDelete();
@@ -496,7 +496,7 @@ export function useDocumentMutations() {
 // ==================== Prefetch Helpers ====================
 
 /**
- * Prefetch fuer Kategorie-Dokumente (z.B. beim Hover ueber Kategorie-Link)
+ * Prefetch für Kategorie-Dokumente (z.B. beim Hover über Kategorie-Link)
  */
 export function usePrefetchCategoryDocuments() {
   const queryClient = useQueryClient();
@@ -516,7 +516,7 @@ export function usePrefetchCategoryDocuments() {
 }
 
 /**
- * Prefetch fuer Kategorie-Seite (Dokumente + Aggregationen)
+ * Prefetch für Kategorie-Seite (Dokumente + Aggregationen)
  */
 export function usePrefetchCategoryPage() {
   const queryClient = useQueryClient();
@@ -547,7 +547,7 @@ export function usePrefetchCategoryPage() {
 
 /**
  * Invalidiert alle Ablage-relevanten Queries
- * Nuetzlich nach grossen Aenderungen
+ * Nützlich nach großen Änderungen
  */
 export function useInvalidateAblageQueries() {
   const queryClient = useQueryClient();
