@@ -21,14 +21,15 @@ RUN apt-get update && apt-get install -y \
 # Set Python 3.11
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
 
-# Upgrade pip
-RUN python -m pip install --no-cache-dir --upgrade pip
+# Upgrade pip and install uv for fast dependency resolution
+RUN python -m pip install --no-cache-dir --upgrade pip uv
 
 WORKDIR /app
 
 # Copy requirements
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies (uv is 10-100x faster than pip)
+RUN uv pip install --system -r requirements.txt
 
 # Copy application
 COPY app/ ./app/

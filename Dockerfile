@@ -34,9 +34,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 
-# Install and upgrade pip for Python 3.11
+# Install and upgrade pip for Python 3.11, then install uv for fast dependency resolution
 RUN python3.11 -m ensurepip --upgrade && \
-    python3.11 -m pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    python3.11 -m pip install --no-cache-dir --upgrade pip setuptools wheel uv && \
     ln -sf /usr/local/bin/pip3.11 /usr/bin/pip || true
 
 # Create non-root user BEFORE copying files
@@ -55,19 +55,20 @@ COPY --chown=ablage:ablage requirements.txt .
 COPY --chown=ablage:ablage requirements-gpu.txt .
 
 # Install Python dependencies as root (for system packages)
-RUN python3.11 -m pip install --no-cache-dir  -r requirements.txt
+# Using uv for 10-100x faster dependency resolution (Rust-based pip replacement)
+RUN uv pip install --system -r requirements.txt
 
 # NOTE: PyTorch with CUDA support is now installed via requirements.txt (transformers pulls torch with CUDA bindings)
 # The cu121 index install was removed to avoid version conflicts - torch-2.9.1 from pypi includes nvidia-* packages
 
 # Install additional GPU requirements
-RUN python3.11 -m pip install --no-cache-dir -r requirements-gpu.txt
+RUN uv pip install --system -r requirements-gpu.txt
 
 # Install DeepSeek Janus library for Janus-Pro multimodal OCR
 # Required for MultiModalityCausalLM and VLChatProcessor classes
 # First install dependencies, then the package in editable mode via PYTHONPATH
 RUN git clone --depth 1 https://github.com/deepseek-ai/Janus.git /opt/janus && \
-    python3.11 -m pip install --no-cache-dir attrdict einops sentencepiece timm accelerate && \
+    uv pip install --system attrdict einops sentencepiece timm accelerate && \
     echo "/opt/janus" > /usr/local/lib/python3.11/dist-packages/janus.pth && \
     python3.11 -c "from janus.models import MultiModalityCausalLM, VLChatProcessor; print('Janus OK')"
 
