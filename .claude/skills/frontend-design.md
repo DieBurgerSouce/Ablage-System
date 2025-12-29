@@ -114,18 +114,45 @@ STATTDESSEN:
 
 ## Deutsche UX-Texte
 
+### KRITISCH: Echte Umlaute verwenden!
+
+```tsx
+// ✅ RICHTIG - Echte Umlaute
+<Button>Löschen</Button>
+<Label>Größe</Label>
+<span>Übertragung läuft...</span>
+<Alert>Datei erfolgreich geändert</Alert>
+
+// ❌ FALSCH - Keine Ersatzschreibung!
+<Button>Loeschen</Button>  // NIEMALS!
+<Label>Groesse</Label>     // NIEMALS!
+<span>Uebertragung</span>  // NIEMALS!
+```
+
+**Regel**: IMMER ä, ö, ü, ß verwenden - NIEMALS ae, oe, ue, ss!
+
+### Beispiele
+
 ```tsx
 // Buttons
 <Button>Speichern</Button>
-<Button variant="destructive">Loeschen</Button>
+<Button variant="destructive">Löschen</Button>
 
 // Feedback
 <Toast>Dokument erfolgreich verarbeitet</Toast>
 <Alert>Fehler bei der OCR-Verarbeitung</Alert>
 
 // Formulare
-<Label>Datei auswaehlen</Label>
+<Label>Datei auswählen</Label>
 <Input placeholder="Suchbegriff eingeben..." />
+
+// Navigation
+<NavItem>Übersicht</NavItem>
+<NavItem>Größenänderung</NavItem>
+
+// Status
+<Badge>Geändert</Badge>
+<Status>Verfügbar</Status>
 ```
 
 ## Komponenten-Bibliothek
