@@ -34,10 +34,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 
-# Install and upgrade pip for Python 3.11, then install uv for fast dependency resolution
-RUN python3.11 -m ensurepip --upgrade && \
-    python3.11 -m pip install --no-cache-dir --upgrade pip setuptools wheel uv && \
-    ln -sf /usr/local/bin/pip3.11 /usr/bin/pip || true
+# Install uv for fast dependency resolution (10-100x faster than pip)
+# Use python3.11 -m pip to ensure packages go to Python 3.11
+RUN python3.11 -m pip install --no-cache-dir --upgrade pip setuptools wheel uv
 
 # Create non-root user BEFORE copying files
 ARG UID=1000
