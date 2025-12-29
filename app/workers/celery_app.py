@@ -254,6 +254,7 @@ celery_app = Celery(
         "app.workers.tasks.rag_tasks",  # RAG Document Processing
         "app.workers.tasks.monitoring_tasks",  # Worker Health Monitoring
         "app.workers.tasks.surya_improvement_tasks",  # Surya OCR Continuous Improvement
+        "app.workers.tasks.export_tasks",  # Export Tasks (Batch, Scheduled)
     ]
 )
 
@@ -584,6 +585,13 @@ celery_app.conf.update(
         "training-weekly-report": {
             "task": "app.workers.tasks.training_tasks.generate_training_report",
             "schedule": crontab(day_of_week=1, hour=7, minute=0),  # Montag 07:00 Uhr
+        },
+        # =================================================================
+        # Export Tasks (Scheduled Exports)
+        # =================================================================
+        "export-check-scheduled": {
+            "task": "export.check_scheduled_exports",
+            "schedule": 300.0,  # Alle 5 Minuten
         },
         # =================================================================
         # RAG Intelligence Layer Tasks

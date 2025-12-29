@@ -1,4 +1,4 @@
-# Ablage-System OCR - Core Dependencies
+    # Ablage-System OCR - Core Dependencies
 # Python 3.11+ required
 
 # Core Framework
@@ -127,3 +127,7 @@ pdfplumber>=0.11.0  # PDF Bank Statement Parsing
 
 # Mahnwesen (Dunning System)
 holidays>=0.40  # German/Austrian/Swiss holidays for scheduled Mahnlauf
+
+# Export Scheduling
+croniter>=2.0.0  # Cron expression parsing for scheduled exports
+pytz>=2024.1  # Timezone support for scheduled exports

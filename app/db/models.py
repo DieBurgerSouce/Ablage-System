@@ -420,14 +420,77 @@ class BatchJob(Base):
     paused_at = Column(DateTime(timezone=True))
     resume_from_index = Column(Integer, default=0)
 
+    # Cancellation support (Export Improvements Task 3)
+    is_cancelled = Column(Boolean, default=False)
+    cancelled_at = Column(DateTime(timezone=True), nullable=True)
+    cancelled_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
     # Relationships
     user = relationship("User", backref="batch_jobs")
+    cancelled_by = relationship("User", foreign_keys=[cancelled_by_id])
 
     # Indexes
     __table_args__ = (
         Index("ix_batch_jobs_status", "status"),
         Index("ix_batch_jobs_user_id", "user_id"),
         Index("ix_batch_jobs_created_at", "created_at"),
+    )
+
+
+class ScheduledExport(Base):
+    """Scheduled exports for automated recurring exports.
+
+    Allows users to configure automatic exports on a schedule (cron-based).
+    Part of Export Improvements Task 4.
+    """
+    __tablename__ = "scheduled_exports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Schedule (Cron-Format)
+    cron_expression = Column(String(100), nullable=False)  # "0 8 * * 1" = Montag 08:00
+    timezone = Column(String(50), default="Europe/Berlin")
+
+    # Export-Konfiguration
+    export_type = Column(String(50), nullable=False)  # "documents", "invoices", "datev"
+    export_format = Column(String(20), nullable=False)  # "csv", "excel", "zip", "json"
+    filter_config = Column(CrossDBJSON, nullable=True)  # Date range, categories, tags, etc.
+    include_text = Column(Boolean, default=True)
+    include_metadata = Column(Boolean, default=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    last_run_at = Column(DateTime(timezone=True), nullable=True)
+    next_run_at = Column(DateTime(timezone=True), nullable=True)
+    last_run_status = Column(String(20), nullable=True)  # success, failed, partial
+    last_run_job_id = Column(UUID(as_uuid=True), ForeignKey("batch_jobs.id"), nullable=True)
+
+    # Notification
+    notify_email = Column(Boolean, default=True)
+    notify_on_failure_only = Column(Boolean, default=False)
+    notification_email = Column(String(255), nullable=True)  # Override user email
+
+    # Statistics
+    total_runs = Column(Integer, default=0)
+    successful_runs = Column(Integer, default=0)
+    failed_runs = Column(Integer, default=0)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", backref="scheduled_exports")
+    last_run_job = relationship("BatchJob", foreign_keys=[last_run_job_id])
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_scheduled_exports_user_id", "user_id"),
+        Index("ix_scheduled_exports_is_active", "is_active"),
+        Index("ix_scheduled_exports_next_run_at", "next_run_at"),
     )
 
 
@@ -5348,5 +5411,113 @@ class DATEVExport(Base):
         CheckConstraint(
             "status IN ('completed', 'failed', 'partial')",
             name="ck_datev_exports_status"
+        ),
+    )
+
+
+# =============================================================================
+# FINANCE DOCUMENT HISTORY
+# =============================================================================
+
+
+class FinanceDocumentHistory(Base):
+    """Immutable Audit-Log fuer Finanz-Dokumente.
+
+    Trackt alle Aenderungen an Finanz-Dokumenten fuer Enterprise-Compliance:
+    - Erstellung, Bearbeitung, Loeschung
+    - Kategorie- und Jahr-Aenderungen
+    - Frist-Aenderungen
+    - OCR-Verarbeitung
+
+    WICHTIG: Diese Tabelle ist append-only!
+    Ein Datenbank-Trigger sollte UPDATE und DELETE verhindern.
+    """
+    __tablename__ = "finance_document_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Dokument-Referenz
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Benutzer, der die Aenderung vorgenommen hat
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+
+    # Aktion
+    action = Column(
+        String(50),
+        nullable=False,
+        comment="created, updated, deleted, restored, category_changed, year_changed, etc."
+    )
+
+    # Aenderungsdetails
+    old_values = Column(
+        CrossDBJSON,
+        nullable=True,
+        default=dict,
+        comment="Vorherige Werte (bei Updates)"
+    )
+    new_values = Column(
+        CrossDBJSON,
+        nullable=True,
+        default=dict,
+        comment="Neue Werte (bei Updates)"
+    )
+
+    # Betroffene Felder
+    changed_fields = Column(
+        CrossDBJSON,
+        nullable=True,
+        default=list,
+        comment="Liste der geaenderten Felder"
+    )
+
+    # Kontext
+    ip_address = Column(String(45), nullable=True, comment="IP-Adresse des Benutzers")
+    user_agent = Column(String(500), nullable=True, comment="Browser/Client Info")
+
+    # Zusaetzliche Metadaten
+    metadata = Column(
+        CrossDBJSON,
+        nullable=True,
+        default=dict,
+        comment="Zusaetzliche Kontext-Informationen"
+    )
+
+    # Beschreibung (menschenlesbar, auf Deutsch)
+    description = Column(
+        Text,
+        nullable=True,
+        comment="Menschenlesbare Beschreibung der Aenderung"
+    )
+
+    # Zeitstempel (immutable)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    document = relationship("Document", backref="finance_history")
+    user = relationship("User", backref="finance_document_changes")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_finance_doc_history_document_id", "document_id"),
+        Index("ix_finance_doc_history_user_id", "user_id"),
+        Index("ix_finance_doc_history_action", "action"),
+        Index("ix_finance_doc_history_created_at", "created_at"),
+        Index("ix_finance_doc_history_doc_created", "document_id", "created_at"),
+        CheckConstraint(
+            "action IN ('created', 'updated', 'deleted', 'restored', "
+            "'category_changed', 'year_changed', 'ocr_completed', "
+            "'deadline_set', 'deadline_removed', 'bulk_update')",
+            name="ck_finance_doc_history_action"
         ),
     )

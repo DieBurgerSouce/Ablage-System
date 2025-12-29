@@ -38,6 +38,11 @@ class NotificationType:
     BATCH_COMPLETED = "batch_completed"
     SYSTEM_ALERT = "system_alert"
     PASSWORD_RESET_CONFIRMATION = "password_reset_confirmation"
+    # Export-spezifische Typen
+    EXPORT_COMPLETED = "export_completed"
+    EXPORT_FAILED = "export_failed"
+    SCHEDULED_EXPORT_COMPLETED = "scheduled_export_completed"
+    SCHEDULED_EXPORT_FAILED = "scheduled_export_failed"
 
 
 class NotificationChannel:
@@ -214,6 +219,85 @@ Ablage-System Team
 
 ---
 Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
+            """.strip(),
+        },
+        NotificationType.EXPORT_COMPLETED: {
+            "subject": "Export erfolgreich abgeschlossen",
+            "body": """
+Sehr geehrter Benutzer,
+
+Ihr Export wurde erfolgreich abgeschlossen.
+
+Export-Details:
+- Dokumente exportiert: {documents_exported}
+- Format: {export_format}
+- Gesamtgröße: {total_size}
+- Verarbeitungszeit: {processing_time}
+
+Sie können die exportierten Daten jetzt herunterladen.
+
+Mit freundlichen Grüßen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.EXPORT_FAILED: {
+            "subject": "Export fehlgeschlagen",
+            "body": """
+Sehr geehrter Benutzer,
+
+Ihr Export ist leider fehlgeschlagen.
+
+Fehlerdetails:
+- Fehler: {error_message}
+- Verarbeitete Dokumente: {processed_count}/{total_count}
+- Zeitpunkt: {failed_at}
+
+Bitte versuchen Sie es erneut oder kontaktieren Sie den Support.
+
+Mit freundlichen Grüßen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.SCHEDULED_EXPORT_COMPLETED: {
+            "subject": "Geplanter Export '{export_name}' abgeschlossen",
+            "body": """
+Sehr geehrter Benutzer,
+
+Ihr geplanter Export wurde erfolgreich ausgeführt.
+
+Export-Name: {export_name}
+Ausführungszeitpunkt: {executed_at}
+
+Ergebnis:
+- Dokumente exportiert: {documents_exported}
+- Format: {export_format}
+- Status: Erfolgreich
+
+Der nächste geplante Export ist für {next_run} vorgesehen.
+
+Mit freundlichen Grüßen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.SCHEDULED_EXPORT_FAILED: {
+            "subject": "Geplanter Export '{export_name}' fehlgeschlagen",
+            "body": """
+Sehr geehrter Benutzer,
+
+Ihr geplanter Export ist leider fehlgeschlagen.
+
+Export-Name: {export_name}
+Ausführungszeitpunkt: {executed_at}
+
+Fehlerdetails:
+- Fehler: {error_message}
+- Verarbeitete Dokumente: {processed_count}/{total_count}
+
+Der nächste Versuch ist für {next_run} geplant.
+Bei wiederholten Fehlern überprüfen Sie bitte die Export-Konfiguration.
+
+Mit freundlichen Grüßen,
+Ablage-System
             """.strip(),
         },
     }
