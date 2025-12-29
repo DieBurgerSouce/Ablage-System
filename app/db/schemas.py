@@ -43,6 +43,16 @@ class DocumentType(str, Enum):
     REPORT = "report"
     OTHER = "other"
     UNKNOWN = "unknown"
+    # Finanz-Dokumenttypen
+    TAX_ASSESSMENT = "tax_assessment"           # Grundabgabenbescheid
+    TAX_NOTICE = "tax_notice"                   # Steuerbescheid
+    TAX_PREPAYMENT = "tax_prepayment"           # Vorauszahlung
+    TAX_RETURN = "tax_return"                   # Steuererklaerung
+    TAX_CORRESPONDENCE = "tax_correspondence"   # Finanzamt-Korrespondenz
+    PAYROLL = "payroll"                         # Lohn/Gehalt
+    SOCIAL_SECURITY = "social_security"         # Sozialversicherung
+    TRADE_ASSOCIATION = "trade_association"     # Berufsgenossenschaft
+    BANK_STATEMENT = "bank_statement"           # Kontoauszug
 
 
 class DataCategory(str, Enum):
@@ -3607,10 +3617,47 @@ class DocumentPaymentStatus(str, Enum):
     TEILBEZAHLT = "teilbezahlt"  # Teilweise bezahlt
 
 
+class FinanceDocumentCategory(str, Enum):
+    """Finanz-Dokument-Kategorien (18 Kategorien in 4 Paketen)."""
+    # Steuern-Paket
+    GRUNDABGABENBESCHEID = "grundabgabenbescheid"
+    STEUERBESCHEIDE = "steuerbescheide"
+    VORAUSZAHLUNGEN = "vorauszahlungen"
+    STEUERERKLAERUNGEN = "steuererklaerungen"
+    FINANZAMT_KORRESPONDENZ = "finanzamt_korrespondenz"
+    # Personal-Paket
+    LOHN_GEHALT = "lohn_gehalt"
+    SOZIALVERSICHERUNG = "sozialversicherung"
+    BERUFSGENOSSENSCHAFT = "berufsgenossenschaft"
+    ARBEITSVERTRAEGE = "arbeitsvertraege"
+    # Versicherungs-Paket
+    BETRIEBSHAFTPFLICHT = "betriebshaftpflicht"
+    SACHVERSICHERUNGEN = "sachversicherungen"
+    KFZ_VERSICHERUNG = "kfz_versicherung"
+    RECHTSSCHUTZ = "rechtsschutz"
+    # Bank-Paket
+    KONTOAUSZUEGE = "kontoauszuege"
+    KREDITVERTRAEGE = "kreditvertraege"
+    BUERGSCHAFTEN = "buergschaften"
+    DARLEHEN = "darlehen"
+
+
+class TaxType(str, Enum):
+    """Steuerart fuer Finanz-Dokumente."""
+    EINKOMMENSTEUER = "einkommensteuer"
+    KOERPERSCHAFTSTEUER = "koerperschaftsteuer"
+    GEWERBESTEUER = "gewerbesteuer"
+    UMSATZSTEUER = "umsatzsteuer"
+    LOHNSTEUER = "lohnsteuer"
+    GRUNDSTEUER = "grundsteuer"
+    SONSTIGE = "sonstige"
+
+
 class EntityType(str, Enum):
     """Entitaetstyp fuer Ablage-Navigation."""
     CUSTOMER = "customer"  # Kunde
     SUPPLIER = "supplier"  # Lieferant
+    FINANCE = "finance"    # Finanzen (Jahr-basiert)
 
 
 class CategoryDocumentFilter(BaseModel):
@@ -3849,3 +3896,421 @@ class BulkOperationResultAblage(BaseModel):
     failed_ids: List[uuid.UUID] = Field(default_factory=list)
     errors: List[str] = Field(default_factory=list)
     message: str  # Deutsche Nachricht
+
+
+# ============================================================================
+# FINANCE (FINANZEN) SCHEMAS
+# ============================================================================
+
+class FinanceYearResponse(BaseModel):
+    """Response fuer ein einzelnes Finanz-Jahr."""
+    id: str = Field(..., description="Jahr als String (z.B. '2024')")
+    year: int = Field(..., ge=2000, le=2100)
+    is_active: bool = Field(False, description="Aktuelles Jahr")
+    last_document_date: Optional[datetime] = Field(None, description="Datum des letzten Dokuments")
+    document_counts: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Dokument-Anzahl pro Kategorie"
+    )
+    total_documents: int = Field(0, ge=0)
+    total_nachzahlung: float = Field(0.0, ge=0, description="Summe Nachzahlungen in EUR")
+    total_erstattung: float = Field(0.0, ge=0, description="Summe Erstattungen in EUR")
+    pending_deadlines: int = Field(0, ge=0, description="Anzahl offener Fristen")
+
+
+class FinanceYearListResponse(BaseModel):
+    """Response fuer Liste aller Finanz-Jahre."""
+    items: List[FinanceYearResponse]
+    total: int = Field(0, ge=0)
+
+
+class FinanceAggregationsResponse(BaseModel):
+    """Aggregierte Statistiken fuer Finanzen (gesamt oder pro Jahr)."""
+    total_documents: int = Field(0, ge=0)
+    total_nachzahlung: float = Field(0.0, ge=0, description="Summe aller Nachzahlungen")
+    total_erstattung: float = Field(0.0, ge=0, description="Summe aller Erstattungen")
+    saldo: float = Field(0.0, description="Erstattung - Nachzahlung (positiv = Guthaben)")
+    pending_deadlines: int = Field(0, ge=0, description="Offene Fristen")
+    overdue_deadlines: int = Field(0, ge=0, description="Ueberfaellige Fristen")
+    documents_by_category: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Dokumente pro Kategorie"
+    )
+    documents_by_package: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Dokumente pro Paket (steuern, personal, versicherung, bank)"
+    )
+
+
+class FinanceCategoryFilter(BaseModel):
+    """Filter fuer Finanz-Kategorie-Dokumentenliste."""
+    year: int = Field(..., ge=2000, le=2100, description="Jahr")
+    category: str = Field(..., description="Kategorie-Slug")
+
+    # Optional: Textsuche
+    search: Optional[str] = Field(None, max_length=200)
+
+    # Optional: Datumsfilter
+    date_from: Optional[datetime] = None
+    date_to: Optional[datetime] = None
+
+    # Optional: Betragsfilter
+    amount_min: Optional[float] = Field(None, ge=0)
+    amount_max: Optional[float] = Field(None, ge=0)
+
+    # Optional: Steuerart-Filter
+    steuerart: Optional[TaxType] = None
+
+    # Pagination
+    page: int = Field(0, ge=0)
+    page_size: int = Field(25, ge=1, le=100)
+
+    # Sortierung
+    sort_by: str = Field("document_date")
+    sort_order: str = Field("desc", pattern="^(asc|desc)$")
+
+
+class FinanceCategoryDocumentResponse(BaseModel):
+    """Einzelnes Dokument in der Finanz-Kategorie-Ansicht.
+
+    Erweitert CategoryDocumentResponse um Finanz-spezifische Felder.
+    """
+    id: uuid.UUID
+    filename: str
+    original_filename: str
+
+    # Typ und Status
+    document_type: DocumentType
+    processing_status: ProcessingStatus
+
+    # Metadaten
+    file_size: int
+    page_count: int
+    mime_type: Optional[str] = None
+
+    # Zeitstempel
+    created_at: datetime
+    updated_at: datetime
+    document_date: Optional[datetime] = None
+
+    # OCR-Ergebnis
+    ocr_confidence: Optional[float] = None
+
+    # Standard-Felder
+    document_number: Optional[str] = None
+    total_amount: Optional[float] = None
+    currency: str = "EUR"
+
+    # Finanz-spezifische Felder
+    einspruchsfrist: Optional[datetime] = Field(None, description="Einspruchsfrist")
+    aktenzeichen: Optional[str] = Field(None, description="Finanzamt-Aktenzeichen")
+    steuernummer: Optional[str] = Field(None, description="Steuernummer")
+    finanzamt: Optional[str] = Field(None, description="Name des Finanzamts")
+    steuerart: Optional[TaxType] = Field(None, description="Art der Steuer")
+    zeitraum: Optional[str] = Field(None, description="Steuerzeitraum (z.B. '2023', 'Q1/2024')")
+    nachzahlung: Optional[float] = Field(None, ge=0, description="Nachzahlung in EUR")
+    erstattung: Optional[float] = Field(None, ge=0, description="Erstattung in EUR")
+    versicherungsnummer: Optional[str] = Field(None, description="Versicherungs-Policennummer")
+    vertragsnummer: Optional[str] = Field(None, description="Vertragsnummer")
+
+    # Tags
+    tags: List[str] = Field(default_factory=list)
+
+    # Vorschau-URLs
+    thumbnail_url: Optional[str] = None
+    preview_url: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FinanceCategoryDocumentListResponse(BaseModel):
+    """Paginierte Liste von Finanz-Kategorie-Dokumenten."""
+    items: List[FinanceCategoryDocumentResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class FinanceCategoryAggregations(BaseModel):
+    """Aggregationen fuer eine Finanz-Kategorie."""
+    category: str
+    year: int
+    total_documents: int = 0
+    total_nachzahlung: float = 0.0
+    total_erstattung: float = 0.0
+    pending_deadlines: int = 0
+    overdue_deadlines: int = 0
+    earliest_date: Optional[datetime] = None
+    latest_date: Optional[datetime] = None
+
+
+# =============================================================================
+# FINANCE DOCUMENT CRUD SCHEMAS
+# =============================================================================
+
+class FinanceDocumentUpdateRequest(BaseModel):
+    """Request fuer Aktualisierung von Finanz-Dokument-Feldern."""
+    # Kategorie-Aenderung
+    category: Optional[str] = Field(None, description="Neue Finanz-Kategorie")
+
+    # Finanz-spezifische Felder
+    einspruchsfrist: Optional[datetime] = Field(None, description="Einspruchsfrist")
+    aktenzeichen: Optional[str] = Field(None, description="Finanzamt-Aktenzeichen")
+    steuernummer: Optional[str] = Field(None, description="Steuernummer")
+    finanzamt: Optional[str] = Field(None, description="Name des Finanzamts")
+    steuerart: Optional[TaxType] = Field(None, description="Art der Steuer")
+    zeitraum: Optional[str] = Field(None, description="Steuerzeitraum")
+    nachzahlung: Optional[float] = Field(None, ge=0, description="Nachzahlung in EUR")
+    erstattung: Optional[float] = Field(None, ge=0, description="Erstattung in EUR")
+    versicherungsnummer: Optional[str] = Field(None, description="Versicherungs-Policennummer")
+    vertragsnummer: Optional[str] = Field(None, description="Vertragsnummer")
+
+    # Standard-Felder
+    document_date: Optional[datetime] = Field(None, description="Dokumentdatum")
+    document_number: Optional[str] = Field(None, description="Dokumentnummer")
+    total_amount: Optional[float] = Field(None, description="Gesamtbetrag")
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class FinanceDocumentUploadResponse(BaseModel):
+    """Response nach erfolgreichem Finance-Dokument-Upload."""
+    id: uuid.UUID
+    filename: str
+    original_filename: str
+    category: str
+    year: int
+    document_type: DocumentType
+    processing_status: ProcessingStatus
+    file_size: int
+    created_at: datetime
+    ocr_job_id: Optional[str] = Field(None, description="ID des OCR-Jobs falls gestartet")
+    message: str = "Dokument erfolgreich hochgeladen"
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FinanceDocumentDeleteResponse(BaseModel):
+    """Response nach Loeschung eines Finance-Dokuments."""
+    id: uuid.UUID
+    deleted: bool = True
+    deleted_at: datetime
+    message: str = "Dokument erfolgreich geloescht"
+
+
+# =============================================================================
+# BULK OPERATION SCHEMAS
+# =============================================================================
+
+class FinanceBulkDeleteRequest(BaseModel):
+    """Request fuer Bulk-Loeschung von Finanz-Dokumenten."""
+    document_ids: list[uuid.UUID] = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="Liste der zu loeschenden Dokument-IDs (max 100)"
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "document_ids": ["550e8400-e29b-41d4-a716-446655440000"]
+            }
+        }
+    )
+
+
+class FinanceBulkDeleteResponse(BaseModel):
+    """Response nach Bulk-Loeschung."""
+    deleted_count: int = Field(..., description="Anzahl geloeschter Dokumente")
+    failed_count: int = Field(0, description="Anzahl fehlgeschlagener Loeschungen")
+    deleted_ids: list[uuid.UUID] = Field(default_factory=list, description="Geloeschte IDs")
+    failed_ids: list[uuid.UUID] = Field(default_factory=list, description="Fehlgeschlagene IDs")
+    errors: list[str] = Field(default_factory=list, description="Fehlermeldungen")
+    message: str = "Bulk-Loeschung abgeschlossen"
+
+
+class FinanceBulkUpdateRequest(BaseModel):
+    """Request fuer Bulk-Aktualisierung von Finanz-Dokumenten."""
+    document_ids: list[uuid.UUID] = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="Liste der zu aktualisierenden Dokument-IDs"
+    )
+    # Optionale Felder die auf alle Dokumente angewendet werden
+    category: Optional[str] = Field(None, description="Neue Kategorie fuer alle")
+    year: Optional[int] = Field(None, ge=2000, le=2100, description="Neues Jahr fuer alle")
+    steuerart: Optional[str] = Field(None, description="Neue Steuerart")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "document_ids": ["550e8400-e29b-41d4-a716-446655440000"],
+                "category": "steuerbescheide",
+                "year": 2024
+            }
+        }
+    )
+
+
+class FinanceBulkUpdateResponse(BaseModel):
+    """Response nach Bulk-Aktualisierung."""
+    updated_count: int = Field(..., description="Anzahl aktualisierter Dokumente")
+    failed_count: int = Field(0, description="Anzahl fehlgeschlagener Updates")
+    updated_ids: list[uuid.UUID] = Field(default_factory=list, description="Aktualisierte IDs")
+    failed_ids: list[uuid.UUID] = Field(default_factory=list, description="Fehlgeschlagene IDs")
+    errors: list[str] = Field(default_factory=list, description="Fehlermeldungen")
+    message: str = "Bulk-Aktualisierung abgeschlossen"
+
+
+class FinanceExportFormat(str, Enum):
+    """Unterstuetzte Export-Formate."""
+    JSON = "json"
+    CSV = "csv"
+    ZIP = "zip"
+
+
+class FinanceExportRequest(BaseModel):
+    """Request fuer Dokument-Export."""
+    document_ids: Optional[list[uuid.UUID]] = Field(
+        None,
+        max_length=500,
+        description="Spezifische Dokument-IDs (leer = alle)"
+    )
+    year: Optional[int] = Field(None, ge=2000, le=2100, description="Jahr-Filter")
+    category: Optional[str] = Field(None, description="Kategorie-Filter")
+    format: FinanceExportFormat = Field(
+        FinanceExportFormat.ZIP,
+        description="Export-Format (json, csv, zip)"
+    )
+    include_files: bool = Field(
+        True,
+        description="Original-Dateien in ZIP einschliessen"
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "year": 2024,
+                "category": "steuerbescheide",
+                "format": "zip",
+                "include_files": True
+            }
+        }
+    )
+
+
+class FinanceExportResponse(BaseModel):
+    """Response mit Export-Download-Informationen."""
+    export_id: str = Field(..., description="Export-Job-ID")
+    status: str = Field("pending", description="Export-Status")
+    download_url: Optional[str] = Field(None, description="Download-URL (wenn fertig)")
+    document_count: int = Field(0, description="Anzahl exportierter Dokumente")
+    file_size_bytes: Optional[int] = Field(None, description="Dateigroesse in Bytes")
+    expires_at: Optional[datetime] = Field(None, description="URL-Ablaufzeit")
+    message: str = "Export gestartet"
+
+
+# =============================================================================
+# DEADLINE SCHEMAS
+# =============================================================================
+
+class DeadlineType(str, Enum):
+    """Frist-Typ fuer Finanz-Dokumente."""
+    EINSPRUCHSFRIST = "einspruchsfrist"
+    ZAHLUNGSFRIST = "zahlungsfrist"
+    ABGABEFRIST = "abgabefrist"
+    SONSTIGE = "sonstige"
+
+
+class FinanceDeadlineItem(BaseModel):
+    """Einzelne Frist mit Dokument-Referenz."""
+    id: str = Field(..., description="Frist-ID")
+    document_id: uuid.UUID = Field(..., description="Dokument-ID")
+    document_name: str = Field(..., description="Dokument-Name")
+    category: str = Field(..., description="Kategorie-ID")
+    category_label: str = Field(..., description="Kategorie-Label")
+    year: str = Field(..., description="Jahr")
+    deadline: datetime = Field(..., description="Frist-Datum")
+    deadline_type: DeadlineType = Field(..., description="Frist-Typ")
+    aktenzeichen: Optional[str] = Field(None, description="Aktenzeichen")
+    days_until: int = Field(..., description="Tage bis zur Frist (negativ = ueberfaellig)")
+
+
+class FinanceDeadlineListResponse(BaseModel):
+    """Response mit Liste aller Fristen."""
+    items: List[FinanceDeadlineItem] = Field(default_factory=list, description="Fristen")
+    total: int = Field(0, description="Gesamtanzahl")
+    overdue_count: int = Field(0, description="Anzahl ueberfaelliger Fristen")
+    urgent_count: int = Field(0, description="Anzahl dringender Fristen (7 Tage)")
+    upcoming_count: int = Field(0, description="Anzahl anstehender Fristen (30 Tage)")
+
+
+# =============================================================================
+# FINANCE DOCUMENT HISTORY SCHEMAS
+# =============================================================================
+
+
+class FinanceHistoryAction(str, Enum):
+    """Aktionstypen fuer Finanz-Dokument-History."""
+    CREATED = "created"
+    UPDATED = "updated"
+    DELETED = "deleted"
+    RESTORED = "restored"
+    CATEGORY_CHANGED = "category_changed"
+    YEAR_CHANGED = "year_changed"
+    OCR_COMPLETED = "ocr_completed"
+    DEADLINE_SET = "deadline_set"
+    DEADLINE_REMOVED = "deadline_removed"
+    BULK_UPDATE = "bulk_update"
+
+
+class FinanceDocumentHistoryItem(BaseModel):
+    """Einzelner History-Eintrag fuer ein Finanz-Dokument."""
+    id: uuid.UUID = Field(..., description="History-Eintrag-ID")
+    document_id: uuid.UUID = Field(..., description="Dokument-ID")
+    user_id: Optional[uuid.UUID] = Field(None, description="Benutzer-ID")
+    user_email: Optional[str] = Field(None, description="Benutzer-Email")
+    user_name: Optional[str] = Field(None, description="Benutzername")
+
+    # Aktion
+    action: FinanceHistoryAction = Field(..., description="Aktionstyp")
+    description: Optional[str] = Field(None, description="Menschenlesbare Beschreibung")
+
+    # Aenderungsdetails
+    old_values: Dict[str, Any] = Field(default_factory=dict, description="Vorherige Werte")
+    new_values: Dict[str, Any] = Field(default_factory=dict, description="Neue Werte")
+    changed_fields: List[str] = Field(default_factory=list, description="Geaenderte Felder")
+
+    # Kontext
+    ip_address: Optional[str] = Field(None, description="IP-Adresse")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Zusaetzliche Metadaten")
+
+    # Zeitstempel
+    created_at: datetime = Field(..., description="Zeitpunkt der Aenderung")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FinanceDocumentHistoryResponse(BaseModel):
+    """Response mit vollstaendiger History eines Finanz-Dokuments."""
+    document_id: uuid.UUID = Field(..., description="Dokument-ID")
+    document_name: str = Field(..., description="Dokumentname")
+    items: List[FinanceDocumentHistoryItem] = Field(default_factory=list, description="History-Eintraege")
+    total: int = Field(0, description="Gesamtanzahl Eintraege")
+
+
+class FinanceDocumentHistoryCreate(BaseModel):
+    """Schema zum Erstellen eines History-Eintrags (intern)."""
+    document_id: uuid.UUID
+    user_id: Optional[uuid.UUID] = None
+    action: FinanceHistoryAction
+    old_values: Dict[str, Any] = Field(default_factory=dict)
+    new_values: Dict[str, Any] = Field(default_factory=dict)
+    changed_fields: List[str] = Field(default_factory=list)
+    description: Optional[str] = None
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)

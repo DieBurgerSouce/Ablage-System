@@ -410,6 +410,12 @@ require_backup_manage = require_permission("backups:manage")
 require_system_read = require_permission("system:read")
 require_system_manage = require_permission("system:manage")
 
+# Finanzen-spezifische Kurzformen
+require_finance_read = require_permission("finance:read")
+require_finance_write = require_permission("finance:write")
+require_finance_delete = require_any_permission("finance:delete", "finance:manage")
+require_finance_manage = require_permission("finance:manage")
+
 # Rollen-basierte Kurzformen
 require_admin = require_role("admin")
 require_manager = require_any_role("admin", "manager")
