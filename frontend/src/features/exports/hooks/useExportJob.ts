@@ -12,8 +12,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   exportsService,
-  ExportJobStatusResponse,
-  ExportJobStatus,
+  type ExportJobStatusResponse,
+  type ExportJobStatus,
+  type ExportJobListItem,
 } from '@/lib/api/services/exports';
 
 interface UseExportJobOptions {
@@ -272,7 +273,7 @@ export function useExportJobList(
   statusFilter?: ExportJobStatus,
   refreshInterval?: number
 ) {
-  const [jobs, setJobs] = useState<ExportJobStatusResponse[]>([]);
+  const [jobs, setJobs] = useState<ExportJobListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -280,7 +281,7 @@ export function useExportJobList(
   const fetchJobs = useCallback(async () => {
     try {
       const response = await exportsService.listJobs(statusFilter, 50, 0);
-      setJobs(response.jobs as unknown as ExportJobStatusResponse[]);
+      setJobs(response.jobs);
       setTotal(response.total);
       setError(null);
     } catch (err) {

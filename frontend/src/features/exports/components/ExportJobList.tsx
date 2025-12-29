@@ -52,8 +52,8 @@ import {
 } from 'lucide-react';
 import { useExportJobList } from '../hooks/useExportJob';
 import {
-  ExportJobStatus,
-  ExportFormat,
+  type ExportJobStatus,
+  type ExportFormat,
   exportsService,
 } from '@/lib/api/services/exports';
 

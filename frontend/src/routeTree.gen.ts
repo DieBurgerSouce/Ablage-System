@@ -18,6 +18,7 @@ import { Route as LoginRouteImport } from './app/routes/login'
 import { Route as LieferantenRouteImport } from './app/routes/lieferanten'
 import { Route as KundenRouteImport } from './app/routes/kunden'
 import { Route as JobsRouteImport } from './app/routes/jobs'
+import { Route as FinanzenRouteImport } from './app/routes/finanzen'
 import { Route as DocumentGroupsRouteImport } from './app/routes/document-groups'
 import { Route as ChatRouteImport } from './app/routes/chat'
 import { Route as BusinessEntitiesRouteImport } from './app/routes/business-entities'
@@ -26,10 +27,12 @@ import { Route as AdminRouteImport } from './app/routes/admin'
 import { Route as IndexRouteImport } from './app/routes/index'
 import { Route as LieferantenIndexRouteImport } from './app/routes/lieferanten.index'
 import { Route as KundenIndexRouteImport } from './app/routes/kunden.index'
+import { Route as FinanzenIndexRouteImport } from './app/routes/finanzen.index'
 import { Route as AdminIndexRouteImport } from './app/routes/admin.index'
 import { Route as ValidationQueueIdRouteImport } from './app/routes/validation-queue.$id'
 import { Route as LieferantenSupplierIdRouteImport } from './app/routes/lieferanten.$supplierId'
 import { Route as KundenCustomerIdRouteImport } from './app/routes/kunden.$customerId'
+import { Route as FinanzenYearRouteImport } from './app/routes/finanzen.$year'
 import { Route as DocumentsDocumentIdRouteImport } from './app/routes/documents.$documentId'
 import { Route as DocumentGroupsIdRouteImport } from './app/routes/document-groups.$id'
 import { Route as BusinessEntitiesIdRouteImport } from './app/routes/business-entities.$id'
@@ -44,11 +47,13 @@ import { Route as AdminDatevRouteImport } from './app/routes/admin.datev'
 import { Route as AdminBankingRouteImport } from './app/routes/admin.banking'
 import { Route as LieferantenSupplierIdIndexRouteImport } from './app/routes/lieferanten.$supplierId.index'
 import { Route as KundenCustomerIdIndexRouteImport } from './app/routes/kunden.$customerId.index'
+import { Route as FinanzenYearIndexRouteImport } from './app/routes/finanzen.$year.index'
 import { Route as AdminMahnungenIndexRouteImport } from './app/routes/admin.mahnungen.index'
 import { Route as AdminDatevIndexRouteImport } from './app/routes/admin.datev.index'
 import { Route as AdminBankingIndexRouteImport } from './app/routes/admin.banking.index'
 import { Route as LieferantenSupplierIdFolderIdRouteImport } from './app/routes/lieferanten.$supplierId.$folderId'
 import { Route as KundenCustomerIdFolderIdRouteImport } from './app/routes/kunden.$customerId.$folderId'
+import { Route as FinanzenYearCategoryRouteImport } from './app/routes/finanzen.$year.$category'
 import { Route as DocumentsDocumentIdRelationshipsRouteImport } from './app/routes/documents.$documentId.relationships'
 import { Route as AdminOcrBackendsBackendRouteImport } from './app/routes/admin.ocr-backends.$backend'
 import { Route as AdminMahnungenMahnstoppRouteImport } from './app/routes/admin.mahnungen.mahnstopp'
@@ -116,6 +121,11 @@ const JobsRoute = JobsRouteImport.update({
   path: '/jobs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FinanzenRoute = FinanzenRouteImport.update({
+  id: '/finanzen',
+  path: '/finanzen',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocumentGroupsRoute = DocumentGroupsRouteImport.update({
   id: '/document-groups',
   path: '/document-groups',
@@ -156,6 +166,11 @@ const KundenIndexRoute = KundenIndexRouteImport.update({
   path: '/',
   getParentRoute: () => KundenRoute,
 } as any)
+const FinanzenIndexRoute = FinanzenIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => FinanzenRoute,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -175,6 +190,11 @@ const KundenCustomerIdRoute = KundenCustomerIdRouteImport.update({
   id: '/$customerId',
   path: '/$customerId',
   getParentRoute: () => KundenRoute,
+} as any)
+const FinanzenYearRoute = FinanzenYearRouteImport.update({
+  id: '/$year',
+  path: '/$year',
+  getParentRoute: () => FinanzenRoute,
 } as any)
 const DocumentsDocumentIdRoute = DocumentsDocumentIdRouteImport.update({
   id: '/documents/$documentId',
@@ -247,6 +267,11 @@ const KundenCustomerIdIndexRoute = KundenCustomerIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => KundenCustomerIdRoute,
 } as any)
+const FinanzenYearIndexRoute = FinanzenYearIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => FinanzenYearRoute,
+} as any)
 const AdminMahnungenIndexRoute = AdminMahnungenIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -274,6 +299,11 @@ const KundenCustomerIdFolderIdRoute =
     path: '/$folderId',
     getParentRoute: () => KundenCustomerIdRoute,
   } as any)
+const FinanzenYearCategoryRoute = FinanzenYearCategoryRouteImport.update({
+  id: '/$category',
+  path: '/$category',
+  getParentRoute: () => FinanzenYearRoute,
+} as any)
 const DocumentsDocumentIdRelationshipsRoute =
   DocumentsDocumentIdRelationshipsRouteImport.update({
     id: '/relationships',
@@ -394,6 +424,7 @@ export interface FileRoutesByFullPath {
   '/business-entities': typeof BusinessEntitiesRouteWithChildren
   '/chat': typeof ChatRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
+  '/finanzen': typeof FinanzenRouteWithChildren
   '/jobs': typeof JobsRoute
   '/kunden': typeof KundenRouteWithChildren
   '/lieferanten': typeof LieferantenRouteWithChildren
@@ -415,10 +446,12 @@ export interface FileRoutesByFullPath {
   '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
+  '/finanzen/$year': typeof FinanzenYearRouteWithChildren
   '/kunden/$customerId': typeof KundenCustomerIdRouteWithChildren
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/finanzen/': typeof FinanzenIndexRoute
   '/kunden/': typeof KundenIndexRoute
   '/lieferanten/': typeof LieferantenIndexRoute
   '/admin/banking/accounts': typeof AdminBankingAccountsRoute
@@ -439,11 +472,13 @@ export interface FileRoutesByFullPath {
   '/admin/mahnungen/mahnstopp': typeof AdminMahnungenMahnstoppRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
+  '/finanzen/$year/$category': typeof FinanzenYearCategoryRoute
   '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
   '/admin/banking/': typeof AdminBankingIndexRoute
   '/admin/datev/': typeof AdminDatevIndexRoute
   '/admin/mahnungen/': typeof AdminMahnungenIndexRoute
+  '/finanzen/$year/': typeof FinanzenYearIndexRoute
   '/kunden/$customerId/': typeof KundenCustomerIdIndexRoute
   '/lieferanten/$supplierId/': typeof LieferantenSupplierIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
@@ -474,6 +509,7 @@ export interface FileRoutesByTo {
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin': typeof AdminIndexRoute
+  '/finanzen': typeof FinanzenIndexRoute
   '/kunden': typeof KundenIndexRoute
   '/lieferanten': typeof LieferantenIndexRoute
   '/admin/banking/accounts': typeof AdminBankingAccountsRoute
@@ -494,11 +530,13 @@ export interface FileRoutesByTo {
   '/admin/mahnungen/mahnstopp': typeof AdminMahnungenMahnstoppRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
+  '/finanzen/$year/$category': typeof FinanzenYearCategoryRoute
   '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
   '/admin/banking': typeof AdminBankingIndexRoute
   '/admin/datev': typeof AdminDatevIndexRoute
   '/admin/mahnungen': typeof AdminMahnungenIndexRoute
+  '/finanzen/$year': typeof FinanzenYearIndexRoute
   '/kunden/$customerId': typeof KundenCustomerIdIndexRoute
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
@@ -513,6 +551,7 @@ export interface FileRoutesById {
   '/business-entities': typeof BusinessEntitiesRouteWithChildren
   '/chat': typeof ChatRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
+  '/finanzen': typeof FinanzenRouteWithChildren
   '/jobs': typeof JobsRoute
   '/kunden': typeof KundenRouteWithChildren
   '/lieferanten': typeof LieferantenRouteWithChildren
@@ -534,10 +573,12 @@ export interface FileRoutesById {
   '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
+  '/finanzen/$year': typeof FinanzenYearRouteWithChildren
   '/kunden/$customerId': typeof KundenCustomerIdRouteWithChildren
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/finanzen/': typeof FinanzenIndexRoute
   '/kunden/': typeof KundenIndexRoute
   '/lieferanten/': typeof LieferantenIndexRoute
   '/admin/banking/accounts': typeof AdminBankingAccountsRoute
@@ -558,11 +599,13 @@ export interface FileRoutesById {
   '/admin/mahnungen/mahnstopp': typeof AdminMahnungenMahnstoppRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
+  '/finanzen/$year/$category': typeof FinanzenYearCategoryRoute
   '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
   '/admin/banking/': typeof AdminBankingIndexRoute
   '/admin/datev/': typeof AdminDatevIndexRoute
   '/admin/mahnungen/': typeof AdminMahnungenIndexRoute
+  '/finanzen/$year/': typeof FinanzenYearIndexRoute
   '/kunden/$customerId/': typeof KundenCustomerIdIndexRoute
   '/lieferanten/$supplierId/': typeof LieferantenSupplierIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
@@ -578,6 +621,7 @@ export interface FileRouteTypes {
     | '/business-entities'
     | '/chat'
     | '/document-groups'
+    | '/finanzen'
     | '/jobs'
     | '/kunden'
     | '/lieferanten'
@@ -599,10 +643,12 @@ export interface FileRouteTypes {
     | '/business-entities/$id'
     | '/document-groups/$id'
     | '/documents/$documentId'
+    | '/finanzen/$year'
     | '/kunden/$customerId'
     | '/lieferanten/$supplierId'
     | '/validation-queue/$id'
     | '/admin/'
+    | '/finanzen/'
     | '/kunden/'
     | '/lieferanten/'
     | '/admin/banking/accounts'
@@ -623,11 +669,13 @@ export interface FileRouteTypes {
     | '/admin/mahnungen/mahnstopp'
     | '/admin/ocr-backends/$backend'
     | '/documents/$documentId/relationships'
+    | '/finanzen/$year/$category'
     | '/kunden/$customerId/$folderId'
     | '/lieferanten/$supplierId/$folderId'
     | '/admin/banking/'
     | '/admin/datev/'
     | '/admin/mahnungen/'
+    | '/finanzen/$year/'
     | '/kunden/$customerId/'
     | '/lieferanten/$supplierId/'
     | '/admin/ocr-training/batch/$id'
@@ -658,6 +706,7 @@ export interface FileRouteTypes {
     | '/documents/$documentId'
     | '/validation-queue/$id'
     | '/admin'
+    | '/finanzen'
     | '/kunden'
     | '/lieferanten'
     | '/admin/banking/accounts'
@@ -678,11 +727,13 @@ export interface FileRouteTypes {
     | '/admin/mahnungen/mahnstopp'
     | '/admin/ocr-backends/$backend'
     | '/documents/$documentId/relationships'
+    | '/finanzen/$year/$category'
     | '/kunden/$customerId/$folderId'
     | '/lieferanten/$supplierId/$folderId'
     | '/admin/banking'
     | '/admin/datev'
     | '/admin/mahnungen'
+    | '/finanzen/$year'
     | '/kunden/$customerId'
     | '/lieferanten/$supplierId'
     | '/admin/ocr-training/batch/$id'
@@ -696,6 +747,7 @@ export interface FileRouteTypes {
     | '/business-entities'
     | '/chat'
     | '/document-groups'
+    | '/finanzen'
     | '/jobs'
     | '/kunden'
     | '/lieferanten'
@@ -717,10 +769,12 @@ export interface FileRouteTypes {
     | '/business-entities/$id'
     | '/document-groups/$id'
     | '/documents/$documentId'
+    | '/finanzen/$year'
     | '/kunden/$customerId'
     | '/lieferanten/$supplierId'
     | '/validation-queue/$id'
     | '/admin/'
+    | '/finanzen/'
     | '/kunden/'
     | '/lieferanten/'
     | '/admin/banking/accounts'
@@ -741,11 +795,13 @@ export interface FileRouteTypes {
     | '/admin/mahnungen/mahnstopp'
     | '/admin/ocr-backends/$backend'
     | '/documents/$documentId/relationships'
+    | '/finanzen/$year/$category'
     | '/kunden/$customerId/$folderId'
     | '/lieferanten/$supplierId/$folderId'
     | '/admin/banking/'
     | '/admin/datev/'
     | '/admin/mahnungen/'
+    | '/finanzen/$year/'
     | '/kunden/$customerId/'
     | '/lieferanten/$supplierId/'
     | '/admin/ocr-training/batch/$id'
@@ -760,6 +816,7 @@ export interface RootRouteChildren {
   BusinessEntitiesRoute: typeof BusinessEntitiesRouteWithChildren
   ChatRoute: typeof ChatRoute
   DocumentGroupsRoute: typeof DocumentGroupsRouteWithChildren
+  FinanzenRoute: typeof FinanzenRouteWithChildren
   JobsRoute: typeof JobsRoute
   KundenRoute: typeof KundenRouteWithChildren
   LieferantenRoute: typeof LieferantenRouteWithChildren
@@ -837,6 +894,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JobsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/finanzen': {
+      id: '/finanzen'
+      path: '/finanzen'
+      fullPath: '/finanzen'
+      preLoaderRoute: typeof FinanzenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/document-groups': {
       id: '/document-groups'
       path: '/document-groups'
@@ -893,6 +957,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KundenIndexRouteImport
       parentRoute: typeof KundenRoute
     }
+    '/finanzen/': {
+      id: '/finanzen/'
+      path: '/'
+      fullPath: '/finanzen/'
+      preLoaderRoute: typeof FinanzenIndexRouteImport
+      parentRoute: typeof FinanzenRoute
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
@@ -920,6 +991,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/kunden/$customerId'
       preLoaderRoute: typeof KundenCustomerIdRouteImport
       parentRoute: typeof KundenRoute
+    }
+    '/finanzen/$year': {
+      id: '/finanzen/$year'
+      path: '/$year'
+      fullPath: '/finanzen/$year'
+      preLoaderRoute: typeof FinanzenYearRouteImport
+      parentRoute: typeof FinanzenRoute
     }
     '/documents/$documentId': {
       id: '/documents/$documentId'
@@ -1019,6 +1097,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KundenCustomerIdIndexRouteImport
       parentRoute: typeof KundenCustomerIdRoute
     }
+    '/finanzen/$year/': {
+      id: '/finanzen/$year/'
+      path: '/'
+      fullPath: '/finanzen/$year/'
+      preLoaderRoute: typeof FinanzenYearIndexRouteImport
+      parentRoute: typeof FinanzenYearRoute
+    }
     '/admin/mahnungen/': {
       id: '/admin/mahnungen/'
       path: '/'
@@ -1053,6 +1138,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/kunden/$customerId/$folderId'
       preLoaderRoute: typeof KundenCustomerIdFolderIdRouteImport
       parentRoute: typeof KundenCustomerIdRoute
+    }
+    '/finanzen/$year/$category': {
+      id: '/finanzen/$year/$category'
+      path: '/$category'
+      fullPath: '/finanzen/$year/$category'
+      preLoaderRoute: typeof FinanzenYearCategoryRouteImport
+      parentRoute: typeof FinanzenYearRoute
     }
     '/documents/$documentId/relationships': {
       id: '/documents/$documentId/relationships'
@@ -1345,6 +1437,34 @@ const DocumentGroupsRouteWithChildren = DocumentGroupsRoute._addFileChildren(
   DocumentGroupsRouteChildren,
 )
 
+interface FinanzenYearRouteChildren {
+  FinanzenYearCategoryRoute: typeof FinanzenYearCategoryRoute
+  FinanzenYearIndexRoute: typeof FinanzenYearIndexRoute
+}
+
+const FinanzenYearRouteChildren: FinanzenYearRouteChildren = {
+  FinanzenYearCategoryRoute: FinanzenYearCategoryRoute,
+  FinanzenYearIndexRoute: FinanzenYearIndexRoute,
+}
+
+const FinanzenYearRouteWithChildren = FinanzenYearRoute._addFileChildren(
+  FinanzenYearRouteChildren,
+)
+
+interface FinanzenRouteChildren {
+  FinanzenYearRoute: typeof FinanzenYearRouteWithChildren
+  FinanzenIndexRoute: typeof FinanzenIndexRoute
+}
+
+const FinanzenRouteChildren: FinanzenRouteChildren = {
+  FinanzenYearRoute: FinanzenYearRouteWithChildren,
+  FinanzenIndexRoute: FinanzenIndexRoute,
+}
+
+const FinanzenRouteWithChildren = FinanzenRoute._addFileChildren(
+  FinanzenRouteChildren,
+)
+
 interface KundenCustomerIdFolderIdRouteChildren {
   KundenCustomerIdFolderIdCategoryRoute: typeof KundenCustomerIdFolderIdCategoryRoute
 }
@@ -1461,6 +1581,7 @@ const rootRouteChildren: RootRouteChildren = {
   BusinessEntitiesRoute: BusinessEntitiesRouteWithChildren,
   ChatRoute: ChatRoute,
   DocumentGroupsRoute: DocumentGroupsRouteWithChildren,
+  FinanzenRoute: FinanzenRouteWithChildren,
   JobsRoute: JobsRoute,
   KundenRoute: KundenRouteWithChildren,
   LieferantenRoute: LieferantenRouteWithChildren,

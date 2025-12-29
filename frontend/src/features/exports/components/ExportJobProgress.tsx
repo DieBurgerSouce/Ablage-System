@@ -36,7 +36,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useExportJob } from '../hooks/useExportJob';
-import { ExportJobStatus, ExportJobStatusResponse } from '@/lib/api/services/exports';
+import { type ExportJobStatus, type ExportJobStatusResponse } from '@/lib/api/services/exports';
 
 interface ExportJobProgressProps {
   /** Job-ID zum Verfolgen */

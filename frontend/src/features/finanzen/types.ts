@@ -1,0 +1,447 @@
+// Finanzen-Modul: Typen und Kategorien-Definitionen
+
+import type { DocumentCategoryInfo } from '../ablage/types';
+
+// ==================== ENTITY TYPES ====================
+
+/**
+ * Erweiterte Entity-Types inkl. Finanzen
+ */
+export type FinanceEntityType = 'customer' | 'supplier' | 'finance';
+
+// ==================== KATEGORIEN ====================
+
+/**
+ * Alle Finanz-Dokumentkategorien
+ */
+export type FinanceDocumentCategory =
+  // Steuern-Paket
+  | 'grundabgabenbescheid'
+  | 'steuerbescheide'
+  | 'vorauszahlungen'
+  | 'steuererklaerungen'
+  | 'finanzamt_korrespondenz'
+  // Personal-Paket
+  | 'lohn_gehalt'
+  | 'sozialversicherung'
+  | 'berufsgenossenschaft'
+  | 'arbeitsvertraege'
+  // Versicherungs-Paket
+  | 'betriebshaftpflicht'
+  | 'sachversicherungen'
+  | 'kfz_versicherung'
+  | 'rechtsschutz'
+  // Bank-Paket
+  | 'kontoauszuege'
+  | 'kreditvertraege'
+  | 'buergschaften'
+  | 'darlehen';
+
+/**
+ * Steuerart fuer Steuerdokumente
+ */
+export type TaxType =
+  | 'einkommensteuer'
+  | 'koerperschaftsteuer'
+  | 'gewerbesteuer'
+  | 'umsatzsteuer'
+  | 'lohnsteuer'
+  | 'kirchensteuer'
+  | 'solidaritaetszuschlag'
+  | 'grundsteuer'
+  | 'kfz_steuer'
+  | 'sonstige';
+
+/**
+ * Paket-Typ fuer Kategorien-Gruppierung
+ */
+export type FinancePackageType = 'steuern' | 'personal' | 'versicherung' | 'bank';
+
+// ==================== INTERFACES ====================
+
+/**
+ * Erweiterte Kategorie-Info mit Paket-Zuordnung
+ */
+export interface FinanceCategoryInfo extends DocumentCategoryInfo {
+  package: FinancePackageType;
+}
+
+/**
+ * Paket-Definition fuer UI-Gruppierung
+ */
+export interface FinanceCategoryPackage {
+  id: FinancePackageType;
+  label: string;
+  icon: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  categories: FinanceCategoryInfo[];
+}
+
+/**
+ * Finanz-spezifische extrahierte Daten
+ */
+export interface FinanceExtractedData {
+  // Fristen
+  faelligkeitsdatum?: string;
+  einspruchsfrist?: string;
+
+  // Finanzamt-Referenzen
+  aktenzeichen?: string;
+  steuernummer?: string;
+  finanzamt?: string;
+
+  // Steuer-Details
+  steuerart?: TaxType;
+  zeitraum?: string;
+
+  // Betraege
+  nachzahlung?: number;
+  erstattung?: number;
+
+  // Versicherung/Vertraege
+  versicherungsnummer?: string;
+  vertragsnummer?: string;
+  policennummer?: string;
+}
+
+/**
+ * Jahr-Ordner fuer Finanzen
+ */
+export interface FinanceYear {
+  id: string;
+  year: number;
+  isActive: boolean;
+  lastDocumentDate: string;
+  documentCounts: Record<FinanceDocumentCategory, number>;
+  totalDocuments: number;
+  totalNachzahlung: number;
+  totalErstattung: number;
+  pendingDeadlines: number;
+}
+
+/**
+ * Aggregationen fuer Finanzen-Dashboard
+ */
+export interface FinanceAggregations {
+  totalDocuments: number;
+  totalNachzahlung: number;
+  totalErstattung: number;
+  saldo: number;
+  pendingDeadlines: number;
+  documentsByPackage: Record<FinancePackageType, number>;
+}
+
+// ==================== KATEGORIEN-DEFINITIONEN ====================
+
+/**
+ * Alle Finanz-Kategorien mit Metadaten
+ */
+export const FINANCE_CATEGORIES: FinanceCategoryInfo[] = [
+  // STEUERN-PAKET
+  {
+    id: 'grundabgabenbescheid',
+    label: 'Grundabgabenbescheid',
+    icon: 'Landmark',
+    package: 'steuern'
+  },
+  {
+    id: 'steuerbescheide',
+    label: 'Steuerbescheide',
+    shortCode: 'STB',
+    icon: 'FileText',
+    package: 'steuern'
+  },
+  {
+    id: 'vorauszahlungen',
+    label: 'Vorauszahlungen',
+    shortCode: 'VAZ',
+    icon: 'Calculator',
+    package: 'steuern'
+  },
+  {
+    id: 'steuererklaerungen',
+    label: 'Steuererklaerungen',
+    shortCode: 'STE',
+    icon: 'ClipboardList',
+    package: 'steuern'
+  },
+  {
+    id: 'finanzamt_korrespondenz',
+    label: 'Finanzamt Korrespondenz',
+    icon: 'Mail',
+    package: 'steuern'
+  },
+
+  // PERSONAL-PAKET
+  {
+    id: 'lohn_gehalt',
+    label: 'Lohn & Gehalt',
+    shortCode: 'LG',
+    icon: 'Wallet',
+    package: 'personal'
+  },
+  {
+    id: 'sozialversicherung',
+    label: 'Sozialversicherung',
+    shortCode: 'SV',
+    icon: 'Shield',
+    package: 'personal'
+  },
+  {
+    id: 'berufsgenossenschaft',
+    label: 'Berufsgenossenschaft',
+    shortCode: 'BG',
+    icon: 'HardHat',
+    package: 'personal'
+  },
+  {
+    id: 'arbeitsvertraege',
+    label: 'Arbeitsvertraege',
+    shortCode: 'AV',
+    icon: 'FileSignature',
+    package: 'personal'
+  },
+
+  // VERSICHERUNGS-PAKET
+  {
+    id: 'betriebshaftpflicht',
+    label: 'Betriebshaftpflicht',
+    shortCode: 'BH',
+    icon: 'ShieldCheck',
+    package: 'versicherung'
+  },
+  {
+    id: 'sachversicherungen',
+    label: 'Sachversicherungen',
+    shortCode: 'SAV',
+    icon: 'Home',
+    package: 'versicherung'
+  },
+  {
+    id: 'kfz_versicherung',
+    label: 'KFZ-Versicherung',
+    shortCode: 'KFZ',
+    icon: 'Car',
+    package: 'versicherung'
+  },
+  {
+    id: 'rechtsschutz',
+    label: 'Rechtsschutz',
+    shortCode: 'RS',
+    icon: 'Scale',
+    package: 'versicherung'
+  },
+
+  // BANK-PAKET
+  {
+    id: 'kontoauszuege',
+    label: 'Kontoauszuege',
+    shortCode: 'KA',
+    icon: 'CreditCard',
+    package: 'bank'
+  },
+  {
+    id: 'kreditvertraege',
+    label: 'Kreditvertraege',
+    shortCode: 'KV',
+    icon: 'FileText',
+    package: 'bank'
+  },
+  {
+    id: 'buergschaften',
+    label: 'Buergschaften',
+    shortCode: 'BUE',
+    icon: 'Handshake',
+    package: 'bank'
+  },
+  {
+    id: 'darlehen',
+    label: 'Darlehen',
+    shortCode: 'DAR',
+    icon: 'Banknote',
+    package: 'bank'
+  },
+];
+
+/**
+ * Paket-Definitionen mit Farben und Icons
+ */
+export const FINANCE_PACKAGES: FinanceCategoryPackage[] = [
+  {
+    id: 'steuern',
+    label: 'Steuern',
+    icon: 'Receipt',
+    color: 'text-emerald-600 dark:text-emerald-400',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950',
+    borderColor: 'border-emerald-200 dark:border-emerald-800',
+    categories: FINANCE_CATEGORIES.filter(c => c.package === 'steuern'),
+  },
+  {
+    id: 'personal',
+    label: 'Personal',
+    icon: 'Users',
+    color: 'text-violet-600 dark:text-violet-400',
+    bgColor: 'bg-violet-50 dark:bg-violet-950',
+    borderColor: 'border-violet-200 dark:border-violet-800',
+    categories: FINANCE_CATEGORIES.filter(c => c.package === 'personal'),
+  },
+  {
+    id: 'versicherung',
+    label: 'Versicherungen',
+    icon: 'Shield',
+    color: 'text-blue-600 dark:text-blue-400',
+    bgColor: 'bg-blue-50 dark:bg-blue-950',
+    borderColor: 'border-blue-200 dark:border-blue-800',
+    categories: FINANCE_CATEGORIES.filter(c => c.package === 'versicherung'),
+  },
+  {
+    id: 'bank',
+    label: 'Bank',
+    icon: 'Building',
+    color: 'text-amber-600 dark:text-amber-400',
+    bgColor: 'bg-amber-50 dark:bg-amber-950',
+    borderColor: 'border-amber-200 dark:border-amber-800',
+    categories: FINANCE_CATEGORIES.filter(c => c.package === 'bank'),
+  },
+];
+
+/**
+ * Kategorien mit Fristen (fuer spezielle Behandlung)
+ */
+export const FINANCE_CATEGORIES_WITH_DEADLINES = [
+  'grundabgabenbescheid',
+  'steuerbescheide',
+  'vorauszahlungen',
+];
+
+/**
+ * Kategorien mit Zahlungsbetraegen
+ */
+export const FINANCE_CATEGORIES_WITH_AMOUNTS = [
+  'grundabgabenbescheid',
+  'steuerbescheide',
+  'vorauszahlungen',
+  'lohn_gehalt',
+  'betriebshaftpflicht',
+  'sachversicherungen',
+  'kfz_versicherung',
+  'rechtsschutz',
+  'kreditvertraege',
+  'darlehen',
+];
+
+/**
+ * Mapping von Kategorie zu Backend document_type
+ */
+export const FINANCE_CATEGORY_TO_DOCUMENT_TYPE: Record<FinanceDocumentCategory, string> = {
+  grundabgabenbescheid: 'tax_assessment',
+  steuerbescheide: 'tax_notice',
+  vorauszahlungen: 'tax_prepayment',
+  steuererklaerungen: 'tax_return',
+  finanzamt_korrespondenz: 'tax_correspondence',
+  lohn_gehalt: 'payroll',
+  sozialversicherung: 'social_security',
+  berufsgenossenschaft: 'trade_association',
+  arbeitsvertraege: 'employment_contract',
+  betriebshaftpflicht: 'liability_insurance',
+  sachversicherungen: 'property_insurance',
+  kfz_versicherung: 'vehicle_insurance',
+  rechtsschutz: 'legal_insurance',
+  kontoauszuege: 'bank_statement',
+  kreditvertraege: 'credit_agreement',
+  buergschaften: 'guarantee',
+  darlehen: 'loan',
+};
+
+/**
+ * Steuerart-Labels fuer UI
+ */
+export const TAX_TYPE_LABELS: Record<TaxType, string> = {
+  einkommensteuer: 'Einkommensteuer',
+  koerperschaftsteuer: 'Koerperschaftsteuer',
+  gewerbesteuer: 'Gewerbesteuer',
+  umsatzsteuer: 'Umsatzsteuer',
+  lohnsteuer: 'Lohnsteuer',
+  kirchensteuer: 'Kirchensteuer',
+  solidaritaetszuschlag: 'Solidaritaetszuschlag',
+  grundsteuer: 'Grundsteuer',
+  kfz_steuer: 'KFZ-Steuer',
+  sonstige: 'Sonstige',
+};
+
+// ==================== STRICT TYPES FOR TABLE/SORT ====================
+
+/**
+ * Strict Union Type fuer Sortier-Felder
+ */
+export type FinanceSortField = 'document_date' | 'created_at' | 'filename' | 'amount' | 'category';
+
+/**
+ * Sortier-Reihenfolge
+ */
+export type SortOrder = 'asc' | 'desc';
+
+/**
+ * Type-safe Icon Map fuer alle Kategorien
+ */
+export const CATEGORY_ICON_MAP: Record<FinanceDocumentCategory, string> = {
+  grundabgabenbescheid: 'Landmark',
+  steuerbescheide: 'FileText',
+  vorauszahlungen: 'Calculator',
+  steuererklaerungen: 'ClipboardList',
+  finanzamt_korrespondenz: 'Mail',
+  lohn_gehalt: 'Wallet',
+  sozialversicherung: 'Shield',
+  berufsgenossenschaft: 'HardHat',
+  arbeitsvertraege: 'FileSignature',
+  betriebshaftpflicht: 'ShieldCheck',
+  sachversicherungen: 'Home',
+  kfz_versicherung: 'Car',
+  rechtsschutz: 'Scale',
+  kontoauszuege: 'CreditCard',
+  kreditvertraege: 'FileText',
+  buergschaften: 'Handshake',
+  darlehen: 'Banknote',
+} as const;
+
+/**
+ * Type-safe Package Icon Map
+ */
+export const PACKAGE_ICON_MAP: Record<FinancePackageType, string> = {
+  steuern: 'Receipt',
+  personal: 'Users',
+  versicherung: 'Shield',
+  bank: 'Building',
+} as const;
+
+// ==================== HELPER FUNCTIONS ====================
+
+/**
+ * Findet Kategorie-Info anhand der ID
+ */
+export function getFinanceCategoryById(categoryId: string): FinanceCategoryInfo | undefined {
+  return FINANCE_CATEGORIES.find(c => c.id === categoryId);
+}
+
+/**
+ * Findet Paket anhand der ID
+ */
+export function getFinancePackageById(packageId: FinancePackageType): FinanceCategoryPackage | undefined {
+  return FINANCE_PACKAGES.find(p => p.id === packageId);
+}
+
+/**
+ * Prueft ob Kategorie Fristen hat
+ */
+export function categoryHasDeadlines(categoryId: string): boolean {
+  return FINANCE_CATEGORIES_WITH_DEADLINES.includes(categoryId);
+}
+
+/**
+ * Prueft ob Kategorie Betraege hat
+ */
+export function categoryHasAmounts(categoryId: string): boolean {
+  return FINANCE_CATEGORIES_WITH_AMOUNTS.includes(categoryId);
+}
