@@ -747,6 +747,7 @@ export interface DunningRecord {
     // Schuldner
     debtor_name: string | null;
     debtor_email: string | null;
+    business_entity_id: string | null;
 
     // Mahnung
     dunning_level: DunningLevelNumber;

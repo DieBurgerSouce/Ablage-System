@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, Building2, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, Building2, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { SettingsModal } from '@/components/settings'
@@ -70,6 +70,8 @@ export function Sidebar() {
                     <SidebarLink to="/kunden" icon={Users} label="Kunden" />
                     <SidebarLink to="/lieferanten" icon={Package} label="Lieferanten" />
                     <SidebarLink to="/finanzen" icon={Landmark} label="Finanzen" />
+                    <SidebarLink to="/kasse" icon={Wallet} label="Kassenbuch" />
+                    <SidebarLink to="/spesen" icon={Receipt} label="Spesen" />
                 </div>
 
                 {/* Admin Section */}
@@ -87,6 +89,7 @@ export function Sidebar() {
                             <SidebarLink to="/admin/ocr-training" icon={GraduationCap} label="OCR Training" />
                             <SidebarLink to="/admin/ocr-review" icon={ClipboardCheck} label="OCR Review" />
                             <SidebarLink to="/admin/ocr-backends" icon={Cpu} label="OCR Backends" />
+                            <SidebarLink to="/admin/mahnungen" icon={AlertTriangle} label="Mahnwesen" />
                         </div>
                     )}
                 </div>

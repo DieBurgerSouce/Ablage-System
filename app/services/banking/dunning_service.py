@@ -32,6 +32,7 @@ import structlog
 
 from sqlalchemy import select, func, and_, or_, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.services.banking.models import (
     DunningLevel,
@@ -39,7 +40,7 @@ from app.services.banking.models import (
     DunningRecordResponse,
 )
 
-from app.db.models import DunningRecord, Document, MahnungHistory
+from app.db.models import DunningRecord, Document, MahnungHistory, User
 
 logger = structlog.get_logger(__name__)
 
@@ -885,44 +886,63 @@ class DunningService:
         db: AsyncSession,
         user_id: UUID,
         dunning_record_id: UUID,
-    ) -> List[Dict[str, Any]]:
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[Dict[str, Any]], int]:
         """Hole Mahnung-History fuer Mahnvorgang.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID (fuer Zugriffspruefung)
             dunning_record_id: Mahnvorgang-ID
+            limit: Max. Eintraege
+            offset: Offset fuer Pagination
 
         Returns:
-            Liste von History-Eintraegen
+            Tuple (Liste von History-Eintraegen, Gesamtanzahl)
         """
         # Zugriffspruefung
         dunning = await self._get_dunning_by_id(db, user_id, dunning_record_id)
         if not dunning:
             raise ValueError("Mahnvorgang nicht gefunden")
 
+        # Gesamtanzahl
+        count_query = (
+            select(func.count())
+            .select_from(MahnungHistory)
+            .where(MahnungHistory.dunning_record_id == dunning_record_id)
+        )
+        count_result = await db.execute(count_query)
+        total = count_result.scalar() or 0
+
+        # Paginierte Daten mit Eager Loading (verhindert N+1)
         query = (
             select(MahnungHistory)
+            .options(selectinload(MahnungHistory.performed_by))
             .where(MahnungHistory.dunning_record_id == dunning_record_id)
             .order_by(MahnungHistory.action_timestamp.desc())
+            .offset(offset)
+            .limit(limit)
         )
         result = await db.execute(query)
         entries = result.scalars().all()
 
-        return [
+        items = [
             {
                 "id": str(e.id),
                 "action_type": e.action_type,
                 "mahn_stufe": e.mahn_stufe,
                 "action_timestamp": e.action_timestamp.isoformat(),
                 "performed_by_id": str(e.performed_by_id) if e.performed_by_id else None,
+                "performed_by_name": e.performed_by.name if e.performed_by else None,
                 "notes": e.notes,
                 "outcome": e.outcome,
                 "document_id": str(e.document_id) if e.document_id else None,
-                "metadata": e.metadata,
+                "metadata": e.action_metadata,
             }
             for e in entries
         ]
+        return items, total
 
     async def set_mahnstopp(
         self,

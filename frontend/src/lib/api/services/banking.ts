@@ -9,6 +9,7 @@ import type {
     DunningActionType,
     MahnungHistoryActionType,
     DunningLevelNumber,
+    MahnungHistoryEntry,
 } from '@/types/models/banking';
 
 // ==================== Types ====================
@@ -1054,6 +1055,7 @@ export interface DunningRecord {
     currency: CurrencyCode;
     debtor_name: string | null;
     debtor_email: string | null;
+    business_entity_id: string | null;
     dunning_level: DunningLevelNumber;
     status: string;
     reminder_fee: number;

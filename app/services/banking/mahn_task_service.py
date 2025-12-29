@@ -549,16 +549,20 @@ class MahnTaskService:
         db: AsyncSession,
         user_id: UUID,
         dunning_record_id: UUID,
-    ) -> List[Dict[str, Any]]:
-        """Hole Telefon-Historie fuer Mahnvorgang.
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[Dict[str, Any]], int]:
+        """Hole Telefon-Historie fuer Mahnvorgang (paginiert).
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID (fuer Zugriffspruefung)
             dunning_record_id: Mahnvorgang-ID
+            limit: Maximale Anzahl Eintraege
+            offset: Offset fuer Pagination
 
         Returns:
-            Liste von Telefonprotokollen
+            Tuple aus (Liste von Telefonprotokollen, Gesamtanzahl)
         """
         # Zugriffspruefung
         dunning_query = select(DunningRecord).where(
@@ -571,16 +575,28 @@ class MahnTaskService:
         if not dunning_result.scalar_one_or_none():
             raise ValueError("Mahnvorgang nicht gefunden")
 
-        # Telefon-Historie laden
+        # Count-Query fuer Gesamtanzahl
+        count_query = (
+            select(func.count())
+            .select_from(PhoneCallLog)
+            .where(PhoneCallLog.dunning_record_id == dunning_record_id)
+        )
+        count_result = await db.execute(count_query)
+        total = count_result.scalar() or 0
+
+        # Paginierte Telefon-Historie laden (mit Eager Loading)
         query = (
             select(PhoneCallLog)
+            .options(selectinload(PhoneCallLog.called_by))
             .where(PhoneCallLog.dunning_record_id == dunning_record_id)
             .order_by(PhoneCallLog.called_at.desc())
+            .offset(offset)
+            .limit(limit)
         )
         result = await db.execute(query)
         calls = result.scalars().all()
 
-        return [self._call_log_to_dict(c) for c in calls]
+        return [self._call_log_to_dict(c) for c in calls], total
 
     async def reactivate_snoozed_tasks(
         self,
@@ -673,6 +689,7 @@ class MahnTaskService:
             "dunning_record_id": str(call.dunning_record_id),
             "called_at": call.called_at.isoformat() if call.called_at else None,
             "called_by_id": str(call.called_by_id) if call.called_by_id else None,
+            "called_by_name": call.called_by.name if call.called_by else None,
             "contact_name": call.contact_name,
             "phone_number": call.phone_number,
             "outcome": call.outcome,

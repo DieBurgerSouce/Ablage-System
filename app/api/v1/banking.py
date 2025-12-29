@@ -1817,16 +1817,20 @@ async def process_automatic_dunning(
 )
 async def get_dunning_history(
     dunning_id: UUID,
+    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
+    offset: int = Query(0, ge=0, description="Offset fuer Pagination"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> MahnungHistoryListResponse:
     """Hole Mahnung-Historie (immutables Audit-Log)."""
-    items = await dunning_service.get_history(
+    items, total = await dunning_service.get_history(
         db=db,
         user_id=current_user.id,
         dunning_record_id=dunning_id,
+        limit=limit,
+        offset=offset,
     )
-    return MahnungHistoryListResponse(items=items, total=len(items))
+    return MahnungHistoryListResponse(items=items, total=total)
 
 
 @dunning_router.post(
@@ -2068,20 +2072,24 @@ async def log_phone_call(
     "/{dunning_id}/phone-calls",
     response_model=PhoneCallLogListResponse,
     summary="Telefonkontakte abrufen",
-    description="Gibt alle Telefonkontakte zu einem Mahnvorgang zurueck."
+    description="Gibt Telefonkontakte zu einem Mahnvorgang zurueck (paginiert)."
 )
 async def get_phone_calls(
     dunning_id: UUID,
+    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
+    offset: int = Query(0, ge=0, description="Offset fuer Pagination"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> PhoneCallLogListResponse:
-    """Hole Telefonkontakte zu Mahnvorgang."""
-    items = await mahn_task_service.get_phone_calls(
+    """Hole Telefonkontakte zu Mahnvorgang (paginiert)."""
+    items, total = await mahn_task_service.get_phone_call_history(
         db=db,
         user_id=current_user.id,
         dunning_record_id=dunning_id,
+        limit=limit,
+        offset=offset,
     )
-    return PhoneCallLogListResponse(items=items, total=len(items))
+    return PhoneCallLogListResponse(items=items, total=total)
 
 
 @dunning_router.post(
@@ -2153,7 +2161,7 @@ async def list_mahn_tasks(
         include_snoozed=include_snoozed,
     )
 
-    tasks = await mahn_task_service.list_tasks(
+    tasks, total = await mahn_task_service.list_tasks(
         db=db,
         user_id=current_user.id,
         filters=filters,
@@ -2163,7 +2171,7 @@ async def list_mahn_tasks(
 
     return {
         "items": tasks,
-        "total": len(tasks),  # TODO: Echte Gesamtzahl
+        "total": total,
         "offset": offset,
         "limit": limit,
     }

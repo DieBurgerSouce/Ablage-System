@@ -80,6 +80,7 @@ import {
 } from '../hooks/use-banking-queries';
 import { formatCurrency, formatDate } from '../utils/format';
 import { cn } from '@/lib/utils';
+import { CustomerDunningOverrideForm } from './CustomerDunningOverrideForm';
 
 // ==================== Types ====================
 
@@ -319,6 +320,7 @@ export function MahnungDetailSheet({
         reason: '',
         until: undefined,
     });
+    const [customerSettingsOpen, setCustomerSettingsOpen] = useState(false);
 
     // Queries
     const historyQuery = useDunningHistory(dunning?.id || '');
@@ -527,6 +529,26 @@ export function MahnungDetailSheet({
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     Pauschale nach §288 Abs. 5 BGB (nur B2B)
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
+
+                    {dunning.business_entity_id && (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCustomerSettingsOpen(true)}
+                                    >
+                                        <Building2 className="h-4 w-4 mr-2" />
+                                        Kundeneinstellungen
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    Individuelle Mahneinstellungen fuer diesen Kunden
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -828,6 +850,16 @@ export function MahnungDetailSheet({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        {/* Customer Dunning Settings Dialog */}
+        {dunning.business_entity_id && (
+            <CustomerDunningOverrideForm
+                businessEntityId={dunning.business_entity_id}
+                businessEntityName={dunning.debtor_name ?? undefined}
+                open={customerSettingsOpen}
+                onOpenChange={setCustomerSettingsOpen}
+            />
+        )}
     </>
     );
 }
