@@ -1675,19 +1675,50 @@ async def create_dunning(
     description="Listet alle Mahnvorgaenge mit optionaler Filterung."
 )
 async def list_dunnings(
-    status_filter: Optional[DunningStatus] = Query(None, alias="status"),
+    status_filter: Optional[str] = Query(None, alias="status", description="Status-Filter (active, pending, paid, etc.)"),
     level_filter: Optional[DunningLevel] = Query(None, alias="level"),
+    dunning_level: Optional[int] = Query(None, ge=0, le=5, description="Mahnstufe (0-5)"),
+    mahnstopp: Optional[bool] = Query(None, description="Nur Mahnstopp-Vorgaenge"),
+    is_b2b: Optional[bool] = Query(None, description="B2B oder B2C Filter"),
+    business_entity_id: Optional[UUID] = Query(None, description="Geschaeftspartner-ID"),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
     """Liste Mahnvorgaenge."""
+    # Verwende dunning_level falls level_filter nicht gesetzt
+    effective_level = level_filter
+    if effective_level is None and dunning_level is not None:
+        # Konvertiere int zu DunningLevel Enum
+        try:
+            effective_level = DunningLevel(dunning_level)
+        except ValueError:
+            pass  # Ungueltige Level werden ignoriert
+
+    # Behandle "active" als Spezialfall fuer alle aktiven (nicht abgeschlossenen) Mahnungen
+    effective_status: Optional[DunningStatus] = None
+    active_only = False
+    if status_filter:
+        if status_filter.lower() == "active":
+            # "active" bedeutet alle nicht-abgeschlossenen Mahnungen
+            active_only = True
+        else:
+            # Versuche als DunningStatus Enum zu parsen
+            try:
+                effective_status = DunningStatus(status_filter)
+            except ValueError:
+                pass  # Unbekannte Status werden ignoriert
+
     dunnings, total = await dunning_service.list_dunnings(
         db=db,
         user_id=current_user.id,
-        status=status_filter,
-        level=level_filter,
+        status=effective_status,
+        level=effective_level,
+        mahnstopp=mahnstopp,
+        is_b2b=is_b2b,
+        business_entity_id=business_entity_id,
+        active_only=active_only,
         offset=offset,
         limit=limit,
     )

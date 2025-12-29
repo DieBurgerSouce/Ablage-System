@@ -463,6 +463,10 @@ class DunningService:
         user_id: UUID,
         status: Optional[DunningStatus] = None,
         level: Optional[DunningLevel] = None,
+        mahnstopp: Optional[bool] = None,
+        is_b2b: Optional[bool] = None,
+        business_entity_id: Optional[UUID] = None,
+        active_only: bool = False,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[DunningRecordResponse], int]:
@@ -473,6 +477,10 @@ class DunningService:
             user_id: Benutzer-ID
             status: Optionaler Status-Filter
             level: Optionaler Level-Filter
+            mahnstopp: Filter fuer Mahnstopp-Vorgaenge
+            is_b2b: Filter fuer B2B/B2C
+            business_entity_id: Filter fuer Geschaeftspartner
+            active_only: Nur aktive (nicht abgeschlossene) Mahnungen
             limit: Max. Ergebnisse
             offset: Offset fuer Pagination
 
@@ -483,8 +491,21 @@ class DunningService:
 
         if status:
             query = query.where(DunningRecord.status == status.value)
+        elif active_only:
+            # Aktive Mahnungen = alle ausser bezahlt, abgeschrieben, rechtlich
+            closed_statuses = [
+                DunningStatus.PAID.value,
+                DunningStatus.WRITTEN_OFF.value,
+            ]
+            query = query.where(DunningRecord.status.notin_(closed_statuses))
         if level:
             query = query.where(DunningRecord.dunning_level == level.value)
+        if mahnstopp is not None:
+            query = query.where(DunningRecord.mahnstopp == mahnstopp)
+        if is_b2b is not None:
+            query = query.where(DunningRecord.is_b2b == is_b2b)
+        if business_entity_id is not None:
+            query = query.where(DunningRecord.business_entity_id == business_entity_id)
 
         # Count
         count_query = select(func.count()).select_from(query.subquery())
@@ -508,74 +529,111 @@ class DunningService:
         """Hole Mahnstatistiken.
 
         Returns:
-            Dictionary mit Statistiken
+            Dictionary mit Statistiken im Frontend-kompatiblen Format:
+            - total_active: Anzahl aktiver Mahnungen
+            - total_amount_overdue: Gesamtbetrag ueberfaelliger Forderungen
+            - total_fees: Gesamte Mahngebuehren
+            - avg_days_overdue: Durchschnittliche Ueberfaelligkeit in Tagen
+            - by_level: Anzahl pro Mahnstufe
+            - b2b_count: Anzahl B2B-Mahnungen
+            - b2c_count: Anzahl B2C-Mahnungen
+            - mahnstopp_count: Anzahl Mahnungen mit Mahnstopp
         """
-        # Ueberfaellige Rechnungen
-        overdue = await self.get_overdue_invoices(db, user_id)
+        # Aktive Mahnungen (alle nicht abgeschlossenen)
+        closed_statuses = [DunningStatus.PAID.value, DunningStatus.WRITTEN_OFF.value]
 
-        # Aktive Mahnverfahren
+        # Gesamtzahl und Betraege aktiver Mahnungen
         active_result = await db.execute(
-            select(func.count(), func.sum(DunningRecord.gross_amount)).where(
+            select(
+                func.count(),
+                func.sum(DunningRecord.gross_amount),
+                func.sum(DunningRecord.reminder_fee),
+            ).where(
                 and_(
                     DunningRecord.user_id == user_id,
-                    DunningRecord.status == DunningStatus.PENDING.value,
+                    DunningRecord.status.notin_(closed_statuses),
                 )
             )
         )
         active_row = active_result.one()
-        active_count = active_row[0] or 0
-        active_amount = active_row[1] or Decimal("0.00")
+        total_active = active_row[0] or 0
+        total_amount_overdue = float(active_row[1] or 0)
+        total_fees = float(active_row[2] or 0)
 
-        # Nach Stufen gruppiert
+        # Durchschnittliche Ueberfaelligkeit in Tagen
+        avg_days_result = await db.execute(
+            select(
+                func.avg(
+                    func.extract('epoch', func.now() - DunningRecord.due_date) / 86400
+                )
+            ).where(
+                and_(
+                    DunningRecord.user_id == user_id,
+                    DunningRecord.status.notin_(closed_statuses),
+                    DunningRecord.due_date.isnot(None),
+                )
+            )
+        )
+        avg_days_overdue = float(avg_days_result.scalar() or 0)
+
+        # Nach Stufen gruppiert (als Record<number, number>)
         level_query = select(
             DunningRecord.dunning_level,
             func.count(),
-            func.sum(DunningRecord.gross_amount),
         ).where(
             and_(
                 DunningRecord.user_id == user_id,
-                DunningRecord.status == DunningStatus.PENDING.value,
+                DunningRecord.status.notin_(closed_statuses),
             )
         ).group_by(DunningRecord.dunning_level)
 
         level_result = await db.execute(level_query)
-        by_level = {
-            DunningLevel(row[0]).name.lower(): {
-                "count": row[1],
-                "amount": float(row[2] or 0),
-            }
-            for row in level_result
-        }
+        by_level = {row[0]: row[1] for row in level_result}
 
-        # Abgeschlossene (letzte 30 Tage)
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-        closed_result = await db.execute(
-            select(DunningRecord.status, func.count()).where(
+        # B2B vs B2C Zaehlung
+        b2b_result = await db.execute(
+            select(func.count()).where(
                 and_(
                     DunningRecord.user_id == user_id,
-                    DunningRecord.resolved_at >= thirty_days_ago,
+                    DunningRecord.status.notin_(closed_statuses),
+                    DunningRecord.is_b2b == True,
                 )
-            ).group_by(DunningRecord.status)
+            )
         )
-        closed_stats = {row[0]: row[1] for row in closed_result}
+        b2b_count = b2b_result.scalar() or 0
+
+        b2c_result = await db.execute(
+            select(func.count()).where(
+                and_(
+                    DunningRecord.user_id == user_id,
+                    DunningRecord.status.notin_(closed_statuses),
+                    DunningRecord.is_b2b == False,
+                )
+            )
+        )
+        b2c_count = b2c_result.scalar() or 0
+
+        # Mahnstopp-Zaehlung
+        mahnstopp_result = await db.execute(
+            select(func.count()).where(
+                and_(
+                    DunningRecord.user_id == user_id,
+                    DunningRecord.status.notin_(closed_statuses),
+                    DunningRecord.mahnstopp == True,
+                )
+            )
+        )
+        mahnstopp_count = mahnstopp_result.scalar() or 0
 
         return {
-            "overdue": {
-                "count": len(overdue),
-                "total_amount": float(sum(c.amount for c in overdue)),
-                "total_with_fees": float(sum(c.total_due for c in overdue)),
-            },
-            "active_dunnings": {
-                "count": active_count,
-                "amount": float(active_amount),
-            },
+            "total_active": total_active,
+            "total_amount_overdue": total_amount_overdue,
+            "total_fees": total_fees,
+            "avg_days_overdue": avg_days_overdue,
             "by_level": by_level,
-            "closed_last_30_days": {
-                "paid": closed_stats.get(DunningStatus.PAID.value, 0),
-                "partially_paid": closed_stats.get(DunningStatus.PARTIALLY_PAID.value, 0),
-                "written_off": closed_stats.get(DunningStatus.WRITTEN_OFF.value, 0),
-            },
-            "fees_collected": await self._get_collected_fees(db, user_id),
+            "b2b_count": b2b_count,
+            "b2c_count": b2c_count,
+            "mahnstopp_count": mahnstopp_count,
         }
 
     async def process_automatic_dunning(
