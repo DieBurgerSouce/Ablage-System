@@ -5486,7 +5486,10 @@ class FinanceDocumentHistory(Base):
     user_agent = Column(String(500), nullable=True, comment="Browser/Client Info")
 
     # Zusaetzliche Metadaten
-    metadata = Column(
+    # Note: DB column is 'metadata', but we use 'extra_metadata' as Python attribute
+    # because 'metadata' is reserved in SQLAlchemy's Declarative API
+    extra_metadata = Column(
+        'metadata',  # Actual DB column name
         CrossDBJSON,
         nullable=True,
         default=dict,
