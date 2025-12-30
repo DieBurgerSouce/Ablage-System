@@ -94,13 +94,6 @@ class TANHandlerService:
     USER_LOCKOUT_THRESHOLD = 3  # Nach 3 fehlgeschlagenen Challenges
     USER_LOCKOUT_DURATION = 3600  # 1 Stunde Lockout
 
-    # In-Memory Store (in Produktion: Redis)
-    _challenges: Dict[str, TANChallenge] = {}
-    _rate_limits: Dict[str, List[datetime]] = {}
-    _tan_verify_attempts: Dict[str, List[datetime]] = {}  # TAN-Verifikations-Versuche
-    _user_lockouts: Dict[str, datetime] = {}  # User-Lockouts
-    _failed_challenges: Dict[str, int] = {}  # Fehlgeschlagene Challenges pro User
-
     def __init__(self, secret_key: Optional[str] = None):
         """Initialisiere TAN-Handler.
 
@@ -108,6 +101,16 @@ class TANHandlerService:
             secret_key: Geheimer Schluessel fuer Challenge-Signierung
         """
         self._secret_key = secret_key or secrets.token_hex(32)
+        # FAANG-AUDIT FIX: In-Memory Stores als Instanz-Variablen
+        # WICHTIG: Muessen Instanz-Variablen sein, damit jede Service-Instanz
+        # eigene Daten hat und keine Cross-Instance Data Leakage entsteht!
+        # In Produktion: Diese sollten durch Redis ersetzt werden fuer
+        # Multi-Worker-Synchronisation.
+        self._challenges: Dict[str, TANChallenge] = {}
+        self._rate_limits: Dict[str, List[datetime]] = {}
+        self._tan_verify_attempts: Dict[str, List[datetime]] = {}  # TAN-Verifikations-Versuche
+        self._user_lockouts: Dict[str, datetime] = {}  # User-Lockouts
+        self._failed_challenges: Dict[str, int] = {}  # Fehlgeschlagene Challenges pro User
 
     def create_challenge(
         self,

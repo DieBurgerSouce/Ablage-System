@@ -3,9 +3,12 @@ Permission Service für Role-Based Access Control (RBAC).
 
 Stellt Funktionen zur Berechtigungsprüfung und Rollenverwaltung bereit.
 Alle Fehlermeldungen auf Deutsch für Benutzerinteraktionen.
+
+J.6 SECURITY FIX: Redis-basierter Permission-Cache für Multi-Worker-Synchronisation.
 """
 
 import asyncio
+import json
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any, Set
 from uuid import UUID
@@ -24,6 +27,10 @@ from app.db.models import (
     ResourceType,
     PermissionAction,
 )
+
+# J.6 SECURITY FIX: Redis für Multi-Worker-synchronized Permission Cache
+PERMISSION_CACHE_PREFIX = "permission_cache:"
+PERMISSION_CACHE_TTL = 30  # Sekunden - kurz genug um Aenderungen schnell zu propagieren
 
 logger = structlog.get_logger(__name__)
 
@@ -46,9 +53,108 @@ class PermissionService:
             db: AsyncSession für Datenbankzugriff
         """
         self.db = db
+        # J.6 SECURITY FIX: In-Memory Cache nur als Fallback
+        # Primaer wird Redis verwendet fuer Multi-Worker-Synchronisation
         self._permission_cache: Dict[str, Set[str]] = {}
         # SECURITY FIX: Lock für thread-safe Cache-Zugriff bei concurrent requests
         self._cache_lock = asyncio.Lock()
+        self._redis_client: Optional[Any] = None
+        # FAANG-AUDIT FIX: Instanz-Variablen fuer Redis-Fallback-Tracking
+        # WICHTIG: Als Instanz-Variablen, damit jede Service-Instanz eigenen Zustand hat
+        self._redis_fallback_mode: bool = False
+        self._redis_fallback_logged: bool = False
+
+    async def _get_redis_client(self) -> Optional[Any]:
+        """
+        J.6 SECURITY FIX: Lazy-load Redis client.
+
+        FAANG-AUDIT FIX: Logging + Health-Flag bei Redis-Fallback.
+        Bei Redis-Ausfall wird jetzt:
+        1. Eine WARNING geloggt (einmalig um Log-Spam zu vermeiden)
+        2. Ein Class-Flag gesetzt fuer Health-Check Abfragen
+        3. In-Memory Cache verwendet (mit Race-Condition Warnung)
+        """
+        if self._redis_client is None:
+            try:
+                from app.core.cache import get_redis_client
+                self._redis_client = await get_redis_client()
+                # Redis ist verfuegbar - Fallback-Modus zuruecksetzen
+                if self._redis_fallback_mode:
+                    logger.info(
+                        "permission_cache_redis_restored",
+                        message="Redis-Verbindung wiederhergestellt, Multi-Worker-Sync aktiv"
+                    )
+                    self._redis_fallback_mode = False
+                    self._redis_fallback_logged = False
+            except Exception as e:
+                # FAANG-AUDIT FIX: Warnung loggen bei Redis-Fallback
+                if not self._redis_fallback_logged:
+                    logger.warning(
+                        "permission_cache_redis_fallback",
+                        error=str(e),
+                        message="Redis nicht verfuegbar - Fallback auf In-Memory Cache. "
+                                "WARNUNG: Bei Multi-Worker-Deployment koennen Permission-Updates "
+                                "zwischen Workern bis zu 30s inkonsistent sein!",
+                        impact="security",
+                        severity="high"
+                    )
+                    self._redis_fallback_logged = True
+                self._redis_fallback_mode = True
+        return self._redis_client
+
+    def is_redis_available(self) -> bool:
+        """
+        FAANG-AUDIT FIX: Health-Check Methode fuer Redis-Verfuegbarkeit.
+
+        Returns:
+            True wenn Redis verfuegbar, False wenn Im In-Memory Fallback-Modus
+        """
+        return not self._redis_fallback_mode
+
+    async def _get_cached_permissions_redis(self, user_id: str) -> Optional[Set[str]]:
+        """J.6 SECURITY FIX: Permissions aus Redis Cache laden."""
+        redis = await self._get_redis_client()
+        if redis is None:
+            return None
+
+        try:
+            key = f"{PERMISSION_CACHE_PREFIX}{user_id}"
+            data = await redis.get(key)
+            if data:
+                return set(json.loads(data))
+        except Exception as e:
+            logger.warning("permission_cache_redis_read_error", error=str(e))
+        return None
+
+    async def _set_cached_permissions_redis(self, user_id: str, permissions: Set[str]) -> None:
+        """J.6 SECURITY FIX: Permissions in Redis Cache speichern."""
+        redis = await self._get_redis_client()
+        if redis is None:
+            return
+
+        try:
+            key = f"{PERMISSION_CACHE_PREFIX}{user_id}"
+            await redis.setex(key, PERMISSION_CACHE_TTL, json.dumps(list(permissions)))
+        except Exception as e:
+            logger.warning("permission_cache_redis_write_error", error=str(e))
+
+    async def _invalidate_cache_redis(self, user_id: Optional[str] = None) -> None:
+        """J.6 SECURITY FIX: Cache in Redis invalidieren."""
+        redis = await self._get_redis_client()
+        if redis is None:
+            return
+
+        try:
+            if user_id:
+                key = f"{PERMISSION_CACHE_PREFIX}{user_id}"
+                await redis.delete(key)
+            else:
+                # Alle Permission-Cache-Keys loeschen
+                pattern = f"{PERMISSION_CACHE_PREFIX}*"
+                async for key in redis.scan_iter(match=pattern):
+                    await redis.delete(key)
+        except Exception as e:
+            logger.warning("permission_cache_redis_invalidate_error", error=str(e))
 
     async def has_permission(
         self,
@@ -163,8 +269,8 @@ class PermissionService:
         """
         Holt alle Berechtigungen eines Benutzers aus allen zugewiesenen Rollen.
 
-        SECURITY FIX: Thread-safe mit asyncio.Lock um Race Conditions zu vermeiden.
-        Double-checked locking Pattern für optimale Performance.
+        J.6 SECURITY FIX: Redis-basierter Cache für Multi-Worker-Synchronisation.
+        Falls Redis nicht verfuegbar, Fallback auf In-Memory mit Lock.
 
         Args:
             user: Der Benutzer
@@ -174,7 +280,12 @@ class PermissionService:
         """
         cache_key = str(user.id)
 
-        # Fast path: Check cache without lock (read is atomic for simple types)
+        # J.6 FIX: Erst Redis-Cache pruefen (Multi-Worker-synchronized)
+        redis_cached = await self._get_cached_permissions_redis(cache_key)
+        if redis_cached is not None:
+            return redis_cached
+
+        # Fallback: In-Memory Cache
         if cache_key in self._permission_cache:
             return self._permission_cache[cache_key]
 
@@ -201,7 +312,8 @@ class PermissionService:
             result = await self.db.execute(stmt)
             permissions = set(row[0] for row in result.fetchall())
 
-            # Cache result (innerhalb des Locks)
+            # J.6 FIX: In Redis UND In-Memory cachen
+            await self._set_cached_permissions_redis(cache_key, permissions)
             self._permission_cache[cache_key] = permissions
 
             logger.debug(
@@ -284,8 +396,8 @@ class PermissionService:
         )
         await self.db.commit()
 
-        # Clear cache
-        self._clear_user_cache(user)
+        # J.6 FIX: Async Cache-Invalidierung fuer Redis-Sync
+        await self._clear_user_cache_async(user)
 
         logger.info(
             "role_assigned",
@@ -318,8 +430,8 @@ class PermissionService:
         await self.db.commit()
 
         if result.rowcount > 0:
-            # Clear cache
-            self._clear_user_cache(user)
+            # J.6 SECURITY FIX: Async cache invalidation (wie assign_role)
+            await self._clear_user_cache_async(user)
 
             logger.info(
                 "role_removed",
@@ -542,8 +654,10 @@ class PermissionService:
 
         await self.db.commit()
 
-        # Clear all user caches (role permissions changed)
-        self._permission_cache.clear()
+        # P.3 SECURITY FIX: ALLE Caches invalidieren (In-Memory UND Redis)
+        # Vorher wurde nur In-Memory geleert, Redis blieb 30s stale!
+        self._permission_cache.clear()  # In-Memory
+        await self._invalidate_cache_redis()  # P.3 FIX: Redis ebenfalls invalidieren
 
         logger.info(
             "role_updated",
@@ -574,7 +688,8 @@ class PermissionService:
         await self.db.delete(role)
         await self.db.commit()
 
-        # Clear all user caches
+        # J.6 FIX: Cache in Redis UND In-Memory loeschen
+        await self._invalidate_cache_redis()  # Alle User betroffen
         self._permission_cache.clear()
 
         logger.info(
@@ -585,12 +700,27 @@ class PermissionService:
 
         return True
 
+    async def _clear_user_cache_async(self, user: User) -> None:
+        """
+        Löscht den Permission-Cache für einen Benutzer (async).
+
+        J.6 FIX: Loescht Cache in Redis UND In-Memory.
+
+        Args:
+            user: Der Benutzer
+        """
+        cache_key = str(user.id)
+        # J.6 FIX: Redis-Cache invalidieren
+        await self._invalidate_cache_redis(cache_key)
+        # pop statt del um KeyError zu vermeiden wenn Key bereits gelöscht
+        self._permission_cache.pop(cache_key, None)
+
     def _clear_user_cache(self, user: User) -> None:
         """
-        Löscht den Permission-Cache für einen Benutzer.
+        Löscht den Permission-Cache für einen Benutzer (sync fallback).
 
-        Note: Dict key deletion ist atomic in CPython, daher kein Lock nötig
-        für einzelne User-Einträge.
+        Note: Bevorzuge _clear_user_cache_async() in async Contexten
+        für vollstaendige Redis-Invalidierung.
 
         Args:
             user: Der Benutzer
@@ -602,8 +732,11 @@ class PermissionService:
     async def clear_cache_async(self) -> None:
         """
         Löscht den gesamten Permission-Cache (async-safe).
+
+        J.6 FIX: Loescht Cache in Redis UND In-Memory.
         """
         async with self._cache_lock:
+            await self._invalidate_cache_redis()  # Alle loeschen
             self._permission_cache.clear()
             logger.debug("permission_cache_cleared_async")
 
@@ -613,6 +746,7 @@ class PermissionService:
 
         Warnung: Sollte nicht während aktiver async Operations verwendet werden.
         Bevorzuge clear_cache_async() in async Contexten.
+        Note: Redis-Cache wird hier NICHT geloescht (nur async).
         """
         self._permission_cache.clear()
         logger.debug("permission_cache_cleared")

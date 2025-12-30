@@ -170,9 +170,15 @@ class BulkProcessingJob:
         }
 
 
-# In-Memory Job Storage (später durch DB-Tabelle ersetzen)
+# FAANG-AUDIT: In-Memory Job Storage mit Thread-Safety
+# Diese Modul-Level Dicts sind beabsichtigt fuer Worker-lokales Job-Tracking.
+# Jobs sind nur fuer die Laufzeit eines Workers gueltig.
+# TODO: Fuer Multi-Worker Production auf DB-Tabelle migrieren (OCRBulkProcessingJob Model existiert bereits!)
+# HINWEIS: _job_cancel_flags.get() Aufrufe in Verarbeitungsschleifen (Zeilen 450, 489, 541)
+# sind absichtlich ohne Lock, da nur Bool-Reads (atomic) und Lock-Overhead vermieden wird.
 _active_jobs: Dict[str, BulkProcessingJob] = {}
 _job_cancel_flags: Dict[str, bool] = {}
+_job_storage_lock: asyncio.Lock = asyncio.Lock()  # Thread-Safety fuer concurrent access
 
 
 class BulkOCRProcessingService:
@@ -248,8 +254,10 @@ class BulkOCRProcessingService:
             },
         )
 
-        _active_jobs[job_id] = job
-        _job_cancel_flags[job_id] = False
+        # FAANG-AUDIT FIX: Thread-Safe Job Storage
+        async with _job_storage_lock:
+            _active_jobs[job_id] = job
+            _job_cancel_flags[job_id] = False
 
         logger.info(
             "bulk_processing_job_created",
@@ -278,16 +286,18 @@ class BulkOCRProcessingService:
         Returns:
             Aktualisierter Job
         """
-        job = _active_jobs.get(job_id)
-        if not job:
-            raise ValueError(f"Job {job_id} nicht gefunden")
+        # FAANG-AUDIT FIX: Thread-Safe Job Access
+        async with _job_storage_lock:
+            job = _active_jobs.get(job_id)
+            if not job:
+                raise ValueError(f"Job {job_id} nicht gefunden")
 
-        if job.status == BulkJobStatus.RUNNING:
-            raise ValueError(f"Job {job_id} läuft bereits")
+            if job.status == BulkJobStatus.RUNNING:
+                raise ValueError(f"Job {job_id} läuft bereits")
 
-        job.status = BulkJobStatus.RUNNING
-        job.started_at = job.started_at or datetime.now(timezone.utc)
-        _job_cancel_flags[job_id] = False
+            job.status = BulkJobStatus.RUNNING
+            job.started_at = job.started_at or datetime.now(timezone.utc)
+            _job_cancel_flags[job_id] = False
 
         logger.info(
             "bulk_processing_job_started",
@@ -299,16 +309,18 @@ class BulkOCRProcessingService:
 
     async def pause_job(self, job_id: str) -> BulkProcessingJob:
         """Pausiert einen laufenden Job."""
-        job = _active_jobs.get(job_id)
-        if not job:
-            raise ValueError(f"Job {job_id} nicht gefunden")
+        # FAANG-AUDIT FIX: Thread-Safe Job Access
+        async with _job_storage_lock:
+            job = _active_jobs.get(job_id)
+            if not job:
+                raise ValueError(f"Job {job_id} nicht gefunden")
 
-        if job.status != BulkJobStatus.RUNNING:
-            raise ValueError(f"Job {job_id} läuft nicht")
+            if job.status != BulkJobStatus.RUNNING:
+                raise ValueError(f"Job {job_id} läuft nicht")
 
-        _job_cancel_flags[job_id] = True
-        job.status = BulkJobStatus.PAUSED
-        job.paused_at = datetime.now(timezone.utc)
+            _job_cancel_flags[job_id] = True
+            job.status = BulkJobStatus.PAUSED
+            job.paused_at = datetime.now(timezone.utc)
 
         logger.info(
             "bulk_processing_job_paused",
@@ -320,13 +332,15 @@ class BulkOCRProcessingService:
 
     async def cancel_job(self, job_id: str) -> BulkProcessingJob:
         """Bricht einen Job ab."""
-        job = _active_jobs.get(job_id)
-        if not job:
-            raise ValueError(f"Job {job_id} nicht gefunden")
+        # FAANG-AUDIT FIX: Thread-Safe Job Access
+        async with _job_storage_lock:
+            job = _active_jobs.get(job_id)
+            if not job:
+                raise ValueError(f"Job {job_id} nicht gefunden")
 
-        _job_cancel_flags[job_id] = True
-        job.status = BulkJobStatus.CANCELLED
-        job.completed_at = datetime.now(timezone.utc)
+            _job_cancel_flags[job_id] = True
+            job.status = BulkJobStatus.CANCELLED
+            job.completed_at = datetime.now(timezone.utc)
 
         logger.info(
             "bulk_processing_job_cancelled",
@@ -338,13 +352,17 @@ class BulkOCRProcessingService:
 
     async def get_job(self, job_id: str) -> Optional[BulkProcessingJob]:
         """Gibt einen Job zurück."""
-        return _active_jobs.get(job_id)
+        # FAANG-AUDIT FIX: Thread-Safe Job Access
+        async with _job_storage_lock:
+            return _active_jobs.get(job_id)
 
     async def get_job_progress(self, job_id: str) -> Optional[BulkProcessingProgress]:
         """Berechnet detaillierte Fortschrittsinformationen."""
-        job = _active_jobs.get(job_id)
-        if not job:
-            return None
+        # FAANG-AUDIT FIX: Thread-Safe Job Access
+        async with _job_storage_lock:
+            job = _active_jobs.get(job_id)
+            if not job:
+                return None
 
         elapsed = 0.0
         docs_per_second = 0.0
@@ -380,7 +398,9 @@ class BulkOCRProcessingService:
 
     async def list_jobs(self) -> List[BulkProcessingJob]:
         """Gibt alle Jobs zurück."""
-        return list(_active_jobs.values())
+        # FAANG-AUDIT FIX: Thread-Safe Job Access
+        async with _job_storage_lock:
+            return list(_active_jobs.values())
 
     # =========================================================================
     # BULK PROCESSING EXECUTION
@@ -753,8 +773,10 @@ class BulkOCRProcessingService:
         job: BulkProcessingJob,
     ) -> None:
         """Speichert einen Checkpoint des Jobs."""
+        # FAANG-AUDIT FIX: Thread-Safe Job Storage
         # In-Memory Update (später durch DB-Speicherung ersetzen)
-        _active_jobs[job.id] = job
+        async with _job_storage_lock:
+            _active_jobs[job.id] = job
         logger.debug(
             "checkpoint_saved",
             job_id=job.id[:8],

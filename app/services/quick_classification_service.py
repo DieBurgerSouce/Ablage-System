@@ -60,8 +60,12 @@ QUICK_CLASSIFICATION_MATCH_TYPE = Counter(
 EINGANGSRECHNUNG_TAG_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 AUSGANGSRECHNUNG_TAG_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
 
-# Cache fuer CompanySettings (1 Minute TTL)
+# FAANG-AUDIT FIX: Cache fuer CompanySettings (1 Minute TTL)
 # Enterprise Refined: Vermeidet wiederholte DB-Abfragen bei Batch-Uploads
+# Modul-Level Cache ist hier akzeptabel da:
+# 1. Nur read-only Daten (CompanySettings aendert sich selten)
+# 2. TTL verhindert veraltete Daten
+# 3. asyncio.Lock schuetzt vor Race Conditions
 _company_settings_cache: Tuple[Optional[CompanySettings], datetime] = (None, datetime.min)
 _CACHE_TTL = timedelta(minutes=1)
 
@@ -69,6 +73,10 @@ _CACHE_TTL = timedelta(minutes=1)
 # Speichert Entities nach VAT-ID und IBAN fuer schnelles Matching
 _business_entity_cache: Dict[str, Tuple[Optional[BusinessEntity], datetime]] = {}
 _ENTITY_CACHE_TTL = timedelta(minutes=1)
+
+# FAANG-AUDIT FIX: Thread-Safety Lock fuer Cache-Zugriff
+import asyncio
+_cache_lock: asyncio.Lock = asyncio.Lock()
 
 # Prometheus Metrik fuer Entity-Matching
 QUICK_CLASSIFICATION_ENTITY_MATCH = Counter(
@@ -1004,22 +1012,28 @@ class QuickClassificationService:
         Laedt die Admin-Firmendaten aus der Datenbank (mit Caching).
 
         Enterprise Refined: 1-Minuten-Cache um DB-Last bei Batch-Uploads zu reduzieren.
+        FAANG-AUDIT FIX: Thread-Safety mit asyncio.Lock fuer Cache-Zugriff.
         """
         global _company_settings_cache
 
-        cached_settings, cache_time = _company_settings_cache
-        if cached_settings is not None and datetime.now() - cache_time < _CACHE_TTL:
-            logger.debug("company_settings_cache_hit")
-            return cached_settings
+        # Thread-Safe Cache-Read
+        async with _cache_lock:
+            cached_settings, cache_time = _company_settings_cache
+            if cached_settings is not None and datetime.now() - cache_time < _CACHE_TTL:
+                logger.debug("company_settings_cache_hit")
+                return cached_settings
 
+        # DB-Abfrage ausserhalb des Locks (kann lange dauern)
         logger.debug("company_settings_cache_miss")
         result = await db.execute(
             select(CompanySettings).limit(1)
         )
         settings = result.scalar_one_or_none()
 
-        # Cache aktualisieren
-        _company_settings_cache = (settings, datetime.now())
+        # Thread-Safe Cache-Write
+        async with _cache_lock:
+            _company_settings_cache = (settings, datetime.now())
+
         return settings
 
     async def _match_business_entity(
@@ -1069,25 +1083,26 @@ class QuickClassificationService:
             normalized_vat = self._normalize_vat_id(vat.value)
             cache_key = f"vat:{normalized_vat}"
 
-            # Cache pruefen
-            if cache_key in _business_entity_cache:
-                cached_entity, cache_time = _business_entity_cache[cache_key]
-                if datetime.now() - cache_time < _ENTITY_CACHE_TTL and cached_entity:
-                    if cached_entity.entity_type in entity_types:
-                        logger.debug(
-                            "business_entity_cache_hit",
-                            vat_id=normalized_vat,
-                            entity_name=cached_entity.name
-                        )
-                        return (
-                            cached_entity.id,
-                            cached_entity.display_name or cached_entity.name,
-                            cached_entity.entity_type,
-                            "vat_id",
-                            0.95
-                        )
+            # FAANG-AUDIT FIX: Thread-Safe Cache-Read
+            async with _cache_lock:
+                if cache_key in _business_entity_cache:
+                    cached_entity, cache_time = _business_entity_cache[cache_key]
+                    if datetime.now() - cache_time < _ENTITY_CACHE_TTL and cached_entity:
+                        if cached_entity.entity_type in entity_types:
+                            logger.debug(
+                                "business_entity_cache_hit",
+                                vat_id=normalized_vat,
+                                entity_name=cached_entity.name
+                            )
+                            return (
+                                cached_entity.id,
+                                cached_entity.display_name or cached_entity.name,
+                                cached_entity.entity_type,
+                                "vat_id",
+                                0.95
+                            )
 
-            # DB-Abfrage
+            # DB-Abfrage (ausserhalb Lock - kann lange dauern)
             result = await db.execute(
                 select(BusinessEntity)
                 .where(BusinessEntity.vat_id == normalized_vat)
@@ -1097,8 +1112,9 @@ class QuickClassificationService:
             )
             entity = result.scalar_one_or_none()
 
-            # Cache aktualisieren
-            _business_entity_cache[cache_key] = (entity, datetime.now())
+            # FAANG-AUDIT FIX: Thread-Safe Cache-Write
+            async with _cache_lock:
+                _business_entity_cache[cache_key] = (entity, datetime.now())
 
             if entity and entity.entity_type in entity_types:
                 logger.info(
@@ -1121,25 +1137,26 @@ class QuickClassificationService:
             normalized_iban = self._normalize_iban(iban.value)
             cache_key = f"iban:{normalized_iban}"
 
-            # Cache pruefen
-            if cache_key in _business_entity_cache:
-                cached_entity, cache_time = _business_entity_cache[cache_key]
-                if datetime.now() - cache_time < _ENTITY_CACHE_TTL and cached_entity:
-                    if cached_entity.entity_type in entity_types:
-                        logger.debug(
-                            "business_entity_cache_hit",
-                            iban=normalized_iban[:8] + "...",
-                            entity_name=cached_entity.name
-                        )
-                        return (
-                            cached_entity.id,
-                            cached_entity.display_name or cached_entity.name,
-                            cached_entity.entity_type,
-                            "iban",
-                            0.90
-                        )
+            # FAANG-AUDIT FIX: Thread-Safe Cache-Read
+            async with _cache_lock:
+                if cache_key in _business_entity_cache:
+                    cached_entity, cache_time = _business_entity_cache[cache_key]
+                    if datetime.now() - cache_time < _ENTITY_CACHE_TTL and cached_entity:
+                        if cached_entity.entity_type in entity_types:
+                            logger.debug(
+                                "business_entity_cache_hit",
+                                iban=normalized_iban[:8] + "...",
+                                entity_name=cached_entity.name
+                            )
+                            return (
+                                cached_entity.id,
+                                cached_entity.display_name or cached_entity.name,
+                                cached_entity.entity_type,
+                                "iban",
+                                0.90
+                            )
 
-            # DB-Abfrage
+            # DB-Abfrage (ausserhalb Lock - kann lange dauern)
             result = await db.execute(
                 select(BusinessEntity)
                 .where(BusinessEntity.iban == normalized_iban)
@@ -1149,8 +1166,9 @@ class QuickClassificationService:
             )
             entity = result.scalar_one_or_none()
 
-            # Cache aktualisieren
-            _business_entity_cache[cache_key] = (entity, datetime.now())
+            # FAANG-AUDIT FIX: Thread-Safe Cache-Write
+            async with _cache_lock:
+                _business_entity_cache[cache_key] = (entity, datetime.now())
 
             if entity and entity.entity_type in entity_types:
                 logger.info(
