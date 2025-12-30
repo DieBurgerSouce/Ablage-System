@@ -1,10 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { authService, type User } from '@/lib/api/services/auth';
+import { authService, type User, type LoginResult, type AuthResponse, type TwoFactorRequiredResponse } from '@/lib/api/services/auth';
+
+// Type guard to check if result requires 2FA
+export function is2FARequired(result: LoginResult): result is TwoFactorRequiredResponse {
+    return 'requires_2fa' in result && result.requires_2fa === true;
+}
 
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
-    login: typeof authService.login;
+    login: (email: string, password: string) => Promise<LoginResult>;
+    verify2FA: (tempToken: string, code: string) => Promise<AuthResponse>;
     logout: typeof authService.logout;
     isAuthenticated: boolean;
 }
@@ -34,8 +40,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         initAuth();
     }, []);
 
-    const login: typeof authService.login = async (email, password) => {
+    const login = async (email: string, password: string): Promise<LoginResult> => {
         const response = await authService.login(email, password);
+        // Only set user if we got a full auth response (not 2FA required)
+        if (!is2FARequired(response)) {
+            setUser(response.user);
+        }
+        return response;
+    };
+
+    const verify2FA = async (tempToken: string, code: string): Promise<AuthResponse> => {
+        const response = await authService.verify2FA(tempToken, code);
         setUser(response.user);
         return response;
     };
@@ -50,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             user,
             isLoading,
             login,
+            verify2FA,
             logout,
             isAuthenticated: !!user
         }}>

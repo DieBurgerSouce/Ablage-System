@@ -2,6 +2,8 @@ import { createRootRoute, Outlet, useLocation, Navigate } from '@tanstack/react-
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useAuth } from '@/lib/auth/AuthContext'
+import { SessionExpiredModal } from '@/components/auth/SessionExpiredModal'
+import { Toaster } from '@/components/ui/toaster'
 
 export const Route = createRootRoute({
     component: RootComponent,
@@ -17,11 +19,12 @@ function RootComponent() {
     }
 
     // Public routes that don't need auth or layout
-    if (location.pathname === '/login') {
+    if (location.pathname === '/login' || location.pathname === '/forgot-password' || location.pathname.startsWith('/reset-password')) {
         return (
             <>
                 <Outlet />
-                <TanStackRouterDevtools />
+                <Toaster />
+                {import.meta.env.DEV && <TanStackRouterDevtools />}
             </>
         )
     }
@@ -33,9 +36,13 @@ function RootComponent() {
 
     // Render protected layout
     return (
-        <AppLayout>
-            <Outlet />
-            <TanStackRouterDevtools />
-        </AppLayout>
+        <>
+            <AppLayout>
+                <Outlet />
+                {import.meta.env.DEV && <TanStackRouterDevtools />}
+            </AppLayout>
+            <SessionExpiredModal />
+            <Toaster />
+        </>
     )
 }

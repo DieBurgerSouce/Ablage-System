@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { showApiErrorToast } from './error-toast-handler';
 
 // API Base URL from environment variable with fallback
 // Use relative URL to go through nginx proxy (works in both dev and prod)
@@ -118,12 +119,20 @@ apiClient.interceptors.response.use(
                 originalRequest.headers.Authorization = `Bearer ${newToken}`;
                 return apiClient(originalRequest);
             } catch (refreshError) {
-                // Refresh failed, logout user
+                // Refresh failed - emit event for session expired modal
                 console.error('Token refresh failed:', refreshError);
                 sessionStorage.removeItem('auth_token');
                 sessionStorage.removeItem('refresh_token');
                 sessionStorage.removeItem('user');
-                window.location.href = '/login';
+
+                // Store current path for redirect after re-login
+                sessionStorage.setItem('redirect_after_login', window.location.pathname);
+
+                // Dispatch custom event for session expired modal
+                window.dispatchEvent(new CustomEvent('session-expired', {
+                    detail: { redirectPath: window.location.pathname }
+                }));
+
                 return Promise.reject(refreshError);
             }
         }
@@ -164,6 +173,10 @@ apiClient.interceptors.response.use(
             await sleep(delayMs);
             return apiClient(originalRequest);
         }
+
+        // Show error toast for failed requests (after retries exhausted)
+        // This handles K3: Error Toasts für API-Fehler
+        showApiErrorToast(error);
 
         return Promise.reject(error);
     }

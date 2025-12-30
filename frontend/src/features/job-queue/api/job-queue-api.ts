@@ -174,7 +174,7 @@ export async function retryJob(
 }
 
 /**
- * Aendert die Prioritaet eines Jobs.
+ * Ändert die Priorität eines Jobs.
  */
 export async function changeJobPriority(jobId: string, priority: number): Promise<JobActionResponse> {
   const response = await apiClient.patch(`/admin/jobs/${jobId}/priority?priority=${priority}`);
@@ -233,7 +233,7 @@ export async function bulkRetryJobs(
 }
 
 /**
- * Aendert die Prioritaet mehrerer Jobs.
+ * Ändert die Priorität mehrerer Jobs.
  */
 export async function bulkChangePriority(
   jobIds: string[],

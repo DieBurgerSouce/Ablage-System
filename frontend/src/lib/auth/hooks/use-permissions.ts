@@ -1,7 +1,7 @@
 /**
- * Permission Hook fuer rollenbasierte Zugriffskontrolle
+ * Permission Hook für rollenbasierte Zugriffskontrolle
  *
- * Bietet eine einfache API zur Ueberpruefung von Benutzerberechtigungen
+ * Bietet eine einfache API zur Überprüfung von Benutzerberechtigungen
  * basierend auf Rolle und Superuser-Status.
  *
  * Verwendung:
@@ -58,22 +58,22 @@ const ALL_PERMISSIONS = [
 
 export interface PermissionHookResult {
   /**
-   * Prueft ob der Benutzer eine bestimmte Berechtigung hat.
+   * Prüft ob der Benutzer eine bestimmte Berechtigung hat.
    */
   hasPermission: (permission: string) => boolean;
 
   /**
-   * Prueft ob der Benutzer mindestens eine der angegebenen Berechtigungen hat.
+   * Prüft ob der Benutzer mindestens eine der angegebenen Berechtigungen hat.
    */
   hasAnyPermission: (...permissions: string[]) => boolean;
 
   /**
-   * Prueft ob der Benutzer alle angegebenen Berechtigungen hat.
+   * Prüft ob der Benutzer alle angegebenen Berechtigungen hat.
    */
   hasAllPermissions: (...permissions: string[]) => boolean;
 
   /**
-   * Prueft ob der Benutzer Zugriff auf ein bestimmtes Feature hat.
+   * Prüft ob der Benutzer Zugriff auf ein bestimmtes Feature hat.
    */
   canAccess: {
     validation: boolean;

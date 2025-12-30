@@ -43,11 +43,11 @@ export const QUEUE_UTILIZATION_PERCENT_THRESHOLDS = {
 // ==================== Job Priority Thresholds ====================
 
 /**
- * Job-Prioritaet Schwellenwerte
- * Bestimmt die visuelle Hervorhebung von Jobs nach Prioritaet
+ * Job-Priorität Schwellenwerte
+ * Bestimmt die visuelle Hervorhebung von Jobs nach Priorität
  */
 export const JOB_PRIORITY_THRESHOLDS = {
-  /** Ab diesem Wert wird die Prioritaet als "Hoch" (rot) hervorgehoben */
+  /** Ab diesem Wert wird die Priorität als "Hoch" (rot) hervorgehoben */
   HIGH: 8,
 } as const;
 
@@ -99,7 +99,7 @@ export function getQueueBarColor(length: number): string {
 }
 
 /**
- * Ermittelt ob eine Job-Prioritaet als "hoch" gilt
+ * Ermittelt ob eine Job-Priorität als "hoch" gilt
  */
 export function isHighPriority(priority: number): boolean {
   return priority >= JOB_PRIORITY_THRESHOLDS.HIGH;
