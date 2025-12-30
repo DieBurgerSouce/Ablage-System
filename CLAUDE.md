@@ -34,6 +34,19 @@ Dieses Projekt verwendet eine **optimierte Claude Code Entwicklungsstruktur**. B
 | OCR-Qualität testen | `/ocr-benchmark` |
 | Tests ausführen | `/quick-test` |
 | Code reviewen | `/review-pr` |
+| **WebApp vollständig testen** | **`/test-webapp`** |
+
+### Verfügbare Skills - AUTOMATISCH NUTZEN!
+
+| Situation | Skill | Aktivierung |
+|-----------|-------|-------------|
+| Frontend/UI testen, Browser-Tests, E2E-Tests | `webapp-tester-mcp` | `@webapp-tester-mcp` |
+| OCR debuggen, Textextraktion prüfen | `ocr-debug` | `@ocr-debug` |
+| Deutsche Texte, Umlaute validieren | `german-text` | `@german-text` |
+| Docker-Entwicklung | `docker-dev` | `@docker-dev` |
+
+**WICHTIG für Frontend-Testing:**
+Wenn der User fragt nach: "teste die App", "UI prüfen", "Frontend testen", "E2E Tests", "Browser-Tests", "Screenshots machen", "wie ein QA-Engineer testen" → **IMMER** den `@webapp-tester-mcp` Skill aktivieren! Dieser nutzt den Playwright MCP Server für echte Browser-Automatisierung.
 
 ---
 
