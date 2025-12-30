@@ -266,9 +266,13 @@ async def pause_batch_job(
         }
 
     except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        # SECURITY FIX 28-17: Generische Fehlermeldung
+        logger.warning("batch_pause_permission_denied", error=str(e))
+        raise HTTPException(status_code=403, detail="Keine Berechtigung fuer diese Aktion")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-17: Generische Fehlermeldung
+        logger.warning("batch_pause_validation_error", error=str(e))
+        raise HTTPException(status_code=400, detail="Ungueltige Anfrage fuer Batch-Pause")
 
 
 @router.post("/{batch_id}/resume", response_model=BatchJobActionResponse)
@@ -306,9 +310,13 @@ async def resume_batch_job(
         }
 
     except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        # SECURITY FIX 28-17: Generische Fehlermeldung
+        logger.warning("batch_resume_permission_denied", error=str(e))
+        raise HTTPException(status_code=403, detail="Keine Berechtigung fuer diese Aktion")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-17: Generische Fehlermeldung
+        logger.warning("batch_resume_validation_error", error=str(e))
+        raise HTTPException(status_code=400, detail="Ungueltige Anfrage fuer Batch-Fortsetzung")
 
 
 @router.post("/{batch_id}/cancel", response_model=BatchJobActionResponse)
@@ -346,9 +354,13 @@ async def cancel_batch_job(
         }
 
     except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        # SECURITY FIX 28-17: Generische Fehlermeldung
+        logger.warning("batch_cancel_permission_denied", error=str(e))
+        raise HTTPException(status_code=403, detail="Keine Berechtigung fuer diese Aktion")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-17: Generische Fehlermeldung
+        logger.warning("batch_cancel_validation_error", error=str(e))
+        raise HTTPException(status_code=400, detail="Ungueltige Anfrage fuer Batch-Abbruch")
 
 
 @router.get("/{batch_id}/progress")

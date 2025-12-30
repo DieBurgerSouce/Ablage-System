@@ -259,9 +259,11 @@ async def create_role(
             permission_names=request.permission_names
         )
     except ValueError as e:
+        # SECURITY FIX 29: Generic error message - no internal details
+        logger.warning("role_admin_validation_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
         )
 
     # Audit-Log
@@ -345,9 +347,11 @@ async def update_role(
             permission_names=request.permission_names
         )
     except ValueError as e:
+        # SECURITY FIX 29: Generic error message - no internal details
+        logger.warning("role_admin_validation_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
         )
 
     # Audit-Log
@@ -422,9 +426,11 @@ async def delete_role(
     try:
         await service.delete_role(role)
     except ValueError as e:
+        # SECURITY FIX 29: Generic error message - no internal details
+        logger.warning("role_admin_validation_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
         )
 
     # Audit-Log

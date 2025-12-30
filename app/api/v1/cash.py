@@ -21,6 +21,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, Header
 from fastapi.responses import StreamingResponse, JSONResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
@@ -110,8 +111,7 @@ async def list_registers(
                 current_balance=r.current_balance,
                 currency=r.currency,
                 is_active=r.is_active,
-                last_entry_date=r.last_entry_date,
-                last_count_date=r.last_count_date,
+                is_default=r.is_default,
                 created_at=r.created_at,
                 updated_at=r.updated_at,
             )
@@ -128,6 +128,7 @@ async def list_registers(
     summary="Kasse erstellen",
     description="Erstellt eine neue Kasse fuer die aktuelle Firma."
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def create_register(
     data: CashRegisterCreate,
     request: Request,
@@ -152,8 +153,7 @@ async def create_register(
         current_balance=register.current_balance,
         currency=register.currency,
         is_active=register.is_active,
-        last_entry_date=register.last_entry_date,
-        last_count_date=register.last_count_date,
+        is_default=register.is_default,
         created_at=register.created_at,
         updated_at=register.updated_at,
     )
@@ -194,8 +194,7 @@ async def get_register(
         current_balance=register.current_balance,
         currency=register.currency,
         is_active=register.is_active,
-        last_entry_date=register.last_entry_date,
-        last_count_date=register.last_count_date,
+        is_default=register.is_default,
         created_at=register.created_at,
         updated_at=register.updated_at,
     )
@@ -238,8 +237,7 @@ async def update_register(
         current_balance=register.current_balance,
         currency=register.currency,
         is_active=register.is_active,
-        last_entry_date=register.last_entry_date,
-        last_count_date=register.last_count_date,
+        is_default=register.is_default,
         created_at=register.created_at,
         updated_at=register.updated_at,
     )
@@ -268,42 +266,49 @@ async def list_entries(
 ) -> CashEntryListResponse:
     """Liste der Kassenbucheintraege."""
 
+    # Konvertiere skip/limit zu page/page_size fuer Service
+    page = (skip // limit) + 1 if limit > 0 else 1
+    page_size = limit
+
     entries, total = await cash_service.get_entries(
         db=db,
         company_id=company.id,
         register_id=register_id,
         start_date=start_date,
         end_date=end_date,
-        entry_type=entry_type,
-        skip=skip,
-        limit=limit,
+        entry_type=entry_type.value if entry_type else None,
+        page=page,
+        page_size=page_size,
     )
 
+    # WICHTIG: 'entries' statt 'items' (Frontend erwartet 'entries')
+    # WICHTIG: Mapping von DB-Feldnamen zu Frontend-Feldnamen!
     return CashEntryListResponse(
         entries=[
             CashEntryResponse(
                 id=e.id,
-                register_id=e.register_id,
+                register_id=e.cash_register_id,  # Mapping: DB -> Frontend
                 entry_number=e.entry_number,
                 entry_date=e.entry_date,
-                entry_type=CashEntryType(e.entry_type),
-                amount=e.amount,
-                net_amount=e.net_amount,
-                tax_amount=e.tax_amount,
-                tax_rate=e.tax_rate,
-                balance_after=e.balance_after,
-                description=e.description,
+                entry_type=e.entry_type,
+                amount=float(e.amount) if e.amount else 0.0,
+                net_amount=float(e.net_amount) if e.net_amount else None,
+                tax_amount=float(e.tax_amount) if e.tax_amount else None,
+                tax_rate=float(e.tax_rate) if e.tax_rate else None,
+                balance_after=float(e.balance_after) if e.balance_after else 0.0,
+                description=e.description or "",
                 category_id=e.category_id,
-                category_name=e.category.name if e.category else None,
-                receipt_number=e.receipt_number,
-                counterparty=e.counterparty,
-                is_entertainment=e.is_entertainment,
+                category_name=e.category.name if e.category else None,  # Aus Relationship
+                receipt_number=e.reference_number,  # Mapping: DB -> Frontend
+                counterparty=e.counterparty_name,  # Mapping: DB -> Frontend
+                is_entertainment=bool(e.entertainment_data),  # Mapping
                 entertainment_data=e.entertainment_data,
-                is_cancelled=e.is_cancelled,
-                cancelled_by_id=e.cancelled_by_id,
-                cancels_entry_id=e.cancels_entry_id,
-                skr03_account=e.skr03_account,
-                skr04_account=e.skr04_account,
+                is_cancelled=e.is_cancelled if e.is_cancelled is not None else False,
+                # GoBD Audit-Trail: Storno-Referenzen korrekt mappen
+                cancelled_by_id=getattr(e, 'cancelled_by_entry_id', None) if e.entry_type != CashEntryType.CANCELLATION.value else None,
+                cancels_entry_id=getattr(e, 'cancelled_by_entry_id', None) if e.entry_type == CashEntryType.CANCELLATION.value else None,
+                skr03_account=getattr(e, 'debit_account', None),  # Mapping: DB -> Frontend
+                skr04_account=getattr(e, 'credit_account', None),  # Mapping: DB -> Frontend
                 created_by_id=e.created_by_id,
                 created_at=e.created_at,
             )
@@ -313,33 +318,49 @@ async def list_entries(
     )
 
 
-@entries_router.post(
+class DuplicateCheckRequest(BaseModel):
+    """Request-Schema fuer Duplikat-Check."""
+    register_id: UUID = Field(..., description="Kassen-ID")
+    amount: float = Field(..., description="Betrag")
+    entry_date: str = Field(..., description="Buchungsdatum (YYYY-MM-DD)")
+    description: str = Field(..., description="Beschreibung")
+    receipt_number: Optional[str] = Field(None, description="Belegnummer")
+
+
+@reports_router.post(
     "/check-duplicate",
     summary="Duplikat-Check",
     description="Prueft ob eine aehnliche Buchung bereits existiert (UX-Verbesserung)."
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def check_duplicate(
-    register_id: UUID = Query(..., description="Kassen-ID"),
-    amount: float = Query(..., description="Betrag"),
-    entry_date: date = Query(..., description="Buchungsdatum"),
-    description: str = Query(..., description="Beschreibung"),
-    reference_number: Optional[str] = Query(None, description="Belegnummer"),
-    request: Request = None,
+    request: Request,
+    data: DuplicateCheckRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> dict:
-    """Prueft auf moegliche Duplikate vor Buchungserstellung."""
+    """Prueft auf moegliche Duplikate vor Buchungserstellung.
+
+    Akzeptiert JSON-Body mit register_id, amount, entry_date, description, receipt_number.
+    """
     from decimal import Decimal
+    from datetime import datetime
+
+    # Parse entry_date
+    try:
+        entry_date_parsed = datetime.strptime(data.entry_date, "%Y-%m-%d").date()
+    except ValueError:
+        entry_date_parsed = datetime.fromisoformat(data.entry_date.replace("Z", "+00:00")).date()
 
     duplicate = await cash_service.check_duplicate(
         db=db,
-        register_id=register_id,
+        register_id=data.register_id,
         company_id=company.id,
-        amount=Decimal(str(amount)),
-        entry_date=entry_date,
-        description=description,
-        reference_number=reference_number,
+        amount=Decimal(str(data.amount)),
+        entry_date=entry_date_parsed,
+        description=data.description,
+        reference_number=data.receipt_number,
     )
 
     if duplicate:
@@ -361,14 +382,14 @@ async def check_duplicate(
 
 @entries_router.post(
     "",
-    response_model=CashEntryResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Kassenbucheintrag erstellen",
     description="Erstellt einen neuen Kassenbucheintrag. "
                 "APPEND-ONLY: Eintraege koennen nicht geaendert werden! "
-                "Unterstuetzt Idempotency-Key Header fuer Netzwerk-Resilience."
+                "Unterstuetzt Idempotency-Key Header fuer Netzwerk-Resilience.",
+    responses={201: {"model": CashEntryResponse}}
 )
-@limiter.limit("30/minute", key_func=get_user_identifier)  # Rate Limit: Max 30 Buchungen/Minute
+@limiter.limit("10/minute", key_func=get_user_identifier)  # SECURITY FIX 30: Reduced from 30 to 10 for GoBD compliance
 async def create_entry(
     data: CashEntryCreate,
     request: Request,
@@ -376,7 +397,7 @@ async def create_entry(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_cash_permission),
     cached_response: Optional[dict] = Depends(check_idempotency),
-) -> CashEntryResponse:
+) -> JSONResponse:
     """Erstellt einen neuen Kassenbucheintrag.
 
     Unterstuetzt Idempotency-Key Header:
@@ -414,54 +435,63 @@ async def create_entry(
         # Lock freigeben bei Fehler
         if idempotency_key:
             await idempotency_service.release_lock(idempotency_key, user_id)
+        # SECURITY FIX 28-21: Generische Fehlermeldung
+        logger.warning("cash_entry_create_validation_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Ungueltige Kassenbucheingabe. Bitte Eingaben pruefen."
         )
 
     # Kategorie-Name aus Entry-Relationship (Eager Loading im Service)
     # Kein separater Query noetig - N+1 Fix!
     category_name = entry.category.name if entry.category else None
 
+    # WICHTIG: Mapping von DB-Feldnamen zu Frontend-Feldnamen!
+    # DB-Model verwendet: cash_register_id, reference_number, counterparty_name,
+    #                     cancelled_by_entry_id, debit_account, credit_account
+    # Frontend erwartet: register_id, receipt_number, counterparty,
+    #                    cancelled_by_id, skr03_account, skr04_account
     response = CashEntryResponse(
         id=entry.id,
-        register_id=entry.register_id,
+        register_id=entry.cash_register_id,  # Mapping: DB -> Frontend
         entry_number=entry.entry_number,
         entry_date=entry.entry_date,
         entry_type=CashEntryType(entry.entry_type),
-        amount=entry.amount,
-        net_amount=entry.net_amount,
-        tax_amount=entry.tax_amount,
-        tax_rate=entry.tax_rate,
-        balance_after=entry.balance_after,
+        amount=float(entry.amount) if entry.amount else 0.0,
+        net_amount=float(entry.net_amount) if entry.net_amount else None,
+        tax_amount=float(entry.tax_amount) if entry.tax_amount else None,
+        tax_rate=float(entry.tax_rate) if entry.tax_rate else None,
+        balance_after=float(entry.balance_after) if entry.balance_after else 0.0,
         description=entry.description,
         category_id=entry.category_id,
         category_name=category_name,
-        receipt_number=entry.receipt_number,
-        counterparty=entry.counterparty,
-        is_entertainment=entry.is_entertainment,
+        receipt_number=entry.reference_number,  # Mapping: DB -> Frontend
+        counterparty=entry.counterparty_name,  # Mapping: DB -> Frontend
+        is_entertainment=bool(entry.entertainment_data),  # Mapping: abgeleitet aus entertainment_data
         entertainment_data=entry.entertainment_data,
-        is_cancelled=entry.is_cancelled,
-        cancelled_by_id=entry.cancelled_by_id,
-        cancels_entry_id=entry.cancels_entry_id,
-        skr03_account=entry.skr03_account,
-        skr04_account=entry.skr04_account,
+        is_cancelled=entry.is_cancelled if entry.is_cancelled is not None else False,
+        # GoBD Audit-Trail: Semantisch korrekte Storno-Referenzen
+        cancelled_by_id=entry.cancelled_by_entry_id if entry.entry_type != CashEntryType.CANCELLATION.value else None,
+        cancels_entry_id=entry.cancelled_by_entry_id if entry.entry_type == CashEntryType.CANCELLATION.value else None,
+        skr03_account=entry.debit_account,  # Mapping: DB -> Frontend
+        skr04_account=entry.credit_account,  # Mapping: DB -> Frontend
         created_by_id=entry.created_by_id,
         created_at=entry.created_at,
     )
 
     # Idempotency: Response cachen und Lock freigeben
+    response_data = response.model_dump(mode="json")
     if idempotency_key:
         await idempotency_service.cache_response(
             idempotency_key=idempotency_key,
-            response_data=response.model_dump(mode="json"),
+            response_data=response_data,
             status_code=201,
             user_id=user_id,
             ttl=3600,  # 1 Stunde Cache
         )
         await idempotency_service.release_lock(idempotency_key, user_id)
 
-    return response
+    return JSONResponse(content=response_data, status_code=201)
 
 
 @entries_router.post(
@@ -492,37 +522,40 @@ async def cancel_entry(
             user_id=current_user.id,
         )
     except ValueError as e:
+        # SECURITY FIX 28-21: Generische Fehlermeldung
+        logger.warning("cash_entry_cancel_validation_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Stornierung fehlgeschlagen. Bitte Eingaben pruefen."
         )
 
     # Kategorie-Name aus Eager Loading (N+1 Fix!)
     category_name = cancellation_entry.category.name if cancellation_entry.category else None
 
+    # WICHTIG: Mapping von DB-Feldnamen zu Frontend-Feldnamen!
     return CashEntryResponse(
         id=cancellation_entry.id,
-        register_id=cancellation_entry.register_id,
+        register_id=cancellation_entry.cash_register_id,  # Mapping: DB -> Frontend
         entry_number=cancellation_entry.entry_number,
         entry_date=cancellation_entry.entry_date,
         entry_type=CashEntryType(cancellation_entry.entry_type),
-        amount=cancellation_entry.amount,
-        net_amount=cancellation_entry.net_amount,
-        tax_amount=cancellation_entry.tax_amount,
-        tax_rate=cancellation_entry.tax_rate,
-        balance_after=cancellation_entry.balance_after,
+        amount=float(cancellation_entry.amount) if cancellation_entry.amount else 0.0,
+        net_amount=float(cancellation_entry.net_amount) if cancellation_entry.net_amount else None,
+        tax_amount=float(cancellation_entry.tax_amount) if cancellation_entry.tax_amount else None,
+        tax_rate=float(cancellation_entry.tax_rate) if cancellation_entry.tax_rate else None,
+        balance_after=float(cancellation_entry.balance_after) if cancellation_entry.balance_after else 0.0,
         description=cancellation_entry.description,
         category_id=cancellation_entry.category_id,
         category_name=category_name,
-        receipt_number=cancellation_entry.receipt_number,
-        counterparty=cancellation_entry.counterparty,
-        is_entertainment=cancellation_entry.is_entertainment,
+        receipt_number=cancellation_entry.reference_number,  # Mapping: DB -> Frontend
+        counterparty=cancellation_entry.counterparty_name,  # Mapping: DB -> Frontend
+        is_entertainment=bool(cancellation_entry.entertainment_data),  # Mapping
         entertainment_data=cancellation_entry.entertainment_data,
         is_cancelled=cancellation_entry.is_cancelled,
-        cancelled_by_id=cancellation_entry.cancelled_by_id,
-        cancels_entry_id=cancellation_entry.cancels_entry_id,
-        skr03_account=cancellation_entry.skr03_account,
-        skr04_account=cancellation_entry.skr04_account,
+        cancelled_by_id=None,  # Stornobuchung selbst ist nicht storniert
+        cancels_entry_id=cancellation_entry.cancelled_by_entry_id,  # Diese Buchung storniert das Original
+        skr03_account=cancellation_entry.debit_account,  # Mapping: DB -> Frontend
+        skr04_account=cancellation_entry.credit_account,  # Mapping: DB -> Frontend
         created_by_id=cancellation_entry.created_by_id,
         created_at=cancellation_entry.created_at,
     )
@@ -559,29 +592,31 @@ async def get_entry(
     # Der Service nutzt bereits selectinload(CashEntry.category)
     category_name = entry.category.name if entry.category else None
 
+    # WICHTIG: Mapping von DB-Feldnamen zu Frontend-Feldnamen!
     return CashEntryResponse(
         id=entry.id,
-        register_id=entry.register_id,
+        register_id=entry.cash_register_id,  # Mapping: DB -> Frontend
         entry_number=entry.entry_number,
         entry_date=entry.entry_date,
         entry_type=CashEntryType(entry.entry_type),
-        amount=entry.amount,
-        net_amount=entry.net_amount,
-        tax_amount=entry.tax_amount,
-        tax_rate=entry.tax_rate,
-        balance_after=entry.balance_after,
+        amount=float(entry.amount) if entry.amount else 0.0,
+        net_amount=float(entry.net_amount) if entry.net_amount else None,
+        tax_amount=float(entry.tax_amount) if entry.tax_amount else None,
+        tax_rate=float(entry.tax_rate) if entry.tax_rate else None,
+        balance_after=float(entry.balance_after) if entry.balance_after else 0.0,
         description=entry.description,
         category_id=entry.category_id,
         category_name=category_name,
-        receipt_number=entry.receipt_number,
-        counterparty=entry.counterparty,
-        is_entertainment=entry.is_entertainment,
+        receipt_number=entry.reference_number,  # Mapping: DB -> Frontend
+        counterparty=entry.counterparty_name,  # Mapping: DB -> Frontend
+        is_entertainment=bool(entry.entertainment_data),  # Mapping
         entertainment_data=entry.entertainment_data,
-        is_cancelled=entry.is_cancelled,
-        cancelled_by_id=entry.cancelled_by_id,
-        cancels_entry_id=entry.cancels_entry_id,
-        skr03_account=entry.skr03_account,
-        skr04_account=entry.skr04_account,
+        is_cancelled=entry.is_cancelled if entry.is_cancelled is not None else False,
+        # GoBD Audit-Trail: Semantisch korrekte Storno-Referenzen
+        cancelled_by_id=entry.cancelled_by_entry_id if entry.entry_type != CashEntryType.CANCELLATION.value else None,
+        cancels_entry_id=entry.cancelled_by_entry_id if entry.entry_type == CashEntryType.CANCELLATION.value else None,
+        skr03_account=entry.debit_account,  # Mapping: DB -> Frontend
+        skr04_account=entry.credit_account,  # Mapping: DB -> Frontend
         created_by_id=entry.created_by_id,
         created_at=entry.created_at,
     )
@@ -619,7 +654,7 @@ async def list_cash_counts(
     )
 
     return CashCountListResponse(
-        items=[CashCountResponse.model_validate(c) for c in counts],
+        counts=[CashCountResponse.model_validate(c) for c in counts],
         total=total,
     )
 
@@ -650,9 +685,11 @@ async def perform_cash_count(
             user_id=current_user.id,
         )
     except ValueError as e:
+        # SECURITY FIX 28-21: Generische Fehlermeldung
+        logger.warning("cash_count_validation_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Kassensturz fehlgeschlagen. Bitte Eingaben pruefen."
         )
 
     return CashCountResponse.model_validate(cash_count)
@@ -742,7 +779,7 @@ async def list_categories(
     categories = await cash_service.get_categories(
         db=db,
         company_id=company.id,
-        include_inactive=include_inactive,
+        active_only=not include_inactive,
     )
 
     return [
@@ -757,6 +794,11 @@ async def list_categories(
             is_entertainment=c.is_entertainment,
             is_system=c.is_system,
             is_active=c.is_active,
+            level=c.level,
+            path=c.path,
+            category_type=c.category_type,
+            allows_vat_deduction=c.allows_vat_deduction,
+            sort_order=c.sort_order,
             created_at=c.created_at,
         )
         for c in categories
@@ -770,6 +812,7 @@ async def list_categories(
     summary="Kategorie erstellen",
     description="Erstellt eine neue Kassenbuch-Kategorie."
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def create_category(
     data: CashCategoryCreate,
     request: Request,
@@ -796,6 +839,11 @@ async def create_category(
         is_entertainment=category.is_entertainment,
         is_system=category.is_system,
         is_active=category.is_active,
+        level=category.level,
+        path=category.path,
+        category_type=category.category_type,
+        allows_vat_deduction=category.allows_vat_deduction,
+        sort_order=category.sort_order,
         created_at=category.created_at,
     )
 

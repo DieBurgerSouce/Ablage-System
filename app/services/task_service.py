@@ -160,6 +160,44 @@ class TaskService:
             "submitted_at": datetime.utcnow().isoformat(),
         }
 
+    async def verify_task_ownership(
+        self,
+        session: AsyncSession,
+        task_id: str,
+        user_id: UUID
+    ) -> bool:
+        """Verify that a task belongs to a user.
+
+        Y.1-Y.2 SECURITY FIX: Task-Ownership-Pruefung hinzugefuegt.
+
+        Checks via ProcessingJob -> Document -> owner_id chain.
+
+        Args:
+            session: Database session
+            task_id: Celery task ID (worker_id in ProcessingJob)
+            user_id: User UUID to verify against
+
+        Returns:
+            True if task belongs to user or user is admin, False otherwise
+        """
+        result = await session.execute(
+            select(ProcessingJob)
+            .join(Document, ProcessingJob.document_id == Document.id)
+            .where(ProcessingJob.worker_id == task_id)
+            .where(Document.owner_id == user_id)
+        )
+        job = result.scalar_one_or_none()
+
+        if job:
+            return True
+
+        logger.warning(
+            "task_ownership_denied",
+            task_id=task_id,
+            user_id=str(user_id),
+        )
+        return False
+
     def get_task_status(self, task_id: str) -> Dict[str, Any]:
         """Get current status of a task.
 

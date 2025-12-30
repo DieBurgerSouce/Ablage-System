@@ -338,10 +338,11 @@ async def get_secret_metadata(
     except HTTPException:
         raise
     except Exception as e:
+        # SECURITY FIX 29: Generic error message - no internal details (vault is sensitive!)
         logger.error("vault_metadata_fetch_failed", path=path, error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim Abrufen der Metadaten: {str(e)}",
+            detail="Fehler beim Abrufen der Metadaten. Bitte erneut versuchen.",
         )
 
 
@@ -386,8 +387,9 @@ async def refresh_secrets(
             }
 
     except Exception as e:
+        # SECURITY FIX 29: Generic error message - no internal details (vault is sensitive!)
         logger.error("vault_secrets_refresh_failed", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim Aktualisieren der Secrets: {str(e)}",
+            detail="Fehler beim Aktualisieren der Secrets. Bitte erneut versuchen.",
         )

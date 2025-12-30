@@ -96,11 +96,13 @@ async def chunk_document(
         )
 
     except ValueError as e:
+        # SECURITY FIX 28-25: Generische Fehlermeldung
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            detail="Dokument nicht gefunden."
         )
     except Exception as e:
+        # SECURITY FIX 28-25: Generische Fehlermeldung
         logger.exception(
             "chunk_document_failed",
             document_id=str(document_id),
@@ -108,7 +110,7 @@ async def chunk_document(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Chunking fehlgeschlagen: {str(e)}"
+            detail="Chunking fehlgeschlagen. Bitte versuchen Sie es erneut."
         )
 
 
@@ -149,6 +151,7 @@ async def get_document_chunks(
         ]
 
     except Exception as e:
+        # SECURITY FIX 28-25: Generische Fehlermeldung
         logger.exception(
             "get_document_chunks_failed",
             document_id=str(document_id),
@@ -156,7 +159,7 @@ async def get_document_chunks(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Abrufen fehlgeschlagen: {str(e)}"
+            detail="Abrufen fehlgeschlagen. Bitte versuchen Sie es erneut."
         )
 
 
@@ -192,6 +195,7 @@ async def delete_document_chunks(
         }
 
     except Exception as e:
+        # SECURITY FIX 28-25: Generische Fehlermeldung
         logger.exception(
             "delete_document_chunks_failed",
             document_id=str(document_id),
@@ -199,7 +203,7 @@ async def delete_document_chunks(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Loeschen fehlgeschlagen: {str(e)}"
+            detail="Loeschen fehlgeschlagen. Bitte versuchen Sie es erneut."
         )
 
 
@@ -255,11 +259,13 @@ async def rechunk_document(
         )
 
     except ValueError as e:
+        # SECURITY FIX 28-25: Generische Fehlermeldung
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            detail="Dokument nicht gefunden."
         )
     except Exception as e:
+        # SECURITY FIX 28-25: Generische Fehlermeldung
         logger.exception(
             "rechunk_document_failed",
             document_id=str(document_id),
@@ -267,7 +273,7 @@ async def rechunk_document(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Rechunking fehlgeschlagen: {str(e)}"
+            detail="Rechunking fehlgeschlagen. Bitte versuchen Sie es erneut."
         )
 
 
@@ -390,8 +396,9 @@ async def get_chunk_stats(
         }
 
     except Exception as e:
+        # SECURITY FIX 28-25: Generische Fehlermeldung
         logger.exception("get_chunk_stats_failed", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Statistiken fehlgeschlagen: {str(e)}"
+            detail="Statistiken fehlgeschlagen. Bitte versuchen Sie es erneut."
         )

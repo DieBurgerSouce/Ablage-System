@@ -22,6 +22,9 @@ from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies import get_current_active_user
+from app.db.models import User
+
 from app.api.schemas.einvoice import (
     EInvoiceConvertRequest,
     EInvoiceConvertResponse,
@@ -96,11 +99,12 @@ async def parse_einvoice(
         return result
 
     except ValueError as e:
+        # SECURITY FIX 28-19: Generische Fehlermeldung - keine internen Details
         logger.warning(
             "einvoice_parse_validation_error",
             extra={"filename": file.filename, "error": str(e)}
         )
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Ungueltige E-Rechnung. Bitte Format pruefen.")
 
     except ImportError as e:
         logger.error("einvoice_parse_import_error", extra={"error": str(e)})
@@ -110,10 +114,11 @@ async def parse_einvoice(
         )
 
     except Exception as e:
+        # SECURITY FIX 28-19: Generische Fehlermeldung
         logger.exception("einvoice_parse_error")
         raise HTTPException(
             status_code=500,
-            detail=f"Fehler beim Parsen: {str(e)}"
+            detail="Fehler beim Parsen. Bitte versuchen Sie es erneut."
         )
 
 
@@ -171,11 +176,12 @@ async def generate_zugferd(
         )
 
     except ValueError as e:
+        # SECURITY FIX 28-19: Generische Fehlermeldung
         logger.warning(
             "einvoice_generate_zugferd_validation_error",
             extra={"document_id": str(document_id), "error": str(e)}
         )
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Ungueltige Daten fuer ZUGFeRD-Generierung.")
 
     except ImportError as e:
         logger.error("einvoice_generate_import_error", extra={"error": str(e)})
@@ -185,10 +191,11 @@ async def generate_zugferd(
         )
 
     except Exception as e:
+        # SECURITY FIX 28-19: Generische Fehlermeldung
         logger.exception("einvoice_generate_zugferd_error")
         raise HTTPException(
             status_code=500,
-            detail=f"Fehler bei ZUGFeRD-Generierung: {str(e)}"
+            detail="Fehler bei ZUGFeRD-Generierung. Bitte versuchen Sie es erneut."
         )
 
 
@@ -243,20 +250,24 @@ async def generate_xrechnung(
         )
 
     except NotImplementedError as e:
-        raise HTTPException(status_code=501, detail=str(e))
+        # SECURITY FIX 28-19: Generische Fehlermeldung
+        logger.warning("einvoice_xrechnung_not_implemented", extra={"error": str(e)})
+        raise HTTPException(status_code=501, detail="Diese XRechnung-Funktion ist nicht implementiert.")
 
     except ValueError as e:
+        # SECURITY FIX 28-19: Generische Fehlermeldung
         logger.warning(
             "einvoice_generate_xrechnung_validation_error",
             extra={"document_id": str(document_id), "error": str(e)}
         )
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Ungueltige Daten fuer XRechnung-Generierung.")
 
     except Exception as e:
+        # SECURITY FIX 28-19: Generische Fehlermeldung
         logger.exception("einvoice_generate_xrechnung_error")
         raise HTTPException(
             status_code=500,
-            detail=f"Fehler bei XRechnung-Generierung: {str(e)}"
+            detail="Fehler bei XRechnung-Generierung. Bitte versuchen Sie es erneut."
         )
 
 
@@ -406,10 +417,11 @@ async def validate_einvoice(
         raise
 
     except Exception as e:
+        # SECURITY FIX 28-19: Generische Fehlermeldung
         logger.exception("einvoice_validate_error")
         raise HTTPException(
             status_code=500,
-            detail=f"Fehler bei Validierung: {str(e)}"
+            detail="Fehler bei Validierung. Bitte versuchen Sie es erneut."
         )
 
 
@@ -525,8 +537,45 @@ async def check_mustang_health() -> dict:
 async def get_einvoice_status(
     document_id: UUID,
     db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user),  # W.3 SECURITY FIX: Auth required
 ) -> dict:
-    """Gibt E-Invoice Status zurueck."""
+    """Gibt E-Invoice Status zurueck.
+
+    Args:
+        document_id: Document UUID
+        db: Database session
+        current_user: Authenticated user (required)
+
+    Raises:
+        HTTPException 403: If user doesn't own the document
+        HTTPException 404: If document not found
+    """
+    # W.3 SECURITY FIX: Verify document ownership (IDOR prevention)
+    doc_stmt = select(models.Document).where(models.Document.id == document_id)
+    doc_result = await db.execute(doc_stmt)
+    document = doc_result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Dokument nicht gefunden: {document_id}"
+        )
+
+    # Check ownership - user must own the document or be superuser
+    if document.owner_id != current_user.id and not current_user.is_superuser:
+        logger.warning(
+            "einvoice_access_denied",
+            extra={
+                "document_id": str(document_id),
+                "user_id": str(current_user.id),
+                "owner_id": str(document.owner_id) if document.owner_id else None
+            }
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Keine Berechtigung fuer dieses Dokument"
+        )
+
     stmt = select(models.EInvoiceDocument).where(
         models.EInvoiceDocument.document_id == document_id
     )
@@ -564,8 +613,45 @@ async def get_einvoice_status(
 async def download_xml(
     document_id: UUID,
     db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user),  # W.4 SECURITY FIX: Auth required
 ) -> Response:
-    """Laedt XML herunter."""
+    """Laedt XML herunter.
+
+    Args:
+        document_id: Document UUID
+        db: Database session
+        current_user: Authenticated user (required)
+
+    Raises:
+        HTTPException 403: If user doesn't own the document
+        HTTPException 404: If document or e-invoice not found
+    """
+    # W.4 SECURITY FIX: Verify document ownership (IDOR prevention)
+    doc_stmt = select(models.Document).where(models.Document.id == document_id)
+    doc_result = await db.execute(doc_stmt)
+    document = doc_result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Dokument nicht gefunden: {document_id}"
+        )
+
+    # Check ownership - user must own the document or be superuser
+    if document.owner_id != current_user.id and not current_user.is_superuser:
+        logger.warning(
+            "einvoice_xml_download_denied",
+            extra={
+                "document_id": str(document_id),
+                "user_id": str(current_user.id),
+                "owner_id": str(document.owner_id) if document.owner_id else None
+            }
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Keine Berechtigung fuer dieses Dokument"
+        )
+
     stmt = select(models.EInvoiceDocument).where(
         models.EInvoiceDocument.document_id == document_id
     )

@@ -121,6 +121,7 @@ async def get_csrf_token() -> dict:
 )
 @limiter.limit("5/hour", key_func=get_ip_identifier)  # BB.1 SECURITY FIX: Rate limit registration
 async def register(
+    request: Request,  # SECURITY FIX 25-7: Required for IP-based rate limiter - KRITISCH!
     user_data: UserCreate,
     db: AsyncSession = Depends(get_db)
 ) -> Any:
@@ -142,6 +143,9 @@ async def register(
 
 # ==================== Login ====================
 
+# SECURITY FIX 27-1: Rate-Limit fuer Login-Endpoint - KRITISCH!
+# Verhindert Brute-Force-Angriffe auf Passwörter
+@limiter.limit("10/minute", key_func=get_ip_identifier)
 @router.post(
     "/login",
     summary="Benutzer-Login",
@@ -203,14 +207,16 @@ async def login(
         )
     except AccountLockoutStorageError as e:
         # Redis nicht verfügbar und fail_closed=True -> blockieren
+        # SECURITY FIX 28-20: Generische Fehlermeldung
         logger.error(
             "login_blocked_security_service_unavailable",
             ip=client_ip,
             email=login_data.email[:3] + "***" if login_data.email else None,
+            error=str(e),
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e),
+            detail="Sicherheitsdienst voruebergehend nicht verfuegbar. Bitte spaeter erneut versuchen.",
             headers={"Retry-After": "60"},
         )
 
@@ -246,14 +252,16 @@ async def login(
             )
         except AccountLockoutStorageError as e:
             # Redis nicht verfügbar und fail_closed=True -> blockieren
+            # SECURITY FIX 28-20: Generische Fehlermeldung
             logger.error(
                 "login_blocked_cannot_record_failed_attempt",
                 ip=client_ip,
                 email=login_data.email[:3] + "***" if login_data.email else None,
+                error=str(e),
             )
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=str(e),
+                detail="Sicherheitsdienst voruebergehend nicht verfuegbar. Bitte spaeter erneut versuchen.",
                 headers={"Retry-After": "60"},
             )
 
@@ -365,6 +373,9 @@ async def login(
 
 # ==================== 2FA Verification during Login ====================
 
+# SECURITY FIX 27-2: Rate-Limit fuer 2FA-Endpoint - KRITISCH!
+# 6-stellige TOTP-Codes haben nur 1M Kombinationen - Brute-Force verhindern!
+@limiter.limit("5/minute", key_func=get_ip_identifier)
 @router.post(
     "/verify-2fa",
     response_model=Token,
@@ -501,6 +512,9 @@ async def verify_2fa_login_endpoint(
 
 # ==================== Token Refresh ====================
 
+# SECURITY FIX 27-3: Rate-Limit fuer Refresh-Endpoint
+# Verhindert Token-Exhaustion-Angriffe
+@limiter.limit("30/minute", key_func=get_ip_identifier)
 @router.post(
     "/refresh",
     response_model=Token,
@@ -508,6 +522,7 @@ async def verify_2fa_login_endpoint(
     description="Erneuert Access Token mit Refresh Token (Token Rotation)"
 )
 async def refresh_token(
+    request: Request,  # SECURITY FIX 27-3: Required for rate limiter
     refresh_data: RefreshTokenRequest,
     db: AsyncSession = Depends(get_db)
 ) -> Any:

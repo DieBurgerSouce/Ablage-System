@@ -581,7 +581,8 @@ async def create_experiment(
         return ExperimentResponse(**summary)
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-26: Generische Fehlermeldung
+        raise HTTPException(status_code=400, detail="Ungueltige Experiment-Konfiguration.")
     except Exception as e:
         logger.error(
             "experiment_erstellung_fehler",
@@ -788,7 +789,8 @@ async def record_experiment_result(
         return {"message": "Ergebnis erfasst"}
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-26: Generische Fehlermeldung
+        raise HTTPException(status_code=400, detail="Ungueltige Experiment-Ergebnisdaten.")
     except Exception as e:
         logger.error(
             "experiment_ergebnis_fehler",
@@ -839,7 +841,8 @@ async def conclude_experiment(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-26: Generische Fehlermeldung
+        raise HTTPException(status_code=400, detail="Experiment-Abschluss fehlgeschlagen.")
     except Exception as e:
         logger.error(
             "experiment_abschluss_fehler",

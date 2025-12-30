@@ -179,6 +179,9 @@ class TrainingMigrationService:
                 "stats": dict(self._stats),
             }
 
+    # P.1 SECURITY FIX: Whitelist fuer erlaubte Tabellennamen (SQL Injection Prevention)
+    ALLOWED_MIGRATION_TABLES = frozenset({"training_samples", "documents"})
+
     async def _migrate_sqlite_samples(
         self,
         conn: sqlite3.Connection,
@@ -186,10 +189,12 @@ class TrainingMigrationService:
     ) -> None:
         """Migriere Training Samples aus SQLite."""
         # Prüfe ob 'training_samples' oder 'documents' Tabelle existiert
+        # P.1 SECURITY FIX: Parameterisierte Query statt f-string
         table_name = None
         for tbl in ["training_samples", "documents"]:
             cursor = conn.execute(
-                f"SELECT name FROM sqlite_master WHERE type='table' AND name='{tbl}'"
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                (tbl,)
             )
             if cursor.fetchone():
                 table_name = tbl
@@ -199,7 +204,21 @@ class TrainingMigrationService:
             logger.info("sqlite_no_samples_or_documents_table")
             return
 
+        # P.1 SECURITY FIX: Whitelist-Validierung vor dynamischem Tabellennamen
+        if table_name not in self.ALLOWED_MIGRATION_TABLES:
+            logger.error(
+                "sqlite_invalid_table_name",
+                table=table_name,
+                allowed=list(self.ALLOWED_MIGRATION_TABLES)
+            )
+            raise ValueError(f"Ungueltige Tabelle: {table_name}")
+
         logger.info("sqlite_migrating_table", table=table_name)
+        # SECURITY NOTE (Phase 8.2): f-string hier ist SICHER weil:
+        # 1. table_name kommt NUR aus ALLOWED_MIGRATION_TABLES (frozenset, unveraenderbar)
+        # 2. Whitelist-Validierung erfolgt direkt oben (Zeile 208)
+        # 3. SQLite unterstuetzt keine parametrisierten Tabellennamen
+        # Alternative waere text(f"SELECT * FROM {table_name}") - gleiche Sicherheit
         cursor = conn.execute(f"SELECT * FROM {table_name}")
         rows = cursor.fetchall()
 

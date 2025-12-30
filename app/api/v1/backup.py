@@ -7,12 +7,13 @@ Alle Endpunkte erfordern Admin-Authentifizierung.
 Feinpoliert und durchdacht - Enterprise Backup API.
 """
 
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.api.dependencies import get_current_superuser
 from app.db.models import User
@@ -25,6 +26,82 @@ from app.services.backup_validator import (
 )
 
 logger = structlog.get_logger(__name__)
+
+
+# =============================================================================
+# Z.2 SECURITY FIX: Path Traversal Protection
+# =============================================================================
+
+# Erlaubtes Basis-Backup-Verzeichnis (aus Environment oder Standard)
+ALLOWED_BACKUP_BASE_DIR = Path(os.getenv("BACKUP_DIR", "/var/backups/ablage")).resolve()
+
+
+def validate_backup_path(user_path: str, is_directory: bool = False) -> Path:
+    """
+    Validiert einen vom User angegebenen Backup-Pfad gegen Path-Traversal.
+
+    Z.2 SECURITY FIX: Verhindert Zugriff ausserhalb des Backup-Verzeichnisses.
+
+    Args:
+        user_path: Vom User angegebener Pfad
+        is_directory: True wenn Verzeichnis erwartet, False fuer Datei
+
+    Returns:
+        Validierter, normalisierter Pfad
+
+    Raises:
+        HTTPException 403: Bei Path-Traversal-Versuch
+        HTTPException 404: Wenn Pfad nicht existiert
+    """
+    try:
+        # Resolve normalisiert und entfernt .. und symbolische Links
+        resolved_path = Path(user_path).resolve()
+
+        # Pruefe ob Pfad innerhalb des erlaubten Verzeichnisses liegt
+        try:
+            resolved_path.relative_to(ALLOWED_BACKUP_BASE_DIR)
+        except ValueError:
+            # Pfad liegt ausserhalb des Backup-Verzeichnisses
+            logger.warning(
+                "path_traversal_attempt_blocked",
+                user_path=user_path,
+                resolved_path=str(resolved_path),
+                allowed_base=str(ALLOWED_BACKUP_BASE_DIR),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Zugriff verweigert: Pfad muss innerhalb von {ALLOWED_BACKUP_BASE_DIR} liegen"
+            )
+
+        # Pruefe ob Pfad existiert
+        if not resolved_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Backup nicht gefunden: {user_path}"
+            )
+
+        # Pruefe ob Typ stimmt
+        if is_directory and not resolved_path.is_dir():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Kein Verzeichnis: {user_path}"
+            )
+        if not is_directory and not resolved_path.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Keine Datei: {user_path}"
+            )
+
+        return resolved_path
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("path_validation_error", user_path=user_path, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltiger Pfad: {user_path}"
+        )
 
 router = APIRouter(prefix="/backup", tags=["backup"])
 
@@ -127,6 +204,42 @@ class RestoreRequest(BaseModel):
     backup_path: str = Field(..., description="Pfad zur Backup-Datei")
     dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
 
+    @field_validator('backup_path')
+    @classmethod
+    def validate_backup_path(cls, v: str) -> str:
+        """K.1 SECURITY FIX: Path-Traversal-Schutz."""
+        # Homoglyph-Normalisierung
+        import unicodedata
+        v = unicodedata.normalize('NFKC', v)
+
+        # Path-Traversal-Pattern blockieren
+        dangerous_patterns = ['..', '~', '$', '`', '|', ';', '&']
+        for pattern in dangerous_patterns:
+            if pattern in v:
+                raise ValueError(f"Unerlaubtes Zeichen im Pfad: {pattern}")
+
+        # Nur absolute Pfade im Backup-Verzeichnis erlauben
+        from pathlib import Path as PathLib
+        resolved = PathLib(v).resolve()
+
+        # Erlaubte Backup-Verzeichnisse
+        from app.core.config import settings
+        allowed_roots = [
+            PathLib(settings.BACKUP_ROOT_DIR).resolve() if hasattr(settings, 'BACKUP_ROOT_DIR') else PathLib('/backups').resolve(),
+            PathLib('/var/backups/ablage').resolve(),
+        ]
+
+        is_allowed = any(
+            str(resolved).startswith(str(allowed_root))
+            for allowed_root in allowed_roots
+            if allowed_root.exists()
+        )
+
+        if not is_allowed:
+            raise ValueError("Backup-Pfad muss im erlaubten Backup-Verzeichnis liegen")
+
+        return v
+
 
 class RestoreMinioRequest(BaseModel):
     """Anfrage fuer MinIO-Restore."""
@@ -134,6 +247,38 @@ class RestoreMinioRequest(BaseModel):
     backup_path: str = Field(..., description="Pfad zur Backup-Datei")
     bucket: Optional[str] = Field(None, description="Ziel-Bucket (optional)")
     dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
+
+    @field_validator('backup_path')
+    @classmethod
+    def validate_backup_path(cls, v: str) -> str:
+        """K.1 SECURITY FIX: Path-Traversal-Schutz (siehe RestoreRequest)."""
+        import unicodedata
+        v = unicodedata.normalize('NFKC', v)
+
+        dangerous_patterns = ['..', '~', '$', '`', '|', ';', '&']
+        for pattern in dangerous_patterns:
+            if pattern in v:
+                raise ValueError(f"Unerlaubtes Zeichen im Pfad: {pattern}")
+
+        from pathlib import Path as PathLib
+        from app.core.config import settings
+        resolved = PathLib(v).resolve()
+
+        allowed_roots = [
+            PathLib(settings.BACKUP_ROOT_DIR).resolve() if hasattr(settings, 'BACKUP_ROOT_DIR') else PathLib('/backups').resolve(),
+            PathLib('/var/backups/ablage').resolve(),
+        ]
+
+        is_allowed = any(
+            str(resolved).startswith(str(allowed_root))
+            for allowed_root in allowed_roots
+            if allowed_root.exists()
+        )
+
+        if not is_allowed:
+            raise ValueError("Backup-Pfad muss im erlaubten Backup-Verzeichnis liegen")
+
+        return v
 
 
 class FullRestoreRequest(BaseModel):
@@ -144,6 +289,38 @@ class FullRestoreRequest(BaseModel):
         None, description="Komponenten: postgres, redis, minio, config"
     )
     dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
+
+    @field_validator('backup_verzeichnis')
+    @classmethod
+    def validate_backup_verzeichnis(cls, v: str) -> str:
+        """K.1 SECURITY FIX: Path-Traversal-Schutz (siehe RestoreRequest)."""
+        import unicodedata
+        v = unicodedata.normalize('NFKC', v)
+
+        dangerous_patterns = ['..', '~', '$', '`', '|', ';', '&']
+        for pattern in dangerous_patterns:
+            if pattern in v:
+                raise ValueError(f"Unerlaubtes Zeichen im Pfad: {pattern}")
+
+        from pathlib import Path as PathLib
+        from app.core.config import settings
+        resolved = PathLib(v).resolve()
+
+        allowed_roots = [
+            PathLib(settings.BACKUP_ROOT_DIR).resolve() if hasattr(settings, 'BACKUP_ROOT_DIR') else PathLib('/backups').resolve(),
+            PathLib('/var/backups/ablage').resolve(),
+        ]
+
+        is_allowed = any(
+            str(resolved).startswith(str(allowed_root))
+            for allowed_root in allowed_roots
+            if allowed_root.exists()
+        )
+
+        if not is_allowed:
+            raise ValueError("Backup-Verzeichnis muss im erlaubten Backup-Verzeichnis liegen")
+
+        return v
 
 
 class RestoreResponse(BaseModel):
@@ -565,13 +742,8 @@ async def restore_postgres(
         dry_run=request.dry_run,
     )
 
-    backup_path = Path(request.backup_path)
-
-    if not backup_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup-Datei nicht gefunden: {request.backup_path}",
-        )
+    # Z.2 SECURITY FIX: Path-Traversal-Schutz
+    backup_path = validate_backup_path(request.backup_path, is_directory=False)
 
     service = get_backup_service()
     result = await service.restore_postgres(backup_path, dry_run=request.dry_run)
@@ -597,13 +769,8 @@ async def restore_redis(
         dry_run=request.dry_run,
     )
 
-    backup_path = Path(request.backup_path)
-
-    if not backup_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup-Datei nicht gefunden: {request.backup_path}",
-        )
+    # Z.2 SECURITY FIX: Path-Traversal-Schutz
+    backup_path = validate_backup_path(request.backup_path, is_directory=False)
 
     service = get_backup_service()
     result = await service.restore_redis(backup_path, dry_run=request.dry_run)
@@ -630,13 +797,8 @@ async def restore_minio(
         dry_run=request.dry_run,
     )
 
-    backup_path = Path(request.backup_path)
-
-    if not backup_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup-Datei nicht gefunden: {request.backup_path}",
-        )
+    # Z.2 SECURITY FIX: Path-Traversal-Schutz
+    backup_path = validate_backup_path(request.backup_path, is_directory=False)
 
     service = get_backup_service()
     result = await service.restore_minio(
@@ -665,13 +827,8 @@ async def restore_full(
         dry_run=request.dry_run,
     )
 
-    backup_dir = Path(request.backup_verzeichnis)
-
-    if not backup_dir.exists() or not backup_dir.is_dir():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup-Verzeichnis nicht gefunden: {request.backup_verzeichnis}",
-        )
+    # Z.2 SECURITY FIX: Path-Traversal-Schutz (Verzeichnis)
+    backup_dir = validate_backup_path(request.backup_verzeichnis, is_directory=True)
 
     service = get_backup_service()
     results = await service.restore_full(

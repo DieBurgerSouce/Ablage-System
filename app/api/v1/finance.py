@@ -548,8 +548,9 @@ async def upload_finance_document(
             }
         )
     except Exception as e:
+        # SECURITY FIX 29: Generic error message - no internal details
         logger.error("finance_upload_storage_failed", error=str(e), filename=file.filename)
-        raise HTTPException(status_code=500, detail=f"Upload fehlgeschlagen: {str(e)}")
+        raise HTTPException(status_code=500, detail="Upload fehlgeschlagen. Bitte erneut versuchen.")
 
     # 8. Datenbank-Eintrag
     doc_id = uuid4()

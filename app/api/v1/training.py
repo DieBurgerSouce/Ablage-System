@@ -239,9 +239,10 @@ async def get_sample_preview(
             sample_id=str(sample_id),
             error=str(e)
         )
+        # SECURITY FIX 28-28: Generische Fehlermeldung
         raise HTTPException(
             status_code=500,
-            detail=f"Fehler beim Generieren der Vorschau: {str(e)}"
+            detail="Fehler beim Generieren der Vorschau. Bitte versuchen Sie es erneut."
         )
 
 
@@ -578,7 +579,8 @@ async def start_training_batch(
             raise HTTPException(status_code=404, detail="Training Batch nicht gefunden")
         return BatchResponse.model_validate(batch)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-28: Generische Fehlermeldung
+        raise HTTPException(status_code=400, detail="Batch-Start fehlgeschlagen. Bitte Eingaben pruefen.")
 
 
 @router.post("/batches/{batch_id}/complete", response_model=BatchResponse)
@@ -984,9 +986,10 @@ async def pause_bulk_processing_job(
     try:
         job = await service.pause_job(job_id)
     except ValueError as e:
+        # SECURITY FIX 28-28: Generische Fehlermeldung
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Job-Pause fehlgeschlagen. Bitte Eingaben pruefen."
         )
 
     remaining = job.total_documents - job.processed_documents
@@ -1076,9 +1079,10 @@ async def cancel_bulk_processing_job(
     try:
         job = await service.cancel_job(job_id)
     except ValueError as e:
+        # SECURITY FIX 28-28: Generische Fehlermeldung
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Job-Abbruch fehlgeschlagen. Bitte Eingaben pruefen."
         )
 
     return schemas.BulkProcessingCancelResponse(
@@ -1278,9 +1282,10 @@ async def activate_model_deployment(
     try:
         deployment = await service.activate_deployment(deployment_id)
     except ValueError as e:
+        # SECURITY FIX 28-28: Generische Fehlermeldung
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Deployment-Aktivierung fehlgeschlagen. Bitte Eingaben pruefen."
         )
 
     return {
@@ -1311,9 +1316,10 @@ async def rollback_model_deployment(
     try:
         deployment = await service.rollback_deployment(deployment_id, reason)
     except ValueError as e:
+        # SECURITY FIX 28-28: Generische Fehlermeldung
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Rollback fehlgeschlagen. Bitte Eingaben pruefen."
         )
 
     return {
@@ -2317,9 +2323,10 @@ async def verify_sample(
             "verified_at": result.verified_at,
         }
     except ValueError as e:
+        # SECURITY FIX 28-28: Generische Fehlermeldung
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            detail="Eintrag nicht gefunden."
         )
 
 
@@ -2588,15 +2595,16 @@ async def trigger_llm_review(
             }
         }
     except ValueError as e:
+        # SECURITY FIX 28-28: Generische Fehlermeldung
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            detail="Sample nicht gefunden."
         )
     except Exception as e:
         logger.error("llm_review_failed", sample_id=str(sample_id), error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"LLM-Review fehlgeschlagen: {str(e)}"
+            detail="LLM-Review fehlgeschlagen. Bitte versuchen Sie es erneut."
         )
 
 

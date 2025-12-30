@@ -688,6 +688,93 @@ def create_token_pair(user_data: Dict[str, Any]) -> Dict[str, str]:
     }
 
 
+def create_2fa_temp_token(user_id: str) -> str:
+    """
+    Create a temporary token for 2FA verification during login.
+
+    This token is short-lived (5 minutes) and can only be used to complete
+    the 2FA verification step after password authentication.
+
+    Args:
+        user_id: User ID to encode in token
+
+    Returns:
+        Encoded JWT token string for 2FA verification
+    """
+    to_encode = {
+        "sub": user_id,
+        "type": "2fa_temp",
+        "jti": secrets.token_urlsafe(32),
+    }
+
+    expire = datetime.now(timezone.utc) + timedelta(minutes=5)
+    to_encode["exp"] = expire
+    to_encode["iat"] = datetime.now(timezone.utc)
+
+    # R.2 SECURITY FIX: Konsistente SECRET_KEY Verwendung mit get_secret_value()
+    secret_key = settings.SECRET_KEY.get_secret_value() if hasattr(settings.SECRET_KEY, 'get_secret_value') else settings.SECRET_KEY
+    encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=settings.ALGORITHM)
+
+    logger.debug("2fa_temp_token_created", user_id=user_id[:8] + "...", expires_in_minutes=5)
+
+    return encoded_jwt
+
+
+async def verify_2fa_temp_token(token: str) -> str:
+    """
+    Verify a 2FA temporary token and extract user ID.
+
+    Args:
+        token: 2FA temp token string
+
+    Returns:
+        User ID if token is valid
+
+    Raises:
+        HTTPException: If token is invalid, expired, or wrong type
+    """
+    try:
+        # R.2 SECURITY FIX: Konsistente SECRET_KEY Verwendung mit get_secret_value()
+        secret_key = settings.SECRET_KEY.get_secret_value() if hasattr(settings.SECRET_KEY, 'get_secret_value') else settings.SECRET_KEY
+        payload = jwt.decode(token, secret_key, algorithms=[settings.ALGORITHM])
+
+        # Verify token type
+        token_type = payload.get("type")
+        if token_type != "2fa_temp":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Ungueltiger Token-Typ",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Ungueltiges Token-Format",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Check if token is blacklisted
+        jti = payload.get("jti")
+        if jti and await is_token_blacklisted(jti):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token wurde bereits verwendet",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        return user_id
+
+    except JWTError as e:
+        logger.warning("2fa_temp_token_invalid", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="2FA-Token ungueltig oder abgelaufen",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
 async def extract_user_id_from_token(token: str) -> str:
     """
     Extract user ID from JWT token (async).
@@ -776,3 +863,168 @@ def validate_password_strength(password: str) -> tuple[bool, Optional[str]]:
         return False, "Passwort muss mindestens ein Sonderzeichen enthalten"
 
     return True, None
+
+
+# ==================== SSRF Protection (M.1 CRITICAL FIX) ====================
+
+import ipaddress
+import socket
+from urllib.parse import urlparse
+from typing import Tuple
+
+# M.1 CRITICAL: Liste der blockierten IP-Ranges fuer SSRF-Schutz
+SSRF_BLOCKED_IP_RANGES = [
+    ipaddress.ip_network("10.0.0.0/8"),       # Private Class A
+    ipaddress.ip_network("172.16.0.0/12"),    # Private Class B
+    ipaddress.ip_network("192.168.0.0/16"),   # Private Class C
+    ipaddress.ip_network("127.0.0.0/8"),      # Loopback
+    ipaddress.ip_network("169.254.0.0/16"),   # Link-Local (AWS/GCP Metadata!)
+    ipaddress.ip_network("0.0.0.0/8"),        # This network
+    ipaddress.ip_network("100.64.0.0/10"),    # Carrier-grade NAT
+    ipaddress.ip_network("198.18.0.0/15"),    # Benchmark testing
+    ipaddress.ip_network("224.0.0.0/4"),      # Multicast
+    ipaddress.ip_network("240.0.0.0/4"),      # Reserved
+    ipaddress.ip_network("255.255.255.255/32"),  # Broadcast
+]
+
+# IPv6 blocked ranges
+SSRF_BLOCKED_IPV6_RANGES = [
+    ipaddress.ip_network("::1/128"),          # Loopback
+    ipaddress.ip_network("fc00::/7"),         # Unique local
+    ipaddress.ip_network("fe80::/10"),        # Link-local
+    ipaddress.ip_network("ff00::/8"),         # Multicast
+]
+
+
+def is_ip_blocked_for_ssrf(ip_str: str) -> bool:
+    """
+    Prueft ob eine IP-Adresse in einem blockierten Range liegt.
+
+    Args:
+        ip_str: IP-Adresse als String
+
+    Returns:
+        True wenn blockiert, False wenn erlaubt
+    """
+    try:
+        ip_obj = ipaddress.ip_address(ip_str)
+
+        if ip_obj.version == 4:
+            for blocked_range in SSRF_BLOCKED_IP_RANGES:
+                if ip_obj in blocked_range:
+                    return True
+        else:  # IPv6
+            for blocked_range in SSRF_BLOCKED_IPV6_RANGES:
+                if ip_obj in blocked_range:
+                    return True
+
+        return False
+
+    except ValueError:
+        # Ungueltige IP - sicherheitshalber blockieren
+        return True
+
+
+def validate_url_for_ssrf(url: str) -> Tuple[bool, str]:
+    """
+    Validiert eine URL gegen SSRF-Angriffe.
+
+    M.1 CRITICAL: Diese Funktion MUSS vor allen HTTP-Aufrufen mit
+    user-kontrollierten URLs aufgerufen werden!
+
+    Args:
+        url: Die zu validierende URL
+
+    Returns:
+        Tuple[bool, str]: (is_valid, error_message)
+        - True, "" wenn URL sicher ist
+        - False, error_message wenn URL blockiert wird
+
+    Example:
+        is_valid, error = validate_url_for_ssrf(webhook_url)
+        if not is_valid:
+            raise ValueError(f"Ungueltige Webhook-URL: {error}")
+    """
+    if not url:
+        return False, "URL darf nicht leer sein"
+
+    # Parse URL
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False, "Ungueltige URL-Syntax"
+
+    # Protokoll pruefen
+    if parsed.scheme not in ("http", "https"):
+        return False, f"Nur HTTP/HTTPS erlaubt, nicht '{parsed.scheme}'"
+
+    hostname = parsed.hostname
+    if not hostname:
+        return False, "Hostname fehlt in URL"
+
+    # Bekannte gefaehrliche Hostnames blockieren
+    dangerous_hostnames = [
+        "localhost",
+        "127.0.0.1",
+        "::1",
+        "0.0.0.0",
+        "metadata.google.internal",      # GCP Metadata
+        "metadata.google",               # GCP Metadata
+        "169.254.169.254",              # AWS/GCP/Azure Metadata
+        "fd00::1",                       # IPv6 local
+    ]
+
+    hostname_lower = hostname.lower()
+    if hostname_lower in dangerous_hostnames:
+        return False, f"Hostname '{hostname}' ist nicht erlaubt (Sicherheitsrisiko)"
+
+    # DNS-Aufloesung und IP-Pruefung
+    try:
+        # Alle IP-Adressen fuer den Hostname abrufen
+        ip_addresses = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+
+        for addr_info in ip_addresses:
+            ip_str = addr_info[4][0]
+            if is_ip_blocked_for_ssrf(ip_str):
+                logger.warning(
+                    "ssrf_blocked_ip",
+                    url=url,
+                    hostname=hostname,
+                    resolved_ip=ip_str,
+                    message="Webhook-URL resolves zu blockierter IP"
+                )
+                return False, f"URL resolves zu interner Adresse ({ip_str}) - nicht erlaubt"
+
+    except socket.gaierror as e:
+        # DNS-Aufloesung fehlgeschlagen
+        return False, f"Hostname '{hostname}' konnte nicht aufgeloest werden"
+    except socket.timeout:
+        return False, f"DNS-Timeout fuer '{hostname}'"
+    except Exception as e:
+        logger.error(
+            "ssrf_validation_error",
+            url=url,
+            error=str(e)
+        )
+        return False, "Fehler bei URL-Validierung"
+
+    # URL ist sicher
+    return True, ""
+
+
+async def validate_url_for_ssrf_async(url: str) -> Tuple[bool, str]:
+    """
+    Async Version der SSRF-Validierung.
+
+    Verwendet ThreadPool fuer DNS-Aufloesung um Event-Loop nicht zu blockieren.
+
+    Args:
+        url: Die zu validierende URL
+
+    Returns:
+        Tuple[bool, str]: (is_valid, error_message)
+    """
+    import asyncio
+
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, validate_url_for_ssrf, url)

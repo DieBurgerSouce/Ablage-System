@@ -80,10 +80,59 @@ class SecurityEventType(str, Enum):
     ADMIN_USER_DELETED = "admin_user_deleted"
     ADMIN_FORCE_LOGOUT = "admin_force_logout"
 
+    # Admin Job Queue Actions (GDPR Art. 30 - Verzeichnis der Verarbeitungstaetigkeiten)
+    ADMIN_JOBS_LISTED = "admin_jobs_listed"
+    ADMIN_JOB_ACCESSED = "admin_job_accessed"
+    ADMIN_JOB_CANCELLED = "admin_job_cancelled"
+    ADMIN_JOB_RETRIED = "admin_job_retried"
+    ADMIN_QUEUE_CLEARED = "admin_queue_cleared"
+    ADMIN_JOBS_BULK_ACTION = "admin_jobs_bulk_action"
+
     # Document Classification Events (Quick Classification)
     DOCUMENT_TAG_AUTO_ASSIGNED = "document_tag_auto_assigned"
     DOCUMENT_TAG_MANUAL_CHANGED = "document_tag_manual_changed"
     DOCUMENT_RENAMED = "document_renamed"
+
+    # Privat Module Events (GDPR Art. 30 - Verzeichnis der Verarbeitungstaetigkeiten)
+    PRIVAT_DOCUMENT_CREATED = "privat_document_created"
+    PRIVAT_DOCUMENT_ACCESSED = "privat_document_accessed"
+    PRIVAT_DOCUMENT_UPDATED = "privat_document_updated"
+    PRIVAT_DOCUMENT_DELETED = "privat_document_deleted"
+    PRIVAT_DOCUMENT_RESTORED = "privat_document_restored"
+    PRIVAT_DOCUMENT_DOWNLOADED = "privat_document_downloaded"
+    PRIVAT_DOCUMENT_DECRYPTED = "privat_document_decrypted"
+    PRIVAT_SPACE_CREATED = "privat_space_created"
+    PRIVAT_SPACE_ACCESS_GRANTED = "privat_space_access_granted"
+    PRIVAT_SPACE_ACCESS_REVOKED = "privat_space_access_revoked"
+    PRIVAT_EMERGENCY_ACCESS_USED = "privat_emergency_access_used"
+
+    # Personal/HR Module Events (GDPR Art. 30 - Verzeichnis der Verarbeitungstaetigkeiten)
+    # Employee Events
+    EMPLOYEE_CREATED = "employee_created"
+    EMPLOYEE_ACCESSED = "employee_accessed"
+    EMPLOYEE_UPDATED = "employee_updated"
+    EMPLOYEE_DELETED = "employee_deleted"
+    EMPLOYEE_PII_ACCESSED = "employee_pii_accessed"
+    EMPLOYEE_EXPORTED = "employee_exported"
+
+    # Department Events
+    DEPARTMENT_CREATED = "department_created"
+    DEPARTMENT_ACCESSED = "department_accessed"
+    DEPARTMENT_UPDATED = "department_updated"
+    DEPARTMENT_DELETED = "department_deleted"
+
+    # Position Events
+    POSITION_CREATED = "position_created"
+    POSITION_ACCESSED = "position_accessed"
+    POSITION_UPDATED = "position_updated"
+    POSITION_DELETED = "position_deleted"
+    POSITION_SALARY_ACCESSED = "position_salary_accessed"
+
+    # List Operations (GDPR Art. 30 - Verzeichnis der Verarbeitungstaetigkeiten)
+    # CRITICAL: Diese Events sind fuer Massenexfiltrations-Erkennung erforderlich!
+    EMPLOYEES_LISTED = "employees_listed"
+    DEPARTMENTS_LISTED = "departments_listed"
+    POSITIONS_LISTED = "positions_listed"
 
 
 # ==================== Integrity Functions (AP6) ====================
@@ -447,59 +496,106 @@ class SecurityAuditLogger:
         - Sequenznummer für Reihenfolge
         - previous_hash für Verkettung (Blockchain-artig)
         - integrity_hash für Tamper-Detection
+
+        I.4 CRITICAL: Race Condition Fix
+        - Verwendet FOR UPDATE SKIP LOCKED für atomare Verkettung
+        - Retry-Logik bei Konflikten
         """
         from app.db.models import AuditLog
+        from sqlalchemy import text
+        from app.core.config import settings
 
-        # AP6: Hole letzte Sequenz und Hash für Verkettung
-        sequence = await get_next_sequence_number(self.db)
-        last_entry = await get_last_audit_entry(self.db)
-        previous_hash = last_entry.integrity_hash if last_entry else GENESIS_HASH
+        max_retries = 3
+        retry_count = 0
 
-        # Timestamp festlegen
-        created_at = datetime.now(timezone.utc)
-        filtered_details = self._filter_sensitive_data(details)
+        while retry_count < max_retries:
+            try:
+                # I.4 CRITICAL: Atomar Sequenz UND letzten Hash holen
+                # PostgreSQL: Advisory Lock für Audit-Log-Chain
+                if "postgresql" in str(settings.DATABASE_URL).lower():
+                    # Advisory Lock auf Audit-Chain (Lock-ID: 1)
+                    await self.db.execute(text("SELECT pg_advisory_xact_lock(1)"))
 
-        # AP6: Berechne Integrity-Hash
-        integrity_hash = calculate_entry_hash(
-            sequence_number=sequence,
-            user_id=user_id,
-            action=event_type.value,
-            resource_type=resource_type or "security",
-            resource_id=resource_id,
-            ip_address=ip_address,
-            created_at=created_at,
-            metadata=filtered_details,
-            previous_hash=previous_hash,
-        )
+                # Hole Sequenznummer (atomar durch SEQUENCE oder Lock)
+                sequence = await get_next_sequence_number(self.db)
 
-        audit_log = AuditLog(
-            id=uuid.uuid4(),
-            user_id=uuid.UUID(user_id) if user_id else None,
-            action=event_type.value,
-            resource_type=resource_type or "security",
-            resource_id=uuid.UUID(resource_id) if resource_id else None,
-            ip_address=ip_address,
-            user_agent=user_agent[:255] if user_agent else None,
-            request_method=None,
-            request_path=None,
-            audit_metadata=filtered_details,
-            created_at=created_at,
-            # AP6: Immutabilitäts-Felder
-            sequence_number=sequence,
-            integrity_hash=integrity_hash,
-            previous_hash=previous_hash,
-        )
+                # Hole letzten Eintrag mit FOR UPDATE (verhindert Race Condition)
+                if "postgresql" in str(settings.DATABASE_URL).lower():
+                    query = select(AuditLog).order_by(desc(AuditLog.sequence_number)).limit(1).with_for_update(skip_locked=True)
+                    result = await self.db.execute(query)
+                    last_entry = result.scalar_one_or_none()
+                else:
+                    # SQLite Fallback (Tests)
+                    last_entry = await get_last_audit_entry(self.db)
 
-        self.db.add(audit_log)
-        await self.db.flush()
+                previous_hash = last_entry.integrity_hash if last_entry else GENESIS_HASH
 
-        logger.debug(
-            "audit_log_saved_with_integrity",
-            sequence=sequence,
-            integrity_hash=integrity_hash[:16] + "...",
-        )
+                # Timestamp festlegen
+                created_at = datetime.now(timezone.utc)
+                filtered_details = self._filter_sensitive_data(details)
 
-        return str(audit_log.id)
+                # AP6: Berechne Integrity-Hash
+                integrity_hash = calculate_entry_hash(
+                    sequence_number=sequence,
+                    user_id=user_id,
+                    action=event_type.value,
+                    resource_type=resource_type or "security",
+                    resource_id=resource_id,
+                    ip_address=ip_address,
+                    created_at=created_at,
+                    metadata=filtered_details,
+                    previous_hash=previous_hash,
+                )
+
+                audit_log = AuditLog(
+                    id=uuid.uuid4(),
+                    user_id=uuid.UUID(user_id) if user_id else None,
+                    action=event_type.value,
+                    resource_type=resource_type or "security",
+                    resource_id=uuid.UUID(resource_id) if resource_id else None,
+                    ip_address=ip_address,
+                    user_agent=user_agent[:255] if user_agent else None,
+                    request_method=None,
+                    request_path=None,
+                    audit_metadata=filtered_details,
+                    created_at=created_at,
+                    # AP6: Immutabilitäts-Felder
+                    sequence_number=sequence,
+                    integrity_hash=integrity_hash,
+                    previous_hash=previous_hash,
+                )
+
+                self.db.add(audit_log)
+                await self.db.flush()
+
+                logger.debug(
+                    "audit_log_saved_with_integrity",
+                    sequence=sequence,
+                    integrity_hash=integrity_hash[:16] + "...",
+                )
+
+                return str(audit_log.id)
+
+            except Exception as e:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    logger.error(
+                        "audit_log_save_failed_after_retries",
+                        error_type=type(e).__name__,
+                        retries=retry_count,
+                    )
+                    raise
+                logger.warning(
+                    "audit_log_save_retry",
+                    error_type=type(e).__name__,
+                    retry=retry_count,
+                )
+                # Kurze Pause vor Retry
+                import asyncio
+                await asyncio.sleep(0.01 * retry_count)
+
+        # Sollte nie erreicht werden
+        raise RuntimeError("Audit log save failed unexpectedly")
 
     def _filter_sensitive_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """

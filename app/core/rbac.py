@@ -232,10 +232,29 @@ def require_role(role_name: str) -> Callable:
         user_roles = await service.get_user_roles(current_user)
 
         if any(role.name == role_name for role in user_roles):
+            # J.1 SECURITY FIX: Auch normale User mit Rolle muessen 2FA haben fuer Admin-Rollen
+            if role_name in ("admin", "super_admin") and not current_user.totp_enabled:
+                logger.warning(
+                    "2fa_required_for_role",
+                    user_id=str(current_user.id),
+                    role=role_name
+                )
+                raise TwoFactorRequiredError(
+                    f"Fuer die Rolle '{role_name}' ist Zwei-Faktor-Authentifizierung erforderlich."
+                )
             return current_user
 
-        # Superuser hat immer Zugriff
+        # J.1 SECURITY FIX: Superuser hat immer Zugriff, ABER muss 2FA haben fuer Admin-Rollen
         if current_user.is_superuser:
+            if role_name in ("admin", "super_admin", "manager") and not current_user.totp_enabled:
+                logger.warning(
+                    "2fa_required_for_superuser",
+                    user_id=str(current_user.id),
+                    required_role=role_name
+                )
+                raise TwoFactorRequiredError(
+                    "Superuser muessen Zwei-Faktor-Authentifizierung aktivieren fuer privilegierte Aktionen."
+                )
             return current_user
 
         logger.warning(
@@ -272,8 +291,20 @@ def require_any_role(*role_names: str) -> Callable:
         current_user: User = Depends(get_current_user),
         db: AsyncSession = Depends(get_db)
     ) -> User:
-        # Superuser hat immer Zugriff
+        # J.1 SECURITY FIX: Superuser hat immer Zugriff, ABER muss 2FA haben fuer Admin-Rollen
+        privileged_roles = {"admin", "super_admin", "manager"}
+        requires_2fa = bool(set(role_names) & privileged_roles)
+
         if current_user.is_superuser:
+            if requires_2fa and not current_user.totp_enabled:
+                logger.warning(
+                    "2fa_required_for_superuser_any_role",
+                    user_id=str(current_user.id),
+                    required_any=list(role_names)
+                )
+                raise TwoFactorRequiredError(
+                    "Superuser muessen Zwei-Faktor-Authentifizierung aktivieren fuer privilegierte Aktionen."
+                )
             return current_user
 
         service = PermissionService(db)
@@ -281,6 +312,17 @@ def require_any_role(*role_names: str) -> Callable:
 
         for role in user_roles:
             if role.name in role_names:
+                # J.1 SECURITY FIX: Auch normale User muessen 2FA haben fuer Admin-Rollen
+                privileged_roles = {"admin", "super_admin", "manager"}
+                if role.name in privileged_roles and not current_user.totp_enabled:
+                    logger.warning(
+                        "2fa_required_for_privileged_role",
+                        user_id=str(current_user.id),
+                        role=role.name
+                    )
+                    raise TwoFactorRequiredError(
+                        "Zwei-Faktor-Authentifizierung erforderlich fuer privilegierte Rollen."
+                    )
                 return current_user
 
         logger.warning(
@@ -323,8 +365,20 @@ def require_min_role_priority(min_priority: int) -> Callable:
         current_user: User = Depends(get_current_user),
         db: AsyncSession = Depends(get_db)
     ) -> User:
-        # Superuser hat immer Zugriff
+        # J.1 SECURITY FIX: Hohe Prioritaet (>=75 = Manager+) erfordert 2FA
+        requires_2fa = min_priority >= 75
+
+        # Superuser hat immer Zugriff, aber muss 2FA haben bei hoher Prioritaet
         if current_user.is_superuser:
+            if requires_2fa and not current_user.totp_enabled:
+                logger.warning(
+                    "2fa_required_for_superuser_priority",
+                    user_id=str(current_user.id),
+                    min_priority=min_priority
+                )
+                raise TwoFactorRequiredError(
+                    "Superuser muessen Zwei-Faktor-Authentifizierung aktivieren fuer privilegierte Aktionen."
+                )
             return current_user
 
         service = PermissionService(db)
@@ -333,6 +387,17 @@ def require_min_role_priority(min_priority: int) -> Callable:
         max_priority = max((role.priority for role in user_roles), default=0)
 
         if max_priority >= min_priority:
+            # J.1 SECURITY FIX: Auch normale User muessen 2FA haben bei hoher Prioritaet
+            if requires_2fa and not current_user.totp_enabled:
+                logger.warning(
+                    "2fa_required_for_priority",
+                    user_id=str(current_user.id),
+                    user_priority=max_priority,
+                    min_priority=min_priority
+                )
+                raise TwoFactorRequiredError(
+                    "Zwei-Faktor-Authentifizierung erforderlich fuer privilegierte Rollen."
+                )
             return current_user
 
         logger.warning(
@@ -379,6 +444,16 @@ def require_superuser() -> Callable:
                 detail="Zugriff verweigert: Superuser-Rechte erforderlich"
             )
 
+        # J.1 SECURITY FIX: Superuser-Aktionen erfordern IMMER 2FA
+        if not current_user.totp_enabled:
+            logger.warning(
+                "2fa_required_for_superuser",
+                user_id=str(current_user.id)
+            )
+            raise TwoFactorRequiredError(
+                "Superuser muessen Zwei-Faktor-Authentifizierung aktivieren."
+            )
+
         return current_user
 
     return superuser_checker
@@ -420,6 +495,40 @@ require_finance_manage = require_permission("finance:manage")
 require_admin = require_role("admin")
 require_manager = require_any_role("admin", "manager")
 require_analyst = require_any_role("admin", "manager", "analyst")
+
+# Privat-Modul-spezifische Kurzformen
+require_privat_read = require_permission("privat:read")
+require_privat_write = require_permission("privat:write")
+require_privat_manage = require_permission("privat:manage")
+require_privat_admin = require_permission("privat:admin")
+require_privat_user = require_any_role("admin", "privat_user")
+
+# Personal/HR-Modul-spezifische Kurzformen (Enterprise Security)
+# Employees - mit PII-Schutz
+require_employee_read = require_permission("employees:read")
+require_employee_read_pii = require_permission("employees:read_pii")
+require_employee_write = require_permission("employees:write")
+require_employee_delete = require_any_permission("employees:delete", "employees:manage")
+require_employee_manage = require_permission("employees:manage")
+require_employee_export = require_permission("employees:export")
+
+# Departments
+require_department_read = require_permission("departments:read")
+require_department_write = require_permission("departments:write")
+require_department_delete = require_any_permission("departments:delete", "departments:manage")
+require_department_manage = require_permission("departments:manage")
+
+# Positions - mit Gehalts-Schutz
+require_position_read = require_permission("positions:read")
+require_position_read_salary = require_permission("positions:read_salary")
+require_position_write = require_permission("positions:write")
+require_position_delete = require_any_permission("positions:delete", "positions:manage")
+require_position_manage = require_permission("positions:manage")
+
+# HR-spezifische Rollen-Kurzformen
+require_hr_access = require_any_role("admin", "hr_manager", "hr_user")
+require_hr_manager = require_any_role("admin", "hr_manager")
+require_hr_admin = require_role("admin")
 
 
 # ==================== 2FA Enforcement ====================
@@ -656,7 +765,12 @@ class PermissionContext:
         Returns:
             True wenn Rolle zugewiesen
         """
+        # J.1 SECURITY FIX: Superuser muss 2FA haben fuer privilegierte Rollen
+        privileged_roles = {"admin", "super_admin", "manager", "owner"}
         if self.user.is_superuser:
+            if role_name in privileged_roles and not self.user.totp_enabled:
+                # Superuser ohne 2FA bekommt KEINE privilegierten Rollen
+                return False
             return True
 
         roles = await self.get_roles()

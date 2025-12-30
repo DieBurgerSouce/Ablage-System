@@ -182,6 +182,7 @@ class UserResponse(UserBase):
     daily_quota: int
     created_at: datetime
     last_login: Optional[datetime] = None
+    role: str = "viewer"  # admin, editor, viewer - computed from is_superuser or RBAC
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -396,6 +397,19 @@ class LoginRequest(BaseModel):
 class RefreshTokenRequest(BaseModel):
     """Refresh token request."""
     refresh_token: str = Field(..., min_length=32, max_length=512, description="JWT Refresh Token")
+
+
+class TwoFactorRequiredResponse(BaseModel):
+    """Response when 2FA verification is required."""
+    requires_2fa: bool = True
+    temp_token: str = Field(..., description="Temporarer Token fur 2FA-Verifizierung (5 Min gultig)")
+    message: str = "Bitte geben Sie Ihren 2FA-Code ein."
+
+
+class TwoFactorVerifyRequest(BaseModel):
+    """Request to verify 2FA code during login."""
+    temp_token: str = Field(..., description="Temporarer Token aus Login-Response")
+    code: str = Field(..., min_length=6, max_length=12, description="6-stelliger TOTP-Code oder Backup-Code")
 
 
 class LogoutRequest(BaseModel):
@@ -5477,6 +5491,8 @@ class PrivatSpaceAccessResponse(PrivatSpaceAccessBase):
     user_id: uuid.UUID
     granted_by: Optional[uuid.UUID] = None
     created_at: datetime
+    expires_at: Optional[datetime] = None  # SECURITY: Ablaufdatum fuer zeitlich begrenzte Zugriffe
+    is_active: bool = True  # Computed field - nur aktive Zugriffe werden zurueckgegeben
 
     model_config = ConfigDict(from_attributes=True)
 

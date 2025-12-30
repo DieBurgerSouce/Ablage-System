@@ -13,9 +13,12 @@ from datetime import datetime, date
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
+
+# SECURITY FIX 27-4: Rate Limiting fuer Banking Endpoints
+from app.core.rate_limiting import limiter, get_user_identifier
 
 from app.api.dependencies import get_db, get_current_active_user
 from app.db.models import User
@@ -269,6 +272,8 @@ async def validate_upload_file(
 
 # ==================== Account Endpoints ====================
 
+# SECURITY FIX 27-4: Rate-Limit fuer Account-Erstellung
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @accounts_router.post(
     "",
     response_model=BankAccountResponse,
@@ -277,6 +282,7 @@ async def validate_upload_file(
     description="Erstellt ein neues Bankkonto fuer manuellen Import."
 )
 async def create_account(
+    request: Request,  # SECURITY FIX 27-4: Required for rate limiter
     data: BankAccountCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -467,18 +473,27 @@ async def delete_account(
     summary="Unterstuetzte Formate",
     description="Gibt alle unterstuetzten Import-Formate zurueck."
 )
-async def get_supported_formats() -> SupportedFormatsResponse:
+async def get_supported_formats(
+    current_user: User = Depends(get_current_active_user),  # X.4 SECURITY FIX: Auth required
+) -> SupportedFormatsResponse:
     """
     Hole Liste aller unterstuetzten Import-Formate.
+
+    **REQUIRES AUTHENTICATION**
 
     Unterstuetzt werden:
     - MT940 (SWIFT) - Universelles Bankformat
     - CAMT.053 (ISO 20022) - Modernes XML-Format
     - Bank-spezifische CSV-Formate (Sparkasse, VR, DKB, etc.)
+
+    Args:
+        current_user: Authenticated user (required)
     """
     return await import_service.get_supported_formats()
 
 
+# SECURITY FIX 27-4: Rate-Limit fuer Import-Vorschau
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @imports_router.post(
     "/preview",
     response_model=BankImportPreview,
@@ -486,6 +501,7 @@ async def get_supported_formats() -> SupportedFormatsResponse:
     description="Erstellt eine Vorschau vor dem eigentlichen Import."
 )
 async def preview_import(
+    request: Request,  # SECURITY FIX 27-4: Required for rate limiter
     file: UploadFile = File(..., description="Kontoauszug-Datei"),
     format_hint: Optional[ImportFormat] = Form(
         None,
@@ -546,6 +562,8 @@ async def preview_import(
         )
 
 
+# SECURITY FIX 27-4: Rate-Limit fuer Import - ressourcenintensiv!
+@limiter.limit("20/minute", key_func=get_user_identifier)
 @imports_router.post(
     "",
     response_model=BankImportResponse,
@@ -554,6 +572,7 @@ async def preview_import(
     description="Importiert einen Kontoauszug und erstellt Transaktionen."
 )
 async def import_file(
+    request: Request,  # SECURITY FIX 27-4: Required for rate limiter
     file: UploadFile = File(..., description="Kontoauszug-Datei"),
     bank_account_id: Optional[UUID] = Form(
         None,
@@ -953,6 +972,7 @@ async def get_match_suggestions(
     ]
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @reconciliation_router.post(
     "/match/{transaction_id}",
     response_model=dict,
@@ -960,6 +980,7 @@ async def get_match_suggestions(
     description="Matcht eine Transaktion manuell mit einem Dokument."
 )
 async def manual_match(
+    request: Request,  # SECURITY FIX 28-6: Required for rate limiter
     transaction_id: UUID,
     document_id: UUID,
     notes: Optional[str] = None,
@@ -1010,6 +1031,7 @@ async def manual_match(
         )
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @reconciliation_router.post(
     "/unmatch/{transaction_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -1017,6 +1039,7 @@ async def manual_match(
     description="Entfernt den Abgleich von einer Transaktion."
 )
 async def unmatch_transaction(
+    request: Request,  # SECURITY FIX 28-6: Required for rate limiter
     transaction_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -1041,6 +1064,7 @@ async def unmatch_transaction(
     )
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @reconciliation_router.post(
     "/split/{transaction_id}",
     response_model=List[dict],
@@ -1048,6 +1072,7 @@ async def unmatch_transaction(
     description="Teilt eine Transaktion auf mehrere Dokumente auf."
 )
 async def split_transaction(
+    request: Request,  # SECURITY FIX 28-6: Required for rate limiter
     transaction_id: UUID,
     splits: List[dict],
     db: AsyncSession = Depends(get_db),
@@ -1098,6 +1123,8 @@ async def split_transaction(
         )
 
 
+# SECURITY FIX 28-6: Rate-Limit fuer Batch-Operationen
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @reconciliation_router.post(
     "/batch",
     response_model=dict,
@@ -1105,6 +1132,7 @@ async def split_transaction(
     description="Fuehrt automatischen Abgleich fuer ungematchte Transaktionen durch."
 )
 async def batch_reconcile(
+    request: Request,  # SECURITY FIX 28-6: Required for rate limiter
     bank_account_id: Optional[UUID] = None,
     limit: int = Query(100, ge=1, le=500, description="Max. Transaktionen"),
     db: AsyncSession = Depends(get_db),
@@ -1144,6 +1172,8 @@ async def batch_reconcile(
     }
 
 
+# SECURITY FIX 28-6: Rate-Limit fuer Auto-Abgleich
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @reconciliation_router.post(
     "/auto/{transaction_id}",
     response_model=dict,
@@ -1151,6 +1181,7 @@ async def batch_reconcile(
     description="Versucht automatischen Abgleich fuer eine einzelne Transaktion."
 )
 async def auto_reconcile_single(
+    request: Request,  # SECURITY FIX 28-6: Required for rate limiter
     transaction_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -1184,6 +1215,7 @@ async def auto_reconcile_single(
 
 # ==================== Payment Endpoints ====================
 
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @payments_router.post(
     "",
     response_model=PaymentOrderResponse,
@@ -1192,6 +1224,7 @@ async def auto_reconcile_single(
     description="Erstellt einen neuen Zahlungsauftrag (SEPA-Ueberweisung)."
 )
 async def create_payment(
+    request: Request,  # SECURITY FIX 28-5: Required for rate limiter
     data: PaymentOrderCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -1318,6 +1351,7 @@ async def get_payment(
     return payment
 
 
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @payments_router.post(
     "/{payment_id}/approve",
     response_model=PaymentOrderResponse,
@@ -1325,6 +1359,7 @@ async def get_payment(
     description="Genehmigt einen Zahlungsauftrag fuer den Versand."
 )
 async def approve_payment(
+    request: Request,  # SECURITY FIX 28-5: Required for rate limiter
     payment_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -1354,6 +1389,7 @@ async def approve_payment(
         )
 
 
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @payments_router.post(
     "/{payment_id}/cancel",
     response_model=PaymentOrderResponse,
@@ -1361,6 +1397,7 @@ async def approve_payment(
     description="Storniert einen Zahlungsauftrag."
 )
 async def cancel_payment(
+    request: Request,  # SECURITY FIX 28-5: Required for rate limiter
     payment_id: UUID,
     reason: Optional[str] = Query(None, description="Stornierungsgrund"),
     db: AsyncSession = Depends(get_db),
@@ -1388,6 +1425,8 @@ async def cancel_payment(
         )
 
 
+# SECURITY FIX 28-5: Rate-Limit fuer kritische Zahlungsaktionen
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @payments_router.post(
     "/{payment_id}/submit",
     response_model=dict,
@@ -1395,6 +1434,7 @@ async def cancel_payment(
     description="Sendet Zahlung an Bank (initiiert TAN-Challenge)."
 )
 async def submit_payment(
+    request: Request,  # SECURITY FIX 28-5: Required for rate limiter
     payment_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -1424,6 +1464,8 @@ async def submit_payment(
         )
 
 
+# SECURITY FIX 28-5: Rate-Limit fuer TAN-Bestaetigung (Brute-Force Prevention)
+@limiter.limit("5/minute", key_func=get_user_identifier)
 @payments_router.post(
     "/{payment_id}/confirm-tan",
     response_model=PaymentOrderResponse,
@@ -1431,6 +1473,7 @@ async def submit_payment(
     description="Bestaetigt Zahlung mit TAN."
 )
 async def confirm_payment_tan(
+    request: Request,  # SECURITY FIX 28-5: Required for rate limiter
     payment_id: UUID,
     tan: str = Query(..., min_length=6, max_length=6, description="TAN-Eingabe"),
     db: AsyncSession = Depends(get_db),
@@ -1631,6 +1674,8 @@ async def get_overdue_invoices(
     ]
 
 
+# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "",
     response_model=DunningRecordResponse,
@@ -1639,6 +1684,7 @@ async def get_overdue_invoices(
     description="Startet einen neuen Mahnvorgang fuer eine Rechnung."
 )
 async def create_dunning(
+    request: Request,  # SECURITY FIX 28-7: Required for rate limiter
     document_id: UUID,
     level: DunningLevel = Query(DunningLevel.FIRST_REMINDER, description="Mahnstufe"),
     notes: Optional[str] = Query(None, description="Notizen"),
@@ -1748,6 +1794,8 @@ async def get_dunning_stats(
     )
 
 
+# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "/{dunning_id}/escalate",
     response_model=DunningRecordResponse,
@@ -1755,6 +1803,7 @@ async def get_dunning_stats(
     description="Eskaliert Mahnvorgang zur naechsten Stufe."
 )
 async def escalate_dunning(
+    request: Request,  # SECURITY FIX 28-7: Required for rate limiter
     dunning_id: UUID,
     notes: Optional[str] = Query(None, description="Notizen"),
     db: AsyncSession = Depends(get_db),
@@ -1782,6 +1831,8 @@ async def escalate_dunning(
         )
 
 
+# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "/{dunning_id}/close",
     response_model=DunningRecordResponse,
@@ -1789,6 +1840,7 @@ async def escalate_dunning(
     description="Schliesst einen Mahnvorgang ab (bezahlt, storniert, abgeschrieben)."
 )
 async def close_dunning(
+    request: Request,  # SECURITY FIX 28-7: Required for rate limiter
     dunning_id: UUID,
     close_status: DunningStatus = Query(..., alias="status", description="Abschluss-Status"),
     notes: Optional[str] = Query(None, description="Notizen"),
@@ -1819,6 +1871,8 @@ async def close_dunning(
         )
 
 
+# SECURITY FIX 28-7: Rate-Limit fuer Batch-Mahnverfahren
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "/process-automatic",
     response_model=List[dict],
@@ -1826,6 +1880,7 @@ async def close_dunning(
     description="Fuehrt automatisches Mahnverfahren durch (optional Dry-Run)."
 )
 async def process_automatic_dunning(
+    request: Request,  # SECURITY FIX 28-7: Required for rate limiter
     dry_run: bool = Query(True, description="Nur simulieren, nicht ausfuehren"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -1864,6 +1919,8 @@ async def get_dunning_history(
     return MahnungHistoryListResponse(items=items, total=total)
 
 
+# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "/{dunning_id}/mahnstopp",
     response_model=DunningRecordResponse,
@@ -1871,6 +1928,7 @@ async def get_dunning_history(
     description="Setzt einen Mahnstopp (z.B. bei Reklamation)."
 )
 async def set_mahnstopp(
+    http_request: Request,  # SECURITY FIX 28-7: Required for rate limiter (renamed to avoid conflict)
     dunning_id: UUID,
     request: MahnstoppSetRequest,
     db: AsyncSession = Depends(get_db),
@@ -1898,6 +1956,8 @@ async def set_mahnstopp(
         )
 
 
+# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @dunning_router.delete(
     "/{dunning_id}/mahnstopp",
     response_model=DunningRecordResponse,
@@ -1905,6 +1965,7 @@ async def set_mahnstopp(
     description="Hebt einen Mahnstopp auf."
 )
 async def lift_mahnstopp(
+    request: Request,  # SECURITY FIX 28-7: Required for rate limiter
     dunning_id: UUID,
     notes: Optional[str] = Query(None, description="Notizen zur Aufhebung"),
     db: AsyncSession = Depends(get_db),
@@ -1931,6 +1992,8 @@ async def lift_mahnstopp(
         )
 
 
+# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "/{dunning_id}/b2b-pauschale",
     response_model=B2BPauschaleClaimResponse,
@@ -1938,6 +2001,7 @@ async def lift_mahnstopp(
     description="Beansprucht die EUR 40 Pauschale nach §288 Abs. 5 BGB."
 )
 async def claim_b2b_pauschale(
+    request: Request,  # SECURITY FIX 28-7: Required for rate limiter
     dunning_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -1962,6 +2026,8 @@ async def claim_b2b_pauschale(
         )
 
 
+# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @dunning_router.put(
     "/{dunning_id}/b2b-status",
     response_model=DunningRecordResponse,
@@ -1969,6 +2035,7 @@ async def claim_b2b_pauschale(
     description="Setzt den B2B/B2C-Status fuer Verzugszinsenberechnung."
 )
 async def set_b2b_status(
+    request: Request,  # SECURITY FIX 28-7: Required for rate limiter
     dunning_id: UUID,
     is_b2b: bool = Query(..., description="True = B2B (11.27%), False = B2C (7.27%)"),
     db: AsyncSession = Depends(get_db),
@@ -2059,6 +2126,8 @@ async def calculate_verzugszinsen(
     )
 
 
+# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "/{dunning_id}/phone-call",
     response_model=PhoneCallLogResponse,
@@ -2067,6 +2136,7 @@ async def calculate_verzugszinsen(
     description="Protokolliert einen Telefonkontakt zum Mahnvorgang."
 )
 async def log_phone_call(
+    http_request: Request,  # SECURITY FIX 28-7: Required for rate limiter (renamed to avoid conflict)
     dunning_id: UUID,
     request: PhoneCallLogCreate,
     db: AsyncSession = Depends(get_db),
@@ -2123,6 +2193,8 @@ async def get_phone_calls(
     return PhoneCallLogListResponse(items=items, total=total)
 
 
+# SECURITY FIX 28-7: Rate-Limit fuer Bulk-Operationen
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "/bulk-escalate",
     response_model=BulkEscalateResponse,
@@ -2130,6 +2202,7 @@ async def get_phone_calls(
     description="Eskaliert mehrere Mahnvorgaenge gleichzeitig."
 )
 async def bulk_escalate_dunnings(
+    http_request: Request,  # SECURITY FIX 28-7: Required for rate limiter (renamed to avoid conflict)
     request: BulkEscalateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -2225,6 +2298,8 @@ async def get_mahn_task_summary(
     )
 
 
+# SECURITY FIX 28-8: Rate-Limit fuer Mahnaufgaben-Operationen
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @mahn_tasks_router.post(
     "",
     response_model=MahnTaskResponse,
@@ -2233,6 +2308,7 @@ async def get_mahn_task_summary(
     description="Erstellt eine neue Mahnaufgabe."
 )
 async def create_mahn_task(
+    http_request: Request,  # SECURITY FIX 28-8: Required for rate limiter (renamed to avoid conflict)
     request: MahnTaskCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -2259,6 +2335,8 @@ async def create_mahn_task(
         )
 
 
+# SECURITY FIX 28-8: Rate-Limit fuer Mahnaufgaben-Operationen
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @mahn_tasks_router.post(
     "/{task_id}/assign",
     response_model=MahnTaskResponse,
@@ -2266,6 +2344,7 @@ async def create_mahn_task(
     description="Weist eine Aufgabe einem Benutzer zu."
 )
 async def assign_mahn_task(
+    request: Request,  # SECURITY FIX 28-8: Required for rate limiter
     task_id: UUID,
     assigned_user_id: UUID = Query(..., description="Zuzuweisender Benutzer"),
     db: AsyncSession = Depends(get_db),
@@ -2292,6 +2371,8 @@ async def assign_mahn_task(
         )
 
 
+# SECURITY FIX 28-8: Rate-Limit fuer Mahnaufgaben-Operationen
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @mahn_tasks_router.post(
     "/{task_id}/snooze",
     response_model=MahnTaskResponse,
@@ -2299,6 +2380,7 @@ async def assign_mahn_task(
     description="Stellt eine Aufgabe zurueck (max. 3x)."
 )
 async def snooze_mahn_task(
+    http_request: Request,  # SECURITY FIX 28-8: Required for rate limiter (renamed to avoid conflict)
     task_id: UUID,
     request: MahnTaskSnoozeRequest,
     db: AsyncSession = Depends(get_db),
@@ -2314,6 +2396,7 @@ async def snooze_mahn_task(
             reason=request.reason,
         )
     except ValueError as e:
+        # SECURITY FIX 29: Generic error message - no internal details
         logger.warning(
             "mahn_task_snooze_failed",
             task_id=str(task_id),
@@ -2322,10 +2405,12 @@ async def snooze_mahn_task(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),  # Snooze-Limit Meldung durchreichen
+            detail="Snooze fehlgeschlagen. Bitte Eingaben pruefen.",
         )
 
 
+# SECURITY FIX 28-8: Rate-Limit fuer Mahnaufgaben-Operationen
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @mahn_tasks_router.post(
     "/{task_id}/complete",
     response_model=MahnTaskResponse,
@@ -2333,6 +2418,7 @@ async def snooze_mahn_task(
     description="Schliesst eine Aufgabe ab."
 )
 async def complete_mahn_task(
+    http_request: Request,  # SECURITY FIX 28-8: Required for rate limiter (renamed to avoid conflict)
     task_id: UUID,
     request: MahnTaskCompleteRequest,
     db: AsyncSession = Depends(get_db),
@@ -2359,6 +2445,8 @@ async def complete_mahn_task(
         )
 
 
+# SECURITY FIX 28-8: Rate-Limit fuer Bulk-Operationen
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @mahn_tasks_router.post(
     "/bulk-complete",
     response_model=dict,
@@ -2366,6 +2454,7 @@ async def complete_mahn_task(
     description="Schliesst mehrere Aufgaben gleichzeitig ab."
 )
 async def bulk_complete_mahn_tasks(
+    http_request: Request,  # SECURITY FIX 28-8: Required for rate limiter (renamed to avoid conflict)
     request: MahnTaskBulkCompleteRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),

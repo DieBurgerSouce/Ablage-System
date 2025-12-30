@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api/v1"
     DEBUG: bool = False
+    # Q.2 SECURITY FIX: Explizite Environment-Erkennung
+    ENVIRONMENT: str = Field(
+        default="development",
+        description="Umgebung: development, staging, production"
+    )
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent  # Project root
     
     # Server
@@ -64,9 +69,11 @@ class Settings(BaseSettings):
     # WICHTIG: SECRET_KEY MUSS in Production via Umgebungsvariable gesetzt werden!
     # Beispiel: SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(64))")
     # SECURITY FIX: SecretStr verhindert Logging von Secrets
+    # J.3 CRITICAL FIX: Kein leerer Default mehr - muss explizit gesetzt werden
     SECRET_KEY: SecretStr = Field(
-        default="",
-        description="JWT Secret Key - MUSS in Production gesetzt sein (min. 32 Zeichen)"
+        ...,  # Required - kein Default!
+        min_length=32,  # Mindestens 32 Zeichen
+        description="JWT Secret Key - MUSS gesetzt sein (min. 32 Zeichen)"
     )
     # ENCRYPTION_KEY für TOTP-Secrets und andere sensible Daten
     # Optional: Wenn nicht gesetzt, wird aus SECRET_KEY abgeleitet
@@ -81,15 +88,21 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # CORS - Sicherheitskonfiguration
-    # In Production: Explizite Origins setzen via CORS_ORIGINS Umgebungsvariable
+    # J.5 SECURITY FIX: Production-Origins muessen explizit gesetzt werden
+    # In Development: localhost erlaubt, in Production: CORS_ORIGINS MUSS gesetzt sein
     # Beispiel: CORS_ORIGINS=["https://app.ablage-system.local","https://admin.ablage-system.local"]
     CORS_ORIGINS: List[str] = Field(
-        default=["http://localhost:3000", "http://localhost:8080", "http://localhost:80", "http://localhost"],
-        description="Erlaubte CORS Origins - in Production explizit setzen!"
+        default_factory=list,  # Leere Liste = keine Origins erlaubt ohne Konfiguration
+        description="Erlaubte CORS Origins - MUSS in Production explizit gesetzt werden!"
     )
     CORS_ALLOW_CREDENTIALS: bool = Field(
         default=True,
         description="Credentials erlauben - nur mit expliziten Origins!"
+    )
+    # J.5 SECURITY FIX: Development-Only Origins (werden nur in non-production verwendet)
+    CORS_DEVELOPMENT_ORIGINS: List[str] = Field(
+        default=["http://localhost:3000", "http://localhost:8080", "http://localhost:80", "http://localhost"],
+        description="Zusaetzliche Origins NUR fuer Development - werden in Production ignoriert!"
     )
     # Eingeschränkte Methods - nur was benötigt wird
     CORS_ALLOW_METHODS: List[str] = Field(
@@ -664,6 +677,14 @@ class Settings(BaseSettings):
     @model_validator(mode='after')
     def build_computed_urls(self) -> 'Settings':
         """Build database and Redis URLs from components if not provided."""
+        # ========== Q.2 SECURITY FIX: DEBUG Mode in Production verhindern ==========
+        if self.DEBUG and self.ENVIRONMENT.lower() in ("production", "prod"):
+            raise ValueError(
+                "KRITISCHER SICHERHEITSFEHLER: DEBUG=True ist in Production nicht erlaubt! "
+                "Setze DEBUG=False oder aendere ENVIRONMENT auf 'development'. "
+                "DEBUG in Production kann zu Information Leakage und CORS-Problemen fuehren."
+            )
+
         # ========== SECRET_KEY Validierung ==========
         # In Production: SECRET_KEY MUSS explizit gesetzt sein
         # In Development: Generiere temporären Key mit Warnung

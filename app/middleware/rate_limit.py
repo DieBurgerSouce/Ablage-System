@@ -279,6 +279,32 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if path.startswith("/gpu/status"):
             return {"limit": 60, "window": 60}  # 60 per minute
 
+        # Personal Module (HR) Endpoints - A.2 CRITICAL: Rate Limiting
+        # Diese Limits schuetzen sensitive Mitarbeiterdaten vor Massenexfiltration
+        if path.startswith("/api/v1/personal/employees"):
+            if user_tier == "admin":
+                return {"limit": 500, "window": 60}  # Admin: 500/min
+            elif user_tier == "premium":
+                return {"limit": 100, "window": 60}  # Premium/HR: 100/min
+            else:
+                return {"limit": 50, "window": 60}  # Standard: 50/min
+
+        if path.startswith("/api/v1/personal/departments"):
+            if user_tier == "admin":
+                return {"limit": 300, "window": 60}  # Admin: 300/min
+            elif user_tier == "premium":
+                return {"limit": 100, "window": 60}  # Premium/HR: 100/min
+            else:
+                return {"limit": 50, "window": 60}  # Standard: 50/min
+
+        if path.startswith("/api/v1/personal/positions"):
+            if user_tier == "admin":
+                return {"limit": 300, "window": 60}  # Admin: 300/min
+            elif user_tier == "premium":
+                return {"limit": 100, "window": 60}  # Premium/HR: 100/min
+            else:
+                return {"limit": 50, "window": 60}  # Standard: 50/min
+
         # General API endpoints
         return {"limit": 100, "window": 60}  # 100 per minute (default)
 

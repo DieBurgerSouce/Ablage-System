@@ -11,10 +11,15 @@ Provides endpoints for:
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 
+# SECURITY FIX 28-11: Rate Limiting fuer Agent Endpoints
+from app.core.rate_limiting import limiter, get_user_identifier
+
 from app.agents.orchestration import DocumentProcessingOrchestrator, OCRBackendRouter
+from app.api.dependencies import get_current_active_user
+from app.db.models import User
 from app.core.german_messages import HTTPErrors
 from app.core.redis_state import get_redis
 from app.workers.tasks.ocr_tasks import (
@@ -133,11 +138,16 @@ class WorkflowExecuteRequest(BaseModel):
 
 
 @router.get("/status")
-async def get_all_agents_status():
+async def get_all_agents_status(
+    current_user: User = Depends(get_current_active_user),  # V.1 SECURITY FIX: Authentication required
+):
     """
     Get status of all agents.
 
     Returns list of agent statuses with metadata.
+
+    Args:
+        current_user: Authenticated user (required)
     """
     redis = await get_redis()
     statuses = await redis.get_all_agents_status()
@@ -149,12 +159,16 @@ async def get_all_agents_status():
 
 
 @router.get("/status/{agent_id}")
-async def get_agent_status(agent_id: str):
+async def get_agent_status(
+    agent_id: str,
+    current_user: User = Depends(get_current_active_user),  # U.1 SECURITY FIX: Authentication required
+):
     """
     Get status of specific agent.
 
     Args:
         agent_id: Agent identifier
+        current_user: Authenticated user (required)
 
     Returns:
         Agent status details
@@ -179,8 +193,15 @@ async def get_agent_status(agent_id: str):
 # =============================================================================
 
 
+# SECURITY FIX 28-11: Rate-Limit fuer ressourcenintensive OCR-Operationen
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @router.post("/execute/ocr")
-async def execute_ocr_agent(request: AgentExecuteRequest, background_tasks: BackgroundTasks):
+async def execute_ocr_agent(
+    http_request: Request,  # SECURITY FIX 28-11: Required for rate limiter (renamed to avoid conflict)
+    request: AgentExecuteRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_active_user),  # V.2 SECURITY FIX: Authentication required
+):
     """
     Execute OCR agent asynchronously.
 
@@ -188,6 +209,8 @@ async def execute_ocr_agent(request: AgentExecuteRequest, background_tasks: Back
 
     Args:
         request: Execution request
+        background_tasks: FastAPI background tasks
+        current_user: Authenticated user (required)
 
     Returns:
         Task ID and status
@@ -210,13 +233,20 @@ async def execute_ocr_agent(request: AgentExecuteRequest, background_tasks: Back
     }
 
 
+# SECURITY FIX 28-11: Rate-Limit fuer Batch-Operationen
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @router.post("/execute/batch")
-async def execute_batch_processing(request: BatchProcessRequest):
+async def execute_batch_processing(
+    http_request: Request,  # SECURITY FIX 28-11: Required for rate limiter (renamed to avoid conflict)
+    request: BatchProcessRequest,
+    current_user: User = Depends(get_current_active_user),  # V.3 SECURITY FIX: Authentication required
+):
     """
     Execute batch OCR processing.
 
     Args:
         request: Batch request
+        current_user: Authenticated user (required)
 
     Returns:
         Task ID
@@ -243,8 +273,14 @@ async def execute_batch_processing(request: BatchProcessRequest):
     }
 
 
+# SECURITY FIX 28-11: Rate-Limit fuer Workflow-Operationen
+@limiter.limit("20/minute", key_func=get_user_identifier)
 @router.post("/execute/workflow")
-async def execute_workflow(request: WorkflowExecuteRequest):
+async def execute_workflow(
+    http_request: Request,  # SECURITY FIX 28-11: Required for rate limiter (renamed to avoid conflict)
+    request: WorkflowExecuteRequest,
+    current_user: User = Depends(get_current_active_user),  # V.4 SECURITY FIX: Authentication required
+):
     """
     Execute complete document processing workflow.
 
@@ -258,6 +294,7 @@ async def execute_workflow(request: WorkflowExecuteRequest):
 
     Args:
         request: Workflow request
+        current_user: Authenticated user (required)
 
     Returns:
         Task ID
@@ -284,12 +321,16 @@ async def execute_workflow(request: WorkflowExecuteRequest):
 
 
 @router.get("/tasks/{task_id}")
-async def get_task_status(task_id: str):
+async def get_task_status(
+    task_id: str,
+    current_user: User = Depends(get_current_active_user),  # U.1 SECURITY FIX: Authentication required
+):
     """
     Get task status and progress.
 
     Args:
         task_id: Celery task ID
+        current_user: Authenticated user (required)
 
     Returns:
         Task state, progress, and result
@@ -322,9 +363,13 @@ async def get_task_status(task_id: str):
 # =============================================================================
 
 
+# SECURITY FIX 28-11: Rate-Limit fuer Backend-Routing
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.post("/route/backend")
 async def route_backend(
+    request: Request,  # SECURITY FIX 28-11: Required for rate limiter
     document_metadata: Dict[str, Any],
+    current_user: User = Depends(get_current_active_user),  # V.5 SECURITY FIX: Authentication required
     sla_requirements: Optional[Dict[str, Any]] = None,
 ):
     """
@@ -332,6 +377,7 @@ async def route_backend(
 
     Args:
         document_metadata: Document characteristics
+        current_user: Authenticated user (required)
         sla_requirements: Optional SLA constraints
 
     Returns:
@@ -355,9 +401,14 @@ async def route_backend(
 
 
 @router.get("/route/backends")
-async def list_available_backends():
+async def list_available_backends(
+    current_user: User = Depends(get_current_active_user),  # V.6 SECURITY FIX: Authentication required
+):
     """
     List all available OCR backends with capabilities.
+
+    Args:
+        current_user: Authenticated user (required)
 
     Returns:
         Backend information
@@ -385,12 +436,16 @@ async def list_available_backends():
 
 
 @router.get("/workflow/{document_id}")
-async def get_workflow_state(document_id: str):
+async def get_workflow_state(
+    document_id: str,
+    current_user: User = Depends(get_current_active_user),  # U.1 SECURITY FIX: Authentication required
+):
     """
     Get workflow state for document.
 
     Args:
         document_id: Document ID
+        current_user: Authenticated user (required)
 
     Returns:
         Complete workflow state with all phases
@@ -411,13 +466,18 @@ async def get_workflow_state(document_id: str):
 
 
 @router.get("/workflow/{document_id}/{phase}")
-async def get_workflow_phase(document_id: str, phase: str):
+async def get_workflow_phase(
+    document_id: str,
+    phase: str,
+    current_user: User = Depends(get_current_active_user),  # U.1 SECURITY FIX: Authentication required
+):
     """
     Get specific workflow phase state.
 
     Args:
         document_id: Document ID
         phase: Phase name (classification, preprocessing, ocr, etc.)
+        current_user: Authenticated user (required)
 
     Returns:
         Phase state
@@ -446,9 +506,14 @@ async def get_workflow_phase(document_id: str, phase: str):
 
 
 @router.get("/config")
-async def get_agent_configuration():
+async def get_agent_configuration(
+    current_user: User = Depends(get_current_active_user),  # W.1 SECURITY FIX: Authentication required
+):
     """
     Get current agent configuration.
+
+    Args:
+        current_user: Authenticated user (required)
 
     Returns:
         Configuration for all agents

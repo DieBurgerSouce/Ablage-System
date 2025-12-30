@@ -12,9 +12,12 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
+
+# SECURITY FIX 27-7: Rate Limiting fuer GDPR Endpoints
+from app.core.rate_limiting import limiter, get_user_identifier
 
 from app.api.dependencies import get_db, get_current_active_user
 from app.db.models import User
@@ -40,6 +43,8 @@ router = APIRouter(prefix="/users/me/gdpr", tags=["GDPR"])
 
 # ==================== Art. 17 - Recht auf Löschung ====================
 
+# SECURITY FIX 27-7: Rate-Limit fuer Account-Loeschung - nur 3x pro Tag!
+@limiter.limit("3/day", key_func=get_user_identifier)
 @router.post(
     "/request-deletion",
     response_model=DeletionStatusResponse,
@@ -48,7 +53,8 @@ router = APIRouter(prefix="/users/me/gdpr", tags=["GDPR"])
                 "Nach Bestätigung wird das Konto nach 30 Tagen gelöscht."
 )
 async def request_account_deletion(
-    request: DeletionRequestCreate,
+    request: Request,  # SECURITY FIX 27-7: Required for rate limiter
+    deletion_request: DeletionRequestCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ) -> DeletionStatusResponse:
@@ -74,7 +80,7 @@ async def request_account_deletion(
 
     try:
         scheduled_for = await gdpr_service.request_deletion(
-            db, current_user.id, request.reason
+            db, current_user.id, deletion_request.reason
         )
 
         now = datetime.now(timezone.utc)
@@ -490,9 +496,11 @@ async def download_export(
     Raises:
         404: Export nicht gefunden
         400: Export nicht bereit oder abgelaufen
+        403: Zugriff auf Pfad verweigert (Path Traversal Schutz)
     """
     from fastapi.responses import FileResponse
     from pathlib import Path
+    import os
 
     export_service = get_data_export_service()
 
@@ -501,8 +509,32 @@ async def download_export(
             db, export_id, current_user.id
         )
 
+        # T.3 SECURITY FIX: Path Traversal Protection
+        # Normalisiere Pfad und validiere gegen erlaubtes Basisverzeichnis
         path = Path(file_path)
-        if not path.exists():
+        normalized_path = os.path.normpath(os.path.abspath(str(path)))
+
+        # Hole das konfigurierte Export-Verzeichnis (aus Settings oder Default)
+        from app.core.config import settings
+        export_base_dir = os.path.normpath(os.path.abspath(
+            getattr(settings, 'GDPR_EXPORT_DIR', '/app/data/exports')
+        ))
+
+        # Validiere dass der Pfad innerhalb des erlaubten Verzeichnisses liegt
+        if not normalized_path.startswith(export_base_dir):
+            logger.warning(
+                "path_traversal_attempt_blocked",
+                requested_path=file_path,
+                normalized_path=normalized_path,
+                allowed_base=export_base_dir,
+                user_id=str(current_user.id)[:8] + "..."
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Zugriff auf diesen Pfad verweigert"
+            )
+
+        if not os.path.exists(normalized_path):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Export-Datei nicht gefunden"
@@ -515,7 +547,7 @@ async def download_export(
         )
 
         return FileResponse(
-            path=str(path),
+            path=normalized_path,
             filename=f"datenexport_{export_id}.zip",
             media_type="application/zip"
         )

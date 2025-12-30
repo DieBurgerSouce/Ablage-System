@@ -17,9 +17,12 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
+
+# SECURITY FIX 27-8: Rate Limiting fuer Webhook Endpoints
+from app.core.rate_limiting import limiter, get_user_identifier
 
 from app.db.models import User, WebhookSubscription, WebhookDelivery
 from app.api.dependencies import get_current_user, get_db
@@ -50,6 +53,8 @@ def generate_webhook_secret() -> str:
     return f"whsec_{secrets.token_urlsafe(32)}"
 
 
+# SECURITY FIX 27-8: Rate-Limit fuer Webhook-Erstellung
+@limiter.limit("20/minute", key_func=get_user_identifier)
 @router.post(
     "/",
     response_model=WebhookSubscriptionWithSecret,
@@ -58,6 +63,7 @@ def generate_webhook_secret() -> str:
     description="Erstellt ein neues Webhook-Abonnement für Event-Benachrichtigungen."
 )
 async def create_webhook(
+    request: Request,  # SECURITY FIX 27-8: Required for rate limiter
     webhook_data: WebhookSubscriptionCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -359,6 +365,23 @@ async def test_webhook(
     }
     if webhook.headers:
         headers.update(webhook.headers)
+
+    # M.1 CRITICAL: SSRF-Schutz - URL validieren BEVOR HTTP-Request gemacht wird
+    from app.core.security import validate_url_for_ssrf_async
+    is_valid, ssrf_error = await validate_url_for_ssrf_async(webhook.url)
+    if not is_valid:
+        logger.warning(
+            "webhook_test_ssrf_blocked",
+            webhook_id=str(webhook_id),
+            url=webhook.url[:50],
+            error=ssrf_error
+        )
+        return WebhookTestResponse(
+            success=False,
+            status_code=None,
+            response_time_ms=0,
+            error=f"SSRF-Schutz: {ssrf_error}"
+        )
 
     # Webhook senden
     start_time = time.time()

@@ -54,10 +54,33 @@ class SanitizationConfig:
     ]
 
     # Verbotene SQL-Fragmente (Defense in Depth)
+    # I.8 HIGH: Erweiterte Liste fuer umfassenden SQL-Injection-Schutz
     SQL_DANGEROUS_KEYWORDS = [
+        # DML/DDL Keywords
         'UNION', 'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP',
         'CREATE', 'ALTER', 'EXEC', 'EXECUTE', 'TRUNCATE',
-        'DECLARE', '--', '/*', '*/', ';--', 'xp_', 'sp_'
+        'DECLARE', 'MERGE', 'REPLACE',
+        # I.8: Zusätzliche kritische Keywords
+        'UNION ALL', 'UNION SELECT',
+        # Transaction Control
+        'BEGIN', 'COMMIT', 'ROLLBACK', 'SAVEPOINT',
+        # SQLite-spezifisch
+        'PRAGMA', 'ATTACH', 'DETACH',
+        # Boolean-based Injection Patterns
+        'OR 1=1', 'OR 1=1--', "OR '1'='1", 'AND 1=1', 'AND 1=2',
+        '1=1', '1=0', '1=2',
+        # Comment Patterns
+        '--', '/*', '*/', ';--', '#--',
+        # MS SQL spezifisch
+        'xp_', 'sp_', 'WAITFOR DELAY', 'BENCHMARK',
+        # PostgreSQL spezifisch
+        'PG_SLEEP', 'DBLINK', 'COPY', 'LO_IMPORT', 'LO_EXPORT',
+        # Encoding-Bypass Attempts
+        'CHAR(', 'CHR(', 'CONCAT(', 'ASCII(', 'CONVERT(',
+        # Information Schema
+        'INFORMATION_SCHEMA', 'PG_CATALOG', 'SYS.', 'SYSCOLUMNS',
+        # Subquery Patterns
+        'INTO OUTFILE', 'INTO DUMPFILE', 'LOAD_FILE',
     ]
 
 
@@ -98,8 +121,10 @@ def sanitize_search_query(
     if not query:
         return "", []
 
-    # 1. Unicode-Normalisierung (NFC)
-    sanitized = unicodedata.normalize('NFC', query)
+    # 1. Unicode-Normalisierung (NFKC fuer maximale Sicherheit)
+    # K.2 SECURITY FIX: NFKC normalisiert auch Kompatabilitaets-Zeichen
+    # z.B. Fullwidth-Zeichen wie ＇ → ' und ；→ ;
+    sanitized = unicodedata.normalize('NFKC', query)
 
     # 2. Null-Bytes entfernen (Injection-Schutz)
     if '\x00' in sanitized:
@@ -207,11 +232,27 @@ def sanitize_filename(
             user_message_de="Bitte geben Sie einen Dateinamen an"
         )
 
-    # 1. Unicode-Normalisierung
-    sanitized = unicodedata.normalize('NFC', filename)
+    # 1. Unicode-Normalisierung (NFKC fuer maximale Sicherheit)
+    # K.2/K.3 SECURITY FIX: NFKC normalisiert Homoglyphen wie ．→ . und ／→ /
+    sanitized = unicodedata.normalize('NFKC', filename)
 
     # 2. Null-Bytes entfernen
     sanitized = sanitized.replace('\x00', '')
+
+    # K.3 SECURITY FIX: Homoglyph-Attack Prevention
+    # Unicode-Zeichen die wie .. oder / aussehen
+    homoglyph_map = {
+        '\uff0e': '.',  # FULLWIDTH FULL STOP
+        '\u2024': '.',  # ONE DOT LEADER
+        '\ufe52': '.',  # SMALL FULL STOP
+        '\uff0f': '/',  # FULLWIDTH SOLIDUS
+        '\u2215': '/',  # DIVISION SLASH
+        '\u29f8': '/',  # BIG SOLIDUS
+        '\uff3c': '\\',  # FULLWIDTH REVERSE SOLIDUS
+        '\ufe68': '\\',  # SMALL REVERSE SOLIDUS
+    }
+    for homoglyph, replacement in homoglyph_map.items():
+        sanitized = sanitized.replace(homoglyph, replacement)
 
     # 3. Path-Traversal verhindern
     # Entferne .. und absolute Pfade

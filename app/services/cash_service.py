@@ -20,7 +20,7 @@ from typing import List, Optional, Tuple
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -450,7 +450,7 @@ class CashService:
             reference_number=f"STORNO-{original.entry_number}",
             counterparty_name=original.counterparty_name,
             counterparty_id=original.counterparty_id,
-            cancelled_by_entry_id=None,  # Dieses Feld zeigt auf das Original
+            cancelled_by_entry_id=original.id,  # Diese Stornobuchung bezieht sich auf das Original
             cancellation_reason=data.reason,
             debit_account=original.credit_account,  # Umgekehrt!
             credit_account=original.debit_account,  # Umgekehrt!
@@ -773,8 +773,8 @@ class CashService:
         db: AsyncSession,
         company_id: UUID,
         register_id: UUID,
-        start_date: date,
-        end_date: date
+        start_date: Optional[date],
+        end_date: Optional[date]
     ) -> CashBookSummary:
         """Erstellt eine Kassenbuch-Zusammenfassung.
 
@@ -782,8 +782,8 @@ class CashService:
             db: Datenbank-Session
             company_id: Firmen-ID
             register_id: Kassen-ID
-            start_date: Von-Datum
-            end_date: Bis-Datum
+            start_date: Von-Datum (default: Anfang des Monats)
+            end_date: Bis-Datum (default: heute)
 
         Returns:
             Zusammenfassung
@@ -791,6 +791,13 @@ class CashService:
         register = await self.get_register(db, register_id, company_id)
         if not register:
             raise ValueError("Kasse nicht gefunden")
+
+        # Standardwerte fuer Datumsbereich
+        today = date.today()
+        if end_date is None:
+            end_date = today
+        if start_date is None:
+            start_date = date(today.year, today.month, 1)
 
         # Eröffnungssaldo (Saldo vor start_date)
         opening_result = await db.execute(
@@ -805,16 +812,16 @@ class CashService:
         # Buchungen im Zeitraum
         entries_result = await db.execute(
             select(
-                func.sum(func.case(
+                func.sum(case(
                     (CashEntry.amount > 0, CashEntry.amount),
                     else_=Decimal("0")
                 )).label("income"),
-                func.sum(func.case(
+                func.sum(case(
                     (CashEntry.amount < 0, CashEntry.amount),
                     else_=Decimal("0")
                 )).label("expense"),
                 func.count().label("entry_count"),
-                func.sum(func.case(
+                func.sum(case(
                     (CashEntry.is_cancelled == True, 1),
                     else_=0
                 )).label("cancelled_count")
@@ -868,11 +875,11 @@ class CashService:
         result = await db.execute(
             select(
                 CashEntry.entry_date,
-                func.sum(func.case(
+                func.sum(case(
                     (CashEntry.amount > 0, CashEntry.amount),
                     else_=Decimal("0")
                 )).label("income"),
-                func.sum(func.case(
+                func.sum(case(
                     (CashEntry.amount < 0, CashEntry.amount),
                     else_=Decimal("0")
                 )).label("expense"),
@@ -1054,14 +1061,14 @@ class CashService:
         Returns:
             Nächste Nummer (1-basiert)
         """
-        # FOR UPDATE SKIP LOCKED verhindert Race Conditions:
-        # - Sperrt die Zeilen mit max entry_number
-        # - Parallele Transaktionen warten bis Lock freigegeben
+        # HINWEIS: Die Thread-Sicherheit wird durch das Register-Lock garantiert.
+        # Das Register muss VOR diesem Aufruf mit _get_register_for_update() gesperrt sein!
+        # PostgreSQL erlaubt FOR UPDATE nicht mit Aggregatfunktionen (max, count, etc.).
+        # Das Register-Lock serialisiert alle Zugriffe auf dieses Register.
         result = await db.execute(
             select(func.max(CashEntry.entry_number))
             .where(CashEntry.cash_register_id == register_id)
             .where(CashEntry.fiscal_year == fiscal_year)
-            .with_for_update()  # GoBD: Thread-safe Nummernvergabe
         )
         max_number = result.scalar() or 0
         return max_number + 1

@@ -182,6 +182,7 @@ async def ocr_preview_upload(
             filename=file.filename,
             error=str(e),
         )
+        # SECURITY FIX 30: Generic error message - no exception details to client
         return OCRPreviewResponse(
             erfolg=False,
             text="",
@@ -189,7 +190,7 @@ async def ocr_preview_upload(
             abgeschnitten=False,
             dateiname=file.filename,
             methode="fehler",
-            fehler=str(e),
+            fehler="OCR-Verarbeitung fehlgeschlagen. Bitte erneut versuchen.",
         )
 
     finally:
@@ -297,6 +298,7 @@ async def ocr_preview_document(
             dokument_id=str(request.dokument_id),
             error=str(e),
         )
+        # SECURITY FIX 30: Generic error message - no exception details to client
         return OCRPreviewResponse(
             erfolg=False,
             text="",
@@ -304,7 +306,7 @@ async def ocr_preview_document(
             abgeschnitten=False,
             dateiname=None,
             methode="fehler",
-            fehler=str(e),
+            fehler="OCR-Verarbeitung fehlgeschlagen. Bitte erneut versuchen.",
         )
 
     finally:
@@ -582,6 +584,7 @@ async def start_ocr_processing(
         )
 
     except Exception as e:
+        # SECURITY FIX 29: Generic error message - no internal details
         logger.error(
             "ocr_start_failed",
             document_id=str(document_id),
@@ -589,7 +592,7 @@ async def start_ocr_processing(
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Fehler beim Starten der OCR-Verarbeitung: {str(e)}"
+            detail="Fehler beim Starten der OCR-Verarbeitung. Bitte erneut versuchen."
         )
 
 
@@ -667,6 +670,7 @@ async def cancel_ocr_processing(
         )
 
     except Exception as e:
+        # SECURITY FIX 29: Generic error message - no internal details
         logger.error(
             "ocr_cancel_failed",
             document_id=str(document_id),
@@ -674,7 +678,7 @@ async def cancel_ocr_processing(
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Fehler beim Abbrechen: {str(e)}"
+            detail="Fehler beim Abbrechen. Bitte erneut versuchen."
         )
 
 
@@ -980,10 +984,11 @@ async def invalidate_ocr_cache(
         await cache_service.invalidate_document_cache(str(document_id))
 
     except Exception as e:
+        # SECURITY FIX 29: Generic error message - no internal details
         logger.error("cache_invalidation_error", document_id=str(document_id), error=str(e))
         raise HTTPException(
             status_code=500,
-            detail=f"Cache-Invalidierung fehlgeschlagen: {str(e)}"
+            detail="Cache-Invalidierung fehlgeschlagen. Bitte erneut versuchen."
         )
 
     logger.info(

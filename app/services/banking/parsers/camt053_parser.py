@@ -11,7 +11,9 @@ from decimal import Decimal
 from typing import Optional, List, Union, Dict, Any
 import structlog
 import re
-from xml.etree import ElementTree as ET
+
+# S.2 SECURITY FIX: defusedxml gegen XXE-Angriffe bei User-supplied Bank-Dateien
+from defusedxml.ElementTree import fromstring as safe_xml_fromstring, ElementTree as ET
 
 from .base import BaseParser, ParsedTransaction, ParseResult, ParserRegistry
 from ..models import ImportFormat, TransactionType
@@ -81,8 +83,8 @@ class CAMT053Parser(BaseParser):
         )
 
         try:
-            # Parse XML
-            root = ET.fromstring(content)
+            # S.2 SECURITY FIX: Sicheres XML-Parsing gegen XXE-Angriffe
+            root = safe_xml_fromstring(content)
 
             # Namespace ermitteln
             ns = self._detect_namespace(root)

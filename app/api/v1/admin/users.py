@@ -168,9 +168,11 @@ async def create_user(
         )
         return UserAdminView.from_orm_with_computed(user)
     except ValueError as e:
+        # SECURITY FIX 29: Generic error message - no internal details
+        logger.warning("user_admin_validation_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen.",
         )
 
 
@@ -255,9 +257,11 @@ async def deactivate_user(
         return UserAdminView.from_orm_with_computed(user)
 
     except ValueError as e:
+        # SECURITY FIX 29: Generic error message - no internal details
+        logger.warning("user_admin_validation_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen.",
         )
 
 
@@ -381,9 +385,11 @@ async def change_role(
         return UserAdminView.from_orm_with_computed(user)
 
     except ValueError as e:
+        # SECURITY FIX 29: Generic error message - no internal details
+        logger.warning("user_admin_validation_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen.",
         )
 
 
@@ -457,9 +463,11 @@ async def delete_user(
         )
 
     except ValueError as e:
+        # SECURITY FIX 29: Generic error message - no internal details
+        logger.warning("user_admin_validation_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen.",
         )
 
 

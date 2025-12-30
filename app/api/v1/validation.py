@@ -314,7 +314,8 @@ async def assign_queue_item(
             assigned_by_id=current_user.id
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-22: Generische Fehlermeldung
+        raise HTTPException(status_code=400, detail="Zuweisung fehlgeschlagen. Bitte Eingaben pruefen.")
 
     if not item:
         raise HTTPException(
@@ -385,7 +386,8 @@ async def approve_queue_item(
             apply_corrections=approve_data.apply_corrections
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-22: Generische Fehlermeldung
+        raise HTTPException(status_code=400, detail="Genehmigung fehlgeschlagen. Bitte Eingaben pruefen.")
 
     if not item:
         raise HTTPException(
@@ -427,7 +429,8 @@ async def reject_queue_item(
             rejection_category=reject_data.rejection_category.value if reject_data.rejection_category else None
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-22: Generische Fehlermeldung
+        raise HTTPException(status_code=400, detail="Ablehnung fehlgeschlagen. Bitte Eingaben pruefen.")
 
     if not item:
         raise HTTPException(
@@ -598,7 +601,8 @@ async def validate_field(
     try:
         result = await field_service.validate_field(field_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        # SECURITY FIX 28-22: Generische Fehlermeldung
+        raise HTTPException(status_code=404, detail="Feld nicht gefunden.")
 
     return result
 
@@ -724,7 +728,8 @@ async def update_rule(
     try:
         rule = await service.update_rule(rule_id, update_data)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-22: Generische Fehlermeldung
+        raise HTTPException(status_code=400, detail="Regelaktualisierung fehlgeschlagen. Bitte Eingaben pruefen.")
 
     if not rule:
         raise HTTPException(
@@ -752,7 +757,8 @@ async def delete_rule(
     try:
         deleted = await service.delete_rule(rule_id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-22: Generische Fehlermeldung
+        raise HTTPException(status_code=400, detail="Regel-Loeschung fehlgeschlagen. Bitte Eingaben pruefen.")
 
     if not deleted:
         raise HTTPException(
@@ -937,6 +943,7 @@ async def queue_document_for_validation(
             notes=notes
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-22: Generische Fehlermeldung
+        raise HTTPException(status_code=400, detail="Hinzufuegen zur Queue fehlgeschlagen. Bitte Eingaben pruefen.")
 
     return ValidationQueueItemResponse.model_validate(item)

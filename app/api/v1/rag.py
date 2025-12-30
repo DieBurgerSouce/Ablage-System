@@ -167,8 +167,9 @@ async def search_documents(
         )
 
     except Exception as e:
+        # SECURITY FIX 28-18: Generische Fehlermeldung - keine internen Details exponieren
         logger.error("rag_search_failed", error=str(e), query=request.query[:100])
-        raise HTTPException(status_code=500, detail=f"Suche fehlgeschlagen: {str(e)}")
+        raise HTTPException(status_code=500, detail="Suche fehlgeschlagen. Bitte versuchen Sie es erneut.")
 
 
 # ============================================================================
@@ -402,8 +403,9 @@ KONTEXT:
     except HTTPException:
         raise
     except Exception as e:
+        # SECURITY FIX 28-18: Generische Fehlermeldung - keine internen Details exponieren
         logger.error("rag_chat_failed", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Chat fehlgeschlagen: {str(e)}")
+        raise HTTPException(status_code=500, detail="Chat fehlgeschlagen. Bitte versuchen Sie es erneut.")
 
 
 @router.post("/chat/stream")
@@ -951,8 +953,9 @@ async def chunk_document(
         )
 
     except Exception as e:
+        # SECURITY FIX 28-18: Generische Fehlermeldung - keine internen Details exponieren
         logger.error("rag_chunking_failed", document_id=str(request.document_id), error=str(e))
-        raise HTTPException(status_code=500, detail=f"Chunking fehlgeschlagen: {str(e)}")
+        raise HTTPException(status_code=500, detail="Chunking fehlgeschlagen. Bitte versuchen Sie es erneut.")
 
 
 @router.post("/chunks/bulk")

@@ -57,6 +57,18 @@ from app.middleware.request_logging import (
     get_request_logging_stats,
 )
 
+from app.middleware.company_context import (
+    CompanyContextMiddleware,
+    get_current_company,
+    get_current_company_id,
+    get_user_current_company,
+    require_company,
+    require_cash_permission,
+    require_expense_approval_permission,
+    set_company_context,
+    switch_company,
+)
+
 __all__ = [
     "RateLimitMiddleware",
     "DevelopmentRateLimitBypass",
@@ -85,4 +97,14 @@ __all__ = [
     "filter_pii_from_dict",
     "filter_pii_from_text",
     "get_request_logging_stats",
+    # Company Context (Multi-Mandanten)
+    "CompanyContextMiddleware",
+    "get_current_company",
+    "get_current_company_id",
+    "get_user_current_company",
+    "require_company",
+    "require_cash_permission",
+    "require_expense_approval_permission",
+    "set_company_context",
+    "switch_company",
 ]

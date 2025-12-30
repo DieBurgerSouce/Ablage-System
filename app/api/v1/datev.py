@@ -774,8 +774,16 @@ async def validate_vat_id(
     response_model=List[KontenrahmenInfo],
     summary="Verfuegbare Kontenrahmen",
 )
-async def get_kontenrahmen_info() -> List[KontenrahmenInfo]:
-    """Listet verfuegbare Kontenrahmen mit Standardkonten."""
+async def get_kontenrahmen_info(
+    current_user: models.User = Depends(get_current_active_user),  # X.3 SECURITY FIX: Auth required
+) -> List[KontenrahmenInfo]:
+    """Listet verfuegbare Kontenrahmen mit Standardkonten.
+
+    **REQUIRES AUTHENTICATION**
+
+    Args:
+        current_user: Authenticated user (required)
+    """
     skr03 = SKR03()
     skr04 = SKR04()
 

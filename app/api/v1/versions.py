@@ -83,7 +83,9 @@ async def list_document_versions(
         return result
 
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        # SECURITY FIX 29: Generic error message - no internal details
+        logger.warning("versions_validation_error", error=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ressource nicht gefunden.")
     except Exception as e:
         logger.error("list_versions_error", error=str(e), exc_info=True)
         raise HTTPException(
@@ -214,7 +216,9 @@ async def compare_versions(
         return result
 
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        # SECURITY FIX 29: Generic error message - no internal details
+        logger.warning("versions_validation_error", error=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ressource nicht gefunden.")
     except Exception as e:
         logger.error("compare_versions_error", error=str(e), exc_info=True)
         raise HTTPException(
@@ -273,7 +277,9 @@ async def rollback_to_version(
         return result
 
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        # SECURITY FIX 29: Generic error message - no internal details
+        logger.warning("versions_validation_error", error=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ressource nicht gefunden.")
     except Exception as e:
         logger.error("rollback_error", error=str(e), exc_info=True)
         raise HTTPException(

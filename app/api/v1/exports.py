@@ -14,14 +14,20 @@ from typing import List, Optional
 from uuid import UUID, uuid4
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, Request
+from jose import JWTError, jwt
 from pydantic import BaseModel, Field
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# SECURITY FIX 27-6: Rate Limiting fuer Export Endpoints
+from app.core.rate_limiting import limiter, get_user_identifier
+
 from app.api.dependencies import get_current_active_user, get_db
+from app.core.config import settings
 from app.db.models import User, BatchJob, ProcessingStatus
 from app.db.schemas import ExportFormat
+from app.db.session import get_async_session_context
 
 logger = structlog.get_logger(__name__)
 
@@ -88,9 +94,12 @@ class ExportJobListResponse(BaseModel):
 # ==============================================================================
 
 
+# SECURITY FIX 27-6: Rate-Limit fuer Export-Jobs - ressourcenintensiv!
+@limiter.limit("10/hour", key_func=get_user_identifier)
 @router.post("/jobs", response_model=ExportJobResponse, status_code=202)
 async def create_export_job(
-    request: ExportJobRequest,
+    request: Request,  # SECURITY FIX 27-6: Required for rate limiter
+    export_request: ExportJobRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -100,7 +109,7 @@ async def create_export_job(
     Status kann via GET /exports/jobs/{job_id} abgefragt werden.
 
     Args:
-        request: Export-Konfiguration
+        export_request: Export-Konfiguration
 
     Returns:
         ExportJobResponse mit Job-ID
@@ -114,16 +123,16 @@ async def create_export_job(
         job_type="export",
         status=ProcessingStatus.QUEUED,
         priority=5,
-        total_documents=len(request.document_ids),
+        total_documents=len(export_request.document_ids),
         processed_documents=0,
         failed_documents=0,
-        document_ids=[str(doc_id) for doc_id in request.document_ids],
+        document_ids=[str(doc_id) for doc_id in export_request.document_ids],
         progress=0,
         message="Export wird vorbereitet...",
         options={
-            "format": request.format.value,
-            "include_text": request.include_text,
-            "include_metadata": request.include_metadata,
+            "format": export_request.format.value,
+            "include_text": export_request.include_text,
+            "include_metadata": export_request.include_metadata,
         },
     )
 
@@ -135,26 +144,26 @@ async def create_export_job(
 
     batch_export_task.delay(
         job_id=str(job_id),
-        document_ids=[str(doc_id) for doc_id in request.document_ids],
+        document_ids=[str(doc_id) for doc_id in export_request.document_ids],
         user_id=str(current_user.id),
-        format_str=request.format.value,
-        include_text=request.include_text,
-        include_metadata=request.include_metadata,
+        format_str=export_request.format.value,
+        include_text=export_request.include_text,
+        include_metadata=export_request.include_metadata,
     )
 
     logger.info(
         "export_job_created",
         job_id=str(job_id),
         user_id=str(current_user.id),
-        total_documents=len(request.document_ids),
-        format=request.format.value,
+        total_documents=len(export_request.document_ids),
+        format=export_request.format.value,
     )
 
     return ExportJobResponse(
         job_id=job_id,
         status="queued",
-        message=f"Export-Job erstellt. {len(request.document_ids)} Dokument(e) werden verarbeitet.",
-        total_documents=len(request.document_ids),
+        message=f"Export-Job erstellt. {len(export_request.document_ids)} Dokument(e) werden verarbeitet.",
+        total_documents=len(export_request.document_ids),
     )
 
 
@@ -636,33 +645,85 @@ class ExportConnectionManager:
 export_manager = ExportConnectionManager()
 
 
+async def _authenticate_websocket_user(token: str) -> tuple[User | None, str | None]:
+    """
+    Authentifiziert einen WebSocket-User via JWT Token.
+
+    U.2 SECURITY FIX: WebSocket-Authentifizierung hinzugefuegt.
+
+    Args:
+        token: JWT Access Token
+
+    Returns:
+        Tuple von (User, error_message)
+    """
+    try:
+        secret_key = settings.SECRET_KEY.get_secret_value() if hasattr(settings.SECRET_KEY, 'get_secret_value') else settings.SECRET_KEY
+        payload = jwt.decode(
+            token,
+            secret_key,
+            algorithms=[settings.ALGORITHM],
+            options={"verify_exp": True, "require_exp": True}
+        )
+        user_id = payload.get("sub")
+        if not user_id:
+            return None, "Ungültiger Token"
+
+        async with get_async_session_context() as db:
+            user = await db.get(User, UUID(user_id))
+            if not user:
+                return None, "Benutzer nicht gefunden"
+            if not user.is_active:
+                return None, "Benutzer deaktiviert"
+
+            return user, None
+
+    except JWTError as e:
+        logger.warning("websocket_auth_failed", error=str(e))
+        return None, "Token ungültig oder abgelaufen"
+    except Exception as e:
+        logger.error("websocket_auth_error", error=str(e))
+        return None, "Authentifizierungsfehler"
+
+
 @router.websocket("/jobs/{job_id}/ws")
 async def export_job_websocket(
     websocket: WebSocket,
     job_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    token: str = Query(..., description="JWT Access Token"),
 ):
     """WebSocket fuer Echtzeit-Updates eines Export-Jobs.
+
+    U.2 SECURITY FIX: Authentifizierung + Ownership-Check hinzugefuegt.
 
     Sendet Progress-Updates als JSON-Objekte.
 
     Args:
         websocket: WebSocket connection
         job_id: BatchJob UUID
+        token: JWT Access Token (Query Parameter)
     """
+    # U.2 SECURITY FIX: Authenticate user via JWT token
+    user, error = await _authenticate_websocket_user(token)
+    if not user:
+        await websocket.close(code=4001, reason=error or "Nicht authentifiziert")
+        return
+
     job_id_str = str(job_id)
 
-    # Verify job exists (simplified auth for WebSocket)
-    result = await db.execute(
-        select(BatchJob.id).where(
-            BatchJob.id == job_id,
-            BatchJob.job_type == "export",
+    # U.2 SECURITY FIX: Verify job exists AND belongs to current user
+    async with get_async_session_context() as db:
+        result = await db.execute(
+            select(BatchJob.id).where(
+                BatchJob.id == job_id,
+                BatchJob.job_type == "export",
+                BatchJob.user_id == user.id,  # U.2 SECURITY FIX: Ownership check!
+            )
         )
-    )
-    job = result.scalar_one_or_none()
+        job = result.scalar_one_or_none()
 
     if not job:
-        await websocket.close(code=4004, reason="Job nicht gefunden")
+        await websocket.close(code=4004, reason="Job nicht gefunden oder kein Zugriff")
         return
 
     await export_manager.connect(websocket, job_id_str)

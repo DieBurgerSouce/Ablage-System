@@ -14,17 +14,63 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import JSONResponse
+from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.services.task_service import TaskService
 from app.db.models import User
-from app.api.dependencies import get_current_user, get_db
+from app.db.session import get_async_session_context
+from app.api.dependencies import get_current_user, get_current_superuser, get_db
 from app.core.german_messages import StatusMessages, HTTPErrors
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 task_service = TaskService()
+
+
+# ==================== WebSocket Authentication ====================
+
+async def _authenticate_websocket_user(token: str) -> tuple[User | None, str | None]:
+    """
+    Authentifiziert einen WebSocket-User via JWT Token.
+
+    U.3 SECURITY FIX: WebSocket-Authentifizierung hinzugefuegt.
+
+    Args:
+        token: JWT Access Token
+
+    Returns:
+        Tuple von (User, error_message)
+    """
+    try:
+        secret_key = settings.SECRET_KEY.get_secret_value() if hasattr(settings.SECRET_KEY, 'get_secret_value') else settings.SECRET_KEY
+        payload = jwt.decode(
+            token,
+            secret_key,
+            algorithms=[settings.ALGORITHM],
+            options={"verify_exp": True, "require_exp": True}
+        )
+        user_id = payload.get("sub")
+        if not user_id:
+            return None, "Ungültiger Token"
+
+        async with get_async_session_context() as db:
+            user = await db.get(User, UUID(user_id))
+            if not user:
+                return None, "Benutzer nicht gefunden"
+            if not user.is_active:
+                return None, "Benutzer deaktiviert"
+
+            return user, None
+
+    except JWTError as e:
+        logger.warning("websocket_auth_failed", error=str(e))
+        return None, "Token ungültig oder abgelaufen"
+    except Exception as e:
+        logger.error("websocket_auth_error", error=str(e))
+        return None, "Authentifizierungsfehler"
 
 
 # ==================== WebSocket Connection Manager ====================
@@ -141,47 +187,94 @@ manager = ConnectionManager()
 @router.get("/{task_id}")
 async def get_task_status(
     task_id: str,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db)
 ):
     """Get current status of a task.
+
+    Y.1 SECURITY FIX: Ownership-Check hinzugefuegt.
+    User kann nur eigene Tasks abrufen, Admins koennen alle sehen.
 
     Args:
         task_id: Celery task ID
         current_user: Authenticated user
+        session: Database session
 
     Returns:
         Task status information including progress
+
+    Raises:
+        403: Access denied if task belongs to another user
     """
     try:
+        # Y.1 SECURITY FIX: Verify task ownership (admins bypass)
+        if not current_user.is_superuser:
+            is_owner = await task_service.verify_task_ownership(session, task_id, current_user.id)
+            if not is_owner:
+                logger.warning(
+                    "task_access_denied_idor_attempt",
+                    task_id=task_id,
+                    user_id=str(current_user.id),
+                )
+                raise HTTPException(
+                    status_code=403,
+                    detail="Zugriff verweigert - Task gehoert einem anderen Benutzer"
+                )
+
         status = task_service.get_task_status(task_id)
 
         logger.info("task_status_retrieved", task_id=task_id, user_id=str(current_user.id), state=status['state'])
 
         return status
 
+    except HTTPException:
+        raise
     except Exception as e:
+        # SECURITY FIX 29: Generic error message - no internal details
         logger.error("task_status_error", task_id=task_id, error=str(e))
         raise HTTPException(
             status_code=500,
-            detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
+            detail="Verarbeitung fehlgeschlagen. Bitte erneut versuchen."
         )
 
 
 @router.delete("/{task_id}")
 async def cancel_task(
     task_id: str,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db)
 ):
     """Cancel a running task.
+
+    Y.1 SECURITY FIX: Ownership-Check hinzugefuegt.
+    User kann nur eigene Tasks abbrechen, Admins koennen alle abbrechen.
 
     Args:
         task_id: Celery task ID
         current_user: Authenticated user
+        session: Database session
 
     Returns:
         Cancellation result
+
+    Raises:
+        403: Access denied if task belongs to another user
     """
     try:
+        # Y.1 SECURITY FIX: Verify task ownership (admins bypass)
+        if not current_user.is_superuser:
+            is_owner = await task_service.verify_task_ownership(session, task_id, current_user.id)
+            if not is_owner:
+                logger.warning(
+                    "task_cancel_denied_idor_attempt",
+                    task_id=task_id,
+                    user_id=str(current_user.id),
+                )
+                raise HTTPException(
+                    status_code=403,
+                    detail="Zugriff verweigert - Task gehoert einem anderen Benutzer"
+                )
+
         result = task_service.cancel_task(task_id)
 
         logger.info("task_cancellation_requested", task_id=task_id, user_id=str(current_user.id), cancelled=result['cancelled'])
@@ -197,11 +290,14 @@ async def cancel_task(
                 content=result
             )
 
+    except HTTPException:
+        raise
     except Exception as e:
+        # SECURITY FIX 29: Generic error message - no internal details
         logger.error("task_cancellation_error", task_id=task_id, error=str(e))
         raise HTTPException(
             status_code=500,
-            detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
+            detail="Verarbeitung fehlgeschlagen. Bitte erneut versuchen."
         )
 
 
@@ -237,10 +333,11 @@ async def list_user_tasks(
         }
 
     except Exception as e:
+        # SECURITY FIX 29: Generic error message - no internal details
         logger.error("list_tasks_error", user_id=str(current_user.id), error=str(e))
         raise HTTPException(
             status_code=500,
-            detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
+            detail="Verarbeitung fehlgeschlagen. Bitte erneut versuchen."
         )
 
 
@@ -248,19 +345,41 @@ async def list_user_tasks(
 async def get_task_result(
     task_id: str,
     timeout: Optional[float] = Query(None, ge=1, le=300),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db)
 ):
     """Get task result.
+
+    Y.2 SECURITY FIX: Ownership-Check hinzugefuegt.
+    User kann nur eigene Task-Ergebnisse abrufen, Admins koennen alle sehen.
 
     Args:
         task_id: Celery task ID
         timeout: Optional timeout in seconds (1-300)
         current_user: Authenticated user
+        session: Database session
 
     Returns:
         Task result if available
+
+    Raises:
+        403: Access denied if task belongs to another user
     """
     try:
+        # Y.2 SECURITY FIX: Verify task ownership (admins bypass)
+        if not current_user.is_superuser:
+            is_owner = await task_service.verify_task_ownership(session, task_id, current_user.id)
+            if not is_owner:
+                logger.warning(
+                    "task_result_denied_idor_attempt",
+                    task_id=task_id,
+                    user_id=str(current_user.id),
+                )
+                raise HTTPException(
+                    status_code=403,
+                    detail="Zugriff verweigert - Task gehoert einem anderen Benutzer"
+                )
+
         result = task_service.get_task_result(task_id, timeout=timeout)
 
         logger.info("task_result_retrieved", task_id=task_id, user_id=str(current_user.id))
@@ -270,10 +389,14 @@ async def get_task_result(
             "result": result,
         }
 
+    except HTTPException:
+        raise
     except ValueError as e:
+        # SECURITY FIX 29: Generic error message - no internal details
+        logger.warning("task_result_validation_error", task_id=task_id, error=str(e))
         raise HTTPException(
             status_code=400,
-            detail=str(e)
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
         )
     except TimeoutError:
         raise HTTPException(
@@ -281,10 +404,11 @@ async def get_task_result(
             detail=HTTPErrors.PROCESSING_TIMEOUT
         )
     except Exception as e:
+        # SECURITY FIX 29: Generic error message - no internal details
         logger.error("task_result_error", task_id=task_id, error=str(e))
         raise HTTPException(
             status_code=500,
-            detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
+            detail="Verarbeitung fehlgeschlagen. Bitte erneut versuchen."
         )
 
 
@@ -293,9 +417,12 @@ async def get_task_result(
 @router.websocket("/ws/{task_id}")
 async def task_progress_websocket(
     websocket: WebSocket,
-    task_id: str
+    task_id: str,
+    token: str = Query(..., description="JWT Access Token"),
 ):
     """WebSocket endpoint for real-time task progress updates.
+
+    U.3 SECURITY FIX: Authentifizierung hinzugefuegt.
 
     Provides continuous updates on task progress, state changes, and results.
     Supports multiple simultaneous connections per task.
@@ -303,6 +430,7 @@ async def task_progress_websocket(
     Args:
         websocket: WebSocket connection
         task_id: Celery task ID to monitor
+        token: JWT Access Token (Query Parameter)
 
     Message Format:
         {
@@ -316,6 +444,14 @@ async def task_progress_websocket(
             "error": str (if failed)
         }
     """
+    # U.3 SECURITY FIX: Authenticate user via JWT token
+    user, error = await _authenticate_websocket_user(token)
+    if not user:
+        await websocket.close(code=4001, reason=error or "Nicht authentifiziert")
+        return
+
+    logger.info("websocket_authenticated", task_id=task_id, user_id=str(user.id))
+
     # Accept connection
     if not await manager.connect(task_id, websocket):
         return
@@ -375,8 +511,15 @@ async def task_progress_websocket(
 
 
 @router.get("/ws/status")
-async def get_websocket_status():
+async def get_websocket_status(
+    current_user: User = Depends(get_current_superuser),  # X.1 SECURITY FIX: Admin required
+):
     """Get WebSocket connection statistics.
+
+    **REQUIRES ADMIN AUTHENTICATION**
+
+    Args:
+        current_user: Authenticated admin user (required)
 
     Returns:
         Connection count and status information

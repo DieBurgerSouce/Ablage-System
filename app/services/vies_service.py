@@ -14,7 +14,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
-from xml.etree import ElementTree
+
+# S.1 SECURITY FIX: defusedxml gegen XXE-Angriffe
+from defusedxml.ElementTree import fromstring as safe_xml_fromstring
 
 import httpx
 import structlog
@@ -383,7 +385,8 @@ class VIESService:
     ) -> VIESValidationResult:
         """Parst SOAP-Response von VIES."""
         try:
-            root = ElementTree.fromstring(response_text)
+            # S.1 SECURITY FIX: Sicheres XML-Parsing gegen XXE-Angriffe
+            root = safe_xml_fromstring(response_text)
 
             # Namespaces
             ns = {

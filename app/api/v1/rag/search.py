@@ -10,8 +10,11 @@ import structlog
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# SECURITY FIX 28-13: Rate Limiting fuer Search Endpoints
+from app.core.rate_limiting import limiter, get_user_identifier
 
 from app.db.models import User, RAGSectionType
 from app.api.dependencies import get_current_user, get_db
@@ -33,6 +36,8 @@ def get_search_service_dep() -> RAGSearchService:
     return get_rag_search_service()
 
 
+# SECURITY FIX 28-13: Rate-Limit fuer Suche (Embedding-intensiv)
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.post(
     "",
     response_model=RAGSearchResponse,
@@ -40,6 +45,7 @@ def get_search_service_dep() -> RAGSearchService:
     description="Fuehrt eine Chunk-basierte semantische Suche durch."
 )
 async def search_chunks(
+    http_request: Request,  # SECURITY FIX 28-13: Required for rate limiter
     request: RAGSearchRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -121,6 +127,7 @@ async def search_chunks(
         )
 
     except Exception as e:
+        # SECURITY FIX 28-23: Generische Fehlermeldung
         logger.exception(
             "rag_search_failed",
             user_id=str(current_user.id),
@@ -129,7 +136,7 @@ async def search_chunks(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Suche fehlgeschlagen: {str(e)}"
+            detail="Suche fehlgeschlagen. Bitte versuchen Sie es erneut."
         )
 
 
@@ -187,10 +194,11 @@ async def semantic_search_get(
         )
 
     except Exception as e:
+        # SECURITY FIX 28-23: Generische Fehlermeldung
         logger.exception("semantic_search_get_failed", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Suche fehlgeschlagen: {str(e)}"
+            detail="Suche fehlgeschlagen. Bitte versuchen Sie es erneut."
         )
 
 
@@ -254,8 +262,9 @@ async def hybrid_search_get(
         )
 
     except Exception as e:
+        # SECURITY FIX 28-23: Generische Fehlermeldung
         logger.exception("hybrid_search_get_failed", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Suche fehlgeschlagen: {str(e)}"
+            detail="Suche fehlgeschlagen. Bitte versuchen Sie es erneut."
         )

@@ -25,7 +25,7 @@ from typing import Optional, List, Dict, Any
 from enum import Enum
 import uuid
 
-from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Date, Time, Boolean, Float, Numeric, Text, JSON, ForeignKey, Index, Table, CheckConstraint
+from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Date, Time, Boolean, Float, Numeric, Text, JSON, ForeignKey, Index, Table, CheckConstraint, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
 from sqlalchemy.types import TypeDecorator
 from pgvector.sqlalchemy import Vector
@@ -3335,8 +3335,16 @@ class RAGCustomerCard(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Kunden-Identifikation
-    customer_id = Column(String(100), nullable=False, unique=True)
+    # S.3-S.5 SECURITY FIX: Multi-Tenancy - Customer Cards gehoeren zu einer Company
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Kunden-Identifikation (unique pro Company, nicht global)
+    customer_id = Column(String(100), nullable=False)
     customer_name = Column(String(255), nullable=False)
     customer_type = Column(String(50), nullable=True)  # Stammkunde, Neukunde, Inaktiv
 
@@ -3383,6 +3391,9 @@ class RAGCustomerCard(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (
+        # S.3-S.5 SECURITY FIX: Unique constraint pro Company statt global
+        UniqueConstraint("company_id", "customer_id", name="uq_rag_customer_cards_company_customer"),
+        Index("ix_rag_customer_cards_company_id", "company_id"),
         Index("ix_rag_customer_cards_customer_id", "customer_id"),
         Index("ix_rag_customer_cards_type", "customer_type"),
         Index("ix_rag_customer_cards_priority", "priority_level"),
@@ -7737,6 +7748,11 @@ class PrivatSpace(Base):
     def is_deleted(self) -> bool:
         return self.deleted_at is not None
 
+    @property
+    def is_active(self) -> bool:
+        """Returns True if space is not soft-deleted (inverse of is_deleted)."""
+        return self.deleted_at is None
+
 
 class PrivatSpaceAccess(Base):
     """Zugriffsberechtigung fuer Privat-Bereiche."""
@@ -7868,12 +7884,17 @@ class PrivatDocument(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Status - konsistent mit anderen Privat-Entitaeten
+    is_active = Column(Boolean, default=True)
 
     # Relationships
     space = relationship("PrivatSpace", back_populates="documents")
     folder = relationship("PrivatFolder", back_populates="documents")
     document = relationship("Document")
     created_by = relationship("User", foreign_keys=[created_by_id])
+    deleted_by = relationship("User", foreign_keys=[deleted_by_id])
     deadlines = relationship("PrivatDeadline", back_populates="privat_document", cascade="all, delete-orphan")
 
     __table_args__ = (
@@ -7882,6 +7903,7 @@ class PrivatDocument(Base):
         Index("ix_privat_documents_document_type", "document_type"),
         Index("ix_privat_documents_expiry_date", "expiry_date"),
         Index("ix_privat_documents_deleted_at", "deleted_at"),
+        Index("ix_privat_documents_is_active", "is_active"),
     )
 
 

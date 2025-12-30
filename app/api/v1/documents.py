@@ -188,10 +188,11 @@ async def upload_document(
             }
         )
     except Exception as e:
+        # SECURITY FIX 28-27: Generische Fehlermeldung
         logger.error("storage_upload_failed", error=str(e), filename=file.filename)
         raise HTTPException(
             status_code=500,
-            detail=f"Upload fehlgeschlagen: {str(e)}"
+            detail="Upload fehlgeschlagen. Bitte versuchen Sie es erneut."
         )
 
     # 8. Datenbank-Eintrag erstellen
@@ -1334,7 +1335,8 @@ async def get_document_report(
             include_entities=include_entities
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        # SECURITY FIX 28-27: Generische Fehlermeldung
+        raise HTTPException(status_code=404, detail="Dokument nicht gefunden.")
 
     # Filename fuer Download
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
@@ -1780,7 +1782,8 @@ async def restore_document(
             user_id=current_user.id
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-27: Generische Fehlermeldung
+        raise HTTPException(status_code=400, detail="Wiederherstellung fehlgeschlagen. Bitte Eingaben pruefen.")
 
     if not result:
         raise HTTPException(
@@ -2790,9 +2793,10 @@ async def get_category_documents(
             sort_order=sort_order,
         )
     except ValueError as e:
+        # SECURITY FIX 28-27: Generische Fehlermeldung
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltiger Filterwert: {str(e)}"
+            detail="Ungueltiger Filterwert. Bitte Eingaben pruefen."
         )
 
     try:
@@ -2906,7 +2910,7 @@ async def bulk_download_zip(
     except Exception as e:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltige Anfrage: {str(e)}"
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
         )
 
     ablage_service = get_ablage_service()
@@ -2936,7 +2940,8 @@ async def bulk_download_zip(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-27: Generische Fehlermeldung
+        raise HTTPException(status_code=400, detail="ZIP-Download fehlgeschlagen. Bitte Eingaben pruefen.")
     except Exception as e:
         logger.error(
             "bulk_zip_download_error",
@@ -2979,7 +2984,7 @@ async def bulk_export_csv(
     except Exception as e:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltige Anfrage: {str(e)}"
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
         )
 
     ablage_service = get_ablage_service()
@@ -3012,7 +3017,8 @@ async def bulk_export_csv(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-27: Generische Fehlermeldung
+        raise HTTPException(status_code=400, detail="CSV-Export fehlgeschlagen. Bitte Eingaben pruefen.")
     except Exception as e:
         logger.error(
             "bulk_csv_export_error",
@@ -3060,7 +3066,7 @@ async def update_payment_status(
     except ValueError as e:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltige Anfrage: {str(e)}"
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
         )
 
     ablage_service = get_ablage_service()
@@ -3085,7 +3091,8 @@ async def update_payment_status(
         return result
 
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        # SECURITY FIX 28-27: Generische Fehlermeldung
+        raise HTTPException(status_code=404, detail="Dokument nicht gefunden.")
     except Exception as e:
         logger.error(
             "payment_status_update_error",
@@ -3125,7 +3132,7 @@ async def bulk_mark_as_paid(
     except Exception as e:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltige Anfrage: {str(e)}"
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
         )
 
     ablage_service = get_ablage_service()
@@ -3186,7 +3193,7 @@ async def bulk_move_category(
     except Exception as e:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltige Anfrage: {str(e)}"
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
         )
 
     ablage_service = get_ablage_service()
@@ -3209,7 +3216,8 @@ async def bulk_move_category(
         return result
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # SECURITY FIX 28-27: Generische Fehlermeldung
+        raise HTTPException(status_code=400, detail="Kategoriewechsel fehlgeschlagen. Bitte Eingaben pruefen.")
     except Exception as e:
         logger.error(
             "bulk_move_category_error",
@@ -3255,7 +3263,7 @@ async def bulk_set_tags(
     except Exception as e:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltige Anfrage: {str(e)}"
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
         )
 
     ablage_service = get_ablage_service()

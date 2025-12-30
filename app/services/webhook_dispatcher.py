@@ -446,6 +446,30 @@ class WebhookDispatcher:
         Returns:
             True wenn erfolgreich zugestellt
         """
+        # M.1 CRITICAL: SSRF-Schutz - URL validieren BEVOR HTTP-Request gemacht wird
+        from app.core.security import validate_url_for_ssrf_async
+        is_valid, ssrf_error = await validate_url_for_ssrf_async(subscription.url)
+        if not is_valid:
+            logger.warning(
+                "webhook_ssrf_blocked",
+                subscription_id=str(subscription.id)[:8],
+                url=subscription.url[:50],
+                error=ssrf_error,
+                event_type=payload["event_type"]
+            )
+            # Erstelle Delivery-Record mit SSRF_BLOCKED Status
+            delivery = WebhookDelivery(
+                subscription_id=subscription.id,
+                event_id=payload["event_id"],
+                event_type=payload["event_type"],
+                payload=payload,
+                status=DeliveryStatus.FAILED.value,
+                error_message=f"SSRF-Schutz: {ssrf_error}"
+            )
+            db.add(delivery)
+            await db.commit()
+            return False
+
         # Circuit Breaker Check
         circuit_breaker = get_webhook_circuit_breaker()
         if not circuit_breaker.is_allowed(subscription.url):

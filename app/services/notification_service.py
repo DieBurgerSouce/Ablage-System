@@ -480,6 +480,17 @@ class WebhookNotifier:
             logger.warning("Keine Webhook-URL konfiguriert")
             return False
 
+        # M.1 CRITICAL: SSRF-Schutz - URL validieren BEVOR HTTP-Request gemacht wird
+        from app.core.security import validate_url_for_ssrf_async
+        is_valid, ssrf_error = await validate_url_for_ssrf_async(url)
+        if not is_valid:
+            logger.warning(
+                "notification_webhook_ssrf_blocked",
+                url=url[:50],
+                error=ssrf_error
+            )
+            return False
+
         try:
             request_headers = {
                 "Content-Type": "application/json",

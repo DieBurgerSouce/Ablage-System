@@ -133,10 +133,11 @@ async def get_search_facets(
             detail="Datenbankfehler beim Abrufen der Facetten"
         )
     except ValueError as e:
+        # SECURITY FIX 29: Generic error message - no internal details
         logger.warning("facets_validation_error", error_type="ValueError", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltige Filterparameter: {str(e)}"
+            detail="Ungueltige Filterparameter. Bitte Eingaben pruefen."
         )
     except Exception as e:
         logger.error("facets_error", error_type=type(e).__name__, error=str(e), exc_info=True)

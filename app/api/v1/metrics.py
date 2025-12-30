@@ -33,6 +33,17 @@ from app.services.datev.metrics import get_datev_metrics_service
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 
+# SECURITY FIX 27-10: PII Masking fuer Admin-Logs (GDPR-konform)
+def _mask_admin_email_for_log(email: Optional[str]) -> str:
+    """Maskiert Admin-Email-Adresse fuer Log-Ausgabe."""
+    if not email or "@" not in email:
+        return "[no-email]"
+    local, domain = email.split("@", 1)
+    if len(local) <= 2:
+        return f"{local[0]}***@{domain}"
+    return f"{local[:2]}***@{domain}"
+
+
 # =============================================================================
 # PROMETHEUS METRICS ENDPOINT
 # =============================================================================
@@ -559,10 +570,11 @@ async def clear_ocr_cache_stats(
 
     from app.services.ocr_cache_service import get_ocr_cache_service
 
+    # SECURITY FIX 27-10: PII Masking - Admin-Email nicht vollstaendig loggen!
     logger.warning(
         "ocr_cache_stats_reset_initiated",
-        admin_user_id=str(current_user.id),
-        admin_email=current_user.email
+        admin_user_id=str(current_user.id)[:8] + "...",
+        admin_email=_mask_admin_email_for_log(current_user.email)
     )
 
     service = get_ocr_cache_service()
@@ -1522,11 +1534,11 @@ async def reset_circuit_breaker(
 
     circuit_breaker = get_webhook_circuit_breaker()
 
-    # Log admin action
+    # SECURITY FIX 27-10: PII Masking - Admin-Email nicht vollstaendig loggen!
     logger.warning(
         "circuit_breaker_reset_initiated",
-        admin_user_id=str(current_user.id),
-        admin_email=current_user.email,
+        admin_user_id=str(current_user.id)[:8] + "...",
+        admin_email=_mask_admin_email_for_log(current_user.email),
         target_url=url[:50] if url else "all"
     )
 

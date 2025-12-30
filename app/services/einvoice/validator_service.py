@@ -24,6 +24,19 @@ from typing import List, Optional, Dict, Any
 from lxml import etree
 
 from app.core.config import settings
+
+# R.1 SECURITY FIX: Sicherer XMLParser gegen XXE-Angriffe
+# - resolve_entities=False: Externe Entities werden nicht aufgeloest
+# - no_network=True: Kein Netzwerkzugriff fuer DTDs/Schemas
+# - dtd_validation=False: DTD wird nicht fuer Validierung verwendet
+# - load_dtd=False: DTD wird nicht geladen (verhindert Billion Laughs)
+SECURE_XML_PARSER = etree.XMLParser(
+    resolve_entities=False,
+    no_network=True,
+    dtd_validation=False,
+    load_dtd=False,
+    remove_blank_text=True
+)
 from app.services.einvoice.mustang_client import (
     MustangClient,
     MustangConnectionError,
@@ -331,7 +344,8 @@ class EInvoiceValidatorService:
     ) -> etree._Element:
         """Validiert XML-Syntax und gibt Root-Element zurueck."""
         try:
-            root = etree.fromstring(xml_content.encode("utf-8"))
+            # R.1 SECURITY FIX: Sicherer Parser gegen XXE-Angriffe
+            root = etree.fromstring(xml_content.encode("utf-8"), parser=SECURE_XML_PARSER)
             return root
         except etree.XMLSyntaxError as e:
             result.add_error(
@@ -345,7 +359,8 @@ class EInvoiceValidatorService:
     def _detect_format(self, xml_content: str) -> str:
         """Erkennt E-Invoice Format aus XML."""
         try:
-            root = etree.fromstring(xml_content.encode("utf-8"))
+            # R.1 SECURITY FIX: Sicherer Parser gegen XXE-Angriffe
+            root = etree.fromstring(xml_content.encode("utf-8"), parser=SECURE_XML_PARSER)
             tag = root.tag.lower()
 
             # UBL
@@ -494,7 +509,8 @@ class EInvoiceValidatorService:
     ) -> None:
         """Prueft grundlegende Business Rules."""
         try:
-            root = etree.fromstring(xml_content.encode("utf-8"))
+            # R.1 SECURITY FIX: Sicherer Parser gegen XXE-Angriffe
+            root = etree.fromstring(xml_content.encode("utf-8"), parser=SECURE_XML_PARSER)
 
             # BR-01: Rechnungsnummer vorhanden?
             if not self._find_element_text(root, ["ID", "InvoiceNumber"]):

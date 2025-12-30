@@ -282,6 +282,7 @@ async def classify_document(
         logger.warning("classification_error", document_id=str(request.document_id), error_code=e.error_code)
         raise HTTPException(status_code=400, detail=e.user_message)
     except Exception as e:
+        # SECURITY FIX 29: Generic error message - no internal details
         logger.error(
             "classification_failed",
             document_id=str(request.document_id),
@@ -289,7 +290,7 @@ async def classify_document(
             error=str(e),
             exc_info=True,
         )
-        raise HTTPException(status_code=500, detail=f"Klassifikation fehlgeschlagen: {str(e)}")
+        raise HTTPException(status_code=500, detail="Klassifikation fehlgeschlagen. Bitte erneut versuchen.")
 
 
 @router.post("/classify/bulk")
@@ -754,8 +755,9 @@ async def export_to_datev(
         logger.error("datev_export_failed", error_code=e.error_code, user_id=str(current_user.id), exc_info=True)
         raise HTTPException(status_code=500, detail=e.user_message)
     except Exception as e:
+        # SECURITY FIX 29: Generic error message - no internal details
         logger.error("datev_export_error", error=str(e), user_id=str(current_user.id), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"DATEV-Export fehlgeschlagen: {str(e)}")
+        raise HTTPException(status_code=500, detail="DATEV-Export fehlgeschlagen. Bitte erneut versuchen.")
 
 
 @router.get("/zm/summary")

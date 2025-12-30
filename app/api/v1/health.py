@@ -2076,6 +2076,89 @@ class DegradationStatusResponse(BaseModel):
     recovery_actions: List[str] = Field(..., description="Empfohlene Recovery-Aktionen")
 
 
+# =============================================================================
+# FAANG-AUDIT FIX: Permission Cache Health Endpoint
+# =============================================================================
+
+
+class PermissionCacheHealthResponse(BaseModel):
+    """Permission Cache Gesundheitsstatus - FAANG-AUDIT FIX."""
+
+    zeitstempel: str = Field(..., description="ISO-Zeitstempel")
+    status: str = Field(..., description="gesund, warnung, kritisch")
+    redis_available: bool = Field(..., description="Redis fuer Permission-Cache erreichbar")
+    fallback_active: bool = Field(..., description="In-Memory Fallback aktiv (Warnung bei Multi-Worker!)")
+    cache_type: str = Field(..., description="Aktueller Cache-Typ (redis oder in-memory)")
+    warning_message: Optional[str] = Field(None, description="Warnung falls Fallback aktiv")
+    multi_worker_safe: bool = Field(..., description="Sicher fuer Multi-Worker-Deployment")
+
+
+@router.get(
+    "/permission-cache",
+    response_model=PermissionCacheHealthResponse,
+    summary="Permission Cache Status (FAANG-AUDIT)",
+    description="Prueft ob Permission-Cache Redis verwendet oder im unsicheren In-Memory Fallback laeuft.",
+)
+async def permission_cache_health(
+    db: AsyncSession = Depends(get_db),
+) -> PermissionCacheHealthResponse:
+    """
+    FAANG-AUDIT FIX: Prueft den Permission-Cache Status.
+
+    Bei Multi-Worker-Deployments MUSS Redis verfuegbar sein, sonst
+    koennen Permission-Updates zwischen Workern inkonsistent sein.
+
+    Returns:
+        - status: gesund (Redis aktiv) oder warnung (Fallback aktiv)
+        - redis_available: Ob Redis erreichbar ist
+        - fallback_active: Ob In-Memory Fallback verwendet wird
+        - multi_worker_safe: Ob Setup fuer Multi-Worker sicher ist
+    """
+    from app.services.permission_service import PermissionService
+
+    # Create a temporary service instance to check status
+    service = PermissionService(db)
+
+    # Try to get redis client to check if it's available
+    redis_client = await service._get_redis_client()
+    redis_available = redis_client is not None
+    fallback_active = service._redis_fallback_mode
+
+    if redis_available and not fallback_active:
+        status = "gesund"
+        cache_type = "redis"
+        warning_message = None
+        multi_worker_safe = True
+    else:
+        status = "warnung"
+        cache_type = "in-memory"
+        warning_message = (
+            "WARNUNG: Permission-Cache laeuft im In-Memory Fallback-Modus. "
+            "Bei Multi-Worker-Deployment koennen Permission-Updates "
+            "zwischen Workern bis zu 30 Sekunden inkonsistent sein! "
+            "Dies ist ein Sicherheitsrisiko."
+        )
+        multi_worker_safe = False
+
+    logger.info(
+        "permission_cache_health_check",
+        status=status,
+        redis_available=redis_available,
+        fallback_active=fallback_active,
+        multi_worker_safe=multi_worker_safe,
+    )
+
+    return PermissionCacheHealthResponse(
+        zeitstempel=datetime.now(timezone.utc).isoformat(),
+        status=status,
+        redis_available=redis_available,
+        fallback_active=fallback_active,
+        cache_type=cache_type,
+        warning_message=warning_message,
+        multi_worker_safe=multi_worker_safe,
+    )
+
+
 @router.get(
     "/degradation",
     response_model=DegradationStatusResponse,

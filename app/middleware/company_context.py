@@ -209,6 +209,8 @@ async def get_current_company(
 ) -> Optional[Company]:
     """Dependency: Holt die aktuelle Company (optional).
 
+    U.4 SECURITY FIX: Ownership-Validierung bei Company-ID aus Header.
+
     Verwendung:
         @router.get("/optional-company")
         async def endpoint(company: Optional[Company] = Depends(get_current_company)):
@@ -217,10 +219,36 @@ async def get_current_company(
     Returns:
         Company oder None
     """
-    # Erst aus ContextVar
+    # Erst aus ContextVar (gesetzt von Middleware aus X-Company-ID Header)
     company_id = get_current_company_id()
+    user = current_user or getattr(request.state, "user", None)
 
     if company_id:
+        # U.4 SECURITY FIX: Wenn company_id aus Header kommt UND User bekannt,
+        # MUSS Ownership geprueft werden um Company Context Bypass zu verhindern
+        if user:
+            # Pruefe ob User Zugriff auf diese Company hat
+            ownership_result = await db.execute(
+                select(UserCompany)
+                .where(UserCompany.user_id == user.id)
+                .where(UserCompany.company_id == company_id)
+            )
+            user_company = ownership_result.scalar_one_or_none()
+
+            if not user_company:
+                # U.4 SECURITY FIX: User hat KEINEN Zugriff auf diese Company!
+                # Header wurde manipuliert - ignoriere und verwende User's aktuelle Company
+                logger.warning(
+                    "company_context_bypass_blocked",
+                    user_id=str(user.id),
+                    attempted_company_id=str(company_id),
+                    message="X-Company-ID Header ohne Berechtigung blockiert"
+                )
+                # Setze Context zurück und hole User's echte Company
+                set_company_context(None)
+                return await get_user_current_company(user.id, db)
+
+        # Company-ID ist valide (entweder User hat Zugriff oder kein User bekannt)
         result = await db.execute(
             select(Company)
             .where(Company.id == company_id)
@@ -231,8 +259,7 @@ async def get_current_company(
         if company:
             return company
 
-    # Fallback: Aus User (Parameter oder request.state)
-    user = current_user or getattr(request.state, "user", None)
+    # Fallback: Aus User's is_current Company
     if user:
         return await get_user_current_company(user.id, db)
 
@@ -245,23 +272,42 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
     WICHTIG: Diese Funktion muss vor allen DB-Operationen aufgerufen werden,
     die durch RLS geschuetzt sind!
 
+    I.7 HIGH: SQL-Injection Fix - Verwendet set_config() statt f-string
+
     Args:
         db: Datenbank-Session
         company_id: Company-ID fuer RLS-Filter
     """
     try:
-        # PostgreSQL Session-Variable setzen fuer RLS Policies
-        # SICHERHEIT: Parameterisierte Query statt String-Interpolation!
+        # I.7 CRITICAL: Strenge UUID-Validierung gegen SQL-Injection
+        from uuid import UUID as UUIDType
+        company_id_str = str(company_id)
+        # Validierung: Nur gültige UUIDs erlauben
+        validated_uuid = UUIDType(company_id_str)  # Wirft ValueError bei ungültiger UUID
+
+        # I.7 HIGH: Verwende set_config() mit Parameter statt f-string SET
+        # set_config() ist sicher gegen SQL-Injection da es den Wert als String behandelt
         await db.execute(
-            sa.text("SET app.current_company_id = :company_id"),
-            {"company_id": str(company_id)}
+            sa.text("SELECT set_config('app.current_company_id', :cid, true)"),
+            {"cid": str(validated_uuid)}
         )
         logger.debug(
             "rls_context_set",
-            company_id=str(company_id)
+            company_id=str(validated_uuid)
+        )
+    except ValueError as e:
+        # Ungültige UUID - könnte Injection-Versuch sein
+        logger.warning(
+            "rls_context_invalid_uuid",
+            attempted_value=str(company_id)[:50],  # Trunkiert für Sicherheit
+            error_type="ValueError"
         )
     except Exception as e:
-        # SQLite oder andere DBs ohne SET-Support
+        # Bei Fehler: Session zurückrollen um "aborted transaction" zu vermeiden
+        try:
+            await db.rollback()
+        except Exception:
+            pass
         logger.debug(
             "rls_context_skip",
             reason=str(e)
@@ -291,8 +337,22 @@ async def require_company(
 
     Raises:
         HTTPException 400: Keine Firma ausgewaehlt
+        HTTPException 401: Nicht authentifiziert
         HTTPException 403: Kein Zugriff auf Firma
     """
+    # I.5 CRITICAL: User MUSS vorhanden sein - Defense in Depth
+    # get_current_active_user sollte immer User liefern oder HTTPException werfen
+    # Aber: Falls Dependency-Bug, hier zusätzliche Validierung
+    if not current_user:
+        logger.error(
+            "require_company_no_user",
+            message="current_user ist None - Dependency-Bug oder Authentication-Bypass"
+        )
+        raise HTTPException(
+            status_code=401,
+            detail="Nicht authentifiziert"
+        )
+
     company = await get_current_company(request, db, current_user)
 
     if not company:
@@ -301,26 +361,24 @@ async def require_company(
             detail="Keine Firma ausgewaehlt. Bitte waehlen Sie zuerst eine Firma aus."
         )
 
-    # Validiere Zugriff (falls User bekannt)
-    user = current_user or getattr(request.state, "user", None)
-    if user:
-        result = await db.execute(
-            select(UserCompany)
-            .where(UserCompany.user_id == user.id)
-            .where(UserCompany.company_id == company.id)
-        )
-        user_company = result.scalar_one_or_none()
+    # I.5 CRITICAL: Validiere Zugriff IMMER (User ist garantiert vorhanden)
+    result = await db.execute(
+        select(UserCompany)
+        .where(UserCompany.user_id == current_user.id)
+        .where(UserCompany.company_id == company.id)
+    )
+    user_company = result.scalar_one_or_none()
 
-        if not user_company:
-            logger.warning(
-                "company_access_denied",
-                user_id=str(user.id),
-                company_id=str(company.id)
-            )
-            raise HTTPException(
-                status_code=403,
-                detail="Sie haben keinen Zugriff auf diese Firma."
-            )
+    if not user_company:
+        logger.warning(
+            "company_access_denied",
+            user_id=str(current_user.id),
+            company_id=str(company.id)
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Sie haben keinen Zugriff auf diese Firma."
+        )
 
     # Setze Context fuer nachfolgende Operationen
     set_company_context(company.id)
@@ -344,21 +402,45 @@ async def require_cash_permission(
     company = await require_company(request, db, current_user)
     user = current_user
 
-    if user:
-        result = await db.execute(
-            select(UserCompany)
-            .where(UserCompany.user_id == user.id)
-            .where(UserCompany.company_id == company.id)
+    # J.2 CRITICAL FIX: User MUSS immer vorhanden sein nach require_company
+    # Aber Defense-in-Depth: Explizite Pruefung
+    if not user:
+        logger.error(
+            "require_cash_permission_no_user",
+            message="user ist None - sollte nie passieren nach require_company"
         )
-        user_company = result.scalar_one_or_none()
+        raise HTTPException(
+            status_code=401,
+            detail="Nicht authentifiziert"
+        )
 
-        if not user_company or not user_company.can_manage_cash:
-            # Admins und Owners haben immer Zugriff
-            if user_company and user_company.role not in ["owner", "admin"]:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Sie haben keine Berechtigung fuer die Kassenbuchfuehrung."
-                )
+    result = await db.execute(
+        select(UserCompany)
+        .where(UserCompany.user_id == user.id)
+        .where(UserCompany.company_id == company.id)
+    )
+    user_company = result.scalar_one_or_none()
+
+    # J.2 CRITICAL FIX: user_company=None bedeutet KEIN Zugriff, nicht Durchlassen!
+    if not user_company:
+        logger.warning(
+            "cash_permission_no_company_link",
+            user_id=str(user.id),
+            company_id=str(company.id)
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Sie haben keinen Zugriff auf diese Firma."
+        )
+
+    # Pruefe Kassenberechtigung
+    if not user_company.can_manage_cash:
+        # Admins und Owners haben immer Zugriff
+        if user_company.role not in ["owner", "admin"]:
+            raise HTTPException(
+                status_code=403,
+                detail="Sie haben keine Berechtigung fuer die Kassenbuchfuehrung."
+            )
 
     return company
 
@@ -376,20 +458,43 @@ async def require_expense_approval_permission(
     company = await require_company(request, db, current_user)
     user = current_user
 
-    if user:
-        result = await db.execute(
-            select(UserCompany)
-            .where(UserCompany.user_id == user.id)
-            .where(UserCompany.company_id == company.id)
+    # J.2 CRITICAL FIX: User MUSS immer vorhanden sein nach require_company
+    if not user:
+        logger.error(
+            "require_expense_approval_no_user",
+            message="user ist None - sollte nie passieren nach require_company"
         )
-        user_company = result.scalar_one_or_none()
+        raise HTTPException(
+            status_code=401,
+            detail="Nicht authentifiziert"
+        )
 
-        if not user_company or not user_company.can_approve_expenses:
-            # Admins und Owners haben immer Zugriff
-            if user_company and user_company.role not in ["owner", "admin"]:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Sie haben keine Berechtigung zur Spesenfreigabe."
-                )
+    result = await db.execute(
+        select(UserCompany)
+        .where(UserCompany.user_id == user.id)
+        .where(UserCompany.company_id == company.id)
+    )
+    user_company = result.scalar_one_or_none()
+
+    # J.2 CRITICAL FIX: user_company=None bedeutet KEIN Zugriff!
+    if not user_company:
+        logger.warning(
+            "expense_approval_no_company_link",
+            user_id=str(user.id),
+            company_id=str(company.id)
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Sie haben keinen Zugriff auf diese Firma."
+        )
+
+    # Pruefe Spesenfreigabe-Berechtigung
+    if not user_company.can_approve_expenses:
+        # Admins und Owners haben immer Zugriff
+        if user_company.role not in ["owner", "admin"]:
+            raise HTTPException(
+                status_code=403,
+                detail="Sie haben keine Berechtigung zur Spesenfreigabe."
+            )
 
     return company

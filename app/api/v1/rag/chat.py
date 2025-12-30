@@ -14,9 +14,12 @@ from typing import List, Optional
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# SECURITY FIX 28-12: Rate Limiting fuer Chat Endpoints
+from app.core.rate_limiting import limiter, get_user_identifier
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -73,6 +76,8 @@ def get_search_service_dep() -> RAGSearchService:
     return get_rag_search_service()
 
 
+# SECURITY FIX 28-12: Rate-Limit fuer Chat-Nachrichten (LLM-intensiv)
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @router.post(
     "",
     response_model=RAGChatResponse,
@@ -80,6 +85,7 @@ def get_search_service_dep() -> RAGSearchService:
     description="Sendet eine Nachricht und erhaelt eine RAG-gestuetzte Antwort."
 )
 async def send_chat_message(
+    http_request: Request,  # SECURITY FIX 28-12: Required for rate limiter
     request: RAGChatRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -224,6 +230,7 @@ async def send_chat_message(
         )
 
     except Exception as e:
+        # SECURITY FIX 28-24: Generische Fehlermeldung
         logger.exception(
             "chat_message_failed",
             user_id=str(current_user.id),
@@ -231,16 +238,19 @@ async def send_chat_message(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Chat fehlgeschlagen: {str(e)}"
+            detail="Chat fehlgeschlagen. Bitte versuchen Sie es erneut."
         )
 
 
+# SECURITY FIX 28-12: Rate-Limit fuer Streaming-Chat (LLM-intensiv)
+@limiter.limit("20/minute", key_func=get_user_identifier)
 @router.post(
     "/stream",
     summary="Chat mit Streaming",
     description="Sendet eine Nachricht und streamt die Antwort via SSE."
 )
 async def send_chat_message_stream(
+    http_request: Request,  # SECURITY FIX 28-12: Required for rate limiter
     request: RAGChatRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -541,6 +551,8 @@ KONTEXT:
     )
 
 
+# SECURITY FIX 28-12: Rate-Limit fuer Session-Erstellung
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @router.post(
     "/sessions",
     response_model=RAGChatSessionResponse,
@@ -548,6 +560,7 @@ KONTEXT:
     description="Erstellt eine neue Chat-Session."
 )
 async def create_chat_session(
+    http_request: Request,  # SECURITY FIX 28-12: Required for rate limiter
     request: RAGChatSessionCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -763,6 +776,8 @@ async def get_chat_session(
     )
 
 
+# SECURITY FIX 28-12: Rate-Limit fuer Session-Updates
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.put(
     "/sessions/{session_id}",
     response_model=RAGChatSessionResponse,
@@ -770,6 +785,7 @@ async def get_chat_session(
     description="Aktualisiert eine Chat-Session (z.B. Titel)."
 )
 async def update_chat_session(
+    request: Request,  # SECURITY FIX 28-12: Required for rate limiter
     session_id: UUID,
     title: str = Query(..., max_length=255, description="Neuer Titel der Session"),
     current_user: User = Depends(get_current_user),
@@ -820,12 +836,15 @@ async def update_chat_session(
     )
 
 
+# SECURITY FIX 28-12: Rate-Limit fuer Session-Loeschung
+@limiter.limit("30/minute", key_func=get_user_identifier)
 @router.delete(
     "/sessions/{session_id}",
     summary="Chat-Session loeschen",
     description="Loescht eine Chat-Session und alle Nachrichten."
 )
 async def delete_chat_session(
+    request: Request,  # SECURITY FIX 28-12: Required for rate limiter
     session_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -1014,6 +1033,8 @@ async def _get_chat_history(
 # HINWEIS: /sessions/shared wurde nach oben verschoben (vor /sessions/{session_id})
 # um korrekte Route-Priorisierung zu gewaehrleisten
 
+# SECURITY FIX 28-12: Rate-Limit fuer Session-Sharing
+@limiter.limit("20/minute", key_func=get_user_identifier)
 @router.post(
     "/sessions/{session_id}/share",
     response_model=ChatSessionCollaboratorResponse,
@@ -1021,6 +1042,7 @@ async def _get_chat_history(
     description="Teilt eine Chat-Session mit einem anderen Benutzer."
 )
 async def share_chat_session(
+    http_request: Request,  # SECURITY FIX 28-12: Required for rate limiter
     session_id: UUID,
     request: ChatSessionShareRequest,
     current_user: User = Depends(get_current_user),
@@ -1058,18 +1080,23 @@ async def share_chat_session(
         )
 
     except ValueError as e:
+        # SECURITY FIX 29: Generic error message - no internal details
+        logger.warning("chat_session_validation_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
         )
 
 
+# SECURITY FIX 28-12: Rate-Limit fuer Zugriffsentzug
+@limiter.limit("20/minute", key_func=get_user_identifier)
 @router.delete(
     "/sessions/{session_id}/share/{user_id}",
     summary="Zugriff entziehen",
     description="Entzieht einem Benutzer den Zugriff auf eine Chat-Session."
 )
 async def revoke_chat_session_access(
+    request: Request,  # SECURITY FIX 28-12: Required for rate limiter
     session_id: UUID,
     user_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -1104,9 +1131,11 @@ async def revoke_chat_session_access(
         }
 
     except ValueError as e:
+        # SECURITY FIX 29: Generic error message - no internal details
+        logger.warning("chat_session_validation_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
         )
 
 
@@ -1140,7 +1169,9 @@ async def get_chat_session_collaborators(
         ]
 
     except ValueError as e:
+        # SECURITY FIX 29: Generic error message - no internal details
+        logger.warning("chat_session_validation_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
         )

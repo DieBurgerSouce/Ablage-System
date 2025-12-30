@@ -458,7 +458,9 @@ async def reset_profiling_stats(
 
 
 @router.get("/prometheus", response_class=Response)
-async def get_profiling_prometheus_metrics():
+async def get_profiling_prometheus_metrics(
+    current_user: User = Depends(get_current_superuser),  # V.7 SECURITY FIX: Superuser-Auth required
+):
     """
     Prometheus-Metriken fuer Profiling.
 
@@ -468,18 +470,29 @@ async def get_profiling_prometheus_metrics():
     - `ablage_profiling_slow_requests_total`: Anzahl langsamer Requests
     - `ablage_profiling_memory_usage_bytes`: Memory-Nutzung
 
-    **Kein Auth erforderlich** (fuer Prometheus Scraping).
+    **V.7 SECURITY FIX: Erfordert Admin-Authentifizierung.**
 
-    Example Prometheus config:
+    Fuer Prometheus-Scraping ohne Auth verwenden Sie stattdessen
+    einen internen Endpoint mit IP-Whitelist oder Service-Mesh.
+
+    Example Prometheus config (mit Basic Auth):
     ```yaml
     scrape_configs:
       - job_name: 'ablage-profiling'
         static_configs:
           - targets: ['localhost:8000']
         metrics_path: '/api/v1/profiling/prometheus'
+        basic_auth:
+          username: 'admin'
+          password: 'secret'
     ```
     """
     from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
+    logger.debug(
+        "prometheus_metrics_retrieved",
+        user_id=str(current_user.id),
+    )
 
     return Response(
         content=generate_latest(),

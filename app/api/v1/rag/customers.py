@@ -375,6 +375,7 @@ async def create_customer_card(
         )
 
     except Exception as e:
+        # SECURITY FIX 29: Generic error message - no internal details
         logger.exception(
             "create_customer_card_failed",
             customer_id=request.customer_id,
@@ -382,7 +383,7 @@ async def create_customer_card(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erstellung fehlgeschlagen: {str(e)}"
+            detail="Erstellung fehlgeschlagen. Bitte erneut versuchen."
         )
 
 

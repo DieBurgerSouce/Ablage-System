@@ -376,12 +376,19 @@ async def cleanup_old_errors(
     "/prometheus",
     summary="Prometheus Metriken (Error-spezifisch)",
 )
-async def prometheus_error_metrics() -> Dict[str, Any]:
+async def prometheus_error_metrics(
+    current_user: User = Depends(get_current_superuser),  # X.2 SECURITY FIX: Admin required
+) -> Dict[str, Any]:
     """
     Prometheus-kompatible Metriken fuer Error Tracking.
 
+    **REQUIRES ADMIN AUTHENTICATION**
+
     Dieser Endpoint liefert eine Zusammenfassung der Error-Metriken.
     Fuer vollstaendige Prometheus-Scraping, nutze /api/v1/metrics.
+
+    Args:
+        current_user: Authenticated admin user (required)
 
     Returns:
         Error-Metriken Zusammenfassung.
