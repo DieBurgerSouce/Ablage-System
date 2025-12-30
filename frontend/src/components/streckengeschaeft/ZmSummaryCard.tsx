@@ -47,7 +47,7 @@ import {
   Building2,
 } from 'lucide-react';
 
-import type { ZmSummary } from '@/types/streckengeschaeft';
+import type { ZmSummary, ZmRecord } from '@/types/streckengeschaeft';
 import { apiClient } from '@/lib/api/client';
 
 // =============================================================================
@@ -372,7 +372,7 @@ export function ZmSummaryCard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {records.records.slice(0, 10).map((record: any, i: number) => (
+                      {records.records.slice(0, 10).map((record: ZmRecord, i: number) => (
                         <TableRow key={i}>
                           <TableCell className="font-mono text-sm">{record.vatId}</TableCell>
                           <TableCell>

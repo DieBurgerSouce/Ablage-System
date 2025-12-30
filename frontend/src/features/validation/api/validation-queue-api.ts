@@ -1,7 +1,7 @@
 /**
  * Validation Queue API Client
  *
- * API-Client fuer das Enterprise-Grade Validierungs-Queue-System.
+ * API-Client für das Enterprise-Grade Validierungs-Queue-System.
  * Basiert auf den Backend-Endpoints in app/api/v1/validation.py
  */
 
@@ -165,7 +165,7 @@ export async function getMyAssignedItems(
 }
 
 /**
- * Erstellt ein neues Queue-Item (manuelles Hinzufuegen).
+ * Erstellt ein neues Queue-Item (manuelles Hinzufügen).
  */
 export async function createQueueItem(
   data: ValidationQueueItemCreate
@@ -194,7 +194,7 @@ export async function updateQueueItem(
 }
 
 /**
- * Loescht ein Queue-Item.
+ * Löscht ein Queue-Item.
  */
 export async function deleteQueueItem(itemId: string): Promise<void> {
   await apiClient.delete(`${BASE_URL}/queue/${itemId}`);
@@ -285,7 +285,7 @@ export async function batchAssign(data: BatchAssignRequest): Promise<BatchOperat
 // ==================== Field Reviews ====================
 
 /**
- * Holt alle Feld-Reviews fuer ein Queue-Item.
+ * Holt alle Feld-Reviews für ein Queue-Item.
  */
 export async function getQueueItemFields(itemId: string): Promise<ValidationFieldReview[]> {
   const response = await apiClient.get<ValidationFieldReview[]>(`${BASE_URL}/queue/${itemId}/fields`);
@@ -331,7 +331,7 @@ export async function validateAllFields(itemId: string): Promise<ValidationField
 }
 
 /**
- * Holt Feld-Statistiken fuer ein Queue-Item.
+ * Holt Feld-Statistiken für ein Queue-Item.
  */
 export async function getFieldStats(itemId: string): Promise<Record<string, unknown>> {
   const response = await apiClient.get<Record<string, unknown>>(
@@ -379,7 +379,7 @@ export async function updateRule(
 }
 
 /**
- * Loescht eine Regel.
+ * Löscht eine Regel.
  */
 export async function deleteRule(ruleId: string): Promise<void> {
   await apiClient.delete(`${BASE_URL}/rules/${ruleId}`);
@@ -412,7 +412,7 @@ export async function updateSampleConfig(
 // ==================== Analytics ====================
 
 /**
- * Holt Uebersichtsstatistiken zur Validierung.
+ * Holt Übersichtsstatistiken zur Validierung.
  */
 export async function getAnalyticsOverview(
   dateFrom?: string,
@@ -452,7 +452,7 @@ export async function getEditorStats(
 }
 
 /**
- * Holt Trend-Daten ueber Zeit.
+ * Holt Trend-Daten über Zeit.
  */
 export async function getTrends(
   days = 30,
@@ -487,7 +487,7 @@ export async function getConfidenceDistribution(): Promise<ConfidenceDistributio
 // ==================== Document Integration ====================
 
 /**
- * Fuegt ein Dokument manuell zur Validierungswarteschlange hinzu.
+ * Fügt ein Dokument manuell zur Validierungswarteschlange hinzu.
  */
 export async function queueDocumentForValidation(
   documentId: string,

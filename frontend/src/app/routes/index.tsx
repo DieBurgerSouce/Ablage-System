@@ -1,80 +1,51 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { UploadDropzone } from '@/features/upload/components/UploadDropzone'
-import { DocumentCard } from '@/features/documents/components/DocumentCard'
-import { useQuery } from '@tanstack/react-query'
-import { documentsService } from '@/lib/api/services/documents'
-import { Loader2 } from 'lucide-react'
-import { EmptyState } from '@/components/ui/empty-state'
+import { createFileRoute } from '@tanstack/react-router'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { usePermissions } from '@/lib/auth/hooks/use-permissions'
+import {
+    AdminDashboardView,
+    EditorDashboardView,
+    SimplifiedDashboardView
+} from '@/components/dashboard'
+import { CompanySetupWizard } from '@/components/onboarding/CompanySetupWizard'
 
 export const Route = createFileRoute('/')({
     component: Index,
 })
 
+/**
+ * Rollenbasiertes Dashboard
+ *
+ * - Admin/Superuser: Volles Dashboard mit KPIs, Finanz-Übersicht, Management-Tools
+ * - Editor: Workflow-fokussiert mit Validierungsaufgaben und Statistiken
+ * - Viewer/Azubi: Vereinfachte Ansicht mit Quick-Actions und Upload
+ *
+ * Der Company-Setup-Wizard wird automatisch angezeigt, wenn:
+ * - Der Benutzer Admin ist UND
+ * - Noch keine Firma existiert UND
+ * - Der Wizard noch nicht übersprungen wurde
+ */
 function Index() {
-    const navigate = useNavigate()
-    const { data: documents = [], isLoading } = useQuery({
-        queryKey: ['recent-documents'],
-        queryFn: () => documentsService.getAll({ limit: 5, sort: 'date_desc' })
-    });
+    const { user } = useAuth()
+    const { isAdmin, isEditor } = usePermissions()
 
-    return (
-        <div className="min-h-full relative">
-            <div className="noise-overlay absolute inset-0 pointer-events-none" />
-            <div className="max-w-5xl mx-auto p-8 space-y-12 relative z-10">
-                <section className="space-y-6">
-                    <div className="text-center space-y-4">
-                        <h1 className="text-5xl font-bold tracking-tight font-display bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent">
-                            Ablage System
-                        </h1>
-                        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                            Intelligentes Dokumentenmanagement mit deutscher Präzision.
-                            Ziehen Sie Dateien hierher, um zu beginnen.
-                        </p>
-                    </div>
+    const userName = user?.full_name || user?.username
 
-                    <UploadDropzone onFilesAdd={() => { }} />
-                </section>
+    // Admin/Prokurist: Vollständiges Management-Dashboard
+    if (isAdmin) {
+        return (
+            <>
+                {/* Company-Setup-Wizard für Admins ohne Firma */}
+                <CompanySetupWizard />
+                <AdminDashboardView userName={userName} />
+            </>
+        )
+    }
 
-                <section className="space-y-6">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-2xl font-semibold font-display">Kürzlich hinzugefügt</h2>
-                        <span className="text-sm text-muted-foreground bg-muted/50 px-3 py-1 rounded-full border">
-                            {isLoading ? <Loader2 className="w-3 h-3 animate-spin inline mr-1" /> : documents.length} Dateien
-                        </span>
-                    </div>
+    // Editor: Workflow-fokussierte Ansicht
+    if (isEditor) {
+        return <EditorDashboardView userName={userName} />
+    }
 
-                    {isLoading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {[1, 2, 3, 4].map((i) => (
-                                <div key={i} className="h-[280px] rounded-xl bg-muted/20 animate-pulse" />
-                            ))}
-                        </div>
-                    ) : documents.length === 0 ? (
-                        <EmptyState
-                            variant="document"
-                            title="Noch keine Dokumente"
-                            description="Laden Sie Ihr erstes Dokument hoch, um mit der intelligenten Dokumentenverwaltung zu beginnen."
-                            action={{
-                                label: 'Dokument hochladen',
-                                onClick: () => navigate({ to: '/upload' })
-                            }}
-                        />
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {documents.map((doc) => (
-                                <DocumentCard
-                                    key={doc.id}
-                                    document={doc}
-                                    isSelected={false}
-                                    onClick={() => { }}
-                                    onDoubleClick={() => { }}
-                                    onSelect={() => { }}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </section>
-            </div>
-        </div>
-    )
+    // Viewer/Azubi: Vereinfachte Ansicht
+    return <SimplifiedDashboardView userName={userName} />
 }

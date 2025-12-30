@@ -73,9 +73,9 @@ export function ExpenseReportDetailPage() {
   const [showReject, setShowReject] = React.useState(false);
   const [showPay, setShowPay] = React.useState(false);
 
+  // FIX Phase 7.6: Type-safe Navigation
   const handleBack = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    navigate({ to: '/spesen' as any });
+    navigate({ to: '/spesen' });
   };
 
   const handleDeleteItemConfirm = async () => {

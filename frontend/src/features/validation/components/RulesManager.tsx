@@ -1,8 +1,8 @@
 /**
  * RulesManager
  *
- * Verwaltung von Validierungsregeln fuer automatische Stichprobenauswahl.
- * Ermoeglicht CRUD-Operationen auf ValidationRules.
+ * Verwaltung von Validierungsregeln für automatische Stichprobenauswahl.
+ * Ermöglicht CRUD-Operationen auf ValidationRules.
  */
 
 import { useState } from 'react';
@@ -109,12 +109,12 @@ export function RulesManager() {
   };
 
   const handleDeleteRule = async (ruleId: string) => {
-    if (!window.confirm('Diese Regel wirklich loeschen?')) return;
+    if (!window.confirm('Diese Regel wirklich löschen?')) return;
     try {
       await deleteRule.mutateAsync(ruleId);
-      toast.success('Regel geloescht');
+      toast.success('Regel gelöscht');
     } catch {
-      toast.error('Fehler beim Loeschen der Regel');
+      toast.error('Fehler beim Löschen der Regel');
     }
   };
 
@@ -130,7 +130,7 @@ export function RulesManager() {
         <div>
           <h2 className="text-lg font-semibold">Validierungsregeln</h2>
           <p className="text-sm text-muted-foreground">
-            Regeln fuer automatische Stichprobenauswahl verwalten
+            Regeln für automatische Stichprobenauswahl verwalten
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -216,7 +216,7 @@ export function RulesManager() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Typ</TableHead>
-                <TableHead>Prioritaet</TableHead>
+                <TableHead>Priorität</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Getriggert</TableHead>
                 <TableHead className="w-[80px]">Aktionen</TableHead>
@@ -307,7 +307,7 @@ export function RulesManager() {
                           className="text-destructive"
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          Loeschen
+                          Löschen
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

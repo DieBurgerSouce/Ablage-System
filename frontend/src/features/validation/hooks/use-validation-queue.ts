@@ -497,7 +497,7 @@ export function useValidateAllFields() {
 // ==================== Rules Queries & Mutations ====================
 
 /**
- * Hook fuer Validierungsregeln.
+ * Hook für Validierungsregeln.
  */
 export function useValidationRules(includeInactive = false) {
   return useQuery({
@@ -508,7 +508,7 @@ export function useValidationRules(includeInactive = false) {
 }
 
 /**
- * Hook fuer eine einzelne Regel.
+ * Hook für eine einzelne Regel.
  */
 export function useValidationRule(ruleId: string | undefined) {
   return useQuery({
@@ -558,7 +558,7 @@ export function useUpdateRule() {
 }
 
 /**
- * Hook zum Loeschen einer Regel.
+ * Hook zum Löschen einer Regel.
  */
 export function useDeleteRule() {
   const queryClient = useQueryClient();
@@ -567,7 +567,7 @@ export function useDeleteRule() {
     mutationFn: (ruleId: string) => validationQueueApi.deleteRule(ruleId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: validationQueryKeys.rules() });
-      toast.success('Regel geloescht');
+      toast.success('Regel gelöscht');
     },
     onError: (error: Error) => {
       toast.error(`Fehler: ${error.message}`);
@@ -578,7 +578,7 @@ export function useDeleteRule() {
 // ==================== Sample Config ====================
 
 /**
- * Hook fuer die Stichproben-Konfiguration.
+ * Hook für die Stichproben-Konfiguration.
  */
 export function useSampleConfig() {
   return useQuery({
@@ -609,7 +609,7 @@ export function useUpdateSampleConfig() {
 // ==================== Analytics Queries ====================
 
 /**
- * Hook fuer Analytics-Uebersicht.
+ * Hook für Analytics-Übersicht.
  */
 export function useAnalyticsOverview(dateFrom?: string, dateTo?: string) {
   return useQuery({
@@ -620,7 +620,7 @@ export function useAnalyticsOverview(dateFrom?: string, dateTo?: string) {
 }
 
 /**
- * Hook fuer Editor-Statistiken.
+ * Hook für Editor-Statistiken.
  */
 export function useEditorStats(dateFrom?: string, dateTo?: string) {
   return useQuery({
@@ -631,7 +631,7 @@ export function useEditorStats(dateFrom?: string, dateTo?: string) {
 }
 
 /**
- * Hook fuer Trend-Daten.
+ * Hook für Trend-Daten.
  */
 export function useTrends(days = 30, groupBy: 'day' | 'week' | 'month' = 'day') {
   return useQuery({
@@ -642,7 +642,7 @@ export function useTrends(days = 30, groupBy: 'day' | 'week' | 'month' = 'day') 
 }
 
 /**
- * Hook fuer Dokumenttyp-Statistiken.
+ * Hook für Dokumenttyp-Statistiken.
  */
 export function useDocumentTypeStats() {
   return useQuery({
@@ -653,7 +653,7 @@ export function useDocumentTypeStats() {
 }
 
 /**
- * Hook fuer Confidence-Verteilung.
+ * Hook für Confidence-Verteilung.
  */
 export function useConfidenceDistribution() {
   return useQuery({
@@ -666,7 +666,7 @@ export function useConfidenceDistribution() {
 // ==================== Document Integration ====================
 
 /**
- * Hook zum Hinzufuegen eines Dokuments zur Validierungswarteschlange.
+ * Hook zum Hinzufügen eines Dokuments zur Validierungswarteschlange.
  */
 export function useQueueDocumentForValidation() {
   const queryClient = useQueryClient();

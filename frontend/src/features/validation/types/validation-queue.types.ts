@@ -1,8 +1,8 @@
 /**
  * Validation Queue Feature Types
  *
- * TypeScript-Definitionen fuer das Enterprise-Grade Validierungs-Queue-System.
- * Vollstaendige Type-Safety fuer Queue-Management, Field Reviews und Analytics.
+ * TypeScript-Definitionen für das Enterprise-Grade Validierungs-Queue-System.
+ * Vollständige Type-Safety für Queue-Management, Field Reviews und Analytics.
  */
 
 // ==================== Enums ====================
@@ -63,9 +63,9 @@ export const RULE_TYPE_LABELS: Record<ValidationRuleType, string> = {
 export const REJECTION_CATEGORY_LABELS: Record<RejectionCategory, string> = {
   [RejectionCategory.OCR_ERROR]: 'OCR-Fehler',
   [RejectionCategory.EXTRACTION_ERROR]: 'Extraktionsfehler',
-  [RejectionCategory.DOCUMENT_QUALITY]: 'Dokumentqualitaet',
+  [RejectionCategory.DOCUMENT_QUALITY]: 'Dokumentqualität',
   [RejectionCategory.WRONG_DOCUMENT_TYPE]: 'Falscher Dokumenttyp',
-  [RejectionCategory.INCOMPLETE_DATA]: 'Unvollstaendige Daten',
+  [RejectionCategory.INCOMPLETE_DATA]: 'Unvollständige Daten',
   [RejectionCategory.OTHER]: 'Sonstiges',
 };
 

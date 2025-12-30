@@ -43,9 +43,18 @@ export function BoundingBoxOverlay({ boxes, scale, selectedBox, onBoxClick }: Bo
                         fillOpacity={selectedBox?.id === box.id ? 0.4 : 0.15}
                         stroke={getConfidenceColor(box.confidence)}
                         strokeWidth={selectedBox?.id === box.id ? 3 : 1}
-                        style={{ pointerEvents: 'all', cursor: 'pointer' }}
+                        style={{ pointerEvents: 'all', cursor: 'pointer', outline: 'none' }}
                         onClick={() => onBoxClick(box)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                onBoxClick(box);
+                            }
+                        }}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`Bounding Box ${box.text ? 'für Text: ' + box.text : ''}`}
                         whileHover={{ fillOpacity: 0.3, strokeWidth: 2 }}
+                        whileFocus={{ fillOpacity: 0.3, strokeWidth: 2, strokeDasharray: "4 4" }}
                     />
                     {box.confidence < 0.85 && (
                         <text

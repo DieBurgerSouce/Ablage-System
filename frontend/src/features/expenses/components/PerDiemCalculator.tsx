@@ -129,8 +129,8 @@ export function PerDiemCalculator({
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-4">
+          {/* FIX Phase 7.6: Type-safe form handler - react-hook-form unterstützt async handlers */}
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}

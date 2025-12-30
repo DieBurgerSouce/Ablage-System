@@ -305,8 +305,7 @@ export function BulkActionsBar({
                             Mahnvorgänge eskalieren?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Sie sind dabei, {count} Mahnvorgang
-                            {count !== 1 ? 'e' : ''} auf die nächste Mahnstufe zu
+                            Sie sind dabei, {count} {count !== 1 ? 'Mahnvorgänge' : 'Mahnvorgang'} auf die nächste Mahnstufe zu
                             eskalieren. Diese Aktion kann nicht rückgängig gemacht
                             werden.
                             <br />
@@ -343,8 +342,7 @@ export function BulkActionsBar({
                     <DialogHeader>
                         <DialogTitle>Mahnstopp setzen</DialogTitle>
                         <DialogDescription>
-                            Setzen Sie einen Mahnstopp für {count} Mahnvorgang
-                            {count !== 1 ? 'e' : ''}. Während des Mahnstopps werden
+                            Setzen Sie einen Mahnstopp für {count} {count !== 1 ? 'Mahnvorgänge' : 'Mahnvorgang'}. Während des Mahnstopps werden
                             keine automatischen Mahnungen versendet.
                         </DialogDescription>
                     </DialogHeader>
@@ -424,8 +422,7 @@ export function BulkActionsBar({
                             Mahnstopp aufheben?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Sie sind dabei, den Mahnstopp für {count} Mahnvorgang
-                            {count !== 1 ? 'e' : ''} aufzuheben. Die automatische
+                            Sie sind dabei, den Mahnstopp für {count} {count !== 1 ? 'Mahnvorgänge' : 'Mahnvorgang'} aufzuheben. Die automatische
                             Mahnung wird wieder aktiviert.
                         </AlertDialogDescription>
                     </AlertDialogHeader>

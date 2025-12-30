@@ -123,7 +123,8 @@ function StatisticsOverview({
   stats?: ClassificationStatistics;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
-  if (!stats) {
+  // Check for stats AND nested properties to prevent undefined access errors
+  if (!stats || !stats.byTransactionType || !stats.byConfidenceLevel) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
@@ -140,31 +141,35 @@ function StatisticsOverview({
     );
   }
 
+  // Safe access with defaults
+  const dropShipmentCount = stats.byTransactionType.drop_shipment ?? 0;
+  const triangularCount = stats.byTransactionType.triangular_eu ?? 0;
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <StatsCard
         title={t('streckengeschaeft.dashboard.totalClassified')}
-        value={stats.totalDocuments}
+        value={stats.totalDocuments ?? 0}
         description={t('streckengeschaeft.dashboard.documentsTotal')}
         icon={<FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
       />
       <StatsCard
         title={t('streckengeschaeft.dashboard.dropShipments')}
-        value={stats.byTransactionType.drop_shipment + stats.byTransactionType.triangular_eu}
+        value={dropShipmentCount + triangularCount}
         description={t('streckengeschaeft.dashboard.triangularCount', {
-          count: stats.byTransactionType.triangular_eu,
+          count: triangularCount,
         })}
         icon={<Building2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
       />
       <StatsCard
         title={t('streckengeschaeft.dashboard.manualReview')}
-        value={stats.pendingValidation}
+        value={stats.pendingValidation ?? 0}
         description={t('streckengeschaeft.dashboard.pendingValidation')}
         icon={<AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />}
       />
       <StatsCard
         title={t('streckengeschaeft.dashboard.zmRelevant')}
-        value={stats.zmRelevantCount}
+        value={stats.zmRelevantCount ?? 0}
         description={t('streckengeschaeft.dashboard.forZm')}
         icon={<Globe className="h-4 w-4 text-primary" aria-hidden="true" />}
       />
@@ -504,7 +509,7 @@ export function StreckengeschaeftDashboard() {
         </div>
       </div>
 
-      <StatisticsOverview stats={stats} t={t} />
+      {stats && <StatisticsOverview stats={stats} t={t} />}
 
       <Card>
         <CardHeader>

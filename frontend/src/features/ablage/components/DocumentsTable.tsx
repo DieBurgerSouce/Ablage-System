@@ -1,22 +1,11 @@
 /**
  * DocumentsTable - Wiederverwendbare Dokumenten-Tabelle
- *
- * Props-basierte Komponente ohne direkten Router-Zugriff.
- * Features:
- * - Row-Selection mit Checkboxen
- * - Sortierbare Spalten
- * - Bedingte Zahlungsstatus-Spalten
- * - Loading/Empty States
- * - Pagination
+ * Refactored to use Generic DataGrid
  */
 
 import { useMemo } from 'react';
 import { Link } from '@tanstack/react-router';
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  flexRender,
   createColumnHelper,
   type SortingState,
   type RowSelectionState,
@@ -32,14 +21,15 @@ import {
   Eye,
   Download,
   MoreHorizontal,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Card,
+  CardContent,
+} from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -59,6 +49,7 @@ import {
   PAYMENT_STATUS_CONFIG,
   type CategoryDocumentResponse,
 } from '../types';
+import { DataGrid } from '@/components/ui/data-grid/DataGrid';
 
 // ==================== Types ====================
 
@@ -72,13 +63,6 @@ interface DocumentsTableProps {
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
   onDocumentClick?: (document: CategoryDocumentResponse) => void;
   onDownloadClick?: (document: CategoryDocumentResponse) => void;
-}
-
-interface DocumentsPaginationProps {
-  currentPage: number;
-  totalPages: number;
-  totalCount: number;
-  onPageChange: (page: number) => void;
 }
 
 interface DocumentsEmptyStateProps {
@@ -183,51 +167,6 @@ export function DocumentsEmptyState({
   );
 }
 
-// ==================== Pagination ====================
-
-export function DocumentsPagination({
-  currentPage,
-  totalPages,
-  totalCount,
-  onPageChange,
-}: DocumentsPaginationProps) {
-  if (totalPages <= 1) return null;
-
-  return (
-    <nav
-      className="flex items-center justify-between"
-      aria-label="Seitennavigation"
-      role="navigation"
-    >
-      <p className="text-sm text-muted-foreground" aria-live="polite">
-        Seite {currentPage + 1} von {totalPages} ({totalCount} Dokumente)
-      </p>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 0}
-          aria-label="Vorherige Seite"
-        >
-          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-          Zurück
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage >= totalPages - 1}
-          aria-label="Nächste Seite"
-        >
-          Weiter
-          <ChevronRight className="h-4 w-4" aria-hidden="true" />
-        </Button>
-      </div>
-    </nav>
-  );
-}
-
 // ==================== Main Component ====================
 
 export function DocumentsTable({
@@ -241,7 +180,6 @@ export function DocumentsTable({
   onDocumentClick,
   onDownloadClick,
 }: DocumentsTableProps) {
-  // ==================== Table Columns ====================
 
   const columns = useMemo(() => {
     // Select column
@@ -297,6 +235,9 @@ export function DocumentsTable({
           {info.getValue() || '-'}
         </span>
       ),
+      meta: {
+        className: 'hidden md:table-cell',
+      },
     });
 
     // Date column with sorting
@@ -307,26 +248,22 @@ export function DocumentsTable({
           size="sm"
           className="-ml-3 h-8"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          aria-label={`Nach Datum sortieren (${
-            column.getIsSorted() === 'asc'
-              ? 'aufsteigend'
-              : column.getIsSorted() === 'desc'
-                ? 'absteigend'
-                : 'keine Sortierung'
-          })`}
         >
           Datum
           {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" aria-hidden="true" />
+            <ArrowUp className="ml-2 h-4 w-4" />
           ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" aria-hidden="true" />
+            <ArrowDown className="ml-2 h-4 w-4" />
           ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" aria-hidden="true" />
+            <ArrowUpDown className="ml-2 h-4 w-4" />
           )}
         </Button>
       ),
       cell: (info) => formatDate(info.getValue()),
       sortingFn: 'datetime',
+      meta: {
+        className: 'hidden sm:table-cell',
+      },
     });
 
     // Amount column with sorting
@@ -338,15 +275,14 @@ export function DocumentsTable({
             size="sm"
             className="-mr-3 h-8"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            aria-label={`Nach Betrag sortieren`}
           >
             Betrag
             {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-2 h-4 w-4" aria-hidden="true" />
+              <ArrowUp className="ml-2 h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-2 h-4 w-4" aria-hidden="true" />
+              <ArrowDown className="ml-2 h-4 w-4" />
             ) : (
-              <ArrowUpDown className="ml-2 h-4 w-4" aria-hidden="true" />
+              <ArrowUpDown className="ml-2 h-4 w-4" />
             )}
           </Button>
         </div>
@@ -415,9 +351,8 @@ export function DocumentsTable({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                aria-label={`Aktionen für ${row.original.filename}`}
               >
-                <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
+                <MoreHorizontal className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -427,7 +362,7 @@ export function DocumentsTable({
                   params={{ documentId: row.original.id }}
                   className="flex items-center gap-2"
                 >
-                  <Eye className="w-4 h-4" aria-hidden="true" />
+                  <Eye className="w-4 h-4" />
                   Anzeigen
                 </Link>
               </DropdownMenuItem>
@@ -435,7 +370,7 @@ export function DocumentsTable({
                 className="gap-2"
                 onClick={() => onDownloadClick?.(row.original)}
               >
-                <Download className="w-4 h-4" aria-hidden="true" />
+                <Download className="w-4 h-4" />
                 Herunterladen
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -471,73 +406,20 @@ export function DocumentsTable({
     ];
   }, [showPaymentStatus, onDocumentClick, onDownloadClick]);
 
-  // ==================== Table Instance ====================
-
-  const table = useReactTable({
-    data: documents,
-    columns,
-    state: {
-      sorting,
-      rowSelection,
-    },
-    onSortingChange,
-    onRowSelectionChange,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getRowId: (row) => row.id,
-    enableRowSelection: true,
-  });
-
-  // ==================== Loading State ====================
-
   if (isLoading) {
     return <DocumentsTableSkeleton showPaymentStatus={showPaymentStatus} />;
   }
 
-  // ==================== Render ====================
-
   return (
-    <Card>
-      <CardContent className="p-0">
-        <Table role="grid" aria-label="Dokumentenliste">
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    style={{ width: header.getSize() }}
-                    scope="col"
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && 'selected'}
-                className="group"
-                aria-selected={row.getIsSelected()}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+    <DataGrid
+      columns={columns}
+      data={documents}
+      sorting={sorting}
+      onSortingChange={onSortingChange}
+      rowSelection={rowSelection}
+      onRowSelectionChange={onRowSelectionChange}
+      searchColumn="filename"
+      searchPlaceholder="Dokumente durchsuchen..."
+    />
   );
 }

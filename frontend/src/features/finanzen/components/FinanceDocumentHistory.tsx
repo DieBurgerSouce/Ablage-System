@@ -1,7 +1,7 @@
 /**
  * FinanceDocumentHistory - Audit Trail Komponente
  *
- * Zeigt die vollstaendige Änderungs-History eines Finanz-Dokuments.
+ * Zeigt die vollständige Änderungs-History eines Finanz-Dokuments.
  *
  * Features:
  * - Chronologische Timeline
@@ -356,7 +356,7 @@ export const FinanceDocumentHistory = memo(function FinanceDocumentHistory({
         role="status"
       >
         <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" aria-hidden="true" />
-        <p>Keine History-Eintraege vorhanden.</p>
+        <p>Keine History-Einträge vorhanden.</p>
       </div>
     )
   }
@@ -365,7 +365,7 @@ export const FinanceDocumentHistory = memo(function FinanceDocumentHistory({
     <div
       className={cn('p-4', className)}
       role="log"
-      aria-label={`Dokument-History: ${data.total} Eintraege`}
+      aria-label={`Dokument-History: ${data.total} Einträge`}
     >
       <div className="mb-4">
         <h3 className="text-sm font-medium text-muted-foreground">

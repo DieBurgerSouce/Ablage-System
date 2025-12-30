@@ -2,7 +2,7 @@
  * RejectReasonDialog
  *
  * Dialog zur Eingabe des Ablehnungsgrundes mit Kategorieauswahl.
- * Wird sowohl fuer Einzel- als auch Batch-Ablehnungen verwendet.
+ * Wird sowohl für Einzel- als auch Batch-Ablehnungen verwendet.
  */
 
 import { useState, useCallback } from 'react';

@@ -2,7 +2,7 @@
  * SampleConfigDialog
  *
  * Dialog zur Konfiguration der automatischen Stichprobenauswahl.
- * Ermoeglicht Einstellung von Prozentsatz und Stratifizierung.
+ * Ermöglicht Einstellung von Prozentsatz und Stratifizierung.
  */
 
 import { useState, useEffect } from 'react';
@@ -88,7 +88,7 @@ export function SampleConfigDialog({
             Stichproben-Konfiguration
           </DialogTitle>
           <DialogDescription>
-            Einstellungen fuer die automatische Stichprobenauswahl bei der Validierung
+            Einstellungen für die automatische Stichprobenauswahl bei der Validierung
           </DialogDescription>
         </DialogHeader>
 
@@ -111,7 +111,7 @@ export function SampleConfigDialog({
                     Automatische Stichproben
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Dokumente werden automatisch zur Validierung ausgewaehlt
+                    Dokumente werden automatisch zur Validierung ausgewählt
                   </p>
                 </div>
               </div>
@@ -138,7 +138,7 @@ export function SampleConfigDialog({
                 className="py-2"
               />
               <p className="text-xs text-muted-foreground">
-                Prozentsatz der Dokumente, die zufaellig zur Validierung ausgewaehlt werden
+                Prozentsatz der Dokumente, die zufällig zur Validierung ausgewählt werden
               </p>
             </div>
 
@@ -158,7 +158,7 @@ export function SampleConfigDialog({
                 className="py-2"
               />
               <p className="text-xs text-muted-foreground">
-                Dokumente mit niedrigerer Konfidenz werden zusaetzlich markiert
+                Dokumente mit niedrigerer Konfidenz werden zusätzlich markiert
               </p>
             </div>
 
@@ -171,7 +171,7 @@ export function SampleConfigDialog({
                     Nach Dokumenttyp stratifizieren
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Gleichmaessige Verteilung ueber alle Dokumenttypen
+                    Gleichmäßige Verteilung über alle Dokumenttypen
                   </p>
                 </div>
               </div>
@@ -190,13 +190,13 @@ export function SampleConfigDialog({
               </h4>
               <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
                 <li>
-                  {samplePercentage}% aller verarbeiteten Dokumente werden zufaellig ausgewaehlt
+                  {samplePercentage}% aller verarbeiteten Dokumente werden zufällig ausgewählt
                 </li>
                 <li>
                   Dokumente mit Konfidenz unter {minConfidenceThreshold}% werden immer markiert
                 </li>
                 {stratifyByDocType && (
-                  <li>Die Auswahl erfolgt proportional fuer jeden Dokumenttyp</li>
+                  <li>Die Auswahl erfolgt proportional für jeden Dokumenttyp</li>
                 )}
                 <li>Regelbasierte Auswahl hat Vorrang vor automatischer Auswahl</li>
               </ul>

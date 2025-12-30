@@ -41,9 +41,9 @@ export function ExpensesPage() {
   const [payReport, setPayReport] = React.useState<ExpenseReport | null>(null);
   const [deleteReport, setDeleteReport] = React.useState<ExpenseReport | null>(null);
 
+  // FIX Phase 7.6: Type-safe Navigation mit TanStack Router
   const handleSelectReport = (report: ExpenseReport) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    navigate({ to: '/spesen/$reportId' as any, params: { reportId: report.id } as any });
+    navigate({ to: '/spesen/$reportId', params: { reportId: report.id } });
   };
 
   const handleCreateReport = () => {
@@ -95,9 +95,9 @@ export function ExpensesPage() {
         onSuccess={(report) => {
           setShowReportForm(false);
           // Bei neuer Abrechnung direkt zur Detailseite navigieren
+          // FIX Phase 7.6: Type-safe Navigation
           if (!editingReport) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            navigate({ to: '/spesen/$reportId' as any, params: { reportId: report.id } as any });
+            navigate({ to: '/spesen/$reportId', params: { reportId: report.id } });
           }
         }}
       />

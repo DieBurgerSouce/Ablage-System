@@ -17,3 +17,4 @@ export { MahnwesenSettings } from './MahnwesenSettings';
 export { TelefonProtokollDialog } from './TelefonProtokollDialog';
 export { BulkActionsBar } from './BulkActionsBar';
 export { CustomerDunningOverrideForm } from './CustomerDunningOverrideForm';
+export { StartDunningDialog } from './StartDunningDialog';

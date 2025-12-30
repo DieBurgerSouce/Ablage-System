@@ -241,6 +241,7 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
       <BulkActionsToolbar
         selectedIds={selectedIds}
         category={category}
+        entityType={entityType}
         onClearSelection={handleClearSelection}
       />
     </div>
