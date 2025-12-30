@@ -2143,7 +2143,8 @@ class FeatureFlag(Base):
         if self.rollout_percentage > 0:
             import hashlib
             hash_input = f"{self.key}:{user_id}".encode()
-            hash_value = int(hashlib.md5(hash_input).hexdigest(), 16) % 100
+            # SECURITY FIX Phase 11.2: Use SHA256 instead of MD5 for security-critical hashing
+            hash_value = int(hashlib.sha256(hash_input).hexdigest(), 16) % 100
             return hash_value < self.rollout_percentage
 
         return False
@@ -2155,7 +2156,8 @@ class FeatureFlag(Base):
 
         import hashlib
         hash_input = f"{self.key}:variant:{user_id}".encode()
-        hash_value = int(hashlib.md5(hash_input).hexdigest(), 16) % 100
+        # SECURITY FIX Phase 11.2: Use SHA256 instead of MD5 for security-critical hashing
+        hash_value = int(hashlib.sha256(hash_input).hexdigest(), 16) % 100
 
         cumulative = 0
         for variant_name, percentage in self.variants.items():

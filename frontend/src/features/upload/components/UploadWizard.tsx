@@ -752,13 +752,20 @@ export function UploadWizard() {
     }, [files]);
 
     useEffect(() => {
+        // FIX: mounted flag für cleanup bei Unmount (verhindert state updates nach unmount)
+        let isMounted = true;
+
         const pollStatus = async () => {
+            // FIX: Early exit wenn unmounted
+            if (!isMounted) return;
+
             const currentFiles = filesRef.current;
             const processingFiles = currentFiles.filter(f =>
                 (f.status === 'processing' && f.documentId) ||
                 (f.status === 'awaiting_confirmation' && f.documentId &&
                  (!f.classification || f.classification.invoiceDirection === 'unknown'))
             );
+            // FIX: Early exit wenn keine processing files (verhindert unnötige API-Calls)
             if (processingFiles.length === 0) return;
 
             for (const file of processingFiles) {
@@ -881,8 +888,13 @@ export function UploadWizard() {
             }
         };
 
-        const interval = setInterval(pollStatus, 1000);
-        return () => clearInterval(interval);
+        // FIX: 2000ms statt 1000ms - reduziert Backend-Last um 50%
+        const interval = setInterval(pollStatus, 2000);
+        return () => {
+            // FIX: Cleanup - verhindert state updates nach unmount
+            isMounted = false;
+            clearInterval(interval);
+        };
     }, []);
 
     // ========== RENDER ==========

@@ -39,6 +39,7 @@ from app.api.schemas.datev import (
     KontenrahmenInfo,
 )
 from app.api.dependencies import get_current_active_user, check_datev_export_rate_limit
+from app.core.security import build_content_disposition
 from app.db import models
 from app.db.database import get_async_db
 from app.services.datev import get_datev_export_service, SKR03, SKR04
@@ -638,14 +639,12 @@ async def export_buchungsstapel(
         # wenn B zwischendurch committet (Race Condition)
         await db.commit()
 
-        # SECURITY FIX: Filename sanitizen (Path Traversal Prevention)
-        safe_filename = urllib.parse.quote(export_record.filename, safe="")
-
+        # SECURITY: Use centralized sanitization to prevent CRLF injection (Phase 10)
         return Response(
             content=csv_bytes,
             media_type="text/csv; charset=windows-1252",
             headers={
-                "Content-Disposition": f'attachment; filename="{safe_filename}"',
+                "Content-Disposition": build_content_disposition(export_record.filename, "attachment"),
                 "X-DATEV-Export-ID": str(export_record.id),
                 "X-DATEV-Document-Count": str(export_record.document_count),
             }

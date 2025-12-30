@@ -120,7 +120,10 @@ apiClient.interceptors.response.use(
                 return apiClient(originalRequest);
             } catch (refreshError) {
                 // Refresh failed - emit event for session expired modal
-                console.error('Token refresh failed:', refreshError);
+                // SECURITY FIX Phase 11.4: Only log error details in development
+                if (import.meta.env.DEV) {
+                    console.error('Token refresh failed:', refreshError);
+                }
                 sessionStorage.removeItem('auth_token');
                 sessionStorage.removeItem('refresh_token');
                 sessionStorage.removeItem('user');
@@ -144,10 +147,13 @@ apiClient.interceptors.response.use(
                 const delayMs = parseInt(retryAfter, 10) * 1000 || calculateRetryDelay(originalRequest._retryCount);
                 originalRequest._retryCount += 1;
 
-                console.warn(
-                    `Rate limited (429). Retrying in ${Math.round(delayMs / 1000)}s... ` +
-                    `(Attempt ${originalRequest._retryCount}/${RETRY_CONFIG.maxRetries})`
-                );
+                // SECURITY FIX Phase 11.4: Only log retry details in development
+                if (import.meta.env.DEV) {
+                    console.warn(
+                        `Rate limited (429). Retrying in ${Math.round(delayMs / 1000)}s... ` +
+                        `(Attempt ${originalRequest._retryCount}/${RETRY_CONFIG.maxRetries})`
+                    );
+                }
 
                 await sleep(delayMs);
                 return apiClient(originalRequest);
@@ -164,11 +170,14 @@ apiClient.interceptors.response.use(
             originalRequest._retryCount += 1;
             const delayMs = calculateRetryDelay(originalRequest._retryCount - 1);
 
-            console.warn(
-                `Request failed with ${error.response?.status || error.code}. ` +
-                `Retrying in ${Math.round(delayMs / 1000)}s... ` +
-                `(Attempt ${originalRequest._retryCount}/${RETRY_CONFIG.maxRetries})`
-            );
+            // SECURITY FIX Phase 11.4: Only log retry details in development
+            if (import.meta.env.DEV) {
+                console.warn(
+                    `Request failed with ${error.response?.status || error.code}. ` +
+                    `Retrying in ${Math.round(delayMs / 1000)}s... ` +
+                    `(Attempt ${originalRequest._retryCount}/${RETRY_CONFIG.maxRetries})`
+                );
+            }
 
             await sleep(delayMs);
             return apiClient(originalRequest);

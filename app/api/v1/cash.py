@@ -28,6 +28,7 @@ import structlog
 
 from app.api.dependencies import get_db, get_current_active_user
 from app.core.rate_limiting import limiter, get_user_identifier
+from app.core.security import build_content_disposition
 from app.core.idempotency import check_idempotency, get_idempotency_service
 from app.db.models import User, Company, CashRegister, CashEntry, CashCategory, CashCount
 from app.db.schemas import (
@@ -927,7 +928,8 @@ async def export_csv(
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        # SECURITY: Use sanitized Content-Disposition (Phase 10)
+        headers={"Content-Disposition": build_content_disposition(filename, "attachment")}
     )
 
 
@@ -1087,7 +1089,8 @@ async def export_pdf(
     return StreamingResponse(
         iter([buffer.getvalue()]),
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        # SECURITY: Use sanitized Content-Disposition (Phase 10)
+        headers={"Content-Disposition": build_content_disposition(filename, "attachment")}
     )
 
 
@@ -1218,7 +1221,8 @@ async def export_datev(
     return StreamingResponse(
         iter([content_bytes]),
         media_type="text/csv; charset=windows-1252",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        # SECURITY: Use sanitized Content-Disposition (Phase 10)
+        headers={"Content-Disposition": build_content_disposition(filename, "attachment")}
     )
 
 

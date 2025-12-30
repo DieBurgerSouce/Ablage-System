@@ -2,11 +2,11 @@
  * Einstellungen Modal Komponente.
  *
  * Haupt-Modal für alle Benutzer- und Admin-Einstellungen.
- * Tabs: Konto, Anzeige, OCR, Benachrichtigungen, Datenschutz, Firmendaten (Admin), Tags (Admin)
+ * Tabs: Konto, Sicherheit (2FA), Anzeige, OCR, Benachrichtigungen, Datenschutz, Firmendaten (Admin), Tags (Admin)
  */
 
 import { useState } from 'react';
-import { Settings, Monitor, Cpu, Bell, Shield, Building2, UserCircle, Tag } from 'lucide-react';
+import { Settings, Monitor, Cpu, Bell, Shield, Building2, UserCircle, Tag, Lock } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -24,6 +24,7 @@ import { NotificationSettingsTab } from './NotificationSettingsTab';
 import { PrivacySettingsTab } from './PrivacySettingsTab';
 import { CompanySettingsTab } from './CompanySettingsTab';
 import { TagSettingsTab } from './TagSettingsTab';
+import { SecuritySettingsTab } from './SecuritySettingsTab';
 
 export function SettingsModal() {
     const [open, setOpen] = useState(false);
@@ -54,10 +55,14 @@ export function SettingsModal() {
                 </DialogHeader>
 
                 <Tabs defaultValue="account" className="flex-1 overflow-hidden flex flex-col">
-                    <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-7' : 'grid-cols-5'}`}>
+                    <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-8' : 'grid-cols-6'}`}>
                         <TabsTrigger value="account" className="flex items-center gap-1.5">
                             <UserCircle className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline">Konto</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="security" className="flex items-center gap-1.5">
+                            <Lock className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Sicherheit</span>
                         </TabsTrigger>
                         <TabsTrigger value="display" className="flex items-center gap-1.5">
                             <Monitor className="w-3.5 h-3.5" />
@@ -92,6 +97,9 @@ export function SettingsModal() {
                     <div className="flex-1 overflow-y-auto mt-4 pr-2">
                         <TabsContent value="account" className="mt-0">
                             <AccountSettingsTab onClose={() => setOpen(false)} />
+                        </TabsContent>
+                        <TabsContent value="security" className="mt-0">
+                            <SecuritySettingsTab />
                         </TabsContent>
                         <TabsContent value="display" className="mt-0">
                             <DisplaySettingsTab />

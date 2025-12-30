@@ -99,8 +99,8 @@ class VectorSearchOrchestrator:
 
         # Deterministisches Routing basierend auf User-ID
         if user_id:
-            # Hash der User-ID -> konsistentes Bucket
-            user_hash = hashlib.md5(str(user_id).encode()).hexdigest()
+            # SECURITY FIX Phase 11.5: Use SHA256 instead of MD5 for security-critical hashing
+            user_hash = hashlib.sha256(str(user_id).encode()).hexdigest()
             bucket = int(user_hash[:8], 16) % 100
         else:
             # Random Bucket (fuer anonyme Requests)

@@ -1,15 +1,54 @@
 import { Sidebar } from './Sidebar'
 import { Toaster } from '@/components/ui/toaster'
 import { Breadcrumbs } from '@/components/ui/breadcrumb'
+import { SessionTimeoutWarning } from '@/components/SessionTimeoutWarning'
+import { MobileSidebarProvider, useMobileSidebar } from '@/context/MobileSidebarContext'
+import { Menu } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: string }) {
+    const { isOpen, toggle, close } = useMobileSidebar();
+
     return (
-        <div className="flex h-screen bg-background overflow-hidden">
-            <Sidebar />
-            <main className="flex-1 overflow-auto relative">
-                {/* Breadcrumbs Header */}
-                <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-white/5 px-6 py-3">
-                    <Breadcrumbs showHomeIcon maxItems={5} />
+        <div id={id} className="flex h-screen bg-background overflow-hidden">
+            {/* Mobile Overlay */}
+            {isOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                    onClick={close}
+                    aria-hidden="true"
+                />
+            )}
+
+            {/* Sidebar Container - responsive */}
+            <div
+                className={cn(
+                    // Base: Fixed positioning on mobile, relative on desktop
+                    "fixed inset-y-0 left-0 z-50 md:relative md:z-0",
+                    // Transform: Slide in/out on mobile, always visible on desktop
+                    "transform transition-transform duration-200 ease-in-out",
+                    isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+                )}
+            >
+                <Sidebar onNavigate={close} />
+            </div>
+
+            {/* Main Content */}
+            <main className="flex-1 overflow-auto relative w-full">
+                {/* Mobile Header with Hamburger + Breadcrumbs */}
+                <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-white/5 px-4 md:px-6 py-3">
+                    <div className="flex items-center gap-3">
+                        {/* Hamburger Menu - only visible on mobile */}
+                        <button
+                            onClick={toggle}
+                            className="md:hidden p-2 -ml-2 rounded-md hover:bg-accent"
+                            aria-label="Menue oeffnen"
+                            aria-expanded={isOpen}
+                        >
+                            <Menu className="h-5 w-5" />
+                        </button>
+                        <Breadcrumbs showHomeIcon maxItems={5} />
+                    </div>
                 </div>
                 {/* Page Content */}
                 <div className="relative">
@@ -17,6 +56,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
             </main>
             <Toaster />
+            {/* Session Timeout Warning - Zeigt Warnung wenn Session bald ablaeuft */}
+            <SessionTimeoutWarning />
         </div>
+    )
+}
+
+export function AppLayout({ children, id }: { children: React.ReactNode; id?: string }) {
+    return (
+        <MobileSidebarProvider>
+            <AppLayoutInner id={id}>{children}</AppLayoutInner>
+        </MobileSidebarProvider>
     )
 }

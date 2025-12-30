@@ -103,13 +103,7 @@ export interface Document {
 
 // Transform backend response to frontend format
 function transformDocument(doc: DocumentBackend): Document {
-    // DEBUG: Log raw API response for quick classification
-    if (doc.quick_classification_status || doc.quick_classification_result) {
-        console.log('[QC Transform] Raw API response:', {
-            quick_classification_status: doc.quick_classification_status,
-            quick_classification_result: doc.quick_classification_result,
-        });
-    }
+    // FIX: Sensitive console.log entfernt (Enterprise Security)
     return {
         id: doc.id,
         name: doc.original_filename || doc.filename,

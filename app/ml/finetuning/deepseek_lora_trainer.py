@@ -674,7 +674,8 @@ class DeepSeekLoRATrainer:
 
         state_path = checkpoint_path / "training_state.pt"
         if state_path.exists():
-            state = torch.load(state_path)
+            # SECURITY: weights_only=True prevents arbitrary code execution
+            state = torch.load(state_path, weights_only=True)
             self.optimizer.load_state_dict(state["optimizer_state"])
             self.scheduler.load_state_dict(state["scheduler_state"])
             self._best_validation_loss = state.get("best_validation_loss", float("inf"))

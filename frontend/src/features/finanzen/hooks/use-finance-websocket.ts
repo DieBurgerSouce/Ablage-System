@@ -351,6 +351,8 @@ export function useFinanceWebSocket(
   }, [])
 
   // Auto-connect on mount
+  // FIX Phase 7.9: Korrekte Dependencies - connect/disconnect sind stabil durch useCallback
+  // autoConnect ist beim Mount bekannt und ändert sich nicht während der Lebenszeit
   useEffect(() => {
     if (autoConnect) {
       connect()
@@ -359,7 +361,9 @@ export function useFinanceWebSocket(
     return () => {
       disconnect()
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    // connect und disconnect sind stabile useCallback-Referenzen
+    // autoConnect wird beim Mount gesetzt und ändert sich nicht
+  }, [autoConnect, connect, disconnect])
 
   return {
     isConnected,

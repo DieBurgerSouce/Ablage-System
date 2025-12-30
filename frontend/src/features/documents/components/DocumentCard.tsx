@@ -3,13 +3,22 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DocumentTypeIcon, OCRStatusBadge } from './DocumentBadges';
 import type { Document } from '../types';
 import { motionTokens } from '@/lib/motion-tokens';
+import { cn } from '@/lib/utils';
 
 interface DocumentCardProps {
     document: Document;
     isSelected: boolean;
+    /** Ist dieses Item aktuell fokussiert (Tastatur-Navigation) */
+    isFocused?: boolean;
     onClick: () => void;
     onDoubleClick: () => void;
     onSelect: (checked: boolean) => void;
+    /** Tab-Index fuer Tastatur-Navigation */
+    tabIndex?: number;
+    /** Callback wenn Element fokussiert wird */
+    onFocus?: () => void;
+    /** ARIA Column Index */
+    ariaColIndex?: number;
 }
 
 const MotionDiv = motion.div;
@@ -32,10 +41,24 @@ const cardVariants = {
     selected: {
         boxShadow: '0 0 0 2px var(--primary)',
         borderColor: 'var(--primary)'
+    },
+    focused: {
+        boxShadow: '0 0 0 3px var(--ring)',
+        borderColor: 'var(--ring)'
     }
 };
 
-export function DocumentCard({ document, isSelected, onClick, onDoubleClick, onSelect }: DocumentCardProps) {
+export function DocumentCard({
+    document,
+    isSelected,
+    isFocused = false,
+    onClick,
+    onDoubleClick,
+    onSelect,
+    tabIndex = -1,
+    onFocus,
+    ariaColIndex,
+}: DocumentCardProps) {
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('de-DE', {
             day: '2-digit',
@@ -44,18 +67,42 @@ export function DocumentCard({ document, isSelected, onClick, onDoubleClick, onS
         });
     };
 
+    // Determine animation state based on selection and focus
+    const getAnimateState = () => {
+        if (isFocused && isSelected) return 'selected';
+        if (isFocused) return 'focused';
+        if (isSelected) return 'selected';
+        return 'idle';
+    };
+
     return (
         <MotionDiv
             variants={cardVariants}
             initial="idle"
             whileHover="hover"
             whileTap="tap"
-            animate={isSelected ? 'selected' : 'idle'}
+            animate={getAnimateState()}
             onClick={() => onClick()}
             onDoubleClick={() => onDoubleClick()}
-            className="relative group cursor-pointer rounded-lg overflow-hidden glass-card transition-colors"
+            onFocus={onFocus}
+            tabIndex={tabIndex}
+            role="gridcell"
+            aria-colindex={ariaColIndex}
+            aria-selected={isSelected}
+            data-focused={isFocused}
+            className={cn(
+                'relative group cursor-pointer rounded-lg overflow-hidden glass-card transition-colors',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                isFocused && 'ring-2 ring-ring ring-offset-2 ring-offset-background'
+            )}
         >
-            <div className="absolute top-3 left-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" onClick={(e) => e.stopPropagation()}>
+            <div
+                className={cn(
+                    'absolute top-3 left-3 z-10 transition-opacity duration-200',
+                    isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                )}
+                onClick={(e) => e.stopPropagation()}
+            >
                 <Checkbox checked={isSelected} onCheckedChange={(checked) => onSelect(checked === true)} />
             </div>
 

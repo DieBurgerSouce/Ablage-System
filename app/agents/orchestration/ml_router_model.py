@@ -610,9 +610,38 @@ class OCRRouterModel:
         Lädt Legacy pickle-Datei und migriert zur Registry.
 
         WARNUNG: pickle.load ist unsicher! Nur für eigene Dateien verwenden.
+
+        SECURITY: Erfordert ABLAGE_ALLOW_PICKLE_MIGRATION=true Environment-Variable.
+        Dies ist ein Sicherheits-Gate um versehentliche RCE zu verhindern.
         """
-        import pickle
+        import os
         import warnings
+
+        # Phase 9.1 SECURITY FIX: Require explicit opt-in for pickle deserialization
+        # Konsistent mit model_registry.py:500-505
+        if not os.getenv("ABLAGE_ALLOW_PICKLE_MIGRATION"):
+            logger.error(
+                "pickle_migration_blocked",
+                reason="Security flag not enabled",
+                hint="Set ABLAGE_ALLOW_PICKLE_MIGRATION=true if you trust the source",
+                pickle_path=str(path),
+            )
+            raise PermissionError(
+                "Legacy pickle-Migration ist aus Sicherheitsgründen deaktiviert. "
+                "Setzen Sie ABLAGE_ALLOW_PICKLE_MIGRATION=true wenn Sie der "
+                "Quelle der pickle-Datei vertrauen. WARNUNG: pickle.load kann "
+                "beliebigen Code ausfuehren!"
+            )
+
+        # Audit Log - wer hat wann eine pickle-Migration durchgeführt?
+        logger.warning(
+            "pickle_migration_started",
+            pickle_path=str(path),
+            security_warning="pickle.load kann beliebigen Code ausfuehren!",
+        )
+
+        # Import erst NACH Security-Check (Defense in Depth)
+        import pickle  # noqa: S403 - Guarded by env var check above
 
         warnings.warn(
             "Lade Legacy pickle-Modell. Bitte nach Registry migrieren!",
@@ -623,7 +652,7 @@ class OCRRouterModel:
             raise FileNotFoundError(f"Modelldatei nicht gefunden: {path}")
 
         with open(path, "rb") as f:
-            model_data = pickle.load(f)  # noqa: S301
+            model_data = pickle.load(f)  # noqa: S301 - Security check above (env var required)
 
         self.model = model_data["model"]
         self._is_trained = model_data.get("is_trained", True)

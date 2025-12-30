@@ -1,7 +1,7 @@
 /**
  * ValidationQueueEditor
  *
- * Enterprise-Grade Side-by-Side Editor fuer die Validierung.
+ * Enterprise-Grade Side-by-Side Editor für die Validierung.
  * Links: PDF-Viewer mit Bounding-Box Highlighting
  * Rechts: Field Editor mit Validierung
  *
@@ -94,7 +94,22 @@ export function ValidationQueueEditor({ itemId }: ValidationQueueEditorProps) {
   // Refs
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Keyboard Shortcuts
+  // Handlers - FIX Phase 7.8: useCallback für stabile Referenzen in useEffect
+  const handleBack = useCallback(() => {
+    navigate({ to: '/validation-queue' });
+  }, [navigate]);
+
+  const handleApprove = useCallback(async () => {
+    try {
+      await approveItem.mutateAsync({ itemId, data: { apply_corrections: true } });
+      toast.success('Dokument genehmigt');
+      navigate({ to: '/validation-queue' });
+    } catch {
+      toast.error('Fehler beim Genehmigen');
+    }
+  }, [approveItem, itemId, navigate]);
+
+  // Keyboard Shortcuts - FIX Phase 7.8: Korrekte Dependencies (handleApprove als Callback)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl+Enter: Genehmigen
@@ -116,22 +131,7 @@ export function ValidationQueueEditor({ itemId }: ValidationQueueEditorProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [item, editingFieldId]);
-
-  // Handlers
-  const handleBack = () => {
-    navigate({ to: '/validation-queue' });
-  };
-
-  const handleApprove = async () => {
-    try {
-      await approveItem.mutateAsync({ itemId, data: { apply_corrections: true } });
-      toast.success('Dokument genehmigt');
-      navigate({ to: '/validation-queue' });
-    } catch (error) {
-      toast.error('Fehler beim Genehmigen');
-    }
-  };
+  }, [item?.status, editingFieldId, handleApprove]);
 
   const handleRejectClick = () => {
     setRejectDialogOpen(true);
@@ -239,7 +239,7 @@ export function ValidationQueueEditor({ itemId }: ValidationQueueEditorProps) {
           <p className="text-muted-foreground mb-4">
             {itemError ? (itemError as Error).message : 'Dokument nicht gefunden'}
           </p>
-          <Button onClick={handleBack}>Zurueck zur Uebersicht</Button>
+          <Button onClick={handleBack}>Zurück zur Übersicht</Button>
         </div>
       </div>
     );
@@ -254,7 +254,7 @@ export function ValidationQueueEditor({ itemId }: ValidationQueueEditorProps) {
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b bg-background">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={handleBack} aria-label="Zurueck zur Uebersicht">
+          <Button variant="ghost" size="icon" onClick={handleBack} aria-label="Zurück zur Übersicht">
             <ArrowLeft className="w-5 h-5" aria-hidden="true" />
           </Button>
           <div>
@@ -332,7 +332,7 @@ export function ValidationQueueEditor({ itemId }: ValidationQueueEditorProps) {
                 size="icon"
                 onClick={() => setPdfPage((p) => (pdfNumPages ? Math.min(pdfNumPages, p + 1) : p + 1))}
                 disabled={pdfNumPages !== null && pdfPage >= pdfNumPages}
-                aria-label="Naechste Seite"
+                aria-label="Nächste Seite"
               >
                 <ChevronRight className="w-4 h-4" aria-hidden="true" />
               </Button>
@@ -355,7 +355,7 @@ export function ValidationQueueEditor({ itemId }: ValidationQueueEditorProps) {
                 size="icon"
                 onClick={() => setPdfZoom((z) => Math.min(3, z + 0.1))}
                 disabled={pdfZoom >= 3}
-                aria-label="Vergroessern"
+                aria-label="Vergrößern"
               >
                 <ZoomIn className="w-4 h-4" aria-hidden="true" />
               </Button>
@@ -458,7 +458,7 @@ export function ValidationQueueEditor({ itemId }: ValidationQueueEditorProps) {
                                 size="icon"
                                 onClick={handleSaveEdit}
                                 disabled={updateField.isPending}
-                                aria-label="Aenderung speichern"
+                                aria-label="Änderung speichern"
                               >
                                 <Check className="w-4 h-4" aria-hidden="true" />
                               </Button>
@@ -566,11 +566,11 @@ export function ValidationQueueEditor({ itemId }: ValidationQueueEditorProps) {
       <div
         className="px-6 py-2 border-t bg-muted/30 text-xs text-muted-foreground"
         role="note"
-        aria-label="Verfuegbare Tastaturkuerzel"
+        aria-label="Verfügbare Tastaturkürzel"
       >
         {/* Screen Reader: Vollständige Beschreibung der Shortcuts */}
         <span className="sr-only">
-          Tastaturkuerzel: Strg plus Enter zum Genehmigen des Dokuments.
+          Tastaturkürzel: Strg plus Enter zum Genehmigen des Dokuments.
           Strg plus Umschalt plus R zum Ablehnen des Dokuments.
           Escape zum Abbrechen der Feldbearbeitung.
         </span>

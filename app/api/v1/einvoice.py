@@ -23,6 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.core.security import build_content_disposition
 from app.db.models import User
 
 from app.api.schemas.einvoice import (
@@ -170,7 +171,8 @@ async def generate_zugferd(
             content=pdf_bytes,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}"',
+                # SECURITY: Use sanitized Content-Disposition (Phase 10)
+                "Content-Disposition": build_content_disposition(filename, "attachment"),
                 "X-EInvoice-ID": str(einvoice_id),
             }
         )
@@ -244,7 +246,8 @@ async def generate_xrechnung(
             content=xml_content.encode("utf-8"),
             media_type="application/xml",
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}"',
+                # SECURITY: Use sanitized Content-Disposition (Phase 10)
+                "Content-Disposition": build_content_disposition(filename, "attachment"),
                 "X-EInvoice-ID": str(einvoice_id),
             }
         )
@@ -670,6 +673,7 @@ async def download_xml(
         content=einvoice_doc.xml_content.encode("utf-8"),
         media_type="application/xml",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            # SECURITY: Use sanitized Content-Disposition (Phase 10)
+            "Content-Disposition": build_content_disposition(filename, "attachment"),
         }
     )

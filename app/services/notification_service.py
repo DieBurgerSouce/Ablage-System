@@ -14,6 +14,7 @@ Feinpoliert und durchdacht - Zuverlässige Benachrichtigungen für Benutzer.
 import asyncio
 import json
 import smtplib
+import uuid as uuid_module
 from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -26,6 +27,61 @@ import structlog
 from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
+
+
+# =============================================================================
+# SECURITY: Header/Key Sanitization Functions (PHASE 10.2/10.3 FIX)
+# =============================================================================
+
+def sanitize_email_header(value: str) -> str:
+    """Sanitize email header values to prevent header injection attacks.
+
+    Removes CRLF characters that could be used to inject additional headers.
+
+    Args:
+        value: Raw header value (e.g., subject, to address)
+
+    Returns:
+        Sanitized header value safe for email headers
+
+    Security:
+        - Prevents email header injection (CWE-93)
+        - Removes CR, LF, and NULL characters
+    """
+    if not value:
+        return ""
+    return value.replace('\r', '').replace('\n', '').replace('\x00', '')
+
+
+def validate_user_id_for_redis_key(user_id: str) -> str:
+    """Validate user_id is a valid UUID before using in Redis keys.
+
+    Prevents Redis key injection by ensuring only valid UUIDs are used.
+
+    Args:
+        user_id: User identifier to validate
+
+    Returns:
+        Validated user_id string
+
+    Raises:
+        ValueError: If user_id is not a valid UUID
+
+    Security:
+        - Prevents Redis key injection attacks
+        - Ensures predictable key format
+    """
+    try:
+        # This will raise ValueError if not a valid UUID
+        uuid_module.UUID(user_id)
+        return user_id
+    except (ValueError, AttributeError) as e:
+        logger.warning(
+            "invalid_user_id_for_redis_key",
+            user_id=str(user_id)[:50],  # Truncate for logging
+            error=str(e)
+        )
+        raise ValueError(f"Invalid user_id format: must be a valid UUID")
 
 
 class NotificationType:
@@ -317,7 +373,10 @@ Ablage-System
         # Render with context
         try:
             rendered_body = body.format(**context)
-            rendered_subject = subject.format(**context) if "{" in subject else subject
+            # SECURITY FIX Phase 11.1: Sanitize rendered subject to prevent header injection
+            rendered_subject = sanitize_email_header(
+                subject.format(**context) if "{" in subject else subject
+            )
         except KeyError as e:
             logger.warning("missing_template_context", missing_key=str(e))
             rendered_body = body
@@ -390,9 +449,10 @@ class EmailNotifier:
         try:
             # Create message
             msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"] = self.from_email
-            msg["To"] = to_email
+            # SECURITY: Sanitize headers to prevent header injection (Phase 10.2)
+            msg["Subject"] = sanitize_email_header(subject)
+            msg["From"] = self.from_email  # from_email is controlled by config
+            msg["To"] = sanitize_email_header(to_email)
 
             # Add plain text
             msg.attach(MIMEText(body, "plain", "utf-8"))
@@ -576,7 +636,6 @@ class InAppNotificationStore:
         Returns:
             Notification ID
         """
-        import uuid as uuid_module
         notification_id = str(uuid_module.uuid4())
 
         notification_data = {
@@ -589,7 +648,9 @@ class InAppNotificationStore:
 
         try:
             redis = await self._get_redis()
-            key = f"notifications:{user_id}"
+            # SECURITY: Validate user_id to prevent Redis key injection (Phase 10.3)
+            validated_user_id = validate_user_id_for_redis_key(user_id)
+            key = f"notifications:{validated_user_id}"
 
             # Store notification
             await redis.client.lpush(key, json.dumps(notification_data))
@@ -635,7 +696,9 @@ class InAppNotificationStore:
         """
         try:
             redis = await self._get_redis()
-            key = f"notifications:{user_id}"
+            # SECURITY: Validate user_id to prevent Redis key injection (Phase 10.3)
+            validated_user_id = validate_user_id_for_redis_key(user_id)
+            key = f"notifications:{validated_user_id}"
 
             # Get notifications
             raw_notifications = await redis.client.lrange(key, 0, limit - 1)
@@ -665,7 +728,9 @@ class InAppNotificationStore:
         """Mark notification as read."""
         try:
             redis = await self._get_redis()
-            key = f"notifications:{user_id}"
+            # SECURITY: Validate user_id to prevent Redis key injection (Phase 10.3)
+            validated_user_id = validate_user_id_for_redis_key(user_id)
+            key = f"notifications:{validated_user_id}"
 
             # Get all notifications
             raw_notifications = await redis.client.lrange(key, 0, -1)

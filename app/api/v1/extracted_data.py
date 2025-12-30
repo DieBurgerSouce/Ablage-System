@@ -24,6 +24,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, get_db
+from app.core.security import build_content_disposition
 from app.api.schemas.extracted_data import (
     ExtractedDocumentData,
     ExtractedDocumentType,
@@ -895,7 +896,8 @@ async def export_csv(
         content=csv_content,
         media_type="text/csv; charset=utf-8",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'
+            # SECURITY: Use sanitized Content-Disposition (Phase 10)
+            "Content-Disposition": build_content_disposition(filename, "attachment")
         }
     )
 
@@ -971,7 +973,8 @@ async def export_excel(
         content=excel_content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'
+            # SECURITY: Use sanitized Content-Disposition (Phase 10)
+            "Content-Disposition": build_content_disposition(filename, "attachment")
         }
     )
 
@@ -1049,6 +1052,7 @@ async def export_all_types_excel(
         content=excel_content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'
+            # SECURITY: Use sanitized Content-Disposition (Phase 10)
+            "Content-Disposition": build_content_disposition(filename, "attachment")
         }
     )

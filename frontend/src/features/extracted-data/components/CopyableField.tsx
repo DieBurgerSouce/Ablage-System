@@ -5,7 +5,7 @@
  * Ideal für IBANs, Rechnungsnummern, etc.
  */
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,17 @@ export function CopyableField({
     format,
 }: CopyableFieldProps) {
     const [copied, setCopied] = useState(false);
+    // SECURITY FIX Phase 11.3: Timer ref for proper cleanup to prevent memory leaks
+    const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+    // Cleanup timer on unmount
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+            }
+        };
+    }, []);
 
     if (!value) {
         return (
@@ -46,9 +57,16 @@ export function CopyableField({
         try {
             await navigator.clipboard.writeText(value);
             setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            // Clear any existing timer before setting a new one
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+            }
+            timerRef.current = setTimeout(() => setCopied(false), 2000);
         } catch (err) {
-            console.error("Kopieren fehlgeschlagen:", err);
+            // Only log in development to prevent information disclosure
+            if (import.meta.env.DEV) {
+                console.error("Kopieren fehlgeschlagen:", err);
+            }
         }
     };
 

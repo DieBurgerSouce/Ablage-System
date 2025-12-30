@@ -6,6 +6,9 @@
  * - Download als ZIP
  * - Export als CSV
  * - Löschen mit Bestätigung
+ * - In Ordner verschieben
+ * - Tags bearbeiten
+ * - Status ändern
  * - Selection-Counter und Clear-Button
  * - Animiertes Ein/Ausblenden
  * - WCAG 2.1 AA konform (Focus-Management, ARIA)
@@ -20,6 +23,8 @@ import {
   CheckCircle2,
   Loader2,
   AlertTriangle,
+  FolderInput,
+  Tags,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,12 +46,16 @@ import {
   useBulkMarkAsPaid,
 } from '../hooks/use-ablage-queries';
 import { CATEGORIES_WITH_PAYMENT_STATUS } from '../types';
+import { MoveFolderDialog } from './MoveFolderDialog';
+import { TagsEditDialog } from './TagsEditDialog';
+import { StatusChangeDropdown } from './StatusChangeDropdown';
 
 // ==================== Types ====================
 
 interface BulkActionsToolbarProps {
   selectedIds: string[];
   category: string;
+  entityType: 'customer' | 'supplier';
   onClearSelection: () => void;
   className?: string;
 }
@@ -56,10 +65,13 @@ interface BulkActionsToolbarProps {
 export function BulkActionsToolbar({
   selectedIds,
   category,
+  entityType,
   onClearSelection,
   className,
 }: BulkActionsToolbarProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [moveFolderDialogOpen, setMoveFolderDialogOpen] = useState(false);
+  const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const wasVisible = useRef(false);
 
@@ -162,7 +174,39 @@ export function BulkActionsToolbar({
 
             {/* Actions */}
             <div className="flex items-center gap-2" role="group" aria-label="Verfügbare Aktionen">
-              {/* Mark as Paid (only for invoices) */}
+              {/* Move to Folder */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMoveFolderDialogOpen(true)}
+                disabled={isLoading}
+                aria-label={`${selectedIds.length} Dokumente verschieben`}
+              >
+                <FolderInput className="h-4 w-4 mr-2" aria-hidden="true" />
+                Verschieben
+              </Button>
+
+              {/* Edit Tags */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTagsDialogOpen(true)}
+                disabled={isLoading}
+                aria-label={`Tags fuer ${selectedIds.length} Dokumente bearbeiten`}
+              >
+                <Tags className="h-4 w-4 mr-2" aria-hidden="true" />
+                Tags
+              </Button>
+
+              {/* Status Change Dropdown */}
+              <StatusChangeDropdown
+                selectedIds={selectedIds}
+                showPaymentStatus={showPaymentActions}
+                disabled={isLoading}
+                onSuccess={onClearSelection}
+              />
+
+              {/* Mark as Paid (only for invoices) - Quick Action */}
               {showPaymentActions && (
                 <Button
                   variant="outline"
@@ -289,6 +333,24 @@ export function BulkActionsToolbar({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Move to Folder Dialog */}
+      <MoveFolderDialog
+        open={moveFolderDialogOpen}
+        onOpenChange={setMoveFolderDialogOpen}
+        selectedIds={selectedIds}
+        currentCategory={category}
+        entityType={entityType}
+        onSuccess={onClearSelection}
+      />
+
+      {/* Tags Edit Dialog */}
+      <TagsEditDialog
+        open={tagsDialogOpen}
+        onOpenChange={setTagsDialogOpen}
+        selectedIds={selectedIds}
+        onSuccess={onClearSelection}
+      />
     </>
   );
 }

@@ -1,16 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ScrollSync, ScrollSyncPane } from 'react-scroll-sync';
 import SplitPane from 'react-split-pane';
-import { FileText, ScanLine, FileCode, Loader2, AlertTriangle } from 'lucide-react';
+import { FileText, ScanLine, FileCode, Loader2, AlertTriangle, Edit, MessageSquare } from 'lucide-react';
 import { ViewerToolbar } from './ViewerToolbar';
 import { BoundingBoxOverlay, type BoundingBox } from './BoundingBoxOverlay';
 import { ImageViewer } from './ImageViewer';
 import { OCRTextPanel } from './OCRTextPanel';
+import { InlineMetadataEditor } from './InlineMetadataEditor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExtractedDataPanel } from '@/features/extracted-data';
 import { EInvoicePanel } from '@/features/einvoice';
+import { CommentsPanel, ActivityStream } from '@/features/collaboration';
 import { apiClient } from '@/lib/api/client';
+import { AnnotationLayer } from './AnnotationLayer';
+import { ViewerErrorBoundary } from '@/components/errors';
+
+// Lazy load Office/Email viewers
+const DocxViewer = lazy(() => import('./DocxViewer'));
+const XlsxViewer = lazy(() => import('./XlsxViewer'));
+const EmailViewer = lazy(() => import('./EmailViewer'));
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -91,18 +100,63 @@ function isImageMimeType(mimeType?: string): boolean {
     return mimeType.startsWith('image/');
 }
 
+// Helper to determine file type category
+type FileCategory = 'pdf' | 'image' | 'docx' | 'xlsx' | 'email' | 'unknown';
+
+function categorizeFileType(mimeType?: string): FileCategory {
+    if (!mimeType) return 'unknown';
+    const mime = mimeType.toLowerCase();
+
+    if (mime === 'application/pdf') return 'pdf';
+    if (mime.startsWith('image/')) return 'image';
+    if (
+        mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        mime === 'application/msword'
+    ) {
+        return 'docx';
+    }
+    if (
+        mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+        mime === 'application/vnd.ms-excel'
+    ) {
+        return 'xlsx';
+    }
+    if (mime === 'message/rfc822') return 'email';
+
+    return 'unknown';
+}
+
+// Loading fallback for lazy-loaded viewers
+function ViewerLoadingFallback() {
+    return (
+        <div className="h-full flex items-center justify-center bg-muted/30">
+            <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span>Lade Viewer...</span>
+            </div>
+        </div>
+    );
+}
+
 export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extractedText }: SplitDocumentViewerProps) {
     const [numPages, setNumPages] = useState<number | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [scale, setScale] = useState(1.0);
     const [selectedBox, setSelectedBox] = useState<BoundingBox | null>(null);
+    const [pageDimensions, setPageDimensions] = useState<{ width: number; height: number } | null>(null);
 
     // Lade Preview mit Auth-Token
     const { blobUrl, isLoading: previewLoading, error: previewError } = useAuthenticatedPreview(documentId);
     const isImage = isImageMimeType(mimeType);
+    const fileCategory = categorizeFileType(mimeType);
 
-    // For images, we only have 1 "page"
-    const effectiveNumPages = isImage ? 1 : numPages;
+    // For images and office docs, we only have 1 "page"
+    const effectiveNumPages = isImage || fileCategory === 'docx' || fileCategory === 'xlsx' || fileCategory === 'email'
+        ? 1
+        : numPages;
+
+    // Check if this is an Office/Email document that uses a specialized viewer
+    const usesSpecialViewer = fileCategory === 'docx' || fileCategory === 'xlsx' || fileCategory === 'email';
 
     return (
         <div className="h-full flex flex-col">
@@ -135,38 +189,69 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                                         <span className="text-xs text-muted-foreground">{previewError}</span>
                                     </div>
                                 </div>
+                            ) : blobUrl && fileCategory === 'docx' ? (
+                                <ViewerErrorBoundary fileType="docx">
+                                    <Suspense fallback={<ViewerLoadingFallback />}>
+                                        <DocxViewer fileData={blobUrl} className="h-full" />
+                                    </Suspense>
+                                </ViewerErrorBoundary>
+                            ) : blobUrl && fileCategory === 'xlsx' ? (
+                                <ViewerErrorBoundary fileType="xlsx">
+                                    <Suspense fallback={<ViewerLoadingFallback />}>
+                                        <XlsxViewer fileData={blobUrl} className="h-full" />
+                                    </Suspense>
+                                </ViewerErrorBoundary>
+                            ) : blobUrl && fileCategory === 'email' ? (
+                                <ViewerErrorBoundary fileType="email">
+                                    <Suspense fallback={<ViewerLoadingFallback />}>
+                                        <EmailViewer fileData={blobUrl} className="h-full" />
+                                    </Suspense>
+                                </ViewerErrorBoundary>
                             ) : blobUrl && isImage ? (
-                                <ImageViewer
-                                    fileUrl={blobUrl}
-                                    scale={scale}
-                                    boxes={ocrResults?.pages?.[0]?.boxes || []}
-                                    selectedBox={selectedBox}
-                                    onBoxClick={setSelectedBox}
-                                />
+                                <ViewerErrorBoundary fileType="image">
+                                    <ImageViewer
+                                        fileUrl={blobUrl}
+                                        scale={scale}
+                                        boxes={ocrResults?.pages?.[0]?.boxes || []}
+                                        selectedBox={selectedBox}
+                                        onBoxClick={setSelectedBox}
+                                    />
+                                </ViewerErrorBoundary>
                             ) : blobUrl ? (
-                                <div className="h-full overflow-auto bg-muted/30 flex justify-center p-4">
-                                    <Document
-                                        file={blobUrl}
-                                        onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                                        onLoadError={(err) => console.error('[PDF] Load error:', err)}
-                                        className="shadow-lg"
-                                    >
-                                        <div className="relative">
-                                            <Page
-                                                pageNumber={currentPage}
-                                                scale={scale}
-                                                renderTextLayer={true}
-                                                renderAnnotationLayer={true}
-                                            />
-                                            <BoundingBoxOverlay
-                                                boxes={ocrResults?.pages?.[currentPage - 1]?.boxes || []}
-                                                scale={scale}
-                                                selectedBox={selectedBox}
-                                                onBoxClick={setSelectedBox}
-                                            />
-                                        </div>
-                                    </Document>
-                                </div>
+                                <ViewerErrorBoundary fileType="pdf">
+                                    <div className="h-full overflow-auto bg-muted/30 flex justify-center p-4">
+                                        <Document
+                                            file={blobUrl}
+                                            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+                                            onLoadError={(err) => console.error('[PDF] Load error:', err)}
+                                            className="shadow-lg"
+                                        >
+                                            <div className="relative">
+                                                <Page
+                                                    pageNumber={currentPage}
+                                                    scale={scale}
+                                                    renderTextLayer={true}
+                                                    renderAnnotationLayer={true}
+                                                    onLoadSuccess={({ width, height }) => setPageDimensions({ width, height })}
+                                                />
+                                                <BoundingBoxOverlay
+                                                    boxes={ocrResults?.pages?.[currentPage - 1]?.boxes || []}
+                                                    scale={scale}
+                                                    selectedBox={selectedBox}
+                                                    onBoxClick={setSelectedBox}
+                                                />
+                                                {pageDimensions && (
+                                                    <AnnotationLayer
+                                                        pageNumber={currentPage}
+                                                        scale={scale}
+                                                        width={pageDimensions.width}
+                                                        height={pageDimensions.height}
+                                                    />
+                                                )}
+                                            </div>
+                                        </Document>
+                                    </div>
+                                </ViewerErrorBoundary>
                             ) : (
                                 <div className="h-full bg-muted/30" />
                             )}
@@ -174,9 +259,13 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
 
                         <ScrollSyncPane>
                             <div className="h-full overflow-auto bg-background">
-                                <Tabs defaultValue="extracted" className="h-full flex flex-col">
+                                <Tabs defaultValue="cockpit" className="h-full flex flex-col">
                                     <div className="px-4 pt-4 pb-2 border-b bg-background sticky top-0 z-10">
-                                        <TabsList className="grid w-full grid-cols-3 max-w-md">
+                                        <TabsList className="grid w-full grid-cols-5 max-w-xl">
+                                            <TabsTrigger value="cockpit" className="gap-2">
+                                                <Edit className="h-4 w-4" />
+                                                Cockpit
+                                            </TabsTrigger>
                                             <TabsTrigger value="extracted" className="gap-2">
                                                 <FileText className="h-4 w-4" />
                                                 Extrahiert
@@ -189,8 +278,15 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                                                 <FileCode className="h-4 w-4" />
                                                 E-Rechnung
                                             </TabsTrigger>
+                                            <TabsTrigger value="collaboration" className="gap-2">
+                                                <MessageSquare className="h-4 w-4" />
+                                                Diskussion
+                                            </TabsTrigger>
                                         </TabsList>
                                     </div>
+                                    <TabsContent value="cockpit" className="flex-1 overflow-auto mt-0">
+                                        <InlineMetadataEditor documentId={documentId} />
+                                    </TabsContent>
                                     <TabsContent value="extracted" className="flex-1 p-4 overflow-auto mt-0">
                                         <ExtractedDataPanel documentId={documentId} />
                                     </TabsContent>
@@ -203,6 +299,10 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                                     </TabsContent>
                                     <TabsContent value="einvoice" className="flex-1 p-4 overflow-auto mt-0">
                                         <EInvoicePanel documentId={documentId} />
+                                    </TabsContent>
+                                    <TabsContent value="collaboration" className="flex-1 p-4 overflow-auto mt-0 space-y-6">
+                                        <CommentsPanel documentId={documentId} />
+                                        <ActivityStream documentId={documentId} />
                                     </TabsContent>
                                 </Tabs>
                             </div>

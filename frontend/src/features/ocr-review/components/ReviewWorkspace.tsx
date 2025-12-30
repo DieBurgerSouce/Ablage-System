@@ -194,6 +194,8 @@ export function ReviewWorkspace({
 
         let cancelled = false
         const controller = new AbortController()
+        // FIX: Lokale Variable für Cleanup statt State (verhindert stale closure)
+        let currentBlobUrl: string | null = null
 
         async function fetchPreview() {
             setPreviewLoading(true)
@@ -212,8 +214,8 @@ export function ReviewWorkspace({
 
                 // Blob URL erstellen
                 const blob = new Blob([response.data], { type: 'image/png' })
-                const url = URL.createObjectURL(blob)
-                setPreviewImageUrl(url)
+                currentBlobUrl = URL.createObjectURL(blob)
+                setPreviewImageUrl(currentBlobUrl)
             } catch (err) {
                 if (!cancelled) {
                     console.error('Preview laden fehlgeschlagen:', err)
@@ -231,9 +233,9 @@ export function ReviewWorkspace({
         return () => {
             cancelled = true
             controller.abort()
-            // Alte Blob URL aufräumen
-            if (previewImageUrl) {
-                URL.revokeObjectURL(previewImageUrl)
+            // FIX: Lokale Variable für Cleanup (nicht stale State)
+            if (currentBlobUrl) {
+                URL.revokeObjectURL(currentBlobUrl)
             }
         }
     }, [sampleId])

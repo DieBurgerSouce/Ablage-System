@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_superuser
 from app.core.german_messages import HTTPErrors
+from app.core.security import build_content_disposition
 from app.db.models import User
 from app.db.schemas import (
     AuditLogView,
@@ -263,7 +264,8 @@ async def export_audit_logs(
         content=content,
         media_type=media_type,
         headers={
-            "Content-Disposition": f"attachment; filename={filename}",
+            # SECURITY: Use sanitized Content-Disposition (Phase 10)
+            "Content-Disposition": build_content_disposition(filename, "attachment"),
         },
     )
 

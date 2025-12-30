@@ -26,6 +26,7 @@ import structlog
 
 from app.api.dependencies import get_db, get_current_active_user
 from app.core.rate_limiting import limiter, get_user_identifier
+from app.core.security import build_content_disposition
 from app.db.models import User, PrivatSpace
 from app.db.schemas import (
     # Space
@@ -959,16 +960,12 @@ async def download_document(
                 detail="Dokumentinhalt nicht gefunden",
             )
 
-        # SECURITY: Prevent Header Injection - URL-encode the filename
-        # RFC 5987: Use filename* for UTF-8 encoded filenames
-        import urllib.parse
-        safe_filename = urllib.parse.quote(document.title, safe="")
-
+        # SECURITY: Use centralized sanitization to prevent CRLF injection (Phase 10)
         return Response(
             content=content,
             media_type=document.mime_type or "application/octet-stream",
             headers={
-                "Content-Disposition": f"attachment; filename*=UTF-8''{safe_filename}",
+                "Content-Disposition": build_content_disposition(document.title, "attachment"),
             },
         )
     except ValueError:
@@ -2520,7 +2517,8 @@ async def export_calendar(
         content=ical_bytes,
         media_type="text/calendar",
         headers={
-            "Content-Disposition": 'attachment; filename="privat-fristen.ics"',
+            # SECURITY: Use sanitized Content-Disposition (Phase 10)
+            "Content-Disposition": build_content_disposition("privat-fristen.ics", "attachment"),
         },
     )
 

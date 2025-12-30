@@ -6,10 +6,12 @@
  * - 2FA Setup mit QR-Code
  * - 2FA deaktivieren
  * - Backup-Codes regenerieren
+ * - Aktive Sitzungen verwalten
  */
 
 import { useState, useEffect } from 'react';
 import { Loader2, ShieldCheck, ShieldOff, KeyRound, AlertTriangle, QrCode, Copy, Check, RefreshCw } from 'lucide-react';
+import { ActiveSessionsTab } from './ActiveSessionsTab';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -534,6 +536,11 @@ export function SecuritySettingsTab() {
                     </div>
                 </>
             )}
+
+            <Separator />
+
+            {/* Active Sessions Section */}
+            <ActiveSessionsTab />
         </div>
     );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Loader2, Sparkles, FileSearch, CheckCircle2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
@@ -9,6 +9,8 @@ interface AnalysisStepProps {
 export function AnalysisStep({ onComplete }: AnalysisStepProps) {
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState('Initialisiere Smart Analysis...');
+    // FIX Phase 8.1: useRef für Timeout-Tracking - verhindert Memory Leak bei Unmount
+    const completionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const steps = [
@@ -24,7 +26,8 @@ export function AnalysisStep({ onComplete }: AnalysisStepProps) {
         const interval = setInterval(() => {
             if (currentStep >= steps.length) {
                 clearInterval(interval);
-                setTimeout(onComplete, 500);
+                // FIX Phase 8.1: Timeout-ID speichern für Cleanup
+                completionTimeoutRef.current = setTimeout(onComplete, 500);
                 return;
             }
 
@@ -34,7 +37,14 @@ export function AnalysisStep({ onComplete }: AnalysisStepProps) {
             currentStep++;
         }, 800); // Simulate processing time
 
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            // FIX Phase 8.1: Completion-Timeout bei Unmount clearen
+            if (completionTimeoutRef.current) {
+                clearTimeout(completionTimeoutRef.current);
+                completionTimeoutRef.current = null;
+            }
+        };
     }, [onComplete]);
 
     return (

@@ -5,12 +5,19 @@ Handles JWT token generation/validation, password hashing, and token blacklistin
 All error messages in German for user-facing responses.
 
 Token-Blacklist: Redis-basiert mit In-Memory-Fallback für Skalierbarkeit.
+
+SECURITY UTILITIES (Phase 10):
+- Content-Disposition Header sanitization (CRLF injection prevention)
+- Email Header sanitization
+- Redis Key validation
 """
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 import asyncio
 import secrets
+import re
+from urllib.parse import quote
 
 import bcrypt
 from jose import JWTError, jwt
@@ -1028,3 +1035,96 @@ async def validate_url_for_ssrf_async(url: str) -> Tuple[bool, str]:
 
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, validate_url_for_ssrf, url)
+
+
+# =============================================================================
+# SECURITY: HTTP Header Sanitization (PHASE 10 FIX)
+# =============================================================================
+# Prevents CRLF injection / HTTP Response Splitting attacks
+# Reference: CWE-113, OWASP HTTP Response Splitting
+
+def sanitize_filename_for_header(filename: str) -> str:
+    """Sanitize filename for use in Content-Disposition header.
+
+    Removes CRLF characters to prevent HTTP Response Splitting attacks
+    and encodes the filename using RFC 5987 for Unicode support.
+
+    Args:
+        filename: Original filename (may contain Unicode, CRLF)
+
+    Returns:
+        Safe filename header value with proper encoding
+
+    Security:
+        - Strips CR (\\r), LF (\\n), and NULL (\\x00) characters
+        - Removes other control characters (ASCII 0-31 except tab)
+        - Limits filename length to 255 characters
+    """
+    if not filename:
+        return "download"
+
+    # SECURITY: Remove CRLF and NULL characters completely
+    safe_name = filename.replace('\r', '').replace('\n', '').replace('\x00', '')
+
+    # Remove any other control characters (ASCII 0-31 except tab)
+    safe_name = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', safe_name)
+
+    # Limit filename length to prevent buffer overflow attacks
+    if len(safe_name) > 255:
+        # Keep extension
+        parts = safe_name.rsplit('.', 1)
+        if len(parts) == 2 and len(parts[1]) < 20:
+            safe_name = parts[0][:255 - len(parts[1]) - 1] + '.' + parts[1]
+        else:
+            safe_name = safe_name[:255]
+
+    return safe_name or "download"
+
+
+def build_content_disposition(filename: str, disposition: str = "attachment") -> str:
+    """Build a safe Content-Disposition header value.
+
+    Uses RFC 5987 encoding for proper Unicode support while
+    maintaining backwards compatibility with ASCII-only clients.
+
+    Args:
+        filename: Original filename
+        disposition: 'attachment' (download) or 'inline' (display)
+
+    Returns:
+        Safe Content-Disposition header value
+
+    Example:
+        >>> build_content_disposition("Rechnung_Müller.pdf")
+        'attachment; filename="Rechnung_M_ller.pdf"; filename*=UTF-8\'\'Rechnung_M%C3%BCller.pdf'
+    """
+    safe_name = sanitize_filename_for_header(filename)
+
+    # Create ASCII fallback (replace non-ASCII with underscore)
+    ascii_name = safe_name.encode('ascii', 'replace').decode('ascii').replace('?', '_')
+
+    # RFC 5987 encoding for the full Unicode filename
+    encoded_name = quote(safe_name, safe='')
+
+    # Return header with both fallback and encoded filename
+    return f'{disposition}; filename="{ascii_name}"; filename*=UTF-8\'\'{encoded_name}'
+
+
+def sanitize_email_header(value: str) -> str:
+    """Sanitize email header values to prevent header injection attacks.
+
+    Removes CRLF characters that could be used to inject additional headers.
+
+    Args:
+        value: Raw header value (e.g., subject, to address)
+
+    Returns:
+        Sanitized header value safe for email headers
+
+    Security:
+        - Prevents email header injection (CWE-93)
+        - Removes CR, LF, and NULL characters
+    """
+    if not value:
+        return ""
+    return value.replace('\r', '').replace('\n', '').replace('\x00', '')

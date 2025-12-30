@@ -12,8 +12,78 @@ from datetime import datetime, timezone
 from uuid import UUID
 import io
 import asyncio
+import re
+from urllib.parse import quote
 
 import structlog
+
+
+# =============================================================================
+# SECURITY: Content-Disposition Header Sanitization (PHASE 10.1 FIX)
+# =============================================================================
+# Prevents CRLF injection / HTTP Response Splitting attacks
+# Reference: CWE-113, OWASP HTTP Response Splitting
+
+def sanitize_filename_for_header(filename: str) -> str:
+    """Sanitize filename for use in Content-Disposition header.
+
+    Removes CRLF characters to prevent HTTP Response Splitting attacks
+    and encodes the filename using RFC 5987 for Unicode support.
+
+    Args:
+        filename: Original filename (may contain Unicode, CRLF)
+
+    Returns:
+        Safe filename header value with proper encoding
+
+    Security:
+        - Strips CR (\\r), LF (\\n), and NULL (\\x00) characters
+        - Uses RFC 5987 encoding for non-ASCII characters
+        - Provides fallback ASCII filename for legacy clients
+    """
+    # SECURITY: Remove CRLF and NULL characters completely
+    safe_name = filename.replace('\r', '').replace('\n', '').replace('\x00', '')
+
+    # Remove any other control characters (ASCII 0-31 except tab)
+    safe_name = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', safe_name)
+
+    # Limit filename length to prevent buffer overflow attacks
+    if len(safe_name) > 255:
+        # Keep extension
+        parts = safe_name.rsplit('.', 1)
+        if len(parts) == 2 and len(parts[1]) < 20:
+            safe_name = parts[0][:255 - len(parts[1]) - 1] + '.' + parts[1]
+        else:
+            safe_name = safe_name[:255]
+
+    return safe_name
+
+
+def build_content_disposition(filename: str, disposition: str = "attachment") -> str:
+    """Build a safe Content-Disposition header value.
+
+    Uses RFC 5987 encoding for proper Unicode support while
+    maintaining backwards compatibility with ASCII-only clients.
+
+    Args:
+        filename: Original filename
+        disposition: 'attachment' (download) or 'inline' (display)
+
+    Returns:
+        Safe Content-Disposition header value
+    """
+    safe_name = sanitize_filename_for_header(filename)
+
+    # Create ASCII fallback (replace non-ASCII with underscore)
+    ascii_name = safe_name.encode('ascii', 'replace').decode('ascii').replace('?', '_')
+
+    # RFC 5987 encoding for the full Unicode filename
+    encoded_name = quote(safe_name, safe='')
+
+    # Return header with both fallback and encoded filename
+    return f'{disposition}; filename="{ascii_name}"; filename*=UTF-8\'\'{encoded_name}'
+
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, File, Form, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -584,7 +654,8 @@ async def download_document(
         content=file_content,
         media_type=document.mime_type or "application/octet-stream",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            # SECURITY: Use sanitized Content-Disposition (Phase 10.1)
+            "Content-Disposition": build_content_disposition(filename, "attachment"),
             "Content-Length": str(len(file_content))
         }
     )
@@ -970,7 +1041,8 @@ async def stream_document_download(
         generate_chunks(),
         media_type=content_type,
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            # SECURITY: Use sanitized Content-Disposition (Phase 10.1)
+            "Content-Disposition": build_content_disposition(filename, "attachment"),
             "Content-Length": str(doc_info.get("size", 0)),
             "X-Content-Type-Options": "nosniff",
             "Cache-Control": "private, no-cache",
@@ -1052,7 +1124,8 @@ async def download_document_as_pdf(
             content=file_content,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}"',
+                # SECURITY: Use sanitized Content-Disposition (Phase 10.1)
+                "Content-Disposition": build_content_disposition(filename, "attachment"),
                 "Content-Length": str(len(file_content))
             }
         )
@@ -1132,7 +1205,8 @@ async def download_document_as_pdf(
             content=pdf_content,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}"',
+                # SECURITY: Use sanitized Content-Disposition (Phase 10.1)
+                "Content-Disposition": build_content_disposition(filename, "attachment"),
                 "Content-Length": str(len(pdf_content))
             }
         )
@@ -1353,7 +1427,8 @@ async def get_document_report(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            # SECURITY: Use sanitized Content-Disposition (Phase 10.1)
+            "Content-Disposition": build_content_disposition(filename, "attachment"),
             "Content-Length": str(len(pdf_bytes))
         }
     )
@@ -1715,7 +1790,8 @@ async def batch_export_documents(
         io.BytesIO(export_data),
         media_type=content_type,
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            # SECURITY: Use sanitized Content-Disposition (Phase 10.1)
+            "Content-Disposition": build_content_disposition(filename, "attachment"),
             "X-Export-Count": str(result.processed),
             "X-Export-Failed": str(result.failed)
         }
@@ -2934,7 +3010,8 @@ async def bulk_download_zip(
             io.BytesIO(zip_bytes),
             media_type="application/zip",
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}"',
+                # SECURITY: Use sanitized Content-Disposition (Phase 10.1)
+                "Content-Disposition": build_content_disposition(filename, "attachment"),
                 "Content-Length": str(len(zip_bytes)),
             }
         )
@@ -3011,7 +3088,8 @@ async def bulk_export_csv(
             io.BytesIO(csv_bytes),
             media_type="text/csv; charset=utf-8",
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}"',
+                # SECURITY: Use sanitized Content-Disposition (Phase 10.1)
+                "Content-Disposition": build_content_disposition(filename, "attachment"),
                 "Content-Length": str(len(csv_bytes)),
             }
         )
