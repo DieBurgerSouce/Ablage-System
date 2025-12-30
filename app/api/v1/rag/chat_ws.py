@@ -42,10 +42,12 @@ async def authenticate_websocket(token: str) -> tuple[User | None, str | None]:
         Tuple von (User, error_message)
     """
     try:
+        # Explizite Expiration-Pruefung fuer Enterprise Security
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
+            algorithms=[settings.ALGORITHM],
+            options={"verify_exp": True, "require_exp": True}
         )
         user_id = payload.get("sub")
         if not user_id:

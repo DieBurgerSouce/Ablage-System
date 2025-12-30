@@ -16,9 +16,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
-from app.db.database import get_db
+# Fix 13: Korrigierte Imports
+from app.api.dependencies import get_db, get_current_user
 from app.db.models import User, Role, Permission
-from app.api.dependencies import get_current_user
 from app.services.permission_service import PermissionService
 from app.core.rbac import require_permission, require_any_permission
 from app.core.audit_logger import AuditLogger, AuditEventType

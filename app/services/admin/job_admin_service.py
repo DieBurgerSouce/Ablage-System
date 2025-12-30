@@ -269,26 +269,48 @@ class JobAdminService:
                 message="Auftrag kann nicht abgebrochen werden (bereits abgeschlossen)",
             )
 
-        # Cancel the job
-        job.status = ProcessingStatus.CANCELLED
-        job.completed_at = datetime.utcnow()
-        job.error_message = f"Abgebrochen durch Admin: {reason}" if reason else "Abgebrochen durch Admin"
+        # Store previous status before modifying
+        previous_status = job.status.value if hasattr(job.status, 'value') else str(job.status)
 
-        # Log admin action
-        admin_action = AdminAction(
-            admin_id=admin.id,
-            target_user_id=None,
-            action="cancel_job",
-            action_details={
-                "job_id": str(job_id),
-                "previous_status": job.status.value if hasattr(job.status, 'value') else str(job.status),
-                "reason": reason,
-            },
-            ip_address=ip_address,
-        )
-        db.add(admin_action)
+        # Use savepoint for atomic operation (job update + admin action)
+        try:
+            async with db.begin_nested():
+                # Cancel the job
+                job.status = ProcessingStatus.CANCELLED
+                job.completed_at = datetime.utcnow()
+                job.error_message = f"Abgebrochen durch Admin: {reason}" if reason else "Abgebrochen durch Admin"
 
-        await db.commit()
+                # Log admin action
+                admin_action = AdminAction(
+                    admin_id=admin.id,
+                    target_user_id=None,
+                    action="cancel_job",
+                    action_details={
+                        "job_id": str(job_id),
+                        "previous_status": previous_status,
+                        "reason": reason,
+                    },
+                    ip_address=ip_address,
+                )
+                db.add(admin_action)
+
+            # Savepoint succeeded - commit the transaction
+            await db.commit()
+
+        except Exception as e:
+            await db.rollback()
+            logger.error(
+                "cancel_job_failed",
+                job_id=str(job_id),
+                admin_id=str(admin.id),
+                error=str(e),
+            )
+            return JobActionResponse(
+                success=False,
+                job_id=job_id,
+                action="cancel",
+                message="Betriebsfehler aufgetreten. Bitte versuchen Sie es spaeter erneut.",
+            )
 
         logger.info(
             "job_cancelled_by_admin",
@@ -347,35 +369,54 @@ class JobAdminService:
                 message="Nur fehlgeschlagene Auftraege koennen wiederholt werden",
             )
 
-        # Create new job
-        new_job = ProcessingJob(
-            document_id=job.document_id,
-            job_type=job.job_type,
-            backend=backend or job.backend,
-            status=ProcessingStatus.PENDING,
-            priority=priority or job.priority,
-            retry_count=0,
-            max_retries=job.max_retries,
-        )
-        db.add(new_job)
-        await db.flush()
+        # Use savepoint for atomic operation (new job + admin action)
+        try:
+            async with db.begin_nested():
+                # Create new job
+                new_job = ProcessingJob(
+                    document_id=job.document_id,
+                    job_type=job.job_type,
+                    backend=backend or job.backend,
+                    status=ProcessingStatus.PENDING,
+                    priority=priority or job.priority,
+                    retry_count=0,
+                    max_retries=job.max_retries,
+                )
+                db.add(new_job)
+                await db.flush()
 
-        # Log admin action
-        admin_action = AdminAction(
-            admin_id=admin.id,
-            target_user_id=None,
-            action="retry_job",
-            action_details={
-                "original_job_id": str(job_id),
-                "new_job_id": str(new_job.id),
-                "priority": priority or job.priority,
-                "backend": backend or job.backend,
-            },
-            ip_address=ip_address,
-        )
-        db.add(admin_action)
+                # Log admin action
+                admin_action = AdminAction(
+                    admin_id=admin.id,
+                    target_user_id=None,
+                    action="retry_job",
+                    action_details={
+                        "original_job_id": str(job_id),
+                        "new_job_id": str(new_job.id),
+                        "priority": priority or job.priority,
+                        "backend": backend or job.backend,
+                    },
+                    ip_address=ip_address,
+                )
+                db.add(admin_action)
 
-        await db.commit()
+            # Savepoint succeeded - commit the transaction
+            await db.commit()
+
+        except Exception as e:
+            await db.rollback()
+            logger.error(
+                "retry_job_failed",
+                job_id=str(job_id),
+                admin_id=str(admin.id),
+                error=str(e),
+            )
+            return JobActionResponse(
+                success=False,
+                job_id=job_id,
+                action="retry",
+                message="Betriebsfehler aufgetreten. Bitte versuchen Sie es spaeter erneut.",
+            )
 
         logger.info(
             "job_retried_by_admin",
@@ -429,19 +470,344 @@ class JobAdminService:
                 message="Keine wartenden Auftraege vorhanden",
             )
 
-        # Delete jobs
-        await db.execute(
-            delete(ProcessingJob).where(ProcessingJob.status == status)
+        status_value = status.value if hasattr(status, 'value') else str(status)
+
+        # Use savepoint for atomic operation (delete + admin action)
+        try:
+            async with db.begin_nested():
+                # Delete jobs
+                await db.execute(
+                    delete(ProcessingJob).where(ProcessingJob.status == status)
+                )
+
+                # Log admin action
+                admin_action = AdminAction(
+                    admin_id=admin.id,
+                    target_user_id=None,
+                    action="clear_queue",
+                    action_details={
+                        "status": status_value,
+                        "cleared_count": count,
+                    },
+                    ip_address=ip_address,
+                )
+                db.add(admin_action)
+
+            # Savepoint succeeded - commit the transaction
+            await db.commit()
+
+        except Exception as e:
+            await db.rollback()
+            logger.error(
+                "clear_queue_failed",
+                admin_id=str(admin.id),
+                status=status_value,
+                target_count=count,
+                error=str(e),
+            )
+            return QueueClearResponse(
+                success=False,
+                cleared_count=0,
+                message="Fehler beim Leeren der Warteschlange. Bitte versuchen Sie es spaeter erneut.",
+            )
+
+        logger.warning(
+            "queue_cleared_by_admin",
+            admin_id=str(admin.id),
+            status=status_value,
+            count=count,
         )
+
+        return QueueClearResponse(
+            success=True,
+            cleared_count=count,
+            message=f"{count} wartende Auftraege wurden geloescht",
+        )
+
+    @staticmethod
+    async def get_job_stats(db: AsyncSession) -> Dict[str, Any]:
+        """Get comprehensive job statistics.
+
+        Args:
+            db: Database session
+
+        Returns:
+            Dictionary with job statistics
+        """
+        from datetime import timedelta
+
+        now = datetime.now(timezone.utc)
+        last_24h = now - timedelta(hours=24)
+        last_hour = now - timedelta(hours=1)
+
+        # Status summary
+        status_result = await db.execute(
+            select(ProcessingJob.status, func.count())
+            .group_by(ProcessingJob.status)
+        )
+        status_summary = {
+            row[0].value if hasattr(row[0], 'value') else row[0]: row[1]
+            for row in status_result.all()
+        }
+
+        # Active jobs (processing + queued)
+        active_count = status_summary.get('processing', 0) + status_summary.get('queued', 0)
+
+        # Jobs in last 24h
+        result_24h = await db.execute(
+            select(func.count()).where(ProcessingJob.created_at >= last_24h)
+        )
+        jobs_24h = result_24h.scalar() or 0
+
+        # Completed in last 24h
+        completed_24h_result = await db.execute(
+            select(func.count()).where(
+                and_(
+                    ProcessingJob.status == ProcessingStatus.COMPLETED,
+                    ProcessingJob.completed_at >= last_24h
+                )
+            )
+        )
+        completed_24h = completed_24h_result.scalar() or 0
+
+        # Failed in last 24h
+        failed_24h_result = await db.execute(
+            select(func.count()).where(
+                and_(
+                    ProcessingJob.status == ProcessingStatus.FAILED,
+                    ProcessingJob.completed_at >= last_24h
+                )
+            )
+        )
+        failed_24h = failed_24h_result.scalar() or 0
+
+        # Success rate
+        total_finished_24h = completed_24h + failed_24h
+        success_rate = (completed_24h / total_finished_24h * 100) if total_finished_24h > 0 else 100.0
+
+        # Jobs completed in last hour (throughput)
+        throughput_result = await db.execute(
+            select(func.count()).where(
+                and_(
+                    ProcessingJob.status == ProcessingStatus.COMPLETED,
+                    ProcessingJob.completed_at >= last_hour
+                )
+            )
+        )
+        throughput_per_hour = throughput_result.scalar() or 0
+
+        # Average processing time (last 24h, completed jobs)
+        avg_time_result = await db.execute(
+            select(func.avg(
+                func.extract('epoch', ProcessingJob.completed_at) -
+                func.extract('epoch', ProcessingJob.started_at)
+            )).where(
+                and_(
+                    ProcessingJob.status == ProcessingStatus.COMPLETED,
+                    ProcessingJob.completed_at >= last_24h,
+                    ProcessingJob.started_at.isnot(None)
+                )
+            )
+        )
+        avg_processing_time_seconds = avg_time_result.scalar() or 0
+
+        # Average wait time (last 24h)
+        avg_wait_result = await db.execute(
+            select(func.avg(
+                func.extract('epoch', ProcessingJob.started_at) -
+                func.extract('epoch', ProcessingJob.created_at)
+            )).where(
+                and_(
+                    ProcessingJob.started_at.isnot(None),
+                    ProcessingJob.created_at >= last_24h
+                )
+            )
+        )
+        avg_wait_time_seconds = avg_wait_result.scalar() or 0
+
+        # Jobs by backend
+        backend_result = await db.execute(
+            select(ProcessingJob.backend, func.count())
+            .where(ProcessingJob.created_at >= last_24h)
+            .group_by(ProcessingJob.backend)
+        )
+        jobs_by_backend = {row[0] or 'unknown': row[1] for row in backend_result.all()}
+
+        # Jobs by type
+        type_result = await db.execute(
+            select(ProcessingJob.job_type, func.count())
+            .where(ProcessingJob.created_at >= last_24h)
+            .group_by(ProcessingJob.job_type)
+        )
+        jobs_by_type = {row[0] or 'unknown': row[1] for row in type_result.all()}
+
+        return {
+            "status_summary": status_summary,
+            "total_jobs": sum(status_summary.values()),
+            "active_jobs": active_count,
+            "queued_jobs": status_summary.get('queued', 0) + status_summary.get('pending', 0),
+            "jobs_24h": jobs_24h,
+            "completed_24h": completed_24h,
+            "failed_24h": failed_24h,
+            "success_rate_24h": round(success_rate, 2),
+            "throughput_per_hour": throughput_per_hour,
+            "avg_processing_time_ms": int(avg_processing_time_seconds * 1000) if avg_processing_time_seconds else 0,
+            "avg_wait_time_ms": int(avg_wait_time_seconds * 1000) if avg_wait_time_seconds else 0,
+            "jobs_by_backend": jobs_by_backend,
+            "jobs_by_type": jobs_by_type,
+        }
+
+    @staticmethod
+    async def change_priority(
+        db: AsyncSession,
+        job_id: UUID,
+        priority: int,
+        admin: User,
+        ip_address: Optional[str] = None,
+    ) -> JobActionResponse:
+        """Change job priority.
+
+        Args:
+            db: Database session
+            job_id: Job to update
+            priority: New priority (1-10)
+            admin: Admin performing the action
+            ip_address: Request IP address
+
+        Returns:
+            Action response
+        """
+        from app.db.schemas import JobActionResponse
+
+        result = await db.execute(
+            select(ProcessingJob).where(ProcessingJob.id == job_id)
+        )
+        job = result.scalar_one_or_none()
+
+        if not job:
+            return JobActionResponse(
+                success=False,
+                job_id=job_id,
+                action="change_priority",
+                message="Auftrag nicht gefunden",
+            )
+
+        if job.status not in [ProcessingStatus.PENDING, ProcessingStatus.QUEUED]:
+            return JobActionResponse(
+                success=False,
+                job_id=job_id,
+                action="change_priority",
+                message="Prioritaet kann nur fuer wartende Auftraege geaendert werden",
+            )
+
+        old_priority = job.priority
+        job.priority = priority
 
         # Log admin action
         admin_action = AdminAction(
             admin_id=admin.id,
             target_user_id=None,
-            action="clear_queue",
+            action="change_job_priority",
             action_details={
-                "status": status.value if hasattr(status, 'value') else str(status),
-                "cleared_count": count,
+                "job_id": str(job_id),
+                "old_priority": old_priority,
+                "new_priority": priority,
+            },
+            ip_address=ip_address,
+        )
+        db.add(admin_action)
+
+        await db.commit()
+
+        logger.info(
+            "job_priority_changed",
+            job_id=str(job_id),
+            admin_id=str(admin.id),
+            old_priority=old_priority,
+            new_priority=priority,
+        )
+
+        return JobActionResponse(
+            success=True,
+            job_id=job_id,
+            action="change_priority",
+            message=f"Prioritaet von {old_priority} auf {priority} geaendert",
+        )
+
+    @staticmethod
+    async def force_kill_job(
+        db: AsyncSession,
+        job_id: UUID,
+        admin: User,
+        ip_address: Optional[str] = None,
+    ) -> JobActionResponse:
+        """Force kill a stuck job.
+
+        Args:
+            db: Database session
+            job_id: Job to force kill
+            admin: Admin performing the action
+            ip_address: Request IP address
+
+        Returns:
+            Action response
+        """
+        from app.db.schemas import JobActionResponse
+
+        result = await db.execute(
+            select(ProcessingJob).where(ProcessingJob.id == job_id)
+        )
+        job = result.scalar_one_or_none()
+
+        if not job:
+            return JobActionResponse(
+                success=False,
+                job_id=job_id,
+                action="force_kill",
+                message="Auftrag nicht gefunden",
+            )
+
+        if job.status not in [ProcessingStatus.PROCESSING, ProcessingStatus.QUEUED]:
+            return JobActionResponse(
+                success=False,
+                job_id=job_id,
+                action="force_kill",
+                message="Nur laufende Auftraege koennen erzwungen beendet werden",
+            )
+
+        # Try to revoke the Celery task if we have a worker_id
+        revoked = False
+        if job.worker_id:
+            try:
+                from app.workers.celery_app import celery_app
+                celery_app.control.revoke(job.worker_id, terminate=True, signal="SIGKILL")
+                revoked = True
+                logger.warning(
+                    "celery_task_revoked",
+                    task_id=job.worker_id,
+                    job_id=str(job_id),
+                )
+            except Exception as e:
+                logger.error(
+                    "celery_revoke_failed",
+                    task_id=job.worker_id,
+                    error=str(e),
+                )
+
+        # Update job status
+        job.status = ProcessingStatus.CANCELLED
+        job.completed_at = datetime.now(timezone.utc)
+        job.error_message = "Erzwungen beendet durch Admin (SIGKILL)"
+
+        # Log admin action
+        admin_action = AdminAction(
+            admin_id=admin.id,
+            target_user_id=None,
+            action="force_kill_job",
+            action_details={
+                "job_id": str(job_id),
+                "worker_id": job.worker_id,
+                "revoked": revoked,
             },
             ip_address=ip_address,
         )
@@ -450,14 +816,167 @@ class JobAdminService:
         await db.commit()
 
         logger.warning(
-            "queue_cleared_by_admin",
+            "job_force_killed",
+            job_id=str(job_id),
             admin_id=str(admin.id),
-            status=status.value if hasattr(status, 'value') else str(status),
-            count=count,
+            worker_id=job.worker_id,
+            revoked=revoked,
         )
 
-        return QueueClearResponse(
+        return JobActionResponse(
             success=True,
-            cleared_count=count,
-            message=f"{count} wartende Auftraege wurden geloescht",
+            job_id=job_id,
+            action="force_kill",
+            message="Auftrag wurde erzwungen beendet" + (" (Celery Task widerrufen)" if revoked else ""),
+        )
+
+    @staticmethod
+    async def pause_job(
+        db: AsyncSession,
+        job_id: UUID,
+        admin: User,
+        ip_address: Optional[str] = None,
+    ) -> JobActionResponse:
+        """Pause a job.
+
+        Args:
+            db: Database session
+            job_id: Job to pause
+            admin: Admin performing the action
+            ip_address: Request IP address
+
+        Returns:
+            Action response
+        """
+        from app.db.schemas import JobActionResponse
+
+        result = await db.execute(
+            select(ProcessingJob).where(ProcessingJob.id == job_id)
+        )
+        job = result.scalar_one_or_none()
+
+        if not job:
+            return JobActionResponse(
+                success=False,
+                job_id=job_id,
+                action="pause",
+                message="Auftrag nicht gefunden",
+            )
+
+        if job.status not in [ProcessingStatus.PENDING, ProcessingStatus.QUEUED, ProcessingStatus.PROCESSING]:
+            return JobActionResponse(
+                success=False,
+                job_id=job_id,
+                action="pause",
+                message="Nur aktive Auftraege koennen pausiert werden",
+            )
+
+        # We use a special status marker in the result field since ProcessingStatus doesn't have PAUSED
+        if job.result is None:
+            job.result = {}
+        job.result["paused"] = True
+        job.result["paused_at"] = datetime.now(timezone.utc).isoformat()
+        job.result["paused_by"] = str(admin.id)
+
+        # Log admin action
+        admin_action = AdminAction(
+            admin_id=admin.id,
+            target_user_id=None,
+            action="pause_job",
+            action_details={
+                "job_id": str(job_id),
+                "previous_status": job.status.value if hasattr(job.status, 'value') else str(job.status),
+            },
+            ip_address=ip_address,
+        )
+        db.add(admin_action)
+
+        await db.commit()
+
+        logger.info(
+            "job_paused",
+            job_id=str(job_id),
+            admin_id=str(admin.id),
+        )
+
+        return JobActionResponse(
+            success=True,
+            job_id=job_id,
+            action="pause",
+            message="Auftrag wurde pausiert",
+        )
+
+    @staticmethod
+    async def resume_job(
+        db: AsyncSession,
+        job_id: UUID,
+        admin: User,
+        ip_address: Optional[str] = None,
+    ) -> JobActionResponse:
+        """Resume a paused job.
+
+        Args:
+            db: Database session
+            job_id: Job to resume
+            admin: Admin performing the action
+            ip_address: Request IP address
+
+        Returns:
+            Action response
+        """
+        from app.db.schemas import JobActionResponse
+
+        result = await db.execute(
+            select(ProcessingJob).where(ProcessingJob.id == job_id)
+        )
+        job = result.scalar_one_or_none()
+
+        if not job:
+            return JobActionResponse(
+                success=False,
+                job_id=job_id,
+                action="resume",
+                message="Auftrag nicht gefunden",
+            )
+
+        if not job.result or not job.result.get("paused"):
+            return JobActionResponse(
+                success=False,
+                job_id=job_id,
+                action="resume",
+                message="Auftrag ist nicht pausiert",
+            )
+
+        # Remove pause marker
+        job.result.pop("paused", None)
+        job.result.pop("paused_at", None)
+        job.result.pop("paused_by", None)
+        job.result["resumed_at"] = datetime.now(timezone.utc).isoformat()
+        job.result["resumed_by"] = str(admin.id)
+
+        # Log admin action
+        admin_action = AdminAction(
+            admin_id=admin.id,
+            target_user_id=None,
+            action="resume_job",
+            action_details={
+                "job_id": str(job_id),
+            },
+            ip_address=ip_address,
+        )
+        db.add(admin_action)
+
+        await db.commit()
+
+        logger.info(
+            "job_resumed",
+            job_id=str(job_id),
+            admin_id=str(admin.id),
+        )
+
+        return JobActionResponse(
+            success=True,
+            job_id=job_id,
+            action="resume",
+            message="Auftrag wurde fortgesetzt",
         )

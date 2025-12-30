@@ -2,6 +2,7 @@
 
 import os
 import time
+import random
 from datetime import datetime, timezone
 import structlog
 from celery import Celery, Task
@@ -88,9 +89,20 @@ def acquire_gpu_lock(timeout: int = _GPU_LOCK_ACQUIRE_TIMEOUT) -> str:
                 )
                 return lock_value
         except RedisError as e:
-            logger.warning("gpu_lock_redis_error", error=str(e), attempt=attempt)
+            # Fix 10: Exponential Backoff mit Jitter bei Redis-Fehlern
+            base_delay = _GPU_LOCK_RETRY_INTERVAL * (2 ** min(attempt, 5))  # Max 2^5 = 32x
+            jitter = random.uniform(0, base_delay * 0.5)  # 0-50% Jitter
+            retry_delay = min(base_delay + jitter, 5.0)  # Max 5 Sekunden
+            logger.warning(
+                "gpu_lock_redis_error",
+                error=str(e),
+                attempt=attempt,
+                retry_delay_ms=int(retry_delay * 1000)
+            )
+            time.sleep(retry_delay)
+            continue
 
-        # Short non-blocking sleep (100ms)
+        # Short non-blocking sleep (100ms) fuer normale Lock-Checks
         time.sleep(_GPU_LOCK_RETRY_INTERVAL)
 
     elapsed = time.time() - start_time
