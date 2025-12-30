@@ -432,11 +432,22 @@ export interface ZmSummary {
   byCountry: Array<{
     countryCode: string;
     amount: number;
-    isTriangular: boolean;
+    recordCount: number;
   }>;
   deadline: string; // 25th of following month
   isSubmitted: boolean;
   submittedAt?: string;
+}
+
+/** ZM Record - einzelner Eintrag fuer ZM Meldung */
+export interface ZmRecord {
+  id: string;
+  vatId: string;
+  countryCode: string;
+  amount: number;
+  isTriangular: boolean;
+  triangularMarker?: '1' | null;  // Kz.1 fuer Dreiecksgeschaeft
+  classificationId: string;
 }
 
 // =============================================================================

@@ -22,6 +22,9 @@ export * from './api';
 // ==================== Model Types ====================
 export * from './models';
 
+// ==================== Privat Module Types ====================
+export * from './privat';
+
 // ==================== Re-exports for convenience ====================
 
 // Most commonly used types for quick access

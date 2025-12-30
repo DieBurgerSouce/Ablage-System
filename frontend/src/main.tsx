@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'sonner'
 import { queryClient } from '@/lib/api/query-client'
 import { AuthProvider } from '@/lib/auth/AuthContext'
 import { ThemeProvider } from '@/lib/theme/ThemeContext'
@@ -80,6 +81,20 @@ createRoot(document.getElementById('root')!).render(
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <RouterProvider router={router} />
+            <Toaster
+              position="bottom-right"
+              expand={false}
+              richColors
+              closeButton
+              toastOptions={{
+                duration: 5000,
+                classNames: {
+                  toast: 'font-sans',
+                  title: 'font-medium',
+                  description: 'text-muted-foreground',
+                },
+              }}
+            />
           </AuthProvider>
         </QueryClientProvider>
       </ThemeProvider>

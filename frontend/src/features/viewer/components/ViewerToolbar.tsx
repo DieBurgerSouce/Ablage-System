@@ -1,8 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCw, Download, Printer } from 'lucide-react';
+import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCw, Download, Printer, Highlighter, MessageSquare, MousePointer2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { motionTokens } from '@/lib/motion-tokens';
+import { useAnnotationStore } from '../store/useAnnotationStore';
+import { cn } from '@/lib/utils';
 
 interface ViewerToolbarProps {
     currentPage: number;
@@ -16,6 +18,8 @@ interface ViewerToolbarProps {
 const MotionDiv = motion.div;
 
 export function ViewerToolbar({ currentPage, numPages, scale, onPageChange, onZoomIn, onZoomOut }: ViewerToolbarProps) {
+    const { mode, setMode } = useAnnotationStore()
+
     return (
         <MotionDiv
             initial={{ opacity: 0, y: -10 }}
@@ -24,6 +28,39 @@ export function ViewerToolbar({ currentPage, numPages, scale, onPageChange, onZo
             className="h-14 border-b bg-background/80 backdrop-blur-md flex items-center justify-between px-4 sticky top-0 z-20"
         >
             <div className="flex items-center gap-2">
+                <div className="flex items-center bg-muted/50 rounded-lg p-1 border mr-2">
+                    <Button
+                        variant={mode === 'view' ? 'secondary' : 'ghost'}
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setMode('view')}
+                        aria-label="Auswahl-Modus"
+                        title="Auswahl"
+                    >
+                        <MousePointer2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                        variant={mode === 'highlight' ? 'secondary' : 'ghost'}
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setMode('highlight')}
+                        aria-label="Hervorheben-Modus"
+                        title="Hervorheben"
+                    >
+                        <Highlighter className="w-4 h-4 text-yellow-500" />
+                    </Button>
+                    <Button
+                        variant={mode === 'comment' ? 'secondary' : 'ghost'}
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setMode('comment')}
+                        aria-label="Kommentar-Modus"
+                        title="Kommentar"
+                    >
+                        <MessageSquare className="w-4 h-4 text-blue-500" />
+                    </Button>
+                </div>
+                <div className="w-px h-6 bg-border mx-2" />
                 <div className="flex items-center bg-muted/50 rounded-lg p-1 border">
                     <Button
                         variant="ghost"

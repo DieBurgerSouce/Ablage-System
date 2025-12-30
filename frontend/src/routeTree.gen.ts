@@ -15,21 +15,27 @@ import { Route as StreckengeschaeftRouteImport } from './app/routes/streckengesc
 import { Route as SpesenRouteImport } from './app/routes/spesen'
 import { Route as SearchRouteImport } from './app/routes/search'
 import { Route as RelationshipsRouteImport } from './app/routes/relationships'
+import { Route as PrivatRouteImport } from './app/routes/privat'
+import { Route as PersonalRouteImport } from './app/routes/personal'
 import { Route as MonitoringRouteImport } from './app/routes/monitoring'
 import { Route as LoginRouteImport } from './app/routes/login'
 import { Route as LieferantenRouteImport } from './app/routes/lieferanten'
 import { Route as KundenRouteImport } from './app/routes/kunden'
 import { Route as KasseRouteImport } from './app/routes/kasse'
 import { Route as JobsRouteImport } from './app/routes/jobs'
+import { Route as ForgotPasswordRouteImport } from './app/routes/forgot-password'
 import { Route as FinanzenRouteImport } from './app/routes/finanzen'
 import { Route as DocumentGroupsRouteImport } from './app/routes/document-groups'
 import { Route as ChatRouteImport } from './app/routes/chat'
 import { Route as BusinessEntitiesRouteImport } from './app/routes/business-entities'
 import { Route as AutomationRouteImport } from './app/routes/automation'
 import { Route as AdminRouteImport } from './app/routes/admin'
+import { Route as SplatRouteImport } from './app/routes/$'
 import { Route as IndexRouteImport } from './app/routes/index'
 import { Route as StreckengeschaeftIndexRouteImport } from './app/routes/streckengeschaeft.index'
 import { Route as SpesenIndexRouteImport } from './app/routes/spesen.index'
+import { Route as PrivatIndexRouteImport } from './app/routes/privat.index'
+import { Route as PersonalIndexRouteImport } from './app/routes/personal.index'
 import { Route as LieferantenIndexRouteImport } from './app/routes/lieferanten.index'
 import { Route as KundenIndexRouteImport } from './app/routes/kunden.index'
 import { Route as KasseIndexRouteImport } from './app/routes/kasse.index'
@@ -39,6 +45,14 @@ import { Route as ValidationQueueIdRouteImport } from './app/routes/validation-q
 import { Route as StreckengeschaeftZmRouteImport } from './app/routes/streckengeschaeft.zm'
 import { Route as StreckengeschaeftClassificationIdRouteImport } from './app/routes/streckengeschaeft.$classificationId'
 import { Route as SpesenReportIdRouteImport } from './app/routes/spesen.$reportId'
+import { Route as ResetPasswordTokenRouteImport } from './app/routes/reset-password.$token'
+import { Route as PrivatVersicherungenRouteImport } from './app/routes/privat.versicherungen'
+import { Route as PrivatNotfallRouteImport } from './app/routes/privat.notfall'
+import { Route as PrivatImmobilienRouteImport } from './app/routes/privat.immobilien'
+import { Route as PrivatFristenRouteImport } from './app/routes/privat.fristen'
+import { Route as PrivatFinanzenRouteImport } from './app/routes/privat.finanzen'
+import { Route as PrivatFahrzeugeRouteImport } from './app/routes/privat.fahrzeuge'
+import { Route as PersonalEmployeeIdRouteImport } from './app/routes/personal.$employeeId'
 import { Route as LieferantenSupplierIdRouteImport } from './app/routes/lieferanten.$supplierId'
 import { Route as KundenCustomerIdRouteImport } from './app/routes/kunden.$customerId'
 import { Route as FinanzenYearRouteImport } from './app/routes/finanzen.$year'
@@ -52,8 +66,10 @@ import { Route as AdminOcrTrainingRouteImport } from './app/routes/admin.ocr-tra
 import { Route as AdminOcrReviewRouteImport } from './app/routes/admin.ocr-review'
 import { Route as AdminOcrBackendsRouteImport } from './app/routes/admin.ocr-backends'
 import { Route as AdminMahnungenRouteImport } from './app/routes/admin.mahnungen'
+import { Route as AdminJobQueueRouteImport } from './app/routes/admin.job-queue'
 import { Route as AdminDatevRouteImport } from './app/routes/admin.datev'
 import { Route as AdminBankingRouteImport } from './app/routes/admin.banking'
+import { Route as PersonalEmployeeIdIndexRouteImport } from './app/routes/personal.$employeeId.index'
 import { Route as LieferantenSupplierIdIndexRouteImport } from './app/routes/lieferanten.$supplierId.index'
 import { Route as KundenCustomerIdIndexRouteImport } from './app/routes/kunden.$customerId.index'
 import { Route as FinanzenYearIndexRouteImport } from './app/routes/finanzen.$year.index'
@@ -116,6 +132,16 @@ const RelationshipsRoute = RelationshipsRouteImport.update({
   path: '/relationships',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivatRoute = PrivatRouteImport.update({
+  id: '/privat',
+  path: '/privat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PersonalRoute = PersonalRouteImport.update({
+  id: '/personal',
+  path: '/personal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MonitoringRoute = MonitoringRouteImport.update({
   id: '/monitoring',
   path: '/monitoring',
@@ -144,6 +170,11 @@ const KasseRoute = KasseRouteImport.update({
 const JobsRoute = JobsRouteImport.update({
   id: '/jobs',
   path: '/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FinanzenRoute = FinanzenRouteImport.update({
@@ -176,6 +207,11 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -190,6 +226,16 @@ const SpesenIndexRoute = SpesenIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => SpesenRoute,
+} as any)
+const PrivatIndexRoute = PrivatIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PrivatRoute,
+} as any)
+const PersonalIndexRoute = PersonalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PersonalRoute,
 } as any)
 const LieferantenIndexRoute = LieferantenIndexRouteImport.update({
   id: '/',
@@ -236,6 +282,46 @@ const SpesenReportIdRoute = SpesenReportIdRouteImport.update({
   id: '/$reportId',
   path: '/$reportId',
   getParentRoute: () => SpesenRoute,
+} as any)
+const ResetPasswordTokenRoute = ResetPasswordTokenRouteImport.update({
+  id: '/reset-password/$token',
+  path: '/reset-password/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivatVersicherungenRoute = PrivatVersicherungenRouteImport.update({
+  id: '/versicherungen',
+  path: '/versicherungen',
+  getParentRoute: () => PrivatRoute,
+} as any)
+const PrivatNotfallRoute = PrivatNotfallRouteImport.update({
+  id: '/notfall',
+  path: '/notfall',
+  getParentRoute: () => PrivatRoute,
+} as any)
+const PrivatImmobilienRoute = PrivatImmobilienRouteImport.update({
+  id: '/immobilien',
+  path: '/immobilien',
+  getParentRoute: () => PrivatRoute,
+} as any)
+const PrivatFristenRoute = PrivatFristenRouteImport.update({
+  id: '/fristen',
+  path: '/fristen',
+  getParentRoute: () => PrivatRoute,
+} as any)
+const PrivatFinanzenRoute = PrivatFinanzenRouteImport.update({
+  id: '/finanzen',
+  path: '/finanzen',
+  getParentRoute: () => PrivatRoute,
+} as any)
+const PrivatFahrzeugeRoute = PrivatFahrzeugeRouteImport.update({
+  id: '/fahrzeuge',
+  path: '/fahrzeuge',
+  getParentRoute: () => PrivatRoute,
+} as any)
+const PersonalEmployeeIdRoute = PersonalEmployeeIdRouteImport.update({
+  id: '/$employeeId',
+  path: '/$employeeId',
+  getParentRoute: () => PersonalRoute,
 } as any)
 const LieferantenSupplierIdRoute = LieferantenSupplierIdRouteImport.update({
   id: '/$supplierId',
@@ -302,6 +388,11 @@ const AdminMahnungenRoute = AdminMahnungenRouteImport.update({
   path: '/mahnungen',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminJobQueueRoute = AdminJobQueueRouteImport.update({
+  id: '/job-queue',
+  path: '/job-queue',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDatevRoute = AdminDatevRouteImport.update({
   id: '/datev',
   path: '/datev',
@@ -311,6 +402,11 @@ const AdminBankingRoute = AdminBankingRouteImport.update({
   id: '/banking',
   path: '/banking',
   getParentRoute: () => AdminRoute,
+} as any)
+const PersonalEmployeeIdIndexRoute = PersonalEmployeeIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PersonalEmployeeIdRoute,
 } as any)
 const LieferantenSupplierIdIndexRoute =
   LieferantenSupplierIdIndexRouteImport.update({
@@ -480,18 +576,22 @@ const AdminOcrTrainingBatchIdRoute = AdminOcrTrainingBatchIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/admin': typeof AdminRouteWithChildren
   '/automation': typeof AutomationRoute
   '/business-entities': typeof BusinessEntitiesRouteWithChildren
   '/chat': typeof ChatRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/finanzen': typeof FinanzenRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/jobs': typeof JobsRoute
   '/kasse': typeof KasseRouteWithChildren
   '/kunden': typeof KundenRouteWithChildren
   '/lieferanten': typeof LieferantenRouteWithChildren
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
+  '/personal': typeof PersonalRouteWithChildren
+  '/privat': typeof PrivatRouteWithChildren
   '/relationships': typeof RelationshipsRoute
   '/search': typeof SearchRoute
   '/spesen': typeof SpesenRouteWithChildren
@@ -500,6 +600,7 @@ export interface FileRoutesByFullPath {
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/admin/banking': typeof AdminBankingRouteWithChildren
   '/admin/datev': typeof AdminDatevRouteWithChildren
+  '/admin/job-queue': typeof AdminJobQueueRoute
   '/admin/mahnungen': typeof AdminMahnungenRouteWithChildren
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-review': typeof AdminOcrReviewRoute
@@ -513,6 +614,14 @@ export interface FileRoutesByFullPath {
   '/finanzen/$year': typeof FinanzenYearRouteWithChildren
   '/kunden/$customerId': typeof KundenCustomerIdRouteWithChildren
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
+  '/personal/$employeeId': typeof PersonalEmployeeIdRouteWithChildren
+  '/privat/fahrzeuge': typeof PrivatFahrzeugeRoute
+  '/privat/finanzen': typeof PrivatFinanzenRoute
+  '/privat/fristen': typeof PrivatFristenRoute
+  '/privat/immobilien': typeof PrivatImmobilienRoute
+  '/privat/notfall': typeof PrivatNotfallRoute
+  '/privat/versicherungen': typeof PrivatVersicherungenRoute
+  '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
   '/streckengeschaeft/zm': typeof StreckengeschaeftZmRoute
@@ -522,6 +631,8 @@ export interface FileRoutesByFullPath {
   '/kasse/': typeof KasseIndexRoute
   '/kunden/': typeof KundenIndexRoute
   '/lieferanten/': typeof LieferantenIndexRoute
+  '/personal/': typeof PersonalIndexRoute
+  '/privat/': typeof PrivatIndexRoute
   '/spesen/': typeof SpesenIndexRoute
   '/streckengeschaeft/': typeof StreckengeschaeftIndexRoute
   '/admin/banking/accounts': typeof AdminBankingAccountsRoute
@@ -552,16 +663,19 @@ export interface FileRoutesByFullPath {
   '/finanzen/$year/': typeof FinanzenYearIndexRoute
   '/kunden/$customerId/': typeof KundenCustomerIdIndexRoute
   '/lieferanten/$supplierId/': typeof LieferantenSupplierIdIndexRoute
+  '/personal/$employeeId/': typeof PersonalEmployeeIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
   '/kunden/$customerId/$folderId/$category': typeof KundenCustomerIdFolderIdCategoryRoute
   '/lieferanten/$supplierId/$folderId/$category': typeof LieferantenSupplierIdFolderIdCategoryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/automation': typeof AutomationRoute
   '/business-entities': typeof BusinessEntitiesRouteWithChildren
   '/chat': typeof ChatRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
@@ -569,6 +683,7 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/admin/job-queue': typeof AdminJobQueueRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
@@ -578,6 +693,13 @@ export interface FileRoutesByTo {
   '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
+  '/privat/fahrzeuge': typeof PrivatFahrzeugeRoute
+  '/privat/finanzen': typeof PrivatFinanzenRoute
+  '/privat/fristen': typeof PrivatFristenRoute
+  '/privat/immobilien': typeof PrivatImmobilienRoute
+  '/privat/notfall': typeof PrivatNotfallRoute
+  '/privat/versicherungen': typeof PrivatVersicherungenRoute
+  '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
   '/streckengeschaeft/zm': typeof StreckengeschaeftZmRoute
@@ -587,6 +709,8 @@ export interface FileRoutesByTo {
   '/kasse': typeof KasseIndexRoute
   '/kunden': typeof KundenIndexRoute
   '/lieferanten': typeof LieferantenIndexRoute
+  '/personal': typeof PersonalIndexRoute
+  '/privat': typeof PrivatIndexRoute
   '/spesen': typeof SpesenIndexRoute
   '/streckengeschaeft': typeof StreckengeschaeftIndexRoute
   '/admin/banking/accounts': typeof AdminBankingAccountsRoute
@@ -617,6 +741,7 @@ export interface FileRoutesByTo {
   '/finanzen/$year': typeof FinanzenYearIndexRoute
   '/kunden/$customerId': typeof KundenCustomerIdIndexRoute
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdIndexRoute
+  '/personal/$employeeId': typeof PersonalEmployeeIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
   '/kunden/$customerId/$folderId/$category': typeof KundenCustomerIdFolderIdCategoryRoute
   '/lieferanten/$supplierId/$folderId/$category': typeof LieferantenSupplierIdFolderIdCategoryRoute
@@ -624,18 +749,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/admin': typeof AdminRouteWithChildren
   '/automation': typeof AutomationRoute
   '/business-entities': typeof BusinessEntitiesRouteWithChildren
   '/chat': typeof ChatRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/finanzen': typeof FinanzenRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/jobs': typeof JobsRoute
   '/kasse': typeof KasseRouteWithChildren
   '/kunden': typeof KundenRouteWithChildren
   '/lieferanten': typeof LieferantenRouteWithChildren
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
+  '/personal': typeof PersonalRouteWithChildren
+  '/privat': typeof PrivatRouteWithChildren
   '/relationships': typeof RelationshipsRoute
   '/search': typeof SearchRoute
   '/spesen': typeof SpesenRouteWithChildren
@@ -644,6 +773,7 @@ export interface FileRoutesById {
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/admin/banking': typeof AdminBankingRouteWithChildren
   '/admin/datev': typeof AdminDatevRouteWithChildren
+  '/admin/job-queue': typeof AdminJobQueueRoute
   '/admin/mahnungen': typeof AdminMahnungenRouteWithChildren
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-review': typeof AdminOcrReviewRoute
@@ -657,6 +787,14 @@ export interface FileRoutesById {
   '/finanzen/$year': typeof FinanzenYearRouteWithChildren
   '/kunden/$customerId': typeof KundenCustomerIdRouteWithChildren
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
+  '/personal/$employeeId': typeof PersonalEmployeeIdRouteWithChildren
+  '/privat/fahrzeuge': typeof PrivatFahrzeugeRoute
+  '/privat/finanzen': typeof PrivatFinanzenRoute
+  '/privat/fristen': typeof PrivatFristenRoute
+  '/privat/immobilien': typeof PrivatImmobilienRoute
+  '/privat/notfall': typeof PrivatNotfallRoute
+  '/privat/versicherungen': typeof PrivatVersicherungenRoute
+  '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
   '/streckengeschaeft/zm': typeof StreckengeschaeftZmRoute
@@ -666,6 +804,8 @@ export interface FileRoutesById {
   '/kasse/': typeof KasseIndexRoute
   '/kunden/': typeof KundenIndexRoute
   '/lieferanten/': typeof LieferantenIndexRoute
+  '/personal/': typeof PersonalIndexRoute
+  '/privat/': typeof PrivatIndexRoute
   '/spesen/': typeof SpesenIndexRoute
   '/streckengeschaeft/': typeof StreckengeschaeftIndexRoute
   '/admin/banking/accounts': typeof AdminBankingAccountsRoute
@@ -696,6 +836,7 @@ export interface FileRoutesById {
   '/finanzen/$year/': typeof FinanzenYearIndexRoute
   '/kunden/$customerId/': typeof KundenCustomerIdIndexRoute
   '/lieferanten/$supplierId/': typeof LieferantenSupplierIdIndexRoute
+  '/personal/$employeeId/': typeof PersonalEmployeeIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
   '/kunden/$customerId/$folderId/$category': typeof KundenCustomerIdFolderIdCategoryRoute
   '/lieferanten/$supplierId/$folderId/$category': typeof LieferantenSupplierIdFolderIdCategoryRoute
@@ -704,18 +845,22 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$'
     | '/admin'
     | '/automation'
     | '/business-entities'
     | '/chat'
     | '/document-groups'
     | '/finanzen'
+    | '/forgot-password'
     | '/jobs'
     | '/kasse'
     | '/kunden'
     | '/lieferanten'
     | '/login'
     | '/monitoring'
+    | '/personal'
+    | '/privat'
     | '/relationships'
     | '/search'
     | '/spesen'
@@ -724,6 +869,7 @@ export interface FileRouteTypes {
     | '/validation-queue'
     | '/admin/banking'
     | '/admin/datev'
+    | '/admin/job-queue'
     | '/admin/mahnungen'
     | '/admin/ocr-backends'
     | '/admin/ocr-review'
@@ -737,6 +883,14 @@ export interface FileRouteTypes {
     | '/finanzen/$year'
     | '/kunden/$customerId'
     | '/lieferanten/$supplierId'
+    | '/personal/$employeeId'
+    | '/privat/fahrzeuge'
+    | '/privat/finanzen'
+    | '/privat/fristen'
+    | '/privat/immobilien'
+    | '/privat/notfall'
+    | '/privat/versicherungen'
+    | '/reset-password/$token'
     | '/spesen/$reportId'
     | '/streckengeschaeft/$classificationId'
     | '/streckengeschaeft/zm'
@@ -746,6 +900,8 @@ export interface FileRouteTypes {
     | '/kasse/'
     | '/kunden/'
     | '/lieferanten/'
+    | '/personal/'
+    | '/privat/'
     | '/spesen/'
     | '/streckengeschaeft/'
     | '/admin/banking/accounts'
@@ -776,16 +932,19 @@ export interface FileRouteTypes {
     | '/finanzen/$year/'
     | '/kunden/$customerId/'
     | '/lieferanten/$supplierId/'
+    | '/personal/$employeeId/'
     | '/admin/ocr-training/batch/$id'
     | '/kunden/$customerId/$folderId/$category'
     | '/lieferanten/$supplierId/$folderId/$category'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$'
     | '/automation'
     | '/business-entities'
     | '/chat'
     | '/document-groups'
+    | '/forgot-password'
     | '/jobs'
     | '/login'
     | '/monitoring'
@@ -793,6 +952,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/upload'
     | '/validation-queue'
+    | '/admin/job-queue'
     | '/admin/ocr-backends'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
@@ -802,6 +962,13 @@ export interface FileRouteTypes {
     | '/business-entities/$id'
     | '/document-groups/$id'
     | '/documents/$documentId'
+    | '/privat/fahrzeuge'
+    | '/privat/finanzen'
+    | '/privat/fristen'
+    | '/privat/immobilien'
+    | '/privat/notfall'
+    | '/privat/versicherungen'
+    | '/reset-password/$token'
     | '/spesen/$reportId'
     | '/streckengeschaeft/$classificationId'
     | '/streckengeschaeft/zm'
@@ -811,6 +978,8 @@ export interface FileRouteTypes {
     | '/kasse'
     | '/kunden'
     | '/lieferanten'
+    | '/personal'
+    | '/privat'
     | '/spesen'
     | '/streckengeschaeft'
     | '/admin/banking/accounts'
@@ -841,24 +1010,29 @@ export interface FileRouteTypes {
     | '/finanzen/$year'
     | '/kunden/$customerId'
     | '/lieferanten/$supplierId'
+    | '/personal/$employeeId'
     | '/admin/ocr-training/batch/$id'
     | '/kunden/$customerId/$folderId/$category'
     | '/lieferanten/$supplierId/$folderId/$category'
   id:
     | '__root__'
     | '/'
+    | '/$'
     | '/admin'
     | '/automation'
     | '/business-entities'
     | '/chat'
     | '/document-groups'
     | '/finanzen'
+    | '/forgot-password'
     | '/jobs'
     | '/kasse'
     | '/kunden'
     | '/lieferanten'
     | '/login'
     | '/monitoring'
+    | '/personal'
+    | '/privat'
     | '/relationships'
     | '/search'
     | '/spesen'
@@ -867,6 +1041,7 @@ export interface FileRouteTypes {
     | '/validation-queue'
     | '/admin/banking'
     | '/admin/datev'
+    | '/admin/job-queue'
     | '/admin/mahnungen'
     | '/admin/ocr-backends'
     | '/admin/ocr-review'
@@ -880,6 +1055,14 @@ export interface FileRouteTypes {
     | '/finanzen/$year'
     | '/kunden/$customerId'
     | '/lieferanten/$supplierId'
+    | '/personal/$employeeId'
+    | '/privat/fahrzeuge'
+    | '/privat/finanzen'
+    | '/privat/fristen'
+    | '/privat/immobilien'
+    | '/privat/notfall'
+    | '/privat/versicherungen'
+    | '/reset-password/$token'
     | '/spesen/$reportId'
     | '/streckengeschaeft/$classificationId'
     | '/streckengeschaeft/zm'
@@ -889,6 +1072,8 @@ export interface FileRouteTypes {
     | '/kasse/'
     | '/kunden/'
     | '/lieferanten/'
+    | '/personal/'
+    | '/privat/'
     | '/spesen/'
     | '/streckengeschaeft/'
     | '/admin/banking/accounts'
@@ -919,6 +1104,7 @@ export interface FileRouteTypes {
     | '/finanzen/$year/'
     | '/kunden/$customerId/'
     | '/lieferanten/$supplierId/'
+    | '/personal/$employeeId/'
     | '/admin/ocr-training/batch/$id'
     | '/kunden/$customerId/$folderId/$category'
     | '/lieferanten/$supplierId/$folderId/$category'
@@ -926,18 +1112,22 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SplatRoute: typeof SplatRoute
   AdminRoute: typeof AdminRouteWithChildren
   AutomationRoute: typeof AutomationRoute
   BusinessEntitiesRoute: typeof BusinessEntitiesRouteWithChildren
   ChatRoute: typeof ChatRoute
   DocumentGroupsRoute: typeof DocumentGroupsRouteWithChildren
   FinanzenRoute: typeof FinanzenRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   JobsRoute: typeof JobsRoute
   KasseRoute: typeof KasseRouteWithChildren
   KundenRoute: typeof KundenRouteWithChildren
   LieferantenRoute: typeof LieferantenRouteWithChildren
   LoginRoute: typeof LoginRoute
   MonitoringRoute: typeof MonitoringRoute
+  PersonalRoute: typeof PersonalRouteWithChildren
+  PrivatRoute: typeof PrivatRouteWithChildren
   RelationshipsRoute: typeof RelationshipsRoute
   SearchRoute: typeof SearchRoute
   SpesenRoute: typeof SpesenRouteWithChildren
@@ -945,6 +1135,7 @@ export interface RootRouteChildren {
   UploadRoute: typeof UploadRoute
   ValidationQueueRoute: typeof ValidationQueueRouteWithChildren
   DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRouteWithChildren
+  ResetPasswordTokenRoute: typeof ResetPasswordTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -991,6 +1182,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RelationshipsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privat': {
+      id: '/privat'
+      path: '/privat'
+      fullPath: '/privat'
+      preLoaderRoute: typeof PrivatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/personal': {
+      id: '/personal'
+      path: '/personal'
+      fullPath: '/personal'
+      preLoaderRoute: typeof PersonalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/monitoring': {
       id: '/monitoring'
       path: '/monitoring'
@@ -1031,6 +1236,13 @@ declare module '@tanstack/react-router' {
       path: '/jobs'
       fullPath: '/jobs'
       preLoaderRoute: typeof JobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/finanzen': {
@@ -1075,6 +1287,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -1095,6 +1314,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/spesen/'
       preLoaderRoute: typeof SpesenIndexRouteImport
       parentRoute: typeof SpesenRoute
+    }
+    '/privat/': {
+      id: '/privat/'
+      path: '/'
+      fullPath: '/privat/'
+      preLoaderRoute: typeof PrivatIndexRouteImport
+      parentRoute: typeof PrivatRoute
+    }
+    '/personal/': {
+      id: '/personal/'
+      path: '/'
+      fullPath: '/personal/'
+      preLoaderRoute: typeof PersonalIndexRouteImport
+      parentRoute: typeof PersonalRoute
     }
     '/lieferanten/': {
       id: '/lieferanten/'
@@ -1158,6 +1391,62 @@ declare module '@tanstack/react-router' {
       fullPath: '/spesen/$reportId'
       preLoaderRoute: typeof SpesenReportIdRouteImport
       parentRoute: typeof SpesenRoute
+    }
+    '/reset-password/$token': {
+      id: '/reset-password/$token'
+      path: '/reset-password/$token'
+      fullPath: '/reset-password/$token'
+      preLoaderRoute: typeof ResetPasswordTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privat/versicherungen': {
+      id: '/privat/versicherungen'
+      path: '/versicherungen'
+      fullPath: '/privat/versicherungen'
+      preLoaderRoute: typeof PrivatVersicherungenRouteImport
+      parentRoute: typeof PrivatRoute
+    }
+    '/privat/notfall': {
+      id: '/privat/notfall'
+      path: '/notfall'
+      fullPath: '/privat/notfall'
+      preLoaderRoute: typeof PrivatNotfallRouteImport
+      parentRoute: typeof PrivatRoute
+    }
+    '/privat/immobilien': {
+      id: '/privat/immobilien'
+      path: '/immobilien'
+      fullPath: '/privat/immobilien'
+      preLoaderRoute: typeof PrivatImmobilienRouteImport
+      parentRoute: typeof PrivatRoute
+    }
+    '/privat/fristen': {
+      id: '/privat/fristen'
+      path: '/fristen'
+      fullPath: '/privat/fristen'
+      preLoaderRoute: typeof PrivatFristenRouteImport
+      parentRoute: typeof PrivatRoute
+    }
+    '/privat/finanzen': {
+      id: '/privat/finanzen'
+      path: '/finanzen'
+      fullPath: '/privat/finanzen'
+      preLoaderRoute: typeof PrivatFinanzenRouteImport
+      parentRoute: typeof PrivatRoute
+    }
+    '/privat/fahrzeuge': {
+      id: '/privat/fahrzeuge'
+      path: '/fahrzeuge'
+      fullPath: '/privat/fahrzeuge'
+      preLoaderRoute: typeof PrivatFahrzeugeRouteImport
+      parentRoute: typeof PrivatRoute
+    }
+    '/personal/$employeeId': {
+      id: '/personal/$employeeId'
+      path: '/$employeeId'
+      fullPath: '/personal/$employeeId'
+      preLoaderRoute: typeof PersonalEmployeeIdRouteImport
+      parentRoute: typeof PersonalRoute
     }
     '/lieferanten/$supplierId': {
       id: '/lieferanten/$supplierId'
@@ -1250,6 +1539,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMahnungenRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/job-queue': {
+      id: '/admin/job-queue'
+      path: '/job-queue'
+      fullPath: '/admin/job-queue'
+      preLoaderRoute: typeof AdminJobQueueRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/datev': {
       id: '/admin/datev'
       path: '/datev'
@@ -1263,6 +1559,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/banking'
       preLoaderRoute: typeof AdminBankingRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/personal/$employeeId/': {
+      id: '/personal/$employeeId/'
+      path: '/'
+      fullPath: '/personal/$employeeId/'
+      preLoaderRoute: typeof PersonalEmployeeIdIndexRouteImport
+      parentRoute: typeof PersonalEmployeeIdRoute
     }
     '/lieferanten/$supplierId/': {
       id: '/lieferanten/$supplierId/'
@@ -1577,6 +1880,7 @@ const AdminOcrTrainingRouteWithChildren =
 interface AdminRouteChildren {
   AdminBankingRoute: typeof AdminBankingRouteWithChildren
   AdminDatevRoute: typeof AdminDatevRouteWithChildren
+  AdminJobQueueRoute: typeof AdminJobQueueRoute
   AdminMahnungenRoute: typeof AdminMahnungenRouteWithChildren
   AdminOcrBackendsRoute: typeof AdminOcrBackendsRouteWithChildren
   AdminOcrReviewRoute: typeof AdminOcrReviewRoute
@@ -1590,6 +1894,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBankingRoute: AdminBankingRouteWithChildren,
   AdminDatevRoute: AdminDatevRouteWithChildren,
+  AdminJobQueueRoute: AdminJobQueueRoute,
   AdminMahnungenRoute: AdminMahnungenRouteWithChildren,
   AdminOcrBackendsRoute: AdminOcrBackendsRouteWithChildren,
   AdminOcrReviewRoute: AdminOcrReviewRoute,
@@ -1751,6 +2056,54 @@ const LieferantenRouteWithChildren = LieferantenRoute._addFileChildren(
   LieferantenRouteChildren,
 )
 
+interface PersonalEmployeeIdRouteChildren {
+  PersonalEmployeeIdIndexRoute: typeof PersonalEmployeeIdIndexRoute
+}
+
+const PersonalEmployeeIdRouteChildren: PersonalEmployeeIdRouteChildren = {
+  PersonalEmployeeIdIndexRoute: PersonalEmployeeIdIndexRoute,
+}
+
+const PersonalEmployeeIdRouteWithChildren =
+  PersonalEmployeeIdRoute._addFileChildren(PersonalEmployeeIdRouteChildren)
+
+interface PersonalRouteChildren {
+  PersonalEmployeeIdRoute: typeof PersonalEmployeeIdRouteWithChildren
+  PersonalIndexRoute: typeof PersonalIndexRoute
+}
+
+const PersonalRouteChildren: PersonalRouteChildren = {
+  PersonalEmployeeIdRoute: PersonalEmployeeIdRouteWithChildren,
+  PersonalIndexRoute: PersonalIndexRoute,
+}
+
+const PersonalRouteWithChildren = PersonalRoute._addFileChildren(
+  PersonalRouteChildren,
+)
+
+interface PrivatRouteChildren {
+  PrivatFahrzeugeRoute: typeof PrivatFahrzeugeRoute
+  PrivatFinanzenRoute: typeof PrivatFinanzenRoute
+  PrivatFristenRoute: typeof PrivatFristenRoute
+  PrivatImmobilienRoute: typeof PrivatImmobilienRoute
+  PrivatNotfallRoute: typeof PrivatNotfallRoute
+  PrivatVersicherungenRoute: typeof PrivatVersicherungenRoute
+  PrivatIndexRoute: typeof PrivatIndexRoute
+}
+
+const PrivatRouteChildren: PrivatRouteChildren = {
+  PrivatFahrzeugeRoute: PrivatFahrzeugeRoute,
+  PrivatFinanzenRoute: PrivatFinanzenRoute,
+  PrivatFristenRoute: PrivatFristenRoute,
+  PrivatImmobilienRoute: PrivatImmobilienRoute,
+  PrivatNotfallRoute: PrivatNotfallRoute,
+  PrivatVersicherungenRoute: PrivatVersicherungenRoute,
+  PrivatIndexRoute: PrivatIndexRoute,
+}
+
+const PrivatRouteWithChildren =
+  PrivatRoute._addFileChildren(PrivatRouteChildren)
+
 interface SpesenRouteChildren {
   SpesenReportIdRoute: typeof SpesenReportIdRoute
   SpesenIndexRoute: typeof SpesenIndexRoute
@@ -1805,18 +2158,22 @@ const DocumentsDocumentIdRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SplatRoute: SplatRoute,
   AdminRoute: AdminRouteWithChildren,
   AutomationRoute: AutomationRoute,
   BusinessEntitiesRoute: BusinessEntitiesRouteWithChildren,
   ChatRoute: ChatRoute,
   DocumentGroupsRoute: DocumentGroupsRouteWithChildren,
   FinanzenRoute: FinanzenRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   JobsRoute: JobsRoute,
   KasseRoute: KasseRouteWithChildren,
   KundenRoute: KundenRouteWithChildren,
   LieferantenRoute: LieferantenRouteWithChildren,
   LoginRoute: LoginRoute,
   MonitoringRoute: MonitoringRoute,
+  PersonalRoute: PersonalRouteWithChildren,
+  PrivatRoute: PrivatRouteWithChildren,
   RelationshipsRoute: RelationshipsRoute,
   SearchRoute: SearchRoute,
   SpesenRoute: SpesenRouteWithChildren,
@@ -1824,6 +2181,7 @@ const rootRouteChildren: RootRouteChildren = {
   UploadRoute: UploadRoute,
   ValidationQueueRoute: ValidationQueueRouteWithChildren,
   DocumentsDocumentIdRoute: DocumentsDocumentIdRouteWithChildren,
+  ResetPasswordTokenRoute: ResetPasswordTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -107,7 +107,9 @@ describe('BulkActionsBar', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /Mahnstopp/i }));
 
-        expect(screen.getByText('Mahnstopp setzen')).toBeInTheDocument();
+        // DialogTitle and Button both contain "Mahnstopp setzen"
+        // Use role selector to find the dialog heading specifically
+        expect(screen.getByRole('heading', { name: /Mahnstopp setzen/i })).toBeInTheDocument();
     });
 
     it('validiert Mahnstopp-Grund als Pflichtfeld', async () => {
@@ -126,7 +128,11 @@ describe('BulkActionsBar', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /Eskalieren/i }));
 
-        expect(screen.getByText(/2 Mahnvorgänge auf die nächste Mahnstufe/i)).toBeInTheDocument();
+        // The text is split across DOM elements, so use container query
+        // Text: "Sie sind dabei, 2 Mahnvorgänge auf die nächste Mahnstufe zu eskalieren"
+        const dialog = screen.getByRole('alertdialog');
+        expect(dialog).toHaveTextContent(/2 Mahnvorgänge/i);
+        expect(dialog).toHaveTextContent(/nächste Mahnstufe/i);
     });
 
     it('verwendet korrekten Plural für einzelnen Vorgang', () => {
@@ -139,7 +145,9 @@ describe('BulkActionsBar', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /Eskalieren/i }));
 
-        // Should use singular form
-        expect(screen.getByText(/1 Mahnvorgang auf die nächste/i)).toBeInTheDocument();
+        // Should use singular form - text is split across DOM elements
+        const dialog = screen.getByRole('alertdialog');
+        expect(dialog).toHaveTextContent(/1 Mahnvorgang/i);
+        expect(dialog).toHaveTextContent(/nächste Mahnstufe/i);
     });
 });

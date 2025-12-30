@@ -42,7 +42,7 @@ export interface ChatMessage {
     created_at: string;
     sources?: SourceChunk[];
     is_thinking?: boolean; // UI state for streaming/processing
-    attached_document?: AttachedDocument | null; // Dokument das an User-Nachricht angehaengt wurde
+    attached_document?: AttachedDocument | null; // Dokument das an User-Nachricht angehängt wurde
 }
 
 export interface ChatSession {
