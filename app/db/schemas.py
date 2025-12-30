@@ -1,10 +1,13 @@
 """Pydantic schemas for API request/response validation."""
 
 from datetime import datetime
+from datetime import date as date_type  # Avoid Pydantic field name collision
+from decimal import Decimal
 from typing import Optional, List, Dict, Any, Tuple
 from enum import Enum
 from pathlib import Path
 import uuid
+from uuid import UUID  # Import UUID type explicitly for type annotations
 
 from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator, ConfigDict
 
@@ -4314,3 +4317,2573 @@ class FinanceDocumentHistoryCreate(BaseModel):
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+# =============================================================================
+# KASSE-MODUL: ENUMS
+# =============================================================================
+
+
+class CashEntryType(str, Enum):
+    """Typ der Kassenbuchung - GoBD-konform."""
+
+    # Einnahmen
+    INCOME = "income"
+    DEPOSIT = "deposit"
+    REFUND_RECEIVED = "refund_received"
+
+    # Ausgaben
+    EXPENSE = "expense"
+    WITHDRAWAL = "withdrawal"
+    ENTERTAINMENT = "entertainment"
+    TRAVEL = "travel"
+    OFFICE = "office"
+    FUEL = "fuel"
+    PARKING = "parking"
+    POSTAGE = "postage"
+    TIPS = "tips"
+    GIFTS = "gifts"
+
+    # Sonder
+    DIFFERENCE_PLUS = "difference_plus"
+    DIFFERENCE_MINUS = "difference_minus"
+    CANCELLATION = "cancellation"
+    OPENING = "opening"
+
+
+class ExpenseReportStatus(str, Enum):
+    """Status einer Spesenabrechnung - Workflow."""
+
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+    IN_REVIEW = "in_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    PAID = "paid"
+
+
+class ExpenseType(str, Enum):
+    """Typ einer Spesenposition."""
+
+    RECEIPT = "receipt"
+    MILEAGE = "mileage"
+    PER_DIEM = "per_diem"
+    FLAT_RATE = "flat_rate"
+
+
+class CompanyRole(str, Enum):
+    """Rolle eines Users in einer Firma."""
+
+    OWNER = "owner"
+    ADMIN = "admin"
+    MEMBER = "member"
+    VIEWER = "viewer"
+
+
+# =============================================================================
+# KASSE-MODUL: COMPANY SCHEMAS
+# =============================================================================
+
+
+class CompanyBase(BaseModel):
+    """Basis-Schema fuer Company."""
+
+    name: str = Field(..., min_length=1, max_length=255, description="Firmenname")
+    short_name: Optional[str] = Field(None, max_length=50, description="Kurzname")
+    display_name: Optional[str] = Field(None, max_length=255, description="Anzeigename")
+
+    # Rechtsform
+    legal_form: Optional[str] = Field(None, max_length=50, description="Rechtsform (GmbH, UG, etc.)")
+    commercial_register: Optional[str] = Field(None, max_length=100, description="Handelsregistereintrag")
+    court: Optional[str] = Field(None, max_length=100, description="Registergericht")
+
+    # Steuer
+    vat_id: Optional[str] = Field(None, max_length=20, description="USt-ID (DE123456789)")
+    tax_number: Optional[str] = Field(None, max_length=50, description="Steuernummer")
+
+    # Adresse
+    street: Optional[str] = Field(None, max_length=255, description="Strasse")
+    street_number: Optional[str] = Field(None, max_length=20, description="Hausnummer")
+    postal_code: Optional[str] = Field(None, max_length=10, description="PLZ")
+    city: Optional[str] = Field(None, max_length=100, description="Stadt")
+    country: str = Field("DE", max_length=2, description="Laendercode (ISO 3166-1 alpha-2)")
+
+    # Kontakt
+    email: Optional[EmailStr] = Field(None, description="E-Mail")
+    phone: Optional[str] = Field(None, max_length=50, description="Telefon")
+    website: Optional[str] = Field(None, max_length=255, description="Webseite")
+
+    # Banking
+    iban: Optional[str] = Field(None, max_length=34, description="IBAN")
+    bic: Optional[str] = Field(None, max_length=11, description="BIC")
+    bank_name: Optional[str] = Field(None, max_length=100, description="Bankname")
+
+    # Einstellungen
+    default_currency: str = Field("EUR", max_length=3, description="Standardwaehrung")
+    fiscal_year_start: int = Field(1, ge=1, le=12, description="Beginn Geschaeftsjahr (Monat)")
+    kontenrahmen: str = Field("SKR03", description="Kontenrahmen (SKR03 oder SKR04)")
+
+    @field_validator("vat_id")
+    @classmethod
+    def validate_vat_id(cls, v: Optional[str]) -> Optional[str]:
+        """Validiert USt-ID Format."""
+        if v is None:
+            return v
+        v = v.strip().upper()
+        if v and not v.startswith("DE"):
+            raise ValueError("USt-ID muss mit DE beginnen")
+        if v and len(v) != 11:
+            raise ValueError("Ungueltige USt-ID Laenge (DE + 9 Ziffern)")
+        return v
+
+    @field_validator("kontenrahmen")
+    @classmethod
+    def validate_kontenrahmen(cls, v: str) -> str:
+        """Validiert Kontenrahmen."""
+        if v not in ["SKR03", "SKR04"]:
+            raise ValueError("Kontenrahmen muss SKR03 oder SKR04 sein")
+        return v
+
+
+class CompanyCreate(CompanyBase):
+    """Schema zum Erstellen einer Company."""
+
+    alternative_names: List[str] = Field(default_factory=list, description="Alternative Namen fuer OCR")
+
+
+class CompanyUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Company."""
+
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    short_name: Optional[str] = Field(None, max_length=50)
+    display_name: Optional[str] = Field(None, max_length=255)
+    legal_form: Optional[str] = Field(None, max_length=50)
+    commercial_register: Optional[str] = Field(None, max_length=100)
+    court: Optional[str] = Field(None, max_length=100)
+    vat_id: Optional[str] = Field(None, max_length=20)
+    tax_number: Optional[str] = Field(None, max_length=50)
+    street: Optional[str] = Field(None, max_length=255)
+    street_number: Optional[str] = Field(None, max_length=20)
+    postal_code: Optional[str] = Field(None, max_length=10)
+    city: Optional[str] = Field(None, max_length=100)
+    country: Optional[str] = Field(None, max_length=2)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=50)
+    website: Optional[str] = Field(None, max_length=255)
+    iban: Optional[str] = Field(None, max_length=34)
+    bic: Optional[str] = Field(None, max_length=11)
+    bank_name: Optional[str] = Field(None, max_length=100)
+    alternative_names: Optional[List[str]] = None
+    default_currency: Optional[str] = Field(None, max_length=3)
+    fiscal_year_start: Optional[int] = Field(None, ge=1, le=12)
+    kontenrahmen: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_default: Optional[bool] = None
+
+
+class CompanyResponse(CompanyBase):
+    """Response-Schema fuer Company."""
+
+    id: uuid.UUID
+    alternative_names: List[str] = Field(default_factory=list)
+    is_active: bool = True
+    is_default: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CompanyListResponse(BaseModel):
+    """Response mit Liste von Companies."""
+
+    items: List[CompanyResponse]
+    total: int
+    current_company_id: Optional[uuid.UUID] = None
+
+
+class UserCompanyCreate(BaseModel):
+    """Schema zum Hinzufuegen eines Users zu einer Company."""
+
+    user_id: uuid.UUID
+    company_id: uuid.UUID
+    role: CompanyRole = Field(CompanyRole.MEMBER, description="Rolle in der Firma")
+    can_manage_cash: bool = Field(False, description="Kassenbuchungen erstellen")
+    can_approve_expenses: bool = Field(False, description="Spesen genehmigen")
+    can_export_datev: bool = Field(False, description="DATEV-Export")
+    can_manage_settings: bool = Field(False, description="Firmeneinstellungen")
+
+
+class UserCompanyUpdate(BaseModel):
+    """Schema zum Aktualisieren einer User-Company-Zuordnung."""
+
+    role: Optional[CompanyRole] = None
+    can_manage_cash: Optional[bool] = None
+    can_approve_expenses: Optional[bool] = None
+    can_export_datev: Optional[bool] = None
+    can_manage_settings: Optional[bool] = None
+
+
+class UserCompanyResponse(BaseModel):
+    """Response-Schema fuer User-Company-Zuordnung."""
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    company_id: uuid.UUID
+    role: str
+    can_manage_cash: bool
+    can_approve_expenses: bool
+    can_export_datev: bool
+    can_manage_settings: bool
+    is_current: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =============================================================================
+# KASSE-MODUL: CASH REGISTER SCHEMAS
+# =============================================================================
+
+
+class CashRegisterBase(BaseModel):
+    """Basis-Schema fuer CashRegister."""
+
+    name: str = Field(..., min_length=1, max_length=100, description="Kassenname")
+    description: Optional[str] = Field(None, description="Beschreibung")
+    register_number: Optional[str] = Field(None, max_length=50, description="Interne Kassennummer")
+    currency: str = Field("EUR", max_length=3, description="Waehrung")
+    max_balance: Optional[float] = Field(None, ge=0, description="Maximaler Kassenbestand")
+    warning_threshold: Optional[float] = Field(None, ge=0, description="Warnschwelle")
+
+
+class CashRegisterCreate(CashRegisterBase):
+    """Schema zum Erstellen einer Kasse."""
+
+    linked_bank_account_id: Optional[uuid.UUID] = Field(None, description="Verknuepftes Bankkonto")
+    opening_balance: float = Field(0, description="Anfangsbestand")
+
+
+class CashRegisterUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Kasse."""
+
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = None
+    register_number: Optional[str] = Field(None, max_length=50)
+    max_balance: Optional[float] = Field(None, ge=0)
+    warning_threshold: Optional[float] = Field(None, ge=0)
+    linked_bank_account_id: Optional[uuid.UUID] = None
+    is_active: Optional[bool] = None
+    is_default: Optional[bool] = None
+
+
+class CashRegisterResponse(CashRegisterBase):
+    """Response-Schema fuer CashRegister."""
+
+    id: uuid.UUID
+    company_id: uuid.UUID
+    current_balance: float
+    balance_date: Optional[datetime] = None
+    last_reconciliation_date: Optional[datetime] = None
+    linked_bank_account_id: Optional[uuid.UUID] = None
+    is_active: bool
+    is_default: bool
+    # Frontend erwartet diese Felder (werden dynamisch berechnet oder null)
+    last_entry_date: Optional[datetime] = None
+    last_count_date: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CashRegisterListResponse(BaseModel):
+    """Response mit Liste von Kassen."""
+
+    items: List[CashRegisterResponse]
+    total: int
+
+
+# =============================================================================
+# KASSE-MODUL: CASH ENTRY SCHEMAS (GoBD-KONFORM!)
+# =============================================================================
+
+
+class EntertainmentData(BaseModel):
+    """Schema fuer Bewirtungskosten-Daten (70% abzugsfaehig)."""
+
+    participants: List[str] = Field(
+        ...,
+        min_length=1,
+        description="Teilnehmer (mind. 1 Person)"
+    )
+    occasion: str = Field(
+        ...,
+        min_length=5,
+        max_length=500,
+        description="Anlass der Bewirtung"
+    )
+    location: Optional[str] = Field(None, max_length=255, description="Ort/Restaurant")
+
+    @field_validator("participants")
+    @classmethod
+    def validate_participants(cls, v: List[str]) -> List[str]:
+        """Mindestens ein Teilnehmer erforderlich."""
+        if not v or len(v) == 0:
+            raise ValueError("Mindestens ein Teilnehmer muss angegeben werden")
+        return [p.strip() for p in v if p.strip()]
+
+
+class CashEntryBase(BaseModel):
+    """Basis-Schema fuer CashEntry."""
+
+    entry_type: CashEntryType = Field(..., description="Buchungstyp")
+    entry_date: datetime = Field(..., description="Buchungsdatum (nicht in Zukunft!)")
+    amount: float = Field(
+        ...,
+        gt=-9999999999999.99,  # Max 13 Stellen vor Komma (DB: Numeric(15,2))
+        lt=9999999999999.99,
+        description="Betrag (positiv=Einnahme, negativ=Ausgabe)"
+    )
+    description: str = Field(..., min_length=3, max_length=1000, description="Beschreibung")
+    reference_number: Optional[str] = Field(None, max_length=100, description="Belegnummer")
+    category_id: Optional[uuid.UUID] = Field(None, description="Kategorie-ID")
+
+    # Steuer
+    tax_rate: Optional[float] = Field(None, ge=0, le=100, description="MwSt-Satz")
+
+    # Geschaeftspartner
+    counterparty_name: Optional[str] = Field(None, max_length=255, description="Geschaeftspartner")
+    counterparty_id: Optional[uuid.UUID] = Field(None, description="Geschaeftspartner-ID")
+
+    # Verknuepfungen
+    document_id: Optional[uuid.UUID] = Field(None, description="Beleg-Dokument")
+    bank_transaction_id: Optional[uuid.UUID] = Field(None, description="Bank-Transaktion")
+
+    # Buchhaltung
+    cost_center: Optional[str] = Field(None, max_length=50, description="Kostenstelle")
+
+    @field_validator("entry_date")
+    @classmethod
+    def validate_entry_date(cls, v: datetime) -> datetime:
+        """Buchungsdatum darf nicht in der Zukunft liegen (GoBD!)."""
+        from datetime import date, timedelta
+        if v.date() > date.today():
+            raise ValueError("Buchungsdatum darf nicht in der Zukunft liegen (GoBD-Compliance)")
+        # GoBD: Buchungen aelter als 10 Jahre sind verdaechtig
+        if v.date() < date.today() - timedelta(days=3650):
+            raise ValueError("Buchungsdatum darf nicht aelter als 10 Jahre sein")
+        return v
+
+    @field_validator("amount")
+    @classmethod
+    def validate_amount(cls, v: float) -> float:
+        """Betrag darf nicht 0 sein und maximal 2 Dezimalstellen (GoBD!)."""
+        if v == 0:
+            raise ValueError("Betrag darf nicht 0 sein")
+        # Maximal 2 Dezimalstellen (Cent-Genauigkeit)
+        if round(v, 2) != v:
+            raise ValueError("Betrag darf maximal 2 Dezimalstellen haben")
+        return v
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, v: str) -> str:
+        """Beschreibung bereinigen und validieren."""
+        # Whitespace normalisieren
+        v = " ".join(v.split())
+        if len(v) < 3:
+            raise ValueError("Beschreibung muss mindestens 3 Zeichen haben")
+        return v
+
+
+class CashEntryCreate(CashEntryBase):
+    """Schema zum Erstellen einer Kassenbuchung.
+
+    WICHTIG: Frontend sendet 'register_id', Backend verwendet intern 'cash_register_id'.
+    Durch alias und populate_by_name werden beide Namen akzeptiert.
+    """
+
+    cash_register_id: uuid.UUID = Field(
+        ...,
+        alias="register_id",  # Frontend sendet register_id
+        description="Kassen-ID"
+    )
+    entertainment_data: Optional[EntertainmentData] = Field(
+        None,
+        description="Bewirtungskosten-Daten (bei entertainment)"
+    )
+
+    model_config = ConfigDict(populate_by_name=True)  # Akzeptiert beide Namen
+
+    @model_validator(mode="after")
+    def validate_entertainment(self) -> "CashEntryCreate":
+        """Bewirtungsdaten sind bei entertainment Pflicht."""
+        if self.entry_type == CashEntryType.ENTERTAINMENT and not self.entertainment_data:
+            raise ValueError("Bewirtungsdaten sind bei Bewirtungskosten Pflicht")
+        return self
+
+
+class CashEntryResponse(BaseModel):
+    """Response-Schema fuer CashEntry - Frontend-kompatibel.
+
+    WICHTIG: Feldnamen sind an Frontend angepasst (nicht an DB-Model)!
+    Das Mapping erfolgt in der API-Schicht (cash.py).
+    """
+
+    id: uuid.UUID
+    register_id: uuid.UUID  # Frontend erwartet register_id (nicht cash_register_id)
+    entry_number: int
+    entry_date: datetime
+    entry_type: str
+    amount: float
+    net_amount: Optional[float] = None
+    tax_amount: Optional[float] = None
+    tax_rate: Optional[float] = None
+    balance_after: float
+    description: str
+    category_id: Optional[uuid.UUID] = None
+    category_name: Optional[str] = None  # Aus JOIN, nicht im DB-Model
+    receipt_number: Optional[str] = None  # Frontend erwartet receipt_number (nicht reference_number)
+    counterparty: Optional[str] = None  # Frontend erwartet counterparty (nicht counterparty_name)
+    is_entertainment: bool = False  # Frontend erwartet is_entertainment (nicht is_tax_deductible)
+    entertainment_data: Optional[Dict[str, Any]] = None
+    is_cancelled: bool = False
+    cancelled_by_id: Optional[uuid.UUID] = None  # Frontend erwartet cancelled_by_id (nicht cancelled_by_entry_id)
+    cancels_entry_id: Optional[uuid.UUID] = None  # Fuer Storno-Referenz
+    skr03_account: Optional[str] = None  # Frontend erwartet skr03_account (nicht debit_account)
+    skr04_account: Optional[str] = None  # Frontend erwartet skr04_account (nicht credit_account)
+    created_by_id: uuid.UUID
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CashEntryListResponse(BaseModel):
+    """Response mit Liste von Kassenbuchungen."""
+
+    entries: List[CashEntryResponse]  # Frontend erwartet 'entries' (nicht 'items')
+    total: int
+    page: int = 1
+    page_size: int = 50
+
+
+class CashEntryCancelRequest(BaseModel):
+    """Request zum Stornieren einer Buchung (Gegenbuchung!)."""
+
+    reason: str = Field(
+        ...,
+        min_length=5,
+        max_length=500,
+        description="Stornierungsgrund (Pflicht)"
+    )
+
+
+# =============================================================================
+# KASSE-MODUL: CASH CATEGORY SCHEMAS
+# =============================================================================
+
+
+class CashCategoryBase(BaseModel):
+    """Basis-Schema fuer CashCategory."""
+
+    name: str = Field(..., min_length=1, max_length=100, description="Kategoriename")
+    name_en: Optional[str] = Field(None, max_length=100, description="Englischer Name")
+    description: Optional[str] = Field(None, description="Beschreibung")
+    icon: Optional[str] = Field(None, max_length=50, description="Icon-Name")
+    color: Optional[str] = Field(None, max_length=7, description="Farbe (Hex)")
+    parent_id: Optional[uuid.UUID] = Field(None, description="Ueberkategorie")
+    skr03_account: Optional[str] = Field(None, max_length=10, description="SKR03-Konto")
+    skr04_account: Optional[str] = Field(None, max_length=10, description="SKR04-Konto")
+    default_tax_rate: float = Field(19, ge=0, le=100, description="Standard-MwSt-Satz")
+    is_entertainment: bool = Field(False, description="Bewirtungskosten?")
+    is_travel_expense: bool = Field(False, description="Reisekosten?")
+    deductible_percentage: int = Field(100, ge=0, le=100, description="Abzugsfaehigkeit %")
+
+
+class CashCategoryCreate(CashCategoryBase):
+    """Schema zum Erstellen einer Kategorie."""
+    pass
+
+
+class CashCategoryUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Kategorie."""
+
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    name_en: Optional[str] = Field(None, max_length=100)
+    description: Optional[str] = None
+    icon: Optional[str] = Field(None, max_length=50)
+    color: Optional[str] = Field(None, max_length=7)
+    parent_id: Optional[uuid.UUID] = None
+    skr03_account: Optional[str] = Field(None, max_length=10)
+    skr04_account: Optional[str] = Field(None, max_length=10)
+    default_tax_rate: Optional[float] = Field(None, ge=0, le=100)
+    is_entertainment: Optional[bool] = None
+    is_travel_expense: Optional[bool] = None
+    deductible_percentage: Optional[int] = Field(None, ge=0, le=100)
+    is_active: Optional[bool] = None
+    sort_order: Optional[int] = None
+
+
+class CashCategoryResponse(CashCategoryBase):
+    """Response-Schema fuer CashCategory."""
+
+    id: uuid.UUID
+    company_id: Optional[uuid.UUID] = None
+    level: int
+    path: Optional[str] = None
+    category_type: Optional[str] = None
+    allows_vat_deduction: bool
+    is_active: bool
+    is_system: bool
+    sort_order: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CashCategoryListResponse(BaseModel):
+    """Response mit Liste von Kategorien."""
+
+    items: List[CashCategoryResponse]
+    total: int
+
+
+# =============================================================================
+# KASSE-MODUL: CASH COUNT SCHEMAS (Kassensturz)
+# =============================================================================
+
+
+class CashCountCreate(BaseModel):
+    """Schema zum Erstellen eines Zaehlprotokolls."""
+
+    cash_register_id: uuid.UUID = Field(..., description="Kassen-ID")
+
+    # Muenzen (Stueckzahl)
+    coins_1_cent: int = Field(0, ge=0)
+    coins_2_cent: int = Field(0, ge=0)
+    coins_5_cent: int = Field(0, ge=0)
+    coins_10_cent: int = Field(0, ge=0)
+    coins_20_cent: int = Field(0, ge=0)
+    coins_50_cent: int = Field(0, ge=0)
+    coins_1_euro: int = Field(0, ge=0)
+    coins_2_euro: int = Field(0, ge=0)
+
+    # Scheine (Stueckzahl)
+    notes_5_euro: int = Field(0, ge=0)
+    notes_10_euro: int = Field(0, ge=0)
+    notes_20_euro: int = Field(0, ge=0)
+    notes_50_euro: int = Field(0, ge=0)
+    notes_100_euro: int = Field(0, ge=0)
+    notes_200_euro: int = Field(0, ge=0)
+    notes_500_euro: int = Field(0, ge=0)
+
+    notes: Optional[str] = Field(None, description="Notizen")
+
+
+class CashCountResponse(BaseModel):
+    """Response-Schema fuer CashCount."""
+
+    id: uuid.UUID
+    company_id: uuid.UUID
+    cash_register_id: uuid.UUID
+    count_date: datetime
+    count_time: str
+
+    # Muenzen
+    coins_1_cent: int
+    coins_2_cent: int
+    coins_5_cent: int
+    coins_10_cent: int
+    coins_20_cent: int
+    coins_50_cent: int
+    coins_1_euro: int
+    coins_2_euro: int
+
+    # Scheine
+    notes_5_euro: int
+    notes_10_euro: int
+    notes_20_euro: int
+    notes_50_euro: int
+    notes_100_euro: int
+    notes_200_euro: int
+    notes_500_euro: int
+
+    # Berechnete Werte
+    counted_total: float
+    expected_total: float
+    difference: float
+
+    # Differenzbuchung
+    difference_entry_id: Optional[uuid.UUID] = None
+    difference_explanation: Optional[str] = None
+
+    # Signatur
+    counted_by_id: uuid.UUID
+    verified_by_id: Optional[uuid.UUID] = None
+    verified_at: Optional[datetime] = None
+
+    notes: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CashCountListResponse(BaseModel):
+    """Response mit Liste von Zaehlprotokollen."""
+
+    counts: List[CashCountResponse]  # Frontend erwartet 'counts', nicht 'items'
+    total: int
+
+
+# =============================================================================
+# KASSE-MODUL: EXPENSE REPORT SCHEMAS
+# =============================================================================
+
+
+class ExpenseReportBase(BaseModel):
+    """Basis-Schema fuer ExpenseReport."""
+
+    title: str = Field(..., min_length=3, max_length=255, description="Titel")
+    description: Optional[str] = Field(None, description="Beschreibung")
+    period_start: datetime = Field(..., description="Zeitraum von")
+    period_end: datetime = Field(..., description="Zeitraum bis")
+
+    @model_validator(mode="after")
+    def validate_period(self) -> "ExpenseReportBase":
+        """Zeitraum validieren."""
+        if self.period_end < self.period_start:
+            raise ValueError("Enddatum muss nach Startdatum liegen")
+        return self
+
+
+class ExpenseReportCreate(ExpenseReportBase):
+    """Schema zum Erstellen einer Spesenabrechnung."""
+
+    employee_id: Optional[uuid.UUID] = Field(None, description="Mitarbeiter-ID (optional, sonst aktueller User)")
+
+
+class ExpenseReportUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Spesenabrechnung."""
+
+    title: Optional[str] = Field(None, min_length=3, max_length=255)
+    description: Optional[str] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+class ExpenseReportResponse(ExpenseReportBase):
+    """Response-Schema fuer ExpenseReport."""
+
+    id: uuid.UUID
+    company_id: uuid.UUID
+    report_number: str
+    employee_id: uuid.UUID
+    employee_name: Optional[str] = None
+
+    # Betraege
+    total_amount: float
+    total_vat: float
+    total_deductible: float
+    travel_days: int
+    travel_allowance_total: float
+    total_kilometers: float
+    mileage_allowance_total: float
+
+    # Status
+    status: str
+
+    # Workflow
+    submitted_at: Optional[datetime] = None
+    reviewed_at: Optional[datetime] = None
+    review_notes: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    rejected_at: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
+    paid_at: Optional[datetime] = None
+    payment_method: Optional[str] = None
+    payment_reference: Optional[str] = None
+
+    cash_entry_id: Optional[uuid.UUID] = None
+    datev_exported_at: Optional[datetime] = None
+
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ExpenseReportListResponse(BaseModel):
+    """Response mit Liste von Spesenabrechnungen."""
+
+    items: List[ExpenseReportResponse]
+    total: int
+    page: int = 1
+    page_size: int = 50
+
+
+class ExpenseReportSubmitRequest(BaseModel):
+    """Request zum Einreichen einer Spesenabrechnung."""
+
+    notes: Optional[str] = Field(None, description="Anmerkungen")
+
+
+class ExpenseReportReviewRequest(BaseModel):
+    """Request zum Review einer Spesenabrechnung."""
+
+    approved: bool = Field(..., description="Genehmigt?")
+    notes: Optional[str] = Field(None, description="Anmerkungen")
+    rejection_reason: Optional[str] = Field(None, description="Ablehnungsgrund")
+
+
+class ExpenseReportPayRequest(BaseModel):
+    """Request zur Auszahlung einer Spesenabrechnung."""
+
+    payment_method: str = Field(..., description="Zahlungsart (cash, transfer)")
+    payment_reference: Optional[str] = Field(None, description="Zahlungsreferenz")
+    cash_register_id: Optional[uuid.UUID] = Field(None, description="Kassen-ID (bei Barzahlung)")
+
+
+# =============================================================================
+# KASSE-MODUL: EXPENSE ITEM SCHEMAS
+# =============================================================================
+
+
+class ExpenseItemBase(BaseModel):
+    """Basis-Schema fuer ExpenseItem."""
+
+    expense_type: ExpenseType = Field(..., description="Typ")
+    expense_date: datetime = Field(..., description="Datum")
+    amount: float = Field(..., gt=0, description="Betrag")
+    description: str = Field(..., min_length=3, max_length=500, description="Beschreibung")
+    category_id: Optional[uuid.UUID] = Field(None, description="Kategorie")
+    tax_rate: Optional[float] = Field(None, ge=0, le=100, description="MwSt-Satz")
+    vendor_name: Optional[str] = Field(None, max_length=255, description="Lieferant")
+
+
+class ExpenseItemCreate(ExpenseItemBase):
+    """Schema zum Erstellen einer Spesenposition."""
+
+    # Beleg
+    document_id: Optional[uuid.UUID] = Field(None, description="Beleg-Dokument")
+    receipt_number: Optional[str] = Field(None, max_length=100, description="Belegnummer")
+
+    # Bewirtung
+    entertainment_participants: Optional[List[str]] = Field(None, description="Teilnehmer")
+    entertainment_occasion: Optional[str] = Field(None, description="Anlass")
+    entertainment_location: Optional[str] = Field(None, description="Ort")
+
+    # Kilometergeld
+    mileage_from: Optional[str] = Field(None, description="Start")
+    mileage_to: Optional[str] = Field(None, description="Ziel")
+    mileage_kilometers: Optional[float] = Field(None, gt=0, description="Kilometer")
+    mileage_vehicle_type: Optional[str] = Field(None, description="Fahrzeugtyp")
+    mileage_license_plate: Optional[str] = Field(None, description="Kennzeichen")
+
+    # Verpflegung
+    per_diem_hours: Optional[float] = Field(None, gt=0, le=24, description="Stunden")
+    per_diem_breakfast_provided: bool = Field(False, description="Fruehstueck gestellt")
+    per_diem_lunch_provided: bool = Field(False, description="Mittagessen gestellt")
+    per_diem_dinner_provided: bool = Field(False, description="Abendessen gestellt")
+
+    # Buchhaltung
+    cost_center: Optional[str] = Field(None, description="Kostenstelle")
+
+
+class ExpenseItemUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Spesenposition."""
+
+    expense_type: Optional[ExpenseType] = None
+    expense_date: Optional[datetime] = None
+    amount: Optional[float] = Field(None, gt=0)
+    description: Optional[str] = Field(None, min_length=3, max_length=500)
+    category_id: Optional[uuid.UUID] = None
+    tax_rate: Optional[float] = Field(None, ge=0, le=100)
+    vendor_name: Optional[str] = Field(None, max_length=255)
+    document_id: Optional[uuid.UUID] = None
+    receipt_number: Optional[str] = Field(None, max_length=100)
+    entertainment_participants: Optional[List[str]] = None
+    entertainment_occasion: Optional[str] = None
+    entertainment_location: Optional[str] = None
+    mileage_from: Optional[str] = None
+    mileage_to: Optional[str] = None
+    mileage_kilometers: Optional[float] = Field(None, gt=0)
+    mileage_vehicle_type: Optional[str] = None
+    mileage_license_plate: Optional[str] = None
+    per_diem_hours: Optional[float] = Field(None, gt=0, le=24)
+    per_diem_breakfast_provided: Optional[bool] = None
+    per_diem_lunch_provided: Optional[bool] = None
+    per_diem_dinner_provided: Optional[bool] = None
+    cost_center: Optional[str] = None
+
+
+class ExpenseItemResponse(BaseModel):
+    """Response-Schema fuer ExpenseItem."""
+
+    id: uuid.UUID
+    expense_report_id: uuid.UUID
+    expense_type: str
+    expense_date: datetime
+    amount: float
+    currency: str
+    tax_rate: Optional[float] = None
+    tax_amount: Optional[float] = None
+    net_amount: Optional[float] = None
+    is_deductible: bool
+    deductible_percentage: int
+    deductible_amount: Optional[float] = None
+    description: str
+    category_id: Optional[uuid.UUID] = None
+    document_id: Optional[uuid.UUID] = None
+    receipt_number: Optional[str] = None
+    vendor_name: Optional[str] = None
+    vendor_id: Optional[uuid.UUID] = None
+
+    # Bewirtung
+    entertainment_participants: Optional[List[str]] = None
+    entertainment_occasion: Optional[str] = None
+    entertainment_location: Optional[str] = None
+
+    # Kilometergeld
+    mileage_from: Optional[str] = None
+    mileage_to: Optional[str] = None
+    mileage_kilometers: Optional[float] = None
+    mileage_rate: Optional[float] = None
+    mileage_vehicle_type: Optional[str] = None
+    mileage_license_plate: Optional[str] = None
+
+    # Verpflegung
+    per_diem_hours: Optional[float] = None
+    per_diem_rate: Optional[float] = None
+    per_diem_breakfast_provided: bool = False
+    per_diem_lunch_provided: bool = False
+    per_diem_dinner_provided: bool = False
+
+    skr_account: Optional[str] = None
+    cost_center: Optional[str] = None
+    sort_order: int
+
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =============================================================================
+# KASSE-MODUL: SUMMARY SCHEMAS
+# =============================================================================
+
+
+class CashBookSummary(BaseModel):
+    """Zusammenfassung eines Kassenbuches."""
+
+    register_id: uuid.UUID
+    register_name: str
+    period_start: datetime
+    period_end: datetime
+
+    opening_balance: float
+    closing_balance: float
+
+    total_income: float
+    total_expense: float
+    net_change: float
+
+    entry_count: int
+    cancelled_count: int
+
+
+class DailySummary(BaseModel):
+    """Tageszusammenfassung."""
+
+    date: datetime
+    opening_balance: float
+    closing_balance: float
+    income: float
+    expense: float
+    net_change: float
+    entry_count: int
+
+
+class CashBookSummaryResponse(BaseModel):
+    """Response mit Kassenbuch-Zusammenfassung."""
+
+    summary: CashBookSummary
+    daily_summaries: List[DailySummary]
+
+
+# =============================================================================
+# KASSE-MODUL: CALCULATOR SCHEMAS
+# =============================================================================
+
+
+class PerDiemCalculationRequest(BaseModel):
+    """Request zur Berechnung der Verpflegungspauschale."""
+
+    travel_date: datetime = Field(..., description="Reisetag")
+    hours_away: float = Field(..., gt=0, le=24, description="Abwesenheitsstunden")
+    breakfast_provided: bool = Field(False, description="Fruehstueck gestellt")
+    lunch_provided: bool = Field(False, description="Mittagessen gestellt")
+    dinner_provided: bool = Field(False, description="Abendessen gestellt")
+    is_domestic: bool = Field(True, description="Inland?")
+    country: Optional[str] = Field(None, description="Land (bei Ausland)")
+
+
+class PerDiemCalculationResponse(BaseModel):
+    """Response mit berechneter Verpflegungspauschale."""
+
+    travel_start: datetime = Field(..., description="Reisebeginn")
+    travel_end: datetime = Field(..., description="Reiseende")
+    total_hours: Decimal = Field(..., description="Gesamtstunden")
+    country: str = Field("DE", description="Laendercode")
+    base_rate: Decimal = Field(..., description="Grundpauschale")
+    rate_type: str = Field(..., description="Pauschale-Typ (full_day, partial_day, none)")
+    meals_provided: Dict[str, bool] = Field(
+        default_factory=dict,
+        description="Gestellte Mahlzeiten"
+    )
+    meal_reductions: Decimal = Field(default=Decimal("0.00"), description="Kuerzungen")
+    total_amount: Decimal = Field(..., description="Endbetrag")
+
+
+class MileageCalculationRequest(BaseModel):
+    """Request zur Berechnung des Kilometergeldes."""
+
+    kilometers: float = Field(..., gt=0, description="Gefahrene Kilometer")
+    vehicle_type: str = Field("pkw", description="Fahrzeugtyp (pkw, motorrad)")
+
+
+class MileageCalculationResponse(BaseModel):
+    """Response mit berechnetem Kilometergeld."""
+
+    kilometers: float
+    rate_per_km: float
+    total_amount: float
+
+
+# ==================== Workflow Request Schemas ====================
+
+class ExpenseReportApproveRequest(BaseModel):
+    """Request fuer Spesenabrechnung-Genehmigung."""
+
+    approved_amount: Optional[Decimal] = Field(
+        None,
+        description="Optional geaenderter genehmigter Betrag"
+    )
+    notes: Optional[str] = Field(
+        None,
+        max_length=1000,
+        description="Optionale Notizen zur Genehmigung"
+    )
+
+
+class ExpenseReportRejectRequest(BaseModel):
+    """Request fuer Spesenabrechnung-Ablehnung."""
+
+    reason: str = Field(
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="Grund fuer die Ablehnung"
+    )
+
+
+# ==================== Aliase fuer Rueckwaertskompatibilitaet ====================
+
+# Diese Aliase ermoeglichen flexible Imports in Services und APIs
+PerDiemCalculation = PerDiemCalculationResponse
+MileageCalculation = MileageCalculationResponse
+PerDiemCalculateRequest = PerDiemCalculationRequest
+MileageCalculateRequest = MileageCalculationRequest
+
+
+# =============================================================================
+# PRIVAT-MODUL: ENUMS
+# =============================================================================
+
+
+class PrivatSpaceType(str, Enum):
+    """Typ des privaten Bereichs."""
+    PERSONAL = "personal"
+    SHARED = "shared"
+
+
+class PrivatAccessLevel(str, Enum):
+    """Zugriffsebene fuer geteilte Bereiche."""
+    READ = "read"
+    WRITE = "write"
+    ADMIN = "admin"
+
+
+class PrivatDocumentType(str, Enum):
+    """Dokumententypen im Privat-Modul."""
+    GENERAL = "general"
+    CONTRACT = "contract"
+    CERTIFICATE = "certificate"
+    INVOICE = "invoice"
+    RECEIPT = "receipt"
+    STATEMENT = "statement"
+    LETTER = "letter"
+    FORM = "form"
+    TAX = "tax"
+    INSURANCE = "insurance"
+    MEDICAL = "medical"
+
+
+class PrivatDeadlineType(str, Enum):
+    """Fristentypen im Privat-Modul."""
+    INSURANCE_PREMIUM = "insurance_premium"
+    LOAN_PAYMENT = "loan_payment"
+    RENT_DUE = "rent_due"
+    TAX_DEADLINE = "tax_deadline"
+    CONTRACT_RENEWAL = "contract_renewal"
+    VEHICLE_SERVICE = "vehicle_service"
+    VEHICLE_INSPECTION = "vehicle_inspection"
+    CUSTOM = "custom"
+
+
+class PrivatEmergencyAccessStatus(str, Enum):
+    """Status fuer Notfallzugriff-Anfragen."""
+    PENDING = "pending"
+    APPROVED = "approved"
+    DENIED = "denied"
+    EXPIRED = "expired"
+
+
+class InsuranceType(str, Enum):
+    """Versicherungstypen."""
+    LIABILITY = "liability"
+    HEALTH = "health"
+    LIFE = "life"
+    PROPERTY = "property"
+    VEHICLE = "vehicle"
+    TRAVEL = "travel"
+    LEGAL = "legal"
+    DISABILITY = "disability"
+    OTHER = "other"
+
+
+class VehicleType(str, Enum):
+    """Fahrzeugtypen."""
+    CAR = "car"
+    MOTORCYCLE = "motorcycle"
+    TRUCK = "truck"
+    TRAILER = "trailer"
+    OTHER = "other"
+
+
+class FuelType(str, Enum):
+    """Kraftstofftypen."""
+    PETROL = "petrol"
+    DIESEL = "diesel"
+    ELECTRIC = "electric"
+    HYBRID = "hybrid"
+    LPG = "lpg"
+    CNG = "cng"
+    OTHER = "other"
+
+
+class LoanType(str, Enum):
+    """Kredittypen."""
+    MORTGAGE = "mortgage"
+    PERSONAL = "personal"
+    CAR = "car"
+    BUSINESS = "business"
+    STUDENT = "student"
+    OTHER = "other"
+
+
+class InvestmentType(str, Enum):
+    """Anlagetypen."""
+    SAVINGS = "savings"
+    STOCKS = "stocks"
+    BONDS = "bonds"
+    FUNDS = "funds"
+    ETF = "etf"
+    REAL_ESTATE = "real_estate"
+    CRYPTO = "crypto"
+    INSURANCE = "insurance"
+    OTHER = "other"
+
+
+# =============================================================================
+# PRIVAT-MODUL: SPACE SCHEMAS
+# =============================================================================
+
+
+class PrivatSpaceBase(BaseModel):
+    """Basis-Schema fuer Privat-Space."""
+    name: str = Field(..., min_length=1, max_length=200, description="Name des Bereichs")
+    description: Optional[str] = Field(None, max_length=2000, description="Beschreibung")
+    space_type: PrivatSpaceType = Field(PrivatSpaceType.PERSONAL, description="Bereichstyp")
+
+
+class PrivatSpaceCreate(PrivatSpaceBase):
+    """Schema zum Erstellen eines Privat-Space."""
+    pass
+
+
+class PrivatSpaceUpdate(BaseModel):
+    """Schema zum Aktualisieren eines Privat-Space."""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=2000)
+    is_active: Optional[bool] = None
+
+
+class PrivatSpaceResponse(PrivatSpaceBase):
+    """Response-Schema fuer Privat-Space."""
+    id: uuid.UUID
+    owner_id: Optional[uuid.UUID] = None
+    company_id: Optional[uuid.UUID] = None
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PrivatSpaceWithStats(PrivatSpaceResponse):
+    """Privat-Space mit Statistiken."""
+    folder_count: int = 0
+    document_count: int = 0
+    total_size_bytes: int = 0
+    pending_deadlines: int = 0
+
+
+# =============================================================================
+# PRIVAT-MODUL: ACCESS SCHEMAS
+# =============================================================================
+
+
+class PrivatSpaceAccessBase(BaseModel):
+    """Basis-Schema fuer Space-Zugriff."""
+    access_level: PrivatAccessLevel = Field(..., description="Zugriffsebene")
+
+
+class PrivatSpaceAccessCreate(PrivatSpaceAccessBase):
+    """Schema zum Erstellen eines Space-Zugriffs."""
+    user_id: uuid.UUID = Field(..., description="Benutzer-ID")
+
+
+class PrivatSpaceAccessUpdate(BaseModel):
+    """Schema zum Aktualisieren eines Space-Zugriffs."""
+    access_level: Optional[PrivatAccessLevel] = None
+
+
+class PrivatSpaceAccessResponse(PrivatSpaceAccessBase):
+    """Response-Schema fuer Space-Zugriff."""
+    id: uuid.UUID
+    space_id: uuid.UUID
+    user_id: uuid.UUID
+    granted_by: Optional[uuid.UUID] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =============================================================================
+# PRIVAT-MODUL: FOLDER SCHEMAS
+# =============================================================================
+
+
+class PrivatFolderBase(BaseModel):
+    """Basis-Schema fuer Privat-Ordner."""
+    name: str = Field(..., min_length=1, max_length=200, description="Ordnername")
+    description: Optional[str] = Field(None, max_length=1000, description="Beschreibung")
+    color: Optional[str] = Field(None, pattern="^#[0-9A-Fa-f]{6}$", description="Farbcode")
+    icon: Optional[str] = Field(None, max_length=50, description="Icon-Name")
+
+
+class PrivatFolderCreate(PrivatFolderBase):
+    """Schema zum Erstellen eines Privat-Ordners."""
+    parent_id: Optional[uuid.UUID] = Field(None, description="Uebergeordneter Ordner")
+
+
+class PrivatFolderUpdate(BaseModel):
+    """Schema zum Aktualisieren eines Privat-Ordners."""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=1000)
+    color: Optional[str] = Field(None, pattern="^#[0-9A-Fa-f]{6}$")
+    icon: Optional[str] = Field(None, max_length=50)
+    parent_id: Optional[uuid.UUID] = None
+
+
+class PrivatFolderResponse(PrivatFolderBase):
+    """Response-Schema fuer Privat-Ordner."""
+    id: uuid.UUID
+    space_id: uuid.UUID
+    parent_id: Optional[uuid.UUID] = None
+    path: str
+    level: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PrivatFolderTree(PrivatFolderResponse):
+    """Ordner mit Unterordnern (Baum-Struktur)."""
+    children: List["PrivatFolderTree"] = []
+    document_count: int = 0
+
+
+# =============================================================================
+# PRIVAT-MODUL: DOCUMENT SCHEMAS
+# =============================================================================
+
+
+class PrivatDocumentBase(BaseModel):
+    """Basis-Schema fuer Privat-Dokument."""
+    title: str = Field(..., min_length=1, max_length=200, description="Dokumenttitel")
+    description: Optional[str] = Field(None, max_length=2000, description="Beschreibung")
+    document_type: PrivatDocumentType = Field(
+        PrivatDocumentType.GENERAL,
+        description="Dokumenttyp"
+    )
+    tags: Optional[List[str]] = Field(None, max_length=20, description="Tags")
+
+
+class PrivatDocumentCreate(PrivatDocumentBase):
+    """Schema zum Erstellen eines Privat-Dokuments."""
+    folder_id: Optional[uuid.UUID] = Field(None, description="Ordner-ID")
+    extra_encrypted: bool = Field(False, description="Extra-Verschluesselung aktivieren")
+    password_hint: Optional[str] = Field(None, max_length=200, description="Passwort-Hinweis")
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validiere Tags: max 50 Zeichen pro Tag."""
+        if v is None:
+            return v
+        validated = []
+        for tag in v:
+            if len(tag) > 50:
+                raise ValueError(f"Tag zu lang: max 50 Zeichen")
+            validated.append(tag.strip().lower())
+        return validated
+
+
+class PrivatDocumentUpdate(BaseModel):
+    """Schema zum Aktualisieren eines Privat-Dokuments."""
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=2000)
+    document_type: Optional[PrivatDocumentType] = None
+    tags: Optional[List[str]] = None
+    folder_id: Optional[uuid.UUID] = None
+
+
+class PrivatDocumentResponse(PrivatDocumentBase):
+    """Response-Schema fuer Privat-Dokument."""
+    id: uuid.UUID
+    space_id: uuid.UUID
+    folder_id: Optional[uuid.UUID] = None
+    file_path: str
+    file_name: str
+    file_size: int
+    mime_type: str
+    extra_encrypted: bool
+    password_hint: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PrivatDocumentUploadRequest(BaseModel):
+    """Request zum Hochladen eines Privat-Dokuments."""
+    space_id: uuid.UUID = Field(..., description="Space-ID")
+    folder_id: Optional[uuid.UUID] = Field(None, description="Ordner-ID")
+    title: Optional[str] = Field(None, max_length=200, description="Dokumenttitel")
+    description: Optional[str] = Field(None, max_length=2000, description="Beschreibung")
+    document_type: PrivatDocumentType = Field(PrivatDocumentType.GENERAL, description="Typ")
+    tags: Optional[List[str]] = Field(None, description="Tags")
+    extra_encrypted: bool = Field(False, description="Extra-Verschluesselung")
+    extra_password: Optional[str] = Field(None, description="Extra-Passwort")
+    password_hint: Optional[str] = Field(None, max_length=200, description="Passwort-Hinweis")
+
+
+class PrivatDocumentDecryptRequest(BaseModel):
+    """Request zum Entschluesseln eines Dokuments."""
+    password: str = Field(..., min_length=1, description="Passwort fuer Extra-Verschluesselung")
+
+
+# =============================================================================
+# PRIVAT-MODUL: PROPERTY (IMMOBILIEN) SCHEMAS
+# =============================================================================
+
+
+class PrivatPropertyBase(BaseModel):
+    """Basis-Schema fuer Immobilie."""
+    name: str = Field(..., min_length=1, max_length=200, description="Bezeichnung")
+    address: str = Field(..., min_length=1, max_length=500, description="Adresse")
+    city: str = Field(..., min_length=1, max_length=100, description="Stadt")
+    postal_code: str = Field(..., min_length=1, max_length=20, description="PLZ")
+    country: str = Field("DE", max_length=2, description="Laendercode")
+    property_type: str = Field(..., max_length=50, description="Immobilientyp")
+    size_sqm: Optional[Decimal] = Field(None, ge=0, description="Groesse in qm")
+    rooms: Optional[int] = Field(None, ge=0, description="Anzahl Zimmer")
+    purchase_date: Optional[date_type] = Field(None, description="Kaufdatum")
+    purchase_price: Optional[Decimal] = Field(None, ge=0, description="Kaufpreis")
+    current_value: Optional[Decimal] = Field(None, ge=0, description="Aktueller Wert")
+    notes: Optional[str] = Field(None, max_length=5000, description="Notizen")
+
+
+class PrivatPropertyCreate(PrivatPropertyBase):
+    """Schema zum Erstellen einer Immobilie."""
+    pass
+
+
+class PrivatPropertyUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Immobilie."""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    address: Optional[str] = Field(None, min_length=1, max_length=500)
+    city: Optional[str] = Field(None, min_length=1, max_length=100)
+    postal_code: Optional[str] = Field(None, min_length=1, max_length=20)
+    country: Optional[str] = Field(None, max_length=2)
+    property_type: Optional[str] = Field(None, max_length=50)
+    size_sqm: Optional[Decimal] = Field(None, ge=0)
+    rooms: Optional[int] = Field(None, ge=0)
+    purchase_date: Optional[date_type] = None
+    purchase_price: Optional[Decimal] = Field(None, ge=0)
+    current_value: Optional[Decimal] = Field(None, ge=0)
+    notes: Optional[str] = Field(None, max_length=5000)
+
+
+class PrivatPropertyResponse(PrivatPropertyBase):
+    """Response-Schema fuer Immobilie."""
+    id: uuid.UUID
+    space_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PrivatPropertyWithTenants(PrivatPropertyResponse):
+    """Immobilie mit Mieterliste."""
+    tenants: List["PrivatTenantResponse"] = []
+    total_rental_income: Decimal = Decimal("0.00")
+    pending_payments: int = 0
+
+
+# Alias for backward compatibility
+PrivatPropertyWithDetails = PrivatPropertyWithTenants
+
+
+# =============================================================================
+# PRIVAT-MODUL: TENANT (MIETER) SCHEMAS
+# =============================================================================
+
+
+class PrivatTenantBase(BaseModel):
+    """Basis-Schema fuer Mieter."""
+    first_name: str = Field(..., min_length=1, max_length=100, description="Vorname")
+    last_name: str = Field(..., min_length=1, max_length=100, description="Nachname")
+    email: Optional[EmailStr] = Field(None, description="E-Mail")
+    phone: Optional[str] = Field(None, max_length=50, description="Telefon")
+    unit_number: Optional[str] = Field(None, max_length=50, description="Wohnungsnummer")
+    lease_start: date_type = Field(..., description="Mietbeginn")
+    lease_end: Optional[date_type] = Field(None, description="Mietende")
+    monthly_rent: Decimal = Field(..., ge=0, description="Monatliche Miete")
+    deposit: Optional[Decimal] = Field(None, ge=0, description="Kaution")
+    notes: Optional[str] = Field(None, max_length=5000, description="Notizen")
+
+
+class PrivatTenantCreate(PrivatTenantBase):
+    """Schema zum Erstellen eines Mieters."""
+    property_id: uuid.UUID = Field(..., description="Immobilien-ID")
+
+
+class PrivatTenantUpdate(BaseModel):
+    """Schema zum Aktualisieren eines Mieters."""
+    first_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    last_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=50)
+    unit_number: Optional[str] = Field(None, max_length=50)
+    lease_start: Optional[date_type] = None
+    lease_end: Optional[date_type] = None
+    monthly_rent: Optional[Decimal] = Field(None, ge=0)
+    deposit: Optional[Decimal] = Field(None, ge=0)
+    is_active: Optional[bool] = None
+    notes: Optional[str] = Field(None, max_length=5000)
+
+
+class PrivatTenantResponse(PrivatTenantBase):
+    """Response-Schema fuer Mieter."""
+    id: uuid.UUID
+    property_id: uuid.UUID
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =============================================================================
+# PRIVAT-MODUL: RENTAL INCOME (MIETEINNAHMEN) SCHEMAS
+# =============================================================================
+
+
+class PrivatRentalIncomeBase(BaseModel):
+    """Basis-Schema fuer Mieteinnahme."""
+    amount: Decimal = Field(..., description="Betrag")
+    payment_date: date_type = Field(..., description="Zahlungsdatum")
+    period_start: date_type = Field(..., description="Zeitraum Beginn")
+    period_end: date_type = Field(..., description="Zeitraum Ende")
+    payment_method: Optional[str] = Field(None, max_length=50, description="Zahlungsart")
+    notes: Optional[str] = Field(None, max_length=1000, description="Notizen")
+
+
+class PrivatRentalIncomeCreate(PrivatRentalIncomeBase):
+    """Schema zum Erstellen einer Mieteinnahme."""
+    tenant_id: uuid.UUID = Field(..., description="Mieter-ID")
+
+
+class PrivatRentalIncomeUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Mieteinnahme."""
+    amount: Optional[Decimal] = None
+    payment_date: Optional[date_type] = None
+    period_start: Optional[date_type] = None
+    period_end: Optional[date_type] = None
+    payment_method: Optional[str] = Field(None, max_length=50)
+    notes: Optional[str] = Field(None, max_length=1000)
+
+
+class PrivatRentalIncomeResponse(PrivatRentalIncomeBase):
+    """Response-Schema fuer Mieteinnahme."""
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =============================================================================
+# PRIVAT-MODUL: UTILITY STATEMENT (NEBENKOSTEN) SCHEMAS
+# =============================================================================
+
+
+class PrivatUtilityStatementBase(BaseModel):
+    """Basis-Schema fuer Nebenkostenabrechnung."""
+    year: int = Field(..., ge=2000, le=2100, description="Abrechnungsjahr")
+    total_amount: Decimal = Field(..., description="Gesamtbetrag")
+    prepayments: Decimal = Field(default=Decimal("0.00"), description="Vorauszahlungen")
+    balance: Decimal = Field(..., description="Saldo (Nachzahlung/Guthaben)")
+    due_date: Optional[date_type] = Field(None, description="Faelligkeitsdatum")
+    is_paid: bool = Field(False, description="Bezahlt?")
+    notes: Optional[str] = Field(None, max_length=2000, description="Notizen")
+
+
+class PrivatUtilityStatementCreate(PrivatUtilityStatementBase):
+    """Schema zum Erstellen einer Nebenkostenabrechnung."""
+    property_id: uuid.UUID = Field(..., description="Immobilien-ID")
+    tenant_id: Optional[uuid.UUID] = Field(None, description="Mieter-ID")
+
+
+class PrivatUtilityStatementUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Nebenkostenabrechnung."""
+    year: Optional[int] = Field(None, ge=2000, le=2100)
+    total_amount: Optional[Decimal] = None
+    prepayments: Optional[Decimal] = None
+    balance: Optional[Decimal] = None
+    due_date: Optional[date_type] = None
+    is_paid: Optional[bool] = None
+    notes: Optional[str] = Field(None, max_length=2000)
+
+
+class PrivatUtilityStatementResponse(PrivatUtilityStatementBase):
+    """Response-Schema fuer Nebenkostenabrechnung."""
+    id: uuid.UUID
+    property_id: uuid.UUID
+    tenant_id: Optional[uuid.UUID] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =============================================================================
+# PRIVAT-MODUL: VEHICLE (FAHRZEUG) SCHEMAS
+# =============================================================================
+
+
+class PrivatVehicleBase(BaseModel):
+    """Basis-Schema fuer Fahrzeug."""
+    name: str = Field(..., min_length=1, max_length=200, description="Bezeichnung")
+    vehicle_type: VehicleType = Field(VehicleType.CAR, description="Fahrzeugtyp")
+    make: str = Field(..., min_length=1, max_length=100, description="Marke")
+    model: str = Field(..., min_length=1, max_length=100, description="Modell")
+    year: int = Field(..., ge=1900, le=2100, description="Baujahr")
+    license_plate: Optional[str] = Field(None, max_length=20, description="Kennzeichen")
+    vin: Optional[str] = Field(None, max_length=50, description="FIN")
+    fuel_type: FuelType = Field(FuelType.PETROL, description="Kraftstoffart")
+    mileage: Optional[int] = Field(None, ge=0, description="Kilometerstand")
+    purchase_date: Optional[date_type] = Field(None, description="Kaufdatum")
+    purchase_price: Optional[Decimal] = Field(None, ge=0, description="Kaufpreis")
+    current_value: Optional[Decimal] = Field(None, ge=0, description="Aktueller Wert")
+    next_inspection: Optional[date_type] = Field(None, description="Naechste HU/AU")
+    next_service: Optional[date_type] = Field(None, description="Naechster Service")
+    notes: Optional[str] = Field(None, max_length=5000, description="Notizen")
+
+
+class PrivatVehicleCreate(PrivatVehicleBase):
+    """Schema zum Erstellen eines Fahrzeugs."""
+    pass
+
+
+class PrivatVehicleUpdate(BaseModel):
+    """Schema zum Aktualisieren eines Fahrzeugs."""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    vehicle_type: Optional[VehicleType] = None
+    make: Optional[str] = Field(None, min_length=1, max_length=100)
+    model: Optional[str] = Field(None, min_length=1, max_length=100)
+    year: Optional[int] = Field(None, ge=1900, le=2100)
+    license_plate: Optional[str] = Field(None, max_length=20)
+    vin: Optional[str] = Field(None, max_length=50)
+    fuel_type: Optional[FuelType] = None
+    mileage: Optional[int] = Field(None, ge=0)
+    purchase_date: Optional[date_type] = None
+    purchase_price: Optional[Decimal] = Field(None, ge=0)
+    current_value: Optional[Decimal] = Field(None, ge=0)
+    next_inspection: Optional[date_type] = None
+    next_service: Optional[date_type] = None
+    is_active: Optional[bool] = None
+    notes: Optional[str] = Field(None, max_length=5000)
+
+
+class PrivatVehicleResponse(PrivatVehicleBase):
+    """Response-Schema fuer Fahrzeug."""
+    id: uuid.UUID
+    space_id: uuid.UUID
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PrivatVehicleWithLogs(PrivatVehicleResponse):
+    """Fahrzeug mit Tankbelegen."""
+    recent_fuel_logs: List["PrivatFuelLogResponse"] = []
+    total_fuel_cost_year: Decimal = Decimal("0.00")
+    average_consumption: Optional[Decimal] = None
+
+
+# Alias for backward compatibility
+PrivatVehicleWithStats = PrivatVehicleWithLogs
+
+
+# =============================================================================
+# PRIVAT-MODUL: FUEL LOG (TANKBELEG) SCHEMAS
+# =============================================================================
+
+
+class PrivatFuelLogBase(BaseModel):
+    """Basis-Schema fuer Tankbeleg."""
+    date: date_type = Field(..., description="Tankdatum")
+    mileage: int = Field(..., ge=0, description="Kilometerstand")
+    liters: Decimal = Field(..., gt=0, description="Liter")
+    price_per_liter: Decimal = Field(..., gt=0, description="Preis pro Liter")
+    total_price: Decimal = Field(..., gt=0, description="Gesamtpreis")
+    fuel_type: FuelType = Field(FuelType.PETROL, description="Kraftstoffart")
+    station_name: Optional[str] = Field(None, max_length=200, description="Tankstelle")
+    is_full_tank: bool = Field(True, description="Vollgetankt?")
+    notes: Optional[str] = Field(None, max_length=1000, description="Notizen")
+
+
+class PrivatFuelLogCreate(PrivatFuelLogBase):
+    """Schema zum Erstellen eines Tankbelegs."""
+    vehicle_id: uuid.UUID = Field(..., description="Fahrzeug-ID")
+
+
+class PrivatFuelLogUpdate(BaseModel):
+    """Schema zum Aktualisieren eines Tankbelegs."""
+    date: Optional[date_type] = None
+    mileage: Optional[int] = Field(None, ge=0)
+    liters: Optional[Decimal] = Field(None, gt=0)
+    price_per_liter: Optional[Decimal] = Field(None, gt=0)
+    total_price: Optional[Decimal] = Field(None, gt=0)
+    fuel_type: Optional[FuelType] = None
+    station_name: Optional[str] = Field(None, max_length=200)
+    is_full_tank: Optional[bool] = None
+    notes: Optional[str] = Field(None, max_length=1000)
+
+
+class PrivatFuelLogResponse(PrivatFuelLogBase):
+    """Response-Schema fuer Tankbeleg."""
+    id: uuid.UUID
+    vehicle_id: uuid.UUID
+    consumption: Optional[Decimal] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PrivatFuelStatisticsResponse(BaseModel):
+    """Response-Schema fuer Kraftstoff-Statistiken."""
+    fill_ups: int = Field(..., description="Anzahl Tankfuellungen")
+    total_liters: Decimal = Field(..., description="Gesamtliter")
+    total_cost: Decimal = Field(..., description="Gesamtkosten")
+    avg_price_per_liter: Decimal = Field(..., description="Durchschnittspreis pro Liter")
+    total_kilometers: int = Field(..., description="Gefahrene Kilometer")
+    avg_consumption_per_100km: Optional[Decimal] = Field(
+        None, description="Durchschnittsverbrauch pro 100km"
+    )
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =============================================================================
+# PRIVAT-MODUL: INSURANCE (VERSICHERUNG) SCHEMAS
+# =============================================================================
+
+
+class PrivatInsuranceBase(BaseModel):
+    """Basis-Schema fuer Versicherung."""
+    name: str = Field(..., min_length=1, max_length=200, description="Bezeichnung")
+    insurance_type: InsuranceType = Field(..., description="Versicherungstyp")
+    provider: str = Field(..., min_length=1, max_length=200, description="Anbieter")
+    policy_number: Optional[str] = Field(None, max_length=100, description="Policennummer")
+    premium: Decimal = Field(..., ge=0, description="Praemie")
+    premium_interval: str = Field(
+        "monthly",
+        pattern="^(monthly|quarterly|semi_annual|annual)$",
+        description="Zahlungsintervall"
+    )
+    coverage_amount: Optional[Decimal] = Field(None, ge=0, description="Deckungssumme")
+    deductible: Optional[Decimal] = Field(None, ge=0, description="Selbstbeteiligung")
+    start_date: date_type = Field(..., description="Vertragsbeginn")
+    end_date: Optional[date_type] = Field(None, description="Vertragsende")
+    cancellation_period: Optional[int] = Field(
+        None,
+        ge=0,
+        description="Kuendigungsfrist in Tagen"
+    )
+    auto_renewal: bool = Field(True, description="Automatische Verlaengerung")
+    notes: Optional[str] = Field(None, max_length=5000, description="Notizen")
+
+
+class PrivatInsuranceCreate(PrivatInsuranceBase):
+    """Schema zum Erstellen einer Versicherung."""
+    pass
+
+
+class PrivatInsuranceUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Versicherung."""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    insurance_type: Optional[InsuranceType] = None
+    provider: Optional[str] = Field(None, min_length=1, max_length=200)
+    policy_number: Optional[str] = Field(None, max_length=100)
+    premium: Optional[Decimal] = Field(None, ge=0)
+    premium_interval: Optional[str] = Field(None, pattern="^(monthly|quarterly|semi_annual|annual)$")
+    coverage_amount: Optional[Decimal] = Field(None, ge=0)
+    deductible: Optional[Decimal] = Field(None, ge=0)
+    start_date: Optional[date_type] = None
+    end_date: Optional[date_type] = None
+    cancellation_period: Optional[int] = Field(None, ge=0)
+    auto_renewal: Optional[bool] = None
+    is_active: Optional[bool] = None
+    notes: Optional[str] = Field(None, max_length=5000)
+
+
+class PrivatInsuranceResponse(PrivatInsuranceBase):
+    """Response-Schema fuer Versicherung."""
+    id: uuid.UUID
+    space_id: uuid.UUID
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PrivatInsuranceWithDeadlines(PrivatInsuranceResponse):
+    """Versicherung mit Fristen."""
+    upcoming_payment: Optional[date_type] = None
+    days_until_payment: Optional[int] = None
+    annual_cost: Decimal = Decimal("0.00")
+
+
+# =============================================================================
+# PRIVAT-MODUL: LOAN (KREDIT) SCHEMAS
+# =============================================================================
+
+
+class PrivatLoanBase(BaseModel):
+    """Basis-Schema fuer Kredit."""
+    name: str = Field(..., min_length=1, max_length=200, description="Bezeichnung")
+    loan_type: LoanType = Field(..., description="Kredittyp")
+    lender: str = Field(..., min_length=1, max_length=200, description="Kreditgeber")
+    principal_amount: Decimal = Field(..., gt=0, description="Darlehensbetrag")
+    current_balance: Decimal = Field(..., ge=0, description="Aktuelle Restschuld")
+    interest_rate: Decimal = Field(..., ge=0, le=100, description="Zinssatz in %")
+    monthly_payment: Decimal = Field(..., ge=0, description="Monatliche Rate")
+    start_date: date_type = Field(..., description="Vertragsbeginn")
+    end_date: Optional[date_type] = Field(None, description="Vertragsende")
+    next_payment_date: Optional[date_type] = Field(None, description="Naechste Zahlung")
+    account_number: Optional[str] = Field(None, max_length=50, description="Kontonummer")
+    notes: Optional[str] = Field(None, max_length=5000, description="Notizen")
+
+
+class PrivatLoanCreate(PrivatLoanBase):
+    """Schema zum Erstellen eines Kredits."""
+    pass
+
+
+class PrivatLoanUpdate(BaseModel):
+    """Schema zum Aktualisieren eines Kredits."""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    loan_type: Optional[LoanType] = None
+    lender: Optional[str] = Field(None, min_length=1, max_length=200)
+    principal_amount: Optional[Decimal] = Field(None, gt=0)
+    current_balance: Optional[Decimal] = Field(None, ge=0)
+    interest_rate: Optional[Decimal] = Field(None, ge=0, le=100)
+    monthly_payment: Optional[Decimal] = Field(None, ge=0)
+    start_date: Optional[date_type] = None
+    end_date: Optional[date_type] = None
+    next_payment_date: Optional[date_type] = None
+    account_number: Optional[str] = Field(None, max_length=50)
+    is_active: Optional[bool] = None
+    notes: Optional[str] = Field(None, max_length=5000)
+
+
+class PrivatLoanResponse(PrivatLoanBase):
+    """Response-Schema fuer Kredit."""
+    id: uuid.UUID
+    space_id: uuid.UUID
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PrivatLoanWithStats(PrivatLoanResponse):
+    """Kredit mit Statistiken."""
+    total_paid: Decimal = Decimal("0.00")
+    total_interest_paid: Decimal = Decimal("0.00")
+    remaining_months: Optional[int] = None
+    payoff_date: Optional[date_type] = None
+
+
+# =============================================================================
+# PRIVAT-MODUL: INVESTMENT (GELDANLAGE) SCHEMAS
+# =============================================================================
+
+
+class PrivatInvestmentBase(BaseModel):
+    """Basis-Schema fuer Geldanlage."""
+    name: str = Field(..., min_length=1, max_length=200, description="Bezeichnung")
+    investment_type: InvestmentType = Field(..., description="Anlagetyp")
+    institution: str = Field(..., min_length=1, max_length=200, description="Institut")
+    account_number: Optional[str] = Field(None, max_length=50, description="Kontonummer")
+    initial_amount: Decimal = Field(..., ge=0, description="Anfangsbetrag")
+    current_value: Decimal = Field(..., ge=0, description="Aktueller Wert")
+    interest_rate: Optional[Decimal] = Field(None, ge=0, le=100, description="Zinssatz in %")
+    start_date: date_type = Field(..., description="Beginn")
+    maturity_date: Optional[date_type] = Field(None, description="Faelligkeit")
+    is_taxable: bool = Field(True, description="Steuerpflichtig?")
+    notes: Optional[str] = Field(None, max_length=5000, description="Notizen")
+
+
+class PrivatInvestmentCreate(PrivatInvestmentBase):
+    """Schema zum Erstellen einer Geldanlage."""
+    pass
+
+
+class PrivatInvestmentUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Geldanlage."""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    investment_type: Optional[InvestmentType] = None
+    institution: Optional[str] = Field(None, min_length=1, max_length=200)
+    account_number: Optional[str] = Field(None, max_length=50)
+    initial_amount: Optional[Decimal] = Field(None, ge=0)
+    current_value: Optional[Decimal] = Field(None, ge=0)
+    interest_rate: Optional[Decimal] = Field(None, ge=0, le=100)
+    start_date: Optional[date_type] = None
+    maturity_date: Optional[date_type] = None
+    is_taxable: Optional[bool] = None
+    is_active: Optional[bool] = None
+    notes: Optional[str] = Field(None, max_length=5000)
+
+
+class PrivatInvestmentResponse(PrivatInvestmentBase):
+    """Response-Schema fuer Geldanlage."""
+    id: uuid.UUID
+    space_id: uuid.UUID
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PrivatInvestmentWithStats(PrivatInvestmentResponse):
+    """Geldanlage mit Statistiken."""
+    total_return: Decimal = Decimal("0.00")
+    return_percentage: Decimal = Decimal("0.00")
+    annual_return: Optional[Decimal] = None
+
+
+class PrivatPortfolioItem(BaseModel):
+    """Ein Element in der Portfolio-Verteilung."""
+    value: Decimal = Field(..., description="Wert der Anlage")
+    percentage: Decimal = Field(..., description="Prozentualer Anteil")
+
+
+class PrivatPortfolioBreakdownResponse(BaseModel):
+    """Response-Schema fuer Portfolio-Verteilung."""
+    breakdown: Dict[str, PrivatPortfolioItem] = Field(
+        ..., description="Verteilung nach Anlagetyp"
+    )
+    total: Decimal = Field(..., description="Gesamtwert des Portfolios")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =============================================================================
+# PRIVAT-MODUL: DEADLINE (FRIST) SCHEMAS
+# =============================================================================
+
+
+class PrivatDeadlineBase(BaseModel):
+    """Basis-Schema fuer Frist."""
+    title: str = Field(..., min_length=1, max_length=200, description="Titel")
+    description: Optional[str] = Field(None, max_length=2000, description="Beschreibung")
+    deadline_type: PrivatDeadlineType = Field(
+        PrivatDeadlineType.CUSTOM,
+        description="Fristentyp"
+    )
+    due_date: date_type = Field(..., description="Faelligkeitsdatum")
+    reminder_days: List[int] = Field(
+        default=[7, 3, 1],
+        description="Erinnerung X Tage vorher"
+    )
+    is_recurring: bool = Field(False, description="Wiederkehrend?")
+    recurrence_interval: Optional[str] = Field(
+        None,
+        pattern="^(daily|weekly|monthly|quarterly|semi_annual|annual)$",
+        description="Wiederholungsintervall"
+    )
+    priority: str = Field(
+        "medium",
+        pattern="^(low|medium|high|critical)$",
+        description="Prioritaet"
+    )
+
+
+class PrivatDeadlineCreate(PrivatDeadlineBase):
+    """Schema zum Erstellen einer Frist."""
+    related_entity_type: Optional[str] = Field(
+        None,
+        max_length=50,
+        description="Verknuepfter Entity-Typ"
+    )
+    related_entity_id: Optional[uuid.UUID] = Field(
+        None,
+        description="Verknuepfte Entity-ID"
+    )
+
+
+class PrivatDeadlineUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Frist."""
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=2000)
+    deadline_type: Optional[PrivatDeadlineType] = None
+    due_date: Optional[date_type] = None
+    reminder_days: Optional[List[int]] = None
+    is_recurring: Optional[bool] = None
+    recurrence_interval: Optional[str] = Field(
+        None,
+        pattern="^(daily|weekly|monthly|quarterly|semi_annual|annual)$"
+    )
+    priority: Optional[str] = Field(None, pattern="^(low|medium|high|critical)$")
+    is_completed: Optional[bool] = None
+
+
+class PrivatDeadlineResponse(PrivatDeadlineBase):
+    """Response-Schema fuer Frist."""
+    id: uuid.UUID
+    space_id: uuid.UUID
+    related_entity_type: Optional[str] = None
+    related_entity_id: Optional[uuid.UUID] = None
+    is_completed: bool
+    completed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PrivatDeadlineWithStatus(PrivatDeadlineResponse):
+    """Frist mit Status-Informationen."""
+    days_remaining: int = 0
+    is_overdue: bool = False
+    next_reminder: Optional[date_type] = None
+    related_entity_name: Optional[str] = None
+
+
+class PrivatDeadlineCalendarExport(BaseModel):
+    """iCal Export Schema."""
+    deadlines: List[PrivatDeadlineResponse]
+    format: str = Field("ical", pattern="^(ical|json)$")
+
+
+# =============================================================================
+# PRIVAT-MODUL: EMERGENCY CONTACT (NOTFALLKONTAKT) SCHEMAS
+# =============================================================================
+
+
+class PrivatEmergencyContactBase(BaseModel):
+    """Basis-Schema fuer Notfallkontakt."""
+    first_name: str = Field(..., min_length=1, max_length=100, description="Vorname")
+    last_name: str = Field(..., min_length=1, max_length=100, description="Nachname")
+    email: EmailStr = Field(..., description="E-Mail")
+    phone: Optional[str] = Field(None, max_length=50, description="Telefon")
+    relationship: Optional[str] = Field(None, max_length=100, description="Beziehung")
+    waiting_period_days: int = Field(
+        30,
+        ge=1,
+        le=365,
+        description="Wartezeit in Tagen"
+    )
+    notes: Optional[str] = Field(None, max_length=2000, description="Notizen")
+
+
+class PrivatEmergencyContactCreate(PrivatEmergencyContactBase):
+    """Schema zum Erstellen eines Notfallkontakts."""
+    pass
+
+
+class PrivatEmergencyContactUpdate(BaseModel):
+    """Schema zum Aktualisieren eines Notfallkontakts."""
+    first_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    last_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=50)
+    relationship: Optional[str] = Field(None, max_length=100)
+    waiting_period_days: Optional[int] = Field(None, ge=1, le=365)
+    is_active: Optional[bool] = None
+    notes: Optional[str] = Field(None, max_length=2000)
+
+
+class PrivatEmergencyContactResponse(PrivatEmergencyContactBase):
+    """Response-Schema fuer Notfallkontakt."""
+    id: uuid.UUID
+    space_id: uuid.UUID
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =============================================================================
+# PRIVAT-MODUL: EMERGENCY ACCESS REQUEST SCHEMAS
+# =============================================================================
+
+
+class PrivatEmergencyAccessRequestCreate(BaseModel):
+    """Schema zum Erstellen einer Notfallzugriff-Anfrage."""
+    space_id: uuid.UUID = Field(..., description="Space-ID")
+    reason: str = Field(..., min_length=10, max_length=2000, description="Begruendung")
+
+
+class PrivatEmergencyAccessRequestResponse(BaseModel):
+    """Response-Schema fuer Notfallzugriff-Anfrage."""
+    id: uuid.UUID
+    space_id: uuid.UUID
+    contact_id: uuid.UUID
+    status: PrivatEmergencyAccessStatus
+    reason: str
+    requested_at: datetime
+    waiting_until: datetime
+    approved_at: Optional[datetime] = None
+    denied_at: Optional[datetime] = None
+    denied_reason: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PrivatEmergencyAccessDenyRequest(BaseModel):
+    """Schema zum Ablehnen einer Notfallzugriff-Anfrage."""
+    reason: str = Field(..., min_length=1, max_length=1000, description="Ablehnungsgrund")
+
+
+# =============================================================================
+# PRIVAT-MODUL: DASHBOARD & STATISTICS SCHEMAS
+# =============================================================================
+
+
+class PrivatDashboardStats(BaseModel):
+    """Dashboard-Statistiken."""
+    total_documents: int = 0
+    total_properties: int = 0
+    total_vehicles: int = 0
+    total_insurances: int = 0
+    total_loans: int = 0
+    total_investments: int = 0
+    upcoming_deadlines: int = 0
+    overdue_deadlines: int = 0
+    total_property_value: Decimal = Decimal("0.00")
+    total_loan_balance: Decimal = Decimal("0.00")
+    total_investment_value: Decimal = Decimal("0.00")
+    net_worth: Decimal = Decimal("0.00")
+
+
+class PrivatDeadlineWidget(BaseModel):
+    """Dashboard-Widget fuer Fristen."""
+    today: List[PrivatDeadlineWithStatus] = []
+    this_week: List[PrivatDeadlineWithStatus] = []
+    this_month: List[PrivatDeadlineWithStatus] = []
+    overdue: List[PrivatDeadlineWithStatus] = []
+
+
+class PrivatFinancialSummary(BaseModel):
+    """Finanzuebersicht."""
+    total_property_value: Decimal = Decimal("0.00")
+    total_vehicle_value: Decimal = Decimal("0.00")
+    total_investment_value: Decimal = Decimal("0.00")
+    total_loan_balance: Decimal = Decimal("0.00")
+    monthly_rental_income: Decimal = Decimal("0.00")
+    monthly_insurance_cost: Decimal = Decimal("0.00")
+    monthly_loan_payments: Decimal = Decimal("0.00")
+    net_worth: Decimal = Decimal("0.00")
+    monthly_cash_flow: Decimal = Decimal("0.00")
+
+
+# =============================================================================
+# PRIVAT-MODUL: LIST RESPONSE SCHEMAS
+# =============================================================================
+
+
+class PrivatSpaceListResponse(BaseModel):
+    """Paginierte Liste von Privat-Spaces."""
+    items: List[PrivatSpaceWithStats]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class PrivatDocumentListResponse(BaseModel):
+    """Paginierte Liste von Privat-Dokumenten."""
+    items: List[PrivatDocumentResponse]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class PrivatPropertyListResponse(BaseModel):
+    """Paginierte Liste von Immobilien."""
+    items: List[PrivatPropertyWithTenants]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class PrivatVehicleListResponse(BaseModel):
+    """Paginierte Liste von Fahrzeugen."""
+    items: List[PrivatVehicleWithLogs]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class PrivatInsuranceListResponse(BaseModel):
+    """Paginierte Liste von Versicherungen."""
+    items: List[PrivatInsuranceWithDeadlines]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class PrivatLoanListResponse(BaseModel):
+    """Paginierte Liste von Krediten."""
+    items: List[PrivatLoanWithStats]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class PrivatInvestmentListResponse(BaseModel):
+    """Paginierte Liste von Geldanlagen."""
+    items: List[PrivatInvestmentWithStats]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class PrivatDeadlineListResponse(BaseModel):
+    """Paginierte Liste von Fristen."""
+    items: List[PrivatDeadlineWithStatus]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+# Forward references for recursive models
+PrivatFolderTree.model_rebuild()
+PrivatPropertyWithTenants.model_rebuild()
+PrivatVehicleWithLogs.model_rebuild()
+
+
+# =============================================================================
+# VALIDATION QUEUE SYSTEM SCHEMAS
+# Enterprise-Grade Validierungssystem fuer OCR-Ergebnisse und extrahierte Daten
+# =============================================================================
+
+class ValidationStatusEnum(str, Enum):
+    """Validierungs-Status."""
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    SKIPPED = "skipped"
+
+
+class SampleSourceEnum(str, Enum):
+    """Quelle der Stichproben-Auswahl."""
+    AUTOMATIC = "automatic"
+    RULE_BASED = "rule_based"
+    MANUAL = "manual"
+    LOW_CONFIDENCE = "low_confidence"
+
+
+class ValidationRuleTypeEnum(str, Enum):
+    """Typ der Validierungsregel."""
+    CONFIDENCE_THRESHOLD = "confidence_threshold"
+    FIELD_PATTERN = "field_pattern"
+    DOCUMENT_TYPE = "document_type"
+    FIRST_OCCURRENCE = "first_occurrence"
+    ERROR_PATTERN = "error_pattern"
+
+
+class RejectionCategoryEnum(str, Enum):
+    """Kategorie des Ablehnungsgrunds."""
+    OCR_ERROR = "ocr_error"
+    MISSING_DATA = "missing_data"
+    WRONG_FORMAT = "wrong_format"
+    UNREADABLE = "unreadable"
+    DUPLICATE = "duplicate"
+    WRONG_DOCUMENT_TYPE = "wrong_document_type"
+    OTHER = "other"
+
+
+# -----------------------------------------------------------------------------
+# VALIDATION FIELD REVIEW SCHEMAS
+# -----------------------------------------------------------------------------
+
+class ValidationFieldBase(BaseModel):
+    """Basis-Schema fuer Validierungsfelder."""
+    field_key: str = Field(..., description="Technischer Feldname z.B. 'invoice_number'")
+    field_label: str = Field(..., description="Deutscher Anzeigename")
+    field_type: Optional[str] = Field(None, description="Feldtyp z.B. 'text', 'currency', 'date'")
+    original_value: Optional[str] = None
+    confidence_score: Optional[float] = Field(None, ge=0.0, le=1.0)
+
+
+class ValidationFieldCreate(ValidationFieldBase):
+    """Schema zum Erstellen eines Validierungsfelds."""
+    bounding_box: Optional[Dict[str, Any]] = Field(
+        None,
+        description="PDF-Koordinaten: {x, y, width, height, page}"
+    )
+    ocr_backend: Optional[str] = None
+
+
+class ValidationFieldUpdate(BaseModel):
+    """Schema zum Aktualisieren eines Validierungsfelds."""
+    corrected_value: Optional[str] = None
+    validation_status: Optional[str] = None
+
+
+class ValidationFieldResponse(ValidationFieldBase):
+    """Antwort-Schema fuer ein Validierungsfeld."""
+    id: UUID
+    queue_item_id: UUID
+    corrected_value: Optional[str] = None
+    was_corrected: bool = False
+    confidence_threshold: float = 0.85
+    is_below_threshold: bool = False
+    validation_status: str = "pending"
+    validation_errors: List[Dict[str, Any]] = []
+    umlaut_issues: List[Dict[str, Any]] = []
+    format_issues: List[Dict[str, Any]] = []
+    bounding_box: Optional[Dict[str, Any]] = None
+    ocr_backend: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    reviewed_by_id: Optional[UUID] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ValidationFieldValidateResult(BaseModel):
+    """Ergebnis einer Feld-Validierung."""
+    field_id: UUID
+    field_key: str
+    is_valid: bool
+    errors: List[Dict[str, Any]] = []
+    umlaut_issues: List[Dict[str, Any]] = []
+    format_issues: List[Dict[str, Any]] = []
+    suggested_correction: Optional[str] = None
+
+
+# -----------------------------------------------------------------------------
+# VALIDATION QUEUE ITEM SCHEMAS
+# -----------------------------------------------------------------------------
+
+class ValidationQueueItemBase(BaseModel):
+    """Basis-Schema fuer Validierungs-Queue-Items."""
+    priority: int = Field(5, ge=1, le=10, description="Prioritaet 1-10, 1 = hoechste")
+    sample_source: SampleSourceEnum = SampleSourceEnum.AUTOMATIC
+
+
+class ValidationQueueItemCreate(ValidationQueueItemBase):
+    """Schema zum Erstellen eines Queue-Items."""
+    document_id: UUID
+
+
+class ValidationQueueItemUpdate(BaseModel):
+    """Schema zum Aktualisieren eines Queue-Items."""
+    priority: Optional[int] = Field(None, ge=1, le=10)
+    validation_notes: Optional[str] = Field(None, max_length=2000)
+
+
+class ValidationQueueItemAssign(BaseModel):
+    """Schema fuer die Zuweisung eines Queue-Items."""
+    editor_id: UUID
+    priority: Optional[int] = Field(None, ge=1, le=10)
+
+
+class ValidationQueueItemApprove(BaseModel):
+    """Schema fuer die Genehmigung eines Queue-Items."""
+    notes: Optional[str] = Field(None, max_length=2000)
+
+
+class ValidationQueueItemReject(BaseModel):
+    """Schema fuer die Ablehnung eines Queue-Items."""
+    reason: str = Field(..., min_length=5, max_length=2000)
+    category: RejectionCategoryEnum = RejectionCategoryEnum.OTHER
+
+
+class ValidationQueueItemResponse(ValidationQueueItemBase):
+    """Antwort-Schema fuer ein Queue-Item."""
+    id: UUID
+    document_id: UUID
+    status: ValidationStatusEnum
+    assigned_to_id: Optional[UUID] = None
+    assigned_at: Optional[datetime] = None
+    sample_rule_id: Optional[UUID] = None
+
+    # Confidence Metriken
+    overall_confidence: Optional[float] = None
+    min_field_confidence: Optional[float] = None
+    fields_below_threshold: int = 0
+    total_fields: int = 0
+
+    # Dokumentinfo
+    document_type: Optional[str] = None
+    document_name: Optional[str] = None
+
+    # Validierungsergebnis
+    validation_notes: Optional[str] = None
+    rejection_reason: Optional[str] = None
+    rejection_category: Optional[str] = None
+    validated_by_id: Optional[UUID] = None
+    validated_at: Optional[datetime] = None
+
+    # Zeit-Tracking
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    validation_duration_seconds: Optional[int] = None
+
+    # Korrekturen
+    corrections_made: int = 0
+    umlaut_corrections: int = 0
+    format_corrections: int = 0
+
+    # Audit
+    created_at: datetime
+    updated_at: datetime
+    created_by_id: Optional[UUID] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ValidationQueueItemDetail(ValidationQueueItemResponse):
+    """Detailiertes Queue-Item mit Feld-Reviews."""
+    field_reviews: List[ValidationFieldResponse] = []
+    assigned_to_name: Optional[str] = None
+    validated_by_name: Optional[str] = None
+
+
+class ValidationQueueListResponse(BaseModel):
+    """Paginierte Liste von Queue-Items."""
+    items: List[ValidationQueueItemResponse]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+
+
+# -----------------------------------------------------------------------------
+# VALIDATION RULE SCHEMAS
+# -----------------------------------------------------------------------------
+
+class ValidationRuleBase(BaseModel):
+    """Basis-Schema fuer Validierungsregeln."""
+    name: str = Field(..., min_length=3, max_length=100)
+    description: Optional[str] = Field(None, max_length=1000)
+    rule_type: ValidationRuleTypeEnum
+    conditions: Dict[str, Any] = Field(default_factory=dict)
+    priority: int = Field(5, ge=1, le=10)
+    is_active: bool = True
+
+
+class ValidationRuleCreate(ValidationRuleBase):
+    """Schema zum Erstellen einer Validierungsregel."""
+    pass
+
+
+class ValidationRuleUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Validierungsregel."""
+    name: Optional[str] = Field(None, min_length=3, max_length=100)
+    description: Optional[str] = Field(None, max_length=1000)
+    conditions: Optional[Dict[str, Any]] = None
+    priority: Optional[int] = Field(None, ge=1, le=10)
+    is_active: Optional[bool] = None
+
+
+class ValidationRuleResponse(ValidationRuleBase):
+    """Antwort-Schema fuer eine Validierungsregel."""
+    id: UUID
+    is_system: bool = False
+    documents_matched: int = 0
+    last_triggered_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+    created_by_id: Optional[UUID] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ValidationRuleListResponse(BaseModel):
+    """Liste von Validierungsregeln."""
+    items: List[ValidationRuleResponse]
+    total: int
+
+
+# -----------------------------------------------------------------------------
+# VALIDATION SAMPLE CONFIG SCHEMAS
+# -----------------------------------------------------------------------------
+
+class ValidationSampleConfigBase(BaseModel):
+    """Basis-Schema fuer Stichproben-Konfiguration."""
+    name: str = Field("Standard", max_length=100)
+    description: Optional[str] = None
+    sample_percentage: int = Field(10, ge=0, le=100)
+    stratify_by_document_type: bool = True
+    stratify_by_ocr_backend: bool = False
+    min_confidence_threshold: float = Field(0.85, ge=0.0, le=1.0)
+
+
+class ValidationSampleConfigUpdate(BaseModel):
+    """Schema zum Aktualisieren der Stichproben-Konfiguration."""
+    name: Optional[str] = Field(None, max_length=100)
+    description: Optional[str] = None
+    sample_percentage: Optional[int] = Field(None, ge=0, le=100)
+    stratify_by_document_type: Optional[bool] = None
+    stratify_by_ocr_backend: Optional[bool] = None
+    min_confidence_threshold: Optional[float] = Field(None, ge=0.0, le=1.0)
+    is_active: Optional[bool] = None
+
+
+class ValidationSampleConfigResponse(ValidationSampleConfigBase):
+    """Antwort-Schema fuer Stichproben-Konfiguration."""
+    id: UUID
+    is_active: bool
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+    documents_sampled: int = 0
+    last_sample_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+    created_by_id: Optional[UUID] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# -----------------------------------------------------------------------------
+# BATCH OPERATION SCHEMAS
+# -----------------------------------------------------------------------------
+
+class BatchApproveRequest(BaseModel):
+    """Schema fuer Batch-Genehmigung."""
+    item_ids: List[UUID] = Field(..., min_length=1, max_length=100)
+    notes: Optional[str] = Field(None, max_length=500)
+
+
+class BatchRejectRequest(BaseModel):
+    """Schema fuer Batch-Ablehnung."""
+    item_ids: List[UUID] = Field(..., min_length=1, max_length=100)
+    reason: str = Field(..., min_length=5, max_length=2000)
+    category: RejectionCategoryEnum = RejectionCategoryEnum.OTHER
+
+
+class BatchAssignRequest(BaseModel):
+    """Schema fuer Batch-Zuweisung."""
+    item_ids: List[UUID] = Field(..., min_length=1, max_length=100)
+    editor_id: UUID
+
+
+class BatchOperationResult(BaseModel):
+    """Ergebnis einer Batch-Operation."""
+    success_count: int
+    failed_count: int
+    failed_items: List[Dict[str, Any]] = []
+    message: str
+
+
+# -----------------------------------------------------------------------------
+# ANALYTICS SCHEMAS
+# -----------------------------------------------------------------------------
+
+class ValidationAnalyticsOverview(BaseModel):
+    """Uebersichts-Statistiken."""
+    # Queue-Status
+    pending_count: int = 0
+    in_progress_count: int = 0
+    approved_today: int = 0
+    rejected_today: int = 0
+
+    # Zeitraum
+    validated_this_week: int = 0
+    validated_this_month: int = 0
+
+    # Durchschnitte
+    avg_validation_time_seconds: Optional[int] = None
+    avg_corrections_per_item: Optional[float] = None
+
+    # Confidence
+    avg_confidence_before: Optional[float] = None
+    avg_confidence_after: Optional[float] = None
+    confidence_improvement_percent: Optional[float] = None
+
+    # Top-Fehler
+    top_rejection_categories: List[Dict[str, Any]] = []
+
+
+class EditorStats(BaseModel):
+    """Statistiken pro Editor."""
+    editor_id: UUID
+    editor_name: str
+    items_validated: int = 0
+    items_approved: int = 0
+    items_rejected: int = 0
+    avg_validation_time_seconds: Optional[int] = None
+    corrections_made: int = 0
+    accuracy_rate: Optional[float] = None
+
+
+class EditorStatsListResponse(BaseModel):
+    """Liste von Editor-Statistiken."""
+    items: List[EditorStats]
+    period_start: date_type
+    period_end: date_type
+
+
+class TrendDataPoint(BaseModel):
+    """Datenpunkt fuer Trend-Charts."""
+    date: date_type
+    validated: int = 0
+    approved: int = 0
+    rejected: int = 0
+    avg_time_seconds: Optional[int] = None
+
+
+class TrendDataResponse(BaseModel):
+    """Trend-Daten fuer Charts."""
+    data: List[TrendDataPoint]
+    period_days: int
+
+
+class DocumentTypeStats(BaseModel):
+    """Statistiken pro Dokumenttyp."""
+    document_type: str
+    total_validated: int = 0
+    approved: int = 0
+    rejected: int = 0
+    avg_confidence: Optional[float] = None
+    correction_rate: Optional[float] = None
+
+
+class DocumentTypeStatsResponse(BaseModel):
+    """Liste von Dokumenttyp-Statistiken."""
+    items: List[DocumentTypeStats]
+
+
+class ConfidenceDistribution(BaseModel):
+    """Konfidenz-Verteilung."""
+    ranges: List[Dict[str, Any]] = []
+    avg_confidence: Optional[float] = None
+    median_confidence: Optional[float] = None
+
+
+# -----------------------------------------------------------------------------
+# QUEUE FILTER SCHEMAS
+# -----------------------------------------------------------------------------
+
+class ValidationQueueFilters(BaseModel):
+    """Filter-Parameter fuer Queue-Abfragen."""
+    status: Optional[List[ValidationStatusEnum]] = None
+    assigned_to_id: Optional[UUID] = None
+    document_type: Optional[List[str]] = None
+    sample_source: Optional[List[SampleSourceEnum]] = None
+    confidence_min: Optional[float] = Field(None, ge=0.0, le=1.0)
+    confidence_max: Optional[float] = Field(None, ge=0.0, le=1.0)
+    priority_min: Optional[int] = Field(None, ge=1, le=10)
+    priority_max: Optional[int] = Field(None, ge=1, le=10)
+    created_from: Optional[datetime] = None
+    created_to: Optional[datetime] = None
+    search: Optional[str] = Field(None, max_length=200)
+
+
+class ValidationQueueSortOptions(str, Enum):
+    """Sortieroptionen fuer Queue."""
+    PRIORITY_ASC = "priority_asc"
+    PRIORITY_DESC = "priority_desc"
+    CONFIDENCE_ASC = "confidence_asc"
+    CONFIDENCE_DESC = "confidence_desc"
+    CREATED_ASC = "created_at_asc"
+    CREATED_DESC = "created_at_desc"
+    DOCUMENT_NAME = "document_name"
+
+
+# -----------------------------------------------------------------------------
+# QUEUE FOR VALIDATION (from Documents list)
+# -----------------------------------------------------------------------------
+
+class QueueDocumentForValidation(BaseModel):
+    """Schema zum manuellen Hinzufuegen eines Dokuments zur Validierungsqueue."""
+    document_id: UUID
+    priority: int = Field(5, ge=1, le=10)
+    notes: Optional[str] = Field(None, max_length=500)
+
+
+class QueueDocumentResponse(BaseModel):
+    """Antwort beim Hinzufuegen zur Queue."""
+    queue_item_id: UUID
+    document_id: UUID
+    status: str
+    message: str

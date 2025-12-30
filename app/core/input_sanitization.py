@@ -739,6 +739,89 @@ def validate_and_sanitize_search_input(
     return sanitized
 
 
+def sanitize_text_field(
+    text: str,
+    max_length: int = 2000,
+    allow_newlines: bool = True,
+    field_name: str = "text"
+) -> str:
+    """
+    Sanitiert ein Text-Feld (Notes, Kommentare, etc.) gegen XSS.
+
+    Diese Funktion ist speziell fuer laengere Text-Felder wie:
+    - Validierungs-Notizen
+    - Ablehnungsgruende
+    - Kommentare
+
+    Args:
+        text: Originaler Text
+        max_length: Maximale Laenge (default: 2000)
+        allow_newlines: Ob Zeilenumbrueche erlaubt sind
+        field_name: Feldname fuer Logging
+
+    Returns:
+        Sanitierter Text
+    """
+    if not text:
+        return ""
+
+    # 1. Unicode-Normalisierung (NFC)
+    sanitized = unicodedata.normalize('NFC', text)
+
+    # 2. Null-Bytes entfernen
+    sanitized = sanitized.replace('\x00', '')
+
+    # 3. HTML-Tags komplett entfernen (XSS-Schutz)
+    sanitized = re.sub(r'<[^>]*>', '', sanitized)
+
+    # 4. HTML-Entities escapen
+    sanitized = html.escape(sanitized)
+
+    # 5. Script-Injection-Patterns entfernen
+    dangerous_patterns = [
+        r'javascript:',
+        r'data:',
+        r'vbscript:',
+        r'on\w+\s*=',
+    ]
+    for pattern in dangerous_patterns:
+        sanitized = re.sub(pattern, '', sanitized, flags=re.IGNORECASE)
+
+    # 6. Steuerzeichen entfernen (ausser Leerzeichen, Tab, Newline)
+    if allow_newlines:
+        allowed_control = [9, 10, 13, 32]  # Tab, LF, CR, Space
+    else:
+        allowed_control = [32]  # Nur Space
+        # Newlines durch Space ersetzen
+        sanitized = sanitized.replace('\n', ' ').replace('\r', ' ')
+
+    sanitized = ''.join(
+        c for c in sanitized
+        if ord(c) >= 32 or ord(c) in allowed_control
+    )
+
+    # 7. Whitespace normalisieren (aber Newlines behalten wenn erlaubt)
+    if allow_newlines:
+        # Nur horizontalen Whitespace normalisieren
+        lines = sanitized.split('\n')
+        lines = [' '.join(line.split()) for line in lines]
+        sanitized = '\n'.join(lines)
+    else:
+        sanitized = ' '.join(sanitized.split())
+
+    # 8. Laenge begrenzen
+    if len(sanitized) > max_length:
+        sanitized = sanitized[:max_length]
+        logger.info(
+            "text_field_truncated",
+            field=field_name,
+            original_length=len(text),
+            truncated_to=max_length
+        )
+
+    return sanitized.strip()
+
+
 # Prometheus Metriken fuer Security-Monitoring (optional)
 try:
     from prometheus_client import Counter

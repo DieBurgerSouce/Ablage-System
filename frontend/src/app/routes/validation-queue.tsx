@@ -1,20 +1,26 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { ValidationDashboard } from '@/features/validation/components/ValidationDashboard'
+import { createFileRoute, redirect } from '@tanstack/react-router'
+import { ValidationQueueDashboard } from '@/features/validation/components/ValidationQueueDashboard'
+import { authService } from '@/lib/api/services/auth'
 
 export const Route = createFileRoute('/validation-queue')({
+    beforeLoad: async () => {
+        // Permission-Check: Nur editor oder admin dürfen die Validierungsseite sehen
+        const user = authService.getCurrentUser()
+        if (!user) {
+            throw redirect({ to: '/login' })
+        }
+        const hasAccess = user.is_superuser || user.role === 'admin' || user.role === 'editor'
+        if (!hasAccess) {
+            throw redirect({ to: '/' })
+        }
+    },
     component: ValidationQueuePage,
 })
 
 function ValidationQueuePage() {
     return (
-        <div className="p-8 space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Validierungswarteschlange</h1>
-                <p className="text-muted-foreground mt-2">
-                    Überprüfen und korrigieren Sie Dokumente mit niedriger Konfidenz.
-                </p>
-            </div>
-            <ValidationDashboard />
+        <div className="p-8">
+            <ValidationQueueDashboard />
         </div>
     )
 }

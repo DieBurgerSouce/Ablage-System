@@ -1,8 +1,61 @@
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 // API Base URL from environment variable with fallback
 // Use relative URL to go through nginx proxy (works in both dev and prod)
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+
+// ============================================================================
+// RETRY CONFIGURATION
+// ============================================================================
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelayMs: 1000,
+  maxDelayMs: 10000,
+  // Retryable HTTP status codes (transiente Fehler)
+  retryableStatuses: [408, 429, 500, 502, 503, 504],
+  // Retryable error codes (Netzwerkfehler)
+  retryableErrorCodes: ['ECONNABORTED', 'ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ERR_NETWORK'],
+};
+
+// Extended request config with retry metadata
+interface RetryableRequestConfig extends InternalAxiosRequestConfig {
+  _retryCount?: number;
+  _retryDelayMs?: number;
+  _isRetry?: boolean;
+}
+
+/**
+ * Calculate delay with exponential backoff and jitter
+ */
+function calculateRetryDelay(retryCount: number): number {
+  // Exponential backoff: 1s, 2s, 4s, 8s...
+  const exponentialDelay = RETRY_CONFIG.baseDelayMs * Math.pow(2, retryCount);
+  // Add jitter (0-500ms) to prevent thundering herd
+  const jitter = Math.random() * 500;
+  // Cap at max delay
+  return Math.min(exponentialDelay + jitter, RETRY_CONFIG.maxDelayMs);
+}
+
+/**
+ * Check if error is retryable
+ */
+function isRetryableError(error: AxiosError): boolean {
+  // Network errors (no response)
+  if (!error.response) {
+    const code = error.code || '';
+    return RETRY_CONFIG.retryableErrorCodes.includes(code);
+  }
+
+  // HTTP status-based retries
+  return RETRY_CONFIG.retryableStatuses.includes(error.response.status);
+}
+
+/**
+ * Sleep utility
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 // Create Axios instance with default config
 // Use direct backend URL to avoid nginx proxy issues
@@ -38,17 +91,24 @@ apiClient.interceptors.request.use(
     }
 );
 
-// Response Interceptor
+// Response Interceptor with Retry Logic and Rate Limit Handling
 apiClient.interceptors.response.use(
     (response) => {
         return response;
     },
-    async (error) => {
-        const originalRequest = error.config;
+    async (error: AxiosError) => {
+        const originalRequest = error.config as RetryableRequestConfig;
 
-        // Handle 401 Unauthorized
-        if (error.response?.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true;
+        if (!originalRequest) {
+            return Promise.reject(error);
+        }
+
+        // Initialize retry count
+        originalRequest._retryCount = originalRequest._retryCount || 0;
+
+        // Handle 401 Unauthorized (Auth-spezifisch, kein Retry)
+        if (error.response?.status === 401 && !originalRequest._isRetry) {
+            originalRequest._isRetry = true;
 
             try {
                 // Dynamically import authService to avoid circular dependency
@@ -67,6 +127,44 @@ apiClient.interceptors.response.use(
                 return Promise.reject(refreshError);
             }
         }
+
+        // Handle 429 Rate Limit with Retry-After header
+        if (error.response?.status === 429) {
+            const retryAfter = error.response.headers['retry-after'];
+            if (retryAfter && originalRequest._retryCount < RETRY_CONFIG.maxRetries) {
+                const delayMs = parseInt(retryAfter, 10) * 1000 || calculateRetryDelay(originalRequest._retryCount);
+                originalRequest._retryCount += 1;
+
+                console.warn(
+                    `Rate limited (429). Retrying in ${Math.round(delayMs / 1000)}s... ` +
+                    `(Attempt ${originalRequest._retryCount}/${RETRY_CONFIG.maxRetries})`
+                );
+
+                await sleep(delayMs);
+                return apiClient(originalRequest);
+            }
+        }
+
+        // Handle retryable errors (transiente Fehler)
+        if (
+            isRetryableError(error) &&
+            originalRequest._retryCount < RETRY_CONFIG.maxRetries &&
+            // Only retry idempotent methods by default
+            ['GET', 'HEAD', 'OPTIONS', 'PUT', 'DELETE'].includes(originalRequest.method?.toUpperCase() || '')
+        ) {
+            originalRequest._retryCount += 1;
+            const delayMs = calculateRetryDelay(originalRequest._retryCount - 1);
+
+            console.warn(
+                `Request failed with ${error.response?.status || error.code}. ` +
+                `Retrying in ${Math.round(delayMs / 1000)}s... ` +
+                `(Attempt ${originalRequest._retryCount}/${RETRY_CONFIG.maxRetries})`
+            );
+
+            await sleep(delayMs);
+            return apiClient(originalRequest);
+        }
+
         return Promise.reject(error);
     }
 );
