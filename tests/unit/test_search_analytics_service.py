@@ -159,7 +159,7 @@ class TestSearchAnalyticsService:
         )
 
         added_obj = mock_db.add.call_args[0][0]
-        assert len(added_obj.query) <= 500
+        assert len(added_obj.search_query) <= 500
 
     @pytest.mark.asyncio
     async def test_log_click_success(self, service, mock_db):
@@ -459,8 +459,8 @@ class TestSearchAnalyticsGermanText:
         )
 
         added_obj = mock_db.add.call_args[0][0]
-        assert "Ü" in added_obj.query
-        assert "ü" in added_obj.query
+        assert "Ü" in added_obj.search_query
+        assert "ü" in added_obj.search_query
 
     @pytest.mark.asyncio
     async def test_german_eszett_in_query(self, service, mock_db):
@@ -474,7 +474,7 @@ class TestSearchAnalyticsGermanText:
         )
 
         added_obj = mock_db.add.call_args[0][0]
-        assert "ß" in added_obj.query
+        assert "ß" in added_obj.search_query
 
 
 @requires_analytics

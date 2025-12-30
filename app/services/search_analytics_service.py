@@ -208,7 +208,7 @@ class SearchAnalyticsService:
         # Erstelle Analytics-Eintrag
         analytics = SearchAnalytics(
             user_id=user_id,
-            query=query[:500],  # Limitiere auf 500 Zeichen
+            search_query=query[:500],  # Limitiere auf 500 Zeichen
             search_type=search_type.value if hasattr(search_type, 'value') else str(search_type),
             query_length=len(query),
             filters_used=filters_dict,
@@ -377,18 +377,18 @@ class SearchAnalyticsService:
 
         # Top-Suchbegriffe
         top_queries_query = select(
-            SearchAnalytics.query,
+            SearchAnalytics.search_query,
             func.count(SearchAnalytics.id).label("count"),
         ).where(
             and_(*base_filter)
         ).group_by(
-            SearchAnalytics.query
+            SearchAnalytics.search_query
         ).order_by(
             func.count(SearchAnalytics.id).desc()
         ).limit(10)
 
         top_results = await db.execute(top_queries_query)
-        top_queries = [{"query": row.query, "count": row.count} for row in top_results]
+        top_queries = [{"query": row.search_query, "count": row.count} for row in top_results]
 
         # Filter-Nutzung
         filter_usage_query = select(
@@ -562,14 +562,14 @@ class SearchAnalyticsService:
 
         query = text("""
             SELECT
-                query,
+                search_query,
                 COUNT(*) as search_count,
                 AVG(total_results)::INTEGER as avg_results,
                 AVG(clicked_results)::FLOAT as avg_clicks,
                 COUNT(DISTINCT user_id) as unique_searchers
             FROM search_analytics
             WHERE created_at >= :since
-            GROUP BY query
+            GROUP BY search_query
             HAVING COUNT(*) >= :min_count
             ORDER BY search_count DESC
             LIMIT :limit
@@ -583,7 +583,7 @@ class SearchAnalyticsService:
 
         return [
             {
-                "query": row.query,
+                "query": row.search_query,
                 "search_count": row.search_count,
                 "avg_results": row.avg_results or 0,
                 "avg_clicks": round(row.avg_clicks, 2) if row.avg_clicks else 0,
@@ -614,13 +614,13 @@ class SearchAnalyticsService:
 
         query = text("""
             SELECT
-                query,
+                search_query,
                 COUNT(*) as search_count,
                 search_type,
                 MAX(created_at) as last_searched
             FROM search_analytics
             WHERE created_at >= :since AND total_results = 0
-            GROUP BY query, search_type
+            GROUP BY search_query, search_type
             ORDER BY search_count DESC
             LIMIT :limit
         """)
@@ -630,7 +630,7 @@ class SearchAnalyticsService:
 
         return [
             {
-                "query": row.query,
+                "query": row.search_query,
                 "search_count": row.search_count,
                 "search_type": row.search_type,
                 "last_searched": row.last_searched.isoformat() if row.last_searched else None,
@@ -771,7 +771,7 @@ class SearchAnalyticsService:
             # 3. Top Queries nach gewichteter CTR
             top_queries_query = text("""
                 SELECT
-                    query,
+                    search_query,
                     COUNT(*) as search_count,
                     SUM(clicked_results) as total_clicks,
                     SUM(weighted_click_score) as weighted_score,
@@ -779,7 +779,7 @@ class SearchAnalyticsService:
                 FROM search_analytics
                 WHERE created_at >= :since
                   AND total_results > 0
-                GROUP BY query
+                GROUP BY search_query
                 HAVING COUNT(*) >= :min_searches
                    AND SUM(weighted_click_score) > 0
                 ORDER BY SUM(weighted_click_score) / COUNT(*) DESC
@@ -796,7 +796,7 @@ class SearchAnalyticsService:
                 q_ctr = calculate_weighted_ctr(q_searches, q_weighted)
 
                 result["top_queries_by_weighted_ctr"].append({
-                    "query": row.query,
+                    "query": row.search_query,
                     "search_count": q_searches,
                     "total_clicks": row.total_clicks or 0,
                     "weighted_ctr": round(q_ctr, 4),
@@ -807,7 +807,7 @@ class SearchAnalyticsService:
             # 4. Low-Performing Queries (Suchen mit Ergebnissen aber wenig/keine Klicks)
             low_perf_query = text("""
                 SELECT
-                    query,
+                    search_query,
                     COUNT(*) as search_count,
                     AVG(total_results) as avg_results,
                     SUM(clicked_results) as total_clicks,
@@ -815,7 +815,7 @@ class SearchAnalyticsService:
                 FROM search_analytics
                 WHERE created_at >= :since
                   AND total_results > 0
-                GROUP BY query
+                GROUP BY search_query
                 HAVING COUNT(*) >= :min_searches
                 ORDER BY COALESCE(SUM(weighted_click_score), 0) / COUNT(*) ASC
                 LIMIT :limit
@@ -831,7 +831,7 @@ class SearchAnalyticsService:
                 q_ctr = calculate_weighted_ctr(q_searches, q_weighted)
 
                 result["low_performing_queries"].append({
-                    "query": row.query,
+                    "query": row.search_query,
                     "search_count": q_searches,
                     "avg_results": round(row.avg_results or 0, 1),
                     "total_clicks": row.total_clicks or 0,

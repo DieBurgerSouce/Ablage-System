@@ -25,7 +25,7 @@ from typing import Optional, List, Dict, Any
 from enum import Enum
 import uuid
 
-from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Date, Boolean, Float, Numeric, Text, JSON, ForeignKey, Index, Table, CheckConstraint
+from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Date, Time, Boolean, Float, Numeric, Text, JSON, ForeignKey, Index, Table, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
 from sqlalchemy.types import TypeDecorator
 from pgvector.sqlalchemy import Vector
@@ -426,7 +426,7 @@ class BatchJob(Base):
     cancelled_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
     # Relationships
-    user = relationship("User", backref="batch_jobs")
+    user = relationship("User", foreign_keys=[user_id], backref="batch_jobs")
     cancelled_by = relationship("User", foreign_keys=[cancelled_by_id])
 
     # Indexes
@@ -777,8 +777,8 @@ class SearchAnalytics(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
 
-    # Query details
-    query = Column(String(500), nullable=False)
+    # Query details - WICHTIG: 'query' ist reservierter SQLAlchemy-Name!
+    search_query = Column(String(500), nullable=False)
     search_type = Column(String(20), nullable=False)  # fts, semantic, hybrid
     query_length = Column(Integer)
 
@@ -827,7 +827,7 @@ class SearchAnalytics(Base):
         Index("ix_search_analytics_created_at", "created_at"),
         Index("ix_search_analytics_user_id", "user_id"),
         Index("ix_search_analytics_search_type", "search_type"),
-        Index("ix_search_analytics_query_pattern", "query", postgresql_ops={"query": "varchar_pattern_ops"}),
+        Index("ix_search_analytics_query_pattern", "search_query", postgresql_ops={"search_query": "varchar_pattern_ops"}),
     )
 
 
@@ -5523,4 +5523,3229 @@ class FinanceDocumentHistory(Base):
             "'deadline_set', 'deadline_removed', 'bulk_update')",
             name="ck_finance_doc_history_action"
         ),
+    )
+
+
+# =============================================================================
+# KASSE-MODUL: ENUMS
+# =============================================================================
+
+
+class CashEntryType(str, Enum):
+    """Typ der Kassenbuchung - GoBD-konform."""
+
+    # Einnahmen
+    INCOME = "income"                    # Allgemeine Einnahme
+    DEPOSIT = "deposit"                  # Kasseneinlage von Bank
+    REFUND_RECEIVED = "refund_received"  # Erstattung erhalten
+
+    # Ausgaben
+    EXPENSE = "expense"                  # Allgemeine Ausgabe
+    WITHDRAWAL = "withdrawal"            # Kassenentnahme zur Bank
+    ENTERTAINMENT = "entertainment"      # Bewirtungskosten (70% abzugsfaehig)
+    TRAVEL = "travel"                    # Reisekosten
+    OFFICE = "office"                    # Buerobedarf
+    FUEL = "fuel"                        # Tankkosten
+    PARKING = "parking"                  # Parkgebuehren
+    POSTAGE = "postage"                  # Porto
+    TIPS = "tips"                        # Trinkgeld
+    GIFTS = "gifts"                      # Geschenke
+
+    # Sonder
+    DIFFERENCE_PLUS = "difference_plus"   # Kassenmehrbestand
+    DIFFERENCE_MINUS = "difference_minus" # Kassenfehlbestand
+    CANCELLATION = "cancellation"         # Stornobuchung (Gegenbuchung)
+    OPENING = "opening"                   # Eroeffnungsbuchung
+
+
+class ExpenseReportStatus(str, Enum):
+    """Status einer Spesenabrechnung - Workflow."""
+
+    DRAFT = "draft"           # Entwurf
+    SUBMITTED = "submitted"   # Eingereicht
+    IN_REVIEW = "in_review"   # In Pruefung
+    APPROVED = "approved"     # Genehmigt
+    REJECTED = "rejected"     # Abgelehnt
+    PAID = "paid"             # Ausgezahlt
+
+
+class ExpenseType(str, Enum):
+    """Typ einer Spesenposition."""
+
+    RECEIPT = "receipt"       # Belegausgabe
+    MILEAGE = "mileage"       # Kilometergeld (0,30 EUR/km)
+    PER_DIEM = "per_diem"     # Verpflegungspauschale (14/28 EUR)
+    FLAT_RATE = "flat_rate"   # Sonstige Pauschale
+
+
+# =============================================================================
+# KASSE-MODUL: MULTI-COMPANY
+# =============================================================================
+
+
+class Company(Base):
+    """Firma/Mandant fuer Multi-Company Support.
+
+    Ersetzt das bisherige CompanySettings-Singleton und ermoeglicht
+    die Verwaltung mehrerer Firmen pro Installation.
+
+    Jede Firma hat eigene Kassen, Spesenfreigaben und Einstellungen.
+    Row-Level Security (RLS) isoliert Mandanten-Daten.
+    """
+
+    __tablename__ = "companies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Identifikation
+    name = Column(String(255), nullable=False)
+    short_name = Column(String(50), nullable=True)
+    display_name = Column(String(255), nullable=True)
+
+    # Rechtsform & Register
+    legal_form = Column(String(50), nullable=True)  # GmbH, UG, AG, etc.
+    commercial_register = Column(String(100), nullable=True)
+    court = Column(String(100), nullable=True)
+
+    # Steuer
+    vat_id = Column(String(20), unique=True, nullable=True)  # DE123456789
+    tax_number = Column(String(50), nullable=True)
+
+    # Adresse
+    street = Column(String(255), nullable=True)
+    street_number = Column(String(20), nullable=True)
+    postal_code = Column(String(10), nullable=True)
+    city = Column(String(100), nullable=True)
+    country = Column(String(2), default="DE")
+
+    # Kontakt
+    email = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
+    website = Column(String(255), nullable=True)
+
+    # Banking (Hauptkonto)
+    iban = Column(String(34), nullable=True)
+    bic = Column(String(11), nullable=True)
+    bank_name = Column(String(100), nullable=True)
+
+    # Alternative Namen fuer OCR-Erkennung
+    alternative_names = Column(CrossDBJSON, default=list)
+
+    # Einstellungen
+    default_currency = Column(String(3), default="EUR")
+    fiscal_year_start = Column(Integer, default=1)  # Monat (1=Januar)
+    kontenrahmen = Column(String(10), default="SKR03")  # SKR03 oder SKR04
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    is_default = Column(Boolean, default=False)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    user_associations = relationship("UserCompany", back_populates="company", cascade="all, delete-orphan")
+    cash_registers = relationship("CashRegister", back_populates="company", cascade="all, delete-orphan")
+    expense_reports = relationship("ExpenseReport", back_populates="company", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_companies_vat_id", "vat_id"),
+        Index("ix_companies_is_active", "is_active"),
+        Index("ix_companies_is_default", "is_default"),
+        Index("ix_companies_deleted_at", "deleted_at"),
+        Index("ix_companies_name", "name"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Company {self.name} ({self.id})>"
+
+
+class UserCompany(Base):
+    """Zuordnung User <-> Company mit granularen Berechtigungen.
+
+    Ermoeglicht Multi-Mandanten-Faehigkeit: Ein User kann
+    Zugriff auf mehrere Firmen haben, mit unterschiedlichen Rechten.
+    """
+
+    __tablename__ = "user_companies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+
+    # Rolle
+    role = Column(String(50), default="member")  # owner, admin, member, viewer
+
+    # Granulare Berechtigungen fuer Kasse-Modul
+    can_manage_cash = Column(Boolean, default=False)      # Kassenbuchungen erstellen
+    can_approve_expenses = Column(Boolean, default=False) # Spesen genehmigen
+    can_export_datev = Column(Boolean, default=False)     # DATEV-Export
+    can_manage_settings = Column(Boolean, default=False)  # Firmeneinstellungen
+
+    # Aktive Firma fuer Session
+    is_current = Column(Boolean, default=False)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User", backref="company_associations")
+    company = relationship("Company", back_populates="user_associations")
+
+    __table_args__ = (
+        Index("ix_user_companies_user_id", "user_id"),
+        Index("ix_user_companies_company_id", "company_id"),
+        Index("ix_user_companies_is_current", "is_current"),
+        Index("ix_user_companies_role", "role"),
+        # UniqueConstraint wird in Migration erstellt
+    )
+
+    def __repr__(self) -> str:
+        return f"<UserCompany user={self.user_id} company={self.company_id} role={self.role}>"
+
+
+# =============================================================================
+# KASSE-MODUL: KASSENBUCH (GoBD-KONFORM!)
+# =============================================================================
+
+
+class CashRegister(Base):
+    """Kasse/Bargeldbestand.
+
+    Eine Firma kann mehrere Kassen haben (Hauptkasse, Portokasse, Nebenkasse).
+    Jede Kasse fuehrt ein eigenes Kassenbuch mit fortlaufender Nummerierung.
+    """
+
+    __tablename__ = "cash_registers"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+
+    # Identifikation
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    register_number = Column(String(50), nullable=True)  # Interne Kassennummer
+
+    # Waehrung & Limits
+    currency = Column(String(3), default="EUR")
+    max_balance = Column(Numeric(15, 2), nullable=True)  # Maximaler Kassenbestand
+    warning_threshold = Column(Numeric(15, 2), nullable=True)  # Warnschwelle
+
+    # Aktueller Stand (denormalisiert fuer Performance)
+    current_balance = Column(Numeric(15, 2), default=0)
+    balance_date = Column(DateTime(timezone=True), nullable=True)
+    last_reconciliation_date = Column(DateTime(timezone=True), nullable=True)
+
+    # Banking-Verknuepfung (fuer Entnahmen/Einlagen)
+    linked_bank_account_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("bank_accounts.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    is_default = Column(Boolean, default=False)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    company = relationship("Company", back_populates="cash_registers")
+    entries = relationship("CashEntry", back_populates="cash_register", order_by="CashEntry.entry_number")
+    linked_bank_account = relationship("BankAccount")
+    counts = relationship("CashCount", back_populates="cash_register")
+
+    __table_args__ = (
+        Index("ix_cash_registers_company_id", "company_id"),
+        Index("ix_cash_registers_is_active", "is_active"),
+        Index("ix_cash_registers_deleted_at", "deleted_at"),
+        # Name muss pro Firma eindeutig sein
+        Index("ix_cash_registers_company_name", "company_id", "name", unique=True),
+    )
+
+    def __repr__(self) -> str:
+        return f"<CashRegister {self.name} ({self.current_balance} {self.currency})>"
+
+
+class CashEntry(Base):
+    """Kassenbucheintrag - APPEND-ONLY fuer GoBD-Compliance!
+
+    WICHTIG: Diese Tabelle erlaubt KEINE Updates oder Deletes!
+    Nach GoBD muessen Kassenbuchungen unveraenderbar sein.
+    Stornierungen erfolgen durch Gegenbuchung mit Verweis auf Original.
+
+    Constraints:
+    - entry_date darf NICHT in der Zukunft liegen
+    - amount darf NICHT 0 sein
+    - entry_number ist fortlaufend pro Kasse/Jahr - KEINE Luecken!
+    - balance_after muss bei JEDER Buchung korrekt berechnet werden
+    """
+
+    __tablename__ = "cash_entries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="RESTRICT"),  # RESTRICT - nicht CASCADE!
+        nullable=False
+    )
+    cash_register_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("cash_registers.id", ondelete="RESTRICT"),  # RESTRICT!
+        nullable=False
+    )
+
+    # Fortlaufende Nummer (pro Kasse/Jahr) - KEINE LUECKEN!
+    entry_number = Column(Integer, nullable=False)
+    fiscal_year = Column(Integer, nullable=False)
+
+    # Buchungsdaten
+    entry_date = Column(Date, nullable=False)  # Buchungsdatum
+    value_date = Column(Date, nullable=False)  # Wertstellungsdatum
+
+    # Betrag (positiv = Einnahme, negativ = Ausgabe)
+    amount = Column(Numeric(15, 2), nullable=False)
+    currency = Column(String(3), default="EUR")
+
+    # Saldo NACH dieser Buchung (fuer Kassensturz)
+    balance_after = Column(Numeric(15, 2), nullable=False)
+
+    # Kategorisierung
+    entry_type = Column(String(50), nullable=False)  # CashEntryType
+    category_id = Column(UUID(as_uuid=True), ForeignKey("cash_categories.id"), nullable=True)
+
+    # Steuer
+    tax_rate = Column(Numeric(5, 2), nullable=True)      # 0, 7, 19
+    tax_amount = Column(Numeric(15, 2), nullable=True)   # MwSt-Betrag
+    net_amount = Column(Numeric(15, 2), nullable=True)   # Netto-Betrag
+    is_tax_deductible = Column(Boolean, default=True)
+    deductible_percentage = Column(Integer, default=100)  # z.B. 70 bei Bewirtung
+
+    # Beschreibung
+    description = Column(Text, nullable=False)
+    reference_number = Column(String(100), nullable=True)  # Belegnummer
+
+    # Geschaeftspartner
+    counterparty_name = Column(String(255), nullable=True)
+    counterparty_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True)
+
+    # Verknuepfungen
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True)
+    bank_transaction_id = Column(UUID(as_uuid=True), ForeignKey("bank_transactions.id"), nullable=True)
+    expense_report_id = Column(UUID(as_uuid=True), ForeignKey("expense_reports.id"), nullable=True)
+
+    # Storno-Handling (Gegenbuchung statt Loeschung!)
+    is_cancelled = Column(Boolean, default=False)
+    cancelled_by_entry_id = Column(UUID(as_uuid=True), ForeignKey("cash_entries.id"), nullable=True)
+    cancellation_reason = Column(Text, nullable=True)
+
+    # GoBD Audit Trail für Stornierungen
+    cancelled_by_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="User der die Stornierung durchgeführt hat"
+    )
+    cancelled_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Zeitpunkt der Stornierung (GoBD Audit Trail)"
+    )
+
+    # Bewirtungskosten-Spezifika (JSON)
+    entertainment_data = Column(CrossDBJSON, nullable=True)
+    # Schema: {"participants": ["Name1", "Name2"], "occasion": "Projektbesprechung", "location": "Restaurant XY"}
+
+    # DATEV-Export
+    datev_exported_at = Column(DateTime(timezone=True), nullable=True)
+    datev_export_batch_id = Column(UUID(as_uuid=True), nullable=True)
+
+    # Buchungskonten (SKR03/SKR04)
+    debit_account = Column(String(10), nullable=True)   # Soll-Konto
+    credit_account = Column(String(10), nullable=True)  # Haben-Konto
+    cost_center = Column(String(50), nullable=True)     # Kostenstelle
+
+    # Audit (UNVERAENDERBAR!)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+
+    # Relationships
+    cash_register = relationship("CashRegister", back_populates="entries")
+    category = relationship("CashCategory")
+    document = relationship("Document")
+    bank_transaction = relationship("BankTransaction")
+    counterparty = relationship("BusinessEntity")
+    cancellation_entry = relationship("CashEntry", remote_side=[id])
+
+    __table_args__ = (
+        # Eindeutige Nummerierung pro Kasse/Jahr
+        Index("ix_cash_entries_unique_number", "cash_register_id", "fiscal_year", "entry_number", unique=True),
+        Index("ix_cash_entries_company_id", "company_id"),
+        Index("ix_cash_entries_register_id", "cash_register_id"),
+        Index("ix_cash_entries_date", "entry_date"),
+        Index("ix_cash_entries_type", "entry_type"),
+        Index("ix_cash_entries_document_id", "document_id"),
+        Index("ix_cash_entries_cancelled", "is_cancelled"),
+        Index("ix_cash_entries_datev", "datev_exported_at"),
+        # Constraint: Betrag darf nicht 0 sein
+        CheckConstraint("amount != 0", name="ck_cash_entries_amount_not_zero"),
+        # Constraint: Kein Buchungsdatum in der Zukunft
+        CheckConstraint("entry_date <= CURRENT_DATE", name="ck_cash_entries_no_future_date"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<CashEntry #{self.entry_number}/{self.fiscal_year} {self.amount} {self.currency}>"
+
+
+class CashCategory(Base):
+    """Kategorie fuer Kassenausgaben mit SKR-Kontenzuordnung.
+
+    Vordefinierte Kategorien mit Mapping zu SKR03/SKR04 Konten.
+    Unterstuetzt hierarchische Kategorien fuer detaillierte Auswertungen.
+    """
+
+    __tablename__ = "cash_categories"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=True  # NULL = System-Default Kategorien
+    )
+
+    # Identifikation
+    name = Column(String(100), nullable=False)
+    name_en = Column(String(100), nullable=True)  # Englischer Name
+    description = Column(Text, nullable=True)
+    icon = Column(String(50), nullable=True)   # Icon-Name
+    color = Column(String(7), nullable=True)   # Hex-Farbe
+
+    # Hierarchie
+    parent_id = Column(UUID(as_uuid=True), ForeignKey("cash_categories.id"), nullable=True)
+    level = Column(Integer, default=0)
+    path = Column(String(500), nullable=True)  # Materialisierter Pfad
+
+    # Buchhaltung (SKR03/SKR04)
+    skr03_account = Column(String(10), nullable=True)
+    skr04_account = Column(String(10), nullable=True)
+    default_tax_rate = Column(Numeric(5, 2), default=19)
+
+    # Spezielle Typen
+    category_type = Column(String(50), nullable=True)  # entertainment, travel, office, etc.
+    is_entertainment = Column(Boolean, default=False)   # Bewirtungskosten?
+    is_travel_expense = Column(Boolean, default=False)  # Reisekosten?
+    deductible_percentage = Column(Integer, default=100)  # z.B. 70 bei Bewirtung
+
+    # Vorsteuer
+    allows_vat_deduction = Column(Boolean, default=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    is_system = Column(Boolean, default=False)  # System-Kategorie (nicht loeschbar)
+    sort_order = Column(Integer, default=0)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    parent = relationship("CashCategory", remote_side=[id])
+
+    __table_args__ = (
+        Index("ix_cash_categories_company_id", "company_id"),
+        Index("ix_cash_categories_parent_id", "parent_id"),
+        Index("ix_cash_categories_is_active", "is_active"),
+        Index("ix_cash_categories_type", "category_type"),
+        Index("ix_cash_categories_sort", "sort_order"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<CashCategory {self.name} (SKR03: {self.skr03_account})>"
+
+
+class CashCount(Base):
+    """Zaehlprotokoll fuer Kassensturz.
+
+    Dokumentiert den physischen Bargeldbestand bei Kassensturz.
+    Berechnet Differenz zu Soll-Bestand aus Kassenbuch.
+    Bei Differenz wird automatisch eine Ausgleichsbuchung erstellt.
+    """
+
+    __tablename__ = "cash_counts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    cash_register_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("cash_registers.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Zeitpunkt
+    count_date = Column(Date, nullable=False)
+    count_time = Column(Time, nullable=False)
+
+    # Muenzen (Stueckzahl)
+    coins_1_cent = Column(Integer, default=0)
+    coins_2_cent = Column(Integer, default=0)
+    coins_5_cent = Column(Integer, default=0)
+    coins_10_cent = Column(Integer, default=0)
+    coins_20_cent = Column(Integer, default=0)
+    coins_50_cent = Column(Integer, default=0)
+    coins_1_euro = Column(Integer, default=0)
+    coins_2_euro = Column(Integer, default=0)
+
+    # Scheine (Stueckzahl)
+    notes_5_euro = Column(Integer, default=0)
+    notes_10_euro = Column(Integer, default=0)
+    notes_20_euro = Column(Integer, default=0)
+    notes_50_euro = Column(Integer, default=0)
+    notes_100_euro = Column(Integer, default=0)
+    notes_200_euro = Column(Integer, default=0)
+    notes_500_euro = Column(Integer, default=0)
+
+    # Soll-Bestand (aus Kassenbuch)
+    expected_total = Column(Numeric(15, 2), nullable=False)
+
+    # Bei Differenz automatisch erstellte Buchung
+    difference_entry_id = Column(UUID(as_uuid=True), ForeignKey("cash_entries.id"), nullable=True)
+    difference_explanation = Column(Text, nullable=True)
+
+    # Signatur
+    counted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    verified_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+
+    notes = Column(Text, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    cash_register = relationship("CashRegister", back_populates="counts")
+    difference_entry = relationship("CashEntry")
+    counted_by = relationship("User", foreign_keys=[counted_by_id])
+    verified_by = relationship("User", foreign_keys=[verified_by_id])
+
+    __table_args__ = (
+        Index("ix_cash_counts_company_id", "company_id"),
+        Index("ix_cash_counts_register_id", "cash_register_id"),
+        Index("ix_cash_counts_date", "count_date"),
+    )
+
+    @property
+    def total_coins(self) -> float:
+        """Berechnet Summe aller Muenzen."""
+        return (
+            self.coins_1_cent * 0.01 +
+            self.coins_2_cent * 0.02 +
+            self.coins_5_cent * 0.05 +
+            self.coins_10_cent * 0.10 +
+            self.coins_20_cent * 0.20 +
+            self.coins_50_cent * 0.50 +
+            self.coins_1_euro * 1.00 +
+            self.coins_2_euro * 2.00
+        )
+
+    @property
+    def total_notes(self) -> float:
+        """Berechnet Summe aller Scheine."""
+        return (
+            self.notes_5_euro * 5 +
+            self.notes_10_euro * 10 +
+            self.notes_20_euro * 20 +
+            self.notes_50_euro * 50 +
+            self.notes_100_euro * 100 +
+            self.notes_200_euro * 200 +
+            self.notes_500_euro * 500
+        )
+
+    @property
+    def counted_total(self) -> float:
+        """Berechnet Gesamtsumme (Ist-Bestand)."""
+        return self.total_coins + self.total_notes
+
+    @property
+    def difference(self) -> float:
+        """Berechnet Differenz (Ist - Soll)."""
+        return self.counted_total - float(self.expected_total)
+
+    def __repr__(self) -> str:
+        return f"<CashCount {self.count_date} Ist={self.counted_total} Soll={self.expected_total}>"
+
+
+# =============================================================================
+# KASSE-MODUL: SPESENABRECHNUNG
+# =============================================================================
+
+
+class ExpenseReport(Base):
+    """Spesenabrechnung eines Mitarbeiters.
+
+    Sammelt alle Spesenpositionen eines Zeitraums mit Workflow:
+    Entwurf -> Eingereicht -> In Pruefung -> Genehmigt/Abgelehnt -> Ausgezahlt
+    """
+
+    __tablename__ = "expense_reports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Identifikation
+    report_number = Column(String(50), nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Zeitraum
+    period_start = Column(Date, nullable=False)
+    period_end = Column(Date, nullable=False)
+
+    # Mitarbeiter
+    employee_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    employee_name = Column(String(255), nullable=True)  # Denormalisiert
+
+    # Betraege (berechnet aus Positionen)
+    total_amount = Column(Numeric(15, 2), default=0)
+    total_vat = Column(Numeric(15, 2), default=0)
+    total_deductible = Column(Numeric(15, 2), default=0)
+
+    # Reisekosten-Pauschalen
+    travel_days = Column(Integer, default=0)
+    travel_allowance_total = Column(Numeric(15, 2), default=0)
+
+    # Kilometergeld
+    total_kilometers = Column(Numeric(10, 2), default=0)
+    mileage_allowance_total = Column(Numeric(15, 2), default=0)
+
+    # Status-Workflow
+    status = Column(String(50), default="draft")
+
+    # Workflow-Timestamps
+    submitted_at = Column(DateTime(timezone=True), nullable=True)
+    submitted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    reviewed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    review_notes = Column(Text, nullable=True)
+
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    approved_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    rejected_at = Column(DateTime(timezone=True), nullable=True)
+    rejected_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    rejection_reason = Column(Text, nullable=True)
+
+    paid_at = Column(DateTime(timezone=True), nullable=True)
+    paid_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    payment_method = Column(String(50), nullable=True)
+    payment_reference = Column(String(100), nullable=True)
+
+    # Verknuepfung zu Kassenbuch
+    cash_entry_id = Column(UUID(as_uuid=True), ForeignKey("cash_entries.id"), nullable=True)
+
+    # DATEV
+    datev_exported_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    # Soft-Delete
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    # Relationships
+    company = relationship("Company", back_populates="expense_reports")
+    employee = relationship("User", foreign_keys=[employee_id])
+    items = relationship(
+        "ExpenseItem",
+        back_populates="expense_report",
+        cascade="all, delete-orphan",
+        order_by="ExpenseItem.expense_date"
+    )
+    cash_entry = relationship("CashEntry", foreign_keys=[cash_entry_id])
+
+    __table_args__ = (
+        Index("ix_expense_reports_company_id", "company_id"),
+        Index("ix_expense_reports_employee_id", "employee_id"),
+        Index("ix_expense_reports_status", "status"),
+        Index("ix_expense_reports_period", "period_start", "period_end"),
+        Index("ix_expense_reports_created_at", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ExpenseReport {self.report_number} ({self.status})>"
+
+
+class ExpenseItem(Base):
+    """Einzelposition einer Spesenabrechnung.
+
+    Unterstuetzt verschiedene Typen:
+    - RECEIPT: Belegausgabe (mit gescanntem Beleg)
+    - MILEAGE: Kilometergeld (0,30 EUR/km)
+    - PER_DIEM: Verpflegungspauschale (14/28 EUR)
+    - FLAT_RATE: Sonstige Pauschale
+    """
+
+    __tablename__ = "expense_items"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    expense_report_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("expense_reports.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Kategorisierung
+    category_id = Column(UUID(as_uuid=True), ForeignKey("cash_categories.id"), nullable=True)
+    expense_type = Column(String(50), nullable=False)  # ExpenseType
+
+    # Datum
+    expense_date = Column(Date, nullable=False)
+
+    # Betrag
+    amount = Column(Numeric(15, 2), nullable=False)
+    currency = Column(String(3), default="EUR")
+
+    # Steuer
+    tax_rate = Column(Numeric(5, 2), nullable=True)
+    tax_amount = Column(Numeric(15, 2), nullable=True)
+    net_amount = Column(Numeric(15, 2), nullable=True)
+
+    # Abzugsfaehigkeit
+    is_deductible = Column(Boolean, default=True)
+    deductible_percentage = Column(Integer, default=100)
+    deductible_amount = Column(Numeric(15, 2), nullable=True)
+
+    # Beschreibung
+    description = Column(Text, nullable=False)
+
+    # Beleg
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True)
+    receipt_number = Column(String(100), nullable=True)
+
+    # Geschaeftspartner
+    vendor_name = Column(String(255), nullable=True)
+    vendor_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True)
+
+    # Bewirtung (wenn expense_type = receipt & category = entertainment)
+    entertainment_participants = Column(CrossDBJSON, nullable=True)  # ["Name1", "Name2"]
+    entertainment_occasion = Column(Text, nullable=True)
+    entertainment_location = Column(String(255), nullable=True)
+
+    # Kilometergeld (wenn expense_type = mileage)
+    mileage_from = Column(String(255), nullable=True)
+    mileage_to = Column(String(255), nullable=True)
+    mileage_kilometers = Column(Numeric(10, 2), nullable=True)
+    mileage_rate = Column(Numeric(5, 2), default=0.30)  # EUR/km
+    mileage_vehicle_type = Column(String(50), nullable=True)  # pkw, motorrad
+    mileage_license_plate = Column(String(20), nullable=True)
+
+    # Verpflegungspauschale (wenn expense_type = per_diem)
+    per_diem_hours = Column(Numeric(4, 1), nullable=True)
+    per_diem_rate = Column(Numeric(5, 2), nullable=True)  # 14 oder 28
+    per_diem_breakfast_provided = Column(Boolean, default=False)
+    per_diem_lunch_provided = Column(Boolean, default=False)
+    per_diem_dinner_provided = Column(Boolean, default=False)
+
+    # Buchhaltung
+    skr_account = Column(String(10), nullable=True)
+    cost_center = Column(String(50), nullable=True)
+
+    # Sortierung
+    sort_order = Column(Integer, default=0)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    expense_report = relationship("ExpenseReport", back_populates="items")
+    category = relationship("CashCategory")
+    document = relationship("Document")
+    vendor = relationship("BusinessEntity")
+
+    __table_args__ = (
+        Index("ix_expense_items_report_id", "expense_report_id"),
+        Index("ix_expense_items_date", "expense_date"),
+        Index("ix_expense_items_document_id", "document_id"),
+        Index("ix_expense_items_type", "expense_type"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ExpenseItem {self.expense_date} {self.amount} {self.currency}>"
+
+
+# =============================================================================
+# STRECKENGESCHÄFT / DREIECKSGESCHÄFT MODELS
+# =============================================================================
+
+
+class TransactionType(str, Enum):
+    """Classification type for drop shipment transactions."""
+    STANDARD = "standard"              # Normal warehouse transaction
+    DROP_SHIPMENT = "drop_shipment"    # Streckengeschäft (2 parties)
+    TRIANGULAR_EU = "triangular_eu"    # EU Dreiecksgeschäft §25b UStG
+    CHAIN_TRANSACTION = "chain_transaction"  # Reihengeschäft (3+ parties)
+    UNKNOWN = "unknown"                # Needs manual classification
+
+
+class DropShipmentCompanyRole(str, Enum):
+    """Role of German company in the transaction."""
+    FIRST_SUPPLIER = "first_supplier"    # Erster Lieferer
+    INTERMEDIATE = "intermediate"         # Zwischenhändler (mittlerer Abnehmer)
+    FINAL_BUYER = "final_buyer"          # Letzter Abnehmer
+    NOT_APPLICABLE = "not_applicable"    # Standard transaction
+
+
+class MovingDelivery(str, Enum):
+    """Which delivery is the moving delivery (§3 Abs. 6a UStG)."""
+    TO_INTERMEDIATE = "to_intermediate"      # Lieferung AN den Zwischenhändler
+    FROM_INTERMEDIATE = "from_intermediate"  # Lieferung VOM Zwischenhändler
+    UNDETERMINED = "undetermined"            # Noch nicht bestimmt
+
+
+class ConfidenceLevel(str, Enum):
+    """Classification confidence level."""
+    DEFINITIVE = "definitive"       # 100% - ERP marker, legal reference
+    HIGH = "high"                   # 90-99% - Strong indicators
+    MEDIUM = "medium"               # 70-89% - Multiple weak indicators
+    LOW = "low"                     # 50-69% - Single weak indicator
+    MANUAL_REQUIRED = "manual_required"  # <50% - Conflicting signals
+
+
+class VatCategoryType(str, Enum):
+    """VAT treatment category for drop shipment."""
+    STANDARD_DE = "standard_de"           # Normal German VAT (19% or 7%)
+    INTRA_COMMUNITY = "intra_community"   # Innergemeinschaftliche Lieferung
+    REVERSE_CHARGE = "reverse_charge"     # Steuerschuldnerschaft Empfänger
+    EXPORT = "export"                     # Ausfuhr Drittland (steuerfrei)
+    TRIANGULAR_MIDDLE = "triangular_middle"  # §25b Zwischenhändler
+    TRIANGULAR_FINAL = "triangular_final"    # §25b Endabnehmer
+
+
+class DropShipmentClassification(Base):
+    """
+    Drop shipment classification at document level.
+    Implements detection of Streckengeschäft, Dreiecksgeschäft (§25b UStG),
+    and Reihengeschäfte (§3 Abs. 6a UStG).
+    """
+    __tablename__ = "drop_shipment_classifications"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"),
+                        nullable=False, index=True)
+
+    # Classification results
+    transaction_type = Column(String(30), nullable=False, default=TransactionType.UNKNOWN.value)
+    company_role = Column(String(30), nullable=False, default=DropShipmentCompanyRole.NOT_APPLICABLE.value)
+    moving_delivery = Column(String(30), default=MovingDelivery.UNDETERMINED.value)
+    vat_category = Column(String(30), nullable=False, default=VatCategoryType.STANDARD_DE.value)
+
+    # Confidence and validation
+    confidence_level = Column(String(20), nullable=False, default=ConfidenceLevel.MANUAL_REQUIRED.value)
+    confidence_score = Column(Integer, nullable=False, default=0)
+    is_validated = Column(Boolean, default=False)
+    validated_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    validated_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Indicators that triggered classification (JSONB)
+    indicators = Column(CrossDBJSON, nullable=False, default=list)
+    conflicts = Column(CrossDBJSON, nullable=True)
+
+    # EU parties involved (for triangular transactions)
+    party_count = Column(Integer, default=2)
+    eu_countries_involved = Column(CrossDBJSON, nullable=True)  # ["DE", "AT", "NL"]
+
+    # DATEV integration
+    datev_account_debit = Column(String(10), nullable=True)
+    datev_account_credit = Column(String(10), nullable=True)
+    datev_tax_code = Column(String(5), nullable=True)
+    zm_relevant = Column(Boolean, default=False)
+    zm_marker = Column(String(1), nullable=True)  # '1' for triangular
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Soft-Delete (GDPR/GoBD compliance)
+    is_deleted = Column(Boolean, nullable=False, default=False, server_default="false")
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    # Relationships
+    document = relationship("Document", backref="drop_shipment_classification")
+    deleter = relationship("User", foreign_keys=[deleted_by])
+    validator = relationship("User", foreign_keys=[validated_by])
+    positions = relationship("DropShipmentPosition", back_populates="classification",
+                            cascade="all, delete-orphan")
+    parties = relationship("TransactionParty", back_populates="classification",
+                          cascade="all, delete-orphan")
+    proof_documents = relationship("ProofDocument", back_populates="classification",
+                                   cascade="all, delete-orphan")
+    audit_logs = relationship("ClassificationAuditLog", back_populates="classification",
+                             cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_classification_type", "transaction_type"),
+        Index("ix_classification_confidence", "confidence_level", "is_validated"),
+        Index("ix_classification_zm", "zm_relevant", "created_at"),
+        CheckConstraint("confidence_score >= 0 AND confidence_score <= 100",
+                       name="valid_confidence_score"),
+        CheckConstraint("party_count >= 2 AND party_count <= 10",
+                       name="valid_party_count"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DropShipmentClassification {self.transaction_type} {self.confidence_level}>"
+
+
+class DropShipmentPosition(Base):
+    """
+    Position-level classification for mixed invoices (Mischbestellungen).
+    A single invoice can contain both warehouse and drop-shipment positions.
+    """
+    __tablename__ = "drop_shipment_positions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    classification_id = Column(UUID(as_uuid=True),
+                               ForeignKey("drop_shipment_classifications.id", ondelete="CASCADE"),
+                               nullable=False, index=True)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"),
+                        nullable=False)
+
+    # Position identification
+    position_number = Column(Integer, nullable=False)
+    article_number = Column(String(100), nullable=True)
+    article_description = Column(Text, nullable=True)
+    quantity = Column(Numeric(12, 3), nullable=True)
+    unit_price = Column(Numeric(12, 2), nullable=True)
+    line_total = Column(Numeric(12, 2), nullable=True)
+
+    # Position-level classification
+    is_drop_shipment = Column(Boolean, nullable=False, default=False)
+    warehouse_code = Column(String(20), nullable=True)
+    erp_position_type = Column(String(10), nullable=True)  # TAS, TAN, etc.
+
+    # VAT treatment for this position
+    vat_category = Column(String(30), nullable=True)
+    vat_rate = Column(Numeric(5, 2), nullable=True)
+
+    # DATEV account for this position
+    datev_revenue_account = Column(String(10), nullable=True)
+    datev_expense_account = Column(String(10), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    classification = relationship("DropShipmentClassification", back_populates="positions")
+    document = relationship("Document")
+
+    __table_args__ = (
+        Index("ix_positions_drop_ship", "is_drop_shipment"),
+        # Unique constraint: one entry per position per document
+        # Note: handled in migration
+    )
+
+    def __repr__(self) -> str:
+        return f"<DropShipmentPosition {self.position_number} drop={self.is_drop_shipment}>"
+
+
+class VatIdRegistry(Base):
+    """
+    VAT ID registry for party identification and VIES validation.
+    Caches EU VIES validation results.
+    """
+    __tablename__ = "vat_id_registry"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    vat_id = Column(String(20), nullable=False, unique=True)
+    country_code = Column(String(2), nullable=False, index=True)
+    company_name = Column(String(255), nullable=True)
+
+    # Validation status (VIES check)
+    is_valid = Column(Boolean, nullable=True)
+    last_validated = Column(DateTime(timezone=True), nullable=True)
+    validation_response = Column(CrossDBJSON, nullable=True)
+
+    # Internal reference (links to BusinessEntity, which unifies customers and suppliers)
+    business_entity_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    business_entity = relationship("BusinessEntity")
+
+    def __repr__(self) -> str:
+        return f"<VatIdRegistry {self.vat_id} valid={self.is_valid}>"
+
+
+class TransactionParty(Base):
+    """
+    Party information extracted from documents for drop shipment classification.
+    Tracks all parties in the transaction chain.
+    """
+    __tablename__ = "transaction_parties"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    classification_id = Column(UUID(as_uuid=True),
+                               ForeignKey("drop_shipment_classifications.id", ondelete="CASCADE"),
+                               nullable=False, index=True)
+
+    # Party role in the chain
+    party_role = Column(String(30), nullable=False)  # seller, buyer, ship_to, bill_to, carrier
+    sequence_number = Column(Integer, nullable=False)  # Position in chain: 1=first, 2=middle, 3=last
+
+    # Party identification
+    company_name = Column(String(255), nullable=True)
+    vat_id = Column(String(20), nullable=True)
+    country_code = Column(String(2), nullable=True)
+
+    # Address
+    street = Column(String(255), nullable=True)
+    city = Column(String(100), nullable=True)
+    postal_code = Column(String(20), nullable=True)
+    country = Column(String(100), nullable=True)
+
+    # Source of extraction
+    source_field = Column(String(50), nullable=True)  # invoice_address, delivery_address, cmr_consignee
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    classification = relationship("DropShipmentClassification", back_populates="parties")
+
+    def __repr__(self) -> str:
+        return f"<TransactionParty {self.party_role} {self.company_name}>"
+
+
+class ProofDocument(Base):
+    """
+    Document evidence chain for proof archive.
+    Tracks required proofs for tax-free treatment (Gelangensnachweis, CMR, etc.)
+    """
+    __tablename__ = "proof_documents"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    classification_id = Column(UUID(as_uuid=True),
+                               ForeignKey("drop_shipment_classifications.id", ondelete="CASCADE"),
+                               nullable=False, index=True)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"),
+                        nullable=True)
+
+    # Proof type: invoice, delivery_note, cmr, gelangensbestaetigung, speditionsauftrag, vat_id_proof
+    proof_type = Column(String(50), nullable=False)
+
+    is_present = Column(Boolean, default=False)
+    is_complete = Column(Boolean, default=False)
+    missing_fields = Column(CrossDBJSON, nullable=True)  # Array of missing field names
+
+    # For CMR: Field 24 extraction
+    cmr_field_24_signed = Column(Boolean, nullable=True)
+    cmr_field_24_date = Column(Date, nullable=True)
+
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    classification = relationship("DropShipmentClassification", back_populates="proof_documents")
+    document = relationship("Document")
+
+    def __repr__(self) -> str:
+        return f"<ProofDocument {self.proof_type} present={self.is_present}>"
+
+
+class ClassificationAuditLog(Base):
+    """
+    Immutable audit log for classification changes.
+    Required for GoBD compliance and tax audit trail.
+    """
+    __tablename__ = "classification_audit_log"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    classification_id = Column(UUID(as_uuid=True),
+                               ForeignKey("drop_shipment_classifications.id", ondelete="CASCADE"),
+                               nullable=False, index=True)
+
+    # Action: created, auto_classified, manually_validated, overridden, exported_datev, zm_reported
+    action = Column(String(50), nullable=False)
+
+    previous_value = Column(CrossDBJSON, nullable=True)
+    new_value = Column(CrossDBJSON, nullable=True)
+    reason = Column(Text, nullable=True)
+
+    performed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    performed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # System info for audit
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(255), nullable=True)
+
+    # Relationships
+    classification = relationship("DropShipmentClassification", back_populates="audit_logs")
+    user = relationship("User")
+
+    def __repr__(self) -> str:
+        return f"<ClassificationAuditLog {self.action} at {self.performed_at}>"
+
+
+class DatevStreckengeschaeftAccount(Base):
+    """
+    DATEV account mapping configuration for drop shipment transactions.
+    Maps company role and transaction type to SKR03/SKR04 accounts.
+    """
+    __tablename__ = "datev_streckengeschaeft_accounts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    kontenrahmen = Column(String(5), nullable=False)  # SKR03, SKR04
+    company_role = Column(String(30), nullable=False)
+    transaction_type = Column(String(30), nullable=False)
+
+    # Account numbers
+    revenue_account = Column(String(10), nullable=True)
+    expense_account = Column(String(10), nullable=True)
+    tax_code = Column(String(5), nullable=True)
+
+    # UStVA mapping
+    ustva_kennzahl = Column(String(5), nullable=True)
+    zm_kennzeichen = Column(String(1), nullable=True)
+
+    description_de = Column(String(255), nullable=True)
+    is_active = Column(Boolean, default=True)
+
+    __table_args__ = (
+        # Unique constraint for mapping lookup
+        Index("ix_datev_account_lookup", "kontenrahmen", "company_role", "transaction_type"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DatevStreckengeschaeftAccount {self.kontenrahmen} {self.transaction_type}>"
+
+
+class ClassificationIndicator(Base):
+    """
+    Classification indicator configuration.
+    Defines detection patterns and weights for automatic classification.
+    """
+    __tablename__ = "classification_indicators"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    indicator_code = Column(String(50), nullable=False, unique=True)
+    indicator_name_de = Column(String(100), nullable=False)
+    indicator_name_en = Column(String(100), nullable=True)
+
+    weight = Column(Integer, nullable=False, default=50)
+    is_definitive = Column(Boolean, default=False)
+    applies_to_incoming = Column(Boolean, default=True)
+    applies_to_outgoing = Column(Boolean, default=True)
+
+    detection_pattern = Column(Text, nullable=True)  # Regex pattern
+    detection_field = Column(String(50), nullable=True)
+
+    is_active = Column(Boolean, default=True)
+
+    __table_args__ = (
+        CheckConstraint("weight >= 0 AND weight <= 100", name="valid_indicator_weight"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ClassificationIndicator {self.indicator_code} weight={self.weight}>"
+
+
+# =============================================================================
+# PERSONAL-MODUL: ENTERPRISE HR
+# =============================================================================
+
+
+class EmploymentType(str, Enum):
+    """Beschaeftigungsart."""
+    FULL_TIME = "full_time"               # Vollzeit
+    PART_TIME = "part_time"               # Teilzeit
+    MINI_JOB = "mini_job"                 # Minijob (520 EUR)
+    TEMPORARY = "temporary"               # Befristet
+    TRAINEE = "trainee"                   # Auszubildender
+    INTERN = "intern"                     # Praktikant
+    FREELANCE = "freelance"               # Freiberuflich
+    WORKING_STUDENT = "working_student"   # Werkstudent
+
+
+class EmployeeStatus(str, Enum):
+    """Mitarbeiter-Status."""
+    ONBOARDING = "onboarding"             # In Einarbeitung
+    ACTIVE = "active"                     # Aktiv
+    ON_LEAVE = "on_leave"                 # Beurlaubt
+    SICK = "sick"                         # Langzeitkrank
+    NOTICE_PERIOD = "notice_period"       # In Kuendigung
+    TERMINATED = "terminated"             # Ausgeschieden
+
+
+class LeaveType(str, Enum):
+    """Abwesenheitstyp."""
+    VACATION = "vacation"                 # Urlaub
+    SICK = "sick"                         # Krank
+    SICK_CHILD = "sick_child"             # Kind krank
+    PARENTAL = "parental"                 # Elternzeit
+    SPECIAL = "special"                   # Sonderurlaub
+    UNPAID = "unpaid"                     # Unbezahlter Urlaub
+    TRAINING = "training"                 # Weiterbildung
+    BUSINESS_TRIP = "business_trip"       # Dienstreise
+    HOME_OFFICE = "home_office"           # Homeoffice
+
+
+class LeaveRequestStatus(str, Enum):
+    """Urlaubsantrag-Status."""
+    DRAFT = "draft"                       # Entwurf
+    SUBMITTED = "submitted"               # Eingereicht
+    APPROVED = "approved"                 # Genehmigt
+    REJECTED = "rejected"                 # Abgelehnt
+    CANCELLED = "cancelled"               # Storniert
+
+
+class ContractStatus(str, Enum):
+    """Arbeitsvertrag-Status."""
+    DRAFT = "draft"                       # Entwurf
+    PENDING_SIGNATURE = "pending_signature"  # Warten auf Unterschrift
+    ACTIVE = "active"                     # Aktiv
+    TERMINATED = "terminated"             # Beendet
+
+
+class TrainingStatus(str, Enum):
+    """Weiterbildungs-Status."""
+    PLANNED = "planned"                   # Geplant
+    REGISTERED = "registered"             # Angemeldet
+    IN_PROGRESS = "in_progress"           # Laufend
+    COMPLETED = "completed"               # Abgeschlossen
+    CANCELLED = "cancelled"               # Abgebrochen
+
+
+class ReviewStatus(str, Enum):
+    """Beurteilungs-Status."""
+    DRAFT = "draft"                       # Entwurf
+    PENDING_EMPLOYEE = "pending_employee" # Warten auf Mitarbeiter-Kommentar
+    PENDING_HR = "pending_hr"             # Warten auf HR-Freigabe
+    COMPLETED = "completed"               # Abgeschlossen
+
+
+class OnboardingTaskStatus(str, Enum):
+    """Onboarding-Aufgaben-Status."""
+    PENDING = "pending"                   # Ausstehend
+    IN_PROGRESS = "in_progress"           # In Bearbeitung
+    COMPLETED = "completed"               # Erledigt
+    SKIPPED = "skipped"                   # Uebersprungen
+
+
+class HRDocumentCategory(str, Enum):
+    """HR-Dokument Kategorien."""
+    VERTRAEGE = "vertraege"               # Vertraege & Stammdaten
+    STAMMDATEN = "stammdaten"             # Stammdaten
+    LOHN = "lohn"                         # Lohn & Gehalt
+    URLAUB = "urlaub"                     # Urlaub & Abwesenheit
+    WEITERBILDUNG = "weiterbildung"       # Weiterbildung
+    BEURTEILUNG = "beurteilung"           # Beurteilung
+    SONSTIGES = "sonstiges"               # Sonstiges
+
+
+class Department(Base):
+    """Abteilung mit hierarchischer Struktur.
+
+    Ermoeglicht die Abbildung einer Organisationsstruktur mit
+    beliebig tiefer Verschachtelung (parent_id).
+    """
+
+    __tablename__ = "departments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    parent_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("departments.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Identifikation
+    name = Column(String(100), nullable=False)
+    short_name = Column(String(20), nullable=True)
+    description = Column(Text, nullable=True)
+    cost_center = Column(String(50), nullable=True)
+
+    # Manager (wird spaeter gesetzt, da Employee noch nicht existiert)
+    manager_id = Column(UUID(as_uuid=True), nullable=True)
+
+    # Sortierung
+    sort_order = Column(Integer, default=0)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    company = relationship("Company")
+    parent = relationship("Department", remote_side=[id], backref="children")
+
+    __table_args__ = (
+        Index("ix_departments_company_id", "company_id"),
+        Index("ix_departments_parent_id", "parent_id"),
+        Index("ix_departments_is_active", "is_active"),
+        Index("ix_departments_deleted_at", "deleted_at"),
+        Index("ix_departments_company_name", "company_id", "name"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Department {self.name}>"
+
+
+class Position(Base):
+    """Stelle/Rolle innerhalb einer Firma.
+
+    Definiert Stellenbezeichnungen mit optionalem Gehaltsrahmen
+    und Zuordnung zu einer Abteilung.
+    """
+
+    __tablename__ = "positions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    department_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("departments.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Bezeichnung
+    title = Column(String(200), nullable=False)
+    title_en = Column(String(200), nullable=True)
+    description = Column(Text, nullable=True)
+
+    # Klassifizierung
+    level = Column(Integer, default=1)  # Hierarchie-Ebene
+    job_family = Column(String(100), nullable=True)  # z.B. "Engineering", "Sales"
+
+    # Gehaltsrahmen
+    salary_band_min = Column(Numeric(10, 2), nullable=True)
+    salary_band_max = Column(Numeric(10, 2), nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    company = relationship("Company")
+    department = relationship("Department")
+
+    __table_args__ = (
+        Index("ix_positions_company_id", "company_id"),
+        Index("ix_positions_department_id", "department_id"),
+        Index("ix_positions_is_active", "is_active"),
+        Index("ix_positions_title", "title"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Position {self.title}>"
+
+
+class Employee(Base):
+    """Mitarbeiter-Stammdaten.
+
+    Zentrale Entitaet fuer alle HR-Daten eines Mitarbeiters.
+    Kann optional mit einem User-Account verknuepft sein.
+    """
+
+    __tablename__ = "employees"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Verknuepfung zum User (falls Mitarbeiter auch Systemzugang hat)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Identifikation
+    employee_number = Column(String(50), nullable=False)  # Personalnummer
+
+    # Persoenliche Daten
+    salutation = Column(String(20), nullable=True)  # Herr/Frau
+    title = Column(String(50), nullable=True)  # Dr., Prof., etc.
+    first_name = Column(String(100), nullable=False)
+    last_name = Column(String(100), nullable=False)
+    birth_name = Column(String(100), nullable=True)
+    date_of_birth = Column(Date, nullable=True)
+    place_of_birth = Column(String(100), nullable=True)
+    nationality = Column(String(50), nullable=True)
+    gender = Column(String(20), nullable=True)
+
+    # Kontakt (geschaeftlich)
+    email = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
+    mobile = Column(String(50), nullable=True)
+
+    # Kontakt (privat)
+    private_email = Column(String(255), nullable=True)
+    private_phone = Column(String(50), nullable=True)
+
+    # Adresse (privat)
+    street = Column(String(255), nullable=True)
+    street_number = Column(String(20), nullable=True)
+    postal_code = Column(String(10), nullable=True)
+    city = Column(String(100), nullable=True)
+    country = Column(String(2), default="DE")
+
+    # Notfall-Kontakt
+    emergency_contact_name = Column(String(200), nullable=True)
+    emergency_contact_phone = Column(String(50), nullable=True)
+    emergency_contact_relation = Column(String(50), nullable=True)
+
+    # Organisatorisch
+    department_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("departments.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    position_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("positions.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    supervisor_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employees.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Beschaeftigung
+    employment_type = Column(String(30), default=EmploymentType.FULL_TIME.value)
+    status = Column(String(30), default=EmployeeStatus.ACTIVE.value)
+    hire_date = Column(Date, nullable=True)
+    probation_end_date = Column(Date, nullable=True)
+    termination_date = Column(Date, nullable=True)
+
+    # Arbeitszeit
+    weekly_hours = Column(Numeric(5, 2), default=40)
+    vacation_days_per_year = Column(Integer, default=30)
+
+    # Steuer & Sozialversicherung
+    tax_id = Column(String(20), nullable=True)  # Steuer-ID
+    tax_class = Column(String(5), nullable=True)  # Steuerklasse
+    social_security_number = Column(String(20), nullable=True)
+    health_insurance = Column(String(100), nullable=True)
+    health_insurance_number = Column(String(50), nullable=True)
+
+    # Banking
+    iban = Column(String(34), nullable=True)
+    bic = Column(String(11), nullable=True)
+    bank_name = Column(String(100), nullable=True)
+
+    # Profilbild
+    photo_path = Column(String(500), nullable=True)
+
+    # Flexible Felder
+    custom_fields = Column(CrossDBJSON, default=dict)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Soft-Delete (GDPR/GoBD)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    company = relationship("Company")
+    user = relationship("User", foreign_keys=[user_id])
+    department = relationship("Department", foreign_keys=[department_id])
+    position = relationship("Position")
+    supervisor = relationship("Employee", remote_side=[id], foreign_keys=[supervisor_id])
+
+    # Bidirectional relationships
+    contracts = relationship("EmploymentContract", back_populates="employee", order_by="EmploymentContract.start_date.desc()")
+    leave_requests = relationship("LeaveRequest", back_populates="employee", foreign_keys="LeaveRequest.employee_id", order_by="LeaveRequest.start_date.desc()")
+    absences = relationship("Absence", back_populates="employee", order_by="Absence.start_date.desc()")
+    time_entries = relationship("TimeEntry", back_populates="employee", order_by="TimeEntry.date.desc()")
+    trainings = relationship("Training", back_populates="employee", order_by="Training.start_date.desc()")
+    performance_reviews = relationship("PerformanceReview", back_populates="employee", foreign_keys="PerformanceReview.employee_id")
+    onboarding_tasks = relationship("OnboardingTask", back_populates="employee", foreign_keys="OnboardingTask.employee_id", order_by="OnboardingTask.sort_order")
+    hr_documents = relationship("HRDocument", back_populates="employee")
+
+    __table_args__ = (
+        Index("ix_employees_company_id", "company_id"),
+        Index("ix_employees_user_id", "user_id"),
+        Index("ix_employees_department_id", "department_id"),
+        Index("ix_employees_position_id", "position_id"),
+        Index("ix_employees_supervisor_id", "supervisor_id"),
+        Index("ix_employees_status", "status"),
+        Index("ix_employees_employee_number", "company_id", "employee_number"),
+        Index("ix_employees_email", "email"),
+        Index("ix_employees_deleted_at", "deleted_at"),
+        Index("ix_employees_name", "last_name", "first_name"),
+    )
+
+    @property
+    def full_name(self) -> str:
+        """Vollstaendiger Name."""
+        parts = []
+        if self.title:
+            parts.append(self.title)
+        parts.append(self.first_name)
+        parts.append(self.last_name)
+        return " ".join(parts)
+
+    @property
+    def is_deleted(self) -> bool:
+        """Prueft ob Mitarbeiter geloescht ist."""
+        return self.deleted_at is not None
+
+    def __repr__(self) -> str:
+        return f"<Employee {self.employee_number}: {self.first_name} {self.last_name}>"
+
+
+class EmploymentContract(Base):
+    """Arbeitsvertrag mit Versionshistorie.
+
+    Jede Vertragsaenderung erzeugt eine neue Version.
+    is_current markiert den aktuell gueltigen Vertrag.
+    """
+
+    __tablename__ = "employment_contracts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    employee_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Versionierung
+    version = Column(Integer, default=1)
+    is_current = Column(Boolean, default=True)
+    supersedes_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employment_contracts.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Vertragsdetails
+    contract_type = Column(String(30), nullable=False)  # EmploymentType
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=True)  # Null = unbefristet
+
+    # Position
+    position_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("positions.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    job_title = Column(String(200), nullable=False)
+    job_description = Column(Text, nullable=True)
+
+    # Arbeitszeit
+    weekly_hours = Column(Numeric(5, 2), nullable=False)
+    vacation_days = Column(Integer, nullable=False)
+
+    # Verguetung
+    salary_type = Column(String(20), default="monthly")  # monthly, hourly
+    base_salary = Column(Numeric(10, 2), nullable=False)
+    salary_currency = Column(String(3), default="EUR")
+    bonus_eligible = Column(Boolean, default=False)
+    bonus_target = Column(Numeric(10, 2), nullable=True)
+
+    # Zusatzleistungen
+    benefits = Column(CrossDBJSON, default=list)  # ["company_car", "phone", "pension"]
+
+    # Kuendigung
+    notice_period_employee = Column(String(50), nullable=True)  # z.B. "1 Monat zum Monatsende"
+    notice_period_employer = Column(String(50), nullable=True)
+
+    # Dokument-Referenz
+    contract_document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Workflow
+    status = Column(String(30), default=ContractStatus.DRAFT.value)
+    signed_date = Column(Date, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    employee = relationship("Employee", back_populates="contracts")
+    position = relationship("Position")
+    supersedes = relationship("EmploymentContract", remote_side=[id])
+    contract_document = relationship("Document")
+
+    __table_args__ = (
+        Index("ix_employment_contracts_employee_id", "employee_id"),
+        Index("ix_employment_contracts_is_current", "is_current"),
+        Index("ix_employment_contracts_status", "status"),
+        Index("ix_employment_contracts_start_date", "start_date"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<EmploymentContract v{self.version} {self.job_title}>"
+
+
+class LeaveRequest(Base):
+    """Urlaubsantrag mit Workflow.
+
+    Status-Workflow: draft -> submitted -> approved/rejected -> cancelled
+    """
+
+    __tablename__ = "leave_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    employee_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Zeitraum
+    leave_type = Column(String(30), nullable=False)  # LeaveType
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    start_half_day = Column(Boolean, default=False)  # Erster Tag nur halbtags
+    end_half_day = Column(Boolean, default=False)    # Letzter Tag nur halbtags
+
+    # Berechnung
+    total_days = Column(Numeric(5, 2), nullable=False)
+
+    # Beschreibung
+    reason = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    # Vertretung
+    substitute_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employees.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Workflow
+    status = Column(String(30), default=LeaveRequestStatus.DRAFT.value)
+
+    submitted_at = Column(DateTime(timezone=True), nullable=True)
+
+    reviewed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    review_comment = Column(Text, nullable=True)
+
+    approved_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+
+    rejected_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    rejected_at = Column(DateTime(timezone=True), nullable=True)
+    rejection_reason = Column(Text, nullable=True)
+
+    cancelled_at = Column(DateTime(timezone=True), nullable=True)
+    cancelled_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    company = relationship("Company")
+    employee = relationship("Employee", back_populates="leave_requests", foreign_keys=[employee_id])
+    substitute = relationship("Employee", foreign_keys=[substitute_id])
+
+    __table_args__ = (
+        Index("ix_leave_requests_company_id", "company_id"),
+        Index("ix_leave_requests_employee_id", "employee_id"),
+        Index("ix_leave_requests_status", "status"),
+        Index("ix_leave_requests_dates", "start_date", "end_date"),
+        Index("ix_leave_requests_leave_type", "leave_type"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<LeaveRequest {self.leave_type} {self.start_date} - {self.end_date}>"
+
+
+class Absence(Base):
+    """Tatsaechliche Abwesenheit (aus genehmigtem Antrag oder Krankheit).
+
+    Wird automatisch aus genehmigten LeaveRequests erzeugt oder
+    manuell fuer Krankheitsfaelle angelegt.
+    """
+
+    __tablename__ = "absences"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    employee_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    absence_type = Column(String(30), nullable=False)  # LeaveType
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    total_days = Column(Numeric(5, 2), nullable=False)
+
+    # Verknuepfung zum Urlaubsantrag (optional)
+    leave_request_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("leave_requests.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Bei Krankheit
+    sick_note_received = Column(Boolean, default=False)
+    sick_note_document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    sick_note_valid_from = Column(Date, nullable=True)
+    sick_note_valid_until = Column(Date, nullable=True)
+
+    notes = Column(Text, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    company = relationship("Company")
+    employee = relationship("Employee", back_populates="absences")
+    leave_request = relationship("LeaveRequest")
+    sick_note_document = relationship("Document")
+
+    __table_args__ = (
+        Index("ix_absences_company_id", "company_id"),
+        Index("ix_absences_employee_id", "employee_id"),
+        Index("ix_absences_dates", "start_date", "end_date"),
+        Index("ix_absences_type", "absence_type"),
+        Index("ix_absences_leave_request_id", "leave_request_id"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Absence {self.absence_type} {self.start_date} - {self.end_date}>"
+
+
+class TimeEntry(Base):
+    """Zeiterfassung.
+
+    Erfasst Arbeitszeiten eines Mitarbeiters mit optionaler
+    Genehmigung durch den Vorgesetzten.
+    """
+
+    __tablename__ = "time_entries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    employee_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    date = Column(Date, nullable=False)
+    start_time = Column(Time, nullable=True)
+    end_time = Column(Time, nullable=True)
+    break_duration_minutes = Column(Integer, default=0)
+
+    # Berechnete Werte
+    total_hours = Column(Numeric(5, 2), nullable=True)
+    overtime_hours = Column(Numeric(5, 2), default=0)
+
+    # Kategorisierung
+    work_type = Column(String(50), default="regular")  # regular, overtime, holiday, on_call
+    project_id = Column(String(100), nullable=True)
+    cost_center = Column(String(50), nullable=True)
+
+    notes = Column(Text, nullable=True)
+
+    # Status
+    is_approved = Column(Boolean, default=False)
+    approved_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    company = relationship("Company")
+    employee = relationship("Employee", back_populates="time_entries")
+
+    __table_args__ = (
+        Index("ix_time_entries_company_id", "company_id"),
+        Index("ix_time_entries_employee_id", "employee_id"),
+        Index("ix_time_entries_date", "date"),
+        Index("ix_time_entries_employee_date", "employee_id", "date"),
+        Index("ix_time_entries_is_approved", "is_approved"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<TimeEntry {self.date} {self.total_hours}h>"
+
+
+class Training(Base):
+    """Weiterbildung/Schulung.
+
+    Erfasst Schulungen, Zertifizierungen und Fortbildungen
+    eines Mitarbeiters.
+    """
+
+    __tablename__ = "trainings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    employee_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Details
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    provider = Column(String(200), nullable=True)
+    location = Column(String(200), nullable=True)
+
+    # Zeitraum
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=True)
+    duration_hours = Column(Numeric(6, 2), nullable=True)
+
+    # Kosten
+    cost = Column(Numeric(10, 2), nullable=True)
+    cost_currency = Column(String(3), default="EUR")
+    cost_covered_by = Column(String(50), default="company")  # company, employee, shared
+
+    # Ergebnis
+    status = Column(String(30), default=TrainingStatus.PLANNED.value)
+    certificate_received = Column(Boolean, default=False)
+    certificate_document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    certificate_valid_until = Column(Date, nullable=True)
+
+    # Bewertung
+    rating = Column(Integer, nullable=True)  # 1-5
+    feedback = Column(Text, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    company = relationship("Company")
+    employee = relationship("Employee", back_populates="trainings")
+    certificate_document = relationship("Document")
+
+    __table_args__ = (
+        Index("ix_trainings_company_id", "company_id"),
+        Index("ix_trainings_employee_id", "employee_id"),
+        Index("ix_trainings_status", "status"),
+        Index("ix_trainings_start_date", "start_date"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Training {self.title}>"
+
+
+class PerformanceReview(Base):
+    """Mitarbeiterbeurteilung.
+
+    Erfasst Leistungsbeurteilungen mit Ratings, Zielen
+    und Entwicklungsplaenen.
+    """
+
+    __tablename__ = "performance_reviews"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    employee_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Beurteilungszeitraum
+    review_period_start = Column(Date, nullable=False)
+    review_period_end = Column(Date, nullable=False)
+    review_date = Column(Date, nullable=True)
+
+    # Bewerter
+    reviewer_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employees.id", ondelete="SET NULL"),
+        nullable=False
+    )
+
+    # Typ
+    review_type = Column(String(50), default="annual")  # annual, probation, project, ad_hoc
+
+    # Bewertungen
+    overall_rating = Column(Integer, nullable=True)  # 1-5
+    ratings = Column(CrossDBJSON, default=dict)  # {"performance": 4, "teamwork": 5, ...}
+
+    # Freitext
+    achievements = Column(Text, nullable=True)
+    areas_for_improvement = Column(Text, nullable=True)
+    development_plan = Column(Text, nullable=True)
+    employee_comments = Column(Text, nullable=True)
+
+    # Ziele
+    goals_previous_period = Column(CrossDBJSON, default=list)
+    goals_next_period = Column(CrossDBJSON, default=list)
+
+    # Workflow
+    status = Column(String(30), default=ReviewStatus.DRAFT.value)
+
+    employee_acknowledged_at = Column(DateTime(timezone=True), nullable=True)
+    hr_approved_at = Column(DateTime(timezone=True), nullable=True)
+    hr_approved_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Dokument
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    company = relationship("Company")
+    employee = relationship("Employee", back_populates="performance_reviews", foreign_keys=[employee_id])
+    reviewer = relationship("Employee", foreign_keys=[reviewer_id])
+    document = relationship("Document")
+
+    __table_args__ = (
+        Index("ix_performance_reviews_company_id", "company_id"),
+        Index("ix_performance_reviews_employee_id", "employee_id"),
+        Index("ix_performance_reviews_reviewer_id", "reviewer_id"),
+        Index("ix_performance_reviews_status", "status"),
+        Index("ix_performance_reviews_period", "review_period_start", "review_period_end"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<PerformanceReview {self.review_type} {self.review_period_start}>"
+
+
+class OnboardingTask(Base):
+    """Onboarding-Aufgabe fuer neue Mitarbeiter.
+
+    Definiert Checklisten-Elemente fuer den Onboarding-Prozess.
+    """
+
+    __tablename__ = "onboarding_tasks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    employee_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Aufgabe
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(String(50), default="general")  # it, hr, department, training, general
+
+    # Zuweisung
+    assigned_to_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employees.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    due_date = Column(Date, nullable=True)
+
+    # Sortierung
+    sort_order = Column(Integer, default=0)
+    is_mandatory = Column(Boolean, default=True)
+
+    # Status
+    status = Column(String(30), default=OnboardingTaskStatus.PENDING.value)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    completed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    company = relationship("Company")
+    employee = relationship("Employee", back_populates="onboarding_tasks", foreign_keys=[employee_id])
+    assigned_to = relationship("Employee", foreign_keys=[assigned_to_id])
+
+    __table_args__ = (
+        Index("ix_onboarding_tasks_company_id", "company_id"),
+        Index("ix_onboarding_tasks_employee_id", "employee_id"),
+        Index("ix_onboarding_tasks_status", "status"),
+        Index("ix_onboarding_tasks_category", "category"),
+        Index("ix_onboarding_tasks_due_date", "due_date"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<OnboardingTask {self.title}>"
+
+
+class HRDocument(Base):
+    """HR-Dokument-Zuordnung mit Kategorien.
+
+    Verknuepft Dokumente mit Mitarbeitern und kategorisiert sie
+    nach HR-spezifischen Kategorien.
+    """
+
+    __tablename__ = "hr_documents"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    employee_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Kategorisierung
+    category = Column(String(50), nullable=False)  # HRDocumentCategory
+    subcategory = Column(String(50), nullable=True)
+
+    # Metadaten
+    valid_from = Column(Date, nullable=True)
+    valid_until = Column(Date, nullable=True)
+    is_current = Column(Boolean, default=True)
+
+    # Beschreibung
+    title = Column(String(255), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    employee = relationship("Employee", back_populates="hr_documents")
+    document = relationship("Document")
+
+    __table_args__ = (
+        Index("ix_hr_documents_employee_id", "employee_id"),
+        Index("ix_hr_documents_document_id", "document_id"),
+        Index("ix_hr_documents_category", "category"),
+        Index("ix_hr_documents_employee_category", "employee_id", "category"),
+        Index("ix_hr_documents_is_current", "is_current"),
+    )
+
+
+# =============================================================================
+# PRIVAT-MODUL: Persoenliches Dokumentenmanagement
+# =============================================================================
+
+class PrivatSpaceType(str, Enum):
+    """Typ des privaten Bereichs."""
+    PERSONAL = "personal"
+    SHARED = "shared"
+
+
+class PrivatAccessLevel(str, Enum):
+    """Zugriffsebenen fuer Privat-Bereiche."""
+    NONE = "none"
+    VIEW = "view"
+    EDIT = "edit"
+    MANAGE = "manage"
+
+
+class PrivatDocumentType(str, Enum):
+    """Dokumenttypen im Privat-Bereich."""
+    # Immobilien
+    PROPERTY_DEED = "property_deed"
+    PURCHASE_CONTRACT = "purchase_contract"
+    RENTAL_AGREEMENT = "rental_agreement"
+    UTILITY_BILL = "utility_bill"
+    PROPERTY_TAX = "property_tax"
+    # Fahrzeuge
+    VEHICLE_REGISTRATION = "vehicle_registration"
+    VEHICLE_TITLE = "vehicle_title"
+    INSURANCE_POLICY = "insurance_policy"
+    SERVICE_RECORD = "service_record"
+    FUEL_RECEIPT = "fuel_receipt"
+    # Versicherungen
+    INSURANCE_CONTRACT = "insurance_contract"
+    INSURANCE_CLAIM = "insurance_claim"
+    PENSION_STATEMENT = "pension_statement"
+    # Steuern
+    TAX_RETURN = "tax_return"
+    TAX_ASSESSMENT = "tax_assessment"
+    # Allgemein
+    BANK_STATEMENT = "bank_statement"
+    INVESTMENT_REPORT = "investment_report"
+    LOAN_AGREEMENT = "loan_agreement"
+    OTHER = "other"
+
+
+class PrivatDeadlineType(str, Enum):
+    """Typen von Fristen."""
+    EXPIRY = "expiry"
+    PAYMENT = "payment"
+    RENEWAL = "renewal"
+    CANCELLATION = "cancellation"
+    REVIEW = "review"
+    CUSTOM = "custom"
+
+
+class PrivatEmergencyAccessStatus(str, Enum):
+    """Status des Notfallzugriffs."""
+    PENDING = "pending"
+    ACTIVE = "active"
+    GRANTED = "granted"
+    REVOKED = "revoked"
+    EXPIRED = "expired"
+
+
+class PrivatSpace(Base):
+    """Privater Bereich - Container fuer private Dokumente."""
+    __tablename__ = "privat_spaces"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Typ und Owner
+    space_type = Column(String(20), nullable=False, default=PrivatSpaceType.PERSONAL.value)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True)
+
+    # Identifikation
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    icon = Column(String(50), default="Lock")
+    color = Column(String(7), default="#6366F1")
+
+    # Verschluesselung
+    encryption_enabled = Column(Boolean, default=True)
+    encryption_key_hash = Column(String(64), nullable=True)
+
+    # Statistiken
+    document_count = Column(Integer, default=0)
+    folder_count = Column(Integer, default=0)
+    total_size_bytes = Column(BigInteger, default=0)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    owner = relationship("User", foreign_keys=[owner_id], backref="privat_spaces")
+    company = relationship("Company", foreign_keys=[company_id])
+    folders = relationship("PrivatFolder", back_populates="space", cascade="all, delete-orphan")
+    access_grants = relationship("PrivatSpaceAccess", back_populates="space", cascade="all, delete-orphan")
+    documents = relationship("PrivatDocument", back_populates="space", cascade="all, delete-orphan")
+    properties = relationship("PrivatProperty", back_populates="space", cascade="all, delete-orphan")
+    vehicles = relationship("PrivatVehicle", back_populates="space", cascade="all, delete-orphan")
+    insurances = relationship("PrivatInsurance", back_populates="space", cascade="all, delete-orphan")
+    loans = relationship("PrivatLoan", back_populates="space", cascade="all, delete-orphan")
+    investments = relationship("PrivatInvestment", back_populates="space", cascade="all, delete-orphan")
+    deadlines = relationship("PrivatDeadline", back_populates="space", cascade="all, delete-orphan")
+    emergency_contacts = relationship("PrivatEmergencyContact", back_populates="space", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_privat_spaces_owner_id", "owner_id"),
+        Index("ix_privat_spaces_company_id", "company_id"),
+        Index("ix_privat_spaces_type", "space_type"),
+        Index("ix_privat_spaces_deleted_at", "deleted_at"),
+    )
+
+    @property
+    def is_deleted(self) -> bool:
+        return self.deleted_at is not None
+
+
+class PrivatSpaceAccess(Base):
+    """Zugriffsberechtigung fuer Privat-Bereiche."""
+    __tablename__ = "privat_space_access"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Zugriffsebene
+    access_level = Column(String(20), nullable=False, default=PrivatAccessLevel.VIEW.value)
+
+    # Wer hat Zugriff erteilt
+    granted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Zeitliche Begrenzung
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    granted_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    space = relationship("PrivatSpace", back_populates="access_grants")
+    user = relationship("User", foreign_keys=[user_id], backref="privat_access_grants")
+    granted_by = relationship("User", foreign_keys=[granted_by_id])
+
+    __table_args__ = (
+        Index("ix_privat_space_access_space_id", "space_id"),
+        Index("ix_privat_space_access_user_id", "user_id"),
+        Index("ix_privat_space_access_expires_at", "expires_at"),
+    )
+
+    @property
+    def is_expired(self) -> bool:
+        if self.expires_at is None:
+            return False
+        from datetime import datetime, timezone
+        return self.expires_at < datetime.now(timezone.utc)
+
+
+class PrivatFolder(Base):
+    """Flexible Ordnerstruktur fuer private Dokumente."""
+    __tablename__ = "privat_folders"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"), nullable=False)
+    parent_id = Column(UUID(as_uuid=True), ForeignKey("privat_folders.id", ondelete="CASCADE"), nullable=True)
+
+    # Ordner-Info
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    icon = Column(String(50), default="Folder")
+    color = Column(String(7), nullable=True)
+
+    # Materialized Path
+    path = Column(String(2000), nullable=False)
+    level = Column(Integer, default=0)
+
+    # Sortierung
+    sort_order = Column(Integer, default=0)
+
+    # Kategorie-Typ
+    category_type = Column(String(50), nullable=True)
+
+    # Statistiken
+    document_count = Column(Integer, default=0)
+    subfolder_count = Column(Integer, default=0)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    space = relationship("PrivatSpace", back_populates="folders")
+    parent = relationship("PrivatFolder", remote_side=[id], backref="children")
+    documents = relationship("PrivatDocument", back_populates="folder")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+    __table_args__ = (
+        Index("ix_privat_folders_space_id", "space_id"),
+        Index("ix_privat_folders_parent_id", "parent_id"),
+        Index("ix_privat_folders_path", "path"),
+        Index("ix_privat_folders_category_type", "category_type"),
+        Index("ix_privat_folders_deleted_at", "deleted_at"),
+    )
+
+
+class PrivatDocument(Base):
+    """Privates Dokument mit optionaler zusaetzlicher Verschluesselung."""
+    __tablename__ = "privat_documents"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"), nullable=False)
+    folder_id = Column(UUID(as_uuid=True), ForeignKey("privat_folders.id", ondelete="SET NULL"), nullable=True)
+
+    # Verknuepfung zum System-Dokument
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
+
+    # Dokument-Info
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    document_type = Column(String(50), default=PrivatDocumentType.OTHER.value)
+
+    # Datei-Info
+    file_path = Column(String(500), nullable=True)
+    file_name = Column(String(255), nullable=True)
+    file_size = Column(BigInteger, nullable=True)
+    mime_type = Column(String(100), nullable=True)
+
+    # Zusaetzliche Verschluesselung
+    extra_encrypted = Column(Boolean, default=False)
+    encryption_salt = Column(String(64), nullable=True)
+    encryption_hint = Column(String(255), nullable=True)
+
+    # Fristenmanagement
+    expiry_date = Column(Date, nullable=True)
+    reminder_days = Column(Integer, nullable=True)
+    reminder_sent = Column(Boolean, default=False)
+    last_reminder_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Metadaten
+    doc_metadata = Column(CrossDBJSON, default=dict)  # 'metadata' ist SQLAlchemy reserved!
+    tags = Column(CrossDBJSON, default=list)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    space = relationship("PrivatSpace", back_populates="documents")
+    folder = relationship("PrivatFolder", back_populates="documents")
+    document = relationship("Document")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    deadlines = relationship("PrivatDeadline", back_populates="privat_document", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_privat_documents_space_id", "space_id"),
+        Index("ix_privat_documents_folder_id", "folder_id"),
+        Index("ix_privat_documents_document_type", "document_type"),
+        Index("ix_privat_documents_expiry_date", "expiry_date"),
+        Index("ix_privat_documents_deleted_at", "deleted_at"),
+    )
+
+
+class PrivatProperty(Base):
+    """Immobilien-Stammdaten."""
+    __tablename__ = "privat_properties"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"), nullable=False)
+    folder_id = Column(UUID(as_uuid=True), ForeignKey("privat_folders.id", ondelete="SET NULL"), nullable=True)
+
+    # Stammdaten
+    name = Column(String(255), nullable=False)
+    property_type = Column(String(50), nullable=False)
+
+    # Adresse
+    street = Column(String(255), nullable=True)
+    street_number = Column(String(20), nullable=True)
+    postal_code = Column(String(10), nullable=True)
+    city = Column(String(100), nullable=True)
+    country = Column(String(2), default="DE")
+
+    # Kaufdaten
+    purchase_date = Column(Date, nullable=True)
+    purchase_price = Column(Numeric(15, 2), nullable=True)
+    notary_costs = Column(Numeric(10, 2), nullable=True)
+    land_transfer_tax = Column(Numeric(10, 2), nullable=True)
+
+    # Laufende Daten
+    current_value = Column(Numeric(15, 2), nullable=True)
+    value_date = Column(Date, nullable=True)
+
+    # Grundbuch
+    land_register_entry = Column(String(100), nullable=True)
+    cadastral_district = Column(String(100), nullable=True)
+    parcel_number = Column(String(50), nullable=True)
+
+    # Flaeche
+    living_area_sqm = Column(Numeric(10, 2), nullable=True)
+    plot_area_sqm = Column(Numeric(10, 2), nullable=True)
+
+    # Finanzierung
+    loan_id = Column(UUID(as_uuid=True), ForeignKey("privat_loans.id", ondelete="SET NULL"), nullable=True)
+
+    # Status
+    is_rented = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    space = relationship("PrivatSpace", back_populates="properties")
+    folder = relationship("PrivatFolder")
+    loan = relationship("PrivatLoan", foreign_keys=[loan_id])
+    tenants = relationship("PrivatTenant", back_populates="property", cascade="all, delete-orphan")
+    rental_incomes = relationship("PrivatRentalIncome", back_populates="property", cascade="all, delete-orphan")
+    utility_statements = relationship("PrivatUtilityStatement", back_populates="property", cascade="all, delete-orphan")
+    deadlines = relationship("PrivatDeadline", back_populates="property", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_privat_properties_space_id", "space_id"),
+        Index("ix_privat_properties_is_active", "is_active"),
+        Index("ix_privat_properties_is_rented", "is_rented"),
+    )
+
+
+class PrivatTenant(Base):
+    """Mieter einer Immobilie."""
+    __tablename__ = "privat_tenants"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    property_id = Column(UUID(as_uuid=True), ForeignKey("privat_properties.id", ondelete="CASCADE"), nullable=False)
+
+    # Mieterdaten
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True)
+    phone = Column(String(30), nullable=True)
+
+    # Mietvertrag
+    contract_start = Column(Date, nullable=False)
+    contract_end = Column(Date, nullable=True)
+    monthly_rent = Column(Numeric(10, 2), nullable=False)
+    deposit = Column(Numeric(10, 2), nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    property = relationship("PrivatProperty", back_populates="tenants")
+
+
+class PrivatRentalIncome(Base):
+    """Mieteinnahmen-Tracking."""
+    __tablename__ = "privat_rental_incomes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    property_id = Column(UUID(as_uuid=True), ForeignKey("privat_properties.id", ondelete="CASCADE"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("privat_tenants.id", ondelete="SET NULL"), nullable=True)
+
+    # Zahlung
+    payment_date = Column(Date, nullable=False)
+    amount = Column(Numeric(10, 2), nullable=False)
+    payment_type = Column(String(30), default="rent")
+
+    # Referenz
+    reference = Column(String(100), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    property = relationship("PrivatProperty", back_populates="rental_incomes")
+    tenant = relationship("PrivatTenant")
+
+
+class PrivatUtilityStatement(Base):
+    """Nebenkostenabrechnungen."""
+    __tablename__ = "privat_utility_statements"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    property_id = Column(UUID(as_uuid=True), ForeignKey("privat_properties.id", ondelete="CASCADE"), nullable=False)
+
+    # Abrechnungszeitraum
+    period_start = Column(Date, nullable=False)
+    period_end = Column(Date, nullable=False)
+
+    # Betraege
+    total_costs = Column(Numeric(10, 2), nullable=False)
+    prepayments = Column(Numeric(10, 2), nullable=False)
+    balance = Column(Numeric(10, 2), nullable=False)
+
+    # Details
+    cost_breakdown = Column(CrossDBJSON, default=dict)
+
+    # Dokument-Referenz
+    document_id = Column(UUID(as_uuid=True), ForeignKey("privat_documents.id", ondelete="SET NULL"), nullable=True)
+
+    # Status
+    is_settled = Column(Boolean, default=False)
+    settled_date = Column(Date, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    property = relationship("PrivatProperty", back_populates="utility_statements")
+    document = relationship("PrivatDocument")
+
+
+class PrivatVehicle(Base):
+    """Fahrzeug-Stammdaten."""
+    __tablename__ = "privat_vehicles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"), nullable=False)
+    folder_id = Column(UUID(as_uuid=True), ForeignKey("privat_folders.id", ondelete="SET NULL"), nullable=True)
+
+    # Fahrzeugdaten
+    name = Column(String(255), nullable=False)
+    license_plate = Column(String(20), nullable=True)
+    vin = Column(String(17), nullable=True)
+
+    # Details
+    make = Column(String(100), nullable=True)
+    model = Column(String(100), nullable=True)
+    year = Column(Integer, nullable=True)
+    fuel_type = Column(String(30), nullable=True)
+
+    # Kauf/Leasing
+    purchase_date = Column(Date, nullable=True)
+    purchase_price = Column(Numeric(12, 2), nullable=True)
+    is_leased = Column(Boolean, default=False)
+    lease_end = Column(Date, nullable=True)
+    monthly_rate = Column(Numeric(10, 2), nullable=True)
+
+    # Versicherung
+    insurance_company = Column(String(100), nullable=True)
+    insurance_number = Column(String(50), nullable=True)
+    insurance_type = Column(String(30), nullable=True)
+    insurance_premium = Column(Numeric(10, 2), nullable=True)
+
+    # Fristen
+    tuev_due = Column(Date, nullable=True)
+    inspection_due = Column(Date, nullable=True)
+
+    # Kilometerstand
+    current_mileage = Column(Integer, nullable=True)
+    mileage_date = Column(Date, nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    space = relationship("PrivatSpace", back_populates="vehicles")
+    folder = relationship("PrivatFolder")
+    fuel_logs = relationship("PrivatFuelLog", back_populates="vehicle", cascade="all, delete-orphan")
+    deadlines = relationship("PrivatDeadline", back_populates="vehicle", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_privat_vehicles_space_id", "space_id"),
+        Index("ix_privat_vehicles_tuev_due", "tuev_due"),
+        Index("ix_privat_vehicles_is_active", "is_active"),
+    )
+
+
+class PrivatFuelLog(Base):
+    """Tankbelege/Ladungen."""
+    __tablename__ = "privat_fuel_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    vehicle_id = Column(UUID(as_uuid=True), ForeignKey("privat_vehicles.id", ondelete="CASCADE"), nullable=False)
+
+    # Tankung
+    date = Column(Date, nullable=False)
+    mileage = Column(Integer, nullable=True)
+    liters = Column(Numeric(6, 2), nullable=True)
+    price_per_unit = Column(Numeric(6, 3), nullable=True)
+    total_cost = Column(Numeric(8, 2), nullable=False)
+
+    # Tankstelle
+    station = Column(String(100), nullable=True)
+
+    # Beleg
+    receipt_document_id = Column(UUID(as_uuid=True), ForeignKey("privat_documents.id", ondelete="SET NULL"), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    vehicle = relationship("PrivatVehicle", back_populates="fuel_logs")
+    receipt_document = relationship("PrivatDocument")
+
+
+class PrivatInsurance(Base):
+    """Versicherungspolicen."""
+    __tablename__ = "privat_insurances"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"), nullable=False)
+    folder_id = Column(UUID(as_uuid=True), ForeignKey("privat_folders.id", ondelete="SET NULL"), nullable=True)
+
+    # Police
+    name = Column(String(255), nullable=False)
+    insurance_type = Column(String(50), nullable=False)
+    policy_number = Column(String(50), nullable=True)
+
+    # Versicherer
+    company = Column(String(100), nullable=False)
+    agent_name = Column(String(100), nullable=True)
+    agent_phone = Column(String(30), nullable=True)
+
+    # Laufzeit
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+    is_auto_renew = Column(Boolean, default=True)
+    cancellation_period_months = Column(Integer, nullable=True)
+
+    # Praemie
+    premium_amount = Column(Numeric(10, 2), nullable=True)
+    premium_frequency = Column(String(20), default="yearly")
+
+    # Leistungen
+    coverage_amount = Column(Numeric(15, 2), nullable=True)
+    coverage_details = Column(CrossDBJSON, default=dict)
+    deductible = Column(Numeric(10, 2), nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    space = relationship("PrivatSpace", back_populates="insurances")
+    folder = relationship("PrivatFolder")
+    deadlines = relationship("PrivatDeadline", back_populates="insurance", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_privat_insurances_space_id", "space_id"),
+        Index("ix_privat_insurances_type", "insurance_type"),
+        Index("ix_privat_insurances_end_date", "end_date"),
+        Index("ix_privat_insurances_is_active", "is_active"),
+    )
+
+
+class PrivatLoan(Base):
+    """Kredite/Darlehen."""
+    __tablename__ = "privat_loans"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"), nullable=False)
+    folder_id = Column(UUID(as_uuid=True), ForeignKey("privat_folders.id", ondelete="SET NULL"), nullable=True)
+
+    # Kredit
+    name = Column(String(255), nullable=False)
+    loan_type = Column(String(50), nullable=False)
+    loan_number = Column(String(50), nullable=True)
+
+    # Bank
+    bank_name = Column(String(100), nullable=False)
+
+    # Konditionen
+    principal_amount = Column(Numeric(15, 2), nullable=False)
+    interest_rate = Column(Numeric(5, 3), nullable=True)
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+
+    # Tilgung
+    monthly_payment = Column(Numeric(10, 2), nullable=True)
+    current_balance = Column(Numeric(15, 2), nullable=True)
+    balance_date = Column(Date, nullable=True)
+
+    # Sondertilgung
+    special_repayment_allowed = Column(Boolean, default=False)
+    special_repayment_limit = Column(Numeric(10, 2), nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    space = relationship("PrivatSpace", back_populates="loans")
+    folder = relationship("PrivatFolder")
+    properties = relationship("PrivatProperty", back_populates="loan", foreign_keys="PrivatProperty.loan_id")
+    deadlines = relationship("PrivatDeadline", back_populates="loan", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_privat_loans_space_id", "space_id"),
+        Index("ix_privat_loans_type", "loan_type"),
+        Index("ix_privat_loans_end_date", "end_date"),
+        Index("ix_privat_loans_is_active", "is_active"),
+    )
+
+
+class PrivatInvestment(Base):
+    """Investments/Geldanlagen."""
+    __tablename__ = "privat_investments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"), nullable=False)
+    folder_id = Column(UUID(as_uuid=True), ForeignKey("privat_folders.id", ondelete="SET NULL"), nullable=True)
+
+    # Investment
+    name = Column(String(255), nullable=False)
+    investment_type = Column(String(50), nullable=False)
+
+    # Bank/Depot
+    institution = Column(String(100), nullable=True)
+    account_number = Column(String(50), nullable=True)
+
+    # Werte
+    purchase_value = Column(Numeric(15, 2), nullable=True)
+    purchase_date = Column(Date, nullable=True)
+    current_value = Column(Numeric(15, 2), nullable=True)
+    value_date = Column(Date, nullable=True)
+
+    # Details
+    isin = Column(String(12), nullable=True)
+    quantity = Column(Numeric(15, 6), nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    space = relationship("PrivatSpace", back_populates="investments")
+    folder = relationship("PrivatFolder")
+
+    __table_args__ = (
+        Index("ix_privat_investments_space_id", "space_id"),
+        Index("ix_privat_investments_type", "investment_type"),
+        Index("ix_privat_investments_is_active", "is_active"),
+    )
+
+
+class PrivatDeadline(Base):
+    """Fristen mit Erinnerungen."""
+    __tablename__ = "privat_deadlines"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"), nullable=False)
+
+    # Verknuepfungen
+    document_id = Column(UUID(as_uuid=True), ForeignKey("privat_documents.id", ondelete="CASCADE"), nullable=True)
+    property_id = Column(UUID(as_uuid=True), ForeignKey("privat_properties.id", ondelete="CASCADE"), nullable=True)
+    vehicle_id = Column(UUID(as_uuid=True), ForeignKey("privat_vehicles.id", ondelete="CASCADE"), nullable=True)
+    insurance_id = Column(UUID(as_uuid=True), ForeignKey("privat_insurances.id", ondelete="CASCADE"), nullable=True)
+    loan_id = Column(UUID(as_uuid=True), ForeignKey("privat_loans.id", ondelete="CASCADE"), nullable=True)
+
+    # Frist
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    deadline_type = Column(String(30), default=PrivatDeadlineType.CUSTOM.value)
+    due_date = Column(Date, nullable=False)
+
+    # Erinnerungen
+    reminder_days = Column(CrossDBJSON, default=[30, 7, 1])
+    reminders_sent = Column(CrossDBJSON, default=list)
+
+    # Wiederholung
+    is_recurring = Column(Boolean, default=False)
+    recurrence_pattern = Column(String(50), nullable=True)
+    next_occurrence = Column(Date, nullable=True)
+
+    # Status
+    is_completed = Column(Boolean, default=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    is_active = Column(Boolean, default=True)
+
+    # iCal
+    ical_uid = Column(String(100), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    space = relationship("PrivatSpace", back_populates="deadlines")
+    privat_document = relationship("PrivatDocument", back_populates="deadlines")
+    property = relationship("PrivatProperty", back_populates="deadlines")
+    vehicle = relationship("PrivatVehicle", back_populates="deadlines")
+    insurance = relationship("PrivatInsurance", back_populates="deadlines")
+    loan = relationship("PrivatLoan", back_populates="deadlines")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    notifications = relationship("PrivatDeadlineNotification", back_populates="deadline", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_privat_deadlines_space_id", "space_id"),
+        Index("ix_privat_deadlines_due_date", "due_date"),
+        Index("ix_privat_deadlines_is_active", "is_active"),
+        Index("ix_privat_deadlines_is_completed", "is_completed"),
+    )
+
+
+class PrivatDeadlineNotification(Base):
+    """Gesendete Frist-Benachrichtigungen."""
+    __tablename__ = "privat_deadline_notifications"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    deadline_id = Column(UUID(as_uuid=True), ForeignKey("privat_deadlines.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Benachrichtigung
+    days_before = Column(Integer, nullable=False)
+    notification_type = Column(String(30), default="email")
+
+    # Status
+    sent_at = Column(DateTime(timezone=True), server_default=func.now())
+    delivered = Column(Boolean, default=False)
+    read = Column(Boolean, default=False)
+    read_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    deadline = relationship("PrivatDeadline", back_populates="notifications")
+    user = relationship("User")
+
+    __table_args__ = (
+        Index("ix_privat_deadline_notifications_deadline_id", "deadline_id"),
+        Index("ix_privat_deadline_notifications_user_id", "user_id"),
+        Index("ix_privat_deadline_notifications_sent_at", "sent_at"),
+    )
+
+
+class PrivatEmergencyContact(Base):
+    """Vertrauenspersonen fuer Notfallzugriff/Vererbung."""
+    __tablename__ = "privat_emergency_contacts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"), nullable=False)
+
+    # Vertrauensperson
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=False)
+    phone = Column(String(30), nullable=True)
+    contact_relationship = Column(String(50), nullable=True)  # 'relationship' ist SQLAlchemy reserved!
+
+    # Zugriffskonfiguration
+    access_level = Column(String(20), default=PrivatAccessLevel.VIEW.value)
+    access_folders = Column(CrossDBJSON, default=list)
+
+    # Aktivierung
+    activation_delay_days = Column(Integer, default=30)
+    requires_verification = Column(Boolean, default=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+
+    # Token
+    activation_token_hash = Column(String(64), nullable=True)
+    token_expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    space = relationship("PrivatSpace", back_populates="emergency_contacts")
+    access_requests = relationship("PrivatEmergencyAccessRequest", back_populates="contact", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_privat_emergency_contacts_space_id", "space_id"),
+        Index("ix_privat_emergency_contacts_email", "email"),
+        Index("ix_privat_emergency_contacts_is_active", "is_active"),
+    )
+
+
+class PrivatEmergencyAccessRequest(Base):
+    """Anfrage auf Notfallzugriff."""
+    __tablename__ = "privat_emergency_access_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    contact_id = Column(UUID(as_uuid=True), ForeignKey("privat_emergency_contacts.id", ondelete="CASCADE"), nullable=False)
+
+    # Status
+    status = Column(String(20), default=PrivatEmergencyAccessStatus.PENDING.value)
+
+    # Zeitplanung
+    requested_at = Column(DateTime(timezone=True), server_default=func.now())
+    activation_scheduled_for = Column(DateTime(timezone=True), nullable=True)
+    activated_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Begruendung
+    reason = Column(Text, nullable=True)
+
+    # Verifizierung
+    verification_code = Column(String(20), nullable=True)
+    verification_document_id = Column(UUID(as_uuid=True), nullable=True)
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Widerruf
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    revoke_reason = Column(Text, nullable=True)
+
+    # IP/Geraet
+    request_ip = Column(String(45), nullable=True)
+    request_user_agent = Column(String(500), nullable=True)
+
+    # Relationships
+    contact = relationship("PrivatEmergencyContact", back_populates="access_requests")
+    revoked_by = relationship("User")
+
+    __table_args__ = (
+        Index("ix_privat_emergency_access_requests_contact_id", "contact_id"),
+        Index("ix_privat_emergency_access_requests_status", "status"),
+        Index("ix_privat_emergency_access_requests_activation", "activation_scheduled_for"),
+    )
+
+
+# =============================================================================
+# VALIDATION QUEUE SYSTEM
+# Enterprise-Grade Validierungssystem fuer OCR-Ergebnisse und extrahierte Daten
+# =============================================================================
+
+class ValidationStatus(str, Enum):
+    """Validierungs-Status."""
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    SKIPPED = "skipped"
+
+
+class SampleSource(str, Enum):
+    """Quelle der Stichproben-Auswahl."""
+    AUTOMATIC = "automatic"
+    RULE_BASED = "rule_based"
+    MANUAL = "manual"
+    LOW_CONFIDENCE = "low_confidence"
+
+
+class ValidationRuleType(str, Enum):
+    """Typ der Validierungsregel."""
+    CONFIDENCE_THRESHOLD = "confidence_threshold"
+    FIELD_PATTERN = "field_pattern"
+    DOCUMENT_TYPE = "document_type"
+    FIRST_OCCURRENCE = "first_occurrence"
+    ERROR_PATTERN = "error_pattern"
+
+
+class ValidationSampleConfig(Base):
+    """Konfiguration fuer prozent-basierte Stichproben."""
+    __tablename__ = "validation_sample_configs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Konfiguration
+    name = Column(String(100), nullable=False, default="Standard")
+    description = Column(Text, nullable=True)
+    sample_percentage = Column(Integer, nullable=False, default=10)
+    stratify_by_document_type = Column(Boolean, default=True)
+    stratify_by_ocr_backend = Column(Boolean, default=False)
+    min_confidence_threshold = Column(Float, default=0.85)
+
+    # Zeitraum
+    is_active = Column(Boolean, default=True)
+    valid_from = Column(DateTime(timezone=True), nullable=True)
+    valid_until = Column(DateTime(timezone=True), nullable=True)
+
+    # Statistik
+    documents_sampled = Column(Integer, default=0)
+    last_sample_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+
+class ValidationRule(Base):
+    """Regelbasierte Stichproben-Definition."""
+    __tablename__ = "validation_rules"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Regel-Identifikation
+    name = Column(String(100), nullable=False, unique=True)
+    description = Column(Text, nullable=True)
+
+    # Regel-Definition
+    rule_type = Column(String(50), nullable=False)
+    conditions = Column(CrossDBJSON, nullable=False, default=dict)
+
+    # Prioritaet und Status
+    priority = Column(Integer, nullable=False, default=5)
+    is_active = Column(Boolean, default=True)
+    is_system = Column(Boolean, default=False)
+
+    # Statistik
+    documents_matched = Column(Integer, default=0)
+    last_triggered_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    queue_items = relationship("ValidationQueueItem", back_populates="sample_rule")
+
+    __table_args__ = (
+        Index("ix_validation_rules_active", "is_active"),
+        Index("ix_validation_rules_type", "rule_type"),
+        Index("ix_validation_rules_priority", "priority"),
+    )
+
+
+class ValidationQueueItem(Base):
+    """Warteschlangen-Eintrag fuer Validierung."""
+    __tablename__ = "validation_queue_items"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Dokument-Referenz
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+
+    # Status und Zuweisung
+    status = Column(String(50), nullable=False, default=ValidationStatus.PENDING.value)
+    priority = Column(Integer, nullable=False, default=5)
+    assigned_to_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    assigned_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Stichproben-Quelle
+    sample_source = Column(String(50), nullable=False, default=SampleSource.AUTOMATIC.value)
+    sample_rule_id = Column(UUID(as_uuid=True), ForeignKey("validation_rules.id", ondelete="SET NULL"), nullable=True)
+
+    # Confidence Metriken
+    overall_confidence = Column(Float, nullable=True)
+    min_field_confidence = Column(Float, nullable=True)
+    fields_below_threshold = Column(Integer, default=0)
+    total_fields = Column(Integer, default=0)
+
+    # Dokumenttyp (kopiert fuer Filterung ohne Join)
+    document_type = Column(String(50), nullable=True)
+    document_name = Column(String(255), nullable=True)
+
+    # Validierungsergebnis
+    validation_notes = Column(Text, nullable=True)
+    rejection_reason = Column(Text, nullable=True)
+    rejection_category = Column(String(50), nullable=True)
+    validated_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    validated_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Zeit-Tracking
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    validation_duration_seconds = Column(Integer, nullable=True)
+
+    # Korrekturen-Zaehler
+    corrections_made = Column(Integer, default=0)
+    umlaut_corrections = Column(Integer, default=0)
+    format_corrections = Column(Integer, default=0)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    document = relationship("Document", backref="validation_queue_items")
+    assigned_to = relationship("User", foreign_keys=[assigned_to_id], backref="assigned_validations")
+    validated_by = relationship("User", foreign_keys=[validated_by_id], backref="completed_validations")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    sample_rule = relationship("ValidationRule", back_populates="queue_items")
+    field_reviews = relationship("ValidationFieldReview", back_populates="queue_item", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_vqi_status", "status"),
+        Index("ix_vqi_priority", "priority"),
+        Index("ix_vqi_assigned_to", "assigned_to_id"),
+        Index("ix_vqi_document", "document_id"),
+        Index("ix_vqi_confidence", "overall_confidence"),
+        Index("ix_vqi_sample_source", "sample_source"),
+        Index("ix_vqi_created_at", "created_at"),
+        Index("ix_vqi_document_type", "document_type"),
+        Index("ix_vqi_status_priority", "status", "priority", "created_at"),
+        Index("ix_vqi_assigned_status", "assigned_to_id", "status"),
+        Index("ix_vqi_validated_date", "validated_at", "validated_by_id"),
+    )
+
+    @property
+    def is_pending(self) -> bool:
+        """Prueft ob Item noch ausstehend ist."""
+        return self.status == ValidationStatus.PENDING.value
+
+    @property
+    def is_completed(self) -> bool:
+        """Prueft ob Item abgeschlossen ist."""
+        return self.status in [ValidationStatus.APPROVED.value, ValidationStatus.REJECTED.value]
+
+
+class ValidationFieldReview(Base):
+    """Feld-Review fuer ein Validierungs-Item."""
+    __tablename__ = "validation_field_reviews"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Queue-Item Referenz
+    queue_item_id = Column(UUID(as_uuid=True), ForeignKey("validation_queue_items.id", ondelete="CASCADE"), nullable=False)
+
+    # Feld-Identifikation
+    field_key = Column(String(100), nullable=False)
+    field_label = Column(String(255), nullable=False)
+    field_type = Column(String(50), nullable=True)
+
+    # Werte
+    original_value = Column(Text, nullable=True)
+    corrected_value = Column(Text, nullable=True)
+    was_corrected = Column(Boolean, default=False)
+
+    # Confidence
+    confidence_score = Column(Float, nullable=True)
+    confidence_threshold = Column(Float, default=0.85)
+    is_below_threshold = Column(Boolean, default=False)
+
+    # Validierung
+    validation_status = Column(String(50), default="pending")
+    validation_errors = Column(CrossDBJSON, default=list)
+    umlaut_issues = Column(CrossDBJSON, default=list)
+    format_issues = Column(CrossDBJSON, default=list)
+
+    # OCR-Metadaten fuer PDF-Highlighting
+    bounding_box = Column(CrossDBJSON, nullable=True)
+    ocr_backend = Column(String(50), nullable=True)
+
+    # Audit
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    reviewed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    queue_item = relationship("ValidationQueueItem", back_populates="field_reviews")
+    reviewed_by = relationship("User", foreign_keys=[reviewed_by_id])
+
+    __table_args__ = (
+        Index("ix_vfr_queue_item", "queue_item_id"),
+        Index("ix_vfr_field_key", "field_key"),
+        Index("ix_vfr_below_threshold", "is_below_threshold"),
+        Index("ix_vfr_was_corrected", "was_corrected"),
+    )
+
+    @property
+    def needs_review(self) -> bool:
+        """Prueft ob Feld Review benoetigt."""
+        return self.is_below_threshold or len(self.validation_errors) > 0
+
+
+class ValidationAnalytics(Base):
+    """Aggregierte Statistiken fuer Validierungen."""
+    __tablename__ = "validation_analytics"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Zeitraum
+    date = Column(Date, nullable=False)
+    hour = Column(Integer, nullable=True)
+
+    # Editor (NULL = Gesamtstatistik)
+    editor_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+
+    # Dokumenttyp (NULL = Alle Typen)
+    document_type = Column(String(50), nullable=True)
+
+    # Metriken: Anzahl
+    items_validated = Column(Integer, default=0)
+    items_approved = Column(Integer, default=0)
+    items_rejected = Column(Integer, default=0)
+    items_skipped = Column(Integer, default=0)
+
+    # Metriken: Zeit
+    avg_validation_time_seconds = Column(Integer, nullable=True)
+    min_validation_time_seconds = Column(Integer, nullable=True)
+    max_validation_time_seconds = Column(Integer, nullable=True)
+    total_validation_time_seconds = Column(Integer, default=0)
+
+    # Metriken: Korrekturen
+    corrections_made = Column(Integer, default=0)
+    umlaut_corrections = Column(Integer, default=0)
+    format_corrections = Column(Integer, default=0)
+    fields_reviewed = Column(Integer, default=0)
+
+    # Metriken: Confidence
+    avg_confidence_before = Column(Float, nullable=True)
+    avg_confidence_after = Column(Float, nullable=True)
+    confidence_improvement = Column(Float, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    editor = relationship("User", foreign_keys=[editor_id])
+
+    __table_args__ = (
+        Index("ix_va_date", "date"),
+        Index("ix_va_editor", "editor_id"),
+        Index("ix_va_document_type", "document_type"),
+        Index("ix_va_date_editor", "date", "editor_id"),
     )
