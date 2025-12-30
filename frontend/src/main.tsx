@@ -26,21 +26,51 @@ declare module '@tanstack/react-router' {
 }
 
 /**
+ * Send error to backend monitoring endpoint.
+ * Fails silently to avoid additional errors.
+ */
+async function sendErrorToMonitoring(details: ErrorDetails): Promise<void> {
+  try {
+    await fetch('/api/v1/errors', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        error: details.error.message,
+        name: details.error.name,
+        stack: details.error.stack,
+        componentStack: details.componentStack,
+        timestamp: details.timestamp.toISOString(),
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+        // Additional context
+        screenWidth: window.screen.width,
+        screenHeight: window.screen.height,
+        language: navigator.language,
+      }),
+    })
+  } catch {
+    // Silent fail - we don't want error reporting to cause more errors
+  }
+}
+
+/**
  * Global error handler for the ErrorBoundary.
- * In production, this could send errors to a monitoring service.
+ * In production, sends errors to the backend monitoring service.
  */
 function handleGlobalError(details: ErrorDetails): void {
-  // Log error with structured data
+  // Always log error with structured data for debugging
   console.error('[GlobalErrorBoundary]', {
     error: details.error.message,
     componentStack: details.componentStack,
     timestamp: details.timestamp.toISOString(),
   })
 
-  // TODO: In production, send to error monitoring service (e.g., Sentry)
-  // if (import.meta.env.PROD) {
-  //   sendToErrorMonitoring(details)
-  // }
+  // In production, send to error monitoring service
+  if (import.meta.env.PROD) {
+    sendErrorToMonitoring(details)
+  }
 }
 
 createRoot(document.getElementById('root')!).render(

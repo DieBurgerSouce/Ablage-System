@@ -3,6 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import type { Document } from '../types';
 import { DocumentCard } from './DocumentCard';
+import { EmptyState } from '@/components/ui/empty-state';
 
 const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -45,6 +46,20 @@ export function DocumentGrid({ documents, viewMode, selectedIds, onSelect, onDoc
         estimateSize: () => viewMode === 'grid' ? 280 : 72,
         overscan: 3
     });
+
+    // EmptyState wenn keine Dokumente vorhanden
+    if (documents.length === 0) {
+        return (
+            <div className="h-full flex items-center justify-center p-8">
+                <EmptyState
+                    variant="document"
+                    title="Keine Dokumente gefunden"
+                    description="In diesem Ordner befinden sich keine Dokumente. Laden Sie Dokumente hoch oder waehlen Sie einen anderen Ordner."
+                    size="lg"
+                />
+            </div>
+        );
+    }
 
     return (
         <div ref={parentRef} className="h-full overflow-auto p-4">

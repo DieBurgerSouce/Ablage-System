@@ -1,15 +1,17 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { UploadDropzone } from '@/features/upload/components/UploadDropzone'
 import { DocumentCard } from '@/features/documents/components/DocumentCard'
 import { useQuery } from '@tanstack/react-query'
 import { documentsService } from '@/lib/api/services/documents'
 import { Loader2 } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export const Route = createFileRoute('/')({
     component: Index,
 })
 
 function Index() {
+    const navigate = useNavigate()
     const { data: documents = [], isLoading } = useQuery({
         queryKey: ['recent-documents'],
         queryFn: () => documentsService.getAll({ limit: 5, sort: 'date_desc' })
@@ -47,6 +49,16 @@ function Index() {
                                 <div key={i} className="h-[280px] rounded-xl bg-muted/20 animate-pulse" />
                             ))}
                         </div>
+                    ) : documents.length === 0 ? (
+                        <EmptyState
+                            variant="document"
+                            title="Noch keine Dokumente"
+                            description="Laden Sie Ihr erstes Dokument hoch, um mit der intelligenten Dokumentenverwaltung zu beginnen."
+                            action={{
+                                label: 'Dokument hochladen',
+                                onClick: () => navigate({ to: '/upload' })
+                            }}
+                        />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                             {documents.map((doc) => (

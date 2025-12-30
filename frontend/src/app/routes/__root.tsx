@@ -4,6 +4,9 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { SessionExpiredModal } from '@/components/auth/SessionExpiredModal'
 import { Toaster } from '@/components/ui/toaster'
+import { OfflineIndicator } from '@/components/OfflineIndicator'
+import { WelcomeModal } from '@/components/onboarding/WelcomeModal'
+import { GlobalShortcutsProvider } from '@/components/GlobalShortcutsProvider'
 
 export const Route = createRootRoute({
     component: RootComponent,
@@ -22,6 +25,7 @@ function RootComponent() {
     if (location.pathname === '/login' || location.pathname === '/forgot-password' || location.pathname.startsWith('/reset-password')) {
         return (
             <>
+                <OfflineIndicator />
                 <Outlet />
                 <Toaster />
                 {import.meta.env.DEV && <TanStackRouterDevtools />}
@@ -36,13 +40,15 @@ function RootComponent() {
 
     // Render protected layout
     return (
-        <>
+        <GlobalShortcutsProvider>
+            <OfflineIndicator />
             <AppLayout>
                 <Outlet />
                 {import.meta.env.DEV && <TanStackRouterDevtools />}
             </AppLayout>
+            <WelcomeModal />
             <SessionExpiredModal />
             <Toaster />
-        </>
+        </GlobalShortcutsProvider>
     )
 }

@@ -1,5 +1,5 @@
-import { Component, type ReactNode, type ErrorInfo } from 'react'
-import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react'
+import { Component, type ReactNode, type ErrorInfo, useState } from 'react'
+import { AlertTriangle, RefreshCw, Home, Bug, Send, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
@@ -38,6 +38,35 @@ interface ErrorBoundaryState {
 }
 
 /**
+ * Send error report to backend.
+ */
+async function sendErrorReport(error: Error | null, errorInfo: ErrorInfo | null): Promise<boolean> {
+    if (!error) return false
+
+    try {
+        const response = await fetch('/api/v1/errors', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                error: error.message,
+                name: error.name,
+                stack: error.stack,
+                componentStack: errorInfo?.componentStack,
+                timestamp: new Date().toISOString(),
+                url: window.location.href,
+                userAgent: navigator.userAgent,
+                reported: true, // Mark as user-reported
+            }),
+        })
+        return response.ok
+    } catch {
+        return false
+    }
+}
+
+/**
  * Fallback UI component displayed when an error occurs.
  * Uses German language for all user-facing text.
  */
@@ -59,6 +88,13 @@ function ErrorFallback({
     errorDescription?: string
 }) {
     const isDevelopment = import.meta.env.DEV
+    const [reportStatus, setReportStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+
+    const handleReport = async () => {
+        setReportStatus('sending')
+        const success = await sendErrorReport(error, errorInfo)
+        setReportStatus(success ? 'sent' : 'error')
+    }
 
     return (
         <div className="min-h-[400px] flex items-center justify-center p-6">
@@ -71,8 +107,8 @@ function ErrorFallback({
                     </AlertTitle>
                     <AlertDescription className="mt-2 text-sm">
                         {errorDescription ||
-                            'Die Anwendung konnte diese Aktion nicht ausführen. ' +
-                            'Bitte versuchen Sie es erneut oder kehren Sie zur Startseite zurück.'}
+                            'Die Anwendung konnte diese Aktion nicht ausfuehren. ' +
+                            'Bitte versuchen Sie es erneut oder kehren Sie zur Startseite zurueck.'}
                     </AlertDescription>
                 </Alert>
 
@@ -81,7 +117,7 @@ function ErrorFallback({
                     <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
                         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                             <Bug className="h-4 w-4" />
-                            <span>Technische Details (nur für Entwickler)</span>
+                            <span>Technische Details (nur fuer Entwickler)</span>
                         </div>
 
                         {/* Error Name and Message */}
@@ -142,6 +178,41 @@ function ErrorFallback({
                     >
                         <Home className="h-4 w-4 mr-2" />
                         Zur Startseite
+                    </Button>
+                </div>
+
+                {/* Report Error Button */}
+                <div className="pt-2 border-t border-border">
+                    <Button
+                        onClick={handleReport}
+                        variant="ghost"
+                        className="w-full text-muted-foreground hover:text-foreground"
+                        disabled={reportStatus === 'sending' || reportStatus === 'sent'}
+                    >
+                        {reportStatus === 'idle' && (
+                            <>
+                                <Send className="h-4 w-4 mr-2" />
+                                Fehler melden
+                            </>
+                        )}
+                        {reportStatus === 'sending' && (
+                            <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                Wird gesendet...
+                            </>
+                        )}
+                        {reportStatus === 'sent' && (
+                            <>
+                                <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                                Fehler gemeldet - Danke!
+                            </>
+                        )}
+                        {reportStatus === 'error' && (
+                            <>
+                                <AlertTriangle className="h-4 w-4 mr-2 text-destructive" />
+                                Meldung fehlgeschlagen
+                            </>
+                        )}
                     </Button>
                 </div>
 
