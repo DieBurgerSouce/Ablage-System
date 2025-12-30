@@ -19,6 +19,18 @@ import logging
 
 from lxml import etree
 
+# R.1 SECURITY FIX: Sicherer XMLParser gegen XXE-Angriffe
+# - resolve_entities=False: Externe Entities werden nicht aufgeloest
+# - no_network=True: Kein Netzwerkzugriff fuer DTDs/Schemas
+# - load_dtd=False: DTD wird nicht geladen (verhindert Billion Laughs)
+SECURE_XML_PARSER = etree.XMLParser(
+    resolve_entities=False,
+    no_network=True,
+    dtd_validation=False,
+    load_dtd=False,
+    remove_blank_text=True
+)
+
 from app.api.schemas.extracted_data import (
     AmountSource,
     Currency,
@@ -138,7 +150,8 @@ class ZUGFeRDMapper:
             xml_content = xml_content.encode("utf-8")
 
         try:
-            root = etree.fromstring(xml_content)
+            # R.1 SECURITY FIX: Sicherer Parser gegen XXE-Angriffe
+            root = etree.fromstring(xml_content, parser=SECURE_XML_PARSER)
         except etree.XMLSyntaxError as e:
             raise ValueError(f"Ungueltiges XML: {e}")
 

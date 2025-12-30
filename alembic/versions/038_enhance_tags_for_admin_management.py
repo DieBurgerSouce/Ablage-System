@@ -28,6 +28,9 @@ branch_labels = None
 depends_on = None
 
 # Fixed UUIDs fuer idempotente Migration
+# SECURITY NOTE (T.4): Diese UUIDs sind Konstanten und daher sicher fuer f-string SQL.
+# NIEMALS dynamische/user-supplied Werte auf diese Weise verwenden!
+# Fuer neue Migrationen: Verwende sa.text() mit :parameter Binding.
 EINGANGSRECHNUNG_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 AUSGANGSRECHNUNG_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
 

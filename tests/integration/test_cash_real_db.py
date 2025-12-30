@@ -401,8 +401,9 @@ class TestGoBDCompliance:
 
         # Versuch direkt zu loeschen sollte fehlschlagen
         try:
+            # SECURITY FIX 26-13: Parameterized query statt f-string
             await db_session.execute(
-                text(f"DELETE FROM cash_entries WHERE id = '{entry.id}'")
+                text("DELETE FROM cash_entries WHERE id = :entry_id").bindparams(entry_id=str(entry.id))
             )
             await db_session.commit()
             pytest.fail("DELETE sollte durch Trigger verhindert werden")

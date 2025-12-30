@@ -135,6 +135,44 @@ async def async_client(test_settings):
         yield ac
 
 
+# Authentication fixtures
+@pytest_asyncio.fixture
+async def test_user(test_db):
+    """Create a test user for authenticated requests."""
+    if not APP_AVAILABLE:
+        pytest.skip("App not available")
+
+    from app.db.models import User
+    from app.core.security import get_password_hash
+    from uuid import uuid4
+
+    user = User(
+        id=uuid4(),
+        email="test@ablage-system.local",
+        username="testuser",
+        hashed_password=get_password_hash("Test123!@#"),
+        full_name="Test User",
+        is_active=True,
+        is_superuser=False,
+    )
+    test_db.add(user)
+    await test_db.commit()
+    await test_db.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def auth_headers(test_user):
+    """Generate auth headers with valid JWT token."""
+    if not APP_AVAILABLE:
+        pytest.skip("App not available")
+
+    from app.core.security import create_access_token
+
+    access_token = create_access_token(data={"sub": str(test_user.id)})
+    return {"Authorization": f"Bearer {access_token}"}
+
+
 # Mock fixtures
 @pytest.fixture
 def mock_gpu_manager():

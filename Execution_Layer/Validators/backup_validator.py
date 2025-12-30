@@ -452,10 +452,30 @@ class BackupValidator:
 
             # Determine restore method based on file type
             if backup_file.suffix == ".gz":
-                # Compressed SQL dump
-                cmd = f"gunzip -c {backup_file} | psql -h localhost -U postgres -d {temp_db}"
-                result = subprocess.run(
-                    cmd, shell=True, capture_output=True, text=True, timeout=300
+                # Z.3 SECURITY FIX: Sichere Pipeline ohne shell=True (vermeidet Shell-Injection)
+                gunzip_proc = subprocess.Popen(
+                    ['gunzip', '-c', str(backup_file)],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                psql_proc = subprocess.Popen(
+                    ['psql', '-h', 'localhost', '-U', 'postgres', '-d', temp_db],
+                    stdin=gunzip_proc.stdout,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                gunzip_proc.stdout.close()  # Allow gunzip to receive SIGPIPE
+                stdout, stderr = psql_proc.communicate(timeout=300)
+                # Create result-like object for compatibility
+                class PipelineResult:
+                    def __init__(self, rc: int, out: str, err: str):
+                        self.returncode = rc
+                        self.stdout = out
+                        self.stderr = err
+                result = PipelineResult(
+                    psql_proc.returncode,
+                    stdout.decode('utf-8', errors='replace') if stdout else '',
+                    stderr.decode('utf-8', errors='replace') if stderr else ''
                 )
             else:
                 # pg_restore for custom format
@@ -553,12 +573,19 @@ class BackupValidator:
                 errors.append(f"Fehlende Tabellen: {', '.join(missing_tables)}")
 
             # Check row counts are reasonable
+            # Z.1 SECURITY FIX: Tabellennamen aus Whitelist verwenden (keine User-Eingabe)
+            # Zusaetzlich: psycopg.sql fuer sichere Identifier-Quotierung
+            from psycopg import sql
             async with conn.cursor() as cur:
-                for table in ["users", "documents"]:
+                # SECURITY: Diese Liste ist hardcoded, keine externe Eingabe!
+                allowed_tables = ["users", "documents"]
+                for table in allowed_tables:
                     if table in tables:
-                        await cur.execute(f"SELECT COUNT(*) FROM {table}")
+                        # Sichere Identifier-Quotierung verhindert SQL-Injection
+                        query = sql.SQL("SELECT COUNT(*) FROM {}").format(sql.Identifier(table))
+                        await cur.execute(query)
                         count = (await cur.fetchone())[0]
-                        logger.debug(f"table_row_count", table=table, count=count)
+                        logger.debug("table_row_count", table=table, count=count)
 
             await conn.close()
 

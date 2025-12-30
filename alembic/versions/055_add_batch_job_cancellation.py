@@ -17,49 +17,50 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = '055_add_batch_job_cancellation'
-down_revision: Union[str, None] = '054_add_mahnungswesen_tables'
+down_revision: Union[str, None] = '054_add_mahnungswesen'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Add cancellation fields to batch_jobs and create scheduled_exports table."""
+    """Add cancellation fields to rag_batch_jobs and create scheduled_exports table."""
 
     # ==== Task 3: Batch Job Cancellation ====
+    # Note: Using rag_batch_jobs as that's the actual table name in the DB
 
     # Add is_cancelled column
     op.add_column(
-        'batch_jobs',
+        'rag_batch_jobs',
         sa.Column('is_cancelled', sa.Boolean(), nullable=True, default=False)
     )
 
     # Add cancelled_at column
     op.add_column(
-        'batch_jobs',
+        'rag_batch_jobs',
         sa.Column('cancelled_at', sa.DateTime(timezone=True), nullable=True)
     )
 
     # Add cancelled_by_id column with foreign key
     op.add_column(
-        'batch_jobs',
+        'rag_batch_jobs',
         sa.Column('cancelled_by_id', sa.UUID(), nullable=True)
     )
 
     # Add foreign key constraint
     op.create_foreign_key(
-        'fk_batch_jobs_cancelled_by_id',
-        'batch_jobs',
+        'fk_rag_batch_jobs_cancelled_by_id',
+        'rag_batch_jobs',
         'users',
         ['cancelled_by_id'],
         ['id']
     )
 
     # Set default value for existing rows
-    op.execute("UPDATE batch_jobs SET is_cancelled = FALSE WHERE is_cancelled IS NULL")
+    op.execute("UPDATE rag_batch_jobs SET is_cancelled = FALSE WHERE is_cancelled IS NULL")
 
     # Make is_cancelled non-nullable after setting defaults
     op.alter_column(
-        'batch_jobs',
+        'rag_batch_jobs',
         'is_cancelled',
         existing_type=sa.Boolean(),
         nullable=False,
@@ -91,7 +92,7 @@ def upgrade() -> None:
         sa.Column('last_run_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('next_run_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('last_run_status', sa.String(20), nullable=True),
-        sa.Column('last_run_job_id', sa.UUID(), sa.ForeignKey('batch_jobs.id'), nullable=True),
+        sa.Column('last_run_job_id', sa.UUID(), sa.ForeignKey('rag_batch_jobs.id'), nullable=True),
 
         # Notification
         sa.Column('notify_email', sa.Boolean(), server_default='true'),
@@ -115,7 +116,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Remove cancellation fields from batch_jobs and drop scheduled_exports table."""
+    """Remove cancellation fields from rag_batch_jobs and drop scheduled_exports table."""
 
     # ==== Task 4: Drop Scheduled Exports ====
 
@@ -127,9 +128,9 @@ def downgrade() -> None:
     # ==== Task 3: Remove Batch Job Cancellation ====
 
     # Drop foreign key constraint
-    op.drop_constraint('fk_batch_jobs_cancelled_by_id', 'batch_jobs', type_='foreignkey')
+    op.drop_constraint('fk_rag_batch_jobs_cancelled_by_id', 'rag_batch_jobs', type_='foreignkey')
 
     # Drop columns
-    op.drop_column('batch_jobs', 'cancelled_by_id')
-    op.drop_column('batch_jobs', 'cancelled_at')
-    op.drop_column('batch_jobs', 'is_cancelled')
+    op.drop_column('rag_batch_jobs', 'cancelled_by_id')
+    op.drop_column('rag_batch_jobs', 'cancelled_at')
+    op.drop_column('rag_batch_jobs', 'is_cancelled')

@@ -504,8 +504,9 @@ services:
         condition: service_healthy
       # vault: (disabled for development - VAULT_ENABLED=false)
       #   condition: service_healthy
+      # FAANG-AUDIT FIX: Worker wartet auf gesundes Backend
       backend:
-        condition: service_started
+        condition: service_healthy
     user: "1000:1000"
     security_opt:
       - no-new-privileges:true
@@ -617,8 +618,9 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_healthy
+      # FAANG-AUDIT FIX: CPU-Worker wartet auf gesundes Backend
       backend:
-        condition: service_started
+        condition: service_healthy
     user: "1000:1000"
     security_opt:
       - no-new-privileges:true
@@ -654,9 +656,10 @@ services:
     ports:
       - "80:80"
       - "443:443"  # HTTPS Port
+    # FAANG-AUDIT FIX: Frontend wartet auf gesundes Backend
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -702,9 +705,10 @@ services:
       - prometheus_data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"  # Nur localhost - Zugriff über Nginx Proxy
+    # FAANG-AUDIT FIX: Prometheus wartet auf gesundes Backend
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
       interval: 30s
@@ -747,9 +751,10 @@ services:
       - grafana_data:/var/lib/grafana
     ports:
       - "127.0.0.1:3002:3000"  # Port 3002 (3000/3001 belegt)
+    # FAANG-AUDIT FIX: Grafana wartet auf gesunden Prometheus
     depends_on:
       prometheus:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
@@ -825,9 +830,10 @@ services:
       - alertmanager_data:/alertmanager
     ports:
       - "127.0.0.1:9093:9093"  # Nur localhost
+    # FAANG-AUDIT FIX: AlertManager wartet auf gesunden Prometheus
     depends_on:
       prometheus:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
       interval: 30s
@@ -926,11 +932,19 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
     command: -config.file=/etc/promtail/config.yml
+    # FAANG-AUDIT FIX: Promtail wartet auf gesunden Loki
     depends_on:
       loki:
-        condition: service_started
+        condition: service_healthy
     security_opt:
       - no-new-privileges:true
+    # FAANG-AUDIT FIX: Health-Check fuer Promtail
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9080/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     deploy:
       resources:
         limits:
