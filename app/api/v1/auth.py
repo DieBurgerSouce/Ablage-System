@@ -13,6 +13,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
+# Z.7 SECURITY FIX: Rate Limiting fuer Passwort-Endpoints
+from app.core.rate_limiting import limiter, RateLimitTier, get_ip_identifier
+
 logger = structlog.get_logger(__name__)
 
 from app.api.dependencies import (
@@ -43,14 +46,18 @@ from app.db.schemas import (
     EmailVerifyResponse,
     EmailChangeResponse,
     EmailVerifyTokenRequest,
-    EmailChangeRequest
+    EmailChangeRequest,
+    TwoFactorRequiredResponse,
+    TwoFactorVerifyRequest,
 )
 from app.services.user_service import UserService
 from app.core.security import (
     create_token_pair,
     decode_token,
     verify_token_type,
-    blacklist_token
+    blacklist_token,
+    create_2fa_temp_token,
+    verify_2fa_temp_token,
 )
 from app.core.totp import (
     check_totp_available,
@@ -112,6 +119,7 @@ async def get_csrf_token() -> dict:
     summary="Benutzerregistrierung",
     description="Registriert einen neuen Benutzer im System"
 )
+@limiter.limit("5/hour", key_func=get_ip_identifier)  # BB.1 SECURITY FIX: Rate limit registration
 async def register(
     user_data: UserCreate,
     db: AsyncSession = Depends(get_db)
@@ -136,9 +144,27 @@ async def register(
 
 @router.post(
     "/login",
-    response_model=Token,
     summary="Benutzer-Login",
-    description="Authentifiziert einen Benutzer und gibt JWT-Tokens zurück"
+    description="Authentifiziert einen Benutzer und gibt JWT-Tokens zuruck. Bei aktiviertem 2FA wird ein temporarer Token zuruck gegeben.",
+    responses={
+        200: {
+            "description": "Login erfolgreich oder 2FA erforderlich",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "success": {
+                            "summary": "Login ohne 2FA",
+                            "value": {"access_token": "...", "refresh_token": "...", "token_type": "bearer"}
+                        },
+                        "2fa_required": {
+                            "summary": "2FA erforderlich",
+                            "value": {"requires_2fa": True, "temp_token": "...", "message": "Bitte geben Sie Ihren 2FA-Code ein."}
+                        }
+                    }
+                }
+            }
+        }
+    }
 )
 async def login(
     login_data: LoginRequest,
@@ -257,6 +283,21 @@ async def login(
     # Reset failed attempts on successful login
     await reset_failed_attempts(ip=client_ip, username=login_data.email)
 
+    # Check if 2FA is enabled for this user
+    if user.totp_enabled:
+        logger.info(
+            "login_requires_2fa",
+            user_id=str(user.id),
+            username=user.username
+        )
+        # Return temporary token for 2FA verification
+        temp_token = create_2fa_temp_token(str(user.id))
+        return TwoFactorRequiredResponse(
+            requires_2fa=True,
+            temp_token=temp_token,
+            message="Bitte geben Sie Ihren 2FA-Code ein."
+        )
+
     # Create token pair
     token_data = {
         "sub": str(user.id),
@@ -317,6 +358,142 @@ async def login(
         user_id=str(user.id),
         username=user.username,
         session_warning=session_warning is not None
+    )
+
+    return Token(**tokens, session_warning=session_warning)
+
+
+# ==================== 2FA Verification during Login ====================
+
+@router.post(
+    "/verify-2fa",
+    response_model=Token,
+    summary="2FA-Verifizierung abschliessen",
+    description="Verifiziert den 2FA-Code und gibt JWT-Tokens zuruck"
+)
+async def verify_2fa_login_endpoint(
+    data: TwoFactorVerifyRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Verifiziere 2FA-Code nach erfolgreicher Passwort-Authentifizierung.
+
+    - **temp_token**: Temporarer Token aus der Login-Response
+    - **code**: 6-stelliger TOTP-Code oder Backup-Code
+
+    Gibt Access Token und Refresh Token zuruck bei erfolgreichem 2FA.
+    """
+    # Verify temp token and get user ID
+    user_id = await verify_2fa_temp_token(data.temp_token)
+
+    # Get user from database
+    from uuid import UUID
+    user = await UserService.get_user(db, UUID(user_id))
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Benutzer nicht gefunden",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.totp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA ist nicht aktiviert fur diesen Benutzer",
+        )
+
+    # Clean up code (remove spaces/dashes)
+    clean_code = data.code.replace(" ", "").replace("-", "")
+
+    # Verify TOTP code or backup code
+    try:
+        is_valid, used_backup, backup_index = verify_2fa_login_encrypted(
+            encrypted_secret=user.totp_secret,
+            user_id=str(user.id),
+            code=clean_code,
+            backup_codes=user.totp_backup_codes or []
+        )
+
+        if not is_valid:
+            logger.warning(
+                "2fa_verification_failed",
+                user_id=str(user.id),
+                code_type="backup" if len(clean_code) == 8 else "totp"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Ungueltiger 2FA-Code",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # If backup code was used, remove it from the list
+        if used_backup and backup_index is not None:
+            backup_codes = list(user.totp_backup_codes or [])
+            if 0 <= backup_index < len(backup_codes):
+                del backup_codes[backup_index]
+                user.totp_backup_codes = backup_codes
+                await db.commit()
+                logger.info(
+                    "2fa_backup_code_used",
+                    user_id=str(user.id),
+                    remaining_codes=len(backup_codes)
+                )
+
+    except TOTPSecretEncryptionError as e:
+        logger.error(
+            "2fa_decryption_failed",
+            user_id=str(user.id),
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler bei der 2FA-Verifizierung"
+        )
+
+    # 2FA successful - create token pair
+    token_data = {
+        "sub": str(user.id),
+        "email": user.email,
+        "username": user.username
+    }
+    tokens = create_token_pair(token_data)
+
+    # Create session for tracking
+    client_ip = request.client.host if request.client else None
+    session_warning = None
+
+    try:
+        from app.core.session_manager import get_session_manager, SessionLimitReachedError
+
+        session_manager = get_session_manager()
+        access_payload = await decode_token(tokens["access_token"])
+        token_jti = access_payload.get("jti")
+
+        if token_jti and client_ip:
+            user_agent = request.headers.get("User-Agent")
+            session_result = await session_manager.create_session(
+                db=db,
+                user_id=user.id,
+                token_jti=token_jti,
+                ip_address=client_ip,
+                user_agent=user_agent
+            )
+            session_warning = session_result.get("warning")
+
+    except Exception as e:
+        logger.warning(
+            "session_creation_failed_2fa",
+            user_id=str(user.id),
+            error=str(e)
+        )
+
+    logger.info(
+        "2fa_login_successful",
+        user_id=str(user.id),
+        username=user.username,
+        used_backup_code=used_backup
     )
 
     return Token(**tokens, session_warning=session_warning)
@@ -574,7 +751,8 @@ async def logout(
     description="Ruft Informationen über den aktuell angemeldeten Benutzer ab"
 )
 async def get_current_user_info(
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
 ) -> Any:
     """
     Rufe Informationen über den aktuell angemeldeten Benutzer ab.
@@ -588,7 +766,40 @@ async def get_current_user_info(
 
     Gibt Benutzerdetails zurück (ohne Passwort).
     """
-    return UserResponse.model_validate(current_user)
+    # FAANG-AUDIT FIX (B6): Korrekte Rollenermittlung aus RBAC-System
+    # Prioritaet: is_superuser > RBAC-Rollen > Default "viewer"
+    role = "viewer"  # Default
+
+    if current_user.is_superuser:
+        role = "admin"
+    else:
+        # Hole echte Rollen aus dem RBAC-System
+        from app.services.permission_service import PermissionService
+        permission_service = PermissionService(db)
+        try:
+            user_roles = await permission_service.get_user_roles(current_user)
+            if user_roles:
+                # Sortiere nach Prioritaet (hoechste zuerst) und nehme die hoechste Rolle
+                sorted_roles = sorted(user_roles, key=lambda r: r.priority, reverse=True)
+                role = sorted_roles[0].name
+                logger.debug(
+                    "user_role_resolved",
+                    user_id=str(current_user.id),
+                    role=role,
+                    all_roles=[r.name for r in sorted_roles]
+                )
+        except Exception as e:
+            # Bei Fehler: Fallback auf "viewer" (sicherste Option)
+            logger.warning(
+                "rbac_role_fetch_failed",
+                user_id=str(current_user.id),
+                error=str(e),
+                fallback_role="viewer"
+            )
+
+    user_data = UserResponse.model_validate(current_user)
+    user_data.role = role
+    return user_data
 
 
 # ==================== Update User Profile ====================
@@ -645,7 +856,9 @@ async def update_profile(
     summary="Passwort ändern",
     description="Ändert das Passwort des aktuell angemeldeten Benutzers"
 )
+@limiter.limit("5/hour", key_func=get_ip_identifier)  # Z.7 SECURITY FIX: Rate Limit
 async def change_password(
+    request: Request,  # Z.7: Required for rate limiter
     password_data: UserCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
@@ -695,9 +908,10 @@ async def change_password(
     summary="Passwort zurücksetzen anfordern",
     description="Sendet eine E-Mail mit Link zum Zurücksetzen des Passworts"
 )
+@limiter.limit(RateLimitTier.PASSWORD_RESET, key_func=get_ip_identifier)  # Z.7 SECURITY FIX: Rate Limit (3/hour)
 async def request_password_reset(
+    request: Request,  # Z.7: Required for rate limiter (moved to first position)
     reset_request: PasswordResetRequest,
-    request: Request,
     db: AsyncSession = Depends(get_db)
 ) -> Any:
     """
@@ -782,9 +996,10 @@ async def validate_reset_token(
     summary="Passwort zurücksetzen",
     description="Setzt das Passwort mit einem gültigen Reset-Token zurück"
 )
+@limiter.limit(RateLimitTier.PASSWORD_RESET, key_func=get_ip_identifier)  # Z.7 SECURITY FIX: Rate Limit (3/hour)
 async def reset_password(
+    request: Request,  # Z.7: Required for rate limiter
     reset_data: PasswordResetConfirm,
-    request: Request,
     db: AsyncSession = Depends(get_db)
 ) -> Any:
     """

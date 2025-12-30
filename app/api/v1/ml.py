@@ -652,18 +652,21 @@ async def start_experiment(
 async def get_experiment(
     request: Request,
     experiment_id: str,
-    current_user: User = Depends(check_rate_limit),
+    current_user: User = Depends(get_current_superuser),  # Y.4 SECURITY FIX: Admin only
 ) -> ExperimentResponse:
     """
-    Hole Experiment-Details.
+    Hole Experiment-Details (Admin only).
 
-    Erfordert Authentifizierung.
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Args:
         experiment_id: Experiment-ID
 
     Returns:
         Experiment-Details
+
+    Raises:
+        403: Wenn Benutzer kein Admin ist
     """
     try:
         from app.ml.ab_testing import get_ab_test_manager
@@ -700,7 +703,7 @@ async def get_experiment(
 async def list_experiments(
     request: Request,
     status: Optional[str] = Query(default=None),
-    current_user: User = Depends(check_rate_limit),
+    current_user: User = Depends(get_current_superuser),  # Y.4 SECURITY FIX: Admin only
 ) -> List[ExperimentResponse]:
     """
     Liste alle Experimente.

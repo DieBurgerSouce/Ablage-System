@@ -39,7 +39,7 @@ from app.core.rate_limiting import (
     RateLimitTier,
     RateLimitStorageError,
 )
-from app.middleware import RateLimitMiddleware, DevelopmentRateLimitBypass, SecurityHeadersMiddleware, RequestSizeLimitMiddleware, CSRFMiddleware, get_csrf_token_response, IPBlockingMiddleware
+from app.middleware import RateLimitMiddleware, DevelopmentRateLimitBypass, SecurityHeadersMiddleware, RequestSizeLimitMiddleware, CSRFMiddleware, get_csrf_token_response, IPBlockingMiddleware, CompanyContextMiddleware
 from app.middleware.profiling import ProfilingMiddleware
 from app.core.config import settings
 from app.core.monitoring import get_system_monitor, PerformanceTimer
@@ -56,6 +56,8 @@ from app.core.backpressure import (
     add_backpressure_headers,
     BackpressureStatus,
 )
+from app.api.dependencies import get_current_active_user, get_current_superuser
+from app.db.models import User
 
 logger = structlog.get_logger(__name__)
 
@@ -442,6 +444,46 @@ OPENAPI_TAGS = [
         "name": "rag-customers",
         "description": "Customer Cards. Pre-computed Kundenzusammenfassungen mit LLM-Generierung.",
     },
+    {
+        "name": "Firmen",
+        "description": "Multi-Mandanten Firmenverwaltung. Firmenwechsel, Benutzer-Zuordnungen und Berechtigungen.",
+    },
+    {
+        "name": "Kassenbuch - Kassen",
+        "description": "Kassenverwaltung. Kassen erstellen, bearbeiten und Salden verwalten.",
+    },
+    {
+        "name": "Kassenbuch - Eintraege",
+        "description": "GoBD-konforme Kassenbucheintraege. APPEND-ONLY, Stornierung nur durch Gegenbuchung.",
+    },
+    {
+        "name": "Kassenbuch - Kassensturz",
+        "description": "Kassensturz-Protokolle. Zaehlung mit automatischer Differenz-Buchung.",
+    },
+    {
+        "name": "Kassenbuch - Berichte",
+        "description": "Kassenbuch-Berichte. Zusammenfassungen und Tagesabschluesse.",
+    },
+    {
+        "name": "Kassenbuch - Kategorien",
+        "description": "Kassenbuch-Kategorien mit SKR03/SKR04 Kontenzuordnung.",
+    },
+    {
+        "name": "Spesen - Abrechnungen",
+        "description": "Spesenabrechnungen. CRUD und Positionsverwaltung.",
+    },
+    {
+        "name": "Spesen - Positionen",
+        "description": "Spesenpositionen. Belege, Kilometergeld, Verpflegungspauschalen.",
+    },
+    {
+        "name": "Spesen - Workflow",
+        "description": "Spesenabrechnung-Workflow. Einreichen, Genehmigen, Ablehnen, Auszahlen.",
+    },
+    {
+        "name": "Spesen - Rechner",
+        "description": "Berechnungen fuer Kilometergeld und Verpflegungspauschalen.",
+    },
 ]
 
 OPENAPI_DESCRIPTION = """
@@ -573,10 +615,21 @@ app.add_middleware(
 )
 
 # Add CORS middleware for web interface
-# WICHTIG: In Production explizite Origins setzen via CORS_ORIGINS Umgebungsvariable!
+# J.5 SECURITY FIX: In Production NUR explizite Origins, in Development zusaetzlich localhost
+_cors_origins = settings.CORS_ORIGINS.copy()
+if settings.DEBUG:
+    # Nur in Development (DEBUG=True): localhost Origins hinzufuegen
+    _cors_origins.extend(settings.CORS_DEVELOPMENT_ORIGINS)
+elif not _cors_origins:
+    # In Production OHNE konfigurierte Origins: Warnung ausgeben
+    logger.warning(
+        "cors_no_origins_configured",
+        message="CORS_ORIGINS ist leer in Production - keine Cross-Origin-Requests erlaubt!"
+    )
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=_cors_origins,
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=settings.CORS_ALLOW_METHODS,
     allow_headers=settings.CORS_ALLOW_HEADERS,
@@ -594,6 +647,10 @@ app.add_middleware(
     cookie_samesite="strict",
     bearer_token_bypass=True,  # API-Clients mit Bearer Token überspringen
 )
+
+# Add Company Context middleware
+# Setzt die aktuelle Firma aus X-Company-ID Header oder User-Session
+app.add_middleware(CompanyContextMiddleware)
 
 # Add profiling middleware
 # Erfasst Request-Timings für Performance-Analyse
@@ -654,6 +711,12 @@ from app.api.v1.datev import router as datev_router
 from app.api.v1.finance import router as finance_router
 from app.api.v1.exports import router as exports_router
 from app.api.v1.scheduled_exports import router as scheduled_exports_router
+from app.api.v1.companies import router as companies_router
+from app.api.v1.cash import router as cash_router
+from app.api.v1.expenses import router as expenses_router
+from app.api.v1.streckengeschaeft import router as streckengeschaeft_router
+from app.api.v1.privat import router as privat_router
+from app.api.v1.validation import router as validation_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -693,6 +756,12 @@ app.include_router(datev_router, prefix="/api/v1")
 app.include_router(finance_router, prefix="/api/v1")
 app.include_router(exports_router, prefix="/api/v1")
 app.include_router(scheduled_exports_router, prefix="/api/v1")
+app.include_router(companies_router, prefix="/api/v1")
+app.include_router(cash_router, prefix="/api/v1")
+app.include_router(expenses_router, prefix="/api/v1")
+app.include_router(streckengeschaeft_router, prefix="/api/v1")
+app.include_router(privat_router, prefix="/api/v1")
+app.include_router(validation_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================
@@ -798,8 +867,10 @@ async def health_check():
 # ==================== GPU Management Endpoints ====================
 
 @app.get("/gpu/status")
-async def get_gpu_status():
-    """Get detailed GPU status"""
+async def get_gpu_status(
+    current_user: User = Depends(get_current_active_user)  # CC.4 SECURITY FIX: Auth required
+):
+    """Get detailed GPU status. Requires authentication."""
     if not gpu_manager:
         raise HTTPException(status_code=503, detail=HTTPErrors.GPU_MANAGER_NOT_INITIALIZED)
 
@@ -809,8 +880,10 @@ async def get_gpu_status():
 # ==================== OCR Processing Endpoints ====================
 
 @app.get("/ocr/backends")
-async def get_ocr_backends():
-    """Get available OCR backends and their status"""
+async def get_ocr_backends(
+    current_user: User = Depends(get_current_active_user)  # CC.5 SECURITY FIX: Auth required
+):
+    """Get available OCR backends and their status. Requires authentication."""
     if not ocr_service:
         raise HTTPException(status_code=503, detail=HTTPErrors.OCR_SERVICE_NOT_INITIALIZED)
 
@@ -829,7 +902,8 @@ async def process_document(
     language: Optional[str] = Form("de"),
     detect_layout: Optional[bool] = Form(True),
     cached_response: Optional[Dict[str, Any]] = Depends(check_idempotency),
-    backpressure: Dict[str, Any] = Depends(backpressure_dependency)
+    backpressure: Dict[str, Any] = Depends(backpressure_dependency),
+    current_user: User = Depends(get_current_active_user)  # CC.1 SECURITY FIX: Auth required
 ):
     """
     Process a document with OCR
@@ -1050,7 +1124,8 @@ async def process_batch(
     files: List[UploadFile] = File(...),
     backend: Optional[str] = Form("auto"),
     language: Optional[str] = Form("de"),
-    backpressure: Dict[str, Any] = Depends(backpressure_dependency)
+    backpressure: Dict[str, Any] = Depends(backpressure_dependency),
+    current_user: User = Depends(get_current_active_user)  # CC.2 SECURITY FIX: Auth required
 ):
     """
     Process multiple documents in batch
@@ -1188,7 +1263,8 @@ async def process_batch(
 
 @app.post("/ocr/test")
 async def test_german_text(
-    text: str = Form(..., max_length=50000, description="Zu validierender Text (max 50KB)")
+    text: str = Form(..., max_length=50000, description="Zu validierender Text (max 50KB)"),
+    current_user: User = Depends(get_current_active_user)  # CC.3 SECURITY FIX: Auth required
 ):
     """
     Test German text validation
@@ -1236,8 +1312,10 @@ async def test_german_text(
 # ==================== Statistics Endpoint ====================
 
 @app.get("/stats")
-async def get_statistics():
-    """Get OCR processing statistics"""
+async def get_statistics(
+    current_user: User = Depends(get_current_active_user)  # CC.6 SECURITY FIX: Auth required
+):
+    """Get OCR processing statistics. Requires authentication."""
     if not ocr_service:
         raise HTTPException(status_code=503, detail=HTTPErrors.OCR_SERVICE_NOT_INITIALIZED)
 
@@ -1247,9 +1325,12 @@ async def get_statistics():
 # ==================== System Monitoring Endpoint ====================
 
 @app.get("/monitoring/system")
-async def get_system_status():
+async def get_system_status(
+    current_user: User = Depends(get_current_superuser)  # CC.7 SECURITY FIX: Admin required
+):
     """
     Get comprehensive system status including CPU, RAM, GPU, and OCR metrics.
+    Requires admin authentication.
 
     Returns:
         System resource usage, GPU status, and processing metrics
@@ -1263,9 +1344,12 @@ async def get_system_status():
 
 
 @app.get("/monitoring/health")
-async def get_monitoring_health():
+async def get_monitoring_health(
+    current_user: User = Depends(get_current_superuser)  # CC.8 SECURITY FIX: Admin required
+):
     """
     Get system health status for monitoring and alerting.
+    Requires admin authentication.
 
     Returns:
         Health status of all system components
@@ -1277,9 +1361,12 @@ async def get_monitoring_health():
 # ==================== Rate Limit Status Endpoint ====================
 
 @app.get("/ratelimit/status")
-async def get_rate_limit_status():
+async def get_rate_limit_status(
+    current_user: User = Depends(get_current_superuser)  # CC.9 SECURITY FIX: Admin required
+):
     """
     Get rate limiting status and statistics.
+    Requires admin authentication.
 
     Returns:
         Rate limit configuration and statistics
@@ -1290,9 +1377,13 @@ async def get_rate_limit_status():
 
 
 @app.get("/ratelimit/info")
-async def get_rate_limit_info_endpoint(request: Request):
+async def get_rate_limit_info_endpoint(
+    request: Request,
+    current_user: User = Depends(get_current_active_user)  # CC.10 SECURITY FIX: Auth required
+):
     """
     Get rate limit information for current request.
+    Requires authentication.
 
     Returns:
         Current user's rate limit information
@@ -1305,9 +1396,13 @@ async def get_rate_limit_info_endpoint(request: Request):
 # ==================== Backpressure Status Endpoint ====================
 
 @app.get("/backpressure/status")
-async def get_backpressure_status_endpoint():
+async def get_backpressure_status_endpoint(
+    current_user: User = Depends(get_current_active_user)  # EE.1 SECURITY FIX: Auth required
+):
     """
     Get current backpressure status for queue monitoring.
+
+    **REQUIRES AUTHENTICATION**
 
     Returns backpressure information including:
     - Current status (normal, warning, critical, overloaded)

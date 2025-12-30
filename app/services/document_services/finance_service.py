@@ -28,11 +28,34 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql.expression import cast as sql_cast
 
 
+import re
+
+# DD.2 SECURITY FIX: Whitelist of allowed JSONB column and key names
+_ALLOWED_JSONB_COLUMNS = frozenset({"extracted_data", "metadata", "validation_results"})
+_ALLOWED_JSONB_KEYS = frozenset({
+    "total_amount", "nachzahlung", "erstattung", "invoice_number",
+    "invoice_date", "vendor_name", "tax_amount", "net_amount"
+})
+_SAFE_IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+
 def jsonb_text(column_name: str, key: str) -> literal_column:
     """Helper: Extrahiert Text aus JSONB mit PostgreSQL ->> Operator.
 
     Umgeht das Problem mit CrossDBJSON TypeDecorator und .astext.
+
+    DD.2 SECURITY FIX: Validates column_name and key against whitelist.
     """
+    # Validate column_name
+    if column_name not in _ALLOWED_JSONB_COLUMNS:
+        if not _SAFE_IDENTIFIER_PATTERN.match(column_name):
+            raise ValueError(f"Invalid JSONB column name: {column_name}")
+
+    # Validate key - must be alphanumeric/underscore only
+    if key not in _ALLOWED_JSONB_KEYS:
+        if not _SAFE_IDENTIFIER_PATTERN.match(key):
+            raise ValueError(f"Invalid JSONB key: {key}")
+
     return literal_column(f"{column_name}->>'{key}'")
 
 from app.db.models import Document, Tag
@@ -665,13 +688,12 @@ class FinanceService(DocumentServiceBase):
         Nutzt SQL-Aggregation fuer Performance statt Python-Loop.
         PostgreSQL JSONB ->> Operator fuer Text-Extraktion.
         """
-        # Baue WHERE-Bedingungen als SQL-Text fuer saubere Query
-        year_condition = ""
-        if year is not None:
-            year_condition = f"AND EXTRACT(YEAR FROM created_at) = {year}"
-
-        # Baue IN-Clause als String (PostgreSQL-kompatibel)
+        # T.1 SECURITY FIX: Parameterisierte Query statt f-string fuer year
+        # Baue IN-Clause als String (PostgreSQL-kompatibel) - doc_types sind Konstanten
         doc_types_str = ", ".join(f"'{dt}'" for dt in FINANCE_DOCUMENT_TYPES)
+
+        # Build query with optional year parameter
+        year_clause = "AND EXTRACT(YEAR FROM created_at) = :year" if year is not None else ""
 
         # Aggregiere Nachzahlung und Erstattung in einer Query
         # COALESCE fuer NULL-Handling, NULLIF fuer leere Strings
@@ -697,13 +719,15 @@ class FinanceService(DocumentServiceBase):
             WHERE owner_id = :user_id
               AND is_deleted = FALSE
               AND document_type IN ({doc_types_str})
-              {year_condition}
+              {year_clause}
         """)
 
-        result = await db.execute(
-            query,
-            {"user_id": str(user_id)}
-        )
+        # T.1 SECURITY FIX: year als Parameter statt String-Interpolation
+        params: Dict[str, Any] = {"user_id": str(user_id)}
+        if year is not None:
+            params["year"] = year
+
+        result = await db.execute(query, params)
         row = result.fetchone()
 
         return {
@@ -721,12 +745,12 @@ class FinanceService(DocumentServiceBase):
 
         Nutzt PostgreSQL JSONB ->> Operator fuer Datum-Vergleich.
         """
-        year_condition = ""
-        if year is not None:
-            year_condition = f"AND EXTRACT(YEAR FROM created_at) = {year}"
-
-        # Baue IN-Clause als String (PostgreSQL-kompatibel)
+        # T.1 SECURITY FIX: Parameterisierte Query statt f-string fuer year
+        # Baue IN-Clause als String (PostgreSQL-kompatibel) - doc_types sind Konstanten
         doc_types_str = ", ".join(f"'{dt}'" for dt in FINANCE_DOCUMENT_TYPES)
+
+        # Build query with optional year parameter
+        year_clause = "AND EXTRACT(YEAR FROM created_at) = :year" if year is not None else ""
 
         today_str = date.today().isoformat()
 
@@ -748,16 +772,18 @@ class FinanceService(DocumentServiceBase):
               AND is_deleted = FALSE
               AND document_type IN ({doc_types_str})
               AND extracted_data->>'einspruchsfrist' IS NOT NULL
-              {year_condition}
+              {year_clause}
         """)
 
-        result = await db.execute(
-            query,
-            {
-                "user_id": str(user_id),
-                "today": today_str,
-            }
-        )
+        # T.1 SECURITY FIX: year als Parameter statt String-Interpolation
+        params: Dict[str, Any] = {
+            "user_id": str(user_id),
+            "today": today_str,
+        }
+        if year is not None:
+            params["year"] = year
+
+        result = await db.execute(query, params)
         row = result.fetchone()
 
         return {

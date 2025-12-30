@@ -37,10 +37,12 @@ async def get_tunes(
 async def get_tune(
     tune_id: UUID,
     db: AsyncSession = Depends(dependencies.get_db),
-    current_user: models.User = Depends(dependencies.get_current_active_user)
+    current_user: models.User = Depends(dependencies.get_current_superuser)  # Y.3 SECURITY FIX: Admin only
 ) -> Any:
     """
-    Ein einzelnes Tune anhand der ID abrufen.
+    Ein einzelnes Tune anhand der ID abrufen (Admin only).
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Args:
         tune_id: UUID des Tunes
@@ -50,6 +52,7 @@ async def get_tune(
 
     Raises:
         404: Wenn das Tune nicht gefunden wurde
+        403: Wenn Benutzer kein Admin ist
     """
     query = select(models.Tune).where(models.Tune.id == tune_id)
     result = await db.execute(query)

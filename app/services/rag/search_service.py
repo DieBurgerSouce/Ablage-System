@@ -11,6 +11,7 @@ from typing import List, Optional, Dict, Any, Tuple
 from uuid import UUID
 from datetime import datetime, timezone
 from dataclasses import dataclass
+import math
 
 import structlog
 from sqlalchemy import select, func, text
@@ -307,8 +308,22 @@ class RAGSearchService:
         user_id: Optional[UUID] = None
     ) -> List[SearchResult]:
         """Interne Vektorsuche mit pgvector."""
+        # DD.1 SECURITY FIX: Validate embedding values are numeric before SQL construction
+        # Embedding kommt vom ML-Modell, aber wir validieren trotzdem zur Sicherheit
+        # EE.2 SECURITY FIX: Zusaetzlich NaN/Inf Validierung hinzugefuegt
+        validated_values = []
+        for x in query_embedding:
+            if not isinstance(x, (int, float)):
+                raise ValueError(f"Invalid embedding value type: {type(x)}")
+            # Konvertiere zu float um sicherzustellen dass es numerisch ist
+            fval = float(x)
+            # EE.2: Pruefe auf NaN und Infinity - diese wuerden SQL-Syntax brechen
+            if math.isnan(fval) or math.isinf(fval):
+                raise ValueError(f"Embedding contains invalid value (NaN/Inf): {fval}")
+            validated_values.append(fval)
+
         # Embedding als String fuer PostgreSQL (pgvector erwartet '[x,y,z]' Format)
-        embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
+        embedding_str = "[" + ",".join(str(v) for v in validated_values) + "]"
 
         # Base Query mit Cosine Similarity via raw SQL
         # pgvector: <=> ist Cosine Distance, 1 - distance = similarity

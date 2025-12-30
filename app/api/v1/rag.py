@@ -31,7 +31,9 @@ from app.db.models import (
     RAGBatchJob,
     RAGLLMModel,
 )
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, get_current_superuser
+# S.3-S.5 SECURITY FIX: Company Context fuer Multi-Tenancy IDOR Protection
+from app.middleware.company_context import require_company, CompanyContext
 from app.api.schemas.rag import (
     # Enums
     RAGSearchType,
@@ -796,9 +798,17 @@ async def list_customer_cards(
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
+    # S.4 SECURITY FIX: Company Context fuer Multi-Tenancy IDOR Protection
+    company_ctx: CompanyContext = Depends(require_company),
 ) -> List[RAGCustomerCardSummary]:
-    """Listet Customer Cards auf, optional mit Suche."""
-    query = select(RAGCustomerCard).order_by(RAGCustomerCard.priority_level.desc())
+    """Listet Customer Cards auf, optional mit Suche.
+
+    SECURITY: Nur Customer Cards der eigenen Company werden zurueckgegeben.
+    """
+    # S.4 SECURITY FIX: Nur Cards der eigenen Company zurueckgeben
+    query = select(RAGCustomerCard).where(
+        RAGCustomerCard.company_id == company_ctx.company_id
+    ).order_by(RAGCustomerCard.priority_level.desc())
 
     if search:
         query = query.where(RAGCustomerCard.customer_name.ilike(f"%{search}%"))
@@ -825,9 +835,18 @@ async def get_customer_card(
     customer_id: str,
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
+    # S.3 SECURITY FIX: Company Context fuer Multi-Tenancy IDOR Protection
+    company_ctx: CompanyContext = Depends(require_company),
 ) -> RAGCustomerCardResponse:
-    """Laedt eine einzelne Customer Card."""
-    query = select(RAGCustomerCard).where(RAGCustomerCard.customer_id == customer_id)
+    """Laedt eine einzelne Customer Card.
+
+    SECURITY: Nur Customer Cards der eigenen Company koennen geladen werden.
+    """
+    # S.3 SECURITY FIX: Nur Cards der eigenen Company laden
+    query = select(RAGCustomerCard).where(
+        RAGCustomerCard.customer_id == customer_id,
+        RAGCustomerCard.company_id == company_ctx.company_id,
+    )
     result = await db.execute(query)
     card = result.scalar_one_or_none()
 
@@ -843,12 +862,20 @@ async def refresh_customer_card(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
+    # S.5 SECURITY FIX: Company Context fuer Multi-Tenancy IDOR Protection
+    company_ctx: CompanyContext = Depends(require_company),
 ) -> dict:
-    """Aktualisiert eine Customer Card asynchron."""
+    """Aktualisiert eine Customer Card asynchron.
+
+    SECURITY: Nur Customer Cards der eigenen Company koennen aktualisiert werden.
+    """
     card_service = get_customer_card_service()
 
-    # Pruefe ob Customer Card existiert
-    query = select(RAGCustomerCard).where(RAGCustomerCard.customer_id == customer_id)
+    # S.5 SECURITY FIX: Pruefe ob Customer Card existiert UND zur Company gehoert
+    query = select(RAGCustomerCard).where(
+        RAGCustomerCard.customer_id == customer_id,
+        RAGCustomerCard.company_id == company_ctx.company_id,
+    )
     result = await db.execute(query)
     card = result.scalar_one_or_none()
 
@@ -1084,9 +1111,16 @@ async def get_batch_job(
 
 @router.get("/health")
 async def rag_health_check(
+    current_user: User = Depends(get_current_superuser),  # AA.1 SECURITY FIX: Admin required
     db: AsyncSession = Depends(get_async_session),
 ) -> dict:
-    """Health Check fuer RAG Services."""
+    """Health Check fuer RAG Services.
+
+    **REQUIRES ADMIN AUTHENTICATION**
+
+    Args:
+        current_user: Authenticated admin user (required)
+    """
     health = {
         "status": "healthy",
         "components": {},

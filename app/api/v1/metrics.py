@@ -40,20 +40,21 @@ router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 @router.get("", response_class=Response)
 @router.get("/prometheus", response_class=Response)
-async def prometheus_metrics():
+async def prometheus_metrics(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     Prometheus metrics scrape endpoint.
 
+    **REQUIRES ADMIN AUTHENTICATION**
+
     Returns metrics in Prometheus text format for scraping.
 
-    Example Prometheus config:
-    ```yaml
-    scrape_configs:
-      - job_name: 'ablage-system'
-        static_configs:
-          - targets: ['localhost:8000']
-        metrics_path: '/api/v1/metrics'
-    ```
+    Note: For automated Prometheus scraping, configure Bearer token auth
+    or use network-level security (internal network only).
+
+    Args:
+        current_user: Authenticated admin user (required)
     """
     # Generate metrics from all registered collectors
     return Response(
@@ -63,9 +64,13 @@ async def prometheus_metrics():
 
 
 @router.get("/search", response_class=Response)
-async def search_metrics_prometheus():
+async def search_metrics_prometheus(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     Prometheus metrics for search functionality.
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Returns search-specific metrics in Prometheus text format:
     - search_requests_total: Suchanfragen nach Typ und Status
@@ -95,9 +100,13 @@ async def search_metrics_prometheus():
 
 
 @router.get("/backup", response_class=Response)
-async def backup_metrics_prometheus():
+async def backup_metrics_prometheus(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     Prometheus metrics for backup functionality.
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Returns backup-specific metrics in Prometheus text format:
     - ablage_backup_last_success_timestamp: Letztes erfolgreiches Backup
@@ -129,9 +138,13 @@ async def backup_metrics_prometheus():
 
 
 @router.get("/backup/summary")
-async def backup_metrics_summary():
+async def backup_metrics_summary(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     Backup metrics summary (JSON format).
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Returns backup-specific metrics for dashboards:
     - Speicherplatz-Nutzung und Verfuegbarkeit
@@ -150,9 +163,13 @@ async def backup_metrics_summary():
 
 
 @router.get("/datev", response_class=Response)
-async def datev_metrics_prometheus():
+async def datev_metrics_prometheus(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     Prometheus metrics for DATEV functionality.
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Returns DATEV-specific metrics in Prometheus text format:
     - datev_exports_total: Anzahl Exports nach Status/Kontenrahmen
@@ -180,9 +197,13 @@ async def datev_metrics_prometheus():
 
 
 @router.get("/datev/summary")
-async def datev_metrics_summary():
+async def datev_metrics_summary(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     DATEV metrics summary (JSON format).
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Returns DATEV-specific metrics for dashboards:
     - Verfuegbare Metriken-Typen
@@ -203,9 +224,13 @@ async def datev_metrics_summary():
 
 
 @router.get("/gpu", response_class=Response)
-async def gpu_metrics_prometheus():
+async def gpu_metrics_prometheus(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     Prometheus metrics for GPU functionality.
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Returns GPU-specific metrics in Prometheus text format:
     - ablage_gpu_memory_used_bytes: VRAM-Nutzung
@@ -238,9 +263,13 @@ async def gpu_metrics_prometheus():
 
 
 @router.get("/gpu/summary")
-async def gpu_metrics_summary():
+async def gpu_metrics_summary(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     GPU metrics summary (JSON format).
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Returns GPU-specific metrics for dashboards:
     - GPU-Speicher-Status
@@ -257,9 +286,13 @@ async def gpu_metrics_summary():
 
 
 @router.get("/gpu/detailed")
-async def gpu_metrics_detailed():
+async def gpu_metrics_detailed(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     Detaillierte GPU-Metriken (JSON format).
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Returns comprehensive GPU metrics:
     - Hardware-Informationen
@@ -309,9 +342,13 @@ async def gpu_metrics_detailed():
 
 
 @router.get("/business")
-async def business_metrics():
+async def business_metrics(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     Custom business metrics (JSON format).
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Returns business-specific metrics for dashboards.
     """
@@ -355,9 +392,13 @@ async def business_metrics():
 
 
 @router.get("/business/prometheus", response_class=Response)
-async def business_metrics_prometheus():
+async def business_metrics_prometheus(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     Prometheus metrics for OCR and document processing.
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Returns business-specific metrics in Prometheus text format:
 
@@ -407,9 +448,13 @@ async def business_metrics_prometheus():
 
 
 @router.get("/business/summary")
-async def business_metrics_summary():
+async def business_metrics_summary(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     Business metrics summary (JSON format).
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Returns a structured summary of all business metrics categories.
     """
@@ -439,9 +484,13 @@ async def business_metrics_summary():
 
 
 @router.get("/health")
-async def metrics_health():
+async def metrics_health(
+    current_user: User = Depends(get_current_active_user),  # W.2 SECURITY FIX: Auth required
+):
     """
     Health check for metrics system.
+
+    **REQUIRES AUTHENTICATION**
 
     Returns status of metrics collection components.
     """
@@ -465,9 +514,13 @@ async def metrics_health():
 
 
 @router.get("/ocr-cache")
-async def ocr_cache_metrics():
+async def ocr_cache_metrics(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     OCR Cache Statistics (JSON format).
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Returns cache-specific metrics:
     - **enabled**: Ob Caching aktiviert ist
@@ -523,9 +576,13 @@ async def clear_ocr_cache_stats(
 
 
 @router.get("/cache-hit-rate")
-async def get_cache_hit_rate_metrics():
+async def get_cache_hit_rate_metrics(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     Aggregierte Cache Hit-Rate Metriken.
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Zeigt Cache-Effizienz ueber alle Cache-Schichten:
 
@@ -663,9 +720,13 @@ async def get_cache_hit_rate_metrics():
 
 
 @router.get("/database")
-async def get_database_metrics():
+async def get_database_metrics(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     Database Performance Metriken.
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Zeigt Datenbank-Performance-Statistiken:
 
@@ -859,9 +920,13 @@ async def reset_metrics(
 
 
 @router.get("/slo")
-async def get_slo_metrics():
+async def get_slo_metrics(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     Service Level Objectives (SLO) Status.
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Zeigt den aktuellen Status der definierten SLOs:
 
@@ -1086,10 +1151,12 @@ async def get_slo_metrics():
 async def get_slo_history(
     days: int = 7,
     slo_key: Optional[str] = None,
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_superuser)  # EE.3 SECURITY FIX: Admin only
 ):
     """
     SLO-Verlauf ueber Zeit.
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Zeigt historische SLO-Daten fuer Trend-Analyse und Reporting.
 
@@ -1177,9 +1244,13 @@ async def get_slo_history(
 
 
 @router.get("/ocr-quality")
-async def get_ocr_quality_metrics():
+async def get_ocr_quality_metrics(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     OCR-Qualitaetsmetriken (aggregiert).
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Zeigt aggregierte Qualitaetsmetriken ueber alle OCR-Verarbeitungen:
 
@@ -1289,9 +1360,13 @@ async def get_ocr_quality_metrics():
 
 
 @router.get("/webhooks")
-async def get_webhook_metrics():
+async def get_webhook_metrics(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+):
     """
     Webhook und Circuit Breaker Metriken.
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Zeigt Webhook-Zustellungs- und Circuit Breaker-Statistiken:
 
@@ -1489,9 +1564,13 @@ async def reset_circuit_breaker(
 
 
 @router.get("/dashboards")
-async def get_dashboard_links():
+async def get_dashboard_links(
+    current_user: User = Depends(get_current_active_user),  # W.2 SECURITY FIX: Auth required
+):
     """
     Grafana Dashboard Links.
+
+    **REQUIRES AUTHENTICATION**
 
     Gibt URLs zu allen verfuegbaren Grafana-Dashboards zurueck.
 
@@ -1562,9 +1641,13 @@ async def get_dashboard_links():
 
 
 @router.get("/ab-testing")
-async def get_ab_testing_metrics() -> Dict[str, Any]:
+async def get_ab_testing_metrics(
+    current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
+) -> Dict[str, Any]:
     """
     A/B Testing Status fuer Vector Search (pgvector vs Qdrant).
+
+    **REQUIRES ADMIN AUTHENTICATION**
 
     Zeigt aktuellen Status und Metriken des A/B Tests:
 
