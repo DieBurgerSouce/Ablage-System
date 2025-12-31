@@ -90,7 +90,7 @@ export function ReconciliationPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Abgleich</h2>
+                    <h1 className="text-3xl font-bold tracking-tight">Abgleich</h1>
                     <p className="text-muted-foreground">
                         Transaktionen mit Rechnungen und Dokumenten verknuepfen.
                     </p>

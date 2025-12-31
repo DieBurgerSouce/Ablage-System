@@ -1,8 +1,6 @@
 @import url('https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
-@import url('https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -52,7 +50,7 @@
         --popover: oklch(1 0 0);
         --popover-foreground: oklch(0.145 0.004 250);
         --muted: oklch(0.96 0.002 250);
-        --muted-foreground: oklch(0.55 0.02 250);
+        --muted-foreground: oklch(0.40 0.02 250);  /* WCAG AA compliant contrast */
         --border: oklch(0.92 0.005 250);
         --input: oklch(0.92 0.005 250);
         --ring: oklch(0.35 0.08 250);

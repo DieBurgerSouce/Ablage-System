@@ -26,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Receipt } from 'lucide-react';
 
 export function ExpensesPage() {
   const navigate = useNavigate();
@@ -70,7 +71,10 @@ export function ExpensesPage() {
   return (
     <div className="p-8 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Spesenabrechnungen</h1>
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+          <Receipt className="w-8 h-8 text-orange-500" />
+          Spesenabrechnungen
+        </h1>
         <p className="text-muted-foreground">
           Erfassen und verwalten Sie Ihre Reisekosten und Spesen.
         </p>

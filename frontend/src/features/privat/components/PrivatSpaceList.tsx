@@ -85,9 +85,9 @@ export function PrivatSpaceList({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight" id="spaces-heading">
+          <h1 className="text-3xl font-bold tracking-tight" id="spaces-heading">
             Meine Bereiche
-          </h2>
+          </h1>
           <p className="text-muted-foreground" id="spaces-description">
             Verwalten Sie Ihre persönlichen und geteilten Dokumentenbereiche
           </p>

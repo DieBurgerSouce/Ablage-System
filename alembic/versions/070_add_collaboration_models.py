@@ -22,85 +22,107 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Document Comments
-    op.create_table(
-        'document_comments',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('document_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('documents.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('parent_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('document_comments.id', ondelete='CASCADE'), nullable=True),
-        sa.Column('content', sa.Text, nullable=False),
-        sa.Column('mentions', postgresql.JSONB, default=list),
-        sa.Column('reactions', postgresql.JSONB, default=list),
-        sa.Column('is_edited', sa.Boolean, default=False),
-        sa.Column('is_deleted', sa.Boolean, default=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now()),
-    )
+    """Create collaboration tables (comments, activities, notifications).
 
-    op.create_index('ix_doc_comment_document', 'document_comments', ['document_id'])
-    op.create_index('ix_doc_comment_user', 'document_comments', ['user_id'])
-    op.create_index('ix_doc_comment_parent', 'document_comments', ['parent_id'])
-    op.create_index('ix_doc_comment_created', 'document_comments', ['created_at'])
+    IDEMPOTENT: Prueft ob Tabellen existieren bevor sie erstellt werden.
+    """
+    op.execute("""
+        DO $$
+        BEGIN
+            -- ==================== DOCUMENT COMMENTS ====================
+            IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'document_comments') THEN
+                CREATE TABLE document_comments (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+                    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    parent_id UUID REFERENCES document_comments(id) ON DELETE CASCADE,
+                    content TEXT NOT NULL,
+                    mentions JSONB DEFAULT '[]',
+                    reactions JSONB DEFAULT '[]',
+                    is_edited BOOLEAN DEFAULT false,
+                    is_deleted BOOLEAN DEFAULT false,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            END IF;
 
-    # Document Activities
-    op.create_table(
-        'document_activities',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('document_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('documents.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='SET NULL'), nullable=True),
-        sa.Column('activity_type', sa.String(50), nullable=False),
-        sa.Column('description', sa.String(500), nullable=False),
-        sa.Column('metadata', postgresql.JSONB, default=dict),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
-    )
+            -- Indices fuer document_comments
+            CREATE INDEX IF NOT EXISTS ix_doc_comment_document ON document_comments(document_id);
+            CREATE INDEX IF NOT EXISTS ix_doc_comment_user ON document_comments(user_id);
+            CREATE INDEX IF NOT EXISTS ix_doc_comment_parent ON document_comments(parent_id);
+            CREATE INDEX IF NOT EXISTS ix_doc_comment_created ON document_comments(created_at);
 
-    op.create_index('ix_doc_activity_document', 'document_activities', ['document_id'])
-    op.create_index('ix_doc_activity_user', 'document_activities', ['user_id'])
-    op.create_index('ix_doc_activity_type', 'document_activities', ['activity_type'])
-    op.create_index('ix_doc_activity_created', 'document_activities', ['created_at'])
+            -- ==================== DOCUMENT ACTIVITIES ====================
+            IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'document_activities') THEN
+                CREATE TABLE document_activities (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+                    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                    activity_type VARCHAR(50) NOT NULL,
+                    description VARCHAR(500) NOT NULL,
+                    metadata JSONB DEFAULT '{}',
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            END IF;
 
-    # User Notifications
-    op.create_table(
-        'user_notifications',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('from_user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='SET NULL'), nullable=True),
-        sa.Column('document_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('documents.id', ondelete='CASCADE'), nullable=True),
-        sa.Column('notification_type', sa.String(50), nullable=False),
-        sa.Column('title', sa.String(200), nullable=False),
-        sa.Column('message', sa.Text, nullable=False),
-        sa.Column('action_url', sa.String(500), nullable=True),
-        sa.Column('is_read', sa.Boolean, default=False),
-        sa.Column('read_at', sa.DateTime(timezone=True), nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
-    )
+            -- Indices fuer document_activities
+            CREATE INDEX IF NOT EXISTS ix_doc_activity_document ON document_activities(document_id);
+            CREATE INDEX IF NOT EXISTS ix_doc_activity_user ON document_activities(user_id);
+            CREATE INDEX IF NOT EXISTS ix_doc_activity_type ON document_activities(activity_type);
+            CREATE INDEX IF NOT EXISTS ix_doc_activity_created ON document_activities(created_at);
 
-    op.create_index('ix_notification_user', 'user_notifications', ['user_id'])
-    op.create_index('ix_notification_unread', 'user_notifications', ['user_id', 'is_read'])
-    op.create_index('ix_notification_created', 'user_notifications', ['created_at'])
+            -- ==================== USER NOTIFICATIONS ====================
+            IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_notifications') THEN
+                CREATE TABLE user_notifications (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    from_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                    document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
+                    notification_type VARCHAR(50) NOT NULL,
+                    title VARCHAR(200) NOT NULL,
+                    message TEXT NOT NULL,
+                    action_url VARCHAR(500),
+                    is_read BOOLEAN DEFAULT false,
+                    read_at TIMESTAMPTZ,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            END IF;
+
+            -- Indices fuer user_notifications
+            CREATE INDEX IF NOT EXISTS ix_notification_user ON user_notifications(user_id);
+            CREATE INDEX IF NOT EXISTS ix_notification_unread ON user_notifications(user_id, is_read);
+            CREATE INDEX IF NOT EXISTS ix_notification_created ON user_notifications(created_at);
+
+        END $$;
+    """)
 
 
 def downgrade() -> None:
-    # Wichtig: Indices vor Tabellen droppen um DB-Konsistenz zu gewährleisten
-    # user_notifications Indices
-    op.drop_index('ix_notification_created', table_name='user_notifications')
-    op.drop_index('ix_notification_unread', table_name='user_notifications')
-    op.drop_index('ix_notification_user', table_name='user_notifications')
+    """Remove collaboration tables.
 
-    # document_activities Indices
-    op.drop_index('ix_doc_activity_created', table_name='document_activities')
-    op.drop_index('ix_doc_activity_type', table_name='document_activities')
-    op.drop_index('ix_doc_activity_user', table_name='document_activities')
-    op.drop_index('ix_doc_activity_document', table_name='document_activities')
+    IDEMPOTENT: Prueft ob Tabellen existieren bevor sie gedroppt werden.
+    """
+    op.execute("""
+        DO $$
+        BEGIN
+            -- user_notifications Indices und Tabelle
+            DROP INDEX IF EXISTS ix_notification_created;
+            DROP INDEX IF EXISTS ix_notification_unread;
+            DROP INDEX IF EXISTS ix_notification_user;
+            DROP TABLE IF EXISTS user_notifications CASCADE;
 
-    # document_comments Indices
-    op.drop_index('ix_doc_comment_created', table_name='document_comments')
-    op.drop_index('ix_doc_comment_parent', table_name='document_comments')
-    op.drop_index('ix_doc_comment_user', table_name='document_comments')
-    op.drop_index('ix_doc_comment_document', table_name='document_comments')
+            -- document_activities Indices und Tabelle
+            DROP INDEX IF EXISTS ix_doc_activity_created;
+            DROP INDEX IF EXISTS ix_doc_activity_type;
+            DROP INDEX IF EXISTS ix_doc_activity_user;
+            DROP INDEX IF EXISTS ix_doc_activity_document;
+            DROP TABLE IF EXISTS document_activities CASCADE;
 
-    # Tabellen droppen
-    op.drop_table('user_notifications')
-    op.drop_table('document_activities')
-    op.drop_table('document_comments')
+            -- document_comments Indices und Tabelle
+            DROP INDEX IF EXISTS ix_doc_comment_created;
+            DROP INDEX IF EXISTS ix_doc_comment_parent;
+            DROP INDEX IF EXISTS ix_doc_comment_user;
+            DROP INDEX IF EXISTS ix_doc_comment_document;
+            DROP TABLE IF EXISTS document_comments CASCADE;
+        END $$;
+    """)

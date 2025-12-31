@@ -305,7 +305,7 @@ function BatchWorkflowPage() {
                         Zurück
                     </Button>
                     <div>
-                        <h1 className="text-xl font-bold">{batch.name}</h1>
+                        <h1 className="text-2xl font-bold tracking-tight">{batch.name}</h1>
                         <p className="text-sm text-muted-foreground">
                             {batch.items_completed + 1} / {batch.actual_size} Items
                         </p>

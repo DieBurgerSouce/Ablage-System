@@ -597,6 +597,7 @@ class JobAdminService:
         throughput_per_hour = throughput_result.scalar() or 0
 
         # Average processing time (last 24h, completed jobs)
+        # Explicit NULL checks for both timestamps to prevent SQL arithmetic errors
         avg_time_result = await db.execute(
             select(func.avg(
                 func.extract('epoch', ProcessingJob.completed_at) -
@@ -605,6 +606,7 @@ class JobAdminService:
                 and_(
                     ProcessingJob.status == ProcessingStatus.COMPLETED,
                     ProcessingJob.completed_at >= last_24h,
+                    ProcessingJob.completed_at.isnot(None),  # Explicit NULL check
                     ProcessingJob.started_at.isnot(None)
                 )
             )
@@ -612,6 +614,7 @@ class JobAdminService:
         avg_processing_time_seconds = avg_time_result.scalar() or 0
 
         # Average wait time (last 24h)
+        # Explicit NULL checks for both timestamps to prevent SQL arithmetic errors
         avg_wait_result = await db.execute(
             select(func.avg(
                 func.extract('epoch', ProcessingJob.started_at) -
@@ -619,6 +622,7 @@ class JobAdminService:
             )).where(
                 and_(
                     ProcessingJob.started_at.isnot(None),
+                    ProcessingJob.created_at.isnot(None),  # Explicit NULL check
                     ProcessingJob.created_at >= last_24h
                 )
             )

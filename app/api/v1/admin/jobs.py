@@ -441,7 +441,7 @@ async def get_job_stats(
     ip_address = request.client.host if request.client else None
     audit = SecurityAuditLogger(db)
     await audit.log_event(
-        event_type=SecurityEventType.ADMIN_DATA_EXPORT,  # Closest existing event type
+        event_type=SecurityEventType.ADMIN_JOB_ACCESSED,  # Job stats viewing
         user_id=str(admin.id),
         ip_address=ip_address,
         resource_type="job_statistics",

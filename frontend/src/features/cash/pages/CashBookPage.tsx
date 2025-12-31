@@ -72,7 +72,7 @@ export function CashBookPage() {
           <Button variant="ghost" size="icon" onClick={handleBack}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-xl font-semibold">Kasse nicht gefunden</h1>
+          <h1 className="text-xl font-bold tracking-tight">Kasse nicht gefunden</h1>
         </div>
         <p className="text-muted-foreground">
           Die angeforderte Kasse konnte nicht gefunden werden.

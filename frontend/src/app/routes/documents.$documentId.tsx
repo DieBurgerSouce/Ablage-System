@@ -48,7 +48,7 @@ function DocumentViewerPage() {
                         </svg>
                     </div>
                     <div>
-                        <h1 className="font-display font-semibold text-lg tracking-tight truncate max-w-md">{document.title}</h1>
+                        <h1 className="text-2xl font-bold tracking-tight truncate max-w-md">{document.title}</h1>
                         <p className="text-xs text-muted-foreground font-mono">{document.id}</p>
                     </div>
                 </div>

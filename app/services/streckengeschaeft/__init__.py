@@ -1324,8 +1324,9 @@ class DropShipmentClassificationService:
             buyer = next((p for p in cl.parties if p.party_role == 'bill_to'), None)
             if buyer and buyer.vat_id:
                 is_triangular = cl.transaction_type == 'triangular_eu'
-                vat_id = buyer.vat_id.upper().replace(' ', '')  # Normalize VAT ID
-                country_code = buyer.country_code or vat_id[:2]
+                # Null-safe VAT ID normalization
+                vat_id = (buyer.vat_id or "").upper().replace(' ', '')
+                country_code = buyer.country_code or (vat_id[:2] if len(vat_id) >= 2 else "")
 
                 # Extract amount from document's extracted_data
                 amount = Decimal('0')

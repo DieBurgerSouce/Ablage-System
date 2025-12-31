@@ -78,7 +78,7 @@ function DocumentRelationshipsPage() {
                     </Button>
                 </Link>
                 <div className="flex-1">
-                    <h1 className="text-2xl font-bold">Relationships</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">Relationships</h1>
                     <p className="text-muted-foreground">Managing relationships for {document.title || document.name}</p>
                 </div>
                 <div className="flex gap-2">

@@ -42,7 +42,8 @@ import type {
   SampleSource,
 } from '../types/validation-queue.types';
 
-const BASE_URL = '/api/v1/validation';
+// Note: apiClient already has baseURL '/api/v1', so we only add the resource path
+const BASE_URL = '/validation';
 
 // ==================== Query Keys ====================
 

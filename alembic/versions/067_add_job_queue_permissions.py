@@ -149,16 +149,22 @@ def upgrade() -> None:
 
     # ==================== USER NOTIFICATION SETTINGS ====================
     # Fuege JSONB-Spalte fuer Job Queue Notification Preferences hinzu
-    op.add_column(
-        'user_preferences',
-        sa.Column(
-            'job_queue_notifications',
-            postgresql.JSONB,
-            nullable=True,
-            server_default='{"enabled": true, "on_completion": true, "on_failure": true, "on_queue_full": false}',
-            comment='Notification-Einstellungen fuer Job Queue Events'
-        )
-    )
+    # Conditional: Nur wenn user_preferences Tabelle existiert
+    op.execute("""
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_preferences') THEN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'user_preferences' AND column_name = 'job_queue_notifications'
+                ) THEN
+                    ALTER TABLE user_preferences ADD COLUMN job_queue_notifications JSONB
+                    DEFAULT '{"enabled": true, "on_completion": true, "on_failure": true, "on_queue_full": false}';
+                    COMMENT ON COLUMN user_preferences.job_queue_notifications IS 'Notification-Einstellungen fuer Job Queue Events';
+                END IF;
+            END IF;
+        END $$;
+    """)
 
 
 def downgrade() -> None:
@@ -167,8 +173,18 @@ def downgrade() -> None:
     """
     conn = op.get_bind()
 
-    # Entferne Notification Settings Spalte
-    op.drop_column('user_preferences', 'job_queue_notifications')
+    # Entferne Notification Settings Spalte (conditional)
+    op.execute("""
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'user_preferences' AND column_name = 'job_queue_notifications'
+            ) THEN
+                ALTER TABLE user_preferences DROP COLUMN job_queue_notifications;
+            END IF;
+        END $$;
+    """)
 
     # Entferne Role-Permission Zuweisungen
     permission_names = [

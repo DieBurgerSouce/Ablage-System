@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Settings, Construction } from 'lucide-react'
+import { Construction } from 'lucide-react'
 
 export const Route = createFileRoute('/admin/settings')({
     component: AdminSettingsPage,
@@ -8,14 +8,9 @@ export const Route = createFileRoute('/admin/settings')({
 function AdminSettingsPage() {
     return (
         <div className="space-y-8">
-            <div className="flex items-center gap-3 mb-8">
-                <div className="p-3 rounded-lg bg-primary/10">
-                    <Settings className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">Einstellungen</h1>
-                    <p className="text-muted-foreground">Systemkonfiguration und Einstellungen</p>
-                </div>
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">Einstellungen</h1>
+                <p className="text-muted-foreground">Systemkonfiguration und Einstellungen</p>
             </div>
 
             <div className="flex flex-col items-center justify-center py-16 px-8 border-2 border-dashed rounded-xl bg-muted/30">

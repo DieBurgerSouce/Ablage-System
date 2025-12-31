@@ -17,23 +17,31 @@ depends_on = None
 
 def upgrade() -> None:
     """Rename query -> search_query in search_analytics."""
-    # Drop the old index first
-    op.drop_index('ix_search_analytics_query_pattern', table_name='search_analytics')
+    # All operations are conditional - skip if table/column doesn't exist
+    op.execute("""
+        DO $$
+        BEGIN
+            -- Drop old index if exists
+            DROP INDEX IF EXISTS ix_search_analytics_query_pattern;
 
-    # Rename the column
-    op.alter_column(
-        'search_analytics',
-        'query',
-        new_column_name='search_query'
-    )
+            -- Rename column if 'query' exists
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'search_analytics' AND column_name = 'query'
+            ) THEN
+                ALTER TABLE search_analytics RENAME COLUMN query TO search_query;
+            END IF;
 
-    # Recreate the index with new column name
-    op.create_index(
-        'ix_search_analytics_query_pattern',
-        'search_analytics',
-        ['search_query'],
-        postgresql_ops={'search_query': 'varchar_pattern_ops'}
-    )
+            -- Create index only if search_query column exists
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'search_analytics' AND column_name = 'search_query'
+            ) THEN
+                CREATE INDEX IF NOT EXISTS ix_search_analytics_query_pattern
+                ON search_analytics (search_query varchar_pattern_ops);
+            END IF;
+        END $$;
+    """)
 
 
 def downgrade() -> None:

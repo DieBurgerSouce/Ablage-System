@@ -411,7 +411,7 @@ export function ClassificationDetail() {
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">{t('streckengeschaeft.classification.details')}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t('streckengeschaeft.classification.details')}</h1>
             <p className="text-muted-foreground font-mono text-sm">{classification.id}</p>
           </div>
         </div>

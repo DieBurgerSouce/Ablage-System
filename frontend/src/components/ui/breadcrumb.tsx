@@ -53,7 +53,6 @@ const ROUTE_LABELS: Record<string, string> = {
     // Business entities
     '/kunden': 'Kunden',
     '/lieferanten': 'Lieferanten',
-    '/business-entities': 'Geschaeftspartner',
     '/document-groups': 'Dokumentengruppen',
 
     // Finanzen

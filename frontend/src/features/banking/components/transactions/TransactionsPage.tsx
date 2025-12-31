@@ -94,7 +94,7 @@ export function TransactionsPage() {
         <div className="space-y-6">
             {/* Header */}
             <div>
-                <h2 className="text-2xl font-bold tracking-tight">Transaktionen</h2>
+                <h1 className="text-3xl font-bold tracking-tight">Transaktionen</h1>
                 <p className="text-muted-foreground">
                     Alle importierten Banktransaktionen anzeigen und verwalten.
                 </p>

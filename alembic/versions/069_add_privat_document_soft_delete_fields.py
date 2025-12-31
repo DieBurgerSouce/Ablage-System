@@ -23,45 +23,79 @@ depends_on = None
 
 
 def upgrade() -> None:
-    """Add is_active and deleted_by_id columns to privat_documents."""
-    # Add is_active column with default True
-    op.add_column(
-        'privat_documents',
-        sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.text('true'))
-    )
+    """Add is_active and deleted_by_id columns to privat_documents.
 
-    # Add deleted_by_id column (nullable, only set when deleted)
-    op.add_column(
-        'privat_documents',
-        sa.Column('deleted_by_id', UUID(as_uuid=True), nullable=True)
-    )
+    IDEMPOTENT: Prueft ob Tabelle/Spalten existieren bevor Aenderungen gemacht werden.
+    """
+    op.execute("""
+        DO $$
+        BEGIN
+            -- Nur ausfuehren wenn privat_documents Tabelle existiert
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'privat_documents') THEN
 
-    # Add foreign key constraint
-    op.create_foreign_key(
-        'fk_privat_documents_deleted_by_id',
-        'privat_documents',
-        'users',
-        ['deleted_by_id'],
-        ['id'],
-        ondelete='SET NULL'
-    )
+                -- is_active Spalte hinzufuegen
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'privat_documents' AND column_name = 'is_active'
+                ) THEN
+                    ALTER TABLE privat_documents ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true;
+                END IF;
 
-    # Add index for is_active queries (frequently used in filters)
-    op.create_index(
-        'ix_privat_documents_is_active',
-        'privat_documents',
-        ['is_active']
-    )
+                -- deleted_by_id Spalte hinzufuegen
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'privat_documents' AND column_name = 'deleted_by_id'
+                ) THEN
+                    ALTER TABLE privat_documents ADD COLUMN deleted_by_id UUID;
+
+                    -- Foreign Key nur hinzufuegen wenn Spalte neu erstellt wurde
+                    ALTER TABLE privat_documents
+                    ADD CONSTRAINT fk_privat_documents_deleted_by_id
+                    FOREIGN KEY (deleted_by_id) REFERENCES users(id) ON DELETE SET NULL;
+                END IF;
+
+                -- Index erstellen (IF NOT EXISTS ist PostgreSQL 9.5+)
+                CREATE INDEX IF NOT EXISTS ix_privat_documents_is_active ON privat_documents(is_active);
+
+            END IF;
+        END $$;
+    """)
 
 
 def downgrade() -> None:
-    """Remove is_active and deleted_by_id columns from privat_documents."""
-    # Drop index first
-    op.drop_index('ix_privat_documents_is_active', table_name='privat_documents')
+    """Remove is_active and deleted_by_id columns from privat_documents.
 
-    # Drop foreign key constraint
-    op.drop_constraint('fk_privat_documents_deleted_by_id', 'privat_documents', type_='foreignkey')
+    IDEMPOTENT: Prueft ob Tabelle/Spalten existieren bevor Aenderungen gemacht werden.
+    """
+    op.execute("""
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'privat_documents') THEN
+                -- Index droppen
+                DROP INDEX IF EXISTS ix_privat_documents_is_active;
 
-    # Drop columns
-    op.drop_column('privat_documents', 'deleted_by_id')
-    op.drop_column('privat_documents', 'is_active')
+                -- Foreign Key Constraint droppen
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints
+                    WHERE constraint_name = 'fk_privat_documents_deleted_by_id'
+                ) THEN
+                    ALTER TABLE privat_documents DROP CONSTRAINT fk_privat_documents_deleted_by_id;
+                END IF;
+
+                -- Spalten droppen
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'privat_documents' AND column_name = 'deleted_by_id'
+                ) THEN
+                    ALTER TABLE privat_documents DROP COLUMN deleted_by_id;
+                END IF;
+
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'privat_documents' AND column_name = 'is_active'
+                ) THEN
+                    ALTER TABLE privat_documents DROP COLUMN is_active;
+                END IF;
+            END IF;
+        END $$;
+    """)

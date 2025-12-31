@@ -234,7 +234,7 @@ export function UserManagement() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Benutzerverwaltung</h2>
+                    <h1 className="text-3xl font-bold tracking-tight">Benutzerverwaltung</h1>
                     <p className="text-muted-foreground">Verwalten Sie Benutzer, Rollen und Berechtigungen.</p>
                 </div>
                 <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Neuer Benutzer</Button>

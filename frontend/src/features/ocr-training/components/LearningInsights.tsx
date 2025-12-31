@@ -103,10 +103,10 @@ export function LearningInsights() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                         <Brain className="h-6 w-6" />
                         Self-Learning Status
-                    </h2>
+                    </h1>
                     <p className="text-muted-foreground">
                         Automatische Backend-Optimierung basierend auf Korrekturen
                     </p>

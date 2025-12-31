@@ -258,7 +258,7 @@ export function ValidationQueueEditor({ itemId }: ValidationQueueEditorProps) {
             <ArrowLeft className="w-5 h-5" aria-hidden="true" />
           </Button>
           <div>
-            <h1 className="text-lg font-semibold">
+            <h1 className="text-lg font-bold tracking-tight">
               {item.document_name || `Dokument ${item.document_id.slice(0, 8)}`}
             </h1>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">

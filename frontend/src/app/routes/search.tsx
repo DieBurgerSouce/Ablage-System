@@ -80,7 +80,7 @@ function SearchPage() {
         <div className="p-8 space-y-8">
             {/* Header */}
             <div className="text-center space-y-4 mb-12">
-                <h1 className="text-4xl font-bold tracking-tight font-display">
+                <h1 className="text-3xl font-bold tracking-tight">
                     Dokumentensuche
                 </h1>
                 <p className="text-muted-foreground text-lg max-w-2xl mx-auto">

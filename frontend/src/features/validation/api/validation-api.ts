@@ -25,7 +25,8 @@ import type {
   TrainingSampleStatus,
 } from '../types';
 
-const BASE_URL = '/api/v1/training';
+// Note: apiClient already has baseURL '/api/v1', so we only add the resource path
+const BASE_URL = '/training';
 
 // ==================== Training Samples ====================
 

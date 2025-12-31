@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, Building2, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { usePermissions } from '@/lib/auth/hooks/use-permissions'
@@ -86,7 +86,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     <SidebarLink to="/validation-queue" icon={CheckCircle} label="Validierung" onNavigate={onNavigate} />
                 )}
                 <SidebarLink to="/document-groups" icon={Layers} label="Dokumentgruppen" onNavigate={onNavigate} />
-                <SidebarLink to="/business-entities" icon={Building2} label="Geschäftspartner" onNavigate={onNavigate} />
                 <SidebarLink to="/admin/datev" icon={FileSpreadsheet} label="DATEV Export" onNavigate={onNavigate} />
 
                 {/* Ablage-Struktur Section */}

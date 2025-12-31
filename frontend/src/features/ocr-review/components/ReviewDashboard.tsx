@@ -107,7 +107,7 @@ export function ReviewDashboard() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">OCR Review Queue</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">OCR Review Queue</h1>
                     <p className="text-muted-foreground">
                         Überprüfe und korrigiere OCR-Ergebnisse für das Self-Learning
                     </p>

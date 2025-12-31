@@ -802,7 +802,7 @@ def upgrade() -> None:
 
         # Neue Rolle: privat_user
         op.execute("""
-            INSERT INTO roles (id, name, display_name, description, priority, is_system, is_active, created_at, updated_at)
+            INSERT INTO roles (id, name, display_name, description, priority, is_system, is_active, color, created_at, updated_at)
             VALUES (
                 gen_random_uuid(),
                 'privat_user',
@@ -811,6 +811,7 @@ def upgrade() -> None:
                 25,
                 true,
                 true,
+                '#6B7280',
                 NOW(),
                 NOW()
             )

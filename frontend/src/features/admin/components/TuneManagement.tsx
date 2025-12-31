@@ -160,7 +160,7 @@ export function TuneManagement() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Tune Konfiguration</h2>
+                    <h1 className="text-3xl font-bold tracking-tight">Tune Konfiguration</h1>
                     <p className="text-muted-foreground">Verwalten Sie Dokumenten-Kontexte und Analyse-Einstellungen.</p>
                 </div>
                 <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Neuer Tune</Button>

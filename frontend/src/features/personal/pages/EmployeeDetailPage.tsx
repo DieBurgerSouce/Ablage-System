@@ -123,7 +123,7 @@ export function EmployeeDetailPage() {
               </AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-2xl font-bold flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
                 {employee.title && `${employee.title} `}
                 {employee.full_name}
                 {getStatusBadge(employee.status)}

@@ -111,7 +111,7 @@ export function ExpenseReportDetailPage() {
           <Button variant="ghost" size="icon" onClick={handleBack}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-xl font-semibold">Abrechnung nicht gefunden</h1>
+          <h1 className="text-xl font-bold tracking-tight">Abrechnung nicht gefunden</h1>
         </div>
         <p className="text-muted-foreground">
           Die angeforderte Spesenabrechnung konnte nicht gefunden werden.

@@ -60,16 +60,9 @@ export function TrainingDashboard() {
 
     return (
         <div className="space-y-6">
-            {/* Header mit Grafana Links */}
+            {/* Grafana Links */}
             {dashboards?.enabled && (
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold">OCR Training Dashboard</h1>
-                        <p className="text-muted-foreground">
-                            Ground Truth, Benchmarks & Self-Learning
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
                         {dashboards?.dashboards?.ocr_pipeline && (
                             <Button variant="outline" size="sm" asChild>
                                 <a
@@ -112,7 +105,6 @@ export function TrainingDashboard() {
                                 </a>
                             </Button>
                         )}
-                    </div>
                 </div>
             )}
 

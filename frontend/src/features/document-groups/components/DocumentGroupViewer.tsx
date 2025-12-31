@@ -21,7 +21,7 @@ export function DocumentGroupViewer({ groupId }: { groupId: string }) {
                         </Link>
                     </Button>
                     <div>
-                        <h2 className="text-2xl font-bold tracking-tight">Gruppe: {groupId}</h2>
+                        <h1 className="text-3xl font-bold tracking-tight">Gruppe: {groupId}</h1>
                         <p className="text-muted-foreground">3 Dokumente • Erstellt am 15.11.2023</p>
                     </div>
                 </div>

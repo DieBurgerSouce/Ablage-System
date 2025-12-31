@@ -73,7 +73,7 @@ export function JobQueueDashboard() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Job Queue Management</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Job Queue Management</h1>
             <p className="text-muted-foreground">
               Verwaltung aller Hintergrund-Tasks und Systemressourcen
             </p>

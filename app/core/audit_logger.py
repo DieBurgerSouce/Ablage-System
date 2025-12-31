@@ -436,7 +436,7 @@ class SecurityAuditLogger:
         """
         # Strukturiertes Logging (immer)
         log_data = {
-            "event": event_type.value,
+            "event_type": event_type.value,
             "user_id": user_id[:8] + "..." if user_id else None,
             "ip": ip_address,
             "resource_type": resource_type,

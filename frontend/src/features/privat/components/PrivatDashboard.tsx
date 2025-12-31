@@ -86,7 +86,7 @@ export function PrivatDashboard({
             <Lock className="h-6 w-6 text-purple-600 dark:text-purple-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Privat</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Privat</h1>
             <p className="text-muted-foreground">
               Ihre persönliche Dokumentenverwaltung
             </p>

@@ -2498,17 +2498,28 @@ async def get_dunning_stages(
     current_user: User = Depends(get_current_active_user),
 ) -> DunningStagesListResponse:
     """Hole konfigurierte Mahnstufen."""
-    stages = await dunning_stage_service.get_stages(
-        db=db,
-        user_id=current_user.id,
-    )
+    try:
+        stages = await dunning_stage_service.get_stages(
+            db=db,
+            user_id=current_user.id,
+        )
 
-    return DunningStagesListResponse(
-        stages=stages,
-        interest_rate_b2b=dunning_stage_service.get_interest_rate(is_b2b=True),
-        interest_rate_b2c=dunning_stage_service.get_interest_rate(is_b2b=False),
-        b2b_pauschale=dunning_stage_service.B2B_PAUSCHALE,
-    )
+        return DunningStagesListResponse(
+            stages=stages or [],  # Handle None/empty list
+            interest_rate_b2b=dunning_stage_service.get_interest_rate(is_b2b=True),
+            interest_rate_b2c=dunning_stage_service.get_interest_rate(is_b2b=False),
+            b2b_pauschale=dunning_stage_service.B2B_PAUSCHALE,
+        )
+    except Exception as e:
+        logger.error(
+            "dunning_stages_get_failed",
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Abrufen der Mahnstufen.",
+        )
 
 
 @dunning_settings_router.post(

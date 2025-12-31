@@ -94,9 +94,11 @@ async def list_notifications(
     )
     total = count_result.scalar() or 0
 
-    # Query Notifications mit from_user und document
+    # Query Notifications mit Eager Loading (N+1 Fix)
     query = (
         select(UserNotification)
+        .options(selectinload(UserNotification.from_user))
+        .options(selectinload(UserNotification.document))
         .where(base_filter)
         .order_by(UserNotification.created_at.desc())
         .limit(limit)
@@ -106,25 +108,11 @@ async def list_notifications(
     result = await db.execute(query)
     notifications_db = result.scalars().all()
 
-    # Lade related objects
-    notifications = []
-    for notif in notifications_db:
-        from_user = None
-        document = None
-
-        if notif.from_user_id:
-            user_result = await db.execute(
-                select(User).where(User.id == notif.from_user_id)
-            )
-            from_user = user_result.scalar_one_or_none()
-
-        if notif.document_id:
-            doc_result = await db.execute(
-                select(Document).where(Document.id == notif.document_id)
-            )
-            document = doc_result.scalar_one_or_none()
-
-        notifications.append(_build_notification_response(notif, from_user, document))
+    # Baue Responses mit bereits geladenen Relations
+    notifications = [
+        _build_notification_response(notif, notif.from_user, notif.document)
+        for notif in notifications_db
+    ]
 
     return NotificationsListResponse(
         notifications=notifications,
@@ -169,7 +157,10 @@ async def mark_as_read(
 ) -> NotificationResponse:
     """Benachrichtigung als gelesen markieren."""
     result = await db.execute(
-        select(UserNotification).where(
+        select(UserNotification)
+        .options(selectinload(UserNotification.from_user))
+        .options(selectinload(UserNotification.document))
+        .where(
             and_(
                 UserNotification.id == notification_id,
                 UserNotification.user_id == current_user.id,
@@ -189,29 +180,13 @@ async def mark_as_read(
     await db.commit()
     await db.refresh(notification)
 
-    # Lade related objects
-    from_user = None
-    document = None
-
-    if notification.from_user_id:
-        user_result = await db.execute(
-            select(User).where(User.id == notification.from_user_id)
-        )
-        from_user = user_result.scalar_one_or_none()
-
-    if notification.document_id:
-        doc_result = await db.execute(
-            select(Document).where(Document.id == notification.document_id)
-        )
-        document = doc_result.scalar_one_or_none()
-
     logger.info(
         "notification_marked_read",
         notification_id=str(notification_id),
         user_id=str(current_user.id),
     )
 
-    return _build_notification_response(notification, from_user, document)
+    return _build_notification_response(notification, notification.from_user, notification.document)
 
 
 @router.post(
