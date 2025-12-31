@@ -1,0 +1,9 @@
+{
+  "category": "security",
+  "timestamp": "2025-12-31T05:12:26.564Z",
+  "data": {
+    "mixedContent": [],
+    "cspViolations": [],
+    "insecureForms": []
+  }
+}

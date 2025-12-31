@@ -1,0 +1,1211 @@
+{
+  "category": "coverage",
+  "timestamp": "2025-12-31T05:12:26.560Z",
+  "data": {
+    "js": [],
+    "css": [
+      {
+        "page": "dashboard",
+        "timestamp": "2025-12-31T02:20:48.844Z",
+        "totalBytes": 144600,
+        "usedBytes": 18199,
+        "unusedBytes": 126401,
+        "unusedPercent": "87.4",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-BvmHCWba.css",
+            "totalBytes": 131448,
+            "usedBytes": 18199
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "upload",
+        "timestamp": "2025-12-31T02:23:00.469Z",
+        "totalBytes": 144600,
+        "usedBytes": 15576,
+        "unusedBytes": 129024,
+        "unusedPercent": "89.2",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-BvmHCWba.css",
+            "totalBytes": 131448,
+            "usedBytes": 15576
+          }
+        ]
+      },
+      {
+        "page": "search",
+        "timestamp": "2025-12-31T02:28:40.934Z",
+        "totalBytes": 144600,
+        "usedBytes": 17520,
+        "unusedBytes": 127080,
+        "unusedPercent": "87.9",
+        "files": [
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-BvmHCWba.css",
+            "totalBytes": 131448,
+            "usedBytes": 17520
+          }
+        ]
+      },
+      {
+        "page": "chat-rag",
+        "timestamp": "2025-12-31T02:41:18.765Z",
+        "totalBytes": 144600,
+        "usedBytes": 15714,
+        "unusedBytes": 128886,
+        "unusedPercent": "89.1",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-BvmHCWba.css",
+            "totalBytes": 131448,
+            "usedBytes": 15714
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "relationships",
+        "timestamp": "2025-12-31T02:43:27.304Z",
+        "totalBytes": 144600,
+        "usedBytes": 13654,
+        "unusedBytes": 130946,
+        "unusedPercent": "90.6",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-BvmHCWba.css",
+            "totalBytes": 131448,
+            "usedBytes": 13654
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "monitoring",
+        "timestamp": "2025-12-31T02:45:37.064Z",
+        "totalBytes": 144573,
+        "usedBytes": 14731,
+        "unusedBytes": 129842,
+        "unusedPercent": "89.8",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-CDzVj1MJ.css",
+            "totalBytes": 131421,
+            "usedBytes": 14731
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "jobs",
+        "action": "navigate",
+        "actionId": 107,
+        "timestamp": "2025-12-31T02:46:07.532Z",
+        "totalBytes": 144573,
+        "usedBytes": 17118,
+        "unusedBytes": 127455,
+        "unusedPercent": "88.2",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-CDzVj1MJ.css",
+            "totalBytes": 131421,
+            "usedBytes": 17118
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "automation",
+        "timestamp": "2025-12-31T02:52:48.991Z",
+        "totalBytes": 144573,
+        "usedBytes": 22095,
+        "unusedBytes": 122478,
+        "unusedPercent": "84.7",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-CDzVj1MJ.css",
+            "totalBytes": 131421,
+            "usedBytes": 22095
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "validation-queue",
+        "timestamp": "2025-12-31T03:00:28.117Z",
+        "totalBytes": 144573,
+        "usedBytes": 16713,
+        "unusedBytes": 127860,
+        "unusedPercent": "88.4",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-CDzVj1MJ.css",
+            "totalBytes": 131421,
+            "usedBytes": 16713
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "document-groups",
+        "timestamp": "2025-12-31T03:05:06.868Z",
+        "totalBytes": 144573,
+        "usedBytes": 16206,
+        "unusedBytes": 128367,
+        "unusedPercent": "88.8",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-CDzVj1MJ.css",
+            "totalBytes": 131421,
+            "usedBytes": 16206
+          }
+        ]
+      },
+      {
+        "page": "kasse",
+        "timestamp": "2025-12-31T03:08:14.995Z",
+        "totalBytes": 144573,
+        "usedBytes": 15082,
+        "unusedBytes": 129491,
+        "unusedPercent": "89.6",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-CDzVj1MJ.css",
+            "totalBytes": 131421,
+            "usedBytes": 15082
+          }
+        ]
+      },
+      {
+        "page": "spesen",
+        "timestamp": "2025-12-31T03:11:52.840Z",
+        "totalBytes": 144573,
+        "usedBytes": 15203,
+        "unusedBytes": 129370,
+        "unusedPercent": "89.5",
+        "files": [
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-CDzVj1MJ.css",
+            "totalBytes": 131421,
+            "usedBytes": 15203
+          }
+        ]
+      },
+      {
+        "page": "streckengeschaeft",
+        "timestamp": "2025-12-31T03:16:04.491Z",
+        "totalBytes": 144573,
+        "usedBytes": 16167,
+        "unusedBytes": 128406,
+        "unusedPercent": "88.8",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-CDzVj1MJ.css",
+            "totalBytes": 131421,
+            "usedBytes": 16167
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "streckengeschaeft-zm",
+        "timestamp": "2025-12-31T03:18:24.629Z",
+        "totalBytes": 144529,
+        "usedBytes": 15128,
+        "unusedBytes": 129401,
+        "unusedPercent": "89.5",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 15128
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "finanzen",
+        "timestamp": "2025-12-31T03:20:33.168Z",
+        "totalBytes": 144529,
+        "usedBytes": 15684,
+        "unusedBytes": 128845,
+        "unusedPercent": "89.1",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 15684
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "finanzen-2025",
+        "timestamp": "2025-12-31T03:22:39.628Z",
+        "totalBytes": 144529,
+        "usedBytes": 14745,
+        "unusedBytes": 129784,
+        "unusedPercent": "89.8",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 14745
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "finanzen-2024",
+        "timestamp": "2025-12-31T03:24:45.877Z",
+        "totalBytes": 144529,
+        "usedBytes": 14108,
+        "unusedBytes": 130421,
+        "unusedPercent": "90.2",
+        "files": [
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 14108
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "kunden",
+        "timestamp": "2025-12-31T03:26:53.274Z",
+        "totalBytes": 144529,
+        "usedBytes": 15455,
+        "unusedBytes": 129074,
+        "unusedPercent": "89.3",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 15455
+          }
+        ]
+      },
+      {
+        "page": "lieferanten",
+        "timestamp": "2025-12-31T03:29:01.313Z",
+        "totalBytes": 144529,
+        "usedBytes": 15175,
+        "unusedBytes": 129354,
+        "unusedPercent": "89.5",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 15175
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "personal",
+        "timestamp": "2025-12-31T03:33:18.124Z",
+        "totalBytes": 144529,
+        "usedBytes": 16205,
+        "unusedBytes": 128324,
+        "unusedPercent": "88.8",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 16205
+          }
+        ]
+      },
+      {
+        "page": "business-entities",
+        "timestamp": "2025-12-31T03:36:26.297Z",
+        "totalBytes": 144529,
+        "usedBytes": 16619,
+        "unusedBytes": 127910,
+        "unusedPercent": "88.5",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 16619
+          }
+        ]
+      },
+      {
+        "page": "privat",
+        "timestamp": "2025-12-31T03:40:02.196Z",
+        "totalBytes": 144529,
+        "usedBytes": 16981,
+        "unusedBytes": 127548,
+        "unusedPercent": "88.3",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 16981
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "privat-finanzen",
+        "timestamp": "2025-12-31T03:43:38.261Z",
+        "totalBytes": 144529,
+        "usedBytes": 15895,
+        "unusedBytes": 128634,
+        "unusedPercent": "89.0",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 15895
+          }
+        ]
+      },
+      {
+        "page": "privat-notfall",
+        "timestamp": "2025-12-31T03:45:44.425Z",
+        "totalBytes": 144529,
+        "usedBytes": 14187,
+        "unusedBytes": 130342,
+        "unusedPercent": "90.2",
+        "files": [
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 14187
+          }
+        ]
+      },
+      {
+        "page": "admin-dashboard",
+        "timestamp": "2025-12-31T03:47:52.450Z",
+        "totalBytes": 144529,
+        "usedBytes": 15349,
+        "unusedBytes": 129180,
+        "unusedPercent": "89.4",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 15349
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-users",
+        "timestamp": "2025-12-31T03:53:04.470Z",
+        "totalBytes": 144529,
+        "usedBytes": 15883,
+        "unusedBytes": 128646,
+        "unusedPercent": "89.0",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 15883
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-settings",
+        "timestamp": "2025-12-31T03:55:11.477Z",
+        "totalBytes": 144529,
+        "usedBytes": 14493,
+        "unusedBytes": 130036,
+        "unusedPercent": "90.0",
+        "files": [
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 14493
+          }
+        ]
+      },
+      {
+        "page": "admin-ocr-training",
+        "timestamp": "2025-12-31T04:00:24.097Z",
+        "totalBytes": 144529,
+        "usedBytes": 16607,
+        "unusedBytes": 127922,
+        "unusedPercent": "88.5",
+        "files": [
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 16607
+          }
+        ]
+      },
+      {
+        "page": "admin-ocr-backends",
+        "timestamp": "2025-12-31T04:02:31.575Z",
+        "totalBytes": 144529,
+        "usedBytes": 14584,
+        "unusedBytes": 129945,
+        "unusedPercent": "89.9",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 14584
+          }
+        ]
+      },
+      {
+        "page": "admin-datev",
+        "timestamp": "2025-12-31T04:04:38.639Z",
+        "totalBytes": 144529,
+        "usedBytes": 15644,
+        "unusedBytes": 128885,
+        "unusedPercent": "89.2",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 15644
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-datev-config",
+        "timestamp": "2025-12-31T04:07:44.733Z",
+        "totalBytes": 144529,
+        "usedBytes": 15438,
+        "unusedBytes": 129091,
+        "unusedPercent": "89.3",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 15438
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-datev-export",
+        "timestamp": "2025-12-31T04:11:51.324Z",
+        "totalBytes": 144529,
+        "usedBytes": 15592,
+        "unusedBytes": 128937,
+        "unusedPercent": "89.2",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 15592
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-datev-history",
+        "timestamp": "2025-12-31T04:13:57.770Z",
+        "totalBytes": 144529,
+        "usedBytes": 14994,
+        "unusedBytes": 129535,
+        "unusedPercent": "89.6",
+        "files": [
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 14994
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-datev-vendors",
+        "timestamp": "2025-12-31T04:17:33.782Z",
+        "totalBytes": 144529,
+        "usedBytes": 15526,
+        "unusedBytes": 129003,
+        "unusedPercent": "89.3",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 15526
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-mahnungen",
+        "timestamp": "2025-12-31T04:30:39.002Z",
+        "totalBytes": 144529,
+        "usedBytes": 17749,
+        "unusedBytes": 126780,
+        "unusedPercent": "87.7",
+        "files": [
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 17749
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-mahnungen-aktiv",
+        "timestamp": "2025-12-31T04:39:15.893Z",
+        "totalBytes": 144529,
+        "usedBytes": 15997,
+        "unusedBytes": 128532,
+        "unusedPercent": "88.9",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 15997
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-mahnungen-aufgaben",
+        "timestamp": "2025-12-31T04:43:52.365Z",
+        "totalBytes": 144529,
+        "usedBytes": 15401,
+        "unusedBytes": 129128,
+        "unusedPercent": "89.3",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 15401
+          }
+        ]
+      },
+      {
+        "page": "admin-mahnungen-einstellungen",
+        "timestamp": "2025-12-31T04:48:00.470Z",
+        "totalBytes": 144529,
+        "usedBytes": 16929,
+        "unusedBytes": 127600,
+        "unusedPercent": "88.3",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 16929
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-mahnungen-eskalation",
+        "timestamp": "2025-12-31T04:57:37.512Z",
+        "totalBytes": 144529,
+        "usedBytes": 18048,
+        "unusedBytes": 126481,
+        "unusedPercent": "87.5",
+        "files": [
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 18048
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-mahnungen-kanban",
+        "timestamp": "2025-12-31T04:59:44.255Z",
+        "totalBytes": 144529,
+        "usedBytes": 16080,
+        "unusedBytes": 128449,
+        "unusedPercent": "88.9",
+        "files": [
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 16080
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-mahnungen-mahnstopp",
+        "timestamp": "2025-12-31T05:11:50.190Z",
+        "totalBytes": 144529,
+        "usedBytes": 17537,
+        "unusedBytes": 126992,
+        "unusedPercent": "87.9",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 17537
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-banking",
+        "timestamp": "2025-12-31T05:11:55.690Z",
+        "totalBytes": 144529,
+        "usedBytes": 9776,
+        "unusedBytes": 134753,
+        "unusedPercent": "93.2",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 9776
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-banking-accounts",
+        "timestamp": "2025-12-31T05:12:00.800Z",
+        "totalBytes": 144529,
+        "usedBytes": 9776,
+        "unusedBytes": 134753,
+        "unusedPercent": "93.2",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 9776
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-banking-import",
+        "timestamp": "2025-12-31T05:12:05.875Z",
+        "totalBytes": 144529,
+        "usedBytes": 9776,
+        "unusedBytes": 134753,
+        "unusedPercent": "93.2",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 9776
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-banking-payments",
+        "timestamp": "2025-12-31T05:12:10.993Z",
+        "totalBytes": 144529,
+        "usedBytes": 9776,
+        "unusedBytes": 134753,
+        "unusedPercent": "93.2",
+        "files": [
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 9776
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-banking-reconciliation",
+        "timestamp": "2025-12-31T05:12:16.095Z",
+        "totalBytes": 144529,
+        "usedBytes": 9776,
+        "unusedBytes": 134753,
+        "unusedPercent": "93.2",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 9776
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-banking-skonto",
+        "timestamp": "2025-12-31T05:12:21.208Z",
+        "totalBytes": 144529,
+        "usedBytes": 9776,
+        "unusedBytes": 134753,
+        "unusedPercent": "93.2",
+        "files": [
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 9776
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          }
+        ]
+      },
+      {
+        "page": "admin-banking-transactions",
+        "timestamp": "2025-12-31T05:12:26.466Z",
+        "totalBytes": 144529,
+        "usedBytes": 9776,
+        "unusedBytes": 134753,
+        "unusedPercent": "93.2",
+        "files": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+            "totalBytes": 6688,
+            "usedBytes": 0
+          },
+          {
+            "url": "http://localhost/assets/index-kDgct0GN.css",
+            "totalBytes": 131377,
+            "usedBytes": 9776
+          },
+          {
+            "url": "https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap",
+            "totalBytes": 6464,
+            "usedBytes": 0
+          }
+        ]
+      }
+    ]
+  }
+}

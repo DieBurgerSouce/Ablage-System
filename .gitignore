@@ -105,3 +105,38 @@ infrastructure/vault/config/certs/
 
 # Vault secrets (NEVER commit these!)
 infrastructure/vault/.vault*
+
+# Browser Diagnostics - Temporary files
+*.png
+!frontend/public/*.png
+!docs/**/*.png
+screenshots/
+test-reports/
+
+# Temporary test scripts (keep only the main suite)
+test_*.js
+!tests/e2e/ultra-browser-diagnostics.js
+run-*.bat
+run-*.js
+
+# Root-level temporary files
+*.md
+!README.md
+!CLAUDE.md
+!ARCHITECTURE.md
+!DEPLOYMENT.md
+!CONVENTIONS.md
+!docs/**/*.md
+!.claude/**/*.md
+!frontend/**/*.md
+
+# Node modules in root (frontend has its own)
+/node_modules/
+/package-lock.json
+
+# Playwright MCP
+.playwright-mcp/
+.mcp.json
+
+# Python scripts in root
+/reset_password.py
