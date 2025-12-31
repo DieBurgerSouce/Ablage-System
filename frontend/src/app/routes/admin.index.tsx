@@ -1,6 +1,42 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { FileText, Users, Cpu, HardDrive, Activity, CheckCircle } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
+import { FileText, Users, Cpu, HardDrive, Activity, CheckCircle, AlertCircle } from 'lucide-react'
+import { apiClient } from '@/lib/api/client'
+
+interface SystemDashboard {
+    gpu: {
+        available: boolean
+        gpu_name: string | null
+        total_gb: number
+        free_gb: number
+        allocated_gb: number
+        utilization_percent: number
+        temperature_celsius: number | null
+        memory_usage_percent: number
+    }
+    queue: {
+        pending_jobs: number
+        processing_jobs: number
+        completed_today: number
+        failed_today: number
+    }
+    health: {
+        postgresql: { status: string }
+        redis: { status: string }
+        minio: { status: string }
+        celery: { status: string }
+        overall: string
+    }
+    processing: {
+        documents_processed_today: number
+        documents_processed_hour: number
+        success_rate: number
+        total_documents: number
+    }
+    timestamp: string
+}
 
 // TanStack Router: admin.index.tsx = index route for /admin
 // This component renders inside AdminLayout's <Outlet />
@@ -9,20 +45,58 @@ export const Route = createFileRoute('/admin/')({
 })
 
 function AdminDashboard() {
-    // TODO: Fetch real stats from API
-    const stats = {
-        totalDocuments: 1247,
-        activeUsers: 12,
-        ocrJobsToday: 89,
-        storageUsed: '45.2 GB',
-        systemHealth: 'Gesund',
-        lastBackup: 'Vor 2 Stunden',
+    // Fetch real stats from API
+    const { data: dashboard, isLoading, error } = useQuery<SystemDashboard>({
+        queryKey: ['admin', 'dashboard'],
+        queryFn: async () => {
+            const response = await apiClient.get('/admin/system/dashboard')
+            return response.data
+        },
+        refetchInterval: 30000, // Refresh every 30 seconds
+        staleTime: 10000,
+    })
+
+    // Derive stats from API response
+    const stats = dashboard ? {
+        totalDocuments: dashboard.processing.total_documents,
+        ocrJobsToday: dashboard.processing.documents_processed_today,
+        storageUsed: `${(dashboard.gpu.total_gb - dashboard.gpu.free_gb).toFixed(1)} GB`,
+        systemHealth: dashboard.health.overall === 'healthy' ? 'Gesund' :
+                      dashboard.health.overall === 'degraded' ? 'Eingeschraenkt' : 'Kritisch',
+        pendingJobs: dashboard.queue.pending_jobs,
+        processingJobs: dashboard.queue.processing_jobs,
+        successRate: dashboard.processing.success_rate,
+    } : null
+
+    // Error state
+    if (error) {
+        return (
+            <div className="space-y-8">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Admin-Uebersicht</h1>
+                    <p className="text-muted-foreground">
+                        Systemstatus und wichtige Kennzahlen auf einen Blick
+                    </p>
+                </div>
+                <Card className="border-destructive">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-destructive">
+                            <AlertCircle className="h-5 w-5" />
+                            Fehler beim Laden
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p>Dashboard-Daten konnten nicht geladen werden. Bitte pruefen Sie die Serververbindung.</p>
+                    </CardContent>
+                </Card>
+            </div>
+        )
     }
 
     return (
         <div className="space-y-8">
             <div>
-                <h2 className="text-3xl font-bold tracking-tight">Admin-Übersicht</h2>
+                <h1 className="text-3xl font-bold tracking-tight">Admin-Uebersicht</h1>
                 <p className="text-muted-foreground">
                     Systemstatus und wichtige Kennzahlen auf einen Blick
                 </p>
@@ -36,22 +110,30 @@ function AdminDashboard() {
                         <FileText className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.totalDocuments.toLocaleString('de-DE')}</div>
+                        {isLoading ? (
+                            <Skeleton className="h-8 w-20" />
+                        ) : (
+                            <div className="text-2xl font-bold">{stats?.totalDocuments.toLocaleString('de-DE') ?? '-'}</div>
+                        )}
                         <p className="text-xs text-muted-foreground">
-                            +12% gegenüber letztem Monat
+                            Im System erfasst
                         </p>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Aktive Benutzer</CardTitle>
+                        <CardTitle className="text-sm font-medium">Warteschlange</CardTitle>
                         <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.activeUsers}</div>
+                        {isLoading ? (
+                            <Skeleton className="h-8 w-20" />
+                        ) : (
+                            <div className="text-2xl font-bold">{stats?.pendingJobs ?? 0}</div>
+                        )}
                         <p className="text-xs text-muted-foreground">
-                            Derzeit angemeldet
+                            {stats?.processingJobs ?? 0} in Bearbeitung
                         </p>
                     </CardContent>
                 </Card>
@@ -62,7 +144,11 @@ function AdminDashboard() {
                         <Cpu className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.ocrJobsToday}</div>
+                        {isLoading ? (
+                            <Skeleton className="h-8 w-20" />
+                        ) : (
+                            <div className="text-2xl font-bold">{stats?.ocrJobsToday ?? 0}</div>
+                        )}
                         <p className="text-xs text-muted-foreground">
                             Dokumente verarbeitet
                         </p>
@@ -71,13 +157,17 @@ function AdminDashboard() {
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Speichernutzung</CardTitle>
+                        <CardTitle className="text-sm font-medium">GPU-Speicher</CardTitle>
                         <HardDrive className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.storageUsed}</div>
+                        {isLoading ? (
+                            <Skeleton className="h-8 w-20" />
+                        ) : (
+                            <div className="text-2xl font-bold">{stats?.storageUsed ?? '-'}</div>
+                        )}
                         <p className="text-xs text-muted-foreground">
-                            von 500 GB verfügbar
+                            von {dashboard?.gpu.total_gb.toFixed(0) ?? '16'} GB verfuegbar
                         </p>
                     </CardContent>
                 </Card>
@@ -88,22 +178,34 @@ function AdminDashboard() {
                         <Activity className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-600">{stats.systemHealth}</div>
+                        {isLoading ? (
+                            <Skeleton className="h-8 w-20" />
+                        ) : (
+                            <div className={`text-2xl font-bold ${
+                                stats?.systemHealth === 'Gesund' ? 'text-green-600' :
+                                stats?.systemHealth === 'Eingeschraenkt' ? 'text-yellow-600' : 'text-red-600'
+                            }`}>{stats?.systemHealth ?? '-'}</div>
+                        )}
                         <p className="text-xs text-muted-foreground">
-                            Alle Dienste verfügbar
+                            {dashboard?.health.overall === 'healthy' ? 'Alle Dienste verfuegbar' :
+                             dashboard?.health.overall === 'degraded' ? 'Einige Dienste eingeschraenkt' : 'Systemprobleme erkannt'}
                         </p>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Letztes Backup</CardTitle>
+                        <CardTitle className="text-sm font-medium">Erfolgsrate</CardTitle>
                         <CheckCircle className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.lastBackup}</div>
+                        {isLoading ? (
+                            <Skeleton className="h-8 w-20" />
+                        ) : (
+                            <div className="text-2xl font-bold">{stats?.successRate?.toFixed(1) ?? '0'}%</div>
+                        )}
                         <p className="text-xs text-muted-foreground">
-                            Automatisches tägliches Backup
+                            OCR-Verarbeitung erfolgreich
                         </p>
                     </CardContent>
                 </Card>

@@ -27,7 +27,6 @@ import { Route as ForgotPasswordRouteImport } from './app/routes/forgot-password
 import { Route as FinanzenRouteImport } from './app/routes/finanzen'
 import { Route as DocumentGroupsRouteImport } from './app/routes/document-groups'
 import { Route as ChatRouteImport } from './app/routes/chat'
-import { Route as BusinessEntitiesRouteImport } from './app/routes/business-entities'
 import { Route as AutomationRouteImport } from './app/routes/automation'
 import { Route as AdminRouteImport } from './app/routes/admin'
 import { Route as SplatRouteImport } from './app/routes/$'
@@ -43,6 +42,10 @@ import { Route as FinanzenIndexRouteImport } from './app/routes/finanzen.index'
 import { Route as AdminIndexRouteImport } from './app/routes/admin.index'
 import { Route as ValidationQueueIdRouteImport } from './app/routes/validation-queue.$id'
 import { Route as StreckengeschaeftZmRouteImport } from './app/routes/streckengeschaeft.zm'
+import { Route as StreckengeschaeftWarnungenRouteImport } from './app/routes/streckengeschaeft.warnungen'
+import { Route as StreckengeschaeftValidierungRouteImport } from './app/routes/streckengeschaeft.validierung'
+import { Route as StreckengeschaeftKlassifikationenRouteImport } from './app/routes/streckengeschaeft.klassifikationen'
+import { Route as StreckengeschaeftEinstellungenRouteImport } from './app/routes/streckengeschaeft.einstellungen'
 import { Route as StreckengeschaeftClassificationIdRouteImport } from './app/routes/streckengeschaeft.$classificationId'
 import { Route as SpesenReportIdRouteImport } from './app/routes/spesen.$reportId'
 import { Route as ResetPasswordTokenRouteImport } from './app/routes/reset-password.$token'
@@ -58,7 +61,6 @@ import { Route as KundenCustomerIdRouteImport } from './app/routes/kunden.$custo
 import { Route as FinanzenYearRouteImport } from './app/routes/finanzen.$year'
 import { Route as DocumentsDocumentIdRouteImport } from './app/routes/documents.$documentId'
 import { Route as DocumentGroupsIdRouteImport } from './app/routes/document-groups.$id'
-import { Route as BusinessEntitiesIdRouteImport } from './app/routes/business-entities.$id'
 import { Route as AdminUsersRouteImport } from './app/routes/admin.users'
 import { Route as AdminTunesRouteImport } from './app/routes/admin.tunes'
 import { Route as AdminSettingsRouteImport } from './app/routes/admin.settings'
@@ -192,11 +194,6 @@ const ChatRoute = ChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BusinessEntitiesRoute = BusinessEntitiesRouteImport.update({
-  id: '/business-entities',
-  path: '/business-entities',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AutomationRoute = AutomationRouteImport.update({
   id: '/automation',
   path: '/automation',
@@ -272,6 +269,30 @@ const StreckengeschaeftZmRoute = StreckengeschaeftZmRouteImport.update({
   path: '/zm',
   getParentRoute: () => StreckengeschaeftRoute,
 } as any)
+const StreckengeschaeftWarnungenRoute =
+  StreckengeschaeftWarnungenRouteImport.update({
+    id: '/warnungen',
+    path: '/warnungen',
+    getParentRoute: () => StreckengeschaeftRoute,
+  } as any)
+const StreckengeschaeftValidierungRoute =
+  StreckengeschaeftValidierungRouteImport.update({
+    id: '/validierung',
+    path: '/validierung',
+    getParentRoute: () => StreckengeschaeftRoute,
+  } as any)
+const StreckengeschaeftKlassifikationenRoute =
+  StreckengeschaeftKlassifikationenRouteImport.update({
+    id: '/klassifikationen',
+    path: '/klassifikationen',
+    getParentRoute: () => StreckengeschaeftRoute,
+  } as any)
+const StreckengeschaeftEinstellungenRoute =
+  StreckengeschaeftEinstellungenRouteImport.update({
+    id: '/einstellungen',
+    path: '/einstellungen',
+    getParentRoute: () => StreckengeschaeftRoute,
+  } as any)
 const StreckengeschaeftClassificationIdRoute =
   StreckengeschaeftClassificationIdRouteImport.update({
     id: '/$classificationId',
@@ -347,11 +368,6 @@ const DocumentGroupsIdRoute = DocumentGroupsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => DocumentGroupsRoute,
-} as any)
-const BusinessEntitiesIdRoute = BusinessEntitiesIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => BusinessEntitiesRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
@@ -579,7 +595,6 @@ export interface FileRoutesByFullPath {
   '/$': typeof SplatRoute
   '/admin': typeof AdminRouteWithChildren
   '/automation': typeof AutomationRoute
-  '/business-entities': typeof BusinessEntitiesRouteWithChildren
   '/chat': typeof ChatRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/finanzen': typeof FinanzenRouteWithChildren
@@ -608,7 +623,6 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/tunes': typeof AdminTunesRoute
   '/admin/users': typeof AdminUsersRoute
-  '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
   '/finanzen/$year': typeof FinanzenYearRouteWithChildren
@@ -624,6 +638,10 @@ export interface FileRoutesByFullPath {
   '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
+  '/streckengeschaeft/einstellungen': typeof StreckengeschaeftEinstellungenRoute
+  '/streckengeschaeft/klassifikationen': typeof StreckengeschaeftKlassifikationenRoute
+  '/streckengeschaeft/validierung': typeof StreckengeschaeftValidierungRoute
+  '/streckengeschaeft/warnungen': typeof StreckengeschaeftWarnungenRoute
   '/streckengeschaeft/zm': typeof StreckengeschaeftZmRoute
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -672,7 +690,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/automation': typeof AutomationRoute
-  '/business-entities': typeof BusinessEntitiesRouteWithChildren
   '/chat': typeof ChatRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
@@ -690,7 +707,6 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/tunes': typeof AdminTunesRoute
   '/admin/users': typeof AdminUsersRoute
-  '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
   '/privat/fahrzeuge': typeof PrivatFahrzeugeRoute
@@ -702,6 +718,10 @@ export interface FileRoutesByTo {
   '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
+  '/streckengeschaeft/einstellungen': typeof StreckengeschaeftEinstellungenRoute
+  '/streckengeschaeft/klassifikationen': typeof StreckengeschaeftKlassifikationenRoute
+  '/streckengeschaeft/validierung': typeof StreckengeschaeftValidierungRoute
+  '/streckengeschaeft/warnungen': typeof StreckengeschaeftWarnungenRoute
   '/streckengeschaeft/zm': typeof StreckengeschaeftZmRoute
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin': typeof AdminIndexRoute
@@ -752,7 +772,6 @@ export interface FileRoutesById {
   '/$': typeof SplatRoute
   '/admin': typeof AdminRouteWithChildren
   '/automation': typeof AutomationRoute
-  '/business-entities': typeof BusinessEntitiesRouteWithChildren
   '/chat': typeof ChatRoute
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/finanzen': typeof FinanzenRouteWithChildren
@@ -781,7 +800,6 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/tunes': typeof AdminTunesRoute
   '/admin/users': typeof AdminUsersRoute
-  '/business-entities/$id': typeof BusinessEntitiesIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
   '/finanzen/$year': typeof FinanzenYearRouteWithChildren
@@ -797,6 +815,10 @@ export interface FileRoutesById {
   '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
+  '/streckengeschaeft/einstellungen': typeof StreckengeschaeftEinstellungenRoute
+  '/streckengeschaeft/klassifikationen': typeof StreckengeschaeftKlassifikationenRoute
+  '/streckengeschaeft/validierung': typeof StreckengeschaeftValidierungRoute
+  '/streckengeschaeft/warnungen': typeof StreckengeschaeftWarnungenRoute
   '/streckengeschaeft/zm': typeof StreckengeschaeftZmRoute
   '/validation-queue/$id': typeof ValidationQueueIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -848,7 +870,6 @@ export interface FileRouteTypes {
     | '/$'
     | '/admin'
     | '/automation'
-    | '/business-entities'
     | '/chat'
     | '/document-groups'
     | '/finanzen'
@@ -877,7 +898,6 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/tunes'
     | '/admin/users'
-    | '/business-entities/$id'
     | '/document-groups/$id'
     | '/documents/$documentId'
     | '/finanzen/$year'
@@ -893,6 +913,10 @@ export interface FileRouteTypes {
     | '/reset-password/$token'
     | '/spesen/$reportId'
     | '/streckengeschaeft/$classificationId'
+    | '/streckengeschaeft/einstellungen'
+    | '/streckengeschaeft/klassifikationen'
+    | '/streckengeschaeft/validierung'
+    | '/streckengeschaeft/warnungen'
     | '/streckengeschaeft/zm'
     | '/validation-queue/$id'
     | '/admin/'
@@ -941,7 +965,6 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/automation'
-    | '/business-entities'
     | '/chat'
     | '/document-groups'
     | '/forgot-password'
@@ -959,7 +982,6 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/tunes'
     | '/admin/users'
-    | '/business-entities/$id'
     | '/document-groups/$id'
     | '/documents/$documentId'
     | '/privat/fahrzeuge'
@@ -971,6 +993,10 @@ export interface FileRouteTypes {
     | '/reset-password/$token'
     | '/spesen/$reportId'
     | '/streckengeschaeft/$classificationId'
+    | '/streckengeschaeft/einstellungen'
+    | '/streckengeschaeft/klassifikationen'
+    | '/streckengeschaeft/validierung'
+    | '/streckengeschaeft/warnungen'
     | '/streckengeschaeft/zm'
     | '/validation-queue/$id'
     | '/admin'
@@ -1020,7 +1046,6 @@ export interface FileRouteTypes {
     | '/$'
     | '/admin'
     | '/automation'
-    | '/business-entities'
     | '/chat'
     | '/document-groups'
     | '/finanzen'
@@ -1049,7 +1074,6 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/tunes'
     | '/admin/users'
-    | '/business-entities/$id'
     | '/document-groups/$id'
     | '/documents/$documentId'
     | '/finanzen/$year'
@@ -1065,6 +1089,10 @@ export interface FileRouteTypes {
     | '/reset-password/$token'
     | '/spesen/$reportId'
     | '/streckengeschaeft/$classificationId'
+    | '/streckengeschaeft/einstellungen'
+    | '/streckengeschaeft/klassifikationen'
+    | '/streckengeschaeft/validierung'
+    | '/streckengeschaeft/warnungen'
     | '/streckengeschaeft/zm'
     | '/validation-queue/$id'
     | '/admin/'
@@ -1115,7 +1143,6 @@ export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
   AdminRoute: typeof AdminRouteWithChildren
   AutomationRoute: typeof AutomationRoute
-  BusinessEntitiesRoute: typeof BusinessEntitiesRouteWithChildren
   ChatRoute: typeof ChatRoute
   DocumentGroupsRoute: typeof DocumentGroupsRouteWithChildren
   FinanzenRoute: typeof FinanzenRouteWithChildren
@@ -1266,13 +1293,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/business-entities': {
-      id: '/business-entities'
-      path: '/business-entities'
-      fullPath: '/business-entities'
-      preLoaderRoute: typeof BusinessEntitiesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/automation': {
       id: '/automation'
       path: '/automation'
@@ -1376,6 +1396,34 @@ declare module '@tanstack/react-router' {
       path: '/zm'
       fullPath: '/streckengeschaeft/zm'
       preLoaderRoute: typeof StreckengeschaeftZmRouteImport
+      parentRoute: typeof StreckengeschaeftRoute
+    }
+    '/streckengeschaeft/warnungen': {
+      id: '/streckengeschaeft/warnungen'
+      path: '/warnungen'
+      fullPath: '/streckengeschaeft/warnungen'
+      preLoaderRoute: typeof StreckengeschaeftWarnungenRouteImport
+      parentRoute: typeof StreckengeschaeftRoute
+    }
+    '/streckengeschaeft/validierung': {
+      id: '/streckengeschaeft/validierung'
+      path: '/validierung'
+      fullPath: '/streckengeschaeft/validierung'
+      preLoaderRoute: typeof StreckengeschaeftValidierungRouteImport
+      parentRoute: typeof StreckengeschaeftRoute
+    }
+    '/streckengeschaeft/klassifikationen': {
+      id: '/streckengeschaeft/klassifikationen'
+      path: '/klassifikationen'
+      fullPath: '/streckengeschaeft/klassifikationen'
+      preLoaderRoute: typeof StreckengeschaeftKlassifikationenRouteImport
+      parentRoute: typeof StreckengeschaeftRoute
+    }
+    '/streckengeschaeft/einstellungen': {
+      id: '/streckengeschaeft/einstellungen'
+      path: '/einstellungen'
+      fullPath: '/streckengeschaeft/einstellungen'
+      preLoaderRoute: typeof StreckengeschaeftEinstellungenRouteImport
       parentRoute: typeof StreckengeschaeftRoute
     }
     '/streckengeschaeft/$classificationId': {
@@ -1482,13 +1530,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/document-groups/$id'
       preLoaderRoute: typeof DocumentGroupsIdRouteImport
       parentRoute: typeof DocumentGroupsRoute
-    }
-    '/business-entities/$id': {
-      id: '/business-entities/$id'
-      path: '/$id'
-      fullPath: '/business-entities/$id'
-      preLoaderRoute: typeof BusinessEntitiesIdRouteImport
-      parentRoute: typeof BusinessEntitiesRoute
     }
     '/admin/users': {
       id: '/admin/users'
@@ -1907,17 +1948,6 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
-interface BusinessEntitiesRouteChildren {
-  BusinessEntitiesIdRoute: typeof BusinessEntitiesIdRoute
-}
-
-const BusinessEntitiesRouteChildren: BusinessEntitiesRouteChildren = {
-  BusinessEntitiesIdRoute: BusinessEntitiesIdRoute,
-}
-
-const BusinessEntitiesRouteWithChildren =
-  BusinessEntitiesRoute._addFileChildren(BusinessEntitiesRouteChildren)
-
 interface DocumentGroupsRouteChildren {
   DocumentGroupsIdRoute: typeof DocumentGroupsIdRoute
 }
@@ -2119,6 +2149,10 @@ const SpesenRouteWithChildren =
 
 interface StreckengeschaeftRouteChildren {
   StreckengeschaeftClassificationIdRoute: typeof StreckengeschaeftClassificationIdRoute
+  StreckengeschaeftEinstellungenRoute: typeof StreckengeschaeftEinstellungenRoute
+  StreckengeschaeftKlassifikationenRoute: typeof StreckengeschaeftKlassifikationenRoute
+  StreckengeschaeftValidierungRoute: typeof StreckengeschaeftValidierungRoute
+  StreckengeschaeftWarnungenRoute: typeof StreckengeschaeftWarnungenRoute
   StreckengeschaeftZmRoute: typeof StreckengeschaeftZmRoute
   StreckengeschaeftIndexRoute: typeof StreckengeschaeftIndexRoute
 }
@@ -2126,6 +2160,11 @@ interface StreckengeschaeftRouteChildren {
 const StreckengeschaeftRouteChildren: StreckengeschaeftRouteChildren = {
   StreckengeschaeftClassificationIdRoute:
     StreckengeschaeftClassificationIdRoute,
+  StreckengeschaeftEinstellungenRoute: StreckengeschaeftEinstellungenRoute,
+  StreckengeschaeftKlassifikationenRoute:
+    StreckengeschaeftKlassifikationenRoute,
+  StreckengeschaeftValidierungRoute: StreckengeschaeftValidierungRoute,
+  StreckengeschaeftWarnungenRoute: StreckengeschaeftWarnungenRoute,
   StreckengeschaeftZmRoute: StreckengeschaeftZmRoute,
   StreckengeschaeftIndexRoute: StreckengeschaeftIndexRoute,
 }
@@ -2161,7 +2200,6 @@ const rootRouteChildren: RootRouteChildren = {
   SplatRoute: SplatRoute,
   AdminRoute: AdminRouteWithChildren,
   AutomationRoute: AutomationRoute,
-  BusinessEntitiesRoute: BusinessEntitiesRouteWithChildren,
   ChatRoute: ChatRoute,
   DocumentGroupsRoute: DocumentGroupsRouteWithChildren,
   FinanzenRoute: FinanzenRouteWithChildren,
