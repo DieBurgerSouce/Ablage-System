@@ -2750,7 +2750,7 @@ async def get_document_access_log(
                 "user_id": str(entry.user_id) if entry.user_id else None,
                 "ip_address": entry.ip_address,
                 "success": entry.success if hasattr(entry, 'success') else True,
-                "details": entry.metadata if hasattr(entry, 'metadata') else None,
+                "details": entry.activity_metadata if hasattr(entry, 'activity_metadata') else None,
             }
             access_log.append(log_entry)
 

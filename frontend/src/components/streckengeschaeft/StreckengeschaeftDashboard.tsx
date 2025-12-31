@@ -9,14 +9,14 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLanguage } from '@/lib/i18n/useLanguage';
 import {
-  ColumnDef,
+  type ColumnDef,
   flexRender,
   getCoreRowModel,
   useReactTable,
   getSortedRowModel,
-  SortingState,
+  type SortingState,
   getFilteredRowModel,
-  ColumnFiltersState,
+  type ColumnFiltersState,
 } from '@tanstack/react-table';
 import {
   Table,

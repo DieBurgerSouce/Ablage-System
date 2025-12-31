@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { useSavedSearches } from '@/features/search/hooks/use-saved-searches'
 import type { SearchParams } from '@/features/search/types/search-params'
 import { cn } from '@/lib/utils'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { NotificationBell } from '@/components/NotificationBell'
 
 interface SidebarProps {

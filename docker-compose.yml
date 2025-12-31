@@ -49,6 +49,13 @@ services:
           cpus: '0.5'
           memory: 1G
     restart: unless-stopped
+    stop_grace_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=postgres"
     networks:
       - data-network
 
@@ -91,6 +98,13 @@ services:
           cpus: '0.1'
           memory: 64M
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=pgbouncer"
     networks:
       - data-network
 
@@ -124,6 +138,13 @@ services:
           cpus: '0.25'
           memory: 1G
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=redis"
     networks:
       - data-network
 
@@ -157,6 +178,13 @@ services:
           cpus: '0.5'
           memory: 1G
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=minio"
     networks:
       - data-network
 
@@ -190,6 +218,13 @@ services:
           cpus: '0.5'
           memory: 1G
     restart: unless-stopped
+    stop_grace_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=clamav"
     networks:
       - data-network
 
@@ -231,6 +266,13 @@ services:
           cpus: '0.5'
           memory: 1G
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=qdrant"
     networks:
       - data-network
 
@@ -266,6 +308,13 @@ services:
           cpus: '0.5'
           memory: 1G
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=reranker"
     networks:
       - backend-network
 
@@ -305,6 +354,13 @@ services:
           cpus: '0.25'
           memory: 256M
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=einvoice-mustang"
     networks:
       - backend-network
 
@@ -407,12 +463,19 @@ services:
     # SECURITY FIX: Healthcheck für Backend
     # GPU-Inference braucht 10-15s, Model-Loading 60-90s
     healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=10).raise_for_status()"]
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=30).raise_for_status()"]
       interval: 30s
-      timeout: 15s  # PERF FIX: Erhöht von 10s für GPU-Inference
+      timeout: 35s  # ENTERPRISE FIX: Erhöht für GPU-Inference + Netzwerk-Latenz
       retries: 3
-      start_period: 90s  # PERF FIX: Erhöht von 60s für GPU Model-Loading
+      start_period: 180s  # ENTERPRISE FIX: 3 Minuten für GPU Model-Loading
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=backend"
     networks:
       - backend-network
       - data-network
@@ -535,6 +598,13 @@ services:
       retries: 3
       start_period: 600s  # 10 Minuten für Modell-Download (Surya ~1.34GB)
     restart: unless-stopped
+    stop_grace_period: 120s  # ENTERPRISE FIX: 2 Minuten für laufende OCR-Tasks
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=worker"
     networks:
       - backend-network
       - data-network
@@ -643,6 +713,13 @@ services:
       retries: 3
       start_period: 600s  # 10 Minuten für Modell-Download
     restart: unless-stopped
+    stop_grace_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=worker-cpu"
     networks:
       - backend-network
       - data-network
@@ -683,6 +760,13 @@ services:
           cpus: '0.2'
           memory: 128M
     restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=frontend"
     networks:
       - frontend-network
       - backend-network
@@ -726,6 +810,13 @@ services:
           cpus: '0.25'
           memory: 512M
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=prometheus"
     networks:
       - monitoring-network
       - backend-network
@@ -772,6 +863,13 @@ services:
           cpus: '0.25'
           memory: 256M
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=grafana"
     networks:
       - monitoring-network
 
@@ -802,6 +900,13 @@ services:
           cpus: '0.25'
           memory: 512M
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=loki"
     networks:
       - monitoring-network
 
@@ -853,6 +958,13 @@ services:
           cpus: '0.1'
           memory: 64M
     restart: unless-stopped
+    stop_grace_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=alertmanager"
     networks:
       - monitoring-network
 
@@ -885,6 +997,13 @@ services:
           cpus: '0.05'
           memory: 32M
     restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=postgres-exporter"
     networks:
       - monitoring-network
       - data-network
@@ -919,6 +1038,13 @@ services:
           cpus: '0.05'
           memory: 32M
     restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=redis-exporter"
     networks:
       - monitoring-network
       - data-network
@@ -954,6 +1080,13 @@ services:
           cpus: '0.1'
           memory: 64M
     restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=promtail"
     networks:
       - monitoring-network
 
@@ -996,6 +1129,13 @@ services:
       retries: 5
       start_period: 30s
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=vault"
     networks:
       - backend-network
       - data-network
@@ -1031,6 +1171,13 @@ services:
       retries: 3
       start_period: 15s
     restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=dcgm-exporter"
     networks:
       - monitoring-network
 
@@ -1067,6 +1214,13 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=node-exporter"
     networks:
       - monitoring-network
 

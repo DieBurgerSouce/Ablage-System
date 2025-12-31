@@ -5,7 +5,7 @@
  */
 
 import * as React from 'react';
-import { Control, useFieldArray, UseFormReturn } from 'react-hook-form';
+import { type Control, useFieldArray, type UseFormReturn } from 'react-hook-form';
 import {
   FormControl,
   FormDescription,

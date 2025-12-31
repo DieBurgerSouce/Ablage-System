@@ -1,4 +1,4 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { showApiErrorToast } from './error-toast-handler';
 
 // API Base URL from environment variable with fallback

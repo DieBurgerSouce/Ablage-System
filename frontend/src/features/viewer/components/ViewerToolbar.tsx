@@ -4,7 +4,7 @@ import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCw, Download, Printer
 import { motion } from 'framer-motion';
 import { motionTokens } from '@/lib/motion-tokens';
 import { useAnnotationStore } from '../store/useAnnotationStore';
-import { cn } from '@/lib/utils';
+// cn utility removed - not currently used
 
 interface ViewerToolbarProps {
     currentPage: number;

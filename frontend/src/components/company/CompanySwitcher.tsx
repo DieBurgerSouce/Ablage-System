@@ -6,7 +6,7 @@
  */
 
 import * as React from 'react';
-import { Building2, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
+import { Building2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {

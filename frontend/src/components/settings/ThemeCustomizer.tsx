@@ -11,12 +11,12 @@
  */
 
 import { useState } from 'react';
-import { Paintbrush, RotateCcw, Check } from 'lucide-react';
+import { RotateCcw, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useTheme } from '@/lib/theme/ThemeContext';
 import { themePresets, radiusValues, densityValues, type RadiusValue, type DensityValue } from '@/lib/theme/types';

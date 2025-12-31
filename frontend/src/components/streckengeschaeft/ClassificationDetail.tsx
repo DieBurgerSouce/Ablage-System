@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+// Separator removed - currently unused
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
@@ -40,15 +40,11 @@ import {
   ArrowLeft,
   CheckCircle2,
   AlertTriangle,
-  FileText,
   Globe,
-  Building2,
-  Truck,
   FileCheck,
   Download,
   Edit,
   History,
-  Scale,
   Receipt,
   ExternalLink,
   Info,

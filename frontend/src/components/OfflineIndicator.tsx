@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { WifiOff, Wifi, Loader2, CloudOff } from 'lucide-react'
+import { WifiOff, Wifi, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
     useOfflineQueueStore,
