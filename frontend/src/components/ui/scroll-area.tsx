@@ -21,4 +21,12 @@ const ScrollArea = React.forwardRef<HTMLDivElement, ScrollAreaProps>(
 )
 ScrollArea.displayName = "ScrollArea"
 
-export { ScrollArea }
+// ScrollBar is a no-op component for compatibility
+// Native scrollbars are styled via CSS classes on ScrollArea
+const ScrollBar = React.forwardRef<
+    HTMLDivElement,
+    React.HTMLAttributes<HTMLDivElement> & { orientation?: "vertical" | "horizontal" }
+>(({ className, orientation = "vertical", ...props }, ref) => null)
+ScrollBar.displayName = "ScrollBar"
+
+export { ScrollArea, ScrollBar }

@@ -7,7 +7,7 @@ export const Route = createFileRoute('/admin/ocr-review')({
 
 function OCRReviewPage() {
     return (
-        <div className="max-w-7xl mx-auto p-8">
+        <div>
             <ReviewDashboard />
         </div>
     )

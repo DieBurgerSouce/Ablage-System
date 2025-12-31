@@ -5,7 +5,7 @@
  * Basiert auf den Backend-Endpoints in app/api/v1/validation.py
  */
 
-import { apiClient } from '@/lib/api-client';
+import { apiClient } from '@/lib/api/client';
 import type {
   ValidationQueueItem,
   ValidationQueueItemDetail,

@@ -103,19 +103,17 @@ function BackendDetailPage() {
     // Loading State
     if (comparisonLoading) {
         return (
-            <div className="max-w-7xl mx-auto p-8">
-                <div className="flex items-center justify-center h-64">
-                    <div className="flex items-center gap-3 text-muted-foreground">
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                        <span>Lade Backend-Details...</span>
-                    </div>
+            <div className="flex items-center justify-center h-64">
+                <div className="flex items-center gap-3 text-muted-foreground">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span>Lade Backend-Details...</span>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="max-w-7xl mx-auto p-8 space-y-8">
+        <div className="space-y-8">
             {/* Header */}
             <div className="flex items-center gap-4">
                 <Link to="/admin/ocr-backends">

@@ -7,7 +7,7 @@ export const Route = createFileRoute('/admin/ocr-training')({
 
 function OCRTrainingPage() {
     return (
-        <div className="max-w-7xl mx-auto p-8 space-y-8">
+        <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight font-display">OCR Training & Validation</h1>
                 <p className="text-muted-foreground mt-2">

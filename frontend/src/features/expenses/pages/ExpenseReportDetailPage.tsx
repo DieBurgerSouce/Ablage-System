@@ -91,7 +91,7 @@ export function ExpenseReportDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="p-8 space-y-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={handleBack}>
             <ArrowLeft className="h-4 w-4" />
@@ -106,7 +106,7 @@ export function ExpenseReportDetailPage() {
 
   if (error || !report) {
     return (
-      <div className="container mx-auto py-6">
+      <div className="p-8">
         <div className="flex items-center gap-4 mb-6">
           <Button variant="ghost" size="icon" onClick={handleBack}>
             <ArrowLeft className="h-4 w-4" />
@@ -130,7 +130,7 @@ export function ExpenseReportDetailPage() {
   const canPay = report.status === 'approved';
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

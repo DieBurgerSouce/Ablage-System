@@ -292,7 +292,7 @@ function BatchWorkflowPage() {
     const filename = currentSample.file_path.split(/[/\\]/).pop() || currentSample.file_path
 
     return (
-        <div className="space-y-4 max-w-7xl mx-auto">
+        <div className="space-y-4">
             {/* Header mit Progress */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">

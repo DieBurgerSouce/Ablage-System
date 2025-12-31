@@ -7,7 +7,7 @@ export const Route = createFileRoute('/admin/tunes')({
 
 function TuneManagementPage() {
     return (
-        <div className="max-w-7xl mx-auto p-8 space-y-8">
+        <div className="space-y-8">
             <TuneManagement />
         </div>
     )

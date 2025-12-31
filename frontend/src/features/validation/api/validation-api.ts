@@ -5,7 +5,7 @@
  * Basiert auf den existierenden Backend-Endpoints in app/api/v1/training.py
  */
 
-import { apiClient } from '@/lib/api-client';
+import { apiClient } from '@/lib/api/client';
 import type {
   TrainingSample,
   TrainingSampleListResponse,

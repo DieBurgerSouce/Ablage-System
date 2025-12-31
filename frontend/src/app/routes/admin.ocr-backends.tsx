@@ -92,12 +92,10 @@ function OCRBackendsPage() {
     // Loading State
     if (isLoading) {
         return (
-            <div className="max-w-7xl mx-auto p-8">
-                <div className="flex items-center justify-center h-64">
-                    <div className="flex items-center gap-3 text-muted-foreground">
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                        <span>Lade Backend-Daten...</span>
-                    </div>
+            <div className="flex items-center justify-center h-64">
+                <div className="flex items-center gap-3 text-muted-foreground">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span>Lade Backend-Daten...</span>
                 </div>
             </div>
         );
@@ -106,29 +104,27 @@ function OCRBackendsPage() {
     // Error State
     if (comparisonError) {
         return (
-            <div className="max-w-7xl mx-auto p-8">
-                <div className="flex items-center justify-center h-64">
-                    <Card className="max-w-md">
-                        <CardContent className="pt-6">
-                            <div className="flex items-start gap-3">
-                                <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-                                <div>
-                                    <p className="font-medium">Fehler beim Laden</p>
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                        Die Backend-Daten konnten nicht geladen werden.
-                                        Bitte versuchen Sie es später erneut.
-                                    </p>
-                                </div>
+            <div className="flex items-center justify-center h-64">
+                <Card className="max-w-md">
+                    <CardContent className="pt-6">
+                        <div className="flex items-start gap-3">
+                            <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="font-medium">Fehler beim Laden</p>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    Die Backend-Daten konnten nicht geladen werden.
+                                    Bitte versuchen Sie es später erneut.
+                                </p>
                             </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
 
     return (
-        <div className="max-w-7xl mx-auto p-8 space-y-8">
+        <div className="space-y-8">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>

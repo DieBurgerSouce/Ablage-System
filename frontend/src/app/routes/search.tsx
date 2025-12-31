@@ -77,7 +77,7 @@ function SearchPage() {
     })
 
     return (
-        <div className="max-w-5xl mx-auto p-8 space-y-8">
+        <div className="p-8 space-y-8">
             {/* Header */}
             <div className="text-center space-y-4 mb-12">
                 <h1 className="text-4xl font-bold tracking-tight font-display">

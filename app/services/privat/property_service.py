@@ -262,6 +262,22 @@ class PrivatPropertyService:
         )
         return result.scalar() or 0
 
+    async def get_pending_payments_count(
+        self,
+        db: AsyncSession,
+        property_id: uuid.UUID,
+    ) -> int:
+        """Öffentliche Methode: Zählt ausstehende Zahlungen für eine Immobilie.
+
+        Args:
+            db: Datenbank-Session
+            property_id: Immobilien-ID
+
+        Returns:
+            Anzahl ausstehender Zahlungen (unbezahlte Nebenkostenabrechnungen)
+        """
+        return await self._get_pending_payments(db, property_id)
+
     async def update_property(
         self,
         db: AsyncSession,

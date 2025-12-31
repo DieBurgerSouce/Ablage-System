@@ -20,8 +20,8 @@ import { Loader2, AlertTriangle, FileText, ImageIcon } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import type { ValidationFieldReview } from '../types/validation-queue.types';
 
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 
 // PDF.js Worker konfigurieren
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(

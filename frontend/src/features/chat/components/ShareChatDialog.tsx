@@ -128,7 +128,7 @@ export function ShareChatDialog({
     const [selectedAccessLevel, setSelectedAccessLevel] = useState<'view' | 'contribute' | 'manage'>('view');
 
     // Reset state when dialog opens - bewusstes Pattern zum Zurücksetzen des States
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset on dialog open
+     
     useEffect(() => {
         if (open) {
             setSearchQuery('');

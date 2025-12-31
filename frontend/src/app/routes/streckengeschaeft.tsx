@@ -86,7 +86,7 @@ function StreckengeschaeftLayout() {
 
       {/* Main Content */}
       <main className="flex-1 md:ml-64">
-        <div className="max-w-7xl mx-auto p-8">
+        <div className="p-8">
           <Outlet />
         </div>
       </main>

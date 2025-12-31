@@ -423,3 +423,45 @@ export function DocumentsTable({
     />
   );
 }
+
+// ==================== Pagination Component ====================
+
+interface DocumentsPaginationProps {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  onPageChange: (page: number) => void;
+}
+
+export function DocumentsPagination({
+  currentPage,
+  totalPages,
+  totalCount,
+  onPageChange,
+}: DocumentsPaginationProps) {
+  return (
+    <div className="flex items-center justify-between px-2 py-4">
+      <div className="text-sm text-muted-foreground">
+        Seite {currentPage} von {totalPages} ({totalCount} Dokumente)
+      </div>
+      <div className="flex items-center space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage <= 1}
+        >
+          Zurück
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage >= totalPages}
+        >
+          Weiter
+        </Button>
+      </div>
+    </div>
+  );
+}
