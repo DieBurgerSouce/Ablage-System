@@ -12,10 +12,11 @@ Endpunkte fuer:
 Standards: ZUGFeRD 2.x, XRechnung 3.0.2
 """
 
+import hashlib
 import logging
 from datetime import datetime, timezone
 from typing import Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response, StreamingResponse
@@ -24,7 +25,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
 from app.core.security import build_content_disposition
-from app.db.models import User
+from app.db.models import User, Document, EInvoiceDocument
+from app.services.storage_service import get_storage_service
 
 from app.api.schemas.einvoice import (
     EInvoiceConvertRequest,
@@ -82,6 +84,7 @@ async def parse_einvoice(
         description="Sofort als Dokument in DB speichern"
     ),
     db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user),
 ) -> EInvoiceParseResponse:
     """Parst eine E-Rechnung aus hochgeladener Datei."""
     parser = get_parser_service()
@@ -90,12 +93,94 @@ async def parse_einvoice(
         content = await file.read()
         filename = file.filename or "unknown"
 
+        # Parsen der E-Rechnung
+        result = await parser.parse_file(content, filename)
+
         if extract_to_document:
-            # TODO: Erst Dokument erstellen, dann parsen und speichern
-            # Fuer jetzt: Nur parsen
-            result = await parser.parse_file(content, filename)
-        else:
-            result = await parser.parse_file(content, filename)
+            # Auto-Save: Dokument und E-Invoice-Datensatz erstellen
+            storage = get_storage_service()
+
+            # 1. Checksum berechnen
+            file_hash = hashlib.sha256(content).hexdigest()
+
+            # 2. MIME-Type bestimmen
+            mime_type = file.content_type or (
+                "application/pdf" if filename.lower().endswith(".pdf")
+                else "application/xml"
+            )
+
+            # 3. In MinIO hochladen
+            try:
+                upload_result = await storage.upload_document(
+                    file_data=content,
+                    filename=filename,
+                    content_type=mime_type,
+                    user_id=str(current_user.id),
+                    metadata={
+                        "document_type": "invoice",
+                        "einvoice_format": result.format_detected.value if result.format_detected else "unknown",
+                        "original_filename": filename,
+                    }
+                )
+            except Exception as e:
+                logger.error("einvoice_storage_upload_failed", error=str(e))
+                raise HTTPException(
+                    status_code=500,
+                    detail="Speicherung fehlgeschlagen. E-Rechnung wurde geparst aber nicht gespeichert."
+                )
+
+            # 4. Document-Eintrag erstellen
+            doc_id = uuid4()
+            new_document = Document(
+                id=doc_id,
+                filename=upload_result["storage_path"].split("/")[-1],
+                original_filename=filename,
+                file_path=upload_result["storage_path"],
+                file_size=len(content),
+                mime_type=mime_type,
+                checksum=file_hash,
+                document_type="invoice",
+                status="processed",
+                owner_id=current_user.id,
+                extracted_data=result.invoice_data.model_dump() if result.invoice_data else {},
+                document_metadata={
+                    "einvoice_format": result.format_detected.value if result.format_detected else None,
+                    "einvoice_profile": result.profile.value if result.profile else None,
+                    "einvoice_version": result.version,
+                    "auto_saved": True,
+                }
+            )
+            db.add(new_document)
+
+            # 5. EInvoiceDocument-Eintrag erstellen
+            einvoice_id = uuid4()
+            einvoice_doc = EInvoiceDocument(
+                id=einvoice_id,
+                document_id=doc_id,
+                format=result.format_detected.value if result.format_detected else "unknown",
+                profile=result.profile.value if result.profile else None,
+                version=result.version,
+                xml_content=result.xml_content,
+                xml_hash=hashlib.sha256(result.xml_content.encode()).hexdigest() if result.xml_content else None,
+                was_extracted=True,
+                was_generated=False,
+                source_filename=filename,
+                extraction_method="facturx",
+            )
+            db.add(einvoice_doc)
+
+            await db.commit()
+
+            # IDs in der Response setzen
+            result.document_id = doc_id
+            result.einvoice_id = einvoice_id
+
+            logger.info(
+                "einvoice_auto_saved",
+                document_id=str(doc_id),
+                einvoice_id=str(einvoice_id),
+                format=result.format_detected.value if result.format_detected else "unknown",
+            )
 
         return result
 

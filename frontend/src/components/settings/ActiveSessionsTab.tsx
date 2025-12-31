@@ -25,7 +25,7 @@ import {
   Shield,
   CheckCircle,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -45,6 +45,26 @@ import { cn } from '@/lib/utils';
 
 // ==================== Types ====================
 
+// Backend Session format from /auth/sessions
+interface BackendSession {
+  id: string;
+  device_name?: string;
+  device_type?: string;
+  ip_address: string;
+  location?: string;
+  last_activity_at: string;
+  created_at: string;
+  expires_at: string;
+  is_current: boolean;
+}
+
+interface BackendSessionsResponse {
+  sessions: BackendSession[];
+  total: number;
+  current_session_id?: string;
+}
+
+// Frontend Session format for display
 interface Session {
   id: string;
   device_type: 'desktop' | 'mobile' | 'tablet' | 'unknown';
@@ -64,66 +84,60 @@ interface SessionsResponse {
 
 // ==================== API ====================
 
+function parseDeviceName(deviceName?: string): { browser: string; os: string } {
+  if (!deviceName) {
+    return { browser: 'Unbekannt', os: 'Unbekannt' };
+  }
+  // device_name format: "Chrome auf Windows" or similar
+  const parts = deviceName.split(' auf ');
+  if (parts.length === 2) {
+    return { browser: parts[0], os: parts[1] };
+  }
+  return { browser: deviceName, os: 'Unbekannt' };
+}
+
+function mapDeviceType(deviceType?: string): 'desktop' | 'mobile' | 'tablet' | 'unknown' {
+  if (!deviceType) return 'unknown';
+  const type = deviceType.toLowerCase();
+  if (type === 'desktop' || type === 'pc') return 'desktop';
+  if (type === 'mobile' || type === 'phone') return 'mobile';
+  if (type === 'tablet') return 'tablet';
+  return 'unknown';
+}
+
 async function fetchSessions(): Promise<SessionsResponse> {
-  // TODO: Ersetze mit echtem API-Call wenn Backend verfuegbar
-  // const response = await apiClient.get<SessionsResponse>('/auth/sessions');
-  // return response.data;
+  const response = await apiClient.get<BackendSessionsResponse>('/auth/sessions');
+  const data = response.data;
 
-  // Mock-Daten fuer Entwicklung
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  const mockSessions: Session[] = [
-    {
-      id: 'session-1',
-      device_type: 'desktop',
-      browser: 'Chrome 120',
-      os: 'Windows 11',
-      ip_address: '192.168.1.100',
-      location: 'Stuttgart, DE',
-      last_activity: new Date().toISOString(),
-      created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      is_current: true,
-    },
-    {
-      id: 'session-2',
-      device_type: 'mobile',
-      browser: 'Safari 17',
-      os: 'iOS 17',
-      ip_address: '192.168.1.101',
-      location: 'Stuttgart, DE',
-      last_activity: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-      created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      is_current: false,
-    },
-    {
-      id: 'session-3',
-      device_type: 'tablet',
-      browser: 'Firefox 121',
-      os: 'Android 14',
-      ip_address: '10.0.0.50',
-      location: 'Muenchen, DE',
-      last_activity: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      is_current: false,
-    },
-  ];
+  const sessions: Session[] = data.sessions.map((s) => {
+    const { browser, os } = parseDeviceName(s.device_name);
+    return {
+      id: s.id,
+      device_type: mapDeviceType(s.device_type),
+      browser,
+      os,
+      ip_address: s.ip_address,
+      location: s.location,
+      last_activity: s.last_activity_at,
+      created_at: s.created_at,
+      is_current: s.is_current,
+    };
+  });
 
   return {
-    sessions: mockSessions,
-    current_session_id: 'session-1',
+    sessions,
+    current_session_id: data.current_session_id || '',
   };
 }
 
 async function terminateSession(sessionId: string): Promise<void> {
-  // TODO: Ersetze mit echtem API-Call
-  // await apiClient.delete(`/auth/sessions/${sessionId}`);
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  await apiClient.delete(`/auth/sessions/${sessionId}`);
 }
 
 async function terminateOtherSessions(): Promise<void> {
-  // TODO: Ersetze mit echtem API-Call
-  // await apiClient.delete('/auth/sessions/others');
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await apiClient.delete('/auth/sessions', {
+    data: { except_current: true }
+  });
 }
 
 // ==================== Helpers ====================
@@ -397,7 +411,12 @@ export function ActiveSessionsTab() {
       {/* Terminate Single Session Dialog */}
       <AlertDialog
         open={!!sessionToTerminate}
-        onOpenChange={(open) => !open && setSessionToTerminate(null)}
+        onOpenChange={(open) => {
+          // Nur schliessen wenn nicht gerade geladen wird
+          if (!open && !terminateMutation.isPending) {
+            setSessionToTerminate(null);
+          }
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -407,12 +426,22 @@ export function ActiveSessionsTab() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel disabled={terminateMutation.isPending}>
+              Abbrechen
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmTerminateSession}
+              disabled={terminateMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Sitzung beenden
+              {terminateMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Beende...
+                </>
+              ) : (
+                'Sitzung beenden'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -421,7 +450,12 @@ export function ActiveSessionsTab() {
       {/* Terminate All Sessions Dialog */}
       <AlertDialog
         open={showTerminateAllDialog}
-        onOpenChange={setShowTerminateAllDialog}
+        onOpenChange={(open) => {
+          // Nur schliessen wenn nicht gerade geladen wird
+          if (!open && !terminateAllMutation.isPending) {
+            setShowTerminateAllDialog(false);
+          }
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -431,12 +465,22 @@ export function ActiveSessionsTab() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel disabled={terminateAllMutation.isPending}>
+              Abbrechen
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmTerminateAllSessions}
+              disabled={terminateAllMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Alle beenden
+              {terminateAllMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Beende alle...
+                </>
+              ) : (
+                'Alle beenden'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

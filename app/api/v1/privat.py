@@ -1177,6 +1177,7 @@ async def get_property(
     # Hole zusaetzliche Details (Mieter, Statistiken)
     tenants = await property_service.list_tenants(db, property_id)
     total_income = await property_service.get_total_rental_income(db, property_id)
+    pending_payment_count = await property_service.get_pending_payments_count(db, property_id)
 
     # SECURITY FIX 25-9: PII Masking fuer Tenants
     tenant_responses = []
@@ -1206,7 +1207,7 @@ async def get_property(
         updated_at=prop.updated_at,
         tenants=tenant_responses,
         total_rental_income=total_income,
-        pending_payments=0,  # TODO: Implement pending payment count
+        pending_payments=pending_payment_count,
     )
 
 

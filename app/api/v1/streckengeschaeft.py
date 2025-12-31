@@ -25,7 +25,7 @@ from app.api.dependencies import (
     check_datev_export_rate_limit,
     RateLimitDependency,
 )
-from app.db.models import User, Document, DropShipmentClassification
+from app.db.models import User, Document, DropShipmentClassification, ZmSubmission, ZmSubmissionStatus
 from sqlalchemy import select
 
 
@@ -774,6 +774,23 @@ async def get_zm_summary(
     # Security: Filter by user ownership
     summary = await service.get_zm_summary(period, user_id=current_user.id)
 
+    # Submission-Status aus DB abrufen
+    submission_result = await session.execute(
+        select(ZmSubmission)
+        .where(
+            ZmSubmission.period == period,
+            ZmSubmission.user_id == current_user.id
+        )
+    )
+    submission = submission_result.scalar_one_or_none()
+
+    # Submission-Status ermitteln
+    is_submitted = submission is not None and submission.status in [
+        ZmSubmissionStatus.SUBMITTED.value,
+        ZmSubmissionStatus.CONFIRMED.value,
+        ZmSubmissionStatus.CORRECTED.value,
+    ]
+
     # Transform to Frontend-compatible format (camelCase, proper types)
     return {
         "period": summary.period,
@@ -790,7 +807,10 @@ async def get_zm_summary(
             for c in summary.by_country
         ],
         "deadline": summary.deadline.isoformat(),
-        "isSubmitted": False,  # TODO: Track submission status in DB
+        "isSubmitted": is_submitted,
+        "submissionStatus": submission.status if submission else None,
+        "submittedAt": submission.submitted_at.isoformat() if submission and submission.submitted_at else None,
+        "bzstReference": submission.bzst_reference if submission else None,
         "records": [
             {
                 "id": str(r.classification_id),

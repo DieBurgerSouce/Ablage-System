@@ -2,102 +2,36 @@
  * useNotifications - Hook fuer Benutzer-Benachrichtigungen
  *
  * Laedt, markiert als gelesen und verwaltet Benachrichtigungen.
+ * Integriert mit Backend API: /api/v1/notifications
+ *
+ * Enterprise Features:
+ * - Error Handling mit Toast-Benachrichtigungen
+ * - Optimistic Updates mit Rollback bei Fehler
+ * - Visibility-aware Refetch (pausiert bei inaktivem Tab)
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Notification, NotificationsResponse } from '../types/collaboration.types';
-
-// ==================== Mock Data ====================
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: 'notif-1',
-    type: 'mention',
-    title: 'Erwaehnung',
-    message: 'Max Mustermann hat Sie in einem Kommentar erwaehnt',
-    documentId: 'doc-1',
-    documentName: 'Rechnung_2024_001.pdf',
-    fromUserId: 'user-1',
-    fromUserName: 'Max Mustermann',
-    isRead: false,
-    createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-    actionUrl: '/documents/doc-1',
-  },
-  {
-    id: 'notif-2',
-    type: 'comment_reply',
-    title: 'Antwort auf Kommentar',
-    message: 'Anna Schmidt hat auf Ihren Kommentar geantwortet',
-    documentId: 'doc-2',
-    documentName: 'Lieferschein_2024_042.pdf',
-    fromUserId: 'user-2',
-    fromUserName: 'Anna Schmidt',
-    isRead: false,
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    actionUrl: '/documents/doc-2',
-  },
-  {
-    id: 'notif-3',
-    type: 'document_approved',
-    title: 'Dokument freigegeben',
-    message: 'Thomas Mueller hat Ihr Dokument freigegeben',
-    documentId: 'doc-3',
-    documentName: 'Angebot_Kunde_XYZ.pdf',
-    fromUserId: 'user-3',
-    fromUserName: 'Thomas Mueller',
-    isRead: true,
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    actionUrl: '/documents/doc-3',
-  },
-  {
-    id: 'notif-4',
-    type: 'task_assigned',
-    title: 'Aufgabe zugewiesen',
-    message: 'Sie wurden zur Pruefung einer Rechnung zugewiesen',
-    documentId: 'doc-4',
-    documentName: 'Eingangsrechnung_Lieferant.pdf',
-    fromUserId: 'system',
-    fromUserName: 'System',
-    isRead: true,
-    createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-    actionUrl: '/documents/doc-4',
-  },
-];
+import { toast } from 'sonner';
+import { apiClient } from '@/lib/api/client';
+import type { NotificationsResponse } from '../types/collaboration.types';
 
 // ==================== API Functions ====================
 
 async function fetchNotifications(): Promise<NotificationsResponse> {
-  // TODO: Replace with actual API call
-  // const response = await apiClient.get<NotificationsResponse>('/notifications');
-  // return response.data;
-
-  await new Promise((resolve) => setTimeout(resolve, 200));
-
-  const unreadCount = MOCK_NOTIFICATIONS.filter((n) => !n.isRead).length;
-
-  return {
-    notifications: MOCK_NOTIFICATIONS,
-    unreadCount,
-    total: MOCK_NOTIFICATIONS.length,
-  };
+  const response = await apiClient.get<NotificationsResponse>('/notifications');
+  return response.data;
 }
 
 async function markAsRead(notificationId: string): Promise<void> {
-  // TODO: Replace with actual API call
-  // await apiClient.patch(`/notifications/${notificationId}/read`);
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await apiClient.patch(`/notifications/${notificationId}/read`);
 }
 
 async function markAllAsRead(): Promise<void> {
-  // TODO: Replace with actual API call
-  // await apiClient.patch('/notifications/read-all');
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await apiClient.post('/notifications/mark-all-read');
 }
 
 async function deleteNotification(notificationId: string): Promise<void> {
-  // TODO: Replace with actual API call
-  // await apiClient.delete(`/notifications/${notificationId}`);
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await apiClient.delete(`/notifications/${notificationId}`);
 }
 
 // ==================== Hooks ====================
@@ -107,7 +41,15 @@ export function useNotifications() {
     queryKey: ['notifications'],
     queryFn: fetchNotifications,
     staleTime: 30000, // 30 seconds
-    refetchInterval: 60000, // Refetch every minute for real-time-ish updates
+    // Visibility-aware Refetch: Pausiert bei inaktivem Tab
+    refetchInterval: (query) => {
+      // Nur refetchen wenn Tab aktiv ist
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return false;
+      }
+      return 60000; // Refetch every minute for real-time-ish updates
+    },
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -118,6 +60,11 @@ export function useMarkAsRead() {
     mutationFn: markAsRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+    onError: (error: Error) => {
+      toast.error('Fehler beim Markieren als gelesen', {
+        description: error.message || 'Bitte versuchen Sie es erneut.',
+      });
     },
   });
 }
@@ -142,10 +89,14 @@ export function useMarkAllAsRead() {
 
       return { previousData };
     },
-    onError: (_, __, context) => {
+    onError: (error: Error, _, context) => {
+      // Rollback bei Fehler
       if (context?.previousData) {
         queryClient.setQueryData(['notifications'], context.previousData);
       }
+      toast.error('Fehler beim Markieren aller als gelesen', {
+        description: error.message || 'Bitte versuchen Sie es erneut.',
+      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -160,6 +111,11 @@ export function useDeleteNotification() {
     mutationFn: deleteNotification,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+    onError: (error: Error) => {
+      toast.error('Fehler beim Loeschen der Benachrichtigung', {
+        description: error.message || 'Bitte versuchen Sie es erneut.',
+      });
     },
   });
 }

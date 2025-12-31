@@ -2031,7 +2031,7 @@ class Notification(Base):
     expires_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    user = relationship("User", backref="notifications")
+    user = relationship("User", backref="system_notifications")
 
     __table_args__ = (
         Index("ix_notifications_user_read", "user_id", "read"),
@@ -6684,6 +6684,81 @@ class ClassificationIndicator(Base):
         return f"<ClassificationIndicator {self.indicator_code} weight={self.weight}>"
 
 
+class ZmSubmissionStatus(str, Enum):
+    """Status der ZM-Meldung."""
+    DRAFT = "draft"               # Entwurf (noch nicht eingereicht)
+    SUBMITTED = "submitted"       # Bei BZSt eingereicht
+    CONFIRMED = "confirmed"       # Eingang bestätigt
+    CORRECTED = "corrected"       # Korrigierte Meldung eingereicht
+    CANCELLED = "cancelled"       # Storniert
+
+
+class ZmSubmission(Base):
+    """
+    Zusammenfassende Meldung (ZM) Einreichungsstatus.
+    Trackt den Status der monatlichen ZM-Meldung pro Periode.
+
+    Die ZM muss bis zum 25. des Folgemonats beim BZSt eingereicht werden.
+    """
+    __tablename__ = "zm_submissions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Periode (z.B. "2024-12" für Dezember 2024)
+    period = Column(String(7), nullable=False, index=True)
+
+    # User/Company
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+                    nullable=False, index=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="SET NULL"),
+                       nullable=True)
+
+    # Status und Submission Details
+    status = Column(String(20), nullable=False, default=ZmSubmissionStatus.DRAFT.value)
+    submitted_at = Column(DateTime(timezone=True), nullable=True)
+    submitted_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    # BZSt-Referenz (nach Einreichung)
+    bzst_reference = Column(String(100), nullable=True)
+    bzst_response_code = Column(String(20), nullable=True)
+    bzst_response_message = Column(Text, nullable=True)
+
+    # Inhalt der Meldung (Snapshot zum Zeitpunkt der Einreichung)
+    total_amount = Column(Numeric(15, 2), nullable=True)
+    record_count = Column(Integer, nullable=True)
+    triangular_count = Column(Integer, nullable=True)
+    countries_involved = Column(CrossDBJSON, nullable=True)  # ["AT", "NL", ...]
+
+    # Deadline (25. des Folgemonats)
+    deadline = Column(Date, nullable=False)
+    is_late = Column(Boolean, default=False)
+
+    # Korrektur-Referenz (falls dies eine Korrekturmeldung ist)
+    original_submission_id = Column(UUID(as_uuid=True),
+                                   ForeignKey("zm_submissions.id", ondelete="SET NULL"),
+                                   nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    submitter = relationship("User", foreign_keys=[submitted_by])
+    company = relationship("Company")
+    original_submission = relationship("ZmSubmission", remote_side=[id])
+
+    __table_args__ = (
+        # Unique constraint: Eine Meldung pro Periode pro User
+        Index("ix_zm_submission_period_user", "period", "user_id", unique=True),
+        Index("ix_zm_submission_status", "status"),
+        Index("ix_zm_submission_deadline", "deadline"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ZmSubmission {self.period} status={self.status}>"
+
+
 # =============================================================================
 # PERSONAL-MODUL: ENTERPRISE HR
 # =============================================================================
@@ -8773,3 +8848,130 @@ class ValidationAnalytics(Base):
         Index("ix_va_document_type", "document_type"),
         Index("ix_va_date_editor", "date", "editor_id"),
     )
+
+
+# =============================================================================
+# COLLABORATION-MODUL: COMMENTS, ACTIVITIES, NOTIFICATIONS
+# =============================================================================
+
+
+class DocumentComment(Base):
+    """Kommentare zu Dokumenten fuer Collaboration."""
+    __tablename__ = "document_comments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    parent_id = Column(UUID(as_uuid=True), ForeignKey("document_comments.id", ondelete="CASCADE"), nullable=True)
+
+    content = Column(Text, nullable=False)
+    mentions = Column(CrossDBJSON, default=list)  # [{"userId": "...", "userName": "...", "startIndex": 0, "endIndex": 10}]
+    reactions = Column(CrossDBJSON, default=list)  # [{"emoji": "👍", "count": 2, "userIds": ["..."]}]
+
+    is_edited = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    document = relationship("Document", backref="comments")
+    user = relationship("User", backref="document_comments")
+    parent = relationship("DocumentComment", remote_side=[id], backref="replies")
+
+    __table_args__ = (
+        Index("ix_doc_comment_document", "document_id"),
+        Index("ix_doc_comment_user", "user_id"),
+        Index("ix_doc_comment_parent", "parent_id"),
+        Index("ix_doc_comment_created", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DocumentComment {self.id} on {self.document_id}>"
+
+
+class ActivityType(str, Enum):
+    """Aktivitaetstypen fuer Document Activity Log."""
+    DOCUMENT_CREATED = "document_created"
+    DOCUMENT_UPDATED = "document_updated"
+    DOCUMENT_VIEWED = "document_viewed"
+    DOCUMENT_DOWNLOADED = "document_downloaded"
+    COMMENT_ADDED = "comment_added"
+    COMMENT_REPLIED = "comment_replied"
+    STATUS_CHANGED = "status_changed"
+    TAGS_CHANGED = "tags_changed"
+    METADATA_UPDATED = "metadata_updated"
+    DOCUMENT_SHARED = "document_shared"
+
+
+class DocumentActivity(Base):
+    """Aktivitaetslog fuer Dokumente."""
+    __tablename__ = "document_activities"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    activity_type = Column(String(50), nullable=False)
+    description = Column(String(500), nullable=False)
+    activity_metadata = Column("metadata", CrossDBJSON, default=dict)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    document = relationship("Document", backref="activities")
+    user = relationship("User", backref="document_activities")
+
+    __table_args__ = (
+        Index("ix_doc_activity_document", "document_id"),
+        Index("ix_doc_activity_user", "user_id"),
+        Index("ix_doc_activity_type", "activity_type"),
+        Index("ix_doc_activity_created", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DocumentActivity {self.activity_type} on {self.document_id}>"
+
+
+class NotificationType(str, Enum):
+    """Benachrichtigungstypen."""
+    MENTION = "mention"
+    COMMENT_REPLY = "comment_reply"
+    DOCUMENT_SHARED = "document_shared"
+    TASK_ASSIGNED = "task_assigned"
+    DOCUMENT_APPROVED = "document_approved"
+    DOCUMENT_REJECTED = "document_rejected"
+
+
+class UserNotification(Base):
+    """Benutzer-Benachrichtigungen."""
+    __tablename__ = "user_notifications"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    from_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=True)
+
+    notification_type = Column(String(50), nullable=False)
+    title = Column(String(200), nullable=False)
+    message = Column(Text, nullable=False)
+    action_url = Column(String(500), nullable=True)
+
+    is_read = Column(Boolean, default=False)
+    read_at = Column(DateTime(timezone=True), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id], backref="notifications")
+    from_user = relationship("User", foreign_keys=[from_user_id])
+    document = relationship("Document", backref="notifications")
+
+    __table_args__ = (
+        Index("ix_notification_user", "user_id"),
+        Index("ix_notification_unread", "user_id", "is_read"),
+        Index("ix_notification_created", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<UserNotification {self.notification_type} for {self.user_id}>"

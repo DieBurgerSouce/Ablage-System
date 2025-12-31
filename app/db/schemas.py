@@ -6903,3 +6903,306 @@ class QueueDocumentResponse(BaseModel):
     document_id: UUID
     status: str
     message: str
+
+
+# =============================================================================
+# COLLABORATION: COMMENTS, ACTIVITIES, NOTIFICATIONS
+# =============================================================================
+
+
+class MentionSchema(BaseModel):
+    """Mention in einem Kommentar.
+
+    Validation:
+    - userId muss gueltige UUID sein
+    - userName max 200 Zeichen (wie User.full_name), HTML-escaped
+    - startIndex und endIndex muessen BEIDE oder KEINER angegeben sein
+    - startIndex < endIndex wenn angegeben
+    """
+    userId: UUID = Field(..., description="UUID des erwahnten Users")
+    userName: str = Field(..., min_length=1, max_length=200, description="Anzeigename")
+    startIndex: Optional[int] = Field(None, ge=0, description="Start-Position im Text")
+    endIndex: Optional[int] = Field(None, ge=0, description="End-Position im Text")
+
+    @field_validator('userName')
+    @classmethod
+    def escape_username(cls, v: str) -> str:
+        """Escape HTML-Zeichen im userName um XSS zu verhindern."""
+        import html
+        return html.escape(v)
+
+    @model_validator(mode='after')
+    def validate_indices(self) -> 'MentionSchema':
+        """Prueft Index-Konsistenz:
+        - Beide oder keiner
+        - startIndex < endIndex
+        """
+        has_start = self.startIndex is not None
+        has_end = self.endIndex is not None
+
+        # Beide oder keiner
+        if has_start != has_end:
+            raise ValueError(
+                "startIndex und endIndex muessen beide angegeben werden oder beide fehlen"
+            )
+
+        # Wenn beide angegeben: startIndex < endIndex
+        if has_start and has_end:
+            if self.startIndex >= self.endIndex:
+                raise ValueError("startIndex muss kleiner als endIndex sein")
+
+        return self
+
+
+# Emoji Unicode Pattern - erlaubt Standard-Emojis und gängige Varianten
+# Basiert auf Unicode Emoji Ranges: Emoji, Dingbats, Misc Symbols
+EMOJI_PATTERN = r'^[\U0001F300-\U0001F9FF\U00002600-\U000027BF\U0001FA00-\U0001FA6F\U0001FAD0-\U0001FAE8]+$'
+
+
+class ReactionSchema(BaseModel):
+    """Reaktion auf einen Kommentar.
+
+    Hinweis: userIds sind UUID-Strings fuer JSON-Kompatibilitaet mit Frontend.
+    """
+    emoji: str = Field(..., min_length=1, max_length=10, description="Unicode Emoji")
+    count: int = Field(..., ge=0, description="Anzahl Reaktionen")
+    userIds: List[str] = Field(..., description="Liste der User-UUIDs als Strings")
+
+
+def _validate_content_not_whitespace(value: str) -> str:
+    """Stellt sicher dass content nicht nur Whitespace ist."""
+    stripped = value.strip()
+    if not stripped:
+        raise ValueError("Inhalt darf nicht nur aus Leerzeichen bestehen")
+    return value
+
+
+class CommentCreate(BaseModel):
+    """Kommentar erstellen.
+
+    Validation:
+    - content: Nicht leer, nicht nur Whitespace, max 10000 Zeichen
+    - mentions: Optional, mit validen UUIDs
+    """
+    content: str = Field(..., min_length=1, max_length=10000)
+    mentions: Optional[List[MentionSchema]] = None
+    parentId: Optional[UUID] = None
+
+    @field_validator('content')
+    @classmethod
+    def content_not_whitespace(cls, v: str) -> str:
+        return _validate_content_not_whitespace(v)
+
+
+class CommentUpdate(BaseModel):
+    """Kommentar aktualisieren."""
+    content: str = Field(..., min_length=1, max_length=10000)
+    mentions: Optional[List[MentionSchema]] = None
+
+    @field_validator('content')
+    @classmethod
+    def content_not_whitespace(cls, v: str) -> str:
+        return _validate_content_not_whitespace(v)
+
+
+class CommentResponse(BaseModel):
+    """Kommentar-Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    documentId: str
+    userId: str
+    userName: str
+    userAvatar: Optional[str] = None
+    content: str
+    mentions: List[MentionSchema] = []
+    parentId: Optional[str] = None
+    createdAt: str
+    updatedAt: Optional[str] = None
+    isEdited: bool
+    reactions: List[ReactionSchema] = []
+
+
+class CommentsListResponse(BaseModel):
+    """Liste von Kommentaren."""
+    comments: List[CommentResponse]
+    total: int
+    hasMore: bool
+
+
+class ActivityTypeEnum(str, Enum):
+    """Aktivitaetstypen."""
+    DOCUMENT_CREATED = "document_created"
+    DOCUMENT_UPDATED = "document_updated"
+    DOCUMENT_VIEWED = "document_viewed"
+    DOCUMENT_DOWNLOADED = "document_downloaded"
+    COMMENT_ADDED = "comment_added"
+    COMMENT_REPLIED = "comment_replied"
+    STATUS_CHANGED = "status_changed"
+    TAGS_CHANGED = "tags_changed"
+    METADATA_UPDATED = "metadata_updated"
+    DOCUMENT_SHARED = "document_shared"
+
+
+class ActivityResponse(BaseModel):
+    """Activity-Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    documentId: str
+    userId: str
+    userName: str
+    userAvatar: Optional[str] = None
+    type: str
+    description: str
+    metadata: Optional[Dict[str, Any]] = None
+    createdAt: str
+
+
+class ActivitiesListResponse(BaseModel):
+    """Liste von Activities."""
+    activities: List[ActivityResponse]
+    total: int
+    hasMore: bool
+
+
+class NotificationTypeEnum(str, Enum):
+    """Benachrichtigungstypen."""
+    MENTION = "mention"
+    COMMENT_REPLY = "comment_reply"
+    DOCUMENT_SHARED = "document_shared"
+    TASK_ASSIGNED = "task_assigned"
+    DOCUMENT_APPROVED = "document_approved"
+    DOCUMENT_REJECTED = "document_rejected"
+
+
+class NotificationResponse(BaseModel):
+    """Notification-Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    type: str
+    title: str
+    message: str
+    documentId: Optional[str] = None
+    documentName: Optional[str] = None
+    fromUserId: str
+    fromUserName: str
+    fromUserAvatar: Optional[str] = None
+    isRead: bool
+    createdAt: str
+    actionUrl: Optional[str] = Field(None, max_length=500)
+
+    @field_validator('actionUrl')
+    @classmethod
+    def validate_action_url(cls, v: Optional[str]) -> Optional[str]:
+        """Validiert actionUrl gegen XSS-Angriffe.
+
+        Erlaubt:
+        - Relative Pfade (/documents/123) - MUSS mit einzelnem / starten
+        - HTTPS URLs
+        - HTTP URLs (nur localhost fuer Dev)
+
+        Blockiert:
+        - javascript: URLs (inkl. Varianten mit Whitespace/Newlines)
+        - data: URLs
+        - vbscript: URLs
+        - Protocol-relative URLs (//evil.com)
+        - Andere gefaehrliche Protokolle
+        - Steuerzeichen (Null-Bytes, Newlines, etc.)
+        """
+        if v is None:
+            return None
+
+        # KRITISCH: Entferne alle Whitespace und Steuerzeichen fuer Sicherheits-Check
+        # Dies verhindert Bypasses wie "java\nscript:" oder "java\tscript:"
+        import re
+        v_normalized = re.sub(r'[\s\x00-\x1f\x7f-\x9f]', '', v.lower())
+
+        # Blockiere gefaehrliche Protokolle (nach Normalisierung!)
+        dangerous_protocols = [
+            'javascript:', 'data:', 'vbscript:', 'file:',
+            'blob:', 'about:', 'ws:', 'wss:', 'mhtml:',
+            'livescript:', 'mocha:', 'view-source:'
+        ]
+        for protocol in dangerous_protocols:
+            if v_normalized.startswith(protocol):
+                raise ValueError(f"Ungueltige URL: Protokoll '{protocol}' nicht erlaubt")
+
+        # Blockiere Steuerzeichen im Original-String
+        if re.search(r'[\x00-\x1f\x7f-\x9f]', v):
+            raise ValueError("URL darf keine Steuerzeichen enthalten")
+
+        # Blockiere Protocol-Relative URLs (//evil.com) - Open Redirect Gefahr!
+        if v.startswith('//'):
+            raise ValueError("Protocol-relative URLs (//) sind nicht erlaubt")
+
+        # Relative URLs erlauben (muessen mit EINEM / starten, nicht //)
+        if v.startswith('/') and not v.startswith('//'):
+            # Zusaetzlich: Blockiere Path-Traversal
+            if '..' in v:
+                raise ValueError("Path-Traversal (..) ist nicht erlaubt")
+            return v
+
+        # Absolute URLs: nur http/https erlauben
+        v_lower = v.lower().strip()
+        if v_lower.startswith('http://') or v_lower.startswith('https://'):
+            return v
+
+        # Alles andere blockieren
+        raise ValueError("URL muss relativ (/) oder http(s):// sein")
+
+
+class NotificationsListResponse(BaseModel):
+    """Liste von Notifications."""
+    notifications: List[NotificationResponse]
+    unreadCount: int
+    total: int
+
+
+class ReactionAdd(BaseModel):
+    """Reaktion hinzufuegen.
+
+    Validation:
+    - emoji muss ein gueltiges Unicode Emoji sein
+    - Akzeptiert Standard-Emojis (1F300-1F9FF), Dingbats (2600-27BF), etc.
+    - Variation Selectors sind nur NACH einem echten Emoji erlaubt
+    """
+    emoji: str = Field(..., min_length=1, max_length=10)
+
+    @field_validator('emoji')
+    @classmethod
+    def validate_emoji(cls, v: str) -> str:
+        import re
+
+        # Definiere echte Emoji-Ranges (OHNE Variation Selector!)
+        emoji_base_ranges = (
+            r'\U0001F300-\U0001F9FF'   # Misc Symbols & Pictographs, Emoticons, etc.
+            r'\U00002600-\U000027BF'   # Dingbats, Misc Symbols
+            r'\U0001FA00-\U0001FA6F'   # Chess, Extended-A
+            r'\U0001FAD0-\U0001FAE8'   # Food, Face Symbols
+            r'\U0001F600-\U0001F64F'   # Emoticons
+            r'\U0001F680-\U0001F6FF'   # Transport & Map Symbols
+            r'\U0001F1E0-\U0001F1FF'   # Flags
+            r'\U00002702-\U000027B0'   # Dingbats
+            r'\U0001FAF0-\U0001FAF8'   # Hand Gestures Extended
+        )
+
+        # Pattern: Mindestens 1 echtes Emoji, optional gefolgt von Variation Selectors
+        # Variation Selector (FE0F) darf nur NACH einem echten Emoji kommen
+        emoji_pattern = re.compile(
+            r'^(?:[' + emoji_base_ranges + r']'      # Ein echtes Emoji
+            r'[\U0000FE0F\U0000200D]?'               # Optional: Variation Selector oder ZWJ
+            r')+'                                    # Erlaubt mehrere Emojis
+            r'$'
+        )
+
+        if not emoji_pattern.match(v):
+            raise ValueError("Ungültiges Emoji-Format")
+
+        # Zusaetzlich: Pruefe dass nicht NUR Variation Selectors/ZWJ
+        base_chars = re.sub(r'[\U0000FE0F\U0000200D]', '', v)
+        if not base_chars:
+            raise ValueError("Emoji darf nicht nur aus Variation Selectors bestehen")
+
+        return v

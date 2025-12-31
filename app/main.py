@@ -469,6 +469,18 @@ OPENAPI_TAGS = [
         "description": "Kassenbuch-Kategorien mit SKR03/SKR04 Kontenzuordnung.",
     },
     {
+        "name": "comments",
+        "description": "Dokumenten-Kommentare. Kommentieren, Antworten, @Mentions und Reaktionen fuer Enterprise-Collaboration.",
+    },
+    {
+        "name": "notifications",
+        "description": "Benutzer-Benachrichtigungen. Mentions, Replies, Sharing-Benachrichtigungen mit Gelesen-Status.",
+    },
+    {
+        "name": "activity",
+        "description": "Dokumenten-Aktivitaetsverlauf. Audit-Trail aller Aktionen auf Dokumenten.",
+    },
+    {
         "name": "Spesen - Abrechnungen",
         "description": "Spesenabrechnungen. CRUD und Positionsverwaltung.",
     },
@@ -717,6 +729,9 @@ from app.api.v1.expenses import router as expenses_router
 from app.api.v1.streckengeschaeft import router as streckengeschaeft_router
 from app.api.v1.privat import router as privat_router
 from app.api.v1.validation import router as validation_router
+from app.api.v1.comments import router as comments_router
+from app.api.v1.notifications import router as notifications_router
+from app.api.v1.activity import router as activity_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -762,6 +777,9 @@ app.include_router(expenses_router, prefix="/api/v1")
 app.include_router(streckengeschaeft_router, prefix="/api/v1")
 app.include_router(privat_router, prefix="/api/v1")
 app.include_router(validation_router, prefix="/api/v1")
+app.include_router(comments_router, prefix="/api/v1")
+app.include_router(notifications_router, prefix="/api/v1")
+app.include_router(activity_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================

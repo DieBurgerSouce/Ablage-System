@@ -13,8 +13,7 @@ import { PresenceIndicator } from './PresenceIndicator';
 import { chatApi } from '@/lib/api/chat-api';
 import { documentsService } from '@/lib/api/services/documents';
 import { useToast } from '@/components/ui/use-toast';
-// TODO: WebSocket temporaer deaktiviert - verursacht Infinite Loop (React Error #185)
-// import { useChatWebSocket } from '../hooks/use-chat-websocket';
+import { useChatWebSocket } from '../hooks/use-chat-websocket';
 import type { ChatSession, ChatMessage, SourceChunk, SharedChatSession } from '@/lib/api/chat-api';
 
 /**
@@ -81,11 +80,23 @@ export function ChatLayout() {
     // AbortController für Streaming-Abbruch
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    // TODO: WebSocket für Real-time Collaboration temporaer deaktiviert
-    // Verursachte Infinite Loop (React Error #185)
-    // Muss vor Aktivierung debuggt werden
-    const wsConnected = false;
-    const wsOnlineUsers: { user_id: string; username: string; is_typing: boolean }[] = [];
+    // WebSocket für Real-time Collaboration
+    // WICHTIG: enabled=true nur wenn eine aktive Session existiert, um Reconnect-Loops zu vermeiden
+    const { isConnected: wsConnected, onlineUsers: wsOnlineUsers } = useChatWebSocket({
+        sessionId: activeSessionId,
+        enabled: !!activeSessionId, // Nur verbinden wenn Session aktiv
+        onNewMessage: (message) => {
+            // Neue Nachrichten von anderen Usern hinzufügen
+            setMessages((prev) => {
+                // Duplikate vermeiden
+                if (prev.some((m) => m.id === message.id)) return prev;
+                return [...prev, message];
+            });
+        },
+        onPresenceUpdate: () => {
+            // Presence wird über onlineUsers State verwaltet
+        },
+    });
 
     // Aktive Session Info ermitteln (für Sharing/Presence)
     const activeSession = sessions.find((s) => s.id === activeSessionId);

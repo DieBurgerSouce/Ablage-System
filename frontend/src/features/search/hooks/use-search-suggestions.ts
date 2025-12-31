@@ -3,21 +3,22 @@
  *
  * Holt Suchvorschlaege vom Backend basierend auf der aktuellen Eingabe.
  * Verwendet Debouncing um API-Calls zu reduzieren.
+ * Integriert mit Backend API: /api/v1/search/suggest
  *
  * Features:
  * - Debounced API calls (300ms)
  * - Kategorisierte Vorschlaege (Tags, Kunden, Dokumenttypen)
- * - Did-you-mean Korrekturvorschlaege
  * - Loading und Error States
  *
  * @example
  * ```tsx
- * const { suggestions, isLoading, didYouMean } = useSearchSuggestions(query);
+ * const { suggestions, isLoading } = useSearchSuggestions(query);
  * ```
  */
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
 
 // ==================== Types ====================
 
@@ -34,6 +35,21 @@ export interface SearchSuggestionsResponse {
   didYouMean?: string;
 }
 
+// Backend response format
+interface BackendSuggestItem {
+  text: string;
+  type: string; // "document", "tag", "term"
+  score: number;
+  document_id?: string;
+  highlight?: string;
+}
+
+interface BackendSuggestResponse {
+  query: string;
+  suggestions: BackendSuggestItem[];
+  total: number;
+}
+
 // ==================== Debounce Hook ====================
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -47,93 +63,19 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-// ==================== Mock Data (bis API verfuegbar) ====================
+// ==================== Helpers ====================
 
-// Mock-Daten fuer Entwicklung - wird spaeter durch echte API ersetzt
-const MOCK_TAGS = [
-  'Rechnung',
-  'Vertrag',
-  'Angebot',
-  'Lieferschein',
-  'Mahnung',
-  'Gutschrift',
-  'Bestellung',
-  'Quittung',
-];
-
-const MOCK_CUSTOMERS = [
-  'Mustermann GmbH',
-  'Schmidt & Partner',
-  'Meier AG',
-  'Fischer KG',
-  'Weber Consulting',
-];
-
-const MOCK_DOCTYPES = ['PDF', 'Bild', 'Office', 'Email'];
-
-function getMockSuggestions(query: string): SearchSuggestionsResponse {
-  const lowerQuery = query.toLowerCase();
-  const suggestions: SearchSuggestion[] = [];
-
-  // Tag-Vorschlaege
-  MOCK_TAGS.filter((tag) => tag.toLowerCase().includes(lowerQuery)).forEach(
-    (tag, i) => {
-      suggestions.push({
-        id: `tag-${i}`,
-        text: tag,
-        category: 'tag',
-        count: Math.floor(Math.random() * 50) + 1,
-      });
-    }
-  );
-
-  // Kunden-Vorschlaege
-  MOCK_CUSTOMERS.filter((c) => c.toLowerCase().includes(lowerQuery)).forEach(
-    (customer, i) => {
-      suggestions.push({
-        id: `customer-${i}`,
-        text: customer,
-        category: 'customer',
-        count: Math.floor(Math.random() * 20) + 1,
-      });
-    }
-  );
-
-  // Dokumenttyp-Vorschlaege
-  MOCK_DOCTYPES.filter((d) => d.toLowerCase().includes(lowerQuery)).forEach(
-    (doctype, i) => {
-      suggestions.push({
-        id: `doctype-${i}`,
-        text: doctype,
-        category: 'doctype',
-      });
-    }
-  );
-
-  // Did-you-mean (simple typo detection)
-  let didYouMean: string | undefined;
-  const typoMap: Record<string, string> = {
-    rechnugn: 'rechnung',
-    rechung: 'rechnung',
-    rechnunge: 'rechnung',
-    vertarg: 'vertrag',
-    anegbot: 'angebot',
-    liferung: 'lieferung',
-    lieferschien: 'lieferschein',
-    mahung: 'mahnung',
-    gutschirft: 'gutschrift',
-    bestllung: 'bestellung',
-    quitung: 'quittung',
-  };
-
-  if (typoMap[lowerQuery]) {
-    didYouMean = typoMap[lowerQuery];
+function mapBackendType(type: string): 'tag' | 'customer' | 'doctype' | 'query' {
+  switch (type) {
+    case 'tag':
+      return 'tag';
+    case 'document':
+      return 'doctype';
+    case 'term':
+      return 'query';
+    default:
+      return 'query';
   }
-
-  return {
-    suggestions: suggestions.slice(0, 8),
-    didYouMean,
-  };
 }
 
 // ==================== API Fetch ====================
@@ -141,14 +83,24 @@ function getMockSuggestions(query: string): SearchSuggestionsResponse {
 async function fetchSuggestions(
   query: string
 ): Promise<SearchSuggestionsResponse> {
-  // TODO: Ersetze mit echtem API-Call wenn Backend verfuegbar
-  // const response = await fetch(`/api/v1/search/suggestions?q=${encodeURIComponent(query)}`);
-  // if (!response.ok) throw new Error('Suggestions API error');
-  // return response.json();
+  const response = await apiClient.get<BackendSuggestResponse>(
+    `/search/suggest?q=${encodeURIComponent(query)}&limit=10`
+  );
 
-  // Simuliere Netzwerk-Latenz
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  return getMockSuggestions(query);
+  const data = response.data;
+
+  // Transform backend format to frontend format
+  const suggestions: SearchSuggestion[] = data.suggestions.map((item, idx) => ({
+    id: item.document_id || `${item.type}-${idx}`,
+    text: item.text,
+    category: mapBackendType(item.type),
+    count: undefined,
+  }));
+
+  return {
+    suggestions,
+    didYouMean: undefined, // Backend doesn't support did-you-mean yet
+  };
 }
 
 // ==================== Hook ====================
