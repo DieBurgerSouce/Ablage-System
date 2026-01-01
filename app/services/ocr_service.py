@@ -154,7 +154,8 @@ class OCRService:
             # Apply German correction for German documents
             correction_applied = False
             correction_result = None
-            if language == "de" and self._german_corrector and result.get("text"):
+            # Guard clause: Explizite None-Pruefung fuer Type Safety
+            if language == "de" and self._german_corrector is not None and result.get("text"):
                 try:
                     logger.info(
                         "applying_german_correction",

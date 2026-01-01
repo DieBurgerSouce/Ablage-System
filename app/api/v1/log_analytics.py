@@ -11,7 +11,7 @@ Bietet Admin-Endpoints fuer:
 Alle Endpoints erfordern Superuser-Authentifizierung.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import structlog
 from fastapi import APIRouter, Depends, Query
@@ -72,7 +72,7 @@ class HealthReportResponse(BaseModel):
     period_minutes: int
     metrics: LogMetricsResponse
     trends: List[TrendResponse]
-    alerts: List[Dict[str, Any]]
+    alerts: List[AlertResponse]
     recommendations: List[str]
 
 
@@ -96,19 +96,36 @@ class SourceStatsResponse(BaseModel):
     error_rate_percent: float
 
 
+class VolumeTimelineEntry(BaseModel):
+    """Entry fuer Volume Timeline."""
+
+    timestamp: str
+    count: int
+
+
+class DashboardSummary(BaseModel):
+    """Dashboard Summary Statistiken."""
+
+    total_entries: int
+    error_count: int
+    warning_count: int
+    error_rate_percent: float
+    entries_per_minute: float
+
+
 class DashboardDataResponse(BaseModel):
     """Response fuer Dashboard-Daten."""
 
     timestamp: str
     period_minutes: int
-    summary: Dict[str, Any]
+    summary: DashboardSummary
     by_level: Dict[str, int]
-    trends: List[Dict[str, Any]]
-    alerts: List[Dict[str, Any]]
+    trends: List[TrendResponse]
+    alerts: List[AlertResponse]
     recommendations: List[str]
-    top_errors: List[Dict[str, Any]]
-    volume_timeline: List[Dict[str, Any]]
-    source_stats: List[Dict[str, Any]]
+    top_errors: List[TopErrorResponse]
+    volume_timeline: List[VolumeTimelineEntry]
+    source_stats: List[SourceStatsResponse]
 
 
 # =============================================================================

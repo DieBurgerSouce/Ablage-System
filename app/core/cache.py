@@ -15,14 +15,113 @@ import json
 import hashlib
 import os
 import structlog
-from typing import Any, Callable, Optional, TypeVar, Union
+from typing import Any, Callable, Optional, TypeVar, Union, List, Dict
 from functools import wraps
 from datetime import datetime
+
+from pydantic import BaseModel, Field, field_validator, ValidationError
 
 logger = structlog.get_logger(__name__)
 
 # Type variable fuer generische Decorator
 T = TypeVar("T")
+
+
+# =============================================================================
+# Pydantic Validierungsmodelle fuer sichere JSON-Deserialisierung
+# =============================================================================
+
+# Erlaubte primitive Typen fuer Cache-Werte
+CacheValueType = Union[str, int, float, bool, None, List[Any], Dict[str, Any]]
+
+
+class DatetimeCacheValue(BaseModel):
+    """Validierungsschema fuer serialisierte datetime-Objekte."""
+    datetime_value: str = Field(..., alias="__datetime__", min_length=1)
+
+    model_config = {"populate_by_name": True}
+
+    @field_validator("datetime_value")
+    @classmethod
+    def validate_iso_format(cls, v: str) -> str:
+        """Validiere ISO-8601 Datumsformat."""
+        try:
+            datetime.fromisoformat(v)
+            return v
+        except ValueError:
+            raise ValueError(f"Ungueltiges Datumsformat: {v}")
+
+
+class CacheValueSchema(BaseModel):
+    """Validierungsschema fuer Cache-Werte.
+
+    Validiert die Struktur von gecachten Daten:
+    - Primitive Typen (str, int, float, bool, None)
+    - Listen und Dicts
+    - Spezielle datetime-Objekte
+
+    Verhindert:
+    - Unerwartete Typen
+    - Zu tief verschachtelte Strukturen (max_depth)
+    """
+    value: CacheValueType
+
+    model_config = {"extra": "forbid"}
+
+
+def _validate_cache_depth(data: Any, current_depth: int = 0, max_depth: int = 20) -> bool:
+    """Pruefe maximale Verschachtelungstiefe von Cache-Daten.
+
+    Verhindert DoS-Angriffe durch extrem tief verschachtelte JSON-Strukturen.
+
+    Args:
+        data: Zu pruefende Daten
+        current_depth: Aktuelle Tiefe
+        max_depth: Maximale erlaubte Tiefe
+
+    Returns:
+        True wenn Tiefe OK, False wenn zu tief
+    """
+    if current_depth > max_depth:
+        return False
+
+    if isinstance(data, dict):
+        return all(
+            _validate_cache_depth(v, current_depth + 1, max_depth)
+            for v in data.values()
+        )
+    elif isinstance(data, list):
+        return all(
+            _validate_cache_depth(item, current_depth + 1, max_depth)
+            for item in data
+        )
+    return True
+
+
+def _validate_cached_value(data: Any) -> CacheValueType:
+    """Validiere deserialisierte Cache-Daten mit Pydantic.
+
+    Args:
+        data: Deserialisierte JSON-Daten
+
+    Returns:
+        Validierte Daten
+
+    Raises:
+        ValidationError: Bei Validierungsfehlern
+    """
+    # Pruefe Verschachtelungstiefe
+    if not _validate_cache_depth(data):
+        raise ValueError("Cache-Daten ueberschreiten maximale Verschachtelungstiefe")
+
+    # Spezialfall: datetime-Objekte
+    if isinstance(data, dict) and "__datetime__" in data and len(data) == 1:
+        validated = DatetimeCacheValue.model_validate(data)
+        return {"__datetime__": validated.__datetime__}
+
+    # Normale Cache-Werte
+    CacheValueSchema(value=data)
+    return data
 
 
 def _get_int_env(key: str, default: int) -> int:
@@ -72,21 +171,51 @@ def _serialize_value(value: Any) -> str:
         return json.dumps(str(value))
 
 
-def _deserialize_value(value: str) -> Any:
-    """Deserialisiere Wert aus Redis."""
+def _deserialize_value(value: str) -> CacheValueType:
+    """Deserialisiere und validiere Wert aus Redis.
+
+    Verwendet Pydantic-Validierung fuer sichere Deserialisierung:
+    - Prueft Datentypen
+    - Validiert datetime-Format
+    - Begrenzt Verschachtelungstiefe (DoS-Schutz)
+
+    Args:
+        value: Serialisierter JSON-String aus Redis
+
+    Returns:
+        Validierte Daten oder None bei leerem Input
+    """
     if not value:
         return None
 
     try:
         data = json.loads(value)
 
-        # Handle datetime
-        if isinstance(data, dict) and "__datetime__" in data:
-            return datetime.fromisoformat(data["__datetime__"])
+        # Validiere mit Pydantic
+        validated_data = _validate_cached_value(data)
 
-        return data
-    except (json.JSONDecodeError, TypeError):
+        # Handle datetime nach Validierung
+        if isinstance(validated_data, dict) and "__datetime__" in validated_data:
+            return datetime.fromisoformat(validated_data["__datetime__"])
+
+        return validated_data
+
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.warning(
+            "cache_deserialize_json_error",
+            error=str(e),
+            value_preview=value[:100] if len(value) > 100 else value
+        )
         return value
+
+    except (ValidationError, ValueError) as e:
+        logger.warning(
+            "cache_deserialize_validation_error",
+            error=str(e),
+            value_preview=value[:100] if len(value) > 100 else value
+        )
+        # Bei Validierungsfehlern Cache-Eintrag verwerfen
+        return None
 
 
 def _generate_cache_key(

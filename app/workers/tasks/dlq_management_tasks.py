@@ -18,11 +18,61 @@ from collections import defaultdict
 
 import structlog
 from celery import current_app
+from pydantic import BaseModel, ValidationError as PydanticValidationError
 from redis import Redis
 from redis.exceptions import RedisError
 
 from app.core.config import settings
 from app.workers.celery_app import celery_app, CPUTask
+
+
+# =============================================================================
+# Pydantic Validierungsmodelle fuer DLQ-Tasks
+# =============================================================================
+
+class DLQTaskHeadersSchema(BaseModel):
+    """Validierungsschema fuer Celery Task Headers."""
+    id: Optional[str] = None
+    task: Optional[str] = None
+
+    class Config:
+        extra = "allow"  # Erlaube zusaetzliche Felder
+
+
+class DLQTaskPropertiesSchema(BaseModel):
+    """Validierungsschema fuer Celery Task Properties."""
+    timestamp: Optional[float] = None
+
+    class Config:
+        extra = "allow"
+
+
+class DLQTaskSchema(BaseModel):
+    """Validierungsschema fuer DLQ Task JSON.
+
+    Validiert die Struktur von Celery-Tasks in der Dead Letter Queue.
+    """
+    headers: DLQTaskHeadersSchema = DLQTaskHeadersSchema()
+    properties: DLQTaskPropertiesSchema = DLQTaskPropertiesSchema()
+    body: Optional[str] = None
+
+    class Config:
+        extra = "allow"
+
+
+def validate_dlq_task(data: Dict[str, Any]) -> DLQTaskSchema:
+    """Validiere DLQ Task JSON.
+
+    Args:
+        data: Deserialisierte JSON-Daten
+
+    Returns:
+        Validiertes DLQTaskSchema
+
+    Raises:
+        pydantic.ValidationError: Bei Validierungsfehlern
+    """
+    return DLQTaskSchema.model_validate(data)
 
 logger = structlog.get_logger(__name__)
 
@@ -102,16 +152,18 @@ def get_dlq_stats() -> Dict[str, Any]:
 
             for task_data in tasks:
                 try:
-                    task = json.loads(task_data)
-                    task_name = task.get("headers", {}).get("task", "unknown")
+                    raw_task = json.loads(task_data)
+                    # Pydantic-Validierung fuer sichere Deserialisierung
+                    validated_task = validate_dlq_task(raw_task)
+                    task_name = validated_task.headers.task or "unknown"
                     task_types[task_name] += 1
 
-                    # Ältesten Task finden
-                    task_ts = task.get("properties", {}).get("timestamp")
+                    # Aeltesten Task finden
+                    task_ts = validated_task.properties.timestamp
                     if task_ts:
                         if oldest_timestamp is None or task_ts < oldest_timestamp:
                             oldest_timestamp = task_ts
-                except (json.JSONDecodeError, KeyError):
+                except (json.JSONDecodeError, PydanticValidationError):
                     task_types["parse_error"] += 1
 
             result["task_types"] = dict(task_types)
@@ -154,18 +206,20 @@ def get_dlq_tasks(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         for raw_task in raw_tasks:
             try:
                 task_data = json.loads(raw_task)
+                # Pydantic-Validierung fuer sichere Deserialisierung
+                validated_task = validate_dlq_task(task_data)
                 task_info = {
-                    "task_id": task_data.get("headers", {}).get("id"),
-                    "task_name": task_data.get("headers", {}).get("task"),
+                    "task_id": validated_task.headers.id,
+                    "task_name": validated_task.headers.task,
                     "args": task_data.get("body", {}).get("args", [])[:3],  # Truncate
                     "kwargs_keys": list(task_data.get("body", {}).get("kwargs", {}).keys()),
-                    "timestamp": task_data.get("properties", {}).get("timestamp"),
+                    "timestamp": validated_task.properties.timestamp,
                     "retries": task_data.get("headers", {}).get("retries", 0),
                     "origin": task_data.get("headers", {}).get("origin"),
                     "raw_size_bytes": len(raw_task),
                 }
                 tasks.append(task_info)
-            except (json.JSONDecodeError, KeyError) as e:
+            except (json.JSONDecodeError, PydanticValidationError) as e:
                 tasks.append({
                     "error": f"Parse-Fehler: {e}",
                     "raw_preview": raw_task[:200] if raw_task else None,

@@ -88,7 +88,14 @@ class ExtractionStatsResponse(BaseModel):
 # =============================================================================
 
 
-@router.post("/reprocess-all", response_model=TaskResponse, status_code=202)
+@router.post(
+    "/reprocess-all",
+    response_model=TaskResponse,
+    status_code=202,
+    summary="Batch-Reprocessing starten",
+    description="Startet Batch-Reprocessing aller Dokumente fuer strukturierte Extraktion. "
+                "Langlaeufer Task, der im Hintergrund ausgefuehrt wird."
+)
 async def trigger_batch_reprocessing(
     request: BatchReprocessRequest,
     current_user: models.User = Depends(get_current_superuser),
@@ -134,7 +141,12 @@ async def trigger_batch_reprocessing(
     )
 
 
-@router.get("/reprocess-status/{task_id}", response_model=TaskStatusResponse)
+@router.get(
+    "/reprocess-status/{task_id}",
+    response_model=TaskStatusResponse,
+    summary="Reprocessing-Status abrufen",
+    description="Ruft den Status eines Batch-Reprocessing Tasks ab"
+)
 async def get_reprocessing_status(
     task_id: str,
     current_user: models.User = Depends(get_current_superuser),
@@ -165,7 +177,12 @@ async def get_reprocessing_status(
     return response
 
 
-@router.post("/reprocess-document/{document_id}", response_model=TaskResponse)
+@router.post(
+    "/reprocess-document/{document_id}",
+    response_model=TaskResponse,
+    summary="Einzeldokument reprocessen",
+    description="Startet Reprocessing eines einzelnen Dokuments fuer strukturierte Extraktion"
+)
 async def trigger_single_document_reprocessing(
     document_id: UUID,
     current_user: models.User = Depends(get_current_superuser),
@@ -191,7 +208,12 @@ async def trigger_single_document_reprocessing(
     )
 
 
-@router.get("/stats", response_model=ExtractionStatsResponse)
+@router.get(
+    "/stats",
+    response_model=ExtractionStatsResponse,
+    summary="Extraktions-Statistiken",
+    description="Ruft aktuelle Statistiken zur strukturierten Extraktion ab"
+)
 async def get_extraction_statistics(
     refresh: bool = Query(False, description="Cache ignorieren und neu berechnen"),
     current_user: models.User = Depends(get_current_superuser),
@@ -238,7 +260,11 @@ async def get_extraction_statistics(
     )
 
 
-@router.post("/cancel-reprocess/{task_id}")
+@router.post(
+    "/cancel-reprocess/{task_id}",
+    summary="Reprocessing abbrechen",
+    description="Bricht einen laufenden Batch-Reprocessing Task ab"
+)
 async def cancel_reprocessing_task(
     task_id: str,
     current_user: models.User = Depends(get_current_superuser),

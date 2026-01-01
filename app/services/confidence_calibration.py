@@ -127,7 +127,7 @@ class BackendDocTypeCalibrator:
     """
     backend: str
     doc_type: str
-    calibrator: Any = None
+    calibrator: Optional[CalibratorType] = None
     training_data: CalibrationData = field(default_factory=CalibrationData)
     stats: Optional[CalibrationStats] = None
     auto_retrain_threshold: int = 50  # Retrain nach X neuen Samples
@@ -173,6 +173,9 @@ class BackendDocTypeCalibrator:
         self.calibrator.fit(recent_conf, recent_act)
         self._samples_since_train = 0
 
+        # Berechne und speichere Statistiken nach Training
+        self._update_stats(recent_conf, recent_act)
+
         logger.debug(
             "backend_doctype_calibrator_retrained",
             backend=self.backend,
@@ -181,11 +184,42 @@ class BackendDocTypeCalibrator:
         )
         return True
 
+    def _update_stats(self, confidences: List[float], actuals: List[int]) -> None:
+        """Aktualisiere Statistiken nach Training."""
+        if self.calibrator is None or len(confidences) == 0:
+            return
+
+        raw_mean = sum(confidences) / len(confidences)
+        raw_std = (sum((x - raw_mean) ** 2 for x in confidences) / len(confidences)) ** 0.5
+
+        calibrated = [self.calibrator.predict(c) for c in confidences]
+        cal_mean = sum(calibrated) / len(calibrated)
+        cal_std = (sum((x - cal_mean) ** 2 for x in calibrated) / len(calibrated)) ** 0.5
+
+        self.stats = CalibrationStats(
+            backend=self.backend,
+            samples_count=len(confidences),
+            raw_mean=raw_mean,
+            raw_std=raw_std,
+            calibrated_mean=cal_mean,
+            calibrated_std=cal_std,
+        )
+
     def predict(self, confidence: float) -> float:
         """Kalibriere Confidence-Wert."""
         if self.calibrator is None:
             return confidence
         return self.calibrator.predict(confidence)
+
+    def get_stats(self) -> Optional[Dict[str, Any]]:
+        """Hole Statistiken mit None-Check.
+
+        Returns:
+            Dict mit Statistiken oder None wenn keine vorhanden
+        """
+        if self.stats is None:
+            return None
+        return self.stats.to_dict()
 
 
 class IsotonicCalibrator:
@@ -532,6 +566,19 @@ class HistogramBinningCalibrator:
         return self._bin_values[-1]
 
 
+# =============================================================================
+# Type Alias fuer Kalibratoren (nach Klassendefinitionen)
+# =============================================================================
+
+# CalibratorType als Union aller Kalibrator-Klassen (Runtime-safe)
+CalibratorType = Union[
+    IsotonicCalibrator,
+    PlattScalingCalibrator,
+    TemperatureScalingCalibrator,
+    HistogramBinningCalibrator,
+]
+
+
 class ConfidenceCalibrationService:
     """
     Zentraler Service für Confidence Calibration.
@@ -849,12 +896,16 @@ class ConfidenceCalibrationService:
             if doc_type and dt != doc_type:
                 continue
 
+            # Nutze get_stats() mit None-Check
+            calibrator_stats = calibrator.get_stats()
+
             stats[key] = {
                 "backend": b,
                 "doc_type": dt,
                 "samples": len(calibrator.training_data),
                 "has_calibrator": calibrator.calibrator is not None,
                 "samples_since_train": calibrator._samples_since_train,
+                "calibration_stats": calibrator_stats,  # None wenn nicht trainiert
             }
 
         return stats

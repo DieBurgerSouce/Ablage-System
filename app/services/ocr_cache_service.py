@@ -18,7 +18,11 @@ import asyncio
 import hashlib
 import sys
 import threading
-from typing import Optional, Dict, Any
+from typing import Any, Optional, Dict, List, Union
+
+# JSON-serializable types
+JsonValue = Union[str, int, float, bool, None, Dict[str, "JsonValue"], List["JsonValue"]]
+JsonSerializable = Union[Dict[str, JsonValue], List[JsonValue], str, int, float, bool, None]
 from datetime import datetime, timezone
 from collections import OrderedDict
 import time
@@ -29,17 +33,17 @@ import structlog
 try:
     import orjson
 
-    def json_dumps(obj: Any, sort_keys: bool = False) -> str:
+    def json_dumps(obj: JsonSerializable, sort_keys: bool = False) -> str:
         """Fast JSON serialization using orjson.
 
         Args:
-            obj: Object to serialize
+            obj: Object to serialize (must be JSON-serializable)
             sort_keys: Sort dictionary keys (uses OPT_SORT_KEYS)
         """
         options = orjson.OPT_SORT_KEYS if sort_keys else 0
         return orjson.dumps(obj, option=options).decode("utf-8")
 
-    def json_loads(s: str) -> Any:
+    def json_loads(s: str) -> JsonSerializable:
         """Fast JSON deserialization using orjson."""
         return orjson.loads(s)
 
@@ -47,11 +51,11 @@ try:
 except ImportError:
     import json
 
-    def json_dumps(obj: Any, sort_keys: bool = False) -> str:
+    def json_dumps(obj: JsonSerializable, sort_keys: bool = False) -> str:
         """Fallback JSON serialization using stdlib."""
         return json.dumps(obj, sort_keys=sort_keys)
 
-    def json_loads(s: str) -> Any:
+    def json_loads(s: str) -> JsonSerializable:
         """Fallback JSON deserialization using stdlib."""
         return json.loads(s)
 

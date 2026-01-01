@@ -23,6 +23,81 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
+from pydantic import BaseModel, Field, field_validator
+
+
+# =============================================================================
+# Pydantic Validierungsmodelle fuer sichere JSON-Deserialisierung
+# =============================================================================
+
+class QualityMetricsSchema(BaseModel):
+    """Validierungsschema fuer Quality Metrics aus JSON."""
+    benchmark_samples: int = 0
+    avg_cer: float = Field(default=0.0, ge=0.0, le=1.0)
+    avg_wer: float = Field(default=0.0, ge=0.0, le=1.0)
+    avg_umlaut_accuracy: float = Field(default=0.0, ge=0.0, le=1.0)
+
+
+class VariantMetricsSchema(BaseModel):
+    """Validierungsschema fuer Variant Metrics."""
+    samples: int = 0
+    conversions: int = 0
+
+
+class VariantSchema(BaseModel):
+    """Validierungsschema fuer Experiment-Varianten."""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str = ""
+    weight: float = Field(..., ge=0.0, le=1.0)
+    config: Dict[str, Any] = Field(default_factory=dict)
+    metrics: VariantMetricsSchema = Field(default_factory=VariantMetricsSchema)
+    quality_metrics: QualityMetricsSchema = Field(default_factory=QualityMetricsSchema)
+
+
+class ExperimentSchema(BaseModel):
+    """Validierungsschema fuer Experiment-JSON-Dateien.
+
+    Validiert:
+    - Pflichtfelder (experiment_id, name, status)
+    - Feldtypen und Wertebereiche
+    - Varianten-Struktur
+    """
+    experiment_id: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=200)
+    description: str = ""
+    status: str = Field(..., pattern="^(draft|running|paused|completed|archived)$")
+    variants: List[VariantSchema] = Field(default_factory=list)
+    winner: Optional[str] = None
+    significance_reached: bool = False
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+
+    @field_validator("start_time", "end_time")
+    @classmethod
+    def validate_iso_datetime(cls, v: Optional[str]) -> Optional[str]:
+        """Validiere ISO-8601 Datumsformat."""
+        if v is None:
+            return v
+        try:
+            datetime.fromisoformat(v)
+            return v
+        except ValueError:
+            raise ValueError(f"Ungueltiges Datumsformat: {v}")
+
+
+def validate_experiment_json(data: Dict[str, Any]) -> ExperimentSchema:
+    """Validiere Experiment-JSON mit Pydantic.
+
+    Args:
+        data: Deserialisierte JSON-Daten
+
+    Returns:
+        Validiertes ExperimentSchema
+
+    Raises:
+        pydantic.ValidationError: Bei Validierungsfehlern
+    """
+    return ExperimentSchema.model_validate(data)
 
 logger = structlog.get_logger(__name__)
 
@@ -822,37 +897,52 @@ class ABTestManager:
 
                 data = json.loads(content)
 
+                # Pydantic-Validierung fuer sichere JSON-Deserialisierung
+                from pydantic import ValidationError as PydanticValidationError
+                try:
+                    validated_data = validate_experiment_json(data)
+                except PydanticValidationError as e:
+                    logger.warning(
+                        "experiment_validierung_fehlgeschlagen",
+                        filepath=str(filepath),
+                        errors=e.error_count(),
+                        details=str(e.errors()[:3]),  # Nur erste 3 Fehler loggen
+                    )
+                    skipped_count += 1
+                    continue
+
+                # Nutze validierte Daten
                 variants = [
                     Variant(
-                        name=v["name"],
-                        description=v.get("description", ""),
-                        weight=v["weight"],
-                        config=v.get("config", {}),
-                        samples=v.get("metrics", {}).get("samples", 0),
-                        conversions=v.get("metrics", {}).get("conversions", 0),
+                        name=v.name,
+                        description=v.description,
+                        weight=v.weight,
+                        config=v.config,
+                        samples=v.metrics.samples,
+                        conversions=v.metrics.conversions,
                         # Ground-Truth Quality Metrics laden
-                        benchmark_samples=v.get("quality_metrics", {}).get("benchmark_samples", 0),
-                        total_cer=v.get("quality_metrics", {}).get("avg_cer", 0.0) * v.get("quality_metrics", {}).get("benchmark_samples", 0),
-                        total_wer=v.get("quality_metrics", {}).get("avg_wer", 0.0) * v.get("quality_metrics", {}).get("benchmark_samples", 0),
-                        total_umlaut_accuracy=v.get("quality_metrics", {}).get("avg_umlaut_accuracy", 0.0) * v.get("quality_metrics", {}).get("benchmark_samples", 0),
+                        benchmark_samples=v.quality_metrics.benchmark_samples,
+                        total_cer=v.quality_metrics.avg_cer * v.quality_metrics.benchmark_samples,
+                        total_wer=v.quality_metrics.avg_wer * v.quality_metrics.benchmark_samples,
+                        total_umlaut_accuracy=v.quality_metrics.avg_umlaut_accuracy * v.quality_metrics.benchmark_samples,
                     )
-                    for v in data.get("variants", [])
+                    for v in validated_data.variants
                 ]
 
                 experiment = Experiment(
-                    experiment_id=data["experiment_id"],
-                    name=data["name"],
-                    description=data.get("description", ""),
+                    experiment_id=validated_data.experiment_id,
+                    name=validated_data.name,
+                    description=validated_data.description,
                     variants=variants,
-                    status=ExperimentStatus(data["status"]),
-                    winner=data.get("winner"),
-                    significance_reached=data.get("significance_reached", False),
+                    status=ExperimentStatus(validated_data.status),
+                    winner=validated_data.winner,
+                    significance_reached=validated_data.significance_reached,
                 )
 
-                if data.get("start_time"):
-                    experiment.start_time = datetime.fromisoformat(data["start_time"])
-                if data.get("end_time"):
-                    experiment.end_time = datetime.fromisoformat(data["end_time"])
+                if validated_data.start_time:
+                    experiment.start_time = datetime.fromisoformat(validated_data.start_time)
+                if validated_data.end_time:
+                    experiment.end_time = datetime.fromisoformat(validated_data.end_time)
 
                 self._experiments[experiment.experiment_id] = experiment
                 loaded_count += 1
@@ -862,13 +952,6 @@ class ABTestManager:
                     "experiment_laden_fehlgeschlagen_json_ungueltig",
                     filepath=str(filepath),
                     error=str(e),
-                )
-                skipped_count += 1
-            except KeyError as e:
-                logger.warning(
-                    "experiment_laden_fehlgeschlagen_feld_fehlt",
-                    filepath=str(filepath),
-                    missing_field=str(e),
                 )
                 skipped_count += 1
             except Exception as e:

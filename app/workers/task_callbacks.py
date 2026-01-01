@@ -77,12 +77,26 @@ async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit
 
 # ==================== Webhook Dispatch Integration ====================
 
+# Z.2 SECURITY FIX: Max retries for webhook dispatch to prevent infinite loops
+_WEBHOOK_MAX_RETRIES = 3
+_WEBHOOK_RETRY_DELAY_SECONDS = 2.0
+
 async def _dispatch_webhook_event(
     document_id: str,
     event_type: str,
-    payload: Dict[str, Any]
+    payload: Dict[str, Any],
+    retry_count: int = 0
 ) -> None:
-    """Dispatcht Webhook-Event für Dokument-Owner."""
+    """Dispatcht Webhook-Event für Dokument-Owner.
+
+    Z.2 FIX: Implementiert Retry-Logik mit exponential backoff.
+
+    Args:
+        document_id: ID des Dokuments
+        event_type: Typ des Events
+        payload: Event-Daten
+        retry_count: Aktueller Retry-Zähler (intern)
+    """
     try:
         from app.services.webhook_dispatcher import get_webhook_dispatcher
 
@@ -108,13 +122,40 @@ async def _dispatch_webhook_event(
                 }
             )
 
+            logger.debug(
+                "webhook_dispatch_success",
+                document_id=document_id,
+                event_type=event_type
+            )
+
     except Exception as e:
-        logger.warning(
-            "webhook_dispatch_failed",
-            document_id=document_id,
-            event_type=event_type,
-            error=str(e)
-        )
+        if retry_count < _WEBHOOK_MAX_RETRIES:
+            # Z.2 FIX: Retry with exponential backoff
+            delay = _WEBHOOK_RETRY_DELAY_SECONDS * (2 ** retry_count)
+            logger.warning(
+                "webhook_dispatch_retry",
+                document_id=document_id,
+                event_type=event_type,
+                retry_count=retry_count + 1,
+                max_retries=_WEBHOOK_MAX_RETRIES,
+                delay_seconds=delay,
+                error=str(e)
+            )
+            await asyncio.sleep(delay)
+            await _dispatch_webhook_event(
+                document_id, event_type, payload, retry_count + 1
+            )
+        else:
+            # Z.2 FIX: Erhöhtes Log-Level und strukturierte Fehlermeldung
+            logger.error(
+                "webhook_dispatch_failed_after_retries",
+                document_id=document_id,
+                event_type=event_type,
+                retries_exhausted=_WEBHOOK_MAX_RETRIES,
+                error=str(e),
+                # Weitere Diagnose-Infos
+                exc_info=True
+            )
 
 
 # ==================== Success Callbacks ====================
@@ -150,7 +191,9 @@ def on_success(
         document_id = kwargs["document_id"]
 
     if document_id and isinstance(retval, dict) and retval.get("success"):
-        async def update_database() -> None:
+        async def update_database(retry_count: int = 0) -> None:
+            """Z.2 FIX: DB Update mit Retry und explizitem Rollback."""
+            max_retries = 3
             async with async_session_maker() as session:
                 try:
                     doc_uuid = UUID(document_id)
@@ -188,12 +231,33 @@ def on_success(
                         )
 
                 except Exception as e:
-                    logger.error(
-                        "success_callback_database_error",
-                        task_id=task_id,
-                        document_id=document_id,
-                        error=str(e)
-                    )
+                    # Z.2 FIX: Expliziter Rollback bei Fehler
+                    await session.rollback()
+
+                    if retry_count < max_retries:
+                        # Z.2 FIX: Retry mit exponential backoff
+                        delay = 1.0 * (2 ** retry_count)
+                        logger.warning(
+                            "success_callback_database_retry",
+                            task_id=task_id,
+                            document_id=document_id,
+                            retry_count=retry_count + 1,
+                            max_retries=max_retries,
+                            delay_seconds=delay,
+                            error=str(e)
+                        )
+                        await asyncio.sleep(delay)
+                        await update_database(retry_count + 1)
+                    else:
+                        # Z.2 FIX: Alle Retries fehlgeschlagen - Error statt Warning
+                        logger.error(
+                            "success_callback_database_error_after_retries",
+                            task_id=task_id,
+                            document_id=document_id,
+                            retries_exhausted=max_retries,
+                            error=str(e),
+                            exc_info=True
+                        )
 
         # Run async update using safe helper
         _run_async_callback(update_database())

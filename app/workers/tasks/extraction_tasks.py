@@ -45,7 +45,9 @@ async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit
     bind=True,
     base=CPUTask,
     name="extraction.reprocess_all_structured_extraction",
-    max_retries=0,
+    # Z.2 FIX: max_retries von 0 auf 3 erhöht für bessere Fehlertoleranz
+    max_retries=3,
+    default_retry_delay=60,  # 1 Minute zwischen Retries
     soft_time_limit=7200,  # 2 Stunden Soft-Limit
     time_limit=7500,  # 2h 5min Hard-Limit
 )
@@ -830,7 +832,9 @@ def _sanitize_error_message(error: str) -> str:
     bind=True,
     base=CPUTask,
     name="extraction.reprocess_quick_classification",
-    max_retries=0,
+    # Z.2 FIX: max_retries von 0 auf 3 erhöht für bessere Fehlertoleranz
+    max_retries=3,
+    default_retry_delay=60,  # 1 Minute zwischen Retries
     soft_time_limit=3600,  # 1 Stunde Soft-Limit
     time_limit=3900,  # 1h 5min Hard-Limit
 )

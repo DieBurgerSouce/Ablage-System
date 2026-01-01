@@ -12,10 +12,11 @@ Enterprise-grade Vector-DB-Integration mit:
 Feinpoliert und durchdacht - Production-ready Vector Search.
 """
 
-from typing import List, Optional, Dict, Any, TypedDict
+from typing import List, Optional, Dict, Any, TypedDict, Callable, TypeVar
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID
+from functools import wraps
 import threading
 import asyncio
 
@@ -24,6 +25,78 @@ import structlog
 from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
+
+
+# =============================================================================
+# Retry-Logic mit Exponential Backoff
+# =============================================================================
+
+T = TypeVar("T")
+
+# Retry-Konfiguration
+QDRANT_MAX_RETRIES = 3
+QDRANT_BASE_DELAY_SECONDS = 0.5
+QDRANT_MAX_DELAY_SECONDS = 10.0
+QDRANT_BACKOFF_MULTIPLIER = 2.0
+
+
+def async_retry_with_backoff(
+    max_retries: int = QDRANT_MAX_RETRIES,
+    base_delay: float = QDRANT_BASE_DELAY_SECONDS,
+    max_delay: float = QDRANT_MAX_DELAY_SECONDS,
+    backoff_multiplier: float = QDRANT_BACKOFF_MULTIPLIER,
+    retryable_exceptions: tuple = (Exception,),
+) -> Callable:
+    """Decorator fuer async Funktionen mit Retry und Exponential Backoff.
+
+    Args:
+        max_retries: Maximale Anzahl Versuche
+        base_delay: Initiale Wartezeit in Sekunden
+        max_delay: Maximale Wartezeit in Sekunden
+        backoff_multiplier: Multiplikator fuer Backoff
+        retryable_exceptions: Tuple von Exceptions die retried werden sollen
+
+    Returns:
+        Dekorierte Funktion mit Retry-Logic
+    """
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            last_exception: Optional[Exception] = None
+            delay = base_delay
+
+            for attempt in range(max_retries + 1):
+                try:
+                    return await func(*args, **kwargs)
+                except retryable_exceptions as e:
+                    last_exception = e
+                    if attempt < max_retries:
+                        logger.warning(
+                            "qdrant_operation_retry",
+                            function=func.__name__,
+                            attempt=attempt + 1,
+                            max_retries=max_retries,
+                            delay_seconds=delay,
+                            error=str(e),
+                        )
+                        await asyncio.sleep(delay)
+                        delay = min(delay * backoff_multiplier, max_delay)
+                    else:
+                        logger.error(
+                            "qdrant_operation_failed_after_retries",
+                            function=func.__name__,
+                            attempts=max_retries + 1,
+                            error=str(e),
+                        )
+                        raise
+
+            # Sollte nicht erreicht werden
+            if last_exception:
+                raise last_exception
+            return None
+
+        return wrapper
+    return decorator
 
 # Qdrant Client Import (optional - nur wenn aktiviert)
 try:
@@ -317,6 +390,21 @@ class QdrantService:
     # VECTOR OPERATIONS
     # =========================================================================
 
+    @async_retry_with_backoff(max_retries=QDRANT_MAX_RETRIES)
+    async def _upsert_with_retry(
+        self,
+        client: Any,
+        collection_name: str,
+        qdrant_points: List[Any],
+        wait: bool,
+    ) -> None:
+        """Interne Upsert-Methode mit Retry-Logic."""
+        await client.upsert(
+            collection_name=collection_name,
+            points=qdrant_points,
+            wait=wait,
+        )
+
     async def upsert_vectors(
         self,
         collection_name: str,
@@ -349,10 +437,11 @@ class QdrantService:
                 for p in points
             ]
 
-            # Batch Upsert
-            await client.upsert(
+            # Batch Upsert mit Retry
+            await self._upsert_with_retry(
+                client=client,
                 collection_name=collection_name,
-                points=qdrant_points,
+                qdrant_points=qdrant_points,
                 wait=wait,
             )
 
@@ -371,6 +460,21 @@ class QdrantService:
                 error=str(e)
             )
             return 0
+
+    @async_retry_with_backoff(max_retries=QDRANT_MAX_RETRIES)
+    async def _delete_with_retry(
+        self,
+        client: Any,
+        collection_name: str,
+        points_selector: Any,
+        wait: bool,
+    ) -> None:
+        """Interne Delete-Methode mit Retry-Logic."""
+        await client.delete(
+            collection_name=collection_name,
+            points_selector=points_selector,
+            wait=wait,
+        )
 
     async def delete_vectors(
         self,
@@ -394,7 +498,9 @@ class QdrantService:
         try:
             client = await self._get_async_client()
 
-            await client.delete(
+            # Delete mit Retry
+            await self._delete_with_retry(
+                client=client,
                 collection_name=collection_name,
                 points_selector=qdrant_models.PointIdsList(points=ids),
                 wait=wait,
@@ -418,6 +524,29 @@ class QdrantService:
     # =========================================================================
     # SEARCH
     # =========================================================================
+
+    @async_retry_with_backoff(max_retries=QDRANT_MAX_RETRIES)
+    async def _search_with_retry(
+        self,
+        client: Any,
+        collection_name: str,
+        query_vector: List[float],
+        limit: int,
+        score_threshold: Optional[float],
+        search_filter: Optional[Any],
+        with_vectors: bool,
+        with_payload: bool,
+    ) -> List[Any]:
+        """Interne Such-Methode mit Retry-Logic."""
+        return await client.search(
+            collection_name=collection_name,
+            query_vector=query_vector,
+            limit=limit,
+            score_threshold=score_threshold,
+            query_filter=search_filter,
+            with_vectors=with_vectors,
+            with_payload=with_payload,
+        )
 
     async def search(
         self,
@@ -464,13 +593,14 @@ class QdrantService:
                 if must_conditions:
                     search_filter = Filter(must=must_conditions)
 
-            # Suche ausfuehren
-            results = await client.search(
+            # Suche mit Retry ausfuehren
+            results = await self._search_with_retry(
+                client=client,
                 collection_name=collection_name,
                 query_vector=query_vector,
                 limit=limit,
                 score_threshold=score_threshold,
-                query_filter=search_filter,
+                search_filter=search_filter,
                 with_vectors=with_vectors,
                 with_payload=with_payload,
             )

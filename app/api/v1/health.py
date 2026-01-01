@@ -18,7 +18,7 @@ import platform
 import sys
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 import threading
 
 import structlog
@@ -47,6 +47,10 @@ logger = structlog.get_logger(__name__)
 HEALTH_CHECK_CACHE_TTL = 5  # 5 seconds TTL
 HEALTH_CHECK_CACHE_MAXSIZE = 10  # Max cached entries
 
+# Type alias for cacheable health check results (forward reference)
+# Actual types defined below: BasicHealthResponse, DetailedHealthResponse, DependencyHealthResponse
+CachedHealthResult = Union["BasicHealthResponse", "DetailedHealthResponse", "DependencyHealthResponse", Dict[str, object]]
+
 # Thread-safe cache for health check results
 if CACHETOOLS_AVAILABLE:
     _health_cache: TTLCache = TTLCache(
@@ -55,11 +59,11 @@ if CACHETOOLS_AVAILABLE:
     )
     _health_cache_lock = threading.Lock()
 else:
-    _health_cache: Dict[str, Any] = {}
+    _health_cache: Dict[str, CachedHealthResult] = {}
     _health_cache_lock = threading.Lock()
 
 
-def _get_cached_result(cache_key: str) -> Optional[Any]:
+def _get_cached_result(cache_key: str) -> Optional[CachedHealthResult]:
     """Get cached health check result if available."""
     if not CACHETOOLS_AVAILABLE:
         return None
@@ -68,7 +72,7 @@ def _get_cached_result(cache_key: str) -> Optional[Any]:
         return _health_cache.get(cache_key)
 
 
-def _set_cached_result(cache_key: str, result: Any) -> None:
+def _set_cached_result(cache_key: str, result: CachedHealthResult) -> None:
     """Cache health check result."""
     if not CACHETOOLS_AVAILABLE:
         return

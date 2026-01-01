@@ -103,6 +103,10 @@ Trainings_Data/
 !requirements*.txt
 infrastructure/vault/config/certs/
 
+# Nginx security files (never commit!)
+infrastructure/nginx/.htpasswd
+infrastructure/nginx/dhparam.pem
+
 # Vault secrets (NEVER commit these!)
 infrastructure/vault/.vault*
 

@@ -3,8 +3,11 @@ Database Connection Manager
 Async PostgreSQL with connection pooling
 Priority: P0 - CRITICAL
 Created: 2024-11-22
+
+SECURITY: Z.2 Fix - URL-encode password to prevent injection
 """
 from typing import AsyncGenerator, Optional
+from urllib.parse import quote_plus
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool
 from sqlalchemy import text
@@ -57,21 +60,31 @@ class DatabaseConfig:
         """Get async PostgreSQL connection string.
 
         Uses settings.DATABASE_URL if available, otherwise builds from components.
+
+        SECURITY: Z.2 Fix - URL-encode password to handle special characters
+        (prevents connection string injection and parsing errors).
         """
         # Prioritaet: settings.DATABASE_URL (korrekt mit Docker-Netzwerk)
         if settings.DATABASE_URL:
             return settings.DATABASE_URL
         # Fallback: Aus Komponenten bauen
+        # SECURITY: URL-encode password to handle special chars like @, :, /, etc.
+        encoded_password = quote_plus(self.DB_PASSWORD) if self.DB_PASSWORD else ""
         return (
-            f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}"
+            f"postgresql+asyncpg://{self.DB_USER}:{encoded_password}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
 
     @property
     def SYNC_DATABASE_URL(self) -> str:
-        """Build sync PostgreSQL connection string (for Alembic)"""
+        """Build sync PostgreSQL connection string (for Alembic).
+
+        SECURITY: Z.2 Fix - URL-encode password for special characters.
+        """
+        # SECURITY: URL-encode password to handle special chars like @, :, /, etc.
+        encoded_password = quote_plus(self.DB_PASSWORD) if self.DB_PASSWORD else ""
         return (
-            f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASSWORD}"
+            f"postgresql+psycopg2://{self.DB_USER}:{encoded_password}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
 
