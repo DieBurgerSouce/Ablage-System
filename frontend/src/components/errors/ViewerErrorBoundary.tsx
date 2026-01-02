@@ -44,27 +44,27 @@ const FILE_TYPE_MESSAGES: Record<string, { title: string; description: string }>
     pdf: {
         title: 'PDF konnte nicht angezeigt werden',
         description:
-            'Die PDF-Datei ist moeglicherweise beschaedigt oder verwendet ein nicht unterstuetztes Format.',
+            'Die PDF-Datei ist möglicherweise beschädigt oder verwendet ein nicht unterstütztes Format.',
     },
     docx: {
         title: 'Word-Dokument konnte nicht angezeigt werden',
         description:
-            'Das Word-Dokument konnte nicht verarbeitet werden. Moeglicherweise ist die Datei beschaedigt oder das Format wird nicht unterstuetzt.',
+            'Das Word-Dokument konnte nicht verarbeitet werden. Möglicherweise ist die Datei beschädigt oder das Format wird nicht unterstützt.',
     },
     xlsx: {
         title: 'Excel-Tabelle konnte nicht angezeigt werden',
         description:
-            'Die Excel-Datei konnte nicht geladen werden. Sehr grosse Dateien oder komplexe Formeln koennen Probleme verursachen.',
+            'Die Excel-Datei konnte nicht geladen werden. Sehr große Dateien oder komplexe Formeln können Probleme verursachen.',
     },
     email: {
         title: 'E-Mail konnte nicht angezeigt werden',
         description:
-            'Die E-Mail-Nachricht konnte nicht analysiert werden. Das Format ist moeglicherweise nicht kompatibel.',
+            'Die E-Mail-Nachricht konnte nicht analysiert werden. Das Format ist möglicherweise nicht kompatibel.',
     },
     image: {
         title: 'Bild konnte nicht angezeigt werden',
         description:
-            'Das Bild konnte nicht geladen werden. Moeglicherweise ist die Datei beschaedigt oder das Format nicht unterstuetzt.',
+            'Das Bild konnte nicht geladen werden. Möglicherweise ist die Datei beschädigt oder das Format nicht unterstützt.',
     },
     unknown: {
         title: 'Dokument konnte nicht angezeigt werden',

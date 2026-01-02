@@ -230,10 +230,15 @@ services:
 
   # Qdrant Vector Database - Parallele Vector-DB fuer A/B Testing
   # Rust-basiert, 48% bessere p99-Latenz als pgvector
+  # SECURITY: API-Key Authentifizierung aktiviert
   qdrant:
     image: qdrant/qdrant:v1.7.4
     container_name: ablage-qdrant
     environment:
+      # SECURITY: API-Key Authentifizierung (optional in Development, empfohlen in Production)
+      # Generiere mit: openssl rand -hex 32
+      # Wenn QDRANT_API_KEY nicht gesetzt ist, wird Qdrant ohne Authentifizierung gestartet
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:-}
       # gRPC und HTTP Ports
       QDRANT__SERVICE__GRPC_PORT: 6334
       QDRANT__SERVICE__HTTP_PORT: 6333
@@ -403,6 +408,7 @@ services:
       QDRANT_HTTP_PORT: ${QDRANT_HTTP_PORT:-6333}
       QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
       QDRANT_PREFER_GRPC: ${QDRANT_PREFER_GRPC:-true}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
       QDRANT_COLLECTION_DOCUMENTS: ${QDRANT_COLLECTION_DOCUMENTS:-ablage_documents}
       QDRANT_COLLECTION_CHUNKS: ${QDRANT_COLLECTION_CHUNKS:-ablage_chunks}
       # A/B Testing (pgvector vs Qdrant)
@@ -529,6 +535,7 @@ services:
       QDRANT_HTTP_PORT: ${QDRANT_HTTP_PORT:-6333}
       QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
       QDRANT_PREFER_GRPC: ${QDRANT_PREFER_GRPC:-true}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
       QDRANT_COLLECTION_DOCUMENTS: ${QDRANT_COLLECTION_DOCUMENTS:-ablage_documents}
       QDRANT_COLLECTION_CHUNKS: ${QDRANT_COLLECTION_CHUNKS:-ablage_chunks}
       # A/B Testing (pgvector vs Qdrant)
@@ -652,6 +659,7 @@ services:
       QDRANT_HTTP_PORT: ${QDRANT_HTTP_PORT:-6333}
       QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
       QDRANT_PREFER_GRPC: ${QDRANT_PREFER_GRPC:-true}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
       QDRANT_COLLECTION_DOCUMENTS: ${QDRANT_COLLECTION_DOCUMENTS:-ablage_documents}
       QDRANT_COLLECTION_CHUNKS: ${QDRANT_COLLECTION_CHUNKS:-ablage_chunks}
       # A/B Testing (pgvector vs Qdrant)
@@ -822,6 +830,15 @@ services:
       - backend-network
 
   # Grafana Dashboards (Monitoring Network)
+  # INFRASTRUCTURE HARDENING: IP-Whitelisting implementiert
+  # Konfiguration: infrastructure/nginx/conf.d/ablage-system.conf
+  # Dokumentation: .claude/Docs/INFRASTRUCTURE_HARDENING.md
+  #
+  # Erlaubte Netzwerke:
+  #   - 127.0.0.0/8     (Localhost)
+  #   - 172.16.0.0/12   (Docker Networks)
+  #   - 10.0.0.0/8      (Interne Netzwerke)
+  #   - 192.168.0.0/16  (Private Netzwerke)
   grafana:
     image: grafana/grafana:11.3.0
     container_name: ablage-grafana

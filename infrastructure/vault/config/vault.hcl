@@ -1,5 +1,15 @@
 # Vault Configuration - Ablage-System OCR
 # Sicherheitskonfiguration für Production-Betrieb
+#
+# INFRASTRUCTURE HARDENING: Certificate Rotation
+# Implementiert via: infrastructure/vault/scripts/cert-rotation.sh
+# Dokumentation: .claude/Docs/INFRASTRUCTURE_HARDENING.md
+#
+# Optionen:
+#   --auto    Automatische Rotation (fuer Cronjob)
+#   --manual  Interaktive Rotation
+#   --pki     PKI-basierte Rotation (Enterprise)
+#   --check   Status pruefen
 
 # Storage backend
 storage "file" {

@@ -377,7 +377,7 @@ function AmountRangePopover({ amountMin, amountMax, onChange }: AmountRangePopov
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="amount-max">Hoechstbetrag</Label>
+            <Label htmlFor="amount-max">Höchstbetrag</Label>
             <div className="relative">
               <Input
                 id="amount-max"

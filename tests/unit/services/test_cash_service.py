@@ -439,11 +439,11 @@ class TestCashServiceDuplicateDetection:
         max_words = max(len(words1), len(words2))
         similarity = overlap / max_words
 
-        # 2 von 3 Woertern = 66% Uebereinstimmung
+        # 2 von 3 Woertern = 66% Übereinstimmung
         assert similarity == pytest.approx(0.666, rel=0.01)
 
     def test_reference_number_exact_match(self):
-        """Teste exakte Belegnummer-Uebereinstimmung."""
+        """Teste exakte Belegnummer-Übereinstimmung."""
         ref1 = "R-2024-001"
         ref2 = "R-2024-001"
         ref3 = "R-2024-002"

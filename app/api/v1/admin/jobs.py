@@ -203,7 +203,7 @@ async def get_job(
 async def cancel_job(
     job_id: UUID,
     request: Request,
-    reason: Optional[str] = Query(None, description="Grund fuer Abbruch"),
+    reason: Optional[str] = Query(None, description="Grund für Abbruch"),
     admin: User = Depends(check_destructive_admin_rate_limit),
     db: AsyncSession = Depends(get_db),
 ) -> JobActionResponse:
@@ -329,7 +329,7 @@ async def clear_queue(
 async def bulk_cancel_jobs(
     job_ids: list[UUID],
     request: Request,
-    reason: Optional[str] = Query(None, description="Grund fuer Abbruch"),
+    reason: Optional[str] = Query(None, description="Grund für Abbruch"),
     admin: User = Depends(check_destructive_admin_rate_limit),
     db: AsyncSession = Depends(get_db),
 ) -> dict:

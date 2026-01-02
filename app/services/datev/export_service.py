@@ -760,7 +760,7 @@ class DATEVExportService:
         """
         Sucht passendes Vendor-Mapping fuer eine Eingangsrechnung.
 
-        Match-Prioritaet (erste Uebereinstimmung gewinnt):
+        Match-Prioritaet (erste Übereinstimmung gewinnt):
         1. USt-IdNr (exakt, case-sensitive)
         2. IBAN (exakt, case-sensitive)
         3. Firmenname (case-insensitiv, exakter String-Vergleich nach lowercase)

@@ -6,6 +6,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import {
     ArrowUpRight,
     ArrowDownRight,
@@ -86,7 +87,7 @@ function KPICard({ title, value, subtitle, icon, trend, badge, isLoading }: KPIC
     );
 }
 
-export function KPICards() {
+function KPICardsContent() {
     const { data: agingSummary, isLoading: agingLoading } = useAgingSummary();
     const { data: cashFlowSummary, isLoading: cashFlowLoading } = useCashFlowSummary();
     const { data: dunningStats, isLoading: dunningLoading } = useDunningStats();
@@ -206,5 +207,20 @@ export function KPICards() {
                 isLoading={isLoading}
             />
         </div>
+    );
+}
+
+/**
+ * KPICards mit ErrorBoundary Wrapper
+ * Fängt Fehler in den async Queries ab und zeigt Fallback-UI
+ */
+export function KPICards() {
+    return (
+        <ErrorBoundary
+            errorTitle="KPI-Daten konnten nicht geladen werden"
+            errorDescription="Bei der Anzeige der Kennzahlen ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut."
+        >
+            <KPICardsContent />
+        </ErrorBoundary>
     );
 }

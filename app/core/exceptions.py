@@ -103,6 +103,56 @@ class OCRBackendTimeoutError(OCRException):
         )
 
 
+class InferenceTimeoutError(OCRException):
+    """OCR inference timed out during generation"""
+
+    def __init__(self, backend: str, timeout_seconds: float, document_id: Optional[str] = None):
+        super().__init__(
+            message=f"Inference timed out for {backend} after {timeout_seconds}s",
+            error_code="E004",
+            details={
+                "backend": backend,
+                "timeout_seconds": timeout_seconds,
+                "document_id": document_id,
+                "fallback_available": True
+            },
+            user_message_de=f"OCR-Inferenz Timeout nach {timeout_seconds:.0f}s"
+        )
+        self.backend = backend
+        self.timeout_seconds = timeout_seconds
+        self.document_id = document_id
+
+
+class OCRGPUOutOfMemoryError(OCRException):
+    """GPU out of memory during OCR processing - signals fallback availability"""
+
+    def __init__(
+        self,
+        backend: str,
+        document_id: Optional[str] = None,
+        required_gb: Optional[float] = None,
+        available_gb: Optional[float] = None,
+        fallback_backends: Optional[list] = None
+    ):
+        fallback_backends = fallback_backends or ["surya"]
+        super().__init__(
+            message=f"GPU OOM in {backend}. Fallback backends available: {fallback_backends}",
+            error_code="E001",
+            details={
+                "backend": backend,
+                "document_id": document_id,
+                "required_gb": required_gb,
+                "available_gb": available_gb,
+                "fallback_available": True,
+                "fallback_backends": fallback_backends
+            },
+            user_message_de=f"GPU-Speicher erschoepft bei {backend}. Fallback verfuegbar."
+        )
+        self.backend = backend
+        self.document_id = document_id
+        self.fallback_backends = fallback_backends
+
+
 class BackendSelectionError(OCRException):
     """Failed to select appropriate OCR backend"""
 

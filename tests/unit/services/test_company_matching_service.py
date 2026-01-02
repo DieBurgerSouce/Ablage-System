@@ -46,7 +46,7 @@ class TestMatchResultDataclass:
         result = MatchResult(
             matched=False,
             confidence=0.3,
-            reason="Keine Uebereinstimmung gefunden"
+            reason="Keine Übereinstimmung gefunden"
         )
 
         assert result.matched is False

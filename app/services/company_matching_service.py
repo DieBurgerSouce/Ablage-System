@@ -274,7 +274,7 @@ class CompanyMatchingService:
         return MatchResult(
             matched=False,
             confidence=best_similarity * 0.5,  # Partielle Konfidenz
-            reason="Keine Uebereinstimmung gefunden"
+            reason="Keine Übereinstimmung gefunden"
         )
 
     def _normalize_vat_id(self, vat_id: str) -> str:

@@ -1561,13 +1561,13 @@ class QuickClassificationService:
                         return (
                             InvoiceDirection.OUTGOING,
                             0.70,  # Niedrigere Confidence fuer Position-Heuristik
-                            f"Firmenname im Absenderbereich gefunden ({similarity:.0%} Uebereinstimmung, Position-basiert)"
+                            f"Firmenname im Absenderbereich gefunden ({similarity:.0%} Übereinstimmung, Position-basiert)"
                         )
                     elif direction == InvoiceDirection.INCOMING:
                         return (
                             InvoiceDirection.INCOMING,
                             0.70,  # Niedrigere Confidence fuer Position-Heuristik
-                            f"Firmenname im Empfaengerbereich gefunden ({similarity:.0%} Uebereinstimmung, Position-basiert)"
+                            f"Firmenname im Empfaengerbereich gefunden ({similarity:.0%} Übereinstimmung, Position-basiert)"
                         )
 
         # 4. Direkte Suche: Firmenname gefunden, aber kein eindeutiger Kontext

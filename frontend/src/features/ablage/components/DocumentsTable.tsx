@@ -350,9 +350,11 @@ export function DocumentsTable({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                className="h-8 w-8 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-within:opacity-100 transition-opacity"
+                aria-label={`Aktionen fuer ${row.original.filename}`}
+                tabIndex={0}
               >
-                <MoreHorizontal className="w-4 h-4" />
+                <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -362,7 +364,7 @@ export function DocumentsTable({
                   params={{ documentId: row.original.id }}
                   className="flex items-center gap-2"
                 >
-                  <Eye className="w-4 h-4" />
+                  <Eye className="w-4 h-4" aria-hidden="true" />
                   Anzeigen
                 </Link>
               </DropdownMenuItem>
@@ -370,7 +372,7 @@ export function DocumentsTable({
                 className="gap-2"
                 onClick={() => onDownloadClick?.(row.original)}
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-4 h-4" aria-hidden="true" />
                 Herunterladen
               </DropdownMenuItem>
             </DropdownMenuContent>

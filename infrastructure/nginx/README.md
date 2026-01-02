@@ -115,19 +115,86 @@ Permissions-Policy: ...
 - **OCSP Stapling**: Enabled
 - **Session tickets**: Disabled (for forward secrecy)
 
-## 🔐 Basic Authentication Setup
+## 🔐 Basic Authentication Setup (htpasswd)
 
-For Prometheus and other admin interfaces:
+Prometheus und andere Admin-Interfaces sind mit Basic Auth geschuetzt.
+Die `.htpasswd`-Datei muss **vor dem Docker-Build** erstellt werden.
+
+### Option 1: Interaktiv mit setup-nginx.sh (Empfohlen)
 
 ```bash
-# Install apache2-utils (if not in container)
+cd infrastructure/nginx
+./setup-nginx.sh
+# Folge den Prompts fuer Username und Passwort
+```
+
+### Option 2: Mit Docker (keine lokale Installation noetig)
+
+```bash
+# Einzelner Benutzer erstellen
+docker run --rm httpd:alpine htpasswd -nb prometheus_user sicheres_passwort > infrastructure/nginx/.htpasswd
+
+# Weiteren Benutzer hinzufuegen
+docker run --rm httpd:alpine htpasswd -nb user2 passwort2 >> infrastructure/nginx/.htpasswd
+```
+
+### Option 3: Mit apache2-utils (Linux)
+
+```bash
+# Installation (Ubuntu/Debian)
 apt-get install apache2-utils
 
-# Create htpasswd file
-htpasswd -c infrastructure/nginx/.htpasswd admin
+# Datei erstellen mit erstem Benutzer
+htpasswd -bc infrastructure/nginx/.htpasswd prometheus_admin sicheres_passwort
 
-# Add more users
-htpasswd infrastructure/nginx/.htpasswd user2
+# Weiteren Benutzer hinzufuegen
+htpasswd -b infrastructure/nginx/.htpasswd user2 passwort2
+```
+
+### Option 4: Manuell generieren
+
+```bash
+# Passwort-Hash mit Python generieren
+python3 -c "import crypt; print('user:' + crypt.crypt('password', crypt.mksalt(crypt.METHOD_SHA512)))"
+# Ausgabe in .htpasswd speichern
+```
+
+### Wichtig
+
+- Die `.htpasswd`-Datei sollte NICHT ins Git-Repository committed werden!
+- Fuer CI/CD: Generiere die Datei im Build-Prozess oder als Secret
+- Falls keine `.htpasswd` existiert, erstellt der Docker-Build einen Platzhalter (UNSICHER!)
+
+## 🔒 DH-Parameter (Diffie-Hellman)
+
+Fuer Perfect Forward Secrecy werden DH-Parameter benoetigt.
+Diese werden **automatisch beim Docker-Build generiert**.
+
+### Standard (2048-bit, schneller Build)
+
+```bash
+docker build -t ablage-nginx infrastructure/nginx/
+# Generiert 2048-bit DH-Parameter (~30 Sekunden)
+```
+
+### Produktion (4096-bit, empfohlen)
+
+```bash
+# Option 1: Via Build-Argument
+docker build --build-arg DH_PARAM_BITS=4096 -t ablage-nginx infrastructure/nginx/
+# Dauert ca. 5-10 Minuten
+
+# Option 2: Vorab generieren (fuer CI/CD empfohlen)
+openssl dhparam -out infrastructure/nginx/dhparam.pem 4096
+# Dann in Dockerfile die Zeile RUN openssl dhparam... durch COPY ersetzen
+```
+
+### Mit setup-nginx.sh
+
+```bash
+cd infrastructure/nginx
+./setup-nginx.sh
+# Generiert DH-Parameter automatisch (4096-bit)
 ```
 
 ## 📊 Monitoring Subdomains

@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import {
     MoreHorizontal, Plus, Search, Shield, User as UserIcon, Lock, Ban, CheckCircle, Trash2, RefreshCw
 } from 'lucide-react';
@@ -313,19 +314,19 @@ export function UserManagement() {
                                 </TableCell>
                                 <TableCell>
                                     {user.is_active ? (
-                                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
+                                        <Badge variant="outline" className="badge-success gap-1">
                                             <CheckCircle className="w-3 h-3" /> Aktiv
                                         </Badge>
                                     ) : (
-                                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 gap-1">
+                                        <Badge variant="outline" className="badge-destructive-outline gap-1">
                                             <Ban className="w-3 h-3" /> Inaktiv
                                         </Badge>
                                     )}
                                 </TableCell>
                                 <TableCell>
                                     <Badge variant="outline" className={cn(
-                                        user.tier === 'premium' && "border-amber-400 text-amber-600 bg-amber-50",
-                                        user.tier === 'admin' && "border-purple-400 text-purple-600 bg-purple-50"
+                                        user.tier === 'premium' && "badge-premium",
+                                        user.tier === 'admin' && "badge-admin-tier"
                                     )}>
                                         {user.tier.toUpperCase()}
                                     </Badge>
@@ -408,101 +409,106 @@ export function UserManagement() {
             {/* Create/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>{editingUser ? 'Benutzer bearbeiten' : 'Neuer Benutzer'}</DialogTitle>
-                        <DialogDescription>
-                            Verwalten Sie die Stammdaten und Berechtigungen des Benutzers.
-                        </DialogDescription>
-                    </DialogHeader>
+                    <ErrorBoundary
+                        errorTitle="Fehler im Benutzerformular"
+                        errorDescription="Das Formular konnte nicht korrekt geladen werden."
+                    >
+                        <DialogHeader>
+                            <DialogTitle>{editingUser ? 'Benutzer bearbeiten' : 'Neuer Benutzer'}</DialogTitle>
+                            <DialogDescription>
+                                Verwalten Sie die Stammdaten und Berechtigungen des Benutzers.
+                            </DialogDescription>
+                        </DialogHeader>
 
-                    <form onSubmit={handleSubmit}>
-                        <Tabs defaultValue="base" className="w-full">
-                            <TabsList className="grid w-full grid-cols-3">
-                                <TabsTrigger value="base">Basisdaten</TabsTrigger>
-                                <TabsTrigger value="permissions">Berechtigungen</TabsTrigger>
-                                <TabsTrigger value="quotas">Quotas & Limits</TabsTrigger>
-                            </TabsList>
+                        <form onSubmit={handleSubmit}>
+                            <Tabs defaultValue="base" className="w-full">
+                                <TabsList className="grid w-full grid-cols-3">
+                                    <TabsTrigger value="base">Basisdaten</TabsTrigger>
+                                    <TabsTrigger value="permissions">Berechtigungen</TabsTrigger>
+                                    <TabsTrigger value="quotas">Quotas & Limits</TabsTrigger>
+                                </TabsList>
 
-                            <div className="py-4">
-                                <TabsContent value="base" className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="username">Benutzername</Label>
-                                            <Input id="username" name="username" defaultValue={editingUser?.username} required />
+                                <div className="py-4">
+                                    <TabsContent value="base" className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="username">Benutzername</Label>
+                                                <Input id="username" name="username" defaultValue={editingUser?.username} required />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="email">E-Mail</Label>
+                                                <Input id="email" name="email" type="email" defaultValue={editingUser?.email} required />
+                                            </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="email">E-Mail</Label>
-                                            <Input id="email" name="email" type="email" defaultValue={editingUser?.email} required />
+                                            <Label htmlFor="full_name">Vollständiger Name</Label>
+                                            <Input id="full_name" name="full_name" defaultValue={editingUser?.full_name} />
                                         </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="full_name">Vollständiger Name</Label>
-                                        <Input id="full_name" name="full_name" defaultValue={editingUser?.full_name} />
-                                    </div>
-                                    {!editingUser && (
-                                        <div className="space-y-2">
-                                            <Label htmlFor="password">Initial-Passwort</Label>
-                                            <Input id="password" name="password" type="password" required minLength={8} />
-                                        </div>
-                                    )}
-                                </TabsContent>
+                                        {!editingUser && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="password">Initial-Passwort</Label>
+                                                <Input id="password" name="password" type="password" required minLength={8} />
+                                            </div>
+                                        )}
+                                    </TabsContent>
 
-                                <TabsContent value="permissions" className="space-y-6">
-                                    <div className="flex items-center justify-between space-x-2 border p-4 rounded-lg">
-                                        <div className="space-y-0.5">
-                                            <Label className="text-base">Administrator-Rechte</Label>
-                                            <p className="text-sm text-muted-foreground">
-                                                Gewährt vollen Zugriff auf alle Systemeinstellungen.
+                                    <TabsContent value="permissions" className="space-y-6">
+                                        <div className="flex items-center justify-between space-x-2 border p-4 rounded-lg">
+                                            <div className="space-y-0.5">
+                                                <Label className="text-base">Administrator-Rechte</Label>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Gewährt vollen Zugriff auf alle Systemeinstellungen.
+                                                </p>
+                                            </div>
+                                            <Checkbox id="is_superuser" name="is_superuser" defaultChecked={editingUser?.is_superuser} />
+                                        </div>
+                                        <div className="flex items-center justify-between space-x-2 border p-4 rounded-lg">
+                                            <div className="space-y-0.5">
+                                                <Label className="text-base">Konto Aktiv</Label>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Deaktivierte Benutzer können sich nicht anmelden.
+                                                </p>
+                                            </div>
+                                            <Checkbox id="is_active" name="is_active" defaultChecked={editingUser?.is_active ?? true} />
+                                        </div>
+                                    </TabsContent>
+
+                                    <TabsContent value="quotas" className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="tier">Abonnement-Tier</Label>
+                                            <Select name="tier" defaultValue={editingUser?.tier || 'free'}>
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="free">Free</SelectItem>
+                                                    <SelectItem value="premium">Premium</SelectItem>
+                                                    <SelectItem value="admin">Admin (Unlimited)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="daily_quota">Tägliches Dokumentenlimit</Label>
+                                            <Input
+                                                id="daily_quota"
+                                                name="daily_quota"
+                                                type="number"
+                                                defaultValue={editingUser?.daily_quota || 100}
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                Überschreibt den Standardwert des Tiers.
                                             </p>
                                         </div>
-                                        <Checkbox id="is_superuser" name="is_superuser" defaultChecked={editingUser?.is_superuser} />
-                                    </div>
-                                    <div className="flex items-center justify-between space-x-2 border p-4 rounded-lg">
-                                        <div className="space-y-0.5">
-                                            <Label className="text-base">Konto Aktiv</Label>
-                                            <p className="text-sm text-muted-foreground">
-                                                Deaktivierte Benutzer können sich nicht anmelden.
-                                            </p>
-                                        </div>
-                                        <Checkbox id="is_active" name="is_active" defaultChecked={editingUser?.is_active ?? true} />
-                                    </div>
-                                </TabsContent>
+                                    </TabsContent>
+                                </div>
+                            </Tabs>
 
-                                <TabsContent value="quotas" className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="tier">Abonnement-Tier</Label>
-                                        <Select name="tier" defaultValue={editingUser?.tier || 'free'}>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="free">Free</SelectItem>
-                                                <SelectItem value="premium">Premium</SelectItem>
-                                                <SelectItem value="admin">Admin (Unlimited)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="daily_quota">Tägliches Dokumentenlimit</Label>
-                                        <Input
-                                            id="daily_quota"
-                                            name="daily_quota"
-                                            type="number"
-                                            defaultValue={editingUser?.daily_quota || 100}
-                                        />
-                                        <p className="text-xs text-muted-foreground">
-                                            Überschreibt den Standardwert des Tiers.
-                                        </p>
-                                    </div>
-                                </TabsContent>
-                            </div>
-                        </Tabs>
-
-                        <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Abbrechen</Button>
-                            <Button type="submit">Speichern</Button>
-                        </DialogFooter>
-                    </form>
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Abbrechen</Button>
+                                <Button type="submit">Speichern</Button>
+                            </DialogFooter>
+                        </form>
+                    </ErrorBoundary>
                 </DialogContent>
             </Dialog>
 

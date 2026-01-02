@@ -1166,7 +1166,7 @@ class CashService:
         description_lower = description.lower().strip()
         for entry in candidates:
             existing_desc = (entry.description or "").lower().strip()
-            # Exakte Uebereinstimmung oder Teilstring
+            # Exakte Übereinstimmung oder Teilstring
             if description_lower == existing_desc:
                 return entry
             # Mindestens 80% der Woerter muessen uebereinstimmen

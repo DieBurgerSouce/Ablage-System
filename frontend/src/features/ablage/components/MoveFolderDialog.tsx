@@ -103,7 +103,7 @@ export function MoveFolderDialog({
             In Ordner verschieben
           </DialogTitle>
           <DialogDescription id="move-dialog-description">
-            Waehlen Sie die Zielkategorie fuer{' '}
+            Wählen Sie die Zielkategorie für{' '}
             <span className="font-semibold">{selectedIds.length} Dokumente</span>.
           </DialogDescription>
         </DialogHeader>
@@ -113,7 +113,7 @@ export function MoveFolderDialog({
             value={targetCategory}
             onValueChange={setTargetCategory}
             className="gap-2"
-            aria-label="Zielkategorie auswaehlen"
+            aria-label="Zielkategorie auswählen"
           >
             {availableCategories.map((category) => {
               const Icon = getCategoryIcon(category.icon);

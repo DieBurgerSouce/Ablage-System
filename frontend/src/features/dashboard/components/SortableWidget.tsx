@@ -88,8 +88,8 @@ export function SortableWidget({ id, type, children, isEditMode, onRemove }: Sor
                     <AlertDialogHeader>
                         <AlertDialogTitle>Widget entfernen?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Moechten Sie das Widget "{widgetLabel}" wirklich vom Dashboard entfernen?
-                            Sie koennen es jederzeit ueber den Widget-Katalog wieder hinzufuegen.
+                            Möchten Sie das Widget "{widgetLabel}" wirklich vom Dashboard entfernen?
+                            Sie können es jederzeit über den Widget-Katalog wieder hinzufügen.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

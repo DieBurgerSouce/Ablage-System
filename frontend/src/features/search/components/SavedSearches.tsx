@@ -151,7 +151,7 @@ function SavedSearchChip({
                 <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={onTogglePin}>
                         <Pin className="w-4 h-4 mr-2" />
-                        {search.pinned ? 'Loesung' : 'Anpinnen'}
+                        {search.pinned ? 'Lösen' : 'Anpinnen'}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
@@ -159,7 +159,7 @@ function SavedSearchChip({
                         className="text-destructive focus:text-destructive"
                     >
                         <Trash2 className="w-4 h-4 mr-2" />
-                        Loeschen
+                        Löschen
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>

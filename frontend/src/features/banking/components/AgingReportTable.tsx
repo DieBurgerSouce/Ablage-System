@@ -48,9 +48,15 @@ const BUCKET_VARIANTS: Record<string, 'default' | 'secondary' | 'outline' | 'des
 };
 
 function BucketBadge({ bucket }: { bucket: string }) {
+    const isOverdue = bucket !== 'current';
+    const label = BUCKET_LABELS[bucket] ?? bucket;
     return (
-        <Badge variant={BUCKET_VARIANTS[bucket] ?? 'outline'}>
-            {BUCKET_LABELS[bucket] ?? bucket}
+        <Badge
+            variant={BUCKET_VARIANTS[bucket] ?? 'outline'}
+            aria-label={isOverdue ? `${label} ueberfaellig` : label}
+        >
+            {label}
+            {isOverdue && <span className="sr-only"> (ueberfaellig)</span>}
         </Badge>
     );
 }
@@ -139,13 +145,15 @@ export function AgingReportTable({ type }: AgingReportTableProps) {
                     <Table className="min-w-[700px]">
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Rechnung</TableHead>
-                                <TableHead>{counterpartyLabel}</TableHead>
-                                <TableHead className="text-right">Betrag</TableHead>
-                                <TableHead>Fälligkeit</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Tage</TableHead>
-                                <TableHead className="w-[50px]"></TableHead>
+                                <TableHead scope="col">Rechnung</TableHead>
+                                <TableHead scope="col">{counterpartyLabel}</TableHead>
+                                <TableHead scope="col" className="text-right">Betrag</TableHead>
+                                <TableHead scope="col">Faelligkeit</TableHead>
+                                <TableHead scope="col">Status</TableHead>
+                                <TableHead scope="col" className="text-right">Tage</TableHead>
+                                <TableHead scope="col" className="w-[50px]">
+                                    <span className="sr-only">Aktionen</span>
+                                </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -171,19 +179,29 @@ export function AgingReportTable({ type }: AgingReportTableProps) {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             {item.days_overdue > 0 ? (
-                                                <span className="text-destructive font-medium">
+                                                <span
+                                                    className="text-destructive font-medium"
+                                                    aria-label={`${item.days_overdue} Tage ueberfaellig`}
+                                                >
                                                     +{item.days_overdue}
+                                                    <span className="sr-only"> Tage ueberfaellig</span>
                                                 </span>
                                             ) : (
-                                                <span className="text-muted-foreground">
+                                                <span
+                                                    className="text-muted-foreground"
+                                                    aria-label={item.days_overdue === 0 ? 'Heute faellig' : `${Math.abs(item.days_overdue)} Tage bis zur Faelligkeit`}
+                                                >
                                                     {item.days_overdue}
+                                                    <span className="sr-only">
+                                                        {item.days_overdue === 0 ? ' (heute faellig)' : ` Tage bis zur Faelligkeit`}
+                                                    </span>
                                                 </span>
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            <Button variant="ghost" size="icon" asChild>
-                                                <a href={`/documents/${item.document_id}`} target="_blank" rel="noopener">
-                                                    <ExternalLink className="h-4 w-4" />
+                                            <Button variant="ghost" size="icon" asChild aria-label={`Dokument ${item.invoice_number || item.document_id} in neuem Tab oeffnen`}>
+                                                <a href={`/documents/${item.document_id}`} target="_blank" rel="noopener noreferrer">
+                                                    <ExternalLink className="h-4 w-4" aria-hidden="true" />
                                                 </a>
                                             </Button>
                                         </TableCell>

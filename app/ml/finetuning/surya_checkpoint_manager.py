@@ -683,7 +683,7 @@ class SuryaCheckpointManager:
         Args:
             db: Datenbank-Session
             target_version: Ziel-Version
-            reason: Grund fuer Rollback
+            reason: Grund für Rollback
 
         Returns:
             Erfolg

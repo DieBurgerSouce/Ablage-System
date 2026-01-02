@@ -88,7 +88,7 @@ export function EditSpaceDialog({
           <DialogHeader>
             <DialogTitle>Bereich bearbeiten</DialogTitle>
             <DialogDescription>
-              Aendern Sie den Namen und die Beschreibung des Bereichs.
+              Ändern Sie den Namen und die Beschreibung des Bereichs.
             </DialogDescription>
           </DialogHeader>
 

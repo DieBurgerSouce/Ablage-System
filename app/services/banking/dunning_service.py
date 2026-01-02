@@ -1016,7 +1016,7 @@ class DunningService:
             db: Datenbank-Session
             user_id: Benutzer-ID
             dunning_id: Mahnvorgang-ID
-            reason: Grund fuer Mahnstopp
+            reason: Grund für Mahnstopp
             until_date: Optionales Enddatum
 
         Returns:

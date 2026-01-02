@@ -1,0 +1,167 @@
+# =============================================================================
+# Certificate Expiry Alerts
+# Ablage-System OCR - Infrastructure Hardening
+# =============================================================================
+#
+# Diese Alert-Regeln ueberwachen den Ablauf von TLS-Zertifikaten
+# und warnen rechtzeitig vor dem Ablauf.
+#
+# Voraussetzungen:
+#   - Blackbox Exporter fuer SSL-Probing konfiguriert
+#   - Oder: Node Exporter mit SSL-Metriken
+#
+# =============================================================================
+
+groups:
+  - name: certificate_expiry
+    interval: 1h  # Pruefung stuendlich
+    rules:
+      # =========================================================================
+      # Vault Zertifikats-Alerts
+      # =========================================================================
+
+      - alert: VaultCertificateExpiringSoon
+        # Warnung wenn Zertifikat in weniger als 30 Tagen ablaeuft
+        # Erfordert Blackbox Exporter mit SSL-Probe
+        expr: |
+          (probe_ssl_earliest_cert_expiry{job="blackbox-ssl", instance=~".*vault.*"} - time()) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+          component: vault
+          team: infrastructure
+        annotations:
+          summary: "Vault Zertifikat laeuft in {{ $value | printf \"%.0f\" }} Tagen ab"
+          description: |
+            Das TLS-Zertifikat fuer Vault ({{ $labels.instance }}) laeuft bald ab.
+            Tage bis Ablauf: {{ $value | printf "%.0f" }}
+            Aktion: Zertifikats-Rotation durchfuehren mit:
+            ./infrastructure/vault/scripts/cert-rotation.sh --auto
+          runbook_url: "https://wiki.internal/runbooks/vault-cert-rotation"
+
+      - alert: VaultCertificateCritical
+        # Kritisch wenn Zertifikat in weniger als 7 Tagen ablaeuft
+        expr: |
+          (probe_ssl_earliest_cert_expiry{job="blackbox-ssl", instance=~".*vault.*"} - time()) / 86400 < 7
+        for: 15m
+        labels:
+          severity: critical
+          component: vault
+          team: infrastructure
+        annotations:
+          summary: "KRITISCH: Vault Zertifikat laeuft in {{ $value | printf \"%.0f\" }} Tagen ab"
+          description: |
+            Das TLS-Zertifikat fuer Vault ({{ $labels.instance }}) laeuft KRITISCH bald ab!
+            Tage bis Ablauf: {{ $value | printf "%.0f" }}
+            SOFORTIGE AKTION ERFORDERLICH!
+            ./infrastructure/vault/scripts/cert-rotation.sh --auto
+          runbook_url: "https://wiki.internal/runbooks/vault-cert-rotation"
+
+      - alert: VaultCertificateExpired
+        # Alarm wenn Zertifikat abgelaufen ist
+        expr: |
+          (probe_ssl_earliest_cert_expiry{job="blackbox-ssl", instance=~".*vault.*"} - time()) < 0
+        for: 5m
+        labels:
+          severity: critical
+          component: vault
+          team: infrastructure
+        annotations:
+          summary: "ALARM: Vault Zertifikat ist ABGELAUFEN"
+          description: |
+            Das TLS-Zertifikat fuer Vault ({{ $labels.instance }}) ist ABGELAUFEN!
+            Vault-Kommunikation ist moeglicherweise gestoert.
+            SOFORTIGE AKTION:
+            1. ./infrastructure/vault/scripts/cert-rotation.sh --auto
+            2. docker restart ablage-vault
+          runbook_url: "https://wiki.internal/runbooks/vault-cert-rotation"
+
+      # =========================================================================
+      # Nginx/Frontend Zertifikats-Alerts
+      # =========================================================================
+
+      - alert: NginxCertificateExpiringSoon
+        expr: |
+          (probe_ssl_earliest_cert_expiry{job="blackbox-ssl", instance=~".*ablage-system.*"} - time()) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+          component: nginx
+          team: infrastructure
+        annotations:
+          summary: "Nginx/Frontend Zertifikat laeuft in {{ $value | printf \"%.0f\" }} Tagen ab"
+          description: |
+            Das TLS-Zertifikat fuer {{ $labels.instance }} laeuft bald ab.
+            Let's Encrypt Zertifikate sollten automatisch erneuert werden.
+            Pruefe: docker logs ablage-certbot
+          runbook_url: "https://wiki.internal/runbooks/letsencrypt-renewal"
+
+      - alert: NginxCertificateCritical
+        expr: |
+          (probe_ssl_earliest_cert_expiry{job="blackbox-ssl", instance=~".*ablage-system.*"} - time()) / 86400 < 7
+        for: 15m
+        labels:
+          severity: critical
+          component: nginx
+          team: infrastructure
+        annotations:
+          summary: "KRITISCH: Nginx/Frontend Zertifikat laeuft in {{ $value | printf \"%.0f\" }} Tagen ab"
+          description: |
+            Das TLS-Zertifikat fuer {{ $labels.instance }} laeuft KRITISCH bald ab!
+            Manuelle Erneuerung erforderlich:
+            docker exec ablage-certbot certbot renew --force-renewal
+          runbook_url: "https://wiki.internal/runbooks/letsencrypt-renewal"
+
+      # =========================================================================
+      # Generische Zertifikats-Alerts (alle Services)
+      # =========================================================================
+
+      - alert: ServiceCertificateExpiringSoon
+        expr: |
+          (probe_ssl_earliest_cert_expiry - time()) / 86400 < 30
+            and
+          probe_ssl_earliest_cert_expiry > 0
+        for: 1h
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Service-Zertifikat laeuft in {{ $value | printf \"%.0f\" }} Tagen ab"
+          description: |
+            Das TLS-Zertifikat fuer {{ $labels.instance }} (Job: {{ $labels.job }}) laeuft bald ab.
+            Tage bis Ablauf: {{ $value | printf "%.0f" }}
+
+      # =========================================================================
+      # Probe-Fehler Alerts
+      # =========================================================================
+
+      - alert: SSLProbeFailure
+        # Alarm wenn SSL-Probe fehlschlaegt (Zertifikat ungueltig oder Service nicht erreichbar)
+        expr: |
+          probe_success{job="blackbox-ssl"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "SSL-Probe fuer {{ $labels.instance }} fehlgeschlagen"
+          description: |
+            Die SSL-Pruefung fuer {{ $labels.instance }} schlaegt fehl.
+            Moegliche Ursachen:
+            - Service nicht erreichbar
+            - Zertifikat ungueltig
+            - TLS-Konfigurationsfehler
+
+      - alert: SSLProbeHighLatency
+        # Warnung bei hoher SSL-Handshake-Latenz
+        expr: |
+          probe_ssl_last_handshake_time_seconds > 5
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Hohe SSL-Handshake-Latenz fuer {{ $labels.instance }}"
+          description: |
+            Der SSL-Handshake fuer {{ $labels.instance }} dauert ueber 5 Sekunden.
+            Aktuelle Latenz: {{ $value | printf "%.2f" }} Sekunden

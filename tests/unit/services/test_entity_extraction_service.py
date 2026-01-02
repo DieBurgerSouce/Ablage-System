@@ -317,7 +317,7 @@ class TestEntityExtractionService:
     # ==========================================================================
 
     def test_calculate_name_similarity_exact(self, service):
-        """Sollte 1.0 bei exakter Uebereinstimmung zurueckgeben."""
+        """Sollte 1.0 bei exakter Übereinstimmung zurueckgeben."""
         assert service._calculate_name_similarity("Musterfirma", "Musterfirma") == 1.0
 
     def test_calculate_name_similarity_case_insensitive(self, service):

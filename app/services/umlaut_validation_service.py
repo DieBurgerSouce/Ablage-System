@@ -329,7 +329,7 @@ class UmlautValidationService:
         gt_umlauts = self._extract_umlauts(ground_truth)
         ocr_umlauts = self._extract_umlauts(ocr_output)
 
-        # Zaehle Uebereinstimmungen
+        # Zaehle Übereinstimmungen
         gt_umlaut_count = len(gt_umlauts)
         ocr_umlaut_count = len(ocr_umlauts)
 

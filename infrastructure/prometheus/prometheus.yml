@@ -123,3 +123,15 @@ scrape_configs:
       - source_labels: [__address__]
         target_label: instance
         replacement: 'vector-ab-testing'
+
+  # Loki Log Aggregation Metrics
+  # Wichtig fuer Retention-Monitoring und Disk-Usage-Alerts
+  - job_name: 'loki'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['loki:3100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'loki-logs'

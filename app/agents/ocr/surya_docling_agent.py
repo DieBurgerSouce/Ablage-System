@@ -5,6 +5,7 @@ FoundationPredictor, and RecognitionPredictor classes.
 """
 
 import asyncio
+import time
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 import structlog
@@ -13,6 +14,7 @@ from PIL import Image
 import pypdfium2 as pdfium
 
 from app.agents.base import OCRAgent, OCRResult
+from app.ml.metrics import get_ml_metrics
 
 logger = structlog.get_logger(__name__)
 
@@ -216,6 +218,10 @@ class SuryaDoclingAgent(OCRAgent):
                 - pages: Per-page OCR results
                 - success: Whether OCR was successful
         """
+        # Start timing
+        start_time = time.perf_counter()
+        metrics = get_ml_metrics()
+
         try:
             # Extract parameters
             image_path = input_data.get("image_path")
@@ -294,24 +300,64 @@ class SuryaDoclingAgent(OCRAgent):
 
             logger.info("ocr_completed", chars_extracted=len(full_text), pages=len(images))
 
-            # Check for German characters if German language was used
+            # German text postprocessing
             has_umlauts = False
+            german_validation_score = 0.0
+
             if language == "de" and full_text:
-                german_chars = ['ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü', 'ß']
-                found_chars = [char for char in german_chars if char in full_text]
-                has_umlauts = len(found_chars) > 0
-                if found_chars:
-                    logger.info("german_chars_detected", chars=found_chars)
+                try:
+                    from app.services.german_text_postprocessor import get_german_postprocessor
+                    postprocessor = get_german_postprocessor()
+                    german_result = postprocessor.postprocess(full_text)
+                    full_text = german_result["text"]
+
+                    # Extract German quality metrics
+                    stats = german_result.get("stats", {})
+                    german_validation_score = stats.get("quality_score", 0.0)
+                    has_umlauts = any(c in full_text for c in "äöüÄÖÜß")
+
+                    corrections = german_result.get("corrections", [])
+                    if corrections:
+                        logger.debug(
+                            "surya_german_postprocessing",
+                            corrections_count=len(corrections),
+                            umlaut_fixes=stats.get("umlaut_corrections", 0),
+                            eszett_fixes=stats.get("eszett_corrections", 0)
+                        )
+                except ImportError:
+                    logger.debug("german_postprocessor_not_available")
+                    # Fallback: Check for German characters
+                    has_umlauts = any(c in full_text for c in "äöüÄÖÜß")
+                except Exception as e:
+                    logger.warning(
+                        "surya_german_postprocessing_error",
+                        error=str(e)
+                    )
+                    # Track postprocessor error in metrics
+                    metrics.record_ocr_postprocessor_error(
+                        backend="surya",
+                        postprocessor="german_text"
+                    )
+                    # Fallback: Check for German characters
+                    has_umlauts = any(c in full_text for c in "äöüÄÖÜß")
+
+            # Calculate processing time
+            processing_time_ms = int((time.perf_counter() - start_time) * 1000)
+
+            # Record metrics
+            metrics.record_ocr_inference_time("surya", processing_time_ms / 1000.0)
+            metrics.record_ocr_confidence_score("surya", avg_confidence)
 
             # Erstelle standardisiertes OCRResult
             result = self.create_success_result(
                 text=full_text,
                 confidence=round(avg_confidence, 3),
-                processing_time_ms=0,
+                processing_time_ms=processing_time_ms,
                 page_count=len(images),
                 language=language,
                 pages=pages_data,
                 has_umlauts=has_umlauts,
+                german_validation_score=german_validation_score,
             )
 
             return result.to_dict()

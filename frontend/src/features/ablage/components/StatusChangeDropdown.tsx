@@ -236,9 +236,9 @@ export function StatusChangeDropdown({
               Dokumente archivieren?
             </AlertDialogTitle>
             <AlertDialogDescription id="archive-dialog-description">
-              Moechten Sie wirklich{' '}
+              Möchten Sie wirklich{' '}
               <span className="font-semibold">{selectedIds.length} Dokumente</span>{' '}
-              archivieren? Archivierte Dokumente koennen spaeter wiederhergestellt werden.
+              archivieren? Archivierte Dokumente können später wiederhergestellt werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -977,7 +977,7 @@ def rollback_surya_model(
 
     Args:
         target_version: Ziel-Version fuer Rollback
-        reason: Grund fuer Rollback
+        reason: Grund für Rollback
 
     Returns:
         Rollback-Status

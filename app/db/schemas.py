@@ -2487,7 +2487,7 @@ class BusinessEntitySuggestion(BaseModel):
     address: Optional[str] = None
     confidence: float = Field(..., ge=0, le=1, description="Konfidenz der Erkennung (0-1)")
     matched_existing: Optional[uuid.UUID] = Field(None, description="ID eines passenden existierenden Geschaeftspartners")
-    match_reason: Optional[str] = Field(None, description="Grund fuer die Uebereinstimmung")
+    match_reason: Optional[str] = Field(None, description="Grund für die Übereinstimmung")
 
 
 # ============================================================================
@@ -3701,7 +3701,7 @@ class CategoryDocumentFilter(BaseModel):
 
     # Optional: Betragsfilter
     amount_min: Optional[float] = Field(None, ge=0, description="Mindestbetrag")
-    amount_max: Optional[float] = Field(None, ge=0, description="Hoechstbetrag")
+    amount_max: Optional[float] = Field(None, ge=0, description="Höchstbetrag")
 
     # Optional: Statusfilter
     processing_status: Optional[List[ProcessingStatus]] = Field(
@@ -5298,7 +5298,7 @@ class ExpenseReportRejectRequest(BaseModel):
         ...,
         min_length=1,
         max_length=1000,
-        description="Grund fuer die Ablehnung"
+        description="Grund für die Ablehnung"
     )
 
 

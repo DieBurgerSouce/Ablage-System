@@ -142,7 +142,7 @@ class TestSalaryValidation:
 
         data = {
             'title': 'Developer',
-            'salary_band_min': Decimal('80000'),  # Hoeher als max
+            'salary_band_min': Decimal('80000'),  # Höher als max
             'salary_band_max': Decimal('60000'),
         }
 

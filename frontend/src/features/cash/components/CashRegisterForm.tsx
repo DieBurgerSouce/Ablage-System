@@ -121,7 +121,7 @@ export function CashRegisterForm({
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? 'Aendern Sie die Kassendetails.'
+              ? 'Ändern Sie die Kassendetails.'
               : 'Erstellen Sie eine neue Barkasse für Ihr Unternehmen.'}
           </DialogDescription>
         </DialogHeader>

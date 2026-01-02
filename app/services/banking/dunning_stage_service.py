@@ -438,7 +438,7 @@ class DunningStageConfigService:
             max_mahn_stufe: Max. Eskalationsstufe
             preferred_contact_method: Bevorzugte Kontaktart
             exclude_from_auto_dunning: Von Auto-Mahnung ausschliessen
-            exclusion_reason: Grund fuer Ausschluss
+            exclusion_reason: Grund für Ausschluss
             notes: Notizen
 
         Returns:

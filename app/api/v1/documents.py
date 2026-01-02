@@ -239,10 +239,96 @@ async def upload_document(
     except FileValidationError as e:
         raise HTTPException(status_code=400, detail=e.user_message_de)
 
-    # 6. Checksum berechnen
+    # 6. Malware-Scan (ClamAV + YARA + Heuristics)
+    # SECURITY: Scannt Datei vor Upload auf Viren/Malware
+    from app.core.malware_scanner import (
+        scan_file_async,
+        MalwareDetectedError,
+        ScannerUnavailableError
+    )
+    from app.core.config import settings as app_settings
+
+    # Malware-Scan nur wenn aktiviert (default: true)
+    malware_scan_enabled = getattr(app_settings, 'MALWARE_SCAN_ENABLED', True)
+
+    if malware_scan_enabled:
+        try:
+            scan_result = await scan_file_async(
+                content=file_content,
+                filename=file.filename,
+                raise_on_threat=False  # Wir behandeln das Ergebnis manuell
+            )
+
+            if not scan_result.is_clean:
+                # Malware erkannt - Datei blockieren
+                threat_names = ", ".join(scan_result.threat_names[:3])
+                if len(scan_result.threats) > 3:
+                    threat_names += f" (+{len(scan_result.threats) - 3} weitere)"
+
+                logger.warning(
+                    "malware_detected_upload_blocked",
+                    filename=file.filename[:50],  # Truncate for logging
+                    file_hash=scan_result.file_hash_sha256[:16],
+                    threat_count=len(scan_result.threats),
+                    highest_level=scan_result.highest_threat_level.value,
+                    engines_used=[e.value for e in scan_result.engines_used]
+                )
+
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Sicherheitswarnung: Schadhafter Inhalt erkannt ({threat_names}). "
+                           f"Die Datei wurde blockiert. Bedrohungsstufe: {scan_result.highest_threat_level.value}"
+                )
+
+            # Scan erfolgreich - logge Metriken
+            logger.info(
+                "malware_scan_passed",
+                filename=file.filename[:50],
+                scan_duration_ms=scan_result.scan_duration_ms,
+                engines_used=[e.value for e in scan_result.engines_used]
+            )
+
+        except ScannerUnavailableError as e:
+            # Scanner nicht verfuegbar - je nach Konfiguration fortfahren oder blockieren
+            # In Production sollte fail_on_unavailable=True sein
+            fail_on_scan_unavailable = getattr(app_settings, 'MALWARE_SCAN_FAIL_CLOSED', True)
+
+            if fail_on_scan_unavailable:
+                logger.error(
+                    "malware_scanner_unavailable_upload_blocked",
+                    scanner=e.engine,
+                    filename=file.filename[:50]
+                )
+                raise HTTPException(
+                    status_code=503,
+                    detail="Malware-Scanner nicht verfuegbar. Upload temporaer blockiert."
+                )
+            else:
+                logger.warning(
+                    "malware_scanner_unavailable_upload_allowed",
+                    scanner=e.engine,
+                    filename=file.filename[:50]
+                )
+
+        except Exception as scan_error:
+            # Unerwarteter Fehler beim Scannen
+            logger.error(
+                "malware_scan_error",
+                error_type=type(scan_error).__name__,
+                filename=file.filename[:50]
+            )
+
+            fail_on_scan_error = getattr(app_settings, 'MALWARE_SCAN_FAIL_CLOSED', True)
+            if fail_on_scan_error:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Sicherheitspruefung fehlgeschlagen. Bitte versuchen Sie es spaeter erneut."
+                )
+
+    # 7. Checksum berechnen
     file_hash = hashlib.sha256(file_content).hexdigest()
 
-    # 7. In MinIO hochladen
+    # 8. In MinIO hochladen
     storage = get_storage_service()
 
     try:
@@ -259,13 +345,20 @@ async def upload_document(
         )
     except Exception as e:
         # SECURITY FIX 28-27: Generische Fehlermeldung
-        logger.error("storage_upload_failed", error=str(e), filename=file.filename)
+        # SECURITY FIX: Sanitize error - log only error type, not full details that may contain PII
+        error_type = type(e).__name__
+        logger.error(
+            "storage_upload_failed",
+            error_type=error_type,
+            filename_length=len(file.filename) if file.filename else 0,
+            has_content_type=bool(detected_mime)
+        )
         raise HTTPException(
             status_code=500,
             detail="Upload fehlgeschlagen. Bitte versuchen Sie es erneut."
         )
 
-    # 8. Datenbank-Eintrag erstellen
+    # 9. Datenbank-Eintrag erstellen
     doc_id = uuid4()
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
 
@@ -292,7 +385,7 @@ async def upload_document(
     await db.commit()
     await db.refresh(new_document)
 
-    # 9. Optional: OCR-Job starten
+    # 10. Optional: OCR-Job starten
     processing_job_id = None
     if start_ocr:
         try:
@@ -2795,7 +2888,7 @@ async def get_category_documents(
     date_from: Optional[str] = Query(None, description="Datum ab (ISO)"),
     date_to: Optional[str] = Query(None, description="Datum bis (ISO)"),
     amount_min: Optional[float] = Query(None, ge=0, description="Mindestbetrag"),
-    amount_max: Optional[float] = Query(None, ge=0, description="Hoechstbetrag"),
+    amount_max: Optional[float] = Query(None, ge=0, description="Höchstbetrag"),
     processing_status: Optional[List[str]] = Query(None, description="Verarbeitungsstatus"),
     payment_status: Optional[List[str]] = Query(None, description="Zahlungsstatus"),
     tags: Optional[List[str]] = Query(None, description="Tags"),

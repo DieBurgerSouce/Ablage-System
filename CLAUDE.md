@@ -48,6 +48,40 @@ Dieses Projekt verwendet eine **optimierte Claude Code Entwicklungsstruktur**. B
 **WICHTIG für Frontend-Testing:**
 Wenn der User fragt nach: "teste die App", "UI prüfen", "Frontend testen", "E2E Tests", "Browser-Tests", "Screenshots machen", "wie ein QA-Engineer testen" → **IMMER** den `@webapp-tester-mcp` Skill aktivieren! Dieser nutzt den Playwright MCP Server für echte Browser-Automatisierung.
 
+### AUTOMATISCHER Plan-Breakdown Subagent
+
+**KRITISCH - IMMER AUTOMATISCH DELEGIEREN:**
+
+Der `plan-breakdown` Subagent ist in `.claude/agents/plan-breakdown.md` definiert.
+
+**Wann MUSS Claude automatisch an den Subagent delegieren:**
+
+| Situation | Claude sagt... |
+|-----------|----------------|
+| **ExitPlanMode wird aufgerufen** | "Ich delegiere an den plan-breakdown Subagent um detaillierte Feature-Specs zu generieren..." |
+| User akzeptiert einen Plan | "Use the plan-breakdown subagent to expand this plan into detailed feature specifications" |
+| Plan-Datei wurde gerade erstellt | "Der Plan ist fertig. Ich lasse den plan-breakdown Subagent die Details generieren..." |
+| User oeffnet ROADMAP*.md | "Use the plan-breakdown subagent to analyze this roadmap" |
+| User sagt "expandieren", "details" | "Use the plan-breakdown subagent to break this down" |
+
+**WICHTIGSTER TRIGGER: Nach jedem ExitPlanMode automatisch delegieren!**
+
+**Der Subagent:**
+- Ist registriert in `.claude/agents/plan-breakdown.md`
+- Hat eigene Tools (Read, Grep, Glob, Edit, Write, AskUserQuestion)
+- Bekommt frischen Kontext
+- Generiert automatisch Feature-Dateien in `.claude/plans/[name]/`
+- Stellt Rueckfragen wenn noetig
+
+**Beispiel-Delegation:**
+```
+"Use the plan-breakdown subagent to analyze the plan I just created
+and generate detailed feature specification files with API specs,
+DB schema, implementation tasks, and test scenarios."
+```
+
+**WICHTIG:** Der User soll NIEMALS selbst den Subagent triggern muessen! Claude erkennt automatisch wann er sinnvoll ist und delegiert.
+
 ---
 
 ## Projekt-Übersicht

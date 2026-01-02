@@ -322,7 +322,7 @@ class TestCustomConfig:
         """Sollte benutzerdefinierten Zinssatz verwenden."""
         config = DunningConfig(
             late_interest_rate=Decimal("9.00"),  # 9% ueber Basiszins
-            base_interest_rate=Decimal("5.00"),  # Hoeherer Basiszins
+            base_interest_rate=Decimal("5.00"),  # Höherer Basiszins
         )
 
         service = DunningService(config=config)

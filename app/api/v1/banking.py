@@ -689,7 +689,7 @@ async def list_transactions(
     date_from: Optional[date] = Query(None, description="Startdatum"),
     date_to: Optional[date] = Query(None, description="Enddatum"),
     amount_min: Optional[float] = Query(None, description="Mindestbetrag"),
-    amount_max: Optional[float] = Query(None, description="Hoechstbetrag"),
+    amount_max: Optional[float] = Query(None, description="Höchstbetrag"),
     transaction_type: Optional[TransactionType] = Query(None, description="Transaktionstyp"),
     reconciliation_status: Optional[ReconciliationStatus] = Query(None, description="Abgleich-Status"),
     search: Optional[str] = Query(None, description="Volltextsuche"),

@@ -132,7 +132,7 @@ export function ExpenseReportForm({
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? 'Aendern Sie die Abrechnungsdetails.'
+              ? 'Ändern Sie die Abrechnungsdetails.'
               : 'Erstellen Sie eine neue Spesenabrechnung für Ihre Ausgaben.'}
           </DialogDescription>
         </DialogHeader>

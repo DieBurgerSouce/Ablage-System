@@ -325,7 +325,7 @@ async def search_audit_logs(
     - Ressourcen-ID
     - Fehlermeldungen
 
-    **Mindestlaenge:** 2 Zeichen
+    **Mindestlänge:** 2 Zeichen
     """
     filters = AuditLogFilters(
         action=q,  # Will be used as partial match

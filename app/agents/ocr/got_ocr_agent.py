@@ -25,6 +25,8 @@ from transformers import AutoProcessor, AutoModel
 
 from app.agents.base import AgentResourceError, OCRAgent, OCRResult
 from app.gpu_manager import GPUManager
+from app.core.exceptions import OCRGPUOutOfMemoryError, InferenceTimeoutError
+from app.services.circuit_breaker import circuit_breaker_protected, get_circuit_breaker_registry
 
 
 class GOTOCRAgent(OCRAgent):
@@ -42,9 +44,20 @@ class GOTOCRAgent(OCRAgent):
     VRAM_REQUIRED_GB = 10
     MAX_BATCH_SIZE = 8
     MODEL_LOADING_TIMEOUT = 600.0  # 10 Minuten Timeout für Model-Loading (erste Initialisierung kann langsam sein)
+    INFERENCE_TIMEOUT = 300.0  # 5 Minuten Timeout für Inference
+
+    # Fallback configuration - GOT-OCR can run on CPU
+    FALLBACK_BACKENDS = ["surya"]  # CPU-capable backends for OOM fallback
+    SUPPORTS_CPU_FALLBACK = True  # GOT-OCR can fall back to CPU
 
     # Class-level lock to prevent concurrent model loading (race condition fix)
     _model_lock: Optional[asyncio.Lock] = None
+    # Class-level flag to track if model loading has permanently failed
+    _model_load_failed: bool = False
+    _model_load_error: Optional[str] = None
+
+    # Timeout for acquiring the model lock (prevents deadlock on failed load)
+    LOCK_ACQUISITION_TIMEOUT = 300.0  # 5 minutes
 
     def __init__(self):
         super().__init__(
@@ -61,6 +74,23 @@ class GOTOCRAgent(OCRAgent):
         if GOTOCRAgent._model_lock is None:
             GOTOCRAgent._model_lock = asyncio.Lock()
 
+    @property
+    def supports_cpu_fallback(self) -> bool:
+        """
+        Indicates whether this backend can fall back to CPU.
+
+        GOT-OCR can run on CPU (slower but functional).
+        """
+        return self.SUPPORTS_CPU_FALLBACK
+
+    @property
+    def fallback_backends(self) -> List[str]:
+        """
+        List of backends that can be used as fallback when this backend fails with OOM.
+        """
+        return self.FALLBACK_BACKENDS
+
+    @circuit_breaker_protected("got_ocr")
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process document with GOT-OCR 2.0.
@@ -79,6 +109,10 @@ class GOTOCRAgent(OCRAgent):
             format: str - Output format used
             processing_time_ms: int
             backend: str - "got-ocr-2.0"
+        Raises:
+            OCRGPUOutOfMemoryError: When GPU runs out of memory (signals fallback available)
+            InferenceTimeoutError: When inference takes too long
+            CircuitBreakerError: When backend is in circuit-open state
         """
         self.validate_input(input_data, ["document_id", "image_path"])
 
@@ -111,13 +145,16 @@ class GOTOCRAgent(OCRAgent):
             if region:
                 image = self._crop_region(image, region)
 
-            # Run OCR with specified format
-            result = await self._run_ocr(
+            # Run OCR with timeout protection
+            inference_timeout = input_data.get("options", {}).get("inference_timeout", self.INFERENCE_TIMEOUT)
+            result = await self._run_ocr_with_timeout(
                 image,
                 output_format=output_format,
                 extract_formulas=extract_formulas,
                 language=language,
-                device=device
+                device=device,
+                timeout_seconds=inference_timeout,
+                document_id=document_id
             )
 
             # Post-process for German text
@@ -140,10 +177,33 @@ class GOTOCRAgent(OCRAgent):
                 "got_ocr_gpu_oom",
                 document_id=document_id,
                 error=str(e),
+                fallback_backends=self.FALLBACK_BACKENDS,
+                supports_cpu=self.SUPPORTS_CPU_FALLBACK,
             )
-            # Try to recover
+            # Try to recover GPU resources
             await self._handle_gpu_oom()
-            raise AgentResourceError(f"GPU out of memory: {e}")
+
+            # Get current GPU memory info for detailed error
+            available_gb = None
+            if torch.cuda.is_available():
+                try:
+                    free_mem = torch.cuda.mem_get_info()[0] / (1024**3)
+                    available_gb = round(free_mem, 2)
+                except Exception:
+                    pass
+
+            # Raise specific exception that signals fallback availability
+            raise OCRGPUOutOfMemoryError(
+                backend="got_ocr",
+                document_id=document_id,
+                required_gb=self.VRAM_REQUIRED_GB,
+                available_gb=available_gb,
+                fallback_backends=self.FALLBACK_BACKENDS
+            )
+
+        except InferenceTimeoutError:
+            # Re-raise timeout errors (already properly formatted)
+            raise
 
         except Exception as e:
             self.logger.error(
@@ -157,6 +217,64 @@ class GOTOCRAgent(OCRAgent):
         finally:
             # Cleanup GPU resources after processing (success or failure)
             await self._cleanup_gpu_resources()
+
+    async def _run_ocr_with_timeout(
+        self,
+        image: Image.Image,
+        output_format: str,
+        extract_formulas: bool,
+        language: str,
+        device: str,
+        timeout_seconds: float,
+        document_id: Optional[str] = None
+    ) -> OCRResult:
+        """
+        Run OCR with timeout protection.
+
+        Wraps _run_ocr with asyncio.wait_for to prevent indefinite hangs
+        during model generation.
+
+        Args:
+            image: Input image
+            output_format: Output format (plain, markdown, latex)
+            extract_formulas: Focus on formula extraction
+            language: Target language
+            device: Processing device (cuda/cpu)
+            timeout_seconds: Maximum time allowed for inference
+            document_id: Document ID for error reporting
+
+        Returns:
+            OCR result
+
+        Raises:
+            InferenceTimeoutError: When inference exceeds timeout
+        """
+        try:
+            result = await asyncio.wait_for(
+                self._run_ocr(
+                    image,
+                    output_format=output_format,
+                    extract_formulas=extract_formulas,
+                    language=language,
+                    device=device
+                ),
+                timeout=timeout_seconds
+            )
+            return result
+
+        except asyncio.TimeoutError:
+            self.logger.error(
+                "got_ocr_inference_timeout",
+                document_id=document_id,
+                timeout_seconds=timeout_seconds
+            )
+            # Cleanup GPU resources after timeout
+            await self._cleanup_gpu_resources()
+            raise InferenceTimeoutError(
+                backend="got_ocr",
+                timeout_seconds=timeout_seconds,
+                document_id=document_id
+            )
 
     async def _allocate_device(self) -> str:
         """Allocate GPU or fallback to CPU."""
@@ -183,17 +301,52 @@ class GOTOCRAgent(OCRAgent):
             return "cpu"
 
     async def _load_model(self, device: str) -> None:
-        """Load GOT-OCR 2.0 model with lock and timeout protection."""
+        """Load GOT-OCR 2.0 model with lock and timeout protection.
+
+        Implements deadlock prevention:
+        1. Timeout on lock acquisition to prevent infinite waiting
+        2. Tracks permanent failures to avoid repeated failed attempts
+        3. Clear error messaging for debugging
+        """
         # Quick check without lock (performance optimization)
         if self._model_loaded:
             return
 
-        # Acquire lock to prevent concurrent model loading (race condition fix)
-        async with self._model_lock:
+        # Check if model loading has permanently failed (prevents repeated attempts)
+        if GOTOCRAgent._model_load_failed:
+            raise AgentResourceError(
+                f"GOT-OCR-Modell wurde bereits als fehlerhaft markiert: {GOTOCRAgent._model_load_error}. "
+                "Neustart des Services erforderlich."
+            )
+
+        # Acquire lock with timeout to prevent deadlock
+        try:
+            await asyncio.wait_for(
+                self._model_lock.acquire(),
+                timeout=self.LOCK_ACQUISITION_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            self.logger.error(
+                "got_ocr_model_lock_timeout",
+                timeout_seconds=self.LOCK_ACQUISITION_TIMEOUT,
+                message="Lock-Akquisition Timeout - moeglicherweise haengt ein anderer Ladevorgang"
+            )
+            raise AgentResourceError(
+                f"Model-Lock Timeout nach {self.LOCK_ACQUISITION_TIMEOUT / 60:.0f} Minuten. "
+                "Ein anderer Ladevorgang haengt moeglicherweise."
+            )
+
+        try:
             # Double-check after acquiring lock (another request may have loaded it)
             if self._model_loaded:
                 self.logger.debug("got_ocr_model_already_loaded_by_other_request")
                 return
+
+            # Also check for failure after lock (another request may have failed)
+            if GOTOCRAgent._model_load_failed:
+                raise AgentResourceError(
+                    f"GOT-OCR-Modell wurde bereits als fehlerhaft markiert: {GOTOCRAgent._model_load_error}"
+                )
 
             self.logger.info("got_ocr_loading_model", device=device, model=self.MODEL_NAME)
 
@@ -206,17 +359,32 @@ class GOTOCRAgent(OCRAgent):
                 self._model_loaded = True
                 self.logger.info("got_ocr_model_loaded", device=device)
             except asyncio.TimeoutError:
+                # Mark as permanently failed to prevent infinite retry loops
+                GOTOCRAgent._model_load_failed = True
+                GOTOCRAgent._model_load_error = f"Timeout nach {self.MODEL_LOADING_TIMEOUT / 60:.0f} Minuten"
                 self.logger.error(
                     "got_ocr_model_load_timeout",
-                    timeout_seconds=self.MODEL_LOADING_TIMEOUT
+                    timeout_seconds=self.MODEL_LOADING_TIMEOUT,
+                    permanent_failure=True
                 )
                 raise AgentResourceError(
                     f"Model-Loading Timeout nach {self.MODEL_LOADING_TIMEOUT / 60:.0f} Minuten. "
-                    "Überprüfen Sie die Netzwerkverbindung und den verfügbaren Speicher."
+                    "Ueberpruefen Sie die Netzwerkverbindung und den verfuegbaren Speicher."
                 )
             except Exception as e:
-                self.logger.error("got_ocr_model_load_failed", error=str(e), exc_info=True)
+                # Mark as permanently failed to prevent infinite retry loops
+                GOTOCRAgent._model_load_failed = True
+                GOTOCRAgent._model_load_error = str(e)
+                self.logger.error(
+                    "got_ocr_model_load_failed",
+                    error=str(e),
+                    exc_info=True,
+                    permanent_failure=True
+                )
                 raise AgentResourceError(f"Fehler beim Laden des GOT-OCR-Modells: {e}")
+        finally:
+            # Always release the lock, even on failure
+            self._model_lock.release()
 
     async def _do_load_model(self, device: str) -> None:
         """Actual model loading logic (called within lock and timeout)."""
@@ -612,15 +780,17 @@ class GOTOCRAgent(OCRAgent):
     async def _cleanup_gpu_resources(self) -> None:
         """Cleanup GPU resources after processing."""
         if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+            torch.cuda.synchronize()  # Wait for all GPU operations to complete
+            torch.cuda.empty_cache()  # Now safe to clear cache
 
     async def _handle_gpu_oom(self) -> None:
         """Handle GPU out-of-memory error."""
         self.logger.warning("got_ocr_gpu_oom_recovery", action="clearing_cache")
 
-        # Clear CUDA cache
+        # Clear CUDA cache - synchronize first to ensure all operations complete
         if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+            torch.cuda.synchronize()  # Wait for all GPU operations to complete
+            torch.cuda.empty_cache()  # Now safe to clear cache
 
         # Unload model to free memory
         if self.model is not None:

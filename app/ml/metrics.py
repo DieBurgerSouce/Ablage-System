@@ -496,6 +496,54 @@ if PROMETHEUS_AVAILABLE:
         registry=ML_REGISTRY,
     )
 
+    # -------------------------------------------------------------------------
+    # OCR-spezifische Metrics (Phase 2 Enterprise)
+    # -------------------------------------------------------------------------
+
+    OCR_INFERENCE_TIME = Histogram(
+        "ocr_inference_time_seconds",
+        "Inference time for OCR processing (token generation)",
+        ["backend"],
+        buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0],
+        registry=ML_REGISTRY,
+    )
+
+    OCR_GPU_VRAM_ALLOCATED = Gauge(
+        "ocr_gpu_vram_allocated_bytes",
+        "VRAM currently allocated for OCR processing",
+        ["backend"],
+        registry=ML_REGISTRY,
+    )
+
+    OCR_CONFIDENCE_SCORE = Histogram(
+        "ocr_confidence_score",
+        "OCR confidence score distribution",
+        ["backend"],
+        buckets=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99],
+        registry=ML_REGISTRY,
+    )
+
+    OCR_FALLBACK_COUNT = Counter(
+        "ocr_fallback_count",
+        "Number of OCR backend fallbacks",
+        ["from_backend", "to_backend", "reason"],
+        registry=ML_REGISTRY,
+    )
+
+    OCR_OOM_ERRORS_TOTAL = Counter(
+        "ocr_oom_errors_total",
+        "Total GPU out-of-memory errors during OCR",
+        ["backend"],
+        registry=ML_REGISTRY,
+    )
+
+    OCR_POSTPROCESSOR_ERRORS_TOTAL = Counter(
+        "ocr_postprocessor_errors_total",
+        "Total errors during OCR text postprocessing",
+        ["backend", "postprocessor"],
+        registry=ML_REGISTRY,
+    )
+
 
 # =============================================================================
 # Metric Recording Functions
@@ -1224,6 +1272,155 @@ class MLMetrics:
                 "surya_versioning_metrics",
                 total_versions=total_versions,
                 total_checkpoint_size_mb=round(total_checkpoint_size_mb, 2),
+            )
+
+    # -------------------------------------------------------------------------
+    # OCR Phase 2 Metriken
+    # -------------------------------------------------------------------------
+
+    def record_ocr_inference_time(
+        self,
+        backend: str,
+        inference_time_seconds: float,
+    ) -> None:
+        """
+        Erfasse OCR Inference-Zeit.
+
+        Args:
+            backend: Backend-Name (deepseek, surya, got_ocr)
+            inference_time_seconds: Inferenz-Zeit in Sekunden
+        """
+        if self.enabled:
+            OCR_INFERENCE_TIME.labels(backend=backend).observe(inference_time_seconds)
+        else:
+            logger.debug(
+                "ocr_inference_time",
+                backend=backend,
+                inference_time_seconds=round(inference_time_seconds, 3),
+            )
+
+    def set_ocr_gpu_vram_allocated(
+        self,
+        backend: str,
+        vram_bytes: int,
+    ) -> None:
+        """
+        Setze aktuell allokierten VRAM fuer OCR Backend.
+
+        Args:
+            backend: Backend-Name
+            vram_bytes: VRAM in Bytes
+        """
+        if self.enabled:
+            OCR_GPU_VRAM_ALLOCATED.labels(backend=backend).set(vram_bytes)
+        else:
+            logger.debug(
+                "ocr_gpu_vram_allocated",
+                backend=backend,
+                vram_mb=round(vram_bytes / (1024 * 1024), 2),
+            )
+
+    def record_ocr_confidence_score(
+        self,
+        backend: str,
+        confidence: float,
+    ) -> None:
+        """
+        Erfasse OCR Confidence Score.
+
+        Args:
+            backend: Backend-Name
+            confidence: Confidence Score (0.0 - 1.0)
+        """
+        if self.enabled:
+            OCR_CONFIDENCE_SCORE.labels(backend=backend).observe(confidence)
+        else:
+            logger.debug(
+                "ocr_confidence_score",
+                backend=backend,
+                confidence=round(confidence, 3),
+            )
+
+    def record_ocr_fallback(
+        self,
+        from_backend: str,
+        to_backend: str,
+        reason: str,
+    ) -> None:
+        """
+        Erfasse OCR Backend-Fallback mit Grund.
+
+        Args:
+            from_backend: Original Backend
+            to_backend: Fallback Backend
+            reason: Grund für Fallback (oom, timeout, error)
+        """
+        if self.enabled:
+            OCR_FALLBACK_COUNT.labels(
+                from_backend=from_backend,
+                to_backend=to_backend,
+                reason=reason,
+            ).inc()
+            logger.info(
+                "ocr_fallback_recorded",
+                from_backend=from_backend,
+                to_backend=to_backend,
+                reason=reason,
+            )
+        else:
+            logger.warning(
+                "ocr_fallback",
+                from_backend=from_backend,
+                to_backend=to_backend,
+                reason=reason,
+            )
+
+    def record_ocr_oom_error(self, backend: str) -> None:
+        """
+        Erfasse GPU Out-of-Memory Fehler.
+
+        Args:
+            backend: Backend das OOM hatte
+        """
+        if self.enabled:
+            OCR_OOM_ERRORS_TOTAL.labels(backend=backend).inc()
+            logger.error(
+                "ocr_oom_error_recorded",
+                backend=backend,
+            )
+        else:
+            logger.error(
+                "ocr_oom_error",
+                backend=backend,
+            )
+
+    def record_ocr_postprocessor_error(
+        self,
+        backend: str,
+        postprocessor: str,
+    ) -> None:
+        """
+        Erfasse Postprocessor-Fehler.
+
+        Args:
+            backend: OCR Backend
+            postprocessor: Name des Postprocessors (german_text, etc.)
+        """
+        if self.enabled:
+            OCR_POSTPROCESSOR_ERRORS_TOTAL.labels(
+                backend=backend,
+                postprocessor=postprocessor,
+            ).inc()
+            logger.warning(
+                "ocr_postprocessor_error_recorded",
+                backend=backend,
+                postprocessor=postprocessor,
+            )
+        else:
+            logger.warning(
+                "ocr_postprocessor_error",
+                backend=backend,
+                postprocessor=postprocessor,
             )
 
     # -------------------------------------------------------------------------

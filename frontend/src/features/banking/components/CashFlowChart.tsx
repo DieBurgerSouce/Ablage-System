@@ -1,9 +1,14 @@
 /**
  * Cash-Flow Chart Komponente
  * Zeigt tägliche Einnahmen, Ausgaben und Netto als AreaChart
+ *
+ * WICHTIG: Verwendet CSS-Variablen fuer Display-Mode-Unterstuetzung:
+ * - --chart-2: Einnahmen (gruen/success)
+ * - --chart-4: Ausgaben (rot/destructive)
+ * - --chart-1: Kumuliert (blau/primary)
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -27,6 +32,33 @@ import {
 import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import { useCashFlowDaily } from '../hooks/use-banking-queries';
 import { formatCurrency, formatDateShort } from '../utils/format';
+
+import { useTheme } from '@/lib/theme/ThemeContext';
+
+/**
+ * Hook to get computed CSS variable values for charts
+ * This ensures chart colors adapt to display mode changes
+ */
+function useChartColors() {
+    const { displayMode } = useTheme();
+
+    return useMemo(() => {
+        // Read CSS variables from the document root
+        const computedStyle = getComputedStyle(document.documentElement);
+
+        // Get chart colors, with fallbacks for safety
+        const getColor = (varName: string, fallback: string): string => {
+            const value = computedStyle.getPropertyValue(varName).trim();
+            return value || fallback;
+        };
+
+        return {
+            inflow: getColor('--chart-2', 'oklch(0.72 0.17 145)'),   // Green for income
+            outflow: getColor('--chart-4', 'oklch(0.55 0.22 25)'),   // Red for expenses
+            cumulative: getColor('--chart-1', 'oklch(0.55 0.18 250)'), // Blue for cumulative
+        };
+    }, [displayMode]); // Re-compute when display mode changes
+}
 
 interface CashFlowChartProps {
     defaultDays?: number;
@@ -59,6 +91,7 @@ function CustomTooltip({ active, payload, label }: RechartsTooltipProps) {
 export function CashFlowChart({ defaultDays = 30, showControls = true }: CashFlowChartProps) {
     const [days, setDays] = useState(defaultDays);
     const { data, isLoading, error } = useCashFlowDaily(days);
+    const chartColors = useChartColors();
 
     if (isLoading) {
         return (
@@ -120,21 +153,25 @@ export function CashFlowChart({ defaultDays = 30, showControls = true }: CashFlo
                 )}
             </CardHeader>
             <CardContent>
-                <div className="h-[300px]">
+                <div
+                    className="h-[300px]"
+                    role="img"
+                    aria-label={`Liquiditaetsprognose fuer ${days} Tage. Zeigt Einnahmen, Ausgaben und kumulierten Saldo als Flaechendiagramm.`}
+                >
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={chartData}>
                             <defs>
                                 <linearGradient id="colorInflow" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                                    <stop offset="5%" stopColor={chartColors.inflow} stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor={chartColors.inflow} stopOpacity={0} />
                                 </linearGradient>
                                 <linearGradient id="colorOutflow" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                    <stop offset="5%" stopColor={chartColors.outflow} stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor={chartColors.outflow} stopOpacity={0} />
                                 </linearGradient>
                                 <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                    <stop offset="5%" stopColor={chartColors.cumulative} stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor={chartColors.cumulative} stopOpacity={0} />
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -154,27 +191,49 @@ export function CashFlowChart({ defaultDays = 30, showControls = true }: CashFlo
                             <Area
                                 type="monotone"
                                 dataKey="Einnahmen"
-                                stroke="#22c55e"
+                                stroke={chartColors.inflow}
                                 fill="url(#colorInflow)"
                                 strokeWidth={2}
                             />
                             <Area
                                 type="monotone"
                                 dataKey="Ausgaben"
-                                stroke="#ef4444"
+                                stroke={chartColors.outflow}
                                 fill="url(#colorOutflow)"
                                 strokeWidth={2}
                             />
                             <Area
                                 type="monotone"
                                 dataKey="Kumuliert"
-                                stroke="#3b82f6"
+                                stroke={chartColors.cumulative}
                                 fill="url(#colorNet)"
                                 strokeWidth={2}
                             />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
+                {/* Screen Reader Only: Data Table Alternative */}
+                <table className="sr-only" aria-label="Liquiditaetsdaten als Tabelle">
+                    <caption>Tagesweise Einnahmen, Ausgaben und kumulierter Saldo</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Datum</th>
+                            <th scope="col">Einnahmen</th>
+                            <th scope="col">Ausgaben</th>
+                            <th scope="col">Kumuliert</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {chartData.map((entry, index) => (
+                            <tr key={index}>
+                                <td>{formatDateShort(entry.date)}</td>
+                                <td>{formatCurrency(entry.Einnahmen)}</td>
+                                <td>{formatCurrency(entry.Ausgaben)}</td>
+                                <td>{formatCurrency(entry.Kumuliert)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </CardContent>
         </Card>
     );

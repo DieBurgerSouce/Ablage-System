@@ -72,8 +72,8 @@ export function WidgetCatalogDrawer({ open, onOpenChange }: WidgetCatalogDrawerP
             Widget-Katalog
           </SheetTitle>
           <SheetDescription>
-            Waehlen Sie Widgets aus, um sie Ihrem Dashboard hinzuzufuegen.
-            Sie koennen mehrere Instanzen des gleichen Widgets hinzufuegen.
+            Wählen Sie Widgets aus, um sie Ihrem Dashboard hinzuzufügen.
+            Sie können mehrere Instanzen des gleichen Widgets hinzufügen.
           </SheetDescription>
         </SheetHeader>
 

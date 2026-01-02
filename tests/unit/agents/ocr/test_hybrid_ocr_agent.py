@@ -286,7 +286,7 @@ class TestHybridOCRCharacterVoting:
         # DeepSeek hat "ü", GOT-OCR hat "u"
         results = [
             {"engine": "deepseek", "text": "Müller", "confidence": 0.85},
-            {"engine": "got_ocr", "text": "Muller", "confidence": 0.90},  # Hoehere Confidence
+            {"engine": "got_ocr", "text": "Muller", "confidence": 0.90},  # Höhere Confidence
         ]
 
         voted_text = hybrid_agent_with_mocks._character_level_voting(results)
@@ -556,7 +556,7 @@ class TestHybridOCREnsembleConfidence:
         assert 0.85 <= conf <= 1.0
 
     def test_ensemble_confidence_boost_on_agreement(self, hybrid_agent_with_mocks):
-        """Ensemble Confidence sollte Boost bei hoher Uebereinstimmung geben."""
+        """Ensemble Confidence sollte Boost bei hoher Übereinstimmung geben."""
         results = [
             {"confidence": 0.80, "text": "Identischer Text"},
             {"confidence": 0.80, "text": "Identischer Text"},

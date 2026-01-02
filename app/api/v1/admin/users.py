@@ -227,7 +227,7 @@ async def update_user(
 async def deactivate_user(
     user_id: UUID,
     request: Request,
-    reason: Optional[str] = Query(None, description="Grund fuer Deaktivierung"),
+    reason: Optional[str] = Query(None, description="Grund für Deaktivierung"),
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> UserAdminView:

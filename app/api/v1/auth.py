@@ -6,7 +6,7 @@ All responses in German for user-facing messages.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Union
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
@@ -124,7 +124,7 @@ async def register(
     request: Request,  # SECURITY FIX 25-7: Required for IP-based rate limiter - KRITISCH!
     user_data: UserCreate,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> UserResponse:
     """
     Registriere einen neuen Benutzer.
 
@@ -174,7 +174,7 @@ async def login(
     login_data: LoginRequest,
     request: Request,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> Union[Token, TwoFactorRequiredResponse]:
     """
     Authentifiziere einen Benutzer mit E-Mail und Passwort.
 

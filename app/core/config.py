@@ -202,6 +202,36 @@ class Settings(BaseSettings):
     ALLOWED_EXTENSIONS: List[str] = [".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp"]
     UPLOAD_DIR: Path = Path("/app/uploads")
     OUTPUT_DIR: Path = Path("/app/outputs")
+
+    # =============================================================================
+    # ClamAV Malware Scanning (SECURITY)
+    # =============================================================================
+    MALWARE_SCAN_ENABLED: bool = Field(
+        default=True,
+        description="Malware-Scanning fuer Document Uploads aktivieren"
+    )
+    MALWARE_SCAN_FAIL_CLOSED: bool = Field(
+        default=True,
+        description="Bei Scanner-Fehler Upload blockieren (fail-closed, empfohlen fuer Production)"
+    )
+    CLAMAV_HOST: str = Field(
+        default="clamav",
+        description="ClamAV Daemon Host"
+    )
+    CLAMAV_PORT: int = Field(
+        default=3310,
+        description="ClamAV Daemon Port"
+    )
+    CLAMAV_TIMEOUT: int = Field(
+        default=60,
+        ge=10, le=300,
+        description="ClamAV Scan-Timeout in Sekunden"
+    )
+    CLAMAV_MAX_SIZE_MB: int = Field(
+        default=100,
+        ge=1, le=500,
+        description="Maximale Dateigroesse fuer ClamAV-Scan in MB"
+    )
     
     # OCR Settings
     DEFAULT_OCR_BACKEND: str = "auto"

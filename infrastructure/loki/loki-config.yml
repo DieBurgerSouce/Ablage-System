@@ -1,6 +1,30 @@
 # Loki Configuration for Ablage-System OCR
 # Log Aggregation and Analysis
 # Updated for Loki 3.x compatibility
+#
+# IMPLEMENTIERT [2026-01-02]: Loki Retention Alerting
+# =====================================================
+# Alle Monitoring-Komponenten wurden implementiert:
+#
+# 1. [DONE] Prometheus Alert Rules erstellt:
+#    - Datei: infrastructure/prometheus/rules/loki-alerts.yml
+#    - 17 Alerts fuer Disk, Retention, Ingestion, Performance
+#
+# 2. [DONE] Loki als Prometheus Scrape-Target hinzugefuegt:
+#    - Datei: infrastructure/prometheus/prometheus.yml
+#    - Job: loki (Port 3100)
+#
+# 3. [DONE] Grafana Dashboard erstellt:
+#    - Datei: infrastructure/grafana/dashboards/ablage-loki-retention.json
+#    - UID: ablage-loki-retention
+#    - Panels: Service Status, Speicher, Ingestion, Performance, Retention
+#
+# 4. [DONE] Runbook dokumentiert:
+#    - Datei: .claude/Docs/Operations/Runbooks/loki-monitoring.md
+#
+# TODO [FUTURE]: Auto-Archivierung aelterer Logs nach MinIO/S3
+#    - storage_config.aws fuer cold storage konfigurieren
+#    - Separate Retention fuer archivierte Logs
 
 # Auth deaktiviert für Single-Node Setup (kein Multi-Tenant)
 # Bei Multi-Tenant aktivieren und X-Scope-OrgID Header in Promtail konfigurieren

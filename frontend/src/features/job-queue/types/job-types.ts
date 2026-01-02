@@ -310,11 +310,11 @@ export const JOB_TYPE_CONFIG: Record<JobType, { label: string; icon: string }> =
 };
 
 export const QUEUE_PRIORITY_CONFIG: Record<number, { label: string; color: string }> = {
-  10: { label: 'Hoechste', color: 'destructive' },
+  10: { label: 'Höchste', color: 'destructive' },
   9: { label: 'Sehr Hoch', color: 'destructive' },
   8: { label: 'Hoch', color: 'warning' },
-  7: { label: 'Erhoht', color: 'warning' },
-  6: { label: 'Leicht Erhoht', color: 'default' },
+  7: { label: 'Erhöht', color: 'warning' },
+  6: { label: 'Leicht Erhöht', color: 'default' },
   5: { label: 'Normal', color: 'default' },
   4: { label: 'Leicht Niedrig', color: 'secondary' },
   3: { label: 'Niedrig', color: 'secondary' },

@@ -444,7 +444,7 @@ class ExtractedInvoiceData(BaseModel):
         False, description="True wenn innergemeinschaftliche Lieferung mit Reverse Charge"
     )
     vat_exemption_reason: Optional[str] = Field(
-        None, description="Grund fuer Steuerbefreiung (z.B. 'Intra-Community supply', 'Reverse Charge')"
+        None, description="Grund für Steuerbefreiung (z.B. 'Intra-Community supply', 'Reverse Charge')"
     )
     intra_community_supply: bool = Field(
         False, description="True bei innergemeinschaftlicher Lieferung (EU-Grenzueberschreitend)"
@@ -463,7 +463,7 @@ class ExtractedInvoiceData(BaseModel):
     )
     currency: Currency = Field(Currency.EUR, description="Waehrung")
     vat_reason: Optional[str] = Field(
-        None, description="Grund fuer MwSt-Hoehe (z.B. 'intra-community supply / reverse charge')"
+        None, description="Grund für MwSt-Höhe (z.B. 'intra-community supply / reverse charge')"
     )
 
     # === Positionen ===
@@ -514,7 +514,7 @@ class ExtractedInvoiceData(BaseModel):
         description="Konfidenz der Richtungserkennung (0.0-1.0)"
     )
     invoice_direction_reason: Optional[str] = Field(
-        None, description="Grund fuer die Klassifizierung (intern, z.B. 'VAT-ID match')"
+        None, description="Grund für die Klassifizierung (intern, z.B. 'VAT-ID match')"
     )
 
     # ==========================================================================

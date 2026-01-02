@@ -104,11 +104,23 @@ export function DataGrid<TData, TValue>({
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => {
+                                    const isSortable = header.column.getCanSort()
+                                    const sortDirection = header.column.getIsSorted()
                                     return (
                                         <TableHead
                                             key={header.id}
                                             colSpan={header.colSpan}
                                             className={header.column.columnDef.meta?.className}
+                                            scope="col"
+                                            aria-sort={
+                                                isSortable
+                                                    ? sortDirection === 'asc'
+                                                        ? 'ascending'
+                                                        : sortDirection === 'desc'
+                                                            ? 'descending'
+                                                            : 'none'
+                                                    : undefined
+                                            }
                                         >
                                             {header.isPlaceholder
                                                 ? null

@@ -115,7 +115,7 @@ export function FinanceBulkActionsBar({
     if (!updateData.category && !updateData.year) {
       toast({
         title: 'Keine Änderungen',
-        description: 'Bitte wählen Sie mindestens ein Feld zum Aendern',
+        description: 'Bitte wählen Sie mindestens ein Feld zum Ändern',
         variant: 'destructive',
       })
       return

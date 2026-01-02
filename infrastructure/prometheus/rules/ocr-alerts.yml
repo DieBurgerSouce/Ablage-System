@@ -69,9 +69,11 @@ groups:
           runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-error-critical"
 
       # Warnung: GPU Speicher hoch (>85%)
-      # Verwendet DCGM-Metriken: FB_USED / (FB_USED + FB_FREE)
+      # Verwendet ablage_gpu_memory Metriken aus app/core/telemetry.py
+      # HINWEIS: DCGM-Metriken (DCGM_FI_DEV_FB_*) erfordern nvidia-dcgm-exporter
+      # und sind optional. Wir verwenden stattdessen die Anwendungs-Metriken.
       - alert: GPUMemoryHigh
-        expr: DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) > 0.85
+        expr: ablage_gpu_memory_usage_bytes / ablage_gpu_memory_limit_bytes > 0.85
         for: 5m
         labels:
           severity: warning
@@ -83,7 +85,7 @@ groups:
 
       # Kritisch: GPU Speicher kritisch (>95%)
       - alert: GPUMemoryCritical
-        expr: DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) > 0.95
+        expr: ablage_gpu_memory_usage_bytes / ablage_gpu_memory_limit_bytes > 0.95
         for: 2m
         labels:
           severity: critical
@@ -132,8 +134,8 @@ groups:
       # ===================================================================
       # Backend Health Alerts
       # ===================================================================
-      # HINWEIS: ocr_backend_healthy Metriken muessen noch implementiert werden.
-      # Die folgenden Alerts werden aktiviert, sobald die Metriken verfuegbar sind.
+      # Die ablage_ocr_backend_healthy Metrik ist in app/ml/metrics.py implementiert
+      # (OCR_BACKEND_HEALTHY Gauge mit Label "backend")
 
       # Warnung: Hohe Fallback-Rate
       - alert: OCRHighFallbackRate
@@ -149,63 +151,126 @@ groups:
           description: "Mehr als 20% der OCR-Verarbeitungen verwenden Fallback-Backends. Aktuelle Rate: {{ $value | humanizePercentage }}"
           runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-high-fallback"
 
-      # TODO: Folgende Alerts erfordern neue Metriken (ocr_backend_healthy, ocr_backend_vram_available_gb)
-      # Diese werden aktiviert, sobald die Metriken in app/core/telemetry.py implementiert sind:
-      # - OCRBackendUnhealthy
-      # - AllGPUBackendsUnhealthy
-      # - NoOCRBackendAvailable
-      # - OCRCPUFallbackPersistent
-      # - DeepSeekVRAMCritical
-      # - OCRHealthCheckFailures
+      # Warnung: OCR Backend nicht gesund
+      # Nutzt ablage_ocr_backend_healthy aus app/ml/metrics.py
+      - alert: OCRBackendUnhealthy
+        expr: ablage_ocr_backend_healthy == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: ocr
+        annotations:
+          summary: "OCR Backend {{ $labels.backend }} nicht gesund"
+          description: "Das OCR Backend {{ $labels.backend }} meldet Status unhealthy. Health-Check pruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-backend-unhealthy"
+
+      # Kritisch: Alle GPU-Backends nicht gesund
+      - alert: AllGPUBackendsUnhealthy
+        expr: |
+          (ablage_ocr_backend_healthy{backend="deepseek"} == 0)
+          and (ablage_ocr_backend_healthy{backend="got_ocr"} == 0 or absent(ablage_ocr_backend_healthy{backend="got_ocr"}))
+        for: 5m
+        labels:
+          severity: critical
+          component: ocr
+        annotations:
+          summary: "Alle GPU-OCR-Backends nicht verfuegbar"
+          description: "Kein GPU-OCR-Backend ist verfuegbar. System laeuft im CPU-Fallback-Modus."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/all-gpu-backends-down"
+
+      # Info: CPU-Fallback laenger aktiv
+      - alert: OCRCPUFallbackPersistent
+        expr: |
+          (ablage_ocr_backend_healthy{backend="surya"} == 1)
+          and (ablage_ocr_backend_healthy{backend="deepseek"} == 0 or absent(ablage_ocr_backend_healthy{backend="deepseek"}))
+        for: 15m
+        labels:
+          severity: info
+          component: ocr
+        annotations:
+          summary: "OCR laeuft im CPU-Fallback-Modus"
+          description: "Das System verwendet seit 15 Minuten das CPU-Backend (Surya). Performance moeglicherweise reduziert."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-cpu-fallback"
 
       # ===================================================================
-      # GPU THERMAL ALERTS (P2 Addition)
+      # GPU THERMAL ALERTS
       # ===================================================================
+      # HINWEIS: Die folgenden Alerts erfordern nvidia-dcgm-exporter fuer DCGM-Metriken.
+      # Installation: https://github.com/NVIDIA/dcgm-exporter
+      #
+      # Fuer lokale Entwicklung ohne DCGM sind diese Alerts deaktiviert (auskommentiert).
+      # In Produktion mit dcgm-exporter die Kommentare entfernen.
+      #
+      # Alternativ kann nvidia-smi-exporter verwendet werden, der die Metriken
+      # nvidia_smi_temperature_gpu und nvidia_smi_power_draw_watts bereitstellt.
 
-      # Warnung: GPU Temperatur hoch (>75°C)
-      - alert: GPUTemperatureHigh
-        expr: DCGM_FI_DEV_GPU_TEMP > 75
+      # GPU Temperatur Alerts (erfordern DCGM oder nvidia-smi-exporter)
+      # Auskommentiert - aktivieren wenn dcgm-exporter installiert ist:
+      #
+      # - alert: GPUTemperatureHigh
+      #   expr: DCGM_FI_DEV_GPU_TEMP > 75
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     component: gpu
+      #   annotations:
+      #     summary: "GPU Temperatur hoch (>75°C)"
+      #     description: "GPU Temperatur bei {{ $value }}°C. Kuehlung pruefen."
+      #     runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-temperature-high"
+      #
+      # - alert: GPUThermalThrottling
+      #   expr: DCGM_FI_DEV_GPU_TEMP > 80
+      #   for: 2m
+      #   labels:
+      #     severity: critical
+      #     component: gpu
+      #   annotations:
+      #     summary: "KRITISCH: GPU Thermal Throttling (>80°C)"
+      #     description: "GPU bei {{ $value }}°C - Thermal Throttling aktiv."
+      #     runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-thermal-throttling"
+      #
+      # - alert: GPUTemperatureCritical
+      #   expr: DCGM_FI_DEV_GPU_TEMP > 85
+      #   for: 1m
+      #   labels:
+      #     severity: critical
+      #     component: gpu
+      #   annotations:
+      #     summary: "KRITISCH: GPU Temperatur gefaehrlich hoch (>85°C)"
+      #     description: "GPU bei {{ $value }}°C - Ueberhitzungsgefahr!"
+      #     runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-temperature-critical"
+      #
+      # - alert: GPUPowerLimitReached
+      #   expr: DCGM_FI_DEV_POWER_USAGE / DCGM_FI_DEV_POWER_LIMIT > 0.95
+      #   for: 5m
+      #   labels:
+      #     severity: info
+      #     component: gpu
+      #   annotations:
+      #     summary: "GPU Power Limit erreicht"
+      #     description: "GPU Power bei {{ $value | humanizePercentage }} des Limits."
+      #     runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-power-limit"
+
+      # Alternative: GPU OOM Events Counter (immer verfuegbar)
+      - alert: GPUOOMEventsHigh
+        expr: rate(ablage_gpu_oom_events_total[5m]) > 0.1
         for: 5m
         labels:
           severity: warning
           component: gpu
         annotations:
-          summary: "GPU Temperatur hoch (>75°C)"
-          description: "GPU Temperatur bei {{ $value }}°C. Kuehlung pruefen."
-          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-temperature-high"
+          summary: "Haeufige GPU Out-of-Memory Events"
+          description: "GPU OOM Events auf Backend {{ $labels.backend }}. Batch-Groesse reduzieren oder VRAM-Nutzung optimieren."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-oom-events"
 
-      # Kritisch: GPU Thermal Throttling aktiv (>80°C)
-      - alert: GPUThermalThrottling
-        expr: DCGM_FI_DEV_GPU_TEMP > 80
-        for: 2m
-        labels:
-          severity: critical
-          component: gpu
-        annotations:
-          summary: "KRITISCH: GPU Thermal Throttling (>80°C)"
-          description: "GPU bei {{ $value }}°C - Thermal Throttling aktiv. Performance reduziert. Kuehlung sofort pruefen!"
-          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-thermal-throttling"
-
-      # Kritisch: GPU Temperatur kritisch (>85°C)
-      - alert: GPUTemperatureCritical
-        expr: DCGM_FI_DEV_GPU_TEMP > 85
-        for: 1m
-        labels:
-          severity: critical
-          component: gpu
-        annotations:
-          summary: "KRITISCH: GPU Temperatur gefaehrlich hoch (>85°C)"
-          description: "GPU bei {{ $value }}°C - Ueberhitzungsgefahr! Workload reduzieren oder System herunterfahren."
-          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-temperature-critical"
-
-      # Info: GPU Power Limit erreicht
-      - alert: GPUPowerLimitReached
-        expr: DCGM_FI_DEV_POWER_USAGE / DCGM_FI_DEV_POWER_LIMIT > 0.95
-        for: 5m
+      # GPU Cleanups als Indikator fuer Speicherdruck
+      - alert: GPUMemoryPressure
+        expr: rate(ablage_gpu_memory_cleanups_total[5m]) > 0.5
+        for: 10m
         labels:
           severity: info
           component: gpu
         annotations:
-          summary: "GPU Power Limit erreicht"
-          description: "GPU Power bei {{ $value | humanizePercentage }} des Limits. Performance moeglicherweise begrenzt."
-          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-power-limit"
+          summary: "Haeufige GPU-Speicher-Cleanups"
+          description: "GPU Cache wird haeufig bereinigt. Dies kann auf Speicherdruck hinweisen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-memory-pressure"

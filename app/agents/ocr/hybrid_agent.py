@@ -455,7 +455,7 @@ class HybridOCRAgent(OCRAgent):
         """
         Berechne Ensemble-Confidence aus mehreren Ergebnissen.
 
-        Hoehere Confidence wenn mehrere Engines uebereinstimmen.
+        Höhere Confidence wenn mehrere Engines uebereinstimmen.
 
         Args:
             results: Liste von OCR-Ergebnissen
@@ -473,12 +473,12 @@ class HybridOCRAgent(OCRAgent):
         confidences = [r.get("confidence", 0.0) for r in results]
         avg_confidence = sum(confidences) / len(confidences)
 
-        # Bonus wenn Texte aehnlich sind (Uebereinstimmung)
+        # Bonus wenn Texte aehnlich sind (Übereinstimmung)
         texts = [r.get("text", "") for r in results]
         if len(texts) >= 2:
             similarity = self._calculate_similarity(texts[0], texts[1])
             if similarity > 0.9:
-                # Hohe Uebereinstimmung -> Confidence Boost
+                # Hohe Übereinstimmung -> Confidence Boost
                 avg_confidence = min(1.0, avg_confidence * 1.1)
 
         return round(avg_confidence, 4)

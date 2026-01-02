@@ -55,9 +55,86 @@ except ImportError:
 
 from app.agents.base import AgentResourceError, OCRAgent, OCRResult
 from app.gpu_manager import GPUManager
+from app.core.exceptions import OCRGPUOutOfMemoryError, InferenceTimeoutError
+from app.services.circuit_breaker import circuit_breaker_protected, get_circuit_breaker_registry
+from transformers import LogitsProcessor
 
 # Platform detection
 IS_WINDOWS = sys.platform == "win32"
+
+
+class VRAMMonitorLogitsProcessor(LogitsProcessor):
+    """
+    Logits processor that monitors VRAM usage during token generation.
+
+    Checks VRAM every N tokens and logs warnings if memory pressure is detected.
+    Can optionally trigger early stopping on critical memory levels.
+    """
+
+    def __init__(
+        self,
+        check_interval: int = 100,
+        warning_threshold_gb: float = 13.6,  # 85% of 16GB RTX 4080
+        critical_threshold_gb: float = 15.0,  # ~94% - near OOM
+        logger: Optional[Any] = None
+    ):
+        self.check_interval = check_interval
+        self.warning_threshold_gb = warning_threshold_gb
+        self.critical_threshold_gb = critical_threshold_gb
+        self.logger = logger
+        self.token_count = 0
+        self.vram_warnings: List[Dict[str, Any]] = []
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+        """Called for each generated token. Monitor VRAM periodically."""
+        self.token_count += 1
+
+        # Check VRAM every N tokens
+        if self.token_count % self.check_interval == 0:
+            if torch.cuda.is_available():
+                current_vram_gb = torch.cuda.memory_allocated() / 1024**3
+
+                if current_vram_gb > self.critical_threshold_gb:
+                    # Critical: Log error and consider stopping
+                    if self.logger:
+                        self.logger.error(
+                            "vram_critical_pressure",
+                            current_gb=round(current_vram_gb, 2),
+                            threshold_gb=self.critical_threshold_gb,
+                            tokens_generated=self.token_count,
+                            message="Kritischer VRAM-Druck erkannt - OOM-Risiko!"
+                        )
+                    self.vram_warnings.append({
+                        "level": "critical",
+                        "vram_gb": current_vram_gb,
+                        "token": self.token_count
+                    })
+                elif current_vram_gb > self.warning_threshold_gb:
+                    # Warning: Log and continue
+                    if self.logger:
+                        self.logger.warning(
+                            "vram_pressure_detected",
+                            current_gb=round(current_vram_gb, 2),
+                            threshold_gb=self.warning_threshold_gb,
+                            tokens_generated=self.token_count
+                        )
+                    self.vram_warnings.append({
+                        "level": "warning",
+                        "vram_gb": current_vram_gb,
+                        "token": self.token_count
+                    })
+
+        # Return scores unchanged (we're only monitoring)
+        return scores
+
+    def get_warnings(self) -> List[Dict[str, Any]]:
+        """Return collected VRAM warnings."""
+        return self.vram_warnings
+
+    def reset(self) -> None:
+        """Reset counters for next inference."""
+        self.token_count = 0
+        self.vram_warnings = []
 
 
 class DeepSeekAgent(OCRAgent):
@@ -76,13 +153,24 @@ class DeepSeekAgent(OCRAgent):
     MAX_BATCH_SIZE = 4
     ENABLE_QUANTIZATION = True  # Enable for RTX 4080 16GB
     MODEL_LOADING_TIMEOUT = 600.0  # 10 Minuten Timeout für Model-Loading (erste Initialisierung kann langsam sein)
+    INFERENCE_TIMEOUT = 300.0  # 5 Minuten Timeout für Inference (kann bei grossen Dokumenten lange dauern)
+
+    # Fallback configuration
+    FALLBACK_BACKENDS = ["surya", "got_ocr"]  # CPU-capable backends for OOM fallback
+    SUPPORTS_CPU_FALLBACK = False  # DeepSeek requires GPU, but can signal fallback to other backends
 
     # Class-level lock to prevent concurrent model loading (race condition fix)
     _model_lock: Optional[asyncio.Lock] = None
+    # Class-level flag to track if model loading has permanently failed
+    _model_load_failed: bool = False
+    _model_load_error: Optional[str] = None
 
     # Class-level spaCy model cache (loaded once, shared across instances)
     _spacy_nlp: Optional[Any] = None
     _spacy_initialized: bool = False
+
+    # Timeout for acquiring the model lock (prevents deadlock on failed load)
+    LOCK_ACQUISITION_TIMEOUT = 300.0  # 5 minutes
 
     def __init__(self):
         super().__init__(
@@ -103,6 +191,22 @@ class DeepSeekAgent(OCRAgent):
         # Initialize spaCy model once (lazy loading on first use)
         if not DeepSeekAgent._spacy_initialized:
             self._init_spacy_model()
+
+    @property
+    def supports_cpu_fallback(self) -> bool:
+        """
+        Indicates whether this backend can fall back to CPU.
+
+        DeepSeek requires GPU but can signal that other backends should be tried.
+        """
+        return self.SUPPORTS_CPU_FALLBACK
+
+    @property
+    def fallback_backends(self) -> List[str]:
+        """
+        List of backends that can be used as fallback when this backend fails with OOM.
+        """
+        return self.FALLBACK_BACKENDS
 
     def _init_spacy_model(self) -> None:
         """
@@ -146,6 +250,7 @@ class DeepSeekAgent(OCRAgent):
             self.logger.warning("spacy_init_error", error=str(e))
             DeepSeekAgent._spacy_nlp = None
 
+    @circuit_breaker_protected("deepseek")
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process document with DeepSeek OCR.
@@ -161,6 +266,11 @@ class DeepSeekAgent(OCRAgent):
             confidence: float - Overall confidence score
             layout: dict - Detected layout structure
             entities: list - Extracted business entities
+
+        Raises:
+            OCRGPUOutOfMemoryError: When GPU runs out of memory (signals fallback available)
+            InferenceTimeoutError: When inference takes too long
+            CircuitBreakerError: When backend is in circuit-open state
         """
         self.validate_input(input_data, ["document_id", "image_path"])
 
@@ -186,8 +296,11 @@ class DeepSeekAgent(OCRAgent):
             # Load and preprocess image
             image = await self._load_image(image_path)
 
-            # Run OCR inference
-            ocr_result = await self._run_inference(image, language, options)
+            # Run OCR inference with timeout protection
+            inference_timeout = options.get("inference_timeout", self.INFERENCE_TIMEOUT)
+            ocr_result = await self._run_inference_with_timeout(
+                image, language, options, timeout_seconds=inference_timeout, document_id=document_id
+            )
 
             # Post-process results - returns OCRResult
             result = await self._postprocess_result(ocr_result, options)
@@ -207,10 +320,37 @@ class DeepSeekAgent(OCRAgent):
                 "deepseek_gpu_oom",
                 document_id=document_id,
                 error=str(e),
+                fallback_backends=self.FALLBACK_BACKENDS,
             )
-            # Try to recover
+            # Record OOM metric
+            from app.ml.metrics import get_ml_metrics
+            metrics = get_ml_metrics()
+            metrics.record_ocr_oom_error("deepseek")
+
+            # Try to recover GPU resources
             await self._handle_gpu_oom()
-            raise AgentResourceError(f"GPU out of memory: {e}")
+
+            # Get current GPU memory info for detailed error
+            available_gb = None
+            if torch.cuda.is_available():
+                try:
+                    free_mem = torch.cuda.mem_get_info()[0] / (1024**3)
+                    available_gb = round(free_mem, 2)
+                except Exception:
+                    pass
+
+            # Raise specific exception that signals fallback availability
+            raise OCRGPUOutOfMemoryError(
+                backend="deepseek",
+                document_id=document_id,
+                required_gb=self.VRAM_REQUIRED_GB,
+                available_gb=available_gb,
+                fallback_backends=self.FALLBACK_BACKENDS
+            )
+
+        except InferenceTimeoutError:
+            # Re-raise timeout errors (already properly formatted)
+            raise
 
         except Exception as e:
             self.logger.error(
@@ -224,6 +364,54 @@ class DeepSeekAgent(OCRAgent):
         finally:
             # Cleanup GPU resources if needed
             await self._cleanup_gpu_resources()
+
+    async def _run_inference_with_timeout(
+        self,
+        image: Image.Image,
+        language: str,
+        options: Dict[str, Any],
+        timeout_seconds: float,
+        document_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Run inference with timeout protection.
+
+        Wraps _run_inference with asyncio.wait_for to prevent indefinite hangs
+        during model generation.
+
+        Args:
+            image: Input image
+            language: Target language
+            options: Processing options
+            timeout_seconds: Maximum time allowed for inference
+            document_id: Document ID for error reporting
+
+        Returns:
+            OCR result dictionary
+
+        Raises:
+            InferenceTimeoutError: When inference exceeds timeout
+        """
+        try:
+            result = await asyncio.wait_for(
+                self._run_inference(image, language, options),
+                timeout=timeout_seconds
+            )
+            return result
+
+        except asyncio.TimeoutError:
+            self.logger.error(
+                "deepseek_inference_timeout",
+                document_id=document_id,
+                timeout_seconds=timeout_seconds
+            )
+            # Cleanup GPU resources after timeout
+            await self._cleanup_gpu_resources()
+            raise InferenceTimeoutError(
+                backend="deepseek",
+                timeout_seconds=timeout_seconds,
+                document_id=document_id
+            )
 
     async def _ensure_gpu_allocated(self) -> None:
         """Ensure GPU resources are allocated for DeepSeek."""
@@ -241,17 +429,52 @@ class DeepSeekAgent(OCRAgent):
             )
 
     async def _load_model(self) -> None:
-        """Load DeepSeek Janus-Pro model and processor with lock and timeout."""
+        """Load DeepSeek Janus-Pro model and processor with lock and timeout.
+
+        Implements deadlock prevention:
+        1. Timeout on lock acquisition to prevent infinite waiting
+        2. Tracks permanent failures to avoid repeated failed attempts
+        3. Clear error messaging for debugging
+        """
         # Quick check without lock (performance optimization)
         if self._model_loaded:
             return
 
-        # Acquire lock to prevent concurrent model loading (race condition fix)
-        async with self._model_lock:
+        # Check if model loading has permanently failed (prevents repeated attempts)
+        if DeepSeekAgent._model_load_failed:
+            raise AgentResourceError(
+                f"DeepSeek-Modell wurde bereits als fehlerhaft markiert: {DeepSeekAgent._model_load_error}. "
+                "Neustart des Services erforderlich."
+            )
+
+        # Acquire lock with timeout to prevent deadlock
+        try:
+            await asyncio.wait_for(
+                self._model_lock.acquire(),
+                timeout=self.LOCK_ACQUISITION_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            self.logger.error(
+                "deepseek_model_lock_timeout",
+                timeout_seconds=self.LOCK_ACQUISITION_TIMEOUT,
+                message="Lock-Akquisition Timeout - moeglicherweise haengt ein anderer Ladevorgang"
+            )
+            raise AgentResourceError(
+                f"Model-Lock Timeout nach {self.LOCK_ACQUISITION_TIMEOUT / 60:.0f} Minuten. "
+                "Ein anderer Ladevorgang haengt moeglicherweise."
+            )
+
+        try:
             # Double-check after acquiring lock (another request may have loaded it)
             if self._model_loaded:
                 self.logger.debug("deepseek_model_already_loaded_by_other_request")
                 return
+
+            # Also check for failure after lock (another request may have failed)
+            if DeepSeekAgent._model_load_failed:
+                raise AgentResourceError(
+                    f"DeepSeek-Modell wurde bereits als fehlerhaft markiert: {DeepSeekAgent._model_load_error}"
+                )
 
             self.logger.info("deepseek_loading_model", model_name=self.MODEL_NAME)
 
@@ -263,17 +486,32 @@ class DeepSeekAgent(OCRAgent):
                 )
                 self._model_loaded = True
             except asyncio.TimeoutError:
+                # Mark as permanently failed to prevent infinite retry loops
+                DeepSeekAgent._model_load_failed = True
+                DeepSeekAgent._model_load_error = f"Timeout nach {self.MODEL_LOADING_TIMEOUT / 60:.0f} Minuten"
                 self.logger.error(
                     "deepseek_model_load_timeout",
-                    timeout_seconds=self.MODEL_LOADING_TIMEOUT
+                    timeout_seconds=self.MODEL_LOADING_TIMEOUT,
+                    permanent_failure=True
                 )
                 raise AgentResourceError(
                     f"Model-Loading Timeout nach {self.MODEL_LOADING_TIMEOUT / 60:.0f} Minuten. "
-                    "Überprüfen Sie die Netzwerkverbindung und den verfügbaren Speicher."
+                    "Ueberpruefen Sie die Netzwerkverbindung und den verfuegbaren Speicher."
                 )
             except Exception as e:
-                self.logger.error("deepseek_model_load_failed", error=str(e), exc_info=True)
+                # Mark as permanently failed to prevent infinite retry loops
+                DeepSeekAgent._model_load_failed = True
+                DeepSeekAgent._model_load_error = str(e)
+                self.logger.error(
+                    "deepseek_model_load_failed",
+                    error=str(e),
+                    exc_info=True,
+                    permanent_failure=True
+                )
                 raise AgentResourceError(f"Fehler beim Laden des DeepSeek-Modells: {e}")
+        finally:
+            # Always release the lock, even on failure
+            self._model_lock.release()
 
     async def _do_load_model(self) -> None:
         """Actual model loading logic (called within lock and timeout)."""
@@ -746,6 +984,13 @@ class DeepSeekAgent(OCRAgent):
 
                 # Generate with language model component - mit output_scores für Confidence
                 # OPTIMIERT: max_new_tokens=512 (OCR braucht nicht mehr), use_cache=True
+                # VRAM Monitoring: Check every 100 tokens for memory pressure
+                vram_monitor = VRAMMonitorLogitsProcessor(
+                    check_interval=100,
+                    warning_threshold_gb=13.6,  # 85% of 16GB
+                    critical_threshold_gb=15.0,  # ~94% - near OOM
+                    logger=self.logger
+                )
                 with torch.no_grad(), torch.amp.autocast('cuda', dtype=torch.bfloat16):
                     outputs = self.model.language_model.generate(
                         inputs_embeds=inputs_embeds,
@@ -757,7 +1002,8 @@ class DeepSeekAgent(OCRAgent):
                         pad_token_id=self.tokenizer.eos_token_id,
                         eos_token_id=self.tokenizer.eos_token_id,
                         output_scores=True,
-                        return_dict_in_generate=True
+                        return_dict_in_generate=True,
+                        logits_processor=[vram_monitor]
                     )
 
                 # Extrahiere Sequenzen und Scores
@@ -775,6 +1021,13 @@ class DeepSeekAgent(OCRAgent):
                     generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
             else:
                 # Fallback to standard generation - OPTIMIERT
+                # VRAM Monitoring: Check every 100 tokens for memory pressure
+                vram_monitor = VRAMMonitorLogitsProcessor(
+                    check_interval=100,
+                    warning_threshold_gb=13.6,  # 85% of 16GB
+                    critical_threshold_gb=15.0,  # ~94% - near OOM
+                    logger=self.logger
+                )
                 with torch.no_grad(), torch.amp.autocast('cuda', dtype=torch.bfloat16):
                     outputs = self.model.generate(
                         **inputs,
@@ -784,7 +1037,8 @@ class DeepSeekAgent(OCRAgent):
                         use_cache=True,
                         pad_token_id=self.tokenizer.eos_token_id if self.tokenizer else self.processor.tokenizer.eos_token_id,
                         output_scores=True,
-                        return_dict_in_generate=True
+                        return_dict_in_generate=True,
+                        logits_processor=[vram_monitor]
                     )
 
                 # Extrahiere Sequenzen und Scores
@@ -820,6 +1074,13 @@ class DeepSeekAgent(OCRAgent):
                      for k, v in inputs.items()}
 
             # Run inference - OPTIMIERT fuer schnelle Generation
+            # VRAM Monitoring: Check every 100 tokens for memory pressure
+            vram_monitor = VRAMMonitorLogitsProcessor(
+                check_interval=100,
+                warning_threshold_gb=13.6,  # 85% of 16GB
+                critical_threshold_gb=15.0,  # ~94% - near OOM
+                logger=self.logger
+            )
             with torch.no_grad(), torch.amp.autocast('cuda', dtype=torch.bfloat16):
                 outputs = self.model.generate(
                     **inputs,
@@ -829,7 +1090,8 @@ class DeepSeekAgent(OCRAgent):
                     use_cache=True,
                     pad_token_id=self.processor.tokenizer.eos_token_id,
                     output_scores=True,
-                    return_dict_in_generate=True
+                    return_dict_in_generate=True,
+                    logits_processor=[vram_monitor]
                 )
 
             # Extrahiere Sequenzen und Scores
@@ -954,6 +1216,22 @@ class DeepSeekAgent(OCRAgent):
             except ImportError:
                 self.logger.debug("german_postprocessor_not_available")
                 has_umlauts = any(c in text for c in "äöüÄÖÜß")
+            except Exception as e:
+                # Log error and track metric for postprocessor failure
+                self.logger.warning(
+                    "deepseek_german_postprocessing_error",
+                    error=str(e),
+                    error_type=type(e).__name__
+                )
+                # Track postprocessor error in metrics
+                from app.ml.metrics import get_ml_metrics
+                metrics = get_ml_metrics()
+                metrics.record_ocr_postprocessor_error(
+                    backend="deepseek",
+                    postprocessor="german_text"
+                )
+                # Fallback: Keep original text, check for German characters
+                has_umlauts = any(c in text for c in "äöüÄÖÜß")
 
         # Extract structured data (IBAN, VAT, dates, phone, email, NER)
         entities = []
@@ -965,11 +1243,21 @@ class DeepSeekAgent(OCRAgent):
         if options.get("detect_layout"):
             layout = self._detect_layout(text)
 
+        # Record OCR metrics
+        processing_time_ms = ocr_result.get("processing_time_ms", 0)
+        confidence = ocr_result["confidence"]
+
+        from app.ml.metrics import get_ml_metrics
+        metrics = get_ml_metrics()
+        if processing_time_ms > 0:
+            metrics.record_ocr_inference_time("deepseek", processing_time_ms / 1000.0)
+        metrics.record_ocr_confidence_score("deepseek", confidence)
+
         # Erstelle standardisiertes OCRResult
         result = self.create_success_result(
             text=text,
-            confidence=ocr_result["confidence"],
-            processing_time_ms=ocr_result.get("processing_time_ms", 0),
+            confidence=confidence,
+            processing_time_ms=processing_time_ms,
             language=language,
             layout=layout if layout else None,
             has_umlauts=has_umlauts,
@@ -1331,9 +1619,10 @@ class DeepSeekAgent(OCRAgent):
         """Handle GPU out-of-memory error."""
         self.logger.warning("deepseek_gpu_oom_recovery", action="clearing_cache")
 
-        # Clear CUDA cache
+        # Clear CUDA cache - synchronize first to ensure all operations complete
         if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+            torch.cuda.synchronize()  # Wait for all GPU operations to complete
+            torch.cuda.empty_cache()  # Now safe to clear cache
 
         # Unload model to free memory
         if self.model is not None:
@@ -1348,7 +1637,8 @@ class DeepSeekAgent(OCRAgent):
     async def _cleanup_gpu_resources(self) -> None:
         """Cleanup GPU resources after processing."""
         if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+            torch.cuda.synchronize()  # Wait for all GPU operations to complete
+            torch.cuda.empty_cache()  # Now safe to clear cache
 
     async def process_batch(
         self, documents: List[Dict[str, Any]]
