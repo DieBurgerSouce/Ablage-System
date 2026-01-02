@@ -6,8 +6,10 @@ import { Toaster } from 'sonner'
 import { queryClient } from '@/lib/api/query-client'
 import { AuthProvider } from '@/lib/auth/AuthContext'
 import { ThemeProvider } from '@/lib/theme/ThemeContext'
+import { CompanyProvider } from '@/context/CompanyContext'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import type { ErrorDetails } from '@/components/ErrorBoundary'
+import { logger } from '@/lib/logger'
 import './index.css'
 
 // i18n Initialisierung (muss vor App-Rendering importiert werden)
@@ -62,7 +64,7 @@ async function sendErrorToMonitoring(details: ErrorDetails): Promise<void> {
  */
 function handleGlobalError(details: ErrorDetails): void {
   // Always log error with structured data for debugging
-  console.error('[GlobalErrorBoundary]', {
+  logger.error('[GlobalErrorBoundary]', {
     error: details.error.message,
     componentStack: details.componentStack,
     timestamp: details.timestamp.toISOString(),
@@ -80,8 +82,9 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <RouterProvider router={router} />
-            <Toaster
+            <CompanyProvider>
+              <RouterProvider router={router} />
+              <Toaster
               position="bottom-right"
               expand={false}
               richColors
@@ -95,6 +98,7 @@ createRoot(document.getElementById('root')!).render(
                 },
               }}
             />
+            </CompanyProvider>
           </AuthProvider>
         </QueryClientProvider>
       </ThemeProvider>
