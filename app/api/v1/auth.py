@@ -86,12 +86,15 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # ==================== CSRF Token ====================
 
+# SECURITY FIX: Rate-Limit für CSRF-Token-Endpoint
+# Verhindert Token-Exhaustion und DoS-Angriffe
+@limiter.limit("10/minute", key_func=get_ip_identifier)
 @router.get(
     "/csrf-token",
     summary="CSRF-Token abrufen",
     description="Gibt ein CSRF-Token für geschützte Anfragen zurück"
 )
-async def get_csrf_token() -> dict:
+async def get_csrf_token(request: Request) -> dict:
     """
     Hole ein CSRF-Token für geschützte Anfragen.
 

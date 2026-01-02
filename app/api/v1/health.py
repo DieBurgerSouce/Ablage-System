@@ -102,7 +102,7 @@ class BasicHealthResponse(BaseModel):
 
     status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
     zeitstempel: str = Field(..., description="ISO-Zeitstempel")
-    version: str = Field(default="0.2.0-poc", description="API-Version")
+    version: str = Field(default_factory=lambda: settings.APP_VERSION, description="API-Version")
 
 
 class DetailedHealthResponse(BaseModel):
@@ -110,7 +110,7 @@ class DetailedHealthResponse(BaseModel):
 
     status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
     zeitstempel: str = Field(..., description="ISO-Zeitstempel")
-    version: str = Field(default="0.2.0-poc", description="API-Version")
+    version: str = Field(default_factory=lambda: settings.APP_VERSION, description="API-Version")
     komponenten: Dict[str, KomponentenStatus] = Field(
         ..., description="Status je Komponente"
     )
@@ -278,10 +278,10 @@ async def _check_minio() -> KomponentenStatus:
 
         start = time.perf_counter()
         client = Minio(
-            f"{settings.MINIO_HOST}:{settings.MINIO_PORT}",
+            settings.MINIO_ENDPOINT,
             access_key=settings.MINIO_ACCESS_KEY,
             secret_key=settings.MINIO_SECRET_KEY,
-            secure=False,
+            secure=settings.MINIO_SECURE,
         )
         # List buckets als Health Check
         buckets = client.list_buckets()
@@ -292,7 +292,7 @@ async def _check_minio() -> KomponentenStatus:
             nachricht=f"MinIO erreichbar - {len(buckets)} Buckets",
             latenz_ms=round(latenz, 2),
             details={
-                "host": settings.MINIO_HOST,
+                "endpoint": settings.MINIO_ENDPOINT,
                 "buckets": len(buckets),
             },
         )
@@ -323,7 +323,7 @@ async def basic_health() -> BasicHealthResponse:
     return BasicHealthResponse(
         status="gesund",
         zeitstempel=datetime.now(timezone.utc).isoformat(),
-        version="0.2.0-poc",
+        version=settings.APP_VERSION,
     )
 
 
@@ -391,7 +391,7 @@ async def detailed_health(
     result = DetailedHealthResponse(
         status=status,
         zeitstempel=datetime.now(timezone.utc).isoformat(),
-        version="0.2.0-poc",
+        version=settings.APP_VERSION,
         komponenten=komponenten,
         zusammenfassung=zusammenfassung,
     )
@@ -1490,7 +1490,7 @@ class CompleteHealthResponse(BaseModel):
 
     status: str = Field(..., description="gesund, beeintraechtigt, kritisch")
     zeitstempel: str = Field(..., description="ISO-Zeitstempel")
-    version: str = Field(default="0.2.0-poc", description="API-Version")
+    version: str = Field(default_factory=lambda: settings.APP_VERSION, description="API-Version")
     zusammenfassung: str = Field(..., description="Kurze Zusammenfassung")
     komponenten: Dict[str, KomponentenStatus] = Field(
         ..., description="Basis-Komponenten Status"
@@ -1673,7 +1673,7 @@ async def complete_health(
     result = CompleteHealthResponse(
         status=status,
         zeitstempel=datetime.now(timezone.utc).isoformat(),
-        version="0.2.0-poc",
+        version=settings.APP_VERSION,
         zusammenfassung=zusammenfassung,
         komponenten=komponenten,
         ocr_status=ocr_status_str,
@@ -1711,7 +1711,7 @@ class SystemInfoResponse(BaseModel):
     architecture: str = Field(..., description="CPU Architektur")
     hostname: str = Field(..., description="Hostname")
     cpu_count: int = Field(..., description="CPU Kerne")
-    api_version: str = Field(default="0.2.0-poc", description="API Version")
+    api_version: str = Field(default_factory=lambda: settings.APP_VERSION, description="API Version")
     debug_mode: bool = Field(..., description="Debug Modus aktiv")
     environment: str = Field(..., description="Environment (dev/staging/prod)")
 
@@ -1765,7 +1765,7 @@ async def system_info() -> SystemInfoResponse:
         architecture=platform.machine(),
         hostname=platform.node(),
         cpu_count=os.cpu_count() or 1,
-        api_version="0.2.0-poc",
+        api_version=settings.APP_VERSION,
         debug_mode=settings.DEBUG,
         environment=env,
     )
@@ -2053,7 +2053,7 @@ async def detailed_health_fast(
     result = DetailedHealthResponse(
         status=status,
         zeitstempel=datetime.now(timezone.utc).isoformat(),
-        version="0.2.0-poc",
+        version=settings.APP_VERSION,
         komponenten=komponenten,
         zusammenfassung=zusammenfassung,
     )
