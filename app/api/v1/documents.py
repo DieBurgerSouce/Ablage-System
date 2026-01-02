@@ -89,7 +89,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
 
-from app.db.models import User
+from app.db.models import User, Company
+from app.middleware.company_context import require_company, get_current_company
 from app.db.schemas import (
     # Search
     SearchType, SearchFilters, SearchResponse, SimilarDocumentItem,
@@ -113,6 +114,8 @@ from app.api.dependencies import (
 )
 from app.services.search_service import get_search_service
 from app.services.document_service import get_document_service
+from app.services.archive_service import archive_service
+from app.core.exceptions import ImmutabilityViolationError
 
 logger = structlog.get_logger(__name__)
 
@@ -123,6 +126,7 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 @router.post("/", response_model=DocumentCreateResponse, status_code=201)
 async def upload_document(
+    request: Request,
     file: UploadFile = File(..., description="Dokument (PDF, PNG, JPG, TIFF)"),
     document_type: DocumentType = Form(DocumentType.OTHER, description="Dokumenttyp"),
     language: str = Form("de", description="Sprache (de/en)"),
@@ -131,7 +135,8 @@ async def upload_document(
     ocr_backend: str = Form("auto", description="OCR-Backend (auto/deepseek/got_ocr/surya)"),
     priority: int = Form(5, ge=1, le=10, description="Verarbeitungsprioritaet"),
     current_user: User = Depends(check_rate_limit),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ):
     """Dokument hochladen und persistent speichern.
 
@@ -373,6 +378,7 @@ async def upload_document(
         document_type=document_type.value if hasattr(document_type, 'value') else str(document_type),
         status="pending" if start_ocr else "uploaded",
         owner_id=current_user.id,
+        company_id=company.id,  # Multi-Company Support: Dokument zur aktuellen Firma zuordnen
         document_metadata={
             "language": language,
             "tags": tag_list,
@@ -1339,7 +1345,18 @@ async def update_document(
     - Sprache
     - Tags
     - Benutzerdefinierte Metadaten
+
+    HINWEIS: Archivierte Dokumente (GoBD) koennen nicht geaendert werden.
     """
+    # GoBD: Unveraenderbarkeit pruefen
+    try:
+        await archive_service.validate_modification_allowed(db, document_id)
+    except ImmutabilityViolationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=e.user_message_de
+        )
+
     service = get_document_service()
     document = await service.update_document(
         db=db,
@@ -1385,7 +1402,18 @@ async def partial_update_document(
 
     Nur angegebene Felder werden aktualisiert.
     Tag-Operationen sind gegenseitig exklusiv.
+
+    HINWEIS: Archivierte Dokumente (GoBD) koennen nicht geaendert werden.
     """
+    # GoBD: Unveraenderbarkeit pruefen
+    try:
+        await archive_service.validate_modification_allowed(db, document_id)
+    except ImmutabilityViolationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=e.user_message_de
+        )
+
     service = get_document_service()
 
     # Build update dict from non-None fields
@@ -1446,7 +1474,19 @@ async def delete_document(
 
     Loescht das Dokument vollstaendig aus der Datenbank
     und dem Objektspeicher (MinIO).
+
+    HINWEIS: Archivierte Dokumente (GoBD) koennen nicht geloescht werden
+    bis die Aufbewahrungsfrist abgelaufen ist.
     """
+    # GoBD: Unveraenderbarkeit pruefen (archivierte Dokumente duerfen nicht geloescht werden)
+    try:
+        await archive_service.validate_modification_allowed(db, document_id)
+    except ImmutabilityViolationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=e.user_message_de
+        )
+
     service = get_document_service()
     success = await service.delete_document(db, document_id, current_user.id)
 

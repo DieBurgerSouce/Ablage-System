@@ -29,7 +29,7 @@ from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Date, Time
 from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
 from sqlalchemy.types import TypeDecorator
 from pgvector.sqlalchemy import Vector
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.orm import relationship, declarative_base, backref
 from sqlalchemy.sql import func
 
 
@@ -172,6 +172,28 @@ class Document(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     deleted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
+    # GoBD Archivierung (Feature 02)
+    is_archived = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="GoBD: Dokument ist revisionssicher archiviert"
+    )
+    archived_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="GoBD: Zeitpunkt der Archivierung"
+    )
+
+    # Multi-Company Support (Multi-Tenant Isolation)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        comment="Mandanten-Zuordnung fuer Multi-Company Isolation"
+    )
+
     # Search vectors (Full-Text Search + Semantic Search)
     search_vector = Column(CrossDBTSVector)  # PostgreSQL tsvector for FTS with german_text config
     embedding = Column(CrossDBVector(1024))  # pgvector for semantic search (multilingual-e5-large)
@@ -222,6 +244,7 @@ class Document(Base):
     # Relationships
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     owner = relationship("User", back_populates="documents", foreign_keys=[owner_id])
+    company = relationship("Company", back_populates="documents")
     business_entity = relationship("BusinessEntity", back_populates="documents")
     document_group = relationship("DocumentGroup", back_populates="documents", foreign_keys=[group_id])
     tags = relationship("Tag", secondary=document_tags, back_populates="documents")
@@ -232,6 +255,14 @@ class Document(Base):
         back_populates="document",
         cascade="all, delete-orphan",
         order_by="OCRResultVersion.version_number.desc()"
+    )
+
+    # GoBD Archive Relationship (Feature 02)
+    archive = relationship(
+        "DocumentArchive",
+        back_populates="document",
+        uselist=False,
+        cascade="all, delete-orphan"
     )
 
     # Indexes
@@ -254,6 +285,8 @@ class Document(Base):
         Index("ix_documents_scan_batch_id", "scan_batch_id"),
         Index("ix_documents_entity_created", "business_entity_id", "created_at"),
         Index("ix_documents_group_sequence", "group_id", "page_number_in_group"),
+        # GoBD Archivierung (Feature 02)
+        Index("ix_documents_is_archived", "is_archived"),
     )
 
     @property
@@ -5661,6 +5694,7 @@ class Company(Base):
 
     # Relationships
     user_associations = relationship("UserCompany", back_populates="company", cascade="all, delete-orphan")
+    documents = relationship("Document", back_populates="company", cascade="all, delete-orphan")
     cash_registers = relationship("CashRegister", back_populates="company", cascade="all, delete-orphan")
     expense_reports = relationship("ExpenseReport", back_populates="company", cascade="all, delete-orphan")
 
@@ -8975,3 +9009,265 @@ class UserNotification(Base):
 
     def __repr__(self) -> str:
         return f"<UserNotification {self.notification_type} for {self.user_id}>"
+
+
+# =============================================================================
+# GoBD COMPLIANCE MODELS (Feature 02)
+# =============================================================================
+# GoBD (Grundsaetze zur ordnungsmaessigen Fuehrung und Aufbewahrung von
+# Buechern, Aufzeichnungen und Unterlagen in elektronischer Form sowie
+# zum Datenzugriff) - German legal requirements for electronic document
+# archiving and retention.
+# =============================================================================
+
+
+class RetentionCategory(str, Enum):
+    """GoBD Aufbewahrungskategorien nach deutschem Recht."""
+    INVOICE = "invoice"                    # Rechnungen - 10 Jahre (§147 AO, §14b UStG)
+    CONTRACT = "contract"                  # Vertraege - 10 Jahre (§147 AO, §257 HGB)
+    CORRESPONDENCE = "correspondence"      # Geschaeftsbriefe - 6 Jahre (§257 HGB)
+    BOOKING_DOCUMENT = "booking_document"  # Buchungsbelege - 10 Jahre (§147 AO)
+    ANNUAL_REPORT = "annual_report"        # Jahresabschluesse - 10 Jahre (§257 HGB)
+    TAX_DOCUMENT = "tax_document"          # Steuerbelege - 10 Jahre (§147 AO)
+    EMPLOYEE_DOCUMENT = "employee_document"  # Personalakten - 10 Jahre (§257 HGB)
+    OTHER = "other"                        # Sonstiges - 6 Jahre (§147 AO)
+
+
+class HashAlgorithm(str, Enum):
+    """Unterstuetzte Hash-Algorithmen fuer Dokumentensignaturen."""
+    SHA256 = "SHA-256"
+    SHA384 = "SHA-384"
+    SHA512 = "SHA-512"
+
+
+class DocumentArchive(Base):
+    """GoBD-konforme Archivierung: Revisionssichere Speicherung mit Hash-Signatur.
+
+    Erfuellt GoBD-Kriterien:
+    - Nachvollziehbarkeit: Vollstaendiger Audit-Trail
+    - Unveraenderbarkeit: SHA-256 Hash-Signatur des Dokument-Inhalts
+    - Vollstaendigkeit: Aufbewahrungsfristen-Management
+    - Ordnung: Kategorisierung nach Dokumenttyp
+    """
+    __tablename__ = "document_archives"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Referenzen (RESTRICT: Archivierte Dokumente duerfen nicht geloescht werden)
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="RESTRICT"),
+        nullable=False,
+        unique=True
+    )
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="RESTRICT"),
+        nullable=False
+    )
+
+    # Signatur (GoBD: Unveraenderbarkeit)
+    content_hash = Column(
+        String(128),
+        nullable=False,
+        comment="SHA-256 Hash des Dokument-Inhalts"
+    )
+    hash_algorithm = Column(
+        String(20),
+        nullable=False,
+        default=HashAlgorithm.SHA256.value
+    )
+    signature_timestamp = Column(DateTime(timezone=True), nullable=False)
+    signature_certificate = Column(
+        Text,
+        nullable=True,
+        comment="TSA-Zertifikat (optional fuer qualifizierte Zeitstempel)"
+    )
+
+    # Aufbewahrungsfristen (GoBD: Ordnung + Aufbewahrung)
+    retention_category = Column(
+        String(50),
+        nullable=False,
+        comment="Kategorie: invoice, contract, correspondence, etc."
+    )
+    retention_years = Column(Integer, nullable=False, default=10)
+    retention_expires_at = Column(Date, nullable=False)
+    retention_reminder_sent = Column(Boolean, nullable=False, default=False)
+    retention_reminder_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Verifikationsstatus
+    is_verified = Column(Boolean, nullable=False, default=True)
+    last_verification_at = Column(DateTime(timezone=True), nullable=True)
+    verification_failed_reason = Column(Text, nullable=True)
+
+    # Audit (GoBD: Nachvollziehbarkeit)
+    archived_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+    archived_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Metadaten
+    archive_metadata = Column(CrossDBJSON, default=dict)
+
+    # Relationships
+    document = relationship("Document", back_populates="archive")
+    company = relationship("Company", backref="document_archives")
+    archived_by = relationship("User", backref="archived_documents")
+
+    __table_args__ = (
+        Index("ix_document_archives_company_id", "company_id"),
+        Index("ix_document_archives_retention_expires", "retention_expires_at"),
+        Index("ix_document_archives_retention_category", "retention_category"),
+        Index("ix_document_archives_is_verified", "is_verified"),
+        Index("ix_document_archives_archived_at", "archived_at"),
+        {"comment": "GoBD-konforme Archivierung: Revisionssichere Speicherung mit Hash-Signatur"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<DocumentArchive {self.id} doc={self.document_id} hash={self.content_hash[:16]}...>"
+
+
+class ProcedureDocumentationVersion(Base):
+    """GoBD Verfahrensdokumentation: Automatisch generierte und versionierte Systemdokumentation.
+
+    Die Verfahrensdokumentation beschreibt:
+    - Wie Dokumente im System verarbeitet werden
+    - Welche Sicherheitsmassnahmen implementiert sind
+    - Wie die Aufbewahrungsfristen eingehalten werden
+    - Aenderungshistorie des Systems
+
+    Wird automatisch bei relevanten Systemupdates generiert.
+    """
+    __tablename__ = "procedure_documentation_versions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Versionierung
+    version = Column(
+        String(20),
+        nullable=False,
+        comment="Semantic Version (z.B. 2.1.0)"
+    )
+    content = Column(
+        CrossDBJSON,
+        nullable=False,
+        comment="Verfahrensdokumentation als strukturiertes JSON"
+    )
+
+    # Metadaten
+    generated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+    generated_by = Column(String(50), nullable=False, default="system")
+
+    # Signatur fuer Unveraenderbarkeit
+    content_hash = Column(String(128), nullable=False)
+
+    # Aenderungshistorie
+    change_summary = Column(
+        Text,
+        nullable=True,
+        comment="Zusammenfassung der Aenderungen zur Vorversion"
+    )
+    change_details = Column(CrossDBJSON, nullable=True)
+
+    # Referenz zur Company (Multi-Tenant, NULL = System-weit)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=True
+    )
+
+    # Relationships
+    company = relationship("Company", backref="procedure_documentation_versions")
+
+    __table_args__ = (
+        Index("ix_procedure_docs_version", "version"),
+        Index("ix_procedure_docs_company_id", "company_id"),
+        Index("ix_procedure_docs_generated_at", "generated_at"),
+        {"comment": "GoBD Verfahrensdokumentation: Automatisch generierte Systemdokumentation"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<ProcedureDocVersion {self.version} generated={self.generated_at}>"
+
+
+class RetentionSetting(Base):
+    """GoBD Aufbewahrungsfristen-Konfiguration pro Dokumentkategorie.
+
+    Definiert die gesetzlichen Aufbewahrungsfristen nach deutschem Recht:
+    - §147 AO (Abgabenordnung): 10 Jahre fuer Buchfuehrungsunterlagen
+    - §257 HGB (Handelsgesetzbuch): 6-10 Jahre je nach Dokumenttyp
+    - §14b UStG (Umsatzsteuergesetz): 10 Jahre fuer Rechnungen
+    """
+    __tablename__ = "retention_settings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Kategorie-Definition
+    category = Column(
+        String(50),
+        nullable=False,
+        unique=True,
+        comment="Technischer Name: invoice, contract, correspondence, etc."
+    )
+    display_name = Column(
+        String(100),
+        nullable=False,
+        comment="Anzeigename auf Deutsch"
+    )
+    description = Column(Text, nullable=True)
+
+    # Aufbewahrungsfristen
+    retention_years = Column(Integer, nullable=False, default=10)
+    legal_basis = Column(
+        String(255),
+        nullable=True,
+        comment="Gesetzliche Grundlage: z.B. §147 AO, §257 HGB"
+    )
+
+    # Warnungen und Auto-Aktionen
+    reminder_days_before = Column(
+        Integer,
+        nullable=False,
+        default=90,
+        comment="Tage vor Ablauf fuer Erinnerung"
+    )
+    auto_delete_enabled = Column(Boolean, nullable=False, default=False)
+    requires_approval_for_delete = Column(Boolean, nullable=False, default=True)
+
+    # Audit
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False
+    )
+    updated_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Relationships
+    updated_by = relationship("User", backref="retention_setting_updates")
+
+    __table_args__ = (
+        {"comment": "GoBD Aufbewahrungsfristen-Konfiguration pro Dokumentkategorie"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<RetentionSetting {self.category} years={self.retention_years}>"

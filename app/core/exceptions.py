@@ -672,6 +672,61 @@ class InsufficientPermissionsError(AuthenticationError):
         self.user_message_de = f"Fehlende Berechtigung: {required_permission}"
 
 
+# ==================== GoBD/Archive Exceptions (E024) ====================
+
+class ArchiveError(AblageSystemException):
+    """Base class for archive-related errors"""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="E024",
+            details=details or {},
+            user_message_de="Archivierungsfehler aufgetreten"
+        )
+
+
+class VerificationError(ArchiveError):
+    """Document verification failed - integrity compromised"""
+
+    def __init__(self, document_id: str, expected_hash: str, actual_hash: str):
+        super().__init__(
+            message=f"Document verification failed for {document_id}: hash mismatch",
+            details={
+                "document_id": document_id,
+                "expected_hash": expected_hash[:16] + "...",
+                "actual_hash": actual_hash[:16] + "..."
+            }
+        )
+        self.user_message_de = "Dokumentverifikation fehlgeschlagen - Integritaet moeglicherweise kompromittiert"
+
+
+class ImmutabilityViolationError(ArchiveError):
+    """Attempt to modify an archived (immutable) document"""
+
+    def __init__(self, document_id: str):
+        super().__init__(
+            message=f"Immutability violation: Document {document_id} is archived and cannot be modified",
+            details={"document_id": document_id}
+        )
+        self.user_message_de = "Aenderung nicht moeglich: Dokument ist revisionssicher archiviert (GoBD)"
+
+
+class RetentionPolicyError(ArchiveError):
+    """Retention policy violation"""
+
+    def __init__(self, document_id: str, retention_expires_at: str, reason: str):
+        super().__init__(
+            message=f"Retention policy violation for {document_id}: {reason}",
+            details={
+                "document_id": document_id,
+                "retention_expires_at": retention_expires_at,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Aufbewahrungsfrist-Verletzung: {reason}"
+
+
 # ==================== Rate Limiting Exceptions (E023) ====================
 
 class RateLimitError(AblageSystemException):
@@ -712,6 +767,7 @@ ERROR_CODE_REGISTRY = {
     "E021": "Notification Error",
     "E022": "Authentication Error",
     "E023": "Rate Limit Exceeded",
+    "E024": "GoBD Archive Error",
 }
 
 

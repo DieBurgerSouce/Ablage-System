@@ -669,6 +669,23 @@ celery_app.conf.update(
             "task": "app.workers.tasks.surya_improvement_tasks.generate_surya_improvement_report",
             "schedule": crontab(day_of_month=1, hour=6, minute=0),  # Monatlich am 1. um 06:00 Uhr
         },
+        # =================================================================
+        # GoBD Retention Tasks (Aufbewahrungsfristen-Management)
+        # =================================================================
+        "retention-check-expiring-daily": {
+            "task": "retention.check_expiring_archives",
+            "schedule": crontab(hour=8, minute=0),  # Taeglich um 08:00 Uhr
+            "kwargs": {"days_ahead": 90},
+        },
+        "retention-verify-integrity-weekly": {
+            "task": "retention.verify_archive_integrity",
+            "schedule": crontab(day_of_week=0, hour=4, minute=0),  # Sonntag 04:00 Uhr
+            "kwargs": {"batch_size": 500},
+        },
+        "retention-process-expired-daily": {
+            "task": "retention.process_expired_archives",
+            "schedule": crontab(hour=2, minute=45),  # Taeglich um 02:45 Uhr
+        },
     },
 
     # Queue routing

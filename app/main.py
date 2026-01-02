@@ -732,6 +732,7 @@ from app.api.v1.validation import router as validation_router
 from app.api.v1.comments import router as comments_router
 from app.api.v1.notifications import router as notifications_router
 from app.api.v1.activity import router as activity_router
+from app.api.v1.archive import router as archive_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -780,6 +781,7 @@ app.include_router(validation_router, prefix="/api/v1")
 app.include_router(comments_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
 app.include_router(activity_router, prefix="/api/v1")
+app.include_router(archive_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================
