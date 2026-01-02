@@ -308,7 +308,7 @@ def calculate_similarity_score(actual: str, expected: str) -> float:
     Berechnet einen Aehnlichkeits-Score zwischen 0 und 1.
 
     Verwendet mehrere Metriken:
-    1. Exakte Uebereinstimmung
+    1. Exakte Übereinstimmung
     2. Normalisierte Levenshtein-Distanz
     3. Schluesselwort-Matching
     """
@@ -316,7 +316,7 @@ def calculate_similarity_score(actual: str, expected: str) -> float:
     actual_clean = actual.strip().lower()
     expected_clean = expected.strip().lower()
 
-    # Exakte Uebereinstimmung
+    # Exakte Übereinstimmung
     if actual_clean == expected_clean:
         return 1.0
 

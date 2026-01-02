@@ -10,6 +10,7 @@ import type { SearchParams } from '@/features/search/types/search-params'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { NotificationBell } from '@/components/NotificationBell'
+import { CompanySwitcher } from '@/components/layout/CompanySwitcher'
 
 interface SidebarProps {
     /** Callback when navigation occurs - used to close mobile sidebar */
@@ -75,6 +76,11 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     <NotificationBell />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Enterprise Document Management</p>
+
+                {/* Company Switcher - Multi-Mandanten Firmenauswahl */}
+                <div className="mt-3 pt-3 border-t border-sidebar-border">
+                    <CompanySwitcher className="w-full justify-start" />
+                </div>
             </div>
 
             <nav className="flex-1 px-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Hauptmenü">

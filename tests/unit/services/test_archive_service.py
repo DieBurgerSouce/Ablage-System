@@ -94,12 +94,14 @@ class TestArchiveDocument:
         mock_result.scalar_one_or_none.return_value = mock_document
         mock_db.execute.return_value = mock_result
 
-        archive = await archive_service.archive_document(
-            mock_db,
-            mock_document.id,
-            user_id,
-            retention_category=RetentionCategory.INVOICE.value,
-        )
+        # Mock _get_retention_years to return an actual integer
+        with patch.object(archive_service, '_get_retention_years', return_value=10):
+            archive = await archive_service.archive_document(
+                mock_db,
+                mock_document.id,
+                user_id,
+                retention_category=RetentionCategory.INVOICE.value,
+            )
 
         # Prüfe Archiv-Erstellung
         assert archive is not None
@@ -157,13 +159,15 @@ class TestArchiveDocument:
         mock_result.scalar_one_or_none.return_value = mock_document
         mock_db.execute.return_value = mock_result
 
-        archive = await archive_service.archive_document(
-            mock_db,
-            mock_document.id,
-            user_id,
-            retention_category=RetentionCategory.CONTRACT.value,
-            metadata=metadata,
-        )
+        # Mock _get_retention_years to return an actual integer
+        with patch.object(archive_service, '_get_retention_years', return_value=10):
+            archive = await archive_service.archive_document(
+                mock_db,
+                mock_document.id,
+                user_id,
+                retention_category=RetentionCategory.CONTRACT.value,
+                metadata=metadata,
+            )
 
         assert archive.archive_metadata == metadata
         assert archive.retention_category == RetentionCategory.CONTRACT.value
@@ -340,12 +344,14 @@ class TestRetentionCalculation:
         mock_result.scalar_one_or_none.return_value = mock_document
         mock_db.execute.return_value = mock_result
 
-        archive = await archive_service.archive_document(
-            mock_db,
-            mock_document.id,
-            user_id,
-            retention_category=RetentionCategory.INVOICE.value,
-        )
+        # Mock _get_retention_years to return an actual integer
+        with patch.object(archive_service, '_get_retention_years', return_value=10):
+            archive = await archive_service.archive_document(
+                mock_db,
+                mock_document.id,
+                user_id,
+                retention_category=RetentionCategory.INVOICE.value,
+            )
 
         expected_expiry = today + timedelta(days=10 * 365)
         assert archive.retention_expires_at == expected_expiry
@@ -600,9 +606,11 @@ class TestGoBDCompliance:
         mock_result.scalar_one_or_none.return_value = mock_document
         mock_db.execute.return_value = mock_result
 
-        archive = await archive_service.archive_document(
-            mock_db, mock_document.id, user_id
-        )
+        # Mock _get_retention_years to return an actual integer
+        with patch.object(archive_service, '_get_retention_years', return_value=6):
+            archive = await archive_service.archive_document(
+                mock_db, mock_document.id, user_id
+            )
 
         # Wer, wann, was
         assert archive.archived_by_id == user_id
