@@ -123,6 +123,17 @@ repos:
         stages: [commit-msg]
         args: [--force-scope]
 
+  # Global Tier-1 Hygiene Gatekeeper (Local Hook)
+  - repo: local
+    hooks:
+      - id: repo-hygiene-bot
+        name: Global Tier-1 Hygiene Validator
+        entry: python scripts/validate_system.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [commit, push]
+
 # Configuration for specific file types
 exclude: |
   (?x)^(

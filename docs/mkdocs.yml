@@ -1,18 +1,18 @@
 # MkDocs Configuration - Ablage-System OCR
 
 # Site Information
-site_name: Ablage-System OCR
+site_name: DieBurgerSouce - Ablage-System
 site_description: Enterprise-grade German document processing with GPU-accelerated OCR
-site_author: Ablage-System Team
-site_url: https://docs.ablage-system.local
+site_author: DieBurgerSouce Team
+site_url: https://docs.dieburgersouce.de/ablage-system
 
 # Repository
-repo_name: ablage-system/ablage-system-ocr
-repo_url: https://github.com/ablage-system/ablage-system-ocr
+repo_name: DieBurgerSouce/Ablage-System
+repo_url: https://github.com/DieBurgerSouce/Ablage-System
 edit_uri: edit/main/docs/
 
 # Copyright
-copyright: Copyright &copy; 2025 Ablage-System Team
+copyright: Copyright &copy; 2026 DieBurgerSouce Team
 
 # Theme Configuration
 theme:
@@ -133,8 +133,8 @@ markdown_extensions:
   - pymdownx.keys
   - pymdownx.magiclink:
       repo_url_shorthand: true
-      user: ablage-system
-      repo: ablage-system-ocr
+      user: DieBurgerSouce
+      repo: Ablage-System
   - pymdownx.smartsymbols
   - pymdownx.snippets:
       check_paths: true
@@ -171,13 +171,13 @@ extra:
   # Social Links
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/ablage-system
+      link: https://github.com/DieBurgerSouce
       name: GitHub
     - icon: fontawesome/brands/docker
-      link: https://hub.docker.com/r/ablagesystem
+      link: https://hub.docker.com/u/dieburgersouce
       name: Docker Hub
     - icon: fontawesome/solid/envelope
-      link: mailto:info@ablage-system.local
+      link: mailto:oss@dieburgersouce.de
       name: Email
 
   # Alternate Languages
