@@ -10,10 +10,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    {name = "Ablage-System Team", email = "info@ablage-system.local"}
+    {name = "DieBurgerSouce Team", email = "oss@dieburgersouce.de"}
 ]
 maintainers = [
-    {name = "Ablage-System Team", email = "info@ablage-system.local"}
+    {name = "DieBurgerSouce Team", email = "oss@dieburgersouce.de"}
 ]
 keywords = [
     "ocr",
@@ -118,11 +118,11 @@ ml = [
 ]
 
 [project.urls]
-Homepage = "https://docs.ablage-system.local"
-Documentation = "https://docs.ablage-system.local"
-Repository = "https://github.com/ablage-system/ablage-system-ocr"
-"Bug Tracker" = "https://github.com/ablage-system/ablage-system-ocr/issues"
-Changelog = "https://github.com/ablage-system/ablage-system-ocr/blob/main/CHANGELOG.md"
+Homepage = "https://dieburgersouce.de"
+Documentation = "https://docs.dieburgersouce.de/ablage-system"
+Repository = "https://github.com/DieBurgerSouce/Ablage-System"
+"Bug Tracker" = "https://github.com/DieBurgerSouce/Ablage-System/issues"
+Changelog = "https://github.com/DieBurgerSouce/Ablage-System/blob/main/CHANGELOG.md"
 
 [project.scripts]
 ablage-system = "app.main:main"

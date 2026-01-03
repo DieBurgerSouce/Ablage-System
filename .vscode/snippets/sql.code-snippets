@@ -1,0 +1,230 @@
+{
+  "Create Table with UUID Primary Key": {
+    "prefix": "sql-create-table-uuid",
+    "description": "Create PostgreSQL table with UUID primary key and timestamps",
+    "body": [
+      "CREATE TABLE IF NOT EXISTS ${1:table_name} (",
+      "    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),",
+      "    ${2:owner_id} UUID NOT NULL REFERENCES ${3:users}(id) ON DELETE CASCADE,",
+      "    ",
+      "    -- Fields",
+      "    ${4:name} VARCHAR(255) NOT NULL,",
+      "    ${5:description} TEXT,",
+      "    ${6:status} VARCHAR(50) NOT NULL DEFAULT '${7:pending}',",
+      "    ${8:metadata} JSONB DEFAULT '{}'::jsonb,",
+      "    ",
+      "    -- Timestamps",
+      "    created_at TIMESTAMP NOT NULL DEFAULT NOW(),",
+      "    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),",
+      "    ",
+      "    -- Indexes",
+      "    CONSTRAINT ${1:table_name}_${4:name}_length CHECK (char_length(${4:name}) > 0)",
+      ");",
+      "",
+      "-- Indexes",
+      "CREATE INDEX idx_${1:table_name}_${2:owner_id} ON ${1:table_name}(${2:owner_id});",
+      "CREATE INDEX idx_${1:table_name}_${6:status} ON ${1:table_name}(${6:status});",
+      "CREATE INDEX idx_${1:table_name}_created_at ON ${1:table_name}(created_at);",
+      "",
+      "-- Update timestamp trigger",
+      "CREATE TRIGGER update_${1:table_name}_updated_at",
+      "    BEFORE UPDATE ON ${1:table_name}",
+      "    FOR EACH ROW",
+      "    EXECUTE FUNCTION update_updated_at_column();",
+      "$0"
+    ]
+  },
+
+  "Create Updated At Trigger Function": {
+    "prefix": "sql-trigger-updated-at",
+    "description": "Create trigger function for auto-updating updated_at column",
+    "body": [
+      "-- Function to automatically update updated_at column",
+      "CREATE OR REPLACE FUNCTION update_updated_at_column()",
+      "RETURNS TRIGGER AS $$",
+      "BEGIN",
+      "    NEW.updated_at = NOW();",
+      "    RETURN NEW;",
+      "END;",
+      "$$ LANGUAGE plpgsql;",
+      "$0"
+    ]
+  },
+
+  "Create Index": {
+    "prefix": "sql-create-index",
+    "description": "Create an index with optional WHERE clause",
+    "body": [
+      "CREATE INDEX ${1|idx,unique_idx|}_${2:table_name}_${3:column_name}",
+      "    ON ${2:table_name}(${3:column_name})${4: WHERE ${5:condition}};",
+      "$0"
+    ]
+  },
+
+  "Add Column": {
+    "prefix": "sql-add-column",
+    "description": "Add a column to an existing table",
+    "body": [
+      "ALTER TABLE ${1:table_name}",
+      "    ADD COLUMN ${2:column_name} ${3|VARCHAR(255),TEXT,INTEGER,BOOLEAN,TIMESTAMP,UUID,JSONB|} ${4|NOT NULL,NULL|}${5: DEFAULT ${6:value}};",
+      "$0"
+    ]
+  },
+
+  "Full Text Search Setup": {
+    "prefix": "sql-fts-setup",
+    "description": "Set up full-text search for a table",
+    "body": [
+      "-- Add tsvector column",
+      "ALTER TABLE ${1:table_name}",
+      "    ADD COLUMN search_vector tsvector;",
+      "",
+      "-- Create index",
+      "CREATE INDEX idx_${1:table_name}_search_vector",
+      "    ON ${1:table_name} USING GIN(search_vector);",
+      "",
+      "-- Create update function",
+      "CREATE OR REPLACE FUNCTION ${1:table_name}_search_vector_update()",
+      "RETURNS TRIGGER AS $$",
+      "BEGIN",
+      "    NEW.search_vector :=",
+      "        setweight(to_tsvector('german', COALESCE(NEW.${2:title}, '')), 'A') ||",
+      "        setweight(to_tsvector('german', COALESCE(NEW.${3:description}, '')), 'B') ||",
+      "        setweight(to_tsvector('german', COALESCE(NEW.${4:content}, '')), 'C');",
+      "    RETURN NEW;",
+      "END;",
+      "$$ LANGUAGE plpgsql;",
+      "",
+      "-- Create trigger",
+      "CREATE TRIGGER ${1:table_name}_search_vector_update_trigger",
+      "    BEFORE INSERT OR UPDATE ON ${1:table_name}",
+      "    FOR EACH ROW",
+      "    EXECUTE FUNCTION ${1:table_name}_search_vector_update();",
+      "",
+      "-- Update existing rows",
+      "UPDATE ${1:table_name} SET ${2:title} = ${2:title};",
+      "$0"
+    ]
+  },
+
+  "Query with Pagination": {
+    "prefix": "sql-query-pagination",
+    "description": "SELECT query with pagination and ordering",
+    "body": [
+      "SELECT ${1:*}",
+      "FROM ${2:table_name}",
+      "WHERE ${3:condition}",
+      "ORDER BY ${4:created_at} ${5|DESC,ASC|}",
+      "LIMIT ${6:10}",
+      "OFFSET ${7:0};",
+      "$0"
+    ]
+  },
+
+  "JSONB Query": {
+    "prefix": "sql-jsonb-query",
+    "description": "Query JSONB column",
+    "body": [
+      "SELECT ${1:*}",
+      "FROM ${2:table_name}",
+      "WHERE ${3:metadata_column}->> '${4:key}' = '${5:value}'",
+      "   OR ${3:metadata_column} @> '{\"${6:key}\": \"${7:value}\"}'::jsonb;",
+      "$0"
+    ]
+  },
+
+  "Create Enum Type": {
+    "prefix": "sql-create-enum",
+    "description": "Create an ENUM type",
+    "body": [
+      "CREATE TYPE ${1:enum_name} AS ENUM (",
+      "    '${2:value1}',",
+      "    '${3:value2}',",
+      "    '${4:value3}'",
+      ");",
+      "$0"
+    ]
+  },
+
+  "Add Foreign Key": {
+    "prefix": "sql-add-fk",
+    "description": "Add foreign key constraint",
+    "body": [
+      "ALTER TABLE ${1:table_name}",
+      "    ADD CONSTRAINT fk_${1:table_name}_${2:column_name}",
+      "    FOREIGN KEY (${2:column_name})",
+      "    REFERENCES ${3:referenced_table}(${4:id})",
+      "    ON DELETE ${5|CASCADE,SET NULL,RESTRICT,NO ACTION|};",
+      "$0"
+    ]
+  },
+
+  "Aggregate with Group By": {
+    "prefix": "sql-aggregate",
+    "description": "Aggregate query with GROUP BY",
+    "body": [
+      "SELECT",
+      "    ${1:column},",
+      "    COUNT(*) as count,",
+      "    ${2|AVG,SUM,MIN,MAX|}(${3:numeric_column}) as ${4:aggregate_name}",
+      "FROM ${5:table_name}",
+      "WHERE ${6:condition}",
+      "GROUP BY ${1:column}",
+      "HAVING COUNT(*) > ${7:0}",
+      "ORDER BY count DESC;",
+      "$0"
+    ]
+  },
+
+  "Common Table Expression (CTE)": {
+    "prefix": "sql-cte",
+    "description": "WITH clause (Common Table Expression)",
+    "body": [
+      "WITH ${1:cte_name} AS (",
+      "    SELECT ${2:columns}",
+      "    FROM ${3:table_name}",
+      "    WHERE ${4:condition}",
+      ")",
+      "SELECT ${5:*}",
+      "FROM ${1:cte_name}",
+      "WHERE ${6:additional_condition};",
+      "$0"
+    ]
+  },
+
+  "Window Function": {
+    "prefix": "sql-window-function",
+    "description": "Window function with PARTITION BY",
+    "body": [
+      "SELECT",
+      "    ${1:column},",
+      "    ${2|ROW_NUMBER,RANK,DENSE_RANK,LAG,LEAD|}() OVER (",
+      "        PARTITION BY ${3:partition_column}",
+      "        ORDER BY ${4:order_column} ${5|DESC,ASC|}",
+      "    ) as ${6:window_result}",
+      "FROM ${7:table_name}",
+      "WHERE ${8:condition};",
+      "$0"
+    ]
+  },
+
+  "Upsert (INSERT ON CONFLICT)": {
+    "prefix": "sql-upsert",
+    "description": "INSERT with ON CONFLICT DO UPDATE (upsert)",
+    "body": [
+      "INSERT INTO ${1:table_name} (",
+      "    ${2:column1}, ${3:column2}, ${4:column3}",
+      ")",
+      "VALUES (",
+      "    ${5:value1}, ${6:value2}, ${7:value3}",
+      ")",
+      "ON CONFLICT (${8:unique_column})",
+      "DO UPDATE SET",
+      "    ${3:column2} = EXCLUDED.${3:column2},",
+      "    ${4:column3} = EXCLUDED.${4:column3},",
+      "    updated_at = NOW()",
+      "RETURNING *;",
+      "$0"
+    ]
+  }
+}
