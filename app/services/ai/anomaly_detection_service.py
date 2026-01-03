@@ -287,27 +287,21 @@ class AnomalyDetectionService:
         if not data.invoice_number:
             return None
 
-        # Query Documents mit gleicher Rechnungsnummer im JSONB
+        # N+1 QUERY FIX: JSONB-Filter direkt in SQL statt Python-Schleife
+        # PostgreSQL JSONB-Operator: extracted_data->>'invoice_number' = 'value'
         query = select(Document).where(
             and_(
                 Document.id != document_id,
                 Document.extracted_data.isnot(None),
+                # JSONB Text-Extraktion mit ->> Operator
+                Document.extracted_data["invoice_number"].astext == data.invoice_number,
             )
         )
         if company_id:
             query = query.where(Document.company_id == company_id)
 
-        result = await db.execute(query.limit(100))
-        documents = result.scalars().all()
-
-        # Finde Duplikate
-        duplicates = []
-        for doc in documents:
-            extracted = get_extracted_data(doc)
-            if extracted and extracted.invoice_number == data.invoice_number:
-                duplicates.append(doc)
-                if len(duplicates) >= 5:
-                    break
+        result = await db.execute(query.limit(5))
+        duplicates = result.scalars().all()
 
         if duplicates:
             return DetectedAnomaly(

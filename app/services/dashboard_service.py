@@ -284,7 +284,14 @@ class DashboardService:
         from sqlalchemy import text
 
         # If setting as default, unset other defaults
+        # WICHTIG: FOR UPDATE NO WAIT verhindert Race Conditions bei gleichzeitigen Requests
         if is_default:
+            # Lock alle bestehenden Dashboards des Users
+            await self.db.execute(
+                text("SELECT id FROM user_dashboards WHERE user_id = :user_id FOR UPDATE"),
+                {"user_id": user_id}
+            )
+            # Dann atomisch updaten
             await self.db.execute(
                 text("UPDATE user_dashboards SET is_default = false WHERE user_id = :user_id"),
                 {"user_id": user_id}

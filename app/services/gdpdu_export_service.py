@@ -15,12 +15,15 @@ Dieses Modul erstellt einen vollstaendigen Export fuer Pruefungszwecke.
 
 import csv
 import io
+import os
+import tempfile
 import uuid
 import zipfile
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
-from typing import BinaryIO, Optional
+from pathlib import Path
+from typing import BinaryIO, Optional, Union
 from xml.etree import ElementTree as ET
 from xml.dom import minidom
 
@@ -215,15 +218,23 @@ class GDPdUExportService:
         self,
         db: AsyncSession,
         options: GDPdUExportOptions,
-    ) -> bytes:
+        output_path: Optional[Path] = None,
+    ) -> Union[bytes, Path]:
         """Erstellt einen vollstaendigen GDPdU-Export als ZIP-Archiv.
+
+        MEMORY-OPTIMIERT: Bei grossen Exporten wird empfohlen, output_path zu
+        verwenden, um das ZIP direkt auf die Festplatte zu schreiben und OOM
+        zu vermeiden.
 
         Args:
             db: Datenbank-Session
             options: Export-Optionen
+            output_path: Optionaler Pfad fuer die ZIP-Datei (Streaming-Modus).
+                        Wenn nicht angegeben, wird das ZIP im Speicher erstellt.
 
         Returns:
-            ZIP-Archiv als Bytes
+            bytes: ZIP-Archiv als Bytes (wenn output_path nicht angegeben)
+            Path: Pfad zur ZIP-Datei (wenn output_path angegeben)
 
         Raises:
             ValueError: Bei ungueltigen Optionen
@@ -233,6 +244,7 @@ class GDPdUExportService:
             company_id=str(options.company_id),
             start_date=str(options.start_date),
             end_date=str(options.end_date),
+            streaming_mode=output_path is not None,
         )
 
         # Firmeninfo laden
@@ -240,62 +252,88 @@ class GDPdUExportService:
         if not company:
             raise ValueError(f"Firma mit ID {options.company_id} nicht gefunden")
 
-        # ZIP-Archiv erstellen
-        output = io.BytesIO()
+        # =======================================================================
+        # MEMORY-OPTIMIERUNG: Streaming-Modus fuer grosse Exporte
+        # =======================================================================
+        if output_path:
+            # Streaming: Direkt auf Festplatte schreiben (verhindert OOM)
+            zip_path = output_path
+        else:
+            # Legacy: Temporaere Datei verwenden statt BytesIO (reduziert Peak-Memory)
+            temp_dir = tempfile.mkdtemp(prefix="gdpdu_export_")
+            zip_path = Path(temp_dir) / "export.zip"
 
-        with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as zf:
-            # Reset Tabellenliste
-            self._tables = []
+        try:
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                # Reset Tabellenliste
+                self._tables = []
 
-            # Dokumente exportieren
-            if options.include_documents:
-                doc_data = await self._export_documents(db, options)
-                if doc_data:
-                    zf.writestr(DOCUMENT_TABLE.filename, doc_data)
-                    self._tables.append(DOCUMENT_TABLE)
+                # Dokumente exportieren
+                if options.include_documents:
+                    doc_data = await self._export_documents(db, options)
+                    if doc_data:
+                        zf.writestr(DOCUMENT_TABLE.filename, doc_data)
+                        self._tables.append(DOCUMENT_TABLE)
 
-            # Archive exportieren
-            if options.include_archives:
-                archive_data = await self._export_archives(db, options)
-                if archive_data:
-                    zf.writestr(ARCHIVE_TABLE.filename, archive_data)
-                    self._tables.append(ARCHIVE_TABLE)
+                # Archive exportieren
+                if options.include_archives:
+                    archive_data = await self._export_archives(db, options)
+                    if archive_data:
+                        zf.writestr(ARCHIVE_TABLE.filename, archive_data)
+                        self._tables.append(ARCHIVE_TABLE)
 
-            # Rechnungen exportieren
-            if options.include_invoices:
-                invoice_data = await self._export_invoices(db, options)
-                if invoice_data:
-                    zf.writestr(INVOICE_TABLE.filename, invoice_data)
-                    self._tables.append(INVOICE_TABLE)
+                # Rechnungen exportieren
+                if options.include_invoices:
+                    invoice_data = await self._export_invoices(db, options)
+                    if invoice_data:
+                        zf.writestr(INVOICE_TABLE.filename, invoice_data)
+                        self._tables.append(INVOICE_TABLE)
 
-            # Vertraege exportieren
-            if options.include_contracts:
-                contract_data = await self._export_contracts(db, options)
-                if contract_data:
-                    zf.writestr(CONTRACT_TABLE.filename, contract_data)
-                    self._tables.append(CONTRACT_TABLE)
+                # Vertraege exportieren
+                if options.include_contracts:
+                    contract_data = await self._export_contracts(db, options)
+                    if contract_data:
+                        zf.writestr(CONTRACT_TABLE.filename, contract_data)
+                        self._tables.append(CONTRACT_TABLE)
 
-            # Index.xml erstellen
-            index_xml = self._generate_index_xml(company, options)
-            zf.writestr("index.xml", index_xml)
+                # Index.xml erstellen
+                index_xml = self._generate_index_xml(company, options)
+                zf.writestr("index.xml", index_xml)
 
-            # DTD-Datei hinzufuegen
-            zf.writestr(GDPDU_DTD_VERSION, GDPDU_DTD_CONTENT)
+                # DTD-Datei hinzufuegen
+                zf.writestr(GDPDU_DTD_VERSION, GDPDU_DTD_CONTENT)
 
-            # README hinzufuegen
-            readme = self._generate_readme(company, options)
-            zf.writestr("README.txt", readme)
+                # README hinzufuegen
+                readme = self._generate_readme(company, options)
+                zf.writestr("README.txt", readme)
 
-        output.seek(0)
+            zip_size = zip_path.stat().st_size
 
-        logger.info(
-            "gdpdu_export_completed",
-            company_id=str(options.company_id),
-            tables_exported=len(self._tables),
-            zip_size_bytes=output.getbuffer().nbytes,
-        )
+            logger.info(
+                "gdpdu_export_completed",
+                company_id=str(options.company_id),
+                tables_exported=len(self._tables),
+                zip_size_bytes=zip_size,
+                streaming_mode=output_path is not None,
+            )
 
-        return output.getvalue()
+            if output_path:
+                # Streaming-Modus: Pfad zurueckgeben
+                return zip_path
+            else:
+                # Legacy-Modus: Bytes zurueckgeben und temp-Datei aufraeuumen
+                with open(zip_path, 'rb') as f:
+                    result = f.read()
+                return result
+
+        finally:
+            # Temp-Verzeichnis aufraeuumen (nur im Legacy-Modus)
+            if not output_path and zip_path.exists():
+                try:
+                    os.remove(zip_path)
+                    os.rmdir(zip_path.parent)
+                except OSError:
+                    pass  # Ignoriere Fehler beim Aufraeuumen
 
     async def get_export_preview(
         self,

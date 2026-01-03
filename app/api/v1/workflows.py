@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db, require_admin
 from app.db.models import User
 from app.services.workflow import (
     ConditionEvaluator,
@@ -1007,12 +1007,10 @@ async def instantiate_template(
 async def create_template(
     data: WorkflowCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> WorkflowResponse:
     """Erstellt ein neues Workflow-Template (nur Admins)."""
-    # TODO: Admin-Check implementieren
-    # if not current_user.is_admin:
-    #     raise HTTPException(status_code=403, detail="Nur Admins")
+    # Admin-Check durch require_admin Dependency sichergestellt
 
     service = WorkflowService(db)
 

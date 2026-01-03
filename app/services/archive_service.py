@@ -82,11 +82,13 @@ class ArchiveService:
             DocumentNotFoundError: Wenn das Dokument nicht existiert
             ArchiveError: Wenn das Dokument bereits archiviert ist
         """
-        # Dokument laden
+        # Dokument laden mit FOR UPDATE Lock (verhindert Race Condition)
+        # WICHTIG: FOR UPDATE sperrt die Zeile bis zum Commit/Rollback
         result = await db.execute(
             select(Document)
             .options(selectinload(Document.archive))
             .where(Document.id == document_id)
+            .with_for_update()  # TOCTOU Race Condition Fix
         )
         document = result.scalar_one_or_none()
 

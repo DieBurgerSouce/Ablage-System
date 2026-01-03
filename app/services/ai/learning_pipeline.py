@@ -15,6 +15,7 @@ Feinpoliert und durchdacht - Enterprise Self-Learning.
 from __future__ import annotations
 
 import statistics
+import threading
 import uuid
 from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass, field
@@ -592,13 +593,17 @@ class AILearningPipeline:
         return report
 
 
-# Singleton-Instanz
+# Singleton-Instanz mit Thread-Safety
 _ai_learning_pipeline: Optional[AILearningPipeline] = None
+_ai_learning_pipeline_lock = threading.Lock()
 
 
 def get_ai_learning_pipeline() -> AILearningPipeline:
-    """Factory fuer AILearningPipeline Singleton."""
+    """Factory fuer AILearningPipeline Singleton mit Thread-Safety (Double-Check Locking)."""
     global _ai_learning_pipeline
     if _ai_learning_pipeline is None:
-        _ai_learning_pipeline = AILearningPipeline()
+        with _ai_learning_pipeline_lock:
+            # Double-Check Locking: Erneut pruefen nach Lock-Erwerb
+            if _ai_learning_pipeline is None:
+                _ai_learning_pipeline = AILearningPipeline()
     return _ai_learning_pipeline

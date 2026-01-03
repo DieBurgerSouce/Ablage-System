@@ -17,6 +17,7 @@ Erfuellt GoBD-Anforderungen:
 
 import hashlib
 import json
+import threading
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -602,5 +603,28 @@ class ProcedureDocService:
         return "\n".join(lines)
 
 
-# Singleton-Instanz
-procedure_doc_service = ProcedureDocService()
+# Singleton-Instanz mit Thread-Safety (Double-Check Locking)
+_procedure_doc_service: Optional[ProcedureDocService] = None
+_procedure_doc_service_lock = threading.Lock()
+
+
+def get_procedure_doc_service() -> ProcedureDocService:
+    """Factory fuer ProcedureDocService Singleton mit Thread-Safety."""
+    global _procedure_doc_service
+    if _procedure_doc_service is None:
+        with _procedure_doc_service_lock:
+            # Double-Check Locking: Erneut pruefen nach Lock-Erwerb
+            if _procedure_doc_service is None:
+                _procedure_doc_service = ProcedureDocService()
+    return _procedure_doc_service
+
+
+# Rueckwaertskompatibilitaet: Lazy Property fuer direkten Import
+class _LazyProcedureDocService:
+    """Lazy Wrapper fuer Rueckwaertskompatibilitaet."""
+
+    def __getattr__(self, name: str):
+        return getattr(get_procedure_doc_service(), name)
+
+
+procedure_doc_service = _LazyProcedureDocService()

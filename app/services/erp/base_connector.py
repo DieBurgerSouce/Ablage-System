@@ -10,6 +10,8 @@ Enterprise-Level ERP-Abstraktion:
 Feinpoliert und durchdacht - Zukunftssichere ERP-Architektur.
 """
 
+import threading
+
 import structlog
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -211,6 +213,7 @@ class ERPConnector(ABC, Generic[T]):
         self._last_error: Optional[str] = None
         self._request_count = 0
         self._rate_limit_reset: Optional[datetime] = None
+        self._rate_limit_lock = threading.Lock()  # Thread-Safety fuer Rate Limiting
 
         logger.info(
             "erp_connector_initialized",
@@ -597,35 +600,36 @@ class ERPConnector(ABC, Generic[T]):
 
     def _check_rate_limit(self) -> bool:
         """
-        Prueft ob Rate Limit erreicht ist.
+        Prueft ob Rate Limit erreicht ist (Thread-Safe).
 
         Returns:
             True wenn Request erlaubt
         """
-        now = datetime.utcnow()
+        with self._rate_limit_lock:
+            now = datetime.utcnow()
 
-        # Reset counter if minute passed
-        if self._rate_limit_reset and now > self._rate_limit_reset:
-            self._request_count = 0
-            self._rate_limit_reset = None
+            # Reset counter if minute passed
+            if self._rate_limit_reset and now > self._rate_limit_reset:
+                self._request_count = 0
+                self._rate_limit_reset = None
 
-        if self._request_count >= self.config.max_requests_per_minute:
-            self._status = ERPConnectionStatus.RATE_LIMITED
-            logger.warning(
-                "erp_rate_limit_reached",
-                erp_type=self.erp_type,
-                requests=self._request_count,
-                limit=self.config.max_requests_per_minute,
-            )
-            return False
+            if self._request_count >= self.config.max_requests_per_minute:
+                self._status = ERPConnectionStatus.RATE_LIMITED
+                logger.warning(
+                    "erp_rate_limit_reached",
+                    erp_type=self.erp_type,
+                    requests=self._request_count,
+                    limit=self.config.max_requests_per_minute,
+                )
+                return False
 
-        # Initialize reset time
-        if self._rate_limit_reset is None:
-            from datetime import timedelta
-            self._rate_limit_reset = now + timedelta(minutes=1)
+            # Initialize reset time
+            if self._rate_limit_reset is None:
+                from datetime import timedelta
+                self._rate_limit_reset = now + timedelta(minutes=1)
 
-        self._request_count += 1
-        return True
+            self._request_count += 1
+            return True
 
     def _create_sync_result(
         self,

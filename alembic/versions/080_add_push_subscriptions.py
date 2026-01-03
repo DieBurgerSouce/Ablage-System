@@ -1,7 +1,7 @@
 """Add push subscriptions for PWA notifications.
 
-Revision ID: 080
-Revises: 079
+Revision ID: 080_add_push_subscriptions
+Revises: 079_add_workflow_automation
 Create Date: 2026-01-03
 
 Erstellt Tabellen fuer Web Push Notifications:
@@ -14,8 +14,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 # revision identifiers
-revision = '080'
-down_revision = '079'
+revision = '080_add_push_subscriptions'
+down_revision = '079_add_workflow_automation'
 branch_labels = None
 depends_on = None
 

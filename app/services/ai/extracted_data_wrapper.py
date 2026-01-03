@@ -23,7 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 from uuid import UUID
 
 # TYPE SAFETY FIX: Proper typing ohne circular imports
@@ -45,6 +45,11 @@ class ExtractedData:
     @property
     def invoice_number(self) -> Optional[str]:
         return self.raw_data.get("invoice_number")
+
+    @property
+    def order_number(self) -> Optional[str]:
+        """Bestellnummer / Auftragsnummer."""
+        return self.raw_data.get("order_number") or self.raw_data.get("purchase_order")
 
     @property
     def invoice_date(self) -> Optional[date]:

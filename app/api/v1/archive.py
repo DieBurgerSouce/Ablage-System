@@ -222,6 +222,14 @@ async def get_archive(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Archiv nicht gefunden"
         )
+
+    # IDOR-Schutz: Nur Archives der eigenen Company erlauben
+    if archive.company_id != company.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer dieses Archiv"
+        )
+
     return ArchiveResponse.model_validate(archive)
 
 
@@ -255,7 +263,16 @@ async def verify_document_integrity(
         400: Dokument nicht archiviert
     """
     try:
+        # IDOR-Schutz: Zuerst pruefen ob das Dokument zur Company gehoert
+        archive = await archive_service.get_archive(db, document_id)
+        if archive and archive.company_id != company.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Keine Berechtigung fuer dieses Archiv"
+            )
+
         is_verified = await archive_service.verify_document_integrity(db, document_id)
+        # Archive neu laden nach Verifikation (aktualisierte Timestamps)
         archive = await archive_service.get_archive(db, document_id)
 
         if is_verified:

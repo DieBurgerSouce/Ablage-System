@@ -14,6 +14,7 @@ Feinpoliert und durchdacht - Zuverlässige Benachrichtigungen für Benutzer.
 import asyncio
 import json
 import smtplib
+import threading
 import uuid as uuid_module
 from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
@@ -1291,22 +1292,30 @@ class NotificationWebSocketManager:
         return user_id in self._connections and len(self._connections[user_id]) > 0
 
 
-# Singleton instances
+# Singleton instances mit Thread-Safety (Double-Check Locking)
 _notification_service: Optional[NotificationService] = None
+_notification_service_lock = threading.Lock()
 _notification_ws_manager: Optional[NotificationWebSocketManager] = None
+_notification_ws_manager_lock = threading.Lock()
 
 
 def get_notification_service() -> NotificationService:
-    """Get or create singleton notification service."""
+    """Get or create singleton notification service (Thread-Safe)."""
     global _notification_service
     if _notification_service is None:
-        _notification_service = NotificationService()
+        with _notification_service_lock:
+            # Double-Check Locking: Erneut pruefen nach Lock-Erwerb
+            if _notification_service is None:
+                _notification_service = NotificationService()
     return _notification_service
 
 
 def get_notification_ws_manager() -> NotificationWebSocketManager:
-    """Get or create singleton notification WebSocket manager."""
+    """Get or create singleton notification WebSocket manager (Thread-Safe)."""
     global _notification_ws_manager
     if _notification_ws_manager is None:
-        _notification_ws_manager = NotificationWebSocketManager()
+        with _notification_ws_manager_lock:
+            # Double-Check Locking: Erneut pruefen nach Lock-Erwerb
+            if _notification_ws_manager is None:
+                _notification_ws_manager = NotificationWebSocketManager()
     return _notification_ws_manager

@@ -199,9 +199,10 @@ class AIDecisionService:
     verarbeitet Self-Learning Feedback.
     """
 
-    # Cache fuer Thresholds (1 Minute TTL)
+    # Cache fuer Thresholds (1 Minute TTL) - Thread-Safe
     _threshold_cache: Dict[Optional[uuid.UUID], Dict[DecisionType, ThresholdConfig]] = {}
     _threshold_cache_time: Dict[Optional[uuid.UUID], datetime] = {}
+    _cache_lock = threading.Lock()  # THREAD-SAFETY FIX: Lock fuer Cache-Operationen
     _CACHE_TTL_SECONDS = 60
     _MAX_CACHE_SIZE = 1000  # MEMORY LEAK FIX: Max Cache-Eintraege
     _last_cleanup: datetime = datetime.min.replace(tzinfo=timezone.utc)
@@ -213,48 +214,54 @@ class AIDecisionService:
 
     @classmethod
     def _cleanup_expired_cache(cls) -> None:
-        """MEMORY LEAK FIX: Entfernt abgelaufene Cache-Eintraege.
+        """MEMORY LEAK FIX: Entfernt abgelaufene Cache-Eintraege (Thread-Safe).
 
         Wird periodisch aufgerufen um Memory Leaks zu verhindern.
         Entfernt Eintraege die aelter als TTL sind.
         """
         now = datetime.now(timezone.utc)
 
-        # Nur alle CLEANUP_INTERVAL_SECONDS ausfuehren
+        # Quick check ohne Lock (Double-Check Pattern)
         if (now - cls._last_cleanup).total_seconds() < cls._CLEANUP_INTERVAL_SECONDS:
             return
 
-        cls._last_cleanup = now
+        # THREAD-SAFETY FIX: Lock fuer Cache-Modifikation
+        with cls._cache_lock:
+            # Double-Check nach Lock-Erwerb
+            if (now - cls._last_cleanup).total_seconds() < cls._CLEANUP_INTERVAL_SECONDS:
+                return
 
-        # Abgelaufene Keys finden
-        expired_keys = [
-            key for key, cache_time in cls._threshold_cache_time.items()
-            if (now - cache_time).total_seconds() >= cls._CACHE_TTL_SECONDS
-        ]
+            cls._last_cleanup = now
 
-        # Abgelaufene Eintraege entfernen
-        for key in expired_keys:
-            cls._threshold_cache.pop(key, None)
-            cls._threshold_cache_time.pop(key, None)
+            # Abgelaufene Keys finden
+            expired_keys = [
+                key for key, cache_time in cls._threshold_cache_time.items()
+                if (now - cache_time).total_seconds() >= cls._CACHE_TTL_SECONDS
+            ]
 
-        # Falls Cache immer noch zu gross, aelteste Eintraege entfernen
-        if len(cls._threshold_cache) > cls._MAX_CACHE_SIZE:
-            # Sortiere nach Alter und entferne aelteste
-            sorted_keys = sorted(
-                cls._threshold_cache_time.keys(),
-                key=lambda k: cls._threshold_cache_time.get(k, datetime.min.replace(tzinfo=timezone.utc))
-            )
-            keys_to_remove = sorted_keys[:len(cls._threshold_cache) - cls._MAX_CACHE_SIZE]
-            for key in keys_to_remove:
+            # Abgelaufene Eintraege entfernen
+            for key in expired_keys:
                 cls._threshold_cache.pop(key, None)
                 cls._threshold_cache_time.pop(key, None)
 
-        if expired_keys or len(cls._threshold_cache) > cls._MAX_CACHE_SIZE:
-            logger.debug(
-                "threshold_cache_cleanup",
-                expired_removed=len(expired_keys),
-                current_size=len(cls._threshold_cache),
-            )
+            # Falls Cache immer noch zu gross, aelteste Eintraege entfernen
+            if len(cls._threshold_cache) > cls._MAX_CACHE_SIZE:
+                # Sortiere nach Alter und entferne aelteste
+                sorted_keys = sorted(
+                    cls._threshold_cache_time.keys(),
+                    key=lambda k: cls._threshold_cache_time.get(k, datetime.min.replace(tzinfo=timezone.utc))
+                )
+                keys_to_remove = sorted_keys[:len(cls._threshold_cache) - cls._MAX_CACHE_SIZE]
+                for key in keys_to_remove:
+                    cls._threshold_cache.pop(key, None)
+                    cls._threshold_cache_time.pop(key, None)
+
+            if expired_keys or len(cls._threshold_cache) > cls._MAX_CACHE_SIZE:
+                logger.debug(
+                    "threshold_cache_cleanup",
+                    expired_removed=len(expired_keys),
+                    current_size=len(cls._threshold_cache),
+                )
 
     # =========================================================================
     # Threshold Management
