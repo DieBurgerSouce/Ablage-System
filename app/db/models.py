@@ -20,7 +20,7 @@ Beispiel:
         owner = relationship("User", back_populates="documents")
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from enum import Enum
 import uuid
@@ -4080,7 +4080,7 @@ class SuryaTrainingRun(Base):
         """Berechnet bisherige Dauer in Minuten."""
         if self.started_at is None:
             return None
-        end_time = self.completed_at or datetime.utcnow()
+        end_time = self.completed_at or datetime.now(timezone.utc)
         delta = end_time - self.started_at
         return delta.total_seconds() / 60
 
@@ -4192,7 +4192,7 @@ class SuryaABTest(Base):
             return False
         if self.started_at is None:
             return False
-        elapsed_hours = (datetime.utcnow() - self.started_at).total_seconds() / 3600
+        elapsed_hours = (datetime.now(timezone.utc) - self.started_at).total_seconds() / 3600
         return elapsed_hours >= self.minimum_duration_hours
 
     @property

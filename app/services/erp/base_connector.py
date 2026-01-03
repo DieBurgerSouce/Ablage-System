@@ -123,6 +123,9 @@ class ERPSyncResult:
     failed_records: List[Dict[str, Any]] = field(default_factory=list)
     sync_id: Optional[str] = None
 
+    # Die tatsaechlichen Datensaetze (fuer _fetch_remote)
+    records: List[Dict[str, Any]] = field(default_factory=list)
+
     def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {

@@ -2714,7 +2714,7 @@ async def get_daily_search_analytics(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=403,
-            detail="Nur Administratoren koennen taegliche Statistiken abrufen"
+            detail="Nur Administratoren können tägliche Statistiken abrufen"
         )
 
     service = get_search_analytics_service()
@@ -2740,7 +2740,7 @@ async def get_popular_search_terms(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=403,
-            detail="Nur Administratoren koennen beliebte Suchbegriffe abrufen"
+            detail="Nur Administratoren können beliebte Suchbegriffe abrufen"
         )
 
     service = get_search_analytics_service()
@@ -2766,7 +2766,7 @@ async def get_zero_result_queries(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=403,
-            detail="Nur Administratoren koennen Null-Ergebnis-Suchen abrufen"
+            detail="Nur Administratoren können Null-Ergebnis-Suchen abrufen"
         )
 
     service = get_search_analytics_service()

@@ -274,6 +274,8 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
                 result.records_synced += len(pulled)
                 result.records_created = len([p for p in pulled if p.get("is_new")])
                 result.records_updated = len([p for p in pulled if not p.get("is_new")])
+                # Store actual records for sync engine
+                result.records = pulled
 
             if direction in (ERPSyncDirection.PUSH, ERPSyncDirection.BIDIRECTIONAL):
                 # Push customers to Odoo would go here
@@ -413,6 +415,8 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             if direction in (ERPSyncDirection.PULL, ERPSyncDirection.BIDIRECTIONAL):
                 pulled = await self._pull_suppliers(since, batch_size)
                 result.records_synced += len(pulled)
+                # Store actual records for sync engine
+                result.records = pulled
 
             result.success = True
 
@@ -504,6 +508,8 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             if direction in (ERPSyncDirection.PULL, ERPSyncDirection.BIDIRECTIONAL):
                 pulled = await self._pull_invoices(since, batch_size)
                 result.records_synced += len(pulled)
+                # Store actual records for sync engine
+                result.records = pulled
 
             result.success = True
 

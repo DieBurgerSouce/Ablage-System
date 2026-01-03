@@ -14,7 +14,7 @@ Feinpoliert und durchdacht - Deutsche Geschaeftsdokumente.
 
 from typing import Optional, List
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
@@ -389,7 +389,7 @@ async def delete_entity(
         )
 
     # Soft-Delete
-    entity.deleted_at = datetime.utcnow()
+    entity.deleted_at = datetime.now(timezone.utc)
 
     # Dokument-Verknuepfungen aufheben
     await db.execute(
@@ -712,7 +712,7 @@ async def merge_entities(
         target.document_count = (target.document_count or 0) + (source.document_count or 0)
 
         # Source als geloescht markieren
-        source.deleted_at = datetime.utcnow()
+        source.deleted_at = datetime.now(timezone.utc)
         merged_count += 1
 
     await db.commit()

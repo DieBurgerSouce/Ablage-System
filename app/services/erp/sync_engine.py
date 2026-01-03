@@ -210,6 +210,8 @@ class SyncEngine:
         if sync_type == SyncType.DELTA and since is None:
             since = self.connector.config.last_sync_at
 
+        result: Optional[ERPSyncResult] = None
+
         if entity == ERPEntity.CUSTOMER:
             result = await self.connector.sync_customers(
                 direction=ERPSyncDirection.PULL,
@@ -229,8 +231,22 @@ class SyncEngine:
             logger.warning("unsupported_entity_for_fetch", entity=entity.value)
             return []
 
-        # For now, return empty since sync methods return results, not data
-        # In full implementation, we'd fetch actual records
+        # Return actual records from sync result
+        if result and result.success:
+            logger.info(
+                "fetch_remote_completed",
+                entity=entity.value,
+                records_count=len(result.records),
+            )
+            return result.records
+
+        if result and not result.success:
+            logger.error(
+                "fetch_remote_failed",
+                entity=entity.value,
+                error=result.error_message,
+            )
+
         return []
 
     async def _prepare_batch(

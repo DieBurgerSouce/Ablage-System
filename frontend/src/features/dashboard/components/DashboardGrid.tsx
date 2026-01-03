@@ -58,16 +58,26 @@ export function DashboardGrid() {
     }, [removeWidget])
 
     return (
-        <div className="space-y-4">
-            <div className="flex justify-end gap-2 mb-4">
+        <div className="space-y-4" role="region" aria-label="Dashboard">
+            <div className="flex justify-end gap-2 mb-4" role="toolbar" aria-label="Dashboard-Aktionen">
                 {isEditMode && (
                     <>
-                        <Button variant="outline" size="sm" onClick={() => setShowCatalog(true)}>
-                            <Plus className="w-4 h-4 mr-2" />
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowCatalog(true)}
+                            aria-label="Neues Widget zum Dashboard hinzufuegen"
+                        >
+                            <Plus className="w-4 h-4 mr-2" aria-hidden="true" />
                             Widget hinzufuegen
                         </Button>
-                        <Button variant="outline" size="sm" onClick={resetToDefault}>
-                            <RotateCcw className="w-4 h-4 mr-2" />
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={resetToDefault}
+                            aria-label="Dashboard auf Standardansicht zuruecksetzen"
+                        >
+                            <RotateCcw className="w-4 h-4 mr-2" aria-hidden="true" />
                             Reset
                         </Button>
                     </>
@@ -76,8 +86,10 @@ export function DashboardGrid() {
                     variant={isEditMode ? "secondary" : "ghost"}
                     size="sm"
                     onClick={() => setIsEditMode(!isEditMode)}
+                    aria-pressed={isEditMode}
+                    aria-label={isEditMode ? 'Bearbeitungsmodus beenden und Ansicht speichern' : 'Dashboard-Layout anpassen'}
                 >
-                    <Settings2 className="w-4 h-4 mr-2" />
+                    <Settings2 className="w-4 h-4 mr-2" aria-hidden="true" />
                     {isEditMode ? 'Ansicht speichern' : 'Dashboard anpassen'}
                 </Button>
             </div>
@@ -91,7 +103,11 @@ export function DashboardGrid() {
                     items={widgets.map(w => w.id)}
                     strategy={rectSortingStrategy}
                 >
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div
+                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                        role="list"
+                        aria-label="Dashboard-Widgets"
+                    >
                         {widgets.map((widget) => {
                             const Component = getWidgetComponent(widget.type)
                             return (

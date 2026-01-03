@@ -329,7 +329,7 @@ class UserAdminService:
         """
         # Prevent self-deactivation
         if user_id == admin.id:
-            raise ValueError("Sie koennen Ihr eigenes Konto nicht deaktivieren")
+            raise ValueError("Sie können Ihr eigenes Konto nicht deaktivieren")
 
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
@@ -339,7 +339,7 @@ class UserAdminService:
 
         # Deactivate
         user.is_active = False
-        user.deactivated_at = datetime.utcnow()
+        user.deactivated_at = datetime.now(timezone.utc)
         user.deactivated_by_id = admin.id
 
         # Log admin action
@@ -494,7 +494,7 @@ class UserAdminService:
         """
         # Prevent self-demotion
         if user_id == admin.id and not is_superuser:
-            raise ValueError("Sie koennen sich nicht selbst herabstufen")
+            raise ValueError("Sie können sich nicht selbst herabstufen")
 
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
@@ -603,7 +603,7 @@ class UserAdminService:
         """
         # Prevent self-deletion
         if user_id == admin.id:
-            raise ValueError("Sie koennen Ihr eigenes Konto nicht loeschen")
+            raise ValueError("Sie können Ihr eigenes Konto nicht löschen")
 
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()

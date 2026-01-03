@@ -4,7 +4,7 @@ Testet die Sync-Engine mit Konflikt-Erkennung und -Aufloesung.
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -55,6 +55,10 @@ class MockConnector:
             direction=direction or ERPSyncDirection.PULL,
             success=True,
             records_synced=5,
+            records=[
+                {"id": "1", "name": "Customer 1", "email": "c1@example.com"},
+                {"id": "2", "name": "Customer 2", "email": "c2@example.com"},
+            ],
         )
 
     async def sync_suppliers(self, direction=None, since=None):
@@ -62,6 +66,9 @@ class MockConnector:
             entity=ERPEntity.SUPPLIER,
             direction=direction or ERPSyncDirection.PULL,
             success=True,
+            records=[
+                {"id": "101", "name": "Supplier A", "email": "s1@example.com"},
+            ],
         )
 
     async def sync_invoices(self, direction=None, since=None):
@@ -69,6 +76,10 @@ class MockConnector:
             entity=ERPEntity.INVOICE,
             direction=direction or ERPSyncDirection.PULL,
             success=True,
+            records=[
+                {"id": "inv-1", "number": "INV-001", "amount": 1000.00},
+                {"id": "inv-2", "number": "INV-002", "amount": 2500.00},
+            ],
         )
 
     def _create_sync_result(self, entity, direction, success=True, error_message=None):
@@ -77,13 +88,13 @@ class MockConnector:
             entity=entity,
             direction=direction,
             success=success,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
             error_message=error_message,
             sync_id=str(uuid.uuid4()),
         )
 
     def _complete_sync_result(self, result):
-        result.completed_at = datetime.utcnow()
+        result.completed_at = datetime.now(timezone.utc)
         if result.started_at:
             result.duration_seconds = (result.completed_at - result.started_at).total_seconds()
         return result
@@ -251,7 +262,7 @@ class TestConflictDetection:
 
     def test_is_conflict_both_modified(self, sync_engine):
         """Test conflict when both sides modified after last sync."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         sync_engine.connector.config.last_sync_at = now - timedelta(hours=1)
 
         local = {"updated_at": now}
@@ -263,7 +274,7 @@ class TestConflictDetection:
 
     def test_is_conflict_only_local_modified(self, sync_engine):
         """Test no conflict when only local modified."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         sync_engine.connector.config.last_sync_at = now - timedelta(hours=1)
 
         local = {"updated_at": now}
@@ -277,8 +288,8 @@ class TestConflictDetection:
         """Test no conflict when no last sync."""
         sync_engine.connector.config.last_sync_at = None
 
-        local = {"updated_at": datetime.utcnow()}
-        remote = {"write_date": datetime.utcnow().isoformat()}
+        local = {"updated_at": datetime.now(timezone.utc)}
+        remote = {"write_date": datetime.now(timezone.utc).isoformat()}
 
         is_conflict = sync_engine._is_conflict(local, remote)
 
@@ -298,7 +309,7 @@ class TestConflictResolution:
         """Test last-write-wins with local winning."""
         engine = SyncEngine(mock_connector, mapping_service, SyncStrategy.LAST_WRITE_WINS)
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         record = SyncRecord(
             local_id="1",
             remote_id="remote-1",
@@ -315,7 +326,7 @@ class TestConflictResolution:
         """Test last-write-wins with remote winning."""
         engine = SyncEngine(mock_connector, mapping_service, SyncStrategy.LAST_WRITE_WINS)
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         record = SyncRecord(
             local_id="1",
             remote_id="remote-1",
@@ -502,3 +513,85 @@ class TestEnums:
         assert SyncStrategy.LOCAL_WINS.value == "local_wins"
         assert SyncStrategy.REMOTE_WINS.value == "remote_wins"
         assert SyncStrategy.QUEUE_FOR_REVIEW.value == "queue_for_review"
+
+
+# =============================================================================
+# Fetch Remote Tests (Sprint 5: ERP Sync Implementation)
+# =============================================================================
+
+
+class TestFetchRemote:
+    """Tests for _fetch_remote method - verifying actual record retrieval."""
+
+    @pytest.mark.asyncio
+    async def test_fetch_remote_customers_returns_records(self, sync_engine):
+        """Test _fetch_remote returns actual customer records."""
+        records = await sync_engine._fetch_remote(
+            entity=ERPEntity.CUSTOMER,
+            sync_type=SyncType.FULL,
+        )
+
+        assert len(records) == 2
+        assert records[0]["id"] == "1"
+        assert records[0]["name"] == "Customer 1"
+        assert records[1]["id"] == "2"
+
+    @pytest.mark.asyncio
+    async def test_fetch_remote_suppliers_returns_records(self, sync_engine):
+        """Test _fetch_remote returns actual supplier records."""
+        records = await sync_engine._fetch_remote(
+            entity=ERPEntity.SUPPLIER,
+            sync_type=SyncType.DELTA,
+        )
+
+        assert len(records) == 1
+        assert records[0]["id"] == "101"
+        assert records[0]["name"] == "Supplier A"
+
+    @pytest.mark.asyncio
+    async def test_fetch_remote_invoices_returns_records(self, sync_engine):
+        """Test _fetch_remote returns actual invoice records."""
+        records = await sync_engine._fetch_remote(
+            entity=ERPEntity.INVOICE,
+            sync_type=SyncType.FULL,
+        )
+
+        assert len(records) == 2
+        assert records[0]["number"] == "INV-001"
+        assert records[1]["amount"] == 2500.00
+
+    @pytest.mark.asyncio
+    async def test_fetch_remote_unsupported_entity_returns_empty(self, sync_engine):
+        """Test _fetch_remote returns empty for unsupported entity."""
+        records = await sync_engine._fetch_remote(
+            entity=ERPEntity.ORDER,
+            sync_type=SyncType.FULL,
+        )
+
+        assert records == []
+
+    @pytest.mark.asyncio
+    async def test_fetch_remote_with_since_datetime(self, sync_engine):
+        """Test _fetch_remote passes since parameter correctly."""
+        since = datetime.now(timezone.utc) - timedelta(hours=1)
+
+        records = await sync_engine._fetch_remote(
+            entity=ERPEntity.CUSTOMER,
+            sync_type=SyncType.DELTA,
+            since=since,
+        )
+
+        assert len(records) == 2  # Mock returns same records regardless of since
+
+    @pytest.mark.asyncio
+    async def test_sync_entity_uses_fetched_records(self, sync_engine):
+        """Test that sync_entity properly uses records from _fetch_remote."""
+        result = await sync_engine.sync_entity(
+            entity=ERPEntity.CUSTOMER,
+            direction=ERPSyncDirection.PULL,
+            sync_type=SyncType.FULL,
+        )
+
+        assert result.success is True
+        # Should have created 2 records (no local records to match against)
+        assert result.records_created == 2

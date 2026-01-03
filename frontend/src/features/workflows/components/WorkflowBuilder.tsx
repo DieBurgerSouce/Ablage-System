@@ -384,14 +384,14 @@ export default function WorkflowBuilder({
   }, []);
 
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex h-full w-full flex-col" role="application" aria-label="Workflow-Editor">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 border-b bg-background p-2">
+      <div className="flex items-center gap-2 border-b bg-background p-2" role="toolbar" aria-label="Workflow-Werkzeugleiste">
         {/* Add Node Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" disabled={readOnly}>
-              <Plus className="mr-2 h-4 w-4" />
+            <Button variant="outline" size="sm" disabled={readOnly} aria-label="Neuen Knoten hinzufuegen">
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
               Knoten hinzufuegen
             </Button>
           </DropdownMenuTrigger>
@@ -434,8 +434,9 @@ export default function WorkflowBuilder({
           onClick={undo}
           disabled={historyIndex <= 0 || readOnly}
           title="Rueckgaengig"
+          aria-label="Letzte Aktion rueckgaengig machen"
         >
-          <Undo className="h-4 w-4" />
+          <Undo className="h-4 w-4" aria-hidden="true" />
         </Button>
         <Button
           variant="ghost"
@@ -443,8 +444,9 @@ export default function WorkflowBuilder({
           onClick={redo}
           disabled={historyIndex >= history.length - 1 || readOnly}
           title="Wiederholen"
+          aria-label="Rueckgaengig gemachte Aktion wiederholen"
         >
-          <Redo className="h-4 w-4" />
+          <Redo className="h-4 w-4" aria-hidden="true" />
         </Button>
 
         <Separator orientation="vertical" className="h-6" />
@@ -456,8 +458,9 @@ export default function WorkflowBuilder({
           onClick={duplicateSelected}
           disabled={selectedNodes.length === 0 || readOnly}
           title="Duplizieren"
+          aria-label="Ausgewaehlte Knoten duplizieren"
         >
-          <Copy className="h-4 w-4" />
+          <Copy className="h-4 w-4" aria-hidden="true" />
         </Button>
         <Button
           variant="ghost"
@@ -465,30 +468,37 @@ export default function WorkflowBuilder({
           onClick={deleteSelected}
           disabled={selectedNodes.length === 0 || readOnly}
           title="Loeschen"
+          aria-label="Ausgewaehlte Knoten loeschen"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
         </Button>
 
         <Separator orientation="vertical" className="h-6" />
 
         {/* Reset */}
-        <Button variant="ghost" size="icon" onClick={handleReset} title="Zuruecksetzen">
-          <RotateCcw className="h-4 w-4" />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleReset}
+          title="Zuruecksetzen"
+          aria-label="Workflow auf urspruenglichen Zustand zuruecksetzen"
+        >
+          <RotateCcw className="h-4 w-4" aria-hidden="true" />
         </Button>
 
         <div className="flex-1" />
 
         {/* Validation Status */}
         {validation && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" role="status" aria-live="polite" aria-label="Validierungsergebnis">
             {validation.valid ? (
-              <Badge variant="outline" className="gap-1 text-green-600">
-                <CheckCircle className="h-3 w-3" />
+              <Badge variant="outline" className="gap-1 text-green-600" aria-label="Workflow ist gueltig">
+                <CheckCircle className="h-3 w-3" aria-hidden="true" />
                 Gueltig
               </Badge>
             ) : (
-              <Badge variant="outline" className="gap-1 text-red-600">
-                <AlertCircle className="h-3 w-3" />
+              <Badge variant="outline" className="gap-1 text-red-600" aria-label={`Workflow hat ${validation.errors.length} Fehler`}>
+                <AlertCircle className="h-3 w-3" aria-hidden="true" />
                 {validation.errors.length} Fehler
               </Badge>
             )}
@@ -496,24 +506,29 @@ export default function WorkflowBuilder({
         )}
 
         {/* Actions */}
-        <Button variant="outline" size="sm" onClick={handleValidate} disabled={isLoading}>
-          <CheckCircle className="mr-2 h-4 w-4" />
+        <Button variant="outline" size="sm" onClick={handleValidate} disabled={isLoading} aria-label="Workflow auf Fehler pruefen">
+          <CheckCircle className="mr-2 h-4 w-4" aria-hidden="true" />
           Validieren
         </Button>
 
-        <Button variant="outline" size="sm" onClick={onExecute} disabled={isLoading || readOnly}>
-          <Play className="mr-2 h-4 w-4" />
+        <Button variant="outline" size="sm" onClick={onExecute} disabled={isLoading || readOnly} aria-label="Workflow jetzt ausfuehren">
+          <Play className="mr-2 h-4 w-4" aria-hidden="true" />
           Ausfuehren
         </Button>
 
-        <Button size="sm" onClick={handleSave} disabled={isLoading || readOnly}>
-          <Save className="mr-2 h-4 w-4" />
+        <Button size="sm" onClick={handleSave} disabled={isLoading || readOnly} aria-label="Workflow speichern">
+          <Save className="mr-2 h-4 w-4" aria-hidden="true" />
           Speichern
         </Button>
       </div>
 
       {/* ReactFlow Canvas */}
-      <div ref={reactFlowWrapper} className="flex-1">
+      <div
+        ref={reactFlowWrapper}
+        className="flex-1"
+        role="region"
+        aria-label="Workflow-Zeichenflaeche - Ziehen Sie Knoten per Drag-and-Drop, verbinden Sie sie durch Ziehen von Handles"
+      >
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -531,6 +546,7 @@ export default function WorkflowBuilder({
           elementsSelectable={!readOnly}
           deleteKeyCode={readOnly ? null : 'Delete'}
           className="bg-muted/30"
+          aria-label="Workflow-Diagramm"
         >
           <Background variant={BackgroundVariant.Dots} gap={15} size={1} />
           <Controls showZoom showFitView showInteractive={false} />
@@ -539,26 +555,32 @@ export default function WorkflowBuilder({
             zoomable
             pannable
             className="!bottom-4 !right-4"
+            aria-label="Workflow-Minimap zur Navigation"
           />
         </ReactFlow>
       </div>
 
       {/* Status Bar */}
-      <div className="flex items-center justify-between border-t bg-muted/30 px-4 py-1 text-xs text-muted-foreground">
-        <div className="flex items-center gap-4">
-          <span>{nodes.length} Knoten</span>
-          <span>{edges.length} Verbindungen</span>
+      <div
+        className="flex items-center justify-between border-t bg-muted/30 px-4 py-1 text-xs text-muted-foreground"
+        role="status"
+        aria-label="Workflow-Status"
+        aria-live="polite"
+      >
+        <div className="flex items-center gap-4" aria-label="Workflow-Statistiken">
+          <span aria-label={`${nodes.length} Knoten im Workflow`}>{nodes.length} Knoten</span>
+          <span aria-label={`${edges.length} Verbindungen im Workflow`}>{edges.length} Verbindungen</span>
           {selectedNodes.length > 0 && (
-            <span>{selectedNodes.length} ausgewaehlt</span>
+            <span aria-label={`${selectedNodes.length} Knoten ausgewaehlt`}>{selectedNodes.length} ausgewaehlt</span>
           )}
         </div>
         {workflow && (
-          <div className="flex items-center gap-4">
-            <span>
+          <div className="flex items-center gap-4" aria-label="Ausfuehrungsstatistiken">
+            <span aria-label={`Workflow wurde ${workflow.execution_count} mal ausgefuehrt`}>
               Ausfuehrungen: {workflow.execution_count}
             </span>
             {workflow.last_executed_at && (
-              <span>
+              <span aria-label={`Letzte Ausfuehrung am ${new Date(workflow.last_executed_at).toLocaleString('de-DE')}`}>
                 Letzte Ausfuehrung:{' '}
                 {new Date(workflow.last_executed_at).toLocaleString('de-DE')}
               </span>

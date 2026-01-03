@@ -9,7 +9,7 @@ Verwaltet Firmen im Multi-Mandanten-System:
 Alle Antworten auf Deutsch.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
@@ -414,7 +414,7 @@ async def update_company(
     if user_company.role not in ["owner", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Owner und Admins koennen Firmendaten aendern."
+            detail="Nur Owner und Admins können Firmendaten ändern."
         )
 
     # Lade Firma
@@ -436,7 +436,7 @@ async def update_company(
     for field, value in update_data.items():
         setattr(company, field, value)
 
-    company.updated_at = datetime.utcnow()
+    company.updated_at = datetime.now(timezone.utc)
 
     await db.commit()
     await db.refresh(company)
@@ -511,7 +511,7 @@ async def delete_company(
         )
 
     # Soft-Delete
-    company.deleted_at = datetime.utcnow()
+    company.deleted_at = datetime.now(timezone.utc)
     company.is_active = False
 
     await db.commit()
@@ -557,7 +557,7 @@ async def list_company_users(
     if user_company.role not in ["owner", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Owner und Admins koennen Benutzer verwalten."
+            detail="Nur Owner und Admins können Benutzer verwalten."
         )
 
     # Lade alle UserCompany-Eintraege
@@ -611,7 +611,7 @@ async def add_user_to_company(
     if not user_company or user_company.role not in ["owner", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Owner und Admins koennen Benutzer hinzufuegen."
+            detail="Nur Owner und Admins können Benutzer hinzufügen."
         )
 
     # Pruefe ob Benutzer existiert
@@ -699,7 +699,7 @@ async def update_company_user(
     if not user_company or user_company.role not in ["owner", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Owner und Admins koennen Benutzer verwalten."
+            detail="Nur Owner und Admins können Benutzer verwalten."
         )
 
     # Lade Ziel-UserCompany
@@ -788,7 +788,7 @@ async def remove_user_from_company(
     if not user_company or user_company.role not in ["owner", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Owner und Admins koennen Benutzer entfernen."
+            detail="Nur Owner und Admins können Benutzer entfernen."
         )
 
     # Lade Ziel-UserCompany

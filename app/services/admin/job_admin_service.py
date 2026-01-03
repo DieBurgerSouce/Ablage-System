@@ -277,7 +277,7 @@ class JobAdminService:
             async with db.begin_nested():
                 # Cancel the job
                 job.status = ProcessingStatus.CANCELLED
-                job.completed_at = datetime.utcnow()
+                job.completed_at = datetime.now(timezone.utc)
                 job.error_message = f"Abgebrochen durch Admin: {reason}" if reason else "Abgebrochen durch Admin"
 
                 # Log admin action
@@ -366,7 +366,7 @@ class JobAdminService:
                 success=False,
                 job_id=job_id,
                 action="retry",
-                message="Nur fehlgeschlagene Auftraege koennen wiederholt werden",
+                message="Nur fehlgeschlagene Aufträge können wiederholt werden",
             )
 
         # Use savepoint for atomic operation (new job + admin action)
@@ -454,7 +454,7 @@ class JobAdminService:
             return QueueClearResponse(
                 success=False,
                 cleared_count=0,
-                message="Nur wartende Auftraege koennen geloescht werden",
+                message="Nur wartende Aufträge können gelöscht werden",
             )
 
         # Count jobs to clear
@@ -776,7 +776,7 @@ class JobAdminService:
                 success=False,
                 job_id=job_id,
                 action="force_kill",
-                message="Nur laufende Auftraege koennen erzwungen beendet werden",
+                message="Nur laufende Aufträge können erzwungen beendet werden",
             )
 
         # Try to revoke the Celery task if we have a worker_id
@@ -872,7 +872,7 @@ class JobAdminService:
                 success=False,
                 job_id=job_id,
                 action="pause",
-                message="Nur aktive Auftraege koennen pausiert werden",
+                message="Nur aktive Aufträge können pausiert werden",
             )
 
         # We use a special status marker in the result field since ProcessingStatus doesn't have PAUSED

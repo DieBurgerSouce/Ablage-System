@@ -945,7 +945,7 @@ async def retry_failed_import(
     if log.status != "failed":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nur fehlgeschlagene Imports koennen wiederholt werden"
+            detail="Nur fehlgeschlagene Imports können wiederholt werden"
         )
 
     # Retry-Logik (wird ueber Celery Task implementiert)
