@@ -670,11 +670,27 @@ celery_app.conf.update(
             "schedule": crontab(day_of_month=1, hour=6, minute=0),  # Monatlich am 1. um 06:00 Uhr
         },
         # =================================================================
+        # Notification Tasks (E-Mail Digests)
+        # =================================================================
+        "notification-daily-digest": {
+            "task": "app.workers.tasks.notification_tasks.send_daily_digest",
+            "schedule": crontab(hour=8, minute=0),  # Taeglich um 08:00 Uhr
+        },
+        "notification-weekly-digest": {
+            "task": "app.workers.tasks.notification_tasks.send_weekly_digest",
+            "schedule": crontab(day_of_week=1, hour=8, minute=0),  # Montag 08:00 Uhr
+        },
+        "notification-cleanup-old": {
+            "task": "app.workers.tasks.notification_tasks.cleanup_old_notifications",
+            "schedule": crontab(day_of_week=0, hour=4, minute=0),  # Sonntag 04:00 Uhr
+            "kwargs": {"days": 90},
+        },
+        # =================================================================
         # GoBD Retention Tasks (Aufbewahrungsfristen-Management)
         # =================================================================
         "retention-check-expiring-daily": {
             "task": "retention.check_expiring_archives",
-            "schedule": crontab(hour=8, minute=0),  # Taeglich um 08:00 Uhr
+            "schedule": crontab(hour=8, minute=15),  # Taeglich um 08:15 Uhr (nach Digest)
             "kwargs": {"days_ahead": 90},
         },
         "retention-verify-integrity-weekly": {
@@ -685,6 +701,22 @@ celery_app.conf.update(
         "retention-process-expired-daily": {
             "task": "retention.process_expired_archives",
             "schedule": crontab(hour=2, minute=45),  # Taeglich um 02:45 Uhr
+        },
+        # =================================================================
+        # Workflow Automation Tasks
+        # =================================================================
+        "workflow-check-scheduled": {
+            "task": "workflow.check_scheduled",
+            "schedule": 60.0,  # Jede Minute
+        },
+        "workflow-cleanup-old-executions": {
+            "task": "workflow.cleanup_old_executions",
+            "schedule": crontab(hour=3, minute=0),  # Taeglich um 03:00 Uhr
+            "kwargs": {"retention_days": 90},
+        },
+        "workflow-weekly-report": {
+            "task": "workflow.generate_report",
+            "schedule": crontab(day_of_week=1, hour=7, minute=30),  # Montag 07:30 Uhr
         },
     },
 
@@ -729,6 +761,10 @@ celery_app.conf.update(
         "app.workers.tasks.gdpr_tasks.check_retention_compliance": {"queue": "maintenance", "priority": 2},
         "app.workers.tasks.gdpr_tasks.send_breach_notification": {"queue": "maintenance", "priority": 9},  # Hohe Prioritaet - GDPR Art. 33
         "app.workers.tasks.gdpr_tasks.generate_compliance_report": {"queue": "maintenance", "priority": 1},
+        # Notification tasks
+        "app.workers.tasks.notification_tasks.send_daily_digest": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.notification_tasks.send_weekly_digest": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.notification_tasks.cleanup_old_notifications": {"queue": "maintenance", "priority": 1},
         # Monitoring tasks
         "app.workers.tasks.monitoring_tasks.worker_health_check_task": {"queue": "metrics", "priority": 1},
         "app.workers.tasks.monitoring_tasks.cleanup_stuck_tasks": {"queue": "maintenance", "priority": 2},
@@ -786,6 +822,18 @@ celery_app.conf.update(
         "app.workers.tasks.surya_improvement_tasks.evaluate_surya_model": {"queue": "ocr_normal", "priority": 4},
         "app.workers.tasks.surya_improvement_tasks.deploy_surya_model": {"queue": "metrics", "priority": 4},
         "app.workers.tasks.surya_improvement_tasks.rollback_surya_model": {"queue": "metrics", "priority": 8},  # Hohe Prioritaet fuer Rollback
+        # =================================================================
+        # Workflow Automation Tasks
+        # =================================================================
+        "workflow.execute_async": {"queue": "ocr_normal", "priority": 6},
+        "workflow.execute_step": {"queue": "ocr_normal", "priority": 6},
+        "workflow.check_scheduled": {"queue": "maintenance", "priority": 2},
+        "workflow.cleanup_old_executions": {"queue": "maintenance", "priority": 1},
+        "workflow.process_delayed_step": {"queue": "ocr_normal", "priority": 5},
+        "workflow.generate_report": {"queue": "maintenance", "priority": 1},
+        "workflow.on_document_created": {"queue": "metadata", "priority": 7},
+        "workflow.on_document_processed": {"queue": "metadata", "priority": 7},
+        "workflow.on_document_failed": {"queue": "metadata", "priority": 7},
     },
 
     # Priority settings

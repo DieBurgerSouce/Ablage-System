@@ -353,11 +353,41 @@ class User(Base):
     # User preferences (display, OCR, notifications, privacy settings)
     preferences = Column(CrossDBJSON, nullable=True)
 
+    # GoBD: Steuerberater/Pruefer zeitlich begrenzter Zugang
+    access_until = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+        comment="Zeitliche Begrenzung des Zugangs (fuer Steuerberater/Pruefer)"
+    )
+    invited_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL", use_alter=True, name="fk_user_invited_by"),
+        nullable=True,
+        comment="Benutzer, der diesen Account eingeladen hat"
+    )
+    invited_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Zeitpunkt der Einladung"
+    )
+    access_scope = Column(
+        CrossDBJSON,
+        nullable=True,
+        comment="Eingeschraenkter Zugriff (z.B. nur bestimmte Firmen, Zeitraeume)"
+    )
+
     # Relationships
     documents = relationship("Document", back_populates="owner", foreign_keys="Document.owner_id")
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user")
     deactivated_by = relationship("User", remote_side="User.id", foreign_keys=[deactivated_by_id])
+    invited_by = relationship(
+        "User",
+        remote_side="User.id",
+        foreign_keys=[invited_by_id],
+        backref="invited_users"
+    )
     roles = relationship(
         "Role",
         secondary="user_roles",
@@ -9271,3 +9301,1826 @@ class RetentionSetting(Base):
 
     def __repr__(self) -> str:
         return f"<RetentionSetting {self.category} years={self.retention_years}>"
+
+
+# ============================================================================
+# GoBD Phase 4: Steuerberater-Zugang (Tax Advisor Access)
+# ============================================================================
+
+class TaxAdvisorInviteStatus(str, Enum):
+    """Status einer Steuerberater-Einladung."""
+    PENDING = "pending"       # Einladung gesendet, noch nicht akzeptiert
+    ACCEPTED = "accepted"     # Einladung akzeptiert, Benutzer erstellt
+    EXPIRED = "expired"       # Token abgelaufen
+    REVOKED = "revoked"       # Einladung widerrufen
+
+
+class TaxAdvisorInvite(Base):
+    """GoBD Steuerberater-Einladungen fuer temporaeren Prueferzugang.
+
+    Ermoeglicht Administratoren, Steuerberatern zeitlich begrenzten
+    Lesezugriff auf archivierte Dokumente zu gewaehren.
+
+    Flow:
+    1. Admin erstellt Einladung mit E-Mail des Steuerberaters
+    2. Steuerberater erhaelt E-Mail mit Einladungslink
+    3. Steuerberater registriert sich ueber den Link
+    4. Nach Registrierung hat Steuerberater access_duration_days Tage Zugang
+    5. Nach Ablauf wird Zugang automatisch deaktiviert
+
+    GoBD-Konformitaet:
+    - Nachvollziehbarkeit: Alle Aktivitaeten werden protokolliert
+    - Zeitliche Begrenzung: Zugang laeuft automatisch ab
+    - Eingeschraenkter Zugriff: Nur Lesezugriff auf relevante Dokumente
+    """
+    __tablename__ = "tax_advisor_invites"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Invite-Token (SHA-256 Hash fuer Sicherheit)
+    token_hash = Column(
+        String(128),
+        unique=True,
+        nullable=False,
+        comment="SHA-256 Hash des Invite-Tokens"
+    )
+
+    # Referenzen
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="Firma, fuer die der Zugang gilt"
+    )
+    invited_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Einladender Admin"
+    )
+
+    # Steuerberater-Daten
+    email = Column(
+        String(255),
+        nullable=False,
+        index=True,
+        comment="E-Mail des Steuerberaters"
+    )
+    full_name = Column(
+        String(255),
+        nullable=True,
+        comment="Name des Steuerberaters"
+    )
+    tax_firm_name = Column(
+        String(255),
+        nullable=True,
+        comment="Name der Steuerkanzlei"
+    )
+    tax_advisor_id = Column(
+        String(50),
+        nullable=True,
+        comment="Steuerberater-ID der Kammer (optional)"
+    )
+
+    # Zugangsparameter
+    access_duration_days = Column(
+        Integer,
+        nullable=False,
+        default=30,
+        comment="Zugang in Tagen ab Akzeptierung"
+    )
+    access_scope = Column(
+        CrossDBJSON,
+        nullable=True,
+        comment="Eingeschraenkter Zugriff (z.B. nur bestimmte Zeitraeume, Dokumenttypen)"
+    )
+
+    # Status
+    status = Column(
+        String(20),
+        nullable=False,
+        default=TaxAdvisorInviteStatus.PENDING.value,
+        index=True
+    )
+    expires_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+        comment="Ablaufdatum des Invite-Tokens (Standard: 7 Tage)"
+    )
+
+    # Audit
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+    accepted_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Zeitpunkt der Akzeptierung"
+    )
+    accepted_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Erstellter Benutzer nach Akzeptierung"
+    )
+
+    # Relationships
+    company = relationship("Company", backref="tax_advisor_invites")
+    invited_by = relationship(
+        "User",
+        foreign_keys=[invited_by_id],
+        backref="sent_tax_advisor_invites"
+    )
+    accepted_user = relationship(
+        "User",
+        foreign_keys=[accepted_user_id],
+        backref="tax_advisor_invite"
+    )
+
+    __table_args__ = (
+        Index("ix_tax_advisor_invites_status_expires", "status", "expires_at"),
+        {"comment": "GoBD Steuerberater-Einladungen fuer temporaeren Prueferzugang"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<TaxAdvisorInvite {self.email} status={self.status}>"
+
+
+class TaxAdvisorAccessLog(Base):
+    """GoBD Steuerberater-Zugriffsprotokolle (revisionssicher).
+
+    Protokolliert alle Aktivitaeten von Steuerberatern fuer:
+    - GoBD-konforme Nachvollziehbarkeit
+    - Pruefungsrelevante Dokumentation
+    - Sicherheitsmonitoring
+
+    Diese Logs sind revisionssicher und koennen nicht geaendert werden.
+    """
+    __tablename__ = "tax_advisor_access_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Referenzen
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Aktion
+    action = Column(
+        String(50),
+        nullable=False,
+        index=True,
+        comment="document_view, archive_export, integrity_check, etc."
+    )
+    resource_type = Column(
+        String(50),
+        nullable=False,
+        comment="document, archive, procedure_doc"
+    )
+    resource_id = Column(
+        UUID(as_uuid=True),
+        nullable=True,
+        comment="ID der zugegriffenen Ressource"
+    )
+
+    # Details
+    details = Column(
+        CrossDBJSON,
+        nullable=True,
+        comment="Zusaetzliche Metadaten (Dateiname, Exportformat, etc.)"
+    )
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+
+    # Timestamp (immutable)
+    accessed_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        index=True
+    )
+
+    # Relationships
+    user = relationship("User", backref="tax_advisor_access_logs")
+    company = relationship("Company", backref="tax_advisor_access_logs")
+
+    __table_args__ = (
+        Index("ix_tax_advisor_logs_user_action", "user_id", "action"),
+        Index("ix_tax_advisor_logs_company_date", "company_id", "accessed_at"),
+        {"comment": "GoBD Steuerberater-Zugriffsprotokolle (revisionssicher)"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<TaxAdvisorAccessLog {self.action} user={self.user_id}>"
+
+
+# =============================================================================
+# ERP Integration Models - Feature 04: Odoo-Integration
+# =============================================================================
+
+
+class ERPType(str, Enum):
+    """Unterstuetzte ERP-Systeme."""
+    ODOO = "odoo"
+    LEXWARE = "lexware"
+    SAP_B1 = "sap_b1"
+    CUSTOM = "custom"
+
+
+class ERPSyncDirection(str, Enum):
+    """Synchronisationsrichtung."""
+    PUSH = "push"
+    PULL = "pull"
+    BIDIRECTIONAL = "bidirectional"
+
+
+class ERPConnectionStatus(str, Enum):
+    """Verbindungsstatus."""
+    CONNECTED = "connected"
+    DISCONNECTED = "disconnected"
+    ERROR = "error"
+    AUTHENTICATING = "authenticating"
+    RATE_LIMITED = "rate_limited"
+
+
+class ERPSyncStatus(str, Enum):
+    """Sync-Status."""
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILED = "failed"
+    PARTIAL = "partial"
+
+
+class ERPConflictStatus(str, Enum):
+    """Konflikt-Status."""
+    PENDING = "pending"
+    RESOLVED = "resolved"
+    IGNORED = "ignored"
+
+
+class ERPConflictResolution(str, Enum):
+    """Konflikt-Aufloesung."""
+    LOCAL_WINS = "local_wins"
+    REMOTE_WINS = "remote_wins"
+    MERGED = "merged"
+    MANUAL = "manual"
+
+
+class ERPEntityType(str, Enum):
+    """Synchronisierbare Entitaetstypen."""
+    CUSTOMER = "customer"
+    SUPPLIER = "supplier"
+    INVOICE = "invoice"
+    PAYMENT = "payment"
+    PRODUCT = "product"
+    DOCUMENT = "document"
+    ORDER = "order"
+
+
+class ERPConnection(Base):
+    """ERP-Verbindungskonfiguration pro Firma.
+
+    Speichert alle Verbindungsdetails und Sync-Einstellungen
+    fuer die Integration mit externen ERP-Systemen.
+    """
+    __tablename__ = "erp_connections"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Verbindungsdetails
+    erp_type = Column(String(50), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    url = Column(String(500), nullable=False)
+    database_name = Column(String(255), nullable=True)
+
+    # Credentials (verschluesselt)
+    username = Column(String(255), nullable=False)
+    encrypted_api_key = Column(Text, nullable=False)
+    encryption_key_id = Column(String(100), nullable=True)
+
+    # Sync-Einstellungen
+    sync_direction = Column(String(20), nullable=False, default="bidirectional")
+    sync_interval_minutes = Column(Integer, nullable=False, default=15)
+    enabled_entities = Column(CrossDBJSON, nullable=False, default=list)
+
+    # Rate Limiting
+    max_requests_per_minute = Column(Integer, nullable=False, default=60)
+    batch_size = Column(Integer, nullable=False, default=100)
+
+    # Retry-Einstellungen
+    max_retries = Column(Integer, nullable=False, default=3)
+    retry_delay_seconds = Column(Integer, nullable=False, default=5)
+
+    # Timeouts
+    connect_timeout_seconds = Column(Integer, nullable=False, default=30)
+    read_timeout_seconds = Column(Integer, nullable=False, default=60)
+
+    # Status
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
+    connection_status = Column(String(30), nullable=False, default="disconnected")
+    last_error = Column(Text, nullable=True)
+    last_successful_connection = Column(DateTime(timezone=True), nullable=True)
+
+    # Sync-Status
+    last_sync_at = Column(DateTime(timezone=True), nullable=True)
+    last_full_sync_at = Column(DateTime(timezone=True), nullable=True)
+    next_scheduled_sync = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    # Metadaten
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    # Relationships
+    company = relationship("Company", backref="erp_connections")
+    creator = relationship("User", foreign_keys=[created_by], backref="created_erp_connections")
+    updater = relationship("User", foreign_keys=[updated_by], backref="updated_erp_connections")
+    sync_history = relationship("ERPSyncHistory", back_populates="connection", cascade="all, delete-orphan")
+    field_mappings = relationship("ERPFieldMapping", back_populates="connection", cascade="all, delete-orphan")
+    conflicts = relationship("ERPConflict", back_populates="connection", cascade="all, delete-orphan")
+    entity_mappings = relationship("ERPEntityMapping", back_populates="connection", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        {"comment": "ERP-Verbindungskonfiguration pro Firma"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<ERPConnection {self.name} type={self.erp_type}>"
+
+
+class ERPSyncHistory(Base):
+    """Protokoll aller ERP-Sync-Vorgaenge.
+
+    Speichert Details zu jedem Sync-Lauf fuer Auditing,
+    Debugging und Monitoring.
+    """
+    __tablename__ = "erp_sync_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    connection_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("erp_connections.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Sync-Details
+    sync_type = Column(String(20), nullable=False)  # full, delta, manual
+    entity = Column(String(50), nullable=False, index=True)
+    direction = Column(String(20), nullable=False)
+
+    # Ergebnis
+    status = Column(String(20), nullable=False, index=True)
+    records_synced = Column(Integer, nullable=False, default=0)
+    records_created = Column(Integer, nullable=False, default=0)
+    records_updated = Column(Integer, nullable=False, default=0)
+    records_deleted = Column(Integer, nullable=False, default=0)
+    records_failed = Column(Integer, nullable=False, default=0)
+
+    # Konflikte
+    conflicts_detected = Column(Integer, nullable=False, default=0)
+    conflicts_resolved = Column(Integer, nullable=False, default=0)
+
+    # Timing
+    started_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    duration_seconds = Column(Float, nullable=True)
+
+    # Fehlerdetails
+    error_message = Column(Text, nullable=True)
+    error_details = Column(CrossDBJSON, nullable=True)
+    failed_records = Column(CrossDBJSON, nullable=True)
+
+    # Metadaten
+    triggered_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    task_id = Column(String(100), nullable=True)
+
+    # Relationships
+    connection = relationship("ERPConnection", back_populates="sync_history")
+    triggered_by_user = relationship("User", backref="triggered_erp_syncs")
+    conflicts = relationship("ERPConflict", back_populates="sync_history")
+
+    __table_args__ = (
+        Index("ix_erp_sync_history_connection_entity", "connection_id", "entity"),
+        {"comment": "Protokoll aller ERP-Sync-Vorgaenge"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<ERPSyncHistory {self.entity} status={self.status}>"
+
+
+class ERPFieldMapping(Base):
+    """Feld-Mapping zwischen Ablage-System und ERP.
+
+    Konfiguriert wie Felder zwischen den Systemen
+    gemappt und transformiert werden.
+    """
+    __tablename__ = "erp_field_mappings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    connection_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("erp_connections.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Mapping-Definition
+    entity = Column(String(50), nullable=False)
+    local_field = Column(String(100), nullable=False)
+    remote_field = Column(String(100), nullable=False)
+    direction = Column(String(20), nullable=False, default="bidirectional")
+
+    # Transformation
+    transformer = Column(String(50), nullable=True)
+    transformer_config = Column(CrossDBJSON, nullable=True)
+
+    # Validierung
+    required = Column(Boolean, nullable=False, default=False)
+    default_value = Column(Text, nullable=True)
+
+    # Metadaten
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    connection = relationship("ERPConnection", back_populates="field_mappings")
+
+    __table_args__ = (
+        UniqueConstraint("connection_id", "entity", "local_field", name="uq_erp_field_mappings_unique"),
+        Index("ix_erp_field_mappings_connection_entity", "connection_id", "entity"),
+        {"comment": "Feld-Mapping zwischen Ablage-System und ERP"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<ERPFieldMapping {self.local_field} -> {self.remote_field}>"
+
+
+class ERPConflict(Base):
+    """Sync-Konflikte zur manuellen Aufloesung.
+
+    Speichert Konflikte die bei der bidirektionalen
+    Synchronisation auftreten und manuelle Intervention
+    benoetigen.
+    """
+    __tablename__ = "erp_conflicts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    connection_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("erp_connections.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    sync_history_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("erp_sync_history.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Konflikt-Details
+    entity = Column(String(50), nullable=False, index=True)
+    local_id = Column(String(100), nullable=False)
+    remote_id = Column(String(100), nullable=False)
+
+    # Daten
+    local_data = Column(CrossDBJSON, nullable=False)
+    remote_data = Column(CrossDBJSON, nullable=False)
+    diff = Column(CrossDBJSON, nullable=True)
+
+    # Zeitstempel
+    local_modified_at = Column(DateTime(timezone=True), nullable=True)
+    remote_modified_at = Column(DateTime(timezone=True), nullable=True)
+    detected_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    # Aufloesung
+    status = Column(String(20), nullable=False, default="pending", index=True)
+    resolution = Column(String(30), nullable=True)
+    resolved_data = Column(CrossDBJSON, nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    resolution_notes = Column(Text, nullable=True)
+
+    # Prioritaet
+    priority = Column(String(20), nullable=False, default="normal", index=True)
+
+    # Relationships
+    connection = relationship("ERPConnection", back_populates="conflicts")
+    sync_history = relationship("ERPSyncHistory", back_populates="conflicts")
+    resolver = relationship("User", backref="resolved_erp_conflicts")
+
+    __table_args__ = (
+        {"comment": "ERP-Sync-Konflikte zur manuellen Aufloesung"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<ERPConflict {self.entity} local={self.local_id} remote={self.remote_id}>"
+
+
+class ERPEntityMapping(Base):
+    """Verknuepfung lokaler Entitaeten mit ERP-IDs.
+
+    Speichert die Zuordnung zwischen lokalen und
+    Remote-Entitaeten fuer Delta-Sync und Konflikt-Erkennung.
+    """
+    __tablename__ = "erp_entity_mappings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    connection_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("erp_connections.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Entitaets-Verknuepfung
+    entity_type = Column(String(50), nullable=False)
+    local_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    remote_id = Column(String(100), nullable=False, index=True)
+
+    # Sync-Status
+    last_synced_at = Column(DateTime(timezone=True), nullable=True)
+    local_version = Column(Integer, nullable=False, default=1)
+    remote_version = Column(String(100), nullable=True)
+
+    # Checksums
+    local_checksum = Column(String(64), nullable=True)
+    remote_checksum = Column(String(64), nullable=True)
+
+    # Metadaten
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    connection = relationship("ERPConnection", back_populates="entity_mappings")
+
+    __table_args__ = (
+        UniqueConstraint("connection_id", "entity_type", "local_id", name="uq_erp_entity_mappings_local"),
+        UniqueConstraint("connection_id", "entity_type", "remote_id", name="uq_erp_entity_mappings_remote"),
+        Index("ix_erp_entity_mappings_connection_entity", "connection_id", "entity_type"),
+        {"comment": "Verknuepfung lokaler Entitaeten mit ERP-IDs"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<ERPEntityMapping {self.entity_type} local={self.local_id} remote={self.remote_id}>"
+
+
+# =============================================================================
+# EMAIL & FOLDER IMPORT MODELS
+# =============================================================================
+
+
+class EmailImportConfig(Base):
+    """IMAP Server-Konfigurationen fuer E-Mail-Import.
+
+    Speichert verschluesselte Credentials und Sync-Einstellungen
+    fuer automatischen E-Mail-Import.
+    """
+    __tablename__ = "email_import_configs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+
+    # Konfigurationsname
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # IMAP Server-Einstellungen
+    imap_server = Column(String(255), nullable=False)
+    imap_port = Column(Integer, default=993)
+    use_ssl = Column(Boolean, default=True)
+    use_starttls = Column(Boolean, default=False)
+
+    # Verschluesselte Credentials (AES-256-GCM)
+    username_encrypted = Column(String(500), nullable=False)
+    password_encrypted = Column(String(500), nullable=False)
+
+    # IMAP-Ordner
+    imap_folder = Column(String(255), default="INBOX")
+    processed_folder = Column(String(255), nullable=True)
+    error_folder = Column(String(255), nullable=True)
+
+    # Sync-Einstellungen
+    sync_interval_minutes = Column(Integer, default=15)
+    last_sync_at = Column(DateTime(timezone=True), nullable=True)
+    last_uid = Column(BigInteger, default=0)
+
+    # Filter-Einstellungen
+    filter_from_addresses = Column(CrossDBJSON, default=list)
+    filter_subject_patterns = Column(CrossDBJSON, default=list)
+    filter_attachment_types = Column(CrossDBJSON, default=list)
+
+    # Verarbeitungs-Optionen
+    extract_attachments_only = Column(Boolean, default=True)
+    include_email_body_as_document = Column(Boolean, default=False)
+    auto_classify = Column(Boolean, default=True)
+    auto_ocr = Column(Boolean, default=True)
+    default_folder_id = Column(UUID(as_uuid=True), ForeignKey("folders.id", ondelete="SET NULL"), nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True, index=True)
+    connection_status = Column(String(50), default="pending")
+    last_error = Column(Text, nullable=True)
+    error_count = Column(Integer, default=0)
+
+    # Statistiken
+    total_emails_processed = Column(Integer, default=0)
+    total_documents_created = Column(Integer, default=0)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id], backref="email_import_configs")
+    company = relationship("Company", backref="email_import_configs")
+    # default_folder relationship is disabled - Folder model not implemented yet
+    import_logs = relationship("ImportLog", back_populates="email_config", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_email_import_configs_user_name"),
+        {"comment": "IMAP Server-Konfigurationen fuer E-Mail-Import"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<EmailImportConfig {self.name} ({self.imap_server})>"
+
+
+class FolderImportConfig(Base):
+    """Hotfolder-Konfigurationen fuer Ordner-Import.
+
+    Ueberwacht lokale Ordner oder Netzwerkpfade auf neue Dateien
+    und importiert diese automatisch.
+    """
+    __tablename__ = "folder_import_configs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+
+    # Konfigurationsname
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Ordner-Einstellungen
+    watch_path = Column(String(1000), nullable=False)
+    is_network_path = Column(Boolean, default=False)
+    network_credentials_encrypted = Column(String(500), nullable=True)
+
+    # Verhalten
+    recursive = Column(Boolean, default=False)
+    include_patterns = Column(CrossDBJSON, default=lambda: ["*.pdf", "*.jpg", "*.png", "*.tiff"])
+    exclude_patterns = Column(CrossDBJSON, default=lambda: ["*.tmp", "~*", "._*"])
+
+    # Verarbeitung nach Import
+    move_after_processing = Column(Boolean, default=True)
+    processed_subfolder = Column(String(255), default="processed")
+    error_subfolder = Column(String(255), default="error")
+    delete_after_processing = Column(Boolean, default=False)
+
+    # Import-Optionen
+    auto_classify = Column(Boolean, default=True)
+    auto_ocr = Column(Boolean, default=True)
+    default_folder_id = Column(UUID(as_uuid=True), ForeignKey("folders.id", ondelete="SET NULL"), nullable=True)
+    preserve_filename = Column(Boolean, default=True)
+
+    # Polling (Backup fuer Watchdog)
+    poll_interval_seconds = Column(Integer, default=60)
+    last_poll_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True, index=True)
+    watcher_status = Column(String(50), default="stopped")
+    last_error = Column(Text, nullable=True)
+
+    # Statistiken
+    files_processed_today = Column(Integer, default=0)
+    total_files_processed = Column(Integer, default=0)
+    total_documents_created = Column(Integer, default=0)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id], backref="folder_import_configs")
+    company = relationship("Company", backref="folder_import_configs")
+    # default_folder relationship is disabled - Folder model not implemented yet
+    import_logs = relationship("ImportLog", back_populates="folder_config", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "watch_path", name="uq_folder_import_configs_user_path"),
+        {"comment": "Hotfolder-Konfigurationen fuer Ordner-Import"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<FolderImportConfig {self.name} ({self.watch_path})>"
+
+
+class ImportRule(Base):
+    """Filter- und Routing-Regeln fuer Import.
+
+    Ermoeglicht automatische Klassifizierung, Ordner-Zuweisung
+    und weitere Aktionen basierend auf Bedingungen.
+    """
+    __tablename__ = "import_rules"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Regel-Identitaet
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    priority = Column(Integer, default=100, index=True)
+
+    # Quelle (auf welche Configs diese Regel angewendet wird)
+    applies_to_email_configs = Column(CrossDBJSON, default=list)
+    applies_to_folder_configs = Column(CrossDBJSON, default=list)
+    applies_to_all = Column(Boolean, default=False)
+
+    # Bedingungen (JSON-Struktur fuer flexible Matching)
+    # Format:
+    # {
+    #   "operator": "AND" | "OR",
+    #   "rules": [
+    #     {"field": "sender_email", "operator": "contains", "value": "@lieferant.de"},
+    #     {"field": "subject", "operator": "regex", "value": "Rechnung.*\\d{6}"},
+    #   ]
+    # }
+    conditions = Column(CrossDBJSON, nullable=False, default=dict)
+
+    # Aktionen
+    # Format:
+    # {
+    #   "assign_folder_id": "uuid",
+    #   "assign_tags": ["uuid1", "uuid2"],
+    #   "assign_document_type": "invoice",
+    #   "skip_ocr": false,
+    #   "priority_ocr": true,
+    #   "notify_users": ["uuid1"],
+    # }
+    actions = Column(CrossDBJSON, nullable=False, default=dict)
+
+    # Status
+    is_active = Column(Boolean, default=True, index=True)
+    match_count = Column(Integer, default=0)
+    last_matched_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    user = relationship("User", backref="import_rules")
+    matched_logs = relationship("ImportLog", back_populates="matched_rule")
+
+    __table_args__ = (
+        {"comment": "Filter- und Routing-Regeln fuer Import"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<ImportRule {self.name} (priority={self.priority})>"
+
+
+class ImportLog(Base):
+    """Import-Historie mit Status-Tracking.
+
+    Protokolliert jeden Import-Vorgang fuer Audit und Fehleranalyse.
+    """
+    __tablename__ = "import_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Quell-Referenz
+    source_type = Column(String(20), nullable=False, index=True)  # 'email' oder 'folder'
+    email_config_id = Column(UUID(as_uuid=True), ForeignKey("email_import_configs.id", ondelete="SET NULL"), nullable=True, index=True)
+    folder_config_id = Column(UUID(as_uuid=True), ForeignKey("folder_import_configs.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    # Import-Batch-Info
+    batch_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    celery_task_id = Column(String(100), nullable=True)
+
+    # Email-spezifische Details
+    email_uid = Column(BigInteger, nullable=True)
+    email_message_id = Column(String(255), nullable=True)
+    email_from = Column(String(255), nullable=True)
+    email_subject = Column(String(500), nullable=True)
+    email_date = Column(DateTime(timezone=True), nullable=True)
+
+    # Folder-spezifische Details
+    original_path = Column(String(1000), nullable=True)
+    original_filename = Column(String(255), nullable=True)
+    file_modified_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Verarbeitungs-Ergebnis
+    status = Column(String(50), nullable=False, index=True)  # pending, processing, completed, failed, skipped
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
+    file_hash = Column(String(64), nullable=True, index=True)  # SHA256 fuer Deduplizierung
+    file_size = Column(Integer, nullable=True)
+    mime_type = Column(String(100), nullable=True)
+
+    # Regel-Matching
+    matched_rule_id = Column(UUID(as_uuid=True), ForeignKey("import_rules.id", ondelete="SET NULL"), nullable=True)
+    applied_actions = Column(CrossDBJSON, default=dict)
+
+    # Fehler-Tracking
+    error_message = Column(Text, nullable=True)
+    error_code = Column(String(50), nullable=True)
+    retry_count = Column(Integer, default=0)
+
+    # Timing
+    started_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    processing_duration_ms = Column(Integer, nullable=True)
+
+    # Relationships
+    user = relationship("User", backref="import_logs")
+    email_config = relationship("EmailImportConfig", back_populates="import_logs")
+    folder_config = relationship("FolderImportConfig", back_populates="import_logs")
+    document = relationship("Document", backref="import_log")
+    matched_rule = relationship("ImportRule", back_populates="matched_logs")
+
+    __table_args__ = (
+        {"comment": "Import-Historie mit Status-Tracking"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<ImportLog {self.source_type} status={self.status}>"
+
+
+# =============================================================================
+# AI Autonomy Models (Feature 07)
+# =============================================================================
+
+class AIConfidenceThreshold(Base):
+    """Admin-konfigurierbare Konfidenz-Schwellenwerte.
+
+    Definiert pro Entscheidungstyp ab welcher Konfidenz automatisch
+    angewendet wird (auto), nur vorgeschlagen (suggest) oder
+    manuell geprueft werden muss (manual).
+    """
+    __tablename__ = "ai_confidence_thresholds"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+
+    # Decision Type (unique per company)
+    decision_type = Column(String(50), nullable=False, index=True)
+    # Types: categorization, accounting, matching, anomaly, prediction, duplicate
+
+    # Schwellenwerte (0.0 - 1.0)
+    auto_threshold = Column(Float, default=0.95)  # Ab hier automatisch
+    suggest_threshold = Column(Float, default=0.80)  # Ab hier vorschlagen
+    # Unter suggest_threshold = manuelle Review
+
+    # Feature-Toggle
+    is_enabled = Column(Boolean, default=True)
+    allow_auto_apply = Column(Boolean, default=True)
+
+    # Beschreibung fuer Admin-UI
+    display_name = Column(String(100), nullable=True)
+    description = Column(Text, nullable=True)
+
+    # Audit
+    updated_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    company = relationship("Company", backref="ai_thresholds")
+    updated_by = relationship("User", foreign_keys=[updated_by_id])
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "decision_type", name="uq_ai_threshold_company_type"),
+        {"comment": "Admin-konfigurierbare KI-Konfidenz-Schwellenwerte"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<AIConfidenceThreshold {self.decision_type} auto={self.auto_threshold}>"
+
+
+class AIDecision(Base):
+    """KI-Entscheidung mit vollstaendigem Audit-Trail.
+
+    Speichert jede KI-Entscheidung mit Konfidenz, Erklaerung und
+    Review-Status fuer GoBD-Compliance und Self-Learning.
+    """
+    __tablename__ = "ai_decisions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=True, index=True)
+
+    # Decision Type
+    decision_type = Column(String(50), nullable=False, index=True)
+    # Types: categorization, accounting, matching, anomaly, prediction, duplicate
+
+    # Entscheidungs-Details
+    decision_value = Column(CrossDBJSON, nullable=False)
+    # Beispiel categorization: {"category": "invoice_incoming", "subcategory": "supplier_invoice"}
+    # Beispiel accounting: {"debit_account": "4000", "credit_account": "1600", "tax_code": "VSt19"}
+    # Beispiel matching: {"matched_document_id": "...", "match_type": "invoice_delivery"}
+
+    # Confidence
+    confidence = Column(Float, nullable=False)  # 0.0 - 1.0
+    calibrated_confidence = Column(Float, nullable=True)  # Nach Kalibrierung
+    confidence_level = Column(String(20), nullable=False, index=True)  # auto, suggest, manual
+
+    # Explainable AI
+    explanation = Column(CrossDBJSON, nullable=True)
+    # Beispiel: {"reasons": ["Keyword 'Rechnung' gefunden", "Lieferant bekannt"], "features": {...}}
+    features_used = Column(CrossDBJSON, nullable=True)  # Welche Features verwendet
+    model_version = Column(String(50), nullable=True)  # Modell-Version fuer Reproduzierbarkeit
+
+    # Autonomie-Status
+    auto_applied = Column(Boolean, default=False)  # Automatisch angewendet?
+    requires_review = Column(Boolean, default=True, index=True)  # Muss geprueft werden?
+    is_final = Column(Boolean, default=False)  # Wurde final entschieden?
+
+    # Review-Informationen
+    reviewed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    review_action = Column(String(20), nullable=True)  # approved, rejected, modified
+    review_comment = Column(Text, nullable=True)
+
+    # Bei Modifikation: Was wurde geaendert?
+    modified_value = Column(CrossDBJSON, nullable=True)
+
+    # Timing
+    processing_time_ms = Column(Integer, nullable=True)
+
+    # Audit/Compliance
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    company = relationship("Company", backref="ai_decisions")
+    document = relationship("Document", backref="ai_decisions")
+    reviewed_by = relationship("User", foreign_keys=[reviewed_by_id])
+    feedback = relationship("AILearningFeedback", back_populates="ai_decision", uselist=False)
+
+    __table_args__ = (
+        Index("ix_ai_decisions_pending_review", "decision_type", "requires_review", "is_final"),
+        {"comment": "KI-Entscheidungen mit vollstaendigem Audit-Trail"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<AIDecision {self.decision_type} conf={self.confidence:.2f} level={self.confidence_level}>"
+
+
+class AILearningFeedback(Base):
+    """Self-Learning Feedback aus User-Korrekturen.
+
+    Speichert Korrekturen und Ablehnungen um die KI-Modelle
+    kontinuierlich zu verbessern.
+    """
+    __tablename__ = "ai_learning_feedback"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ai_decision_id = Column(UUID(as_uuid=True), ForeignKey("ai_decisions.id", ondelete="CASCADE"), nullable=False, index=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+
+    # Feedback-Typ
+    feedback_type = Column(String(20), nullable=False, index=True)
+    # Types: approved, corrected, rejected
+
+    # Original vs. Korrigiert
+    original_value = Column(CrossDBJSON, nullable=False)
+    corrected_value = Column(CrossDBJSON, nullable=True)  # Nur bei 'corrected'
+
+    # Korrektur-Details
+    correction_reason = Column(Text, nullable=True)
+    correction_category = Column(String(50), nullable=True)  # z.B. "wrong_category", "missing_info"
+
+    # Wer hat korrigiert
+    corrector_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Learning-Status
+    processed_for_learning = Column(Boolean, default=False, index=True)
+    processed_at = Column(DateTime(timezone=True), nullable=True)
+    learning_batch_id = Column(String(50), nullable=True)
+
+    # Gewichtung fuer Learning
+    learning_weight = Column(Float, default=1.0)  # Hoeher = wichtiger
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    ai_decision = relationship("AIDecision", back_populates="feedback")
+    company = relationship("Company", backref="ai_learning_feedback")
+    corrector = relationship("User", foreign_keys=[corrector_id])
+
+    __table_args__ = (
+        {"comment": "Self-Learning Feedback aus User-Korrekturen"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<AILearningFeedback {self.feedback_type} processed={self.processed_for_learning}>"
+
+
+class DocumentMatch(Base):
+    """Smart Matching zwischen zusammengehoerenden Dokumenten.
+
+    Speichert KI-erkannte Verbindungen zwischen Dokumenten,
+    z.B. Rechnung <-> Lieferschein <-> Bestellung.
+    """
+    __tablename__ = "document_matches"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+
+    # Quell- und Ziel-Dokument
+    source_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    target_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Match-Typ
+    match_type = Column(String(50), nullable=False, index=True)
+    # Types: invoice_delivery, invoice_order, delivery_order, invoice_contract, etc.
+
+    # Match-Qualitaet
+    match_confidence = Column(Float, nullable=False)
+    match_score = Column(Float, nullable=True)  # Detaillierter Score
+    match_features = Column(CrossDBJSON, nullable=True)
+    # Beispiel: {"order_number": 0.95, "customer": 0.90, "amount": 0.85, "date": 0.70}
+
+    # Verknuepfungs-Status
+    auto_linked = Column(Boolean, default=False)
+    is_confirmed = Column(Boolean, default=False, index=True)
+    is_rejected = Column(Boolean, default=False)
+
+    # Wer hat verknuepft/bestaetigt
+    linked_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    linked_at = Column(DateTime(timezone=True), nullable=True)
+    confirmed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    confirmed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Referenz zur AI-Entscheidung
+    ai_decision_id = Column(UUID(as_uuid=True), ForeignKey("ai_decisions.id", ondelete="SET NULL"), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    company = relationship("Company", backref="document_matches")
+    source_document = relationship("Document", foreign_keys=[source_document_id], backref="matches_as_source")
+    target_document = relationship("Document", foreign_keys=[target_document_id], backref="matches_as_target")
+    linked_by = relationship("User", foreign_keys=[linked_by_id])
+    confirmed_by = relationship("User", foreign_keys=[confirmed_by_id])
+    ai_decision = relationship("AIDecision", backref="document_match")
+
+    __table_args__ = (
+        UniqueConstraint("source_document_id", "target_document_id", name="uq_document_match_pair"),
+        {"comment": "Smart Matching zwischen Dokumenten"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<DocumentMatch {self.match_type} conf={self.match_confidence:.2f}>"
+
+
+class PaymentPrediction(Base):
+    """Zahlungsvorhersagen fuer Rechnungen.
+
+    Prognostiziert basierend auf Historie wann eine Rechnung
+    bezahlt wird fuer Cashflow-Planung.
+    """
+    __tablename__ = "payment_predictions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    business_entity_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    # Vorhersage
+    predicted_payment_date = Column(Date, nullable=False, index=True)
+    predicted_days = Column(Integer, nullable=False)  # Tage ab Rechnungsdatum
+    confidence = Column(Float, nullable=False)
+
+    # Vorhersage-Details
+    prediction_features = Column(CrossDBJSON, nullable=True)
+    # Beispiel: {"historical_avg_days": 25, "invoice_amount": 5000, "payment_terms": "net30"}
+
+    # Modell-Info
+    model_version = Column(String(50), nullable=True)
+    prediction_date = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Tatsaechliche Zahlung (fuer Learning)
+    actual_payment_date = Column(Date, nullable=True)
+    actual_days = Column(Integer, nullable=True)
+    prediction_error_days = Column(Integer, nullable=True)  # Differenz
+
+    # Status
+    is_paid = Column(Boolean, default=False, index=True)
+    is_overdue = Column(Boolean, default=False)
+
+    # Referenz zur AI-Entscheidung
+    ai_decision_id = Column(UUID(as_uuid=True), ForeignKey("ai_decisions.id", ondelete="SET NULL"), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    company = relationship("Company", backref="payment_predictions")
+    document = relationship("Document", backref="payment_predictions")
+    business_entity = relationship("BusinessEntity", backref="payment_predictions")
+    ai_decision = relationship("AIDecision", backref="payment_prediction")
+
+    __table_args__ = (
+        {"comment": "Zahlungsvorhersagen fuer Cashflow-Planung"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<PaymentPrediction predicted={self.predicted_payment_date} conf={self.confidence:.2f}>"
+
+
+# =============================================================================
+# REPORT BUILDER MODELS (Feature 08)
+# =============================================================================
+
+
+class ReportTemplate(Base):
+    """Report-Template Definition.
+
+    Speichert die Konfiguration eines benutzerdefinierten Reports.
+    """
+    __tablename__ = "report_templates"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+
+    # Basis-Informationen
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Report-Typ und Datenquelle
+    report_type = Column(String(50), nullable=False, index=True)  # document|finance|ocr|custom
+    data_source = Column(String(50), nullable=False)  # documents|invoices|entities|ocr_results
+    default_format = Column(String(20), nullable=False, default="excel")  # pdf|excel|csv|json
+
+    # Sichtbarkeit
+    is_public = Column(Boolean, nullable=False, default=False, index=True)
+
+    # Zeitplan-Konfiguration
+    is_scheduled = Column(Boolean, nullable=False, default=False, index=True)
+    schedule_config = Column(CrossDBJSON, nullable=True)  # {cron, timezone, recipients}
+
+    # Layout-Konfiguration
+    layout_config = Column(CrossDBJSON, nullable=True)  # {orientation, margins, header, footer}
+
+    # Sortierung und Gruppierung
+    sort_config = Column(CrossDBJSON, nullable=True)  # [{field, direction}]
+    group_by_config = Column(CrossDBJSON, nullable=True)  # [field_paths]
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    last_executed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    user = relationship("User", backref="report_templates")
+    company = relationship("Company", backref="report_templates")
+    columns = relationship("ReportColumn", back_populates="template", cascade="all, delete-orphan", order_by="ReportColumn.sort_order")
+    filters = relationship("ReportFilter", back_populates="template", cascade="all, delete-orphan", order_by="ReportFilter.sort_order")
+    charts = relationship("ReportChart", back_populates="template", cascade="all, delete-orphan", order_by="ReportChart.sort_order")
+    executions = relationship("ReportExecution", back_populates="template", cascade="all, delete-orphan", order_by="desc(ReportExecution.created_at)")
+    shares = relationship("ReportShare", back_populates="template", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        {"comment": "Report-Template Definitionen fuer Report Builder"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<ReportTemplate '{self.name}' type={self.report_type}>"
+
+
+class ReportColumn(Base):
+    """Spalten-Konfiguration fuer Report-Templates.
+
+    Definiert welche Felder im Report angezeigt werden und wie.
+    """
+    __tablename__ = "report_columns"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    template_id = Column(UUID(as_uuid=True), ForeignKey("report_templates.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Feld-Definition
+    field_path = Column(String(255), nullable=False)  # z.B. "extracted_data.invoice_number"
+    display_name = Column(String(255), nullable=False)  # z.B. "Rechnungsnummer"
+    data_type = Column(String(50), nullable=False)  # string|number|date|currency|boolean
+
+    # Formatierung
+    format_pattern = Column(String(100), nullable=True)  # z.B. "#,##0.00 EUR"
+    width = Column(Integer, nullable=True)  # Spaltenbreite
+
+    # Reihenfolge und Sichtbarkeit
+    sort_order = Column(Integer, nullable=False, default=0)
+    is_visible = Column(Boolean, nullable=False, default=True)
+
+    # Aggregation
+    aggregation = Column(String(20), nullable=True)  # none|sum|avg|count|min|max
+
+    # Bedingte Formatierung
+    conditional_format = Column(CrossDBJSON, nullable=True)  # [{condition, style}]
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    template = relationship("ReportTemplate", back_populates="columns")
+
+    __table_args__ = (
+        Index("ix_report_columns_sort_order", "template_id", "sort_order"),
+        {"comment": "Spalten-Konfiguration fuer Report-Templates"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<ReportColumn '{self.display_name}' path={self.field_path}>"
+
+
+class ReportFilter(Base):
+    """Filter-Bedingungen fuer Report-Templates.
+
+    Definiert Filterbedingungen die auf die Daten angewendet werden.
+    """
+    __tablename__ = "report_filters"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    template_id = Column(UUID(as_uuid=True), ForeignKey("report_templates.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Filter-Definition
+    field_path = Column(String(255), nullable=False)  # z.B. "status"
+    operator = Column(String(50), nullable=False)  # eq|ne|gt|lt|gte|lte|contains|in|between|is_null
+    value = Column(CrossDBJSON, nullable=True)  # Wert(e) je nach Operator
+
+    # Logische Verknuepfung
+    logic_operator = Column(String(10), nullable=False, default="AND")  # AND|OR
+    group_id = Column(Integer, nullable=True)  # Fuer verschachtelte Gruppen
+
+    # Reihenfolge
+    sort_order = Column(Integer, nullable=False, default=0)
+
+    # Dynamische Werte
+    is_dynamic = Column(Boolean, nullable=False, default=False)
+    dynamic_source = Column(String(100), nullable=True)  # z.B. "current_user", "today", "last_30_days"
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    template = relationship("ReportTemplate", back_populates="filters")
+
+    __table_args__ = (
+        {"comment": "Filter-Bedingungen fuer Report-Templates"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<ReportFilter {self.field_path} {self.operator} {self.value}>"
+
+
+class ReportChart(Base):
+    """Chart-Konfiguration fuer Report-Templates.
+
+    Definiert Visualisierungen die im Report angezeigt werden.
+    """
+    __tablename__ = "report_charts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    template_id = Column(UUID(as_uuid=True), ForeignKey("report_templates.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Chart-Typ
+    chart_type = Column(String(50), nullable=False)  # bar|line|pie|area|scatter
+    title = Column(String(255), nullable=True)
+
+    # Daten-Mapping
+    x_axis_field = Column(String(255), nullable=True)  # Kategorie/X-Achse
+    y_axis_fields = Column(CrossDBJSON, nullable=False)  # Liste von Feldern fuer Y-Achse
+    group_by_field = Column(String(255), nullable=True)  # Optional: Gruppierung
+
+    # Styling
+    colors = Column(CrossDBJSON, nullable=True)  # Benutzerdefinierte Farben
+    show_legend = Column(Boolean, nullable=False, default=True)
+    show_labels = Column(Boolean, nullable=False, default=False)
+
+    # Position
+    position = Column(String(20), nullable=False, default="bottom")  # top|bottom|separate_sheet
+    width_percent = Column(Integer, nullable=False, default=100)
+    height_px = Column(Integer, nullable=False, default=300)
+
+    # Reihenfolge
+    sort_order = Column(Integer, nullable=False, default=0)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    template = relationship("ReportTemplate", back_populates="charts")
+
+    __table_args__ = (
+        {"comment": "Chart-Konfiguration fuer Report-Templates"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<ReportChart '{self.title}' type={self.chart_type}>"
+
+
+class ReportExecution(Base):
+    """Ausfuehrungs-Historie fuer Report-Templates.
+
+    Speichert wann ein Report ausgefuehrt wurde und das Ergebnis.
+    """
+    __tablename__ = "report_executions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    template_id = Column(UUID(as_uuid=True), ForeignKey("report_templates.id", ondelete="CASCADE"), nullable=False, index=True)
+    executed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    # Ausfuehrung
+    status = Column(String(50), nullable=False, default="pending", index=True)  # pending|running|completed|failed
+    format = Column(String(20), nullable=False)  # pdf|excel|csv|json
+    trigger_type = Column(String(50), nullable=False)  # manual|scheduled|api
+
+    # Ergebnis
+    row_count = Column(Integer, nullable=True)
+    file_size_bytes = Column(BigInteger, nullable=True)
+    file_path = Column(String(500), nullable=True)  # MinIO Pfad
+    download_url = Column(String(1000), nullable=True)  # Signierte URL
+    download_expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Fehler-Details
+    error_message = Column(Text, nullable=True)
+    error_details = Column(CrossDBJSON, nullable=True)
+
+    # Filter-Snapshot
+    filter_snapshot = Column(CrossDBJSON, nullable=True)
+
+    # Performance-Metriken
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    duration_ms = Column(Integer, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    # Relationships
+    template = relationship("ReportTemplate", back_populates="executions")
+    executed_by = relationship("User", backref="report_executions")
+
+    __table_args__ = (
+        {"comment": "Ausfuehrungs-Historie fuer Report-Templates"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<ReportExecution status={self.status} rows={self.row_count}>"
+
+
+class ReportShare(Base):
+    """Freigaben fuer Report-Templates.
+
+    Ermoeglicht das Teilen von Reports mit anderen Benutzern.
+    """
+    __tablename__ = "report_shares"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    template_id = Column(UUID(as_uuid=True), ForeignKey("report_templates.id", ondelete="CASCADE"), nullable=False, index=True)
+    shared_with_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    shared_with_group_id = Column(UUID(as_uuid=True), nullable=True)  # Falls Gruppen-Support existiert
+
+    # Berechtigungen
+    can_view = Column(Boolean, nullable=False, default=True)
+    can_execute = Column(Boolean, nullable=False, default=True)
+    can_edit = Column(Boolean, nullable=False, default=False)
+    can_delete = Column(Boolean, nullable=False, default=False)
+
+    # Wer hat geteilt
+    shared_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    template = relationship("ReportTemplate", back_populates="shares")
+    shared_with_user = relationship("User", foreign_keys=[shared_with_user_id], backref="shared_reports")
+    shared_by = relationship("User", foreign_keys=[shared_by_id], backref="reports_shared_by_me")
+
+    __table_args__ = (
+        Index("uq_report_shares_template_user", "template_id", "shared_with_user_id", unique=True),
+        {"comment": "Freigaben fuer Report-Templates"}
+    )
+
+
+# =============================================================================
+# WORKFLOW-AUTOMATION MODELS (Feature 09)
+# =============================================================================
+
+
+class Workflow(Base):
+    """Workflow-Definitionen fuer Automatisierung.
+
+    Ermoeglicht das Erstellen von Multi-Step-Workflows mit:
+    - Trigger (Document Events, Schedule, Condition, Manual, Webhook)
+    - Conditions (AND/OR-Logik, wiederverwendet ImportRule Pattern)
+    - Actions (20+ Aktionstypen)
+    - Branching, Delays, Parallel Execution
+    """
+    __tablename__ = "workflows"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+
+    # Basis-Informationen
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+
+    # Template-Funktion
+    is_template = Column(Boolean, default=False, nullable=False, index=True)
+    template_category = Column(String(50), nullable=True, index=True)
+    # Categories: document, finance, notification, reporting, approval
+
+    # Trigger-Konfiguration
+    trigger_type = Column(String(30), nullable=False, index=True)
+    # Types: document_event, schedule, condition, manual, webhook
+    trigger_config = Column(CrossDBJSON, nullable=False, default=dict)
+
+    # ReactFlow Graph Definition
+    nodes = Column(CrossDBJSON, nullable=False, default=list)
+    edges = Column(CrossDBJSON, nullable=False, default=list)
+    variables = Column(CrossDBJSON, nullable=True)
+
+    # Webhook-Trigger
+    webhook_secret = Column(String(64), nullable=True)
+    webhook_path = Column(String(100), nullable=True, unique=True)
+
+    # Ausfuehrungs-Einstellungen
+    max_concurrent_executions = Column(Integer, default=10, nullable=False)
+    timeout_seconds = Column(Integer, default=3600, nullable=False)
+    retry_config = Column(CrossDBJSON, nullable=True)
+    error_handling = Column(String(20), default="stop", nullable=False)
+    enable_audit_log = Column(Boolean, default=True, nullable=False)
+
+    # Statistiken
+    execution_count = Column(Integer, default=0, nullable=False)
+    success_count = Column(Integer, default=0, nullable=False)
+    failure_count = Column(Integer, default=0, nullable=False)
+    last_executed_at = Column(DateTime(timezone=True), nullable=True)
+    avg_execution_time_ms = Column(Integer, nullable=True)
+
+    # Naechste geplante Ausfuehrung
+    next_run_at = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    # Audit
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id], backref="workflows")
+    company = relationship("Company", backref="workflows")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    steps = relationship("WorkflowStep", back_populates="workflow", cascade="all, delete-orphan", order_by="WorkflowStep.step_order")
+    executions = relationship("WorkflowExecution", back_populates="workflow", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        {"comment": "Workflow-Definitionen fuer Automatisierung"}
+    )
+
+
+class WorkflowStep(Base):
+    """Einzelne Schritte pro Workflow.
+
+    Schritt-Typen:
+    - condition: Bedingungspruefung mit AND/OR-Logik
+    - action: Aktion ausfuehren (move_folder, send_notification, etc.)
+    - branch: If-Then-Else Verzweigung
+    - delay: Zeitverzoegerung
+    - parallel: Parallele Ausfuehrung
+    - loop: Schleife (optional)
+    """
+    __tablename__ = "workflow_steps"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workflow_id = Column(UUID(as_uuid=True), ForeignKey("workflows.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Basis-Informationen
+    step_order = Column(Integer, nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Step-Typ
+    step_type = Column(String(30), nullable=False, index=True)
+    # Types: condition, action, branch, delay, parallel, loop
+
+    # Step-Konfiguration (JSONB)
+    config = Column(CrossDBJSON, nullable=False, default=dict)
+
+    # Retry/Error Handling
+    retry_on_failure = Column(Boolean, default=True, nullable=False)
+    max_retries = Column(Integer, default=3, nullable=False)
+    retry_backoff_seconds = Column(Integer, default=60, nullable=False)
+    continue_on_error = Column(Boolean, default=False, nullable=False)
+    fallback_step_id = Column(UUID(as_uuid=True), ForeignKey("workflow_steps.id", ondelete="SET NULL"), nullable=True)
+
+    # ReactFlow Position
+    position_x = Column(Float, nullable=True)
+    position_y = Column(Float, nullable=True)
+    node_data = Column(CrossDBJSON, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    workflow = relationship("Workflow", back_populates="steps")
+    fallback_step = relationship("WorkflowStep", remote_side=[id])
+    step_executions = relationship("WorkflowStepExecution", back_populates="workflow_step", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_workflow_steps_order", "workflow_id", "step_order"),
+        {"comment": "Einzelne Schritte pro Workflow"}
+    )
+
+
+class WorkflowExecution(Base):
+    """Ausfuehrungs-Historie fuer Workflows.
+
+    Trackt jeden Workflow-Lauf mit:
+    - Trigger-Kontext
+    - Status und Fortschritt
+    - Ergebnis und Fehler
+    - Timing-Informationen
+    """
+    __tablename__ = "workflow_executions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workflow_id = Column(UUID(as_uuid=True), ForeignKey("workflows.id", ondelete="CASCADE"), nullable=False, index=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+
+    # Wer hat ausgeloest
+    triggered_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Trigger-Kontext
+    trigger_type = Column(String(30), nullable=False, index=True)
+    trigger_source = Column(String(255), nullable=True)
+    trigger_data = Column(CrossDBJSON, nullable=True)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    # Ausfuehrungs-Status
+    status = Column(String(20), nullable=False, default="pending", index=True)
+    # Status: pending, running, completed, failed, cancelled, paused
+    current_step_id = Column(UUID(as_uuid=True), ForeignKey("workflow_steps.id", ondelete="SET NULL"), nullable=True)
+    progress_percent = Column(Integer, default=0, nullable=False)
+
+    # Ergebnisse
+    result = Column(CrossDBJSON, nullable=True)
+    error_message = Column(Text, nullable=True)
+    error_code = Column(String(50), nullable=True)
+    error_step_id = Column(UUID(as_uuid=True), ForeignKey("workflow_steps.id", ondelete="SET NULL"), nullable=True)
+
+    # Timing
+    started_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    duration_ms = Column(Integer, nullable=True)
+
+    # Celery-Integration
+    celery_task_id = Column(String(100), nullable=True)
+    retry_count = Column(Integer, default=0, nullable=False)
+
+    # Runtime-Variablen
+    variables = Column(CrossDBJSON, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    workflow = relationship("Workflow", back_populates="executions")
+    company = relationship("Company", backref="workflow_executions")
+    triggered_by = relationship("User", foreign_keys=[triggered_by_id])
+    document = relationship("Document", backref="workflow_executions")
+    current_step = relationship("WorkflowStep", foreign_keys=[current_step_id])
+    error_step = relationship("WorkflowStep", foreign_keys=[error_step_id])
+    step_executions = relationship("WorkflowStepExecution", back_populates="workflow_execution", cascade="all, delete-orphan", order_by="WorkflowStepExecution.execution_order")
+
+    __table_args__ = (
+        {"comment": "Ausfuehrungs-Historie fuer Workflows"}
+    )
+
+
+class WorkflowStepExecution(Base):
+    """Schritt-Level Audit Trail fuer Workflow-Ausfuehrungen.
+
+    Trackt jeden einzelnen Schritt mit:
+    - Input/Output-Daten
+    - Fehler-Details
+    - Timing
+    - Retry-Informationen
+    """
+    __tablename__ = "workflow_step_executions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workflow_execution_id = Column(UUID(as_uuid=True), ForeignKey("workflow_executions.id", ondelete="CASCADE"), nullable=False, index=True)
+    workflow_step_id = Column(UUID(as_uuid=True), ForeignKey("workflow_steps.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Ausfuehrungs-Reihenfolge
+    execution_order = Column(Integer, nullable=False)
+
+    # Status
+    status = Column(String(20), nullable=False, default="pending", index=True)
+    # Status: pending, running, completed, failed, skipped
+
+    # Input/Output
+    input_data = Column(CrossDBJSON, nullable=True)
+    output_data = Column(CrossDBJSON, nullable=True)
+
+    # Fehler-Details
+    error_message = Column(Text, nullable=True)
+    error_code = Column(String(50), nullable=True)
+    error_details = Column(CrossDBJSON, nullable=True)
+
+    # Timing
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    duration_ms = Column(Integer, nullable=True)
+
+    # Retry-Info
+    retry_attempt = Column(Integer, default=0, nullable=False)
+    next_retry_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Branch-Entscheidung
+    branch_result = Column(Boolean, nullable=True)
+    branch_reason = Column(Text, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    workflow_execution = relationship("WorkflowExecution", back_populates="step_executions")
+    workflow_step = relationship("WorkflowStep", back_populates="step_executions")
+
+    __table_args__ = (
+        Index("ix_workflow_step_execs_order", "workflow_execution_id", "execution_order"),
+        {"comment": "Schritt-Level Audit Trail fuer Workflow-Ausfuehrungen"}
+    )
+
+
+# ==================================================
+# PWA Push Notification Models
+# ==================================================
+
+class PushSubscription(Base):
+    """Push Subscription fuer Web Push Notifications.
+
+    Speichert Web Push Subscription Daten pro Geraet/Browser.
+    Ermoeglicht Benachrichtigungen auch wenn App nicht geoeffnet ist.
+    """
+
+    __tablename__ = "push_subscriptions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Web Push Subscription data
+    endpoint = Column(Text, nullable=False, unique=True, index=True)
+    p256dh_key = Column(Text, nullable=False)
+    auth_key = Column(Text, nullable=False)
+    expiration_time = Column(BigInteger, nullable=True)
+
+    # Device information
+    device_name = Column(String(255), nullable=True)
+    device_type = Column(String(50), nullable=True, index=True)  # mobile, tablet, desktop
+    browser = Column(String(100), nullable=True)
+    os = Column(String(100), nullable=True)
+    user_agent = Column(Text, nullable=True)
+
+    # Subscription preferences
+    preferences = Column(CrossDBJSON, nullable=False, default=dict)
+
+    # Status
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+    error_count = Column(Integer, nullable=False, default=0)
+    last_error = Column(Text, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    user = relationship("User", backref="push_subscriptions")
+    notification_history = relationship("NotificationHistory", back_populates="subscription", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        {"comment": "Web Push Subscriptions fuer PWA Notifications"}
+    )
+
+
+class NotificationTemplate(Base):
+    """Notification Template fuer vordefinierte Benachrichtigungen.
+
+    Ermoeglicht wiederverwendbare Notification-Vorlagen mit Variablen.
+    """
+
+    __tablename__ = "notification_templates"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Template identification
+    name = Column(String(100), nullable=False, unique=True, index=True)
+    category = Column(String(50), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+
+    # Notification content
+    title_template = Column(String(255), nullable=False)
+    body_template = Column(Text, nullable=False)
+    icon = Column(String(255), nullable=True)
+    badge = Column(String(255), nullable=True)
+    image = Column(String(255), nullable=True)
+
+    # Actions
+    actions = Column(CrossDBJSON, nullable=True)
+
+    # Behavior
+    tag = Column(String(100), nullable=True)
+    require_interaction = Column(Boolean, nullable=False, default=False)
+    silent = Column(Boolean, nullable=False, default=False)
+    vibrate_pattern = Column(CrossDBJSON, nullable=True)
+
+    # Default preferences
+    default_enabled = Column(Boolean, nullable=False, default=True)
+    priority = Column(String(20), nullable=False, default="normal")
+
+    # Status
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    notification_history = relationship("NotificationHistory", back_populates="template")
+
+    __table_args__ = (
+        {"comment": "Vordefinierte Notification Templates"}
+    )
+
+
+class NotificationHistory(Base):
+    """History fuer gesendete Push Notifications.
+
+    Ermoeglicht Tracking von Delivery und Click-Through.
+    """
+
+    __tablename__ = "notification_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    subscription_id = Column(UUID(as_uuid=True), ForeignKey("push_subscriptions.id", ondelete="CASCADE"), nullable=False, index=True)
+    template_id = Column(UUID(as_uuid=True), ForeignKey("notification_templates.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    # Notification content (snapshot)
+    title = Column(String(255), nullable=False)
+    body = Column(Text, nullable=False)
+    data = Column(CrossDBJSON, nullable=True)
+
+    # Delivery status
+    status = Column(String(20), nullable=False, default="pending", index=True)  # pending, sent, delivered, clicked, failed
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    delivered_at = Column(DateTime(timezone=True), nullable=True)
+    clicked_at = Column(DateTime(timezone=True), nullable=True)
+    error_message = Column(Text, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    # Relationships
+    subscription = relationship("PushSubscription", back_populates="notification_history")
+    template = relationship("NotificationTemplate", back_populates="notification_history")
+
+    __table_args__ = (
+        {"comment": "Tracking fuer gesendete Push Notifications"}
+    )

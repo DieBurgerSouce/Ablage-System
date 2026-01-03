@@ -26,6 +26,7 @@ from app.api.v1.admin.company import router as company_router
 from app.api.v1.admin.tags import router as tags_router
 from app.api.v1.admin.queues import router as queues_router
 from app.api.v1.admin.dlq import router as dlq_router
+from app.api.v1.admin.erp import router as erp_router
 
 # Main admin router
 router = APIRouter(prefix="/admin", tags=["Administration"])
@@ -43,5 +44,6 @@ router.include_router(company_router)
 router.include_router(tags_router)
 router.include_router(queues_router)
 router.include_router(dlq_router)
+router.include_router(erp_router)
 
 __all__ = ["router"]

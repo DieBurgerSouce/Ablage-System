@@ -434,6 +434,21 @@ async def upload_document(
         start_ocr=start_ocr
     )
 
+    # 11. Workflow-Trigger: Document Created Event
+    try:
+        from app.workers.tasks.workflow_tasks import on_document_created
+        on_document_created.delay(
+            document_id=str(doc_id),
+            user_id=str(current_user.id)
+        )
+    except Exception as e:
+        # Workflow-Trigger sollte Upload nicht blockieren
+        logger.warning(
+            "workflow_trigger_failed",
+            document_id=str(doc_id),
+            error=str(e)
+        )
+
     return DocumentCreateResponse(
         id=doc_id,
         filename=new_document.filename,

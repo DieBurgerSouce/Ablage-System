@@ -733,6 +733,13 @@ from app.api.v1.comments import router as comments_router
 from app.api.v1.notifications import router as notifications_router
 from app.api.v1.activity import router as activity_router
 from app.api.v1.archive import router as archive_router
+from app.api.v1.tax_advisor import router as tax_advisor_router
+from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.imports import router as imports_router
+from app.api.v1.ai_autonomy import router as ai_autonomy_router
+from app.api.v1.reports import router as reports_router
+from app.api.v1.workflows import router as workflows_router
+from app.api.v1.push_notifications import router as push_notifications_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -782,6 +789,13 @@ app.include_router(comments_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
 app.include_router(activity_router, prefix="/api/v1")
 app.include_router(archive_router, prefix="/api/v1")
+app.include_router(tax_advisor_router, prefix="/api/v1")
+app.include_router(dashboard_router, prefix="/api/v1")
+app.include_router(imports_router, prefix="/api/v1")
+app.include_router(ai_autonomy_router, prefix="/api/v1")
+app.include_router(reports_router, prefix="/api/v1")
+app.include_router(workflows_router, prefix="/api/v1")
+app.include_router(push_notifications_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================

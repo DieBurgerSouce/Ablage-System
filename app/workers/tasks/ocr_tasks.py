@@ -598,6 +598,27 @@ def process_document_task(
                             error=str(e)
                         )
 
+                # Workflow-Trigger: Document Processed Event
+                try:
+                    from app.workers.tasks.workflow_tasks import on_document_processed
+                    on_document_processed.delay(
+                        document_id=document_id,
+                        user_id=str(document.owner_id),
+                        ocr_result={
+                            "confidence": document.ocr_confidence,
+                            "backend_used": document.ocr_backend_used,
+                            "word_count": len(document.extracted_text.split()),
+                            "processing_time_ms": processing_ms,
+                        }
+                    )
+                except Exception as workflow_error:
+                    # Workflow-Trigger sollte OCR-Erfolg nicht blockieren
+                    logger.warning(
+                        "workflow_trigger_failed",
+                        document_id=document_id,
+                        error=str(workflow_error)
+                    )
+
                 return {
                     "success": True,
                     "document_id": document_id,
@@ -776,6 +797,28 @@ def process_document_task(
                     ProcessingStatus.FAILED,
                     error_message=str(e)
                 )
+
+                # Workflow-Trigger: Document Failed Event
+                try:
+                    # Get owner_id from document if available
+                    doc_result = await session.execute(
+                        select(Document.owner_id).where(Document.id == doc_uuid)
+                    )
+                    owner_id = doc_result.scalar_one_or_none()
+                    if owner_id:
+                        from app.workers.tasks.workflow_tasks import on_document_failed
+                        on_document_failed.delay(
+                            document_id=document_id,
+                            user_id=str(owner_id),
+                            error=str(e)
+                        )
+                except Exception as workflow_error:
+                    logger.warning(
+                        "workflow_trigger_failed_on_error",
+                        document_id=document_id,
+                        error=str(workflow_error)
+                    )
+
                 raise OCRProcessingError(
                     document_id=document_id,
                     backend=backend,

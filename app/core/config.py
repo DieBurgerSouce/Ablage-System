@@ -186,7 +186,22 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: Optional[str] = None
     CELERY_TASK_ALWAYS_EAGER: bool = False  # For testing
     CELERY_TASK_EAGER_PROPAGATES: bool = True
-    
+
+    # Web Push (VAPID)
+    # Generate keys with: python -c "from py_vapid import Vapid; v = Vapid(); v.generate_keys(); print(v.private_key_raw, v.public_key_raw)"
+    VAPID_PRIVATE_KEY: str = Field(
+        default="",
+        description="VAPID private key for Web Push - generate with py_vapid"
+    )
+    VAPID_PUBLIC_KEY: str = Field(
+        default="",
+        description="VAPID public key for Web Push subscriptions"
+    )
+    VAPID_CONTACT_EMAIL: str = Field(
+        default="admin@ablage-system.local",
+        description="Contact email for VAPID claims"
+    )
+
     # MinIO
     MINIO_ENDPOINT: str = "localhost:9000"
     # SECURITY FIX: Keine Default-Credentials - müssen in .env gesetzt werden

@@ -1,0 +1,11 @@
+{
+  "name": "plan-breakdown",
+  "version": "1.0.0",
+  "description": "Autonomer Agent fuer Feature-Extraktion und Plan-Breakdown. Zerlegt grosse Plaene/Roadmaps automatisch in detaillierte Feature-Spezifikationen mit API-Specs, DB-Schema, Implementation Tasks und Test-Szenarien.",
+  "author": {
+    "name": "Ablage-System Team"
+  },
+  "license": "MIT",
+  "keywords": ["planning", "breakdown", "roadmap", "features", "specifications"],
+  "agents": "./agents/"
+}

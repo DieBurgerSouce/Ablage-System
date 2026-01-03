@@ -24,6 +24,20 @@ from app.workers.tasks.training_tasks import (
     generate_training_report,
     CELERY_BEAT_TRAINING_SCHEDULE,
 )
+from app.workers.tasks.notification_tasks import (
+    send_daily_digest,
+    send_weekly_digest,
+    cleanup_old_notifications,
+)
+from app.workers.tasks.report_tasks import (
+    execute_scheduled_reports,
+    generate_report_async,
+    send_report_email,
+    cleanup_old_executions,
+    cleanup_expired_downloads,
+    cancel_execution,
+    REPORT_BEAT_SCHEDULE,
+)
 
 __all__ = [
     # OCR tasks
@@ -47,4 +61,16 @@ __all__ = [
     "populate_training_batch",
     "generate_training_report",
     "CELERY_BEAT_TRAINING_SCHEDULE",
+    # Notification tasks
+    "send_daily_digest",
+    "send_weekly_digest",
+    "cleanup_old_notifications",
+    # Report tasks
+    "execute_scheduled_reports",
+    "generate_report_async",
+    "send_report_email",
+    "cleanup_old_executions",
+    "cleanup_expired_downloads",
+    "cancel_execution",
+    "REPORT_BEAT_SCHEDULE",
 ]

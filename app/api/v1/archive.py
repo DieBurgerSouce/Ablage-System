@@ -21,8 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db
-from app.core.security import get_current_user, require_roles
+from app.api.dependencies import get_db, get_current_user, get_current_superuser
 from app.core.exceptions import (
     DocumentNotFoundError,
     ArchiveError,
@@ -32,6 +31,7 @@ from app.db.models import User, RetentionCategory
 from app.middleware.company_context import require_company, Company
 from app.services.archive_service import archive_service
 from app.services.procedure_doc_service import procedure_doc_service
+from app.services.gdpdu_export_service import gdpdu_export_service, GDPdUExportOptions
 
 router = APIRouter(prefix="/archive", tags=["Archive (GoBD)"])
 
@@ -385,7 +385,7 @@ async def update_retention_setting(
     category: str,
     request: RetentionSettingUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"])),
+    current_user: User = Depends(get_current_superuser),
 ) -> RetentionSettingResponse:
     """Aktualisiert eine Aufbewahrungsfristen-Einstellung.
 
@@ -536,7 +536,7 @@ class ProcedureDocDetailResponse(ProcedureDocVersionResponse):
 async def generate_procedure_documentation(
     change_summary: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"])),
+    current_user: User = Depends(get_current_superuser),
     company: Company = Depends(require_company),
 ) -> ProcedureDocVersionResponse:
     """Generiert eine neue Version der Verfahrensdokumentation.
@@ -689,5 +689,142 @@ async def export_procedure_documentation_markdown(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+
+# =============================================================================
+# GDPdU Export Endpoints (Betriebspruefung)
+# =============================================================================
+
+
+class GDPdUExportRequest(BaseModel):
+    """Request fuer GDPdU-Export."""
+
+    start_date: date = Field(..., description="Startdatum des Exportzeitraums")
+    end_date: date = Field(..., description="Enddatum des Exportzeitraums")
+    include_documents: bool = Field(default=True, description="Dokumente exportieren")
+    include_archives: bool = Field(default=True, description="Archive exportieren")
+    include_invoices: bool = Field(default=True, description="Rechnungen exportieren")
+    include_contracts: bool = Field(default=True, description="Vertraege exportieren")
+    comment: Optional[str] = Field(default=None, description="Optionaler Kommentar fuer den Export")
+
+
+class GDPdUExportPreviewResponse(BaseModel):
+    """Response fuer GDPdU-Export Vorschau."""
+
+    zeitraum: dict
+    anzahl: dict
+    tabellen: list
+    geschaetzte_groesse_kb: float
+
+
+@router.post(
+    "/export/gdpdu/preview",
+    response_model=GDPdUExportPreviewResponse,
+    summary="GDPdU-Export Vorschau",
+    description="Zeigt eine Vorschau des GDPdU-Exports an (Anzahl Datensaetze, geschaetzte Groesse)"
+)
+async def preview_gdpdu_export(
+    request: GDPdUExportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+    company: Company = Depends(require_company),
+) -> GDPdUExportPreviewResponse:
+    """Zeigt eine Vorschau des GDPdU-Exports an.
+
+    Zeigt an, wie viele Datensaetze exportiert werden und die geschaetzte Groesse.
+    Nur fuer Administratoren.
+
+    Args:
+        request: Export-Optionen
+        db: Datenbank-Session
+        current_user: Admin-Benutzer
+        company: Aktuelle Firma
+
+    Returns:
+        GDPdUExportPreviewResponse mit Statistiken
+    """
+    options = GDPdUExportOptions(
+        company_id=company.id,
+        start_date=request.start_date,
+        end_date=request.end_date,
+        include_documents=request.include_documents,
+        include_archives=request.include_archives,
+        include_invoices=request.include_invoices,
+        include_contracts=request.include_contracts,
+        comment=request.comment,
+    )
+
+    preview = await gdpdu_export_service.get_export_preview(db, options)
+
+    # Filter None-Werte aus Tabellen-Liste
+    preview["tabellen"] = [t for t in preview["tabellen"] if t is not None]
+
+    return GDPdUExportPreviewResponse(**preview)
+
+
+@router.post(
+    "/export/gdpdu",
+    summary="GDPdU-Export erstellen",
+    description="Erstellt einen GDPdU-konformen Export fuer Betriebspruefungen (ZIP-Archiv)"
+)
+async def create_gdpdu_export(
+    request: GDPdUExportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+    company: Company = Depends(require_company),
+):
+    """Erstellt einen GDPdU-Export als ZIP-Archiv.
+
+    Erstellt einen vollstaendigen GDPdU-Export mit:
+    - index.xml: GDPdU-Strukturbeschreibung
+    - DTD-Datei: Dokumenttyp-Definition
+    - CSV-Datendateien: Dokumente, Archive, Rechnungen, Vertraege
+    - README: Erklaerungen und rechtliche Grundlagen
+
+    Nur fuer Administratoren.
+
+    Args:
+        request: Export-Optionen
+        db: Datenbank-Session
+        current_user: Admin-Benutzer
+        company: Aktuelle Firma
+
+    Returns:
+        ZIP-Archiv als Download
+    """
+    from fastapi.responses import Response
+
+    options = GDPdUExportOptions(
+        company_id=company.id,
+        start_date=request.start_date,
+        end_date=request.end_date,
+        include_documents=request.include_documents,
+        include_archives=request.include_archives,
+        include_invoices=request.include_invoices,
+        include_contracts=request.include_contracts,
+        comment=request.comment,
+    )
+
+    try:
+        zip_content = await gdpdu_export_service.create_export(db, options)
+
+        filename = (
+            f"gdpdu_export_{company.name.replace(' ', '_')}_"
+            f"{request.start_date.strftime('%Y%m%d')}_"
+            f"{request.end_date.strftime('%Y%m%d')}.zip"
+        )
+
+        return Response(
+            content=zip_content,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )

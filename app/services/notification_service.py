@@ -768,6 +768,7 @@ class NotificationService:
     - Email (SMTP)
     - Webhooks (HTTP POST)
     - In-app notifications (Redis)
+    - WebSocket real-time updates
     """
 
     def __init__(self) -> None:
@@ -775,6 +776,15 @@ class NotificationService:
         self.email = EmailNotifier()
         self.webhook = WebhookNotifier()
         self.in_app = InAppNotificationStore()
+        # WebSocket manager wird lazy initialisiert um zirkulaere Imports zu vermeiden
+        self._ws_manager: Optional["NotificationWebSocketManager"] = None
+
+    @property
+    def websocket(self) -> "NotificationWebSocketManager":
+        """Lazy initialization of WebSocket manager."""
+        if self._ws_manager is None:
+            self._ws_manager = get_notification_ws_manager()
+        return self._ws_manager
 
     async def notify(
         self,
@@ -810,6 +820,9 @@ class NotificationService:
                 channels.append(NotificationChannel.WEBHOOK)
             if user_id:
                 channels.append(NotificationChannel.IN_APP)
+                # WebSocket nur wenn User verbunden ist
+                if self.websocket.is_user_connected(user_id):
+                    channels.append(NotificationChannel.WEBSOCKET)
 
         # Render template
         rendered = NotificationTemplate.render(notification_type, context)
@@ -834,6 +847,15 @@ class NotificationService:
 
         if NotificationChannel.IN_APP in channels and user_id:
             tasks.append(self._store_in_app(
+                user_id,
+                notification_type,
+                rendered,
+                priority,
+                results,
+            ))
+
+        if NotificationChannel.WEBSOCKET in channels and user_id:
+            tasks.append(self._send_websocket(
                 user_id,
                 notification_type,
                 rendered,
@@ -906,6 +928,42 @@ class NotificationService:
             },
         )
         results[NotificationChannel.IN_APP] = bool(notification_id)
+
+    async def _send_websocket(
+        self,
+        user_id: str,
+        notification_type: str,
+        rendered: Dict[str, str],
+        priority: str,
+        results: Dict[str, bool],
+    ) -> None:
+        """Send WebSocket notification to user."""
+        try:
+            message = {
+                "type": "notification",
+                "notification_type": notification_type,
+                "title": rendered["subject"],
+                "message": rendered["body"],
+                "priority": priority,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+            sent_count = await self.websocket.send_to_user(user_id, message)
+            results[NotificationChannel.WEBSOCKET] = sent_count > 0
+
+            if sent_count > 0:
+                logger.debug(
+                    "websocket_notification_sent",
+                    user_id=user_id,
+                    notification_type=notification_type,
+                    sent_count=sent_count,
+                )
+        except Exception as e:
+            logger.warning(
+                "websocket_notification_failed",
+                user_id=user_id,
+                error=str(e),
+            )
+            results[NotificationChannel.WEBSOCKET] = False
 
     async def notify_processing_completed(
         self,
@@ -1059,8 +1117,183 @@ class NotificationService:
         )
 
 
-# Singleton instance
+# =============================================================================
+# WebSocket Notification Manager
+# =============================================================================
+
+
+class NotificationWebSocketManager:
+    """
+    WebSocket Manager fuer Real-time Benachrichtigungen an Benutzer.
+
+    Features:
+    - Pro-User WebSocket-Verbindungen (kann mehrere Tabs haben)
+    - Broadcast an alle Verbindungen eines Users
+    - Automatische Verbindungsverwaltung
+    - Thread-safe fuer async Operationen
+    """
+
+    def __init__(self) -> None:
+        """Initialize notification WebSocket manager."""
+        # user_id -> List[WebSocket]  (User kann mehrere Tabs/Geraete haben)
+        from fastapi import WebSocket
+        self._connections: Dict[str, List[Any]] = {}
+        self._lock = asyncio.Lock()
+
+    async def connect(
+        self,
+        websocket: Any,
+        user_id: str,
+    ) -> bool:
+        """
+        Verbindet einen User fuer Benachrichtigungen.
+
+        Args:
+            websocket: WebSocket-Verbindung
+            user_id: User ID
+
+        Returns:
+            True wenn erfolgreich verbunden
+        """
+        try:
+            await websocket.accept()
+        except Exception as e:
+            logger.warning(
+                "notification_ws_accept_failed",
+                user_id=user_id,
+                error=str(e)
+            )
+            return False
+
+        async with self._lock:
+            if user_id not in self._connections:
+                self._connections[user_id] = []
+            self._connections[user_id].append(websocket)
+
+        logger.info(
+            "notification_ws_connected",
+            user_id=user_id,
+            connection_count=len(self._connections.get(user_id, [])),
+        )
+        return True
+
+    async def disconnect(
+        self,
+        websocket: Any,
+        user_id: str,
+    ) -> None:
+        """
+        Trennt eine WebSocket-Verbindung.
+
+        Args:
+            websocket: WebSocket-Verbindung
+            user_id: User ID
+        """
+        async with self._lock:
+            if user_id in self._connections:
+                try:
+                    self._connections[user_id].remove(websocket)
+                except ValueError:
+                    pass
+
+                # Leere Liste entfernen
+                if not self._connections[user_id]:
+                    del self._connections[user_id]
+
+        logger.info(
+            "notification_ws_disconnected",
+            user_id=user_id,
+            remaining_connections=len(self._connections.get(user_id, [])),
+        )
+
+    async def send_to_user(
+        self,
+        user_id: str,
+        message: Dict[str, Any],
+    ) -> int:
+        """
+        Sendet eine Nachricht an alle Verbindungen eines Users.
+
+        Args:
+            user_id: Ziel-User ID
+            message: Nachricht als Dict
+
+        Returns:
+            Anzahl erfolgreicher Sendungen
+        """
+        async with self._lock:
+            if user_id not in self._connections:
+                return 0
+
+            # Kopie der Liste fuer thread-safe Iteration
+            connections = list(self._connections[user_id])
+
+        sent_count = 0
+        dead_connections = []
+
+        for ws in connections:
+            try:
+                await ws.send_json(message)
+                sent_count += 1
+            except Exception as e:
+                logger.warning(
+                    "notification_ws_send_failed",
+                    user_id=user_id,
+                    error=str(e),
+                )
+                dead_connections.append(ws)
+
+        # Tote Verbindungen entfernen
+        if dead_connections:
+            async with self._lock:
+                if user_id in self._connections:
+                    for dead_ws in dead_connections:
+                        try:
+                            self._connections[user_id].remove(dead_ws)
+                        except ValueError:
+                            pass
+
+        return sent_count
+
+    async def broadcast_to_all(
+        self,
+        message: Dict[str, Any],
+    ) -> int:
+        """
+        Sendet eine Nachricht an alle verbundenen User.
+
+        Args:
+            message: Nachricht als Dict
+
+        Returns:
+            Anzahl erfolgreicher Sendungen
+        """
+        async with self._lock:
+            all_user_ids = list(self._connections.keys())
+
+        total_sent = 0
+        for user_id in all_user_ids:
+            sent = await self.send_to_user(user_id, message)
+            total_sent += sent
+
+        return total_sent
+
+    def get_connected_users(self) -> List[str]:
+        """Gibt Liste aller verbundenen User-IDs zurueck."""
+        return list(self._connections.keys())
+
+    def get_connection_count(self, user_id: str) -> int:
+        """Gibt Anzahl der Verbindungen eines Users zurueck."""
+        return len(self._connections.get(user_id, []))
+
+    def is_user_connected(self, user_id: str) -> bool:
+        """Prueft ob User verbunden ist."""
+        return user_id in self._connections and len(self._connections[user_id]) > 0
+
+
+# Singleton instances
 _notification_service: Optional[NotificationService] = None
+_notification_ws_manager: Optional[NotificationWebSocketManager] = None
 
 
 def get_notification_service() -> NotificationService:
@@ -1069,3 +1302,11 @@ def get_notification_service() -> NotificationService:
     if _notification_service is None:
         _notification_service = NotificationService()
     return _notification_service
+
+
+def get_notification_ws_manager() -> NotificationWebSocketManager:
+    """Get or create singleton notification WebSocket manager."""
+    global _notification_ws_manager
+    if _notification_ws_manager is None:
+        _notification_ws_manager = NotificationWebSocketManager()
+    return _notification_ws_manager

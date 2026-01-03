@@ -2,14 +2,16 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
 import { queryClient } from '@/lib/api/query-client'
 import { AuthProvider } from '@/lib/auth/AuthContext'
 import { ThemeProvider } from '@/lib/theme/ThemeContext'
 import { CompanyProvider } from '@/context/CompanyContext'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import type { ErrorDetails } from '@/components/ErrorBoundary'
+import { PWAProvider } from '@/context/PWAContext'
 import { logger } from '@/lib/logger'
+import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 
 // i18n Initialisierung (muss vor App-Rendering importiert werden)
@@ -76,6 +78,45 @@ function handleGlobalError(details: ErrorDetails): void {
   }
 }
 
+/**
+ * PWA Service Worker Registration
+ * Uses prompt mode - user can decide when to update
+ */
+const updateSW = registerSW({
+  onNeedRefresh() {
+    // Show toast to user when new version is available
+    toast.info('Neue Version verfuegbar', {
+      description: 'Klicken Sie zum Aktualisieren',
+      action: {
+        label: 'Aktualisieren',
+        onClick: () => updateSW(true),
+      },
+      duration: Infinity,
+    })
+    logger.info('[PWA] Neue Version verfuegbar')
+  },
+  onOfflineReady() {
+    toast.success('Offline-Modus bereit', {
+      description: 'Die App kann jetzt offline verwendet werden',
+      duration: 5000,
+    })
+    logger.info('[PWA] Offline-Modus bereit')
+  },
+  onRegisteredSW(swUrl, registration) {
+    logger.info('[PWA] Service Worker registriert', { url: swUrl })
+
+    // Check for updates every hour
+    if (registration) {
+      setInterval(() => {
+        registration.update()
+      }, 60 * 60 * 1000)
+    }
+  },
+  onRegisterError(error) {
+    logger.error('[PWA] Service Worker Registrierung fehlgeschlagen', { error })
+  },
+})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary onError={handleGlobalError}>
@@ -83,21 +124,23 @@ createRoot(document.getElementById('root')!).render(
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <CompanyProvider>
-              <RouterProvider router={router} />
-              <Toaster
-              position="bottom-right"
-              expand={false}
-              richColors
-              closeButton
-              toastOptions={{
-                duration: 5000,
-                classNames: {
-                  toast: 'font-sans',
-                  title: 'font-medium',
-                  description: 'text-muted-foreground',
-                },
-              }}
-            />
+              <PWAProvider>
+                <RouterProvider router={router} />
+                <Toaster
+                  position="bottom-right"
+                  expand={false}
+                  richColors
+                  closeButton
+                  toastOptions={{
+                    duration: 5000,
+                    classNames: {
+                      toast: 'font-sans',
+                      title: 'font-medium',
+                      description: 'text-muted-foreground',
+                    },
+                  }}
+                />
+              </PWAProvider>
             </CompanyProvider>
           </AuthProvider>
         </QueryClientProvider>

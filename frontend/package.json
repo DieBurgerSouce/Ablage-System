@@ -52,6 +52,7 @@
     "dompurify": "^3.2.4",
     "framer-motion": "^12.23.24",
     "i18next": "^25.6.3",
+    "idb": "^8.0.0",
     "lucide-react": "^0.555.0",
     "mammoth": "^1.8.0",
     "react": "^19.2.0",
@@ -94,11 +95,14 @@
     "happy-dom": "^20.0.11",
     "jsdom": "^27.2.0",
     "postcss": "^8.5.6",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
-    "vitest": "^4.0.14"
+    "vite-plugin-pwa": "^0.21.0",
+    "vitest": "^4.0.14",
+    "workbox-window": "^7.3.0"
   }
 }

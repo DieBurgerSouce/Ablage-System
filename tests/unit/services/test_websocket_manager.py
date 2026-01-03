@@ -733,3 +733,286 @@ class TestGetWebSocketManagerSingleton:
         manager2 = get_websocket_manager()
 
         assert manager1 is manager2
+
+
+# =============================================================================
+# NotificationWebSocketManager Tests
+# =============================================================================
+
+
+from app.services.notification_service import (
+    NotificationWebSocketManager,
+    get_notification_ws_manager,
+    NotificationChannel,
+)
+
+
+class TestNotificationWebSocketManager:
+    """Tests fuer NotificationWebSocketManager."""
+
+    @pytest.fixture
+    def notification_manager(self) -> NotificationWebSocketManager:
+        """Erstellt einen frischen Notification WebSocket Manager."""
+        return NotificationWebSocketManager()
+
+    @pytest.fixture
+    def mock_websocket(self) -> AsyncMock:
+        """Erstellt einen Mock-WebSocket."""
+        ws = AsyncMock()
+        ws.accept = AsyncMock()
+        ws.send_json = AsyncMock()
+        ws.close = AsyncMock()
+        return ws
+
+    # =========================================================================
+    # CONNECT TESTS
+    # =========================================================================
+
+    @pytest.mark.asyncio
+    async def test_connect_user(
+        self,
+        notification_manager: NotificationWebSocketManager,
+        mock_websocket: AsyncMock,
+    ) -> None:
+        """User kann sich fuer Benachrichtigungen verbinden."""
+        result = await notification_manager.connect(
+            websocket=mock_websocket,
+            user_id="user-123",
+        )
+
+        assert result is True
+        mock_websocket.accept.assert_called_once()
+        assert notification_manager.is_user_connected("user-123")
+
+    @pytest.mark.asyncio
+    async def test_connect_multiple_tabs(
+        self,
+        notification_manager: NotificationWebSocketManager,
+    ) -> None:
+        """User kann sich mit mehreren Tabs verbinden."""
+        ws1 = AsyncMock()
+        ws1.accept = AsyncMock()
+        ws2 = AsyncMock()
+        ws2.accept = AsyncMock()
+
+        await notification_manager.connect(ws1, "user-123")
+        await notification_manager.connect(ws2, "user-123")
+
+        assert notification_manager.get_connection_count("user-123") == 2
+
+    @pytest.mark.asyncio
+    async def test_connect_multiple_users(
+        self,
+        notification_manager: NotificationWebSocketManager,
+    ) -> None:
+        """Mehrere User koennen sich verbinden."""
+        ws1 = AsyncMock()
+        ws1.accept = AsyncMock()
+        ws2 = AsyncMock()
+        ws2.accept = AsyncMock()
+
+        await notification_manager.connect(ws1, "user-1")
+        await notification_manager.connect(ws2, "user-2")
+
+        assert notification_manager.is_user_connected("user-1")
+        assert notification_manager.is_user_connected("user-2")
+        assert len(notification_manager.get_connected_users()) == 2
+
+    # =========================================================================
+    # DISCONNECT TESTS
+    # =========================================================================
+
+    @pytest.mark.asyncio
+    async def test_disconnect_user(
+        self,
+        notification_manager: NotificationWebSocketManager,
+        mock_websocket: AsyncMock,
+    ) -> None:
+        """User kann sich trennen."""
+        await notification_manager.connect(mock_websocket, "user-123")
+        await notification_manager.disconnect(mock_websocket, "user-123")
+
+        assert not notification_manager.is_user_connected("user-123")
+
+    @pytest.mark.asyncio
+    async def test_disconnect_one_tab(
+        self,
+        notification_manager: NotificationWebSocketManager,
+    ) -> None:
+        """Trennen eines Tabs behaelt andere."""
+        ws1 = AsyncMock()
+        ws1.accept = AsyncMock()
+        ws2 = AsyncMock()
+        ws2.accept = AsyncMock()
+
+        await notification_manager.connect(ws1, "user-123")
+        await notification_manager.connect(ws2, "user-123")
+        await notification_manager.disconnect(ws1, "user-123")
+
+        assert notification_manager.is_user_connected("user-123")
+        assert notification_manager.get_connection_count("user-123") == 1
+
+    @pytest.mark.asyncio
+    async def test_disconnect_nonexistent(
+        self,
+        notification_manager: NotificationWebSocketManager,
+        mock_websocket: AsyncMock,
+    ) -> None:
+        """Trennen nicht existenter Verbindung verursacht keinen Fehler."""
+        # Sollte keinen Fehler werfen
+        await notification_manager.disconnect(mock_websocket, "nonexistent")
+
+    # =========================================================================
+    # SEND TESTS
+    # =========================================================================
+
+    @pytest.mark.asyncio
+    async def test_send_to_user(
+        self,
+        notification_manager: NotificationWebSocketManager,
+        mock_websocket: AsyncMock,
+    ) -> None:
+        """Nachricht an User senden."""
+        await notification_manager.connect(mock_websocket, "user-123")
+
+        message = {"type": "notification", "title": "Test"}
+        sent = await notification_manager.send_to_user("user-123", message)
+
+        assert sent == 1
+        mock_websocket.send_json.assert_called_with(message)
+
+    @pytest.mark.asyncio
+    async def test_send_to_multiple_tabs(
+        self,
+        notification_manager: NotificationWebSocketManager,
+    ) -> None:
+        """Nachricht an alle Tabs senden."""
+        ws1 = AsyncMock()
+        ws1.accept = AsyncMock()
+        ws1.send_json = AsyncMock()
+        ws2 = AsyncMock()
+        ws2.accept = AsyncMock()
+        ws2.send_json = AsyncMock()
+
+        await notification_manager.connect(ws1, "user-123")
+        await notification_manager.connect(ws2, "user-123")
+
+        message = {"type": "notification", "title": "Test"}
+        sent = await notification_manager.send_to_user("user-123", message)
+
+        assert sent == 2
+        ws1.send_json.assert_called_with(message)
+        ws2.send_json.assert_called_with(message)
+
+    @pytest.mark.asyncio
+    async def test_send_to_nonexistent_user(
+        self,
+        notification_manager: NotificationWebSocketManager,
+    ) -> None:
+        """Senden an nicht existenten User gibt 0 zurueck."""
+        message = {"type": "notification", "title": "Test"}
+        sent = await notification_manager.send_to_user("nonexistent", message)
+
+        assert sent == 0
+
+    @pytest.mark.asyncio
+    async def test_send_removes_dead_connections(
+        self,
+        notification_manager: NotificationWebSocketManager,
+    ) -> None:
+        """Tote Verbindungen werden beim Senden entfernt."""
+        ws = AsyncMock()
+        ws.accept = AsyncMock()
+        ws.send_json = AsyncMock(side_effect=Exception("Connection closed"))
+
+        await notification_manager.connect(ws, "user-123")
+        assert notification_manager.get_connection_count("user-123") == 1
+
+        await notification_manager.send_to_user("user-123", {"type": "test"})
+
+        # Tote Verbindung sollte entfernt worden sein
+        assert notification_manager.get_connection_count("user-123") == 0
+
+    # =========================================================================
+    # BROADCAST TESTS
+    # =========================================================================
+
+    @pytest.mark.asyncio
+    async def test_broadcast_to_all(
+        self,
+        notification_manager: NotificationWebSocketManager,
+    ) -> None:
+        """Broadcast an alle User."""
+        ws1 = AsyncMock()
+        ws1.accept = AsyncMock()
+        ws1.send_json = AsyncMock()
+        ws2 = AsyncMock()
+        ws2.accept = AsyncMock()
+        ws2.send_json = AsyncMock()
+
+        await notification_manager.connect(ws1, "user-1")
+        await notification_manager.connect(ws2, "user-2")
+
+        message = {"type": "system", "title": "Broadcast"}
+        sent = await notification_manager.broadcast_to_all(message)
+
+        assert sent == 2
+        ws1.send_json.assert_called()
+        ws2.send_json.assert_called()
+
+    # =========================================================================
+    # HELPER METHOD TESTS
+    # =========================================================================
+
+    @pytest.mark.asyncio
+    async def test_get_connected_users(
+        self,
+        notification_manager: NotificationWebSocketManager,
+    ) -> None:
+        """get_connected_users gibt Liste der User-IDs zurueck."""
+        ws1 = AsyncMock()
+        ws1.accept = AsyncMock()
+        ws2 = AsyncMock()
+        ws2.accept = AsyncMock()
+
+        await notification_manager.connect(ws1, "user-1")
+        await notification_manager.connect(ws2, "user-2")
+
+        users = notification_manager.get_connected_users()
+
+        assert "user-1" in users
+        assert "user-2" in users
+
+    def test_get_connection_count_empty(
+        self,
+        notification_manager: NotificationWebSocketManager,
+    ) -> None:
+        """Nicht verbundener User hat 0 Verbindungen."""
+        assert notification_manager.get_connection_count("nonexistent") == 0
+
+    def test_is_user_connected_false(
+        self,
+        notification_manager: NotificationWebSocketManager,
+    ) -> None:
+        """Nicht verbundener User ist nicht connected."""
+        assert not notification_manager.is_user_connected("nonexistent")
+
+
+class TestNotificationWebSocketManagerSingleton:
+    """Tests fuer Singleton-Pattern des NotificationWebSocketManager."""
+
+    def test_singleton_returns_same_instance(self) -> None:
+        """Singleton gibt immer dieselbe Instanz zurueck."""
+        manager1 = get_notification_ws_manager()
+        manager2 = get_notification_ws_manager()
+
+        assert manager1 is manager2
+
+
+class TestNotificationChannelWebSocket:
+    """Tests fuer WebSocket Channel in NotificationService."""
+
+    def test_websocket_channel_exists(self) -> None:
+        """WEBSOCKET Channel ist definiert."""
+        assert hasattr(NotificationChannel, "WEBSOCKET")
+        assert NotificationChannel.WEBSOCKET == "websocket"

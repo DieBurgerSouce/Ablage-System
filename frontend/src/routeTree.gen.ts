@@ -69,6 +69,7 @@ import { Route as AdminOcrReviewRouteImport } from './app/routes/admin.ocr-revie
 import { Route as AdminOcrBackendsRouteImport } from './app/routes/admin.ocr-backends'
 import { Route as AdminMahnungenRouteImport } from './app/routes/admin.mahnungen'
 import { Route as AdminJobQueueRouteImport } from './app/routes/admin.job-queue'
+import { Route as AdminErpRouteImport } from './app/routes/admin.erp'
 import { Route as AdminDatevRouteImport } from './app/routes/admin.datev'
 import { Route as AdminBankingRouteImport } from './app/routes/admin.banking'
 import { Route as PersonalEmployeeIdIndexRouteImport } from './app/routes/personal.$employeeId.index'
@@ -76,6 +77,7 @@ import { Route as LieferantenSupplierIdIndexRouteImport } from './app/routes/lie
 import { Route as KundenCustomerIdIndexRouteImport } from './app/routes/kunden.$customerId.index'
 import { Route as FinanzenYearIndexRouteImport } from './app/routes/finanzen.$year.index'
 import { Route as AdminMahnungenIndexRouteImport } from './app/routes/admin.mahnungen.index'
+import { Route as AdminErpIndexRouteImport } from './app/routes/admin.erp.index'
 import { Route as AdminDatevIndexRouteImport } from './app/routes/admin.datev.index'
 import { Route as AdminBankingIndexRouteImport } from './app/routes/admin.banking.index'
 import { Route as LieferantenSupplierIdFolderIdRouteImport } from './app/routes/lieferanten.$supplierId.$folderId'
@@ -90,6 +92,9 @@ import { Route as AdminMahnungenEskalationRouteImport } from './app/routes/admin
 import { Route as AdminMahnungenEinstellungenRouteImport } from './app/routes/admin.mahnungen.einstellungen'
 import { Route as AdminMahnungenAufgabenRouteImport } from './app/routes/admin.mahnungen.aufgaben'
 import { Route as AdminMahnungenAktivRouteImport } from './app/routes/admin.mahnungen.aktiv'
+import { Route as AdminErpSyncRouteImport } from './app/routes/admin.erp.sync'
+import { Route as AdminErpStatsRouteImport } from './app/routes/admin.erp.stats'
+import { Route as AdminErpConflictsRouteImport } from './app/routes/admin.erp.conflicts'
 import { Route as AdminDatevVendorsRouteImport } from './app/routes/admin.datev.vendors'
 import { Route as AdminDatevHistoryRouteImport } from './app/routes/admin.datev.history'
 import { Route as AdminDatevExportRouteImport } from './app/routes/admin.datev.export'
@@ -409,6 +414,11 @@ const AdminJobQueueRoute = AdminJobQueueRouteImport.update({
   path: '/job-queue',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminErpRoute = AdminErpRouteImport.update({
+  id: '/erp',
+  path: '/erp',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDatevRoute = AdminDatevRouteImport.update({
   id: '/datev',
   path: '/datev',
@@ -444,6 +454,11 @@ const AdminMahnungenIndexRoute = AdminMahnungenIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminMahnungenRoute,
+} as any)
+const AdminErpIndexRoute = AdminErpIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminErpRoute,
 } as any)
 const AdminDatevIndexRoute = AdminDatevIndexRouteImport.update({
   id: '/',
@@ -519,6 +534,21 @@ const AdminMahnungenAktivRoute = AdminMahnungenAktivRouteImport.update({
   id: '/aktiv',
   path: '/aktiv',
   getParentRoute: () => AdminMahnungenRoute,
+} as any)
+const AdminErpSyncRoute = AdminErpSyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
+  getParentRoute: () => AdminErpRoute,
+} as any)
+const AdminErpStatsRoute = AdminErpStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => AdminErpRoute,
+} as any)
+const AdminErpConflictsRoute = AdminErpConflictsRouteImport.update({
+  id: '/conflicts',
+  path: '/conflicts',
+  getParentRoute: () => AdminErpRoute,
 } as any)
 const AdminDatevVendorsRoute = AdminDatevVendorsRouteImport.update({
   id: '/vendors',
@@ -615,6 +645,7 @@ export interface FileRoutesByFullPath {
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/admin/banking': typeof AdminBankingRouteWithChildren
   '/admin/datev': typeof AdminDatevRouteWithChildren
+  '/admin/erp': typeof AdminErpRouteWithChildren
   '/admin/job-queue': typeof AdminJobQueueRoute
   '/admin/mahnungen': typeof AdminMahnungenRouteWithChildren
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
@@ -663,6 +694,9 @@ export interface FileRoutesByFullPath {
   '/admin/datev/export': typeof AdminDatevExportRoute
   '/admin/datev/history': typeof AdminDatevHistoryRoute
   '/admin/datev/vendors': typeof AdminDatevVendorsRoute
+  '/admin/erp/conflicts': typeof AdminErpConflictsRoute
+  '/admin/erp/stats': typeof AdminErpStatsRoute
+  '/admin/erp/sync': typeof AdminErpSyncRoute
   '/admin/mahnungen/aktiv': typeof AdminMahnungenAktivRoute
   '/admin/mahnungen/aufgaben': typeof AdminMahnungenAufgabenRoute
   '/admin/mahnungen/einstellungen': typeof AdminMahnungenEinstellungenRoute
@@ -677,6 +711,7 @@ export interface FileRoutesByFullPath {
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
   '/admin/banking/': typeof AdminBankingIndexRoute
   '/admin/datev/': typeof AdminDatevIndexRoute
+  '/admin/erp/': typeof AdminErpIndexRoute
   '/admin/mahnungen/': typeof AdminMahnungenIndexRoute
   '/finanzen/$year/': typeof FinanzenYearIndexRoute
   '/kunden/$customerId/': typeof KundenCustomerIdIndexRoute
@@ -743,6 +778,9 @@ export interface FileRoutesByTo {
   '/admin/datev/export': typeof AdminDatevExportRoute
   '/admin/datev/history': typeof AdminDatevHistoryRoute
   '/admin/datev/vendors': typeof AdminDatevVendorsRoute
+  '/admin/erp/conflicts': typeof AdminErpConflictsRoute
+  '/admin/erp/stats': typeof AdminErpStatsRoute
+  '/admin/erp/sync': typeof AdminErpSyncRoute
   '/admin/mahnungen/aktiv': typeof AdminMahnungenAktivRoute
   '/admin/mahnungen/aufgaben': typeof AdminMahnungenAufgabenRoute
   '/admin/mahnungen/einstellungen': typeof AdminMahnungenEinstellungenRoute
@@ -757,6 +795,7 @@ export interface FileRoutesByTo {
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
   '/admin/banking': typeof AdminBankingIndexRoute
   '/admin/datev': typeof AdminDatevIndexRoute
+  '/admin/erp': typeof AdminErpIndexRoute
   '/admin/mahnungen': typeof AdminMahnungenIndexRoute
   '/finanzen/$year': typeof FinanzenYearIndexRoute
   '/kunden/$customerId': typeof KundenCustomerIdIndexRoute
@@ -792,6 +831,7 @@ export interface FileRoutesById {
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/admin/banking': typeof AdminBankingRouteWithChildren
   '/admin/datev': typeof AdminDatevRouteWithChildren
+  '/admin/erp': typeof AdminErpRouteWithChildren
   '/admin/job-queue': typeof AdminJobQueueRoute
   '/admin/mahnungen': typeof AdminMahnungenRouteWithChildren
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
@@ -840,6 +880,9 @@ export interface FileRoutesById {
   '/admin/datev/export': typeof AdminDatevExportRoute
   '/admin/datev/history': typeof AdminDatevHistoryRoute
   '/admin/datev/vendors': typeof AdminDatevVendorsRoute
+  '/admin/erp/conflicts': typeof AdminErpConflictsRoute
+  '/admin/erp/stats': typeof AdminErpStatsRoute
+  '/admin/erp/sync': typeof AdminErpSyncRoute
   '/admin/mahnungen/aktiv': typeof AdminMahnungenAktivRoute
   '/admin/mahnungen/aufgaben': typeof AdminMahnungenAufgabenRoute
   '/admin/mahnungen/einstellungen': typeof AdminMahnungenEinstellungenRoute
@@ -854,6 +897,7 @@ export interface FileRoutesById {
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
   '/admin/banking/': typeof AdminBankingIndexRoute
   '/admin/datev/': typeof AdminDatevIndexRoute
+  '/admin/erp/': typeof AdminErpIndexRoute
   '/admin/mahnungen/': typeof AdminMahnungenIndexRoute
   '/finanzen/$year/': typeof FinanzenYearIndexRoute
   '/kunden/$customerId/': typeof KundenCustomerIdIndexRoute
@@ -890,6 +934,7 @@ export interface FileRouteTypes {
     | '/validation-queue'
     | '/admin/banking'
     | '/admin/datev'
+    | '/admin/erp'
     | '/admin/job-queue'
     | '/admin/mahnungen'
     | '/admin/ocr-backends'
@@ -938,6 +983,9 @@ export interface FileRouteTypes {
     | '/admin/datev/export'
     | '/admin/datev/history'
     | '/admin/datev/vendors'
+    | '/admin/erp/conflicts'
+    | '/admin/erp/stats'
+    | '/admin/erp/sync'
     | '/admin/mahnungen/aktiv'
     | '/admin/mahnungen/aufgaben'
     | '/admin/mahnungen/einstellungen'
@@ -952,6 +1000,7 @@ export interface FileRouteTypes {
     | '/lieferanten/$supplierId/$folderId'
     | '/admin/banking/'
     | '/admin/datev/'
+    | '/admin/erp/'
     | '/admin/mahnungen/'
     | '/finanzen/$year/'
     | '/kunden/$customerId/'
@@ -1018,6 +1067,9 @@ export interface FileRouteTypes {
     | '/admin/datev/export'
     | '/admin/datev/history'
     | '/admin/datev/vendors'
+    | '/admin/erp/conflicts'
+    | '/admin/erp/stats'
+    | '/admin/erp/sync'
     | '/admin/mahnungen/aktiv'
     | '/admin/mahnungen/aufgaben'
     | '/admin/mahnungen/einstellungen'
@@ -1032,6 +1084,7 @@ export interface FileRouteTypes {
     | '/lieferanten/$supplierId/$folderId'
     | '/admin/banking'
     | '/admin/datev'
+    | '/admin/erp'
     | '/admin/mahnungen'
     | '/finanzen/$year'
     | '/kunden/$customerId'
@@ -1066,6 +1119,7 @@ export interface FileRouteTypes {
     | '/validation-queue'
     | '/admin/banking'
     | '/admin/datev'
+    | '/admin/erp'
     | '/admin/job-queue'
     | '/admin/mahnungen'
     | '/admin/ocr-backends'
@@ -1114,6 +1168,9 @@ export interface FileRouteTypes {
     | '/admin/datev/export'
     | '/admin/datev/history'
     | '/admin/datev/vendors'
+    | '/admin/erp/conflicts'
+    | '/admin/erp/stats'
+    | '/admin/erp/sync'
     | '/admin/mahnungen/aktiv'
     | '/admin/mahnungen/aufgaben'
     | '/admin/mahnungen/einstellungen'
@@ -1128,6 +1185,7 @@ export interface FileRouteTypes {
     | '/lieferanten/$supplierId/$folderId'
     | '/admin/banking/'
     | '/admin/datev/'
+    | '/admin/erp/'
     | '/admin/mahnungen/'
     | '/finanzen/$year/'
     | '/kunden/$customerId/'
@@ -1587,6 +1645,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminJobQueueRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/erp': {
+      id: '/admin/erp'
+      path: '/erp'
+      fullPath: '/admin/erp'
+      preLoaderRoute: typeof AdminErpRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/datev': {
       id: '/admin/datev'
       path: '/datev'
@@ -1635,6 +1700,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/mahnungen/'
       preLoaderRoute: typeof AdminMahnungenIndexRouteImport
       parentRoute: typeof AdminMahnungenRoute
+    }
+    '/admin/erp/': {
+      id: '/admin/erp/'
+      path: '/'
+      fullPath: '/admin/erp/'
+      preLoaderRoute: typeof AdminErpIndexRouteImport
+      parentRoute: typeof AdminErpRoute
     }
     '/admin/datev/': {
       id: '/admin/datev/'
@@ -1733,6 +1805,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/mahnungen/aktiv'
       preLoaderRoute: typeof AdminMahnungenAktivRouteImport
       parentRoute: typeof AdminMahnungenRoute
+    }
+    '/admin/erp/sync': {
+      id: '/admin/erp/sync'
+      path: '/sync'
+      fullPath: '/admin/erp/sync'
+      preLoaderRoute: typeof AdminErpSyncRouteImport
+      parentRoute: typeof AdminErpRoute
+    }
+    '/admin/erp/stats': {
+      id: '/admin/erp/stats'
+      path: '/stats'
+      fullPath: '/admin/erp/stats'
+      preLoaderRoute: typeof AdminErpStatsRouteImport
+      parentRoute: typeof AdminErpRoute
+    }
+    '/admin/erp/conflicts': {
+      id: '/admin/erp/conflicts'
+      path: '/conflicts'
+      fullPath: '/admin/erp/conflicts'
+      preLoaderRoute: typeof AdminErpConflictsRouteImport
+      parentRoute: typeof AdminErpRoute
     }
     '/admin/datev/vendors': {
       id: '/admin/datev/vendors'
@@ -1872,6 +1965,24 @@ const AdminDatevRouteWithChildren = AdminDatevRoute._addFileChildren(
   AdminDatevRouteChildren,
 )
 
+interface AdminErpRouteChildren {
+  AdminErpConflictsRoute: typeof AdminErpConflictsRoute
+  AdminErpStatsRoute: typeof AdminErpStatsRoute
+  AdminErpSyncRoute: typeof AdminErpSyncRoute
+  AdminErpIndexRoute: typeof AdminErpIndexRoute
+}
+
+const AdminErpRouteChildren: AdminErpRouteChildren = {
+  AdminErpConflictsRoute: AdminErpConflictsRoute,
+  AdminErpStatsRoute: AdminErpStatsRoute,
+  AdminErpSyncRoute: AdminErpSyncRoute,
+  AdminErpIndexRoute: AdminErpIndexRoute,
+}
+
+const AdminErpRouteWithChildren = AdminErpRoute._addFileChildren(
+  AdminErpRouteChildren,
+)
+
 interface AdminMahnungenRouteChildren {
   AdminMahnungenAktivRoute: typeof AdminMahnungenAktivRoute
   AdminMahnungenAufgabenRoute: typeof AdminMahnungenAufgabenRoute
@@ -1921,6 +2032,7 @@ const AdminOcrTrainingRouteWithChildren =
 interface AdminRouteChildren {
   AdminBankingRoute: typeof AdminBankingRouteWithChildren
   AdminDatevRoute: typeof AdminDatevRouteWithChildren
+  AdminErpRoute: typeof AdminErpRouteWithChildren
   AdminJobQueueRoute: typeof AdminJobQueueRoute
   AdminMahnungenRoute: typeof AdminMahnungenRouteWithChildren
   AdminOcrBackendsRoute: typeof AdminOcrBackendsRouteWithChildren
@@ -1935,6 +2047,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBankingRoute: AdminBankingRouteWithChildren,
   AdminDatevRoute: AdminDatevRouteWithChildren,
+  AdminErpRoute: AdminErpRouteWithChildren,
   AdminJobQueueRoute: AdminJobQueueRoute,
   AdminMahnungenRoute: AdminMahnungenRouteWithChildren,
   AdminOcrBackendsRoute: AdminOcrBackendsRouteWithChildren,
