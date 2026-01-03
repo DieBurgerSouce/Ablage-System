@@ -3,10 +3,31 @@
 # Ablage-System
 # =============================================================================
 
-# Default owner for everything
-* @benfiDev
+# Default owners for everything
+* @DieBurgerSouce/maintainers
 
-# Spezifische Zustaendigkeiten (optional, sobald Team waechst)
-# /app/ @benfiDev
-# /frontend/ @benfiDev
-# /infrastructure/ @benfiDev
+# Backend code
+/app/ @DieBurgerSouce/backend-core
+/tests/ @DieBurgerSouce/quality-engineering
+
+# Infrastructure
+/infrastructure/ @DieBurgerSouce/infrastructure-team
+/infrastructure/terraform/ @DieBurgerSouce/infrastructure-team
+/infrastructure/ansible/ @DieBurgerSouce/infrastructure-team
+/infrastructure/kubernetes/ @DieBurgerSouce/infrastructure-team
+/infrastructure/helm/ @DieBurgerSouce/infrastructure-team
+/infrastructure/gitops/ @DieBurgerSouce/infrastructure-team
+
+# CI/CD
+/.github/ @DieBurgerSouce/infrastructure-team
+
+# Frontend
+/frontend/ @DieBurgerSouce/frontend-core
+
+# Documentation
+*.md @DieBurgerSouce/technical-writing
+/docs/ @DieBurgerSouce/technical-writing
+
+# Security-sensitive files
+/app/core/security.py @DieBurgerSouce/security-compliance
+/infrastructure/terraform/backend/ @DieBurgerSouce/security-compliance @DieBurgerSouce/infrastructure-team

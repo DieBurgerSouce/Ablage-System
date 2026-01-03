@@ -23,7 +23,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ablage-system/ablage-system-ocr.git"
+    "url": "https://github.com/DieBurgerSouce/Ablage-System.git"
   },
   "keywords": [
     "ocr",
@@ -37,12 +37,12 @@
     "docker",
     "enterprise"
   ],
-  "author": "Ablage-System Team",
+  "author": "DieBurgerSouce Team <oss@dieburgersouce.de>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ablage-system/ablage-system-ocr/issues"
+    "url": "https://github.com/DieBurgerSouce/Ablage-System/issues"
   },
-  "homepage": "https://docs.ablage-system.local",
+  "homepage": "https://dieburgersouce.de",
   "devDependencies": {
     "@playwright/test": "^1.40.0",
     "@semantic-release/changelog": "^6.0.3",
