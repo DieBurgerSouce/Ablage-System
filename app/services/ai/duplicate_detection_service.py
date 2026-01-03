@@ -224,13 +224,13 @@ class DuplicateDetectionService:
         document: Document,
         company_id: Optional[uuid.UUID],
     ) -> List[DuplicateCandidate]:
-        """Findet exakte Duplikate via Hash."""
-        if not document.file_hash:
+        """Findet exakte Duplikate via Hash (checksum)."""
+        if not document.checksum:
             return []
 
         query = select(Document).where(
             and_(
-                Document.file_hash == document.file_hash,
+                Document.checksum == document.checksum,
                 Document.id != document.id,
                 Document.deleted_at.is_(None),
             )
@@ -247,9 +247,9 @@ class DuplicateDetectionService:
                 document_id=dup.id,
                 duplicate_type=DuplicateType.EXACT,
                 similarity=1.0,
-                matched_fields=["file_hash"],
+                matched_fields=["checksum"],
                 details={
-                    "hash": document.file_hash,
+                    "hash": document.checksum,
                     "original_filename": dup.original_filename,
                 },
             )
