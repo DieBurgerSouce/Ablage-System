@@ -1,0 +1,236 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Tests",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/test.sh",
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Run Tests with Coverage",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/test.sh --coverage",
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Run GPU Tests",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/test.sh --gpu",
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Lint Code",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/lint.sh",
+      "problemMatcher": [
+        {
+          "owner": "ruff",
+          "fileLocation": ["relative", "${workspaceFolder}"],
+          "pattern": {
+            "regexp": "^(.+):(\\d+):(\\d+):\\s+(\\w+):\\s+(.+)$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "severity": 4,
+            "message": 5
+          }
+        }
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "Lint and Fix",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/lint.sh --fix",
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Type Check (MyPy)",
+      "type": "shell",
+      "command": "mypy app/",
+      "problemMatcher": [
+        {
+          "owner": "mypy",
+          "fileLocation": ["relative", "${workspaceFolder}"],
+          "pattern": {
+            "regexp": "^(.+):(\\d+):\\s+error:\\s+(.+)$",
+            "file": 1,
+            "line": 2,
+            "message": 3
+          }
+        }
+      ],
+      "group": "build"
+    },
+    {
+      "label": "Build All",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/build.sh",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Start Development Server",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/dev.sh",
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Start Celery Worker",
+      "type": "shell",
+      "command": "celery -A app.celery worker --loglevel=info --concurrency=1 --pool=solo",
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Database Migration - Upgrade",
+      "type": "shell",
+      "command": "alembic upgrade head",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Database Migration - Create",
+      "type": "shell",
+      "command": "alembic revision --autogenerate -m \"${input:migrationMessage}\"",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Reset Database",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/db-reset.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Docker Compose - Up",
+      "type": "shell",
+      "command": "docker-compose up -d",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Docker Compose - Down",
+      "type": "shell",
+      "command": "docker-compose down",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Docker Compose - Logs",
+      "type": "shell",
+      "command": "docker-compose logs -f",
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Check GPU Status",
+      "type": "shell",
+      "command": "nvidia-smi",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Monitor GPU (Real-time)",
+      "type": "shell",
+      "command": "watch -n 1 nvidia-smi",
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Run Current Test File",
+      "type": "shell",
+      "command": "pytest ${file} -v",
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Format Current File",
+      "type": "shell",
+      "command": "ruff format ${file}",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "migrationMessage",
+      "type": "promptString",
+      "description": "Migration message",
+      "default": "Update schema"
+    }
+  ]
+}

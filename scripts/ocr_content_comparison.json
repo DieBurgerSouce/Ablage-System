@@ -1,0 +1,80 @@
+{
+  "timestamp": "2025-12-08T20:14:19.424417",
+  "files": [
+    "00000009.TIF",
+    "0000000B.TIF",
+    "0000000C.TIF"
+  ],
+  "backends": [
+    "Surya CPU",
+    "Chandra 4bit"
+  ],
+  "results": {
+    "00000009.TIF": [
+      {
+        "backend": "Surya CPU",
+        "file": "00000009.TIF",
+        "success": true,
+        "text": "WG: Anfrage 68259 Mannheim\nimap://wp13764893-oguen@wp13764893.mail.server-he.de:...\nBetreff: WG: Anfrage 68259 Mannheim\nVon: \"Gotthardt, Aletta\" <ag@folitec.de>\nDatum: 26.07.2022, 10:43\nAn: \"'oguen@firmenich.de'\" <oguen@firmenich.de>\nGuten Morgen,\nvielen Dank für Ihre Anfrage. Wie gewünscht möchten wir wie folgt anbieten:\n2 Rollen\nUV M 42 window plus 180 my\n6,5 m x 110 m\nPreis: EUR/qm 0,81\nLieferung: frei Haus 68259 Mannheim\nLieferzeit: ca. 1 Woche\nFür Rückfragen stehen wir gerne zur Verfügung.\nMit freundlichen Grüßen\nBest regards\nAletta Gotthardt\nfolitec Agrarfolien-Vertriebs GmbH\nSiemensstrasse 11 (vormals Röntgenstr. 11)\nD- 56457 Westerburg\n+49 2663 28000\nfon:\nFax. +49 2663 2800 10\nemail <u>vertrieb@folitec.de</u>\nwww.folitec.de\n<b>Von:</b> Pfaff, Thorsten <tp@folitec.de>\nGesendet: Dienstag, 26. Juli 2022 10:13\nAn: Vertrieb < Vertrieb@folitec.de>\nBetreff: Fwd: Anfrage 68259 Mannheim\nMit freundlichen Grüßen\nBest regards\nThorsten Pfaff\nfolitec GmbH\nTel. 0049 (0) 2663 28000\nAnfang der weitergeleiteten Nachricht:\nVon: \"Ogün Sorhan [Spargelmesser Firmenich]\" < oguen@firmenich.de >\n<b>Datum:</b> 26. Juli 2022 um 10:12:04 MESZ\n<b>An:</b> \"Pfaff, Thorsten\" < tp@folitec.de >\nBetreff: Anfrage 68259 Mannheim\nGuten Tag Herr Pfaff,\nwir haben folgende Anfrage:\nUV M 42 window plus 180 my\n6,5 m x 110 m ( 2 Rollen )\nLieferung nach 68259 Mannheim\nVielen Dank im Voraus.\n--\nMit freundlichen Grüßen\nOgün Sorhan\n1 von 2\n26.07.2022, 10:52",
+        "text_length": 1441,
+        "confidence": 0.877,
+        "processing_time_ms": 7272,
+        "error": null
+      },
+      {
+        "backend": "Chandra 4bit",
+        "file": "00000009.TIF",
+        "success": false,
+        "text": "",
+        "text_length": 0,
+        "confidence": 0.0,
+        "processing_time_ms": 3357,
+        "error": "No package metadata was found for bitsandbytes"
+      }
+    ],
+    "0000000B.TIF": [
+      {
+        "backend": "Surya CPU",
+        "file": "0000000B.TIF",
+        "success": true,
+        "text": "Rechenzentrum\na.b.s. Rechenzentrum GmbH\na.b.s. Rechenzentrum GmbH - An der Markthalle 4 - 09111 Chemnitz\nFirma\nSpargelmesser Firmenich\nGmbH & Co. KG\nAlbertus-Magnus-Str. 7\n42719 Solingen\n904955170123\nRechnungs-Nr.\nKunden-Nr.\nRechnungsdatum\nRechnung\n246543\n25.05.22\n310835\nBitte bei Zahlung unbedingt angeben\nAuftragsnummer\nLieferdatum\nBezeichnung\nPreis EUR\n215383\n25.05.22\nLohn 05/22\n52,80\nNetto\n52,80\n19.0% Mehrwertsteuer\n10,03\nRechnungsbetrag\n62,83\nWir danken für Ihren Auftrag.\nDer Rechnungsbetrag wird sofort fällig und wird von uns vereinbarungsgemäß in den nächsten Tagen von Ihrem Konto (IBAN: DE73342700240012922100, BIC: DEUTDEDB342 - Deutsche Bank) abgebucht. Die SEPA Lastschrift erfolgt mit \nWaren, Programme und Auswertungen bleiben bis zur vollständigen Bezahlung sämtlicher Forderungen aus der Geschäftsbeziehung zwischen dem Kunden und a.b.s. unser Eigentum. Erfüllungsort und Gerichtsstand ist Chemnitz.\n261\nGEBUCHT 0.5. JUNI 2022\nUst-ldNr.: DE213976499\nHandelsregister Chemnitz HRB-Nr.: 18438\nGeschäftsführer: Frank Roscher\nAnschrift:\nTelefon:\nE-Mail/Internet:\nBankverbindung:\nAn der Markthalle 4\n(0371)<br>690 77 77\nservice@nord.abs-rz.de\nIBAN: DE25 8702 0086 0007 4040 00, BIC: HYVEDEMM497 Unicredit Bank - HypoVereinsbank Chemnitz\n09111 Chemnitz\nwww.abs-rz.de\nInvalidenstraße 34\n(030)<br>6900 400 0\n10115 Berlin",
+        "text_length": 1332,
+        "confidence": 0.924,
+        "processing_time_ms": 6100,
+        "error": null
+      },
+      {
+        "backend": "Chandra 4bit",
+        "file": "0000000B.TIF",
+        "success": false,
+        "text": "",
+        "text_length": 0,
+        "confidence": 0.0,
+        "processing_time_ms": 3137,
+        "error": "No package metadata was found for bitsandbytes"
+      }
+    ],
+    "0000000C.TIF": [
+      {
+        "backend": "Surya CPU",
+        "file": "0000000C.TIF",
+        "success": true,
+        "text": "Rechenzentrum\na.b.s. Rechenzentrum GmbH\na.b.s. Rechenzentrum GmbH - An der Markthalle 4 - 09111 Chemnitz\nFirma\nSpargelmesser Firmenich\nGmbH & Co. KG\nAlbertus-Magnus-Str. 7\n42719 Solingen\n904955170123\nRechnungs-Nr.\nKunden-Nr.\nRechnungsdatum\nRechnung\n246543\n25.05.22\n310835\nBitte bei Zahlung unbedingt angeben\nAuftragsnummer\nLieferdatum\nBezeichnung\nPreis EUR\n215383\n25.05.22\nLohn 05/22\n52,80\nNetto\n52,80\n19.0% Mehrwertsteuer\n10,03\nRechnungsbetrag\n62,83\nWir danken für Ihren Auftrag.\nDer Rechnungsbetrag wird sofort fällig und wird von uns vereinbarungsgemäß in den nächsten Tagen von Ihrem Konto (IBAN: DE73342700240012922100, BIC: DEUTDEDB342 - Deutsche Bank) abgebucht. Die SEPA Lastschrift erfolgt mit \nWaren, Programme und Auswertungen bleiben bis zur vollständigen Bezahlung sämtlicher Forderungen aus der Geschäftsbeziehung zwischen dem Kunden und a.b.s. unser Eigentum. Erfüllungsort und Gerichtsstand ist Chemnitz.\n261\nGEBUCHT 0.5. JUNI 2022\nUst-ldNr.: DE213976499\nHandelsregister Chemnitz HRB-Nr.: 18438\nGeschäftsführer: Frank Roscher\nAnschrift:\nTelefon:\nE-Mail/Internet:\nBankverbindung:\nAn der Markthalle 4\n(0371)<br>690 77 77\nservice@nord.abs-rz.de\nIBAN: DE25 8702 0086 0007 4040 00, BIC: HYVEDEMM497 Unicredit Bank - HypoVereinsbank Chemnitz\n09111 Chemnitz\nwww.abs-rz.de\nInvalidenstraße 34\n(030)<br>6900 400 0\n10115 Berlin",
+        "text_length": 1332,
+        "confidence": 0.924,
+        "processing_time_ms": 6132,
+        "error": null
+      },
+      {
+        "backend": "Chandra 4bit",
+        "file": "0000000C.TIF",
+        "success": false,
+        "text": "",
+        "text_length": 0,
+        "confidence": 0.0,
+        "processing_time_ms": 3133,
+        "error": "No package metadata was found for bitsandbytes"
+      }
+    ]
+  }
+}
