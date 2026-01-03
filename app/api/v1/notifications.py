@@ -333,71 +333,21 @@ async def notification_websocket(
     ws_manager = get_notification_ws_manager()
     user_id: Optional[str] = None
 
-    # =========================================================================
-    # SECURITY FIX: Auth VOR accept() wenn Token als Query-Parameter vorhanden
-    # =========================================================================
-    if token:
-        try:
-            user_id = await extract_user_id_from_token(token)
-
-            # Verify user exists
-            user_result = await db.execute(
-                select(User).where(User.id == UUID(user_id))
-            )
-            user = user_result.scalar_one_or_none()
-            if not user or not user.is_active:
-                logger.warning("notification_ws_auth_failed", reason="user_not_found_or_inactive")
-                await websocket.close(code=4001)
-                return
-
-        except Exception as e:
-            logger.warning("notification_ws_auth_failed", error=str(e))
-            await websocket.close(code=4001)
-            return
-
-        # Auth erfolgreich - jetzt accept()
-        await websocket.accept()
-        logger.info("notification_ws_connected", user_id=user_id, auth_method="query_token")
-
-    else:
+    try:
         # =========================================================================
-        # LEGACY: Accept first, then auth via message (fuer Rueckwaertskompatibilitaet)
+        # SECURITY FIX: Auth VOR accept() wenn Token als Query-Parameter vorhanden
         # =========================================================================
-        try:
-            await websocket.accept()
-
-            # Wait for auth message
+        if token:
             try:
-                auth_message = await websocket.receive_json()
+                user_id = await extract_user_id_from_token(token)
 
-                if auth_message.get("type") != "auth" or not auth_message.get("token"):
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": "Authentifizierung erforderlich. Senden Sie {type: 'auth', token: 'jwt_token'} oder nutzen Sie ?token=... im Query-Parameter",
-                    })
-                    await websocket.close(code=4001)
-                    return
-
-                # Validate token
-                msg_token = auth_message.get("token")
-                try:
-                    user_id = await extract_user_id_from_token(msg_token)
-
-                    # Verify user exists
-                    user_result = await db.execute(
-                        select(User).where(User.id == UUID(user_id))
-                    )
-                    user = user_result.scalar_one_or_none()
-                    if not user or not user.is_active:
-                        raise Exception("Benutzer nicht gefunden oder deaktiviert")
-
-                    logger.info("notification_ws_connected", user_id=user_id, auth_method="message")
-
-                except Exception as e:
-                    await websocket.send_json({
-                        "type": "error",
-                        "message": f"Authentifizierung fehlgeschlagen: {str(e)}",
-                    })
+                # Verify user exists
+                user_result = await db.execute(
+                    select(User).where(User.id == UUID(user_id))
+                )
+                user = user_result.scalar_one_or_none()
+                if not user or not user.is_active:
+                    logger.warning("notification_ws_auth_failed", reason="user_not_found_or_inactive")
                     await websocket.close(code=4001)
                     return
 
@@ -406,46 +356,122 @@ async def notification_websocket(
                 await websocket.close(code=4001)
                 return
 
-        except Exception as e:
-            logger.warning("notification_ws_accept_failed", error=str(e))
-            return
+            # Auth erfolgreich - jetzt accept()
+            await websocket.accept()
+            logger.info("notification_ws_connected", user_id=user_id, auth_method="query_token")
 
-        # Register connection (without calling accept again)
-        async with ws_manager._lock:
-            if user_id not in ws_manager._connections:
-                ws_manager._connections[user_id] = []
-            ws_manager._connections[user_id].append(websocket)
+            # Register connection and keep alive for query-token auth
+            async with ws_manager._lock:
+                if user_id not in ws_manager._connections:
+                    ws_manager._connections[user_id] = []
+                ws_manager._connections[user_id].append(websocket)
 
-        logger.info(
-            "notification_ws_authenticated",
-            user_id=user_id,
-        )
+            # Send welcome message
+            await websocket.send_json({
+                "type": "connected",
+                "message": "Verbindung erfolgreich hergestellt",
+                "user_id": user_id,
+            })
 
-        # Send welcome message
-        await websocket.send_json({
-            "type": "connected",
-            "message": "Verbindung erfolgreich hergestellt",
-            "user_id": user_id,
-        })
+            # Keep connection alive and handle incoming messages
+            while True:
+                try:
+                    message = await websocket.receive_json()
+                    if message.get("type") == "ping":
+                        await websocket.send_json({"type": "pong"})
+                except WebSocketDisconnect:
+                    break
+                except Exception as e:
+                    logger.warning("notification_ws_message_error", user_id=user_id, error=str(e))
+                    break
 
-        # Keep connection alive and handle incoming messages
-        while True:
+        else:
+            # =========================================================================
+            # LEGACY: Accept first, then auth via message (fuer Rueckwaertskompatibilitaet)
+            # =========================================================================
             try:
-                message = await websocket.receive_json()
+                await websocket.accept()
 
-                # Handle ping/pong for keepalive
-                if message.get("type") == "ping":
-                    await websocket.send_json({"type": "pong"})
+                # Wait for auth message
+                try:
+                    auth_message = await websocket.receive_json()
 
-            except WebSocketDisconnect:
-                break
+                    if auth_message.get("type") != "auth" or not auth_message.get("token"):
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Authentifizierung erforderlich. Senden Sie {type: 'auth', token: 'jwt_token'} oder nutzen Sie ?token=... im Query-Parameter",
+                        })
+                        await websocket.close(code=4001)
+                        return
+
+                    # Validate token
+                    msg_token = auth_message.get("token")
+                    try:
+                        user_id = await extract_user_id_from_token(msg_token)
+
+                        # Verify user exists
+                        user_result = await db.execute(
+                            select(User).where(User.id == UUID(user_id))
+                        )
+                        user = user_result.scalar_one_or_none()
+                        if not user or not user.is_active:
+                            raise Exception("Benutzer nicht gefunden oder deaktiviert")
+
+                        logger.info("notification_ws_connected", user_id=user_id, auth_method="message")
+
+                    except Exception as e:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": f"Authentifizierung fehlgeschlagen: {str(e)}",
+                        })
+                        await websocket.close(code=4001)
+                        return
+
+                except Exception as e:
+                    logger.warning("notification_ws_auth_failed", error=str(e))
+                    await websocket.close(code=4001)
+                    return
+
             except Exception as e:
-                logger.warning(
-                    "notification_ws_message_error",
-                    user_id=user_id,
-                    error=str(e),
-                )
-                break
+                logger.warning("notification_ws_accept_failed", error=str(e))
+                return
+
+            # Register connection (without calling accept again)
+            async with ws_manager._lock:
+                if user_id not in ws_manager._connections:
+                    ws_manager._connections[user_id] = []
+                ws_manager._connections[user_id].append(websocket)
+
+            logger.info(
+                "notification_ws_authenticated",
+                user_id=user_id,
+            )
+
+            # Send welcome message
+            await websocket.send_json({
+                "type": "connected",
+                "message": "Verbindung erfolgreich hergestellt",
+                "user_id": user_id,
+            })
+
+            # Keep connection alive and handle incoming messages
+            while True:
+                try:
+                    message = await websocket.receive_json()
+
+                    # Handle ping/pong for keepalive
+                    if message.get("type") == "ping":
+                        await websocket.send_json({"type": "pong"})
+
+                except WebSocketDisconnect:
+                    break
+                except Exception as e:
+                    logger.warning(
+                        "notification_ws_message_error",
+                        user_id=user_id,
+                        error=str(e),
+                    )
+                    break
 
     finally:
         # Clean up connection
