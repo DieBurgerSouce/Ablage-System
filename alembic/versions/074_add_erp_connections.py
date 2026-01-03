@@ -261,9 +261,23 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Drop tables in reverse order
+    # Drop tables in reverse order of creation (children before parents)
+    # Note: Indexes and constraints are automatically dropped with their tables
+
+    # 1. erp_entity_mappings (depends on erp_connections)
+    op.drop_constraint("uq_erp_entity_mappings_remote", "erp_entity_mappings", type_="unique")
+    op.drop_constraint("uq_erp_entity_mappings_local", "erp_entity_mappings", type_="unique")
     op.drop_table("erp_entity_mappings")
+
+    # 2. erp_conflicts (depends on erp_connections + erp_sync_history)
     op.drop_table("erp_conflicts")
+
+    # 3. erp_field_mappings (depends on erp_connections)
+    op.drop_constraint("uq_erp_field_mappings_unique", "erp_field_mappings", type_="unique")
     op.drop_table("erp_field_mappings")
+
+    # 4. erp_sync_history (depends on erp_connections)
     op.drop_table("erp_sync_history")
+
+    # 5. erp_connections (parent - no ERP dependencies)
     op.drop_table("erp_connections")

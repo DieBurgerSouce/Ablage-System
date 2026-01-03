@@ -12,6 +12,7 @@ Feinpoliert und durchdacht - Enterprise-Grade AI Governance.
 
 from __future__ import annotations
 
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -202,10 +203,58 @@ class AIDecisionService:
     _threshold_cache: Dict[Optional[uuid.UUID], Dict[DecisionType, ThresholdConfig]] = {}
     _threshold_cache_time: Dict[Optional[uuid.UUID], datetime] = {}
     _CACHE_TTL_SECONDS = 60
+    _MAX_CACHE_SIZE = 1000  # MEMORY LEAK FIX: Max Cache-Eintraege
+    _last_cleanup: datetime = datetime.min.replace(tzinfo=timezone.utc)
+    _CLEANUP_INTERVAL_SECONDS = 300  # Cleanup alle 5 Minuten
 
     def __init__(self) -> None:
         """Initialisiert den Service."""
         self._model_version = "1.0.0"
+
+    @classmethod
+    def _cleanup_expired_cache(cls) -> None:
+        """MEMORY LEAK FIX: Entfernt abgelaufene Cache-Eintraege.
+
+        Wird periodisch aufgerufen um Memory Leaks zu verhindern.
+        Entfernt Eintraege die aelter als TTL sind.
+        """
+        now = datetime.now(timezone.utc)
+
+        # Nur alle CLEANUP_INTERVAL_SECONDS ausfuehren
+        if (now - cls._last_cleanup).total_seconds() < cls._CLEANUP_INTERVAL_SECONDS:
+            return
+
+        cls._last_cleanup = now
+
+        # Abgelaufene Keys finden
+        expired_keys = [
+            key for key, cache_time in cls._threshold_cache_time.items()
+            if (now - cache_time).total_seconds() >= cls._CACHE_TTL_SECONDS
+        ]
+
+        # Abgelaufene Eintraege entfernen
+        for key in expired_keys:
+            cls._threshold_cache.pop(key, None)
+            cls._threshold_cache_time.pop(key, None)
+
+        # Falls Cache immer noch zu gross, aelteste Eintraege entfernen
+        if len(cls._threshold_cache) > cls._MAX_CACHE_SIZE:
+            # Sortiere nach Alter und entferne aelteste
+            sorted_keys = sorted(
+                cls._threshold_cache_time.keys(),
+                key=lambda k: cls._threshold_cache_time.get(k, datetime.min.replace(tzinfo=timezone.utc))
+            )
+            keys_to_remove = sorted_keys[:len(cls._threshold_cache) - cls._MAX_CACHE_SIZE]
+            for key in keys_to_remove:
+                cls._threshold_cache.pop(key, None)
+                cls._threshold_cache_time.pop(key, None)
+
+        if expired_keys or len(cls._threshold_cache) > cls._MAX_CACHE_SIZE:
+            logger.debug(
+                "threshold_cache_cleanup",
+                expired_removed=len(expired_keys),
+                current_size=len(cls._threshold_cache),
+            )
 
     # =========================================================================
     # Threshold Management
@@ -226,6 +275,9 @@ class AIDecisionService:
         Returns:
             Dict mit ThresholdConfig pro DecisionType
         """
+        # MEMORY LEAK FIX: Periodisches Cache-Cleanup
+        self._cleanup_expired_cache()
+
         now = datetime.now(timezone.utc)
         cache_key = company_id
 
@@ -372,6 +424,13 @@ class AIDecisionService:
         )
 
         db.add(decision)
+
+        # DATA CONSISTENCY FIX: flush() vor Callback ausfuehren
+        # Dies stellt sicher, dass:
+        # 1. decision.id generiert ist (fuer Logging und Referenzen)
+        # 2. Callback kann auf konsistenten DB-Zustand zugreifen
+        # 3. Bei Callback-Fehler kann die gesamte Transaktion zurueckgerollt werden
+        await db.flush()
 
         # Wenn Auto-Apply und Callback vorhanden, ausfuehren
         if auto_applied and apply_callback is not None:
@@ -702,13 +761,17 @@ class AIDecisionService:
         return counts
 
 
-# Singleton-Instanz
+# Singleton-Instanz mit Thread-Safety
 _ai_decision_service: Optional[AIDecisionService] = None
+_service_lock = threading.Lock()
 
 
 def get_ai_decision_service() -> AIDecisionService:
-    """Factory fuer AIDecisionService Singleton."""
+    """Factory fuer AIDecisionService Singleton (Thread-safe)."""
     global _ai_decision_service
     if _ai_decision_service is None:
-        _ai_decision_service = AIDecisionService()
+        with _service_lock:
+            # Double-check locking pattern
+            if _ai_decision_service is None:
+                _ai_decision_service = AIDecisionService()
     return _ai_decision_service

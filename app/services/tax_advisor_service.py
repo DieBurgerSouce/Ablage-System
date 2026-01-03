@@ -158,10 +158,14 @@ class TaxAdvisorService:
         # Token hashen und Einladung suchen
         token_hash = hashlib.sha256(token.encode()).hexdigest()
 
+        # SECURITY FIX: Pessimistic Lock verhindert Race Condition
+        # SELECT ... FOR UPDATE sperrt die Zeile bis zum Commit/Rollback
+        # Dies verhindert, dass parallele Requests dasselbe Token verwenden
         result = await db.execute(
             select(TaxAdvisorInvite)
             .options(joinedload(TaxAdvisorInvite.company))
             .where(TaxAdvisorInvite.token_hash == token_hash)
+            .with_for_update(nowait=False)  # Wartet auf Lock statt Fehler
         )
         invite = result.scalar_one_or_none()
 

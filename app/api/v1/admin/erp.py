@@ -11,7 +11,7 @@ Feinpoliert und durchdacht - ERP-Administration auf Enterprise-Niveau.
 """
 
 import structlog
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
@@ -19,6 +19,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, update, delete
 from sqlalchemy.orm import selectinload
+
+from app.core.encryption import encrypt_data, decrypt_data, EncryptionError
 
 from app.db.models import (
     User,
@@ -293,8 +295,22 @@ async def create_connection(
     db: AsyncSession = Depends(get_db),
 ) -> ERPConnectionResponse:
     """Erstellt eine neue ERP-Verbindung."""
-    # Encrypt API key (simplified - use Fernet in production)
-    encrypted_key = data.api_key  # TODO: Encrypt properly
+    # SECURITY FIX: API Key mit AES-256-GCM verschluesseln
+    try:
+        encrypted_key = encrypt_data(
+            data.api_key,
+            associated_data=f"erp:{current_user.company_id}"
+        )
+    except EncryptionError as e:
+        logger.error(
+            "erp_api_key_encryption_failed",
+            error=str(e),
+            user_id=str(current_user.id),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="API-Key Verschluesselung fehlgeschlagen",
+        )
 
     connection = ERPConnection(
         company_id=current_user.company_id,
@@ -359,15 +375,31 @@ async def update_connection(
     # Update fields
     update_data = data.model_dump(exclude_unset=True)
 
-    # Handle API key encryption
+    # SECURITY FIX: Handle API key encryption
     if "api_key" in update_data:
-        update_data["encrypted_api_key"] = update_data.pop("api_key")
+        try:
+            encrypted_key = encrypt_data(
+                update_data.pop("api_key"),
+                associated_data=f"erp:{current_user.company_id}"
+            )
+            update_data["encrypted_api_key"] = encrypted_key
+        except EncryptionError as e:
+            logger.error(
+                "erp_api_key_encryption_failed",
+                error=str(e),
+                connection_id=str(connection_id),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="API-Key Verschluesselung fehlgeschlagen",
+            )
 
     for key, value in update_data.items():
         setattr(connection, key, value)
 
     connection.updated_by = current_user.id
-    connection.updated_at = datetime.utcnow()
+    # TIMEZONE FIX: Verwende timezone-aware datetime
+    connection.updated_at = datetime.now(timezone.utc)
 
     await db.commit()
     await db.refresh(connection)
@@ -701,7 +733,7 @@ async def resolve_conflict(
     conflict.status = ERPConflictStatus.RESOLVED.value
     conflict.resolution = data.resolution
     conflict.resolved_data = data.resolved_data
-    conflict.resolved_at = datetime.utcnow()
+    conflict.resolved_at = datetime.now(timezone.utc)
     conflict.resolved_by = current_user.id
     conflict.resolution_notes = data.notes
 
@@ -786,7 +818,7 @@ async def get_erp_stats(
 
     # Recent syncs (last 24h)
     from datetime import timedelta
-    yesterday = datetime.utcnow() - timedelta(hours=24)
+    yesterday = datetime.now(timezone.utc) - timedelta(hours=24)
 
     sync_result = await db.execute(
         select(func.count(ERPSyncHistory.id)).where(

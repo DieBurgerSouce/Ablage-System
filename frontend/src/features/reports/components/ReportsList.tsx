@@ -51,7 +51,9 @@ import {
 import type { ReportTemplate, ReportType, DataSource } from '../types';
 
 interface ReportsListProps {
-  onEdit?: (template: ReportTemplate) => void;
+  // TYPE SAFETY FIX: Optional template fuer "create new" vs "edit existing"
+  onEdit?: (template?: ReportTemplate) => void;
+  onCreate?: () => void;
   onShare?: (template: ReportTemplate) => void;
   onSchedule?: (template: ReportTemplate) => void;
 }
@@ -77,7 +79,7 @@ const reportTypeColors: Record<ReportType, string> = {
   custom: 'bg-orange-500/10 text-orange-500',
 };
 
-export function ReportsList({ onEdit, onShare, onSchedule }: ReportsListProps) {
+export function ReportsList({ onEdit, onCreate, onShare, onSchedule }: ReportsListProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<ReportTemplate | null>(null);
 
@@ -137,7 +139,8 @@ export function ReportsList({ onEdit, onShare, onSchedule }: ReportsListProps) {
           <p className="text-muted-foreground text-sm mt-1">
             Erstellen Sie Ihren ersten Report-Template.
           </p>
-          <Button className="mt-4" onClick={() => onEdit?.(undefined as unknown as ReportTemplate)}>
+          {/* TYPE SAFETY FIX: Separate onCreate Callback statt unsafe Cast */}
+          <Button className="mt-4" onClick={() => onCreate?.() ?? onEdit?.()}>
             <Plus className="h-4 w-4 mr-2" />
             Neuer Report
           </Button>

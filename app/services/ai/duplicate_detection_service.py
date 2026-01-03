@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -113,14 +114,19 @@ class DuplicateDetectionService:
         self._decision_service = get_ai_decision_service()
 
     def _normalize_text(self, text: Optional[str]) -> str:
-        """Normalisiert Text fuer Vergleich."""
+        """Normalisiert Text fuer Vergleich.
+
+        WICHTIG: Erhaelt deutsche Umlaute (ä, ö, ü, ß) fuer korrekten
+        Vergleich deutscher Dokumente.
+        """
         if not text:
             return ""
         # Lowercase, Whitespace normalisieren
         text = text.lower()
         text = re.sub(r'\s+', ' ', text)
-        # Sonderzeichen entfernen
-        text = re.sub(r'[^\w\s]', '', text)
+        # UMLAUT FIX: Sonderzeichen entfernen, aber deutsche Umlaute erhalten
+        # \w mit re.UNICODE matched alle Unicode-Buchstaben inkl. äöüß
+        text = re.sub(r'[^\w\s]', '', text, flags=re.UNICODE)
         return text.strip()
 
     def _calculate_text_hash(self, text: str) -> str:
@@ -563,13 +569,17 @@ class DuplicateDetectionService:
         return ai_result
 
 
-# Singleton-Instanz
+# Singleton-Instanz mit Thread-Safety
 _duplicate_detection_service: Optional[DuplicateDetectionService] = None
+_service_lock = threading.Lock()
 
 
 def get_duplicate_detection_service() -> DuplicateDetectionService:
-    """Factory fuer DuplicateDetectionService Singleton."""
+    """Factory fuer DuplicateDetectionService Singleton (Thread-safe)."""
     global _duplicate_detection_service
     if _duplicate_detection_service is None:
-        _duplicate_detection_service = DuplicateDetectionService()
+        with _service_lock:
+            # Double-check locking pattern
+            if _duplicate_detection_service is None:
+                _duplicate_detection_service = DuplicateDetectionService()
     return _duplicate_detection_service

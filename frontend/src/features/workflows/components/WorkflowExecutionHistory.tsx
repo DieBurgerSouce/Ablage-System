@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import {
   Play,
   Pause,
@@ -36,6 +37,14 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+// A11Y FIX: UI-Library Select statt native select
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import {
   useWorkflowExecutions,
@@ -152,12 +161,14 @@ function ExecutionRow({
           <div className="flex items-center gap-1">
             {execution.status === 'running' && (
               <>
+                {/* A11Y FIX: aria-label fuer Screen Reader */}
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
                   onClick={() => onPause(execution.id)}
                   title="Pausieren"
+                  aria-label="Ausfuehrung pausieren"
                 >
                   <Pause className="h-4 w-4" />
                 </Button>
@@ -167,6 +178,7 @@ function ExecutionRow({
                   className="h-8 w-8"
                   onClick={() => onCancel(execution.id)}
                   title="Abbrechen"
+                  aria-label="Ausfuehrung abbrechen"
                 >
                   <Ban className="h-4 w-4" />
                 </Button>
@@ -180,6 +192,7 @@ function ExecutionRow({
                   className="h-8 w-8"
                   onClick={() => onResume(execution.id)}
                   title="Fortsetzen"
+                  aria-label="Ausfuehrung fortsetzen"
                 >
                   <Play className="h-4 w-4" />
                 </Button>
@@ -189,6 +202,7 @@ function ExecutionRow({
                   className="h-8 w-8"
                   onClick={() => onCancel(execution.id)}
                   title="Abbrechen"
+                  aria-label="Ausfuehrung abbrechen"
                 >
                   <Ban className="h-4 w-4" />
                 </Button>
@@ -201,6 +215,7 @@ function ExecutionRow({
                 className="h-8 w-8"
                 onClick={() => onRetry(execution.id)}
                 title="Wiederholen"
+                aria-label="Ausfuehrung wiederholen"
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
@@ -312,24 +327,53 @@ export default function WorkflowExecutionHistory({
   const cancelExecution = useCancelExecution();
   const retryExecution = useRetryExecution();
 
+  // ERROR HANDLING FIX: Try-catch mit Toast-Benachrichtigungen
   const handlePause = async (id: string) => {
-    await pauseExecution.mutateAsync(id);
-    refetch();
+    try {
+      await pauseExecution.mutateAsync(id);
+      toast.success('Ausfuehrung pausiert');
+      refetch();
+    } catch (error) {
+      toast.error('Fehler beim Pausieren', {
+        description: error instanceof Error ? error.message : 'Unbekannter Fehler',
+      });
+    }
   };
 
   const handleResume = async (id: string) => {
-    await resumeExecution.mutateAsync(id);
-    refetch();
+    try {
+      await resumeExecution.mutateAsync(id);
+      toast.success('Ausfuehrung fortgesetzt');
+      refetch();
+    } catch (error) {
+      toast.error('Fehler beim Fortsetzen', {
+        description: error instanceof Error ? error.message : 'Unbekannter Fehler',
+      });
+    }
   };
 
   const handleCancel = async (id: string) => {
-    await cancelExecution.mutateAsync(id);
-    refetch();
+    try {
+      await cancelExecution.mutateAsync(id);
+      toast.success('Ausfuehrung abgebrochen');
+      refetch();
+    } catch (error) {
+      toast.error('Fehler beim Abbrechen', {
+        description: error instanceof Error ? error.message : 'Unbekannter Fehler',
+      });
+    }
   };
 
   const handleRetry = async (id: string) => {
-    await retryExecution.mutateAsync(id);
-    refetch();
+    try {
+      await retryExecution.mutateAsync(id);
+      toast.success('Ausfuehrung wird wiederholt');
+      refetch();
+    } catch (error) {
+      toast.error('Fehler beim Wiederholen', {
+        description: error instanceof Error ? error.message : 'Unbekannter Fehler',
+      });
+    }
   };
 
   if (isLoading) {
@@ -355,19 +399,21 @@ export default function WorkflowExecutionHistory({
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Ausfuehrungs-Historie</h3>
         <div className="flex items-center gap-2">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as ExecutionStatus | 'all')}
-            className="rounded border px-3 py-1.5 text-sm"
-          >
-            <option value="all">Alle Status</option>
-            <option value="pending">Ausstehend</option>
-            <option value="running">Laeuft</option>
-            <option value="paused">Pausiert</option>
-            <option value="completed">Abgeschlossen</option>
-            <option value="failed">Fehlgeschlagen</option>
-            <option value="cancelled">Abgebrochen</option>
-          </select>
+          {/* A11Y FIX: UI-Library Select mit korrektem aria-Handling */}
+          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as ExecutionStatus | 'all')}>
+            <SelectTrigger className="w-[160px]" aria-label="Status filtern">
+              <SelectValue placeholder="Status waehlen" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Status</SelectItem>
+              <SelectItem value="pending">Ausstehend</SelectItem>
+              <SelectItem value="running">Laeuft</SelectItem>
+              <SelectItem value="paused">Pausiert</SelectItem>
+              <SelectItem value="completed">Abgeschlossen</SelectItem>
+              <SelectItem value="failed">Fehlgeschlagen</SelectItem>
+              <SelectItem value="cancelled">Abgebrochen</SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Aktualisieren

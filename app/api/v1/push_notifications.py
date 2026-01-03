@@ -230,7 +230,10 @@ async def update_subscription_preferences(
     """Aktualisiert die Notification Preferences."""
     service = PushNotificationService(db)
 
-    subscription = await service.update_preferences(subscription_id, data.preferences)
+    # SECURITY FIX: Ownership Check MUSS VOR der Modifikation erfolgen!
+    # Vorher wurde update_preferences() vor dem Check aufgerufen, was
+    # einem Angreifer erlaubte, fremde Subscriptions zu modifizieren.
+    subscription = await service.get_subscription(subscription_id)
 
     if not subscription:
         raise HTTPException(
@@ -238,13 +241,15 @@ async def update_subscription_preferences(
             detail="Subscription nicht gefunden",
         )
 
-    # Verify ownership
+    # Verify ownership BEFORE any modification
     if subscription.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Keine Berechtigung fuer diese Subscription",
         )
 
+    # Now safe to update
+    subscription = await service.update_preferences(subscription_id, data.preferences)
     await db.commit()
 
     return PushSubscriptionResponse(

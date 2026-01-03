@@ -23,8 +23,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 from uuid import UUID
+
+# TYPE SAFETY FIX: Proper typing ohne circular imports
+if TYPE_CHECKING:
+    from app.db.models import Document
 
 
 @dataclass
@@ -172,7 +176,7 @@ class ExtractedData:
         return None
 
     @classmethod
-    def from_document(cls, document: Any) -> Optional["ExtractedData"]:
+    def from_document(cls, document: Optional[Document]) -> Optional["ExtractedData"]:
         """Erstellt ExtractedData aus einem Document-Model."""
         if document is None:
             return None
@@ -204,6 +208,6 @@ class ExtractedData:
         }
 
 
-def get_extracted_data(document: Any) -> Optional[ExtractedData]:
+def get_extracted_data(document: Optional[Document]) -> Optional[ExtractedData]:
     """Helper-Funktion zum Erstellen von ExtractedData aus einem Document."""
     return ExtractedData.from_document(document)

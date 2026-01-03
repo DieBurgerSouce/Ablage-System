@@ -50,13 +50,13 @@ def upgrade() -> None:
         # Types: categorization, accounting, matching, anomaly, prediction, duplicate
 
         # Schwellenwerte (0.0 - 1.0)
-        sa.Column("auto_threshold", sa.Float, default=0.95),  # Ab hier automatisch
-        sa.Column("suggest_threshold", sa.Float, default=0.80),  # Ab hier vorschlagen
+        sa.Column("auto_threshold", sa.Float, server_default="0.95"),  # Ab hier automatisch
+        sa.Column("suggest_threshold", sa.Float, server_default="0.80"),  # Ab hier vorschlagen
         # Unter suggest_threshold = manuelle Review
 
         # Feature-Toggle
-        sa.Column("is_enabled", sa.Boolean, default=True),
-        sa.Column("allow_auto_apply", sa.Boolean, default=True),
+        sa.Column("is_enabled", sa.Boolean, server_default=sa.text("true")),
+        sa.Column("allow_auto_apply", sa.Boolean, server_default=sa.text("true")),
 
         # Beschreibung fuer Admin-UI
         sa.Column("display_name", sa.String(100), nullable=True),
@@ -105,9 +105,9 @@ def upgrade() -> None:
         sa.Column("model_version", sa.String(50), nullable=True),  # Modell-Version fuer Reproduzierbarkeit
 
         # Autonomie-Status
-        sa.Column("auto_applied", sa.Boolean, default=False),  # Automatisch angewendet?
-        sa.Column("requires_review", sa.Boolean, default=True),  # Muss geprueft werden?
-        sa.Column("is_final", sa.Boolean, default=False),  # Wurde final entschieden?
+        sa.Column("auto_applied", sa.Boolean, server_default=sa.text("false")),  # Automatisch angewendet?
+        sa.Column("requires_review", sa.Boolean, server_default=sa.text("true")),  # Muss geprueft werden?
+        sa.Column("is_final", sa.Boolean, server_default=sa.text("false")),  # Wurde final entschieden?
 
         # Review-Informationen
         sa.Column("reviewed_by_id", uuid_type, nullable=True),
@@ -168,12 +168,12 @@ def upgrade() -> None:
         sa.Column("corrector_id", uuid_type, nullable=False),
 
         # Learning-Status
-        sa.Column("processed_for_learning", sa.Boolean, default=False),
+        sa.Column("processed_for_learning", sa.Boolean, server_default=sa.text("false")),
         sa.Column("processed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("learning_batch_id", sa.String(50), nullable=True),
 
         # Gewichtung fuer Learning
-        sa.Column("learning_weight", sa.Float, default=1.0),  # Hoeher = wichtiger
+        sa.Column("learning_weight", sa.Float, server_default="1.0"),  # Hoeher = wichtiger
 
         # Audit
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
@@ -210,9 +210,9 @@ def upgrade() -> None:
         # Beispiel: {"order_number": 0.95, "customer": 0.90, "amount": 0.85, "date": 0.70}
 
         # Verknuepfungs-Status
-        sa.Column("auto_linked", sa.Boolean, default=False),
-        sa.Column("is_confirmed", sa.Boolean, default=False),
-        sa.Column("is_rejected", sa.Boolean, default=False),
+        sa.Column("auto_linked", sa.Boolean, server_default=sa.text("false")),
+        sa.Column("is_confirmed", sa.Boolean, server_default=sa.text("false")),
+        sa.Column("is_rejected", sa.Boolean, server_default=sa.text("false")),
 
         # Wer hat verknuepft/bestaetigt
         sa.Column("linked_by_id", uuid_type, nullable=True),
@@ -270,8 +270,8 @@ def upgrade() -> None:
         sa.Column("prediction_error_days", sa.Integer, nullable=True),  # Differenz
 
         # Status
-        sa.Column("is_paid", sa.Boolean, default=False),
-        sa.Column("is_overdue", sa.Boolean, default=False),
+        sa.Column("is_paid", sa.Boolean, server_default=sa.text("false")),
+        sa.Column("is_overdue", sa.Boolean, server_default=sa.text("false")),
 
         # Referenz zur AI-Entscheidung
         sa.Column("ai_decision_id", uuid_type, nullable=True),

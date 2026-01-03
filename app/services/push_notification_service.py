@@ -177,6 +177,23 @@ class PushNotificationService:
         result = await self.db.execute(query.order_by(PushSubscription.created_at.desc()))
         return list(result.scalars().all())
 
+    async def get_subscription(
+        self,
+        subscription_id: UUID,
+    ) -> Optional[PushSubscription]:
+        """Ruft eine einzelne Subscription ab.
+
+        Args:
+            subscription_id: Subscription ID
+
+        Returns:
+            PushSubscription oder None wenn nicht gefunden
+        """
+        result = await self.db.execute(
+            select(PushSubscription).where(PushSubscription.id == subscription_id)
+        )
+        return result.scalar_one_or_none()
+
     async def update_preferences(
         self,
         subscription_id: UUID,

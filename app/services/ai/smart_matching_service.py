@@ -15,6 +15,7 @@ Feinpoliert und durchdacht - Enterprise Document Linking.
 from __future__ import annotations
 
 import re
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -582,13 +583,17 @@ class SmartMatchingService:
         return ai_result
 
 
-# Singleton-Instanz
+# Singleton-Instanz mit Thread-Safety
 _smart_matching_service: Optional[SmartMatchingService] = None
+_service_lock = threading.Lock()
 
 
 def get_smart_matching_service() -> SmartMatchingService:
-    """Factory fuer SmartMatchingService Singleton."""
+    """Factory fuer SmartMatchingService Singleton (Thread-safe)."""
     global _smart_matching_service
     if _smart_matching_service is None:
-        _smart_matching_service = SmartMatchingService()
+        with _service_lock:
+            # Double-check locking pattern
+            if _smart_matching_service is None:
+                _smart_matching_service = SmartMatchingService()
     return _smart_matching_service

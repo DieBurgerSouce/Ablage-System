@@ -190,7 +190,8 @@ export function SyncDashboard() {
   const [selectedConnection, setSelectedConnection] = useState<string>('');
 
   const { data: connections } = useERPConnections();
-  const { data: history, isLoading: historyLoading } = useSyncHistory(
+  // ERROR HANDLING FIX: Error State hinzugefuegt
+  const { data: history, isLoading: historyLoading, error: historyError } = useSyncHistory(
     selectedConnection,
     50
   );
@@ -298,6 +299,15 @@ export function SyncDashboard() {
           ) : historyLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : historyError ? (
+            // ERROR HANDLING FIX: Error State fuer fehlgeschlagene Queries
+            <div className="text-center py-8">
+              <AlertTriangle className="h-12 w-12 mx-auto mb-2 text-destructive opacity-70" />
+              <p className="text-destructive">Fehler beim Laden der Sync-Historie</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {historyError instanceof Error ? historyError.message : 'Unbekannter Fehler'}
+              </p>
             </div>
           ) : !history?.length ? (
             <div className="text-center py-8 text-muted-foreground">

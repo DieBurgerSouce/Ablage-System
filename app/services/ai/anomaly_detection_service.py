@@ -16,7 +16,9 @@ Feinpoliert und durchdacht - Fraud Prevention & Quality Control.
 
 from __future__ import annotations
 
+import asyncio
 import statistics
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -142,10 +144,18 @@ class AnomalyDetectionService:
 
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
-        # Query Document.extracted_data JSONB
-        query = select(Document).where(
+        # N+1 QUERY FIX: Direkte JSONB-Extraction statt 1000 Document-Objekte laden
+        # Vorher: Lade 1000 Documents, parse JSONB in Python → langsam & memory-intensiv
+        # Jetzt: Extrahiere nur total_gross direkt in SQL → schnell & effizient
+        from sqlalchemy import cast, Float
+        from sqlalchemy.dialects.postgresql import JSONB
+
+        query = select(
+            Document.extracted_data["total_gross"].astext.cast(Float)
+        ).where(
             and_(
                 Document.extracted_data.isnot(None),
+                Document.extracted_data["total_gross"].isnot(None),
                 Document.created_at >= cutoff,
             )
         )
@@ -154,14 +164,10 @@ class AnomalyDetectionService:
             query = query.where(Document.company_id == company_id)
 
         result = await db.execute(query.limit(1000))
-        documents = result.scalars().all()
+        rows = result.all()
 
-        # Extrahiere Betraege aus JSONB
-        amounts = []
-        for doc in documents:
-            extracted = get_extracted_data(doc)
-            if extracted and extracted.total_gross:
-                amounts.append(float(extracted.total_gross))
+        # Extrahiere Betraege aus Result (schon als Float gecasted)
+        amounts = [row[0] for row in rows if row[0] is not None and row[0] > 0]
 
         if len(amounts) < 10:
             # Fallback auf Default-Werte
@@ -522,18 +528,22 @@ class AnomalyDetectionService:
 
         anomalies: List[DetectedAnomaly] = []
 
-        # Alle Checks durchfuehren
-        checks = [
+        # ASYNC PATTERN FIX: Parallel statt Sequential Execution
+        # Vorher: Sequential awaits verlangsamen die Verarbeitung
+        # Jetzt: asyncio.gather() fuer parallele Ausfuehrung
+        async_results = await asyncio.gather(
             self._check_high_amount(db, data, company_id),
             self._check_new_supplier_high_value(db, data, company_id),
             self._check_duplicate_number(db, data, document_id, company_id),
-        ]
+            return_exceptions=True,  # Einzelne Fehler stoppen nicht alle Checks
+        )
 
-        # Async-Checks
-        for check in checks:
-            anomaly = await check
-            if anomaly:
-                anomalies.append(anomaly)
+        # Ergebnisse verarbeiten
+        for result in async_results:
+            if isinstance(result, Exception):
+                logger.warning("anomaly_check_failed", error=str(result))
+            elif result is not None:
+                anomalies.append(result)
 
         # Sync-Checks
         sync_checks = [
@@ -654,13 +664,17 @@ class AnomalyDetectionService:
         )
 
 
-# Singleton-Instanz
+# Singleton-Instanz mit Thread-Safety
 _anomaly_detection_service: Optional[AnomalyDetectionService] = None
+_service_lock = threading.Lock()
 
 
 def get_anomaly_detection_service() -> AnomalyDetectionService:
-    """Factory fuer AnomalyDetectionService Singleton."""
+    """Factory fuer AnomalyDetectionService Singleton (Thread-safe)."""
     global _anomaly_detection_service
     if _anomaly_detection_service is None:
-        _anomaly_detection_service = AnomalyDetectionService()
+        with _service_lock:
+            # Double-check locking pattern
+            if _anomaly_detection_service is None:
+                _anomaly_detection_service = AnomalyDetectionService()
     return _anomaly_detection_service

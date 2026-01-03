@@ -13,6 +13,7 @@ Feinpoliert und durchdacht - nutzt bestehende QuickClassificationService Pattern
 from __future__ import annotations
 
 import re
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -576,13 +577,17 @@ class AutoCategorizationService:
         return suggestions
 
 
-# Singleton-Instanz
+# Singleton-Instanz mit Thread-Safety
 _auto_categorization_service: Optional[AutoCategorizationService] = None
+_service_lock = threading.Lock()
 
 
 def get_auto_categorization_service() -> AutoCategorizationService:
-    """Factory fuer AutoCategorizationService Singleton."""
+    """Factory fuer AutoCategorizationService Singleton (Thread-safe)."""
     global _auto_categorization_service
     if _auto_categorization_service is None:
-        _auto_categorization_service = AutoCategorizationService()
+        with _service_lock:
+            # Double-check locking pattern
+            if _auto_categorization_service is None:
+                _auto_categorization_service = AutoCategorizationService()
     return _auto_categorization_service
