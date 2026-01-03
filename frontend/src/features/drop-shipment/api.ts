@@ -27,7 +27,7 @@ import type {
 } from './types';
 
 // API path matches backend router: /api/v1/streckengeschaeft
-const BASE_URL = '/api/v1/streckengeschaeft';
+const BASE_URL = '/streckengeschaeft';
 
 /**
  * Transform axios response to data

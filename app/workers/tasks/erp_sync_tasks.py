@@ -11,7 +11,7 @@ Feinpoliert und durchdacht - Zuverlaessige ERP-Sync-Automatisierung.
 """
 
 import structlog
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -134,7 +134,7 @@ async def update_connection_sync_status(
     error_message: Optional[str] = None,
 ) -> None:
     """Aktualisiert Sync-Status der Verbindung."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     update_data = {
         "last_sync_at": now,
@@ -367,7 +367,7 @@ def scheduled_sync_all() -> Dict[str, Any]:
 
     async def _sync_all() -> Dict[str, Any]:
         async with get_async_session_context() as db:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             # Find connections due for sync
             result = await db.execute(
@@ -522,7 +522,7 @@ def cleanup_old_history(days: int = 90) -> Dict[str, Any]:
 
     async def _cleanup() -> Dict[str, Any]:
         async with get_async_session_context() as db:
-            cutoff = datetime.utcnow() - timedelta(days=days)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
             result = await db.execute(
                 delete(ERPSyncHistory).where(

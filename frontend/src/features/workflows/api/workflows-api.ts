@@ -21,6 +21,8 @@ import type {
   ExecutionStart,
   StepExecution,
   ValidationResult,
+  WorkflowValidationResponse,
+  WorkflowValidationStatusResponse,
   WorkflowStats,
   OverviewStats,
   ExecutionHistoryItem,
@@ -28,7 +30,7 @@ import type {
   OperatorInfo,
 } from '../types/workflow-types';
 
-const BASE_URL = '/api/v1/workflows';
+const BASE_URL = '/workflows';
 
 // =============================================================================
 // Workflow CRUD
@@ -109,13 +111,25 @@ export async function toggleWorkflow(workflowId: string): Promise<Workflow> {
 }
 
 /**
- * Validiert einen Workflow.
+ * Validiert einen Workflow (Full Validation mit Cycle Detection).
  */
 export async function validateWorkflow(
   workflowId: string
-): Promise<ValidationResult> {
-  const response = await apiClient.post<ValidationResult>(
+): Promise<WorkflowValidationResponse> {
+  const response = await apiClient.post<WorkflowValidationResponse>(
     `${BASE_URL}/${workflowId}/validate`
+  );
+  return response.data;
+}
+
+/**
+ * Ruft den Validierungs-Status eines Workflows ab (Lightweight).
+ */
+export async function getValidationStatus(
+  workflowId: string
+): Promise<WorkflowValidationStatusResponse> {
+  const response = await apiClient.get<WorkflowValidationStatusResponse>(
+    `${BASE_URL}/${workflowId}/validation-status`
   );
   return response.data;
 }

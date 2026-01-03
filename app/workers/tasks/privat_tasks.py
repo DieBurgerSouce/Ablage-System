@@ -16,7 +16,7 @@ Beat Schedule:
 """
 
 import asyncio
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -148,7 +148,7 @@ def send_deadline_reminders(self) -> Dict[str, Any]:
                         notification = PrivatDeadlineNotification(
                             deadline_id=deadline.id,
                             notification_type="reminder",
-                            sent_at=datetime.utcnow(),
+                            sent_at=datetime.now(timezone.utc),
                             sent_to=user.email,
                         )
                         db.add(notification)
@@ -223,7 +223,7 @@ def check_emergency_access_requests(self) -> Dict[str, Any]:
             from app.services.email_service import email_service
 
             async with get_async_session() as db:
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
                 auto_approved = 0
                 notified_owners = 0
 
@@ -642,7 +642,7 @@ def cleanup_orphaned_privat_files(self) -> Dict[str, Any]:
             async with get_async_session() as db:
                 deleted_count = 0
                 checked_count = 0
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
                 one_hour_ago = now - timedelta(hours=1)
 
                 # Liste alle Dateien im privat/ Bucket

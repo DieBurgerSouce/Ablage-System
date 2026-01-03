@@ -6,8 +6,15 @@
  * - Immobilien, Fahrzeuge, Versicherungen
  * - Kredite, Geldanlagen
  * - Fristen, Notfallzugriff
+ *
+ * Migriert zu apiClient für:
+ * - Automatische Retry-Logik
+ * - Error-Toast-Handler
+ * - Token-Refresh-Behandlung
+ * - Konsistente Fehlerbehandlung
  */
 
+import { apiClient } from '@/lib/api/client';
 import type {
   PrivatSpaceCreate,
   PrivatSpaceUpdate,
@@ -72,135 +79,106 @@ import type {
   PrivatFinancialSummary,
 } from '@/types/privat';
 
-const API_BASE = '/api/v1/privat';
+// Base URL without /api/v1/ prefix (apiClient already has it)
+const BASE_URL = '/privat';
 
 // ==================== Helper Functions ====================
 
-function buildQueryString(params: Record<string, unknown>): string {
-  const searchParams = new URLSearchParams();
+function buildQueryParams(params: Record<string, unknown>): Record<string, string> {
+  const result: Record<string, string> = {};
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
       // Convert camelCase to snake_case
       const snakeKey = key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
-      searchParams.append(snakeKey, String(value));
+      result[snakeKey] = String(value);
     }
   });
-  const queryString = searchParams.toString();
-  return queryString ? `?${queryString}` : '';
-}
-
-async function apiRequest<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `API Fehler: ${response.status}`);
-  }
-
-  // Handle empty responses (204 No Content)
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
+  return result;
 }
 
 // ==================== Dashboard API ====================
 
 export async function getDashboardStats(): Promise<PrivatDashboardStats> {
-  return apiRequest<PrivatDashboardStats>(`${API_BASE}/dashboard`);
+  const response = await apiClient.get<PrivatDashboardStats>(`${BASE_URL}/dashboard`);
+  return response.data;
 }
 
 export async function getFinancialSummary(spaceId: string): Promise<PrivatFinancialSummary> {
-  return apiRequest<PrivatFinancialSummary>(`${API_BASE}/dashboard/financial-summary?space_id=${spaceId}`);
+  const response = await apiClient.get<PrivatFinancialSummary>(`${BASE_URL}/dashboard/financial-summary`, {
+    params: { space_id: spaceId },
+  });
+  return response.data;
 }
 
 // ==================== Space API ====================
 
 export async function listSpaces(): Promise<PrivatSpaceWithStats[]> {
-  return apiRequest<PrivatSpaceWithStats[]>(`${API_BASE}/spaces`);
+  const response = await apiClient.get<PrivatSpaceWithStats[]>(`${BASE_URL}/spaces`);
+  return response.data;
 }
 
 export async function getSpace(spaceId: string): Promise<PrivatSpaceWithStats> {
-  return apiRequest<PrivatSpaceWithStats>(`${API_BASE}/spaces/${spaceId}`);
+  const response = await apiClient.get<PrivatSpaceWithStats>(`${BASE_URL}/spaces/${spaceId}`);
+  return response.data;
 }
 
 export async function createSpace(data: PrivatSpaceCreate): Promise<PrivatSpaceWithStats> {
-  return apiRequest<PrivatSpaceWithStats>(`${API_BASE}/spaces`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.post<PrivatSpaceWithStats>(`${BASE_URL}/spaces`, data);
+  return response.data;
 }
 
 export async function updateSpace(spaceId: string, data: PrivatSpaceUpdate): Promise<PrivatSpaceWithStats> {
-  return apiRequest<PrivatSpaceWithStats>(`${API_BASE}/spaces/${spaceId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.patch<PrivatSpaceWithStats>(`${BASE_URL}/spaces/${spaceId}`, data);
+  return response.data;
 }
 
 export async function deleteSpace(spaceId: string): Promise<void> {
-  return apiRequest<void>(`${API_BASE}/spaces/${spaceId}`, {
-    method: 'DELETE',
-  });
+  await apiClient.delete(`${BASE_URL}/spaces/${spaceId}`);
 }
 
 // ==================== Space Access API ====================
 
 export async function grantAccess(spaceId: string, data: PrivatSpaceAccessCreate): Promise<PrivatSpaceAccess> {
-  return apiRequest<PrivatSpaceAccess>(`${API_BASE}/spaces/${spaceId}/access`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.post<PrivatSpaceAccess>(`${BASE_URL}/spaces/${spaceId}/access`, data);
+  return response.data;
 }
 
 export async function listAccess(spaceId: string): Promise<PrivatSpaceAccess[]> {
-  return apiRequest<PrivatSpaceAccess[]>(`${API_BASE}/spaces/${spaceId}/access`);
+  const response = await apiClient.get<PrivatSpaceAccess[]>(`${BASE_URL}/spaces/${spaceId}/access`);
+  return response.data;
 }
 
 export async function revokeAccess(spaceId: string, userId: string): Promise<void> {
-  return apiRequest<void>(`${API_BASE}/spaces/${spaceId}/access/${userId}`, {
-    method: 'DELETE',
-  });
+  await apiClient.delete(`${BASE_URL}/spaces/${spaceId}/access/${userId}`);
 }
 
 // ==================== Folder API ====================
 
 export async function getFolderTree(spaceId: string): Promise<PrivatFolderTree[]> {
-  return apiRequest<PrivatFolderTree[]>(`${API_BASE}/spaces/${spaceId}/folders`);
+  const response = await apiClient.get<PrivatFolderTree[]>(`${BASE_URL}/spaces/${spaceId}/folders`);
+  return response.data;
 }
 
 export async function createFolder(spaceId: string, data: PrivatFolderCreate): Promise<PrivatFolder> {
-  return apiRequest<PrivatFolder>(`${API_BASE}/spaces/${spaceId}/folders`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.post<PrivatFolder>(`${BASE_URL}/spaces/${spaceId}/folders`, data);
+  return response.data;
 }
 
 export async function updateFolder(folderId: string, data: PrivatFolderUpdate): Promise<PrivatFolder> {
-  return apiRequest<PrivatFolder>(`${API_BASE}/folders/${folderId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.patch<PrivatFolder>(`${BASE_URL}/folders/${folderId}`, data);
+  return response.data;
 }
 
 export async function moveFolder(folderId: string, newParentId?: string): Promise<PrivatFolder> {
-  const query = newParentId ? `?new_parent_id=${newParentId}` : '';
-  return apiRequest<PrivatFolder>(`${API_BASE}/folders/${folderId}/move${query}`, {
-    method: 'POST',
+  const response = await apiClient.post<PrivatFolder>(`${BASE_URL}/folders/${folderId}/move`, null, {
+    params: newParentId ? { new_parent_id: newParentId } : undefined,
   });
+  return response.data;
 }
 
 export async function deleteFolder(folderId: string, recursive = false): Promise<void> {
-  return apiRequest<void>(`${API_BASE}/folders/${folderId}?recursive=${recursive}`, {
-    method: 'DELETE',
+  await apiClient.delete(`${BASE_URL}/folders/${folderId}`, {
+    params: { recursive },
   });
 }
 
@@ -215,12 +193,15 @@ export interface DocumentFilters {
 }
 
 export async function listDocuments(spaceId: string, filters: DocumentFilters = {}): Promise<PrivatDocumentListResponse> {
-  const queryString = buildQueryString(filters);
-  return apiRequest<PrivatDocumentListResponse>(`${API_BASE}/spaces/${spaceId}/documents${queryString}`);
+  const response = await apiClient.get<PrivatDocumentListResponse>(`${BASE_URL}/spaces/${spaceId}/documents`, {
+    params: buildQueryParams(filters),
+  });
+  return response.data;
 }
 
 export async function getDocument(documentId: string): Promise<PrivatDocument> {
-  return apiRequest<PrivatDocument>(`${API_BASE}/documents/${documentId}`);
+  const response = await apiClient.get<PrivatDocument>(`${BASE_URL}/documents/${documentId}`);
+  return response.data;
 }
 
 export async function createDocument(spaceId: string, data: PrivatDocumentCreate, password?: string): Promise<PrivatDocument> {
@@ -230,24 +211,17 @@ export async function createDocument(spaceId: string, data: PrivatDocumentCreate
   if (password) {
     headers['X-Privat-Password'] = password;
   }
-  return apiRequest<PrivatDocument>(`${API_BASE}/spaces/${spaceId}/documents`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-    headers,
-  });
+  const response = await apiClient.post<PrivatDocument>(`${BASE_URL}/spaces/${spaceId}/documents`, data, { headers });
+  return response.data;
 }
 
 export async function updateDocument(documentId: string, data: PrivatDocumentUpdate): Promise<PrivatDocument> {
-  return apiRequest<PrivatDocument>(`${API_BASE}/documents/${documentId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.patch<PrivatDocument>(`${BASE_URL}/documents/${documentId}`, data);
+  return response.data;
 }
 
 export async function deleteDocument(documentId: string): Promise<void> {
-  return apiRequest<void>(`${API_BASE}/documents/${documentId}`, {
-    method: 'DELETE',
-  });
+  await apiClient.delete(`${BASE_URL}/documents/${documentId}`);
 }
 
 /**
@@ -255,7 +229,8 @@ export async function deleteDocument(documentId: string): Promise<void> {
  * WARNUNG: Fuer passwortgeschützte Dokumente sollte downloadDocument() verwendet werden!
  */
 export function getDocumentDownloadUrl(documentId: string): string {
-  return `${API_BASE}/documents/${documentId}/content`;
+  // Muss volle URL inkl. /api/v1 sein für direkte Browser-Downloads
+  return `/api/v1${BASE_URL}/documents/${documentId}/content`;
 }
 
 /**
@@ -268,22 +243,12 @@ export async function downloadDocument(documentId: string, password?: string): P
     headers['X-Privat-Password'] = password;
   }
 
-  const token = sessionStorage.getItem('auth_token');
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${API_BASE}/documents/${documentId}/content`, {
-    method: 'GET',
+  const response = await apiClient.get(`${BASE_URL}/documents/${documentId}/content`, {
     headers,
+    responseType: 'blob',
   });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ detail: 'Download fehlgeschlagen' }));
-    throw new Error(errorData.detail || `HTTP ${response.status}`);
-  }
-
-  return response.blob();
+  return response.data;
 }
 
 /**
@@ -317,52 +282,48 @@ export interface PropertyFilters {
 }
 
 export async function listProperties(spaceId: string, filters: PropertyFilters = {}): Promise<PrivatPropertyListResponse> {
-  const queryString = buildQueryString(filters);
-  return apiRequest<PrivatPropertyListResponse>(`${API_BASE}/spaces/${spaceId}/properties${queryString}`);
+  const response = await apiClient.get<PrivatPropertyListResponse>(`${BASE_URL}/spaces/${spaceId}/properties`, {
+    params: buildQueryParams(filters),
+  });
+  return response.data;
 }
 
 export async function getProperty(propertyId: string): Promise<PrivatPropertyWithDetails> {
-  return apiRequest<PrivatPropertyWithDetails>(`${API_BASE}/properties/${propertyId}`);
+  const response = await apiClient.get<PrivatPropertyWithDetails>(`${BASE_URL}/properties/${propertyId}`);
+  return response.data;
 }
 
 export async function createProperty(spaceId: string, data: PrivatPropertyCreate): Promise<PrivatPropertyWithDetails> {
-  return apiRequest<PrivatPropertyWithDetails>(`${API_BASE}/spaces/${spaceId}/properties`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.post<PrivatPropertyWithDetails>(`${BASE_URL}/spaces/${spaceId}/properties`, data);
+  return response.data;
 }
 
 export async function updateProperty(propertyId: string, data: PrivatPropertyUpdate): Promise<PrivatPropertyWithDetails> {
-  return apiRequest<PrivatPropertyWithDetails>(`${API_BASE}/properties/${propertyId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.patch<PrivatPropertyWithDetails>(`${BASE_URL}/properties/${propertyId}`, data);
+  return response.data;
 }
 
 export async function deleteProperty(propertyId: string): Promise<void> {
-  return apiRequest<void>(`${API_BASE}/properties/${propertyId}`, {
-    method: 'DELETE',
-  });
+  await apiClient.delete(`${BASE_URL}/properties/${propertyId}`);
 }
 
 // ==================== Tenant API ====================
 
 export async function listTenants(propertyId: string, activeOnly = true): Promise<PrivatTenant[]> {
-  return apiRequest<PrivatTenant[]>(`${API_BASE}/properties/${propertyId}/tenants?active_only=${activeOnly}`);
+  const response = await apiClient.get<PrivatTenant[]>(`${BASE_URL}/properties/${propertyId}/tenants`, {
+    params: { active_only: activeOnly },
+  });
+  return response.data;
 }
 
 export async function createTenant(propertyId: string, data: PrivatTenantCreate): Promise<PrivatTenant> {
-  return apiRequest<PrivatTenant>(`${API_BASE}/properties/${propertyId}/tenants`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.post<PrivatTenant>(`${BASE_URL}/properties/${propertyId}/tenants`, data);
+  return response.data;
 }
 
 export async function recordRentalIncome(tenantId: string, data: PrivatRentalIncomeCreate): Promise<PrivatRentalIncome> {
-  return apiRequest<PrivatRentalIncome>(`${API_BASE}/tenants/${tenantId}/income`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.post<PrivatRentalIncome>(`${BASE_URL}/tenants/${tenantId}/income`, data);
+  return response.data;
 }
 
 // ==================== Vehicle API ====================
@@ -375,32 +336,29 @@ export interface VehicleFilters {
 }
 
 export async function listVehicles(spaceId: string, filters: VehicleFilters = {}): Promise<PrivatVehicleListResponse> {
-  const queryString = buildQueryString(filters);
-  return apiRequest<PrivatVehicleListResponse>(`${API_BASE}/spaces/${spaceId}/vehicles${queryString}`);
+  const response = await apiClient.get<PrivatVehicleListResponse>(`${BASE_URL}/spaces/${spaceId}/vehicles`, {
+    params: buildQueryParams(filters),
+  });
+  return response.data;
 }
 
 export async function getVehicle(vehicleId: string): Promise<PrivatVehicleWithStats> {
-  return apiRequest<PrivatVehicleWithStats>(`${API_BASE}/vehicles/${vehicleId}`);
+  const response = await apiClient.get<PrivatVehicleWithStats>(`${BASE_URL}/vehicles/${vehicleId}`);
+  return response.data;
 }
 
 export async function createVehicle(spaceId: string, data: PrivatVehicleCreate): Promise<PrivatVehicleWithStats> {
-  return apiRequest<PrivatVehicleWithStats>(`${API_BASE}/spaces/${spaceId}/vehicles`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.post<PrivatVehicleWithStats>(`${BASE_URL}/spaces/${spaceId}/vehicles`, data);
+  return response.data;
 }
 
 export async function updateVehicle(vehicleId: string, data: PrivatVehicleUpdate): Promise<PrivatVehicleWithStats> {
-  return apiRequest<PrivatVehicleWithStats>(`${API_BASE}/vehicles/${vehicleId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.patch<PrivatVehicleWithStats>(`${BASE_URL}/vehicles/${vehicleId}`, data);
+  return response.data;
 }
 
 export async function deleteVehicle(vehicleId: string): Promise<void> {
-  return apiRequest<void>(`${API_BASE}/vehicles/${vehicleId}`, {
-    method: 'DELETE',
-  });
+  await apiClient.delete(`${BASE_URL}/vehicles/${vehicleId}`);
 }
 
 // ==================== Fuel Log API ====================
@@ -411,19 +369,20 @@ export interface FuelLogFilters {
 }
 
 export async function listFuelLogs(vehicleId: string, filters: FuelLogFilters = {}): Promise<PrivatFuelLog[]> {
-  const queryString = buildQueryString(filters);
-  return apiRequest<PrivatFuelLog[]>(`${API_BASE}/vehicles/${vehicleId}/fuel${queryString}`);
+  const response = await apiClient.get<PrivatFuelLog[]>(`${BASE_URL}/vehicles/${vehicleId}/fuel`, {
+    params: buildQueryParams(filters),
+  });
+  return response.data;
 }
 
 export async function createFuelLog(vehicleId: string, data: PrivatFuelLogCreate): Promise<PrivatFuelLog> {
-  return apiRequest<PrivatFuelLog>(`${API_BASE}/vehicles/${vehicleId}/fuel`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.post<PrivatFuelLog>(`${BASE_URL}/vehicles/${vehicleId}/fuel`, data);
+  return response.data;
 }
 
 export async function getFuelStatistics(vehicleId: string): Promise<PrivatFuelStatistics> {
-  return apiRequest<PrivatFuelStatistics>(`${API_BASE}/vehicles/${vehicleId}/fuel/statistics`);
+  const response = await apiClient.get<PrivatFuelStatistics>(`${BASE_URL}/vehicles/${vehicleId}/fuel/statistics`);
+  return response.data;
 }
 
 // ==================== Insurance API ====================
@@ -435,28 +394,24 @@ export interface InsuranceFilters {
 }
 
 export async function listInsurances(spaceId: string, filters: InsuranceFilters = {}): Promise<PrivatInsuranceListResponse> {
-  const queryString = buildQueryString(filters);
-  return apiRequest<PrivatInsuranceListResponse>(`${API_BASE}/spaces/${spaceId}/insurances${queryString}`);
+  const response = await apiClient.get<PrivatInsuranceListResponse>(`${BASE_URL}/spaces/${spaceId}/insurances`, {
+    params: buildQueryParams(filters),
+  });
+  return response.data;
 }
 
 export async function createInsurance(spaceId: string, data: PrivatInsuranceCreate): Promise<PrivatInsuranceWithDeadlines> {
-  return apiRequest<PrivatInsuranceWithDeadlines>(`${API_BASE}/spaces/${spaceId}/insurances`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.post<PrivatInsuranceWithDeadlines>(`${BASE_URL}/spaces/${spaceId}/insurances`, data);
+  return response.data;
 }
 
 export async function updateInsurance(insuranceId: string, data: PrivatInsuranceUpdate): Promise<PrivatInsuranceWithDeadlines> {
-  return apiRequest<PrivatInsuranceWithDeadlines>(`${API_BASE}/insurances/${insuranceId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.patch<PrivatInsuranceWithDeadlines>(`${BASE_URL}/insurances/${insuranceId}`, data);
+  return response.data;
 }
 
 export async function deleteInsurance(insuranceId: string): Promise<void> {
-  return apiRequest<void>(`${API_BASE}/insurances/${insuranceId}`, {
-    method: 'DELETE',
-  });
+  await apiClient.delete(`${BASE_URL}/insurances/${insuranceId}`);
 }
 
 // ==================== Loan API ====================
@@ -468,36 +423,31 @@ export interface LoanFilters {
 }
 
 export async function listLoans(spaceId: string, filters: LoanFilters = {}): Promise<PrivatLoanListResponse> {
-  const queryString = buildQueryString(filters);
-  return apiRequest<PrivatLoanListResponse>(`${API_BASE}/spaces/${spaceId}/loans${queryString}`);
+  const response = await apiClient.get<PrivatLoanListResponse>(`${BASE_URL}/spaces/${spaceId}/loans`, {
+    params: buildQueryParams(filters),
+  });
+  return response.data;
 }
 
 export async function createLoan(spaceId: string, data: PrivatLoanCreate): Promise<PrivatLoanWithStats> {
-  return apiRequest<PrivatLoanWithStats>(`${API_BASE}/spaces/${spaceId}/loans`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.post<PrivatLoanWithStats>(`${BASE_URL}/spaces/${spaceId}/loans`, data);
+  return response.data;
 }
 
 export async function updateLoan(loanId: string, data: PrivatLoanUpdate): Promise<PrivatLoanWithStats> {
-  return apiRequest<PrivatLoanWithStats>(`${API_BASE}/loans/${loanId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.patch<PrivatLoanWithStats>(`${BASE_URL}/loans/${loanId}`, data);
+  return response.data;
 }
 
 export async function recordLoanPayment(loanId: string, amount: number, paymentDate?: string): Promise<PrivatLoanWithStats> {
-  const params = { amount, payment_date: paymentDate };
-  const queryString = buildQueryString(params);
-  return apiRequest<PrivatLoanWithStats>(`${API_BASE}/loans/${loanId}/payment${queryString}`, {
-    method: 'POST',
+  const response = await apiClient.post<PrivatLoanWithStats>(`${BASE_URL}/loans/${loanId}/payment`, null, {
+    params: { amount, payment_date: paymentDate },
   });
+  return response.data;
 }
 
 export async function deleteLoan(loanId: string): Promise<void> {
-  return apiRequest<void>(`${API_BASE}/loans/${loanId}`, {
-    method: 'DELETE',
-  });
+  await apiClient.delete(`${BASE_URL}/loans/${loanId}`);
 }
 
 // ==================== Investment API ====================
@@ -509,38 +459,36 @@ export interface InvestmentFilters {
 }
 
 export async function listInvestments(spaceId: string, filters: InvestmentFilters = {}): Promise<PrivatInvestmentListResponse> {
-  const queryString = buildQueryString(filters);
-  return apiRequest<PrivatInvestmentListResponse>(`${API_BASE}/spaces/${spaceId}/investments${queryString}`);
+  const response = await apiClient.get<PrivatInvestmentListResponse>(`${BASE_URL}/spaces/${spaceId}/investments`, {
+    params: buildQueryParams(filters),
+  });
+  return response.data;
 }
 
 export async function createInvestment(spaceId: string, data: PrivatInvestmentCreate): Promise<PrivatInvestmentWithStats> {
-  return apiRequest<PrivatInvestmentWithStats>(`${API_BASE}/spaces/${spaceId}/investments`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.post<PrivatInvestmentWithStats>(`${BASE_URL}/spaces/${spaceId}/investments`, data);
+  return response.data;
 }
 
 export async function updateInvestment(investmentId: string, data: PrivatInvestmentUpdate): Promise<PrivatInvestmentWithStats> {
-  return apiRequest<PrivatInvestmentWithStats>(`${API_BASE}/investments/${investmentId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.patch<PrivatInvestmentWithStats>(`${BASE_URL}/investments/${investmentId}`, data);
+  return response.data;
 }
 
 export async function updateInvestmentValue(investmentId: string, newValue: number): Promise<PrivatInvestmentWithStats> {
-  return apiRequest<PrivatInvestmentWithStats>(`${API_BASE}/investments/${investmentId}/value?new_value=${newValue}`, {
-    method: 'POST',
+  const response = await apiClient.post<PrivatInvestmentWithStats>(`${BASE_URL}/investments/${investmentId}/value`, null, {
+    params: { new_value: newValue },
   });
+  return response.data;
 }
 
 export async function deleteInvestment(investmentId: string): Promise<void> {
-  return apiRequest<void>(`${API_BASE}/investments/${investmentId}`, {
-    method: 'DELETE',
-  });
+  await apiClient.delete(`${BASE_URL}/investments/${investmentId}`);
 }
 
 export async function getPortfolioBreakdown(spaceId: string): Promise<PrivatPortfolioBreakdown> {
-  return apiRequest<PrivatPortfolioBreakdown>(`${API_BASE}/spaces/${spaceId}/investments/portfolio`);
+  const response = await apiClient.get<PrivatPortfolioBreakdown>(`${BASE_URL}/spaces/${spaceId}/investments/portfolio`);
+  return response.data;
 }
 
 // ==================== Deadline API ====================
@@ -553,96 +501,86 @@ export interface DeadlineFilters {
 }
 
 export async function listDeadlines(spaceId: string, filters: DeadlineFilters = {}): Promise<PrivatDeadlineListResponse> {
-  const queryString = buildQueryString(filters);
-  return apiRequest<PrivatDeadlineListResponse>(`${API_BASE}/spaces/${spaceId}/deadlines${queryString}`);
+  const response = await apiClient.get<PrivatDeadlineListResponse>(`${BASE_URL}/spaces/${spaceId}/deadlines`, {
+    params: buildQueryParams(filters),
+  });
+  return response.data;
 }
 
 export async function getDeadlineWidget(spaceId: string): Promise<PrivatDeadlineWidget> {
-  return apiRequest<PrivatDeadlineWidget>(`${API_BASE}/spaces/${spaceId}/deadlines/widget`);
+  const response = await apiClient.get<PrivatDeadlineWidget>(`${BASE_URL}/spaces/${spaceId}/deadlines/widget`);
+  return response.data;
 }
 
 export async function createDeadline(spaceId: string, data: PrivatDeadlineCreate): Promise<PrivatDeadlineWithStatus> {
-  return apiRequest<PrivatDeadlineWithStatus>(`${API_BASE}/spaces/${spaceId}/deadlines`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.post<PrivatDeadlineWithStatus>(`${BASE_URL}/spaces/${spaceId}/deadlines`, data);
+  return response.data;
 }
 
 export async function updateDeadline(deadlineId: string, data: PrivatDeadlineUpdate): Promise<PrivatDeadlineWithStatus> {
-  return apiRequest<PrivatDeadlineWithStatus>(`${API_BASE}/deadlines/${deadlineId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.patch<PrivatDeadlineWithStatus>(`${BASE_URL}/deadlines/${deadlineId}`, data);
+  return response.data;
 }
 
 export async function completeDeadline(deadlineId: string): Promise<PrivatDeadlineWithStatus> {
-  return apiRequest<PrivatDeadlineWithStatus>(`${API_BASE}/deadlines/${deadlineId}/complete`, {
-    method: 'POST',
-  });
+  const response = await apiClient.post<PrivatDeadlineWithStatus>(`${BASE_URL}/deadlines/${deadlineId}/complete`);
+  return response.data;
 }
 
 export async function deleteDeadline(deadlineId: string): Promise<void> {
-  return apiRequest<void>(`${API_BASE}/deadlines/${deadlineId}`, {
-    method: 'DELETE',
-  });
+  await apiClient.delete(`${BASE_URL}/deadlines/${deadlineId}`);
 }
 
 export function getCalendarExportUrl(spaceId: string, includeCompleted = false): string {
-  return `${API_BASE}/spaces/${spaceId}/deadlines/calendar?include_completed=${includeCompleted}`;
+  // Muss volle URL inkl. /api/v1 sein für direkte Browser-Downloads
+  return `/api/v1${BASE_URL}/spaces/${spaceId}/deadlines/calendar?include_completed=${includeCompleted}`;
 }
 
 // ==================== Emergency Access API ====================
 
 export async function listEmergencyContacts(spaceId: string): Promise<PrivatEmergencyContact[]> {
-  return apiRequest<PrivatEmergencyContact[]>(`${API_BASE}/spaces/${spaceId}/emergency/contacts`);
+  const response = await apiClient.get<PrivatEmergencyContact[]>(`${BASE_URL}/spaces/${spaceId}/emergency/contacts`);
+  return response.data;
 }
 
 export async function createEmergencyContact(spaceId: string, data: PrivatEmergencyContactCreate): Promise<PrivatEmergencyContact> {
-  return apiRequest<PrivatEmergencyContact>(`${API_BASE}/spaces/${spaceId}/emergency/contacts`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.post<PrivatEmergencyContact>(`${BASE_URL}/spaces/${spaceId}/emergency/contacts`, data);
+  return response.data;
 }
 
 export async function updateEmergencyContact(contactId: string, data: PrivatEmergencyContactUpdate): Promise<PrivatEmergencyContact> {
-  return apiRequest<PrivatEmergencyContact>(`${API_BASE}/emergency/contacts/${contactId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.patch<PrivatEmergencyContact>(`${BASE_URL}/emergency/contacts/${contactId}`, data);
+  return response.data;
 }
 
 export async function deleteEmergencyContact(contactId: string): Promise<void> {
-  return apiRequest<void>(`${API_BASE}/emergency/contacts/${contactId}`, {
-    method: 'DELETE',
-  });
+  await apiClient.delete(`${BASE_URL}/emergency/contacts/${contactId}`);
 }
 
 export async function requestEmergencyAccess(data: PrivatEmergencyAccessRequestCreate): Promise<PrivatEmergencyAccessRequest> {
-  return apiRequest<PrivatEmergencyAccessRequest>(`${API_BASE}/emergency/request`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  const response = await apiClient.post<PrivatEmergencyAccessRequest>(`${BASE_URL}/emergency/request`, data);
+  return response.data;
 }
 
 export async function listEmergencyRequests(spaceId: string, status?: PrivatEmergencyAccessStatus): Promise<PrivatEmergencyAccessRequest[]> {
-  const query = status ? `?status_filter=${status}` : '';
-  return apiRequest<PrivatEmergencyAccessRequest[]>(`${API_BASE}/spaces/${spaceId}/emergency/requests${query}`);
+  const response = await apiClient.get<PrivatEmergencyAccessRequest[]>(`${BASE_URL}/spaces/${spaceId}/emergency/requests`, {
+    params: status ? { status_filter: status } : undefined,
+  });
+  return response.data;
 }
 
 export async function approveEmergencyRequest(requestId: string): Promise<PrivatEmergencyAccessRequest> {
-  return apiRequest<PrivatEmergencyAccessRequest>(`${API_BASE}/emergency/requests/${requestId}/approve`, {
-    method: 'POST',
-  });
+  const response = await apiClient.post<PrivatEmergencyAccessRequest>(`${BASE_URL}/emergency/requests/${requestId}/approve`);
+  return response.data;
 }
 
 export async function denyEmergencyRequest(requestId: string, reason: string): Promise<PrivatEmergencyAccessRequest> {
-  return apiRequest<PrivatEmergencyAccessRequest>(`${API_BASE}/emergency/requests/${requestId}/deny?reason=${encodeURIComponent(reason)}`, {
-    method: 'POST',
+  const response = await apiClient.post<PrivatEmergencyAccessRequest>(`${BASE_URL}/emergency/requests/${requestId}/deny`, null, {
+    params: { reason },
   });
+  return response.data;
 }
 
 export async function revokeEmergencyAccess(requestId: string): Promise<void> {
-  return apiRequest<void>(`${API_BASE}/emergency/requests/${requestId}/revoke`, {
-    method: 'POST',
-  });
+  await apiClient.post(`${BASE_URL}/emergency/requests/${requestId}/revoke`);
 }

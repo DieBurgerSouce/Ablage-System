@@ -30,7 +30,7 @@ import type {
   PaginatedResponse,
 } from '../types';
 
-const BASE_URL = '/api/v1/imports';
+const BASE_URL = '/imports';
 
 // =============================================================================
 // Email Import Config CRUD

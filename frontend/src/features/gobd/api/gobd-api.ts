@@ -31,7 +31,7 @@ import type {
  * Dokument archivieren
  */
 export async function archiveDocument(request: ArchiveDocumentRequest): Promise<ArchiveEntry> {
-  const response = await apiClient.post<ArchiveEntry>('/api/v1/archive/documents', request)
+  const response = await apiClient.post<ArchiveEntry>('/archive/documents', request)
   return response.data
 }
 
@@ -53,7 +53,7 @@ export async function listArchivedDocuments(params?: {
   page_size?: number
 }): Promise<{ items: ArchiveEntry[]; total: number }> {
   const response = await apiClient.get<{ items: ArchiveEntry[]; total: number }>(
-    '/api/v1/archive/documents',
+    '/archive/documents',
     { params }
   )
   return response.data
@@ -83,7 +83,7 @@ export async function verifyAllArchives(): Promise<{
     valid: number
     invalid: number
     errors: string[]
-  }>('/api/v1/archive/verify-all')
+  }>('/archive/verify-all')
   return response.data
 }
 
@@ -91,7 +91,7 @@ export async function verifyAllArchives(): Promise<{
  * Archiv-Statistiken abrufen
  */
 export async function getArchiveStatistics(): Promise<ArchiveStatistics> {
-  const response = await apiClient.get<ArchiveStatistics>('/api/v1/archive/statistics')
+  const response = await apiClient.get<ArchiveStatistics>('/archive/statistics')
   return response.data
 }
 
@@ -99,7 +99,7 @@ export async function getArchiveStatistics(): Promise<ArchiveStatistics> {
  * Bald ablaufende Archive abrufen
  */
 export async function getExpiringArchives(days: number = 90): Promise<ExpiringArchive[]> {
-  const response = await apiClient.get<ExpiringArchive[]>('/api/v1/archive/expiring', {
+  const response = await apiClient.get<ExpiringArchive[]>('/archive/expiring', {
     params: { days },
   })
   return response.data
@@ -113,7 +113,7 @@ export async function getExpiringArchives(days: number = 90): Promise<ExpiringAr
  * Aufbewahrungseinstellungen abrufen
  */
 export async function getRetentionSettings(): Promise<RetentionSetting[]> {
-  const response = await apiClient.get<RetentionSetting[]>('/api/v1/archive/retention-settings')
+  const response = await apiClient.get<RetentionSetting[]>('/archive/retention-settings')
   return response.data
 }
 
@@ -150,7 +150,7 @@ export async function resetRetentionSetting(category: string): Promise<Retention
  */
 export async function getProcedureDocumentation(): Promise<ProcedureDocumentation> {
   const response = await apiClient.get<ProcedureDocumentation>(
-    '/api/v1/archive/procedure-documentation'
+    '/archive/procedure-documentation'
   )
   return response.data
 }
@@ -160,7 +160,7 @@ export async function getProcedureDocumentation(): Promise<ProcedureDocumentatio
  */
 export async function generateProcedureDocumentation(): Promise<ProcedureDocVersion> {
   const response = await apiClient.post<ProcedureDocVersion>(
-    '/api/v1/archive/procedure-documentation/generate'
+    '/archive/procedure-documentation/generate'
   )
   return response.data
 }
@@ -169,7 +169,7 @@ export async function generateProcedureDocumentation(): Promise<ProcedureDocVers
  * Verfahrensdokumentation als PDF exportieren
  */
 export async function exportProcedureDocumentation(versionId?: string): Promise<Blob> {
-  const response = await apiClient.get('/api/v1/archive/procedure-documentation/export', {
+  const response = await apiClient.get('/archive/procedure-documentation/export', {
     params: { version_id: versionId },
     responseType: 'blob',
   })
@@ -181,7 +181,7 @@ export async function exportProcedureDocumentation(versionId?: string): Promise<
  */
 export async function getProcedureDocVersions(): Promise<ProcedureDocVersion[]> {
   const response = await apiClient.get<ProcedureDocVersion[]>(
-    '/api/v1/archive/procedure-documentation/versions'
+    '/archive/procedure-documentation/versions'
   )
   return response.data
 }
@@ -194,7 +194,7 @@ export async function getProcedureDocVersions(): Promise<ProcedureDocVersion[]> 
  * GDPdU-Export starten
  */
 export async function startGDPdUExport(options: GDPdUExportOptions): Promise<GDPdUExportResult> {
-  const response = await apiClient.post<GDPdUExportResult>('/api/v1/archive/gdpdu/export', options)
+  const response = await apiClient.post<GDPdUExportResult>('/archive/gdpdu/export', options)
   return response.data
 }
 
@@ -220,7 +220,7 @@ export async function downloadGDPdUExport(exportId: string): Promise<Blob> {
  * Vergangene GDPdU-Exporte auflisten
  */
 export async function listGDPdUExports(): Promise<GDPdUExportResult[]> {
-  const response = await apiClient.get<GDPdUExportResult[]>('/api/v1/archive/gdpdu/exports')
+  const response = await apiClient.get<GDPdUExportResult[]>('/archive/gdpdu/exports')
   return response.data
 }
 
@@ -234,7 +234,7 @@ export async function listGDPdUExports(): Promise<GDPdUExportResult[]> {
 export async function createTaxAdvisorInvite(
   request: CreateTaxAdvisorInviteRequest
 ): Promise<TaxAdvisorInvite> {
-  const response = await apiClient.post<TaxAdvisorInvite>('/api/v1/tax-advisor/invites', request)
+  const response = await apiClient.post<TaxAdvisorInvite>('/tax-advisor/invites', request)
   return response.data
 }
 
@@ -242,7 +242,7 @@ export async function createTaxAdvisorInvite(
  * Aktive Steuerberater-Einladungen auflisten
  */
 export async function listTaxAdvisorInvites(): Promise<TaxAdvisorInvite[]> {
-  const response = await apiClient.get<TaxAdvisorInvite[]>('/api/v1/tax-advisor/invites')
+  const response = await apiClient.get<TaxAdvisorInvite[]>('/tax-advisor/invites')
   return response.data
 }
 
@@ -275,7 +275,7 @@ export async function getTaxAdvisorAccessLog(
   params?: { page?: number; page_size?: number }
 ): Promise<{ items: TaxAdvisorAccessLog[]; total: number }> {
   const response = await apiClient.get<{ items: TaxAdvisorAccessLog[]; total: number }>(
-    '/api/v1/tax-advisor/access-log',
+    '/tax-advisor/access-log',
     { params: { invite_id: inviteId, ...params } }
   )
   return response.data

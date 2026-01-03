@@ -6,7 +6,7 @@
 
 import { apiClient as api } from '@/lib/api/client';
 
-const BASE_URL = '/api/v1/dashboard';
+const BASE_URL = '/dashboard';
 
 // =============================================================================
 // Types

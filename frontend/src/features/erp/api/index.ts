@@ -17,7 +17,7 @@ import type {
   SyncTriggerResponse,
 } from '../types';
 
-const BASE_URL = '/api/v1/admin/erp';
+const BASE_URL = '/admin/erp';
 
 // =============================================================================
 // Connection Management

@@ -16,7 +16,7 @@ Beat Schedule:
 """
 
 import asyncio
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -419,7 +419,7 @@ def update_account_balances(self, bank_account_id: Optional[str] = None) -> Dict
                         total += account.opening_balance
 
                     account.current_balance = total
-                    account.balance_date = datetime.utcnow()
+                    account.balance_date = datetime.now(timezone.utc)
                     stats["accounts_updated"] += 1
 
                 await db.commit()

@@ -34,7 +34,7 @@ import type {
   ExecuteReportResponse,
 } from '../types';
 
-const BASE_URL = '/api/v1/reports';
+const BASE_URL = '/reports';
 
 // =============================================================================
 // Template CRUD
