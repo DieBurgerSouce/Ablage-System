@@ -1,6 +1,7 @@
 """Pydantic schemas for API request/response validation."""
 
-from datetime import datetime
+from datetime import datetime, date
+from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from enum import Enum
 from pathlib import Path
@@ -354,6 +355,10 @@ class Token(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     session_warning: Optional[str] = None  # Warnung über automatisch beendete Sessions
+
+
+# Alias for backwards compatibility with tests
+TokenResponse = Token
 
 
 class TokenPayload(BaseModel):
@@ -1097,6 +1102,12 @@ class DocumentDetailResponse(BaseModel):
     # URLs (generated)
     download_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
+    preview_url: Optional[str] = None
+
+    # Thumbnail metadata
+    thumbnail_key: Optional[str] = None
+    preview_key: Optional[str] = None
+    thumbnail_generated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -1113,6 +1124,7 @@ class DocumentSummary(BaseModel):
     created_at: datetime
     tags: List[str] = []
     has_embedding: bool = False
+    thumbnail_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -1439,12 +1451,36 @@ class ProcessingStats(BaseModel):
     hourly_trend: List[Dict[str, Any]] = []  # Last 24 hours
 
 
+class ImportStats(BaseModel):
+    """Import/Upload statistics for analytics dashboard."""
+    # Summary counts
+    imports_today: int = 0
+    imports_week: int = 0
+    imports_month: int = 0
+    imports_total: int = 0
+
+    # Growth metrics
+    daily_average: float = 0.0  # Average imports per day (last 30 days)
+    weekly_growth_percent: float = 0.0  # Week-over-week growth
+
+    # By source breakdown
+    by_source: Dict[str, int] = {}  # {source: count}
+
+    # Time series data
+    daily_trend: List[Dict[str, Any]] = []  # Last 30 days: [{date, count, by_source}]
+    weekly_trend: List[Dict[str, Any]] = []  # Last 12 weeks: [{week_start, count}]
+
+    # By document type
+    by_document_type: Dict[str, int] = {}
+
+
 class SystemDashboard(BaseModel):
     """Complete system dashboard data."""
     gpu: GPUStatusAdmin
     queue: QueueStatus
     health: SystemHealthStatus
     processing: ProcessingStats
+    imports: Optional["ImportStats"] = None  # Optional for backwards compatibility
     timestamp: datetime
 
 
@@ -2193,3 +2229,819 @@ class APIKeyDeleteResponse(BaseModel):
     success: bool
     nachricht: str
     deleted_key_name: str
+
+
+# ============================================================================
+# PERSONAL MODULE SCHEMAS (HR/Employee Management)
+# ============================================================================
+
+class EmploymentTypeEnum(str, Enum):
+    """Employment type enum."""
+    FULL_TIME = "full_time"
+    PART_TIME = "part_time"
+    CONTRACT = "contract"
+    INTERN = "intern"
+    FREELANCE = "freelance"
+
+
+class EmployeeStatusEnum(str, Enum):
+    """Employee status enum."""
+    ACTIVE = "active"
+    ON_LEAVE = "on_leave"
+    TERMINATED = "terminated"
+    PENDING = "pending"
+
+
+# ----- Department Schemas -----
+
+class DepartmentBase(BaseModel):
+    """Base department schema."""
+    name: str = Field(..., min_length=2, max_length=100)
+    code: str = Field(..., min_length=2, max_length=20, pattern="^[A-Z0-9_]+$")
+    description: Optional[str] = Field(None, max_length=500)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=50)
+    location: Optional[str] = Field(None, max_length=200)
+    cost_center: Optional[str] = Field(None, max_length=50)
+    budget_yearly: Optional[float] = Field(None, ge=0)
+
+
+class DepartmentCreate(DepartmentBase):
+    """Department creation schema."""
+    parent_id: Optional[uuid.UUID] = Field(None, description="ID der übergeordneten Abteilung")
+    manager_id: Optional[uuid.UUID] = Field(None, description="ID des Abteilungsleiters")
+
+
+class DepartmentUpdate(BaseModel):
+    """Department update schema."""
+    name: Optional[str] = Field(None, min_length=2, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=50)
+    location: Optional[str] = Field(None, max_length=200)
+    cost_center: Optional[str] = Field(None, max_length=50)
+    budget_yearly: Optional[float] = Field(None, ge=0)
+    parent_id: Optional[uuid.UUID] = None
+    manager_id: Optional[uuid.UUID] = None
+    is_active: Optional[bool] = None
+
+
+class DepartmentResponse(DepartmentBase):
+    """Department response schema."""
+    id: uuid.UUID
+    parent_id: Optional[uuid.UUID] = None
+    manager_id: Optional[uuid.UUID] = None
+    level: int = 0
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    # Computed/joined fields
+    parent_name: Optional[str] = None
+    manager_name: Optional[str] = None
+    employee_count: int = 0
+    position_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DepartmentTreeNode(BaseModel):
+    """Department tree node for hierarchical view."""
+    id: uuid.UUID
+    name: str
+    code: str
+    level: int
+    employee_count: int = 0
+    children: List["DepartmentTreeNode"] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DepartmentListResponse(BaseModel):
+    """Department list response."""
+    departments: List[DepartmentResponse]
+    total: int
+    page: int
+    per_page: int
+
+
+class DepartmentTreeResponse(BaseModel):
+    """Department tree response (hierarchical)."""
+    departments: List[DepartmentTreeNode]
+    total_departments: int
+    max_depth: int
+
+
+# ----- Position Schemas -----
+
+class PositionBase(BaseModel):
+    """Base position schema."""
+    title: str = Field(..., min_length=2, max_length=100)
+    code: str = Field(..., min_length=2, max_length=30, pattern="^[A-Z0-9_-]+$")
+    description: Optional[str] = Field(None, max_length=1000)
+    level: int = Field(1, ge=1, le=5, description="1=Junior, 2=Mid, 3=Senior, 4=Lead, 5=Director")
+    employment_type: EmploymentTypeEnum = EmploymentTypeEnum.FULL_TIME
+    is_management: bool = False
+
+
+class PositionCreate(PositionBase):
+    """Position creation schema."""
+    department_id: uuid.UUID
+    salary_min: Optional[float] = Field(None, ge=0)
+    salary_max: Optional[float] = Field(None, ge=0)
+    salary_currency: str = Field("EUR", max_length=3)
+    requirements: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    responsibilities: Optional[List[str]] = Field(default_factory=list)
+    is_open: bool = True
+    headcount: int = Field(1, ge=0, description="Anzahl Stellen")
+
+    @model_validator(mode='after')
+    def validate_salary_range(self) -> 'PositionCreate':
+        """Ensure salary_min <= salary_max."""
+        if self.salary_min is not None and self.salary_max is not None:
+            if self.salary_min > self.salary_max:
+                raise ValueError("Mindestgehalt darf nicht höher als Maximalgehalt sein")
+        return self
+
+
+class PositionUpdate(BaseModel):
+    """Position update schema."""
+    title: Optional[str] = Field(None, min_length=2, max_length=100)
+    description: Optional[str] = Field(None, max_length=1000)
+    level: Optional[int] = Field(None, ge=1, le=5)
+    employment_type: Optional[EmploymentTypeEnum] = None
+    is_management: Optional[bool] = None
+    salary_min: Optional[float] = Field(None, ge=0)
+    salary_max: Optional[float] = Field(None, ge=0)
+    salary_currency: Optional[str] = Field(None, max_length=3)
+    requirements: Optional[Dict[str, Any]] = None
+    responsibilities: Optional[List[str]] = None
+    is_open: Optional[bool] = None
+    is_active: Optional[bool] = None
+    headcount: Optional[int] = Field(None, ge=0)
+
+
+class PositionResponse(PositionBase):
+    """Position response schema."""
+    id: uuid.UUID
+    department_id: uuid.UUID
+    salary_min: Optional[float] = None
+    salary_max: Optional[float] = None
+    salary_currency: str = "EUR"
+    requirements: Dict[str, Any] = {}
+    responsibilities: List[str] = []
+    is_open: bool
+    is_active: bool
+    headcount: int = 1
+    created_at: datetime
+    updated_at: datetime
+
+    # Computed/joined fields
+    department_name: Optional[str] = None
+    filled_count: int = 0
+    available_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PositionListResponse(BaseModel):
+    """Position list response."""
+    positions: List[PositionResponse]
+    total: int
+    page: int
+    per_page: int
+
+
+# ----- Employee Schemas -----
+
+class EmergencyContact(BaseModel):
+    """Emergency contact information."""
+    name: str = Field(..., max_length=100)
+    relationship: str = Field(..., max_length=50)
+    phone: str = Field(..., max_length=50)
+    email: Optional[EmailStr] = None
+
+
+class EmployeeBase(BaseModel):
+    """Base employee schema."""
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
+    email: EmailStr
+    phone: Optional[str] = Field(None, max_length=50)
+    mobile: Optional[str] = Field(None, max_length=50)
+
+
+class EmployeeCreate(EmployeeBase):
+    """Employee creation schema."""
+    employee_number: Optional[str] = Field(None, max_length=20, description="Auto-generiert wenn leer")
+    department_id: Optional[uuid.UUID] = None
+    position_id: Optional[uuid.UUID] = None
+    manager_id: Optional[uuid.UUID] = None
+    employment_type: EmploymentTypeEnum = EmploymentTypeEnum.FULL_TIME
+    status: EmployeeStatusEnum = EmployeeStatusEnum.PENDING
+    hire_date: Optional[datetime] = None
+    weekly_hours: float = Field(40.0, ge=0, le=60)
+    vacation_days_yearly: int = Field(30, ge=0, le=60)
+
+    # Personal data
+    date_of_birth: Optional[datetime] = None
+    nationality: Optional[str] = Field(None, max_length=50)
+    address: Optional[str] = Field(None, max_length=500)
+
+    # Skills & qualifications
+    skills: Optional[List[str]] = Field(default_factory=list)
+    certifications: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
+    education: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
+
+    # Emergency contact
+    emergency_contact: Optional[EmergencyContact] = None
+
+    # Optional user account linkage
+    user_id: Optional[uuid.UUID] = None
+
+
+class EmployeeUpdate(BaseModel):
+    """Employee update schema."""
+    first_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    last_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=50)
+    mobile: Optional[str] = Field(None, max_length=50)
+    department_id: Optional[uuid.UUID] = None
+    position_id: Optional[uuid.UUID] = None
+    manager_id: Optional[uuid.UUID] = None
+    employment_type: Optional[EmploymentTypeEnum] = None
+    status: Optional[EmployeeStatusEnum] = None
+    weekly_hours: Optional[float] = Field(None, ge=0, le=60)
+    vacation_days_yearly: Optional[int] = Field(None, ge=0, le=60)
+
+    # Personal data
+    date_of_birth: Optional[datetime] = None
+    nationality: Optional[str] = Field(None, max_length=50)
+    address: Optional[str] = Field(None, max_length=500)
+
+    # Skills & qualifications
+    skills: Optional[List[str]] = None
+    certifications: Optional[List[Dict[str, Any]]] = None
+    education: Optional[List[Dict[str, Any]]] = None
+
+    # Emergency contact
+    emergency_contact: Optional[EmergencyContact] = None
+
+    # Termination
+    termination_date: Optional[datetime] = None
+    termination_reason: Optional[str] = Field(None, max_length=500)
+
+
+class EmployeeSalaryUpdate(BaseModel):
+    """Employee salary update schema (HR only)."""
+    salary: float = Field(..., ge=0)
+    salary_currency: str = Field("EUR", max_length=3)
+    effective_date: Optional[datetime] = None
+    reason: Optional[str] = Field(None, max_length=200)
+
+
+class EmployeeResponse(EmployeeBase):
+    """Employee response schema."""
+    id: uuid.UUID
+    employee_number: str
+    department_id: Optional[uuid.UUID] = None
+    position_id: Optional[uuid.UUID] = None
+    manager_id: Optional[uuid.UUID] = None
+    employment_type: EmploymentTypeEnum
+    status: EmployeeStatusEnum
+    hire_date: Optional[datetime] = None
+    termination_date: Optional[datetime] = None
+    weekly_hours: float
+    vacation_days_yearly: int
+
+    # Personal data (limited)
+    date_of_birth: Optional[datetime] = None
+    nationality: Optional[str] = None
+    address: Optional[str] = None
+
+    # Skills
+    skills: List[str] = []
+    certifications: List[Dict[str, Any]] = []
+    education: List[Dict[str, Any]] = []
+
+    # Emergency contact
+    emergency_contact: Optional[Dict[str, Any]] = None
+
+    # User linkage
+    user_id: Optional[uuid.UUID] = None
+
+    # Timestamps
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    # Computed/joined fields
+    full_name: Optional[str] = None
+    department_name: Optional[str] = None
+    position_title: Optional[str] = None
+    manager_name: Optional[str] = None
+    years_of_service: Optional[float] = None
+    direct_reports_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EmployeeHRResponse(EmployeeResponse):
+    """Employee response with HR-only fields (salary, tax info)."""
+    salary: Optional[float] = None
+    salary_currency: str = "EUR"
+    tax_id: Optional[str] = None
+    social_security_number: Optional[str] = None
+    bank_account: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EmployeeListFilters(BaseModel):
+    """Filters for employee listing."""
+    department_id: Optional[uuid.UUID] = None
+    position_id: Optional[uuid.UUID] = None
+    manager_id: Optional[uuid.UUID] = None
+    status: Optional[EmployeeStatusEnum] = None
+    employment_type: Optional[EmploymentTypeEnum] = None
+    search: Optional[str] = Field(None, max_length=100, description="Suche nach Name, E-Mail, Mitarbeiternummer")
+    hired_from: Optional[datetime] = None
+    hired_to: Optional[datetime] = None
+    skills: Optional[List[str]] = None
+
+
+class EmployeeListRequest(BaseModel):
+    """Request for employee listing with filters and pagination."""
+    page: int = Field(1, ge=1)
+    per_page: int = Field(20, ge=1, le=100)
+    filters: Optional[EmployeeListFilters] = None
+    sort_by: str = Field("last_name", pattern="^(last_name|first_name|hire_date|employee_number|department|status)$")
+    sort_order: SortOrder = Field(SortOrder.ASC)
+
+
+class EmployeeListResponse(BaseModel):
+    """Paginated employee list response."""
+    employees: List[EmployeeResponse]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+
+
+class EmployeeOrgChartNode(BaseModel):
+    """Employee node for org chart visualization."""
+    id: uuid.UUID
+    full_name: str
+    position_title: Optional[str] = None
+    department_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    direct_reports: List["EmployeeOrgChartNode"] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EmployeeOrgChartResponse(BaseModel):
+    """Org chart starting from a specific employee."""
+    root: EmployeeOrgChartNode
+    total_employees: int
+    max_depth: int
+
+
+class EmployeeStatsResponse(BaseModel):
+    """Employee statistics for dashboard."""
+    total_employees: int
+    by_status: Dict[str, int]
+    by_department: Dict[str, int]
+    by_employment_type: Dict[str, int]
+    avg_years_of_service: float
+    new_hires_this_month: int
+    terminations_this_month: int
+    headcount_trend: List[Dict[str, Any]]  # [{month: "2025-01", count: 150}, ...]
+
+
+# ==================== Business Contact Schemas ====================
+
+
+class ContactTypeEnum(str, Enum):
+    """Types of business contacts."""
+    CUSTOMER = "customer"
+    SUPPLIER = "supplier"
+    PARTNER = "partner"
+    OTHER = "other"
+
+
+class ContactRoleEnum(str, Enum):
+    """Roles a contact can have in a document."""
+    SENDER = "sender"
+    RECIPIENT = "recipient"
+    PARTY = "party"
+    SIGNATORY = "signatory"
+    MENTIONED = "mentioned"
+
+
+class ContactPersonSchema(BaseModel):
+    """Schema for contact person within a business contact."""
+    name: str = Field(..., max_length=255)
+    position: Optional[str] = Field(None, max_length=100)
+    email: Optional[str] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, max_length=50)
+    mobile: Optional[str] = Field(None, max_length=50)
+    is_primary: bool = False
+
+
+class BusinessContactBase(BaseModel):
+    """Base schema for business contact."""
+    name: str = Field(..., min_length=1, max_length=255, description="Firmenname")
+    contact_type: ContactTypeEnum = Field(ContactTypeEnum.CUSTOMER, description="Kontakttyp")
+    company_form: Optional[str] = Field(None, max_length=50, description="Rechtsform (GmbH, AG, etc.)")
+
+    # Identifiers
+    tax_id: Optional[str] = Field(None, max_length=50, description="Steuernummer")
+    vat_id: Optional[str] = Field(None, max_length=30, description="USt-IdNr.")
+    registration_number: Optional[str] = Field(None, max_length=50, description="Handelsregisternummer")
+    customer_number: Optional[str] = Field(None, max_length=50, description="Interne Kundennummer")
+    supplier_number: Optional[str] = Field(None, max_length=50, description="Interne Lieferantennummer")
+
+    # Address
+    street: Optional[str] = Field(None, max_length=255, description="Strasse")
+    house_number: Optional[str] = Field(None, max_length=20, description="Hausnummer")
+    address_addition: Optional[str] = Field(None, max_length=100, description="Adresszusatz")
+    postal_code: Optional[str] = Field(None, max_length=10, description="PLZ")
+    city: Optional[str] = Field(None, max_length=100, description="Stadt")
+    country: str = Field("Deutschland", max_length=100, description="Land")
+
+    # Contact
+    email: Optional[str] = Field(None, max_length=255, description="E-Mail")
+    phone: Optional[str] = Field(None, max_length=50, description="Telefon")
+    fax: Optional[str] = Field(None, max_length=50, description="Fax")
+    website: Optional[str] = Field(None, max_length=255, description="Webseite")
+
+    # Banking
+    bank_name: Optional[str] = Field(None, max_length=255, description="Bankname")
+    iban: Optional[str] = Field(None, max_length=34, description="IBAN")
+    bic: Optional[str] = Field(None, max_length=11, description="BIC")
+
+    # Contact Persons
+    contact_persons: List[ContactPersonSchema] = Field(default_factory=list)
+
+    # Parent company
+    parent_company_id: Optional[uuid.UUID] = None
+
+    # Metadata
+    notes: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+    custom_fields: Dict[str, Any] = Field(default_factory=dict)
+
+
+class BusinessContactCreate(BusinessContactBase):
+    """Schema for creating a business contact."""
+    is_verified: bool = False
+
+    @field_validator('vat_id')
+    @classmethod
+    def validate_vat_id(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            # Normalize VAT ID
+            v = v.replace(" ", "").upper()
+            # Basic format check for German VAT ID
+            if v.startswith("DE") and len(v) != 11:
+                raise ValueError("Deutsche USt-IdNr. muss DE + 9 Ziffern sein")
+        return v
+
+    @field_validator('iban')
+    @classmethod
+    def validate_iban(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            v = v.replace(" ", "").upper()
+            if len(v) < 15 or len(v) > 34:
+                raise ValueError("IBAN muss zwischen 15 und 34 Zeichen lang sein")
+        return v
+
+
+class BusinessContactUpdate(BaseModel):
+    """Schema for updating a business contact. All fields optional."""
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    contact_type: Optional[ContactTypeEnum] = None
+    company_form: Optional[str] = Field(None, max_length=50)
+
+    # Identifiers
+    tax_id: Optional[str] = Field(None, max_length=50)
+    vat_id: Optional[str] = Field(None, max_length=30)
+    registration_number: Optional[str] = Field(None, max_length=50)
+    customer_number: Optional[str] = Field(None, max_length=50)
+    supplier_number: Optional[str] = Field(None, max_length=50)
+
+    # Address
+    street: Optional[str] = Field(None, max_length=255)
+    house_number: Optional[str] = Field(None, max_length=20)
+    address_addition: Optional[str] = Field(None, max_length=100)
+    postal_code: Optional[str] = Field(None, max_length=10)
+    city: Optional[str] = Field(None, max_length=100)
+    country: Optional[str] = Field(None, max_length=100)
+
+    # Contact
+    email: Optional[str] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, max_length=50)
+    fax: Optional[str] = Field(None, max_length=50)
+    website: Optional[str] = Field(None, max_length=255)
+
+    # Banking
+    bank_name: Optional[str] = Field(None, max_length=255)
+    iban: Optional[str] = Field(None, max_length=34)
+    bic: Optional[str] = Field(None, max_length=11)
+
+    # Contact Persons
+    contact_persons: Optional[List[ContactPersonSchema]] = None
+
+    # Parent company
+    parent_company_id: Optional[uuid.UUID] = None
+
+    # Metadata
+    notes: Optional[str] = None
+    tags: Optional[List[str]] = None
+    custom_fields: Optional[Dict[str, Any]] = None
+
+    # Status
+    is_active: Optional[bool] = None
+    is_verified: Optional[bool] = None
+
+
+class BusinessContactResponse(BusinessContactBase):
+    """Schema for business contact response."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name_normalized: str
+    owner_id: Optional[uuid.UUID] = None
+
+    # Auto-detection
+    source: str = "manual"
+    auto_detected: bool = False
+    auto_detection_confidence: Optional[float] = None
+    first_document_id: Optional[uuid.UUID] = None
+
+    # Status
+    is_active: bool = True
+    is_verified: bool = False
+    merged_into_id: Optional[uuid.UUID] = None
+
+    # Stats
+    document_count: int = 0
+    total_invoice_amount: float = 0.0
+    last_document_date: Optional[datetime] = None
+
+    # Timestamps
+    created_at: datetime
+    updated_at: datetime
+
+    # Computed
+    formatted_address: Optional[str] = None
+    display_name: Optional[str] = None
+
+
+class BusinessContactListFilters(BaseModel):
+    """Filters for listing business contacts."""
+    search: Optional[str] = Field(None, description="Suche in Name, Email, etc.")
+    contact_type: Optional[ContactTypeEnum] = None
+    is_verified: Optional[bool] = None
+    is_active: Optional[bool] = True
+    has_documents: Optional[bool] = None
+    city: Optional[str] = None
+    postal_code_prefix: Optional[str] = Field(None, description="PLZ-Praefix (z.B. '80' fuer Muenchen)")
+    tags: Optional[List[str]] = None
+    min_invoice_amount: Optional[float] = None
+    auto_detected: Optional[bool] = None
+
+
+class BusinessContactListResponse(BaseModel):
+    """Paginated list of business contacts."""
+    contacts: List[BusinessContactResponse]
+    total: int
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class DocumentContactResponse(BaseModel):
+    """Response for document-contact link."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    document_id: uuid.UUID
+    contact_id: uuid.UUID
+    role: ContactRoleEnum
+    confidence: float = 1.0
+    auto_detected: bool = False
+    created_at: datetime
+
+    # Embedded contact info
+    contact_name: Optional[str] = None
+    contact_type: Optional[ContactTypeEnum] = None
+
+
+class ContactDocumentInfo(BaseModel):
+    """Simplified document info for contact's document list."""
+    id: uuid.UUID
+    filename: str
+    document_type: Optional[str] = None
+    role: ContactRoleEnum
+    confidence: float
+    created_at: datetime
+
+
+class ContactDocumentsResponse(BaseModel):
+    """Response for contact's documents."""
+    contact_id: uuid.UUID
+    contact_name: str
+    documents: List[ContactDocumentInfo]
+    total: int
+
+
+class MergeContactsRequest(BaseModel):
+    """Request to merge two contacts."""
+    source_id: uuid.UUID = Field(..., description="Kontakt der aufgeloest wird")
+    target_id: uuid.UUID = Field(..., description="Ziel-Kontakt (bleibt bestehen)")
+
+    @model_validator(mode='after')
+    def validate_different_ids(self) -> 'MergeContactsRequest':
+        if self.source_id == self.target_id:
+            raise ValueError("source_id und target_id muessen verschieden sein")
+        return self
+
+
+class MergeContactsResponse(BaseModel):
+    """Response after merging contacts."""
+    success: bool
+    target_contact: BusinessContactResponse
+    merged_document_links: int
+    message: str
+
+
+class DetectContactsRequest(BaseModel):
+    """Request to run contact detection on a document."""
+    document_id: uuid.UUID
+    auto_create: bool = Field(True, description="Automatisch Kontakte erstellen wenn neu")
+    update_existing: bool = Field(False, description="Bestehende Kontakte aktualisieren")
+
+
+class DetectContactsResponse(BaseModel):
+    """Response from contact detection."""
+    document_id: uuid.UUID
+    detected_contacts: List[Dict[str, Any]]
+    new_contacts_created: int
+    existing_contacts_matched: int
+
+
+class ContactStatsResponse(BaseModel):
+    """Statistics for business contacts."""
+    total_contacts: int
+    by_type: Dict[str, int]
+    verified_count: int
+    auto_detected_count: int
+    top_customers_by_invoice: List[Dict[str, Any]]  # [{name, total_amount, document_count}]
+    recent_contacts: List[BusinessContactResponse]
+    avg_documents_per_contact: float
+
+
+# ==================== Notification Schemas ====================
+
+
+class NotificationTypeEnum(str, Enum):
+    """Notification types."""
+    INFO = "info"
+    SUCCESS = "success"
+    WARNING = "warning"
+    ERROR = "error"
+
+
+class NotificationBase(BaseModel):
+    """Base notification schema."""
+    type: NotificationTypeEnum = Field(default=NotificationTypeEnum.INFO, alias="notification_type")
+    title: str = Field(..., min_length=1, max_length=200, description="Benachrichtigungstitel")
+    message: str = Field(..., min_length=1, description="Benachrichtigungstext")
+    entity_type: Optional[str] = Field(None, alias="reference_type", description="Typ der verknuepften Entitaet")
+    entity_id: Optional[uuid.UUID] = Field(None, alias="reference_id", description="ID der verknuepften Entitaet")
+
+
+class NotificationCreate(NotificationBase):
+    """Schema for creating a notification."""
+    user_id: uuid.UUID = Field(..., description="Zielbenutzer-ID")
+
+
+class NotificationUpdate(BaseModel):
+    """Schema for updating a notification."""
+    read: Optional[bool] = Field(None, description="Gelesen-Status")
+
+
+class NotificationResponse(NotificationBase):
+    """Schema for notification responses."""
+    id: uuid.UUID
+    user_id: uuid.UUID
+    read: bool
+    read_at: Optional[datetime]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True  # Allow both field name and alias
+
+
+class NotificationListResponse(BaseModel):
+    """Paginated list of notifications."""
+    notifications: List[NotificationResponse]
+    total: int
+    unread_count: int
+    page: int
+    per_page: int
+
+
+class UnreadCountResponse(BaseModel):
+    """Unread notification count."""
+    unread_count: int
+
+
+# ==================== Invoice Schemas ====================
+
+
+class InvoiceStatusEnum(str, Enum):
+    """Invoice status enumeration."""
+    PENDING = "pending"
+    PAID = "paid"
+    OVERDUE = "overdue"
+    CANCELLED = "cancelled"
+
+
+class InvoiceBase(BaseModel):
+    """Base invoice schema."""
+    invoice_number: str = Field(..., min_length=1, max_length=100, description="Rechnungsnummer")
+    invoice_date: date = Field(..., description="Rechnungsdatum")
+    due_date: date = Field(..., description="Faelligkeitsdatum")
+    
+    subtotal: Decimal = Field(..., ge=0, description="Nettobetrag")
+    tax_amount: Decimal = Field(default=Decimal(0), ge=0, description="Steuerbetrag")
+    total_amount: Decimal = Field(..., ge=0, description="Gesamtbetrag")
+    currency: str = Field(default="EUR", min_length=3, max_length=3, description="Waehrung")
+    
+    status: InvoiceStatusEnum = Field(default=InvoiceStatusEnum.PENDING, description="Zahlungsstatus")
+    payment_date: Optional[date] = Field(None, description="Zahlungsdatum")
+    notes: Optional[str] = Field(None, description="Notizen")
+
+
+class InvoiceCreate(InvoiceBase):
+    """Schema for creating an invoice."""
+    document_id: uuid.UUID = Field(..., description="Verknuepftes Dokument")
+    company_id: uuid.UUID = Field(..., description="Firma")
+
+
+class InvoiceUpdate(BaseModel):
+    """Schema for updating an invoice."""
+    status: Optional[InvoiceStatusEnum] = None
+    payment_date: Optional[date] = None
+    notes: Optional[str] = None
+
+
+class InvoiceResponse(InvoiceBase):
+    """Schema for invoice responses."""
+    id: uuid.UUID
+    document_id: uuid.UUID
+    company_id: uuid.UUID
+    created_at: datetime
+    updated_at: Optional[datetime]
+    
+    class Config:
+        from_attributes = True
+
+
+class InvoiceListResponse(BaseModel):
+    """Paginated list of invoices."""
+    invoices: List[InvoiceResponse]
+    total: int
+    page: int
+    per_page: int
+
+
+# Finance aggregation schemas
+class FinanceAggregationsResponse(BaseModel):
+    """Finance overview with aggregations."""
+    pending: Dict[str, Any] = Field(..., description="Pending invoices summary")
+    overdue: Dict[str, Any] = Field(..., description="Overdue invoices summary")
+    paid_this_month: Dict[str, Any] = Field(..., description="Paid this month summary")
+    currency: str = Field(default="EUR")
+
+
+class DeadlineItem(BaseModel):
+    """Single deadline item."""
+    invoice_id: str
+    invoice_number: str
+    due_date: date
+    amount: float
+    business_contact: Optional[str] = None
+    days_until_due: int
+
+
+class DeadlinesResponse(BaseModel):
+    """Upcoming payment deadlines."""
+    deadlines: List[DeadlineItem]
+    total_count: int
+    total_amount: float

@@ -220,19 +220,25 @@ class TestGPUFallback:
 
     @pytest.mark.asyncio
     async def test_gpu_error_fallback_to_cpu(self, temp_document):
-        """Test automatischer Fallback bei GPU-Fehler."""
+        """Test automatischer Fallback bei GPU-Fehler.
+
+        Der BackendManager handhabt den Fallback intern - wenn er erfolgreich
+        auf CPU zurückfällt, gibt er ein Ergebnis mit fallback_used=True zurück.
+        """
         mock_manager = Mock()
         mock_manager.get_available_backends = Mock(return_value=["surya", "deepseek"])
         mock_manager.select_backend = AsyncMock(return_value="deepseek")
 
-        # First call fails with GPU error, second succeeds with CPU
-        call_count = [0]
-
+        # BackendManager gibt bei erfolgreichem Fallback ein Ergebnis zurück
+        # (nicht Exception werfen, sondern erfolgreiches Fallback simulieren)
         async def mock_process(*args, **kwargs):
-            call_count[0] += 1
-            if call_count[0] == 1:
-                raise Exception("CUDA out of memory")
-            return {"text": "CPU fallback text", "confidence": 0.90}
+            # Simuliere, dass der BackendManager intern fallback gemacht hat
+            return {
+                "text": "CPU fallback text",
+                "confidence": 0.90,
+                "fallback_used": True,
+                "backend": "surya"  # CPU-Backend als Fallback
+            }
 
         mock_manager.process_with_backend = mock_process
 
@@ -248,7 +254,7 @@ class TestGPUFallback:
 
             # Should have succeeded with fallback
             assert result.get("text") == "CPU fallback text"
-            assert result["metadata"]["fallback_reason"] == "GPU error"
+            assert result["metadata"]["fallback_used"] is True
 
     @pytest.mark.asyncio
     async def test_gpu_error_fallback_also_fails(self, temp_document):

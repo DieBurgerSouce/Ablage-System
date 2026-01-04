@@ -62,7 +62,8 @@ def vault_test_config():
 def sample_secrets():
     """Provide sample secrets for testing."""
     return {
-        "secret_key": "super-secret-key-for-jwt",
+        # SECRET_KEY muss mindestens 32 Zeichen lang sein
+        "secret_key": "super-secret-key-for-jwt-min-32-chars-required",
         "db_password": "database-password-123",
         "redis_password": "redis-secret-password",
         "minio_secret_key": "minio-secret-access-key",
@@ -493,9 +494,13 @@ class TestSettingsVaultIntegration:
             settings.VAULT_TOKEN = vault_test_config["vault_token"]
             settings.VAULT_SECRET_PATH = "ablage-system"
 
+            # Mock VaultClient.get_secret um für jeden Key den richtigen Wert zurückzugeben
+            def get_secret_side_effect(path, key, mount_point=None):
+                return sample_secrets.get(key)
+
             # Mock VaultClient connection
             with patch.object(VaultClient, 'connect', return_value=True):
-                with patch.object(VaultClient, 'get_secret', return_value=sample_secrets["db_password"]):
+                with patch.object(VaultClient, 'get_secret', side_effect=get_secret_side_effect):
                     result = settings.load_secrets_from_vault()
 
                     # Should return True if any secrets loaded

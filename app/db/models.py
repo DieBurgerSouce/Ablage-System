@@ -5,7 +5,7 @@ from typing import Optional, List, Dict, Any
 from enum import Enum
 import uuid
 
-from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Boolean, Float, Text, JSON, ForeignKey, Index, Table
+from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Date, Boolean, Float, Text, JSON, ForeignKey, Index, Table, Numeric
 from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
 from sqlalchemy.types import TypeDecorator
 from pgvector.sqlalchemy import Vector
@@ -138,6 +138,9 @@ class Document(Base):
     document_metadata = Column(CrossDBJSON, default={})
     upload_date = Column(DateTime(timezone=True), server_default=func.now())
     processed_date = Column(DateTime(timezone=True))
+
+    # Import source tracking (for analytics)
+    source = Column(String(50), default="web")  # web, api, email_import, folder_watch, admin
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -154,6 +157,11 @@ class Document(Base):
     embedding = Column(CrossDBVector(1024))  # pgvector for semantic search (multilingual-e5-large)
     embedding_updated_at = Column(DateTime(timezone=True))
     embedding_model = Column(String(100))  # Model used to generate embedding
+
+    # Thumbnails and Previews
+    thumbnail_key = Column(String(500), nullable=True)  # MinIO object key for thumbnail
+    preview_key = Column(String(500), nullable=True)  # MinIO object key for preview
+    thumbnail_generated_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
@@ -1236,4 +1244,517 @@ class DocumentFavorite(Base):
         Index("ix_document_favorites_document_id", "document_id"),
         Index("ix_document_favorites_user_document", "user_id", "document_id", unique=True),
         Index("ix_document_favorites_created_at", "created_at"),
+    )
+
+
+# ============================================================================
+# Personal Module - Mitarbeiter, Abteilungen, Positionen
+# ============================================================================
+
+class EmploymentType(str, Enum):
+    """Employment type enum."""
+    FULL_TIME = "full_time"
+    PART_TIME = "part_time"
+    CONTRACT = "contract"
+    INTERN = "intern"
+    FREELANCE = "freelance"
+
+
+class EmployeeStatus(str, Enum):
+    """Employee status enum."""
+    ACTIVE = "active"
+    ON_LEAVE = "on_leave"
+    TERMINATED = "terminated"
+    PENDING = "pending"
+
+
+class Department(Base):
+    """
+    Abteilungen fuer Organisationsstruktur.
+
+    Unterstuetzt hierarchische Strukturen mit Eltern-Kind-Beziehungen.
+    """
+    __tablename__ = "departments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), nullable=False)
+    code = Column(String(20), unique=True, nullable=False)  # z.B. "FIN", "HR", "IT"
+    description = Column(Text, nullable=True)
+
+    # Hierarchie
+    parent_id = Column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
+    level = Column(Integer, default=0)  # Tiefe in Hierarchie
+
+    # Kontakt
+    email = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
+    location = Column(String(200), nullable=True)
+
+    # Budget und Kosten
+    cost_center = Column(String(50), nullable=True)
+    budget_yearly = Column(Float, nullable=True)
+
+    # Zustand
+    is_active = Column(Boolean, default=True)
+    established_date = Column(DateTime(timezone=True), nullable=True)
+    closed_date = Column(DateTime(timezone=True), nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    parent = relationship("Department", remote_side=[id], backref="children")
+    positions = relationship("Position", back_populates="department", cascade="all, delete-orphan")
+    employees = relationship("Employee", back_populates="department", foreign_keys="Employee.department_id")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+    # Manager relationship (via Employee)
+    manager_id = Column(UUID(as_uuid=True), ForeignKey("employees.id", ondelete="SET NULL", use_alter=True), nullable=True)
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_departments_code", "code"),
+        Index("ix_departments_parent_id", "parent_id"),
+        Index("ix_departments_is_active", "is_active"),
+        Index("ix_departments_cost_center", "cost_center"),
+    )
+
+
+class Position(Base):
+    """
+    Positionen/Stellen innerhalb von Abteilungen.
+
+    Definiert Job-Rollen mit Gehaltsbandbreiten und Berichtslinien.
+    """
+    __tablename__ = "positions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title = Column(String(100), nullable=False)
+    code = Column(String(30), unique=True, nullable=False)  # z.B. "SW-ENG-SR"
+    description = Column(Text, nullable=True)
+
+    # Abteilung
+    department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="CASCADE"), nullable=False)
+
+    # Gehaltsband
+    salary_min = Column(Float, nullable=True)
+    salary_max = Column(Float, nullable=True)
+    salary_currency = Column(String(3), default="EUR")
+
+    # Level und Typ
+    level = Column(Integer, default=1)  # 1=Junior, 2=Mid, 3=Senior, 4=Lead, 5=Director
+    employment_type = Column(String(20), default=EmploymentType.FULL_TIME)
+    is_management = Column(Boolean, default=False)
+    headcount_budget = Column(Integer, default=1)  # Anzahl der Stellen
+
+    # Anforderungen
+    requirements = Column(CrossDBJSON, default={})  # Skills, Erfahrung, Qualifikationen
+    responsibilities = Column(CrossDBJSON, default=[])  # Aufgabenliste
+
+    # Zustand
+    is_active = Column(Boolean, default=True)
+    is_open = Column(Boolean, default=False)  # Aktuell offen fuer Bewerbungen
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    department = relationship("Department", back_populates="positions")
+    employees = relationship("Employee", back_populates="position")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_positions_code", "code"),
+        Index("ix_positions_department_id", "department_id"),
+        Index("ix_positions_is_active", "is_active"),
+        Index("ix_positions_is_open", "is_open"),
+        Index("ix_positions_level", "level"),
+    )
+
+
+class Employee(Base):
+    """
+    Mitarbeiter mit allen Personal-relevanten Daten.
+
+    Kann optional mit einem User-Account verknuepft werden.
+    """
+    __tablename__ = "employees"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Stammdaten
+    employee_number = Column(String(20), unique=True, nullable=False)  # Personalnummer
+    first_name = Column(String(100), nullable=False)
+    last_name = Column(String(100), nullable=False)
+    display_name = Column(String(200), nullable=True)  # Anzeigename (optional)
+
+    # Kontakt
+    email = Column(String(255), unique=True, nullable=False)
+    phone = Column(String(50), nullable=True)
+    mobile = Column(String(50), nullable=True)
+    address = Column(CrossDBJSON, default={})  # Strukturierte Adresse
+
+    # Beschaeftigung
+    department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
+    position_id = Column(UUID(as_uuid=True), ForeignKey("positions.id", ondelete="SET NULL"), nullable=True)
+    manager_id = Column(UUID(as_uuid=True), ForeignKey("employees.id", ondelete="SET NULL"), nullable=True)
+
+    employment_type = Column(String(20), default=EmploymentType.FULL_TIME)
+    status = Column(String(20), default=EmployeeStatus.ACTIVE)
+    hire_date = Column(DateTime(timezone=True), nullable=True)
+    termination_date = Column(DateTime(timezone=True), nullable=True)
+    probation_end_date = Column(DateTime(timezone=True), nullable=True)
+
+    # Arbeitszeit
+    weekly_hours = Column(Float, default=40.0)
+    vacation_days_yearly = Column(Integer, default=30)
+    vacation_days_remaining = Column(Float, default=30.0)
+
+    # Verguetung (optional, wenn HR-Zugriff)
+    salary = Column(Float, nullable=True)
+    salary_currency = Column(String(3), default="EUR")
+    bonus_target_percent = Column(Float, nullable=True)
+
+    # Zusatzinfos
+    date_of_birth = Column(DateTime(timezone=True), nullable=True)
+    nationality = Column(String(2), nullable=True)  # ISO 3166-1 alpha-2
+    tax_id = Column(String(50), nullable=True)
+    social_security_number = Column(String(50), nullable=True)
+
+    # Skills und Qualifikationen
+    skills = Column(CrossDBJSON, default=[])
+    certifications = Column(CrossDBJSON, default=[])
+    education = Column(CrossDBJSON, default=[])
+
+    # Notfallkontakt
+    emergency_contact = Column(CrossDBJSON, default={})
+
+    # Profilbild
+    avatar_url = Column(String(500), nullable=True)
+
+    # Verknuepfung mit User-Account (optional)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, unique=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    department = relationship("Department", back_populates="employees", foreign_keys=[department_id])
+    position = relationship("Position", back_populates="employees")
+    manager = relationship("Employee", remote_side=[id], backref="direct_reports", foreign_keys=[manager_id])
+    user = relationship("User", foreign_keys=[user_id], backref="employee_profile")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_employees_employee_number", "employee_number"),
+        Index("ix_employees_email", "email"),
+        Index("ix_employees_department_id", "department_id"),
+        Index("ix_employees_position_id", "position_id"),
+        Index("ix_employees_manager_id", "manager_id"),
+        Index("ix_employees_status", "status"),
+        Index("ix_employees_hire_date", "hire_date"),
+        Index("ix_employees_user_id", "user_id"),
+        Index("ix_employees_name", "last_name", "first_name"),
+    )
+
+    @property
+    def full_name(self) -> str:
+        """Full name of the employee."""
+        return f"{self.first_name} {self.last_name}"
+
+
+# ==================== Business Contact / Customer ====================
+
+
+class ContactType(str, Enum):
+    """Types of business contacts."""
+    CUSTOMER = "customer"
+    SUPPLIER = "supplier"
+    PARTNER = "partner"
+    OTHER = "other"
+
+
+class BusinessContact(Base):
+    """Geschaeftskontakte - Kunden, Lieferanten, Partner.
+
+    Automatisch aus Dokumenten extrahiert oder manuell erfasst.
+    Ermoeglicht Dokumenten-Zuordnung und Beziehungsmanagement.
+    """
+    __tablename__ = "business_contacts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Basisinformationen
+    name = Column(String(255), nullable=False)
+    name_normalized = Column(String(255), nullable=False)  # Fuer Deduplizierung
+    contact_type = Column(String(20), default=ContactType.CUSTOMER)
+    company_form = Column(String(50), nullable=True)  # GmbH, AG, e.K., etc.
+
+    # Identifikatoren
+    tax_id = Column(String(50), nullable=True)  # Steuernummer
+    vat_id = Column(String(30), nullable=True)  # USt-IdNr.
+    registration_number = Column(String(50), nullable=True)  # Handelsregisternummer
+    customer_number = Column(String(50), nullable=True)  # Interne Kundennummer
+    supplier_number = Column(String(50), nullable=True)  # Interne Lieferantennummer
+
+    # Adresse
+    street = Column(String(255), nullable=True)
+    house_number = Column(String(20), nullable=True)
+    address_addition = Column(String(100), nullable=True)
+    postal_code = Column(String(10), nullable=True)
+    city = Column(String(100), nullable=True)
+    country = Column(String(100), default="Deutschland")
+
+    # Kontakt
+    email = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
+    fax = Column(String(50), nullable=True)
+    website = Column(String(255), nullable=True)
+
+    # Bankverbindung
+    bank_name = Column(String(255), nullable=True)
+    iban = Column(String(34), nullable=True)
+    bic = Column(String(11), nullable=True)
+
+    # Ansprechpartner (JSON Array)
+    contact_persons = Column(CrossDBJSON, default=[])
+
+    # Beziehungen
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    parent_company_id = Column(UUID(as_uuid=True), ForeignKey("business_contacts.id", ondelete="SET NULL"), nullable=True)
+
+    # Automatische Erkennung
+    source = Column(String(50), default="manual")  # manual, auto_invoice, auto_contract
+    auto_detected = Column(Boolean, default=False)
+    auto_detection_confidence = Column(Float, nullable=True)
+    first_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
+
+    # Metadaten
+    notes = Column(Text, nullable=True)
+    tags = Column(CrossDBJSON, default=[])
+    custom_fields = Column(CrossDBJSON, default={})
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)  # Manuell verifiziert
+    merged_into_id = Column(UUID(as_uuid=True), ForeignKey("business_contacts.id", ondelete="SET NULL"), nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    last_document_date = Column(DateTime(timezone=True), nullable=True)
+
+    # Statistik
+    document_count = Column(Integer, default=0)
+    total_invoice_amount = Column(Float, default=0.0)
+
+    # Relationships
+    owner = relationship("User", foreign_keys=[owner_id])
+    parent_company = relationship("BusinessContact", remote_side=[id], foreign_keys=[parent_company_id])
+    first_document = relationship("Document", foreign_keys=[first_document_id])
+
+    __table_args__ = (
+        Index("ix_business_contacts_name_normalized", "name_normalized"),
+        Index("ix_business_contacts_contact_type", "contact_type"),
+        Index("ix_business_contacts_vat_id", "vat_id"),
+        Index("ix_business_contacts_tax_id", "tax_id"),
+        Index("ix_business_contacts_postal_code", "postal_code"),
+        Index("ix_business_contacts_city", "city"),
+        Index("ix_business_contacts_owner_id", "owner_id"),
+        Index("ix_business_contacts_is_active", "is_active"),
+    )
+
+    @property
+    def formatted_address(self) -> str:
+        """Formatierte Adresse."""
+        parts = []
+        if self.street:
+            street = self.street
+            if self.house_number:
+                street += f" {self.house_number}"
+            parts.append(street)
+        if self.address_addition:
+            parts.append(self.address_addition)
+        if self.postal_code or self.city:
+            location = f"{self.postal_code or ''} {self.city or ''}".strip()
+            parts.append(location)
+        if self.country and self.country != "Deutschland":
+            parts.append(self.country)
+        return ", ".join(parts)
+
+    @property
+    def display_name(self) -> str:
+        """Anzeigename mit Rechtsform."""
+        if self.company_form:
+            return f"{self.name} {self.company_form}"
+        return self.name
+
+
+class DocumentContact(Base):
+    """Verknuepfung zwischen Dokumenten und Geschaeftskontakten.
+
+    Ermoeglicht Many-to-Many Beziehung mit Rolle (Rechnungssteller, Empfaenger, etc.)
+    """
+    __tablename__ = "document_contacts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    contact_id = Column(UUID(as_uuid=True), ForeignKey("business_contacts.id", ondelete="CASCADE"), nullable=False)
+
+    # Rolle im Dokument
+    role = Column(String(50), nullable=False)  # sender, recipient, mentioned, signatory
+    confidence = Column(Float, default=1.0)
+    auto_detected = Column(Boolean, default=False)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    document = relationship("Document")
+    contact = relationship("BusinessContact")
+
+    __table_args__ = (
+        Index("ix_document_contacts_document_id", "document_id"),
+        Index("ix_document_contacts_contact_id", "contact_id"),
+        Index("ix_document_contacts_role", "role"),
+    )
+
+
+class NotificationType(str, Enum):
+    """Benachrichtigungstypen."""
+    INFO = "info"
+    SUCCESS = "success"
+    WARNING = "warning"
+    ERROR = "error"
+
+
+class Notification(Base):
+    """Benutzerbenachrichtigungen fuer System-Events.
+
+    Verwendet fuer:
+    - Verarbeitungsabschluss (OCR fertig)
+    - Fehler-Benachrichtigungen
+    - System-Updates
+    - Quota-Warnungen
+    """
+    __tablename__ = "notifications"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Notification content (match existing DB schema)
+    notification_type = Column("notification_type", String(30), default=NotificationType.INFO, nullable=False)
+    title = Column(String(200), nullable=False)
+    message = Column(Text, nullable=False)
+
+    # Read status
+    read = Column(Boolean, default=False, nullable=True)
+    read_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Optional reference to related entity (match existing DB schema)
+    reference_type = Column("reference_type", String(50), nullable=True)
+    reference_id = Column("reference_id", UUID(as_uuid=True), nullable=True)
+
+    # Additional fields from existing schema
+    email_sent = Column(Boolean, default=False, nullable=True)
+    email_sent_at = Column(DateTime(timezone=True), nullable=True)
+    data = Column(JSON, nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True)
+
+    # Relationships
+    user = relationship("User", backref="notifications")
+
+    __table_args__ = (
+        # Use existing indexes
+        Index("ix_notifications_user_created", "user_id", "created_at"),
+        Index("ix_notifications_user_read", "user_id", "read"),
+        Index("ix_notifications_expires", "expires_at"),
+    )
+
+
+# ==================== Invoice Model ====================
+
+
+class Company(Base):
+    """Firma/Unternehmen - entspricht companies Tabelle.
+
+    Mapping fuer bestehende companies-Tabelle ohne vollstaendige Implementierung.
+    """
+    __tablename__ = "companies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True)
+    name = Column(String(255), nullable=False)
+    short_name = Column(String(50), nullable=True)
+    display_name = Column(String(255), nullable=True)
+    legal_form = Column(String(50), nullable=True)
+    vat_id = Column(String(20), nullable=True)
+    tax_number = Column(String(50), nullable=True)
+    street = Column(String(255), nullable=True)
+    city = Column(String(100), nullable=True)
+    postal_code = Column(String(10), nullable=True)
+    country = Column(String(2), default="DE", nullable=True)
+    email = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class InvoiceStatus(str, Enum):
+    """Invoice payment status."""
+    PENDING = "pending"
+    PAID = "paid"
+    OVERDUE = "overdue"
+    CANCELLED = "cancelled"
+
+
+class Invoice(Base):
+    """Rechnungsverwaltung fuer Finanzen.
+
+    Verknuepft Dokumente mit Firmen und verfolgt Zahlungsstatus.
+    """
+    __tablename__ = "invoices"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, unique=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False)
+
+    # Invoice details
+    invoice_number = Column(String(100), unique=True, nullable=False, index=True)
+    invoice_date = Column(Date, nullable=False)
+    due_date = Column(Date, nullable=False)
+
+    # Amounts
+    subtotal = Column(Numeric(12, 2), nullable=False)
+    tax_amount = Column(Numeric(12, 2), default=0)
+    total_amount = Column(Numeric(12, 2), nullable=False)
+    currency = Column(String(3), default="EUR", nullable=False)
+
+    # Payment status
+    status = Column(String(20), default=InvoiceStatus.PENDING, nullable=False, index=True)
+    payment_date = Column(Date, nullable=True)
+
+    # Metadata
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+
+    # Relationships
+    document = relationship("Document", backref="invoice", uselist=False)
+    company = relationship("Company", backref="invoices")
+
+    __table_args__ = (
+        Index("ix_invoices_invoice_number", "invoice_number"),
+        Index("ix_invoices_status", "status"),
+        Index("ix_invoices_due_date", "due_date"),
+        Index("ix_invoices_company_date", "company_id", "invoice_date"),
     )

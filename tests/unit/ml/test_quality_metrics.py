@@ -196,7 +196,8 @@ class TestUmlautAnalysis:
         analysis = analyze_umlaut_accuracy(reference, hypothesis)
 
         assert analysis.accuracy < 1.0
-        assert analysis.missed_umlauts > 0
+        # missed_umlauts ist eine Liste von Tupeln (char, position)
+        assert len(analysis.missed_umlauts) > 0
 
     def test_no_umlauts(self):
         """Test text without umlauts."""
@@ -254,7 +255,9 @@ class TestFullQualityMetrics:
             ("Test", "Test", (0.0, 0.0)),
             ("Test", "Tast", (0.2, 0.3)),
             ("Hello", "Helo", (0.15, 0.25)),
-            ("Größe", "Groesse", (0.1, 0.4)),
+            # Größe (5 chars) -> Groesse (7 chars): ö->oe (substitution+insertion), ß->ss (substitution+insertion)
+            # Edit distance ~4, max(5,7)=7, CER = 4/7 ≈ 0.57 bis 4/5 = 0.8
+            ("Größe", "Groesse", (0.4, 0.9)),
         ],
     )
     def test_parametrized_cer(self, reference, hypothesis, expected_cer_range):

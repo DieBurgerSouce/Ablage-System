@@ -676,6 +676,9 @@ class TestSearchIntegration:
             mock_settings.SEARCH_CACHE_TTL = 300
             mock_settings.SEARCH_EMBEDDING_CACHE_TTL = 3600
             mock_settings.SEARCH_SIMILAR_CACHE_TTL = 600
+            # Compound splitting settings für GermanCompoundSplitter
+            mock_settings.COMPOUND_SPLITTING_ENABLED = False
+            mock_settings.COMPOUND_MIN_PART_LENGTH = 3
 
             from app.services.search_service import SearchService
             service = SearchService()
