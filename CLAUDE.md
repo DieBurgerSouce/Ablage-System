@@ -1,5 +1,10 @@
 # Ablage-System OCR - Claude Code Kontext
 
+> **📖 Dokumentations-Hierarchie (P2-32 FIX)**:
+> - **Diese Datei** = Schnellreferenz & Einstiegspunkt (~300 Zeilen)
+> - **`.claude/CLAUDE.md`** = Vollständige Enterprise-Dokumentation (1200+ Zeilen)
+> - Bei Widersprüchen gilt IMMER `.claude/CLAUDE.md` als Source of Truth!
+
 ## WICHTIG: Entwicklungsstruktur
 
 Dieses Projekt verwendet eine **optimierte Claude Code Entwicklungsstruktur**. Beachte diese Ordner:
@@ -148,6 +153,130 @@ Wenn du Änderungen machst, aktualisiere auch:
 2. **`.claude/commands/`** - Bei neuen Workflows
 3. **`.claude/hooks/`** - Bei neuen Validierungsregeln
 4. **`tests/`** - Immer Tests hinzufügen/aktualisieren
+
+---
+
+## Quality Gates (P2-31 FIX)
+
+Jedes Feature muss diese Quality Gates passieren BEVOR es committed wird:
+
+### 1. Lokale Tests (Entwickler-Maschine)
+
+```bash
+# 1. Type Checking
+mypy app/
+
+# 2. Linting
+ruff check .
+
+# 3. Unit Tests
+pytest tests/unit/ -v
+
+# 4. Integration Tests (requires Docker)
+docker-compose up -d
+pytest tests/integration/ -v
+
+# 5. Code Coverage Check
+pytest --cov=app --cov-report=term --cov-fail-under=80
+```
+
+**Umgebung**: Lokal oder Docker (je nach Test-Typ)
+**Zeitpunkt**: Vor jedem Commit
+**Automatisiert**: Via pre-commit Hook (`.claude/hooks/pre-commit.py`)
+
+### 2. Docker Build Verification
+
+```bash
+# Frontend Build
+docker-compose build frontend
+
+# Backend Build
+docker-compose build backend
+
+# Full Stack Test
+docker-compose up -d
+curl http://localhost:8000/health  # Should return 200
+curl http://localhost/  # Should return Frontend
+```
+
+**Umgebung**: Docker Compose
+**Zeitpunkt**: Vor jedem Push
+**Automatisiert**: Nein (manuell)
+
+### 3. GPU Tests (falls OCR-Änderungen)
+
+```bash
+# GPU Verfügbarkeit prüfen
+nvidia-smi
+
+# GPU Memory Test
+python -c "from app.gpu_manager import GPUManager; print(GPUManager().get_detailed_status())"
+
+# OCR Backend Tests (requires GPU)
+pytest tests/integration/test_ocr_backends.py -v --gpu
+```
+
+**Umgebung**: Lokal mit GPU
+**Zeitpunkt**: Bei OCR/GPU-Code-Änderungen
+**Automatisiert**: Via post-ocr-change Hook
+
+### 4. Performance Benchmarks
+
+```bash
+# API Performance
+pytest tests/performance/test_api_latency.py -v
+
+# OCR Performance
+pytest tests/performance/test_ocr_throughput.py -v
+
+# Database Query Performance
+pytest tests/performance/test_db_queries.py -v
+```
+
+**Umgebung**: Docker (Prod-ähnliche Config)
+**Zeitpunkt**: Vor Major Releases
+**Automatisiert**: Nein (manuell, CI geplant)
+
+### 5. Security Scan
+
+```bash
+# Dependency Vulnerabilities
+pip-audit
+
+# Code Security Issues
+bandit -r app/
+
+# Docker Image Scan
+docker scan ablage-backend:latest
+```
+
+**Umgebung**: Lokal oder CI
+**Zeitpunkt**: Wöchentlich
+**Automatisiert**: Geplant via CI
+
+### Quality Gate Status Indicators
+
+| Gate | Pass Criteria | Tool |
+|------|---------------|------|
+| Type Safety | mypy --strict passes | mypy |
+| Linting | ruff check passes | ruff |
+| Unit Tests | All tests pass | pytest |
+| Integration Tests | All tests pass | pytest + Docker |
+| Code Coverage | ≥ 80% | pytest-cov |
+| Build | Docker build succeeds | docker-compose |
+| Performance | API p95 < 500ms | Custom tests |
+| Security | No HIGH/CRITICAL vulns | pip-audit, bandit |
+
+### Pre-Commit Checklist
+
+- [ ] `mypy app/` - Keine Type Errors
+- [ ] `ruff check .` - Keine Linting Errors
+- [ ] `pytest tests/unit/` - Alle Unit Tests grün
+- [ ] `pytest --cov=app --cov-fail-under=80` - Coverage OK
+- [ ] Deutsche Texte validiert (User-Facing)
+- [ ] Secrets entfernt (keine API Keys im Code)
+
+**Diese Checks werden automatisch von `.claude/hooks/pre-commit.py` ausgeführt!**
 
 ---
 

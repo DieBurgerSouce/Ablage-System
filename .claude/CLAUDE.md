@@ -3,6 +3,11 @@ Status: Production-ready intelligent document processing system with GPU-acceler
 Philosophy: Feinpoliert und durchdacht (polished and well-thought-out)
 Deployment: On-premises, no cloud dependencies
 
+> **📖 Dokumentations-Hierarchie (P2-32 FIX)**:
+> - **Diese Datei** = Vollständige Enterprise-Dokumentation (Source of Truth, 1200+ Zeilen)
+> - **`../CLAUDE.md`** (Root) = Schnellreferenz & Einstiegspunkt (~300 Zeilen)
+> - Diese Datei hat Vorrang bei Widersprüchen!
+
 🚨 CRITICAL RULES
 ABSOLUTE REQUIREMENTS - NO EXCEPTIONS:
 
