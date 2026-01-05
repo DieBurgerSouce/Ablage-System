@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, update, delete
 from sqlalchemy.orm import selectinload
@@ -416,13 +416,14 @@ async def update_connection(
 @router.delete(
     "/connections/{connection_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="ERP-Verbindung loeschen",
 )
 async def delete_connection(
     connection_id: UUID,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
-) -> None:
+) -> Response:
     """Loescht eine ERP-Verbindung."""
     result = await db.execute(
         select(ERPConnection).where(
@@ -448,6 +449,7 @@ async def delete_connection(
         connection_id=str(connection_id),
         user_id=str(current_user.id),
     )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(

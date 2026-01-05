@@ -287,6 +287,12 @@ markers = [
     "windows: Windows-specific tests",
     "experimental: Experimental features under evaluation",
     "gpu_required: Tests that require GPU (will skip if not available)",
+    "docker: Docker container health tests",
+    "critical: Critical service tests (must pass)",
+    "gpu_optional: GPU tests (skip if no GPU available)",
+    "connectivity: Service connectivity tests",
+    "prometheus: Prometheus target tests",
+    "logs: Container log scanning tests",
 ]
 
 # Addopts - options to always use

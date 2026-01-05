@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 import uuid
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -281,13 +281,14 @@ async def update_company_settings(
 @router.delete(
     "",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Firmendaten loeschen",
     description="Loescht alle konfigurierten Firmendaten"
 )
 async def delete_company_settings(
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
-) -> None:
+) -> Response:
     """
     Loescht die Firmendaten.
 
@@ -311,3 +312,4 @@ async def delete_company_settings(
         "company_settings_deleted",
         user_id=str(admin.id)
     )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

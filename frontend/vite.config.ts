@@ -19,6 +19,7 @@ export default defineConfig({
       manifest: false, // We use our own manifest.json
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MiB to accommodate large bundles
         runtimeCaching: [
           {
             // Cache API responses (NetworkFirst for fresh data)

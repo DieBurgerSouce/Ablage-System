@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
@@ -399,6 +399,7 @@ async def update_role(
 @router.delete(
     "/{role_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Rolle löschen",
     description="Löscht eine benutzerdefinierte Rolle."
 )
@@ -406,7 +407,7 @@ async def delete_role(
     role_id: UUID,
     current_user: User = Depends(require_any_permission("roles:delete", "roles:manage")),
     db: AsyncSession = Depends(get_db)
-) -> None:
+) -> Response:
     """
     Löscht eine Rolle.
 
@@ -452,6 +453,7 @@ async def delete_role(
         role_name=role.name,
         deleted_by=str(current_user.id)
     )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================== User Role Assignment ====================
@@ -532,6 +534,7 @@ async def assign_role_to_user(
 @router.delete(
     "/{role_id}/users/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Rolle von Benutzer entfernen",
     description="Entfernt eine Rolle von einem Benutzer."
 )
@@ -540,7 +543,7 @@ async def remove_role_from_user(
     user_id: UUID,
     current_user: User = Depends(require_permission("users:manage")),
     db: AsyncSession = Depends(get_db)
-) -> None:
+) -> Response:
     """
     Entfernt eine Rolle von einem Benutzer.
 
@@ -594,6 +597,7 @@ async def remove_role_from_user(
             "target_user_email": user.email
         }
     )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

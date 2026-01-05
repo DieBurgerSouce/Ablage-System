@@ -13,7 +13,7 @@ from typing import List, Any
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -234,6 +234,7 @@ async def update_tag(
 @router.delete(
     "/{tag_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Tag loeschen",
     description="Loescht ein Tag (System-Tags koennen nicht geloescht werden)"
 )
@@ -241,7 +242,7 @@ async def delete_tag(
     tag_id: UUID,
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
-) -> None:
+) -> Response:
     """
     Loescht ein Tag.
 
@@ -276,3 +277,4 @@ async def delete_tag(
         tag_id=str(tag_id),
         tag_name=tag_name
     )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
