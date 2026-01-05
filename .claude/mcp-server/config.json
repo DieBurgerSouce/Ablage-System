@@ -1,0 +1,111 @@
+{
+  "server": {
+    "name": "orchestration",
+    "version": "1.0.0",
+    "host": "localhost",
+    "port": 3000
+  },
+  "orchestration": {
+    "cache_enabled": true,
+    "quality_gate_enabled": true,
+    "auto_escalation": true,
+    "specialized_agents_enabled": true
+  },
+  "thresholds": {
+    "haiku_quality_min": 0.95,
+    "sonnet_quality_min": 0.85,
+    "opus_quality_min": 0.80,
+    "cache_ttl_days": 7
+  },
+  "specialized_patterns": {
+    "refactoring": {
+      "keywords": ["refactor", "migrate", "modernize", "umstruktur", "migration", "transition", "architecture"],
+      "min_files": 5,
+      "agent": "refactoring-expert",
+      "tier": "opus"
+    },
+    "ocr": {
+      "keywords": ["ocr", "deepseek", "got-ocr", "surya", "gpu", "vram", "batch", "fraktur", "umlaut"],
+      "file_patterns": ["app/agents/ocr/*", "app/services/ocr_service.py"],
+      "agent": "ocr-specialist",
+      "tier": "opus"
+    },
+    "testing": {
+      "keywords": ["test", "pytest", "coverage", "fixture", "integration test", "unit test"],
+      "file_patterns": ["tests/*"],
+      "agent": "testing-expert",
+      "tier": "sonnet"
+    },
+    "database": {
+      "keywords": ["database", "sqlalchemy", "alembic", "migration", "postgres", "pgvector", "schema"],
+      "file_patterns": ["app/db/models.py", "alembic/versions/*"],
+      "agent": "database-expert",
+      "tier": "sonnet"
+    },
+    "security": {
+      "keywords": ["security", "vulnerability", "auth", "owasp", "penetration", "injection", "xss", "csrf", "jwt"],
+      "file_patterns": ["app/core/security.py", "app/api/*/auth*.py"],
+      "agent": "security-auditor",
+      "tier": "opus"
+    },
+    "frontend": {
+      "keywords": ["component", "hook", "tsx", "react", "typescript", "tanstack", "tailwind", "shadcn", "frontend"],
+      "file_patterns": ["frontend/src/*"],
+      "agent": "frontend-expert",
+      "tier": "sonnet"
+    },
+    "api_design": {
+      "keywords": ["api", "endpoint", "rest", "graphql", "openapi", "swagger", "route", "router"],
+      "file_patterns": ["app/api/*"],
+      "agent": "api-designer",
+      "tier": "sonnet"
+    },
+    "performance": {
+      "keywords": ["performance", "optimize", "slow", "profiling", "caching", "n+1", "bottleneck", "latency"],
+      "agent": "performance-optimizer",
+      "tier": "sonnet"
+    },
+    "devops": {
+      "keywords": ["docker", "deploy", "ci", "cd", "pipeline", "kubernetes", "terraform", "ansible", "container"],
+      "file_patterns": ["docker/*", "docker-compose.yml", "infrastructure/*", ".github/*"],
+      "agent": "devops-agent",
+      "tier": "sonnet"
+    },
+    "debugging": {
+      "keywords": ["bug", "error", "fix", "debug", "traceback", "exception", "crash", "not working", "broken"],
+      "agent": "bug-hunter",
+      "tier": "sonnet"
+    },
+    "code_review": {
+      "keywords": ["review", "check code", "lint", "code quality", "best practices", "style"],
+      "agent": "code-reviewer",
+      "tier": "haiku"
+    },
+    "documentation": {
+      "keywords": ["document", "docstring", "comment", "readme", "docs", "jsdoc", "type hint"],
+      "file_patterns": ["docs/*", "*.md"],
+      "agent": "doc-writer",
+      "tier": "haiku"
+    }
+  },
+  "haiku_safe_patterns": [
+    "^format", "^lint", "^prettify",
+    "^import.*sort", "^organize.*import",
+    "^fix.*typo", "^correct.*spelling",
+    "^add.*comment", "^add.*docstring",
+    "^generate.*boilerplate", "^scaffold",
+    "^validate.*syntax", "^check.*import"
+  ],
+  "haiku_blacklist": [
+    "implement", "create", "build", "develop",
+    "fix.*bug", "debug", "troubleshoot",
+    "refactor", "optimize", "redesign",
+    "security", "auth", "vulnerability",
+    "architecture", "system design", "migrate"
+  ],
+  "tier_to_agent": {
+    "opus": "opus-task",
+    "sonnet": "sonnet-implementation",
+    "haiku": "haiku-task"
+  }
+}

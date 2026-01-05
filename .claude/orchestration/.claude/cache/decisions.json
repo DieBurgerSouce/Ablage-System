@@ -1,0 +1,26 @@
+{
+  "9b04dced60c9c66d": {
+    "decision_hash": "9b04dced60c9c66d",
+    "task_description": "Implementiere User Authentication",
+    "decision": "Verwende FastAPI-Users mit JWT",
+    "reasoning": "Bewährte Lösung mit guter Security",
+    "affected_patterns": [
+      "authentication",
+      "jwt",
+      "fastapi"
+    ],
+    "affected_files": [
+      "app/auth/",
+      "app/models/user.py"
+    ],
+    "created_at": "2026-01-04T00:34:02.594424",
+    "expires_at": "2026-01-11T00:34:02.594424",
+    "model_used": "opus",
+    "confidence": 0.9,
+    "tags": [
+      "auth",
+      "security"
+    ],
+    "context_hash": "d41d8cd9"
+  }
+}
