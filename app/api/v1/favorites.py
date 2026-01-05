@@ -14,7 +14,7 @@ import structlog
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
@@ -260,6 +260,7 @@ async def update_favorite(
 @router.delete(
     "/{favorite_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Favorit entfernen",
     description="Entfernt ein Dokument aus den Favoriten."
 )
@@ -267,7 +268,7 @@ async def remove_favorite(
     favorite_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-) -> None:
+) -> Response:
     """Favorit entfernen."""
     result = await db.execute(
         select(DocumentFavorite).where(
@@ -292,10 +293,13 @@ async def remove_favorite(
         user_id=str(current_user.id)
     )
 
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 
 @router.delete(
     "/document/{document_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Favorit nach Dokument-ID entfernen",
     description="Entfernt ein Dokument aus den Favoriten anhand der Dokument-ID."
 )
@@ -303,7 +307,7 @@ async def remove_favorite_by_document(
     document_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-) -> None:
+) -> Response:
     """Favorit anhand der Dokument-ID entfernen."""
     result = await db.execute(
         select(DocumentFavorite).where(
@@ -327,6 +331,8 @@ async def remove_favorite_by_document(
         document_id=str(document_id),
         user_id=str(current_user.id)
     )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

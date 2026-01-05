@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -390,13 +390,14 @@ async def update_workflow(
 @router.delete(
     "/{workflow_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Workflow loeschen",
 )
 async def delete_workflow(
     workflow_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> None:
+) -> Response:
     """Loescht einen Workflow."""
     service = WorkflowService(db)
 
@@ -410,6 +411,8 @@ async def delete_workflow(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Workflow nicht gefunden oder keine Berechtigung",
         )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
@@ -596,6 +599,7 @@ async def update_step(
 @router.delete(
     "/{workflow_id}/steps/{step_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Step loeschen",
 )
 async def delete_step(
@@ -603,7 +607,7 @@ async def delete_step(
     step_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> None:
+) -> Response:
     """Loescht einen Step."""
     service = WorkflowService(db)
 
@@ -622,6 +626,8 @@ async def delete_step(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Step nicht gefunden",
         )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(

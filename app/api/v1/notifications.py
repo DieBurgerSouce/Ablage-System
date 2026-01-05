@@ -15,7 +15,7 @@ from typing import Optional
 from uuid import UUID
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, update
 from sqlalchemy.orm import selectinload
@@ -224,6 +224,7 @@ async def mark_all_as_read(
 @router.delete(
     "/{notification_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Benachrichtigung loeschen",
     description="Loescht eine Benachrichtigung."
 )
@@ -231,7 +232,7 @@ async def delete_notification(
     notification_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> None:
+) -> Response:
     """Benachrichtigung loeschen."""
     result = await db.execute(
         select(UserNotification).where(
@@ -258,10 +259,13 @@ async def delete_notification(
         user_id=str(current_user.id),
     )
 
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 
 @router.delete(
     "/",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Alle Benachrichtigungen loeschen",
     description="Loescht alle Benachrichtigungen des Benutzers."
 )
@@ -269,7 +273,7 @@ async def delete_all_notifications(
     read_only: bool = Query(False, description="Nur gelesene Benachrichtigungen loeschen"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> None:
+) -> Response:
     """Alle Benachrichtigungen loeschen."""
     from sqlalchemy import delete as sql_delete
 
@@ -287,6 +291,8 @@ async def delete_all_notifications(
         user_id=str(current_user.id),
         read_only=read_only,
     )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # =============================================================================

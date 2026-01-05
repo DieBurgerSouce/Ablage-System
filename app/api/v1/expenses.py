@@ -14,7 +14,7 @@ from decimal import Decimal
 from typing import Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
@@ -204,6 +204,7 @@ async def update_report(
 @reports_router.delete(
     "/{report_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Spesenabrechnung loeschen",
     description="Loescht eine Spesenabrechnung (nur Entwuerfe)."
 )
@@ -213,7 +214,7 @@ async def delete_report(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
-) -> None:
+) -> Response:
     """Loescht eine Spesenabrechnung."""
 
     try:
@@ -235,6 +236,8 @@ async def delete_report(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Spesenabrechnung nicht gefunden."
         )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================== Item Endpoints ====================
@@ -319,6 +322,7 @@ async def update_item(
 @items_router.delete(
     "/{item_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Position loeschen",
     description="Loescht eine Position (nur in Entwuerfen)."
 )
@@ -328,7 +332,7 @@ async def delete_item(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
-) -> None:
+) -> Response:
     """Loescht eine Position."""
 
     try:
@@ -350,6 +354,8 @@ async def delete_item(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Position nicht gefunden."
         )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================== Workflow Endpoints ====================

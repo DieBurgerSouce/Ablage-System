@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 import structlog
 
-from fastapi import APIRouter, Response, Depends, HTTPException, status
+from fastapi import APIRouter, Response, Depends, HTTPException, status, Header
 
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
@@ -49,6 +49,86 @@ def _mask_admin_email_for_log(email: Optional[str]) -> str:
 # =============================================================================
 
 
+def verify_metrics_token(authorization: str | None = None) -> bool:
+    """
+    Verifiziert den Metrics-Scrape-Token fuer interne Endpunkte.
+
+    Args:
+        authorization: Authorization Header (Bearer token)
+
+    Returns:
+        True wenn Token gueltig oder kein Token konfiguriert
+
+    Raises:
+        HTTPException 401/403 wenn Token ungueltig
+    """
+    from app.core.config import settings
+
+    # Wenn kein Token konfiguriert, erlaube Zugriff (fuer Development)
+    if not settings.METRICS_SCRAPE_TOKEN:
+        return True
+
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Extrahiere Token aus "Bearer <token>"
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header format",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if parts[1] != settings.METRICS_SCRAPE_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid metrics token",
+        )
+
+    return True
+
+
+@router.get("/internal", response_class=Response)
+async def internal_prometheus_metrics(
+    authorization: str | None = Header(default=None, alias="Authorization"),
+):
+    """
+    Internal Prometheus metrics endpoint for automated scraping.
+
+    This endpoint is designed for Prometheus/Grafana scraping without
+    requiring full user authentication. Instead, it uses a simple
+    Bearer token configured via METRICS_SCRAPE_TOKEN environment variable.
+
+    **Authentication:**
+    - If METRICS_SCRAPE_TOKEN is set: Requires Bearer token in Authorization header
+    - If METRICS_SCRAPE_TOKEN is not set: Allows unauthenticated access (dev mode)
+
+    **Usage in prometheus.yml:**
+    ```yaml
+    scrape_configs:
+      - job_name: 'ablage-backend'
+        static_configs:
+          - targets: ['backend:8000']
+        metrics_path: '/api/v1/metrics/internal'
+        bearer_token: '<your-metrics-token>'
+    ```
+
+    Returns:
+        Prometheus metrics in text format
+    """
+    verify_metrics_token(authorization)
+
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST,
+    )
+
+
 @router.get("", response_class=Response)
 @router.get("/prometheus", response_class=Response)
 async def prometheus_metrics(
@@ -61,8 +141,8 @@ async def prometheus_metrics(
 
     Returns metrics in Prometheus text format for scraping.
 
-    Note: For automated Prometheus scraping, configure Bearer token auth
-    or use network-level security (internal network only).
+    Note: For automated Prometheus scraping, use /internal endpoint with
+    METRICS_SCRAPE_TOKEN or network-level security (internal network only).
 
     Args:
         current_user: Authenticated admin user (required)

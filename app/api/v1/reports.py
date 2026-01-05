@@ -13,7 +13,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -493,13 +493,13 @@ async def update_template(
     return ReportTemplateResponse.model_validate(template)
 
 
-@router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_template(
     template_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     service: ReportTemplateService = Depends(get_template_service),
-) -> None:
+) -> Response:
     """Loescht ein Report-Template."""
     success = await service.delete_template(
         db=db,
@@ -508,6 +508,7 @@ async def delete_template(
     )
     if not success:
         raise HTTPException(status_code=404, detail="Template nicht gefunden oder keine Berechtigung")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/templates/{template_id}/clone", response_model=ReportTemplateResponse, status_code=status.HTTP_201_CREATED)
@@ -579,14 +580,14 @@ async def add_column(
     return ReportColumnResponse.model_validate(column)
 
 
-@router.put("/templates/{template_id}/columns/reorder", status_code=status.HTTP_204_NO_CONTENT)
+@router.put("/templates/{template_id}/columns/reorder", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def reorder_columns(
     template_id: uuid.UUID,
     orders: List[ColumnOrderItem],
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     service: ReportTemplateService = Depends(get_template_service),
-) -> None:
+) -> Response:
     """Sortiert Spalten neu."""
     template = await service.get_template(db, template_id, current_user.id, include_relations=False)
     if not template:
@@ -597,16 +598,17 @@ async def reorder_columns(
         template_id=template_id,
         column_orders=[{"id": o.id, "sort_order": o.sort_order} for o in orders],
     )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.delete("/templates/{template_id}/columns/{column_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/templates/{template_id}/columns/{column_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_column(
     template_id: uuid.UUID,
     column_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     service: ReportTemplateService = Depends(get_template_service),
-) -> None:
+) -> Response:
     """Loescht eine Spalte."""
     template = await service.get_template(db, template_id, current_user.id, include_relations=False)
     if not template:
@@ -615,6 +617,7 @@ async def delete_column(
     success = await service.delete_column(db, column_id)
     if not success:
         raise HTTPException(status_code=404, detail="Spalte nicht gefunden")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # =============================================================================
@@ -665,14 +668,14 @@ async def add_filter(
     return ReportFilterResponse.model_validate(filter_obj)
 
 
-@router.delete("/templates/{template_id}/filters/{filter_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/templates/{template_id}/filters/{filter_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_filter(
     template_id: uuid.UUID,
     filter_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     service: ReportTemplateService = Depends(get_template_service),
-) -> None:
+) -> Response:
     """Loescht einen Filter."""
     template = await service.get_template(db, template_id, current_user.id, include_relations=False)
     if not template:
@@ -681,6 +684,7 @@ async def delete_filter(
     success = await service.delete_filter(db, filter_id)
     if not success:
         raise HTTPException(status_code=404, detail="Filter nicht gefunden")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # =============================================================================
@@ -720,14 +724,14 @@ async def add_chart(
     return ReportChartResponse.model_validate(chart)
 
 
-@router.delete("/templates/{template_id}/charts/{chart_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/templates/{template_id}/charts/{chart_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_chart(
     template_id: uuid.UUID,
     chart_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     service: ReportTemplateService = Depends(get_template_service),
-) -> None:
+) -> Response:
     """Loescht einen Chart."""
     template = await service.get_template(db, template_id, current_user.id, include_relations=False)
     if not template:
@@ -736,6 +740,7 @@ async def delete_chart(
     success = await service.delete_chart(db, chart_id)
     if not success:
         raise HTTPException(status_code=404, detail="Chart nicht gefunden")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # =============================================================================
@@ -892,14 +897,14 @@ async def share_template(
     return ReportShareResponse.model_validate(share)
 
 
-@router.delete("/templates/{template_id}/share/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/templates/{template_id}/share/{user_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def revoke_share(
     template_id: uuid.UUID,
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     service: ReportTemplateService = Depends(get_template_service),
-) -> None:
+) -> Response:
     """Widerruft eine Freigabe."""
     success = await service.revoke_share(
         db=db,
@@ -909,6 +914,7 @@ async def revoke_share(
     )
     if not success:
         raise HTTPException(status_code=404, detail="Freigabe nicht gefunden")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/shared", response_model=List[ReportTemplateResponse])
@@ -952,17 +958,18 @@ async def enable_schedule(
     return ReportTemplateResponse.model_validate(template)
 
 
-@router.delete("/templates/{template_id}/schedule", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/templates/{template_id}/schedule", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def disable_schedule(
     template_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     scheduler_service: ReportSchedulerService = Depends(get_scheduler_service),
-) -> None:
+) -> Response:
     """Deaktiviert einen Zeitplan."""
     success = await scheduler_service.disable_schedule(db, template_id, current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Template nicht gefunden")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/schedule-presets", response_model=List[Dict[str, Any]])

@@ -250,13 +250,14 @@ async def update_config(
 @router.delete(
     "/config/{config_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Konfiguration loeschen",
 )
 async def delete_config(
     config_id: uuid_module.UUID,
     db: AsyncSession = Depends(get_async_db),
     current_user: models.User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Loescht eine DATEV-Konfiguration (Soft-Delete)."""
     result = await db.execute(
         select(models.DATEVConfiguration).where(
@@ -285,6 +286,8 @@ async def delete_config(
             "action": "soft_delete",
         }
     )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # =============================================================================
@@ -494,6 +497,7 @@ async def update_vendor_mapping(
 @router.delete(
     "/config/{config_id}/vendors/{mapping_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Vendor-Mapping loeschen",
 )
 async def delete_vendor_mapping(
@@ -501,7 +505,7 @@ async def delete_vendor_mapping(
     mapping_id: uuid_module.UUID,
     db: AsyncSession = Depends(get_async_db),
     current_user: models.User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Loescht ein Vendor-Mapping."""
     # SECURITY FIX: Zuerst Config-Ownership pruefen (OWASP A07:2021)
     config_result = await db.execute(
@@ -543,6 +547,8 @@ async def delete_vendor_mapping(
             "user_id": str(current_user.id),
         }
     )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # =============================================================================

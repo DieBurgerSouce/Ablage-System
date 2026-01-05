@@ -542,7 +542,15 @@ class Settings(BaseSettings):
         default=True,
         description="Grafana Dashboard Links aktivieren"
     )
-    
+
+    # Prometheus Metrics Scraping
+    # Token fuer interne Metrics-Endpoints (Prometheus, Grafana)
+    # Generieren: python -c "import secrets; print(secrets.token_urlsafe(32))"
+    METRICS_SCRAPE_TOKEN: Optional[str] = Field(
+        default=None,
+        description="Token fuer Prometheus/Grafana Metrics-Scraping (wenn gesetzt, /internal/metrics erfordert diesen Token)"
+    )
+
     # Email (optional, for notifications)
     SMTP_HOST: Optional[str] = None
     SMTP_PORT: Optional[int] = 587

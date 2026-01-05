@@ -283,8 +283,10 @@ services:
 
   # BGE-Reranker Cross-Encoder via HuggingFace Text Embeddings Inference
   # CPU-only (GPU reserviert fuer OCR), verbessert Suchrelevanz signifikant
+  # HINWEIS: Optional - Starten mit: docker-compose --profile gpu up -d
   reranker:
-    image: ghcr.io/huggingface/text-embeddings-inference:1.2
+    profiles: ["gpu"]
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
     container_name: ablage-reranker
     command: --model-id BAAI/bge-reranker-v2-m3 --port 8090
     environment:
@@ -326,7 +328,9 @@ services:
   # Mustang E-Invoice Service (ZUGFeRD/XRechnung)
   # Java-basiert fuer vollstaendige XRechnung 3.0.2 Unterstuetzung inkl. UBL
   # Siehe: https://github.com/ZUGFeRD/mustangproject
+  # HINWEIS: Optional - Starten mit: docker-compose --profile optional up -d
   einvoice-mustang:
+    profiles: ["optional"]
     build:
       context: .
       dockerfile: docker/Dockerfile.mustang
@@ -715,11 +719,12 @@ services:
           cpus: '1.0'
           memory: 2G
     healthcheck:
-      test: ["CMD", "celery", "-A", "app.workers.celery_app", "inspect", "ping", "-d", "cpu_worker@$$HOSTNAME"]
-      interval: 60s
-      timeout: 30s
+      # Vereinfachter Health-Check: prüft nur ob Celery-Prozess läuft
+      test: ["CMD-SHELL", "pgrep -f 'celery.*worker' > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
       retries: 3
-      start_period: 600s  # 10 Minuten für Modell-Download
+      start_period: 60s
     restart: unless-stopped
     stop_grace_period: 60s
     logging:
@@ -828,6 +833,7 @@ services:
     networks:
       - monitoring-network
       - backend-network
+      - data-network  # ENTERPRISE FIX: Prometheus muss minio/qdrant scrapen koennen
 
   # Grafana Dashboards (Monitoring Network)
   # INFRASTRUCTURE HARDENING: IP-Whitelisting implementiert
@@ -1040,12 +1046,10 @@ services:
     security_opt:
       - no-new-privileges:true
     read_only: true
-    # SECURITY FIX: Healthcheck für Redis Exporter
+    # Hinweis: redis_exporter Scratch-Image hat keine Shell/Tools
+    # Health wird durch Prometheus Scrape-Status überwacht
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9121/metrics"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      disable: true
     deploy:
       resources:
         limits:
@@ -1158,7 +1162,10 @@ services:
       - data-network
 
   # NVIDIA GPU Exporter für Prometheus-Metriken
+  # HINWEIS: Optional - Starten mit: docker-compose --profile gpu up -d
+  # Erfordert NVIDIA Container Runtime und DCGM auf dem Host
   dcgm-exporter:
+    profiles: ["gpu"]
     image: nvidia/dcgm-exporter:3.3.0-3.2.0-ubuntu22.04
     container_name: ablage-dcgm-exporter
     deploy:

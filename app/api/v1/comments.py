@@ -19,7 +19,7 @@ from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, exists
 from sqlalchemy.orm import selectinload
@@ -518,6 +518,7 @@ async def update_comment(
 @router.delete(
     "/{document_id}/comments/{comment_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Kommentar loeschen",
     description="Loescht einen Kommentar (Soft-Delete)."
 )
@@ -526,7 +527,7 @@ async def delete_comment(
     comment_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> None:
+) -> Response:
     """Kommentar loeschen (Soft-Delete).
 
     Verwendet SELECT ... FOR UPDATE um TOCTOU Race Conditions zu verhindern.
@@ -569,6 +570,8 @@ async def delete_comment(
         document_id=str(document_id),
         user_id=str(current_user.id),
     )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(

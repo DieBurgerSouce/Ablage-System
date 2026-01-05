@@ -14,7 +14,7 @@ import structlog
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -303,12 +303,12 @@ async def update_dashboard(
     return DashboardResponse(**dashboard)
 
 
-@router.delete("/{dashboard_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{dashboard_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_dashboard(
     dashboard_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> None:
+) -> Response:
     """
     Loescht ein Dashboard.
 
@@ -322,6 +322,7 @@ async def delete_dashboard(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Dashboard konnte nicht geloescht werden. Mindestens ein Dashboard muss existieren.",
         )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # =============================================================================
@@ -451,13 +452,13 @@ async def update_widget(
     return WidgetResponse(**widget)
 
 
-@router.delete("/{dashboard_id}/widgets/{widget_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{dashboard_id}/widgets/{widget_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def remove_widget(
     dashboard_id: UUID,
     widget_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> None:
+) -> Response:
     """
     Entfernt ein Widget vom Dashboard.
     """
@@ -473,6 +474,7 @@ async def remove_widget(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Widget nicht gefunden",
         )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # =============================================================================

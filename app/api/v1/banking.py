@@ -13,7 +13,7 @@ from datetime import datetime, date
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, File, Form, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
@@ -432,6 +432,7 @@ async def update_account(
 @accounts_router.delete(
     "/{account_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Bankkonto loeschen",
     description="Loescht ein Bankkonto (Soft-Delete)."
 )
@@ -439,7 +440,7 @@ async def delete_account(
     account_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """
     Loesche ein Bankkonto.
 
@@ -463,6 +464,7 @@ async def delete_account(
         account_id=str(account_id),
         user_id=str(current_user.id),
     )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================== Import Endpoints ====================
@@ -1035,6 +1037,7 @@ async def manual_match(
 @reconciliation_router.post(
     "/unmatch/{transaction_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Abgleich aufheben",
     description="Entfernt den Abgleich von einer Transaktion."
 )
@@ -1043,7 +1046,7 @@ async def unmatch_transaction(
     transaction_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Entferne Match von einer Transaktion."""
     success = await reconciliation_service.unmatch_transaction(
         db=db,
@@ -1062,6 +1065,7 @@ async def unmatch_transaction(
         transaction_id=str(transaction_id),
         user_id=str(current_user.id),
     )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @limiter.limit("60/minute", key_func=get_user_identifier)

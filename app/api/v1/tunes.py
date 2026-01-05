@@ -1,6 +1,6 @@
 from typing import List, Any
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -117,12 +117,12 @@ async def update_tune(
     await db.refresh(tune)
     return tune
 
-@router.delete("/{tune_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{tune_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_tune(
     tune_id: UUID,
     db: AsyncSession = Depends(dependencies.get_db),
     current_user: models.User = Depends(dependencies.get_current_superuser)
-) -> None:
+) -> Response:
     """
     Delete a tune (Admin only). System tunes cannot be deleted.
     """
@@ -138,3 +138,4 @@ async def delete_tune(
 
     await db.delete(tune)
     await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

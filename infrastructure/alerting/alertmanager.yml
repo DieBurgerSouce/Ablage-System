@@ -1,153 +1,49 @@
 # Alertmanager Configuration - Ablage-System OCR
-# Multi-channel alerting: Email + MS Teams
-# German language alerts for on-premises deployment
+# Minimale funktionierende Konfiguration ohne externe Webhooks
+# Kann spaeter mit SMTP und Teams erweitert werden
 
 global:
   resolve_timeout: 5m
-  # SMTP Configuration for Email alerts
-  smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
-  smtp_from: '${SMTP_FROM:-alertmanager@ablage-system.local}'
-  smtp_auth_username: '${SMTP_USERNAME}'
-  smtp_auth_password: '${SMTP_PASSWORD}'
-  smtp_require_tls: true
-
-# Templates for alert messages
-templates:
-  - '/etc/alertmanager/templates/*.tmpl'
 
 # Routing tree
 route:
-  receiver: 'default-email-teams'
+  receiver: 'null-receiver'
   group_by: ['alertname', 'cluster', 'service', 'severity']
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
 
-  # Child routes based on severity and service
+  # Child routes based on severity
   routes:
-    # Critical alerts - immediate notification
+    # Critical alerts
     - match:
         severity: critical
-      receiver: 'critical-email-teams'
+      receiver: 'null-receiver'
       group_wait: 10s
       repeat_interval: 15m
-      continue: false
 
     # High severity alerts
     - match:
         severity: high
-      receiver: 'high-email-teams'
+      receiver: 'null-receiver'
       group_wait: 1m
       repeat_interval: 1h
-      continue: false
 
-    # Warning severity - Teams only
+    # Warning severity
     - match:
         severity: warning
-      receiver: 'warning-teams'
+      receiver: 'null-receiver'
       group_wait: 5m
       repeat_interval: 4h
 
-    # GPU alerts - special handling
-    - match_re:
-        alertname: GPU.*
-      receiver: 'gpu-email-teams'
-      group_wait: 1m
-      repeat_interval: 30m
-
-    # Database alerts
-    - match_re:
-        service: postgres|database
-      receiver: 'database-teams'
-      group_wait: 1m
-      repeat_interval: 2h
-
-    # OCR alerts - special handling
-    - match:
-        component: ocr
-      receiver: 'ocr-teams'
-      group_wait: 1m
-      repeat_interval: 1h
-      routes:
-        # OCR Critical (no backends available)
-        - match:
-            alertname: NoOCRBackendAvailable
-          receiver: 'critical-email-teams'
-          group_wait: 10s
-
-# Alert receivers
+# Alert receivers - Null receiver (no external notifications)
+# Add real receivers when SMTP/Teams is configured
 receivers:
-  # Default receiver - Email + Teams
-  - name: 'default-email-teams'
-    email_configs:
-      - to: '${EMAIL_RECIPIENTS:-ops-team@internal.local}'
-        send_resolved: true
-        headers:
-          Subject: '[Ablage-System] {{ .GroupLabels.alertname }} - {{ .Status | toUpper }}'
-        html: '{{ template "email.html" . }}'
-    webhook_configs:
-      - url: '${TEAMS_WEBHOOK_URL}'
-        send_resolved: true
-        http_config:
-          tls_config:
-            insecure_skip_verify: false
+  - name: 'null-receiver'
+    # Empty receiver - alerts are received but not forwarded
+    # Configure email_configs or webhook_configs when ready
 
-  # Critical alerts - Email + Teams with urgency
-  - name: 'critical-email-teams'
-    email_configs:
-      - to: '${EMAIL_RECIPIENTS:-ops-team@internal.local}'
-        send_resolved: true
-        headers:
-          Subject: '[KRITISCH] Ablage-System: {{ .GroupLabels.alertname }}'
-          X-Priority: '1'
-        html: '{{ template "email.html" . }}'
-    webhook_configs:
-      - url: '${TEAMS_WEBHOOK_URL}'
-        send_resolved: true
-
-  # High severity - Email + Teams
-  - name: 'high-email-teams'
-    email_configs:
-      - to: '${EMAIL_RECIPIENTS:-ops-team@internal.local}'
-        send_resolved: true
-        headers:
-          Subject: '[HOCH] Ablage-System: {{ .GroupLabels.alertname }}'
-        html: '{{ template "email.html" . }}'
-    webhook_configs:
-      - url: '${TEAMS_WEBHOOK_URL}'
-        send_resolved: true
-
-  # Warning - Teams only
-  - name: 'warning-teams'
-    webhook_configs:
-      - url: '${TEAMS_WEBHOOK_URL}'
-        send_resolved: true
-
-  # GPU alerts - Email + Teams
-  - name: 'gpu-email-teams'
-    email_configs:
-      - to: '${EMAIL_RECIPIENTS:-ops-team@internal.local}'
-        send_resolved: true
-        headers:
-          Subject: '[GPU] Ablage-System: {{ .GroupLabels.alertname }}'
-        html: '{{ template "email.html" . }}'
-    webhook_configs:
-      - url: '${TEAMS_WEBHOOK_URL}'
-        send_resolved: true
-
-  # Database alerts - Teams
-  - name: 'database-teams'
-    webhook_configs:
-      - url: '${TEAMS_WEBHOOK_URL}'
-        send_resolved: true
-
-  # OCR alerts - Teams
-  - name: 'ocr-teams'
-    webhook_configs:
-      - url: '${TEAMS_WEBHOOK_URL}'
-        send_resolved: true
-
-# Inhibition rules (suppress less severe alerts when more severe are firing)
+# Inhibition rules
 inhibit_rules:
   # Critical alerts suppress warnings
   - source_match:
@@ -162,10 +58,3 @@ inhibit_rules:
     target_match:
       severity: 'warning'
     equal: ['alertname', 'cluster', 'service']
-
-  # Service down suppresses all other alerts for that service
-  - source_match_re:
-      alertname: '.*Down'
-    target_match_re:
-      alertname: '.*'
-    equal: ['service']

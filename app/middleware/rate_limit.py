@@ -579,36 +579,36 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         response.headers["X-RateLimit-Policy"] = f"{rate_limit['limit']};w={rate_limit['window']}"
 
 
-class DevelopmentRateLimitBypass(BaseHTTPMiddleware):
+class DevelopmentRateLimitBypass:
     """
     Middleware to bypass rate limiting in development mode.
 
     This middleware should be added before RateLimitMiddleware
     when running in development mode.
+
+    Uses pure ASGI pattern to properly handle WebSocket connections.
     """
 
-    async def dispatch(
-        self,
-        request: Request,
-        call_next: Callable
-    ) -> Response:
-        """
-        Bypass rate limiting in development mode.
+    def __init__(self, app: ASGIApp):
+        """Initialize with ASGI app."""
+        self.app = app
 
-        Args:
-            request: FastAPI request object
-            call_next: Next middleware/endpoint in chain
-
-        Returns:
-            Response object
+    async def __call__(self, scope: dict, receive: Callable, send: Callable):
         """
-        if settings.DEBUG:
+        Process ASGI request, bypassing rate limits in dev mode.
+
+        Properly handles both HTTP and WebSocket connections.
+        """
+        # Only log for HTTP requests, not WebSocket
+        if scope["type"] == "http" and settings.DEBUG:
+            path = scope.get("path", "")
             logger.debug(
                 "rate_limit_bypassed_development_mode",
-                path=request.url.path
+                path=path
             )
 
-        return await call_next(request)
+        # Pass through to next middleware/app
+        await self.app(scope, receive, send)
 
 
 # ==================== Role-Based Rate Limit Checker ====================

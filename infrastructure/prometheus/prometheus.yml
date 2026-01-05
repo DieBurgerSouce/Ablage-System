@@ -27,8 +27,10 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   # Ablage-System Backend API
+  # Verwendet /internal Endpoint der ohne User-Auth funktioniert
+  # Bei gesetztem METRICS_SCRAPE_TOKEN: bearer_token hinzufuegen
   - job_name: 'ablage-backend'
-    metrics_path: '/metrics'
+    metrics_path: '/api/v1/metrics/internal'
     static_configs:
       - targets: ['backend:8000']
     relabel_configs:
@@ -47,32 +49,36 @@ scrape_configs:
         replacement: 'ablage-worker'
 
   # PostgreSQL Metrics (via postgres_exporter)
+  # ENTERPRISE FIX: Container-Name statt Service-Name fuer DNS-Aufloesung
   - job_name: 'postgres'
     static_configs:
-      - targets: ['postgres_exporter:9187']
+      - targets: ['ablage-postgres-exporter:9187']
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
         replacement: 'postgres'
 
   # Redis Metrics (via redis_exporter)
+  # ENTERPRISE FIX: Container-Name statt Service-Name fuer DNS-Aufloesung
   - job_name: 'redis'
     static_configs:
-      - targets: ['redis_exporter:9121']
+      - targets: ['ablage-redis-exporter:9121']
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
         replacement: 'redis'
 
   # MinIO Metrics
-  - job_name: 'minio'
-    metrics_path: '/minio/v2/metrics/cluster'
-    static_configs:
-      - targets: ['minio:9000']
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: instance
-        replacement: 'minio'
+  # ENTERPRISE FIX: MinIO 2023+ erfordert Bearer Token fuer /metrics
+  # Deaktiviert bis MINIO_PROMETHEUS_AUTH_TYPE=public gesetzt wird
+  # - job_name: 'minio'
+  #   metrics_path: '/minio/v2/metrics/cluster'
+  #   static_configs:
+  #     - targets: ['minio:9000']
+  #   relabel_configs:
+  #     - source_labels: [__address__]
+  #       target_label: instance
+  #       replacement: 'minio'
 
   # Node Exporter (Docker Container)
   - job_name: 'node'
@@ -84,45 +90,54 @@ scrape_configs:
         replacement: 'host'
 
   # NVIDIA GPU Metrics (via dcgm-exporter Container)
-  - job_name: 'nvidia-gpu'
-    static_configs:
-      - targets: ['dcgm-exporter:9400']
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: instance
-        replacement: 'rtx4080'
+  # ENTERPRISE FIX: dcgm-exporter erfordert --profile gpu
+  # Aktiviere mit: docker-compose --profile gpu up -d
+  # - job_name: 'nvidia-gpu'
+  #   static_configs:
+  #     - targets: ['dcgm-exporter:9400']
+  #   relabel_configs:
+  #     - source_labels: [__address__]
+  #       target_label: instance
+  #       replacement: 'rtx4080'
 
   # Ablage-System Backup Metrics (separate registry)
-  - job_name: 'ablage-backup'
-    metrics_path: '/api/v1/metrics/backup'
-    scrape_interval: 60s
-    static_configs:
-      - targets: ['backend:8000']
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: instance
-        replacement: 'ablage-backup'
+  # ENTERPRISE FIX: Endpoint erfordert Superuser-Auth
+  # TODO: Token-basierte Auth implementieren oder /internal Endpoint erstellen
+  # - job_name: 'ablage-backup'
+  #   metrics_path: '/api/v1/metrics/backup'
+  #   scrape_interval: 60s
+  #   static_configs:
+  #     - targets: ['backend:8000']
+  #   relabel_configs:
+  #     - source_labels: [__address__]
+  #       target_label: instance
+  #       replacement: 'ablage-backup'
 
   # Qdrant Vector Database Metrics
-  - job_name: 'qdrant'
-    metrics_path: '/metrics'
-    static_configs:
-      - targets: ['qdrant:6333']
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: instance
-        replacement: 'qdrant-vector-db'
+  # ENTERPRISE FIX: Qdrant Metrics-Endpoint kann API-Key erfordern
+  # Pruefen: curl http://localhost:6333/metrics
+  # Falls 403: QDRANT__SERVICE__API_KEY pruefen
+  # - job_name: 'qdrant'
+  #   metrics_path: '/metrics'
+  #   static_configs:
+  #     - targets: ['qdrant:6333']
+  #   relabel_configs:
+  #     - source_labels: [__address__]
+  #       target_label: instance
+  #       replacement: 'qdrant-vector-db'
 
   # A/B Testing Metrics (Vector Search)
-  - job_name: 'ab-testing'
-    metrics_path: '/api/v1/metrics/ab-testing'
-    scrape_interval: 30s
-    static_configs:
-      - targets: ['backend:8000']
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: instance
-        replacement: 'vector-ab-testing'
+  # ENTERPRISE FIX: Endpoint erfordert Superuser-Auth
+  # TODO: Token-basierte Auth implementieren oder /internal Endpoint erstellen
+  # - job_name: 'ab-testing'
+  #   metrics_path: '/api/v1/metrics/ab-testing'
+  #   scrape_interval: 30s
+  #   static_configs:
+  #     - targets: ['backend:8000']
+  #   relabel_configs:
+  #     - source_labels: [__address__]
+  #       target_label: instance
+  #       replacement: 'vector-ab-testing'
 
   # Loki Log Aggregation Metrics
   # Wichtig fuer Retention-Monitoring und Disk-Usage-Alerts

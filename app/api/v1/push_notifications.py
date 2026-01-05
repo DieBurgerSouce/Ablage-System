@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -157,6 +157,7 @@ async def register_subscription(
 @router.delete(
     "/subscriptions",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Push Subscription entfernen",
     description="Entfernt eine Push Subscription anhand des Endpoints.",
 )
@@ -164,7 +165,7 @@ async def unregister_subscription(
     endpoint: str = Query(..., description="Push Service Endpoint URL"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> None:
+) -> Response:
     """Entfernt eine Push Subscription."""
     service = PushNotificationService(db)
 
@@ -177,6 +178,8 @@ async def unregister_subscription(
         )
 
     await db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(
@@ -291,6 +294,7 @@ async def get_subscription_stats(
 @router.post(
     "/track-click",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Notification Click tracken",
     description="Markiert eine Notification als geklickt (fuer Analytics).",
 )
@@ -299,12 +303,14 @@ async def track_notification_click(
     subscription_id: UUID = Query(..., description="Subscription ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> None:
+) -> Response:
     """Trackt einen Notification Click."""
     service = PushNotificationService(db)
 
     await service.mark_notification_clicked(subscription_id, data.tag)
     await db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================================================
@@ -314,13 +320,14 @@ async def track_notification_click(
 @router.post(
     "/test",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Test Notification senden",
     description="Sendet eine Test-Notification an alle Geraete des aktuellen Benutzers. Nur in Entwicklung verfuegbar.",
 )
 async def send_test_notification(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> None:
+) -> Response:
     """Sendet eine Test-Notification."""
     if not settings.DEBUG:
         raise HTTPException(
@@ -345,3 +352,5 @@ async def send_test_notification(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Keine aktiven Subscriptions gefunden",
         )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

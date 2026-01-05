@@ -7,22 +7,22 @@ Integriert sich mit dem ProfilingService fuer:
 - Latenz-Tracking
 - Slow-Request-Erkennung
 - Memory-Profiling (optional)
+
+Uses pure ASGI pattern for proper WebSocket and redirect handling.
 """
 
 import time
 from typing import Callable, Optional, Set
 
 import structlog
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.services.profiling_service import ProfilingLevel, get_profiling_service
 
 logger = structlog.get_logger(__name__)
 
 
-class ProfilingMiddleware(BaseHTTPMiddleware):
+class ProfilingMiddleware:
     """
     Middleware fuer automatisches Performance-Profiling.
 
@@ -31,11 +31,12 @@ class ProfilingMiddleware(BaseHTTPMiddleware):
     - Integriert mit ProfilingService
     - Konfigurierbare Ausschluss-Pfade
     - Optionales Memory-Tracking
+    - Proper WebSocket and redirect handling via pure ASGI
     """
 
     def __init__(
         self,
-        app,
+        app: ASGIApp,
         excluded_paths: Optional[Set[str]] = None,
         track_memory: bool = False,
     ):
@@ -47,7 +48,7 @@ class ProfilingMiddleware(BaseHTTPMiddleware):
             excluded_paths: Pfade die nicht getracked werden
             track_memory: Memory-Nutzung tracken (Performance-Overhead!)
         """
-        super().__init__(app)
+        self.app = app
         self._excluded_paths = excluded_paths or {
             "/health",
             "/api/v1/health",
@@ -66,46 +67,50 @@ class ProfilingMiddleware(BaseHTTPMiddleware):
             track_memory=track_memory,
         )
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """
-        Verarbeite Request und tracke Performance.
+        Process ASGI request with profiling.
 
-        Args:
-            request: Eingehender Request
-            call_next: Naechste Middleware/Handler
-
-        Returns:
-            Response
+        Properly handles HTTP, WebSocket, and lifespan events.
         """
-        # Excluded Paths ueberspringen
-        path = request.url.path
+        # Only profile HTTP requests
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
+
+        # Skip excluded paths
         if any(path.startswith(excluded) for excluded in self._excluded_paths):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
-        # Profiling Service
+        # Get profiling service
         service = get_profiling_service()
 
         # Skip wenn Profiling deaktiviert
         if service.profiling_level == ProfilingLevel.OFF:
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
-        # Request-Metadaten
-        request_id = getattr(request.state, "request_id", None)
+        # Extract metadata from scope
+        method = scope.get("method", "UNKNOWN")
+        query_string = scope.get("query_string", b"").decode("utf-8", errors="ignore")
+        query_params = query_string if query_string else None
+
+        # Get request_id from state if available
+        request_id = None
+        state = scope.get("state", {})
+        if isinstance(state, dict):
+            request_id = state.get("request_id")
+
         user_id = None
-        try:
-            if hasattr(request.state, "user") and request.state.user:
-                user_id = str(request.state.user.id)
-        except Exception:
-            pass
-
-        query_params = str(request.query_params) if request.query_params else None
 
         # Memory vor Request (optional)
         memory_before = None
         if self._track_memory and service.profiling_level in (ProfilingLevel.DETAILED, ProfilingLevel.FULL):
             try:
                 import psutil
-
                 memory_before = psutil.Process().memory_info().rss / (1024 * 1024)
             except Exception:
                 pass
@@ -113,16 +118,30 @@ class ProfilingMiddleware(BaseHTTPMiddleware):
         # Start Timer
         start_time = time.perf_counter()
 
-        # Request ausfuehren
+        # Track response status
+        status_code = 500  # Default to error
+        response_started = False
+
+        async def send_wrapper(message: Message) -> None:
+            nonlocal status_code, response_started
+            if message["type"] == "http.response.start":
+                status_code = message.get("status", 500)
+                response_started = True
+                # Add timing header
+                headers = list(message.get("headers", []))
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                headers.append((b"x-response-time", f"{duration_ms:.2f}ms".encode()))
+                message = {**message, "headers": headers}
+            await send(message)
+
         try:
-            response = await call_next(request)
-            status_code = response.status_code
+            await self.app(scope, receive, send_wrapper)
         except Exception as e:
             # Bei Exception trotzdem tracken
             duration_ms = (time.perf_counter() - start_time) * 1000
             service.record_request(
                 endpoint=path,
-                method=request.method,
+                method=method,
                 duration_ms=duration_ms,
                 status_code=500,
                 request_id=request_id,
@@ -140,7 +159,6 @@ class ProfilingMiddleware(BaseHTTPMiddleware):
         if self._track_memory and memory_before is not None:
             try:
                 import psutil
-
                 memory_after = psutil.Process().memory_info().rss / (1024 * 1024)
             except Exception:
                 pass
@@ -148,7 +166,7 @@ class ProfilingMiddleware(BaseHTTPMiddleware):
         # Request aufzeichnen
         service.record_request(
             endpoint=path,
-            method=request.method,
+            method=method,
             duration_ms=duration_ms,
             status_code=status_code,
             request_id=request_id,
@@ -157,8 +175,3 @@ class ProfilingMiddleware(BaseHTTPMiddleware):
             memory_before_mb=memory_before,
             memory_after_mb=memory_after,
         )
-
-        # Optional: Timing in Response Header
-        response.headers["X-Response-Time"] = f"{duration_ms:.2f}ms"
-
-        return response

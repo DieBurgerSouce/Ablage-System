@@ -18,8 +18,15 @@ import re
 
 from sqlalchemy import select, update, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from pywebpush import webpush, WebPushException
 import structlog
+
+try:
+    from pywebpush import webpush, WebPushException
+    PYWEBPUSH_AVAILABLE = True
+except ImportError:
+    PYWEBPUSH_AVAILABLE = False
+    webpush = None
+    WebPushException = Exception
 
 from app.core.config import settings
 from app.db.models import PushSubscription, NotificationTemplate, NotificationHistory, User

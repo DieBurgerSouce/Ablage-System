@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
 
@@ -226,6 +226,7 @@ async def update_webhook(
 @router.delete(
     "/{webhook_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Webhook löschen",
     description="Löscht ein Webhook-Abonnement und alle zugehörigen Zustellungsprotokolle."
 )
@@ -233,7 +234,7 @@ async def delete_webhook(
     webhook_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-) -> None:
+) -> Response:
     """Webhook löschen."""
     result = await db.execute(
         select(WebhookSubscription).where(
@@ -257,6 +258,8 @@ async def delete_webhook(
         webhook_id=str(webhook_id),
         user_id=str(current_user.id)
     )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(

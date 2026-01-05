@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
-from app.core.rbac import Permission, require_permission
+from app.core.rbac import require_permission
 from app.db.models import User
 from app.services.ai.decision_service import (
     AIDecisionService,
@@ -349,12 +349,11 @@ async def list_thresholds(
 
 
 @router.put("/thresholds/{decision_type}")
-@require_permission(Permission.ADMIN_FULL)
 async def update_threshold(
     decision_type: str,
     request: ThresholdUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("admin:full")),
 ) -> Dict[str, Any]:
     """
     Aktualisiert Konfidenz-Schwellenwerte.
@@ -661,11 +660,10 @@ async def get_learning_progress(
 
 
 @router.get("/stats/threshold-suggestions", response_model=List[ThresholdAdjustmentSuggestion])
-@require_permission(Permission.ADMIN_FULL)
 async def get_threshold_suggestions(
     days: int = Query(30, ge=1, le=365),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("admin:full")),
 ) -> List[ThresholdAdjustmentSuggestion]:
     """Gibt Vorschlaege fuer Threshold-Anpassungen zurueck."""
     pipeline = get_ai_learning_pipeline()
@@ -692,11 +690,10 @@ async def get_threshold_suggestions(
 
 
 @router.post("/stats/threshold-suggestions/{decision_type}/apply")
-@require_permission(Permission.ADMIN_FULL)
 async def apply_threshold_suggestion(
     decision_type: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("admin:full")),
 ) -> Dict[str, Any]:
     """Wendet einen Threshold-Vorschlag an."""
     pipeline = get_ai_learning_pipeline()

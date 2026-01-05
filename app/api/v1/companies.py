@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -472,6 +472,7 @@ async def update_company(
 @router.delete(
     "/{company_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Firma loeschen (Soft-Delete)",
     description="Setzt deleted_at fuer die Firma. Nur Owner."
 )
@@ -479,7 +480,7 @@ async def delete_company(
     company_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Loescht eine Firma (Soft-Delete)."""
 
     # Pruefe Berechtigung (nur Owner)
@@ -522,6 +523,8 @@ async def delete_company(
         company_name=company.name,
         user_id=str(current_user.id),
     )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================== User-Company Management ====================
@@ -766,6 +769,7 @@ async def update_company_user(
 @router.delete(
     "/{company_id}/users/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Benutzer aus Firma entfernen",
     description="Entfernt einen Benutzer aus der Firma."
 )
@@ -774,7 +778,7 @@ async def remove_user_from_company(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Entfernt einen Benutzer aus der Firma."""
 
     # Pruefe Berechtigung
@@ -829,3 +833,5 @@ async def remove_user_from_company(
         removed_user_id=str(user_id),
         by_user_id=str(current_user.id),
     )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

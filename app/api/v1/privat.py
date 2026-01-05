@@ -501,6 +501,7 @@ async def update_space(
 @router.delete(
     "/spaces/{space_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Space löschen",
 )
 @limiter.limit("5/minute", key_func=get_user_identifier)  # SECURITY: Very strict rate limit for space deletion
@@ -509,7 +510,7 @@ async def delete_space(
     space_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Löscht einen Space (soft delete)."""
     await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.ADMIN)
 
@@ -519,6 +520,8 @@ async def delete_space(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Space nicht gefunden",
         )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================== Space Access ====================
@@ -577,6 +580,7 @@ async def list_access(
 @router.delete(
     "/spaces/{space_id}/access/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Zugriff entziehen",
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)  # Rate limit for access revocation
@@ -586,7 +590,7 @@ async def revoke_access(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Entzieht einem User den Zugriff auf einen Space."""
     await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.ADMIN)
 
@@ -596,6 +600,8 @@ async def revoke_access(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Zugriffsberechtigung nicht gefunden",
         )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================== Folders ====================
@@ -746,6 +752,7 @@ async def move_folder(
 @router.delete(
     "/folders/{folder_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Ordner löschen",
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)  # Rate limit for folder deletion
@@ -755,7 +762,7 @@ async def delete_folder(
     recursive: bool = Query(False, description="Mit Unterordnern löschen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Löscht einen Ordner."""
     # SECURITY: IDOR-sichere Methode - Access-Check integriert
     folder = await folder_service.get_by_id_with_access_check(
@@ -773,6 +780,8 @@ async def delete_folder(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ordner konnte nicht gelöscht werden (enthält Unterordner)",
         )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================== Documents ====================
@@ -1037,6 +1046,7 @@ async def update_document(
 @router.delete(
     "/documents/{document_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Dokument löschen",
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)  # Rate Limit: Max 10 Loeschungen/Minute
@@ -1045,7 +1055,7 @@ async def delete_document(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Loescht ein Dokument (soft delete).
 
     SECURITY: IDOR-sicher - Access-Check VOR get_by_id
@@ -1066,6 +1076,8 @@ async def delete_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Dokument konnte nicht gelöscht werden",
         )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================== Properties ====================
@@ -1261,6 +1273,7 @@ async def update_property(
 @router.delete(
     "/properties/{property_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Immobilie löschen",
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)  # Rate limit for delete operations
@@ -1269,7 +1282,7 @@ async def delete_property(
     property_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Löscht eine Immobilie (soft delete)."""
     # SECURITY: IDOR-sichere Methode - Access-Check integriert
     prop = await property_service.get_property_with_access_check(
@@ -1282,6 +1295,8 @@ async def delete_property(
         )
 
     await property_service.delete_property(db, property_id)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================== Tenants ====================
@@ -1625,6 +1640,7 @@ async def update_vehicle(
 @router.delete(
     "/vehicles/{vehicle_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Fahrzeug löschen",
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)  # Rate limit for delete operations
@@ -1633,7 +1649,7 @@ async def delete_vehicle(
     vehicle_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Löscht ein Fahrzeug (soft delete)."""
     # SECURITY: IDOR-sichere Methode - Access-Check integriert
     vehicle = await vehicle_service.get_vehicle_with_access_check(
@@ -1646,6 +1662,8 @@ async def delete_vehicle(
         )
 
     await vehicle_service.delete_vehicle(db, vehicle_id)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================== Fuel Logs ====================
@@ -1898,6 +1916,7 @@ async def update_insurance(
 @router.delete(
     "/insurances/{insurance_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Versicherung löschen",
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)  # Rate limit for delete operations
@@ -1906,7 +1925,7 @@ async def delete_insurance(
     insurance_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Löscht eine Versicherung (soft delete)."""
     # SECURITY: IDOR-sichere Methode - Access-Check integriert
     insurance = await insurance_service.get_by_id_with_access_check(
@@ -1919,6 +1938,8 @@ async def delete_insurance(
         )
 
     await insurance_service.delete(db, insurance_id)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================== Loans ====================
@@ -2103,6 +2124,7 @@ async def update_loan(
 @router.delete(
     "/loans/{loan_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Kredit löschen",
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)  # Rate limit for delete operations
@@ -2111,7 +2133,7 @@ async def delete_loan(
     loan_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Löscht einen Kredit (soft delete)."""
     # SECURITY: IDOR-sichere Methode - Access-Check integriert
     loan = await loan_service.get_by_id_with_access_check(
@@ -2124,6 +2146,8 @@ async def delete_loan(
         )
 
     await loan_service.delete(db, loan_id)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================== Investments ====================
@@ -2325,6 +2349,7 @@ async def update_investment(
 @router.delete(
     "/investments/{investment_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Geldanlage löschen",
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)  # Rate limit for delete operations
@@ -2333,7 +2358,7 @@ async def delete_investment(
     investment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Löscht eine Geldanlage (soft delete)."""
     # SECURITY: IDOR-sichere Methode - Access-Check integriert
     investment = await investment_service.get_by_id_with_access_check(
@@ -2346,6 +2371,8 @@ async def delete_investment(
         )
 
     await investment_service.delete(db, investment_id)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ==================== Deadlines ====================
@@ -2474,6 +2501,7 @@ async def update_deadline(
 @router.delete(
     "/deadlines/{deadline_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Frist löschen",
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)  # Rate limit for delete operations
@@ -2482,7 +2510,7 @@ async def delete_deadline(
     deadline_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Löscht eine Frist."""
     # SECURITY: IDOR-sichere Methode - Access-Check integriert
     deadline = await deadline_service.get_by_id_with_access_check(
@@ -2495,6 +2523,8 @@ async def delete_deadline(
         )
 
     await deadline_service.delete(db, deadline_id)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(
@@ -2642,6 +2672,7 @@ async def update_emergency_contact(
 @router.delete(
     "/emergency/contacts/{contact_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Vertrauensperson entfernen",
 )
 @limiter.limit("5/minute", key_func=get_user_identifier)  # SECURITY: Strict rate limit for emergency contact deletion
@@ -2650,7 +2681,7 @@ async def delete_emergency_contact(
     contact_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Entfernt eine Vertrauensperson."""
     # SECURITY: IDOR-sichere Methode - Access-Check integriert
     contact = await emergency_service.get_contact_with_access_check(
@@ -2663,6 +2694,8 @@ async def delete_emergency_contact(
         )
 
     await emergency_service.delete_contact(db, contact_id)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
@@ -2821,6 +2854,7 @@ async def deny_emergency_request(
 @router.post(
     "/emergency/requests/{request_id}/revoke",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="Genehmigten Zugriff widerrufen",
 )
 @limiter.limit("5/minute", key_func=get_user_identifier)  # SECURITY: Strict rate limit for emergency access revocation
@@ -2829,7 +2863,7 @@ async def revoke_emergency_access(
     request_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     """Widerruft einen genehmigten Notfallzugriff."""
     # SECURITY: IDOR-sichere Methode - Access-Check integriert (nur Owner)
     access_request = await emergency_service.get_request_with_access_check(
@@ -2847,3 +2881,5 @@ async def revoke_emergency_access(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Zugriff kann nicht widerrufen werden",
         )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
