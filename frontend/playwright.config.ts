@@ -8,26 +8,32 @@ export default defineConfig({
     workers: process.env.CI ? 1 : undefined,
     reporter: 'html',
     use: {
-        baseURL: 'http://localhost:5173',
+        baseURL: process.env.BASE_URL || 'http://localhost:80',
         trace: 'on-first-retry',
     },
     projects: [
+        // Tests use authenticatedPage fixture for auth (no setup project needed)
         {
             name: 'chromium',
             use: { ...devices['Desktop Chrome'] },
+            testIgnore: /auth\.setup\.ts/,
         },
         {
             name: 'firefox',
             use: { ...devices['Desktop Firefox'] },
+            testIgnore: /auth\.setup\.ts/,
         },
         {
             name: 'webkit',
             use: { ...devices['Desktop Safari'] },
+            testIgnore: /auth\.setup\.ts/,
         },
     ],
-    webServer: {
-        command: 'npm run dev',
-        url: 'http://localhost:5173',
-        reuseExistingServer: !process.env.CI,
+    // Use Docker container when available, otherwise Vite dev server
+    webServer: process.env.CI ? undefined : {
+        command: 'echo "Using Docker frontend at port 80"',
+        url: 'http://localhost:80',
+        reuseExistingServer: true,
+        timeout: 5000,
     },
 });

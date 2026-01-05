@@ -13,6 +13,7 @@ import { Route as ValidationQueueRouteImport } from './app/routes/validation-que
 import { Route as UploadRouteImport } from './app/routes/upload'
 import { Route as StreckengeschaeftRouteImport } from './app/routes/streckengeschaeft'
 import { Route as SpesenRouteImport } from './app/routes/spesen'
+import { Route as ShareRouteImport } from './app/routes/share'
 import { Route as SearchRouteImport } from './app/routes/search'
 import { Route as RelationshipsRouteImport } from './app/routes/relationships'
 import { Route as PrivatRouteImport } from './app/routes/privat'
@@ -72,6 +73,7 @@ import { Route as AdminJobQueueRouteImport } from './app/routes/admin.job-queue'
 import { Route as AdminErpRouteImport } from './app/routes/admin.erp'
 import { Route as AdminDatevRouteImport } from './app/routes/admin.datev'
 import { Route as AdminBankingRouteImport } from './app/routes/admin.banking'
+import { Route as AdminAiDecisionsRouteImport } from './app/routes/admin.ai-decisions'
 import { Route as PersonalEmployeeIdIndexRouteImport } from './app/routes/personal.$employeeId.index'
 import { Route as LieferantenSupplierIdIndexRouteImport } from './app/routes/lieferanten.$supplierId.index'
 import { Route as KundenCustomerIdIndexRouteImport } from './app/routes/kunden.$customerId.index'
@@ -127,6 +129,11 @@ const StreckengeschaeftRoute = StreckengeschaeftRouteImport.update({
 const SpesenRoute = SpesenRouteImport.update({
   id: '/spesen',
   path: '/spesen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShareRoute = ShareRouteImport.update({
+  id: '/share',
+  path: '/share',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchRoute = SearchRouteImport.update({
@@ -429,6 +436,11 @@ const AdminBankingRoute = AdminBankingRouteImport.update({
   path: '/banking',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAiDecisionsRoute = AdminAiDecisionsRouteImport.update({
+  id: '/ai-decisions',
+  path: '/ai-decisions',
+  getParentRoute: () => AdminRoute,
+} as any)
 const PersonalEmployeeIdIndexRoute = PersonalEmployeeIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -639,10 +651,12 @@ export interface FileRoutesByFullPath {
   '/privat': typeof PrivatRouteWithChildren
   '/relationships': typeof RelationshipsRoute
   '/search': typeof SearchRoute
+  '/share': typeof ShareRoute
   '/spesen': typeof SpesenRouteWithChildren
   '/streckengeschaeft': typeof StreckengeschaeftRouteWithChildren
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/admin/ai-decisions': typeof AdminAiDecisionsRoute
   '/admin/banking': typeof AdminBankingRouteWithChildren
   '/admin/datev': typeof AdminDatevRouteWithChildren
   '/admin/erp': typeof AdminErpRouteWithChildren
@@ -733,8 +747,10 @@ export interface FileRoutesByTo {
   '/monitoring': typeof MonitoringRoute
   '/relationships': typeof RelationshipsRoute
   '/search': typeof SearchRoute
+  '/share': typeof ShareRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/admin/ai-decisions': typeof AdminAiDecisionsRoute
   '/admin/job-queue': typeof AdminJobQueueRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
   '/admin/ocr-review': typeof AdminOcrReviewRoute
@@ -825,10 +841,12 @@ export interface FileRoutesById {
   '/privat': typeof PrivatRouteWithChildren
   '/relationships': typeof RelationshipsRoute
   '/search': typeof SearchRoute
+  '/share': typeof ShareRoute
   '/spesen': typeof SpesenRouteWithChildren
   '/streckengeschaeft': typeof StreckengeschaeftRouteWithChildren
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/admin/ai-decisions': typeof AdminAiDecisionsRoute
   '/admin/banking': typeof AdminBankingRouteWithChildren
   '/admin/datev': typeof AdminDatevRouteWithChildren
   '/admin/erp': typeof AdminErpRouteWithChildren
@@ -928,10 +946,12 @@ export interface FileRouteTypes {
     | '/privat'
     | '/relationships'
     | '/search'
+    | '/share'
     | '/spesen'
     | '/streckengeschaeft'
     | '/upload'
     | '/validation-queue'
+    | '/admin/ai-decisions'
     | '/admin/banking'
     | '/admin/datev'
     | '/admin/erp'
@@ -1022,8 +1042,10 @@ export interface FileRouteTypes {
     | '/monitoring'
     | '/relationships'
     | '/search'
+    | '/share'
     | '/upload'
     | '/validation-queue'
+    | '/admin/ai-decisions'
     | '/admin/job-queue'
     | '/admin/ocr-backends'
     | '/admin/ocr-review'
@@ -1113,10 +1135,12 @@ export interface FileRouteTypes {
     | '/privat'
     | '/relationships'
     | '/search'
+    | '/share'
     | '/spesen'
     | '/streckengeschaeft'
     | '/upload'
     | '/validation-queue'
+    | '/admin/ai-decisions'
     | '/admin/banking'
     | '/admin/datev'
     | '/admin/erp'
@@ -1215,6 +1239,7 @@ export interface RootRouteChildren {
   PrivatRoute: typeof PrivatRouteWithChildren
   RelationshipsRoute: typeof RelationshipsRoute
   SearchRoute: typeof SearchRoute
+  ShareRoute: typeof ShareRoute
   SpesenRoute: typeof SpesenRouteWithChildren
   StreckengeschaeftRoute: typeof StreckengeschaeftRouteWithChildren
   UploadRoute: typeof UploadRoute
@@ -1251,6 +1276,13 @@ declare module '@tanstack/react-router' {
       path: '/spesen'
       fullPath: '/spesen'
       preLoaderRoute: typeof SpesenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/share': {
+      id: '/share'
+      path: '/share'
+      fullPath: '/share'
+      preLoaderRoute: typeof ShareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search': {
@@ -1666,6 +1698,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBankingRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/ai-decisions': {
+      id: '/admin/ai-decisions'
+      path: '/ai-decisions'
+      fullPath: '/admin/ai-decisions'
+      preLoaderRoute: typeof AdminAiDecisionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/personal/$employeeId/': {
       id: '/personal/$employeeId/'
       path: '/'
@@ -2030,6 +2069,7 @@ const AdminOcrTrainingRouteWithChildren =
   AdminOcrTrainingRoute._addFileChildren(AdminOcrTrainingRouteChildren)
 
 interface AdminRouteChildren {
+  AdminAiDecisionsRoute: typeof AdminAiDecisionsRoute
   AdminBankingRoute: typeof AdminBankingRouteWithChildren
   AdminDatevRoute: typeof AdminDatevRouteWithChildren
   AdminErpRoute: typeof AdminErpRouteWithChildren
@@ -2045,6 +2085,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAiDecisionsRoute: AdminAiDecisionsRoute,
   AdminBankingRoute: AdminBankingRouteWithChildren,
   AdminDatevRoute: AdminDatevRouteWithChildren,
   AdminErpRoute: AdminErpRouteWithChildren,
@@ -2327,6 +2368,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivatRoute: PrivatRouteWithChildren,
   RelationshipsRoute: RelationshipsRoute,
   SearchRoute: SearchRoute,
+  ShareRoute: ShareRoute,
   SpesenRoute: SpesenRouteWithChildren,
   StreckengeschaeftRoute: StreckengeschaeftRouteWithChildren,
   UploadRoute: UploadRoute,

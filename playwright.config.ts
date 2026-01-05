@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'path';
 
 /**
  * Playwright configuration for Ablage-System E2E tests.
@@ -8,7 +9,16 @@ import { defineConfig, devices } from '@playwright/test';
  * - Authentication flows
  * - Document upload and processing
  * - Admin panel
+ *
+ * Authentication:
+ * - Uses auth.setup.ts to authenticate before tests
+ * - Auth state is stored in tests/frontend/e2e/.auth/user.json
+ * - Set TEST_USER_EMAIL and TEST_USER_PASSWORD env vars to use custom credentials
  */
+
+// Path to the authentication state file
+const AUTH_STATE_PATH = path.join(__dirname, 'tests/frontend/e2e/.auth/user.json');
+
 export default defineConfig({
   testDir: './tests/frontend/e2e',
   fullyParallel: true,
@@ -27,22 +37,44 @@ export default defineConfig({
     video: 'on-first-retry',
   },
   projects: [
+    // Authentication setup project - runs first
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+    },
+    // Main tests - depend on setup and use authenticated state
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: AUTH_STATE_PATH,
+      },
+      dependencies: ['setup'],
     },
     {
       name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      use: {
+        ...devices['Desktop Firefox'],
+        storageState: AUTH_STATE_PATH,
+      },
+      dependencies: ['setup'],
     },
     {
       name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
+      use: {
+        ...devices['Desktop Safari'],
+        storageState: AUTH_STATE_PATH,
+      },
+      dependencies: ['setup'],
     },
     // Mobile viewport tests for responsive design
     {
       name: 'mobile-chrome',
-      use: { ...devices['Pixel 5'] },
+      use: {
+        ...devices['Pixel 5'],
+        storageState: AUTH_STATE_PATH,
+      },
+      dependencies: ['setup'],
     },
   ],
   // Local development server configuration

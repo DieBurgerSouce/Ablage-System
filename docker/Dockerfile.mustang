@@ -49,9 +49,6 @@ RUN mkdir -p /app/validator/scenarios && \
     unzip -q /tmp/xrechnung-config.zip -d /app/validator/scenarios && \
     rm /tmp/xrechnung-config.zip || echo "XRechnung config download failed, continuing..."
 
-# Copy REST wrapper application
-COPY docker/mustang-rest-wrapper.jar /app/mustang-rest.jar 2>/dev/null || true
-
 # Create directories
 RUN mkdir -p /app/temp /app/output /app/input
 
