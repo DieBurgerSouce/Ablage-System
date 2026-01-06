@@ -51,7 +51,7 @@ function useAvailableEditors() {
     queryFn: async (): Promise<Editor[]> => {
       // Fallback auf User-Liste mit Editor/Admin-Rolle
       try {
-        const response = await apiClient.get<{ users: Editor[] }>('/api/v1/users', {
+        const response = await apiClient.get<{ users: Editor[] }>('/admin/users', {
           params: { role: 'editor,admin', include_workload: true },
         });
         return response.data?.users || [];

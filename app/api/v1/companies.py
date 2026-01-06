@@ -94,32 +94,11 @@ async def list_companies(
     companies = result.scalars().all()
 
     # Get current company ID
-    current_company = await get_current_company(request, db)
+    current_company = await get_current_company(request, db, current_user)
     current_id = current_company.id if current_company else None
 
     return CompanyListResponse(
-        companies=[
-            CompanyResponse(
-                id=c.id,
-                name=c.name,
-                vat_id=c.vat_id,
-                tax_number=c.tax_number,
-                address_street=c.address_street,
-                address_city=c.address_city,
-                address_postal_code=c.address_postal_code,
-                address_country=c.address_country,
-                email=c.email,
-                phone=c.phone,
-                website=c.website,
-                account_chart=c.account_chart,
-                fiscal_year_start_month=c.fiscal_year_start_month,
-                settings=c.settings or {},
-                is_active=c.is_active,
-                created_at=c.created_at,
-                updated_at=c.updated_at,
-            )
-            for c in companies
-        ],
+        items=[CompanyResponse.model_validate(c) for c in companies],
         total=total,
         current_company_id=current_id,
     )
@@ -154,18 +133,28 @@ async def create_company(
     # Erstelle Firma
     company = Company(
         name=data.name,
+        short_name=data.short_name,
+        display_name=data.display_name,
+        legal_form=data.legal_form,
+        commercial_register=data.commercial_register,
+        court=data.court,
         vat_id=data.vat_id,
         tax_number=data.tax_number,
-        address_street=data.address_street,
-        address_city=data.address_city,
-        address_postal_code=data.address_postal_code,
-        address_country=data.address_country or "DE",
+        street=data.street,
+        street_number=data.street_number,
+        postal_code=data.postal_code,
+        city=data.city,
+        country=data.country or "DE",
         email=data.email,
         phone=data.phone,
         website=data.website,
-        account_chart=data.account_chart or "SKR03",
-        fiscal_year_start_month=data.fiscal_year_start_month or 1,
-        settings=data.settings or {},
+        iban=data.iban,
+        bic=data.bic,
+        bank_name=data.bank_name,
+        default_currency=data.default_currency or "EUR",
+        kontenrahmen=data.kontenrahmen or "SKR03",
+        fiscal_year_start=data.fiscal_year_start or 1,
+        alternative_names=data.alternative_names or [],
         is_active=True,
     )
     db.add(company)
@@ -206,64 +195,32 @@ async def create_company(
         user_id=str(current_user.id),
     )
 
-    return CompanyResponse(
-        id=company.id,
-        name=company.name,
-        vat_id=company.vat_id,
-        tax_number=company.tax_number,
-        address_street=company.address_street,
-        address_city=company.address_city,
-        address_postal_code=company.address_postal_code,
-        address_country=company.address_country,
-        email=company.email,
-        phone=company.phone,
-        website=company.website,
-        account_chart=company.account_chart,
-        fiscal_year_start_month=company.fiscal_year_start_month,
-        settings=company.settings or {},
-        is_active=company.is_active,
-        created_at=company.created_at,
-        updated_at=company.updated_at,
-    )
+    return CompanyResponse.model_validate(company)
 
 
 @router.get(
     "/current",
-    response_model=Optional[CompanyResponse],
+    response_model=CompanyResponse,
     summary="Aktuelle Firma abrufen",
-    description="Gibt die aktuell ausgewaehlte Firma des Benutzers zurueck."
+    description="Gibt die aktuell ausgewaehlte Firma des Benutzers zurueck.",
+    responses={404: {"description": "Keine aktuelle Firma ausgewaehlt"}}
 )
 async def get_current_company_endpoint(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Optional[CompanyResponse]:
+) -> CompanyResponse:
     """Gibt die aktuelle Firma zurueck."""
 
-    company = await get_current_company(request, db)
+    company = await get_current_company(request, db, current_user)
 
     if not company:
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Keine aktuelle Firma ausgewaehlt. Bitte waehlen Sie eine Firma aus."
+        )
 
-    return CompanyResponse(
-        id=company.id,
-        name=company.name,
-        vat_id=company.vat_id,
-        tax_number=company.tax_number,
-        address_street=company.address_street,
-        address_city=company.address_city,
-        address_postal_code=company.address_postal_code,
-        address_country=company.address_country,
-        email=company.email,
-        phone=company.phone,
-        website=company.website,
-        account_chart=company.account_chart,
-        fiscal_year_start_month=company.fiscal_year_start_month,
-        settings=company.settings or {},
-        is_active=company.is_active,
-        created_at=company.created_at,
-        updated_at=company.updated_at,
-    )
+    return CompanyResponse.model_validate(company)
 
 
 @router.post(
@@ -302,25 +259,7 @@ async def switch_current_company(
             detail="Firma nicht gefunden."
         )
 
-    return CompanyResponse(
-        id=company.id,
-        name=company.name,
-        vat_id=company.vat_id,
-        tax_number=company.tax_number,
-        address_street=company.address_street,
-        address_city=company.address_city,
-        address_postal_code=company.address_postal_code,
-        address_country=company.address_country,
-        email=company.email,
-        phone=company.phone,
-        website=company.website,
-        account_chart=company.account_chart,
-        fiscal_year_start_month=company.fiscal_year_start_month,
-        settings=company.settings or {},
-        is_active=company.is_active,
-        created_at=company.created_at,
-        updated_at=company.updated_at,
-    )
+    return CompanyResponse.model_validate(company)
 
 
 @router.get(
@@ -362,25 +301,7 @@ async def get_company(
             detail="Firma nicht gefunden."
         )
 
-    return CompanyResponse(
-        id=company.id,
-        name=company.name,
-        vat_id=company.vat_id,
-        tax_number=company.tax_number,
-        address_street=company.address_street,
-        address_city=company.address_city,
-        address_postal_code=company.address_postal_code,
-        address_country=company.address_country,
-        email=company.email,
-        phone=company.phone,
-        website=company.website,
-        account_chart=company.account_chart,
-        fiscal_year_start_month=company.fiscal_year_start_month,
-        settings=company.settings or {},
-        is_active=company.is_active,
-        created_at=company.created_at,
-        updated_at=company.updated_at,
-    )
+    return CompanyResponse.model_validate(company)
 
 
 @router.put(
@@ -448,25 +369,7 @@ async def update_company(
         user_id=str(current_user.id),
     )
 
-    return CompanyResponse(
-        id=company.id,
-        name=company.name,
-        vat_id=company.vat_id,
-        tax_number=company.tax_number,
-        address_street=company.address_street,
-        address_city=company.address_city,
-        address_postal_code=company.address_postal_code,
-        address_country=company.address_country,
-        email=company.email,
-        phone=company.phone,
-        website=company.website,
-        account_chart=company.account_chart,
-        fiscal_year_start_month=company.fiscal_year_start_month,
-        settings=company.settings or {},
-        is_active=company.is_active,
-        created_at=company.created_at,
-        updated_at=company.updated_at,
-    )
+    return CompanyResponse.model_validate(company)
 
 
 @router.delete(
