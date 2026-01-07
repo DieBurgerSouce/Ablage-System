@@ -198,7 +198,7 @@ class MessageResponse(BaseModel):
 async def list_departments(
     request: Request,
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=50, description="Eintraege pro Seite (max 50, F.4 MEDIUM)"),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite (max 100)"),
     search: Optional[str] = Query(None, min_length=1, max_length=100, description="Suche (Name)"),
     parent_id: Optional[UUID] = Query(None, description="Filter nach uebergeordneter Abteilung"),
     include_inactive: bool = Query(False, description="Inaktive einbeziehen"),

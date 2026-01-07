@@ -190,7 +190,7 @@ export const documentsService = {
         if (filters?.ocrStatus) params.status = filters.ocrStatus;
         if (filters?.type) params.document_type = filters.type;
 
-        const response = await apiClient.get<DocumentListResponse>('/documents', { params });
+        const response = await apiClient.get<DocumentListResponse>('/documents/', { params });
         // Backend gibt { documents: [...] } zurück, nicht direkt ein Array
         return (response.data?.documents || []).map(transformDocument);
     },
