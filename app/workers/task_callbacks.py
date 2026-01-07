@@ -220,7 +220,7 @@ def on_success(
                         if job:
                             job.status = ProcessingStatus.COMPLETED
                             job.completed_at = datetime.now(timezone.utc)
-                            job.result = retval
+                            job.result_data = retval
 
                         await session.commit()
 

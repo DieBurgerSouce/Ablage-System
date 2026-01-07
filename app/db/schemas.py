@@ -754,6 +754,8 @@ class JobSortField(str, Enum):
     """Sort fields for job administration."""
     CREATED_AT = "created_at"
     UPDATED_AT = "updated_at"
+    STARTED_AT = "started_at"
+    COMPLETED_AT = "completed_at"
     STATUS = "status"
     PRIORITY = "priority"
 
@@ -5631,16 +5633,31 @@ class PrivatDocumentDecryptRequest(BaseModel):
 class PrivatPropertyBase(BaseModel):
     """Basis-Schema fuer Immobilie."""
     name: str = Field(..., min_length=1, max_length=200, description="Bezeichnung")
-    address: str = Field(..., min_length=1, max_length=500, description="Adresse")
-    city: str = Field(..., min_length=1, max_length=100, description="Stadt")
-    postal_code: str = Field(..., min_length=1, max_length=20, description="PLZ")
-    country: str = Field("DE", max_length=2, description="Laendercode")
     property_type: str = Field(..., max_length=50, description="Immobilientyp")
-    size_sqm: Optional[Decimal] = Field(None, ge=0, description="Groesse in qm")
-    rooms: Optional[int] = Field(None, ge=0, description="Anzahl Zimmer")
+    # Adresse (alle Optional wie im Model)
+    street: Optional[str] = Field(None, max_length=255, description="Strasse")
+    street_number: Optional[str] = Field(None, max_length=20, description="Hausnummer")
+    postal_code: Optional[str] = Field(None, max_length=10, description="PLZ")
+    city: Optional[str] = Field(None, max_length=100, description="Stadt")
+    country: str = Field("DE", max_length=2, description="Laendercode")
+    # Kaufdaten
     purchase_date: Optional[date_type] = Field(None, description="Kaufdatum")
     purchase_price: Optional[Decimal] = Field(None, ge=0, description="Kaufpreis")
+    notary_costs: Optional[Decimal] = Field(None, ge=0, description="Notarkosten")
+    land_transfer_tax: Optional[Decimal] = Field(None, ge=0, description="Grunderwerbsteuer")
+    # Laufende Daten
     current_value: Optional[Decimal] = Field(None, ge=0, description="Aktueller Wert")
+    value_date: Optional[date_type] = Field(None, description="Bewertungsdatum")
+    # Grundbuch
+    land_register_entry: Optional[str] = Field(None, max_length=100, description="Grundbucheintrag")
+    cadastral_district: Optional[str] = Field(None, max_length=100, description="Gemarkung")
+    parcel_number: Optional[str] = Field(None, max_length=50, description="Flurstuecknummer")
+    # Flaeche
+    living_area_sqm: Optional[Decimal] = Field(None, ge=0, description="Wohnflaeche in qm")
+    plot_area_sqm: Optional[Decimal] = Field(None, ge=0, description="Grundstuecksflaeche in qm")
+    # Status
+    is_rented: bool = Field(False, description="Vermietet?")
+    is_active: bool = Field(True, description="Aktiv?")
     notes: Optional[str] = Field(None, max_length=5000, description="Notizen")
 
 
@@ -5652,16 +5669,31 @@ class PrivatPropertyCreate(PrivatPropertyBase):
 class PrivatPropertyUpdate(BaseModel):
     """Schema zum Aktualisieren einer Immobilie."""
     name: Optional[str] = Field(None, min_length=1, max_length=200)
-    address: Optional[str] = Field(None, min_length=1, max_length=500)
-    city: Optional[str] = Field(None, min_length=1, max_length=100)
-    postal_code: Optional[str] = Field(None, min_length=1, max_length=20)
-    country: Optional[str] = Field(None, max_length=2)
     property_type: Optional[str] = Field(None, max_length=50)
-    size_sqm: Optional[Decimal] = Field(None, ge=0)
-    rooms: Optional[int] = Field(None, ge=0)
+    # Adresse
+    street: Optional[str] = Field(None, max_length=255)
+    street_number: Optional[str] = Field(None, max_length=20)
+    postal_code: Optional[str] = Field(None, max_length=10)
+    city: Optional[str] = Field(None, max_length=100)
+    country: Optional[str] = Field(None, max_length=2)
+    # Kaufdaten
     purchase_date: Optional[date_type] = None
     purchase_price: Optional[Decimal] = Field(None, ge=0)
+    notary_costs: Optional[Decimal] = Field(None, ge=0)
+    land_transfer_tax: Optional[Decimal] = Field(None, ge=0)
+    # Laufende Daten
     current_value: Optional[Decimal] = Field(None, ge=0)
+    value_date: Optional[date_type] = None
+    # Grundbuch
+    land_register_entry: Optional[str] = Field(None, max_length=100)
+    cadastral_district: Optional[str] = Field(None, max_length=100)
+    parcel_number: Optional[str] = Field(None, max_length=50)
+    # Flaeche
+    living_area_sqm: Optional[Decimal] = Field(None, ge=0)
+    plot_area_sqm: Optional[Decimal] = Field(None, ge=0)
+    # Status
+    is_rented: Optional[bool] = None
+    is_active: Optional[bool] = None
     notes: Optional[str] = Field(None, max_length=5000)
 
 
@@ -6696,7 +6728,7 @@ class ValidationRuleResponse(ValidationRuleBase):
 
 class ValidationRuleListResponse(BaseModel):
     """Liste von Validierungsregeln."""
-    items: List[ValidationRuleResponse]
+    rules: List[ValidationRuleResponse]
     total: int
 
 
@@ -6814,9 +6846,9 @@ class EditorStats(BaseModel):
 
 class EditorStatsListResponse(BaseModel):
     """Liste von Editor-Statistiken."""
-    items: List[EditorStats]
-    period_start: date_type
-    period_end: date_type
+    editors: List[EditorStats]
+    period_start: Optional[date_type] = None
+    period_end: Optional[date_type] = None
 
 
 class TrendDataPoint(BaseModel):
@@ -6830,8 +6862,8 @@ class TrendDataPoint(BaseModel):
 
 class TrendDataResponse(BaseModel):
     """Trend-Daten fuer Charts."""
-    data: List[TrendDataPoint]
-    period_days: int
+    data_points: List[TrendDataPoint]
+    group_by: str = "day"
 
 
 class DocumentTypeStats(BaseModel):
@@ -6846,7 +6878,7 @@ class DocumentTypeStats(BaseModel):
 
 class DocumentTypeStatsResponse(BaseModel):
     """Liste von Dokumenttyp-Statistiken."""
-    items: List[DocumentTypeStats]
+    document_types: List[DocumentTypeStats]
 
 
 class ConfidenceDistribution(BaseModel):

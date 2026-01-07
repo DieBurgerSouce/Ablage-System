@@ -290,7 +290,7 @@ class PrivatSpaceService:
         # Sammle Statistiken fuer jeden Space
         items = []
         for space in spaces:
-            stats = await self._get_space_stats(db, space.id)
+            stats = await self.get_space_stats(db, space.id)
             items.append(PrivatSpaceWithStats(
                 id=space.id,
                 name=space.name,
@@ -314,7 +314,7 @@ class PrivatSpaceService:
             pages=pages,
         )
 
-    async def _get_space_stats(
+    async def get_space_stats(
         self,
         db: AsyncSession,
         space_id: uuid.UUID,

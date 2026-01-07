@@ -299,7 +299,7 @@ class ValidationAnalyticsService:
             ))
 
         return EditorStatsListResponse(
-            items=editor_stats,
+            editors=editor_stats,
             period_start=date_from,
             period_end=date_to
         )
@@ -377,8 +377,8 @@ class ValidationAnalyticsService:
             current_date += timedelta(days=1)
 
         return TrendDataResponse(
-            data=data_points,
-            period_days=days
+            data_points=data_points,
+            group_by="day"
         )
 
     # =========================================================================
@@ -432,7 +432,7 @@ class ValidationAnalyticsService:
                 correction_rate=round(float(row[5]) * 100, 1) if row[5] else None
             ))
 
-        return DocumentTypeStatsResponse(items=stats)
+        return DocumentTypeStatsResponse(document_types=stats)
 
     # =========================================================================
     # CONFIDENCE DISTRIBUTION

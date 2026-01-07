@@ -307,7 +307,9 @@ limiter = Limiter(
     # Storage backend will be set during app startup
     storage_uri=settings.REDIS_URL if settings.RATE_LIMIT_ENABLED else None,
     strategy="fixed-window",  # Can be: fixed-window, moving-window
-    headers_enabled=True,  # Add X-RateLimit-* headers
+    # FIX: Headers disabled - causes errors when endpoints return None/non-Response
+    # SlowAPI's _inject_headers fails with "parameter `response` must be an instance of Response"
+    headers_enabled=False,
 )
 
 

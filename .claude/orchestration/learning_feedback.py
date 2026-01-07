@@ -313,14 +313,17 @@ class LearningFeedback:
                     "confidence": stats.confidence
                 })
 
-            # Suggest upgrade if high escalation rate
-            if stats.escalation_rate.get(current_tier, 0) > 0.20:
-                suggestions.append({
-                    "pattern": pattern,
-                    "action": "upgrade_tier",
-                    "reasoning": f"High escalation rate ({stats.escalation_rate[current_tier]:.0%})",
-                    "confidence": 0.8
-                })
+            # Suggest upgrade if high escalation rate for any tier
+            # Check all tiers - if any has high escalation, suggest upgrading
+            for tier in ["haiku", "sonnet"]:
+                if stats.escalation_rate.get(tier, 0) > 0.20:
+                    suggestions.append({
+                        "pattern": pattern,
+                        "action": "upgrade_tier",
+                        "reasoning": f"High escalation rate for {tier} ({stats.escalation_rate[tier]:.0%})",
+                        "confidence": 0.8
+                    })
+                    break  # Only one upgrade suggestion per pattern
 
         return suggestions
 

@@ -52,7 +52,7 @@ function useAvailableEditors() {
       // Fallback auf User-Liste mit Editor/Admin-Rolle
       try {
         const response = await apiClient.get<{ users: Editor[] }>('/admin/users', {
-          params: { role: 'editor,admin', include_workload: true },
+          params: { role: 'admin', include_workload: true },
         });
         return response.data?.users || [];
       } catch {

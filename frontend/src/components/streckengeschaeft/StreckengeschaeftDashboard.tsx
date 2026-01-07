@@ -5,7 +5,7 @@
  * Follows established patterns from Mahnwesen dashboard.
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLanguage } from '@/lib/i18n/useLanguage';
 import {
@@ -415,11 +415,15 @@ export function StreckengeschaeftDashboard() {
   const [transactionTypeFilter, setTransactionTypeFilter] = useState<string>('all');
   const [confidenceFilter, setConfidenceFilter] = useState<string>('all');
 
-  const columns = createColumns(t, language);
+  // Memoize columns to prevent recreation on every render
+  const columns = useMemo(() => createColumns(t, language), [t, language]);
 
   const { data: stats } = useQuery({
     queryKey: ['streckengeschaeft', 'statistics'],
-    queryFn: () => apiClient.get<ClassificationStatistics>('/streckengeschaeft/statistics'),
+    queryFn: async () => {
+      const response = await apiClient.get<ClassificationStatistics>('/streckengeschaeft/statistics');
+      return response.data; // Return actual data, not AxiosResponse
+    },
   });
 
   const {
@@ -429,25 +433,29 @@ export function StreckengeschaeftDashboard() {
     refetch,
   } = useQuery({
     queryKey: ['streckengeschaeft', 'classifications', transactionTypeFilter, confidenceFilter],
-    queryFn: () =>
-      apiClient.get('/streckengeschaeft/classifications', {
+    queryFn: async () => {
+      const response = await apiClient.get('/streckengeschaeft/classifications', {
         params: {
           transaction_type: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
           confidence_level: confidenceFilter !== 'all' ? confidenceFilter : undefined,
           page_size: 50,
         },
-      }),
+      });
+      return response.data; // Return actual data, not AxiosResponse
+    },
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 
   const datevExportMutation = useMutation({
-    mutationFn: (classificationIds: string[]) =>
-      apiClient.post('/streckengeschaeft/datev/export', {
+    mutationFn: async (classificationIds: string[]) => {
+      const response = await apiClient.post('/streckengeschaeft/datev/export', {
         classification_ids: classificationIds,
         kontenrahmen: 'SKR03',
         include_zm_data: true,
-      }),
+      });
+      return response.data; // Return actual data, not AxiosResponse
+    },
     onSuccess: (data) => {
       toast({
         title: t('streckengeschaeft.datev.exportSuccess').replace('{{filename}}', data.filename),

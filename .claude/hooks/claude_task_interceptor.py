@@ -30,14 +30,22 @@ from dataclasses import dataclass
 # Setup structured logging
 logger = structlog.get_logger(__name__)
 
-# CRITICAL FIX: Use absolute imports instead of sys.path manipulation
-# This prevents ImportError in production
+# Add .claude directory to path so we can import orchestration as a package
+claude_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(claude_dir))
+
 try:
-    # Import from absolute path - assumes .claude is in sys.path or PYTHONPATH
-    sys.path.insert(0, str(Path(__file__).parent.parent / "orchestration"))
-    from task_classifier import TaskClassifier, ModelTier, TIER_TO_AGENT
-    from decision_cache import DecisionCache, CachedDecision
-    from user_feedback import UserFeedback, DisplayMode
+    # Import from orchestration package
+    from orchestration import TaskClassifier, ModelTier, ClassificationResult
+    from orchestration import DecisionCache, CachedDecision
+    from orchestration import UserFeedback, DisplayMode
+
+    # Map tiers to agent names
+    TIER_TO_AGENT = {
+        ModelTier.OPUS_REQUIRED: "opus-task",
+        ModelTier.SONNET_CAPABLE: "sonnet-implementation",
+        ModelTier.HAIKU_SUFFICIENT: "haiku-task",
+    }
 except ImportError as e:
     # Graceful fallback - log error and exit cleanly
     logger.warning("orchestration_import_failed", error=str(e))
@@ -132,25 +140,37 @@ def intercept_task():
     """
     Hauptfunktion für Task-Interception.
 
-    Called by Claude Code before task execution.
-    Returns Task() call JSON for Claude Code to execute.
+    Called by Claude Code as PreToolUse hook (matcher: Task).
+    WICHTIG: Claude Code sendet Daten über STDIN als JSON!
+
+    PreToolUse Input Format:
+    {
+        "session_id": "...",
+        "tool_name": "Task",
+        "tool_input": {"prompt": "...", "subagent_type": "...", ...}
+    }
     """
     try:
-        # Parse task data from Claude Code
-        if len(sys.argv) < 2:
-            logger.debug("No task data provided")
-            return  # No interception needed
+        # Read input from stdin (Claude Code sends JSON via stdin)
+        input_data = json.load(sys.stdin)
 
-        task_data = json.loads(sys.argv[1])
+        # Extract tool input from PreToolUse hook data
+        tool_name = input_data.get("tool_name", "")
+        tool_input = input_data.get("tool_input", {})
 
-        # Extract task information
-        task_prompt = task_data.get("prompt", "")
-        files = task_data.get("files", [])
+        # Only intercept Task tool calls
+        if tool_name != "Task":
+            sys.exit(0)
+
+        # Extract task information from tool_input
+        task_prompt = tool_input.get("prompt", "")
+        subagent_type = tool_input.get("subagent_type", "")
+        files: List[str] = []  # PreToolUse doesn't provide files directly
 
         # Check if we should intercept
         if not should_intercept_task(task_prompt):
             logger.debug("Skipping task interception")
-            return
+            sys.exit(0)
 
         # Initialize components
         classifier = TaskClassifier()
@@ -179,57 +199,53 @@ def intercept_task():
         # Create Task() call
         task_call = create_task_call(task_prompt, tier, files, cached_decisions)
 
-        # Output Task() call as JSON for Claude Code
-        print(json.dumps(task_call))
+        # For PreToolUse hooks, we output JSON to modify the tool input
+        # This allows us to change the subagent_type or model
+        modified_input = {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                # Add orchestration context to the task
+                "modifiedToolInput": {
+                    "prompt": task_call["prompt"],
+                    "subagent_type": task_call["subagent_type"],
+                    "description": task_call["description"],
+                    "model": tier.value  # Suggest model tier
+                }
+            }
+        }
+        print(json.dumps(modified_input))
 
-        # Show user feedback using UserFeedback module
-        try:
-            feedback = UserFeedback(mode=DisplayMode.DETAILED)
-
-            # Estimate tokens (rough heuristic: ~4 chars per token)
-            estimated_tokens = len(task_prompt) // 4
-
-            feedback.show_routing_decision(
-                model=tier.value,
-                confidence=classification.confidence,
-                reasoning=classification.reasoning,
-                files=len(files),
-                estimated_tokens=estimated_tokens,
-                cache_hit=cached_decisions is not None and len(cached_decisions) > 0
-            )
-        except Exception as e:
-            # Fallback to simple feedback if UserFeedback fails
-            logger.warning("user_feedback_failed", error=str(e))
+        # Show user feedback to stderr (visible in verbose mode)
+        print(
+            f"\n⚙️ Multi-Model Orchestration:",
+            file=sys.stderr
+        )
+        print(
+            f"   Routing zu: {tier.value.upper()}",
+            file=sys.stderr
+        )
+        print(
+            f"   Confidence: {classification.confidence:.0%}",
+            file=sys.stderr
+        )
+        print(
+            f"   Begründung: {classification.reasoning}",
+            file=sys.stderr
+        )
+        if cached_decisions:
             print(
-                f"\n⚙️ Multi-Model Orchestration:",
+                f"   Cache Hit: {len(cached_decisions)} relevante Entscheidungen",
                 file=sys.stderr
             )
-            print(
-                f"   Routing zu: {tier.value.upper()}",
-                file=sys.stderr
-            )
-            print(
-                f"   Confidence: {classification.confidence:.0%}",
-                file=sys.stderr
-            )
-            print(
-                f"   Begründung: {classification.reasoning}",
-                file=sys.stderr
-            )
-            if files:
-                print(
-                    f"   Dateien: {len(files)}",
-                    file=sys.stderr
-                )
 
-    except json.JSONDecodeError:
-        logger.error("Invalid JSON task data")
-        # Graceful fallback - Claude Code proceeds normally
+    except json.JSONDecodeError as e:
+        logger.error("Invalid JSON input from stdin", error=str(e))
+        # Graceful fallback - let Claude Code proceed normally
+        sys.exit(0)
     except Exception as e:
         logger.error("task_interception_failed", error=str(e))
-        import traceback
-        traceback.print_exc()
         # Fail gracefully - let Claude Code proceed normally
+        sys.exit(0)
 
 
 if __name__ == "__main__":

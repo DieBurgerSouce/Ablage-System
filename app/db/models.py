@@ -420,7 +420,7 @@ class ProcessingJob(Base):
     completed_at = Column(DateTime(timezone=True))
 
     # Results and errors
-    result = Column(CrossDBJSON, default=dict)
+    result_data = Column(CrossDBJSON, default=dict)
     error_message = Column(Text)
     worker_id = Column(String(100))
 

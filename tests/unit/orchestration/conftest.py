@@ -268,7 +268,7 @@ def mock_cached_decision():
 @pytest.fixture
 def mock_task_execution():
     """Mock TaskExecution for testing."""
-    from learning_feedback import TaskExecution
+    from orchestration.learning_feedback import TaskExecution
 
     return TaskExecution(
         task_hash="task_abc123",

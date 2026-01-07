@@ -45,7 +45,7 @@ from app.services.export_service import (
 
 logger = structlog.get_logger(__name__)
 
-router = APIRouter(prefix="/extracted-data", tags=["Strukturierte Daten"])
+router = APIRouter(prefix="/extracted_data", tags=["Strukturierte Daten"])
 
 
 # =============================================================================
@@ -136,59 +136,6 @@ class ExtractedDataAggregations(BaseModel):
 # =============================================================================
 # ENDPOINTS
 # =============================================================================
-
-@router.get("/{document_id}", response_model=ExtractedDocumentData)
-async def get_extracted_data(
-    document_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
-) -> ExtractedDocumentData:
-    """
-    Liefert alle extrahierten Daten eines Dokuments.
-
-    **Returns:**
-    - Klassifizierung (Dokumenttyp + Konfidenz)
-    - Typspezifische Daten (Invoice/Order/Contract)
-    - Allgemeine Entities (IBANs, USt-IDs, Firmen)
-    """
-    # Dokument laden
-    result = await db.execute(
-        select(models.Document).where(
-            and_(
-                models.Document.id == document_id,
-                models.Document.owner_id == current_user.id,
-                models.Document.deleted_at.is_(None)
-            )
-        )
-    )
-    document = result.scalar_one_or_none()
-
-    if not document:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Dokument nicht gefunden"
-        )
-
-    if not document.extracted_data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Keine strukturierten Daten fuer dieses Dokument verfuegbar"
-        )
-
-    # JSONB zu Pydantic konvertieren
-    try:
-        return ExtractedDocumentData.model_validate(document.extracted_data)
-    except Exception as e:
-        logger.error(
-            "extracted_data_parse_error",
-            document_id=str(document_id),
-            error=str(e)
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Parsen der extrahierten Daten"
-        )
-
 
 @router.get("/search", response_model=PaginatedSearchResponse)
 async def search_extracted_data(
@@ -460,12 +407,20 @@ async def list_invoices(
     - Mit Skonto-Option: `?has_skonto=true`
     - Skonto laeuft bald ab: `?skonto_expiring_soon=true`
     """
+    # Helper fuer JSONB Text-Extraktion (PostgreSQL-kompatibel)
+    def jsonb_text(field: str, *path: str) -> Any:
+        """Extrahiert Text aus JSONB-Feld mit PostgreSQL jsonb_extract_path_text."""
+        return func.jsonb_extract_path_text(
+            cast(models.Document.extracted_data, JSONB),
+            *path
+        )
+
     # Basis-Query: Nur Rechnungen
     query = select(models.Document).where(
         and_(
             models.Document.owner_id == current_user.id,
             models.Document.deleted_at.is_(None),
-            models.Document.extracted_data["classification"]["document_type"].astext == "invoice"
+            jsonb_text("extracted_data", "classification", "document_type") == "invoice"
         )
     )
 
@@ -475,16 +430,13 @@ async def list_invoices(
     if overdue is True:
         today = date.today().isoformat()
         filters.append(
-            cast(
-                models.Document.extracted_data["invoice"]["due_date"].astext,
-                String
-            ) < today
+            jsonb_text("extracted_data", "invoice", "due_date") < today
         )
 
     # Hat Skonto
     if has_skonto is True:
         filters.append(
-            models.Document.extracted_data["invoice"]["discount_percent"].isnot(None)
+            jsonb_text("extracted_data", "invoice", "discount_percent").isnot(None)
         )
 
     # Skonto laeuft bald ab (innerhalb 3 Tagen)
@@ -494,33 +446,21 @@ async def list_invoices(
         soon = (today + timedelta(days=3)).isoformat()
         filters.append(
             and_(
-                models.Document.extracted_data["invoice"]["discount_due_date"].isnot(None),
-                cast(
-                    models.Document.extracted_data["invoice"]["discount_due_date"].astext,
-                    String
-                ) <= soon,
-                cast(
-                    models.Document.extracted_data["invoice"]["discount_due_date"].astext,
-                    String
-                ) >= today.isoformat()
+                jsonb_text("extracted_data", "invoice", "discount_due_date").isnot(None),
+                jsonb_text("extracted_data", "invoice", "discount_due_date") <= soon,
+                jsonb_text("extracted_data", "invoice", "discount_due_date") >= today.isoformat()
             )
         )
 
     # Betragsfilter
     if min_amount is not None:
         filters.append(
-            cast(
-                models.Document.extracted_data["invoice"]["gross_amount"].astext,
-                Decimal
-            ) >= min_amount
+            cast(jsonb_text("extracted_data", "invoice", "gross_amount"), Decimal) >= min_amount
         )
 
     if max_amount is not None:
         filters.append(
-            cast(
-                models.Document.extracted_data["invoice"]["gross_amount"].astext,
-                Decimal
-            ) <= max_amount
+            cast(jsonb_text("extracted_data", "invoice", "gross_amount"), Decimal) <= max_amount
         )
 
     if filters:
@@ -531,18 +471,11 @@ async def list_invoices(
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
-    # Sortierung
-    sort_field_map = {
-        "invoice_date": models.Document.extracted_data["invoice"]["invoice_date"].astext,
-        "gross_amount": cast(models.Document.extracted_data["invoice"]["gross_amount"].astext, Decimal),
-        "due_date": models.Document.extracted_data["invoice"]["due_date"].astext
-    }
-
-    sort_column = sort_field_map.get(order_by, models.Document.created_at)
+    # Sortierung - verwende created_at als Fallback
     if order_dir == "desc":
-        query = query.order_by(sort_column.desc().nulls_last())
+        query = query.order_by(models.Document.created_at.desc().nulls_last())
     else:
-        query = query.order_by(sort_column.asc().nulls_last())
+        query = query.order_by(models.Document.created_at.asc().nulls_last())
 
     # Pagination
     offset = (page - 1) * per_page
@@ -1056,3 +989,60 @@ async def export_all_types_excel(
             "Content-Disposition": build_content_disposition(filename, "attachment")
         }
     )
+
+
+# =============================================================================
+# EINZELDOKUMENT-ABRUF (MUSS AM ENDE STEHEN - sonst matched {document_id} vor /invoices etc.)
+# =============================================================================
+
+@router.get("/detail/{document_id}", response_model=ExtractedDocumentData)
+async def get_extracted_data_by_id(
+    document_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+) -> ExtractedDocumentData:
+    """
+    Liefert alle extrahierten Daten eines Dokuments.
+
+    **Returns:**
+    - Klassifizierung (Dokumenttyp + Konfidenz)
+    - Typspezifische Daten (Invoice/Order/Contract)
+    - Allgemeine Entities (IBANs, USt-IDs, Firmen)
+    """
+    # Dokument laden
+    result = await db.execute(
+        select(models.Document).where(
+            and_(
+                models.Document.id == document_id,
+                models.Document.owner_id == current_user.id,
+                models.Document.deleted_at.is_(None)
+            )
+        )
+    )
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden"
+        )
+
+    if not document.extracted_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Keine strukturierten Daten fuer dieses Dokument verfuegbar"
+        )
+
+    # JSONB zu Pydantic konvertieren
+    try:
+        return ExtractedDocumentData.model_validate(document.extracted_data)
+    except Exception as e:
+        logger.error(
+            "extracted_data_parse_error",
+            document_id=str(document_id),
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Parsen der extrahierten Daten"
+        )

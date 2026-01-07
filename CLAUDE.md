@@ -252,7 +252,78 @@ POST /api/v1/training/migration/sqlite  # SQLite migrieren
 2. **GPU-Management**: VRAM unter 85% halten (max 13.6GB von 16GB)
 3. **Typ-Annotationen**: Pflicht für alle Python-Funktionen
 4. **Sicherheit**: Keine Secrets im Code, keine PII in Logs
-5. **Tests**: Müssen vor Commit bestehen
+5. **Tests**: Muessen vor Commit bestehen
+6. **Multi-Model Orchestration**: IMMER befolgen (siehe unten)
+
+---
+
+## KRITISCH: Multi-Model Orchestration System
+
+Dieses Projekt nutzt ein **automatisches Multi-Model Routing System**. Bei JEDEM User-Prompt erhaeltst du einen `ORCHESTRATION ROUTING` Kontext im system-reminder. **DU MUSST DIESEN BEFOLGEN!**
+
+### Wie es funktioniert
+
+1. **UserPromptSubmit Hook** klassifiziert jeden Prompt automatisch
+2. Du erhaeltst einen Kontext wie: `Routing zu: OPUS/SONNET/HAIKU`
+3. **Du MUSST entsprechend delegieren** um Kosten zu sparen
+
+### Wann du DELEGIEREN musst
+
+| Routing-Empfehlung | Deine Aktion |
+|--------------------|--------------|
+| `Routing zu: HAIKU` | `Task(subagent_type="haiku-task", model="haiku", prompt="...")` |
+| `Routing zu: SONNET` | `Task(subagent_type="sonnet-implementation", model="sonnet", prompt="...")` |
+| `Routing zu: OPUS` | Mache es selbst (keine Delegation noetig) |
+
+### Verfuegbare Spezialisierte Agenten
+
+Nutze den MCP Server fuer intelligentes Routing:
+
+```
+mcp__orchestration__route_task  - Gibt optimalen Agent/Model zurueck
+mcp__orchestration__list_agents - Zeigt alle 15 Agenten
+mcp__orchestration__get_metrics - Zeigt Statistiken
+```
+
+**Spezialisierte Agenten (automatisch gewaehlt):**
+
+| Agent | Model | Fuer |
+|-------|-------|------|
+| `refactoring-expert` | opus | Grosse Refactorings, Migrationen |
+| `security-auditor` | opus | Security Reviews, Vulnerabilities |
+| `ocr-specialist` | opus | OCR Pipeline, GPU-Optimierung |
+| `database-expert` | sonnet | SQLAlchemy, Alembic, Schema |
+| `testing-expert` | sonnet | pytest, Coverage, Integration |
+| `frontend-expert` | sonnet | React, TypeScript, TanStack |
+| `api-designer` | sonnet | REST, OpenAPI, Endpoints |
+| `bug-hunter` | sonnet | Debugging, Error Analysis |
+| `code-reviewer` | haiku | Style Checks, Linting |
+| `doc-writer` | haiku | Docstrings, README |
+
+### Beispiel-Delegation
+
+```python
+# Wenn Routing "HAIKU" empfiehlt fuer einfache Aufgabe:
+Task(
+    subagent_type="doc-writer",
+    model="haiku",
+    prompt="Schreibe Docstrings fuer die Funktion process_document()"
+)
+
+# Wenn Routing "SONNET" empfiehlt fuer Tests:
+Task(
+    subagent_type="testing-expert",
+    model="sonnet",
+    prompt="Schreibe Unit-Tests fuer den DocumentService"
+)
+```
+
+### WICHTIG - Immer beachten!
+
+- **Ignoriere NIEMALS** den Orchestration-Kontext
+- **Delegiere IMMER** bei Haiku/Sonnet-Empfehlungen
+- **Spare Kosten** durch intelligentes Routing
+- **Der Hook laeuft automatisch** - du musst nur die Empfehlung befolgen
 
 ---
 

@@ -27,6 +27,10 @@ class ClassificationResult:
     confidence: float
     reasoning: str
     fallback_tier: Optional[ModelTier] = None
+    primary_pattern: str = ""
+    matched_patterns: Optional[List[str]] = None
+    complexity_score: float = 0.0
+    file_impact_score: float = 0.0
 
 
 # Agent mapping: ModelTier → Agent name (für Claude Code Task() calls)
@@ -167,13 +171,23 @@ class TaskClassifier:
         task_lower = task_description.lower()
         affected_files = affected_files or []
 
+        # Calculate file impact score
+        file_impact = self._calculate_file_impact(affected_files)
+
+        # Calculate complexity score (0.0 - 1.0)
+        complexity = self._calculate_complexity(task_description, affected_files)
+
         # 1. Check kritische Pfade zuerst
         for path in self.CRITICAL_PATHS:
             if any(path in f for f in affected_files):
                 return ClassificationResult(
                     tier=ModelTier.OPUS_REQUIRED,
                     confidence=1.0,
-                    reasoning=f"Kritischer Pfad betroffen: {path}"
+                    reasoning=f"Kritischer Pfad betroffen: {path}",
+                    primary_pattern="critical_path",
+                    matched_patterns=["critical_path"],
+                    complexity_score=complexity,
+                    file_impact_score=file_impact
                 )
 
         # 2. Check GPU-Pfade
@@ -182,7 +196,11 @@ class TaskClassifier:
                 return ClassificationResult(
                     tier=ModelTier.OPUS_REQUIRED,
                     confidence=1.0,
-                    reasoning=f"GPU-kritischer Pfad betroffen: {path}"
+                    reasoning=f"GPU-kritischer Pfad betroffen: {path}",
+                    primary_pattern="gpu_critical",
+                    matched_patterns=["gpu_critical"],
+                    complexity_score=complexity,
+                    file_impact_score=file_impact
                 )
 
         # 3. Check Multi-File Operations
@@ -190,44 +208,130 @@ class TaskClassifier:
             return ClassificationResult(
                 tier=ModelTier.OPUS_REQUIRED,
                 confidence=0.9,
-                reasoning=f"Multi-File Operation ({len(affected_files)} Dateien)"
+                reasoning=f"Multi-File Operation ({len(affected_files)} Dateien)",
+                primary_pattern="multi_file",
+                matched_patterns=["multi_file"],
+                complexity_score=complexity,
+                file_impact_score=file_impact
             )
 
-        # 4. Pattern Matching
-        opus_score = self._match_patterns(task_lower, self.OPUS_PATTERNS)
-        sonnet_score = self._match_patterns(task_lower, self.SONNET_PATTERNS)
-        haiku_score = self._match_patterns(task_lower, self.HAIKU_PATTERNS)
+        # 4. Pattern Matching with details
+        opus_matches = self._get_matched_patterns(task_lower, self.OPUS_PATTERNS)
+        sonnet_matches = self._get_matched_patterns(task_lower, self.SONNET_PATTERNS)
+        haiku_matches = self._get_matched_patterns(task_lower, self.HAIKU_PATTERNS)
+
+        opus_score = len(opus_matches)
+        sonnet_score = len(sonnet_matches)
+        haiku_score = len(haiku_matches)
 
         # 5. Entscheidungslogik
         if opus_score > 0:
+            primary = self._determine_primary_pattern(opus_matches, "architecture")
             return ClassificationResult(
                 tier=ModelTier.OPUS_REQUIRED,
                 confidence=min(0.7 + opus_score * 0.1, 1.0),
-                reasoning=f"Opus-Pattern erkannt (Score: {opus_score})"
+                reasoning=f"Opus-Pattern erkannt (Score: {opus_score})",
+                primary_pattern=primary,
+                matched_patterns=opus_matches,
+                complexity_score=complexity,
+                file_impact_score=file_impact
             )
 
         if haiku_score > sonnet_score and haiku_score > 0:
+            primary = self._determine_primary_pattern(haiku_matches, "formatting")
             return ClassificationResult(
                 tier=ModelTier.HAIKU_SUFFICIENT,
                 confidence=min(0.6 + haiku_score * 0.1, 0.95),
                 reasoning=f"Einfache Aufgabe erkannt (Score: {haiku_score})",
-                fallback_tier=ModelTier.SONNET_CAPABLE
+                fallback_tier=ModelTier.SONNET_CAPABLE,
+                primary_pattern=primary,
+                matched_patterns=haiku_matches,
+                complexity_score=complexity,
+                file_impact_score=file_impact
             )
 
         if sonnet_score > 0:
+            primary = self._determine_primary_pattern(sonnet_matches, "implementation")
             return ClassificationResult(
                 tier=ModelTier.SONNET_CAPABLE,
                 confidence=min(0.6 + sonnet_score * 0.1, 0.95),
                 reasoning=f"Implementierungs-Aufgabe erkannt (Score: {sonnet_score})",
-                fallback_tier=ModelTier.OPUS_REQUIRED
+                fallback_tier=ModelTier.OPUS_REQUIRED,
+                primary_pattern=primary,
+                matched_patterns=sonnet_matches,
+                complexity_score=complexity,
+                file_impact_score=file_impact
             )
 
         # 6. Default: Bei Unsicherheit → Opus
         return ClassificationResult(
             tier=ModelTier.OPUS_REQUIRED,
             confidence=0.5,
-            reasoning="Keine klare Klassifizierung möglich, eskaliere zu Opus"
+            reasoning="Keine klare Klassifizierung möglich, eskaliere zu Opus",
+            primary_pattern="unknown",
+            matched_patterns=[],
+            complexity_score=complexity,
+            file_impact_score=file_impact
         )
+
+    def _calculate_file_impact(self, files: List[str]) -> float:
+        """Calculate file impact score based on number and criticality of files."""
+        if not files:
+            return 0.0
+
+        # Base score from file count
+        base_score = min(len(files) / 10.0, 1.0)
+
+        # Critical file bonus
+        critical_bonus = 0.0
+        for f in files:
+            if any(path in f for path in self.CRITICAL_PATHS):
+                critical_bonus += 0.2
+            if any(path in f for path in self.GPU_PATHS):
+                critical_bonus += 0.1
+
+        return min(base_score + critical_bonus, 1.0)
+
+    def _calculate_complexity(self, task: str, files: List[str]) -> float:
+        """Calculate task complexity score."""
+        score = 0.0
+        task_lower = task.lower()
+
+        # Length-based complexity
+        if len(task) > 500:
+            score += 0.2
+        elif len(task) > 200:
+            score += 0.1
+
+        # Keyword-based complexity
+        complex_keywords = [
+            "architektur", "refactor", "security", "migration",
+            "multi", "distributed", "concurrent", "async"
+        ]
+        for kw in complex_keywords:
+            if kw in task_lower:
+                score += 0.1
+
+        # File count complexity
+        score += min(len(files) * 0.05, 0.3)
+
+        return min(score, 1.0)
+
+    def _get_matched_patterns(self, text: str, patterns: List[str]) -> List[str]:
+        """Get list of patterns that match the text."""
+        matched = []
+        for pattern in patterns:
+            if re.search(pattern, text, re.IGNORECASE):
+                # Extract a readable pattern name
+                matched.append(pattern.replace(r".*", "").replace(r"\s+", " ").strip())
+        return matched
+
+    def _determine_primary_pattern(self, matches: List[str], default: str) -> str:
+        """Determine the primary pattern from a list of matches."""
+        if not matches:
+            return default
+        # Return first match as primary
+        return matches[0] if matches else default
 
     def _match_patterns(self, text: str, patterns: List[str]) -> int:
         """

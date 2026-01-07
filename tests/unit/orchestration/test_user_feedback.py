@@ -5,10 +5,12 @@ import sys
 from pathlib import Path
 from io import StringIO
 
-# Add orchestration to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / ".claude" / "orchestration"))
+# Add .claude to path so orchestration is a proper package
+_claude_path = str(Path(__file__).parent.parent.parent.parent / ".claude")
+if _claude_path not in sys.path:
+    sys.path.insert(0, _claude_path)
 
-from user_feedback import UserFeedback, DisplayMode, OrchestrationFeedback
+from orchestration.user_feedback import UserFeedback, DisplayMode, OrchestrationFeedback
 
 
 class TestUserFeedback:
@@ -16,10 +18,9 @@ class TestUserFeedback:
 
     def test_show_routing_decision_formats_correctly(self, user_feedback):
         """Should format routing decision for display."""
-        # Capture output
-        import sys
-        old_stdout = sys.stdout
-        sys.stdout = output = StringIO()
+        # Capture stderr (where UserFeedback outputs)
+        old_stderr = sys.stderr
+        sys.stderr = output = StringIO()
 
         user_feedback.show_routing_decision(
             model="sonnet",
@@ -28,102 +29,109 @@ class TestUserFeedback:
             files=3
         )
 
-        sys.stdout = old_stdout
+        sys.stderr = old_stderr
         result = output.getvalue()
 
         # Should contain key information
         assert "sonnet" in result.lower() or "SONNET" in result
-        assert "87" in result or "0.87" in result  # Confidence
+        assert "87" in result  # Confidence
         # German language markers
         assert any(word in result.lower() for word in ["modell", "confidence", "begründung"])
 
     def test_display_mode_affects_output(self, user_feedback):
         """Display mode should affect formatting."""
-        user_feedback.set_display_mode(DisplayMode.DARK)
+        # Test minimal mode
+        feedback_minimal = UserFeedback(mode=DisplayMode.MINIMAL)
+        assert feedback_minimal.mode == DisplayMode.MINIMAL
 
-        # Dark mode should be set
-        assert user_feedback.current_mode == DisplayMode.DARK
+        # Test detailed mode
+        feedback_detailed = UserFeedback(mode=DisplayMode.DETAILED)
+        assert feedback_detailed.mode == DisplayMode.DETAILED
 
-        # Change to light mode
-        user_feedback.set_display_mode(DisplayMode.LIGHT)
-        assert user_feedback.current_mode == DisplayMode.LIGHT
+        # Capture and compare output lengths
+        old_stderr = sys.stderr
 
-    def test_token_savings_calculation_display(self, user_feedback):
-        """Should display token savings accurately."""
-        old_stdout = sys.stdout
-        sys.stdout = output = StringIO()
+        sys.stderr = output_minimal = StringIO()
+        feedback_minimal.show_routing_decision("sonnet", 0.87, "Test", 3)
+        sys.stderr = old_stderr
+        minimal_output = output_minimal.getvalue()
 
-        user_feedback.show_token_savings(
-            tokens_used=1000,
-            tokens_baseline=5000
+        sys.stderr = output_detailed = StringIO()
+        feedback_detailed.show_routing_decision("sonnet", 0.87, "Test", 3)
+        sys.stderr = old_stderr
+        detailed_output = output_detailed.getvalue()
+
+        # Detailed should have more output
+        assert len(detailed_output) >= len(minimal_output)
+
+    def test_token_savings_calculation(self, user_feedback):
+        """Should calculate token savings accurately."""
+        # Test internal savings calculation
+        assert user_feedback._calculate_savings("opus") == 0  # No savings vs Opus
+        assert user_feedback._calculate_savings("sonnet") == 80  # 80% savings
+        assert user_feedback._calculate_savings("haiku") == 95  # 95% savings
+
+    def test_show_quality_result_display(self, user_feedback):
+        """Should display quality results correctly."""
+        old_stderr = sys.stderr
+        sys.stderr = output = StringIO()
+
+        user_feedback.show_quality_result(
+            model="sonnet",
+            quality_score=0.92
         )
 
-        sys.stdout = old_stdout
-        result = output.getvalue()
-
-        # Should show 80% savings (4000 / 5000)
-        assert "80" in result or "4000" in result
-
-    def test_quality_score_display(self, user_feedback):
-        """Should display quality scores formatted correctly."""
-        old_stdout = sys.stdout
-        sys.stdout = output = StringIO()
-
-        user_feedback.show_quality_score(
-            score=0.92,
-            checks_passed=5,
-            checks_failed=1
-        )
-
-        sys.stdout = old_stdout
+        sys.stderr = old_stderr
         result = output.getvalue()
 
         assert "0.92" in result or "92" in result
-        assert "5" in result  # Checks passed
-        assert "1" in result  # Checks failed
+        assert "quality" in result.lower() or "gut" in result.lower()
 
-    def test_escalation_notice_display(self, user_feedback):
+    def test_escalation_display(self, user_feedback):
         """Should display escalation notices."""
-        old_stdout = sys.stdout
-        sys.stdout = output = StringIO()
+        old_stderr = sys.stderr
+        sys.stderr = output = StringIO()
 
-        user_feedback.show_escalation_notice(
+        user_feedback.show_escalation(
             from_model="haiku",
             to_model="sonnet",
-            reason="Quality validation failed"
+            reason="Quality validation failed",
+            quality_score=0.75
         )
 
-        sys.stdout = old_stdout
+        sys.stderr = old_stderr
         result = output.getvalue()
 
         assert "haiku" in result.lower()
         assert "sonnet" in result.lower()
-        assert "quality" in result.lower() or "qualität" in result.lower()
+        assert "eskalation" in result.lower() or "quality" in result.lower()
 
     def test_orchestration_feedback_structure(self):
         """OrchestrationFeedback should have all required fields."""
         feedback = OrchestrationFeedback(
-            model_used="sonnet",
+            model="sonnet",
             confidence=0.85,
             reasoning="Test reasoning",
             quality_score=0.90,
-            tokens_used=1000,
-            tokens_saved=4000,
-            escalated=False
+            escalated_from="haiku",
+            cache_hit=True,
+            files_affected=5,
+            estimated_tokens=1000
         )
 
-        assert feedback.model_used == "sonnet"
+        assert feedback.model == "sonnet"
         assert feedback.confidence == 0.85
         assert feedback.reasoning == "Test reasoning"
         assert feedback.quality_score == 0.90
-        assert feedback.tokens_used == 1000
-        assert feedback.tokens_saved == 4000
-        assert feedback.escalated is False
+        assert feedback.escalated_from == "haiku"
+        assert feedback.cache_hit is True
+        assert feedback.files_affected == 5
+        assert feedback.estimated_tokens == 1000
 
     def test_german_language_output(self, user_feedback):
         """User feedback should be in German."""
-        old_stdout = sys.stdout
-        sys.stdout = output = StringIO()
+        old_stderr = sys.stderr
+        sys.stderr = output = StringIO()
 
         user_feedback.show_routing_decision(
             model="opus",
@@ -132,7 +140,7 @@ class TestUserFeedback:
             files=5
         )
 
-        sys.stdout = old_stdout
+        sys.stderr = old_stderr
         result = output.getvalue()
 
         # Check for German language markers
@@ -142,78 +150,164 @@ class TestUserFeedback:
 
     def test_model_icons_display(self, user_feedback):
         """Should display model-specific icons."""
-        old_stdout = sys.stdout
+        old_stderr = sys.stderr
 
         for model, expected_icon in [("opus", "🧠"), ("sonnet", "⚙️"), ("haiku", "✨")]:
-            sys.stdout = output = StringIO()
+            sys.stderr = output = StringIO()
             user_feedback.show_routing_decision(model, 0.90, "Test", 1)
-            sys.stdout = old_stdout
+            sys.stderr = old_stderr
             result = output.getvalue()
 
             assert expected_icon in result, f"Expected icon {expected_icon} for {model}"
 
     def test_display_mode_enum_values(self):
         """DisplayMode should have all required values."""
-        assert hasattr(DisplayMode, 'DARK')
-        assert hasattr(DisplayMode, 'LIGHT')
-        assert hasattr(DisplayMode, 'WHITESCREEN')
-        assert hasattr(DisplayMode, 'BLACKSCREEN')
+        # Actual enum values (not DARK/LIGHT like UI modes)
+        assert hasattr(DisplayMode, 'MINIMAL')
+        assert hasattr(DisplayMode, 'STANDARD')
+        assert hasattr(DisplayMode, 'DETAILED')
 
-    def test_cache_hit_notification(self, user_feedback):
-        """Should display cache hit notifications."""
-        old_stdout = sys.stdout
-        sys.stdout = output = StringIO()
+    def test_cache_hit_displayed_in_routing(self, user_feedback):
+        """Should display cache hit in routing decision."""
+        old_stderr = sys.stderr
+        sys.stderr = output = StringIO()
 
-        user_feedback.show_cache_hit(
-            decision_count=2,
-            relevance_score=0.85
+        user_feedback.show_routing_decision(
+            model="sonnet",
+            confidence=0.85,
+            reasoning="Test",
+            files=1,
+            cache_hit=True
         )
 
-        sys.stdout = old_stdout
+        sys.stderr = old_stderr
         result = output.getvalue()
 
-        assert "2" in result  # Decision count
-        assert "cache" in result.lower() or "entscheidung" in result.lower()
+        # Cache hit should be displayed
+        assert "cache" in result.lower() or "♻️" in result
 
-    def test_summary_display(self, user_feedback):
-        """Should display summary statistics."""
-        old_stdout = sys.stdout
-        sys.stdout = output = StringIO()
+    def test_files_affected_displayed(self, user_feedback):
+        """Should display number of affected files."""
+        old_stderr = sys.stderr
+        sys.stderr = output = StringIO()
 
-        user_feedback.show_summary(
-            total_tasks=100,
-            avg_quality=0.92,
-            token_savings_pct=0.55,
-            escalation_rate=0.08
+        user_feedback.show_routing_decision(
+            model="sonnet",
+            confidence=0.85,
+            reasoning="Test",
+            files=10,
+            estimated_tokens=5000
         )
 
-        sys.stdout = old_stdout
+        sys.stderr = old_stderr
         result = output.getvalue()
 
-        assert "100" in result  # Total tasks
-        assert "92" in result or "0.92" in result  # Quality
-        assert "55" in result or "0.55" in result  # Savings
-        assert "8" in result or "0.08" in result  # Escalation
+        # Files count should be displayed
+        assert "10" in result
+        # Estimated tokens should be displayed
+        assert "5,000" in result or "5000" in result
 
-    def test_verbose_mode_toggle(self, user_feedback):
-        """Should support verbose/quiet modes."""
-        user_feedback.set_verbose(True)
-        assert user_feedback.verbose is True
+    def test_model_formatting(self, user_feedback):
+        """Should format model names consistently."""
+        formatted = user_feedback._format_model("sonnet")
+        assert "SONNET" in formatted
+        assert "⚙️" in formatted
 
-        user_feedback.set_verbose(False)
-        assert user_feedback.verbose is False
+    def test_savings_calculation_unknown_model(self, user_feedback):
+        """Unknown model should return 0 savings."""
+        savings = user_feedback._calculate_savings("unknown_model")
+        assert savings == 0
 
-    def test_quiet_mode_suppresses_output(self, user_feedback):
-        """Quiet mode should suppress non-critical output."""
-        user_feedback.set_verbose(False)
+    def test_quality_result_excellent_score(self, user_feedback):
+        """Excellent quality score should show appropriate emoji."""
+        old_stderr = sys.stderr
+        sys.stderr = output = StringIO()
 
-        old_stdout = sys.stdout
-        sys.stdout = output = StringIO()
+        user_feedback.show_quality_result("sonnet", quality_score=0.98)
 
-        user_feedback.show_routing_decision("haiku", 0.80, "Simple task", 1)
-
-        sys.stdout = old_stdout
+        sys.stderr = old_stderr
         result = output.getvalue()
 
-        # Quiet mode should produce minimal output
-        assert len(result) < 200  # Arbitrary threshold for "minimal"
+        assert "✅" in result
+        assert "exzellent" in result.lower()
+
+    def test_quality_result_poor_score(self, user_feedback):
+        """Poor quality score should show warning."""
+        old_stderr = sys.stderr
+        sys.stderr = output = StringIO()
+
+        user_feedback.show_quality_result("haiku", quality_score=0.65)
+
+        sys.stderr = old_stderr
+        result = output.getvalue()
+
+        assert "❌" in result
+        assert "unzureichend" in result.lower()
+
+    def test_minimal_mode_output_shorter(self):
+        """Minimal mode should produce shorter output."""
+        feedback_minimal = UserFeedback(mode=DisplayMode.MINIMAL)
+        feedback_detailed = UserFeedback(mode=DisplayMode.DETAILED)
+
+        old_stderr = sys.stderr
+
+        sys.stderr = output_minimal = StringIO()
+        feedback_minimal.show_routing_decision("haiku", 0.80, "Simple task", 1)
+        sys.stderr = old_stderr
+        minimal_result = output_minimal.getvalue()
+
+        sys.stderr = output_detailed = StringIO()
+        feedback_detailed.show_routing_decision("haiku", 0.80, "Simple task", 1)
+        sys.stderr = old_stderr
+        detailed_result = output_detailed.getvalue()
+
+        # Minimal should be shorter
+        assert len(minimal_result) < len(detailed_result)
+
+    def test_create_feedback_display_factory(self):
+        """Factory function should create UserFeedback instances."""
+        from orchestration.user_feedback import create_feedback_display
+
+        feedback_minimal = create_feedback_display("minimal")
+        assert feedback_minimal.mode == DisplayMode.MINIMAL
+
+        feedback_detailed = create_feedback_display("detailed")
+        assert feedback_detailed.mode == DisplayMode.DETAILED
+
+        # Invalid mode should default to detailed
+        feedback_invalid = create_feedback_display("invalid_mode")
+        assert feedback_invalid.mode == DisplayMode.DETAILED
+
+    def test_escalation_with_quality_score(self, user_feedback):
+        """Escalation should include quality score."""
+        old_stderr = sys.stderr
+        sys.stderr = output = StringIO()
+
+        user_feedback.show_escalation(
+            from_model="haiku",
+            to_model="sonnet",
+            reason="Quality unter Schwellwert",
+            quality_score=0.72
+        )
+
+        sys.stderr = old_stderr
+        result = output.getvalue()
+
+        assert "0.72" in result or "72" in result
+
+    def test_quality_result_with_escalation_info(self, user_feedback):
+        """Quality result should show escalation source if provided."""
+        old_stderr = sys.stderr
+        sys.stderr = output = StringIO()
+
+        user_feedback.show_quality_result(
+            model="sonnet",
+            quality_score=0.88,
+            escalated_from="haiku"
+        )
+
+        sys.stderr = old_stderr
+        result = output.getvalue()
+
+        assert "haiku" in result.lower()
+        assert "eskaliert" in result.lower() or "⬆️" in result

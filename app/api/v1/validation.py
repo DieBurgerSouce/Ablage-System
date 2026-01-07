@@ -108,36 +108,56 @@ async def list_queue_items(
     """
     service = get_validation_queue_service(db)
 
+    # Einzelne Query-Parameter in Listen wrappen fuer ValidationQueueFilters
     filters = ValidationQueueFilters(
-        status=status,
-        document_type=document_type,
+        status=[status] if status else None,
+        document_type=[document_type] if document_type else None,
         priority_min=priority_min,
         priority_max=priority_max,
         confidence_min=confidence_min,
         confidence_max=confidence_max,
         assigned_to_id=assigned_to_id,
-        sample_source=sample_source,
+        sample_source=[sample_source] if sample_source else None,
         created_from=created_from,
         created_to=created_to
     )
 
-    sort_options = ValidationQueueSortOptions(
-        sort_by=sort_by,
-        sort_order=sort_order
+    # sort_by und sort_order zu ValidationQueueSortOptions Enum konvertieren
+    sort_enum_map = {
+        ("priority", "asc"): ValidationQueueSortOptions.PRIORITY_ASC,
+        ("priority", "desc"): ValidationQueueSortOptions.PRIORITY_DESC,
+        ("confidence", "asc"): ValidationQueueSortOptions.CONFIDENCE_ASC,
+        ("confidence", "desc"): ValidationQueueSortOptions.CONFIDENCE_DESC,
+        ("created_at", "asc"): ValidationQueueSortOptions.CREATED_ASC,
+        ("created_at", "desc"): ValidationQueueSortOptions.CREATED_DESC,
+        ("document_name", "asc"): ValidationQueueSortOptions.DOCUMENT_NAME,
+        ("document_name", "desc"): ValidationQueueSortOptions.DOCUMENT_NAME,
+    }
+    sort_enum = sort_enum_map.get(
+        (sort_by, sort_order),
+        ValidationQueueSortOptions.CREATED_DESC  # Default
     )
+
+    # limit/offset zu page/per_page konvertieren
+    page = (offset // limit) + 1 if limit > 0 else 1
+    per_page = limit
 
     items, total = await service.get_queue_items(
         filters=filters,
-        sort_options=sort_options,
-        limit=limit,
-        offset=offset
+        sort_by=sort_enum,
+        page=page,
+        per_page=per_page
     )
+
+    # total_pages berechnen
+    total_pages = (total + per_page - 1) // per_page if per_page > 0 else 1
 
     return ValidationQueueListResponse(
         items=[ValidationQueueItemResponse.model_validate(item) for item in items],
         total=total,
-        limit=limit,
-        offset=offset
+        page=page,
+        per_page=per_page,
+        total_pages=total_pages
     )
 
 
@@ -170,6 +190,11 @@ async def get_my_assigned_items(
     Erfordert `validation:write` Berechtigung.
     """
     service = get_validation_queue_service(db)
+
+    # limit/offset zu page/per_page konvertieren
+    page = (offset // limit) + 1 if limit > 0 else 1
+    per_page = limit
+
     items, total = await service.get_my_assigned_items(
         editor_id=current_user.id,
         status=status.value if status else None,
@@ -177,11 +202,15 @@ async def get_my_assigned_items(
         offset=offset
     )
 
+    # total_pages berechnen
+    total_pages = (total + per_page - 1) // per_page if per_page > 0 else 1
+
     return ValidationQueueListResponse(
         items=[ValidationQueueItemResponse.model_validate(item) for item in items],
         total=total,
-        limit=limit,
-        offset=offset
+        page=page,
+        per_page=per_page,
+        total_pages=total_pages
     )
 
 
@@ -857,8 +886,8 @@ async def get_editor_stats(
     Erfordert `validation:manage` Berechtigung.
     """
     service = get_validation_analytics_service(db)
-    stats = await service.get_editor_stats(date_from, date_to)
-    return EditorStatsListResponse(editors=stats)
+    # Service gibt bereits EditorStatsListResponse zurueck
+    return await service.get_editor_stats(date_from, date_to)
 
 
 @router.get("/analytics/trends", response_model=TrendDataResponse)
@@ -876,8 +905,8 @@ async def get_trends(
     Erfordert `validation:read` Berechtigung.
     """
     service = get_validation_analytics_service(db)
-    trends = await service.get_trend_data(days, group_by)
-    return TrendDataResponse(data_points=trends, group_by=group_by)
+    # Service gibt bereits TrendDataResponse zurueck (group_by immer "day")
+    return await service.get_trend_data(days)
 
 
 @router.get("/analytics/document-types", response_model=DocumentTypeStatsResponse)
@@ -893,8 +922,8 @@ async def get_document_type_stats(
     Erfordert `validation:read` Berechtigung.
     """
     service = get_validation_analytics_service(db)
-    stats = await service.get_document_type_stats()
-    return DocumentTypeStatsResponse(document_types=stats)
+    # Service gibt bereits DocumentTypeStatsResponse zurueck
+    return await service.get_document_type_stats()
 
 
 @router.get("/analytics/confidence-distribution", response_model=ConfidenceDistribution)

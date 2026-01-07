@@ -190,7 +190,7 @@ export function CompanySetupWizard({
 
         const setupComplete = checkSetupComplete()
         const setupSkipped = isCompanySetupSkipped()
-        const hasCompanies = companiesData && companiesData.companies.length > 0
+        const hasCompanies = companiesData?.companies && companiesData.companies.length > 0
 
         // Zeige Wizard wenn:
         // 1. forceShow ist true ODER

@@ -154,10 +154,45 @@ export interface DocumentFilter {
     limit?: number;
 }
 
+// Backend response structure (mit Pagination)
+interface DocumentListResponse {
+    total: number;
+    page: number;
+    per_page: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+    documents: DocumentBackend[];
+    filters_applied: Record<string, unknown>;
+}
+
 export const documentsService = {
     getAll: async (filters?: DocumentFilter) => {
-        const response = await apiClient.get<DocumentBackend[]>('/documents', { params: filters });
-        return response.data.map(transformDocument);
+        // Map frontend params to backend params
+        const params: Record<string, unknown> = {};
+        if (filters?.limit) params.per_page = filters.limit;
+        if (filters?.sort) {
+            // Map sort to sort_by + sort_order
+            if (filters.sort === 'date_desc') {
+                params.sort_by = 'created_at';
+                params.sort_order = 'desc';
+            } else if (filters.sort === 'date_asc') {
+                params.sort_by = 'created_at';
+                params.sort_order = 'asc';
+            } else if (filters.sort === 'name_desc') {
+                params.sort_by = 'filename';
+                params.sort_order = 'desc';
+            } else if (filters.sort === 'name_asc') {
+                params.sort_by = 'filename';
+                params.sort_order = 'asc';
+            }
+        }
+        if (filters?.ocrStatus) params.status = filters.ocrStatus;
+        if (filters?.type) params.document_type = filters.type;
+
+        const response = await apiClient.get<DocumentListResponse>('/documents', { params });
+        // Backend gibt { documents: [...] } zurück, nicht direkt ein Array
+        return (response.data?.documents || []).map(transformDocument);
     },
 
     getById: async (id: string) => {

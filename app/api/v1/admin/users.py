@@ -58,6 +58,7 @@ async def list_users(
     role: Optional[UserRole] = Query(None, description="Nach Rolle filtern"),
     status_filter: Optional[UserStatus] = Query(None, alias="status", description="Nach Status filtern"),
     tier: Optional[UserTier] = Query(None, description="Nach Tier filtern"),
+    include_workload: bool = Query(False, description="Workload-Statistiken einschliessen"),
     sort_by: UserSortField = Query(UserSortField.CREATED_AT, description="Sortierfeld"),
     sort_order: SortOrder = Query(SortOrder.DESC, description="Sortierrichtung"),
     admin: User = Depends(get_current_superuser),

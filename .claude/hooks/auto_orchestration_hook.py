@@ -23,13 +23,20 @@ from typing import Dict, Any, Optional, List
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("auto_orchestration")
 
-# Add orchestration to path
-orchestration_path = Path(__file__).parent.parent / "orchestration"
-sys.path.insert(0, str(orchestration_path))
+# Add .claude directory to path so we can import orchestration as a package
+claude_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(claude_dir))
 
 try:
-    from orchestrator import get_orchestrator, OverrideMode
-    from task_classifier import TaskClassifier, ClassificationResult
+    # Import from orchestration package (not individual modules)
+    from orchestration import TaskClassifier, ClassificationResult, ModelTier
+    from orchestration import Orchestrator, OverrideMode
+    from orchestration import DecisionCache
+
+    def get_orchestrator() -> Orchestrator:
+        """Get or create singleton Orchestrator instance."""
+        return Orchestrator()
+
 except ImportError as e:
     logger.warning(f"Orchestration nicht verfügbar: {e}")
     # Graceful fallback - Hook wird übersprungen
@@ -40,8 +47,9 @@ class AutoOrchestrationHook:
     """Automatischer Orchestration Hook für Claude Code."""
 
     def __init__(self):
-        self.orchestrator = get_orchestrator()
+        self.orchestrator = Orchestrator()
         self.classifier = TaskClassifier()
+        self.cache = DecisionCache()
         self._load_environment_config()
 
     def _load_environment_config(self) -> None:
@@ -188,7 +196,7 @@ QUALITY-REQUIREMENTS:
 
         # Add cached decisions for Sonnet/Haiku
         if model in ["sonnet", "haiku"]:
-            cached = self.orchestrator.cache.find_relevant(
+            cached = self.cache.find_relevant(
                 original_prompt,
                 context.get("affected_files", [])
             )
@@ -231,37 +239,37 @@ QUALITY-REQUIREMENTS:
                 f"(confidence: {classification.confidence:.0%})"
             )
 
-            # Show routing info to user
-            print(f"\n🤖 Multi-Model Orchestration:")
-            print(f"   Routing zu: {classification.tier.value.upper()}")
-            print(f"   Confidence: {classification.confidence:.0%}")
-            print(f"   Begründung: {classification.reasoning}")
+            # Show routing info to user (ASCII-safe for Windows)
+            print(f"\n[ORCHESTRATION] Multi-Model Routing:", file=sys.stderr)
+            print(f"   Routing zu: {classification.tier.value.upper()}", file=sys.stderr)
+            print(f"   Confidence: {classification.confidence:.0%}", file=sys.stderr)
+            print(f"   Begruendung: {classification.reasoning}", file=sys.stderr)
 
             if affected_files:
-                print(f"   Dateien: {len(affected_files)}")
+                print(f"   Dateien: {len(affected_files)}", file=sys.stderr)
                 for f in affected_files[:3]:
-                    print(f"     • {f}")
+                    print(f"     - {f}", file=sys.stderr)
                 if len(affected_files) > 3:
-                    print(f"     • ... und {len(affected_files) - 3} weitere")
+                    print(f"     - ... und {len(affected_files) - 3} weitere", file=sys.stderr)
 
             # Check if agent exists
             agent_file = Path(f".claude/agents/{classification.tier.value}-task.md")
             if not agent_file.exists():
-                print(f"   ⚠️  Agent nicht gefunden: {agent_file}")
-                print(f"   Erstelle mit: /create-agent {classification.tier.value}-task")
+                print(f"   [WARN] Agent nicht gefunden: {agent_file}", file=sys.stderr)
+                print(f"   Erstelle mit: /create-agent {classification.tier.value}-task", file=sys.stderr)
                 return None
 
             # Create subagent call
             subagent_call = self.create_subagent_call(classification, task_data, context)
 
-            print(f"   ✅ Subagent-Aufruf erstellt")
+            print(f"   [OK] Subagent-Aufruf erstellt", file=sys.stderr)
 
             return subagent_call
 
         except Exception as e:
             logger.error(f"Task routing failed: {e}")
-            print(f"\n❌ Orchestration Fehler: {e}")
-            print("   Fallback zu Standard-Verhalten...")
+            print(f"\n[ERROR] Orchestration Fehler: {e}", file=sys.stderr)
+            print("   Fallback zu Standard-Verhalten...", file=sys.stderr)
             return None
 
     def _get_timestamp(self) -> str:
@@ -274,17 +282,28 @@ def main():
     """
     Hauptfunktion für Hook-Integration.
 
-    Wird von Claude Code als pre_task_hook aufgerufen.
+    Wird von Claude Code als UserPromptSubmit Hook aufgerufen.
+    WICHTIG: Claude Code sendet Daten über STDIN als JSON!
     """
-    # Parse command line arguments
-    if len(sys.argv) < 2:
-        print("❌ Keine Task-Daten erhalten")
-        sys.exit(1)
-
     try:
-        # Parse task data from Claude Code
-        task_data_json = sys.argv[1]
-        task_data = json.loads(task_data_json)
+        # Read input from stdin (Claude Code sends JSON via stdin)
+        input_data = json.load(sys.stdin)
+
+        # Extract prompt from UserPromptSubmit hook data
+        # Format: {"session_id": "...", "prompt": "...", "cwd": "...", ...}
+        prompt = input_data.get("prompt", "")
+
+        if not prompt or len(prompt.strip()) < 10:
+            # Skip short prompts
+            sys.exit(0)
+
+        # Convert to task_data format
+        task_data = {
+            "prompt": prompt,
+            "type": "user_prompt",
+            "session_id": input_data.get("session_id", ""),
+            "cwd": input_data.get("cwd", os.getcwd()),
+        }
 
         # Initialize hook
         hook = AutoOrchestrationHook()
@@ -298,23 +317,33 @@ def main():
         subagent_call = hook.process_task_routing(task_data)
 
         if subagent_call:
-            # Output subagent call for Claude Code to execute
-            print(f"\n📝 ORCHESTRATED TASK:")
-            print(subagent_call)
+            # Output routing info as additionalContext for Claude
+            # This will be added to Claude's context when processing the user's prompt
+            routing_context = {
+                "hookSpecificOutput": {
+                    "hookEventName": "UserPromptSubmit",
+                    "additionalContext": f"ORCHESTRATION ROUTING: Der folgende Task wurde klassifiziert. "
+                                        f"Nutze das passende Model/Agent für optimale Ergebnisse.\n{subagent_call}"
+                }
+            }
+            print(json.dumps(routing_context))
 
-            # Save to file for Claude Code to pick up
+            # Also save to cache for reference
             output_file = Path(".claude/cache/orchestrated_task.txt")
             output_file.parent.mkdir(parents=True, exist_ok=True)
             output_file.write_text(subagent_call, encoding='utf-8')
-
-            print(f"\n💾 Gespeichert in: {output_file}")
+        else:
+            # No routing needed - exit silently
+            sys.exit(0)
 
     except json.JSONDecodeError as e:
-        logger.error(f"Invalid task data JSON: {e}")
-        sys.exit(1)
+        logger.error(f"Invalid JSON input from stdin: {e}")
+        # Non-blocking error - let Claude proceed normally
+        sys.exit(0)
     except Exception as e:
         logger.error(f"Hook execution failed: {e}")
-        sys.exit(1)
+        # Non-blocking error - let Claude proceed normally
+        sys.exit(0)
 
 
 if __name__ == "__main__":

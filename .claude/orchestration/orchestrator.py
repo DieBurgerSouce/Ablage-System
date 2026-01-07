@@ -433,6 +433,32 @@ class Orchestrator:
 
             return result
 
+        except Exception as e:
+            # Graceful error handling - return error result instead of crashing
+            logger.error(f"task_processing_failed: error={e}")
+            execution_time = int((datetime.now() - start_time).total_seconds() * 1000)
+            return OrchestrationResult(
+                model_used="error",
+                task_id=f"{self._session_id}_error",
+                output=f"Verarbeitung fehlgeschlagen: {str(e)}",
+                quality_result=QualityResult(
+                    level=QualityLevel.FAILED,
+                    checks_passed=[],
+                    checks_failed=["task_execution"],
+                    warnings=[],
+                    should_escalate=False,
+                    escalation_reason=str(e),
+                    details={"error": str(e)}
+                ),
+                was_escalated=False,
+                escalation_chain=["error"],
+                tokens_used=0,
+                cost_estimate=0.0,
+                cached_decisions_used=[],
+                execution_time_ms=execution_time,
+                timestamp=datetime.now().isoformat()
+            )
+
         finally:
             # Task-Lock freigeben
             self.ralph_coordinator.release_task_lock(task_hash)

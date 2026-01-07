@@ -68,7 +68,7 @@ async def list_jobs(
     created_from: Optional[datetime] = Query(None, description="Erstellt ab (ISO-Format)"),
     created_to: Optional[datetime] = Query(None, description="Erstellt bis (ISO-Format)"),
     sort_by: JobSortField = Query(JobSortField.CREATED_AT, description="Sortierfeld"),
-    sort_order: SortOrder = Query(SortOrder.DESC, description="Sortierrichtung"),
+    sort_order_raw: str = Query("desc", alias="sort_order", description="Sortierrichtung (asc/desc)"),
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> JobListResponse:
@@ -92,6 +92,9 @@ async def list_jobs(
     **Audit Logging:**
     - Alle Auflistungen werden fuer GDPR Art. 30 protokolliert
     """
+    # Case-insensitive sort_order parsing (accepts both "DESC" and "desc")
+    sort_order = SortOrder.DESC if sort_order_raw.lower() == "desc" else SortOrder.ASC
+
     filters = JobListFilters(
         status=status_filter,
         backend=backend,

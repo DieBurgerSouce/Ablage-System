@@ -267,7 +267,7 @@ async def get_dashboard_stats(
     # Hole alle Spaces des Users
     spaces = await space_service.get_user_spaces(db, current_user.id)
 
-    if not spaces:
+    if not spaces.items:
         return PrivatDashboardStats(
             total_spaces=0,
             total_documents=0,
@@ -290,14 +290,14 @@ async def get_dashboard_stats(
     upcoming_deadlines = 0
     overdue_deadlines = 0
 
-    for space in spaces:
+    for space in spaces.items:
         # Hole Deadline-Widget für jeden Space
         widget = await deadline_service.get_dashboard_widget(db, space.id)
         upcoming_deadlines += len(widget.today) + len(widget.this_week) + len(widget.this_month)
         overdue_deadlines += len(widget.overdue)
 
     return PrivatDashboardStats(
-        total_spaces=len(spaces),
+        total_spaces=spaces.total,
         total_documents=total_documents,
         total_properties=total_properties,
         total_vehicles=total_vehicles,
@@ -411,10 +411,10 @@ async def list_spaces(
     current_user: User = Depends(get_current_active_user),
 ) -> List[PrivatSpaceWithStats]:
     """Listet alle Spaces auf, auf die der User Zugriff hat."""
-    spaces = await space_service.get_user_spaces(db, current_user.id)
+    spaces_response = await space_service.get_user_spaces(db, current_user.id)
 
     result = []
-    for space in spaces:
+    for space in spaces_response.items:
         stats = await space_service.get_space_stats(db, space.id)
         result.append(PrivatSpaceWithStats(
             id=space.id,
@@ -1101,25 +1101,7 @@ async def create_property(
 
     prop = await property_service.create_property(db, space_id, data)
 
-    return PrivatPropertyResponse(
-        id=prop.id,
-        space_id=prop.space_id,
-        name=prop.name,
-        property_type=prop.property_type,
-        address_street=prop.address_street,
-        address_city=prop.address_city,
-        address_zip=prop.address_zip,
-        address_country=prop.address_country,
-        purchase_date=prop.purchase_date,
-        purchase_price=prop.purchase_price,
-        current_value=prop.current_value,
-        size_sqm=prop.size_sqm,
-        rooms=prop.rooms,
-        notes=prop.notes,
-        is_active=prop.is_active,
-        created_at=prop.created_at,
-        updated_at=prop.updated_at,
-    )
+    return PrivatPropertyResponse.model_validate(prop)
 
 
 @router.get(
@@ -1149,9 +1131,9 @@ async def list_properties(
 
     # SECURITY FIX 25-8: PII Masking - Adressen fuer Nicht-Owner maskieren
     for item in result.items:
-        item.address_street = mask_sensitive_field(item.address_street, is_owner)
-        item.address_city = mask_sensitive_field(item.address_city, is_owner)
-        item.address_zip = mask_sensitive_field(item.address_zip, is_owner)
+        item.street = mask_sensitive_field(item.street, is_owner)
+        item.city = mask_sensitive_field(item.city, is_owner)
+        item.postal_code = mask_sensitive_field(item.postal_code, is_owner)
 
     return result
 
@@ -1199,24 +1181,16 @@ async def get_property(
         tenant_resp.email = mask_sensitive_field(tenant_resp.email, is_owner)
         tenant_responses.append(tenant_resp)
 
+    # Use model_validate for base fields, then create with extra fields
+    prop_response = PrivatPropertyResponse.model_validate(prop)
+
+    # SECURITY FIX 25-9: Adress-Masking fuer Nicht-Owner
+    prop_response.street = mask_sensitive_field(prop_response.street, is_owner)
+    prop_response.city = mask_sensitive_field(prop_response.city, is_owner)
+    prop_response.postal_code = mask_sensitive_field(prop_response.postal_code, is_owner)
+
     return PrivatPropertyWithDetails(
-        id=prop.id,
-        space_id=prop.space_id,
-        # SECURITY FIX 25-9: Adress-Masking fuer Nicht-Owner
-        address=mask_sensitive_field(prop.address, is_owner),
-        city=mask_sensitive_field(prop.city, is_owner),
-        postal_code=mask_sensitive_field(prop.postal_code, is_owner),
-        country=prop.country,
-        property_type=prop.property_type,
-        purchase_date=prop.purchase_date,
-        purchase_price=prop.purchase_price,
-        current_value=prop.current_value,
-        is_rented=prop.is_rented,
-        monthly_rent=prop.monthly_rent,
-        notes=prop.notes,
-        is_active=prop.is_active,
-        created_at=prop.created_at,
-        updated_at=prop.updated_at,
+        **prop_response.model_dump(),
         tenants=tenant_responses,
         total_rental_income=total_income,
         pending_payments=pending_payment_count,
@@ -1249,25 +1223,7 @@ async def update_property(
 
     updated = await property_service.update_property(db, property_id, data)
 
-    return PrivatPropertyResponse(
-        id=updated.id,
-        space_id=updated.space_id,
-        name=updated.name,
-        property_type=updated.property_type,
-        address_street=updated.address_street,
-        address_city=updated.address_city,
-        address_zip=updated.address_zip,
-        address_country=updated.address_country,
-        purchase_date=updated.purchase_date,
-        purchase_price=updated.purchase_price,
-        current_value=updated.current_value,
-        size_sqm=updated.size_sqm,
-        rooms=updated.rooms,
-        notes=updated.notes,
-        is_active=updated.is_active,
-        created_at=updated.created_at,
-        updated_at=updated.updated_at,
-    )
+    return PrivatPropertyResponse.model_validate(updated)
 
 
 @router.delete(

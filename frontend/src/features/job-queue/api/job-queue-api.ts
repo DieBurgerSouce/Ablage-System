@@ -49,7 +49,7 @@ export async function listJobs(params: {
     page: page.toString(),
     per_page: perPage.toString(),
     sort_by: sortBy,
-    sort_order: sortOrder.toUpperCase(),
+    sort_order: sortOrder.toLowerCase(),
   });
 
   // Add filters

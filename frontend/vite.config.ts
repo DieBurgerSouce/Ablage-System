@@ -91,8 +91,8 @@ export default defineConfig({
           },
         ],
         cleanupOutdatedCaches: true,
-        skipWaiting: false, // Let user control update
-        clientsClaim: false, // Don't take control immediately
+        skipWaiting: true, // Force immediate update
+        clientsClaim: true, // Take control immediately after activation
       },
       devOptions: {
         enabled: false, // Disable in development

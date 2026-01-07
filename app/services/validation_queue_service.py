@@ -706,29 +706,41 @@ class ValidationQueueService:
     async def get_my_assigned_items(
         self,
         editor_id: uuid.UUID,
-        status: Optional[List[ValidationStatusEnum]] = None
-    ) -> List[ValidationQueueItem]:
-        """Holt alle einem Editor zugewiesenen Items.
+        status: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> Tuple[List[ValidationQueueItem], int]:
+        """Holt alle einem Editor zugewiesenen Items mit Pagination.
 
         Args:
             editor_id: ID des Editors
-            status: Optionale Status-Filter
+            status: Optionaler Status-Filter (String-Wert)
+            limit: Maximale Anzahl der Items
+            offset: Offset fuer Pagination
 
         Returns:
-            Liste der zugewiesenen Items
+            Tuple aus (Liste der zugewiesenen Items, Gesamtanzahl)
         """
-        query = select(ValidationQueueItem).where(
-            ValidationQueueItem.assigned_to_id == editor_id
-        )
+        # Basis-Query
+        base_conditions = [ValidationQueueItem.assigned_to_id == editor_id]
 
         if status:
-            status_values = [s.value for s in status]
-            query = query.where(ValidationQueueItem.status.in_(status_values))
+            base_conditions.append(ValidationQueueItem.status == status)
 
+        # Count Query
+        count_query = select(func.count(ValidationQueueItem.id)).where(*base_conditions)
+        count_result = await self.db.execute(count_query)
+        total = count_result.scalar() or 0
+
+        # Items Query mit Pagination
+        query = select(ValidationQueueItem).where(*base_conditions)
         query = query.order_by(ValidationQueueItem.priority.asc())
+        query = query.limit(limit).offset(offset)
 
         result = await self.db.execute(query)
-        return list(result.scalars().all())
+        items = list(result.scalars().all())
+
+        return items, total
 
 
 def get_validation_queue_service(db: AsyncSession) -> ValidationQueueService:

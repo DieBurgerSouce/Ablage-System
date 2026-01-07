@@ -44,7 +44,7 @@ interface DocumentTypeIconProps {
 }
 
 export function DocumentTypeIcon({ mimeType }: DocumentTypeIconProps) {
-    if (mimeType.startsWith('image/')) {
+    if (mimeType?.startsWith('image/')) {
         return <Image className="w-12 h-12 text-muted-foreground/50" />;
     }
     return <FileText className="w-12 h-12 text-muted-foreground/50" />;

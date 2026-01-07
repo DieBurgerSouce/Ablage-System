@@ -1,6 +1,7 @@
 {
   "terminal.integrated.env.windows": {
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000"
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000",
+    "PYTHONPATH": "C:\\Users\\benfi\\Ablage_System\\.claude"
   },
   "terminal.integrated.env.osx": {
     "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000"
@@ -8,5 +9,48 @@
   "terminal.integrated.env.linux": {
     "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000"
   },
-  "claudeignore": ".claudeignore"
+  "claudeignore": ".claudeignore",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python C:\\Users\\benfi\\Ablage_System\\.claude\\hooks\\claude_task_interceptor.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python C:\\Users\\benfi\\Ablage_System\\.claude\\hooks\\post_task_quality.py"
+          }
+        ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python C:\\Users\\benfi\\Ablage_System\\.claude\\hooks\\post_plan_mode.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python C:\\Users\\benfi\\Ablage_System\\.claude\\hooks\\auto_orchestration_hook.py"
+          }
+        ]
+      }
+    ]
+  }
 }

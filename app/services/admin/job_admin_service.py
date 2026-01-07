@@ -148,7 +148,7 @@ class JobAdminService:
                 completed_at=job.completed_at,
                 error_message=job.error_message,
                 worker_id=job.worker_id,
-                result=job.result or {},
+                result=job.result_data or {},
                 duration_ms=duration_ms,
                 wait_time_ms=wait_time_ms,
             ))
@@ -223,7 +223,7 @@ class JobAdminService:
             completed_at=job.completed_at,
             error_message=job.error_message,
             worker_id=job.worker_id,
-            result=job.result or {},
+            result=job.result_data or {},
             duration_ms=duration_ms,
             wait_time_ms=wait_time_ms,
         )
@@ -875,12 +875,12 @@ class JobAdminService:
                 message="Nur aktive Aufträge können pausiert werden",
             )
 
-        # We use a special status marker in the result field since ProcessingStatus doesn't have PAUSED
-        if job.result is None:
-            job.result = {}
-        job.result["paused"] = True
-        job.result["paused_at"] = datetime.now(timezone.utc).isoformat()
-        job.result["paused_by"] = str(admin.id)
+        # We use a special status marker in the result_data field since ProcessingStatus doesn't have PAUSED
+        if job.result_data is None:
+            job.result_data = {}
+        job.result_data["paused"] = True
+        job.result_data["paused_at"] = datetime.now(timezone.utc).isoformat()
+        job.result_data["paused_by"] = str(admin.id)
 
         # Log admin action
         admin_action = AdminAction(
@@ -943,7 +943,7 @@ class JobAdminService:
                 message="Auftrag nicht gefunden",
             )
 
-        if not job.result or not job.result.get("paused"):
+        if not job.result_data or not job.result_data.get("paused"):
             return JobActionResponse(
                 success=False,
                 job_id=job_id,
@@ -952,11 +952,11 @@ class JobAdminService:
             )
 
         # Remove pause marker
-        job.result.pop("paused", None)
-        job.result.pop("paused_at", None)
-        job.result.pop("paused_by", None)
-        job.result["resumed_at"] = datetime.now(timezone.utc).isoformat()
-        job.result["resumed_by"] = str(admin.id)
+        job.result_data.pop("paused", None)
+        job.result_data.pop("paused_at", None)
+        job.result_data.pop("paused_by", None)
+        job.result_data["resumed_at"] = datetime.now(timezone.utc).isoformat()
+        job.result_data["resumed_by"] = str(admin.id)
 
         # Log admin action
         admin_action = AdminAction(
