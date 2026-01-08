@@ -1,4 +1,4 @@
-"""Add BackupRecord, Notification, and FeatureFlag tables.
+"""Add BackupRecord, Notification enhancements, and FeatureFlag tables.
 
 Revision ID: 026_add_backup_notification_featureflag
 Revises: 025_add_rls_policies
@@ -6,8 +6,13 @@ Create Date: 2024-12-02
 
 Neue Tabellen fuer:
 - BackupRecord: Backup-Verlauf und -Tracking
-- Notification: Benutzer-Benachrichtigungen (In-App und E-Mail)
 - FeatureFlag: Feature Flags fuer A/B Testing und Rollouts
+
+Erweiterungen:
+- Notifications: Zusaetzliche Spalten (email_sent, data, expires_at)
+
+NOTE: notifications table wird bereits in Migration 021 erstellt.
+Diese Migration fuegt nur zusaetzliche Spalten hinzu.
 """
 
 from alembic import op
@@ -15,14 +20,14 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID, JSON
 
 # revision identifiers, used by Alembic.
-revision = "026_add_backup_notification_featureflag"
-down_revision = "025_add_rls_policies"
+revision = "026"
+down_revision = "025"
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
-    """Create backup_records, notifications, and feature_flags tables."""
+    """Create backup_records, feature_flags tables and enhance notifications."""
 
     # =========================================================================
     # BACKUP_RECORDS TABLE
@@ -68,47 +73,55 @@ def upgrade() -> None:
     )
 
     # =========================================================================
-    # NOTIFICATIONS TABLE
+    # NOTIFICATIONS TABLE - Add missing columns (table created in migration 021)
     # =========================================================================
-    op.create_table(
-        "notifications",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True),
-        sa.Column(
-            "user_id",
-            UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
-            nullable=False
-        ),
-        sa.Column("notification_type", sa.String(30), nullable=False, default="info"),
-        sa.Column("title", sa.String(200), nullable=False),
-        sa.Column("message", sa.Text, nullable=False),
-        sa.Column("reference_type", sa.String(50), nullable=True),
-        sa.Column("reference_id", UUID(as_uuid=True), nullable=True),
-        sa.Column("read", sa.Boolean, default=False),
-        sa.Column("read_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("email_sent", sa.Boolean, default=False),
-        sa.Column("email_sent_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("data", JSON, default=dict),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
-    )
+    # Fuege zusaetzliche Spalten hinzu, die in 021 fehlen
+    op.execute("""
+        DO $$
+        BEGIN
+            -- notification_type (maps to 'type' from 021, add if needed as alias)
+            IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'notification_type') THEN
+                ALTER TABLE notifications ADD COLUMN notification_type VARCHAR(30);
+                UPDATE notifications SET notification_type = type WHERE notification_type IS NULL;
+            END IF;
 
-    # Indexes fuer notifications
-    op.create_index(
-        "ix_notifications_user_read",
-        "notifications",
-        ["user_id", "read"]
-    )
-    op.create_index(
-        "ix_notifications_user_created",
-        "notifications",
-        ["user_id", "created_at"]
-    )
-    op.create_index(
-        "ix_notifications_expires",
-        "notifications",
-        ["expires_at"]
-    )
+            -- reference_type (maps to 'entity_type' from 021)
+            IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'reference_type') THEN
+                ALTER TABLE notifications ADD COLUMN reference_type VARCHAR(50);
+                UPDATE notifications SET reference_type = entity_type WHERE reference_type IS NULL AND entity_type IS NOT NULL;
+            END IF;
+
+            -- reference_id (maps to 'entity_id' from 021)
+            IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'reference_id') THEN
+                ALTER TABLE notifications ADD COLUMN reference_id UUID;
+                UPDATE notifications SET reference_id = entity_id WHERE reference_id IS NULL AND entity_id IS NOT NULL;
+            END IF;
+
+            -- email_sent (new column)
+            IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'email_sent') THEN
+                ALTER TABLE notifications ADD COLUMN email_sent BOOLEAN DEFAULT false;
+            END IF;
+
+            -- email_sent_at (new column)
+            IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'email_sent_at') THEN
+                ALTER TABLE notifications ADD COLUMN email_sent_at TIMESTAMP WITH TIME ZONE;
+            END IF;
+
+            -- data (new column)
+            IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'data') THEN
+                ALTER TABLE notifications ADD COLUMN data JSON;
+            END IF;
+
+            -- expires_at (new column)
+            IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'expires_at') THEN
+                ALTER TABLE notifications ADD COLUMN expires_at TIMESTAMP WITH TIME ZONE;
+            END IF;
+        END $$;
+    """)
+
+    # Create indexes if not exist
+    op.execute("CREATE INDEX IF NOT EXISTS ix_notifications_user_created ON notifications (user_id, created_at)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_notifications_expires ON notifications (expires_at)")
 
     # =========================================================================
     # FEATURE_FLAGS TABLE
@@ -157,18 +170,43 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Drop backup_records, notifications, and feature_flags tables."""
+    """Drop backup_records, feature_flags tables and notification enhancements."""
 
     # Drop feature_flags
     op.drop_index("ix_feature_flags_enabled", table_name="feature_flags")
     op.drop_index("ix_feature_flags_key", table_name="feature_flags")
     op.drop_table("feature_flags")
 
-    # Drop notifications
-    op.drop_index("ix_notifications_expires", table_name="notifications")
-    op.drop_index("ix_notifications_user_created", table_name="notifications")
-    op.drop_index("ix_notifications_user_read", table_name="notifications")
-    op.drop_table("notifications")
+    # Drop notifications enhancements (table itself created in migration 021)
+    op.execute("DROP INDEX IF EXISTS ix_notifications_expires")
+    op.execute("DROP INDEX IF EXISTS ix_notifications_user_created")
+    op.execute("""
+        DO $$
+        BEGIN
+            -- Drop added columns (keep table, created in 021)
+            IF EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'expires_at') THEN
+                ALTER TABLE notifications DROP COLUMN expires_at;
+            END IF;
+            IF EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'data') THEN
+                ALTER TABLE notifications DROP COLUMN data;
+            END IF;
+            IF EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'email_sent_at') THEN
+                ALTER TABLE notifications DROP COLUMN email_sent_at;
+            END IF;
+            IF EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'email_sent') THEN
+                ALTER TABLE notifications DROP COLUMN email_sent;
+            END IF;
+            IF EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'reference_id') THEN
+                ALTER TABLE notifications DROP COLUMN reference_id;
+            END IF;
+            IF EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'reference_type') THEN
+                ALTER TABLE notifications DROP COLUMN reference_type;
+            END IF;
+            IF EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'notification_type') THEN
+                ALTER TABLE notifications DROP COLUMN notification_type;
+            END IF;
+        END $$;
+    """)
 
     # Drop backup_records
     op.drop_index("ix_backup_records_retention", table_name="backup_records")

@@ -17,8 +17,8 @@ RLS (Row Level Security) stellt sicher, dass:
 from alembic import op
 
 # revision identifiers
-revision = '060_add_rls_policies'
-down_revision = '059_add_gobd_compliance'
+revision = "060"
+down_revision = "059"
 branch_labels = None
 depends_on = None
 

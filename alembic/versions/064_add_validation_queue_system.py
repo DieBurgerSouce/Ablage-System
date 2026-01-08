@@ -17,8 +17,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers
-revision = '064_add_validation_queue_system'
-down_revision = '063_fix_privat_metadata_column'
+revision = "064"
+down_revision = "063"
 branch_labels = None
 depends_on = None
 
@@ -339,13 +339,14 @@ def upgrade() -> None:
 
     # =============================================================================
     # PERMISSIONS hinzufuegen
+    # NOTE: permissions Tabelle hat kein updated_at - nur created_at
     # =============================================================================
     op.execute("""
-        INSERT INTO permissions (id, name, description, resource_type, action, is_system, created_at, updated_at)
+        INSERT INTO permissions (id, name, description, resource_type, action, is_system, created_at)
         VALUES
-            (gen_random_uuid(), 'validation:write', 'Dokumente validieren und bearbeiten', 'validation', 'write', true, NOW(), NOW()),
-            (gen_random_uuid(), 'validation:manage', 'Validierungsregeln und -konfiguration verwalten', 'validation', 'manage', true, NOW(), NOW()),
-            (gen_random_uuid(), 'validation:read', 'Validierungsstatus und Statistiken einsehen', 'validation', 'read', true, NOW(), NOW())
+            (gen_random_uuid(), 'validation:write', 'Dokumente validieren und bearbeiten', 'validation', 'write', true, NOW()),
+            (gen_random_uuid(), 'validation:manage', 'Validierungsregeln und -konfiguration verwalten', 'validation', 'manage', true, NOW()),
+            (gen_random_uuid(), 'validation:read', 'Validierungsstatus und Statistiken einsehen', 'validation', 'read', true, NOW())
         ON CONFLICT (name) DO NOTHING;
     """)
 

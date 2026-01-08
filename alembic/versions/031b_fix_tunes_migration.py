@@ -14,8 +14,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '031b_fix_tunes'
-down_revision = '031_add_tunes'
+revision = '031b'
+down_revision = '031'
 branch_labels = None
 depends_on = None
 
@@ -33,12 +33,13 @@ def upgrade() -> None:
     """)
 
     # Erstelle Trigger auf tunes-Tabelle
+    # WICHTIG: Separate op.execute() calls - PostgreSQL erlaubt keine multiple commands in prepared statements
+    op.execute("DROP TRIGGER IF EXISTS update_tunes_updated_at ON tunes")
     op.execute("""
-        DROP TRIGGER IF EXISTS update_tunes_updated_at ON tunes;
         CREATE TRIGGER update_tunes_updated_at
             BEFORE UPDATE ON tunes
             FOR EACH ROW
-            EXECUTE FUNCTION tunes_update_updated_at_column();
+            EXECUTE FUNCTION tunes_update_updated_at_column()
     """)
 
     # Ändere id-Column um server_default hinzuzufügen

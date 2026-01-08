@@ -19,8 +19,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = "025_add_rls_policies"
-down_revision = "024_add_missing_constraints"
+revision = "025"
+down_revision = "024"
 branch_labels = None
 depends_on = None
 

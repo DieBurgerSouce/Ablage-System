@@ -29,8 +29,8 @@ from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
-revision = '050_add_position_weighted_analytics'
-down_revision = '049_fix_banking_numeric_types'
+revision = "050"
+down_revision = "049"
 branch_labels = None
 depends_on = None
 

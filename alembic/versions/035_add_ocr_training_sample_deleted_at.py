@@ -12,8 +12,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers
-revision = "035_add_ocr_training_sample_deleted_at"
-down_revision = "034_add_missing_indexes"
+revision = "035"
+down_revision = "034"
 branch_labels = None
 depends_on = None
 

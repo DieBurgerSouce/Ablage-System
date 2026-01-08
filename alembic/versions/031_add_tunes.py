@@ -11,8 +11,8 @@ from sqlalchemy.dialects import postgresql
 import uuid
 
 # revision identifiers, used by Alembic.
-revision = '031_add_tunes'
-down_revision = '030_add_bulk_processing'
+revision = '031'
+down_revision = '030'
 branch_labels = None
 depends_on = None
 

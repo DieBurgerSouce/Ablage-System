@@ -116,7 +116,13 @@ apiClient.interceptors.response.use(
         originalRequest._retryCount = originalRequest._retryCount || 0;
 
         // Handle 401 Unauthorized (Auth-spezifisch, kein Retry)
-        if (error.response?.status === 401 && !originalRequest._isRetry) {
+        // WICHTIG: Login- und Register-Endpoints von Token-Refresh ausschließen!
+        // Bei diesen Endpoints ist ein 401 ein echter Auth-Fehler, kein abgelaufener Token.
+        const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
+                               originalRequest.url?.includes('/auth/register') ||
+                               originalRequest.url?.includes('/auth/verify-2fa');
+
+        if (error.response?.status === 401 && !originalRequest._isRetry && !isAuthEndpoint) {
             originalRequest._isRetry = true;
 
             try {

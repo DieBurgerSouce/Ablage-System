@@ -11,8 +11,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = '044_nullable_chunk_embedding'
-down_revision = '043_add_vector_ab_testing'
+revision = "044"
+down_revision = "043"
 branch_labels = None
 depends_on = None
 

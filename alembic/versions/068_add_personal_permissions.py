@@ -42,8 +42,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '068_add_personal_permissions'
-down_revision: Union[str, None] = '067_add_job_queue_permissions'
+revision: str = "068"
+down_revision: Union[str, None] = "067"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -10,8 +10,8 @@ Umbenennung zu 'contact_relationship' erforderlich.
 """
 from alembic import op
 
-revision = '065_fix_privat_relationship_column'
-down_revision = '064_add_validation_queue_system'
+revision = "065"
+down_revision = "064"
 branch_labels = None
 depends_on = None
 

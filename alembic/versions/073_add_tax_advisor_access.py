@@ -20,8 +20,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 import uuid
 
-revision = '073_add_tax_advisor_access'
-down_revision = '072_add_gobd_archives'
+revision = '073'
+down_revision = '072'
 branch_labels = None
 depends_on = None
 

@@ -14,8 +14,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 # revision identifiers
-revision = '080_add_push_subscriptions'
-down_revision = '079_add_workflow_automation'
+revision = '080'
+down_revision = '079'
 branch_labels = None
 depends_on = None
 

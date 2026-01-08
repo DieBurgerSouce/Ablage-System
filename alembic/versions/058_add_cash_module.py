@@ -22,8 +22,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '058_add_cash_module'
-down_revision = '057_add_multi_company_support'
+revision = "058"
+down_revision = "057"
 branch_labels = None
 depends_on = None
 

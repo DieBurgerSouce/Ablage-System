@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 
-revision = '045_add_einvoice_support'
-down_revision = '044_nullable_chunk_embedding'
+revision = "045"
+down_revision = "044"
 branch_labels = None
 depends_on = None
 

@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers
 revision = 'streckengeschaeft_004'
-down_revision = 'streckengeschaeft_003'
+down_revision = '080'
 branch_labels = None
 depends_on = None
 
@@ -74,7 +74,7 @@ def upgrade() -> None:
     )
 
     # Create indexes
-    op.create_index('ix_zm_submissions_period', 'zm_submissions', ['period'])
+    # NOTE: ix_zm_submissions_period bereits durch index=True in Column erstellt
     op.create_index('ix_zm_submissions_status', 'zm_submissions', ['status'])
     op.create_index('ix_zm_submissions_deadline', 'zm_submissions', ['deadline', 'is_late'])
 
@@ -83,5 +83,5 @@ def downgrade() -> None:
     """Drop zm_submissions table."""
     op.drop_index('ix_zm_submissions_deadline', table_name='zm_submissions')
     op.drop_index('ix_zm_submissions_status', table_name='zm_submissions')
-    op.drop_index('ix_zm_submissions_period', table_name='zm_submissions')
+    # NOTE: ix_zm_submissions_period wird mit Tabelle geloescht (inline index=True)
     op.drop_table('zm_submissions')

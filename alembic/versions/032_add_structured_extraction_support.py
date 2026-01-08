@@ -16,8 +16,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 
 # revision identifiers
-revision = "032_structured_extraction"
-down_revision = "031b_fix_tunes"  # Geändert: Zeigt jetzt auf den Fix
+revision = "032"
+down_revision = "031b"
 branch_labels = None
 depends_on = None
 

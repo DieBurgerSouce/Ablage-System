@@ -65,37 +65,45 @@ def upgrade() -> None:
 
     # PostgreSQL-spezifische Trigger für Immutabilität
     # Verhindert UPDATE und DELETE auf audit_logs
+    # WICHTIG: Separate op.execute() calls - PostgreSQL erlaubt keine multiple commands in prepared statements
+
+    # Trigger-Funktion für UPDATE-Verhinderung
     op.execute("""
-        -- Trigger-Funktion für UPDATE-Verhinderung
         CREATE OR REPLACE FUNCTION audit_logs_prevent_update()
         RETURNS TRIGGER AS $$
         BEGIN
             RAISE EXCEPTION 'UPDATE nicht erlaubt auf audit_logs (Immutabilität)';
             RETURN NULL;
         END;
-        $$ LANGUAGE plpgsql;
+        $$ LANGUAGE plpgsql
+    """)
 
-        -- Trigger-Funktion für DELETE-Verhinderung
+    # Trigger-Funktion für DELETE-Verhinderung
+    op.execute("""
         CREATE OR REPLACE FUNCTION audit_logs_prevent_delete()
         RETURNS TRIGGER AS $$
         BEGIN
             RAISE EXCEPTION 'DELETE nicht erlaubt auf audit_logs (Immutabilität)';
             RETURN NULL;
         END;
-        $$ LANGUAGE plpgsql;
+        $$ LANGUAGE plpgsql
+    """)
 
-        -- Trigger erstellen
-        DROP TRIGGER IF EXISTS tr_audit_logs_no_update ON audit_logs;
+    # Trigger erstellen
+    op.execute("DROP TRIGGER IF EXISTS tr_audit_logs_no_update ON audit_logs")
+    op.execute("""
         CREATE TRIGGER tr_audit_logs_no_update
             BEFORE UPDATE ON audit_logs
             FOR EACH ROW
-            EXECUTE FUNCTION audit_logs_prevent_update();
+            EXECUTE FUNCTION audit_logs_prevent_update()
+    """)
 
-        DROP TRIGGER IF EXISTS tr_audit_logs_no_delete ON audit_logs;
+    op.execute("DROP TRIGGER IF EXISTS tr_audit_logs_no_delete ON audit_logs")
+    op.execute("""
         CREATE TRIGGER tr_audit_logs_no_delete
             BEFORE DELETE ON audit_logs
             FOR EACH ROW
-            EXECUTE FUNCTION audit_logs_prevent_delete();
+            EXECUTE FUNCTION audit_logs_prevent_delete()
     """)
 
 
@@ -105,13 +113,11 @@ def downgrade() -> None:
 
     WARNUNG: Downgrade entfernt die Integritätsprüfung!
     """
-    # PostgreSQL-Trigger entfernen
-    op.execute("""
-        DROP TRIGGER IF EXISTS tr_audit_logs_no_update ON audit_logs;
-        DROP TRIGGER IF EXISTS tr_audit_logs_no_delete ON audit_logs;
-        DROP FUNCTION IF EXISTS audit_logs_prevent_update();
-        DROP FUNCTION IF EXISTS audit_logs_prevent_delete();
-    """)
+    # PostgreSQL-Trigger entfernen (separate Aufrufe)
+    op.execute("DROP TRIGGER IF EXISTS tr_audit_logs_no_update ON audit_logs")
+    op.execute("DROP TRIGGER IF EXISTS tr_audit_logs_no_delete ON audit_logs")
+    op.execute("DROP FUNCTION IF EXISTS audit_logs_prevent_update()")
+    op.execute("DROP FUNCTION IF EXISTS audit_logs_prevent_delete()")
 
     # Indexes entfernen
     op.drop_index('ix_audit_logs_integrity_hash', table_name='audit_logs')

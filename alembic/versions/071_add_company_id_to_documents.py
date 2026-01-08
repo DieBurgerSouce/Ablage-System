@@ -14,8 +14,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '071_add_company_id_to_documents'
-down_revision = '070_add_collaboration'
+revision = "071"
+down_revision = "070"
 branch_labels = None
 depends_on = None
 

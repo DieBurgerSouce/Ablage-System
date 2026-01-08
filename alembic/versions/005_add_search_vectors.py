@@ -91,13 +91,14 @@ def upgrade() -> None:
     """)
 
     # ========== Create trigger for automatic tsvector updates ==========
+    # WICHTIG: Separate op.execute() calls - PostgreSQL erlaubt keine multiple commands in prepared statements
+    op.execute("DROP TRIGGER IF EXISTS documents_search_vector_trigger ON documents")
     op.execute("""
-        DROP TRIGGER IF EXISTS documents_search_vector_trigger ON documents;
         CREATE TRIGGER documents_search_vector_trigger
             BEFORE INSERT OR UPDATE OF filename, original_filename, extracted_text, document_type
             ON documents
             FOR EACH ROW
-            EXECUTE FUNCTION documents_search_vector_update();
+            EXECUTE FUNCTION documents_search_vector_update()
     """)
 
     # ========== Populate search_vector for existing documents ==========

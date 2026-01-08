@@ -22,8 +22,8 @@ from sqlalchemy.dialects import postgresql
 import uuid
 
 # revision identifiers, used by Alembic.
-revision = "038_enhance_tags_for_admin_management"
-down_revision = "037_add_company_settings"
+revision = "038"
+down_revision = "037"
 branch_labels = None
 depends_on = None
 

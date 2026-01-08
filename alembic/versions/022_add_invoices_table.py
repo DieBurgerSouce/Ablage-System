@@ -9,6 +9,10 @@ Implements financial tracking system for:
 - Payment status tracking
 - Financial aggregations and reporting
 - Deadline monitoring
+
+NOTE: company_id column added without FK constraint here because
+companies table is created later in migration 057. FK constraint
+is added in a later migration after companies table exists.
 """
 from alembic import op
 import sqlalchemy as sa
@@ -17,7 +21,7 @@ from decimal import Decimal
 
 # revision identifiers
 revision = '022'
-down_revision = '021'
+down_revision = '021b'
 branch_labels = None
 depends_on = None
 
@@ -28,7 +32,8 @@ def upgrade() -> None:
         'invoices',
         sa.Column('id', UUID(as_uuid=True), primary_key=True),
         sa.Column('document_id', UUID(as_uuid=True), sa.ForeignKey('documents.id', ondelete='CASCADE'), nullable=False, unique=True),
-        sa.Column('company_id', UUID(as_uuid=True), sa.ForeignKey('companies.id'), nullable=False),
+        # NOTE: company_id ohne FK weil companies Tabelle erst in Migration 057 erstellt wird
+        sa.Column('company_id', UUID(as_uuid=True), nullable=True),
 
         # Invoice details
         sa.Column('invoice_number', sa.String(100), nullable=False, unique=True),

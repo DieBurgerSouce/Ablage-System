@@ -15,8 +15,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers
-revision = '059_add_gobd_compliance'
-down_revision = '058_add_cash_module'
+revision = "059"
+down_revision = "058"
 branch_labels = None
 depends_on = None
 

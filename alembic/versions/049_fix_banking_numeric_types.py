@@ -22,8 +22,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '049_fix_banking_numeric_types'
-down_revision = '048_add_datev_indexes'
+revision = "049"
+down_revision = "048"
 branch_labels = None
 depends_on = None
 

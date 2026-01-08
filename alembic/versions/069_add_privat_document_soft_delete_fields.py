@@ -16,8 +16,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 
-revision = '069_add_privat_document_soft_delete_fields'
-down_revision = '068_add_personal_permissions'
+revision = "069"
+down_revision = "068"
 branch_labels = None
 depends_on = None
 

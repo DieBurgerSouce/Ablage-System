@@ -9,8 +9,8 @@ Umbenennung zu 'doc_metadata' erforderlich.
 """
 from alembic import op
 
-revision = '063_fix_privat_metadata_column'
-down_revision = '062_add_privat_module'
+revision = "063"
+down_revision = "062"
 branch_labels = None
 depends_on = None
 

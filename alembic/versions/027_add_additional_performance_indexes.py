@@ -19,8 +19,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = "027_add_additional_performance_indexes"
-down_revision = "026_add_backup_notification_featureflag"
+revision = "027"
+down_revision = "026"
 branch_labels = None
 depends_on = None
 

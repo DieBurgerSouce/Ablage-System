@@ -9,8 +9,8 @@ Umbenennung zu 'search_query' erforderlich um Konflikte zu vermeiden.
 """
 from alembic import op
 
-revision = '066_fix_search_analytics_query'
-down_revision = '065_fix_privat_relationship_column'
+revision = "066"
+down_revision = "065"
 branch_labels = None
 depends_on = None
 

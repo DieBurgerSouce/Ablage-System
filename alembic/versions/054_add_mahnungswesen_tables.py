@@ -25,8 +25,8 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 
 # revision identifiers, used by Alembic.
-revision = '054_add_mahnungswesen'
-down_revision = '053_add_user_preferences'
+revision = "054"
+down_revision = "053"
 branch_labels = None
 depends_on = None
 

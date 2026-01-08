@@ -20,8 +20,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = "024_add_missing_constraints"
-down_revision = "023_add_performance_indexes"
+revision = "024"
+down_revision = "023b"
 branch_labels = None
 depends_on = None
 

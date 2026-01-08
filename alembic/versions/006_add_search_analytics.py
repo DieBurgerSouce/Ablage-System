@@ -114,6 +114,7 @@ def upgrade() -> None:
     )
 
     # ========== Create materialized view for daily statistics ==========
+    # WICHTIG: Separate op.execute() calls - PostgreSQL erlaubt keine multiple commands in prepared statements
     op.execute("""
         CREATE MATERIALIZED VIEW IF NOT EXISTS search_analytics_daily AS
         SELECT
@@ -130,10 +131,9 @@ def upgrade() -> None:
             SUM(CASE WHEN has_date_filter THEN 1 ELSE 0 END) as searches_with_date_filter
         FROM search_analytics
         GROUP BY DATE_TRUNC('day', created_at), search_type
-        ORDER BY date DESC, search_type;
-
-        CREATE UNIQUE INDEX ON search_analytics_daily (date, search_type);
+        ORDER BY date DESC, search_type
     """)
+    op.execute("CREATE UNIQUE INDEX ON search_analytics_daily (date, search_type)")
 
     # ========== Create function to refresh materialized view ==========
     op.execute("""

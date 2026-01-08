@@ -13,8 +13,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '047_add_datev_support'
-down_revision = '046_add_banking_tables'
+revision = "047"
+down_revision = "046"
 branch_labels = None
 depends_on = None
 

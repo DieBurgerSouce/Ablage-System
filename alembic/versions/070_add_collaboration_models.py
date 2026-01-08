@@ -15,8 +15,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '070_add_collaboration'
-down_revision = '069_add_privat_document_soft_delete_fields'
+revision = "070"
+down_revision = "069"
 branch_labels = None
 depends_on = None
 

@@ -24,8 +24,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "040_add_surya_model_versions"
-down_revision = "039_add_quick_classification"
+revision = "040"
+down_revision = "039"
 branch_labels = None
 depends_on = None
 

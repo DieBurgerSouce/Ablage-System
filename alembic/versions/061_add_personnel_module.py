@@ -26,8 +26,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '061_add_personnel_module'
-down_revision = '060_add_rls_policies'
+revision = "061"
+down_revision = "060"
 branch_labels = None
 depends_on = None
 

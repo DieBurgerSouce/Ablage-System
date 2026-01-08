@@ -14,8 +14,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers
-revision = "036_fix_embedding_dimensions"
-down_revision = "035_add_ocr_training_sample_deleted_at"
+revision = "036"
+down_revision = "035"
 branch_labels = None
 depends_on = None
 

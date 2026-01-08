@@ -32,8 +32,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '062_add_privat_module'
-down_revision = '061_add_personnel_module'
+revision = "062"
+down_revision = "061"
 branch_labels = None
 depends_on = None
 
@@ -789,14 +789,15 @@ def upgrade() -> None:
     # 18. NEUE PERMISSION UND ROLLE FUER PRIVAT-MODUL
     # =========================================================================
     # Neue Permissions hinzufuegen
+    # NOTE: permissions Tabelle hat kein updated_at - nur created_at
     if is_postgres:
         op.execute("""
-            INSERT INTO permissions (id, name, resource_type, action, is_system, created_at, updated_at)
+            INSERT INTO permissions (id, name, resource_type, action, is_system, created_at)
             VALUES
-                (gen_random_uuid(), 'privat:read', 'privat', 'read', true, NOW(), NOW()),
-                (gen_random_uuid(), 'privat:write', 'privat', 'write', true, NOW(), NOW()),
-                (gen_random_uuid(), 'privat:manage', 'privat', 'manage', true, NOW(), NOW()),
-                (gen_random_uuid(), 'privat:admin', 'privat', 'admin', true, NOW(), NOW())
+                (gen_random_uuid(), 'privat:read', 'privat', 'read', true, NOW()),
+                (gen_random_uuid(), 'privat:write', 'privat', 'write', true, NOW()),
+                (gen_random_uuid(), 'privat:manage', 'privat', 'manage', true, NOW()),
+                (gen_random_uuid(), 'privat:admin', 'privat', 'admin', true, NOW())
             ON CONFLICT (name) DO NOTHING;
         """)
 

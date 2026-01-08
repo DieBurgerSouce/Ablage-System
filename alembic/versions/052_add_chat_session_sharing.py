@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '052_add_chat_session_sharing'
-down_revision = '051_add_attached_document'
+revision = "052"
+down_revision = "051"
 branch_labels = None
 depends_on = None
 

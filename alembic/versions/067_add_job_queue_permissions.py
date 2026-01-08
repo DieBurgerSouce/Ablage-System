@@ -20,8 +20,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '067_add_job_queue_permissions'
-down_revision: Union[str, None] = '066_fix_search_analytics_query'
+revision: str = "067"
+down_revision: Union[str, None] = "066"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

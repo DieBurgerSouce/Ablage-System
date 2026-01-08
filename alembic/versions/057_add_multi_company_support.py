@@ -13,8 +13,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '057_add_multi_company_support'
-down_revision = '056_add_finance_history'
+revision = "057"
+down_revision = "056"
 branch_labels = None
 depends_on = None
 
@@ -201,6 +201,29 @@ def upgrade() -> None:
             )
         """)
 
+    # =========================================================================
+    # 5. ADD FK CONSTRAINT TO INVOICES TABLE (if exists)
+    # =========================================================================
+    # invoices.company_id wurde in Migration 022 ohne FK erstellt
+    # Jetzt koennen wir die FK Constraint hinzufuegen
+    if is_postgres:
+        op.execute("""
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'invoices') THEN
+                    IF NOT EXISTS (
+                        SELECT FROM information_schema.table_constraints
+                        WHERE constraint_name = 'fk_invoices_company_id'
+                        AND table_name = 'invoices'
+                    ) THEN
+                        ALTER TABLE invoices
+                        ADD CONSTRAINT fk_invoices_company_id
+                        FOREIGN KEY (company_id) REFERENCES companies(id);
+                    END IF;
+                END IF;
+            END $$;
+        """)
+
 
 def downgrade() -> None:
     """Remove multi-company support tables."""
@@ -208,6 +231,21 @@ def downgrade() -> None:
     # Check dialect
     bind = op.get_bind()
     is_postgres = bind.dialect.name == "postgresql"
+
+    # Drop FK constraint from invoices (if exists)
+    if is_postgres:
+        op.execute("""
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT FROM information_schema.table_constraints
+                    WHERE constraint_name = 'fk_invoices_company_id'
+                    AND table_name = 'invoices'
+                ) THEN
+                    ALTER TABLE invoices DROP CONSTRAINT fk_invoices_company_id;
+                END IF;
+            END $$;
+        """)
 
     # Drop RLS policies (PostgreSQL only)
     if is_postgres:

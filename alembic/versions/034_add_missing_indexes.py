@@ -20,8 +20,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers
-revision = "034_add_missing_indexes"
-down_revision = "033_add_rag_tables"
+revision = "034"
+down_revision = "033"
 branch_labels = None
 depends_on = None
 

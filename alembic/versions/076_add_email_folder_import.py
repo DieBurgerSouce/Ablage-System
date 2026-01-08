@@ -14,8 +14,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "076_add_email_folder_import"
-down_revision = "075_add_user_dashboards"
+revision = "076"
+down_revision = "075"
 branch_labels = None
 depends_on = None
 
@@ -98,7 +98,7 @@ def upgrade() -> None:
 
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["company_id"], ["companies.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["default_folder_id"], ["folders.id"], ondelete="SET NULL"),
+        # NOTE: default_folder_id ohne FK - folders Tabelle existiert nicht
         sa.ForeignKeyConstraint(["created_by_id"], ["users.id"], ondelete="SET NULL"),
     )
 
@@ -169,7 +169,7 @@ def upgrade() -> None:
 
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["company_id"], ["companies.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["default_folder_id"], ["folders.id"], ondelete="SET NULL"),
+        # NOTE: default_folder_id ohne FK - folders Tabelle existiert nicht
         sa.ForeignKeyConstraint(["created_by_id"], ["users.id"], ondelete="SET NULL"),
     )
 

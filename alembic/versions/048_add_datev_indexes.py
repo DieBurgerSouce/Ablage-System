@@ -17,8 +17,8 @@ from alembic import op
 
 
 # revision identifiers, used by Alembic.
-revision = '048_add_datev_indexes'
-down_revision = '047_add_datev_support'
+revision = "048"
+down_revision = "047"
 branch_labels = None
 depends_on = None
 

@@ -15,8 +15,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "077_add_ai_autonomy"
-down_revision = "076_add_email_folder_import"
+revision = "077"
+down_revision = "076"
 branch_labels = None
 depends_on = None
 

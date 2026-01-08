@@ -20,8 +20,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '072_add_gobd_archives'
-down_revision = '071_add_company_id_to_documents'
+revision = '072'
+down_revision = '071'
 branch_labels = None
 depends_on = None
 

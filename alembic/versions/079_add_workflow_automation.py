@@ -15,8 +15,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "079_add_workflow_automation"
-down_revision = "078_add_report_builder"
+revision = "079"
+down_revision = "078"
 branch_labels = None
 depends_on = None
 

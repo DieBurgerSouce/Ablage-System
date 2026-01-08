@@ -25,8 +25,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 
 # revision identifiers
-revision = "033_add_rag_tables"
-down_revision = "032_structured_extraction"
+revision = "033"
+down_revision = "032"
 branch_labels = None
 depends_on = None
 

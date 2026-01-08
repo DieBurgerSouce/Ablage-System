@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers
 revision = 'streckengeschaeft_001'
-down_revision = '058_add_cash_module'
+down_revision = '058'
 branch_labels = None
 depends_on = None
 
