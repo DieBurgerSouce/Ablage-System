@@ -334,25 +334,32 @@ export function ClassificationDetail() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['streckengeschaeft', 'classification', classificationId],
-    queryFn: () =>
-      apiClient.get(`/streckengeschaeft/classifications/${classificationId}`, {
+    queryFn: async () => {
+      const response = await apiClient.get(`/streckengeschaeft/classifications/${classificationId}`, {
         params: { include_audit_log: true },
-      }),
+      });
+      return response.data;
+    },
   });
 
   const { data: proofsData } = useQuery({
     queryKey: ['streckengeschaeft', 'proofs', classificationId],
-    queryFn: () => apiClient.get(`/streckengeschaeft/classifications/${classificationId}/proofs`),
+    queryFn: async () => {
+      const response = await apiClient.get(`/streckengeschaeft/classifications/${classificationId}/proofs`);
+      return response.data;
+    },
     enabled: !!classificationId,
   });
 
   const datevExportMutation = useMutation({
-    mutationFn: () =>
-      apiClient.post('/streckengeschaeft/datev/export', {
+    mutationFn: async () => {
+      const response = await apiClient.post('/streckengeschaeft/datev/export', {
         classification_ids: [classificationId],
         kontenrahmen: 'SKR03',
         include_zm_data: true,
-      }),
+      });
+      return response.data;
+    },
     onSuccess: (exportData) => {
       toast({
         title: t('streckengeschaeft.datev.exportSuccess').replace(

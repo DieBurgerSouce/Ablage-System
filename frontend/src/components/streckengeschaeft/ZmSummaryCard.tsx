@@ -220,18 +220,22 @@ export function ZmSummaryCard() {
     error,
   } = useQuery({
     queryKey: ['streckengeschaeft', 'zm', 'summary', selectedPeriod],
-    queryFn: () =>
-      apiClient.get<ZmSummary>(`/streckengeschaeft/zm/summary`, {
+    queryFn: async () => {
+      const response = await apiClient.get<ZmSummary>(`/streckengeschaeft/zm/summary`, {
         params: { period: selectedPeriod },
-      }),
+      });
+      return response.data;
+    },
   });
 
   const { data: records } = useQuery({
     queryKey: ['streckengeschaeft', 'zm', 'records', selectedPeriod],
-    queryFn: () =>
-      apiClient.get(`/streckengeschaeft/zm/records`, {
+    queryFn: async () => {
+      const response = await apiClient.get(`/streckengeschaeft/zm/records`, {
         params: { period: selectedPeriod },
-      }),
+      });
+      return response.data;
+    },
     enabled: !!summary,
   });
 
