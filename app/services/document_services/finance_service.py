@@ -255,7 +255,7 @@ class FinanceService(DocumentServiceBase):
                 func.max(Document.created_at).label("last_doc_date"),
             )
             .where(Document.owner_id == user_id)
-            .where(Document.is_deleted == False)
+            .where(Document.deleted_at.is_(None))
             .where(Document.document_type.in_(list(FINANCE_DOCUMENT_TYPES)))
             .group_by(extract("year", Document.created_at))
             .order_by(extract("year", Document.created_at).desc())
@@ -312,7 +312,7 @@ class FinanceService(DocumentServiceBase):
         count_query = (
             select(func.count(Document.id))
             .where(Document.owner_id == user_id)
-            .where(Document.is_deleted == False)
+            .where(Document.deleted_at.is_(None))
             .where(Document.document_type.in_(list(FINANCE_DOCUMENT_TYPES)))
             .where(extract("year", Document.created_at) == year)
         )
@@ -327,7 +327,7 @@ class FinanceService(DocumentServiceBase):
         last_date_query = (
             select(func.max(Document.created_at))
             .where(Document.owner_id == user_id)
-            .where(Document.is_deleted == False)
+            .where(Document.deleted_at.is_(None))
             .where(Document.document_type.in_(list(FINANCE_DOCUMENT_TYPES)))
             .where(extract("year", Document.created_at) == year)
         )
@@ -377,7 +377,7 @@ class FinanceService(DocumentServiceBase):
         base_query = (
             select(Document)
             .where(Document.owner_id == user_id)
-            .where(Document.is_deleted == False)
+            .where(Document.deleted_at.is_(None))
             .where(Document.document_type.in_(list(FINANCE_DOCUMENT_TYPES)))
         )
 
@@ -385,7 +385,7 @@ class FinanceService(DocumentServiceBase):
         count_result = await db.execute(
             select(func.count(Document.id))
             .where(Document.owner_id == user_id)
-            .where(Document.is_deleted == False)
+            .where(Document.deleted_at.is_(None))
             .where(Document.document_type.in_(list(FINANCE_DOCUMENT_TYPES)))
         )
         total_documents = count_result.scalar() or 0
@@ -433,7 +433,7 @@ class FinanceService(DocumentServiceBase):
         count_result = await db.execute(
             select(func.count(Document.id))
             .where(Document.owner_id == user_id)
-            .where(Document.is_deleted == False)
+            .where(Document.deleted_at.is_(None))
             .where(Document.document_type.in_(list(FINANCE_DOCUMENT_TYPES)))
             .where(extract("year", Document.created_at) == year)
         )
@@ -485,7 +485,7 @@ class FinanceService(DocumentServiceBase):
         # Basis-Query
         conditions = [
             Document.owner_id == user_id,
-            Document.is_deleted == False,
+            Document.deleted_at.is_(None),
             extract("year", Document.created_at) == filter_params.year,
         ]
 
@@ -581,7 +581,7 @@ class FinanceService(DocumentServiceBase):
         """
         conditions = [
             Document.owner_id == user_id,
-            Document.is_deleted == False,
+            Document.deleted_at.is_(None),
             extract("year", Document.created_at) == year,
         ]
 
@@ -641,7 +641,7 @@ class FinanceService(DocumentServiceBase):
                 func.count(Document.id).label("count"),
             )
             .where(Document.owner_id == user_id)
-            .where(Document.is_deleted == False)
+            .where(Document.deleted_at.is_(None))
             .where(Document.document_type.in_(list(FINANCE_DOCUMENT_TYPES)))
             .where(extract("year", Document.created_at) == year)
             .group_by(Document.document_type)
@@ -717,7 +717,7 @@ class FinanceService(DocumentServiceBase):
                 ), 0) as erstattung
             FROM documents
             WHERE owner_id = :user_id
-              AND is_deleted = FALSE
+              AND deleted_at IS NULL
               AND document_type IN ({doc_types_str})
               {year_clause}
         """)
@@ -769,7 +769,7 @@ class FinanceService(DocumentServiceBase):
                 END) as overdue
             FROM documents
             WHERE owner_id = :user_id
-              AND is_deleted = FALSE
+              AND deleted_at IS NULL
               AND document_type IN ({doc_types_str})
               AND extracted_data->>'einspruchsfrist' IS NOT NULL
               {year_clause}
@@ -800,7 +800,7 @@ class FinanceService(DocumentServiceBase):
         """Hole Dokument-Counts pro Kategorie."""
         conditions = [
             Document.owner_id == user_id,
-            Document.is_deleted == False,
+            Document.deleted_at.is_(None),
             Document.document_type.in_(list(FINANCE_DOCUMENT_TYPES)),
         ]
 
@@ -858,7 +858,7 @@ class FinanceService(DocumentServiceBase):
 
         conditions = [
             Document.owner_id == user_id,
-            Document.is_deleted == False,
+            Document.deleted_at.is_(None),
             extract("year", Document.created_at) == year,
         ]
 
@@ -933,7 +933,7 @@ class FinanceService(DocumentServiceBase):
                 END) as overdue
             FROM documents
             WHERE owner_id = :user_id
-              AND is_deleted = FALSE
+              AND deleted_at IS NULL
               AND EXTRACT(YEAR FROM created_at) = :year
               AND extracted_data->>'einspruchsfrist' IS NOT NULL
               {doc_type_filter}
@@ -1050,7 +1050,7 @@ class FinanceService(DocumentServiceBase):
             select(Document)
             .where(Document.id == document_id)
             .where(Document.owner_id == user_id)
-            .where(Document.is_deleted == False)
+            .where(Document.deleted_at.is_(None))
         )
         result = await db.execute(query)
         document = result.scalar_one_or_none()
@@ -1133,7 +1133,7 @@ class FinanceService(DocumentServiceBase):
             select(Document)
             .where(Document.id == document_id)
             .where(Document.owner_id == user_id)
-            .where(Document.is_deleted == False)
+            .where(Document.deleted_at.is_(None))
         )
         result = await db.execute(query)
         document = result.scalar_one_or_none()
@@ -1177,7 +1177,7 @@ class FinanceService(DocumentServiceBase):
             select(Document)
             .where(Document.id == document_id)
             .where(Document.owner_id == user_id)
-            .where(Document.is_deleted == False)
+            .where(Document.deleted_at.is_(None))
             .options(selectinload(Document.tags))
         )
         result = await db.execute(query)

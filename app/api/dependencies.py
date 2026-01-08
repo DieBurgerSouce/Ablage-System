@@ -763,7 +763,7 @@ async def verify_document_ownership(
         select(Document).where(
             Document.id == document_id,
             Document.owner_id == current_user.id,
-            Document.is_deleted == False  # P.2 FIX: Geloeschte Dokumente ausschliessen
+            Document.deleted_at.is_(None)  # P.2 FIX: Geloeschte Dokumente ausschliessen
         )
     )
     document = result.scalar_one_or_none()

@@ -1112,7 +1112,7 @@ async def list_finance_deadlines(
         query = select(Document).where(
             and_(
                 Document.owner_id == current_user.id,
-                Document.is_deleted == False,
+                Document.deleted_at.is_(None),
                 # Nur Dokumente mit Einspruchsfrist
                 Document.extracted_data.isnot(None),
             )

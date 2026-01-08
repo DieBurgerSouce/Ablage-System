@@ -462,7 +462,7 @@ async def _async_generate_stats() -> Dict[str, Any]:
         # Gesamt-Dokumente
         total_result = await db.execute(
             select(func.count()).select_from(Document).where(
-                Document.is_deleted == False
+                Document.deleted_at.is_(None)
             )
         )
         total_documents = total_result.scalar() or 0
@@ -473,7 +473,7 @@ async def _async_generate_stats() -> Dict[str, Any]:
             .select_from(Document)
             .where(
                 and_(
-                    Document.is_deleted == False,
+                    Document.deleted_at.is_(None),
                     Document.extracted_data.isnot(None),
                 )
             )
@@ -484,7 +484,7 @@ async def _async_generate_stats() -> Dict[str, Any]:
         docs_result = await db.execute(
             select(Document).where(
                 and_(
-                    Document.is_deleted == False,
+                    Document.deleted_at.is_(None),
                     Document.extracted_data.isnot(None),
                 )
             )

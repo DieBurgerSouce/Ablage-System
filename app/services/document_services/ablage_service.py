@@ -105,12 +105,12 @@ class AblageService(DocumentServiceBase):
         query = (
             select(Document)
             .where(Document.owner_id == user_id)
-            .where(Document.is_deleted == False)
+            .where(Document.deleted_at.is_(None))
         )
         count_query = (
             select(func.count(Document.id))
             .where(Document.owner_id == user_id)
-            .where(Document.is_deleted == False)
+            .where(Document.deleted_at.is_(None))
         )
 
         # Filter-Bedingungen aufbauen
@@ -177,7 +177,7 @@ class AblageService(DocumentServiceBase):
         # Basis-Query fuer die Kategorie
         base_conditions = [
             Document.owner_id == user_id,
-            Document.is_deleted == False,
+            Document.deleted_at.is_(None),
         ]
 
         # Kategorie-Filter
@@ -328,7 +328,7 @@ class AblageService(DocumentServiceBase):
             .where(and_(
                 Document.id.in_(document_ids),
                 Document.owner_id == user_id,
-                Document.is_deleted == False
+                Document.deleted_at.is_(None)
             ))
         )
         result = await db.execute(query)
@@ -409,7 +409,7 @@ class AblageService(DocumentServiceBase):
             .where(and_(
                 Document.id.in_(document_ids),
                 Document.owner_id == user_id,
-                Document.is_deleted == False
+                Document.deleted_at.is_(None)
             ))
             .order_by(Document.created_at.desc())
         )
@@ -493,7 +493,7 @@ class AblageService(DocumentServiceBase):
         query = select(Document).where(and_(
             Document.id == document_id,
             Document.owner_id == user_id,
-            Document.is_deleted == False
+            Document.deleted_at.is_(None)
         ))
         result = await db.execute(query)
         doc = result.scalar_one_or_none()
@@ -634,7 +634,7 @@ class AblageService(DocumentServiceBase):
         query = select(Document).where(and_(
             Document.id.in_(document_ids),
             Document.owner_id == user_id,
-            Document.is_deleted == False
+            Document.deleted_at.is_(None)
         ))
         result = await db.execute(query)
         documents = result.scalars().all()
@@ -709,7 +709,7 @@ class AblageService(DocumentServiceBase):
         query = select(Document).where(and_(
             Document.id.in_(document_ids),
             Document.owner_id == user_id,
-            Document.is_deleted == False
+            Document.deleted_at.is_(None)
         ))
         result = await db.execute(query)
         documents = result.scalars().all()
@@ -787,7 +787,7 @@ class AblageService(DocumentServiceBase):
             .where(and_(
                 Document.id.in_(document_ids),
                 Document.owner_id == user_id,
-                Document.is_deleted == False
+                Document.deleted_at.is_(None)
             ))
         )
         result = await db.execute(query)

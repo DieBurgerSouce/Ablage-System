@@ -63,10 +63,7 @@ class DocumentRepository(BaseRepository[Document]):
 
         if not include_deleted:
             query = query.where(
-                or_(
-                    Document.is_deleted == False,
-                    Document.is_deleted.is_(None)
-                )
+                Document.deleted_at.is_(None)
             )
 
         if status:
