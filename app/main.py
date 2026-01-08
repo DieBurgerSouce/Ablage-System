@@ -728,6 +728,7 @@ from app.api.v1.cash import router as cash_router
 from app.api.v1.expenses import router as expenses_router
 from app.api.v1.streckengeschaeft import router as streckengeschaeft_router
 from app.api.v1.privat import router as privat_router
+from app.api.v1.personal import router as personal_router
 from app.api.v1.validation import router as validation_router
 from app.api.v1.comments import router as comments_router
 from app.api.v1.notifications import router as notifications_router
@@ -784,6 +785,7 @@ app.include_router(cash_router, prefix="/api/v1")
 app.include_router(expenses_router, prefix="/api/v1")
 app.include_router(streckengeschaeft_router, prefix="/api/v1")
 app.include_router(privat_router, prefix="/api/v1")
+app.include_router(personal_router, prefix="/api/v1")
 app.include_router(validation_router, prefix="/api/v1")
 app.include_router(comments_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")

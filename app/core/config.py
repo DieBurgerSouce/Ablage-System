@@ -1009,6 +1009,39 @@ class Settings(BaseSettings):
                     message="ENCRYPTION_KEY für TOTP-Secrets validiert"
                 )
 
+        # ========== QDRANT_API_KEY Validierung (Production) ==========
+        # SECURITY FIX: Qdrant ohne API-Key erlaubt unauthentifizierten Zugriff auf Vektordaten
+        if self.QDRANT_ENABLED and not self.DEBUG:
+            qdrant_api_key = self.QDRANT_API_KEY.get_secret_value() if self.QDRANT_API_KEY else None
+            if not qdrant_api_key:
+                raise ValueError(
+                    "QDRANT_API_KEY ist nicht gesetzt aber QDRANT_ENABLED=True in Production! "
+                    "Qdrant ohne API-Key erlaubt unauthentifizierten Zugriff auf alle Vektordaten. "
+                    "Generiere einen API-Key mit: openssl rand -hex 32 "
+                    "und setze ihn in .env und docker-compose.yml."
+                )
+            elif len(qdrant_api_key) < 32:
+                raise ValueError(
+                    f"QDRANT_API_KEY ist zu kurz ({len(qdrant_api_key)} Zeichen). "
+                    "Mindestens 32 Zeichen erforderlich für sichere Authentifizierung."
+                )
+            else:
+                logger.info(
+                    "qdrant_api_key_validated",
+                    key_length=len(qdrant_api_key),
+                    message="QDRANT_API_KEY validiert - Qdrant authentifiziert"
+                )
+        elif self.QDRANT_ENABLED and self.DEBUG:
+            # Development: Warnung wenn kein API-Key gesetzt
+            qdrant_api_key = self.QDRANT_API_KEY.get_secret_value() if self.QDRANT_API_KEY else None
+            if not qdrant_api_key:
+                logger.warning(
+                    "qdrant_no_api_key_development",
+                    message="QDRANT_API_KEY nicht gesetzt in Development - Qdrant laeuft ohne Authentifizierung! "
+                            "In Production ist ein API-Key PFLICHT.",
+                    hint="Generiere mit: openssl rand -hex 32"
+                )
+
         # Build DATABASE_URL if not set
         if not self.DATABASE_URL:
             password = self.DB_PASSWORD

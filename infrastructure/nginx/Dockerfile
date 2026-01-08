@@ -15,12 +15,34 @@ COPY conf.d/ /etc/nginx/conf.d/
 COPY snippets/ /etc/nginx/snippets/
 
 # Copy htpasswd if it exists, otherwise create a placeholder
-# WICHTIG: Fuer Produktion muss .htpasswd VOR dem Build erstellt werden!
-# Erstellen mit: docker run --rm httpd:alpine htpasswd -nb USERNAME PASSWORD > .htpasswd
+# KRITISCH: Fuer Produktion muss .htpasswd VOR dem Build erstellt werden!
+# Erstellen mit: docker run --rm httpd:alpine htpasswd -nb prometheus_admin PASSWORT > .htpasswd
+#
+# SECURITY FIX: Strikte Validierung - Placeholder wird erkannt und gewarnt
 COPY .htpasswd* /etc/nginx/
 RUN if [ ! -f /etc/nginx/.htpasswd ]; then \
-        echo "# Placeholder - ersetzen mit echtem htpasswd!" > /etc/nginx/.htpasswd && \
-        echo "WARNUNG: Keine .htpasswd gefunden! Prometheus-Zugang ist UNSICHER!" >&2; \
+        echo "# WARNUNG: Placeholder - Prometheus ohne Auth!" > /etc/nginx/.htpasswd && \
+        echo "" >&2 && \
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2 && \
+        echo "! SICHERHEITSWARNUNG: Keine .htpasswd Datei gefunden! !" >&2 && \
+        echo "! Prometheus ist OHNE AUTHENTIFIZIERUNG zugaenglich!  !" >&2 && \
+        echo "!                                                     !" >&2 && \
+        echo "! Erstellen Sie eine .htpasswd:                       !" >&2 && \
+        echo "! docker run --rm httpd:alpine htpasswd -nb \\         !" >&2 && \
+        echo "!   prometheus_admin SICHERES_PASSWORT > .htpasswd    !" >&2 && \
+        echo "!                                                     !" >&2 && \
+        echo "! Siehe: infrastructure/nginx/.htpasswd.example       !" >&2 && \
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2 && \
+        echo "" >&2; \
+    elif grep -q "Placeholder\|WARNUNG\|example" /etc/nginx/.htpasswd 2>/dev/null; then \
+        echo "" >&2 && \
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2 && \
+        echo "! SICHERHEITSWARNUNG: .htpasswd ist nur ein Placeholder!!" >&2 && \
+        echo "! Ersetzen Sie es durch eine echte htpasswd-Datei!    !" >&2 && \
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2 && \
+        echo "" >&2; \
+    else \
+        echo "OK: .htpasswd gefunden und scheint valide zu sein." >&2; \
     fi
 
 # Generate DH parameters (2048 bit for faster build, use 4096 for production)

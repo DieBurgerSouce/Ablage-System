@@ -82,6 +82,10 @@ import { Route as AdminMahnungenIndexRouteImport } from './app/routes/admin.mahn
 import { Route as AdminErpIndexRouteImport } from './app/routes/admin.erp.index'
 import { Route as AdminDatevIndexRouteImport } from './app/routes/admin.datev.index'
 import { Route as AdminBankingIndexRouteImport } from './app/routes/admin.banking.index'
+import { Route as PrivatVersicherungenInsuranceIdRouteImport } from './app/routes/privat.versicherungen.$insuranceId'
+import { Route as PrivatSpacesSpaceIdRouteImport } from './app/routes/privat.spaces.$spaceId'
+import { Route as PrivatImmobilienPropertyIdRouteImport } from './app/routes/privat.immobilien.$propertyId'
+import { Route as PrivatFahrzeugeVehicleIdRouteImport } from './app/routes/privat.fahrzeuge.$vehicleId'
 import { Route as LieferantenSupplierIdFolderIdRouteImport } from './app/routes/lieferanten.$supplierId.$folderId'
 import { Route as KundenCustomerIdFolderIdRouteImport } from './app/routes/kunden.$customerId.$folderId'
 import { Route as KasseBuchRegisterIdRouteImport } from './app/routes/kasse.buch.$registerId'
@@ -107,6 +111,8 @@ import { Route as AdminBankingReconciliationRouteImport } from './app/routes/adm
 import { Route as AdminBankingPaymentsRouteImport } from './app/routes/admin.banking.payments'
 import { Route as AdminBankingImportRouteImport } from './app/routes/admin.banking.import'
 import { Route as AdminBankingAccountsRouteImport } from './app/routes/admin.banking.accounts'
+import { Route as PrivatFinanzenKrediteLoanIdRouteImport } from './app/routes/privat.finanzen.kredite.$loanId'
+import { Route as PrivatFinanzenAnlagenInvestmentIdRouteImport } from './app/routes/privat.finanzen.anlagen.$investmentId'
 import { Route as LieferantenSupplierIdFolderIdCategoryRouteImport } from './app/routes/lieferanten.$supplierId.$folderId.$category'
 import { Route as KundenCustomerIdFolderIdCategoryRouteImport } from './app/routes/kunden.$customerId.$folderId.$category'
 import { Route as AdminOcrTrainingBatchIdRouteImport } from './app/routes/admin.ocr-training.batch.$id'
@@ -482,6 +488,29 @@ const AdminBankingIndexRoute = AdminBankingIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminBankingRoute,
 } as any)
+const PrivatVersicherungenInsuranceIdRoute =
+  PrivatVersicherungenInsuranceIdRouteImport.update({
+    id: '/$insuranceId',
+    path: '/$insuranceId',
+    getParentRoute: () => PrivatVersicherungenRoute,
+  } as any)
+const PrivatSpacesSpaceIdRoute = PrivatSpacesSpaceIdRouteImport.update({
+  id: '/spaces/$spaceId',
+  path: '/spaces/$spaceId',
+  getParentRoute: () => PrivatRoute,
+} as any)
+const PrivatImmobilienPropertyIdRoute =
+  PrivatImmobilienPropertyIdRouteImport.update({
+    id: '/$propertyId',
+    path: '/$propertyId',
+    getParentRoute: () => PrivatImmobilienRoute,
+  } as any)
+const PrivatFahrzeugeVehicleIdRoute =
+  PrivatFahrzeugeVehicleIdRouteImport.update({
+    id: '/$vehicleId',
+    path: '/$vehicleId',
+    getParentRoute: () => PrivatFahrzeugeRoute,
+  } as any)
 const LieferantenSupplierIdFolderIdRoute =
   LieferantenSupplierIdFolderIdRouteImport.update({
     id: '/$folderId',
@@ -614,6 +643,18 @@ const AdminBankingAccountsRoute = AdminBankingAccountsRouteImport.update({
   path: '/accounts',
   getParentRoute: () => AdminBankingRoute,
 } as any)
+const PrivatFinanzenKrediteLoanIdRoute =
+  PrivatFinanzenKrediteLoanIdRouteImport.update({
+    id: '/kredite/$loanId',
+    path: '/kredite/$loanId',
+    getParentRoute: () => PrivatFinanzenRoute,
+  } as any)
+const PrivatFinanzenAnlagenInvestmentIdRoute =
+  PrivatFinanzenAnlagenInvestmentIdRouteImport.update({
+    id: '/anlagen/$investmentId',
+    path: '/anlagen/$investmentId',
+    getParentRoute: () => PrivatFinanzenRoute,
+  } as any)
 const LieferantenSupplierIdFolderIdCategoryRoute =
   LieferantenSupplierIdFolderIdCategoryRouteImport.update({
     id: '/$category',
@@ -674,12 +715,12 @@ export interface FileRoutesByFullPath {
   '/kunden/$customerId': typeof KundenCustomerIdRouteWithChildren
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
   '/personal/$employeeId': typeof PersonalEmployeeIdRouteWithChildren
-  '/privat/fahrzeuge': typeof PrivatFahrzeugeRoute
-  '/privat/finanzen': typeof PrivatFinanzenRoute
+  '/privat/fahrzeuge': typeof PrivatFahrzeugeRouteWithChildren
+  '/privat/finanzen': typeof PrivatFinanzenRouteWithChildren
   '/privat/fristen': typeof PrivatFristenRoute
-  '/privat/immobilien': typeof PrivatImmobilienRoute
+  '/privat/immobilien': typeof PrivatImmobilienRouteWithChildren
   '/privat/notfall': typeof PrivatNotfallRoute
-  '/privat/versicherungen': typeof PrivatVersicherungenRoute
+  '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
   '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
@@ -723,6 +764,10 @@ export interface FileRoutesByFullPath {
   '/kasse/buch/$registerId': typeof KasseBuchRegisterIdRoute
   '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
+  '/privat/fahrzeuge/$vehicleId': typeof PrivatFahrzeugeVehicleIdRoute
+  '/privat/immobilien/$propertyId': typeof PrivatImmobilienPropertyIdRoute
+  '/privat/spaces/$spaceId': typeof PrivatSpacesSpaceIdRoute
+  '/privat/versicherungen/$insuranceId': typeof PrivatVersicherungenInsuranceIdRoute
   '/admin/banking/': typeof AdminBankingIndexRoute
   '/admin/datev/': typeof AdminDatevIndexRoute
   '/admin/erp/': typeof AdminErpIndexRoute
@@ -734,6 +779,8 @@ export interface FileRoutesByFullPath {
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
   '/kunden/$customerId/$folderId/$category': typeof KundenCustomerIdFolderIdCategoryRoute
   '/lieferanten/$supplierId/$folderId/$category': typeof LieferantenSupplierIdFolderIdCategoryRoute
+  '/privat/finanzen/anlagen/$investmentId': typeof PrivatFinanzenAnlagenInvestmentIdRoute
+  '/privat/finanzen/kredite/$loanId': typeof PrivatFinanzenKrediteLoanIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -760,12 +807,12 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AdminUsersRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
-  '/privat/fahrzeuge': typeof PrivatFahrzeugeRoute
-  '/privat/finanzen': typeof PrivatFinanzenRoute
+  '/privat/fahrzeuge': typeof PrivatFahrzeugeRouteWithChildren
+  '/privat/finanzen': typeof PrivatFinanzenRouteWithChildren
   '/privat/fristen': typeof PrivatFristenRoute
-  '/privat/immobilien': typeof PrivatImmobilienRoute
+  '/privat/immobilien': typeof PrivatImmobilienRouteWithChildren
   '/privat/notfall': typeof PrivatNotfallRoute
-  '/privat/versicherungen': typeof PrivatVersicherungenRoute
+  '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
   '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
@@ -809,6 +856,10 @@ export interface FileRoutesByTo {
   '/kasse/buch/$registerId': typeof KasseBuchRegisterIdRoute
   '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
+  '/privat/fahrzeuge/$vehicleId': typeof PrivatFahrzeugeVehicleIdRoute
+  '/privat/immobilien/$propertyId': typeof PrivatImmobilienPropertyIdRoute
+  '/privat/spaces/$spaceId': typeof PrivatSpacesSpaceIdRoute
+  '/privat/versicherungen/$insuranceId': typeof PrivatVersicherungenInsuranceIdRoute
   '/admin/banking': typeof AdminBankingIndexRoute
   '/admin/datev': typeof AdminDatevIndexRoute
   '/admin/erp': typeof AdminErpIndexRoute
@@ -820,6 +871,8 @@ export interface FileRoutesByTo {
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
   '/kunden/$customerId/$folderId/$category': typeof KundenCustomerIdFolderIdCategoryRoute
   '/lieferanten/$supplierId/$folderId/$category': typeof LieferantenSupplierIdFolderIdCategoryRoute
+  '/privat/finanzen/anlagen/$investmentId': typeof PrivatFinanzenAnlagenInvestmentIdRoute
+  '/privat/finanzen/kredite/$loanId': typeof PrivatFinanzenKrediteLoanIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -864,12 +917,12 @@ export interface FileRoutesById {
   '/kunden/$customerId': typeof KundenCustomerIdRouteWithChildren
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
   '/personal/$employeeId': typeof PersonalEmployeeIdRouteWithChildren
-  '/privat/fahrzeuge': typeof PrivatFahrzeugeRoute
-  '/privat/finanzen': typeof PrivatFinanzenRoute
+  '/privat/fahrzeuge': typeof PrivatFahrzeugeRouteWithChildren
+  '/privat/finanzen': typeof PrivatFinanzenRouteWithChildren
   '/privat/fristen': typeof PrivatFristenRoute
-  '/privat/immobilien': typeof PrivatImmobilienRoute
+  '/privat/immobilien': typeof PrivatImmobilienRouteWithChildren
   '/privat/notfall': typeof PrivatNotfallRoute
-  '/privat/versicherungen': typeof PrivatVersicherungenRoute
+  '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
   '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
@@ -913,6 +966,10 @@ export interface FileRoutesById {
   '/kasse/buch/$registerId': typeof KasseBuchRegisterIdRoute
   '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
   '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
+  '/privat/fahrzeuge/$vehicleId': typeof PrivatFahrzeugeVehicleIdRoute
+  '/privat/immobilien/$propertyId': typeof PrivatImmobilienPropertyIdRoute
+  '/privat/spaces/$spaceId': typeof PrivatSpacesSpaceIdRoute
+  '/privat/versicherungen/$insuranceId': typeof PrivatVersicherungenInsuranceIdRoute
   '/admin/banking/': typeof AdminBankingIndexRoute
   '/admin/datev/': typeof AdminDatevIndexRoute
   '/admin/erp/': typeof AdminErpIndexRoute
@@ -924,6 +981,8 @@ export interface FileRoutesById {
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
   '/kunden/$customerId/$folderId/$category': typeof KundenCustomerIdFolderIdCategoryRoute
   '/lieferanten/$supplierId/$folderId/$category': typeof LieferantenSupplierIdFolderIdCategoryRoute
+  '/privat/finanzen/anlagen/$investmentId': typeof PrivatFinanzenAnlagenInvestmentIdRoute
+  '/privat/finanzen/kredite/$loanId': typeof PrivatFinanzenKrediteLoanIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1018,6 +1077,10 @@ export interface FileRouteTypes {
     | '/kasse/buch/$registerId'
     | '/kunden/$customerId/$folderId'
     | '/lieferanten/$supplierId/$folderId'
+    | '/privat/fahrzeuge/$vehicleId'
+    | '/privat/immobilien/$propertyId'
+    | '/privat/spaces/$spaceId'
+    | '/privat/versicherungen/$insuranceId'
     | '/admin/banking/'
     | '/admin/datev/'
     | '/admin/erp/'
@@ -1029,6 +1092,8 @@ export interface FileRouteTypes {
     | '/admin/ocr-training/batch/$id'
     | '/kunden/$customerId/$folderId/$category'
     | '/lieferanten/$supplierId/$folderId/$category'
+    | '/privat/finanzen/anlagen/$investmentId'
+    | '/privat/finanzen/kredite/$loanId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1104,6 +1169,10 @@ export interface FileRouteTypes {
     | '/kasse/buch/$registerId'
     | '/kunden/$customerId/$folderId'
     | '/lieferanten/$supplierId/$folderId'
+    | '/privat/fahrzeuge/$vehicleId'
+    | '/privat/immobilien/$propertyId'
+    | '/privat/spaces/$spaceId'
+    | '/privat/versicherungen/$insuranceId'
     | '/admin/banking'
     | '/admin/datev'
     | '/admin/erp'
@@ -1115,6 +1184,8 @@ export interface FileRouteTypes {
     | '/admin/ocr-training/batch/$id'
     | '/kunden/$customerId/$folderId/$category'
     | '/lieferanten/$supplierId/$folderId/$category'
+    | '/privat/finanzen/anlagen/$investmentId'
+    | '/privat/finanzen/kredite/$loanId'
   id:
     | '__root__'
     | '/'
@@ -1207,6 +1278,10 @@ export interface FileRouteTypes {
     | '/kasse/buch/$registerId'
     | '/kunden/$customerId/$folderId'
     | '/lieferanten/$supplierId/$folderId'
+    | '/privat/fahrzeuge/$vehicleId'
+    | '/privat/immobilien/$propertyId'
+    | '/privat/spaces/$spaceId'
+    | '/privat/versicherungen/$insuranceId'
     | '/admin/banking/'
     | '/admin/datev/'
     | '/admin/erp/'
@@ -1218,6 +1293,8 @@ export interface FileRouteTypes {
     | '/admin/ocr-training/batch/$id'
     | '/kunden/$customerId/$folderId/$category'
     | '/lieferanten/$supplierId/$folderId/$category'
+    | '/privat/finanzen/anlagen/$investmentId'
+    | '/privat/finanzen/kredite/$loanId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1761,6 +1838,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBankingIndexRouteImport
       parentRoute: typeof AdminBankingRoute
     }
+    '/privat/versicherungen/$insuranceId': {
+      id: '/privat/versicherungen/$insuranceId'
+      path: '/$insuranceId'
+      fullPath: '/privat/versicherungen/$insuranceId'
+      preLoaderRoute: typeof PrivatVersicherungenInsuranceIdRouteImport
+      parentRoute: typeof PrivatVersicherungenRoute
+    }
+    '/privat/spaces/$spaceId': {
+      id: '/privat/spaces/$spaceId'
+      path: '/spaces/$spaceId'
+      fullPath: '/privat/spaces/$spaceId'
+      preLoaderRoute: typeof PrivatSpacesSpaceIdRouteImport
+      parentRoute: typeof PrivatRoute
+    }
+    '/privat/immobilien/$propertyId': {
+      id: '/privat/immobilien/$propertyId'
+      path: '/$propertyId'
+      fullPath: '/privat/immobilien/$propertyId'
+      preLoaderRoute: typeof PrivatImmobilienPropertyIdRouteImport
+      parentRoute: typeof PrivatImmobilienRoute
+    }
+    '/privat/fahrzeuge/$vehicleId': {
+      id: '/privat/fahrzeuge/$vehicleId'
+      path: '/$vehicleId'
+      fullPath: '/privat/fahrzeuge/$vehicleId'
+      preLoaderRoute: typeof PrivatFahrzeugeVehicleIdRouteImport
+      parentRoute: typeof PrivatFahrzeugeRoute
+    }
     '/lieferanten/$supplierId/$folderId': {
       id: '/lieferanten/$supplierId/$folderId'
       path: '/$folderId'
@@ -1935,6 +2040,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/banking/accounts'
       preLoaderRoute: typeof AdminBankingAccountsRouteImport
       parentRoute: typeof AdminBankingRoute
+    }
+    '/privat/finanzen/kredite/$loanId': {
+      id: '/privat/finanzen/kredite/$loanId'
+      path: '/kredite/$loanId'
+      fullPath: '/privat/finanzen/kredite/$loanId'
+      preLoaderRoute: typeof PrivatFinanzenKrediteLoanIdRouteImport
+      parentRoute: typeof PrivatFinanzenRoute
+    }
+    '/privat/finanzen/anlagen/$investmentId': {
+      id: '/privat/finanzen/anlagen/$investmentId'
+      path: '/anlagen/$investmentId'
+      fullPath: '/privat/finanzen/anlagen/$investmentId'
+      preLoaderRoute: typeof PrivatFinanzenAnlagenInvestmentIdRouteImport
+      parentRoute: typeof PrivatFinanzenRoute
     }
     '/lieferanten/$supplierId/$folderId/$category': {
       id: '/lieferanten/$supplierId/$folderId/$category'
@@ -2265,24 +2384,75 @@ const PersonalRouteWithChildren = PersonalRoute._addFileChildren(
   PersonalRouteChildren,
 )
 
+interface PrivatFahrzeugeRouteChildren {
+  PrivatFahrzeugeVehicleIdRoute: typeof PrivatFahrzeugeVehicleIdRoute
+}
+
+const PrivatFahrzeugeRouteChildren: PrivatFahrzeugeRouteChildren = {
+  PrivatFahrzeugeVehicleIdRoute: PrivatFahrzeugeVehicleIdRoute,
+}
+
+const PrivatFahrzeugeRouteWithChildren = PrivatFahrzeugeRoute._addFileChildren(
+  PrivatFahrzeugeRouteChildren,
+)
+
+interface PrivatFinanzenRouteChildren {
+  PrivatFinanzenAnlagenInvestmentIdRoute: typeof PrivatFinanzenAnlagenInvestmentIdRoute
+  PrivatFinanzenKrediteLoanIdRoute: typeof PrivatFinanzenKrediteLoanIdRoute
+}
+
+const PrivatFinanzenRouteChildren: PrivatFinanzenRouteChildren = {
+  PrivatFinanzenAnlagenInvestmentIdRoute:
+    PrivatFinanzenAnlagenInvestmentIdRoute,
+  PrivatFinanzenKrediteLoanIdRoute: PrivatFinanzenKrediteLoanIdRoute,
+}
+
+const PrivatFinanzenRouteWithChildren = PrivatFinanzenRoute._addFileChildren(
+  PrivatFinanzenRouteChildren,
+)
+
+interface PrivatImmobilienRouteChildren {
+  PrivatImmobilienPropertyIdRoute: typeof PrivatImmobilienPropertyIdRoute
+}
+
+const PrivatImmobilienRouteChildren: PrivatImmobilienRouteChildren = {
+  PrivatImmobilienPropertyIdRoute: PrivatImmobilienPropertyIdRoute,
+}
+
+const PrivatImmobilienRouteWithChildren =
+  PrivatImmobilienRoute._addFileChildren(PrivatImmobilienRouteChildren)
+
+interface PrivatVersicherungenRouteChildren {
+  PrivatVersicherungenInsuranceIdRoute: typeof PrivatVersicherungenInsuranceIdRoute
+}
+
+const PrivatVersicherungenRouteChildren: PrivatVersicherungenRouteChildren = {
+  PrivatVersicherungenInsuranceIdRoute: PrivatVersicherungenInsuranceIdRoute,
+}
+
+const PrivatVersicherungenRouteWithChildren =
+  PrivatVersicherungenRoute._addFileChildren(PrivatVersicherungenRouteChildren)
+
 interface PrivatRouteChildren {
-  PrivatFahrzeugeRoute: typeof PrivatFahrzeugeRoute
-  PrivatFinanzenRoute: typeof PrivatFinanzenRoute
+  PrivatFahrzeugeRoute: typeof PrivatFahrzeugeRouteWithChildren
+  PrivatFinanzenRoute: typeof PrivatFinanzenRouteWithChildren
   PrivatFristenRoute: typeof PrivatFristenRoute
-  PrivatImmobilienRoute: typeof PrivatImmobilienRoute
+  PrivatImmobilienRoute: typeof PrivatImmobilienRouteWithChildren
   PrivatNotfallRoute: typeof PrivatNotfallRoute
-  PrivatVersicherungenRoute: typeof PrivatVersicherungenRoute
+  PrivatVersicherungenRoute: typeof PrivatVersicherungenRouteWithChildren
   PrivatIndexRoute: typeof PrivatIndexRoute
+  PrivatSpacesSpaceIdRoute: typeof PrivatSpacesSpaceIdRoute
 }
 
 const PrivatRouteChildren: PrivatRouteChildren = {
-  PrivatFahrzeugeRoute: PrivatFahrzeugeRoute,
-  PrivatFinanzenRoute: PrivatFinanzenRoute,
+  PrivatFahrzeugeRoute: PrivatFahrzeugeRouteWithChildren,
+  PrivatFinanzenRoute: PrivatFinanzenRouteWithChildren,
   PrivatFristenRoute: PrivatFristenRoute,
-  PrivatImmobilienRoute: PrivatImmobilienRoute,
+  PrivatImmobilienRoute: PrivatImmobilienRouteWithChildren,
   PrivatNotfallRoute: PrivatNotfallRoute,
-  PrivatVersicherungenRoute: PrivatVersicherungenRoute,
+  PrivatVersicherungenRoute: PrivatVersicherungenRouteWithChildren,
   PrivatIndexRoute: PrivatIndexRoute,
+  PrivatSpacesSpaceIdRoute: PrivatSpacesSpaceIdRoute,
 }
 
 const PrivatRouteWithChildren =
