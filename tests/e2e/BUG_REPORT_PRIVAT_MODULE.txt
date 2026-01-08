@@ -1,0 +1,163 @@
+# Bug Report: Privat-Modul E2E Tests
+
+**Datum:** 2026-01-08
+**Tester:** Claude Code (Automated E2E)
+**Branch:** feature/ocr-performance
+
+---
+
+## Zusammenfassung
+
+| Metrik | Wert |
+|--------|------|
+| Tests bestanden | 13 |
+| Tests fehlgeschlagen | 2 |
+| Console-Errors | 0 |
+| Kritische Bugs | 2 |
+
+---
+
+## Kritische Bugs
+
+### Bug 1: "NaN undefined" in Space-Cards
+
+**Schweregrad:** Mittel
+**Betroffene Komponente:** `PrivatSpaceList.tsx` / Space-Cards
+
+**Beschreibung:**
+In der Bereiche-Uebersicht werden Space-Cards mit "NaN undefined" angezeigt statt der korrekten Speichergroesse.
+
+**Erwartetes Verhalten:**
+Storage-Anzeige sollte "X MB / Y MB" oder aehnlich formatiert sein.
+
+**Screenshot:** `tests/e2e/screenshots/04_bereiche_tab.png`
+
+**Vermutete Ursache:**
+- `formatBytes()` Funktion erhaelt undefined/null Wert
+- API liefert kein `storage_used` oder `storage_limit` Feld
+- Division durch undefined/null ergibt NaN
+
+---
+
+### Bug 2: Modul-Seiten zeigen "Fehler beim Laden..." ohne spaceId
+
+**Schweregrad:** Kritisch (Blocking)
+**Betroffene Komponenten:**
+- `/privat/fahrzeuge` -> VehiclesPage
+- `/privat/versicherungen` -> InsurancesPage
+- `/privat/finanzen` -> FinancesPage
+
+**Beschreibung:**
+Wenn Benutzer auf Dashboard-Cards klicken (z.B. "Fahrzeuge"), werden sie zu `/privat/fahrzeuge` weitergeleitet. Diese Seite zeigt dann:
+
+```
+Fehler beim Laden der Fahrzeuge
+```
+
+**Root Cause:**
+Die Routes sind OHNE spaceId definiert:
+```tsx
+// frontend/src/app/routes/privat.fahrzeuge.tsx
+export const Route = createFileRoute('/privat/fahrzeuge')({
+  component: VehiclesPage,
+});
+```
+
+Die Pages erwarten aber eine spaceId:
+```tsx
+// VehiclesPage.tsx
+const { spaceId: paramSpaceId } = useParams({ from: '/privat/spaces/$spaceId' });
+const spaceId = propSpaceId || paramSpaceId; // paramSpaceId ist undefined!
+```
+
+**Betroffene Navigation:**
+- PrivatDashboard.tsx verlinkt direkt auf `/privat/fahrzeuge` etc.
+- Diese Routes haben KEINEN `$spaceId` Parameter
+
+**Loesungsvorschlaege:**
+1. **Option A:** Routes aendern zu `/privat/spaces/$spaceId/fahrzeuge`
+2. **Option B:** Dashboard-Cards zeigen aggregierte Daten ALLER Spaces
+3. **Option C:** Bei fehlendem spaceId ersten/Standard-Space automatisch waehlen
+
+**Screenshot:** `tests/e2e/screenshots/06_fahrzeuge.png`
+
+---
+
+## Bestandene Tests
+
+| Test | Status |
+|------|--------|
+| Login mit admin@localhost.com | OK |
+| Onboarding-Dialog schliessen | OK |
+| Dokumente-Card vorhanden | OK |
+| Immobilien-Card vorhanden | OK |
+| Fahrzeuge-Card vorhanden | OK |
+| Versicherungen-Card vorhanden | OK |
+| Finanzen-Card vorhanden | OK |
+| Fristen-Card vorhanden | OK |
+| Bereiche-Tab vorhanden | OK |
+| Bereiche-Tab oeffnen | OK |
+| Bereiche-Inhalt geladen | OK |
+| Fahrzeuge-Card klicken | OK |
+| Versicherungen-Card klicken | OK |
+
+---
+
+## Fehlgeschlagene Tests
+
+| Test | Fehler |
+|------|--------|
+| Uebersicht-Tab vorhanden | Tab nicht gefunden (Umlaut-Problem?) |
+| Immobilien-Seite geladen | Card nicht sichtbar nach Navigation |
+
+---
+
+## Test-Environment
+
+- **Browser:** Chromium (headless)
+- **Viewport:** 1920x1080
+- **Locale:** de-DE
+- **URL:** http://localhost
+- **Auth:** admin@localhost.com / admin123
+
+---
+
+## Test-Dateien
+
+```
+tests/e2e/
+├── privat_full_test.py      # Vollstaendiger E2E-Test
+├── privat_manual_test.py    # Manueller Durchlauf-Test
+├── privat_module_test.py    # Basis-Modul-Test
+├── full_test_results.json   # JSON-Ergebnisse
+├── test_results.json        # Weitere Ergebnisse
+├── screenshots/             # Alle Screenshots
+│   ├── 01_after_login.png
+│   ├── 02_privat_with_dialog.png
+│   ├── 03_privat_clean.png
+│   ├── 04_bereiche_tab.png
+│   ├── 05_immobilien.png
+│   ├── 06_fahrzeuge.png
+│   ├── 07_versicherungen.png
+│   ├── 08_finanzen.png
+│   └── 09_final.png
+└── BUG_REPORT_PRIVAT_MODULE.md  # Diese Datei
+```
+
+---
+
+## Naechste Schritte
+
+1. [ ] Bug 1 fixen: NaN undefined in Space-Cards
+2. [ ] Bug 2 fixen: spaceId-Routing-Architektur ueberarbeiten
+3. [ ] Nach Fixes: E2E-Tests erneut ausfuehren
+4. [ ] Playwright-Tests automatisieren (CI/CD)
+
+---
+
+## Notizen
+
+- Onboarding-Wizard erscheint nach jedem Login auf `/privat`
+- ESC-Taste schliesst Dialoge zuverlaessig
+- Console hat KEINE JavaScript-Errors
+- API-Calls funktionieren (wenn spaceId vorhanden)
