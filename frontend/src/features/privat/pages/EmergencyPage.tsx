@@ -8,14 +8,23 @@ import * as React from 'react';
 import { useParams } from '@tanstack/react-router';
 import { EmergencyAccessPanel } from '../components/emergency/EmergencyAccessPanel';
 import * as privatApi from '../api/privat-api';
+import { useDefaultSpace } from '../hooks/use-privat-queries';
 import type {
   PrivatEmergencyContact,
   PrivatEmergencyAccessRequest,
 } from '@/types/privat';
 import { toast } from 'sonner';
 
-export function EmergencyPage() {
-  const { spaceId } = useParams({ strict: false }) as { spaceId?: string };
+interface EmergencyPageProps {
+  spaceId?: string;
+}
+
+export function EmergencyPage({ spaceId: propSpaceId }: EmergencyPageProps = {}) {
+  const params = useParams({ strict: false }) as { spaceId?: string };
+  const { defaultSpaceId, isLoading: isLoadingSpaces, hasSpaces } = useDefaultSpace();
+
+  // Priorität: 1. Props, 2. URL-Params, 3. Default-Space (persönlicher Bereich)
+  const spaceId = propSpaceId || params.spaceId || defaultSpaceId;
 
   const [contacts, setContacts] = React.useState<PrivatEmergencyContact[]>([]);
   const [requests, setRequests] = React.useState<PrivatEmergencyAccessRequest[]>([]);
@@ -25,8 +34,17 @@ export function EmergencyPage() {
   // Load data
   React.useEffect(() => {
     const loadData = async () => {
+      // Warte auf Spaces wenn noch keine spaceId vorhanden
+      if (isLoadingSpaces && !spaceId) {
+        return;
+      }
+
       if (!spaceId) {
-        setError(new Error('Kein Bereich ausgewählt'));
+        if (!hasSpaces) {
+          setError(new Error('Noch keine Bereiche vorhanden. Erstellen Sie zuerst einen persönlichen Bereich.'));
+        } else {
+          setError(new Error('Kein Bereich ausgewählt'));
+        }
         setIsLoading(false);
         return;
       }
@@ -46,7 +64,7 @@ export function EmergencyPage() {
       }
     };
     loadData();
-  }, [spaceId]);
+  }, [spaceId, isLoadingSpaces, hasSpaces]);
 
   const handleAddContact = async (
     contact: Omit<PrivatEmergencyContact, 'id' | 'spaceId' | 'createdAt' | 'updatedAt' | 'isActive'>

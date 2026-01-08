@@ -7,8 +7,16 @@
 import * as React from 'react';
 import { useParams } from '@tanstack/react-router';
 import { DeadlineList } from '../components/deadlines/DeadlineList';
+import { DeadlineCreateDialog } from '../components/deadlines/DeadlineCreateDialog';
+import { DeadlineEditDialog } from '../components/deadlines/DeadlineEditDialog';
 import * as privatApi from '../api/privat-api';
-import type { PrivatDeadlineWithStatus, PrivatDeadlineType } from '@/types/privat';
+import { useDefaultSpace } from '../hooks/use-privat-queries';
+import type {
+  PrivatDeadlineWithStatus,
+  PrivatDeadlineType,
+  PrivatDeadlineCreate,
+  PrivatDeadlineUpdate,
+} from '@/types/privat';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,8 +29,16 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
-export function DeadlinesPage() {
-  const { spaceId } = useParams({ strict: false }) as { spaceId?: string };
+interface DeadlinesPageProps {
+  spaceId?: string;
+}
+
+export function DeadlinesPage({ spaceId: propSpaceId }: DeadlinesPageProps = {}) {
+  const params = useParams({ strict: false }) as { spaceId?: string };
+  const { defaultSpaceId, isLoading: isLoadingSpaces, hasSpaces } = useDefaultSpace();
+
+  // Priorität: 1. Props, 2. URL-Params, 3. Default-Space (persönlicher Bereich)
+  const spaceId = propSpaceId || params.spaceId || defaultSpaceId;
 
   const [deadlines, setDeadlines] = React.useState<PrivatDeadlineWithStatus[]>([]);
   const [total, setTotal] = React.useState(0);
@@ -34,13 +50,27 @@ export function DeadlinesPage() {
   const [error, setError] = React.useState<Error | null>(null);
   const [deleteDeadline, setDeleteDeadline] = React.useState<PrivatDeadlineWithStatus | null>(null);
 
+  // Dialog state
+  const [showCreateDialog, setShowCreateDialog] = React.useState(false);
+  const [editDeadline, setEditDeadline] = React.useState<PrivatDeadlineWithStatus | null>(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
   const pageSize = 20;
 
   // Load deadlines
   React.useEffect(() => {
     const loadDeadlines = async () => {
+      // Warte auf Spaces wenn noch keine spaceId vorhanden
+      if (isLoadingSpaces && !spaceId) {
+        return;
+      }
+
       if (!spaceId) {
-        setError(new Error('Kein Bereich ausgewählt'));
+        if (!hasSpaces) {
+          setError(new Error('Noch keine Bereiche vorhanden. Erstellen Sie zuerst einen persönlichen Bereich.'));
+        } else {
+          setError(new Error('Kein Bereich ausgewählt'));
+        }
         setIsLoading(false);
         return;
       }
@@ -63,21 +93,42 @@ export function DeadlinesPage() {
       }
     };
     loadDeadlines();
-  }, [spaceId, page, searchQuery, typeFilter, showCompleted]);
+  }, [spaceId, page, searchQuery, typeFilter, showCompleted, isLoadingSpaces, hasSpaces]);
 
   const handleSelectDeadline = (deadline: PrivatDeadlineWithStatus) => {
-    // TODO: Open detail view or edit dialog
-    toast.info('Fristen-Detail wird implementiert');
+    setEditDeadline(deadline);
   };
 
   const handleCreateDeadline = () => {
-    // TODO: Open create deadline dialog/form
-    toast.info('Fristen-Formular wird implementiert');
+    setShowCreateDialog(true);
   };
 
   const handleEditDeadline = (deadline: PrivatDeadlineWithStatus) => {
-    // TODO: Open edit deadline dialog/form
-    toast.info('Fristen-Formular wird implementiert');
+    setEditDeadline(deadline);
+  };
+
+  const handleCreateSubmit = async (data: PrivatDeadlineCreate) => {
+    if (!spaceId) return;
+    setIsSubmitting(true);
+    try {
+      const newDeadline = await privatApi.createDeadline(spaceId, data);
+      setDeadlines((prev) => [newDeadline, ...prev]);
+      setTotal((prev) => prev + 1);
+      toast.success('Frist erstellt');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditSubmit = async (deadlineId: string, data: PrivatDeadlineUpdate) => {
+    setIsSubmitting(true);
+    try {
+      const updated = await privatApi.updateDeadline(deadlineId, data);
+      setDeadlines((prev) => prev.map((d) => (d.id === deadlineId ? updated : d)));
+      toast.success('Frist aktualisiert');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCompleteDeadline = async (deadline: PrivatDeadlineWithStatus) => {
@@ -192,6 +243,23 @@ export function DeadlinesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Dialog */}
+      <DeadlineCreateDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onSubmit={handleCreateSubmit}
+        isLoading={isSubmitting}
+      />
+
+      {/* Edit Dialog */}
+      <DeadlineEditDialog
+        open={!!editDeadline}
+        onOpenChange={(open) => !open && setEditDeadline(null)}
+        deadline={editDeadline}
+        onSubmit={handleEditSubmit}
+        isLoading={isSubmitting}
+      />
     </div>
   );
 }

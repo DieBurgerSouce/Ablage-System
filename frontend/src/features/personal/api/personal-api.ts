@@ -46,12 +46,28 @@ async function apiRequest<T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
+  // Get auth token from sessionStorage (same as apiClient)
+  const token = sessionStorage.getItem('auth_token');
+  const companyId = sessionStorage.getItem('current_company_id');
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  // Add auth token
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // Add company context
+  if (companyId) {
+    headers['X-Company-ID'] = companyId;
+  }
+
   const response = await fetch(url, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
     credentials: 'include',
   });
 

@@ -42,8 +42,10 @@ interface PrivatSpaceListProps {
   className?: string;
 }
 
-const formatBytes = (bytes: number): string => {
-  if (bytes === 0) return '0 B';
+const formatBytes = (bytes: number | undefined | null): string => {
+  if (bytes === undefined || bytes === null || bytes === 0 || isNaN(bytes)) {
+    return '0 B';
+  }
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -282,12 +284,12 @@ function SpaceCard({ space, onEdit, onDelete, onSettings }: SpaceCardProps) {
           <div className="flex items-center gap-2 text-muted-foreground">
             <FileText className="h-4 w-4" aria-hidden="true" />
             <dt className="sr-only">Anzahl Dokumente</dt>
-            <dd>{space.documentCount} Dokumente</dd>
+            <dd>{space.documentCount ?? 0} Dokumente</dd>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <FolderOpen className="h-4 w-4" aria-hidden="true" />
             <dt className="sr-only">Anzahl Ordner</dt>
-            <dd>{space.folderCount} Ordner</dd>
+            <dd>{space.folderCount ?? 0} Ordner</dd>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <HardDrive className="h-4 w-4" aria-hidden="true" />
@@ -298,7 +300,7 @@ function SpaceCard({ space, onEdit, onDelete, onSettings }: SpaceCardProps) {
             <div className="flex items-center gap-2 text-muted-foreground">
               <Users className="h-4 w-4" aria-hidden="true" />
               <dt className="sr-only">Anzahl Nutzer</dt>
-              <dd>{space.accessCount} Nutzer</dd>
+              <dd>{space.accessCount ?? 0} Nutzer</dd>
             </div>
           )}
         </dl>

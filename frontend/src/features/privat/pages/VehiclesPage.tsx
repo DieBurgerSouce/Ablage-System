@@ -7,8 +7,11 @@
 import * as React from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { VehicleList } from '../components/vehicles/VehicleList';
+import { VehicleCreateDialog } from '../components/vehicles/VehicleCreateDialog';
+import { VehicleEditDialog } from '../components/vehicles/VehicleEditDialog';
 import * as privatApi from '../api/privat-api';
-import type { PrivatVehicleWithStats } from '@/types/privat';
+import { useDefaultSpace } from '../hooks/use-privat-queries';
+import type { PrivatVehicleWithStats, PrivatVehicleCreate, PrivatVehicleUpdate } from '@/types/privat';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,9 +24,17 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
-export function VehiclesPage() {
+interface VehiclesPageProps {
+  spaceId?: string;
+}
+
+export function VehiclesPage({ spaceId: propSpaceId }: VehiclesPageProps = {}) {
   const navigate = useNavigate();
-  const { spaceId } = useParams({ strict: false }) as { spaceId?: string };
+  const params = useParams({ strict: false }) as { spaceId?: string };
+  const { defaultSpaceId, isLoading: isLoadingSpaces, hasSpaces } = useDefaultSpace();
+
+  // Priorität: 1. Props, 2. URL-Params, 3. Default-Space (persönlicher Bereich)
+  const spaceId = propSpaceId || params.spaceId || defaultSpaceId;
 
   const [vehicles, setVehicles] = React.useState<PrivatVehicleWithStats[]>([]);
   const [total, setTotal] = React.useState(0);
@@ -33,13 +44,27 @@ export function VehiclesPage() {
   const [error, setError] = React.useState<Error | null>(null);
   const [deleteVehicle, setDeleteVehicle] = React.useState<PrivatVehicleWithStats | null>(null);
 
+  // Dialog state
+  const [showCreateDialog, setShowCreateDialog] = React.useState(false);
+  const [editVehicle, setEditVehicle] = React.useState<PrivatVehicleWithStats | null>(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
   const pageSize = 12;
 
   // Load vehicles
   React.useEffect(() => {
     const loadVehicles = async () => {
+      // Warte auf Spaces wenn noch keine spaceId vorhanden
+      if (isLoadingSpaces && !spaceId) {
+        return;
+      }
+
       if (!spaceId) {
-        setError(new Error('Kein Bereich ausgewählt'));
+        if (!hasSpaces) {
+          setError(new Error('Noch keine Bereiche vorhanden. Erstellen Sie zuerst einen persönlichen Bereich.'));
+        } else {
+          setError(new Error('Kein Bereich ausgewählt'));
+        }
         setIsLoading(false);
         return;
       }
@@ -60,23 +85,44 @@ export function VehiclesPage() {
       }
     };
     loadVehicles();
-  }, [spaceId, page, searchQuery]);
+  }, [spaceId, page, searchQuery, isLoadingSpaces, hasSpaces]);
 
   const handleSelectVehicle = (vehicle: PrivatVehicleWithStats) => {
-    navigate({
-      to: '/privat/fahrzeuge/$vehicleId' as string,
-      params: { vehicleId: vehicle.id },
-    } as never);
+    void navigate({
+      to: `/privat/fahrzeuge/${vehicle.id}`,
+    });
   };
 
   const handleCreateVehicle = () => {
-    // TODO: Open create vehicle dialog/form
-    toast.info('Fahrzeug-Formular wird implementiert');
+    setShowCreateDialog(true);
   };
 
   const handleEditVehicle = (vehicle: PrivatVehicleWithStats) => {
-    // TODO: Open edit vehicle dialog/form
-    toast.info('Fahrzeug-Formular wird implementiert');
+    setEditVehicle(vehicle);
+  };
+
+  const handleCreateSubmit = async (data: PrivatVehicleCreate) => {
+    if (!spaceId) return;
+    setIsSubmitting(true);
+    try {
+      const newVehicle = await privatApi.createVehicle(spaceId, data);
+      setVehicles((prev) => [newVehicle, ...prev]);
+      setTotal((prev) => prev + 1);
+      toast.success('Fahrzeug erstellt');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditSubmit = async (vehicleId: string, data: PrivatVehicleUpdate) => {
+    setIsSubmitting(true);
+    try {
+      const updated = await privatApi.updateVehicle(vehicleId, data);
+      setVehicles((prev) => prev.map((v) => (v.id === vehicleId ? updated : v)));
+      toast.success('Fahrzeug aktualisiert');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -138,6 +184,23 @@ export function VehiclesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Dialog */}
+      <VehicleCreateDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onSubmit={handleCreateSubmit}
+        isLoading={isSubmitting}
+      />
+
+      {/* Edit Dialog */}
+      <VehicleEditDialog
+        open={!!editVehicle}
+        onOpenChange={(open) => !open && setEditVehicle(null)}
+        vehicle={editVehicle}
+        onSubmit={handleEditSubmit}
+        isLoading={isSubmitting}
+      />
     </div>
   );
 }

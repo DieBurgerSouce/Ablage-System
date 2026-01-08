@@ -84,6 +84,46 @@ const BASE_URL = '/privat';
 
 // ==================== Helper Functions ====================
 
+/**
+ * Transformiert ein Objekt von snake_case zu camelCase (rekursiv).
+ * Wird für API-Responses verwendet.
+ */
+function toCamelCase<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(toCamelCase) as T;
+  }
+  if (obj instanceof Date) return obj as T;
+
+  return Object.fromEntries(
+    Object.entries(obj as Record<string, unknown>).map(([key, value]) => [
+      key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase()),
+      toCamelCase(value),
+    ])
+  ) as T;
+}
+
+/**
+ * Transformiert ein Objekt von camelCase zu snake_case (rekursiv).
+ * Wird für API-Request-Bodies verwendet.
+ */
+function toSnakeCase<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(toSnakeCase) as T;
+  }
+  if (obj instanceof Date) return obj as T;
+
+  return Object.fromEntries(
+    Object.entries(obj as Record<string, unknown>).map(([key, value]) => [
+      key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`),
+      toSnakeCase(value),
+    ])
+  ) as T;
+}
+
 function buildQueryParams(params: Record<string, unknown>): Record<string, string> {
   const result: Record<string, string> = {};
   Object.entries(params).forEach(([key, value]) => {
@@ -100,36 +140,36 @@ function buildQueryParams(params: Record<string, unknown>): Record<string, strin
 
 export async function getDashboardStats(): Promise<PrivatDashboardStats> {
   const response = await apiClient.get<PrivatDashboardStats>(`${BASE_URL}/dashboard`);
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function getFinancialSummary(spaceId: string): Promise<PrivatFinancialSummary> {
   const response = await apiClient.get<PrivatFinancialSummary>(`${BASE_URL}/dashboard/financial-summary`, {
     params: { space_id: spaceId },
   });
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 // ==================== Space API ====================
 
 export async function listSpaces(): Promise<PrivatSpaceWithStats[]> {
   const response = await apiClient.get<PrivatSpaceWithStats[]>(`${BASE_URL}/spaces`);
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function getSpace(spaceId: string): Promise<PrivatSpaceWithStats> {
   const response = await apiClient.get<PrivatSpaceWithStats>(`${BASE_URL}/spaces/${spaceId}`);
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function createSpace(data: PrivatSpaceCreate): Promise<PrivatSpaceWithStats> {
-  const response = await apiClient.post<PrivatSpaceWithStats>(`${BASE_URL}/spaces`, data);
-  return response.data;
+  const response = await apiClient.post<PrivatSpaceWithStats>(`${BASE_URL}/spaces`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function updateSpace(spaceId: string, data: PrivatSpaceUpdate): Promise<PrivatSpaceWithStats> {
-  const response = await apiClient.patch<PrivatSpaceWithStats>(`${BASE_URL}/spaces/${spaceId}`, data);
-  return response.data;
+  const response = await apiClient.patch<PrivatSpaceWithStats>(`${BASE_URL}/spaces/${spaceId}`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function deleteSpace(spaceId: string): Promise<void> {
@@ -139,13 +179,13 @@ export async function deleteSpace(spaceId: string): Promise<void> {
 // ==================== Space Access API ====================
 
 export async function grantAccess(spaceId: string, data: PrivatSpaceAccessCreate): Promise<PrivatSpaceAccess> {
-  const response = await apiClient.post<PrivatSpaceAccess>(`${BASE_URL}/spaces/${spaceId}/access`, data);
-  return response.data;
+  const response = await apiClient.post<PrivatSpaceAccess>(`${BASE_URL}/spaces/${spaceId}/access`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function listAccess(spaceId: string): Promise<PrivatSpaceAccess[]> {
   const response = await apiClient.get<PrivatSpaceAccess[]>(`${BASE_URL}/spaces/${spaceId}/access`);
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function revokeAccess(spaceId: string, userId: string): Promise<void> {
@@ -156,24 +196,24 @@ export async function revokeAccess(spaceId: string, userId: string): Promise<voi
 
 export async function getFolderTree(spaceId: string): Promise<PrivatFolderTree[]> {
   const response = await apiClient.get<PrivatFolderTree[]>(`${BASE_URL}/spaces/${spaceId}/folders`);
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function createFolder(spaceId: string, data: PrivatFolderCreate): Promise<PrivatFolder> {
-  const response = await apiClient.post<PrivatFolder>(`${BASE_URL}/spaces/${spaceId}/folders`, data);
-  return response.data;
+  const response = await apiClient.post<PrivatFolder>(`${BASE_URL}/spaces/${spaceId}/folders`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function updateFolder(folderId: string, data: PrivatFolderUpdate): Promise<PrivatFolder> {
-  const response = await apiClient.patch<PrivatFolder>(`${BASE_URL}/folders/${folderId}`, data);
-  return response.data;
+  const response = await apiClient.patch<PrivatFolder>(`${BASE_URL}/folders/${folderId}`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function moveFolder(folderId: string, newParentId?: string): Promise<PrivatFolder> {
   const response = await apiClient.post<PrivatFolder>(`${BASE_URL}/folders/${folderId}/move`, null, {
     params: newParentId ? { new_parent_id: newParentId } : undefined,
   });
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function deleteFolder(folderId: string, recursive = false): Promise<void> {
@@ -196,12 +236,12 @@ export async function listDocuments(spaceId: string, filters: DocumentFilters = 
   const response = await apiClient.get<PrivatDocumentListResponse>(`${BASE_URL}/spaces/${spaceId}/documents`, {
     params: buildQueryParams(filters),
   });
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function getDocument(documentId: string): Promise<PrivatDocument> {
   const response = await apiClient.get<PrivatDocument>(`${BASE_URL}/documents/${documentId}`);
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function createDocument(spaceId: string, data: PrivatDocumentCreate, password?: string): Promise<PrivatDocument> {
@@ -211,13 +251,13 @@ export async function createDocument(spaceId: string, data: PrivatDocumentCreate
   if (password) {
     headers['X-Privat-Password'] = password;
   }
-  const response = await apiClient.post<PrivatDocument>(`${BASE_URL}/spaces/${spaceId}/documents`, data, { headers });
-  return response.data;
+  const response = await apiClient.post<PrivatDocument>(`${BASE_URL}/spaces/${spaceId}/documents`, toSnakeCase(data), { headers });
+  return toCamelCase(response.data);
 }
 
 export async function updateDocument(documentId: string, data: PrivatDocumentUpdate): Promise<PrivatDocument> {
-  const response = await apiClient.patch<PrivatDocument>(`${BASE_URL}/documents/${documentId}`, data);
-  return response.data;
+  const response = await apiClient.patch<PrivatDocument>(`${BASE_URL}/documents/${documentId}`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function deleteDocument(documentId: string): Promise<void> {
@@ -285,22 +325,22 @@ export async function listProperties(spaceId: string, filters: PropertyFilters =
   const response = await apiClient.get<PrivatPropertyListResponse>(`${BASE_URL}/spaces/${spaceId}/properties`, {
     params: buildQueryParams(filters),
   });
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function getProperty(propertyId: string): Promise<PrivatPropertyWithDetails> {
   const response = await apiClient.get<PrivatPropertyWithDetails>(`${BASE_URL}/properties/${propertyId}`);
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function createProperty(spaceId: string, data: PrivatPropertyCreate): Promise<PrivatPropertyWithDetails> {
-  const response = await apiClient.post<PrivatPropertyWithDetails>(`${BASE_URL}/spaces/${spaceId}/properties`, data);
-  return response.data;
+  const response = await apiClient.post<PrivatPropertyWithDetails>(`${BASE_URL}/spaces/${spaceId}/properties`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function updateProperty(propertyId: string, data: PrivatPropertyUpdate): Promise<PrivatPropertyWithDetails> {
-  const response = await apiClient.patch<PrivatPropertyWithDetails>(`${BASE_URL}/properties/${propertyId}`, data);
-  return response.data;
+  const response = await apiClient.patch<PrivatPropertyWithDetails>(`${BASE_URL}/properties/${propertyId}`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function deleteProperty(propertyId: string): Promise<void> {
@@ -311,19 +351,19 @@ export async function deleteProperty(propertyId: string): Promise<void> {
 
 export async function listTenants(propertyId: string, activeOnly = true): Promise<PrivatTenant[]> {
   const response = await apiClient.get<PrivatTenant[]>(`${BASE_URL}/properties/${propertyId}/tenants`, {
-    params: { active_only: activeOnly },
+    params: buildQueryParams({ activeOnly }),
   });
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function createTenant(propertyId: string, data: PrivatTenantCreate): Promise<PrivatTenant> {
-  const response = await apiClient.post<PrivatTenant>(`${BASE_URL}/properties/${propertyId}/tenants`, data);
-  return response.data;
+  const response = await apiClient.post<PrivatTenant>(`${BASE_URL}/properties/${propertyId}/tenants`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function recordRentalIncome(tenantId: string, data: PrivatRentalIncomeCreate): Promise<PrivatRentalIncome> {
-  const response = await apiClient.post<PrivatRentalIncome>(`${BASE_URL}/tenants/${tenantId}/income`, data);
-  return response.data;
+  const response = await apiClient.post<PrivatRentalIncome>(`${BASE_URL}/tenants/${tenantId}/income`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 // ==================== Vehicle API ====================
@@ -339,22 +379,22 @@ export async function listVehicles(spaceId: string, filters: VehicleFilters = {}
   const response = await apiClient.get<PrivatVehicleListResponse>(`${BASE_URL}/spaces/${spaceId}/vehicles`, {
     params: buildQueryParams(filters),
   });
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function getVehicle(vehicleId: string): Promise<PrivatVehicleWithStats> {
   const response = await apiClient.get<PrivatVehicleWithStats>(`${BASE_URL}/vehicles/${vehicleId}`);
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function createVehicle(spaceId: string, data: PrivatVehicleCreate): Promise<PrivatVehicleWithStats> {
-  const response = await apiClient.post<PrivatVehicleWithStats>(`${BASE_URL}/spaces/${spaceId}/vehicles`, data);
-  return response.data;
+  const response = await apiClient.post<PrivatVehicleWithStats>(`${BASE_URL}/spaces/${spaceId}/vehicles`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function updateVehicle(vehicleId: string, data: PrivatVehicleUpdate): Promise<PrivatVehicleWithStats> {
-  const response = await apiClient.patch<PrivatVehicleWithStats>(`${BASE_URL}/vehicles/${vehicleId}`, data);
-  return response.data;
+  const response = await apiClient.patch<PrivatVehicleWithStats>(`${BASE_URL}/vehicles/${vehicleId}`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function deleteVehicle(vehicleId: string): Promise<void> {
@@ -372,17 +412,17 @@ export async function listFuelLogs(vehicleId: string, filters: FuelLogFilters = 
   const response = await apiClient.get<PrivatFuelLog[]>(`${BASE_URL}/vehicles/${vehicleId}/fuel`, {
     params: buildQueryParams(filters),
   });
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function createFuelLog(vehicleId: string, data: PrivatFuelLogCreate): Promise<PrivatFuelLog> {
-  const response = await apiClient.post<PrivatFuelLog>(`${BASE_URL}/vehicles/${vehicleId}/fuel`, data);
-  return response.data;
+  const response = await apiClient.post<PrivatFuelLog>(`${BASE_URL}/vehicles/${vehicleId}/fuel`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function getFuelStatistics(vehicleId: string): Promise<PrivatFuelStatistics> {
   const response = await apiClient.get<PrivatFuelStatistics>(`${BASE_URL}/vehicles/${vehicleId}/fuel/statistics`);
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 // ==================== Insurance API ====================
@@ -397,17 +437,22 @@ export async function listInsurances(spaceId: string, filters: InsuranceFilters 
   const response = await apiClient.get<PrivatInsuranceListResponse>(`${BASE_URL}/spaces/${spaceId}/insurances`, {
     params: buildQueryParams(filters),
   });
-  return response.data;
+  return toCamelCase(response.data);
+}
+
+export async function getInsurance(insuranceId: string): Promise<PrivatInsuranceWithDeadlines> {
+  const response = await apiClient.get<PrivatInsuranceWithDeadlines>(`${BASE_URL}/insurances/${insuranceId}`);
+  return toCamelCase(response.data);
 }
 
 export async function createInsurance(spaceId: string, data: PrivatInsuranceCreate): Promise<PrivatInsuranceWithDeadlines> {
-  const response = await apiClient.post<PrivatInsuranceWithDeadlines>(`${BASE_URL}/spaces/${spaceId}/insurances`, data);
-  return response.data;
+  const response = await apiClient.post<PrivatInsuranceWithDeadlines>(`${BASE_URL}/spaces/${spaceId}/insurances`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function updateInsurance(insuranceId: string, data: PrivatInsuranceUpdate): Promise<PrivatInsuranceWithDeadlines> {
-  const response = await apiClient.patch<PrivatInsuranceWithDeadlines>(`${BASE_URL}/insurances/${insuranceId}`, data);
-  return response.data;
+  const response = await apiClient.patch<PrivatInsuranceWithDeadlines>(`${BASE_URL}/insurances/${insuranceId}`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function deleteInsurance(insuranceId: string): Promise<void> {
@@ -426,24 +471,29 @@ export async function listLoans(spaceId: string, filters: LoanFilters = {}): Pro
   const response = await apiClient.get<PrivatLoanListResponse>(`${BASE_URL}/spaces/${spaceId}/loans`, {
     params: buildQueryParams(filters),
   });
-  return response.data;
+  return toCamelCase(response.data);
+}
+
+export async function getLoan(loanId: string): Promise<PrivatLoanWithStats> {
+  const response = await apiClient.get<PrivatLoanWithStats>(`${BASE_URL}/loans/${loanId}`);
+  return toCamelCase(response.data);
 }
 
 export async function createLoan(spaceId: string, data: PrivatLoanCreate): Promise<PrivatLoanWithStats> {
-  const response = await apiClient.post<PrivatLoanWithStats>(`${BASE_URL}/spaces/${spaceId}/loans`, data);
-  return response.data;
+  const response = await apiClient.post<PrivatLoanWithStats>(`${BASE_URL}/spaces/${spaceId}/loans`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function updateLoan(loanId: string, data: PrivatLoanUpdate): Promise<PrivatLoanWithStats> {
-  const response = await apiClient.patch<PrivatLoanWithStats>(`${BASE_URL}/loans/${loanId}`, data);
-  return response.data;
+  const response = await apiClient.patch<PrivatLoanWithStats>(`${BASE_URL}/loans/${loanId}`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function recordLoanPayment(loanId: string, amount: number, paymentDate?: string): Promise<PrivatLoanWithStats> {
   const response = await apiClient.post<PrivatLoanWithStats>(`${BASE_URL}/loans/${loanId}/payment`, null, {
-    params: { amount, payment_date: paymentDate },
+    params: buildQueryParams({ amount, paymentDate }),
   });
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function deleteLoan(loanId: string): Promise<void> {
@@ -462,24 +512,29 @@ export async function listInvestments(spaceId: string, filters: InvestmentFilter
   const response = await apiClient.get<PrivatInvestmentListResponse>(`${BASE_URL}/spaces/${spaceId}/investments`, {
     params: buildQueryParams(filters),
   });
-  return response.data;
+  return toCamelCase(response.data);
+}
+
+export async function getInvestment(investmentId: string): Promise<PrivatInvestmentWithStats> {
+  const response = await apiClient.get<PrivatInvestmentWithStats>(`${BASE_URL}/investments/${investmentId}`);
+  return toCamelCase(response.data);
 }
 
 export async function createInvestment(spaceId: string, data: PrivatInvestmentCreate): Promise<PrivatInvestmentWithStats> {
-  const response = await apiClient.post<PrivatInvestmentWithStats>(`${BASE_URL}/spaces/${spaceId}/investments`, data);
-  return response.data;
+  const response = await apiClient.post<PrivatInvestmentWithStats>(`${BASE_URL}/spaces/${spaceId}/investments`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function updateInvestment(investmentId: string, data: PrivatInvestmentUpdate): Promise<PrivatInvestmentWithStats> {
-  const response = await apiClient.patch<PrivatInvestmentWithStats>(`${BASE_URL}/investments/${investmentId}`, data);
-  return response.data;
+  const response = await apiClient.patch<PrivatInvestmentWithStats>(`${BASE_URL}/investments/${investmentId}`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function updateInvestmentValue(investmentId: string, newValue: number): Promise<PrivatInvestmentWithStats> {
   const response = await apiClient.post<PrivatInvestmentWithStats>(`${BASE_URL}/investments/${investmentId}/value`, null, {
-    params: { new_value: newValue },
+    params: buildQueryParams({ newValue }),
   });
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function deleteInvestment(investmentId: string): Promise<void> {
@@ -488,7 +543,7 @@ export async function deleteInvestment(investmentId: string): Promise<void> {
 
 export async function getPortfolioBreakdown(spaceId: string): Promise<PrivatPortfolioBreakdown> {
   const response = await apiClient.get<PrivatPortfolioBreakdown>(`${BASE_URL}/spaces/${spaceId}/investments/portfolio`);
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 // ==================== Deadline API ====================
@@ -504,27 +559,27 @@ export async function listDeadlines(spaceId: string, filters: DeadlineFilters = 
   const response = await apiClient.get<PrivatDeadlineListResponse>(`${BASE_URL}/spaces/${spaceId}/deadlines`, {
     params: buildQueryParams(filters),
   });
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function getDeadlineWidget(spaceId: string): Promise<PrivatDeadlineWidget> {
   const response = await apiClient.get<PrivatDeadlineWidget>(`${BASE_URL}/spaces/${spaceId}/deadlines/widget`);
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function createDeadline(spaceId: string, data: PrivatDeadlineCreate): Promise<PrivatDeadlineWithStatus> {
-  const response = await apiClient.post<PrivatDeadlineWithStatus>(`${BASE_URL}/spaces/${spaceId}/deadlines`, data);
-  return response.data;
+  const response = await apiClient.post<PrivatDeadlineWithStatus>(`${BASE_URL}/spaces/${spaceId}/deadlines`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function updateDeadline(deadlineId: string, data: PrivatDeadlineUpdate): Promise<PrivatDeadlineWithStatus> {
-  const response = await apiClient.patch<PrivatDeadlineWithStatus>(`${BASE_URL}/deadlines/${deadlineId}`, data);
-  return response.data;
+  const response = await apiClient.patch<PrivatDeadlineWithStatus>(`${BASE_URL}/deadlines/${deadlineId}`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function completeDeadline(deadlineId: string): Promise<PrivatDeadlineWithStatus> {
   const response = await apiClient.post<PrivatDeadlineWithStatus>(`${BASE_URL}/deadlines/${deadlineId}/complete`);
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function deleteDeadline(deadlineId: string): Promise<void> {
@@ -540,17 +595,17 @@ export function getCalendarExportUrl(spaceId: string, includeCompleted = false):
 
 export async function listEmergencyContacts(spaceId: string): Promise<PrivatEmergencyContact[]> {
   const response = await apiClient.get<PrivatEmergencyContact[]>(`${BASE_URL}/spaces/${spaceId}/emergency/contacts`);
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function createEmergencyContact(spaceId: string, data: PrivatEmergencyContactCreate): Promise<PrivatEmergencyContact> {
-  const response = await apiClient.post<PrivatEmergencyContact>(`${BASE_URL}/spaces/${spaceId}/emergency/contacts`, data);
-  return response.data;
+  const response = await apiClient.post<PrivatEmergencyContact>(`${BASE_URL}/spaces/${spaceId}/emergency/contacts`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function updateEmergencyContact(contactId: string, data: PrivatEmergencyContactUpdate): Promise<PrivatEmergencyContact> {
-  const response = await apiClient.patch<PrivatEmergencyContact>(`${BASE_URL}/emergency/contacts/${contactId}`, data);
-  return response.data;
+  const response = await apiClient.patch<PrivatEmergencyContact>(`${BASE_URL}/emergency/contacts/${contactId}`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function deleteEmergencyContact(contactId: string): Promise<void> {
@@ -558,27 +613,27 @@ export async function deleteEmergencyContact(contactId: string): Promise<void> {
 }
 
 export async function requestEmergencyAccess(data: PrivatEmergencyAccessRequestCreate): Promise<PrivatEmergencyAccessRequest> {
-  const response = await apiClient.post<PrivatEmergencyAccessRequest>(`${BASE_URL}/emergency/request`, data);
-  return response.data;
+  const response = await apiClient.post<PrivatEmergencyAccessRequest>(`${BASE_URL}/emergency/request`, toSnakeCase(data));
+  return toCamelCase(response.data);
 }
 
 export async function listEmergencyRequests(spaceId: string, status?: PrivatEmergencyAccessStatus): Promise<PrivatEmergencyAccessRequest[]> {
   const response = await apiClient.get<PrivatEmergencyAccessRequest[]>(`${BASE_URL}/spaces/${spaceId}/emergency/requests`, {
-    params: status ? { status_filter: status } : undefined,
+    params: status ? buildQueryParams({ statusFilter: status }) : undefined,
   });
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function approveEmergencyRequest(requestId: string): Promise<PrivatEmergencyAccessRequest> {
   const response = await apiClient.post<PrivatEmergencyAccessRequest>(`${BASE_URL}/emergency/requests/${requestId}/approve`);
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function denyEmergencyRequest(requestId: string, reason: string): Promise<PrivatEmergencyAccessRequest> {
   const response = await apiClient.post<PrivatEmergencyAccessRequest>(`${BASE_URL}/emergency/requests/${requestId}/deny`, null, {
-    params: { reason },
+    params: buildQueryParams({ reason }),
   });
-  return response.data;
+  return toCamelCase(response.data);
 }
 
 export async function revokeEmergencyAccess(requestId: string): Promise<void> {

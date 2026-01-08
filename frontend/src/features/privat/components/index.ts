@@ -28,6 +28,11 @@ export { InvestmentList } from './finances/InvestmentList';
 
 // Deadline Components
 export { DeadlineList } from './deadlines/DeadlineList';
+export { DeadlineCreateDialog } from './deadlines/DeadlineCreateDialog';
+export { DeadlineEditDialog } from './deadlines/DeadlineEditDialog';
 
 // Emergency Components
 export { EmergencyAccessPanel } from './emergency/EmergencyAccessPanel';
+
+// Shared Components
+export { DocumentUploadSection } from './shared/DocumentUploadSection';

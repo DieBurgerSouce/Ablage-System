@@ -103,6 +103,7 @@ export const privatQueryKeys = {
   insurances: (spaceId: string) => [...privatQueryKeys.space(spaceId), 'insurances'] as const,
   insurancesList: (spaceId: string, filters: privatApi.InsuranceFilters) =>
     [...privatQueryKeys.insurances(spaceId), filters] as const,
+  insurance: (insuranceId: string) => [...privatQueryKeys.all, 'insurance', insuranceId] as const,
   // Loans
   loans: (spaceId: string) => [...privatQueryKeys.space(spaceId), 'loans'] as const,
   loansList: (spaceId: string, filters: privatApi.LoanFilters) =>
@@ -171,6 +172,25 @@ export function useSpace(
     enabled: !!spaceId,
     ...options,
   });
+}
+
+/**
+ * Hook um den Standard-Bereich (persönlicher Bereich) zu ermitteln.
+ * Nützlich wenn kein spaceId in der URL vorhanden ist.
+ */
+export function useDefaultSpace() {
+  const { data: spaces, isLoading, error } = useSpaces();
+
+  // Finde den ersten persönlichen Bereich
+  const defaultSpace = spaces?.find((s) => s.spaceType === 'personal') ?? spaces?.[0];
+
+  return {
+    defaultSpaceId: defaultSpace?.id,
+    defaultSpace,
+    isLoading,
+    error,
+    hasSpaces: (spaces?.length ?? 0) > 0,
+  };
 }
 
 export function useCreateSpace() {
@@ -583,6 +603,18 @@ export function useInsurances(
     queryKey: privatQueryKeys.insurancesList(spaceId, filters),
     queryFn: () => privatApi.listInsurances(spaceId, filters),
     enabled: !!spaceId,
+    ...options,
+  });
+}
+
+export function useInsurance(
+  insuranceId: string,
+  options?: Omit<UseQueryOptions<PrivatInsuranceWithDeadlines>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: privatQueryKeys.insurance(insuranceId),
+    queryFn: () => privatApi.getInsurance(insuranceId),
+    enabled: !!insuranceId,
     ...options,
   });
 }

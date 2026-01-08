@@ -7,8 +7,11 @@
 import * as React from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { PropertyList } from '../components/properties/PropertyList';
+import { PropertyCreateDialog } from '../components/properties/PropertyCreateDialog';
+import { PropertyEditDialog } from '../components/properties/PropertyEditDialog';
 import * as privatApi from '../api/privat-api';
-import type { PrivatPropertyWithDetails } from '@/types/privat';
+import { useDefaultSpace } from '../hooks/use-privat-queries';
+import type { PrivatPropertyWithDetails, PrivatPropertyCreate, PrivatPropertyUpdate } from '@/types/privat';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,9 +24,17 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
-export function PropertiesPage() {
+interface PropertiesPageProps {
+  spaceId?: string;
+}
+
+export function PropertiesPage({ spaceId: propSpaceId }: PropertiesPageProps = {}) {
   const navigate = useNavigate();
-  const { spaceId } = useParams({ strict: false }) as { spaceId?: string };
+  const params = useParams({ strict: false }) as { spaceId?: string };
+  const { defaultSpaceId, isLoading: isLoadingSpaces, hasSpaces } = useDefaultSpace();
+
+  // Priorität: 1. Props, 2. URL-Params, 3. Default-Space (persönlicher Bereich)
+  const spaceId = propSpaceId || params.spaceId || defaultSpaceId;
 
   const [properties, setProperties] = React.useState<PrivatPropertyWithDetails[]>([]);
   const [total, setTotal] = React.useState(0);
@@ -33,13 +44,27 @@ export function PropertiesPage() {
   const [error, setError] = React.useState<Error | null>(null);
   const [deleteProperty, setDeleteProperty] = React.useState<PrivatPropertyWithDetails | null>(null);
 
+  // Dialog state
+  const [showCreateDialog, setShowCreateDialog] = React.useState(false);
+  const [editProperty, setEditProperty] = React.useState<PrivatPropertyWithDetails | null>(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
   const pageSize = 12;
 
   // Load properties
   React.useEffect(() => {
     const loadProperties = async () => {
+      // Warte auf Spaces wenn noch keine spaceId vorhanden
+      if (isLoadingSpaces && !spaceId) {
+        return;
+      }
+
       if (!spaceId) {
-        setError(new Error('Kein Bereich ausgewählt'));
+        if (!hasSpaces) {
+          setError(new Error('Noch keine Bereiche vorhanden. Erstellen Sie zuerst einen persönlichen Bereich.'));
+        } else {
+          setError(new Error('Kein Bereich ausgewählt'));
+        }
         setIsLoading(false);
         return;
       }
@@ -60,23 +85,44 @@ export function PropertiesPage() {
       }
     };
     loadProperties();
-  }, [spaceId, page, searchQuery]);
+  }, [spaceId, page, searchQuery, isLoadingSpaces, hasSpaces]);
 
   const handleSelectProperty = (property: PrivatPropertyWithDetails) => {
-    navigate({
-      to: '/privat/immobilien/$propertyId' as string,
-      params: { propertyId: property.id },
-    } as never);
+    void navigate({
+      to: `/privat/immobilien/${property.id}`,
+    });
   };
 
   const handleCreateProperty = () => {
-    // TODO: Open create property dialog/form
-    toast.info('Immobilien-Formular wird implementiert');
+    setShowCreateDialog(true);
   };
 
   const handleEditProperty = (property: PrivatPropertyWithDetails) => {
-    // TODO: Open edit property dialog/form
-    toast.info('Immobilien-Formular wird implementiert');
+    setEditProperty(property);
+  };
+
+  const handleCreateSubmit = async (data: PrivatPropertyCreate) => {
+    if (!spaceId) return;
+    setIsSubmitting(true);
+    try {
+      const newProperty = await privatApi.createProperty(spaceId, data);
+      setProperties((prev) => [newProperty, ...prev]);
+      setTotal((prev) => prev + 1);
+      toast.success('Immobilie erstellt');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditSubmit = async (propertyId: string, data: PrivatPropertyUpdate) => {
+    setIsSubmitting(true);
+    try {
+      const updated = await privatApi.updateProperty(propertyId, data);
+      setProperties((prev) => prev.map((p) => (p.id === propertyId ? updated : p)));
+      toast.success('Immobilie aktualisiert');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -138,6 +184,23 @@ export function PropertiesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Dialog */}
+      <PropertyCreateDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onSubmit={handleCreateSubmit}
+        isLoading={isSubmitting}
+      />
+
+      {/* Edit Dialog */}
+      <PropertyEditDialog
+        open={!!editProperty}
+        onOpenChange={(open) => !open && setEditProperty(null)}
+        property={editProperty}
+        onSubmit={handleEditSubmit}
+        isLoading={isSubmitting}
+      />
     </div>
   );
 }

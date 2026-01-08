@@ -392,7 +392,7 @@ class PrivatInvestmentService:
         """Berechnet die Gesamtrendite aller Anlagen."""
         result = await db.execute(
             select(
-                func.coalesce(func.sum(PrivatInvestment.initial_amount), 0).label("total_invested"),
+                func.coalesce(func.sum(PrivatInvestment.purchase_value), 0).label("total_invested"),
                 func.coalesce(func.sum(PrivatInvestment.current_value), 0).label("total_value"),
             )
             .where(

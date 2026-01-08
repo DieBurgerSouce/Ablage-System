@@ -10,6 +10,7 @@ import uuid
 from uuid import UUID  # Import UUID type explicitly for type annotations
 
 from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator, ConfigDict
+from pydantic.alias_generators import to_camel
 
 
 # Enums (matching SQLAlchemy models)
@@ -6252,6 +6253,12 @@ class PrivatDeadlineUpdate(BaseModel):
 
 class PrivatDeadlineResponse(PrivatDeadlineBase):
     """Response-Schema fuer Frist."""
+    model_config = ConfigDict(
+        from_attributes=True,
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
+
     id: uuid.UUID
     space_id: uuid.UUID
     related_entity_type: Optional[str] = None
@@ -6260,8 +6267,6 @@ class PrivatDeadlineResponse(PrivatDeadlineBase):
     completed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class PrivatDeadlineWithStatus(PrivatDeadlineResponse):
@@ -6382,6 +6387,10 @@ class PrivatDashboardStats(BaseModel):
 
 class PrivatDeadlineWidget(BaseModel):
     """Dashboard-Widget fuer Fristen."""
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
     today: List[PrivatDeadlineWithStatus] = []
     this_week: List[PrivatDeadlineWithStatus] = []
     this_month: List[PrivatDeadlineWithStatus] = []
@@ -6390,15 +6399,16 @@ class PrivatDeadlineWidget(BaseModel):
 
 class PrivatFinancialSummary(BaseModel):
     """Finanzuebersicht."""
-    total_property_value: Decimal = Decimal("0.00")
-    total_vehicle_value: Decimal = Decimal("0.00")
-    total_investment_value: Decimal = Decimal("0.00")
-    total_loan_balance: Decimal = Decimal("0.00")
-    monthly_rental_income: Decimal = Decimal("0.00")
-    monthly_insurance_cost: Decimal = Decimal("0.00")
-    monthly_loan_payments: Decimal = Decimal("0.00")
-    net_worth: Decimal = Decimal("0.00")
-    monthly_cash_flow: Decimal = Decimal("0.00")
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
+    net_worth: float = 0.0
+    total_investments: float = 0.0
+    total_loans: float = 0.0
+    monthly_loan_payments: float = 0.0
+    annual_insurance_cost: float = 0.0
+    investment_return_percentage: float = 0.0
 
 
 # =============================================================================

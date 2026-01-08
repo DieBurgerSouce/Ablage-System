@@ -1808,6 +1808,66 @@ async def list_insurances(
     return result
 
 
+@router.get(
+    "/insurances/{insurance_id}",
+    response_model=PrivatInsuranceWithDeadlines,
+    summary="Versicherungs-Details abrufen",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def get_insurance(
+    request: Request,
+    insurance_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PrivatInsuranceWithDeadlines:
+    """Holt Versicherungs-Details mit Deadline-Informationen.
+
+    SECURITY: IDOR-sichere Methode mit PII-Masking fuer Nicht-Owner.
+    """
+    insurance = await insurance_service.get_by_id_with_access_check(
+        db, insurance_id, current_user.id
+    )
+    if not insurance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Versicherung nicht gefunden",
+        )
+
+    # SECURITY: PII Masking - pruefe Owner-Status ueber Space
+    space, is_owner = await get_user_space_with_owner_info(db, insurance.space_id, current_user)
+
+    # Deadline-Berechnung
+    upcoming_payment = insurance_service._calculate_next_payment(insurance)
+    days_until = None
+    if upcoming_payment:
+        days_until = (upcoming_payment - date.today()).days
+    annual_cost = insurance_service._calculate_annual_cost(insurance)
+
+    return PrivatInsuranceWithDeadlines(
+        id=insurance.id,
+        space_id=insurance.space_id,
+        name=insurance.name,
+        insurance_type=InsuranceType(insurance.insurance_type),
+        provider=insurance.provider,
+        policy_number=mask_sensitive_field(insurance.policy_number, is_owner),
+        premium=insurance.premium,
+        premium_interval=insurance.premium_interval,
+        coverage_amount=insurance.coverage_amount,
+        deductible=insurance.deductible,
+        start_date=insurance.start_date,
+        end_date=insurance.end_date,
+        cancellation_period=insurance.cancellation_period,
+        auto_renewal=insurance.auto_renewal,
+        notes=insurance.notes,
+        is_active=insurance.is_active,
+        created_at=insurance.created_at,
+        updated_at=insurance.updated_at,
+        upcoming_payment=upcoming_payment,
+        days_until_payment=days_until,
+        annual_cost=annual_cost,
+    )
+
+
 @router.patch(
     "/insurances/{insurance_id}",
     response_model=PrivatInsuranceWithDeadlines,
@@ -1970,6 +2030,59 @@ async def list_loans(
             item.account_number = mask_sensitive_field(item.account_number, is_owner)
 
     return result
+
+
+@router.get(
+    "/loans/{loan_id}",
+    response_model=PrivatLoanWithStats,
+    summary="Kredit-Details abrufen",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def get_loan(
+    request: Request,
+    loan_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PrivatLoanWithStats:
+    """Holt Kredit-Details mit Statistiken.
+
+    SECURITY: IDOR-sichere Methode mit PII-Masking fuer Nicht-Owner.
+    """
+    loan = await loan_service.get_by_id_with_access_check(
+        db, loan_id, current_user.id
+    )
+    if not loan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Kredit nicht gefunden",
+        )
+
+    # SECURITY: PII Masking - pruefe Owner-Status ueber Space
+    space, is_owner = await get_user_space_with_owner_info(db, loan.space_id, current_user)
+
+    # Statistik-Berechnung
+    stats = loan_service._calculate_loan_stats(loan)
+
+    return PrivatLoanWithStats(
+        id=loan.id,
+        space_id=loan.space_id,
+        name=loan.name,
+        loan_type=LoanType(loan.loan_type),
+        lender=loan.lender,
+        principal_amount=loan.principal_amount,
+        current_balance=loan.current_balance,
+        interest_rate=loan.interest_rate,
+        monthly_payment=loan.monthly_payment,
+        start_date=loan.start_date,
+        end_date=loan.end_date,
+        next_payment_date=loan.next_payment_date,
+        account_number=mask_sensitive_field(loan.account_number, is_owner),
+        notes=loan.notes,
+        is_active=loan.is_active,
+        created_at=loan.created_at,
+        updated_at=loan.updated_at,
+        **stats,
+    )
 
 
 @router.post(
@@ -2179,6 +2292,58 @@ async def list_investments(
             item.account_number = mask_sensitive_field(item.account_number, is_owner)
 
     return result
+
+
+@router.get(
+    "/investments/{investment_id}",
+    response_model=PrivatInvestmentWithStats,
+    summary="Geldanlage-Details abrufen",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def get_investment(
+    request: Request,
+    investment_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PrivatInvestmentWithStats:
+    """Holt Geldanlage-Details mit Statistiken.
+
+    SECURITY: IDOR-sichere Methode mit PII-Masking fuer Nicht-Owner.
+    """
+    investment = await investment_service.get_by_id_with_access_check(
+        db, investment_id, current_user.id
+    )
+    if not investment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Geldanlage nicht gefunden",
+        )
+
+    # SECURITY: PII Masking - pruefe Owner-Status ueber Space
+    space, is_owner = await get_user_space_with_owner_info(db, investment.space_id, current_user)
+
+    # Statistik-Berechnung
+    stats = investment_service._calculate_investment_stats(investment)
+
+    return PrivatInvestmentWithStats(
+        id=investment.id,
+        space_id=investment.space_id,
+        name=investment.name,
+        investment_type=InvestmentType(investment.investment_type),
+        institution=investment.institution,
+        account_number=mask_sensitive_field(investment.account_number, is_owner),
+        initial_amount=investment.initial_amount,
+        current_value=investment.current_value,
+        interest_rate=investment.interest_rate,
+        start_date=investment.start_date,
+        maturity_date=investment.maturity_date,
+        is_taxable=investment.is_taxable,
+        notes=investment.notes,
+        is_active=investment.is_active,
+        created_at=investment.created_at,
+        updated_at=investment.updated_at,
+        **stats,
+    )
 
 
 @router.post(

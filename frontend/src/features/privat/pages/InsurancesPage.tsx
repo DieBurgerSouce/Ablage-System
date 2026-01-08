@@ -5,10 +5,13 @@
  */
 
 import * as React from 'react';
-import { useParams } from '@tanstack/react-router';
+import { useNavigate, useParams } from '@tanstack/react-router';
 import { InsuranceList } from '../components/insurances/InsuranceList';
+import { InsuranceCreateDialog } from '../components/insurances/InsuranceCreateDialog';
+import { InsuranceEditDialog } from '../components/insurances/InsuranceEditDialog';
 import * as privatApi from '../api/privat-api';
-import type { PrivatInsuranceWithDeadlines, InsuranceType } from '@/types/privat';
+import { useDefaultSpace } from '../hooks/use-privat-queries';
+import type { PrivatInsuranceWithDeadlines, InsuranceType, PrivatInsuranceCreate, PrivatInsuranceUpdate } from '@/types/privat';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,8 +24,17 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
-export function InsurancesPage() {
-  const { spaceId } = useParams({ strict: false }) as { spaceId?: string };
+interface InsurancesPageProps {
+  spaceId?: string;
+}
+
+export function InsurancesPage({ spaceId: propSpaceId }: InsurancesPageProps = {}) {
+  const navigate = useNavigate();
+  const params = useParams({ strict: false }) as { spaceId?: string };
+  const { defaultSpaceId, isLoading: isLoadingSpaces, hasSpaces } = useDefaultSpace();
+
+  // Priorität: 1. Props, 2. URL-Params, 3. Default-Space (persönlicher Bereich)
+  const spaceId = propSpaceId || params.spaceId || defaultSpaceId;
 
   const [insurances, setInsurances] = React.useState<PrivatInsuranceWithDeadlines[]>([]);
   const [total, setTotal] = React.useState(0);
@@ -33,13 +45,27 @@ export function InsurancesPage() {
   const [error, setError] = React.useState<Error | null>(null);
   const [deleteInsurance, setDeleteInsurance] = React.useState<PrivatInsuranceWithDeadlines | null>(null);
 
+  // Dialog state
+  const [showCreateDialog, setShowCreateDialog] = React.useState(false);
+  const [editInsurance, setEditInsurance] = React.useState<PrivatInsuranceWithDeadlines | null>(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
   const pageSize = 12;
 
   // Load insurances
   React.useEffect(() => {
     const loadInsurances = async () => {
+      // Warte auf Spaces wenn noch keine spaceId vorhanden
+      if (isLoadingSpaces && !spaceId) {
+        return;
+      }
+
       if (!spaceId) {
-        setError(new Error('Kein Bereich ausgewählt'));
+        if (!hasSpaces) {
+          setError(new Error('Noch keine Bereiche vorhanden. Erstellen Sie zuerst einen persönlichen Bereich.'));
+        } else {
+          setError(new Error('Kein Bereich ausgewählt'));
+        }
         setIsLoading(false);
         return;
       }
@@ -61,21 +87,44 @@ export function InsurancesPage() {
       }
     };
     loadInsurances();
-  }, [spaceId, page, searchQuery, typeFilter]);
+  }, [spaceId, page, searchQuery, typeFilter, isLoadingSpaces, hasSpaces]);
 
   const handleSelectInsurance = (insurance: PrivatInsuranceWithDeadlines) => {
-    // TODO: Open detail view or navigate
-    toast.info('Versicherungs-Detail wird implementiert');
+    void navigate({
+      to: `/privat/versicherungen/${insurance.id}`,
+    });
   };
 
   const handleCreateInsurance = () => {
-    // TODO: Open create insurance dialog/form
-    toast.info('Versicherungs-Formular wird implementiert');
+    setShowCreateDialog(true);
   };
 
   const handleEditInsurance = (insurance: PrivatInsuranceWithDeadlines) => {
-    // TODO: Open edit insurance dialog/form
-    toast.info('Versicherungs-Formular wird implementiert');
+    setEditInsurance(insurance);
+  };
+
+  const handleCreateSubmit = async (data: PrivatInsuranceCreate) => {
+    if (!spaceId) return;
+    setIsSubmitting(true);
+    try {
+      const newInsurance = await privatApi.createInsurance(spaceId, data);
+      setInsurances((prev) => [newInsurance, ...prev]);
+      setTotal((prev) => prev + 1);
+      toast.success('Versicherung erstellt');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditSubmit = async (insuranceId: string, data: PrivatInsuranceUpdate) => {
+    setIsSubmitting(true);
+    try {
+      const updated = await privatApi.updateInsurance(insuranceId, data);
+      setInsurances((prev) => prev.map((i) => (i.id === insuranceId ? updated : i)));
+      toast.success('Versicherung aktualisiert');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -143,6 +192,23 @@ export function InsurancesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Dialog */}
+      <InsuranceCreateDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onSubmit={handleCreateSubmit}
+        isLoading={isSubmitting}
+      />
+
+      {/* Edit Dialog */}
+      <InsuranceEditDialog
+        open={!!editInsurance}
+        onOpenChange={(open) => !open && setEditInsurance(null)}
+        insurance={editInsurance}
+        onSubmit={handleEditSubmit}
+        isLoading={isSubmitting}
+      />
     </div>
   );
 }

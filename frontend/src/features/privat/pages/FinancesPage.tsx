@@ -5,12 +5,24 @@
  */
 
 import * as React from 'react';
-import { useParams } from '@tanstack/react-router';
+import { useNavigate, useParams } from '@tanstack/react-router';
 import { LoanList } from '../components/finances/LoanList';
 import { InvestmentList } from '../components/finances/InvestmentList';
+import { LoanCreateDialog } from '../components/finances/LoanCreateDialog';
+import { LoanEditDialog } from '../components/finances/LoanEditDialog';
+import { InvestmentCreateDialog } from '../components/finances/InvestmentCreateDialog';
+import { InvestmentEditDialog } from '../components/finances/InvestmentEditDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import * as privatApi from '../api/privat-api';
-import type { PrivatLoanWithStats, PrivatInvestmentWithStats } from '@/types/privat';
+import { useDefaultSpace } from '../hooks/use-privat-queries';
+import type {
+  PrivatLoanWithStats,
+  PrivatInvestmentWithStats,
+  PrivatLoanCreate,
+  PrivatLoanUpdate,
+  PrivatInvestmentCreate,
+  PrivatInvestmentUpdate,
+} from '@/types/privat';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,8 +35,17 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
-export function FinancesPage() {
-  const { spaceId } = useParams({ strict: false }) as { spaceId?: string };
+interface FinancesPageProps {
+  spaceId?: string;
+}
+
+export function FinancesPage({ spaceId: propSpaceId }: FinancesPageProps = {}) {
+  const navigate = useNavigate();
+  const params = useParams({ strict: false }) as { spaceId?: string };
+  const { defaultSpaceId, isLoading: isLoadingSpaces, hasSpaces } = useDefaultSpace();
+
+  // Priorität: 1. Props, 2. URL-Params, 3. Default-Space (persönlicher Bereich)
+  const spaceId = propSpaceId || params.spaceId || defaultSpaceId;
   const [activeTab, setActiveTab] = React.useState('loans');
 
   // Loans state
@@ -45,13 +66,32 @@ export function FinancesPage() {
   const [investmentsError, setInvestmentsError] = React.useState<Error | null>(null);
   const [deleteInvestment, setDeleteInvestment] = React.useState<PrivatInvestmentWithStats | null>(null);
 
+  // Dialog state - Loans
+  const [showLoanCreateDialog, setShowLoanCreateDialog] = React.useState(false);
+  const [editLoan, setEditLoan] = React.useState<PrivatLoanWithStats | null>(null);
+  const [isLoanSubmitting, setIsLoanSubmitting] = React.useState(false);
+
+  // Dialog state - Investments
+  const [showInvestmentCreateDialog, setShowInvestmentCreateDialog] = React.useState(false);
+  const [editInvestment, setEditInvestment] = React.useState<PrivatInvestmentWithStats | null>(null);
+  const [isInvestmentSubmitting, setIsInvestmentSubmitting] = React.useState(false);
+
   const pageSize = 10;
 
   // Load loans
   React.useEffect(() => {
     const loadLoans = async () => {
+      // Warte auf Spaces wenn noch keine spaceId vorhanden
+      if (isLoadingSpaces && !spaceId) {
+        return;
+      }
+
       if (!spaceId) {
-        setLoansError(new Error('Kein Bereich ausgewählt'));
+        if (!hasSpaces) {
+          setLoansError(new Error('Noch keine Bereiche vorhanden. Erstellen Sie zuerst einen persönlichen Bereich.'));
+        } else {
+          setLoansError(new Error('Kein Bereich ausgewählt'));
+        }
         setLoansLoading(false);
         return;
       }
@@ -72,13 +112,22 @@ export function FinancesPage() {
       }
     };
     loadLoans();
-  }, [spaceId, loansPage, loansSearch]);
+  }, [spaceId, loansPage, loansSearch, isLoadingSpaces, hasSpaces]);
 
   // Load investments
   React.useEffect(() => {
     const loadInvestments = async () => {
+      // Warte auf Spaces wenn noch keine spaceId vorhanden
+      if (isLoadingSpaces && !spaceId) {
+        return;
+      }
+
       if (!spaceId) {
-        setInvestmentsError(new Error('Kein Bereich ausgewählt'));
+        if (!hasSpaces) {
+          setInvestmentsError(new Error('Noch keine Bereiche vorhanden. Erstellen Sie zuerst einen persönlichen Bereich.'));
+        } else {
+          setInvestmentsError(new Error('Kein Bereich ausgewählt'));
+        }
         setInvestmentsLoading(false);
         return;
       }
@@ -99,19 +148,45 @@ export function FinancesPage() {
       }
     };
     loadInvestments();
-  }, [spaceId, investmentsPage, investmentsSearch]);
+  }, [spaceId, investmentsPage, investmentsSearch, isLoadingSpaces, hasSpaces]);
 
   // Loan handlers
   const handleSelectLoan = (loan: PrivatLoanWithStats) => {
-    toast.info('Kredit-Detail wird implementiert');
+    void navigate({
+      to: `/privat/finanzen/kredite/${loan.id}`,
+    });
   };
 
   const handleCreateLoan = () => {
-    toast.info('Kredit-Formular wird implementiert');
+    setShowLoanCreateDialog(true);
   };
 
   const handleEditLoan = (loan: PrivatLoanWithStats) => {
-    toast.info('Kredit-Formular wird implementiert');
+    setEditLoan(loan);
+  };
+
+  const handleLoanCreateSubmit = async (data: PrivatLoanCreate) => {
+    if (!spaceId) return;
+    setIsLoanSubmitting(true);
+    try {
+      const newLoan = await privatApi.createLoan(spaceId, data);
+      setLoans((prev) => [newLoan, ...prev]);
+      setLoansTotal((prev) => prev + 1);
+      toast.success('Kredit erstellt');
+    } finally {
+      setIsLoanSubmitting(false);
+    }
+  };
+
+  const handleLoanEditSubmit = async (loanId: string, data: PrivatLoanUpdate) => {
+    setIsLoanSubmitting(true);
+    try {
+      const updated = await privatApi.updateLoan(loanId, data);
+      setLoans((prev) => prev.map((l) => (l.id === loanId ? updated : l)));
+      toast.success('Kredit aktualisiert');
+    } finally {
+      setIsLoanSubmitting(false);
+    }
   };
 
   const handleDeleteLoanConfirm = async () => {
@@ -131,15 +206,41 @@ export function FinancesPage() {
 
   // Investment handlers
   const handleSelectInvestment = (investment: PrivatInvestmentWithStats) => {
-    toast.info('Geldanlage-Detail wird implementiert');
+    void navigate({
+      to: `/privat/finanzen/anlagen/${investment.id}`,
+    });
   };
 
   const handleCreateInvestment = () => {
-    toast.info('Geldanlage-Formular wird implementiert');
+    setShowInvestmentCreateDialog(true);
   };
 
   const handleEditInvestment = (investment: PrivatInvestmentWithStats) => {
-    toast.info('Geldanlage-Formular wird implementiert');
+    setEditInvestment(investment);
+  };
+
+  const handleInvestmentCreateSubmit = async (data: PrivatInvestmentCreate) => {
+    if (!spaceId) return;
+    setIsInvestmentSubmitting(true);
+    try {
+      const newInvestment = await privatApi.createInvestment(spaceId, data);
+      setInvestments((prev) => [newInvestment, ...prev]);
+      setInvestmentsTotal((prev) => prev + 1);
+      toast.success('Geldanlage erstellt');
+    } finally {
+      setIsInvestmentSubmitting(false);
+    }
+  };
+
+  const handleInvestmentEditSubmit = async (investmentId: string, data: PrivatInvestmentUpdate) => {
+    setIsInvestmentSubmitting(true);
+    try {
+      const updated = await privatApi.updateInvestment(investmentId, data);
+      setInvestments((prev) => prev.map((i) => (i.id === investmentId ? updated : i)));
+      toast.success('Geldanlage aktualisiert');
+    } finally {
+      setIsInvestmentSubmitting(false);
+    }
   };
 
   const handleDeleteInvestmentConfirm = async () => {
@@ -249,6 +350,40 @@ export function FinancesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Loan Create Dialog */}
+      <LoanCreateDialog
+        open={showLoanCreateDialog}
+        onOpenChange={setShowLoanCreateDialog}
+        onSubmit={handleLoanCreateSubmit}
+        isLoading={isLoanSubmitting}
+      />
+
+      {/* Loan Edit Dialog */}
+      <LoanEditDialog
+        open={!!editLoan}
+        onOpenChange={(open) => !open && setEditLoan(null)}
+        loan={editLoan}
+        onSubmit={handleLoanEditSubmit}
+        isLoading={isLoanSubmitting}
+      />
+
+      {/* Investment Create Dialog */}
+      <InvestmentCreateDialog
+        open={showInvestmentCreateDialog}
+        onOpenChange={setShowInvestmentCreateDialog}
+        onSubmit={handleInvestmentCreateSubmit}
+        isLoading={isInvestmentSubmitting}
+      />
+
+      {/* Investment Edit Dialog */}
+      <InvestmentEditDialog
+        open={!!editInvestment}
+        onOpenChange={(open) => !open && setEditInvestment(null)}
+        investment={editInvestment}
+        onSubmit={handleInvestmentEditSubmit}
+        isLoading={isInvestmentSubmitting}
+      />
     </div>
   );
 }
