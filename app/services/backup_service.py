@@ -71,7 +71,9 @@ class BackupConfig:
     minio_buckets: List[str] = field(default_factory=lambda: [settings.MINIO_BUCKET_DOCUMENTS, settings.MINIO_BUCKET_PROCESSED, settings.MINIO_BUCKET_THUMBNAILS])
 
     # GPG Verschluesselung
-    encryption_enabled: bool = field(default_factory=lambda: os.getenv("BACKUP_ENCRYPTION", "false").lower() == "true")
+    # SECURITY FIX: Default auf True geändert für GDPR-Compliance (Art. 32)
+    # Backups MÜSSEN in Production verschlüsselt sein
+    encryption_enabled: bool = field(default_factory=lambda: os.getenv("BACKUP_ENCRYPTION", "true").lower() == "true")
     gpg_recipient: str = field(default_factory=lambda: os.getenv("BACKUP_GPG_RECIPIENT", "backup@ablage-system.local"))
     gpg_home: Optional[str] = field(default_factory=lambda: os.getenv("BACKUP_GPG_HOME"))
 

@@ -235,10 +235,10 @@ services:
     image: qdrant/qdrant:v1.7.4
     container_name: ablage-qdrant
     environment:
-      # SECURITY: API-Key Authentifizierung (optional in Development, empfohlen in Production)
+      # SECURITY: API-Key Authentifizierung (ERFORDERLICH in Production!)
       # Generiere mit: openssl rand -hex 32
-      # Wenn QDRANT_API_KEY nicht gesetzt ist, wird Qdrant ohne Authentifizierung gestartet
-      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:-}
+      # SECURITY FIX: Qdrant darf NICHT ohne API-Key gestartet werden
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?QDRANT_API_KEY muss gesetzt sein}
       # gRPC und HTTP Ports
       QDRANT__SERVICE__GRPC_PORT: 6334
       QDRANT__SERVICE__HTTP_PORT: 6333

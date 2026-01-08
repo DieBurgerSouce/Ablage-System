@@ -10,9 +10,10 @@ This module contains all async OCR processing tasks including:
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 from uuid import UUID
 import asyncio
+import os
 import psutil
 import torch
 
@@ -30,6 +31,7 @@ from app.services.ocr_service import OCRService
 from app.german_validator import GermanValidator
 from app.services.storage_service import StorageService
 import tempfile
+import secrets
 
 # GPU Recovery und strukturierte Exceptions
 from app.core.gpu_recovery import (
@@ -81,6 +83,75 @@ def _is_oom_error(exception: Exception) -> bool:
         "cannot allocate",
     ]
     return any(indicator in error_msg for indicator in oom_indicators)
+
+
+def secure_delete_file(file_path: Union[str, Path], passes: int = 1) -> bool:
+    """
+    Sicheres Loeschen einer Datei durch Ueberschreiben mit Zufallsdaten.
+
+    SECURITY FIX: Verhindert Wiederherstellung sensibler Dokumentdaten
+    von Temp-Dateien durch forensische Tools.
+
+    Args:
+        file_path: Pfad zur zu loeschenden Datei
+        passes: Anzahl der Ueberschreibdurchgaenge (Default: 1)
+
+    Returns:
+        True wenn erfolgreich geloescht, False bei Fehler
+
+    Security:
+        - Ueberschreibt Dateiinhalt mit kryptografisch sicheren Zufallsdaten
+        - Fsync nach jedem Schreibvorgang fuer sofortiges Schreiben auf Disk
+        - Geeignet fuer sensitive Dokumente (GDPR Art. 17)
+    """
+    path = Path(file_path)
+    if not path.exists():
+        return True  # Bereits geloescht
+
+    try:
+        file_size = path.stat().st_size
+
+        # Ueberschreibe mit Zufallsdaten
+        for pass_num in range(passes):
+            with open(path, 'rb+') as f:
+                # Schreibe in Bloecken fuer grosse Dateien
+                block_size = 64 * 1024  # 64KB Bloecke
+                remaining = file_size
+
+                while remaining > 0:
+                    write_size = min(block_size, remaining)
+                    random_data = secrets.token_bytes(write_size)
+                    f.write(random_data)
+                    remaining -= write_size
+
+                # Forciere Schreiben auf Disk
+                f.flush()
+                os.fsync(f.fileno())
+
+        # Loesche Datei
+        path.unlink()
+
+        logger.debug(
+            "secure_file_deleted",
+            file_path=str(path),
+            file_size=file_size,
+            passes=passes
+        )
+        return True
+
+    except Exception as e:
+        logger.warning(
+            "secure_delete_failed",
+            file_path=str(path),
+            error=str(e),
+            error_type=type(e).__name__
+        )
+        # Fallback: Normales Loeschen
+        try:
+            path.unlink()
+            return True
+        except Exception:
+            return False
 
 
 # GPU Lock Refresh Konfiguration
@@ -826,16 +897,15 @@ def process_document_task(
                 )
 
             finally:
-                # Cleanup temp file
+                # SECURITY FIX: Secure cleanup temp file - ueberschreibe vor Loeschung
+                # Verhindert Wiederherstellung sensibler Dokumentdaten
                 if local_file_path and Path(local_file_path).exists():
-                    try:
-                        Path(local_file_path).unlink()
-                    except Exception as cleanup_error:
+                    if not secure_delete_file(local_file_path):
                         logger.warning(
-                            "temp_file_cleanup_failed",
+                            "temp_file_secure_cleanup_failed",
                             task_id=task_id,
                             file_path=local_file_path,
-                            error=str(cleanup_error)
+                            message="Konnte Temp-Datei nicht sicher loeschen"
                         )
 
                 # GPU-Speicher immer aufräumen nach Verarbeitung

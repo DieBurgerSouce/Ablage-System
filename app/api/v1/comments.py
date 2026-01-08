@@ -553,8 +553,9 @@ async def delete_comment(
             detail="Kommentar nicht gefunden"
         )
 
-    # Nur eigene Kommentare loeschen (oder Admin)
-    if comment.user_id != current_user.id and not current_user.is_admin:
+    # Nur eigene Kommentare loeschen (oder Superuser)
+    # SECURITY FIX: is_admin existiert nicht auf User-Model, verwende is_superuser
+    if comment.user_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Keine Berechtigung zum Loeschen dieses Kommentars"

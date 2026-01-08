@@ -1128,3 +1128,106 @@ def sanitize_email_header(value: str) -> str:
     if not value:
         return ""
     return value.replace('\r', '').replace('\n', '').replace('\x00', '')
+
+
+# =============================================================================
+# TOTP Replay Protection
+# =============================================================================
+# SECURITY FIX: Verhindert mehrfache Verwendung desselben TOTP-Codes
+# innerhalb seines Gueltigkeitsfensters (30s + Toleranz)
+
+TOTP_REPLAY_PREFIX = "totp_used:"
+TOTP_REPLAY_TTL_SECONDS = 90  # 30s Intervall + 30s Window + 30s Puffer
+_totp_used_fallback: Dict[str, datetime] = {}
+
+
+async def check_totp_replay(user_id: str, code: str) -> bool:
+    """
+    Prueft ob ein TOTP-Code bereits verwendet wurde (Replay-Schutz).
+
+    Args:
+        user_id: Benutzer-ID
+        code: Der zu pruefende TOTP-Code
+
+    Returns:
+        True wenn der Code bereits verwendet wurde (REPLAY!)
+        False wenn der Code noch nicht verwendet wurde
+
+    Security:
+        - Verhindert Replay-Angriffe bei gestohlenem TOTP-Code
+        - Jeder Code kann nur EINMAL verwendet werden
+        - TTL von 90 Sekunden deckt das Gueltigkeitsfenster ab
+    """
+    # Hash des Codes mit User-ID fuer Eindeutigkeit
+    code_hash = hashlib.sha256(f"{user_id}:{code}".encode()).hexdigest()[:32]
+    key = f"{TOTP_REPLAY_PREFIX}{code_hash}"
+
+    redis = await _get_redis_client()
+
+    if redis is not None:
+        try:
+            exists = await redis.exists(key)
+            return bool(exists)
+        except Exception as e:
+            logger.warning(
+                "totp_replay_check_redis_failed",
+                error_type=type(e).__name__,
+                user_id=user_id[:8] + "..." if len(user_id) > 8 else user_id
+            )
+
+    # Fallback: In-Memory Check
+    _cleanup_totp_fallback()
+    return key in _totp_used_fallback
+
+
+async def mark_totp_used(user_id: str, code: str) -> bool:
+    """
+    Markiert einen TOTP-Code als verwendet.
+
+    Args:
+        user_id: Benutzer-ID
+        code: Der verwendete TOTP-Code
+
+    Returns:
+        True wenn erfolgreich markiert
+        False bei Fehler (aber Login wird NICHT blockiert)
+
+    Security:
+        - Muss NACH erfolgreicher Verifikation aufgerufen werden
+        - Speichert nur Hash, nicht den Code selbst
+    """
+    code_hash = hashlib.sha256(f"{user_id}:{code}".encode()).hexdigest()[:32]
+    key = f"{TOTP_REPLAY_PREFIX}{code_hash}"
+
+    redis = await _get_redis_client()
+
+    if redis is not None:
+        try:
+            await redis.setex(key, TOTP_REPLAY_TTL_SECONDS, "1")
+            logger.debug(
+                "totp_code_marked_used",
+                user_id=user_id[:8] + "..." if len(user_id) > 8 else user_id,
+                ttl_seconds=TOTP_REPLAY_TTL_SECONDS
+            )
+            return True
+        except Exception as e:
+            logger.warning(
+                "totp_mark_used_redis_failed",
+                error_type=type(e).__name__,
+                user_id=user_id[:8] + "..." if len(user_id) > 8 else user_id
+            )
+
+    # Fallback: In-Memory
+    _totp_used_fallback[key] = datetime.now(tz=timezone.utc)
+    return True
+
+
+def _cleanup_totp_fallback() -> None:
+    """Entfernt abgelaufene TOTP-Eintraege aus dem Fallback-Speicher."""
+    now = datetime.now(tz=timezone.utc)
+    expired_keys = [
+        key for key, timestamp in _totp_used_fallback.items()
+        if (now - timestamp).total_seconds() > TOTP_REPLAY_TTL_SECONDS
+    ]
+    for key in expired_keys:
+        del _totp_used_fallback[key]

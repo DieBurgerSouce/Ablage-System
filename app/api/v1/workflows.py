@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db, require_admin
-from app.db.models import User
+from app.db.models import User, UserCompany, Company
 from app.services.workflow import (
     ConditionEvaluator,
     WorkflowExecutionService,
@@ -34,6 +34,49 @@ from app.services.workflow import (
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
+
+
+# =============================================================================
+# Helper Functions - Multi-Tenant Security
+# =============================================================================
+
+async def get_user_company_id(db: AsyncSession, user: User) -> Optional[UUID]:
+    """
+    Ermittelt die Company-ID des Users via UserCompany-Tabelle.
+
+    SECURITY FIX: Ersetzt das ungültige `hasattr(user, 'company_id')` Pattern.
+    User-Model hat kein company_id Feld - muss über UserCompany geholt werden.
+
+    Returns:
+        Company-ID oder None wenn keine Zuordnung existiert
+    """
+    from sqlalchemy import select
+
+    # 1. Hole aktuelle Firma (is_current=True)
+    result = await db.execute(
+        select(UserCompany.company_id)
+        .join(Company, Company.id == UserCompany.company_id)
+        .where(UserCompany.user_id == user.id)
+        .where(UserCompany.is_current == True)
+        .where(Company.is_active == True)
+        .where(Company.deleted_at.is_(None))
+    )
+    current_company_id = result.scalar_one_or_none()
+
+    if current_company_id:
+        return current_company_id
+
+    # 2. Fallback: Erste verfügbare Firma
+    result = await db.execute(
+        select(UserCompany.company_id)
+        .join(Company, Company.id == UserCompany.company_id)
+        .where(UserCompany.user_id == user.id)
+        .where(Company.is_active == True)
+        .where(Company.deleted_at.is_(None))
+        .order_by(UserCompany.created_at)
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
 
 
 # =============================================================================
@@ -276,6 +319,9 @@ async def create_workflow(
     """Erstellt einen neuen Workflow."""
     service = WorkflowService(db)
 
+    # SECURITY FIX: company_id via UserCompany-Tabelle (nicht current_user.company_id)
+    company_id = await get_user_company_id(db, current_user)
+
     workflow = await service.create_workflow(
         user_id=current_user.id,
         name=data.name,
@@ -284,7 +330,7 @@ async def create_workflow(
         nodes=data.nodes,
         edges=data.edges,
         description=data.description,
-        company_id=current_user.company_id if hasattr(current_user, "company_id") else None,
+        company_id=company_id,
         variables=data.variables,
         max_concurrent_executions=data.max_concurrent_executions,
         timeout_seconds=data.timeout_seconds,
@@ -312,9 +358,12 @@ async def list_workflows(
     """Listet Workflows mit optionalen Filtern."""
     service = WorkflowService(db)
 
+    # SECURITY FIX: company_id via UserCompany-Tabelle (nicht current_user.company_id)
+    company_id = await get_user_company_id(db, current_user)
+
     workflows, total = await service.list_workflows(
         user_id=current_user.id,
-        company_id=current_user.company_id if hasattr(current_user, "company_id") else None,
+        company_id=company_id,
         trigger_type=trigger_type,
         is_active=is_active,
         is_template=is_template,

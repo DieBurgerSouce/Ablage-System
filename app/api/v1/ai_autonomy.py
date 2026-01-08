@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
 from app.core.rbac import require_permission
-from app.db.models import User
+from app.db.models import User, UserCompany, Company
 from app.services.ai.decision_service import (
     AIDecisionService,
     DecisionType,
@@ -51,6 +51,53 @@ from app.services.ai.learning_pipeline import (
 )
 
 router = APIRouter(prefix="/ai", tags=["AI Autonomy"])
+
+
+# =============================================================================
+# Helper Functions - Multi-Tenant Security
+# =============================================================================
+
+async def get_user_company_id(db: AsyncSession, user: User) -> Optional[uuid.UUID]:
+    """
+    Ermittelt die Company-ID des Users via UserCompany-Tabelle.
+
+    SECURITY: Diese Funktion stellt Multi-Tenant-Isolation sicher.
+    Nur Firmen mit explizitem UserCompany-Link sind erlaubt.
+
+    Returns:
+        Company-ID oder None wenn keine Zuordnung existiert
+    """
+    from sqlalchemy import select
+
+    # Superuser sehen alle Daten (company_id = None bedeutet kein Filter)
+    if user.is_superuser:
+        return None
+
+    # 1. Hole aktuelle Firma (is_current=True)
+    result = await db.execute(
+        select(UserCompany.company_id)
+        .join(Company, Company.id == UserCompany.company_id)
+        .where(UserCompany.user_id == user.id)
+        .where(UserCompany.is_current == True)
+        .where(Company.is_active == True)
+        .where(Company.deleted_at.is_(None))
+    )
+    current_company_id = result.scalar_one_or_none()
+
+    if current_company_id:
+        return current_company_id
+
+    # 2. Fallback: Erste verfügbare Firma
+    result = await db.execute(
+        select(UserCompany.company_id)
+        .join(Company, Company.id == UserCompany.company_id)
+        .where(UserCompany.user_id == user.id)
+        .where(Company.is_active == True)
+        .where(Company.deleted_at.is_(None))
+        .order_by(UserCompany.created_at)
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
 
 
 # =============================================================================
@@ -204,9 +251,10 @@ async def list_decisions(
     if requires_review is not None:
         conditions.append(AIDecision.requires_review == requires_review)
 
-    # Company-Filter fuer Non-Admins
-    if not current_user.is_admin and current_user.company_id:
-        conditions.append(AIDecision.company_id == current_user.company_id)
+    # SECURITY: Multi-Tenant Isolation via UserCompany
+    company_id = await get_user_company_id(db, current_user)
+    if company_id:
+        conditions.append(AIDecision.company_id == company_id)
 
     if conditions:
         query = query.where(and_(*conditions))
@@ -333,7 +381,8 @@ async def list_thresholds(
     """Listet alle Konfidenz-Schwellenwerte."""
     service = get_ai_decision_service()
 
-    company_id = current_user.company_id if not current_user.is_admin else None
+    # SECURITY: Multi-Tenant via UserCompany
+    company_id = await get_user_company_id(db, current_user)
     thresholds = await service.get_thresholds(db, company_id)
 
     return [
@@ -372,7 +421,8 @@ async def update_threshold(
             detail=f"Ungueltiger Entscheidungstyp: {decision_type}",
         )
 
-    company_id = current_user.company_id if not current_user.is_admin else None
+    # SECURITY: Multi-Tenant via UserCompany
+    company_id = await get_user_company_id(db, current_user)
 
     # Suche existierenden Threshold
     result = await db.execute(
@@ -512,7 +562,7 @@ async def find_document_matches(
     """Findet zusammengehoerige Dokumente."""
     service = get_smart_matching_service()
 
-    company_id = current_user.company_id if not current_user.is_admin else None
+    company_id = await get_user_company_id(db, current_user)
 
     result = await service.find_matches(
         db=db,
@@ -542,7 +592,7 @@ async def check_document_anomalies(
     """Prueft Dokument auf Anomalien."""
     service = get_anomaly_detection_service()
 
-    company_id = current_user.company_id if not current_user.is_admin else None
+    company_id = await get_user_company_id(db, current_user)
 
     result = await service.check_document(
         db=db,
@@ -578,7 +628,7 @@ async def check_document_duplicates(
     """Prueft Dokument auf Duplikate."""
     service = get_duplicate_detection_service()
 
-    company_id = current_user.company_id if not current_user.is_admin else None
+    company_id = await get_user_company_id(db, current_user)
 
     result = await service.check_document(
         db=db,
@@ -614,7 +664,7 @@ async def get_accuracy_stats(
     """Gibt Genauigkeits-Statistiken zurueck."""
     pipeline = get_ai_learning_pipeline()
 
-    company_id = current_user.company_id if not current_user.is_admin else None
+    company_id = await get_user_company_id(db, current_user)
 
     stats = await pipeline.get_learning_stats(
         db=db,
@@ -648,7 +698,7 @@ async def get_learning_progress(
     """Gibt Self-Learning Fortschritt zurueck."""
     pipeline = get_ai_learning_pipeline()
 
-    company_id = current_user.company_id if not current_user.is_admin else None
+    company_id = await get_user_company_id(db, current_user)
 
     report = await pipeline.generate_accuracy_report(
         db=db,
@@ -668,7 +718,7 @@ async def get_threshold_suggestions(
     """Gibt Vorschlaege fuer Threshold-Anpassungen zurueck."""
     pipeline = get_ai_learning_pipeline()
 
-    company_id = current_user.company_id if not current_user.is_admin else None
+    company_id = await get_user_company_id(db, current_user)
 
     adjustments = await pipeline.suggest_threshold_adjustments(
         db=db,
@@ -698,7 +748,7 @@ async def apply_threshold_suggestion(
     """Wendet einen Threshold-Vorschlag an."""
     pipeline = get_ai_learning_pipeline()
 
-    company_id = current_user.company_id if not current_user.is_admin else None
+    company_id = await get_user_company_id(db, current_user)
 
     # Hole aktuelle Vorschlaege
     adjustments = await pipeline.suggest_threshold_adjustments(
@@ -741,7 +791,7 @@ async def get_pending_review_count(
     """Zaehlt ausstehende Reviews pro Typ."""
     service = get_ai_decision_service()
 
-    company_id = current_user.company_id if not current_user.is_admin else None
+    company_id = await get_user_company_id(db, current_user)
 
     counts = await service.get_pending_review_count(
         db=db,

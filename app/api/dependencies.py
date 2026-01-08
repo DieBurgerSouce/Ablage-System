@@ -86,7 +86,8 @@ async def set_rls_context(
 
     Usage:
         async with AsyncSessionLocal() as session:
-            await set_rls_context(session, str(user.id), user.is_admin)
+            # WICHTIG: User-Model hat is_superuser, nicht is_admin!
+            await set_rls_context(session, str(user.id), user.is_superuser)
             # Now RLS policies will filter results
     """
     from sqlalchemy import text

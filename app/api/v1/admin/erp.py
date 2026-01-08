@@ -24,6 +24,7 @@ from app.core.encryption import encrypt_data, decrypt_data, EncryptionError
 
 from app.db.models import (
     User,
+    Company,
     ERPConnection,
     ERPSyncHistory,
     ERPConflict,
@@ -33,6 +34,7 @@ from app.db.models import (
     ERPConflictStatus,
 )
 from app.api.dependencies import get_current_user, get_db, require_admin
+from app.middleware.company_context import require_company
 from pydantic import BaseModel, Field
 
 logger = structlog.get_logger(__name__)
@@ -235,11 +237,13 @@ def _connection_to_response(conn: ERPConnection) -> ERPConnectionResponse:
 async def list_connections(
     active_only: bool = Query(False, description="Nur aktive Verbindungen"),
     current_user: User = Depends(require_admin),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> List[ERPConnectionResponse]:
     """Listet alle ERP-Verbindungen auf."""
+    # SECURITY FIX: company.id via require_company (Multi-Tenant-validiert)
     query = select(ERPConnection).where(
-        ERPConnection.company_id == current_user.company_id
+        ERPConnection.company_id == company.id
     )
 
     if active_only:
@@ -261,14 +265,16 @@ async def list_connections(
 async def get_connection(
     connection_id: UUID,
     current_user: User = Depends(require_admin),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> ERPConnectionResponse:
     """Ruft Details einer ERP-Verbindung ab."""
+    # SECURITY FIX: company.id via require_company (Multi-Tenant-validiert)
     result = await db.execute(
         select(ERPConnection).where(
             and_(
                 ERPConnection.id == connection_id,
-                ERPConnection.company_id == current_user.company_id,
+                ERPConnection.company_id == company.id,
             )
         )
     )
@@ -292,14 +298,16 @@ async def get_connection(
 async def create_connection(
     data: ERPConnectionCreate,
     current_user: User = Depends(require_admin),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> ERPConnectionResponse:
     """Erstellt eine neue ERP-Verbindung."""
     # SECURITY FIX: API Key mit AES-256-GCM verschluesseln
+    # SECURITY FIX: company.id via require_company (Multi-Tenant-validiert)
     try:
         encrypted_key = encrypt_data(
             data.api_key,
-            associated_data=f"erp:{current_user.company_id}"
+            associated_data=f"erp:{company.id}"
         )
     except EncryptionError as e:
         logger.error(
@@ -313,7 +321,7 @@ async def create_connection(
         )
 
     connection = ERPConnection(
-        company_id=current_user.company_id,
+        company_id=company.id,
         name=data.name,
         erp_type=data.erp_type,
         url=data.url,
@@ -353,14 +361,16 @@ async def update_connection(
     connection_id: UUID,
     data: ERPConnectionUpdate,
     current_user: User = Depends(require_admin),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> ERPConnectionResponse:
     """Aktualisiert eine ERP-Verbindung."""
+    # SECURITY FIX: company.id via require_company (Multi-Tenant-validiert)
     result = await db.execute(
         select(ERPConnection).where(
             and_(
                 ERPConnection.id == connection_id,
-                ERPConnection.company_id == current_user.company_id,
+                ERPConnection.company_id == company.id,
             )
         )
     )
@@ -380,7 +390,7 @@ async def update_connection(
         try:
             encrypted_key = encrypt_data(
                 update_data.pop("api_key"),
-                associated_data=f"erp:{current_user.company_id}"
+                associated_data=f"erp:{company.id}"
             )
             update_data["encrypted_api_key"] = encrypted_key
         except EncryptionError as e:
@@ -422,14 +432,16 @@ async def update_connection(
 async def delete_connection(
     connection_id: UUID,
     current_user: User = Depends(require_admin),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Loescht eine ERP-Verbindung."""
+    # SECURITY FIX: company.id via require_company (Multi-Tenant-validiert)
     result = await db.execute(
         select(ERPConnection).where(
             and_(
                 ERPConnection.id == connection_id,
-                ERPConnection.company_id == current_user.company_id,
+                ERPConnection.company_id == company.id,
             )
         )
     )
@@ -460,16 +472,18 @@ async def delete_connection(
 async def test_connection(
     connection_id: UUID,
     current_user: User = Depends(require_admin),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> ERPConnectionTestResult:
     """Testet eine ERP-Verbindung."""
     from app.workers.tasks.erp_sync_tasks import test_connection as test_task
 
+    # SECURITY FIX: company.id via require_company (Multi-Tenant-validiert)
     result = await db.execute(
         select(ERPConnection).where(
             and_(
                 ERPConnection.id == connection_id,
-                ERPConnection.company_id == current_user.company_id,
+                ERPConnection.company_id == company.id,
             )
         )
     )
@@ -512,16 +526,18 @@ async def trigger_sync(
     connection_id: UUID,
     sync_type: str = Query("delta", pattern="^(full|delta)$"),
     current_user: User = Depends(require_admin),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Startet manuelle Synchronisation."""
     from app.workers.tasks.erp_sync_tasks import sync_connection
 
+    # SECURITY FIX: company.id via require_company (Multi-Tenant-validiert)
     result = await db.execute(
         select(ERPConnection).where(
             and_(
                 ERPConnection.id == connection_id,
-                ERPConnection.company_id == current_user.company_id,
+                ERPConnection.company_id == company.id,
             )
         )
     )
@@ -573,15 +589,16 @@ async def get_sync_history(
     entity: Optional[str] = None,
     status_filter: Optional[str] = Query(None, alias="status"),
     current_user: User = Depends(require_admin),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> List[ERPSyncHistoryResponse]:
     """Ruft Sync-Historie ab."""
-    # Verify connection belongs to user's company
+    # SECURITY FIX: company.id via require_company (Multi-Tenant-validiert)
     conn_result = await db.execute(
         select(ERPConnection.id).where(
             and_(
                 ERPConnection.id == connection_id,
-                ERPConnection.company_id == current_user.company_id,
+                ERPConnection.company_id == company.id,
             )
         )
     )
@@ -646,12 +663,13 @@ async def list_conflicts(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: User = Depends(require_admin),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> List[ERPConflictResponse]:
     """Listet offene Konflikte auf."""
-    # Get all connections for user's company
+    # SECURITY FIX: company.id via require_company (Multi-Tenant-validiert)
     conn_query = select(ERPConnection.id).where(
-        ERPConnection.company_id == current_user.company_id
+        ERPConnection.company_id == company.id
     )
     conn_result = await db.execute(conn_query)
     connection_ids = [row[0] for row in conn_result.fetchall()]
@@ -703,17 +721,18 @@ async def resolve_conflict(
     conflict_id: UUID,
     data: ERPConflictResolve,
     current_user: User = Depends(require_admin),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> ERPConflictResponse:
     """Loest einen Konflikt auf."""
-    # Get conflict with connection check
+    # SECURITY FIX: company.id via require_company (Multi-Tenant-validiert)
     result = await db.execute(
         select(ERPConflict)
         .join(ERPConnection)
         .where(
             and_(
                 ERPConflict.id == conflict_id,
-                ERPConnection.company_id == current_user.company_id,
+                ERPConnection.company_id == company.id,
             )
         )
     )
@@ -778,13 +797,15 @@ async def resolve_conflict(
 )
 async def get_erp_stats(
     current_user: User = Depends(require_admin),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Ruft aggregierte ERP-Statistiken ab."""
+    # SECURITY FIX: company.id via require_company (Multi-Tenant-validiert)
     # Connection count
     conn_result = await db.execute(
         select(func.count(ERPConnection.id)).where(
-            ERPConnection.company_id == current_user.company_id
+            ERPConnection.company_id == company.id
         )
     )
     total_connections = conn_result.scalar() or 0
@@ -793,7 +814,7 @@ async def get_erp_stats(
     active_result = await db.execute(
         select(func.count(ERPConnection.id)).where(
             and_(
-                ERPConnection.company_id == current_user.company_id,
+                ERPConnection.company_id == company.id,
                 ERPConnection.is_active == True,
             )
         )
@@ -803,7 +824,7 @@ async def get_erp_stats(
     # Pending conflicts
     conn_ids = await db.execute(
         select(ERPConnection.id).where(
-            ERPConnection.company_id == current_user.company_id
+            ERPConnection.company_id == company.id
         )
     )
     connection_ids = [row[0] for row in conn_ids.fetchall()]

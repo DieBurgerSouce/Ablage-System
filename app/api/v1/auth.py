@@ -58,6 +58,8 @@ from app.core.security import (
     blacklist_token,
     create_2fa_temp_token,
     verify_2fa_temp_token,
+    check_totp_replay,
+    mark_totp_used,
 )
 from app.core.totp import (
     check_totp_available,
@@ -268,20 +270,26 @@ async def login(
                 headers={"Retry-After": "60"},
             )
 
+        # SECURITY FIX: Einheitliche Fehlermeldung verhindert Account-Enumeration
+        # Angreifer können nicht mehr erkennen, ob ein Konto existiert
+        # Rate-Limit Headers werden nur bei tatsächlichem Lockout zurückgegeben
+        error_detail = "Ungültige E-Mail-Adresse oder Passwort"
+        headers = {"WWW-Authenticate": "Bearer"}
+
         if is_now_locked:
+            # Bei Lockout: 429 mit Retry-After, aber gleiche Nachricht
+            headers["Retry-After"] = str(lockout_seconds)
+            headers["X-RateLimit-Reset"] = str(lockout_seconds)
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Zu viele fehlgeschlagene Anmeldeversuche. Konto für {lockout_seconds // 60} Minute(n) gesperrt.",
-                headers={
-                    "Retry-After": str(lockout_seconds),
-                    "X-RateLimit-Reset": str(lockout_seconds),
-                },
+                detail=error_detail,  # Keine Konto-spezifische Info
+                headers=headers,
             )
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungültige E-Mail-Adresse oder Passwort",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail=error_detail,
+            headers=headers,
         )
 
     # Check if user is active
@@ -421,6 +429,23 @@ async def verify_2fa_login_endpoint(
     # Clean up code (remove spaces/dashes)
     clean_code = data.code.replace(" ", "").replace("-", "")
 
+    # SECURITY FIX: Replay-Schutz - pruefe ob Code bereits verwendet wurde
+    # Gilt nur fuer TOTP-Codes (6 Stellen), nicht fuer Backup-Codes (8 Stellen)
+    is_totp_code = len(clean_code) == 6 and clean_code.isdigit()
+    if is_totp_code:
+        is_replay = await check_totp_replay(str(user.id), clean_code)
+        if is_replay:
+            logger.warning(
+                "2fa_replay_attack_detected",
+                user_id=str(user.id),
+                message="TOTP-Code wurde bereits verwendet (Replay-Angriff?)"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Dieser Code wurde bereits verwendet. Bitte warten Sie auf den naechsten Code.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
     # Verify TOTP code or backup code
     try:
         is_valid, used_backup, backup_index = verify_2fa_login_encrypted(
@@ -441,6 +466,10 @@ async def verify_2fa_login_endpoint(
                 detail="Ungueltiger 2FA-Code",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
+        # SECURITY FIX: Nach erfolgreicher Verifikation - Code als verwendet markieren
+        if is_totp_code:
+            await mark_totp_used(str(user.id), clean_code)
 
         # If backup code was used, remove it from the list
         if used_backup and backup_index is not None:
