@@ -15,6 +15,59 @@ Testing: Tests MUST pass before any commit. No exceptions for "quick fixes"
 On-Premises: NO cloud services (AWS, GCP, Azure). All data stays on local infrastructure
 
 
+📚 DOKUMENTATIONS-INDEX
+Bei Fragen zu spezifischen Themen, lies die entsprechende Dokumentation:
+
+| Kategorie | Dokument | Pfad |
+|-----------|----------|------|
+| **Architektur** | | |
+| | Celery Task Orchestration | `.claude/Docs/Architecture/Celery-Task-Orchestration.md` |
+| | Database Schema ERD | `.claude/Docs/Architecture/Database-Schema-ERD.md` |
+| | Event-Driven Architecture | `.claude/Docs/Architecture/Event-Driven-Architecture-Guide.md` |
+| | GPU Resource Management | `.claude/Docs/Architecture/GPU-Resource-Management.md` |
+| | Service Integration Map | `.claude/Docs/Architecture/Service-Integration-Map.md` |
+| | Dependency Injection | `.claude/Docs/Architecture/Dependency-Injection-Pattern.md` |
+| **API** | | |
+| | API Dokumentation | `.claude/Docs/API/API_Documentation.md` |
+| | Admin API Complete | `.claude/Docs/API/Admin-API-Complete.md` |
+| | Webhook Events Catalog | `.claude/Docs/API/Webhook-Events-Catalog.md` |
+| | RAG Chat API | `.claude/Docs/API/RAG-Chat-API.md` |
+| | Business Domains API | `.claude/Docs/API/Business-Domains-API.md` |
+| | Error Catalog | `.claude/Docs/API/ErrorCatalog.md` |
+| | Rate Limits | `.claude/Docs/API/RateLimits.md` |
+| **Testing** | | |
+| | E2E Testing (Playwright) | `.claude/Docs/Testing/E2E-Testing-Playwright.md` |
+| | Load Testing (k6/Locust) | `.claude/Docs/Testing/Load-Testing-Execution.md` |
+| | GPU Testing Guide | `.claude/Docs/Testing/GPU-Testing-Guide.md` |
+| | German Language Testing | `.claude/Docs/Testing/German-Language-Testing.md` |
+| | Security Testing | `.claude/Docs/Testing/Security-Testing-Guide.md` |
+| | CI/CD Test Integration | `.claude/Docs/Testing/CI-CD-Test-Integration.md` |
+| **Operations** | | |
+| | Rollback Strategies | `.claude/Docs/Operations/Rollback-Strategies.md` |
+| | SLO/SLI Framework | `.claude/Docs/Operations/SLO-SLI-Framework.md` |
+| | Canary Deployments | `.claude/Docs/Operations/canary-deployments.md` |
+| | Runbooks (19 Stück) | `.claude/Docs/Operations/Runbooks/*.md` |
+| **Compliance** | | |
+| | Audit Checklist | `.claude/Docs/Compliance/Audit-Checklist.md` |
+| | GDPR Checklist | `.claude/Docs/Compliance/gdpr-checklist.md` |
+| **OCR Backends** | | |
+| | Backend Overview | `.claude/Docs/OCR-Backends/Overview.md` |
+| | DeepSeek-Janus | `.claude/Docs/OCR-Backends/DeepSeek-Janus-Backend.md` |
+| | GOT-OCR 2.0 | `.claude/Docs/OCR-Backends/GOT-OCR-Backend.md` |
+| | Surya + Docling | `.claude/Docs/OCR-Backends/Surya-Docling-Backend.md` |
+| **Guides** | | |
+| | Development Setup | `.claude/Docs/Guides/Development-Setup.md` |
+| | Production Deployment | `.claude/Docs/Guides/Deployment-Production.md` |
+| | Troubleshooting | `.claude/Docs/Guides/Troubleshooting-Guide.md` |
+| | Database & Migrations | `.claude/Docs/Guides/Database_Alembic_Migrations.md` |
+| | Disaster Recovery | `.claude/Docs/Guides/Disaster-Recovery.md` |
+| **Sonstiges** | | |
+| | FAQ (100+ Fragen) | `docs/FAQ.md` |
+| | Qdrant A/B Testing | `.claude/Docs/QDRANT_AB_TESTING_GUIDE.md` |
+| | ML Model Management | `.claude/Docs/ML-Model-Management.md` |
+| | Frontend Architecture | `.claude/Docs/Frontend-Architecture.md` |
+
+
 📋 PROJECT CONTEXT
 Project Overview
 Ablage-System is an intelligent document processing platform that automates German document digitization with multiple OCR backends. Built for enterprise environments requiring on-premises deployment with GPU acceleration (RTX 4080).
