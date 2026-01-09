@@ -723,11 +723,668 @@ def cleanup_orphaned_privat_files(self) -> Dict[str, Any]:
         raise self.retry(exc=e)
 
 
+# =============================================================================
+# ENTERPRISE KPI CALCULATION TASKS
+# =============================================================================
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.calculate_property_kpis",
+    max_retries=3,
+    default_retry_delay=60,
+    soft_time_limit=1800,  # 30 Minuten
+    time_limit=2100,
+)
+def calculate_property_kpis(
+    self,
+    space_id: Optional[str] = None,
+    property_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Berechnet KPIs fuer Immobilien: Mietrendite, ROI, Wertzuwachs.
+
+    Kann fuer alle Properties eines Spaces oder eine einzelne Property
+    ausgefuehrt werden.
+
+    Args:
+        space_id: Optional - Berechne fuer alle Properties eines Spaces
+        property_id: Optional - Berechne nur fuer diese Property
+
+    Returns:
+        Statistik der berechneten KPIs
+    """
+    logger.info(
+        "property_kpi_calculation_started",
+        task_id=self.request.id,
+        space_id=space_id,
+        property_id=property_id,
+    )
+
+    try:
+        async def do_calculate():
+            from sqlalchemy import select, and_
+            from app.db.session import get_async_session
+            from app.db.models import PrivatProperty, PrivatSpace
+            from app.services.privat import get_property_calculation_service
+
+            async with get_async_session() as db:
+                calc_service = get_property_calculation_service(db)
+                calculated_count = 0
+                failed_count = 0
+                results = []
+
+                # Query bauen
+                stmt = select(PrivatProperty).join(PrivatSpace).where(
+                    PrivatSpace.deleted_at == None
+                )
+
+                if property_id:
+                    stmt = stmt.where(PrivatProperty.id == UUID(property_id))
+                elif space_id:
+                    stmt = stmt.where(PrivatProperty.space_id == UUID(space_id))
+
+                result = await db.execute(stmt)
+                properties = result.scalars().all()
+
+                for prop in properties:
+                    try:
+                        # Mietrendite berechnen
+                        yield_result = await calc_service.calculate_rental_yield(prop.id)
+
+                        # ROI berechnen
+                        roi_result = await calc_service.calculate_roi(prop.id)
+
+                        # Nebenkostentrend
+                        utility_trend = await calc_service.get_utility_cost_trend(
+                            prop.id, months=12
+                        )
+
+                        calculated_count += 1
+                        results.append({
+                            "property_id": str(prop.id),
+                            "name": prop.name,
+                            "rental_yield": yield_result.rental_yield_percent if yield_result else None,
+                            "roi": roi_result.total_roi_percent if roi_result else None,
+                        })
+
+                        logger.debug(
+                            "property_kpi_calculated",
+                            property_id=str(prop.id),
+                            rental_yield=yield_result.rental_yield_percent if yield_result else None,
+                        )
+
+                    except Exception as e:
+                        failed_count += 1
+                        logger.warning(
+                            "property_kpi_calculation_failed",
+                            property_id=str(prop.id),
+                            error=str(e),
+                        )
+
+                return {
+                    "calculated": calculated_count,
+                    "failed": failed_count,
+                    "results": results[:10],  # Max 10 Beispiele
+                }
+
+        result = run_async(do_calculate())
+
+        logger.info(
+            "property_kpi_calculation_completed",
+            task_id=self.request.id,
+            result=result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "property_kpi_calculation_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.calculate_vehicle_tco",
+    max_retries=3,
+    default_retry_delay=60,
+    soft_time_limit=1800,
+    time_limit=2100,
+)
+def calculate_vehicle_tco(
+    self,
+    space_id: Optional[str] = None,
+    vehicle_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Berechnet Total Cost of Ownership fuer Fahrzeuge.
+
+    Inkludiert: Wertverlust, Kraftstoff, Versicherung, Steuer, Wartung.
+
+    Args:
+        space_id: Optional - Berechne fuer alle Fahrzeuge eines Spaces
+        vehicle_id: Optional - Berechne nur fuer dieses Fahrzeug
+
+    Returns:
+        Statistik der berechneten TCO-Werte
+    """
+    logger.info(
+        "vehicle_tco_calculation_started",
+        task_id=self.request.id,
+        space_id=space_id,
+        vehicle_id=vehicle_id,
+    )
+
+    try:
+        async def do_calculate():
+            from sqlalchemy import select, and_
+            from app.db.session import get_async_session
+            from app.db.models import PrivatVehicle, PrivatSpace
+            from app.services.privat import get_vehicle_calculation_service
+
+            async with get_async_session() as db:
+                calc_service = get_vehicle_calculation_service(db)
+                calculated_count = 0
+                failed_count = 0
+                results = []
+
+                # Query bauen
+                stmt = select(PrivatVehicle).join(PrivatSpace).where(
+                    PrivatSpace.deleted_at == None
+                )
+
+                if vehicle_id:
+                    stmt = stmt.where(PrivatVehicle.id == UUID(vehicle_id))
+                elif space_id:
+                    stmt = stmt.where(PrivatVehicle.space_id == UUID(space_id))
+
+                result = await db.execute(stmt)
+                vehicles = result.scalars().all()
+
+                for vehicle in vehicles:
+                    try:
+                        # Abschreibung berechnen
+                        depreciation = await calc_service.calculate_depreciation(vehicle.id)
+
+                        # TCO berechnen
+                        tco = await calc_service.calculate_tco(vehicle.id)
+
+                        # Naechster Service vorhersagen
+                        next_service = await calc_service.predict_next_service(vehicle.id)
+
+                        calculated_count += 1
+                        results.append({
+                            "vehicle_id": str(vehicle.id),
+                            "brand": vehicle.brand,
+                            "model": vehicle.model,
+                            "tco_per_km": tco.cost_per_km if tco else None,
+                            "monthly_depreciation": depreciation.monthly_depreciation if depreciation else None,
+                            "next_service_date": next_service.predicted_date.isoformat() if next_service and next_service.predicted_date else None,
+                        })
+
+                        logger.debug(
+                            "vehicle_tco_calculated",
+                            vehicle_id=str(vehicle.id),
+                            tco_per_km=tco.cost_per_km if tco else None,
+                        )
+
+                    except Exception as e:
+                        failed_count += 1
+                        logger.warning(
+                            "vehicle_tco_calculation_failed",
+                            vehicle_id=str(vehicle.id),
+                            error=str(e),
+                        )
+
+                return {
+                    "calculated": calculated_count,
+                    "failed": failed_count,
+                    "results": results[:10],
+                }
+
+        result = run_async(do_calculate())
+
+        logger.info(
+            "vehicle_tco_calculation_completed",
+            task_id=self.request.id,
+            result=result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "vehicle_tco_calculation_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.analyze_insurance_coverage",
+    max_retries=3,
+    default_retry_delay=60,
+    soft_time_limit=1800,
+    time_limit=2100,
+)
+def analyze_insurance_coverage(
+    self,
+    space_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Analysiert Versicherungsdeckung und identifiziert Deckungsluecken.
+
+    Vergleicht vorhandene Deckungssummen mit Empfehlungen und
+    berechnet Kuendigungsfristen automatisch.
+
+    Args:
+        space_id: Optional - Analysiere nur fuer diesen Space
+
+    Returns:
+        Analyse-Ergebnisse mit Deckungsluecken
+    """
+    logger.info(
+        "insurance_coverage_analysis_started",
+        task_id=self.request.id,
+        space_id=space_id,
+    )
+
+    try:
+        async def do_analyze():
+            from sqlalchemy import select, and_
+            from app.db.session import get_async_session
+            from app.db.models import PrivatInsurance, PrivatSpace
+            from app.services.privat import get_insurance_analysis_service
+
+            async with get_async_session() as db:
+                analysis_service = get_insurance_analysis_service(db)
+                analyzed_count = 0
+                gaps_found = 0
+                results = []
+
+                # Query bauen
+                stmt = select(PrivatSpace).where(PrivatSpace.deleted_at == None)
+
+                if space_id:
+                    stmt = stmt.where(PrivatSpace.id == UUID(space_id))
+
+                result = await db.execute(stmt)
+                spaces = result.scalars().all()
+
+                for space in spaces:
+                    try:
+                        # Deckungsluecken analysieren
+                        gap_analysis = await analysis_service.analyze_coverage_gaps(
+                            space.id
+                        )
+
+                        # Kuendigungsfristen berechnen
+                        await analysis_service.calculate_cancellation_deadlines(
+                            space.id
+                        )
+
+                        analyzed_count += 1
+                        if gap_analysis:
+                            space_gaps = len(gap_analysis.gaps)
+                            gaps_found += space_gaps
+                            results.append({
+                                "space_id": str(space.id),
+                                "space_name": space.name,
+                                "insurance_count": gap_analysis.total_insurances,
+                                "gap_count": space_gaps,
+                                "critical_gaps": [
+                                    g.insurance_type for g in gap_analysis.gaps
+                                    if g.severity == "critical"
+                                ],
+                            })
+
+                        logger.debug(
+                            "insurance_coverage_analyzed",
+                            space_id=str(space.id),
+                            gap_count=len(gap_analysis.gaps) if gap_analysis else 0,
+                        )
+
+                    except Exception as e:
+                        logger.warning(
+                            "insurance_coverage_analysis_failed",
+                            space_id=str(space.id),
+                            error=str(e),
+                        )
+
+                return {
+                    "analyzed_spaces": analyzed_count,
+                    "total_gaps_found": gaps_found,
+                    "results": results[:10],
+                }
+
+        result = run_async(do_analyze())
+
+        logger.info(
+            "insurance_coverage_analysis_completed",
+            task_id=self.request.id,
+            result=result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "insurance_coverage_analysis_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.generate_loan_amortization",
+    max_retries=3,
+    default_retry_delay=60,
+    soft_time_limit=1800,
+    time_limit=2100,
+)
+def generate_loan_amortization(
+    self,
+    space_id: Optional[str] = None,
+    loan_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Generiert Tilgungsplaene fuer Kredite.
+
+    Berechnet monatliche Raten, Restschuld, Zinsersparnis bei Sondertilgung.
+
+    Args:
+        space_id: Optional - Generiere fuer alle Kredite eines Spaces
+        loan_id: Optional - Generiere nur fuer diesen Kredit
+
+    Returns:
+        Statistik der generierten Tilgungsplaene
+    """
+    logger.info(
+        "loan_amortization_generation_started",
+        task_id=self.request.id,
+        space_id=space_id,
+        loan_id=loan_id,
+    )
+
+    try:
+        async def do_generate():
+            from sqlalchemy import select, and_
+            from app.db.session import get_async_session
+            from app.db.models import PrivatLoan, PrivatSpace
+            from app.services.privat import get_loan_amortization_service
+
+            async with get_async_session() as db:
+                amort_service = get_loan_amortization_service(db)
+                generated_count = 0
+                failed_count = 0
+                results = []
+
+                # Query bauen
+                stmt = select(PrivatLoan).join(PrivatSpace).where(
+                    PrivatSpace.deleted_at == None
+                )
+
+                if loan_id:
+                    stmt = stmt.where(PrivatLoan.id == UUID(loan_id))
+                elif space_id:
+                    stmt = stmt.where(PrivatLoan.space_id == UUID(space_id))
+
+                result = await db.execute(stmt)
+                loans = result.scalars().all()
+
+                for loan in loans:
+                    try:
+                        # Tilgungsplan generieren
+                        schedule = await amort_service.generate_amortization_schedule(
+                            loan.id
+                        )
+
+                        # Auszahlungsdatum berechnen
+                        payoff = await amort_service.calculate_payoff_date(loan.id)
+
+                        # Zinsersparnis bei Sondertilgung berechnen (5000 EUR Beispiel)
+                        savings = await amort_service.calculate_interest_saved(
+                            loan.id,
+                            extra_payment=5000.0,
+                        )
+
+                        generated_count += 1
+                        results.append({
+                            "loan_id": str(loan.id),
+                            "loan_name": loan.name,
+                            "principal": float(loan.principal_amount) if loan.principal_amount else None,
+                            "projected_payoff": payoff.payoff_date.isoformat() if payoff and payoff.payoff_date else None,
+                            "total_interest": float(schedule.total_interest) if schedule else None,
+                            "savings_with_5k_extra": float(savings.interest_saved) if savings else None,
+                        })
+
+                        logger.debug(
+                            "loan_amortization_generated",
+                            loan_id=str(loan.id),
+                            total_payments=len(schedule.payments) if schedule else 0,
+                        )
+
+                    except Exception as e:
+                        failed_count += 1
+                        logger.warning(
+                            "loan_amortization_generation_failed",
+                            loan_id=str(loan.id),
+                            error=str(e),
+                        )
+
+                return {
+                    "generated": generated_count,
+                    "failed": failed_count,
+                    "results": results[:10],
+                }
+
+        result = run_async(do_generate())
+
+        logger.info(
+            "loan_amortization_generation_completed",
+            task_id=self.request.id,
+            result=result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "loan_amortization_generation_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.run_finance_analytics",
+    max_retries=3,
+    default_retry_delay=60,
+    soft_time_limit=3600,
+    time_limit=3900,
+)
+def run_finance_analytics(
+    self,
+    space_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Fuehrt umfassende Finanzanalyse durch.
+
+    Berechnet: Monats-Trends, YoY-Vergleiche, wiederkehrende Zahlungen,
+    Cash-Flow-Prognosen.
+
+    Args:
+        space_id: Optional - Analysiere nur diesen Space
+
+    Returns:
+        Analyse-Ergebnisse
+    """
+    logger.info(
+        "finance_analytics_started",
+        task_id=self.request.id,
+        space_id=space_id,
+    )
+
+    try:
+        async def do_analyze():
+            from sqlalchemy import select
+            from app.db.session import get_async_session
+            from app.db.models import PrivatSpace
+            from app.services.privat import get_finance_analytics_service
+
+            async with get_async_session() as db:
+                analytics_service = get_finance_analytics_service(db)
+                analyzed_count = 0
+                results = []
+
+                # Query bauen
+                stmt = select(PrivatSpace).where(PrivatSpace.deleted_at == None)
+
+                if space_id:
+                    stmt = stmt.where(PrivatSpace.id == UUID(space_id))
+
+                result = await db.execute(stmt)
+                spaces = result.scalars().all()
+
+                for space in spaces:
+                    try:
+                        # Vollstaendige Analyse durchfuehren
+                        analysis = await analytics_service.get_full_analysis(
+                            space.id
+                        )
+
+                        analyzed_count += 1
+                        if analysis:
+                            results.append({
+                                "space_id": str(space.id),
+                                "space_name": space.name,
+                                "net_worth": analysis.net_worth,
+                                "monthly_net": analysis.current_monthly_net,
+                                "recurring_income": analysis.recurring_income_monthly,
+                                "recurring_expenses": analysis.recurring_expenses_monthly,
+                                "trend_direction": analysis.trend_direction,
+                            })
+
+                        logger.debug(
+                            "finance_analytics_completed_for_space",
+                            space_id=str(space.id),
+                            net_worth=analysis.net_worth if analysis else None,
+                        )
+
+                    except Exception as e:
+                        logger.warning(
+                            "finance_analytics_failed_for_space",
+                            space_id=str(space.id),
+                            error=str(e),
+                        )
+
+                return {
+                    "analyzed_spaces": analyzed_count,
+                    "results": results[:10],
+                }
+
+        result = run_async(do_analyze())
+
+        logger.info(
+            "finance_analytics_completed",
+            task_id=self.request.id,
+            result=result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "finance_analytics_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.daily_kpi_recalculation",
+    max_retries=3,
+    default_retry_delay=300,
+    soft_time_limit=7200,  # 2 Stunden
+    time_limit=7500,
+)
+def daily_kpi_recalculation(self) -> Dict[str, Any]:
+    """
+    Taegliche Neuberechnung aller KPIs.
+
+    Wird per Celery Beat um 02:00 Uhr ausgefuehrt.
+    Berechnet alle Enterprise-KPIs fuer alle aktiven Spaces.
+
+    Returns:
+        Zusammenfassung der berechneten KPIs
+    """
+    logger.info(
+        "daily_kpi_recalculation_started",
+        task_id=self.request.id,
+    )
+
+    try:
+        # Starte Sub-Tasks parallel
+        from celery import group
+
+        # Alle Spaces berechnen (ohne Filter)
+        task_group = group(
+            calculate_property_kpis.s(),
+            calculate_vehicle_tco.s(),
+            analyze_insurance_coverage.s(),
+            generate_loan_amortization.s(),
+            run_finance_analytics.s(),
+        )
+
+        # Starte Gruppe und warte auf Ergebnis
+        result = task_group.apply_async()
+        results = result.get(timeout=7000)  # Warte max 7000s
+
+        logger.info(
+            "daily_kpi_recalculation_completed",
+            task_id=self.request.id,
+            sub_task_results=len(results) if results else 0,
+        )
+
+        return {
+            "status": "completed",
+            "sub_tasks_completed": len(results) if results else 0,
+            "results": results,
+        }
+
+    except Exception as e:
+        logger.error(
+            "daily_kpi_recalculation_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
 # Celery Beat Schedule Konfiguration
 # Diese sollte in celery_app.py hinzugefuegt werden:
 #
 # CELERY_BEAT_SCHEDULE = {
 #     ...
+#     # Bestehende Privat-Tasks
 #     'privat-send-deadline-reminders': {
 #         'task': 'app.workers.tasks.privat_tasks.send_deadline_reminders',
 #         'schedule': crontab(hour=8, minute=0),
@@ -748,4 +1405,20 @@ def cleanup_orphaned_privat_files(self) -> Dict[str, Any]:
 #         'task': 'app.workers.tasks.privat_tasks.cleanup_orphaned_privat_files',
 #         'schedule': crontab(hour=4, minute=0),  # Daily at 04:00
 #     },
+#
+#     # ENTERPRISE: Taegliche KPI-Neuberechnung
+#     'privat-daily-kpi-recalculation': {
+#         'task': 'app.workers.tasks.privat_tasks.daily_kpi_recalculation',
+#         'schedule': crontab(hour=2, minute=0),  # Daily at 02:00
+#     },
+#
+#     # ENTERPRISE: Individuelle KPI-Tasks (optional, fuer manuelle Trigger)
+#     # Diese werden normalerweise durch daily_kpi_recalculation gestartet,
+#     # koennen aber auch einzeln getriggert werden:
+#     #
+#     # calculate_property_kpis(space_id=..., property_id=...)
+#     # calculate_vehicle_tco(space_id=..., vehicle_id=...)
+#     # analyze_insurance_coverage(space_id=...)
+#     # generate_loan_amortization(space_id=..., loan_id=...)
+#     # run_finance_analytics(space_id=...)
 # }

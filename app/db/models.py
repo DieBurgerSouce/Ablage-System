@@ -25,7 +25,7 @@ from typing import Optional, List, Dict, Any
 from enum import Enum
 import uuid
 
-from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Date, Time, Boolean, Float, Numeric, Text, JSON, ForeignKey, Index, Table, CheckConstraint, UniqueConstraint
+from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Date, Time, Boolean, Float, Numeric, Text, JSON, ForeignKey, Index, Table, CheckConstraint, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
 from sqlalchemy.types import TypeDecorator
 from pgvector.sqlalchemy import Vector
@@ -7877,6 +7877,9 @@ class PrivatSpace(Base):
     investments = relationship("PrivatInvestment", back_populates="space", cascade="all, delete-orphan")
     deadlines = relationship("PrivatDeadline", back_populates="space", cascade="all, delete-orphan")
     emergency_contacts = relationship("PrivatEmergencyContact", back_populates="space", cascade="all, delete-orphan")
+    # Enterprise Intelligence
+    recurring_payments = relationship("PrivatRecurringPayment", back_populates="space", cascade="all, delete-orphan")
+    coverage_gaps = relationship("PrivatCoverageGap", back_populates="space", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_privat_spaces_owner_id", "owner_id"),
@@ -8093,6 +8096,18 @@ class PrivatProperty(Base):
     is_rented = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
 
+    # =========================================================================
+    # Berechnete KPIs (Enterprise Feature)
+    # =========================================================================
+    calculated_yield = Column(Numeric(6, 2), nullable=True)  # Bruttomietrendite %
+    calculated_net_yield = Column(Numeric(6, 2), nullable=True)  # Nettomietrendite %
+    value_appreciation = Column(Numeric(15, 2), nullable=True)  # Wertzuwachs absolut
+    value_appreciation_rate = Column(Numeric(6, 2), nullable=True)  # Wertzuwachs %
+    total_costs_ytd = Column(Numeric(12, 2), nullable=True)  # Nebenkosten Year-to-Date
+    calculated_roi = Column(Numeric(8, 2), nullable=True)  # Gesamt-ROI %
+    annual_roi = Column(Numeric(6, 2), nullable=True)  # Jaehrlicher ROI %
+    last_kpi_calculation = Column(DateTime(timezone=True), nullable=True)  # Letzte Berechnung
+
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -8245,6 +8260,18 @@ class PrivatVehicle(Base):
     # Status
     is_active = Column(Boolean, default=True)
 
+    # =========================================================================
+    # Berechnete KPIs (Enterprise Feature)
+    # =========================================================================
+    current_estimated_value = Column(Numeric(12, 2), nullable=True)  # Geschaetzter Restwert
+    depreciation_monthly = Column(Numeric(10, 2), nullable=True)  # Monatliche Abschreibung
+    tco_total = Column(Numeric(12, 2), nullable=True)  # Total Cost of Ownership
+    tco_per_km = Column(Numeric(6, 3), nullable=True)  # Kosten pro Kilometer
+    next_service_date = Column(Date, nullable=True)  # Naechster geplanter Service
+    next_service_km = Column(Integer, nullable=True)  # Service bei km-Stand
+    average_fuel_consumption = Column(Numeric(5, 2), nullable=True)  # Durchschnittsverbrauch l/100km
+    last_kpi_calculation = Column(DateTime(timezone=True), nullable=True)  # Letzte Berechnung
+
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -8327,6 +8354,16 @@ class PrivatInsurance(Base):
     # Status
     is_active = Column(Boolean, default=True)
 
+    # =========================================================================
+    # Berechnete KPIs (Enterprise Feature)
+    # =========================================================================
+    coverage_gap_analysis = Column(CrossDBJSON, nullable=True)  # Deckungsluecken-Analyse
+    # Format: {"gaps": [{"type": "haftpflicht", "recommended": 10000000, "current": 5000000, "gap": 5000000, "severity": "high"}]}
+    cancellation_deadline = Column(Date, nullable=True)  # Berechnete Kuendigungsfrist
+    annual_premium_total = Column(Numeric(10, 2), nullable=True)  # Jaehrliche Gesamtpraemie
+    coverage_adequacy_score = Column(Numeric(5, 2), nullable=True)  # Deckungsadaequanz-Score 0-100
+    last_kpi_calculation = Column(DateTime(timezone=True), nullable=True)  # Letzte Berechnung
+
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -8336,6 +8373,7 @@ class PrivatInsurance(Base):
     space = relationship("PrivatSpace", back_populates="insurances")
     folder = relationship("PrivatFolder")
     deadlines = relationship("PrivatDeadline", back_populates="insurance", cascade="all, delete-orphan")
+    coverage_gaps = relationship("PrivatCoverageGap", back_populates="insurance", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_privat_insurances_space_id", "space_id"),
@@ -8378,6 +8416,18 @@ class PrivatLoan(Base):
 
     # Status
     is_active = Column(Boolean, default=True)
+
+    # =========================================================================
+    # Berechnete KPIs (Enterprise Feature)
+    # =========================================================================
+    amortization_schedule = Column(CrossDBJSON, nullable=True)  # Tilgungsplan
+    # Format: [{"date": "2024-01", "payment": 1000, "principal": 300, "interest": 700, "balance": 99000}, ...]
+    projected_payoff_date = Column(Date, nullable=True)  # Voraussichtliches Rueckzahlungsdatum
+    total_interest_projected = Column(Numeric(15, 2), nullable=True)  # Erwartete Gesamtzinsen
+    interest_saved_with_extra = Column(Numeric(12, 2), nullable=True)  # Ersparnis bei Sondertilgung
+    effective_annual_rate = Column(Numeric(5, 3), nullable=True)  # Effektiver Jahreszins
+    remaining_term_months = Column(Integer, nullable=True)  # Verbleibende Laufzeit in Monaten
+    last_kpi_calculation = Column(DateTime(timezone=True), nullable=True)  # Letzte Berechnung
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -11123,4 +11173,236 @@ class NotificationHistory(Base):
 
     __table_args__ = (
         {"comment": "Tracking fuer gesendete Push Notifications"}
+    )
+
+
+# =============================================================================
+# ENTERPRISE INTELLIGENCE SYSTEM
+# Phase 4: LLM Cache, Event Log, Recurring Payments, Coverage Gaps
+# =============================================================================
+
+class RecurringPaymentFrequency(str, Enum):
+    """Haeufigkeit wiederkehrender Zahlungen."""
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    BIWEEKLY = "biweekly"
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    SEMIANNUAL = "semiannual"
+    YEARLY = "yearly"
+
+
+class RecurringPaymentCategory(str, Enum):
+    """Kategorie wiederkehrender Zahlungen."""
+    SUBSCRIPTION = "subscription"
+    UTILITY = "utility"
+    RENT = "rent"
+    INSURANCE = "insurance"
+    LOAN = "loan"
+    SAVINGS = "savings"
+    SALARY = "salary"
+    OTHER = "other"
+
+
+class CoverageGapType(str, Enum):
+    """Typ der Versicherungsluecke."""
+    MISSING = "missing"
+    UNDERCOVERED = "undercovered"
+    EXPIRED = "expired"
+    OVERLAPPING = "overlapping"
+
+
+class CoverageGapSeverity(str, Enum):
+    """Schweregrad der Versicherungsluecke."""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class LLMCache(Base):
+    """Semantisches Caching fuer LLM-Antworten.
+
+    Reduziert LLM-Aufrufe durch Wiederverwendung aehnlicher Antworten.
+    Nutzt Embedding-basierte Aehnlichkeitssuche.
+    """
+
+    __tablename__ = "llm_cache"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    prompt_hash = Column(String(64), nullable=False, unique=True, index=True,
+                         comment="SHA-256 Hash des normalisierten Prompts")
+    prompt_text = Column(Text, nullable=False, comment="Originaler Prompt-Text")
+    prompt_embedding = Column(CrossDBJSON, nullable=True,
+                              comment="Embedding-Vektor fuer semantische Suche")
+    response = Column(Text, nullable=False, comment="LLM-Antwort")
+    model = Column(String(50), nullable=False, index=True,
+                   comment="Verwendetes Modell")
+    model_version = Column(String(50), nullable=True, comment="Modell-Version")
+    temperature = Column(Numeric(3, 2), nullable=True, comment="Verwendete Temperature")
+    hit_count = Column(Integer, nullable=False, default=0, comment="Anzahl Cache-Hits")
+    last_hit_at = Column(DateTime(timezone=True), nullable=True,
+                         comment="Zeitpunkt des letzten Hits")
+    token_count_prompt = Column(Integer, nullable=True, comment="Token-Anzahl im Prompt")
+    token_count_response = Column(Integer, nullable=True,
+                                  comment="Token-Anzahl in der Antwort")
+    latency_ms = Column(Integer, nullable=True,
+                        comment="Original-Antwortzeit in Millisekunden")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=True,
+                        comment="Ablaufzeitpunkt")
+    extra_data = Column(CrossDBJSON, nullable=True, comment="Zusaetzliche Metadaten")
+
+    __table_args__ = (
+        Index("ix_llm_cache_created_at", "created_at"),
+        Index("ix_llm_cache_expires_at", "expires_at"),
+        Index("ix_llm_cache_hit_count", "hit_count"),
+        {"comment": "Semantisches LLM-Antwort-Caching"}
+    )
+
+
+class EventLog(Base):
+    """Event Log fuer Event Bus Historie.
+
+    Persistiert alle Events fuer Audit, Replay und Debugging.
+    """
+
+    __tablename__ = "event_log"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_id = Column(UUID(as_uuid=True), nullable=False, unique=True, index=True,
+                      comment="Eindeutige Event-ID")
+    event_type = Column(String(100), nullable=False, index=True,
+                        comment="Event-Typ")
+    source = Column(String(100), nullable=False, index=True,
+                    comment="Quelle des Events")
+    correlation_id = Column(UUID(as_uuid=True), nullable=True,
+                            comment="Korrelations-ID")
+    user_id = Column(UUID(as_uuid=True), nullable=True,
+                     comment="Benutzer-ID")
+    space_id = Column(UUID(as_uuid=True), nullable=True,
+                      comment="Privat-Space-ID")
+    payload = Column(CrossDBJSON, nullable=False, comment="Event-Payload")
+    processed = Column(Boolean, nullable=False, default=False,
+                       comment="Wurde verarbeitet?")
+    processed_at = Column(DateTime(timezone=True), nullable=True,
+                          comment="Verarbeitungszeitpunkt")
+    handler_count = Column(Integer, nullable=False, default=0,
+                           comment="Anzahl Handler")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("ix_event_log_correlation_id", "correlation_id"),
+        Index("ix_event_log_user_id", "user_id"),
+        Index("ix_event_log_space_id", "space_id"),
+        Index("ix_event_log_created_at", "created_at"),
+        Index("ix_event_log_unprocessed", "event_type", "created_at",
+              postgresql_where=text("processed = false")),
+        {"comment": "Event Bus Historie fuer Audit und Replay"}
+    )
+
+
+class PrivatRecurringPayment(Base):
+    """Erkannte wiederkehrende Zahlungen.
+
+    Automatisch erkannte oder manuell definierte regelmaessige Zahlungen
+    fuer Cashflow-Prognosen und Anomalie-Erkennung.
+    """
+
+    __tablename__ = "privat_recurring_payments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"),
+                      nullable=False, index=True)
+    name = Column(String(255), nullable=False, comment="Name der Zahlung")
+    payee = Column(String(255), nullable=True, comment="Zahlungsempfaenger")
+    expected_amount = Column(Numeric(10, 2), nullable=False,
+                             comment="Erwarteter Betrag")
+    amount_variance = Column(Numeric(10, 2), nullable=True,
+                             comment="Tolerierte Abweichung")
+    frequency = Column(String(20), nullable=False, index=True,
+                       comment="Haeufigkeit")
+    expected_day = Column(Integer, nullable=True,
+                          comment="Erwarteter Tag im Zyklus")
+    category = Column(String(50), nullable=True, index=True,
+                      comment="Kategorie")
+    last_occurrence = Column(Date, nullable=True, comment="Letztes Auftreten")
+    next_expected = Column(Date, nullable=True, comment="Naechstes erwartetes Datum")
+    occurrence_count = Column(Integer, nullable=False, default=0,
+                              comment="Anzahl Vorkommen")
+    confidence = Column(Numeric(3, 2), nullable=False, default=0.0,
+                        comment="Erkennungs-Konfidenz")
+    is_active = Column(Boolean, nullable=False, default=True,
+                       comment="Ist aktiv?")
+    is_income = Column(Boolean, nullable=False, default=False,
+                       comment="Ist Einnahme?")
+    linked_account_id = Column(UUID(as_uuid=True), nullable=True,
+                               comment="Verknuepftes Bankkonto")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(),
+                        onupdate=func.now(), nullable=False)
+    extra_data = Column(CrossDBJSON, nullable=True, comment="Zusaetzliche Metadaten")
+
+    # Relationships
+    space = relationship("PrivatSpace", back_populates="recurring_payments")
+
+    __table_args__ = (
+        Index("ix_recurring_payments_next_expected", "next_expected"),
+        Index("ix_recurring_payments_confidence", "confidence"),
+        {"comment": "Erkannte wiederkehrende Zahlungen"}
+    )
+
+
+class PrivatCoverageGap(Base):
+    """Versicherungsluecken-Analyse.
+
+    Identifizierte Deckungsluecken mit Empfehlungen.
+    """
+
+    __tablename__ = "privat_coverage_gaps"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"),
+                      nullable=False, index=True)
+    insurance_id = Column(UUID(as_uuid=True),
+                          ForeignKey("privat_insurances.id", ondelete="SET NULL"),
+                          nullable=True, comment="Referenz auf Versicherung")
+    insurance_type = Column(String(50), nullable=False, index=True,
+                            comment="Versicherungstyp")
+    gap_type = Column(String(50), nullable=False,
+                      comment="Lueckentyp")
+    recommended_coverage = Column(Numeric(15, 2), nullable=True,
+                                  comment="Empfohlene Deckungssumme")
+    current_coverage = Column(Numeric(15, 2), nullable=True,
+                              comment="Aktuelle Deckungssumme")
+    gap_amount = Column(Numeric(15, 2), nullable=True,
+                        comment="Differenz zur Empfehlung")
+    severity = Column(String(20), nullable=False, index=True,
+                      comment="Schweregrad")
+    risk_description = Column(Text, nullable=True,
+                              comment="Risikobeschreibung")
+    recommendation = Column(Text, nullable=True,
+                            comment="Handlungsempfehlung")
+    estimated_monthly_cost = Column(Numeric(10, 2), nullable=True,
+                                    comment="Geschaetzte Monatskosten")
+    priority_score = Column(Integer, nullable=True,
+                            comment="Prioritaets-Score 1-100")
+    is_resolved = Column(Boolean, nullable=False, default=False,
+                         comment="Behoben?")
+    resolved_at = Column(DateTime(timezone=True), nullable=True,
+                         comment="Behebungszeitpunkt")
+    last_analysis_at = Column(DateTime(timezone=True), server_default=func.now(),
+                              nullable=False, comment="Letzte Analyse")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    extra_data = Column(CrossDBJSON, nullable=True, comment="Zusaetzliche Metadaten")
+
+    # Relationships
+    space = relationship("PrivatSpace", back_populates="coverage_gaps")
+    insurance = relationship("PrivatInsurance", back_populates="coverage_gaps")
+
+    __table_args__ = (
+        Index("ix_coverage_gaps_unresolved", "space_id", "severity",
+              postgresql_where=text("is_resolved = false")),
+        Index("ix_coverage_gaps_priority", "priority_score"),
+        {"comment": "Versicherungsluecken-Analyse"}
     )

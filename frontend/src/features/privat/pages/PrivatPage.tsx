@@ -129,6 +129,7 @@ export function PrivatPage() {
             deadlines={deadlines}
             isLoading={isLoading}
             error={error}
+            spaceId={firstSpaceId}
           />
         </TabsContent>
 

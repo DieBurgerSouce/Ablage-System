@@ -224,6 +224,173 @@ async def _async_reprocess_all(
                             stats["by_type"].get(doc_type, 0) + 1
                         )
 
+                        # ENTERPRISE: Anomalie-Erkennung nach Extraktion
+                        try:
+                            from app.services.ai.anomaly_detection_service import (
+                                get_anomaly_detection_service,
+                            )
+                            anomaly_service = get_anomaly_detection_service()
+                            anomaly_result = await anomaly_service.check_document(
+                                db, doc.id, getattr(doc, 'company_id', None)
+                            )
+                            if anomaly_result.is_suspicious:
+                                # Anomalie in extracted_data speichern
+                                doc.extracted_data["anomalies"] = {
+                                    "is_suspicious": True,
+                                    "risk_score": anomaly_result.overall_risk_score,
+                                    "anomaly_count": len(anomaly_result.anomalies),
+                                    "types": [a.anomaly_type.value for a in anomaly_result.anomalies],
+                                }
+                                # AI Decision erstellen fuer Review-Queue
+                                await anomaly_service.create_anomaly_decision(
+                                    db, doc.id, anomaly_result, getattr(doc, 'company_id', None)
+                                )
+                                logger.info(
+                                    "anomaly_detected_during_extraction",
+                                    document_id=str(doc.id),
+                                    risk_score=anomaly_result.overall_risk_score,
+                                    anomaly_count=len(anomaly_result.anomalies),
+                                )
+                        except Exception as anomaly_error:
+                            logger.warning(
+                                "anomaly_check_failed_during_extraction",
+                                document_id=str(doc.id),
+                                error=str(anomaly_error),
+                            )
+
+                        # ENTERPRISE: Auto-Kategorisierung nach Extraktion
+                        try:
+                            from app.services.ai.auto_categorization_service import (
+                                get_auto_categorization_service,
+                            )
+                            categorization_service = get_auto_categorization_service()
+
+                            # Kategorisierung durchfuehren (mit auto_apply_tags=True)
+                            categorization_result = await categorization_service.categorize_document(
+                                db=db,
+                                document_id=doc.id,
+                                text=doc.extracted_text,
+                                company_id=getattr(doc, 'company_id', None),
+                                auto_apply_tags=True,
+                            )
+
+                            # Kategorisierung in extracted_data speichern
+                            if doc.extracted_data is None:
+                                doc.extracted_data = {}
+                            doc.extracted_data["categorization"] = {
+                                "category": categorization_result.decision_value.get("category"),
+                                "display_name": categorization_result.decision_value.get("display_name"),
+                                "confidence": categorization_result.confidence,
+                                "confidence_level": categorization_result.confidence_level.value,
+                                "auto_applied": categorization_result.auto_applied,
+                            }
+
+                            if categorization_result.confidence >= 0.7:
+                                logger.info(
+                                    "auto_categorization_applied",
+                                    document_id=str(doc.id),
+                                    category=categorization_result.decision_value.get("category"),
+                                    confidence=categorization_result.confidence,
+                                )
+                        except Exception as cat_error:
+                            logger.warning(
+                                "auto_categorization_failed_during_extraction",
+                                document_id=str(doc.id),
+                                error=str(cat_error),
+                            )
+
+                        # ENTERPRISE: LLM-NER fuer erweiterte Entitaetsextraktion
+                        try:
+                            from app.services.document_intelligence import (
+                                get_llm_ner_service,
+                            )
+                            ner_service = get_llm_ner_service()
+
+                            # NER durchfuehren
+                            ner_result = await ner_service.extract_entities(
+                                doc.extracted_text
+                            )
+
+                            if ner_result and ner_result.entities:
+                                # NER-Ergebnisse in extracted_data speichern
+                                doc.extracted_data["ner"] = {
+                                    "entities": [
+                                        {
+                                            "type": e.entity_type.value,
+                                            "value": e.value,
+                                            "confidence": e.confidence,
+                                            "context": e.context,
+                                        }
+                                        for e in ner_result.entities
+                                    ],
+                                    "entity_count": len(ner_result.entities),
+                                    "processing_time_ms": ner_result.processing_time_ms,
+                                    "from_cache": ner_result.from_cache,
+                                }
+
+                                logger.info(
+                                    "ner_extraction_completed",
+                                    document_id=str(doc.id),
+                                    entity_count=len(ner_result.entities),
+                                    from_cache=ner_result.from_cache,
+                                )
+                        except Exception as ner_error:
+                            logger.warning(
+                                "ner_extraction_failed_during_extraction",
+                                document_id=str(doc.id),
+                                error=str(ner_error),
+                            )
+
+                        # ENTERPRISE: Deadline-Extraktion aus OCR-Text
+                        try:
+                            from app.services.document_intelligence import (
+                                get_deadline_extraction_service,
+                            )
+                            deadline_service = get_deadline_extraction_service()
+
+                            # Pruefe ob Dokument einem Privat-Space zugeordnet ist
+                            privat_space_id = getattr(doc, 'privat_space_id', None)
+
+                            if privat_space_id:
+                                # Deadline-Extraktion mit automatischer Erstellung
+                                deadline_result = await deadline_service.extract_and_create_deadlines(
+                                    text=doc.extracted_text,
+                                    db=db,
+                                    space_id=privat_space_id,
+                                    document_id=doc.id,
+                                )
+
+                                if deadline_result and deadline_result.deadlines:
+                                    doc.extracted_data["deadlines"] = {
+                                        "extracted_count": len(deadline_result.deadlines),
+                                        "created_count": deadline_result.created_count,
+                                        "deadlines": [
+                                            {
+                                                "title": d.title,
+                                                "due_date": d.due_date.isoformat() if d.due_date else None,
+                                                "deadline_type": d.deadline_type,
+                                                "original_text": d.original_text,
+                                                "confidence": d.confidence,
+                                            }
+                                            for d in deadline_result.deadlines
+                                        ],
+                                        "processing_time_ms": deadline_result.processing_time_ms,
+                                    }
+
+                                    if deadline_result.created_count > 0:
+                                        logger.info(
+                                            "deadlines_auto_created",
+                                            document_id=str(doc.id),
+                                            space_id=str(privat_space_id),
+                                            created_count=deadline_result.created_count,
+                                        )
+                        except Exception as deadline_error:
+                            logger.warning(
+                                "deadline_extraction_failed_during_extraction",
+                                document_id=str(doc.id),
+                                error=str(deadline_error),
+                            )
+
                         logger.debug(
                             "document_extracted",
                             document_id=str(doc.id),

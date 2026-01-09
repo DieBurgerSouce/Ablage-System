@@ -1021,7 +1021,38 @@ class FinanceService(DocumentServiceBase):
             tags=[tag.name for tag in doc.tags] if doc.tags else [],
             thumbnail_url=None,  # TODO: Generate if needed
             preview_url=None,  # TODO: Generate if needed
+            # Anomalie-Felder (Enterprise Feature)
+            has_anomalies=self._extract_has_anomalies(extracted_data),
+            anomaly_count=self._extract_anomaly_count(extracted_data),
+            risk_score=self._extract_risk_score(extracted_data),
         )
+
+    # =========================================================================
+    # Anomaly Helper Methods (Enterprise Feature)
+    # =========================================================================
+
+    def _extract_has_anomalies(self, extracted_data: Dict[str, Any]) -> bool:
+        """Prüft ob Anomalien vorhanden sind."""
+        anomalies = extracted_data.get("anomalies", {})
+        if isinstance(anomalies, dict):
+            return anomalies.get("is_suspicious", False)
+        return False
+
+    def _extract_anomaly_count(self, extracted_data: Dict[str, Any]) -> int:
+        """Extrahiert die Anzahl der Anomalien."""
+        anomalies = extracted_data.get("anomalies", {})
+        if isinstance(anomalies, dict):
+            return anomalies.get("anomaly_count", 0)
+        return 0
+
+    def _extract_risk_score(self, extracted_data: Dict[str, Any]) -> Optional[float]:
+        """Extrahiert den Risiko-Score."""
+        anomalies = extracted_data.get("anomalies", {})
+        if isinstance(anomalies, dict):
+            score = anomalies.get("risk_score")
+            if score is not None:
+                return round(float(score), 3)
+        return None
 
     # =========================================================================
     # CRUD Methods

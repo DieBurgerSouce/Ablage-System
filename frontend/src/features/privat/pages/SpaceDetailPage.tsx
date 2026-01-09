@@ -182,7 +182,7 @@ export function SpaceDetailPage() {
             <HardDrive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatBytes(space.totalSize)}</div>
+            <div className="text-2xl font-bold">{formatBytes(space.totalSizeBytes)}</div>
           </CardContent>
         </Card>
         {!isPersonal && (

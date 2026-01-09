@@ -5,7 +5,7 @@
  */
 
 import * as React from 'react';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { PropertyList } from '../components/properties/PropertyList';
 import { PropertyCreateDialog } from '../components/properties/PropertyCreateDialog';
 import { PropertyEditDialog } from '../components/properties/PropertyEditDialog';
@@ -31,10 +31,11 @@ interface PropertiesPageProps {
 export function PropertiesPage({ spaceId: propSpaceId }: PropertiesPageProps = {}) {
   const navigate = useNavigate();
   const params = useParams({ strict: false }) as { spaceId?: string };
+  const search = useSearch({ strict: false }) as { space?: string };
   const { defaultSpaceId, isLoading: isLoadingSpaces, hasSpaces } = useDefaultSpace();
 
-  // Priorität: 1. Props, 2. URL-Params, 3. Default-Space (persönlicher Bereich)
-  const spaceId = propSpaceId || params.spaceId || defaultSpaceId;
+  // Priorität: 1. Props, 2. URL-Params, 3. Query-Param (?space=), 4. Default-Space
+  const spaceId = propSpaceId || params.spaceId || search.space || defaultSpaceId;
 
   const [properties, setProperties] = React.useState<PrivatPropertyWithDetails[]>([]);
   const [total, setTotal] = React.useState(0);

@@ -5,7 +5,7 @@
  */
 
 import * as React from 'react';
-import { useParams } from '@tanstack/react-router';
+import { useParams, useSearch } from '@tanstack/react-router';
 import { EmergencyAccessPanel } from '../components/emergency/EmergencyAccessPanel';
 import * as privatApi from '../api/privat-api';
 import { useDefaultSpace } from '../hooks/use-privat-queries';
@@ -21,10 +21,11 @@ interface EmergencyPageProps {
 
 export function EmergencyPage({ spaceId: propSpaceId }: EmergencyPageProps = {}) {
   const params = useParams({ strict: false }) as { spaceId?: string };
+  const search = useSearch({ strict: false }) as { space?: string };
   const { defaultSpaceId, isLoading: isLoadingSpaces, hasSpaces } = useDefaultSpace();
 
-  // Priorität: 1. Props, 2. URL-Params, 3. Default-Space (persönlicher Bereich)
-  const spaceId = propSpaceId || params.spaceId || defaultSpaceId;
+  // Priorität: 1. Props, 2. URL-Params, 3. Query-Param (?space=), 4. Default-Space
+  const spaceId = propSpaceId || params.spaceId || search.space || defaultSpaceId;
 
   const [contacts, setContacts] = React.useState<PrivatEmergencyContact[]>([]);
   const [requests, setRequests] = React.useState<PrivatEmergencyAccessRequest[]>([]);

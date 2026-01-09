@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { useParams, Link, useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, FolderOpen, FileText, Upload, Calendar, AlertTriangle, Search, Filter } from 'lucide-react'
+import { ArrowLeft, FolderOpen, FileText, Upload, Calendar, AlertTriangle, Search, Filter, ShieldAlert } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -399,7 +399,7 @@ export function FinanceCategoryDocumentList() {
                           onClick={() => handleDocumentClick(doc)}
                           tabIndex={0}
                           role="button"
-                          aria-label={`Dokument: ${doc.originalFilename || doc.filename}`}
+                          aria-label={`Dokument: ${doc.originalFilename || doc.filename}${doc.hasAnomalies ? ' (Anomalie erkannt)' : ''}`}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
                               e.preventDefault()
@@ -412,6 +412,16 @@ export function FinanceCategoryDocumentList() {
                             <span className="truncate max-w-[250px]">
                               {doc.originalFilename || doc.filename}
                             </span>
+                            {doc.hasAnomalies && (
+                              <Badge
+                                variant="outline"
+                                className="ml-1 gap-1 px-1.5 py-0 text-xs bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-700"
+                                title={`${doc.anomalyCount} Anomalie${doc.anomalyCount !== 1 ? 'n' : ''} erkannt${doc.riskScore ? ` (${Math.round(doc.riskScore * 100)}% Risiko)` : ''}`}
+                              >
+                                <ShieldAlert className="w-3 h-3" />
+                                {doc.anomalyCount}
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>{formatDate(doc.documentDate || doc.createdAt)}</TableCell>

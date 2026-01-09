@@ -4040,6 +4040,11 @@ class FinanceCategoryDocumentResponse(BaseModel):
     thumbnail_url: Optional[str] = None
     preview_url: Optional[str] = None
 
+    # Anomalie-Felder (Enterprise Feature)
+    has_anomalies: bool = Field(False, description="Hat erkannte Anomalien")
+    anomaly_count: int = Field(0, ge=0, description="Anzahl erkannter Anomalien")
+    risk_score: Optional[float] = Field(None, ge=0.0, le=1.0, description="Risiko-Score 0-1")
+
     model_config = ConfigDict(from_attributes=True)
 
 

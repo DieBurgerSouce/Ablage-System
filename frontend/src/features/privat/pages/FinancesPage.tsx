@@ -5,7 +5,7 @@
  */
 
 import * as React from 'react';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { LoanList } from '../components/finances/LoanList';
 import { InvestmentList } from '../components/finances/InvestmentList';
 import { LoanCreateDialog } from '../components/finances/LoanCreateDialog';
@@ -42,10 +42,11 @@ interface FinancesPageProps {
 export function FinancesPage({ spaceId: propSpaceId }: FinancesPageProps = {}) {
   const navigate = useNavigate();
   const params = useParams({ strict: false }) as { spaceId?: string };
+  const search = useSearch({ strict: false }) as { space?: string };
   const { defaultSpaceId, isLoading: isLoadingSpaces, hasSpaces } = useDefaultSpace();
 
-  // Priorität: 1. Props, 2. URL-Params, 3. Default-Space (persönlicher Bereich)
-  const spaceId = propSpaceId || params.spaceId || defaultSpaceId;
+  // Priorität: 1. Props, 2. URL-Params, 3. Query-Param (?space=), 4. Default-Space
+  const spaceId = propSpaceId || params.spaceId || search.space || defaultSpaceId;
   const [activeTab, setActiveTab] = React.useState('loans');
 
   // Loans state

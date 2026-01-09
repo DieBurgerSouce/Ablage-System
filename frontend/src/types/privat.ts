@@ -115,8 +115,8 @@ export interface PrivatSpace {
 export interface PrivatSpaceWithStats extends PrivatSpace {
   documentCount: number;
   folderCount: number;
-  totalSize: number;
-  accessCount: number;
+  totalSizeBytes: number;
+  pendingDeadlines: number;
 }
 
 /** Space create request */

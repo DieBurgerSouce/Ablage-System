@@ -39,6 +39,7 @@ interface PrivatDashboardProps {
   isLoading?: boolean;
   error?: Error | null;
   className?: string;
+  spaceId?: string;
 }
 
 const formatCurrency = (amount: number): string => {
@@ -63,7 +64,12 @@ export function PrivatDashboard({
   isLoading,
   error,
   className,
+  spaceId,
 }: PrivatDashboardProps) {
+  // Helper: Link mit optionalem space Query-Parameter
+  const buildLink = (basePath: string): string => {
+    return spaceId ? `${basePath}?space=${spaceId}` : basePath;
+  };
   if (error) {
     return (
       <Card className={className}>
@@ -106,21 +112,21 @@ export function PrivatDashboard({
           title="Immobilien"
           value={stats?.totalProperties ?? 0}
           icon={<Home className="h-4 w-4 text-green-500" />}
-          link="/privat/immobilien"
+          link={buildLink('/privat/immobilien')}
           isLoading={isLoading}
         />
         <StatCard
           title="Fahrzeuge"
           value={stats?.totalVehicles ?? 0}
           icon={<Car className="h-4 w-4 text-orange-500" />}
-          link="/privat/fahrzeuge"
+          link={buildLink('/privat/fahrzeuge')}
           isLoading={isLoading}
         />
         <StatCard
           title="Versicherungen"
           value={stats?.totalInsurances ?? 0}
           icon={<Shield className="h-4 w-4 text-red-500" />}
-          link="/privat/versicherungen"
+          link={buildLink('/privat/versicherungen')}
           isLoading={isLoading}
         />
       </div>
@@ -191,7 +197,7 @@ export function PrivatDashboard({
                 <Calendar className="h-5 w-5 text-amber-500" />
                 Fristen
               </CardTitle>
-              <Link to="/privat/fristen">
+              <Link to={buildLink('/privat/fristen')}>
                 <Button variant="ghost" size="sm">
                   Alle
                   <ArrowRight className="ml-1 h-4 w-4" />
@@ -266,28 +272,28 @@ export function PrivatDashboard({
           title="Immobilien"
           description="Grundstücke, Wohnungen & Mieter"
           icon={<Home className="h-6 w-6" />}
-          link="/privat/immobilien"
+          link={buildLink('/privat/immobilien')}
           color="green"
         />
         <QuickLinkCard
           title="Fahrzeuge"
           description="Autos, Motorräder & Tankbelege"
           icon={<Car className="h-6 w-6" />}
-          link="/privat/fahrzeuge"
+          link={buildLink('/privat/fahrzeuge')}
           color="orange"
         />
         <QuickLinkCard
           title="Versicherungen"
           description="Alle Policen & Fristen"
           icon={<Shield className="h-6 w-6" />}
-          link="/privat/versicherungen"
+          link={buildLink('/privat/versicherungen')}
           color="red"
         />
         <QuickLinkCard
           title="Finanzen"
           description="Kredite & Geldanlagen"
           icon={<TrendingUp className="h-6 w-6" />}
-          link="/privat/finanzen"
+          link={buildLink('/privat/finanzen')}
           color="blue"
         />
       </div>

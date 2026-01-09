@@ -1372,3 +1372,324 @@ async def get_document_history(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Laden der Dokument-History"
         )
+
+
+# =============================================================================
+# ANOMALY DETECTION ENDPOINTS (Enterprise Feature)
+# =============================================================================
+
+from pydantic import BaseModel, Field
+from typing import List
+
+
+class AnomalyItem(BaseModel):
+    """Einzelne erkannte Anomalie."""
+    type: str = Field(..., description="Anomalie-Typ")
+    severity: str = Field(..., description="Schweregrad (low/medium/high/critical)")
+    description: str = Field(..., description="Beschreibung der Anomalie")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Konfidenz 0-1")
+    details: dict = Field(default_factory=dict, description="Zusaetzliche Details")
+
+
+class AnomalyCheckResponse(BaseModel):
+    """Response fuer Anomalie-Check eines Dokuments."""
+    document_id: UUID
+    document_name: str
+    is_suspicious: bool = Field(..., description="Verdaechtig ja/nein")
+    overall_risk_score: float = Field(..., ge=0.0, le=1.0, description="Gesamt-Risikoscore")
+    anomaly_count: int = Field(..., description="Anzahl erkannter Anomalien")
+    anomalies: List[AnomalyItem] = Field(default_factory=list, description="Liste der Anomalien")
+    checked_at: datetime = Field(..., description="Zeitpunkt der Pruefung")
+    message: str = Field(..., description="Status-Nachricht")
+
+
+class AnomalyDashboardStats(BaseModel):
+    """Statistiken fuer Anomalie-Dashboard."""
+    total_documents_checked: int = Field(..., description="Gesamtzahl gepruefter Dokumente")
+    suspicious_documents: int = Field(..., description="Anzahl verdaechtiger Dokumente")
+    pending_review: int = Field(..., description="Zur Pruefung ausstehend")
+    resolved: int = Field(..., description="Bereits bearbeitet")
+    average_risk_score: float = Field(..., description="Durchschnittlicher Risikoscore")
+    anomaly_type_distribution: dict = Field(default_factory=dict, description="Verteilung nach Typ")
+
+
+class AnomalyDocumentSummary(BaseModel):
+    """Zusammenfassung eines verdaechtigen Dokuments."""
+    document_id: UUID
+    document_name: str
+    category: str
+    year: int
+    risk_score: float
+    anomaly_count: int
+    anomaly_types: List[str]
+    detected_at: datetime
+    status: str = Field(..., description="pending/reviewed/resolved")
+
+
+class AnomalyDashboardResponse(BaseModel):
+    """Response fuer Anomalie-Dashboard."""
+    stats: AnomalyDashboardStats
+    recent_anomalies: List[AnomalyDocumentSummary] = Field(
+        default_factory=list, description="Neueste verdaechtige Dokumente"
+    )
+    message: str
+
+
+@router.post(
+    "/anomalies/check/{document_id}",
+    response_model=AnomalyCheckResponse,
+    summary="Dokument auf Anomalien pruefen",
+    description="Prueft ein Finanz-Dokument manuell auf Anomalien"
+)
+async def check_document_anomalies(
+    document_id: UUID = Path(..., description="Dokument-ID"),
+    current_user: User = Depends(require_finance_read),
+    db: AsyncSession = Depends(get_db),
+) -> AnomalyCheckResponse:
+    """
+    Prueft ein Finanz-Dokument manuell auf Anomalien.
+
+    **Erkannte Anomalie-Typen:**
+    - HIGH_AMOUNT: Ungewoehnlich hoher Betrag
+    - NEW_SUPPLIER_HIGH_VALUE: Neuer Lieferant mit hohem Wert
+    - DUPLICATE_NUMBER: Duplizierte Rechnungsnummer
+    - UNUSUAL_PAYMENT_TERMS: Ungewoehnliche Zahlungsbedingungen
+    - ROUND_AMOUNT: Verdaechtiger runder Betrag
+    - WEEKEND_INVOICE: Rechnung am Wochenende
+    - MISSING_VAT: Fehlende Umsatzsteuer
+    - AMOUNT_MISMATCH: Betrag stimmt nicht ueberein
+    - FUTURE_DATE: Datum in der Zukunft
+
+    **Risikoscore:**
+    - 0.0-0.3: Niedriges Risiko
+    - 0.3-0.6: Mittleres Risiko
+    - 0.6-0.8: Hohes Risiko
+    - 0.8-1.0: Kritisch
+    """
+    from app.services.ai.anomaly_detection_service import get_anomaly_detection_service
+
+    # Dokument abrufen und Berechtigung pruefen
+    service = get_finance_service()
+    document = await service.get_finance_document(db, current_user.id, document_id)
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Dokument {document_id} nicht gefunden"
+        )
+
+    try:
+        anomaly_service = get_anomaly_detection_service()
+        result = await anomaly_service.check_document(
+            db, document_id, getattr(document, 'company_id', None)
+        )
+
+        # Anomalien in API-Format konvertieren
+        anomaly_items = []
+        for anomaly in result.anomalies:
+            anomaly_items.append(AnomalyItem(
+                type=anomaly.anomaly_type.value,
+                severity=anomaly.severity.value,
+                description=anomaly.description,
+                confidence=anomaly.confidence,
+                details=anomaly.details or {},
+            ))
+
+        # AI Decision erstellen falls verdaechtig
+        if result.is_suspicious:
+            try:
+                await anomaly_service.create_anomaly_decision(
+                    db, document_id, result, getattr(document, 'company_id', None)
+                )
+            except Exception as decision_error:
+                logger.warning(
+                    "anomaly_decision_creation_failed",
+                    document_id=str(document_id),
+                    error=str(decision_error),
+                )
+
+        logger.info(
+            "anomaly_check_completed",
+            user_id=str(current_user.id),
+            document_id=str(document_id),
+            is_suspicious=result.is_suspicious,
+            anomaly_count=len(result.anomalies),
+            risk_score=result.overall_risk_score,
+        )
+
+        return AnomalyCheckResponse(
+            document_id=document_id,
+            document_name=document.original_filename or str(document_id),
+            is_suspicious=result.is_suspicious,
+            overall_risk_score=result.overall_risk_score,
+            anomaly_count=len(result.anomalies),
+            anomalies=anomaly_items,
+            checked_at=datetime.now(timezone.utc),
+            message="Anomalie-Pruefung abgeschlossen" if not result.is_suspicious
+                    else f"ACHTUNG: {len(result.anomalies)} Anomalie(n) erkannt!"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(
+            "anomaly_check_failed",
+            document_id=str(document_id),
+            user_id=str(current_user.id),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler bei der Anomalie-Pruefung"
+        )
+
+
+@router.get(
+    "/anomalies/dashboard",
+    response_model=AnomalyDashboardResponse,
+    summary="Anomalie-Dashboard",
+    description="Zeigt Uebersicht aller erkannten Anomalien"
+)
+async def get_anomaly_dashboard(
+    year: Optional[int] = Query(None, ge=2000, le=2100, description="Filter nach Jahr"),
+    limit: int = Query(20, ge=1, le=100, description="Max. Anzahl Dokumente"),
+    current_user: User = Depends(require_finance_read),
+    db: AsyncSession = Depends(get_db),
+) -> AnomalyDashboardResponse:
+    """
+    Zeigt eine Uebersicht aller erkannten Anomalien.
+
+    **Dashboard enthält:**
+    - Gesamtstatistiken (geprüft, verdächtig, ausstehend, gelöst)
+    - Durchschnittlicher Risikoscore
+    - Verteilung nach Anomalie-Typ
+    - Liste der neuesten verdächtigen Dokumente
+
+    **Filter:**
+    - year: Nur Anomalien aus diesem Jahr anzeigen
+    - limit: Maximale Anzahl der angezeigten Dokumente
+    """
+    from sqlalchemy import select, func, and_
+    from app.db.models import AIDecision
+
+    try:
+        # Query: Alle Dokumente mit Anomalien im extracted_data
+        base_query = select(Document).where(
+            and_(
+                Document.owner_id == current_user.id,
+                Document.deleted_at.is_(None),
+                Document.extracted_data.isnot(None),
+            )
+        )
+
+        if year:
+            base_query = base_query.where(Document.year == year)
+
+        result = await db.execute(base_query)
+        documents = result.scalars().all()
+
+        # Statistiken berechnen
+        total_checked = 0
+        suspicious_docs = 0
+        risk_scores = []
+        type_distribution: dict[str, int] = {}
+        recent_anomalies: list[AnomalyDocumentSummary] = []
+
+        for doc in documents:
+            if not doc.extracted_data:
+                continue
+
+            anomalies_data = doc.extracted_data.get("anomalies")
+            if anomalies_data:
+                total_checked += 1
+
+                if anomalies_data.get("is_suspicious"):
+                    suspicious_docs += 1
+                    risk_score = anomalies_data.get("risk_score", 0.0)
+                    risk_scores.append(risk_score)
+
+                    # Typ-Verteilung
+                    for atype in anomalies_data.get("types", []):
+                        type_distribution[atype] = type_distribution.get(atype, 0) + 1
+
+                    # Zu Recent hinzufuegen
+                    category = (doc.document_metadata or {}).get("finance_category", "sonstige")
+                    doc_year = (doc.extracted_data or {}).get("finance_year", doc.year or datetime.now().year)
+
+                    recent_anomalies.append(AnomalyDocumentSummary(
+                        document_id=doc.id,
+                        document_name=doc.original_filename or str(doc.id),
+                        category=category,
+                        year=int(doc_year) if doc_year else datetime.now().year,
+                        risk_score=risk_score,
+                        anomaly_count=anomalies_data.get("anomaly_count", 0),
+                        anomaly_types=anomalies_data.get("types", []),
+                        detected_at=doc.updated_at or doc.created_at,
+                        status="pending",  # TODO: AIDecision status abfragen
+                    ))
+
+        # Nach Risikoscore sortieren (hoechstes Risiko zuerst)
+        recent_anomalies.sort(key=lambda x: x.risk_score, reverse=True)
+        recent_anomalies = recent_anomalies[:limit]
+
+        # Durchschnittlicher Risikoscore
+        avg_risk = sum(risk_scores) / len(risk_scores) if risk_scores else 0.0
+
+        # AIDecisions fuer Status zaehlen
+        pending_count = 0
+        resolved_count = 0
+        try:
+            # Pending AIDecisions
+            pending_result = await db.execute(
+                select(func.count(AIDecision.id)).where(
+                    and_(
+                        AIDecision.decision_type == "anomaly_review",
+                        AIDecision.status == "pending",
+                    )
+                )
+            )
+            pending_count = pending_result.scalar() or 0
+
+            # Resolved AIDecisions
+            resolved_result = await db.execute(
+                select(func.count(AIDecision.id)).where(
+                    and_(
+                        AIDecision.decision_type == "anomaly_review",
+                        AIDecision.status.in_(["approved", "rejected"]),
+                    )
+                )
+            )
+            resolved_count = resolved_result.scalar() or 0
+        except Exception:
+            # AIDecision Tabelle existiert moeglicherweise nicht
+            pass
+
+        logger.info(
+            "anomaly_dashboard_retrieved",
+            user_id=str(current_user.id),
+            total_checked=total_checked,
+            suspicious=suspicious_docs,
+            avg_risk=avg_risk,
+        )
+
+        return AnomalyDashboardResponse(
+            stats=AnomalyDashboardStats(
+                total_documents_checked=total_checked,
+                suspicious_documents=suspicious_docs,
+                pending_review=pending_count,
+                resolved=resolved_count,
+                average_risk_score=round(avg_risk, 3),
+                anomaly_type_distribution=type_distribution,
+            ),
+            recent_anomalies=recent_anomalies,
+            message=f"{suspicious_docs} verdaechtige Dokumente von {total_checked} geprueften"
+        )
+
+    except Exception as e:
+        logger.exception(
+            "anomaly_dashboard_failed",
+            user_id=str(current_user.id),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Laden des Anomalie-Dashboards"
+        )

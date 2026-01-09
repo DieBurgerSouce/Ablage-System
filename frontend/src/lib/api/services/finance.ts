@@ -98,6 +98,10 @@ interface FinanceCategoryDocumentBackend {
   tags: string[];
   thumbnail_url: string | null;
   preview_url: string | null;
+  // Anomaly fields (Enterprise Feature)
+  has_anomalies: boolean;
+  anomaly_count: number;
+  risk_score: number | null;
 }
 
 interface FinanceCategoryDocumentListBackend {
@@ -175,6 +179,10 @@ export interface FinanceCategoryDocument {
   tags: string[];
   thumbnailUrl: string | null;
   previewUrl: string | null;
+  // Anomaly fields (Enterprise Feature)
+  hasAnomalies: boolean;
+  anomalyCount: number;
+  riskScore: number | null;
 }
 
 export interface FinanceCategoryDocumentList {
@@ -375,6 +383,10 @@ function transformDocument(doc: FinanceCategoryDocumentBackend): FinanceCategory
     tags: doc.tags,
     thumbnailUrl: doc.thumbnail_url,
     previewUrl: doc.preview_url,
+    // Anomaly fields
+    hasAnomalies: doc.has_anomalies ?? false,
+    anomalyCount: doc.anomaly_count ?? 0,
+    riskScore: doc.risk_score ?? null,
   };
 }
 
@@ -1246,6 +1258,186 @@ function transformVersionSummary(v: OCRVersionSummaryBackend): FinanceDocumentVe
     versionNote: v.version_note,
   };
 }
+
+// ==================== Anomaly Types ====================
+
+export type AnomalySeverity = 'low' | 'medium' | 'high' | 'critical';
+export type AnomalyStatus = 'pending' | 'reviewed' | 'resolved';
+
+export interface AnomalyItem {
+  type: string;
+  severity: AnomalySeverity;
+  description: string;
+  confidence: number;
+  details: Record<string, unknown>;
+}
+
+export interface AnomalyCheckResult {
+  documentId: string;
+  documentName: string;
+  isSuspicious: boolean;
+  overallRiskScore: number;
+  anomalyCount: number;
+  anomalies: AnomalyItem[];
+  checkedAt: string;
+  message: string;
+}
+
+export interface AnomalyDashboardStats {
+  totalDocumentsChecked: number;
+  suspiciousDocuments: number;
+  pendingReview: number;
+  resolved: number;
+  averageRiskScore: number;
+  anomalyTypeDistribution: Record<string, number>;
+}
+
+export interface AnomalyDocumentSummary {
+  documentId: string;
+  documentName: string;
+  category: string;
+  year: number;
+  riskScore: number;
+  anomalyCount: number;
+  anomalyTypes: string[];
+  detectedAt: string;
+  status: AnomalyStatus;
+}
+
+export interface AnomalyDashboardResult {
+  stats: AnomalyDashboardStats;
+  recentAnomalies: AnomalyDocumentSummary[];
+  message: string;
+}
+
+// Backend types
+interface AnomalyCheckBackend {
+  document_id: string;
+  document_name: string;
+  is_suspicious: boolean;
+  overall_risk_score: number;
+  anomaly_count: number;
+  anomalies: {
+    type: string;
+    severity: string;
+    description: string;
+    confidence: number;
+    details: Record<string, unknown>;
+  }[];
+  checked_at: string;
+  message: string;
+}
+
+interface AnomalyDashboardBackend {
+  stats: {
+    total_documents_checked: number;
+    suspicious_documents: number;
+    pending_review: number;
+    resolved: number;
+    average_risk_score: number;
+    anomaly_type_distribution: Record<string, number>;
+  };
+  recent_anomalies: {
+    document_id: string;
+    document_name: string;
+    category: string;
+    year: number;
+    risk_score: number;
+    anomaly_count: number;
+    anomaly_types: string[];
+    detected_at: string;
+    status: string;
+  }[];
+  message: string;
+}
+
+// ==================== Anomaly API Service ====================
+
+export const financeAnomalyApi = {
+  /**
+   * Check a document for anomalies
+   */
+  checkDocument: async (documentId: string): Promise<AnomalyCheckResult> => {
+    try {
+      const response = await apiClient.post<AnomalyCheckBackend>(
+        `/finance/anomalies/check/${documentId}`
+      );
+
+      return {
+        documentId: response.data.document_id,
+        documentName: response.data.document_name,
+        isSuspicious: response.data.is_suspicious,
+        overallRiskScore: response.data.overall_risk_score,
+        anomalyCount: response.data.anomaly_count,
+        anomalies: response.data.anomalies.map((a) => ({
+          type: a.type,
+          severity: a.severity as AnomalySeverity,
+          description: a.description,
+          confidence: a.confidence,
+          details: a.details,
+        })),
+        checkedAt: response.data.checked_at,
+        message: response.data.message,
+      };
+    } catch (error) {
+      handleApiError(error, 'Anomalie-Prüfung');
+    }
+  },
+
+  /**
+   * Get anomaly dashboard with statistics
+   */
+  getDashboard: async (options?: { year?: number; limit?: number }): Promise<AnomalyDashboardResult> => {
+    try {
+      const params = new URLSearchParams();
+      if (options?.year) params.append('year', String(options.year));
+      if (options?.limit) params.append('limit', String(options.limit));
+
+      const url = `/finance/anomalies/dashboard${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await apiClient.get<AnomalyDashboardBackend>(url);
+
+      return {
+        stats: {
+          totalDocumentsChecked: response.data.stats.total_documents_checked,
+          suspiciousDocuments: response.data.stats.suspicious_documents,
+          pendingReview: response.data.stats.pending_review,
+          resolved: response.data.stats.resolved,
+          averageRiskScore: response.data.stats.average_risk_score,
+          anomalyTypeDistribution: response.data.stats.anomaly_type_distribution,
+        },
+        recentAnomalies: response.data.recent_anomalies.map((a) => ({
+          documentId: a.document_id,
+          documentName: a.document_name,
+          category: a.category,
+          year: a.year,
+          riskScore: a.risk_score,
+          anomalyCount: a.anomaly_count,
+          anomalyTypes: a.anomaly_types,
+          detectedAt: a.detected_at,
+          status: a.status as AnomalyStatus,
+        })),
+        message: response.data.message,
+      };
+    } catch (error) {
+      // Return empty result on error (dashboard should still render)
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        return {
+          stats: {
+            totalDocumentsChecked: 0,
+            suspiciousDocuments: 0,
+            pendingReview: 0,
+            resolved: 0,
+            averageRiskScore: 0,
+            anomalyTypeDistribution: {},
+          },
+          recentAnomalies: [],
+          message: 'Keine Anomalien gefunden',
+        };
+      }
+      handleApiError(error, 'Anomalie-Dashboard laden');
+    }
+  },
+};
 
 // ==================== Version API Service ====================
 

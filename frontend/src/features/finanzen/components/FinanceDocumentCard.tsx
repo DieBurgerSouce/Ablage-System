@@ -8,7 +8,7 @@
  */
 
 import { memo, useCallback } from 'react'
-import { FileText, Calendar, AlertTriangle, Clock, Euro } from 'lucide-react'
+import { FileText, Calendar, AlertTriangle, Clock, Euro, ShieldAlert } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatDate, formatCurrency } from '../mockData'
@@ -55,6 +55,16 @@ const FinanceDocumentCardInner = memo(function FinanceDocumentCard({
             <span className="font-medium text-sm truncate">
               {document.originalFilename || document.filename}
             </span>
+            {document.hasAnomalies && (
+              <Badge
+                variant="outline"
+                className="ml-1 gap-1 px-1.5 py-0 text-xs bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-700 flex-shrink-0"
+                title={`${document.anomalyCount} Anomalie${document.anomalyCount !== 1 ? 'n' : ''} erkannt`}
+              >
+                <ShieldAlert className="w-3 h-3" />
+                {document.anomalyCount}
+              </Badge>
+            )}
           </div>
           <Badge
             variant={document.processingStatus === 'completed' ? 'secondary' : 'outline'}

@@ -294,7 +294,7 @@ function SpaceCard({ space, onEdit, onDelete, onSettings }: SpaceCardProps) {
           <div className="flex items-center gap-2 text-muted-foreground">
             <HardDrive className="h-4 w-4" aria-hidden="true" />
             <dt className="sr-only">Speichergröße</dt>
-            <dd>{formatBytes(space.totalSize)}</dd>
+            <dd>{formatBytes(space.totalSizeBytes)}</dd>
           </div>
           {!isPersonal && (
             <div className="flex items-center gap-2 text-muted-foreground">
