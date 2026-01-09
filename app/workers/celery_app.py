@@ -267,6 +267,7 @@ celery_app = Celery(
         "app.workers.tasks.monitoring_tasks",  # Worker Health Monitoring
         "app.workers.tasks.surya_improvement_tasks",  # Surya OCR Continuous Improvement
         "app.workers.tasks.export_tasks",  # Export Tasks (Batch, Scheduled)
+        "app.workers.tasks.privat_tasks",  # Privat-Modul Intelligence Tasks (KPIs, Deadlines, Financial Health)
     ]
 )
 
@@ -703,6 +704,54 @@ celery_app.conf.update(
             "schedule": crontab(hour=2, minute=45),  # Taeglich um 02:45 Uhr
         },
         # =================================================================
+        # Privat-Modul Intelligence Tasks (KPIs, Deadlines, Financial Health)
+        # =================================================================
+        # Deadline Reminders - Taeglich um 08:00 Uhr
+        "privat-deadline-reminders": {
+            "task": "app.workers.tasks.privat_tasks.send_deadline_reminders",
+            "schedule": crontab(hour=8, minute=0),  # Taeglich um 08:00 Uhr
+        },
+        # Property KPIs - Taeglich um 02:00 Uhr (niedrige Last)
+        "privat-property-kpis": {
+            "task": "app.workers.tasks.privat_tasks.calculate_property_kpis",
+            "schedule": crontab(hour=2, minute=0),  # Taeglich um 02:00 Uhr
+        },
+        # Vehicle KPIs - Taeglich um 02:15 Uhr
+        "privat-vehicle-kpis": {
+            "task": "app.workers.tasks.privat_tasks.calculate_vehicle_kpis",
+            "schedule": crontab(hour=2, minute=15),  # Taeglich um 02:15 Uhr
+        },
+        # Insurance Coverage Check - Woechentlich Sonntag 04:00
+        "privat-insurance-coverage": {
+            "task": "app.workers.tasks.privat_tasks.analyze_insurance_coverage",
+            "schedule": crontab(day_of_week=0, hour=4, minute=0),  # Sonntag 04:00 Uhr
+        },
+        # Loan KPIs - Taeglich um 02:30 Uhr
+        "privat-loan-kpis": {
+            "task": "app.workers.tasks.privat_tasks.recalculate_loan_kpis",
+            "schedule": crontab(hour=2, minute=30),  # Taeglich um 02:30 Uhr
+        },
+        # Financial Health Score - Woechentlich Sonntag 05:00
+        "privat-financial-health": {
+            "task": "app.workers.tasks.privat_tasks.calculate_financial_health_scores",
+            "schedule": crontab(day_of_week=0, hour=5, minute=0),  # Sonntag 05:00 Uhr
+        },
+        # Recommendations - Woechentlich Montag 06:00
+        "privat-recommendations": {
+            "task": "app.workers.tasks.privat_tasks.generate_all_recommendations",
+            "schedule": crontab(day_of_week=1, hour=6, minute=0),  # Montag 06:00 Uhr
+        },
+        # Daily Intelligence Recalculation - Taeglich um 03:00 Uhr
+        "privat-intelligence-daily": {
+            "task": "app.workers.tasks.privat_tasks.daily_intelligence_recalculation",
+            "schedule": crontab(hour=3, minute=0),  # Taeglich um 03:00 Uhr
+        },
+        # Privat Metrics Update - Alle 15 Minuten
+        "privat-metrics-update": {
+            "task": "app.workers.tasks.privat_tasks.update_privat_metrics",
+            "schedule": 900.0,  # Alle 15 Minuten
+        },
+        # =================================================================
         # Workflow Automation Tasks
         # =================================================================
         "workflow-check-scheduled": {
@@ -822,6 +871,18 @@ celery_app.conf.update(
         "app.workers.tasks.surya_improvement_tasks.evaluate_surya_model": {"queue": "ocr_normal", "priority": 4},
         "app.workers.tasks.surya_improvement_tasks.deploy_surya_model": {"queue": "metrics", "priority": 4},
         "app.workers.tasks.surya_improvement_tasks.rollback_surya_model": {"queue": "metrics", "priority": 8},  # Hohe Prioritaet fuer Rollback
+        # =================================================================
+        # Privat-Modul Intelligence Tasks (CPU-Tasks, niedrige Prioritaet)
+        # =================================================================
+        "app.workers.tasks.privat_tasks.send_deadline_reminders": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.privat_tasks.calculate_property_kpis": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.privat_tasks.calculate_vehicle_kpis": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.privat_tasks.check_insurance_coverage": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.privat_tasks.recalculate_loan_kpis": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.privat_tasks.calculate_financial_health_scores": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.privat_tasks.generate_all_recommendations": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.privat_tasks.daily_intelligence_recalculation": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.privat_tasks.update_privat_metrics": {"queue": "metrics", "priority": 1},
         # =================================================================
         # Workflow Automation Tasks
         # =================================================================
