@@ -21,6 +21,8 @@ um Konsistenz mit existierenden Schemas zu wahren.
 from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
 from decimal import Decimal
+
+from app.core.datetime_utils import utc_now
 from typing import Optional, List, Dict, Any, Tuple, TYPE_CHECKING
 from uuid import UUID, uuid4
 import structlog
@@ -180,7 +182,7 @@ class PaymentService:
             urgent=data.urgent or False,
             linked_document_id=data.linked_document_id,
             linked_transaction_id=data.linked_transaction_id,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
 
         db.add(payment)
@@ -334,8 +336,8 @@ class PaymentService:
             raise ValueError(f"Zahlung kann nicht genehmigt werden (Status: {payment.status})")
 
         payment.status = PaymentStatus.APPROVED.value
-        payment.approved_at = datetime.utcnow()
-        payment.updated_at = datetime.utcnow()
+        payment.approved_at = utc_now()
+        payment.updated_at = utc_now()
 
         await db.commit()
 
@@ -396,7 +398,7 @@ class PaymentService:
 
         payment.status = PaymentStatus.CANCELLED.value
         payment.error_message = reason
-        payment.updated_at = datetime.utcnow()
+        payment.updated_at = utc_now()
 
         await db.commit()
 
@@ -448,8 +450,8 @@ class PaymentService:
 
         # Update Status auf PENDING_TAN
         payment.status = PaymentStatus.PENDING_TAN.value
-        payment.submitted_at = datetime.utcnow()
-        payment.updated_at = datetime.utcnow()
+        payment.submitted_at = utc_now()
+        payment.updated_at = utc_now()
 
         await db.commit()
 
@@ -464,7 +466,7 @@ class PaymentService:
             "payment_id": str(payment_id),
             "challenge_type": "photoTAN",  # oder pushTAN, chipTAN, etc.
             "challenge_data": None,  # Base64 QR-Code etc.
-            "expires_at": (datetime.utcnow() + timedelta(minutes=5)).isoformat(),
+            "expires_at": (utc_now() + timedelta(minutes=5)).isoformat(),
             "tan_required": True,
         }
 
@@ -525,8 +527,8 @@ class PaymentService:
 
         # Erfolgreiche Bestaetigung
         payment.status = PaymentStatus.CONFIRMED.value
-        payment.confirmed_at = datetime.utcnow()
-        payment.updated_at = datetime.utcnow()
+        payment.confirmed_at = utc_now()
+        payment.updated_at = utc_now()
         payment.bank_reference = self._generate_bank_reference()
 
         await db.commit()
@@ -725,7 +727,7 @@ class PaymentService:
             status=PaymentStatus.DRAFT.value,
             payment_count=len(payments),
             total_amount=total_amount,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
 
         db.add(batch)
@@ -747,7 +749,7 @@ class PaymentService:
                 reference=payment_data.reference,
                 end_to_end_id=payment_data.end_to_end_id or self._generate_end_to_end_id(),
                 execution_date=payment_data.execution_date or date.today(),
-                created_at=datetime.utcnow(),
+                created_at=utc_now(),
             )
             db.add(payment)
             created_payments.append(payment)
@@ -865,13 +867,13 @@ class PaymentService:
 
     def _generate_end_to_end_id(self) -> str:
         """Generiere eindeutige End-to-End-ID."""
-        timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        timestamp = utc_now().strftime("%Y%m%d%H%M%S")
         unique = str(uuid4())[:8].upper()
         return f"E2E{timestamp}{unique}"
 
     def _generate_bank_reference(self) -> str:
         """Generiere Bank-Referenznummer."""
-        timestamp = datetime.utcnow().strftime("%Y%m%d")
+        timestamp = utc_now().strftime("%Y%m%d")
         unique = str(uuid4())[:12].upper()
         return f"REF{timestamp}{unique}"
 

@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime, date
+from app.core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Optional, List
 
@@ -57,8 +58,8 @@ class PrivatLoanService:
             account_number=data.account_number,
             notes=data.notes,
             is_active=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(loan)
@@ -294,7 +295,7 @@ class PrivatLoanService:
                 value = value.value if isinstance(value, LoanType) else value
             setattr(loan, key, value)
 
-        loan.updated_at = datetime.utcnow()
+        loan.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(loan)
@@ -355,7 +356,7 @@ class PrivatLoanService:
         if loan.current_balance == 0:
             loan.is_active = False
 
-        loan.updated_at = datetime.utcnow()
+        loan.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(loan)
@@ -394,7 +395,7 @@ class PrivatLoanService:
 
         if soft_delete:
             loan.is_active = False
-            loan.updated_at = datetime.utcnow()
+            loan.updated_at = utc_now()
             await db.commit()
         else:
             await db.delete(loan)

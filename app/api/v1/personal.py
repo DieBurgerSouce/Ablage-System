@@ -5,6 +5,7 @@ Mitarbeiterverwaltung, Abteilungen und Positionen.
 """
 
 from datetime import date, datetime
+from app.core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Optional, List, Any
 from uuid import UUID
@@ -1181,7 +1182,7 @@ async def delete_department(
         )
 
     # Soft delete
-    department.deleted_at = datetime.utcnow()
+    department.deleted_at = utc_now()
     await db.commit()
 
     logger.info("department_deleted", department_id=str(department_id), user_id=str(current_user.id))
@@ -1570,7 +1571,7 @@ async def delete_position(
         )
 
     # Soft delete
-    position.deleted_at = datetime.utcnow()
+    position.deleted_at = utc_now()
     await db.commit()
 
     logger.info("position_deleted", position_id=str(position_id), user_id=str(current_user.id))

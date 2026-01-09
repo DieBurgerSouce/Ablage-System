@@ -7,6 +7,7 @@ Provides rate limit operations for the admin console:
 """
 
 from datetime import datetime, timezone
+from app.core.datetime_utils import utc_now
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 import math
@@ -102,7 +103,7 @@ class RateLimitService:
             return None
 
         # Get active override
-        now = datetime.utcnow()
+        now = utc_now()
         override_result = await db.execute(
             select(RateLimitOverride).where(
                 and_(
@@ -228,7 +229,7 @@ class RateLimitService:
                 override.api_per_minute = data.api_per_minute
             override.valid_until = data.valid_until
             override.reason = data.reason
-            override.updated_at = datetime.utcnow()
+            override.updated_at = utc_now()
             action = "update_rate_limit_override"
         else:
             # Create new

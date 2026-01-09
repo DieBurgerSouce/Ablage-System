@@ -25,6 +25,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+
+from app.core.datetime_utils import utc_now
 from enum import Enum
 from typing import Optional, Dict, Any, List, Tuple
 from uuid import UUID, uuid4
@@ -323,8 +325,8 @@ class DunningService:
             accrued_interest=late_interest,
             due_date=due_date,
             resolution_notes=notes,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(dunning)
@@ -396,7 +398,7 @@ class DunningService:
         dunning.dunning_level = new_level.value
         dunning.reminder_fee = total_fees
         dunning.accrued_interest = late_interest
-        dunning.updated_at = datetime.utcnow()
+        dunning.updated_at = utc_now()
         if notes:
             dunning.resolution_notes = (dunning.resolution_notes or "") + f"\n[{datetime.now().isoformat()}] {notes}"
 
@@ -441,8 +443,8 @@ class DunningService:
             raise ValueError("Mahnvorgang nicht gefunden")
 
         dunning.status = status.value
-        dunning.resolved_at = datetime.utcnow()
-        dunning.updated_at = datetime.utcnow()
+        dunning.resolved_at = utc_now()
+        dunning.updated_at = utc_now()
         if notes:
             dunning.resolution_notes = (dunning.resolution_notes or "") + f"\n[{datetime.now().isoformat()}] {notes}"
 
@@ -744,7 +746,7 @@ class DunningService:
         user_id: UUID,
     ) -> float:
         """Hole eingesammelte Mahngebuehren (letzte 30 Tage)."""
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        thirty_days_ago = utc_now() - timedelta(days=30)
 
         result = await db.execute(
             select(func.sum(DunningRecord.reminder_fee)).where(
@@ -909,7 +911,7 @@ class DunningService:
             dunning_record_id=dunning_record_id,
             action_type=action_type.value,
             mahn_stufe=dunning.dunning_level,
-            action_timestamp=datetime.utcnow(),
+            action_timestamp=utc_now(),
             performed_by_id=performed_by_id,
             notes=notes,
             outcome=outcome,
@@ -1029,7 +1031,7 @@ class DunningService:
         dunning.mahnstopp = True
         dunning.mahnstopp_reason = reason
         dunning.mahnstopp_until = datetime.combine(until_date, datetime.min.time()) if until_date else None
-        dunning.updated_at = datetime.utcnow()
+        dunning.updated_at = utc_now()
 
         # Audit-Log
         await self.log_history_event(
@@ -1082,7 +1084,7 @@ class DunningService:
         dunning.mahnstopp = False
         dunning.mahnstopp_reason = None
         dunning.mahnstopp_until = None
-        dunning.updated_at = datetime.utcnow()
+        dunning.updated_at = utc_now()
 
         # Audit-Log
         await self.log_history_event(
@@ -1135,7 +1137,7 @@ class DunningService:
 
         dunning.b2b_pauschale_claimed = True
         dunning.reminder_fee = (dunning.reminder_fee or Decimal("0.00")) + B2B_PAUSCHALE
-        dunning.updated_at = datetime.utcnow()
+        dunning.updated_at = utc_now()
 
         # Audit-Log
         await self.log_history_event(
@@ -1233,7 +1235,7 @@ class DunningService:
         new_status = "B2B" if is_b2b else "B2C"
 
         dunning.is_b2b = is_b2b
-        dunning.updated_at = datetime.utcnow()
+        dunning.updated_at = utc_now()
 
         # Verzugszinsen neu berechnen
         if dunning.due_date:
@@ -1343,7 +1345,7 @@ class DunningService:
         Returns:
             Anzahl aufgehobener Mahnstopps
         """
-        today = datetime.utcnow()
+        today = utc_now()
 
         query = select(DunningRecord).where(
             and_(
@@ -1361,7 +1363,7 @@ class DunningService:
             dunning.mahnstopp = False
             dunning.mahnstopp_reason = None
             dunning.mahnstopp_until = None
-            dunning.updated_at = datetime.utcnow()
+            dunning.updated_at = utc_now()
 
             # Audit-Log (ohne User-ID, da automatisch)
             history = MahnungHistory(
@@ -1369,7 +1371,7 @@ class DunningService:
                 dunning_record_id=dunning.id,
                 action_type=MahnungHistoryAction.MAHNSTOPP_LIFTED.value,
                 mahn_stufe=dunning.dunning_level,
-                action_timestamp=datetime.utcnow(),
+                action_timestamp=utc_now(),
                 notes="Automatisch aufgehoben (Ablaufdatum erreicht)",
                 outcome="success",
             )

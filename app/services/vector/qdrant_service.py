@@ -18,6 +18,7 @@ from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
 import asyncio
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 
 import structlog
 from pydantic import BaseModel, Field
@@ -285,7 +286,7 @@ class QdrantService:
                 payload={
                     **payload,
                     "document_id": str(document_id),
-                    "indexed_at": datetime.utcnow().isoformat(),
+                    "indexed_at": utc_now().isoformat(),
                 }
             )
 
@@ -342,7 +343,7 @@ class QdrantService:
                     **payload,
                     "document_id": str(document_id),
                     "chunk_index": chunk_index,
-                    "indexed_at": datetime.utcnow().isoformat(),
+                    "indexed_at": utc_now().isoformat(),
                 }
             )
 

@@ -9,6 +9,7 @@ Verwaltet Banktransaktionen:
 """
 
 from datetime import datetime, date, timedelta
+from app.core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Optional, List, Tuple, Dict, Any, TYPE_CHECKING
 from uuid import UUID
@@ -246,7 +247,7 @@ class TransactionService:
         if category is not None:
             transaction.category = category
 
-        transaction.updated_at = datetime.utcnow()
+        transaction.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(transaction)
@@ -285,8 +286,8 @@ class TransactionService:
         transaction.reconciliation_status = status.value
         transaction.matched_document_id = matched_document_id
         transaction.match_confidence = match_confidence
-        transaction.matched_at = datetime.utcnow() if status == ReconciliationStatus.MATCHED else None
-        transaction.updated_at = datetime.utcnow()
+        transaction.matched_at = utc_now() if status == ReconciliationStatus.MATCHED else None
+        transaction.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(transaction)

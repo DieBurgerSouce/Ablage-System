@@ -6180,6 +6180,147 @@ class PrivatInvestmentWithStats(PrivatInvestmentResponse):
     annual_return: Optional[Decimal] = None
 
 
+# =============================================================================
+# PRIVAT-MODUL: PORTFOLIO SNAPSHOT SCHEMAS
+# =============================================================================
+
+
+class PortfolioSnapshotBase(BaseModel):
+    """Basis-Schema fuer Portfolio-Snapshot."""
+    snapshot_date: date_type = Field(..., description="Datum des Snapshots")
+    total_real_estate: Decimal = Field(default=Decimal("0"), description="Immobilienwerte")
+    total_vehicles: Decimal = Field(default=Decimal("0"), description="Fahrzeugwerte")
+    total_investments: Decimal = Field(default=Decimal("0"), description="Anlagewerte")
+    total_cash: Decimal = Field(default=Decimal("0"), description="Bargeld/Konten")
+    total_other_assets: Decimal = Field(default=Decimal("0"), description="Sonstige Vermoegenswerte")
+    total_mortgages: Decimal = Field(default=Decimal("0"), description="Hypotheken")
+    total_loans: Decimal = Field(default=Decimal("0"), description="Sonstige Kredite")
+    total_other_liabilities: Decimal = Field(default=Decimal("0"), description="Sonstige Verbindlichkeiten")
+    total_assets: Decimal = Field(default=Decimal("0"), description="Summe Vermoegenswerte")
+    total_liabilities: Decimal = Field(default=Decimal("0"), description="Summe Verbindlichkeiten")
+    net_worth: Decimal = Field(default=Decimal("0"), description="Nettovermoegen")
+    net_worth_change_absolute: Optional[Decimal] = Field(None, description="Absolute Aenderung")
+    net_worth_change_percent: Optional[Decimal] = Field(None, description="Prozentuale Aenderung")
+    debt_to_assets_ratio: Decimal = Field(default=Decimal("0"), description="Schuldenquote")
+    liquidity_ratio: Decimal = Field(default=Decimal("0"), description="Liquiditaetsquote")
+    asset_allocation: Optional[Dict[str, Decimal]] = Field(None, description="Asset Allocation")
+
+
+class PortfolioSnapshotResponse(PortfolioSnapshotBase):
+    """Response-Schema fuer Portfolio-Snapshot."""
+    id: UUID
+    space_id: UUID
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PortfolioSnapshotListResponse(BaseModel):
+    """Liste von Portfolio-Snapshots."""
+    snapshots: List[PortfolioSnapshotResponse]
+    total: int
+
+
+class PortfolioDashboardResponse(BaseModel):
+    """Vollstaendige Portfolio-Dashboard Response."""
+    current_snapshot: Optional[PortfolioSnapshotResponse] = None
+    historical_snapshots: List[PortfolioSnapshotResponse] = Field(default_factory=list)
+    net_worth_trend: List[Dict[str, Any]] = Field(default_factory=list, description="Trend-Daten")
+    goals: List["FinancialGoalResponse"] = Field(default_factory=list, description="Finanzielle Ziele")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =============================================================================
+# PRIVAT-MODUL: FINANCIAL GOAL SCHEMAS
+# =============================================================================
+
+
+class FinancialGoalType(str, Enum):
+    """Typen von finanziellen Zielen."""
+    retirement = "retirement"
+    education = "education"
+    property = "property"
+    debt_free = "debt_free"
+    emergency_fund = "emergency_fund"
+    custom = "custom"
+
+
+class FinancialGoalStatus(str, Enum):
+    """Status eines finanziellen Ziels."""
+    active = "active"
+    paused = "paused"
+    completed = "completed"
+    cancelled = "cancelled"
+
+
+class FinancialGoalBase(BaseModel):
+    """Basis-Schema fuer finanzielles Ziel."""
+    name: str = Field(..., min_length=1, max_length=200, description="Name des Ziels")
+    goal_type: FinancialGoalType = Field(..., description="Art des Ziels")
+    target_value: Decimal = Field(..., gt=0, description="Zielwert")
+    target_date: date_type = Field(..., description="Zieldatum")
+    current_value: Decimal = Field(default=Decimal("0"), ge=0, description="Aktueller Wert")
+    priority: int = Field(default=1, ge=1, le=10, description="Prioritaet (1=hoechste)")
+    status: FinancialGoalStatus = Field(default=FinancialGoalStatus.active, description="Status")
+
+
+class FinancialGoalCreate(FinancialGoalBase):
+    """Schema zum Erstellen eines finanziellen Ziels."""
+    linked_assets: Optional[Dict[str, Any]] = Field(None, description="Verknuepfte Assets")
+
+
+class FinancialGoalUpdate(BaseModel):
+    """Schema zum Aktualisieren eines finanziellen Ziels."""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    target_value: Optional[Decimal] = Field(None, gt=0)
+    target_date: Optional[date_type] = None
+    current_value: Optional[Decimal] = Field(None, ge=0)
+    priority: Optional[int] = Field(None, ge=1, le=10)
+    status: Optional[FinancialGoalStatus] = None
+    linked_assets: Optional[Dict[str, Any]] = None
+
+
+class FinancialGoalResponse(FinancialGoalBase):
+    """Response-Schema fuer finanzielles Ziel."""
+    id: UUID
+    space_id: UUID
+    progress_percent: Decimal = Field(default=Decimal("0"), description="Fortschritt in %")
+    monthly_savings_required: Optional[Decimal] = Field(None, description="Benoetigte monatliche Sparrate")
+    months_remaining: Optional[int] = Field(None, description="Verbleibende Monate")
+    is_on_track: bool = Field(default=True, description="Auf Kurs?")
+    projected_completion_date: Optional[date_type] = Field(None, description="Voraussichtliches Abschlussdatum")
+    linked_assets: Optional[Dict[str, Any]] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FinancialGoalListResponse(BaseModel):
+    """Liste von finanziellen Zielen."""
+    goals: List[FinancialGoalResponse]
+    total: int
+    active_count: int = 0
+    completed_count: int = 0
+    on_track_count: int = 0
+
+
+class FinancialGoalProgressUpdate(BaseModel):
+    """Schema fuer Fortschritts-Update."""
+    new_value: Decimal = Field(..., ge=0, description="Neuer aktueller Wert")
+
+
+class FinancialGoalSummary(BaseModel):
+    """Zusammenfassung aller Ziele."""
+    total_goals: int = 0
+    active_goals: int = 0
+    completed_goals: int = 0
+    on_track_count: int = 0
+    total_target_value: Decimal = Decimal("0")
+    total_current_value: Decimal = Decimal("0")
+
+
 class PrivatPortfolioItem(BaseModel):
     """Ein Element in der Portfolio-Verteilung."""
     value: Decimal = Field(..., description="Wert der Anlage")

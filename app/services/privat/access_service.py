@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 from typing import Optional, List
 
 from sqlalchemy import select, func, and_, or_
@@ -57,7 +58,7 @@ class PrivatAccessService:
             user_id=data.user_id,
             access_level=data.access_level.value,
             granted_by=granted_by,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
 
         db.add(access)

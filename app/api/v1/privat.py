@@ -113,6 +113,17 @@ from app.db.schemas import (
     PrivatSpaceAccessCreate,
     PrivatSpaceAccessResponse,
     PrivatAccessLevel,
+    # Portfolio
+    PortfolioSnapshotResponse,
+    PortfolioSnapshotListResponse,
+    PortfolioDashboardResponse,
+    # Financial Goals
+    FinancialGoalCreate,
+    FinancialGoalUpdate,
+    FinancialGoalResponse,
+    FinancialGoalListResponse,
+    FinancialGoalProgressUpdate,
+    FinancialGoalSummary,
 )
 from app.services.privat import (
     PrivatSpaceService,
@@ -3004,3 +3015,621 @@ async def revoke_emergency_access(
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ==================== PORTFOLIO ENDPOINTS ====================
+
+
+@router.get(
+    "/spaces/{space_id}/portfolio/dashboard",
+    response_model=PortfolioDashboardResponse,
+    summary="Portfolio-Dashboard abrufen",
+)
+@limiter.limit("30/minute", key_func=get_user_identifier)
+async def get_portfolio_dashboard(
+    request: Request,
+    space_id: uuid.UUID,
+    months: int = Query(default=12, ge=1, le=60, description="Anzahl Monate fuer Historie"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PortfolioDashboardResponse:
+    """Holt das vollstaendige Portfolio-Dashboard mit Snapshots und Zielen."""
+    from app.services.portfolio.portfolio_service import PortfolioService
+    from app.services.portfolio.financial_goals_service import FinancialGoalsService
+
+    await get_user_space_or_403(db, space_id, current_user)
+
+    portfolio_service = PortfolioService(db)
+    goals_service = FinancialGoalsService(db)
+
+    # Aktueller und historische Snapshots
+    current_snapshot = await portfolio_service.get_latest_snapshot(space_id)
+    historical = await portfolio_service.get_historical_snapshots(space_id, months)
+    trend_data = await portfolio_service.get_net_worth_trend(space_id, months)
+
+    # Financial Goals
+    goals_summary = await goals_service.get_goals_summary(space_id)
+
+    # Goals als Liste holen - wir brauchen die echte Liste der Ziele
+    from app.db.models import FinancialGoal as FinancialGoalModel
+    from sqlalchemy import select
+
+    stmt = (
+        select(FinancialGoalModel)
+        .where(FinancialGoalModel.space_id == space_id)
+        .order_by(FinancialGoalModel.priority.asc())
+    )
+    result = await db.execute(stmt)
+    goals_models = result.scalars().all()
+
+    # Convert to response format
+    goals_response = [
+        FinancialGoalResponse(
+            id=g.id,
+            space_id=g.space_id,
+            name=g.name,
+            goal_type=g.goal_type,
+            target_value=g.target_value,
+            target_date=g.target_date,
+            current_value=g.current_value,
+            progress_percent=g.progress_percent or 0,
+            monthly_savings_required=g.monthly_savings_required,
+            months_remaining=g.months_remaining,
+            is_on_track=g.is_on_track if g.is_on_track is not None else True,
+            projected_completion_date=g.projected_completion_date,
+            linked_assets=g.linked_assets,
+            priority=g.priority or 1,
+            status=g.status or "active",
+            created_at=g.created_at,
+            updated_at=g.updated_at,
+        )
+        for g in goals_models
+    ]
+
+    # Convert trend data
+    trend_response = [
+        {"date": str(d), "netWorth": float(v)}
+        for d, v in trend_data
+    ]
+
+    # Convert snapshots
+    snapshot_response = None
+    if current_snapshot:
+        snapshot_response = PortfolioSnapshotResponse(
+            id=current_snapshot.id,
+            space_id=current_snapshot.space_id,
+            snapshot_date=current_snapshot.snapshot_date,
+            total_real_estate=current_snapshot.total_real_estate or 0,
+            total_vehicles=current_snapshot.total_vehicles or 0,
+            total_investments=current_snapshot.total_investments or 0,
+            total_cash=current_snapshot.total_cash or 0,
+            total_other_assets=current_snapshot.total_other_assets or 0,
+            total_mortgages=current_snapshot.total_mortgages or 0,
+            total_loans=current_snapshot.total_loans or 0,
+            total_other_liabilities=current_snapshot.total_other_liabilities or 0,
+            total_assets=current_snapshot.total_assets or 0,
+            total_liabilities=current_snapshot.total_liabilities or 0,
+            net_worth=current_snapshot.net_worth or 0,
+            net_worth_change_absolute=current_snapshot.net_worth_change_absolute,
+            net_worth_change_percent=current_snapshot.net_worth_change_percent,
+            debt_to_assets_ratio=current_snapshot.debt_to_assets_ratio or 0,
+            liquidity_ratio=current_snapshot.liquidity_ratio or 0,
+            asset_allocation=current_snapshot.asset_allocation,
+            created_at=current_snapshot.created_at,
+        )
+
+    historical_response = [
+        PortfolioSnapshotResponse(
+            id=s.id,
+            space_id=s.space_id,
+            snapshot_date=s.snapshot_date,
+            total_real_estate=s.total_real_estate or 0,
+            total_vehicles=s.total_vehicles or 0,
+            total_investments=s.total_investments or 0,
+            total_cash=s.total_cash or 0,
+            total_other_assets=s.total_other_assets or 0,
+            total_mortgages=s.total_mortgages or 0,
+            total_loans=s.total_loans or 0,
+            total_other_liabilities=s.total_other_liabilities or 0,
+            total_assets=s.total_assets or 0,
+            total_liabilities=s.total_liabilities or 0,
+            net_worth=s.net_worth or 0,
+            net_worth_change_absolute=s.net_worth_change_absolute,
+            net_worth_change_percent=s.net_worth_change_percent,
+            debt_to_assets_ratio=s.debt_to_assets_ratio or 0,
+            liquidity_ratio=s.liquidity_ratio or 0,
+            asset_allocation=s.asset_allocation,
+            created_at=s.created_at,
+        )
+        for s in historical
+    ]
+
+    return PortfolioDashboardResponse(
+        current_snapshot=snapshot_response,
+        historical_snapshots=historical_response,
+        net_worth_trend=trend_response,
+        goals=goals_response,
+    )
+
+
+@router.post(
+    "/spaces/{space_id}/portfolio/snapshot",
+    response_model=PortfolioSnapshotResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Neuen Portfolio-Snapshot erstellen",
+)
+@limiter.limit("5/minute", key_func=get_user_identifier)
+async def create_portfolio_snapshot(
+    request: Request,
+    space_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PortfolioSnapshotResponse:
+    """Erstellt einen neuen Portfolio-Snapshot mit allen aktuellen Werten."""
+    from app.services.portfolio.portfolio_service import PortfolioService
+
+    await get_user_space_or_403(db, space_id, current_user)
+
+    service = PortfolioService(db)
+    summary = await service.create_snapshot(space_id)
+
+    # Get the created snapshot from DB
+    snapshot = await service.get_latest_snapshot(space_id)
+
+    if not snapshot:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Snapshot konnte nicht erstellt werden",
+        )
+
+    return PortfolioSnapshotResponse(
+        id=snapshot.id,
+        space_id=snapshot.space_id,
+        snapshot_date=snapshot.snapshot_date,
+        total_real_estate=snapshot.total_real_estate or 0,
+        total_vehicles=snapshot.total_vehicles or 0,
+        total_investments=snapshot.total_investments or 0,
+        total_cash=snapshot.total_cash or 0,
+        total_other_assets=snapshot.total_other_assets or 0,
+        total_mortgages=snapshot.total_mortgages or 0,
+        total_loans=snapshot.total_loans or 0,
+        total_other_liabilities=snapshot.total_other_liabilities or 0,
+        total_assets=snapshot.total_assets or 0,
+        total_liabilities=snapshot.total_liabilities or 0,
+        net_worth=snapshot.net_worth or 0,
+        net_worth_change_absolute=snapshot.net_worth_change_absolute,
+        net_worth_change_percent=snapshot.net_worth_change_percent,
+        debt_to_assets_ratio=snapshot.debt_to_assets_ratio or 0,
+        liquidity_ratio=snapshot.liquidity_ratio or 0,
+        asset_allocation=snapshot.asset_allocation,
+        created_at=snapshot.created_at,
+    )
+
+
+@router.get(
+    "/spaces/{space_id}/portfolio/snapshots",
+    response_model=PortfolioSnapshotListResponse,
+    summary="Portfolio-Snapshots auflisten",
+)
+@limiter.limit("30/minute", key_func=get_user_identifier)
+async def list_portfolio_snapshots(
+    request: Request,
+    space_id: uuid.UUID,
+    months: int = Query(default=12, ge=1, le=60, description="Anzahl Monate zurueck"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PortfolioSnapshotListResponse:
+    """Listet alle Portfolio-Snapshots der letzten X Monate auf."""
+    from app.services.portfolio.portfolio_service import PortfolioService
+
+    await get_user_space_or_403(db, space_id, current_user)
+
+    service = PortfolioService(db)
+    snapshots = await service.get_historical_snapshots(space_id, months)
+
+    return PortfolioSnapshotListResponse(
+        snapshots=[
+            PortfolioSnapshotResponse(
+                id=s.id,
+                space_id=s.space_id,
+                snapshot_date=s.snapshot_date,
+                total_real_estate=s.total_real_estate or 0,
+                total_vehicles=s.total_vehicles or 0,
+                total_investments=s.total_investments or 0,
+                total_cash=s.total_cash or 0,
+                total_other_assets=s.total_other_assets or 0,
+                total_mortgages=s.total_mortgages or 0,
+                total_loans=s.total_loans or 0,
+                total_other_liabilities=s.total_other_liabilities or 0,
+                total_assets=s.total_assets or 0,
+                total_liabilities=s.total_liabilities or 0,
+                net_worth=s.net_worth or 0,
+                net_worth_change_absolute=s.net_worth_change_absolute,
+                net_worth_change_percent=s.net_worth_change_percent,
+                debt_to_assets_ratio=s.debt_to_assets_ratio or 0,
+                liquidity_ratio=s.liquidity_ratio or 0,
+                asset_allocation=s.asset_allocation,
+                created_at=s.created_at,
+            )
+            for s in snapshots
+        ],
+        total=len(snapshots),
+    )
+
+
+# ==================== FINANCIAL GOALS ENDPOINTS ====================
+
+
+@router.get(
+    "/spaces/{space_id}/goals",
+    response_model=FinancialGoalListResponse,
+    summary="Finanzielle Ziele auflisten",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def list_financial_goals(
+    request: Request,
+    space_id: uuid.UUID,
+    status_filter: Optional[str] = Query(None, description="Filter nach Status"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> FinancialGoalListResponse:
+    """Listet alle finanziellen Ziele eines Space auf."""
+    from app.db.models import FinancialGoal as FinancialGoalModel
+    from sqlalchemy import select
+
+    await get_user_space_or_403(db, space_id, current_user)
+
+    stmt = (
+        select(FinancialGoalModel)
+        .where(FinancialGoalModel.space_id == space_id)
+    )
+
+    if status_filter:
+        stmt = stmt.where(FinancialGoalModel.status == status_filter)
+
+    stmt = stmt.order_by(FinancialGoalModel.priority.asc(), FinancialGoalModel.target_date.asc())
+
+    result = await db.execute(stmt)
+    goals = result.scalars().all()
+
+    active_count = sum(1 for g in goals if g.status == "active")
+    completed_count = sum(1 for g in goals if g.status == "completed")
+    on_track_count = sum(1 for g in goals if getattr(g, 'is_on_track', True))
+
+    return FinancialGoalListResponse(
+        goals=[
+            FinancialGoalResponse(
+                id=g.id,
+                space_id=g.space_id,
+                name=g.name,
+                goal_type=g.goal_type,
+                target_value=g.target_value,
+                target_date=g.target_date,
+                current_value=g.current_value,
+                progress_percent=g.progress_percent or 0,
+                monthly_savings_required=g.monthly_savings_required,
+                months_remaining=g.months_remaining,
+                is_on_track=g.is_on_track if g.is_on_track is not None else True,
+                projected_completion_date=g.projected_completion_date,
+                linked_assets=g.linked_assets,
+                priority=g.priority or 1,
+                status=g.status or "active",
+                created_at=g.created_at,
+                updated_at=g.updated_at,
+            )
+            for g in goals
+        ],
+        total=len(goals),
+        active_count=active_count,
+        completed_count=completed_count,
+        on_track_count=on_track_count,
+    )
+
+
+@router.post(
+    "/spaces/{space_id}/goals",
+    response_model=FinancialGoalResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Finanzielles Ziel erstellen",
+)
+@limiter.limit("20/minute", key_func=get_user_identifier)
+async def create_financial_goal(
+    request: Request,
+    space_id: uuid.UUID,
+    goal_data: FinancialGoalCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> FinancialGoalResponse:
+    """Erstellt ein neues finanzielles Ziel."""
+    from app.services.portfolio.financial_goals_service import FinancialGoalsService
+
+    await get_user_space_or_403(db, space_id, current_user)
+
+    service = FinancialGoalsService(db)
+    goal = await service.create_goal(
+        space_id=space_id,
+        name=goal_data.name,
+        goal_type=goal_data.goal_type.value,
+        target_value=goal_data.target_value,
+        target_date=goal_data.target_date,
+        initial_value=goal_data.current_value,
+    )
+
+    return FinancialGoalResponse(
+        id=goal.id,
+        space_id=goal.space_id,
+        name=goal.name,
+        goal_type=goal.goal_type,
+        target_value=goal.target_value,
+        target_date=goal.target_date,
+        current_value=goal.current_value,
+        progress_percent=goal.progress_percent or 0,
+        monthly_savings_required=goal.monthly_savings_required,
+        months_remaining=goal.months_remaining,
+        is_on_track=goal.is_on_track if goal.is_on_track is not None else True,
+        projected_completion_date=goal.projected_completion_date,
+        linked_assets=goal.linked_assets,
+        priority=goal.priority or 1,
+        status=goal.status or "active",
+        created_at=goal.created_at,
+        updated_at=goal.updated_at,
+    )
+
+
+@router.get(
+    "/spaces/{space_id}/goals/{goal_id}",
+    response_model=FinancialGoalResponse,
+    summary="Finanzielles Ziel abrufen",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def get_financial_goal(
+    request: Request,
+    space_id: uuid.UUID,
+    goal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> FinancialGoalResponse:
+    """Ruft ein einzelnes finanzielles Ziel ab."""
+    from app.db.models import FinancialGoal as FinancialGoalModel
+    from sqlalchemy import select
+
+    await get_user_space_or_403(db, space_id, current_user)
+
+    stmt = select(FinancialGoalModel).where(
+        FinancialGoalModel.id == goal_id,
+        FinancialGoalModel.space_id == space_id,
+    )
+    result = await db.execute(stmt)
+    goal = result.scalar_one_or_none()
+
+    if not goal:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ziel nicht gefunden",
+        )
+
+    return FinancialGoalResponse(
+        id=goal.id,
+        space_id=goal.space_id,
+        name=goal.name,
+        goal_type=goal.goal_type,
+        target_value=goal.target_value,
+        target_date=goal.target_date,
+        current_value=goal.current_value,
+        progress_percent=goal.progress_percent or 0,
+        monthly_savings_required=goal.monthly_savings_required,
+        months_remaining=goal.months_remaining,
+        is_on_track=goal.is_on_track if goal.is_on_track is not None else True,
+        projected_completion_date=goal.projected_completion_date,
+        linked_assets=goal.linked_assets,
+        priority=goal.priority or 1,
+        status=goal.status or "active",
+        created_at=goal.created_at,
+        updated_at=goal.updated_at,
+    )
+
+
+@router.patch(
+    "/spaces/{space_id}/goals/{goal_id}",
+    response_model=FinancialGoalResponse,
+    summary="Finanzielles Ziel aktualisieren",
+)
+@limiter.limit("30/minute", key_func=get_user_identifier)
+async def update_financial_goal(
+    request: Request,
+    space_id: uuid.UUID,
+    goal_id: uuid.UUID,
+    update_data: FinancialGoalUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> FinancialGoalResponse:
+    """Aktualisiert ein finanzielles Ziel."""
+    from app.db.models import FinancialGoal as FinancialGoalModel
+    from app.services.portfolio.financial_goals_service import FinancialGoalsService
+    from sqlalchemy import select
+
+    await get_user_space_or_403(db, space_id, current_user)
+
+    stmt = select(FinancialGoalModel).where(
+        FinancialGoalModel.id == goal_id,
+        FinancialGoalModel.space_id == space_id,
+    )
+    result = await db.execute(stmt)
+    goal = result.scalar_one_or_none()
+
+    if not goal:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ziel nicht gefunden",
+        )
+
+    # Update fields
+    update_dict = update_data.model_dump(exclude_unset=True)
+    for key, value in update_dict.items():
+        if key == "goal_type" and value:
+            value = value.value if hasattr(value, 'value') else value
+        if key == "status" and value:
+            value = value.value if hasattr(value, 'value') else value
+        setattr(goal, key, value)
+
+    # Recalculate progress if current_value changed
+    if "current_value" in update_dict:
+        service = FinancialGoalsService(db)
+        await service.update_progress(goal_id, update_data.current_value)
+        await db.refresh(goal)
+    else:
+        await db.commit()
+        await db.refresh(goal)
+
+    return FinancialGoalResponse(
+        id=goal.id,
+        space_id=goal.space_id,
+        name=goal.name,
+        goal_type=goal.goal_type,
+        target_value=goal.target_value,
+        target_date=goal.target_date,
+        current_value=goal.current_value,
+        progress_percent=goal.progress_percent or 0,
+        monthly_savings_required=goal.monthly_savings_required,
+        months_remaining=goal.months_remaining,
+        is_on_track=goal.is_on_track if goal.is_on_track is not None else True,
+        projected_completion_date=goal.projected_completion_date,
+        linked_assets=goal.linked_assets,
+        priority=goal.priority or 1,
+        status=goal.status or "active",
+        created_at=goal.created_at,
+        updated_at=goal.updated_at,
+    )
+
+
+@router.post(
+    "/spaces/{space_id}/goals/{goal_id}/progress",
+    response_model=FinancialGoalResponse,
+    summary="Ziel-Fortschritt aktualisieren",
+)
+@limiter.limit("30/minute", key_func=get_user_identifier)
+async def update_goal_progress(
+    request: Request,
+    space_id: uuid.UUID,
+    goal_id: uuid.UUID,
+    progress_data: FinancialGoalProgressUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> FinancialGoalResponse:
+    """Aktualisiert den Fortschritt eines Ziels."""
+    from app.services.portfolio.financial_goals_service import FinancialGoalsService
+    from app.db.models import FinancialGoal as FinancialGoalModel
+    from sqlalchemy import select
+
+    await get_user_space_or_403(db, space_id, current_user)
+
+    # Verify goal exists and belongs to space
+    stmt = select(FinancialGoalModel).where(
+        FinancialGoalModel.id == goal_id,
+        FinancialGoalModel.space_id == space_id,
+    )
+    result = await db.execute(stmt)
+    goal = result.scalar_one_or_none()
+
+    if not goal:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ziel nicht gefunden",
+        )
+
+    service = FinancialGoalsService(db)
+    await service.update_progress(goal_id, progress_data.new_value)
+
+    # Refresh goal
+    await db.refresh(goal)
+
+    return FinancialGoalResponse(
+        id=goal.id,
+        space_id=goal.space_id,
+        name=goal.name,
+        goal_type=goal.goal_type,
+        target_value=goal.target_value,
+        target_date=goal.target_date,
+        current_value=goal.current_value,
+        progress_percent=goal.progress_percent or 0,
+        monthly_savings_required=goal.monthly_savings_required,
+        months_remaining=goal.months_remaining,
+        is_on_track=goal.is_on_track if goal.is_on_track is not None else True,
+        projected_completion_date=goal.projected_completion_date,
+        linked_assets=goal.linked_assets,
+        priority=goal.priority or 1,
+        status=goal.status or "active",
+        created_at=goal.created_at,
+        updated_at=goal.updated_at,
+    )
+
+
+@router.delete(
+    "/spaces/{space_id}/goals/{goal_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Finanzielles Ziel loeschen",
+)
+@limiter.limit("10/minute", key_func=get_user_identifier)
+async def delete_financial_goal(
+    request: Request,
+    space_id: uuid.UUID,
+    goal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Response:
+    """Loescht ein finanzielles Ziel."""
+    from app.db.models import FinancialGoal as FinancialGoalModel
+    from sqlalchemy import select, delete
+
+    await get_user_space_or_403(db, space_id, current_user)
+
+    # Verify goal exists and belongs to space
+    stmt = select(FinancialGoalModel).where(
+        FinancialGoalModel.id == goal_id,
+        FinancialGoalModel.space_id == space_id,
+    )
+    result = await db.execute(stmt)
+    goal = result.scalar_one_or_none()
+
+    if not goal:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ziel nicht gefunden",
+        )
+
+    # Delete the goal
+    delete_stmt = delete(FinancialGoalModel).where(FinancialGoalModel.id == goal_id)
+    await db.execute(delete_stmt)
+    await db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/spaces/{space_id}/goals/summary",
+    response_model=FinancialGoalSummary,
+    summary="Ziele-Zusammenfassung",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def get_goals_summary(
+    request: Request,
+    space_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> FinancialGoalSummary:
+    """Holt eine Zusammenfassung aller finanziellen Ziele."""
+    from app.services.portfolio.financial_goals_service import FinancialGoalsService
+
+    await get_user_space_or_403(db, space_id, current_user)
+
+    service = FinancialGoalsService(db)
+    summary = await service.get_goals_summary(space_id)
+
+    return FinancialGoalSummary(
+        total_goals=summary.get("total_goals", 0),
+        active_goals=summary.get("active_goals", 0),
+        completed_goals=summary.get("completed_goals", 0),
+        on_track_count=summary.get("on_track_count", 0),
+        total_target_value=summary.get("total_target_value", 0),
+        total_current_value=summary.get("total_current_value", 0),
+    )

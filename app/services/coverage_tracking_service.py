@@ -8,6 +8,7 @@ Berechnet Coverage pro Dokumenttyp und identifiziert Lücken.
 
 import uuid
 from datetime import datetime, timedelta
+from app.core.datetime_utils import utc_now
 from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
@@ -360,7 +361,7 @@ class CoverageTrackingService:
         Returns:
             CoverageTrend mit Datenpunkten und Projektion
         """
-        period_end = datetime.utcnow()
+        period_end = utc_now()
         period_start = period_end - timedelta(days=days)
 
         # Historische Snapshots laden
@@ -444,7 +445,7 @@ class CoverageTrackingService:
         Returns:
             Erstellter CoverageSnapshot
         """
-        today = datetime.utcnow().date()
+        today = utc_now().date()
 
         # Prüfen ob heute schon ein Snapshot existiert
         existing_result = await db.execute(
@@ -554,7 +555,7 @@ class CoverageTrackingService:
         critical_gaps = [g for g in gaps if g.business_criticality >= 1.3]
 
         # Neue Samples seit letztem Snapshot zählen
-        yesterday = (datetime.utcnow() - timedelta(days=1)).date()
+        yesterday = (utc_now() - timedelta(days=1)).date()
 
         yesterday_snapshot_result = await db.execute(
             select(CoverageSnapshot).where(
@@ -570,7 +571,7 @@ class CoverageTrackingService:
             new_samples_result = await db.execute(
                 select(func.count(OCRTrainingSample.id)).where(
                     and_(
-                        OCRTrainingSample.created_at >= datetime.utcnow() - timedelta(days=1),
+                        OCRTrainingSample.created_at >= utc_now() - timedelta(days=1),
                         OCRTrainingSample.status == "verified"
                     )
                 )

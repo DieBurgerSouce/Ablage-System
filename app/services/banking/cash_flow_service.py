@@ -15,6 +15,7 @@ Features:
 
 from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
+from app.core.datetime_utils import utc_now
 from decimal import Decimal, InvalidOperation
 from enum import Enum
 from typing import Optional, Dict, Any, List, Tuple, TYPE_CHECKING
@@ -207,7 +208,7 @@ class CashFlowService:
         )
 
         return {
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": utc_now().isoformat(),
             "short_term": {
                 "period": "7 Tage",
                 "inflow": float(short_term.total_inflow),

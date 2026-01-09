@@ -13,6 +13,8 @@ Stellt Endpunkte fuer:
 
 import uuid
 from datetime import date, datetime
+
+from app.core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Optional, List
 
@@ -266,7 +268,7 @@ async def get_property_kpis(
         current_value=roi_result.current_value if roi_result else None,
         value_appreciation_percent=roi_result.value_appreciation_percent if roi_result else None,
         total_costs_ytd=yield_result.annual_costs if yield_result else None,
-        calculated_at=datetime.utcnow(),
+        calculated_at=utc_now(),
     )
 
 
@@ -347,7 +349,7 @@ async def get_vehicle_tco(
         next_service_date=next_service.predicted_date if next_service else None,
         next_service_km=next_service.predicted_km if next_service else None,
         total_cost_breakdown=tco.breakdown if tco else None,
-        calculated_at=datetime.utcnow(),
+        calculated_at=utc_now(),
     )
 
 
@@ -430,7 +432,7 @@ async def get_insurance_analysis(
         ],
         monthly_premium_total=gap_analysis.monthly_premium_total if gap_analysis else 0,
         coverage_score=gap_analysis.coverage_score if gap_analysis else 0,
-        analyzed_at=datetime.utcnow(),
+        analyzed_at=utc_now(),
     )
 
 
@@ -507,7 +509,7 @@ async def get_loan_amortization(
         payoff_date=payoff.payoff_date if payoff else None,
         payments=payments,
         extra_payment_savings=extra_savings,
-        generated_at=datetime.utcnow(),
+        generated_at=utc_now(),
     )
 
 
@@ -591,7 +593,7 @@ async def get_finance_analytics(
         recurring_payments=recurring,
         cash_flow_predictions=predictions,
         trend_direction=analysis.trend_direction,
-        analyzed_at=datetime.utcnow(),
+        analyzed_at=utc_now(),
     )
 
 
@@ -1125,7 +1127,7 @@ async def get_investment_performance(
         holding_period_days=performance.holding_period_days,
         current_value=float(performance.current_value),
         purchase_value=float(performance.purchase_value),
-        calculated_at=datetime.utcnow(),
+        calculated_at=utc_now(),
     )
 
 
@@ -1184,7 +1186,7 @@ async def get_portfolio_allocation(
         total_value=float(allocation.total_value),
         allocation_by_type=by_type,
         allocation_by_risk=by_risk,
-        calculated_at=datetime.utcnow(),
+        calculated_at=utc_now(),
     )
 
 
@@ -1226,7 +1228,7 @@ async def get_diversification_analysis(
         rating=diversification.rating,
         largest_position_percent=float(diversification.largest_position_percent),
         recommendation=diversification.recommendation,
-        analyzed_at=datetime.utcnow(),
+        analyzed_at=utc_now(),
     )
 
 
@@ -1269,7 +1271,7 @@ async def get_risk_profile(
         target_profile=risk_profile.target_profile,
         deviation_from_target=float(risk_profile.deviation_from_target) if risk_profile.deviation_from_target else None,
         recommendation=risk_profile.recommendation,
-        analyzed_at=datetime.utcnow(),
+        analyzed_at=utc_now(),
     )
 
 
@@ -1330,7 +1332,7 @@ async def get_rebalancing_recommendations(
         recommendations=items,
         total_deviation_score=total_deviation,
         rebalancing_urgency=urgency,
-        generated_at=datetime.utcnow(),
+        generated_at=utc_now(),
     )
 
 
@@ -1388,7 +1390,7 @@ async def get_full_portfolio_analytics(
             )
             for a in analytics.allocation.by_risk
         ],
-        calculated_at=datetime.utcnow(),
+        calculated_at=utc_now(),
     )
 
     diversification_response = DiversificationResponse(
@@ -1398,7 +1400,7 @@ async def get_full_portfolio_analytics(
         rating=analytics.diversification.rating,
         largest_position_percent=float(analytics.diversification.largest_position_percent),
         recommendation=analytics.diversification.recommendation,
-        analyzed_at=datetime.utcnow(),
+        analyzed_at=utc_now(),
     )
 
     risk_response = RiskProfileResponse(
@@ -1408,7 +1410,7 @@ async def get_full_portfolio_analytics(
         target_profile=analytics.risk_profile.target_profile,
         deviation_from_target=float(analytics.risk_profile.deviation_from_target) if analytics.risk_profile.deviation_from_target else None,
         recommendation=analytics.risk_profile.recommendation,
-        analyzed_at=datetime.utcnow(),
+        analyzed_at=utc_now(),
     )
 
     rebalancing_response = None
@@ -1433,7 +1435,7 @@ async def get_full_portfolio_analytics(
             recommendations=items,
             total_deviation_score=total_deviation,
             rebalancing_urgency=urgency,
-            generated_at=datetime.utcnow(),
+            generated_at=utc_now(),
         )
 
     return FullPortfolioAnalyticsResponse(
@@ -1445,7 +1447,7 @@ async def get_full_portfolio_analytics(
         diversification=diversification_response,
         risk_profile=risk_response,
         rebalancing=rebalancing_response,
-        analyzed_at=datetime.utcnow(),
+        analyzed_at=utc_now(),
     )
 
 
@@ -1500,7 +1502,7 @@ async def get_net_worth(
         net_worth=float(net_worth.net_worth),
         assets=assets,
         liabilities=liabilities,
-        calculated_at=datetime.utcnow(),
+        calculated_at=utc_now(),
     )
 
 
@@ -1562,7 +1564,7 @@ async def get_financial_health_score(
         overall_rating=health_score.overall_rating,
         dimensions=dimensions,
         priority_recommendations=health_score.priority_recommendations,
-        calculated_at=datetime.utcnow(),
+        calculated_at=utc_now(),
     )
 
 
@@ -1606,7 +1608,7 @@ async def get_recommendations(
             high_count=0,
             medium_count=0,
             low_count=0,
-            generated_at=datetime.utcnow(),
+            generated_at=utc_now(),
         )
 
     items = [
@@ -1631,7 +1633,7 @@ async def get_recommendations(
         high_count=recommendations_result.high_count,
         medium_count=recommendations_result.medium_count,
         low_count=recommendations_result.low_count,
-        generated_at=datetime.utcnow(),
+        generated_at=utc_now(),
     )
 
 
@@ -1694,7 +1696,7 @@ async def simulate_extra_payment(
         new_total_interest=float(scenario.new_total_interest),
         interest_saved=float(scenario.interest_saved),
         savings_percentage=float(scenario.savings_percentage),
-        calculated_at=datetime.utcnow(),
+        calculated_at=utc_now(),
     )
 
 
@@ -1757,7 +1759,7 @@ async def simulate_refinancing(
         net_savings=float(scenario.net_savings),
         break_even_months=scenario.break_even_months,
         recommendation=scenario.recommendation,
-        calculated_at=datetime.utcnow(),
+        calculated_at=utc_now(),
     )
 
 
@@ -1815,7 +1817,7 @@ async def simulate_payment_change(
         original_total_interest=float(scenario.original_total_interest),
         new_total_interest=float(scenario.new_total_interest),
         interest_difference=float(scenario.interest_difference),
-        calculated_at=datetime.utcnow(),
+        calculated_at=utc_now(),
     )
 
 
@@ -1883,7 +1885,7 @@ async def get_full_amortization(
         total_interest=float(amortization.total_interest),
         total_cost=float(amortization.total_cost),
         schedule=schedule,
-        generated_at=datetime.utcnow(),
+        generated_at=utc_now(),
     )
 
 
@@ -1962,7 +1964,7 @@ async def compare_loan_scenarios(
         alternative_scenarios=alternatives,
         best_scenario=comparison.best_scenario,
         max_savings=float(comparison.max_savings),
-        generated_at=datetime.utcnow(),
+        generated_at=utc_now(),
     )
 
 
@@ -2243,7 +2245,7 @@ async def get_property_ki_analysis(
         rental_potential_eur=analysis.rental_potential_eur,
         roi_estimate_percent=analysis.roi_estimate_percent,
         from_cache=analysis.from_cache,
-        analyzed_at=datetime.utcnow(),
+        analyzed_at=utc_now(),
     )
 
 
@@ -2305,7 +2307,7 @@ async def get_vehicle_ki_analysis(
         market_demand=analysis.market_demand,
         value_factors=analysis.value_factors,
         from_cache=analysis.from_cache,
-        analyzed_at=datetime.utcnow(),
+        analyzed_at=utc_now(),
     )
 
 
@@ -2362,7 +2364,7 @@ async def get_investment_ki_advice(
         projected_annual_return_percent=advice.projected_annual_return_percent,
         risk_warnings=advice.risk_warnings,
         from_cache=advice.from_cache,
-        analyzed_at=datetime.utcnow(),
+        analyzed_at=utc_now(),
     )
 
 
@@ -2416,7 +2418,7 @@ async def get_insurance_ki_check(
         recommended_actions=check_result.recommended_actions,
         overall_assessment=check_result.overall_assessment,
         from_cache=check_result.from_cache,
-        analyzed_at=datetime.utcnow(),
+        analyzed_at=utc_now(),
     )
 
 
@@ -2476,5 +2478,810 @@ async def financial_qa_chat(
         warnings=answer.warnings,
         consult_expert=answer.consult_expert,
         expert_type=answer.expert_type,
-        analyzed_at=datetime.utcnow(),
+        analyzed_at=utc_now(),
+    )
+
+
+# =============================================================================
+# PREDICTIVE INTELLIGENCE (Phase 1 - PROAKTIV)
+# =============================================================================
+# Warnt VOR Problemen statt nur zu berichten wenn sie da sind
+# =============================================================================
+
+
+class TrendAnalysisResponse(BaseModel):
+    """Trend-Analyse fuer einen KPI."""
+    method: str
+    direction: str  # rising, falling, stable
+    strength: float  # 0-1
+    slope: Optional[float] = None
+    r_squared: Optional[float] = None
+    seasonality_detected: bool
+    seasonality_amplitude: Optional[float] = None
+
+
+class ProjectedValueResponse(BaseModel):
+    """Projizierter Wert fuer einen Monat."""
+    month: int
+    date: str  # ISO date
+    value: float
+    lower_bound: float
+    upper_bound: float
+    confidence: float  # 0-1
+
+
+class ThresholdBreachResponse(BaseModel):
+    """Prognostizierter Schwellenwert-Durchbruch."""
+    month: int
+    date: str
+    kpi_name: str
+    current_value: float
+    projected_value: float
+    threshold_value: float
+    threshold_type: str  # warning, critical
+    severity: str  # WARNING, CRITICAL
+
+
+class KPIProjectionResponse(BaseModel):
+    """Vollstaendige KPI-Projektion."""
+    kpi_name: str
+    current_value: float
+    unit: str
+    trend: TrendAnalysisResponse
+    projections: List[ProjectedValueResponse]
+    threshold_breaches: List[ThresholdBreachResponse]
+    data_points_used: int
+    generated_at: datetime
+
+
+class EarlyWarningResponse(BaseModel):
+    """Single Early Warning Alert."""
+    id: Optional[uuid.UUID] = None
+    kpi_name: str
+    warning_type: str  # threshold_warning, threshold_critical, trend_warning
+    severity: str  # WARNING, CRITICAL
+    current_value: float
+    projected_value: float
+    threshold_value: float
+    projected_breach_date: str
+    months_until_breach: int
+    title: str
+    description: str
+    recommendation: str
+    is_resolved: bool = False
+    created_at: Optional[datetime] = None
+
+
+class PredictiveInsightsResponse(BaseModel):
+    """Vollstaendige Predictive Insights Summary."""
+    space_id: uuid.UUID
+    projections: List[KPIProjectionResponse]
+    early_warnings: List[EarlyWarningResponse]
+    improving_kpis: List[str]
+    declining_kpis: List[str]
+    stable_kpis: List[str]
+    outlook_score: float  # 0-100 (100 = alles wird besser)
+    generated_at: datetime
+
+
+# -------------------- Predictive Intelligence Endpoints --------------------
+
+
+@router.get(
+    "/spaces/{space_id}/predictive-insights",
+    response_model=PredictiveInsightsResponse,
+    summary="Vollstaendige Predictive Insights Summary",
+)
+@limiter.limit("10/minute", key_func=get_user_identifier)
+async def get_predictive_insights(
+    request: Request,
+    space_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PredictiveInsightsResponse:
+    """
+    Liefert vollstaendige proaktive Insights:
+
+    - **Projektionen**: KPIs 3/6/12 Monate in die Zukunft
+    - **Early Warnings**: Warnungen VOR Problemen
+    - **Trend-Analyse**: Welche KPIs verbessern/verschlechtern sich
+    - **Outlook Score**: 0-100 wie positiv die Prognose ist
+
+    **PROAKTIV**: Zeigt Probleme die der User noch nicht gesehen hat!
+    """
+    await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.READ)
+
+    from app.services.privat import get_predictive_intelligence_service
+    import dataclasses
+
+    service = get_predictive_intelligence_service()
+
+    try:
+        summary = await service.get_predictive_insights(
+            db, space_id, current_user.id
+        )
+    except Exception as e:
+        logger.error(
+            "predictive_insights_failed",
+            space_id=str(space_id),
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Predictive Intelligence derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
+        )
+
+    # Convert dataclasses to Pydantic models
+    projections = []
+    for proj in summary.projections:
+        projections.append(KPIProjectionResponse(
+            kpi_name=proj.kpi_name,
+            current_value=proj.current_value,
+            unit=proj.unit,
+            trend=TrendAnalysisResponse(
+                method=proj.trend.method,
+                direction=proj.trend.direction,
+                strength=proj.trend.strength,
+                slope=proj.trend.slope,
+                r_squared=proj.trend.r_squared,
+                seasonality_detected=proj.trend.seasonality_detected,
+                seasonality_amplitude=proj.trend.seasonality_amplitude,
+            ),
+            projections=[
+                ProjectedValueResponse(
+                    month=p.month,
+                    date=p.date.isoformat() if hasattr(p.date, 'isoformat') else str(p.date),
+                    value=p.value,
+                    lower_bound=p.lower_bound,
+                    upper_bound=p.upper_bound,
+                    confidence=p.confidence,
+                )
+                for p in proj.projections
+            ],
+            threshold_breaches=[
+                ThresholdBreachResponse(
+                    month=b.month,
+                    date=b.date.isoformat() if hasattr(b.date, 'isoformat') else str(b.date),
+                    kpi_name=b.kpi_name,
+                    current_value=b.current_value,
+                    projected_value=b.projected_value,
+                    threshold_value=b.threshold_value,
+                    threshold_type=b.threshold_type,
+                    severity=b.severity,
+                )
+                for b in proj.threshold_breaches
+            ],
+            data_points_used=proj.data_points_used,
+            generated_at=utc_now(),
+        ))
+
+    warnings = []
+    for w in summary.early_warnings:
+        warnings.append(EarlyWarningResponse(
+            kpi_name=w.kpi_name,
+            warning_type=w.warning_type,
+            severity=w.severity,
+            current_value=w.current_value,
+            projected_value=w.projected_value,
+            threshold_value=w.threshold_value,
+            projected_breach_date=w.projected_breach_date.isoformat() if hasattr(w.projected_breach_date, 'isoformat') else str(w.projected_breach_date),
+            months_until_breach=w.months_until_breach,
+            title=w.title,
+            description=w.description,
+            recommendation=w.recommendation,
+        ))
+
+    return PredictiveInsightsResponse(
+        space_id=space_id,
+        projections=projections,
+        early_warnings=warnings,
+        improving_kpis=summary.improving_kpis,
+        declining_kpis=summary.declining_kpis,
+        stable_kpis=summary.stable_kpis,
+        outlook_score=summary.outlook_score,
+        generated_at=utc_now(),
+    )
+
+
+@router.get(
+    "/spaces/{space_id}/projections/{kpi_name}",
+    response_model=KPIProjectionResponse,
+    summary="KPI-Projektion fuer spezifischen KPI",
+)
+@limiter.limit("20/minute", key_func=get_user_identifier)
+async def get_kpi_projection(
+    request: Request,
+    space_id: uuid.UUID,
+    kpi_name: str,
+    months_ahead: int = Query(default=12, ge=1, le=24),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> KPIProjectionResponse:
+    """
+    Projiziert einen spezifischen KPI in die Zukunft.
+
+    **Verfuegbare KPIs:**
+    - financial_health_score
+    - dti_ratio (Debt-to-Income)
+    - emergency_fund_months
+    - net_worth
+    - savings_rate
+    - diversification_score
+    - roi (Return on Investment)
+
+    **months_ahead**: 1-24 Monate in die Zukunft
+    """
+    await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.READ)
+
+    from app.services.privat import get_predictive_intelligence_service
+
+    service = get_predictive_intelligence_service()
+
+    try:
+        projection = await service.project_kpi(
+            db, space_id, kpi_name, months_ahead, current_user.id
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception as e:
+        logger.error(
+            "kpi_projection_failed",
+            space_id=str(space_id),
+            kpi_name=kpi_name,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="KPI-Projektion derzeit nicht verfuegbar.",
+        )
+
+    return KPIProjectionResponse(
+        kpi_name=projection.kpi_name,
+        current_value=projection.current_value,
+        unit=projection.unit,
+        trend=TrendAnalysisResponse(
+            method=projection.trend.method,
+            direction=projection.trend.direction,
+            strength=projection.trend.strength,
+            slope=projection.trend.slope,
+            r_squared=projection.trend.r_squared,
+            seasonality_detected=projection.trend.seasonality_detected,
+            seasonality_amplitude=projection.trend.seasonality_amplitude,
+        ),
+        projections=[
+            ProjectedValueResponse(
+                month=p.month,
+                date=p.date.isoformat() if hasattr(p.date, 'isoformat') else str(p.date),
+                value=p.value,
+                lower_bound=p.lower_bound,
+                upper_bound=p.upper_bound,
+                confidence=p.confidence,
+            )
+            for p in projection.projections
+        ],
+        threshold_breaches=[
+            ThresholdBreachResponse(
+                month=b.month,
+                date=b.date.isoformat() if hasattr(b.date, 'isoformat') else str(b.date),
+                kpi_name=b.kpi_name,
+                current_value=b.current_value,
+                projected_value=b.projected_value,
+                threshold_value=b.threshold_value,
+                threshold_type=b.threshold_type,
+                severity=b.severity,
+            )
+            for b in projection.threshold_breaches
+        ],
+        data_points_used=projection.data_points_used,
+        generated_at=utc_now(),
+    )
+
+
+@router.get(
+    "/spaces/{space_id}/early-warnings",
+    response_model=List[EarlyWarningResponse],
+    summary="Aktive Early Warning Alerts",
+)
+@limiter.limit("30/minute", key_func=get_user_identifier)
+async def get_early_warnings(
+    request: Request,
+    space_id: uuid.UUID,
+    include_resolved: bool = Query(default=False),
+    severity: Optional[str] = Query(default=None, regex="^(WARNING|CRITICAL)$"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> List[EarlyWarningResponse]:
+    """
+    Liefert alle aktiven Early Warning Alerts.
+
+    **PROAKTIV**: Warnungen VOR dem Problem!
+
+    - **include_resolved**: Auch bereits geloeste Warnungen zeigen
+    - **severity**: Filter nach WARNING oder CRITICAL
+    """
+    await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.READ)
+
+    from sqlalchemy import select, and_
+    from app.db.models import PrivatEarlyWarning
+
+    stmt = select(PrivatEarlyWarning).where(
+        PrivatEarlyWarning.space_id == space_id
+    )
+
+    if not include_resolved:
+        stmt = stmt.where(PrivatEarlyWarning.is_resolved == False)
+
+    if severity:
+        stmt = stmt.where(PrivatEarlyWarning.severity == severity)
+
+    stmt = stmt.order_by(
+        PrivatEarlyWarning.severity.desc(),  # CRITICAL first
+        PrivatEarlyWarning.months_until_breach.asc(),  # Soonest first
+    )
+
+    result = await db.execute(stmt)
+    warnings_db = result.scalars().all()
+
+    return [
+        EarlyWarningResponse(
+            id=w.id,
+            kpi_name=w.kpi_name,
+            warning_type=w.warning_type,
+            severity=w.severity,
+            current_value=float(w.current_value),
+            projected_value=float(w.projected_value),
+            threshold_value=float(w.threshold_value),
+            projected_breach_date=w.projected_breach_date.isoformat(),
+            months_until_breach=w.months_until_breach,
+            title=w.title,
+            description=w.description,
+            recommendation=w.recommendation,
+            is_resolved=w.is_resolved,
+            created_at=w.created_at,
+        )
+        for w in warnings_db
+    ]
+
+
+@router.post(
+    "/spaces/{space_id}/early-warnings/{warning_id}/resolve",
+    response_model=EarlyWarningResponse,
+    summary="Early Warning als geloest markieren",
+)
+@limiter.limit("20/minute", key_func=get_user_identifier)
+async def resolve_early_warning(
+    request: Request,
+    space_id: uuid.UUID,
+    warning_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> EarlyWarningResponse:
+    """
+    Markiert eine Early Warning als geloest.
+
+    User hat die empfohlene Aktion durchgefuehrt oder
+    das Problem wurde anderweitig addressiert.
+    """
+    await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.MANAGE)
+
+    from sqlalchemy import select
+    from app.db.models import PrivatEarlyWarning
+
+    stmt = select(PrivatEarlyWarning).where(
+        and_(
+            PrivatEarlyWarning.id == warning_id,
+            PrivatEarlyWarning.space_id == space_id,
+        )
+    )
+
+    result = await db.execute(stmt)
+    warning = result.scalar_one_or_none()
+
+    if not warning:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Early Warning nicht gefunden.",
+        )
+
+    warning.is_resolved = True
+    warning.resolved_at = utc_now()
+    warning.resolved_by = current_user.id
+
+    await db.commit()
+    await db.refresh(warning)
+
+    logger.info(
+        "early_warning_resolved",
+        warning_id=str(warning_id),
+        space_id=str(space_id),
+        user_id=str(current_user.id),
+        kpi_name=warning.kpi_name,
+    )
+
+    return EarlyWarningResponse(
+        id=warning.id,
+        kpi_name=warning.kpi_name,
+        warning_type=warning.warning_type,
+        severity=warning.severity,
+        current_value=float(warning.current_value),
+        projected_value=float(warning.projected_value),
+        threshold_value=float(warning.threshold_value),
+        projected_breach_date=warning.projected_breach_date.isoformat(),
+        months_until_breach=warning.months_until_breach,
+        title=warning.title,
+        description=warning.description,
+        recommendation=warning.recommendation,
+        is_resolved=warning.is_resolved,
+        created_at=warning.created_at,
+    )
+
+
+# ==================== Portfolio Snapshots ====================
+
+
+class AssetAllocation(BaseModel):
+    """Asset Allocation Detail."""
+    real_estate: float = Field(..., description="Immobilien-Anteil in %")
+    vehicles: float = Field(..., description="Fahrzeuge-Anteil in %")
+    investments: float = Field(..., description="Investments-Anteil in %")
+    cash: float = Field(..., description="Bargeld/Konten-Anteil in %")
+
+
+class PortfolioSnapshotResponse(BaseModel):
+    """Portfolio Snapshot Antwort."""
+    id: uuid.UUID
+    space_id: uuid.UUID
+    snapshot_date: date
+
+    # Vermoegenswerte
+    total_real_estate: float
+    total_vehicles: float
+    total_investments: float
+    total_cash: float
+    total_other_assets: float
+
+    # Verbindlichkeiten
+    total_mortgages: float
+    total_loans: float
+    total_other_liabilities: float
+
+    # Aggregierte Werte
+    total_assets: float
+    total_liabilities: float
+    net_worth: float
+
+    # Veraenderungen
+    net_worth_change_absolute: Optional[float] = None
+    net_worth_change_percent: Optional[float] = None
+
+    # Kennzahlen
+    debt_to_assets_ratio: float
+    liquidity_ratio: float
+
+    # Allocation
+    asset_allocation: Optional[dict] = None
+
+    created_at: datetime
+
+
+class PortfolioSummaryResponse(BaseModel):
+    """Portfolio Zusammenfassung mit Trend."""
+    space_id: uuid.UUID
+    latest_snapshot: Optional[PortfolioSnapshotResponse] = None
+    snapshot_count: int
+    net_worth_trend: List[dict] = Field(default_factory=list, description="Liste von {date, net_worth}")
+    created_at: datetime
+
+
+class NetWorthTrendItem(BaseModel):
+    """Einzelner Trend-Datenpunkt."""
+    date: date
+    net_worth: float
+
+
+class NetWorthTrendResponse(BaseModel):
+    """Nettovermoegen-Trend Antwort."""
+    space_id: uuid.UUID
+    months: int
+    trend_data: List[NetWorthTrendItem]
+    trend_direction: str = Field(..., description="up, down, stable")
+    total_change_absolute: Optional[float] = None
+    total_change_percent: Optional[float] = None
+
+
+@router.post(
+    "/spaces/{space_id}/portfolio/snapshots",
+    response_model=PortfolioSnapshotResponse,
+    summary="Portfolio-Snapshot erstellen",
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit("5/minute", key_func=get_user_identifier)
+async def create_portfolio_snapshot(
+    request: Request,
+    space_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PortfolioSnapshotResponse:
+    """
+    Erstellt einen neuen Portfolio-Snapshot fuer den Space.
+
+    Aggregiert alle Vermoegenswerte und Verbindlichkeiten:
+    - Immobilien (current_value)
+    - Fahrzeuge (current_estimated_value)
+    - Investments (current_value)
+    - Bankkonten (current_balance)
+    - Hypotheken und Kredite (remaining_balance)
+
+    Berechnet ausserdem:
+    - Nettovermoegen-Veraenderung zum Vormonat
+    - Schulden-zu-Vermoegen-Verhaeltnis
+    - Liquiditaetsquote
+    - Asset Allocation in %
+    """
+    await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.WRITE)
+
+    from app.services.privat.portfolio_service import PortfolioService
+
+    portfolio_service = PortfolioService(db)
+
+    try:
+        latest = await portfolio_service.create_monthly_snapshot(space_id)
+    except Exception as e:
+        logger.error(
+            "portfolio_snapshot_creation_failed",
+            space_id=str(space_id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Portfolio-Snapshot konnte nicht erstellt werden",
+        )
+
+    if not latest:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Snapshot wurde erstellt aber konnte nicht geladen werden",
+        )
+
+    return PortfolioSnapshotResponse(
+        id=latest.id,
+        space_id=latest.space_id,
+        snapshot_date=latest.snapshot_date,
+        total_real_estate=float(latest.total_real_estate),
+        total_vehicles=float(latest.total_vehicles),
+        total_investments=float(latest.total_investments),
+        total_cash=float(latest.total_cash),
+        total_other_assets=float(latest.total_other_assets),
+        total_mortgages=float(latest.total_mortgages),
+        total_loans=float(latest.total_loans),
+        total_other_liabilities=float(latest.total_other_liabilities),
+        total_assets=float(latest.total_assets),
+        total_liabilities=float(latest.total_liabilities),
+        net_worth=float(latest.net_worth),
+        net_worth_change_absolute=float(latest.net_worth_change_absolute) if latest.net_worth_change_absolute else None,
+        net_worth_change_percent=float(latest.net_worth_change_percent) if latest.net_worth_change_percent else None,
+        debt_to_assets_ratio=float(latest.debt_to_assets_ratio),
+        liquidity_ratio=float(latest.liquidity_ratio),
+        asset_allocation=latest.asset_allocation,
+        created_at=latest.created_at,
+    )
+
+
+@router.get(
+    "/spaces/{space_id}/portfolio/snapshots",
+    response_model=List[PortfolioSnapshotResponse],
+    summary="Historische Portfolio-Snapshots abrufen",
+)
+@limiter.limit("30/minute", key_func=get_user_identifier)
+async def get_portfolio_snapshots(
+    request: Request,
+    space_id: uuid.UUID,
+    months: int = Query(12, ge=1, le=120, description="Anzahl Monate zurueck"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> List[PortfolioSnapshotResponse]:
+    """
+    Laedt historische Portfolio-Snapshots fuer einen Space.
+
+    Gibt die Snapshots der letzten X Monate zurueck,
+    sortiert nach Datum (neueste zuerst).
+    """
+    await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.READ)
+
+    from app.services.privat.portfolio_service import PortfolioService
+
+    portfolio_service = PortfolioService(db)
+    snapshots = await portfolio_service.get_portfolio_history(space_id, months)
+
+    return [
+        PortfolioSnapshotResponse(
+            id=s.id,
+            space_id=s.space_id,
+            snapshot_date=s.snapshot_date,
+            total_real_estate=float(s.total_real_estate),
+            total_vehicles=float(s.total_vehicles),
+            total_investments=float(s.total_investments),
+            total_cash=float(s.total_cash),
+            total_other_assets=float(s.total_other_assets),
+            total_mortgages=float(s.total_mortgages),
+            total_loans=float(s.total_loans),
+            total_other_liabilities=float(s.total_other_liabilities),
+            total_assets=float(s.total_assets),
+            total_liabilities=float(s.total_liabilities),
+            net_worth=float(s.net_worth),
+            net_worth_change_absolute=float(s.net_worth_change_absolute) if s.net_worth_change_absolute else None,
+            net_worth_change_percent=float(s.net_worth_change_percent) if s.net_worth_change_percent else None,
+            debt_to_assets_ratio=float(s.debt_to_assets_ratio),
+            liquidity_ratio=float(s.liquidity_ratio),
+            asset_allocation=s.asset_allocation,
+            created_at=s.created_at,
+        )
+        for s in snapshots
+    ]
+
+
+@router.get(
+    "/spaces/{space_id}/portfolio/snapshots/latest",
+    response_model=PortfolioSnapshotResponse,
+    summary="Neuesten Portfolio-Snapshot abrufen",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def get_latest_portfolio_snapshot(
+    request: Request,
+    space_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PortfolioSnapshotResponse:
+    """
+    Laedt den neuesten Portfolio-Snapshot fuer einen Space.
+
+    Falls kein Snapshot existiert, wird ein 404 zurueckgegeben.
+    """
+    await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.READ)
+
+    from app.services.privat.portfolio_service import PortfolioService
+
+    portfolio_service = PortfolioService(db)
+    latest = await portfolio_service.get_latest_snapshot(space_id)
+
+    if not latest:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Kein Portfolio-Snapshot vorhanden. Bitte zuerst einen erstellen.",
+        )
+
+    return PortfolioSnapshotResponse(
+        id=latest.id,
+        space_id=latest.space_id,
+        snapshot_date=latest.snapshot_date,
+        total_real_estate=float(latest.total_real_estate),
+        total_vehicles=float(latest.total_vehicles),
+        total_investments=float(latest.total_investments),
+        total_cash=float(latest.total_cash),
+        total_other_assets=float(latest.total_other_assets),
+        total_mortgages=float(latest.total_mortgages),
+        total_loans=float(latest.total_loans),
+        total_other_liabilities=float(latest.total_other_liabilities),
+        total_assets=float(latest.total_assets),
+        total_liabilities=float(latest.total_liabilities),
+        net_worth=float(latest.net_worth),
+        net_worth_change_absolute=float(latest.net_worth_change_absolute) if latest.net_worth_change_absolute else None,
+        net_worth_change_percent=float(latest.net_worth_change_percent) if latest.net_worth_change_percent else None,
+        debt_to_assets_ratio=float(latest.debt_to_assets_ratio),
+        liquidity_ratio=float(latest.liquidity_ratio),
+        asset_allocation=latest.asset_allocation,
+        created_at=latest.created_at,
+    )
+
+
+@router.get(
+    "/spaces/{space_id}/portfolio/net-worth-trend",
+    response_model=NetWorthTrendResponse,
+    summary="Nettovermoegen-Trend abrufen",
+)
+@limiter.limit("30/minute", key_func=get_user_identifier)
+async def get_net_worth_trend(
+    request: Request,
+    space_id: uuid.UUID,
+    months: int = Query(12, ge=1, le=120, description="Anzahl Monate zurueck"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> NetWorthTrendResponse:
+    """
+    Laedt den Nettovermoegen-Trend fuer einen Space.
+
+    Gibt eine Liste von (Datum, Nettovermoegen) Tupeln zurueck,
+    sowie Trend-Richtung und Gesamtveraenderung.
+    """
+    await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.READ)
+
+    from app.services.privat.portfolio_service import PortfolioService
+    from datetime import datetime as dt
+
+    portfolio_service = PortfolioService(db)
+    trend_data = await portfolio_service.get_net_worth_trend(space_id, months)
+
+    if not trend_data:
+        return NetWorthTrendResponse(
+            space_id=space_id,
+            months=months,
+            trend_data=[],
+            trend_direction="stable",
+            total_change_absolute=None,
+            total_change_percent=None,
+        )
+
+    # Trend-Daten formatieren (service returns list of dicts)
+    items = [
+        NetWorthTrendItem(
+            date=dt.fromisoformat(item["date"]).date(),
+            net_worth=item["net_worth"]
+        )
+        for item in trend_data
+    ]
+
+    # Trend-Richtung und Veraenderung berechnen
+    first_value = trend_data[0]["net_worth"] if trend_data else 0.0
+    last_value = trend_data[-1]["net_worth"] if trend_data else 0.0
+
+    total_change = last_value - first_value
+    total_change_percent = None
+    if first_value and first_value != 0:
+        total_change_percent = (total_change / first_value) * 100
+
+    if total_change > 1000:
+        trend_direction = "up"
+    elif total_change < -1000:
+        trend_direction = "down"
+    else:
+        trend_direction = "stable"
+
+    return NetWorthTrendResponse(
+        space_id=space_id,
+        months=months,
+        trend_data=items,
+        trend_direction=trend_direction,
+        total_change_absolute=total_change,
+        total_change_percent=total_change_percent,
+    )
+
+
+@router.post(
+    "/spaces/{space_id}/portfolio/snapshots/trigger",
+    response_model=TaskTriggerResponse,
+    summary="Portfolio-Snapshot im Hintergrund erstellen",
+)
+@limiter.limit("2/minute", key_func=get_user_identifier)
+async def trigger_portfolio_snapshot(
+    request: Request,
+    space_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TaskTriggerResponse:
+    """
+    Startet die Portfolio-Snapshot-Erstellung als Hintergrund-Task.
+
+    Nuetzlich fuer grosse Spaces mit vielen Assets,
+    wo die Berechnung laenger dauern kann.
+    """
+    await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.WRITE)
+
+    from app.workers.tasks.privat_tasks import create_monthly_portfolio_snapshot
+
+    task = create_monthly_portfolio_snapshot.delay(space_id=str(space_id))
+
+    logger.info(
+        "portfolio_snapshot_task_triggered",
+        space_id=str(space_id),
+        task_id=task.id,
+        user_id=str(current_user.id),
+    )
+
+    return TaskTriggerResponse(
+        task_id=task.id,
+        status="queued",
+        message="Portfolio-Snapshot Erstellung gestartet",
     )

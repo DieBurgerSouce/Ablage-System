@@ -15,6 +15,7 @@ Altersklassen:
 
 from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
+from app.core.datetime_utils import utc_now
 from decimal import Decimal, InvalidOperation
 from enum import Enum
 from typing import Optional, Dict, Any, List, Tuple
@@ -181,7 +182,7 @@ class AgingReportService:
         )
 
         return {
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": utc_now().isoformat(),
             "receivables": self._report_to_dict(receivables),
             "payables": self._report_to_dict(payables),
             "net_position": {
@@ -397,7 +398,7 @@ class AgingReportService:
         """Generiere Aging Report."""
         report = AgingReport(
             report_type=report_type,
-            generated_at=datetime.utcnow(),
+            generated_at=utc_now(),
             as_of_date=as_of_date,
         )
 

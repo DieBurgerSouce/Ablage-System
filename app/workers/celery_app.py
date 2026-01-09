@@ -268,6 +268,7 @@ celery_app = Celery(
         "app.workers.tasks.surya_improvement_tasks",  # Surya OCR Continuous Improvement
         "app.workers.tasks.export_tasks",  # Export Tasks (Batch, Scheduled)
         "app.workers.tasks.privat_tasks",  # Privat-Modul Intelligence Tasks (KPIs, Deadlines, Financial Health)
+        "app.workers.tasks.orchestration_tasks",  # Cross-Module Orchestration (Phase 2 - Intelligent Event Routing)
     ]
 )
 
@@ -430,9 +431,33 @@ celery_app.conf.update(
                 "x-dead-letter-routing-key": "dlq",
             },
         },
+        # =================================================================
+        # Privat-Modul Queue (Enterprise Intelligence)
+        # =================================================================
+        "privat": {
+            "exchange": "privat",
+            "routing_key": "privat",
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
+        },
         "metrics": {
             "exchange": "metrics",
             "routing_key": "metrics",
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
+        },
+        # =================================================================
+        # Cross-Module Orchestration Queue (Phase 2 - Enterprise Intelligence)
+        # =================================================================
+        "orchestration": {
+            "exchange": "orchestration",
+            "routing_key": "orchestration",
             "queue_arguments": {
                 "x-max-priority": 10,
                 "x-dead-letter-exchange": "dlq",
@@ -751,6 +776,93 @@ celery_app.conf.update(
             "task": "app.workers.tasks.privat_tasks.update_privat_metrics",
             "schedule": 900.0,  # Alle 15 Minuten
         },
+        # -----------------------------------------------------------------
+        # Portfolio & Financial Goals Tasks
+        # -----------------------------------------------------------------
+        # Monthly Portfolio Snapshot - Am 1. jeden Monats um 06:00 Uhr
+        "privat-portfolio-snapshot-monthly": {
+            "task": "app.workers.tasks.privat_tasks.create_monthly_portfolio_snapshot",
+            "schedule": crontab(day_of_month=1, hour=6, minute=0),
+        },
+        # Daily Financial Goals Recalculation - Taeglich um 04:30 Uhr
+        "privat-recalculate-goals-daily": {
+            "task": "app.workers.tasks.privat_tasks.recalculate_financial_goals",
+            "schedule": crontab(hour=4, minute=30),
+        },
+        # Check Goals At Risk - Taeglich um 09:00 Uhr
+        "privat-check-goals-at-risk-daily": {
+            "task": "app.workers.tasks.privat_tasks.check_goals_at_risk",
+            "schedule": crontab(hour=9, minute=0),
+        },
+        # -----------------------------------------------------------------
+        # Predictive Intelligence Tasks (Phase 1 - PROAKTIV)
+        # -----------------------------------------------------------------
+        # KPI History Recording - Taeglich um 23:55 Uhr (Ende des Tages)
+        "privat-record-kpi-history-daily": {
+            "task": "app.workers.tasks.privat_tasks.record_kpi_history",
+            "schedule": crontab(hour=23, minute=55),
+        },
+        # Early Warning Generation - Taeglich um 03:30 Uhr (nach record_kpi_history)
+        "privat-generate-predictive-alerts-daily": {
+            "task": "app.workers.tasks.privat_tasks.generate_predictive_alerts",
+            "schedule": crontab(hour=3, minute=30),
+        },
+        # Cleanup alte Projektionen - Woechentlich Sonntag 02:00 Uhr
+        "privat-cleanup-projections-weekly": {
+            "task": "app.workers.tasks.privat_tasks.cleanup_old_projections",
+            "schedule": crontab(day_of_week=0, hour=2, minute=0),
+            "kwargs": {"days_to_keep": 90},
+        },
+        # -----------------------------------------------------------------
+        # Cross-Module Orchestration Tasks (Phase 2 - INTELLIGENT ROUTING)
+        # -----------------------------------------------------------------
+        # Process Pending Actions - Alle 2 Minuten
+        "orchestration-process-pending-actions": {
+            "task": "app.workers.tasks.orchestration_tasks.process_pending_orchestration_actions",
+            "schedule": 120.0,  # Alle 2 Minuten
+            "kwargs": {"max_actions": 50},
+        },
+        # Check Threshold Events - Alle 15 Minuten
+        "orchestration-check-threshold-events": {
+            "task": "app.workers.tasks.orchestration_tasks.check_and_emit_threshold_events",
+            "schedule": 900.0,  # Alle 15 Minuten
+        },
+        # Cleanup alte Decisions - Woechentlich Sonntag 03:00 Uhr
+        "orchestration-cleanup-decisions-weekly": {
+            "task": "app.workers.tasks.orchestration_tasks.cleanup_old_decisions",
+            "schedule": crontab(day_of_week=0, hour=3, minute=0),
+            "kwargs": {"days_to_keep": 30},
+        },
+        # =================================================================
+        # Approval System Tasks
+        # =================================================================
+        # Eskalation ueberfaelliger Genehmigungen - Alle 30 Minuten
+        "approval-escalate-overdue": {
+            "task": "app.workers.tasks.approval_tasks.escalate_overdue_approvals",
+            "schedule": 1800.0,  # Alle 30 Minuten
+        },
+        # Erinnerungen fuer bald faellige Genehmigungen - Taeglich 08:00 und 14:00
+        "approval-reminders-morning": {
+            "task": "app.workers.tasks.approval_tasks.send_approval_reminders",
+            "schedule": crontab(hour=8, minute=0),
+            "kwargs": {"hours_before_due": 24},
+        },
+        "approval-reminders-afternoon": {
+            "task": "app.workers.tasks.approval_tasks.send_approval_reminders",
+            "schedule": crontab(hour=14, minute=0),
+            "kwargs": {"hours_before_due": 8},
+        },
+        # Approval-Statistiken generieren - Taeglich um 01:00 Uhr
+        "approval-generate-stats": {
+            "task": "app.workers.tasks.approval_tasks.generate_approval_stats",
+            "schedule": crontab(hour=1, minute=0),
+        },
+        # Alte Genehmigungen ablaufen lassen - Woechentlich Sonntag 04:00 Uhr
+        "approval-expire-old": {
+            "task": "app.workers.tasks.approval_tasks.expire_old_approvals",
+            "schedule": crontab(day_of_week=0, hour=4, minute=0),
+            "kwargs": {"days_to_expire": 30},
+        },
         # =================================================================
         # Workflow Automation Tasks
         # =================================================================
@@ -883,6 +995,19 @@ celery_app.conf.update(
         "app.workers.tasks.privat_tasks.generate_all_recommendations": {"queue": "maintenance", "priority": 2},
         "app.workers.tasks.privat_tasks.daily_intelligence_recalculation": {"queue": "maintenance", "priority": 2},
         "app.workers.tasks.privat_tasks.update_privat_metrics": {"queue": "metrics", "priority": 1},
+        # Predictive Intelligence Tasks (PROAKTIV - Phase 1)
+        "app.workers.tasks.privat_tasks.record_kpi_history": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.privat_tasks.generate_predictive_alerts": {"queue": "maintenance", "priority": 3},  # Hoehere Prioritaet - Early Warnings
+        "app.workers.tasks.privat_tasks.cleanup_old_projections": {"queue": "maintenance", "priority": 1},
+        "app.workers.tasks.privat_tasks.get_predictive_insights_summary": {"queue": "maintenance", "priority": 4},  # On-demand - hohe Prioritaet
+        # =================================================================
+        # Cross-Module Orchestration Tasks (Phase 2 - INTELLIGENT ROUTING)
+        # =================================================================
+        "app.workers.tasks.orchestration_tasks.process_pending_orchestration_actions": {"queue": "orchestration", "priority": 5},  # Hoch - verarbeitet proaktiv
+        "app.workers.tasks.orchestration_tasks.emit_system_event": {"queue": "orchestration", "priority": 6},  # Sehr hoch - Events muessen schnell raus
+        "app.workers.tasks.orchestration_tasks.check_and_emit_threshold_events": {"queue": "orchestration", "priority": 4},  # Mittel - periodische Pruefung
+        "app.workers.tasks.orchestration_tasks.get_orchestration_metrics": {"queue": "metrics", "priority": 1},  # Niedrig - Monitoring
+        "app.workers.tasks.orchestration_tasks.cleanup_old_decisions": {"queue": "maintenance", "priority": 1},  # Niedrig - Maintenance
         # =================================================================
         # Workflow Automation Tasks
         # =================================================================

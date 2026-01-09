@@ -12,6 +12,7 @@ Matching-Strategien (nach Prioritaet):
 
 from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
+from app.core.datetime_utils import utc_now
 from decimal import Decimal, InvalidOperation
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
@@ -194,8 +195,8 @@ class ReconciliationService:
         transaction.reconciliation_status = ReconciliationStatus.MATCHED.value
         transaction.matched_document_id = best_match.document_id
         transaction.match_confidence = best_match.confidence
-        transaction.matched_at = datetime.utcnow()
-        transaction.updated_at = datetime.utcnow()
+        transaction.matched_at = utc_now()
+        transaction.updated_at = utc_now()
 
         await db.commit()
 
@@ -348,8 +349,8 @@ class ReconciliationService:
         transaction.reconciliation_status = ReconciliationStatus.MATCHED.value
         transaction.matched_document_id = document_id
         transaction.match_confidence = 1.0  # Manuell = 100%
-        transaction.matched_at = datetime.utcnow()
-        transaction.updated_at = datetime.utcnow()
+        transaction.matched_at = utc_now()
+        transaction.updated_at = utc_now()
 
         if notes:
             transaction.notes = notes
@@ -404,7 +405,7 @@ class ReconciliationService:
         transaction.matched_document_id = None
         transaction.match_confidence = None
         transaction.matched_at = None
-        transaction.updated_at = datetime.utcnow()
+        transaction.updated_at = utc_now()
 
         await db.commit()
 
@@ -487,8 +488,8 @@ class ReconciliationService:
 
         # Update Transaktion auf PARTIAL (Teilzahlung)
         transaction.reconciliation_status = ReconciliationStatus.PARTIAL.value
-        transaction.matched_at = datetime.utcnow()
-        transaction.updated_at = datetime.utcnow()
+        transaction.matched_at = utc_now()
+        transaction.updated_at = utc_now()
 
         # Speichere Split-Details
         transaction.split_details = splits

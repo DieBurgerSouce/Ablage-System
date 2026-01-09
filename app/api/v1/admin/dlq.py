@@ -10,6 +10,7 @@ Provides DLQ management for admins:
 
 from typing import Optional, List
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
@@ -151,7 +152,7 @@ async def get_dlq_stats(
         # Calculate age
         oldest_age_hours = None
         if oldest_timestamp:
-            age_delta = datetime.utcnow() - oldest_timestamp
+            age_delta = utc_now() - oldest_timestamp
             oldest_age_hours = round(age_delta.total_seconds() / 3600, 1)
 
         # Determine status

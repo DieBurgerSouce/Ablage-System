@@ -10,6 +10,7 @@ Provides queue and worker monitoring for admins:
 
 from typing import Optional, List
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -239,7 +240,7 @@ async def get_queue_stats(
 
         # Get stats from database for jobs that went through this queue
         # Note: This is approximate as we don't track queue per job currently
-        now = datetime.utcnow()
+        now = utc_now()
         last_hour = now - timedelta(hours=1)
 
         # Completed in last hour
@@ -370,7 +371,7 @@ async def list_workers(
                 active_tasks=len(worker_active),
                 current_task=current_task,
                 current_task_id=current_task_id,
-                last_heartbeat=datetime.utcnow() if is_online else None,
+                last_heartbeat=utc_now() if is_online else None,
                 tasks_processed=worker_stats.get("total", {}).get("completed", 0) if worker_stats else 0,
                 pool_size=worker_stats.get("pool", {}).get("max-concurrency", 1) if worker_stats else 1,
                 prefetch_count=worker_stats.get("prefetch_count", 1) if worker_stats else 1,

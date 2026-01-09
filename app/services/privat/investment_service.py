@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime, date
+from app.core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Optional, List
 
@@ -56,8 +57,8 @@ class PrivatInvestmentService:
             is_taxable=data.is_taxable,
             notes=data.notes,
             is_active=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(investment)
@@ -278,7 +279,7 @@ class PrivatInvestmentService:
                 value = value.value if isinstance(value, InvestmentType) else value
             setattr(investment, key, value)
 
-        investment.updated_at = datetime.utcnow()
+        investment.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(investment)
@@ -323,7 +324,7 @@ class PrivatInvestmentService:
             return None
 
         investment.current_value = new_value
-        investment.updated_at = datetime.utcnow()
+        investment.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(investment)
@@ -361,7 +362,7 @@ class PrivatInvestmentService:
 
         if soft_delete:
             investment.is_active = False
-            investment.updated_at = datetime.utcnow()
+            investment.updated_at = utc_now()
             await db.commit()
         else:
             await db.delete(investment)

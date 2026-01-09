@@ -1,5 +1,15 @@
 # Core application modules
 
+# Datetime Utilities (Python 3.12+ compliant)
+from app.core.datetime_utils import (
+    utc_now,
+    utc_today,
+    utc_timestamp,
+    utc_isoformat,
+    parse_iso_datetime,
+    ensure_utc,
+)
+
 # Error Recovery & Reliability
 from app.core.circuit_breaker import (
     CircuitBreaker,
@@ -31,6 +41,13 @@ from app.core.partial_results import (
 )
 
 __all__ = [
+    # Datetime Utilities
+    "utc_now",
+    "utc_today",
+    "utc_timestamp",
+    "utc_isoformat",
+    "parse_iso_datetime",
+    "ensure_utc",
     # Circuit Breaker
     "CircuitBreaker",
     "CircuitBreakerManager",

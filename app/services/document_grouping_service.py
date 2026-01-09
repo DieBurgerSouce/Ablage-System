@@ -24,6 +24,7 @@ import hashlib
 import structlog
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from app.core.datetime_utils import utc_now
 from typing import Any, Dict, List, Optional, Set, Tuple
 from uuid import UUID
 
@@ -847,7 +848,7 @@ class DocumentGroupingService:
 
         group.user_confirmed = True
         group.confirmed_by_id = user_id
-        group.confirmation_date = datetime.utcnow()
+        group.confirmation_date = utc_now()
         group.needs_review = False
 
         await self.db.commit()
@@ -909,7 +910,7 @@ class DocumentGroupingService:
                 user_confirmed=True,
                 user_split=True,
                 confirmed_by_id=user_id,
-                confirmation_date=datetime.utcnow(),
+                confirmation_date=utc_now(),
                 owner_id=old_group.owner_id,
             )
 
@@ -930,7 +931,7 @@ class DocumentGroupingService:
             new_group_ids.append(new_group.id)
 
         # Alte Gruppe als deleted markieren
-        old_group.deleted_at = datetime.utcnow()
+        old_group.deleted_at = utc_now()
 
         await self.db.commit()
 

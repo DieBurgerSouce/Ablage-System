@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 from typing import Optional, List
 
 from sqlalchemy import select, func, and_, or_
@@ -56,8 +57,8 @@ class PrivatSpaceService:
             owner_id=user_id,
             company_id=None,
             # is_active is now a property derived from deleted_at (None = active)
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(space)
@@ -99,8 +100,8 @@ class PrivatSpaceService:
             owner_id=created_by,
             company_id=company_id,
             # is_active is now a property derived from deleted_at (None = active)
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(space)
@@ -401,7 +402,7 @@ class PrivatSpaceService:
         for key, value in update_data.items():
             setattr(space, key, value)
 
-        space.updated_at = datetime.utcnow()
+        space.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(space)
@@ -446,8 +447,8 @@ class PrivatSpaceService:
 
         if soft_delete:
             # Soft-Delete: Set deleted_at timestamp (is_active property returns False)
-            space.deleted_at = datetime.utcnow()
-            space.updated_at = datetime.utcnow()
+            space.deleted_at = utc_now()
+            space.updated_at = utc_now()
             await db.commit()
         else:
             await db.delete(space)

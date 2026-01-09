@@ -12,6 +12,7 @@ Alle deutschen steuerlichen Regelungen beachtet.
 """
 
 from datetime import date, datetime, timedelta
+from app.core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple, Any
 from uuid import UUID
@@ -279,7 +280,7 @@ class ExpenseService:
         for field, value in update_data.items():
             setattr(report, field, value)
 
-        report.updated_at = datetime.utcnow()
+        report.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(report)
@@ -313,7 +314,7 @@ class ExpenseService:
                 "Eingereichte Abrechnungen muessen abgelehnt werden."
             )
 
-        report.deleted_at = datetime.utcnow()
+        report.deleted_at = utc_now()
         await db.commit()
 
         logger.info(
@@ -472,7 +473,7 @@ class ExpenseService:
         else:
             item.deductible_amount = item.amount
 
-        item.updated_at = datetime.utcnow()
+        item.updated_at = utc_now()
 
         # Update Report-Summen
         if report:
@@ -566,7 +567,7 @@ class ExpenseService:
                 )
 
         report.status = "submitted"
-        report.submitted_at = datetime.utcnow()
+        report.submitted_at = utc_now()
         report.submitted_by_id = user_id
 
         await db.commit()
@@ -621,7 +622,7 @@ class ExpenseService:
             item.approved_amount = item.amount
 
         report.status = "approved"
-        report.approved_at = datetime.utcnow()
+        report.approved_at = utc_now()
         report.approved_by_id = user_id
         if notes:
             report.rejection_reason = None  # Clear any previous rejection
@@ -666,7 +667,7 @@ class ExpenseService:
             raise ValueError(f"Report kann nicht abgelehnt werden: {report.status}")
 
         report.status = "rejected"
-        report.rejected_at = datetime.utcnow()
+        report.rejected_at = utc_now()
         report.approved_by_id = user_id  # Wer hat entschieden
         report.rejection_reason = reason
 
@@ -712,7 +713,7 @@ class ExpenseService:
             )
 
         report.status = "paid"
-        report.paid_at = datetime.utcnow()
+        report.paid_at = utc_now()
         report.paid_amount = report.approved_amount
 
         # Optional: Kassenbuchung erstellen

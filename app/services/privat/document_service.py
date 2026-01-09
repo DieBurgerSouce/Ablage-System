@@ -6,6 +6,7 @@ import os
 import re
 from pathlib import Path
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 from typing import Optional, List, Tuple, BinaryIO
 from contextlib import contextmanager
 
@@ -505,8 +506,8 @@ class PrivatDocumentService:
             extra_encrypted=data.extra_encrypted,
             password_hint=data.password_hint if data.extra_encrypted else None,
             encryption_salt=None,  # Salt ist in der Datei
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         # Transaction Safety: File + DB Commit als atomare Operation
@@ -1013,7 +1014,7 @@ class PrivatDocumentService:
                 value = value.value if isinstance(value, PrivatDocumentType) else value
             setattr(document, key, value)
 
-        document.updated_at = datetime.utcnow()
+        document.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(document)
@@ -1084,7 +1085,7 @@ class PrivatDocumentService:
 
         # Soft-Delete: Markiere als geloescht
         document.is_active = False
-        document.deleted_at = datetime.utcnow()
+        document.deleted_at = utc_now()
         document.deleted_by_id = requesting_user_id
 
         await db.commit()
@@ -1153,7 +1154,7 @@ class PrivatDocumentService:
 
         # Wiederherstellen (Soft-Delete rueckgaengig machen)
         document.deleted_at = None
-        document.updated_at = datetime.utcnow()
+        document.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(document)
@@ -1228,7 +1229,7 @@ class PrivatDocumentService:
 
         old_folder_id = document.folder_id
         document.folder_id = folder_id
-        document.updated_at = datetime.utcnow()
+        document.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(document)
@@ -1362,7 +1363,7 @@ class PrivatDocumentService:
         # SECURITY FIX (Iteration 19): Bereinige content nach dem Speichern
         del content
         secure_memory_cleanup()
-        document.updated_at = datetime.utcnow()
+        document.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(document)

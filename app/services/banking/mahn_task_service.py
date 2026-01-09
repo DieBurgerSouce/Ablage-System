@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, date, timedelta
+from app.core.datetime_utils import utc_now
 from enum import Enum
 from typing import Optional, List, Tuple, Dict, Any
 from uuid import UUID, uuid4
@@ -243,8 +244,8 @@ class MahnTaskService:
             status=MahnTaskStatus.PENDING.value,
             priority=priority,
             snooze_count=0,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(task)
@@ -285,7 +286,7 @@ class MahnTaskService:
 
         task.assigned_user_id = assigned_user_id
         task.status = MahnTaskStatus.IN_PROGRESS.value
-        task.updated_at = datetime.utcnow()
+        task.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(task)
@@ -337,7 +338,7 @@ class MahnTaskService:
         task.snoozed_until = snooze_until
         task.snooze_count += 1
         task.snooze_reason = reason
-        task.updated_at = datetime.utcnow()
+        task.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(task)
@@ -374,10 +375,10 @@ class MahnTaskService:
             raise ValueError("Aufgabe nicht gefunden")
 
         task.status = MahnTaskStatus.COMPLETED.value
-        task.completed_at = datetime.utcnow()
+        task.completed_at = utc_now()
         task.completed_by_id = user_id
         task.completion_notes = notes
-        task.updated_at = datetime.utcnow()
+        task.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(task)
@@ -414,7 +415,7 @@ class MahnTaskService:
 
         task.status = MahnTaskStatus.CANCELLED.value
         task.completion_notes = reason
-        task.updated_at = datetime.utcnow()
+        task.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(task)
@@ -500,7 +501,7 @@ class MahnTaskService:
         call_log = PhoneCallLog(
             id=uuid4(),
             dunning_record_id=dunning_record_id,
-            called_at=datetime.utcnow(),
+            called_at=utc_now(),
             called_by_id=user_id,
             contact_name=contact_name,
             phone_number=phone_number,
@@ -519,7 +520,7 @@ class MahnTaskService:
             if dunning:
                 dunning.mahnstopp = True
                 dunning.mahnstopp_reason = f"Reklamation erhoben ({contact_name})"
-                dunning.updated_at = datetime.utcnow()
+                dunning.updated_at = utc_now()
 
         # Bei Zahlungszusage: Follow-up Task erstellen
         if outcome == PhoneCallOutcome.PAYMENT_PROMISED and follow_up_date:
@@ -622,7 +623,7 @@ class MahnTaskService:
             .values(
                 status=MahnTaskStatus.PENDING.value,
                 snoozed_until=None,
-                updated_at=datetime.utcnow(),
+                updated_at=utc_now(),
             )
         )
 

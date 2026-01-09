@@ -16,6 +16,7 @@ import io
 import re
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timedelta
+from app.core.datetime_utils import utc_now
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 from uuid import UUID, uuid4
@@ -1021,7 +1022,7 @@ class DropShipmentClassificationService:
 
         # Mark as deleted
         classification.is_deleted = True
-        classification.deleted_at = datetime.utcnow()
+        classification.deleted_at = utc_now()
         classification.deleted_by = deleted_by
 
         # Create audit log entry
@@ -1114,7 +1115,7 @@ class DropShipmentClassificationService:
         new_transaction_type = transaction_type or classification.transaction_type
         new_company_role = company_role or classification.company_role
         new_vat_category = vat_category or classification.vat_category
-        now = datetime.utcnow()
+        now = utc_now()
 
         # Optimistic locking: Only update if updated_at hasn't changed
         result = await self.session.execute(
@@ -1691,7 +1692,7 @@ class DropShipmentClassificationService:
 
         # Soft-delete: Set is_deleted flag and timestamp
         classification.is_deleted = True
-        classification.deleted_at = datetime.utcnow()
+        classification.deleted_at = utc_now()
         classification.deleted_by = user_id
 
         # Create audit log entry
@@ -2110,7 +2111,7 @@ class VatIdValidationService:
 
         if cached and cached.last_validated:
             # Use cache if validated within last 24 hours
-            if datetime.utcnow() - cached.last_validated.replace(tzinfo=None) < timedelta(hours=24):
+            if utc_now() - cached.last_validated.replace(tzinfo=None) < timedelta(hours=24):
                 return {
                     'vat_id': cached.vat_id,
                     'is_valid': cached.is_valid,
@@ -2131,14 +2132,14 @@ class VatIdValidationService:
         # Save to registry
         if cached:
             cached.is_valid = is_valid
-            cached.last_validated = datetime.utcnow()
+            cached.last_validated = utc_now()
             cached.validation_response = {'simulated': True}
         else:
             new_entry = VatIdRegistry(
                 vat_id=vat_id,
                 country_code=country_code,
                 is_valid=is_valid,
-                last_validated=datetime.utcnow(),
+                last_validated=utc_now(),
                 validation_response={'simulated': True},
             )
             self.session.add(new_entry)

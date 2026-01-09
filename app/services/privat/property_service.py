@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime, date
+from app.core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Optional, List
 
@@ -70,8 +71,8 @@ class PrivatPropertyService:
             purchase_price=data.purchase_price,
             current_value=data.current_value,
             notes=data.notes,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(property_obj)
@@ -139,7 +140,7 @@ class PrivatPropertyService:
             return property_obj
 
         # Pruefe explizite Berechtigung
-        now = datetime.utcnow()
+        now = utc_now()
         access_result = await db.execute(
             select(PrivatSpaceAccess)
             .where(
@@ -305,7 +306,7 @@ class PrivatPropertyService:
         for key, value in update_data.items():
             setattr(property_obj, key, value)
 
-        property_obj.updated_at = datetime.utcnow()
+        property_obj.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(property_obj)
@@ -358,8 +359,8 @@ class PrivatPropertyService:
             deposit=data.deposit,
             notes=data.notes,
             is_active=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(tenant)
@@ -426,7 +427,7 @@ class PrivatPropertyService:
             return tenant
 
         # Pruefe explizite Berechtigung
-        now = datetime.utcnow()
+        now = utc_now()
         access_result = await db.execute(
             select(PrivatSpaceAccess)
             .where(
@@ -526,7 +527,7 @@ class PrivatPropertyService:
         for key, value in update_data.items():
             setattr(tenant, key, value)
 
-        tenant.updated_at = datetime.utcnow()
+        tenant.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(tenant)
@@ -575,7 +576,7 @@ class PrivatPropertyService:
             period_end=data.period_end,
             payment_method=data.payment_method,
             notes=data.notes,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
 
         db.add(income)
@@ -609,7 +610,7 @@ class PrivatPropertyService:
             period_end=data.period_end,
             payment_method=data.payment_method,
             notes=data.notes,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
 
         db.add(income)
@@ -721,8 +722,8 @@ class PrivatPropertyService:
             due_date=data.due_date,
             is_paid=data.is_paid,
             notes=data.notes,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(statement)
@@ -759,8 +760,8 @@ class PrivatPropertyService:
             due_date=data.due_date,
             is_paid=data.is_paid,
             notes=data.notes,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(statement)

@@ -22,3 +22,6 @@ export { InvestmentDetailPage } from './InvestmentDetailPage';
 
 // Space Pages
 export { SpaceDetailPage } from './SpaceDetailPage';
+
+// Portfolio & Goals
+export { PortfolioPage } from './PortfolioPage';

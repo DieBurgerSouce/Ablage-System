@@ -15,6 +15,7 @@ Feinpoliert und durchdacht - 99%+ Praezision.
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
@@ -324,7 +325,7 @@ async def create_group(
         needs_review=False,
         owner_id=current_user.id,
         confirmed_by_id=current_user.id,
-        confirmation_date=datetime.utcnow(),
+        confirmation_date=utc_now(),
     )
 
     db.add(group)
@@ -466,7 +467,7 @@ async def delete_group(
             doc.is_group_primary = False
 
     # Soft-Delete
-    group.deleted_at = datetime.utcnow()
+    group.deleted_at = utc_now()
 
     await db.commit()
 
@@ -646,7 +647,7 @@ async def reject_group(
             doc.is_group_primary = False
 
     # Gruppe als abgelehnt markieren und loeschen
-    group.deleted_at = datetime.utcnow()
+    group.deleted_at = utc_now()
     group.needs_review = False
 
     await db.commit()
@@ -795,14 +796,14 @@ async def merge_groups(
                 total_docs += 1
 
         # Source loeschen
-        source.deleted_at = datetime.utcnow()
+        source.deleted_at = utc_now()
         merged_count += 1
 
     # Target aktualisieren
     target.total_pages = total_docs
     target.user_confirmed = True
     target.confirmed_by_id = current_user.id
-    target.confirmation_date = datetime.utcnow()
+    target.confirmation_date = utc_now()
 
     await db.commit()
     await db.refresh(target)

@@ -14,6 +14,7 @@ import secrets
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta
+from app.core.datetime_utils import utc_now
 from typing import Tuple, Optional, Dict, List
 
 from cryptography.hazmat.primitives import hashes
@@ -209,7 +210,7 @@ class DecryptAttemptTracker:
             True wenn gesperrt
         """
         lockout_until = self._lockouts.get(identifier)
-        if lockout_until and datetime.utcnow() < lockout_until:
+        if lockout_until and utc_now() < lockout_until:
             return True
         # Lockout abgelaufen - aufräumen
         if lockout_until:
@@ -230,7 +231,7 @@ class DecryptAttemptTracker:
             True wenn gesperrt
         """
         lockout_until = self._lockouts.get(identifier)
-        if lockout_until and datetime.utcnow() < lockout_until:
+        if lockout_until and utc_now() < lockout_until:
             logger.warning(
                 "privat_brute_force_locked_in_memory_fallback",
                 identifier_hash=hash(identifier) % 10000,  # Nur Hash loggen
@@ -294,7 +295,7 @@ class DecryptAttemptTracker:
         Args:
             identifier: Eindeutiger Identifier
         """
-        now = datetime.utcnow()
+        now = utc_now()
         # Alte Eintraege entfernen (aelter als Lockout-Zeitraum)
         cutoff = now - timedelta(minutes=self.LOCKOUT_MINUTES)
         self._attempts[identifier] = [
@@ -416,7 +417,7 @@ class DecryptAttemptTracker:
         """
         if self.is_locked(identifier):
             return 0
-        now = datetime.utcnow()
+        now = utc_now()
         cutoff = now - timedelta(minutes=self.LOCKOUT_MINUTES)
         recent_attempts = [
             t for t in self._attempts.get(identifier, []) if t > cutoff
@@ -478,7 +479,7 @@ class DecryptAttemptTracker:
                 )
 
         # Fallback zu In-Memory
-        now = datetime.utcnow()
+        now = utc_now()
         cutoff = now - timedelta(minutes=self.LOCKOUT_MINUTES)
         recent_attempts = [
             t for t in self._attempts.get(identifier, []) if t > cutoff

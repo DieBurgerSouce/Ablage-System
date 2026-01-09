@@ -639,3 +639,216 @@ export async function denyEmergencyRequest(requestId: string, reason: string): P
 export async function revokeEmergencyAccess(requestId: string): Promise<void> {
   await apiClient.post(`${BASE_URL}/emergency/requests/${requestId}/revoke`);
 }
+
+// ==================== Portfolio API ====================
+
+export interface PortfolioSnapshot {
+  id: string;
+  spaceId: string;
+  snapshotDate: string;
+  totalRealEstate: number;
+  totalVehicles: number;
+  totalInvestments: number;
+  totalCash: number;
+  totalOtherAssets: number;
+  totalMortgages: number;
+  totalLoans: number;
+  totalOtherLiabilities: number;
+  totalAssets: number;
+  totalLiabilities: number;
+  netWorth: number;
+  netWorthChangeAbsolute?: number;
+  netWorthChangePercent?: number;
+  debtToAssetsRatio: number;
+  liquidityRatio: number;
+  assetAllocation?: Record<string, number>;
+  createdAt: string;
+}
+
+export interface FinancialGoal {
+  id: string;
+  spaceId: string;
+  name: string;
+  goalType: 'retirement' | 'education' | 'property' | 'debt_free' | 'emergency_fund' | 'custom';
+  targetValue: number;
+  targetDate: string;
+  currentValue: number;
+  progressPercent: number;
+  monthlySavingsRequired?: number;
+  monthsRemaining?: number;
+  isOnTrack: boolean;
+  projectedCompletionDate?: string;
+  linkedAssets?: Record<string, unknown>;
+  status: 'active' | 'paused' | 'completed' | 'cancelled';
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PortfolioDashboardResponse {
+  snapshot: PortfolioSnapshot | null;
+  historicalSnapshots: PortfolioSnapshot[];
+  goals: FinancialGoal[];
+  goalsSummary: FinancialGoalsSummary;
+}
+
+export interface FinancialGoalsSummary {
+  totalGoals: number;
+  activeGoals: number;
+  completedGoals: number;
+  onTrackCount: number;
+  totalTargetValue: number;
+  totalCurrentValue: number;
+}
+
+export interface FinancialGoalCreate {
+  name: string;
+  goalType: 'retirement' | 'education' | 'property' | 'debt_free' | 'emergency_fund' | 'custom';
+  targetValue: number;
+  targetDate: string;
+  currentValue?: number;
+  priority?: number;
+  linkedAssets?: Record<string, unknown>;
+}
+
+export interface FinancialGoalUpdate {
+  name?: string;
+  goalType?: 'retirement' | 'education' | 'property' | 'debt_free' | 'emergency_fund' | 'custom';
+  targetValue?: number;
+  targetDate?: string;
+  status?: 'active' | 'paused' | 'completed' | 'cancelled';
+  priority?: number;
+  linkedAssets?: Record<string, unknown>;
+}
+
+export interface GoalFilters {
+  status?: string;
+  goalType?: string;
+}
+
+/**
+ * Holt das komplette Portfolio-Dashboard inkl. Snapshot und Zielen.
+ */
+export async function getPortfolioDashboard(spaceId: string): Promise<PortfolioDashboardResponse> {
+  const response = await apiClient.get<PortfolioDashboardResponse>(
+    `${BASE_URL}/spaces/${spaceId}/portfolio/dashboard`
+  );
+  return toCamelCase(response.data);
+}
+
+/**
+ * Erstellt einen neuen Portfolio-Snapshot.
+ */
+export async function createPortfolioSnapshot(spaceId: string): Promise<PortfolioSnapshot> {
+  const response = await apiClient.post<PortfolioSnapshot>(
+    `${BASE_URL}/spaces/${spaceId}/portfolio/snapshot`
+  );
+  return toCamelCase(response.data);
+}
+
+/**
+ * Listet historische Portfolio-Snapshots.
+ */
+export async function listPortfolioSnapshots(
+  spaceId: string,
+  limit: number = 12
+): Promise<PortfolioSnapshot[]> {
+  const response = await apiClient.get<PortfolioSnapshot[]>(
+    `${BASE_URL}/spaces/${spaceId}/portfolio/snapshots`,
+    { params: { limit } }
+  );
+  return toCamelCase(response.data);
+}
+
+// ==================== Financial Goals API ====================
+
+/**
+ * Listet alle finanziellen Ziele eines Space.
+ */
+export async function listFinancialGoals(
+  spaceId: string,
+  filters: GoalFilters = {}
+): Promise<FinancialGoal[]> {
+  const response = await apiClient.get<FinancialGoal[]>(
+    `${BASE_URL}/spaces/${spaceId}/goals`,
+    { params: buildQueryParams(filters) }
+  );
+  return toCamelCase(response.data);
+}
+
+/**
+ * Erstellt ein neues finanzielles Ziel.
+ */
+export async function createFinancialGoal(
+  spaceId: string,
+  data: FinancialGoalCreate
+): Promise<FinancialGoal> {
+  const response = await apiClient.post<FinancialGoal>(
+    `${BASE_URL}/spaces/${spaceId}/goals`,
+    toSnakeCase(data)
+  );
+  return toCamelCase(response.data);
+}
+
+/**
+ * Holt ein einzelnes Ziel.
+ */
+export async function getFinancialGoal(
+  spaceId: string,
+  goalId: string
+): Promise<FinancialGoal> {
+  const response = await apiClient.get<FinancialGoal>(
+    `${BASE_URL}/spaces/${spaceId}/goals/${goalId}`
+  );
+  return toCamelCase(response.data);
+}
+
+/**
+ * Aktualisiert ein Ziel.
+ */
+export async function updateFinancialGoal(
+  spaceId: string,
+  goalId: string,
+  data: FinancialGoalUpdate
+): Promise<FinancialGoal> {
+  const response = await apiClient.patch<FinancialGoal>(
+    `${BASE_URL}/spaces/${spaceId}/goals/${goalId}`,
+    toSnakeCase(data)
+  );
+  return toCamelCase(response.data);
+}
+
+/**
+ * Aktualisiert den Fortschritt eines Ziels.
+ */
+export async function updateGoalProgress(
+  spaceId: string,
+  goalId: string,
+  newValue: number
+): Promise<FinancialGoal> {
+  const response = await apiClient.post<FinancialGoal>(
+    `${BASE_URL}/spaces/${spaceId}/goals/${goalId}/progress`,
+    { new_value: newValue }
+  );
+  return toCamelCase(response.data);
+}
+
+/**
+ * Loescht ein Ziel.
+ */
+export async function deleteFinancialGoal(
+  spaceId: string,
+  goalId: string
+): Promise<void> {
+  await apiClient.delete(`${BASE_URL}/spaces/${spaceId}/goals/${goalId}`);
+}
+
+/**
+ * Holt die Zusammenfassung aller Ziele.
+ */
+export async function getGoalsSummary(spaceId: string): Promise<FinancialGoalsSummary> {
+  const response = await apiClient.get<FinancialGoalsSummary>(
+    `${BASE_URL}/spaces/${spaceId}/goals/summary`
+  );
+  return toCamelCase(response.data);
+}

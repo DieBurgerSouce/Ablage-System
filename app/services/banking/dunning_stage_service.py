@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 from decimal import Decimal
 from enum import Enum
 from typing import Optional, List, Dict, Any
@@ -216,8 +217,8 @@ class DunningStageConfigService:
             fee_amount=fee_amount,
             is_active=True,
             sort_order=next_sort,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(stage)
@@ -278,7 +279,7 @@ class DunningStageConfigService:
         if is_active is not None:
             stage.is_active = is_active
 
-        stage.updated_at = datetime.utcnow()
+        stage.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(stage)
@@ -348,7 +349,7 @@ class DunningStageConfigService:
             if stage_id in stages:
                 stages[stage_id].sort_order = sort_order
                 stages[stage_id].stage_number = sort_order
-                stages[stage_id].updated_at = datetime.utcnow()
+                stages[stage_id].updated_at = utc_now()
 
         await db.commit()
 
@@ -464,7 +465,7 @@ class DunningStageConfigService:
                 override.exclusion_reason = exclusion_reason
             if notes is not None:
                 override.notes = notes
-            override.updated_at = datetime.utcnow()
+            override.updated_at = utc_now()
         else:
             # Create
             override = CustomerDunningOverride(
@@ -476,8 +477,8 @@ class DunningStageConfigService:
                 exclude_from_auto_dunning=exclude_from_auto_dunning,
                 exclusion_reason=exclusion_reason,
                 notes=notes,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=utc_now(),
+                updated_at=utc_now(),
             )
             db.add(override)
 
@@ -588,8 +589,8 @@ class DunningStageConfigService:
                 fee_amount=default.fee_amount,
                 is_active=True,
                 sort_order=default.stage_number,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=utc_now(),
+                updated_at=utc_now(),
             )
             db.add(stage)
             stages.append(stage)

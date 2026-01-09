@@ -8,6 +8,7 @@ Verwaltet Bankkonten:
 """
 
 from datetime import datetime, timedelta
+from app.core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Optional, List, TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -272,7 +273,7 @@ class AccountService:
             payment_stats = payment_result.first()
 
             # Monatliche Ein-/Ausgaben
-            month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            month_start = utc_now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
             monthly_query = select(
                 func.sum(BankTransaction.amount).filter(BankTransaction.amount > 0).label("inflow"),
@@ -328,7 +329,7 @@ class AccountService:
         if data.sync_interval_hours is not None:
             account.sync_interval_hours = data.sync_interval_hours
 
-        account.updated_at = datetime.utcnow()
+        account.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(account)
@@ -349,7 +350,7 @@ class AccountService:
         if not account or account.user_id != user_id or account.deleted_at:
             return False
 
-        account.deleted_at = datetime.utcnow()
+        account.deleted_at = utc_now()
         account.is_active = False
 
         await db.commit()
@@ -369,7 +370,7 @@ class AccountService:
         account = await db.get(BankAccount, account_id)
         if account:
             account.current_balance = balance
-            account.balance_date = balance_date or datetime.utcnow()
+            account.balance_date = balance_date or utc_now()
             await db.commit()
 
     def validate_iban(self, iban: str) -> bool:

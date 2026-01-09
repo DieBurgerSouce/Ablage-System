@@ -21,6 +21,7 @@ import tarfile
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from app.core.datetime_utils import utc_now
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -483,7 +484,7 @@ class BackupService:
         Returns:
             BackupResult mit Pfad und Status
         """
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = utc_now().strftime("%Y%m%d_%H%M%S")
         output_dir = self.config.backup_dir / "minio" / f"minio_{timestamp}"
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1138,7 +1139,7 @@ class BackupService:
             "config": 0,
         }
 
-        cutoff_timestamp = datetime.utcnow().timestamp() - (self.config.retention_days * 86400)
+        cutoff_timestamp = utc_now().timestamp() - (self.config.retention_days * 86400)
 
         for backup_type in deleted.keys():
             backup_dir = self.config.backup_dir / backup_type

@@ -36,3 +36,20 @@ export { EmergencyAccessPanel } from './emergency/EmergencyAccessPanel';
 
 // Shared Components
 export { DocumentUploadSection } from './shared/DocumentUploadSection';
+
+// Portfolio Dashboard
+export { PortfolioDashboard } from './PortfolioDashboard';
+export type {
+    PortfolioDashboardProps,
+    PortfolioSnapshot,
+    FinancialGoal,
+} from './PortfolioDashboard';
+
+// Intelligence Components
+export {
+    FinancialHealthDashboard,
+    RecommendationsPanel,
+    LoanScenarioSimulator,
+    NetWorthChart,
+    IntelligenceErrorBoundary,
+} from './intelligence';

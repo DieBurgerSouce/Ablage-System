@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 from typing import Optional, List
 
 from sqlalchemy import select, func, and_, or_
@@ -58,8 +59,8 @@ class PrivatFolderService:
             icon=data.icon,
             path=path,
             level=level,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(folder)
@@ -136,7 +137,7 @@ class PrivatFolderService:
             return folder
 
         # Pruefe explizite Berechtigung
-        now = datetime.utcnow()
+        now = utc_now()
         access_result = await db.execute(
             select(PrivatSpaceAccess)
             .where(
@@ -325,7 +326,7 @@ class PrivatFolderService:
             if key != "parent_id" or value is not None:
                 setattr(folder, key, value)
 
-        folder.updated_at = datetime.utcnow()
+        folder.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(folder)
@@ -469,7 +470,7 @@ class PrivatFolderService:
             folder.path = ""
             folder.level = 0
 
-        folder.updated_at = datetime.utcnow()
+        folder.updated_at = utc_now()
 
         # Aktualisiere Pfade aller Unterordner
         await self._update_children_paths(db, folder)
@@ -529,7 +530,7 @@ class PrivatFolderService:
             folder.path = ""
             folder.level = 0
 
-        folder.updated_at = datetime.utcnow()
+        folder.updated_at = utc_now()
 
         # Aktualisiere Pfade aller Unterordner
         await self._update_children_paths(db, folder)
@@ -561,5 +562,5 @@ class PrivatFolderService:
         for child in children:
             child.path = f"{parent.path}/{parent.id}"
             child.level = parent.level + 1
-            child.updated_at = datetime.utcnow()
+            child.updated_at = utc_now()
             await self._update_children_paths(db, child)

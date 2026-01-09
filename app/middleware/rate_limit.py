@@ -305,6 +305,237 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             else:
                 return {"limit": 50, "window": 60}  # Standard: 50/min
 
+        # Orchestration Module Endpoints - PHASE 0 CRITICAL: Rate Limiting
+        # Diese Limits schuetzen die Cross-Module Decision Engine vor Missbrauch
+        # Write-Endpoints (approve/reject/trigger) - striktere Limits
+        if path.startswith("/api/v1/orchestration") and any(
+            action in path for action in ["/approve", "/reject", "/trigger", "/execute"]
+        ):
+            if user_tier == "admin":
+                return {"limit": 60, "window": 60}  # Admin: 60/min
+            elif user_tier == "premium":
+                return {"limit": 20, "window": 60}  # Premium: 20/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
+        # Orchestration Read-Endpoints (decisions, summary, metrics, etc.)
+        if path.startswith("/api/v1/orchestration"):
+            if user_tier == "admin":
+                return {"limit": 300, "window": 60}  # Admin: 300/min
+            elif user_tier == "premium":
+                return {"limit": 120, "window": 60}  # Premium: 120/min
+            else:
+                return {"limit": 60, "window": 60}  # Standard: 60/min
+
+        # Privat-Modul Endpoints (Intelligence Layer) - PHASE 0 CRITICAL
+        if path.startswith("/api/v1/privat"):
+            if user_tier == "admin":
+                return {"limit": 200, "window": 60}  # Admin: 200/min
+            elif user_tier == "premium":
+                return {"limit": 100, "window": 60}  # Premium: 100/min
+            else:
+                return {"limit": 50, "window": 60}  # Standard: 50/min
+
+        # GDPR Endpoints - PHASE 0 CRITICAL: Schutz vor Massen-Datenlöschung
+        # Deletion und Export Requests sind besonders sensitiv
+        if path.startswith("/api/v1/gdpr"):
+            if any(action in path for action in ["/delete", "/export", "/anonymize"]):
+                if user_tier == "admin":
+                    return {"limit": 30, "window": 60}  # Admin: 30/min
+                elif user_tier == "premium":
+                    return {"limit": 10, "window": 60}  # Premium: 10/min
+                else:
+                    return {"limit": 5, "window": 60}  # Standard: 5/min
+            # GDPR Read-Endpoints
+            if user_tier == "admin":
+                return {"limit": 120, "window": 60}  # Admin: 120/min
+            elif user_tier == "premium":
+                return {"limit": 60, "window": 60}  # Premium: 60/min
+            else:
+                return {"limit": 30, "window": 60}  # Standard: 30/min
+
+        # Vault Endpoints - PHASE 0 CRITICAL: Secrets Management
+        # Strenge Limits um Brute-Force auf verschlüsselte Daten zu verhindern
+        if path.startswith("/api/v1/vault"):
+            if any(action in path for action in ["/decrypt", "/unlock", "/keys"]):
+                if user_tier == "admin":
+                    return {"limit": 30, "window": 60}  # Admin: 30/min
+                elif user_tier == "premium":
+                    return {"limit": 10, "window": 60}  # Premium: 10/min
+                else:
+                    return {"limit": 5, "window": 60}  # Standard: 5/min
+            # Vault Read-Endpoints
+            if user_tier == "admin":
+                return {"limit": 100, "window": 60}  # Admin: 100/min
+            elif user_tier == "premium":
+                return {"limit": 50, "window": 60}  # Premium: 50/min
+            else:
+                return {"limit": 20, "window": 60}  # Standard: 20/min
+
+        # API Keys Endpoints - PHASE 0 CRITICAL: Schutz vor API-Key-Flut
+        if path.startswith("/api/v1/api-keys"):
+            if user_tier == "admin":
+                return {"limit": 30, "window": 60}  # Admin: 30/min
+            elif user_tier == "premium":
+                return {"limit": 10, "window": 60}  # Premium: 10/min
+            else:
+                return {"limit": 5, "window": 60}  # Standard: 5/min
+
+        # Admin Endpoints - PHASE 0 CRITICAL: Administrative Operationen
+        if path.startswith("/api/v1/admin"):
+            # Destructive Admin Operations
+            if any(action in path for action in ["/delete", "/purge", "/reset", "/wipe"]):
+                if user_tier == "admin":
+                    return {"limit": 20, "window": 60}  # Admin: 20/min
+                else:
+                    return {"limit": 0, "window": 60}  # Non-admin: blocked
+            # Normal Admin Endpoints
+            if user_tier == "admin":
+                return {"limit": 200, "window": 60}  # Admin: 200/min
+            elif user_tier == "premium":
+                return {"limit": 30, "window": 60}  # Premium: 30/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
+        # Finance Endpoints - Sensitive financial data
+        if path.startswith("/api/v1/finance"):
+            if any(action in path for action in ["/transfer", "/payment", "/reconcile"]):
+                if user_tier == "admin":
+                    return {"limit": 60, "window": 60}  # Admin: 60/min
+                elif user_tier == "premium":
+                    return {"limit": 30, "window": 60}  # Premium: 30/min
+                else:
+                    return {"limit": 10, "window": 60}  # Standard: 10/min
+            # Finance Read-Endpoints
+            if user_tier == "admin":
+                return {"limit": 200, "window": 60}  # Admin: 200/min
+            elif user_tier == "premium":
+                return {"limit": 100, "window": 60}  # Premium: 100/min
+            else:
+                return {"limit": 50, "window": 60}  # Standard: 50/min
+
+        # Document Endpoints - Core functionality
+        if path.startswith("/api/v1/documents"):
+            # Write operations (upload, delete, modify)
+            if any(method in path for method in ["/upload", "/delete", "/batch"]):
+                if user_tier == "admin":
+                    return {"limit": 200, "window": 60}  # Admin: 200/min
+                elif user_tier == "premium":
+                    return {"limit": 100, "window": 60}  # Premium: 100/min
+                else:
+                    return {"limit": 30, "window": 60}  # Standard: 30/min
+            # Read operations
+            if user_tier == "admin":
+                return {"limit": 500, "window": 60}  # Admin: 500/min
+            elif user_tier == "premium":
+                return {"limit": 200, "window": 60}  # Premium: 200/min
+            else:
+                return {"limit": 100, "window": 60}  # Standard: 100/min
+
+        # Search Endpoints - Potentially resource-intensive
+        if path.startswith("/api/v1/search"):
+            if user_tier == "admin":
+                return {"limit": 200, "window": 60}  # Admin: 200/min
+            elif user_tier == "premium":
+                return {"limit": 100, "window": 60}  # Premium: 100/min
+            else:
+                return {"limit": 30, "window": 60}  # Standard: 30/min
+
+        # RAG/Chat Endpoints - LLM-intensive, costly
+        if path.startswith("/api/v1/rag"):
+            if user_tier == "admin":
+                return {"limit": 100, "window": 60}  # Admin: 100/min
+            elif user_tier == "premium":
+                return {"limit": 30, "window": 60}  # Premium: 30/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
+        # Reports Endpoints - Resource-intensive report generation
+        if path.startswith("/api/v1/reports"):
+            if any(action in path for action in ["/execute", "/export", "/generate"]):
+                if user_tier == "admin":
+                    return {"limit": 30, "window": 60}  # Admin: 30/min
+                elif user_tier == "premium":
+                    return {"limit": 15, "window": 60}  # Premium: 15/min
+                else:
+                    return {"limit": 5, "window": 60}  # Standard: 5/min
+            # Report configuration endpoints
+            if user_tier == "admin":
+                return {"limit": 100, "window": 60}  # Admin: 100/min
+            elif user_tier == "premium":
+                return {"limit": 50, "window": 60}  # Premium: 50/min
+            else:
+                return {"limit": 20, "window": 60}  # Standard: 20/min
+
+        # Backup Endpoints - PHASE 0 CRITICAL: Schutz vor Backup-Missbrauch
+        if path.startswith("/api/v1/backup"):
+            if user_tier == "admin":
+                return {"limit": 20, "window": 60}  # Admin: 20/min
+            else:
+                return {"limit": 5, "window": 60}  # Others: 5/min
+
+        # Import Endpoints - Rate limit bulk imports
+        if path.startswith("/api/v1/imports"):
+            if user_tier == "admin":
+                return {"limit": 60, "window": 60}  # Admin: 60/min
+            elif user_tier == "premium":
+                return {"limit": 30, "window": 60}  # Premium: 30/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
+        # Export Endpoints - Rate limit bulk exports
+        if path.startswith("/api/v1/exports"):
+            if user_tier == "admin":
+                return {"limit": 60, "window": 60}  # Admin: 60/min
+            elif user_tier == "premium":
+                return {"limit": 30, "window": 60}  # Premium: 30/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
+        # Workflows Endpoints - Automation can be resource-intensive
+        if path.startswith("/api/v1/workflows"):
+            if any(action in path for action in ["/trigger", "/execute", "/run"]):
+                if user_tier == "admin":
+                    return {"limit": 60, "window": 60}  # Admin: 60/min
+                elif user_tier == "premium":
+                    return {"limit": 30, "window": 60}  # Premium: 30/min
+                else:
+                    return {"limit": 10, "window": 60}  # Standard: 10/min
+            # Workflow configuration
+            if user_tier == "admin":
+                return {"limit": 120, "window": 60}  # Admin: 120/min
+            elif user_tier == "premium":
+                return {"limit": 60, "window": 60}  # Premium: 60/min
+            else:
+                return {"limit": 30, "window": 60}  # Standard: 30/min
+
+        # Webhooks Endpoints - Prevent webhook spam
+        if path.startswith("/api/v1/webhooks"):
+            if user_tier == "admin":
+                return {"limit": 60, "window": 60}  # Admin: 60/min
+            elif user_tier == "premium":
+                return {"limit": 30, "window": 60}  # Premium: 30/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
+        # ML/AI Endpoints - Resource-intensive
+        if path.startswith("/api/v1/ml"):
+            if user_tier == "admin":
+                return {"limit": 60, "window": 60}  # Admin: 60/min
+            elif user_tier == "premium":
+                return {"limit": 30, "window": 60}  # Premium: 30/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
+        # Training Endpoints - OCR training operations
+        if path.startswith("/api/v1/training"):
+            if user_tier == "admin":
+                return {"limit": 60, "window": 60}  # Admin: 60/min
+            elif user_tier == "premium":
+                return {"limit": 30, "window": 60}  # Premium: 30/min
+            else:
+                return {"limit": 10, "window": 60}  # Standard: 10/min
+
         # General API endpoints
         return {"limit": 100, "window": 60}  # 100 per minute (default)
 
@@ -426,11 +657,33 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             True if endpoint is security-critical
         """
         critical_prefixes = [
+            # Authentication - Prevent brute-force
             "/api/v1/auth/login",
             "/api/v1/auth/register",
             "/api/v1/auth/reset-password",
             "/api/v1/auth/2fa",
-            "/api/v1/api-keys",  # API key creation
+            # API Key Management - Prevent key enumeration
+            "/api/v1/api-keys",
+            # GDPR Operations - Prevent mass deletion
+            "/api/v1/gdpr/delete",
+            "/api/v1/gdpr/export",
+            "/api/v1/gdpr/anonymize",
+            # Vault Operations - Prevent brute-force on encrypted data
+            "/api/v1/vault/decrypt",
+            "/api/v1/vault/unlock",
+            "/api/v1/vault/keys",
+            # Admin Destructive Operations
+            "/api/v1/admin/delete",
+            "/api/v1/admin/purge",
+            "/api/v1/admin/reset",
+            "/api/v1/admin/wipe",
+            # Backup Operations - Prevent unauthorized backup access
+            "/api/v1/backup/restore",
+            "/api/v1/backup/delete",
+            # Orchestration Decision Endpoints - Prevent automated manipulation
+            "/api/v1/orchestration/approve",
+            "/api/v1/orchestration/reject",
+            "/api/v1/orchestration/execute",
         ]
         return any(path.startswith(prefix) for prefix in critical_prefixes)
 

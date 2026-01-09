@@ -13,6 +13,7 @@ Feinpoliert und durchdacht - Enterprise-grade OCR Training.
 """
 
 from datetime import datetime, timezone
+from app.core.datetime_utils import utc_now
 from typing import Optional, List
 from uuid import UUID
 from pathlib import Path as FilePath
@@ -1936,7 +1937,7 @@ async def run_quality_check(
     alerts = await service.run_quality_check()
 
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": utc_now().isoformat(),
         "alerts_count": len(alerts),
         "alerts": [
             {

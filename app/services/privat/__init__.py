@@ -102,6 +102,16 @@ from app.services.privat.ki_prompt_service import (
     FinancialQAResponse,
 )
 
+# Predictive Intelligence
+from app.services.privat.predictive_intelligence_service import (
+    PredictiveIntelligenceService,
+    get_predictive_intelligence_service,
+    KPIProjection,
+    EarlyWarningAlert,
+    PredictiveInsightsSummary,
+    TrendAnalysis,
+)
+
 __all__ = [
     "PrivatSpaceService",
     "PrivatFolderService",
@@ -154,4 +164,11 @@ __all__ = [
     "InvestmentAdvice",
     "InsuranceCheckResult",
     "FinancialQAResponse",
+    # Predictive Intelligence
+    "PredictiveIntelligenceService",
+    "get_predictive_intelligence_service",
+    "KPIProjection",
+    "EarlyWarningAlert",
+    "PredictiveInsightsSummary",
+    "TrendAnalysis",
 ]

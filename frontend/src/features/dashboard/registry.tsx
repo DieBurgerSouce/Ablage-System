@@ -16,6 +16,10 @@ import {
     TrendingUp,
     Clock,
     FileCheck,
+    PiggyBank,
+    Home,
+    ShieldCheck,
+    CheckCircle2,
 } from 'lucide-react'
 
 export interface WidgetRegistryEntry {
@@ -121,6 +125,43 @@ const WIDGET_DEFINITIONS: WidgetRegistryEntry[] = [
         description: 'Heute verarbeitete Dokumente mit OCR-Erfolgsrate.',
         icon: FileCheck,
         category: 'data',
+        defaultSize: { w: 4, h: 3 },
+    },
+    // Enterprise KPI Widgets
+    {
+        type: 'portfolio-summary',
+        component: () => <div className="p-4">Portfolio Widget (coming soon)</div>,
+        label: 'Portfolio Uebersicht',
+        description: 'Nettovermoegen und Vermoegensaufteilung auf einen Blick.',
+        icon: PiggyBank,
+        category: 'finance',
+        defaultSize: { w: 6, h: 4 },
+    },
+    {
+        type: 'property-kpis',
+        component: () => <div className="p-4">Immobilien-KPIs (coming soon)</div>,
+        label: 'Immobilien KPIs',
+        description: 'Mietrendite, ROI und Wertentwicklung aller Immobilien.',
+        icon: Home,
+        category: 'finance',
+        defaultSize: { w: 6, h: 3 },
+    },
+    {
+        type: 'insurance-coverage',
+        component: () => <div className="p-4">Versicherungs-Abdeckung (coming soon)</div>,
+        label: 'Versicherungsschutz',
+        description: 'Deckungsluecken und anstehende Kuendigungsfristen.',
+        icon: ShieldCheck,
+        category: 'finance',
+        defaultSize: { w: 4, h: 3 },
+    },
+    {
+        type: 'approvals-pending',
+        component: () => <div className="p-4">Offene Genehmigungen (coming soon)</div>,
+        label: 'Genehmigungen',
+        description: 'Ausstehende Genehmigungsanfragen mit Faelligkeiten.',
+        icon: CheckCircle2,
+        category: 'action',
         defaultSize: { w: 4, h: 3 },
     },
 ]

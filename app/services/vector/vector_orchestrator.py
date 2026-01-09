@@ -16,6 +16,7 @@ Feinpoliert und durchdacht.
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 import hashlib
 import time
 
@@ -283,7 +284,7 @@ class VectorSearchOrchestrator:
             user_id: User UUID
         """
         metric = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now().isoformat(),
             "backend": backend,
             "embedding_model": embedding_model,
             "latency_total_ms": latency["total_ms"],

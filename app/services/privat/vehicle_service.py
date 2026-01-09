@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime, date
+from app.core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Optional, List
 
@@ -66,8 +67,8 @@ class PrivatVehicleService:
             next_service=data.next_service,
             notes=data.notes,
             is_active=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(vehicle)
@@ -135,7 +136,7 @@ class PrivatVehicleService:
             return vehicle
 
         # Pruefe explizite Berechtigung
-        now = datetime.utcnow()
+        now = utc_now()
         access_result = await db.execute(
             select(PrivatSpaceAccess)
             .where(
@@ -332,7 +333,7 @@ class PrivatVehicleService:
                 value = value.value if isinstance(value, FuelType) else value
             setattr(vehicle, key, value)
 
-        vehicle.updated_at = datetime.utcnow()
+        vehicle.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(vehicle)
@@ -364,7 +365,7 @@ class PrivatVehicleService:
 
         if soft_delete:
             vehicle.is_active = False
-            vehicle.updated_at = datetime.utcnow()
+            vehicle.updated_at = utc_now()
             await db.commit()
         else:
             await db.delete(vehicle)
@@ -398,7 +399,7 @@ class PrivatVehicleService:
             is_full_tank=data.is_full_tank,
             consumption=consumption,
             notes=data.notes,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
 
         db.add(log)
@@ -413,7 +414,7 @@ class PrivatVehicleService:
         vehicle = vehicle_result.scalar_one_or_none()
         if vehicle and data.mileage > (vehicle.mileage or 0):
             vehicle.mileage = data.mileage
-            vehicle.updated_at = datetime.utcnow()
+            vehicle.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(log)

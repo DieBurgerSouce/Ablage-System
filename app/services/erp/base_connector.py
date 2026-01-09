@@ -16,6 +16,7 @@ import structlog
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 from enum import Enum
 from typing import Any, Dict, List, Optional, TypeVar, Generic
 from uuid import UUID
@@ -585,7 +586,7 @@ class ERPConnector(ABC, Generic[T]):
             )
             return False
 
-        conflict.resolved_at = datetime.utcnow()
+        conflict.resolved_at = utc_now()
         conflict.resolution = resolution
 
         logger.info(
@@ -609,7 +610,7 @@ class ERPConnector(ABC, Generic[T]):
             True wenn Request erlaubt
         """
         with self._rate_limit_lock:
-            now = datetime.utcnow()
+            now = utc_now()
 
             # Reset counter if minute passed
             if self._rate_limit_reset and now > self._rate_limit_reset:
@@ -647,14 +648,14 @@ class ERPConnector(ABC, Generic[T]):
             entity=entity,
             direction=direction,
             success=success,
-            started_at=datetime.utcnow(),
+            started_at=utc_now(),
             error_message=error_message,
             sync_id=str(uuid.uuid4()),
         )
 
     def _complete_sync_result(self, result: ERPSyncResult) -> ERPSyncResult:
         """Vervollstaendigt das Sync-Ergebnis mit Timing."""
-        result.completed_at = datetime.utcnow()
+        result.completed_at = utc_now()
         if result.started_at:
             result.duration_seconds = (
                 result.completed_at - result.started_at

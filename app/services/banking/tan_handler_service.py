@@ -18,6 +18,8 @@ Sicherheitsfeatures:
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+
+from app.core.datetime_utils import utc_now
 from enum import Enum
 from typing import Optional, Dict, Any, List
 from uuid import UUID, uuid4
@@ -139,7 +141,7 @@ class TANHandlerService:
             raise ValueError("Zu viele TAN-Anfragen. Bitte warten Sie einige Minuten.")
 
         challenge_id = self._generate_challenge_id()
-        now = datetime.utcnow()
+        now = utc_now()
         expires_at = now + timedelta(minutes=self.CHALLENGE_TIMEOUT_MINUTES)
 
         # Challenge-Text generieren
@@ -267,7 +269,7 @@ class TANHandlerService:
             )
 
         # Ablauf pruefen
-        if datetime.utcnow() > challenge.expires_at:
+        if utc_now() > challenge.expires_at:
             challenge.status = ChallengeStatus.EXPIRED
             logger.info(
                 "tan_challenge_expired",
@@ -322,7 +324,7 @@ class TANHandlerService:
 
         # Erfolgreiche Verifikation
         challenge.status = ChallengeStatus.VERIFIED
-        challenge.verified_at = datetime.utcnow()
+        challenge.verified_at = utc_now()
 
         logger.info(
             "tan_verification_success",
@@ -394,7 +396,7 @@ class TANHandlerService:
 
         # Pruefe Ablauf
         if challenge.status == ChallengeStatus.PENDING:
-            if datetime.utcnow() > challenge.expires_at:
+            if utc_now() > challenge.expires_at:
                 challenge.status = ChallengeStatus.EXPIRED
 
         return challenge
@@ -443,7 +445,7 @@ class TANHandlerService:
         Returns:
             Anzahl bereinigter Challenges
         """
-        now = datetime.utcnow()
+        now = utc_now()
         expired_ids = []
 
         for challenge_id, challenge in self._challenges.items():
@@ -505,7 +507,7 @@ class TANHandlerService:
             "payment_id": str(payment_id),
             "amount": amount,
             "iban": iban,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now().isoformat(),
         }
 
         # In Produktion: QR-Code generieren
@@ -590,7 +592,7 @@ class TANHandlerService:
             True wenn erlaubt
         """
         user_key = str(user_id)
-        now = datetime.utcnow()
+        now = utc_now()
         window_start = now - timedelta(seconds=self.RATE_LIMIT_WINDOW)
 
         # Hole bisherige Requests
@@ -622,7 +624,7 @@ class TANHandlerService:
             True wenn erlaubt
         """
         user_key = str(user_id)
-        now = datetime.utcnow()
+        now = utc_now()
         window_start = now - timedelta(seconds=self.TAN_VERIFY_RATE_LIMIT_WINDOW)
 
         # Hole bisherige Versuche
@@ -657,7 +659,7 @@ class TANHandlerService:
             return False
 
         # Pruefe ob Lockout abgelaufen
-        if datetime.utcnow() > lockout_time + timedelta(seconds=self.USER_LOCKOUT_DURATION):
+        if utc_now() > lockout_time + timedelta(seconds=self.USER_LOCKOUT_DURATION):
             # Lockout aufheben
             del self._user_lockouts[user_key]
             self._failed_challenges[user_key] = 0
@@ -688,7 +690,7 @@ class TANHandlerService:
         failed_count = self._failed_challenges.get(user_key, 0)
 
         if failed_count >= self.USER_LOCKOUT_THRESHOLD:
-            self._user_lockouts[user_key] = datetime.utcnow()
+            self._user_lockouts[user_key] = utc_now()
             logger.warning(
                 "user_tan_lockout",
                 user_id=user_key,

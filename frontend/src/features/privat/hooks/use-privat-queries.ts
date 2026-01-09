@@ -121,6 +121,12 @@ export const privatQueryKeys = {
   // Emergency
   emergencyContacts: (spaceId: string) => [...privatQueryKeys.space(spaceId), 'emergency', 'contacts'] as const,
   emergencyRequests: (spaceId: string) => [...privatQueryKeys.space(spaceId), 'emergency', 'requests'] as const,
+  // Portfolio & Financial Goals
+  portfolioDashboard: (spaceId: string) => [...privatQueryKeys.space(spaceId), 'portfolio', 'dashboard'] as const,
+  portfolioSnapshots: (spaceId: string) => [...privatQueryKeys.space(spaceId), 'portfolio', 'snapshots'] as const,
+  financialGoals: (spaceId: string) => [...privatQueryKeys.space(spaceId), 'goals'] as const,
+  financialGoal: (spaceId: string, goalId: string) => [...privatQueryKeys.financialGoals(spaceId), goalId] as const,
+  goalsSummary: (spaceId: string) => [...privatQueryKeys.financialGoals(spaceId), 'summary'] as const,
 };
 
 // ==================== Dashboard Hooks ====================
@@ -963,6 +969,142 @@ export function useRevokeEmergencyAccess() {
       privatApi.revokeEmergencyAccess(requestId),
     onSuccess: (_, { spaceId }) => {
       queryClient.invalidateQueries({ queryKey: privatQueryKeys.emergencyRequests(spaceId) });
+    },
+  });
+}
+
+// ==================== Portfolio Hooks ====================
+
+export function usePortfolioDashboard(
+  spaceId: string,
+  options?: Omit<UseQueryOptions<privatApi.PortfolioDashboardResponse>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: privatQueryKeys.portfolioDashboard(spaceId),
+    queryFn: () => privatApi.getPortfolioDashboard(spaceId),
+    enabled: !!spaceId,
+    staleTime: 5 * 60 * 1000, // 5 Minuten
+    ...options,
+  });
+}
+
+export function usePortfolioSnapshots(
+  spaceId: string,
+  limit: number = 12,
+  options?: Omit<UseQueryOptions<privatApi.PortfolioSnapshot[]>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: [...privatQueryKeys.portfolioSnapshots(spaceId), limit],
+    queryFn: () => privatApi.listPortfolioSnapshots(spaceId, limit),
+    enabled: !!spaceId,
+    staleTime: 5 * 60 * 1000, // 5 Minuten
+    ...options,
+  });
+}
+
+export function useCreatePortfolioSnapshot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (spaceId: string) => privatApi.createPortfolioSnapshot(spaceId),
+    onSuccess: (_, spaceId) => {
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.portfolioDashboard(spaceId) });
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.portfolioSnapshots(spaceId) });
+    },
+  });
+}
+
+// ==================== Financial Goals Hooks ====================
+
+export function useFinancialGoals(
+  spaceId: string,
+  filters: privatApi.GoalFilters = {},
+  options?: Omit<UseQueryOptions<privatApi.FinancialGoal[]>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: [...privatQueryKeys.financialGoals(spaceId), filters],
+    queryFn: () => privatApi.listFinancialGoals(spaceId, filters),
+    enabled: !!spaceId,
+    staleTime: 2 * 60 * 1000, // 2 Minuten
+    ...options,
+  });
+}
+
+export function useFinancialGoal(
+  spaceId: string,
+  goalId: string,
+  options?: Omit<UseQueryOptions<privatApi.FinancialGoal>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: privatQueryKeys.financialGoal(spaceId, goalId),
+    queryFn: () => privatApi.getFinancialGoal(spaceId, goalId),
+    enabled: !!spaceId && !!goalId,
+    ...options,
+  });
+}
+
+export function useGoalsSummary(
+  spaceId: string,
+  options?: Omit<UseQueryOptions<privatApi.FinancialGoalsSummary>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: privatQueryKeys.goalsSummary(spaceId),
+    queryFn: () => privatApi.getGoalsSummary(spaceId),
+    enabled: !!spaceId,
+    staleTime: 2 * 60 * 1000, // 2 Minuten
+    ...options,
+  });
+}
+
+export function useCreateFinancialGoal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ spaceId, data }: { spaceId: string; data: privatApi.FinancialGoalCreate }) =>
+      privatApi.createFinancialGoal(spaceId, data),
+    onSuccess: (_, { spaceId }) => {
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.financialGoals(spaceId) });
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.goalsSummary(spaceId) });
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.portfolioDashboard(spaceId) });
+    },
+  });
+}
+
+export function useUpdateFinancialGoal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ spaceId, goalId, data }: { spaceId: string; goalId: string; data: privatApi.FinancialGoalUpdate }) =>
+      privatApi.updateFinancialGoal(spaceId, goalId, data),
+    onSuccess: (_, { spaceId, goalId }) => {
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.financialGoal(spaceId, goalId) });
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.financialGoals(spaceId) });
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.goalsSummary(spaceId) });
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.portfolioDashboard(spaceId) });
+    },
+  });
+}
+
+export function useUpdateGoalProgress() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ spaceId, goalId, newValue }: { spaceId: string; goalId: string; newValue: number }) =>
+      privatApi.updateGoalProgress(spaceId, goalId, newValue),
+    onSuccess: (_, { spaceId, goalId }) => {
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.financialGoal(spaceId, goalId) });
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.financialGoals(spaceId) });
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.goalsSummary(spaceId) });
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.portfolioDashboard(spaceId) });
+    },
+  });
+}
+
+export function useDeleteFinancialGoal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ spaceId, goalId }: { spaceId: string; goalId: string }) =>
+      privatApi.deleteFinancialGoal(spaceId, goalId),
+    onSuccess: (_, { spaceId }) => {
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.financialGoals(spaceId) });
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.goalsSummary(spaceId) });
+      queryClient.invalidateQueries({ queryKey: privatQueryKeys.portfolioDashboard(spaceId) });
     },
   });
 }

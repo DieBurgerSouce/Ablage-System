@@ -14,6 +14,7 @@ import structlog
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -176,7 +177,7 @@ async def mark_as_read(
         )
 
     notification.is_read = True
-    notification.read_at = datetime.utcnow()
+    notification.read_at = utc_now()
     await db.commit()
     await db.refresh(notification)
 
@@ -199,7 +200,7 @@ async def mark_all_as_read(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Alle Benachrichtigungen als gelesen markieren."""
-    now = datetime.utcnow()
+    now = utc_now()
 
     await db.execute(
         update(UserNotification)

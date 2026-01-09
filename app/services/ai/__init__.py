@@ -13,6 +13,13 @@ from app.services.ai.smart_matching_service import SmartMatchingService
 from app.services.ai.anomaly_detection_service import AnomalyDetectionService
 from app.services.ai.duplicate_detection_service import DuplicateDetectionService
 from app.services.ai.learning_pipeline import AILearningPipeline
+from app.services.ai.ollama_service import (
+    OllamaService,
+    OllamaConfig,
+    ExtractedEntities,
+    ContractAnalysis,
+    get_ollama_service,
+)
 
 __all__ = [
     "AIDecisionService",
@@ -21,4 +28,10 @@ __all__ = [
     "AnomalyDetectionService",
     "DuplicateDetectionService",
     "AILearningPipeline",
+    # Ollama (lokale LLM)
+    "OllamaService",
+    "OllamaConfig",
+    "ExtractedEntities",
+    "ContractAnalysis",
+    "get_ollama_service",
 ]

@@ -18,6 +18,7 @@ import shutil
 import uuid as uuid_module
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from app.core.datetime_utils import utc_now
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -441,13 +442,13 @@ class SuryaCheckpointManager:
                 v.is_active = False
                 v.is_production = False
                 v.traffic_percentage = 0.0
-                v.deactivated_at = datetime.utcnow()
+                v.deactivated_at = utc_now()
 
         # Ziel-Version aktivieren
         target.is_active = True
         target.is_production = is_production
         target.traffic_percentage = traffic_percentage
-        target.activated_at = datetime.utcnow()
+        target.activated_at = utc_now()
 
         await db.commit()
         logger.info(f"Surya-Version aktiviert: {version} ({traffic_percentage}%)")
@@ -473,7 +474,7 @@ class SuryaCheckpointManager:
         model.is_active = False
         model.is_production = False
         model.traffic_percentage = 0.0
-        model.deactivated_at = datetime.utcnow()
+        model.deactivated_at = utc_now()
 
         await db.commit()
         logger.info(f"Surya-Version deaktiviert: {version}")
@@ -520,7 +521,7 @@ class SuryaCheckpointManager:
             minimum_samples=config.minimum_samples,
             minimum_duration_hours=config.minimum_duration_hours,
             created_by_id=uuid_module.UUID(user_id) if user_id else None,
-            started_at=datetime.utcnow()
+            started_at=utc_now()
         )
 
         db.add(ab_test)
@@ -639,7 +640,7 @@ class SuryaCheckpointManager:
 
         test.winner = winner
         test.status = SuryaABTestStatus.COMPLETED.value
-        test.completed_at = datetime.utcnow()
+        test.completed_at = utc_now()
 
         if auto_deploy and winner == "treatment":
             # Treatment-Version als Production aktivieren
@@ -712,7 +713,7 @@ class SuryaCheckpointManager:
                 current_model.is_active = False
                 current_model.is_production = False
                 current_model.traffic_percentage = 0.0
-                current_model.deactivated_at = datetime.utcnow()
+                current_model.deactivated_at = utc_now()
 
         # Ziel-Version aktivieren
         result = await db.execute(
@@ -726,7 +727,7 @@ class SuryaCheckpointManager:
             target_model.is_active = True
             target_model.is_production = True
             target_model.traffic_percentage = 100.0
-            target_model.activated_at = datetime.utcnow()
+            target_model.activated_at = utc_now()
             target_model.rolled_back_from_id = uuid_module.UUID(current.id) if current else None
             target_model.rollback_reason = reason
 

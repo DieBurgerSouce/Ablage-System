@@ -23,6 +23,7 @@ from uuid import UUID
 import structlog
 
 from app.workers.celery_app import celery_app, CPUTask
+from app.core.celery_idempotency import idempotent_task, IdempotencyKey
 
 logger = structlog.get_logger(__name__)
 
@@ -39,9 +40,12 @@ def run_async(coro):
     max_retries=3,
     default_retry_delay=300,
 )
+@idempotent_task(date_scoped=True, ttl=86400)
 def send_deadline_reminders(self) -> Dict[str, Any]:
     """
     Sende Erinnerungen fuer anstehende Fristen.
+
+    IDEMPOTENT: Wird nur einmal pro Tag ausgefuehrt.
 
     Prueft alle aktiven Fristen und sendet Erinnerungen basierend
     auf den konfigurierten reminder_days.
@@ -737,6 +741,7 @@ def cleanup_orphaned_privat_files(self) -> Dict[str, Any]:
     soft_time_limit=1800,  # 30 Minuten
     time_limit=2100,
 )
+@idempotent_task("space_id", "property_id", date_scoped=True, ttl=86400)
 def calculate_property_kpis(
     self,
     space_id: Optional[str] = None,
@@ -744,6 +749,8 @@ def calculate_property_kpis(
 ) -> Dict[str, Any]:
     """
     Berechnet KPIs fuer Immobilien: Mietrendite, ROI, Wertzuwachs.
+
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id/property_id ausgefuehrt.
 
     Kann fuer alle Properties eines Spaces oder eine einzelne Property
     ausgefuehrt werden.
@@ -857,6 +864,7 @@ def calculate_property_kpis(
     soft_time_limit=1800,
     time_limit=2100,
 )
+@idempotent_task("space_id", "vehicle_id", date_scoped=True, ttl=86400)
 def calculate_vehicle_tco(
     self,
     space_id: Optional[str] = None,
@@ -864,6 +872,8 @@ def calculate_vehicle_tco(
 ) -> Dict[str, Any]:
     """
     Berechnet Total Cost of Ownership fuer Fahrzeuge.
+
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id/vehicle_id ausgefuehrt.
 
     Inkludiert: Wertverlust, Kraftstoff, Versicherung, Steuer, Wartung.
 
@@ -976,12 +986,15 @@ def calculate_vehicle_tco(
     soft_time_limit=1800,
     time_limit=2100,
 )
+@idempotent_task("space_id", date_scoped=True, ttl=86400)
 def analyze_insurance_coverage(
     self,
     space_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Analysiert Versicherungsdeckung und identifiziert Deckungsluecken.
+
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgefuehrt.
 
     Vergleicht vorhandene Deckungssummen mit Empfehlungen und
     berechnet Kuendigungsfristen automatisch.
@@ -1094,6 +1107,7 @@ def analyze_insurance_coverage(
     soft_time_limit=1800,
     time_limit=2100,
 )
+@idempotent_task("space_id", "loan_id", date_scoped=True, ttl=86400)
 def generate_loan_amortization(
     self,
     space_id: Optional[str] = None,
@@ -1101,6 +1115,8 @@ def generate_loan_amortization(
 ) -> Dict[str, Any]:
     """
     Generiert Tilgungsplaene fuer Kredite.
+
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id/loan_id ausgefuehrt.
 
     Berechnet monatliche Raten, Restschuld, Zinsersparnis bei Sondertilgung.
 
@@ -1845,6 +1861,7 @@ def recalculate_investment_intelligence(
     soft_time_limit=1800,
     time_limit=2100,
 )
+@idempotent_task("space_id", date_scoped=True, ttl=86400)
 def calculate_financial_health(
     self,
     space_id: Optional[str] = None,
@@ -1854,6 +1871,8 @@ def calculate_financial_health(
 
     6 Dimensionen: Vermoegensaufbau, Schulden, Risikoabdeckung,
     Liquiditaet, Altersvorsorge, Diversifikation.
+
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgefuehrt.
 
     Args:
         space_id: Optional - Nur fuer diesen Space
@@ -1941,12 +1960,15 @@ def calculate_financial_health(
     soft_time_limit=1800,
     time_limit=2100,
 )
+@idempotent_task("space_id", date_scoped=True, ttl=86400)
 def generate_smart_recommendations(
     self,
     space_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Generiert Smart Recommendations fuer Space(s).
+
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgefuehrt.
 
     Prueft: Refinanzierung, Rebalancing, Versicherungsluecken,
     Notgroschen, Fristen, veraltete Werte.
@@ -2043,12 +2065,15 @@ def generate_smart_recommendations(
     soft_time_limit=10800,  # 3 Stunden
     time_limit=11100,
 )
+@idempotent_task(date_scoped=True, ttl=86400)
 def daily_intelligence_recalculation(self) -> Dict[str, Any]:
     """
     Taegliche Neuberechnung aller Intelligence-KPIs.
 
     Wird per Celery Beat um 03:00 Uhr ausgefuehrt (nach daily_kpi_recalculation).
     Berechnet alle Enterprise-Intelligence-Features.
+
+    IDEMPOTENT: Wird nur einmal pro Tag ausgefuehrt.
 
     Returns:
         Zusammenfassung der berechneten Intelligence-KPIs
@@ -2276,9 +2301,12 @@ def recalculate_entity_kpi(
     max_retries=2,
     default_retry_delay=30,
 )
+@idempotent_task(date_scoped=False, ttl=600)  # 10 Minuten TTL, nicht taeglich
 def update_privat_metrics(self) -> Dict[str, Any]:
     """
     Aktualisiert Prometheus-Metriken fuer das Privat-Modul.
+
+    IDEMPOTENT: Maximal alle 10 Minuten (TTL=600s).
 
     Laeuft alle 15 Minuten via Celery Beat.
     Sammelt aggregierte Statistiken fuer Monitoring.
@@ -2378,6 +2406,665 @@ def update_privat_metrics(self) -> Dict[str, Any]:
         logger.error(
             "update_privat_metrics_failed",
             task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+# =============================================================================
+# PORTFOLIO & FINANCIAL GOALS TASKS (Enterprise Feature)
+# =============================================================================
+
+
+@celery_app.task(
+    bind=True,
+    name="app.workers.tasks.privat_tasks.create_monthly_portfolio_snapshot",
+    max_retries=3,
+    default_retry_delay=300,
+    queue="privat",
+    soft_time_limit=600,
+    time_limit=900,
+)
+@idempotent_task("space_id", date_scoped=True, ttl=86400)
+def create_monthly_portfolio_snapshot(
+    self,
+    space_id: Optional[str] = None,
+) -> dict:
+    """Erstellt monatliche Portfolio-Snapshots.
+
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgefuehrt.
+
+    Wenn keine space_id angegeben, werden Snapshots fuer alle Spaces erstellt.
+    Sollte am 1. jeden Monats via Celery Beat ausgefuehrt werden.
+
+    Args:
+        space_id: Optional - spezifischer Space
+
+    Returns:
+        dict mit Anzahl erstellter Snapshots
+    """
+    from app.services.privat.portfolio_service import PortfolioService
+
+    logger.info(
+        "create_monthly_portfolio_snapshot_started",
+        task_id=self.request.id,
+        space_id=space_id,
+    )
+
+    async def _create_snapshots():
+        async with get_async_session() as session:
+            service = PortfolioService(session)
+
+            if space_id:
+                snapshot = await service.create_monthly_snapshot(UUID(space_id))
+                return 1, float(snapshot.net_worth)
+            else:
+                count = await service.create_snapshots_for_all_spaces()
+                return count, None
+
+    try:
+        count, net_worth = run_async(_create_snapshots())
+
+        logger.info(
+            "create_monthly_portfolio_snapshot_completed",
+            task_id=self.request.id,
+            snapshots_created=count,
+            net_worth=net_worth,
+        )
+
+        return {
+            "status": "success",
+            "snapshots_created": count,
+            "net_worth": net_worth,
+        }
+
+    except Exception as e:
+        logger.error(
+            "create_monthly_portfolio_snapshot_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    name="app.workers.tasks.privat_tasks.recalculate_financial_goals",
+    max_retries=3,
+    default_retry_delay=300,
+    queue="privat",
+    soft_time_limit=600,
+    time_limit=900,
+)
+@idempotent_task("space_id", date_scoped=True, ttl=86400)
+def recalculate_financial_goals(
+    self,
+    space_id: Optional[str] = None,
+) -> dict:
+    """Berechnet den Fortschritt aller Finanzziele neu.
+
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgefuehrt.
+
+    Aktualisiert:
+    - Progress-Prozentsatz
+    - Verbleibende Monate
+    - Erforderliche monatliche Sparrate
+    - On-Track Status
+    - Projiziertes Completion Date
+
+    Args:
+        space_id: Optional - spezifischer Space
+
+    Returns:
+        dict mit Anzahl aktualisierter Ziele
+    """
+    from app.services.privat.financial_goals_service import FinancialGoalsService
+
+    logger.info(
+        "recalculate_financial_goals_started",
+        task_id=self.request.id,
+        space_id=space_id,
+    )
+
+    async def _recalculate():
+        async with get_async_session() as session:
+            service = FinancialGoalsService(session)
+
+            if space_id:
+                count = await service.recalculate_all_goals(UUID(space_id))
+            else:
+                count = await service.recalculate_all_spaces_goals()
+
+            return count
+
+    try:
+        count = run_async(_recalculate())
+
+        logger.info(
+            "recalculate_financial_goals_completed",
+            task_id=self.request.id,
+            goals_updated=count,
+        )
+
+        return {
+            "status": "success",
+            "goals_updated": count,
+        }
+
+    except Exception as e:
+        logger.error(
+            "recalculate_financial_goals_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    name="app.workers.tasks.privat_tasks.check_goals_at_risk",
+    max_retries=3,
+    default_retry_delay=300,
+    queue="privat",
+    soft_time_limit=300,
+    time_limit=600,
+)
+@idempotent_task(date_scoped=True, ttl=86400)
+def check_goals_at_risk(self) -> dict:
+    """Prueft auf gefaehrdete Finanzziele und sendet Benachrichtigungen.
+
+    IDEMPOTENT: Wird nur einmal pro Tag ausgefuehrt.
+
+    Wird taeglich ausgefuehrt um User ueber gefaehrdete Ziele zu informieren.
+
+    Returns:
+        dict mit Anzahl gefaehrdeter Ziele
+    """
+    from app.services.privat.financial_goals_service import FinancialGoalsService
+
+    logger.info(
+        "check_goals_at_risk_started",
+        task_id=self.request.id,
+    )
+
+    async def _check():
+        async with get_async_session() as session:
+            service = FinancialGoalsService(session)
+            at_risk = await service.get_goals_at_risk()
+            return len(at_risk)
+
+    try:
+        count = run_async(_check())
+
+        if count > 0:
+            logger.warning(
+                "goals_at_risk_found",
+                task_id=self.request.id,
+                count=count,
+            )
+            # TODO: Benachrichtigungen senden
+        else:
+            logger.info(
+                "no_goals_at_risk",
+                task_id=self.request.id,
+            )
+
+        return {
+            "status": "success",
+            "goals_at_risk": count,
+        }
+
+    except Exception as e:
+        logger.error(
+            "check_goals_at_risk_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+# =============================================================================
+# PREDICTIVE INTELLIGENCE TASKS (Enterprise Feature - Phase 1)
+# =============================================================================
+# Diese Tasks bilden das Fundament fuer proaktive Intelligence:
+# - record_kpi_history: Erfasst taeglich KPI-Snapshots fuer Trend-Analyse
+# - generate_predictive_alerts: Generiert Early Warnings basierend auf Prognosen
+# - cleanup_old_projections: Raeumt veraltete Projektionen auf
+# =============================================================================
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.record_kpi_history",
+    max_retries=3,
+    default_retry_delay=300,
+    queue="privat",
+    soft_time_limit=600,
+    time_limit=900,
+)
+@idempotent_task("space_id", date_scoped=True, ttl=86400)
+def record_kpi_history(
+    self,
+    space_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Erfasst taegliche KPI-Snapshots fuer alle oder einen spezifischen Space.
+
+    Diese Daten bilden die Grundlage fuer:
+    - Trend-Analyse (linear, saisonal)
+    - KPI-Projektionen (3/6/12 Monate)
+    - Early Warning Alerts
+
+    Sollte taeglich um 23:55 via Celery Beat ausgefuehrt werden.
+
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgefuehrt.
+
+    Args:
+        space_id: Optional - nur fuer diesen Space aufzeichnen
+
+    Returns:
+        Statistik der erfassten KPIs
+    """
+    logger.info(
+        "record_kpi_history_started",
+        task_id=self.request.id,
+        space_id=space_id,
+    )
+
+    async def _record_history():
+        from app.db.session import get_async_session
+        from app.db.models import PrivatSpace
+        from app.services.privat import get_predictive_intelligence_service
+        from sqlalchemy import select
+
+        service = get_predictive_intelligence_service()
+        recorded_count = 0
+        error_count = 0
+        spaces_processed = 0
+
+        async with get_async_session() as db:
+            if space_id:
+                # Nur einen Space verarbeiten
+                try:
+                    result = await service.record_all_kpis_for_space(db, UUID(space_id))
+                    recorded_count = result.get("recorded_count", 0)
+                    spaces_processed = 1
+                except Exception as e:
+                    logger.error(
+                        "record_kpi_history_space_failed",
+                        space_id=space_id,
+                        error=str(e),
+                    )
+                    error_count = 1
+            else:
+                # Alle aktiven Spaces verarbeiten
+                stmt = select(PrivatSpace).where(
+                    PrivatSpace.deleted_at.is_(None)
+                )
+                result = await db.execute(stmt)
+                spaces = result.scalars().all()
+
+                for space in spaces:
+                    try:
+                        result = await service.record_all_kpis_for_space(
+                            db, space.id
+                        )
+                        recorded_count += result.get("recorded_count", 0)
+                        spaces_processed += 1
+                    except Exception as e:
+                        logger.warning(
+                            "record_kpi_history_space_error",
+                            space_id=str(space.id),
+                            error=str(e),
+                        )
+                        error_count += 1
+                        continue
+
+        return {
+            "spaces_processed": spaces_processed,
+            "kpis_recorded": recorded_count,
+            "errors": error_count,
+        }
+
+    try:
+        result = run_async(_record_history())
+
+        logger.info(
+            "record_kpi_history_completed",
+            task_id=self.request.id,
+            **result,
+        )
+
+        return {"status": "success", **result}
+
+    except Exception as e:
+        logger.error(
+            "record_kpi_history_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.generate_predictive_alerts",
+    max_retries=3,
+    default_retry_delay=300,
+    queue="privat",
+    soft_time_limit=900,
+    time_limit=1200,
+)
+@idempotent_task("space_id", date_scoped=True, ttl=86400)
+def generate_predictive_alerts(
+    self,
+    space_id: Optional[str] = None,
+    projection_months: int = 12,
+) -> Dict[str, Any]:
+    """
+    Generiert Early Warning Alerts basierend auf KPI-Projektionen.
+
+    Analysiert Trends und projiziert KPIs in die Zukunft. Wenn ein
+    Schwellenwert-Durchbruch prognostiziert wird, wird ein Alert erstellt.
+
+    PROAKTIV: Warnt VOR dem Problem, nicht erst wenn es da ist!
+
+    Beispiele:
+    - "DTI wird in 4 Monaten kritisch bei aktuellem Trend"
+    - "Notgroschen reicht nur noch 2.5 Monate"
+    - "Financial Health Score faellt unter 50 in 6 Monaten"
+
+    Sollte taeglich um 03:30 via Celery Beat ausgefuehrt werden
+    (nach record_kpi_history um 23:55).
+
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgefuehrt.
+
+    Args:
+        space_id: Optional - nur fuer diesen Space generieren
+        projection_months: Wie viele Monate vorausschauen (default 12)
+
+    Returns:
+        Statistik der generierten Alerts
+    """
+    logger.info(
+        "generate_predictive_alerts_started",
+        task_id=self.request.id,
+        space_id=space_id,
+        projection_months=projection_months,
+    )
+
+    async def _generate_alerts():
+        from app.db.session import get_async_session
+        from app.db.models import PrivatSpace
+        from app.services.privat import get_predictive_intelligence_service
+        from sqlalchemy import select
+
+        service = get_predictive_intelligence_service()
+        total_warnings = 0
+        critical_warnings = 0
+        spaces_processed = 0
+        error_count = 0
+
+        async with get_async_session() as db:
+            if space_id:
+                # Nur einen Space verarbeiten
+                try:
+                    warnings = await service.generate_early_warnings(
+                        db, UUID(space_id)
+                    )
+                    # Persistiere die Warnings
+                    persisted = await service.persist_early_warnings(
+                        db, UUID(space_id), warnings
+                    )
+                    total_warnings = len(warnings)
+                    critical_warnings = len([
+                        w for w in warnings
+                        if w.severity == "CRITICAL"
+                    ])
+                    spaces_processed = 1
+                except Exception as e:
+                    logger.error(
+                        "generate_predictive_alerts_space_failed",
+                        space_id=space_id,
+                        error=str(e),
+                    )
+                    error_count = 1
+            else:
+                # Alle aktiven Spaces verarbeiten
+                stmt = select(PrivatSpace).where(
+                    PrivatSpace.deleted_at.is_(None)
+                )
+                result = await db.execute(stmt)
+                spaces = result.scalars().all()
+
+                for space in spaces:
+                    try:
+                        warnings = await service.generate_early_warnings(
+                            db, space.id
+                        )
+                        # Persistiere die Warnings
+                        await service.persist_early_warnings(
+                            db, space.id, warnings
+                        )
+                        total_warnings += len(warnings)
+                        critical_warnings += len([
+                            w for w in warnings
+                            if w.severity == "CRITICAL"
+                        ])
+                        spaces_processed += 1
+                    except Exception as e:
+                        logger.warning(
+                            "generate_predictive_alerts_space_error",
+                            space_id=str(space.id),
+                            error=str(e),
+                        )
+                        error_count += 1
+                        continue
+
+        return {
+            "spaces_processed": spaces_processed,
+            "total_warnings": total_warnings,
+            "critical_warnings": critical_warnings,
+            "errors": error_count,
+        }
+
+    try:
+        result = run_async(_generate_alerts())
+
+        # Log-Level basierend auf Kritikalitaet
+        if result["critical_warnings"] > 0:
+            logger.warning(
+                "generate_predictive_alerts_critical_found",
+                task_id=self.request.id,
+                **result,
+            )
+        else:
+            logger.info(
+                "generate_predictive_alerts_completed",
+                task_id=self.request.id,
+                **result,
+            )
+
+        return {"status": "success", **result}
+
+    except Exception as e:
+        logger.error(
+            "generate_predictive_alerts_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.cleanup_old_projections",
+    max_retries=2,
+    default_retry_delay=60,
+    queue="privat",
+    soft_time_limit=300,
+    time_limit=600,
+)
+@idempotent_task("days_to_keep", date_scoped=True, ttl=86400)
+def cleanup_old_projections(
+    self,
+    days_to_keep: int = 90,
+) -> Dict[str, Any]:
+    """
+    Raeumt alte/abgelaufene Projektionen und Warnings auf.
+
+    IDEMPOTENT: Wird nur einmal pro Tag ausgefuehrt.
+
+    Loescht:
+    - Projektionen aelter als days_to_keep
+    - Warnings die bereits resolved oder expired sind
+    - KPI-History aelter als 2 Jahre (optional archivieren)
+
+    Sollte woechentlich via Celery Beat ausgefuehrt werden.
+
+    Args:
+        days_to_keep: Wie viele Tage behalten (default 90)
+
+    Returns:
+        Anzahl geloeschter Datensaetze
+    """
+    logger.info(
+        "cleanup_old_projections_started",
+        task_id=self.request.id,
+        days_to_keep=days_to_keep,
+    )
+
+    async def _cleanup():
+        from app.db.session import get_async_session
+        from app.db.models import (
+            PrivatProjection, PrivatEarlyWarning
+        )
+        from sqlalchemy import delete
+
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
+        projections_deleted = 0
+        warnings_deleted = 0
+
+        async with get_async_session() as db:
+            # Loesche alte Projektionen
+            stmt = delete(PrivatProjection).where(
+                PrivatProjection.calculated_at < cutoff_date
+            )
+            result = await db.execute(stmt)
+            projections_deleted = result.rowcount
+
+            # Loesche resolved/expired Warnings
+            stmt = delete(PrivatEarlyWarning).where(
+                PrivatEarlyWarning.is_resolved == True,
+                PrivatEarlyWarning.created_at < cutoff_date,
+            )
+            result = await db.execute(stmt)
+            warnings_deleted = result.rowcount
+
+            await db.commit()
+
+        return {
+            "projections_deleted": projections_deleted,
+            "warnings_deleted": warnings_deleted,
+        }
+
+    try:
+        result = run_async(_cleanup())
+
+        logger.info(
+            "cleanup_old_projections_completed",
+            task_id=self.request.id,
+            **result,
+        )
+
+        return {"status": "success", **result}
+
+    except Exception as e:
+        logger.error(
+            "cleanup_old_projections_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.get_predictive_insights_summary",
+    max_retries=2,
+    default_retry_delay=60,
+    queue="privat",
+    soft_time_limit=120,
+    time_limit=300,
+)
+def get_predictive_insights_summary(
+    self,
+    space_id: str,
+    user_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Generiert eine vollstaendige Predictive Insights Summary fuer einen Space.
+
+    Kombiniert:
+    - KPI Projektionen (3/6/12 Monate)
+    - Early Warning Alerts
+    - Trend-Analysen
+    - Outlook Score
+
+    Kann on-demand via API oder vom Frontend aufgerufen werden.
+
+    Args:
+        space_id: Der zu analysierende Space
+        user_id: Optional - fuer personalisierte Schwellenwerte
+
+    Returns:
+        PredictiveInsightsSummary als Dict
+    """
+    logger.info(
+        "get_predictive_insights_summary_started",
+        task_id=self.request.id,
+        space_id=space_id,
+    )
+
+    async def _get_insights():
+        from app.db.session import get_async_session
+        from app.services.privat import get_predictive_intelligence_service
+        import dataclasses
+
+        service = get_predictive_intelligence_service()
+
+        async with get_async_session() as db:
+            summary = await service.get_predictive_insights(
+                db,
+                UUID(space_id),
+                UUID(user_id) if user_id else None
+            )
+
+            # Konvertiere dataclass zu dict
+            return dataclasses.asdict(summary)
+
+    try:
+        result = run_async(_get_insights())
+
+        logger.info(
+            "get_predictive_insights_summary_completed",
+            task_id=self.request.id,
+            space_id=space_id,
+            outlook_score=result.get("outlook_score"),
+            warnings_count=len(result.get("early_warnings", [])),
+        )
+
+        return {"status": "success", "summary": result}
+
+    except Exception as e:
+        logger.error(
+            "get_predictive_insights_summary_failed",
+            task_id=self.request.id,
+            space_id=space_id,
             error=str(e),
         )
         raise self.retry(exc=e)

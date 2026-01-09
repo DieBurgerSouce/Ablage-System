@@ -8,6 +8,7 @@ Orchestriert den Import von Kontoauszuegen:
 """
 
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Optional, List, Tuple, BinaryIO, Union
 from uuid import UUID, uuid4
@@ -195,7 +196,7 @@ class ImportService:
         """
         from app.db.models import BankImport, BankTransaction, BankAccount
 
-        start_time = datetime.utcnow()
+        start_time = utc_now()
 
         # File-Hash fuer Duplikat-Erkennung
         if isinstance(content, str):
@@ -330,7 +331,7 @@ class ImportService:
                 logger.warning(f"Fehler beim Import der Transaktion: {e}")
 
         # Import-Record aktualisieren
-        processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        processing_time = (utc_now() - start_time).total_seconds() * 1000
 
         import_record.status = "completed"
         import_record.transaction_count = len(created_ids)

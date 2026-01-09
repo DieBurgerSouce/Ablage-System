@@ -9,6 +9,7 @@ Enterprise Features:
 
 import uuid
 from datetime import datetime, timedelta
+from app.core.datetime_utils import utc_now
 from typing import Optional, List
 
 from sqlalchemy import select, func, and_, or_
@@ -96,8 +97,8 @@ class PrivatEmergencyService:
             waiting_period_days=data.waiting_period_days,
             notes=data.notes,
             is_active=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(contact)
@@ -168,7 +169,7 @@ class PrivatEmergencyService:
             return contact
 
         # Pruefe explizite Berechtigung (erfordert ADMIN-Level fuer Emergency Contacts)
-        now = datetime.utcnow()
+        now = utc_now()
         access_result = await db.execute(
             select(PrivatSpaceAccess)
             .where(
@@ -291,7 +292,7 @@ class PrivatEmergencyService:
         for key, value in update_data.items():
             setattr(contact, key, value)
 
-        contact.updated_at = datetime.utcnow()
+        contact.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(contact)
@@ -336,7 +337,7 @@ class PrivatEmergencyService:
 
         if soft_delete:
             contact.is_active = False
-            contact.updated_at = datetime.utcnow()
+            contact.updated_at = utc_now()
             await db.commit()
         else:
             await db.delete(contact)
@@ -386,7 +387,7 @@ class PrivatEmergencyService:
             return existing
 
         # Berechne Wartezeit-Ende
-        waiting_until = datetime.utcnow() + timedelta(days=contact.waiting_period_days)
+        waiting_until = utc_now() + timedelta(days=contact.waiting_period_days)
 
         request = PrivatEmergencyAccessRequest(
             id=uuid.uuid4(),
@@ -394,7 +395,7 @@ class PrivatEmergencyService:
             contact_id=contact.id,
             status=PrivatEmergencyAccessStatus.PENDING.value,
             reason=data.reason,
-            requested_at=datetime.utcnow(),
+            requested_at=utc_now(),
             waiting_until=waiting_until,
         )
 
@@ -583,7 +584,7 @@ class PrivatEmergencyService:
             raise ValueError("Anfrage ist nicht mehr ausstehend")
 
         request.status = PrivatEmergencyAccessStatus.APPROVED.value
-        request.approved_at = datetime.utcnow()
+        request.approved_at = utc_now()
 
         await db.commit()
         await db.refresh(request)
@@ -654,7 +655,7 @@ class PrivatEmergencyService:
             raise ValueError("Anfrage ist nicht mehr ausstehend")
 
         request.status = PrivatEmergencyAccessStatus.DENIED.value
-        request.denied_at = datetime.utcnow()
+        request.denied_at = utc_now()
         request.denied_reason = reason.strip()
 
         await db.commit()
@@ -683,7 +684,7 @@ class PrivatEmergencyService:
         Returns:
             Liste von genehmigten Anfragen
         """
-        now = datetime.utcnow()
+        now = utc_now()
 
         # SECURITY: FOR UPDATE mit skip_locked verhindert Race Conditions
         # bei parallelen Celery-Workers die gleiche Requests verarbeiten koennten

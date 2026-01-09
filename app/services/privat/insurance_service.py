@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime, date
+from app.core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Optional, List
 
@@ -58,8 +59,8 @@ class PrivatInsuranceService:
             auto_renewal=data.auto_renewal,
             notes=data.notes,
             is_active=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(insurance)
@@ -321,7 +322,7 @@ class PrivatInsuranceService:
                 value = value.value if isinstance(value, InsuranceType) else value
             setattr(insurance, key, value)
 
-        insurance.updated_at = datetime.utcnow()
+        insurance.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(insurance)
@@ -358,7 +359,7 @@ class PrivatInsuranceService:
 
         if soft_delete:
             insurance.is_active = False
-            insurance.updated_at = datetime.utcnow()
+            insurance.updated_at = utc_now()
             await db.commit()
         else:
             await db.delete(insurance)

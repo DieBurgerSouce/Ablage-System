@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime, date, timedelta
+from app.core.datetime_utils import utc_now
 from typing import Optional, List
 from io import BytesIO
 
@@ -64,8 +65,8 @@ class PrivatDeadlineService:
             related_entity_id=data.related_entity_id,
             is_completed=False,
             completed_at=None,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(deadline)
@@ -362,7 +363,7 @@ class PrivatDeadlineService:
                 value = value.value if isinstance(value, PrivatDeadlineType) else value
             setattr(deadline, key, value)
 
-        deadline.updated_at = datetime.utcnow()
+        deadline.updated_at = utc_now()
 
         await db.commit()
         await db.refresh(deadline)
@@ -393,8 +394,8 @@ class PrivatDeadlineService:
             return None
 
         deadline.is_completed = True
-        deadline.completed_at = datetime.utcnow()
-        deadline.updated_at = datetime.utcnow()
+        deadline.completed_at = utc_now()
+        deadline.updated_at = utc_now()
 
         # Bei wiederkehrender Frist: Neue erstellen
         if deadline.is_recurring and deadline.recurrence_interval:
@@ -441,8 +442,8 @@ class PrivatDeadlineService:
             related_entity_type=deadline.related_entity_type,
             related_entity_id=deadline.related_entity_id,
             is_completed=False,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
         db.add(new_deadline)
@@ -516,7 +517,7 @@ class PrivatDeadlineService:
             id=uuid.uuid4(),
             deadline_id=deadline_id,
             notification_type=notification_type,
-            sent_at=datetime.utcnow(),
+            sent_at=utc_now(),
             sent_to=sent_to,
         )
 
@@ -551,7 +552,7 @@ class PrivatDeadlineService:
         for d in deadlines:
             uid = str(d.id).replace("-", "")
             dtstart = d.due_date.strftime("%Y%m%d")
-            dtstamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+            dtstamp = utc_now().strftime("%Y%m%dT%H%M%SZ")
 
             lines.extend([
                 "BEGIN:VEVENT",
