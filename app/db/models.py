@@ -11176,6 +11176,109 @@ class NotificationHistory(Base):
     )
 
 
+class NotificationRulePriority(str, Enum):
+    """Prioritaet einer Notification Rule."""
+    LOW = "low"
+    NORMAL = "normal"
+    HIGH = "high"
+    URGENT = "urgent"
+
+
+class NotificationRuleActionType(str, Enum):
+    """Aktionstyp fuer Notification Rules."""
+    IN_APP = "in_app"
+    PUSH = "push"
+    EMAIL = "email"
+    WEBHOOK = "webhook"
+
+
+class NotificationRule(Base):
+    """Notification Rules fuer Event-basierte Benachrichtigungen.
+
+    Ermoeglicht benutzerdefinierte Regeln, wann und wie Benachrichtigungen
+    ausgeloest werden sollen. Teil des Enterprise Notification Rule Engine.
+
+    Beispiel-Conditions:
+    {
+        "operator": "AND",
+        "conditions": [
+            {"field": "amount", "op": "gt", "value": 1000},
+            {"field": "category", "op": "eq", "value": "insurance"}
+        ]
+    }
+
+    Beispiel-Actions:
+    {
+        "actions": [
+            {"type": "in_app", "template_id": "...", "priority": "high"},
+            {"type": "push", "title": "...", "body": "..."},
+            {"type": "email", "template": "payment_alert"}
+        ]
+    }
+    """
+
+    __tablename__ = "notification_rules"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Rule identification
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    enabled = Column(Boolean, nullable=False, default=True)
+
+    # Event matching
+    event_type = Column(String(100), nullable=False, index=True,
+                        comment="Event-Typ z.B. document.ocr_completed, insurance.deadline_approaching")
+    event_source = Column(String(50), nullable=True,
+                          comment="Optional: Quelle filtern (z.B. privat, business)")
+
+    # Conditions (JSONB fuer komplexe Filter)
+    conditions = Column(CrossDBJSON, nullable=False, default=dict,
+                        comment="JSON-Bedingungen mit Operatoren (AND, OR, NOT)")
+
+    # Actions (JSONB fuer mehrere Aktionen)
+    actions = Column(CrossDBJSON, nullable=False, default=list,
+                     comment="Liste von auszufuehrenden Aktionen")
+
+    # Scheduling
+    quiet_hours_start = Column(Time, nullable=True,
+                               comment="Start der Ruhezeit (z.B. 22:00)")
+    quiet_hours_end = Column(Time, nullable=True,
+                             comment="Ende der Ruhezeit (z.B. 08:00)")
+    timezone = Column(String(50), nullable=False, default="Europe/Berlin")
+
+    # Rate limiting
+    cooldown_minutes = Column(Integer, nullable=True, default=0,
+                              comment="Mindestabstand zwischen Benachrichtigungen")
+    max_per_day = Column(Integer, nullable=True,
+                         comment="Maximale Anzahl pro Tag (NULL = unbegrenzt)")
+
+    # Priority
+    priority = Column(String(20), nullable=False, default=NotificationRulePriority.NORMAL.value)
+
+    # Statistics
+    trigger_count = Column(Integer, nullable=False, default=0)
+    last_triggered_at = Column(DateTime(timezone=True), nullable=True)
+    last_matched_event_id = Column(UUID(as_uuid=True), nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    user = relationship("User", backref="notification_rules")
+
+    __table_args__ = (
+        Index("ix_notification_rules_user_enabled", "user_id", "enabled"),
+        Index("ix_notification_rules_event_type", "event_type"),
+        {"comment": "Benutzerdefinierte Notification-Regeln fuer Events"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<NotificationRule {self.name} ({self.event_type})>"
+
+
 # =============================================================================
 # ENTERPRISE INTELLIGENCE SYSTEM
 # Phase 4: LLM Cache, Event Log, Recurring Payments, Coverage Gaps

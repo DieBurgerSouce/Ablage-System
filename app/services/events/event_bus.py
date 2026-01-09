@@ -71,6 +71,19 @@ class EventType(str, Enum):
     INSURANCE_DEADLINE_APPROACHING = "insurance.deadline_approaching"
     INSURANCE_GAP_DETECTED = "insurance.gap_detected"
     INSURANCE_PREMIUM_DUE = "insurance.premium_due"
+    INSURANCE_KPIS_CALCULATED = "insurance.kpis_calculated"
+
+    # Loan Events
+    LOAN_KPIS_CALCULATED = "loan.kpis_calculated"
+    LOAN_SCENARIO_UPDATED = "loan.scenario_updated"
+    LOAN_PAYMENT_DUE = "loan.payment_due"
+    LOAN_EXTRA_PAYMENT_APPLIED = "loan.extra_payment_applied"
+
+    # Investment Events
+    INVESTMENT_PERFORMANCE_CALCULATED = "investment.performance_calculated"
+    INVESTMENT_REBALANCING_NEEDED = "investment.rebalancing_needed"
+    INVESTMENT_DIVIDEND_RECEIVED = "investment.dividend_received"
+    INVESTMENT_TARGET_REACHED = "investment.target_reached"
 
     # Finance Events
     FINANCE_TRANSACTION_ADDED = "finance.transaction_added"
