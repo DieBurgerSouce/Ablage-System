@@ -12,7 +12,7 @@ from typing import Optional, List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
@@ -38,8 +38,7 @@ class PermissionResponse(BaseModel):
     action: str
     is_system: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RoleResponse(BaseModel):
@@ -57,8 +56,7 @@ class RoleResponse(BaseModel):
     permissions: List[PermissionResponse] = []
     user_count: int = 0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RoleCreateRequest(BaseModel):
@@ -93,8 +91,7 @@ class UserRoleResponse(BaseModel):
     username: str
     roles: List[RoleResponse]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== Endpoints ====================

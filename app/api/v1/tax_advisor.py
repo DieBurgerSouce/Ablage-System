@@ -17,7 +17,7 @@ from typing import Optional, List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, ConfigDict, Field, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
@@ -66,8 +66,7 @@ class TaxAdvisorInviteResponse(BaseModel):
     accepted_at: Optional[datetime]
     company_id: UUID
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TaxAdvisorInviteCreateResponse(BaseModel):
@@ -93,8 +92,7 @@ class TaxAdvisorUserResponse(BaseModel):
     created_at: datetime
     invited_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TaxAdvisorExtendRequest(BaseModel):
@@ -119,8 +117,7 @@ class TaxAdvisorAccessLogResponse(BaseModel):
     user_agent: Optional[str]
     accessed_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MessageResponse(BaseModel):

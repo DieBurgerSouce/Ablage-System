@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
@@ -127,8 +127,7 @@ class ReportColumnResponse(BaseModel):
     is_visible: bool
     aggregation: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReportFilterCreate(BaseModel):
@@ -165,8 +164,7 @@ class ReportFilterResponse(BaseModel):
     is_dynamic: bool
     dynamic_source: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReportChartCreate(BaseModel):
@@ -215,8 +213,7 @@ class ReportChartResponse(BaseModel):
     height_px: int
     sort_order: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReportTemplateCreate(BaseModel):
@@ -266,8 +263,7 @@ class ReportTemplateResponse(BaseModel):
     filters: Optional[List[ReportFilterResponse]] = None
     charts: Optional[List[ReportChartResponse]] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReportShareCreate(BaseModel):
@@ -289,8 +285,7 @@ class ReportShareResponse(BaseModel):
     shared_by_id: Optional[uuid.UUID]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ScheduleConfigCreate(BaseModel):
@@ -317,8 +312,7 @@ class ReportExecutionResponse(BaseModel):
     duration_ms: Optional[int]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReportPreviewResponse(BaseModel):

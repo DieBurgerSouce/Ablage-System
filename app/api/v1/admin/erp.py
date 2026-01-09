@@ -35,7 +35,7 @@ from app.db.models import (
 )
 from app.api.dependencies import get_current_user, get_db, require_admin
 from app.middleware.company_context import require_company
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = structlog.get_logger(__name__)
 
@@ -111,8 +111,7 @@ class ERPConnectionResponse(BaseModel):
     created_at: str
     updated_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ERPConnectionTestResult(BaseModel):
@@ -151,8 +150,7 @@ class ERPSyncHistoryResponse(BaseModel):
     error_message: Optional[str]
     triggered_by: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ERPConflictResponse(BaseModel):
@@ -176,8 +174,7 @@ class ERPConflictResponse(BaseModel):
     resolution: Optional[str]
     priority: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ERPConflictResolve(BaseModel):

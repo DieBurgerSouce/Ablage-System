@@ -28,7 +28,7 @@ router = APIRouter(prefix="/jobs", tags=["rag-jobs"])
 # Pydantic Schemas (lokal, da spezifisch fuer Jobs)
 # =============================================================================
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from enum import Enum
 
 
@@ -47,8 +47,7 @@ class JobStatusResponse(BaseModel):
     completed_at: Optional[datetime] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class JobCreateRequest(BaseModel):

@@ -17,7 +17,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # =============================================================================
@@ -287,8 +287,7 @@ class DATEVConfigurationResponse(DATEVConfigurationBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =============================================================================
@@ -452,8 +451,7 @@ class DATEVVendorMappingResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =============================================================================
@@ -554,8 +552,7 @@ class DATEVExportResponse(BaseModel):
     skipped_documents: List[UUID] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DATEVExportHistoryItem(BaseModel):
@@ -585,8 +582,7 @@ class DATEVExportHistoryItem(BaseModel):
             return DATEVExportStatus(v)
         return v
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DATEVExportHistoryResponse(BaseModel):

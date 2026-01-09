@@ -18,7 +18,7 @@ from datetime import date, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_user, get_current_superuser
@@ -73,8 +73,7 @@ class ArchiveResponse(BaseModel):
     archived_at: datetime
     archived_by_id: Optional[uuid.UUID]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VerificationResponse(BaseModel):
@@ -100,8 +99,7 @@ class RetentionSettingResponse(BaseModel):
     auto_delete_enabled: bool
     requires_approval_for_delete: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RetentionSettingUpdateRequest(BaseModel):
@@ -532,8 +530,7 @@ class ProcedureDocVersionResponse(BaseModel):
     change_summary: Optional[str] = None
     company_id: Optional[uuid.UUID] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProcedureDocDetailResponse(ProcedureDocVersionResponse):

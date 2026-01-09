@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
@@ -90,8 +90,7 @@ class PositionBase(BaseModel):
             return None
         return v
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PositionCreate(PositionBase):
@@ -130,8 +129,7 @@ class DepartmentInfo(BaseModel):
     name: str
     short_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PositionResponse(BaseModel):
@@ -155,8 +153,7 @@ class PositionResponse(BaseModel):
     employee_count: int = 0
     created_at: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PositionDetailResponse(PositionResponse):
@@ -165,8 +162,7 @@ class PositionDetailResponse(PositionResponse):
     responsibilities: Optional[str] = None
     updated_at: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PositionListResponse(BaseModel):

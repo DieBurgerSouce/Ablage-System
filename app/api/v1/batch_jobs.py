@@ -17,7 +17,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.db.models import User
 from app.api.dependencies import get_current_active_user, get_db
@@ -65,8 +65,7 @@ class BatchJobResponse(BaseModel):
     total_processing_time_ms: Optional[int]
     result_summary: Optional[dict]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BatchJobListResponse(BaseModel):

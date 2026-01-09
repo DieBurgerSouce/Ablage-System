@@ -94,7 +94,7 @@ async def list_queue_items(
     created_to: Optional[datetime] = Query(None, description="Erstellt bis"),
     # Sorting and pagination
     sort_by: Optional[str] = Query("created_at", description="Sortierfeld"),
-    sort_order: Optional[str] = Query("desc", regex="^(asc|desc)$", description="Sortierrichtung"),
+    sort_order: Optional[str] = Query("desc", pattern="^(asc|desc)$", description="Sortierrichtung"),
     limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
     offset: int = Query(0, ge=0, description="Offset fuer Paginierung"),
     # Auth
@@ -895,7 +895,7 @@ async def get_editor_stats(
 async def get_trends(
     request: Request,
     days: int = Query(30, ge=1, le=365, description="Anzahl Tage"),
-    group_by: str = Query("day", regex="^(day|week|month)$", description="Gruppierung"),
+    group_by: str = Query("day", pattern="^(day|week|month)$", description="Gruppierung"),
     current_user: User = Depends(require_permission("validation:read")),
     db: AsyncSession = Depends(get_db)
 ):

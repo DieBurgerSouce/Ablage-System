@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
@@ -85,8 +85,7 @@ class DepartmentBase(BaseModel):
             return None
         return v
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DepartmentCreate(DepartmentBase):
@@ -122,8 +121,7 @@ class ManagerInfo(BaseModel):
     last_name: str
     full_name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DepartmentResponse(BaseModel):
@@ -141,8 +139,7 @@ class DepartmentResponse(BaseModel):
     employee_count: int = 0
     created_at: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DepartmentDetailResponse(DepartmentResponse):
@@ -150,8 +147,7 @@ class DepartmentDetailResponse(DepartmentResponse):
     children: List["DepartmentResponse"] = []
     updated_at: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DepartmentTreeItem(BaseModel):
@@ -168,8 +164,7 @@ class DepartmentTreeItem(BaseModel):
     level: int = 0
     children: List["DepartmentTreeItem"] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DepartmentListResponse(BaseModel):

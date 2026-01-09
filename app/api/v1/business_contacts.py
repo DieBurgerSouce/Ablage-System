@@ -189,8 +189,8 @@ async def list_contacts(
     auto_detected: Optional[bool] = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    sort_by: str = Query("name", regex="^(name|created_at|updated_at|document_count|total_invoice_amount)$"),
-    sort_order: str = Query("asc", regex="^(asc|desc)$"),
+    sort_by: str = Query("name", pattern="^(name|created_at|updated_at|document_count|total_invoice_amount)$"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> BusinessContactListResponse:

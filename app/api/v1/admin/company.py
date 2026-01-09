@@ -14,7 +14,7 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,8 +50,7 @@ class CompanySettingsResponse(BaseModel):
     updated_at: datetime
     updated_by_id: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CompanySettingsUpdate(BaseModel):

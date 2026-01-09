@@ -566,7 +566,7 @@ async def get_account_lockout_status(
 
 # ==================== User Quotas Management ====================
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, update
 from app.db.models import RateLimitOverride
 
@@ -593,8 +593,7 @@ class UserQuotasResponse(BaseModel):
     # Computed effective limits
     effective_limits: dict
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserQuotasUpdate(BaseModel):

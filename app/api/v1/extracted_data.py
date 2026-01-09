@@ -18,7 +18,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select, and_, or_, cast, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,8 +71,7 @@ class ExtractedDataSearchResult(BaseModel):
     preview_text: Optional[str] = None  # Erste 200 Zeichen OCR-Text
     filename: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaginatedSearchResponse(BaseModel):
@@ -100,8 +99,7 @@ class InvoiceSummary(BaseModel):
     needs_review: bool = False
     filename: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaginatedInvoiceList(BaseModel):

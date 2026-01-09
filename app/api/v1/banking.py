@@ -698,7 +698,7 @@ async def list_transactions(
     offset: int = Query(0, ge=0, description="Offset"),
     limit: int = Query(50, ge=1, le=200, description="Limit"),
     sort_by: TransactionSortField = Query(TransactionSortField.BOOKING_DATE, description="Sortierfeld"),
-    sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sortierrichtung"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sortierrichtung"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
@@ -812,7 +812,7 @@ async def get_monthly_summary(
 )
 async def get_top_counterparties(
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
-    direction: str = Query("both", regex="^(in|out|both)$", description="Richtung"),
+    direction: str = Query("both", pattern="^(in|out|both)$", description="Richtung"),
     limit: int = Query(10, ge=1, le=50, description="Anzahl"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),

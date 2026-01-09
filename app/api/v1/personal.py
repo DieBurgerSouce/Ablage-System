@@ -11,7 +11,7 @@ from uuid import UUID
 import structlog
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -43,8 +43,7 @@ class DepartmentInfoSchema(BaseModel):
     name: str
     short_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PositionInfoSchema(BaseModel):
@@ -53,8 +52,7 @@ class PositionInfoSchema(BaseModel):
     title: str
     level: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ManagerInfoSchema(BaseModel):
@@ -87,8 +85,7 @@ class EmployeeSchema(BaseModel):
     photo_path: Optional[str] = None
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EmployeeDetailSchema(EmployeeSchema):
@@ -242,8 +239,7 @@ class DepartmentSchema(BaseModel):
     employee_count: int = 0
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DepartmentDetailSchema(DepartmentSchema):
@@ -319,8 +315,7 @@ class PositionSchema(BaseModel):
     employee_count: int = 0
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PositionDetailSchema(PositionSchema):

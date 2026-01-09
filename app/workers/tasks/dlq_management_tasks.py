@@ -18,7 +18,7 @@ from collections import defaultdict
 
 import structlog
 from celery import current_app
-from pydantic import BaseModel, ValidationError as PydanticValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError as PydanticValidationError
 from redis import Redis
 from redis.exceptions import RedisError
 
@@ -35,16 +35,14 @@ class DLQTaskHeadersSchema(BaseModel):
     id: Optional[str] = None
     task: Optional[str] = None
 
-    class Config:
-        extra = "allow"  # Erlaube zusaetzliche Felder
+    model_config = ConfigDict(extra="allow")  # Erlaube zusaetzliche Felder
 
 
 class DLQTaskPropertiesSchema(BaseModel):
     """Validierungsschema fuer Celery Task Properties."""
     timestamp: Optional[float] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class DLQTaskSchema(BaseModel):
@@ -56,8 +54,7 @@ class DLQTaskSchema(BaseModel):
     properties: DLQTaskPropertiesSchema = DLQTaskPropertiesSchema()
     body: Optional[str] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 def validate_dlq_task(data: Dict[str, Any]) -> DLQTaskSchema:

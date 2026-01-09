@@ -15,7 +15,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
@@ -158,8 +158,7 @@ class EmployeeBase(BaseModel):
             raise ValueError('Ungueltig')  # G.1 CRITICAL: Keine Format-Details leaken!
         return v
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EmployeeCreate(EmployeeBase):
@@ -292,8 +291,7 @@ class DepartmentInfo(BaseModel):
     name: str
     short_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PositionInfo(BaseModel):
@@ -302,8 +300,7 @@ class PositionInfo(BaseModel):
     title: str
     level: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EmployeeResponse(BaseModel):
@@ -326,8 +323,7 @@ class EmployeeResponse(BaseModel):
     photo_path: Optional[str] = None
     created_at: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EmployeeDetailResponse(EmployeeBase):
@@ -340,8 +336,7 @@ class EmployeeDetailResponse(EmployeeBase):
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EmployeeListResponse(BaseModel):

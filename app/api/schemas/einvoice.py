@@ -16,7 +16,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .extracted_data import ExtractedInvoiceData
 
@@ -132,25 +132,24 @@ class EInvoiceParseResponse(BaseModel):
         description="E-Invoice Datensatz ID"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "success": True,
-                "format_detected": "zugferd_2.3",
-                "profile": "EN16931",
-                "version": "2.3.3",
-                "invoice_data": {
-                    "document_type": "invoice",
-                    "invoice_number": "RE-2024-00123",
-                    "invoice_date": "2024-12-17",
-                    "net_amount": 1000.00,
-                    "vat_rate": 19.0,
-                    "vat_amount": 190.00,
-                    "gross_amount": 1190.00
-                },
-                "warnings": []
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "success": True,
+            "format_detected": "zugferd_2.3",
+            "profile": "EN16931",
+            "version": "2.3.3",
+            "invoice_data": {
+                "document_type": "invoice",
+                "invoice_number": "RE-2024-00123",
+                "invoice_date": "2024-12-17",
+                "net_amount": 1000.00,
+                "vat_rate": 19.0,
+                "vat_amount": 190.00,
+                "gross_amount": 1190.00
+            },
+            "warnings": []
         }
+    })
 
 
 # =============================================================================
@@ -255,21 +254,20 @@ class EInvoiceValidationResponse(BaseModel):
         description="URL zum detaillierten Validierungsbericht"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "valid": True,
-                "validator_used": "kosit",
-                "validated_at": "2024-12-17T14:30:00Z",
-                "schema_valid": True,
-                "schematron_valid": True,
-                "pdf_a_compliant": True,
-                "errors": [],
-                "warnings": [],
-                "error_count": 0,
-                "warning_count": 0
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "valid": True,
+            "validator_used": "kosit",
+            "validated_at": "2024-12-17T14:30:00Z",
+            "schema_valid": True,
+            "schematron_valid": True,
+            "pdf_a_compliant": True,
+            "errors": [],
+            "warnings": [],
+            "error_count": 0,
+            "warning_count": 0
         }
+    })
 
 
 # =============================================================================
