@@ -1422,3 +1422,872 @@ def daily_kpi_recalculation(self) -> Dict[str, Any]:
 #     # generate_loan_amortization(space_id=..., loan_id=...)
 #     # run_finance_analytics(space_id=...)
 # }
+
+
+# =============================================================================
+# ENTERPRISE INTELLIGENCE TASKS
+# =============================================================================
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.recalculate_property_intelligence",
+    max_retries=3,
+    default_retry_delay=60,
+    soft_time_limit=600,
+    time_limit=720,
+)
+def recalculate_property_intelligence(
+    self,
+    property_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Neuberechnung aller Property-Intelligence-KPIs fuer eine Immobilie.
+
+    Berechnet: Wertschaetzung, Renditen, ROI, Wertsteigerung.
+
+    Args:
+        property_id: Property-ID
+
+    Returns:
+        Berechnungsergebnis
+    """
+    logger.info(
+        "property_intelligence_recalculation_started",
+        task_id=self.request.id,
+        property_id=property_id,
+    )
+
+    try:
+        async def do_recalculate():
+            from app.db.session import get_async_session
+            from app.services.privat import get_property_intelligence_service
+
+            if not property_id:
+                return {"error": "property_id erforderlich"}
+
+            async with get_async_session() as db:
+                service = get_property_intelligence_service()
+                result = await service.recalculate_all_kpis(db, UUID(property_id))
+
+                return {
+                    "property_id": property_id,
+                    "success": result is not None,
+                    "kpis": {
+                        "estimated_value": float(result.estimated_value) if result and result.estimated_value else None,
+                        "calculated_yield": float(result.calculated_yield) if result and result.calculated_yield else None,
+                        "calculated_roi": float(result.calculated_roi) if result and result.calculated_roi else None,
+                    } if result else None,
+                }
+
+        result = run_async(do_recalculate())
+
+        logger.info(
+            "property_intelligence_recalculation_completed",
+            task_id=self.request.id,
+            result=result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "property_intelligence_recalculation_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.recalculate_all_property_intelligence",
+    max_retries=3,
+    default_retry_delay=60,
+    soft_time_limit=1800,
+    time_limit=2100,
+)
+def recalculate_all_property_intelligence(
+    self,
+    space_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Neuberechnung aller Property-Intelligence-KPIs fuer einen Space.
+
+    Args:
+        space_id: Space-ID
+
+    Returns:
+        Berechnungsergebnis
+    """
+    logger.info(
+        "all_property_intelligence_recalculation_started",
+        task_id=self.request.id,
+        space_id=space_id,
+    )
+
+    try:
+        async def do_recalculate():
+            from sqlalchemy import select
+            from app.db.session import get_async_session
+            from app.db.models import PrivatProperty, PrivatSpace
+            from app.services.privat import get_property_intelligence_service
+
+            async with get_async_session() as db:
+                service = get_property_intelligence_service()
+                calculated_count = 0
+                failed_count = 0
+
+                stmt = select(PrivatProperty).join(PrivatSpace).where(
+                    PrivatSpace.deleted_at == None
+                )
+                if space_id:
+                    stmt = stmt.where(PrivatProperty.space_id == UUID(space_id))
+
+                result = await db.execute(stmt)
+                properties = result.scalars().all()
+
+                for prop in properties:
+                    try:
+                        await service.recalculate_all_kpis(db, prop.id)
+                        calculated_count += 1
+                    except Exception as e:
+                        failed_count += 1
+                        logger.warning(
+                            "property_intelligence_failed",
+                            property_id=str(prop.id),
+                            error=str(e),
+                        )
+
+                return {
+                    "space_id": space_id,
+                    "calculated": calculated_count,
+                    "failed": failed_count,
+                }
+
+        result = run_async(do_recalculate())
+
+        logger.info(
+            "all_property_intelligence_recalculation_completed",
+            task_id=self.request.id,
+            result=result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "all_property_intelligence_recalculation_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.recalculate_vehicle_intelligence",
+    max_retries=3,
+    default_retry_delay=60,
+    soft_time_limit=600,
+    time_limit=720,
+)
+def recalculate_vehicle_intelligence(
+    self,
+    vehicle_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Neuberechnung aller Vehicle-Intelligence-KPIs fuer ein Fahrzeug.
+
+    Args:
+        vehicle_id: Vehicle-ID
+
+    Returns:
+        Berechnungsergebnis
+    """
+    logger.info(
+        "vehicle_intelligence_recalculation_started",
+        task_id=self.request.id,
+        vehicle_id=vehicle_id,
+    )
+
+    try:
+        async def do_recalculate():
+            from app.db.session import get_async_session
+            from app.services.privat import get_vehicle_intelligence_service
+
+            if not vehicle_id:
+                return {"error": "vehicle_id erforderlich"}
+
+            async with get_async_session() as db:
+                service = get_vehicle_intelligence_service()
+                result = await service.recalculate_all_kpis(db, UUID(vehicle_id))
+
+                return {
+                    "vehicle_id": vehicle_id,
+                    "success": result is not None,
+                    "kpis": {
+                        "current_value": float(result.current_value) if result and result.current_value else None,
+                        "calculated_tco_per_km": float(result.calculated_tco_per_km) if result and result.calculated_tco_per_km else None,
+                    } if result else None,
+                }
+
+        result = run_async(do_recalculate())
+
+        logger.info(
+            "vehicle_intelligence_recalculation_completed",
+            task_id=self.request.id,
+            result=result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "vehicle_intelligence_recalculation_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.recalculate_all_vehicle_intelligence",
+    max_retries=3,
+    default_retry_delay=60,
+    soft_time_limit=1800,
+    time_limit=2100,
+)
+def recalculate_all_vehicle_intelligence(
+    self,
+    space_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Neuberechnung aller Vehicle-Intelligence-KPIs fuer einen Space.
+
+    Args:
+        space_id: Space-ID
+
+    Returns:
+        Berechnungsergebnis
+    """
+    logger.info(
+        "all_vehicle_intelligence_recalculation_started",
+        task_id=self.request.id,
+        space_id=space_id,
+    )
+
+    try:
+        async def do_recalculate():
+            from sqlalchemy import select
+            from app.db.session import get_async_session
+            from app.db.models import PrivatVehicle, PrivatSpace
+            from app.services.privat import get_vehicle_intelligence_service
+
+            async with get_async_session() as db:
+                service = get_vehicle_intelligence_service()
+                calculated_count = 0
+                failed_count = 0
+
+                stmt = select(PrivatVehicle).join(PrivatSpace).where(
+                    PrivatSpace.deleted_at == None
+                )
+                if space_id:
+                    stmt = stmt.where(PrivatVehicle.space_id == UUID(space_id))
+
+                result = await db.execute(stmt)
+                vehicles = result.scalars().all()
+
+                for vehicle in vehicles:
+                    try:
+                        await service.recalculate_all_kpis(db, vehicle.id)
+                        calculated_count += 1
+                    except Exception as e:
+                        failed_count += 1
+                        logger.warning(
+                            "vehicle_intelligence_failed",
+                            vehicle_id=str(vehicle.id),
+                            error=str(e),
+                        )
+
+                return {
+                    "space_id": space_id,
+                    "calculated": calculated_count,
+                    "failed": failed_count,
+                }
+
+        result = run_async(do_recalculate())
+
+        logger.info(
+            "all_vehicle_intelligence_recalculation_completed",
+            task_id=self.request.id,
+            result=result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "all_vehicle_intelligence_recalculation_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.recalculate_investment_intelligence",
+    max_retries=3,
+    default_retry_delay=60,
+    soft_time_limit=1800,
+    time_limit=2100,
+)
+def recalculate_investment_intelligence(
+    self,
+    space_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Neuberechnung aller Investment-Intelligence-KPIs fuer einen Space.
+
+    Berechnet: Portfolio-Allokation, Diversifikation, Risikoprofil.
+
+    Args:
+        space_id: Space-ID
+
+    Returns:
+        Berechnungsergebnis
+    """
+    logger.info(
+        "investment_intelligence_recalculation_started",
+        task_id=self.request.id,
+        space_id=space_id,
+    )
+
+    try:
+        async def do_recalculate():
+            from sqlalchemy import select
+            from app.db.session import get_async_session
+            from app.db.models import PrivatSpace
+            from app.services.privat import get_investment_intelligence_service
+
+            async with get_async_session() as db:
+                service = get_investment_intelligence_service()
+                analyzed_count = 0
+                results = []
+
+                stmt = select(PrivatSpace).where(PrivatSpace.deleted_at == None)
+                if space_id:
+                    stmt = stmt.where(PrivatSpace.id == UUID(space_id))
+
+                result = await db.execute(stmt)
+                spaces = result.scalars().all()
+
+                for space in spaces:
+                    try:
+                        analytics = await service.get_full_portfolio_analytics(
+                            db, space.id, target_profile=None, include_rebalancing=True
+                        )
+                        analyzed_count += 1
+
+                        if analytics:
+                            results.append({
+                                "space_id": str(space.id),
+                                "total_value": float(analytics.total_value),
+                                "total_investments": analytics.total_investments,
+                                "diversification_score": float(analytics.diversification.diversification_score) if analytics.diversification else None,
+                                "risk_category": analytics.risk_profile.risk_category if analytics.risk_profile else None,
+                            })
+
+                    except Exception as e:
+                        logger.warning(
+                            "investment_intelligence_failed_for_space",
+                            space_id=str(space.id),
+                            error=str(e),
+                        )
+
+                return {
+                    "analyzed_spaces": analyzed_count,
+                    "results": results[:10],
+                }
+
+        result = run_async(do_recalculate())
+
+        logger.info(
+            "investment_intelligence_recalculation_completed",
+            task_id=self.request.id,
+            result=result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "investment_intelligence_recalculation_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.calculate_financial_health",
+    max_retries=3,
+    default_retry_delay=60,
+    soft_time_limit=1800,
+    time_limit=2100,
+)
+def calculate_financial_health(
+    self,
+    space_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Berechnet Financial Health Score fuer Space(s).
+
+    6 Dimensionen: Vermoegensaufbau, Schulden, Risikoabdeckung,
+    Liquiditaet, Altersvorsorge, Diversifikation.
+
+    Args:
+        space_id: Optional - Nur fuer diesen Space
+
+    Returns:
+        Health Score Ergebnisse
+    """
+    logger.info(
+        "financial_health_calculation_started",
+        task_id=self.request.id,
+        space_id=space_id,
+    )
+
+    try:
+        async def do_calculate():
+            from sqlalchemy import select
+            from app.db.session import get_async_session
+            from app.db.models import PrivatSpace
+            from app.services.privat import get_financial_health_service
+
+            async with get_async_session() as db:
+                service = get_financial_health_service()
+                calculated_count = 0
+                results = []
+
+                stmt = select(PrivatSpace).where(PrivatSpace.deleted_at == None)
+                if space_id:
+                    stmt = stmt.where(PrivatSpace.id == UUID(space_id))
+
+                result = await db.execute(stmt)
+                spaces = result.scalars().all()
+
+                for space in spaces:
+                    try:
+                        health_score = await service.calculate_health_score(
+                            db, space.id, monthly_income=None, monthly_expenses=None, user_age=None
+                        )
+                        calculated_count += 1
+
+                        if health_score:
+                            results.append({
+                                "space_id": str(space.id),
+                                "overall_score": float(health_score.overall_score),
+                                "overall_rating": health_score.overall_rating,
+                                "top_recommendation": health_score.priority_recommendations[0] if health_score.priority_recommendations else None,
+                            })
+
+                    except Exception as e:
+                        logger.warning(
+                            "financial_health_calculation_failed_for_space",
+                            space_id=str(space.id),
+                            error=str(e),
+                        )
+
+                return {
+                    "calculated_spaces": calculated_count,
+                    "results": results[:10],
+                }
+
+        result = run_async(do_calculate())
+
+        logger.info(
+            "financial_health_calculation_completed",
+            task_id=self.request.id,
+            result=result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "financial_health_calculation_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.generate_smart_recommendations",
+    max_retries=3,
+    default_retry_delay=60,
+    soft_time_limit=1800,
+    time_limit=2100,
+)
+def generate_smart_recommendations(
+    self,
+    space_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Generiert Smart Recommendations fuer Space(s).
+
+    Prueft: Refinanzierung, Rebalancing, Versicherungsluecken,
+    Notgroschen, Fristen, veraltete Werte.
+
+    Args:
+        space_id: Optional - Nur fuer diesen Space
+
+    Returns:
+        Recommendations Ergebnisse
+    """
+    logger.info(
+        "smart_recommendations_generation_started",
+        task_id=self.request.id,
+        space_id=space_id,
+    )
+
+    try:
+        async def do_generate():
+            from sqlalchemy import select
+            from app.db.session import get_async_session
+            from app.db.models import PrivatSpace
+            from app.services.privat import get_recommendations_service
+
+            async with get_async_session() as db:
+                service = get_recommendations_service()
+                generated_count = 0
+                total_recommendations = 0
+                critical_count = 0
+                results = []
+
+                stmt = select(PrivatSpace).where(PrivatSpace.deleted_at == None)
+                if space_id:
+                    stmt = stmt.where(PrivatSpace.id == UUID(space_id))
+
+                result = await db.execute(stmt)
+                spaces = result.scalars().all()
+
+                for space in spaces:
+                    try:
+                        reco_result = await service.generate_recommendations(db, space.id)
+                        generated_count += 1
+
+                        if reco_result:
+                            total_recommendations += len(reco_result.recommendations)
+                            critical_count += reco_result.critical_count
+                            results.append({
+                                "space_id": str(space.id),
+                                "total": len(reco_result.recommendations),
+                                "critical": reco_result.critical_count,
+                                "high": reco_result.high_count,
+                                "medium": reco_result.medium_count,
+                                "low": reco_result.low_count,
+                            })
+
+                    except Exception as e:
+                        logger.warning(
+                            "recommendations_generation_failed_for_space",
+                            space_id=str(space.id),
+                            error=str(e),
+                        )
+
+                return {
+                    "generated_spaces": generated_count,
+                    "total_recommendations": total_recommendations,
+                    "critical_count": critical_count,
+                    "results": results[:10],
+                }
+
+        result = run_async(do_generate())
+
+        logger.info(
+            "smart_recommendations_generation_completed",
+            task_id=self.request.id,
+            result=result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "smart_recommendations_generation_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.daily_intelligence_recalculation",
+    max_retries=3,
+    default_retry_delay=300,
+    soft_time_limit=10800,  # 3 Stunden
+    time_limit=11100,
+)
+def daily_intelligence_recalculation(self) -> Dict[str, Any]:
+    """
+    Taegliche Neuberechnung aller Intelligence-KPIs.
+
+    Wird per Celery Beat um 03:00 Uhr ausgefuehrt (nach daily_kpi_recalculation).
+    Berechnet alle Enterprise-Intelligence-Features.
+
+    Returns:
+        Zusammenfassung der berechneten Intelligence-KPIs
+    """
+    logger.info(
+        "daily_intelligence_recalculation_started",
+        task_id=self.request.id,
+    )
+
+    try:
+        from celery import group
+
+        task_group = group(
+            recalculate_all_property_intelligence.s(),
+            recalculate_all_vehicle_intelligence.s(),
+            recalculate_investment_intelligence.s(),
+            calculate_financial_health.s(),
+            generate_smart_recommendations.s(),
+        )
+
+        result = task_group.apply_async()
+        results = result.get(timeout=10500)
+
+        logger.info(
+            "daily_intelligence_recalculation_completed",
+            task_id=self.request.id,
+            sub_task_results=len(results) if results else 0,
+        )
+
+        return {
+            "status": "completed",
+            "sub_tasks_completed": len(results) if results else 0,
+            "results": results,
+        }
+
+    except Exception as e:
+        logger.error(
+            "daily_intelligence_recalculation_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+# =============================================================================
+# KPI Orchestration Tasks
+# =============================================================================
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.orchestrate_all_kpis",
+    max_retries=2,
+    default_retry_delay=300,
+    soft_time_limit=3600,
+    time_limit=4200,
+)
+def orchestrate_all_kpis(
+    self,
+    space_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Orchestriert alle KPI-Berechnungen ueber den KPIOrchestrationService.
+
+    Fuehrt KEINE eigenen Berechnungen durch, sondern:
+    - Koordiniert PropertyCalculationService, VehicleCalculationService,
+      LoanScenarioService, InvestmentIntelligenceService, InsuranceIntelligenceService
+    - Stellt korrekte Abhaengigkeitsreihenfolge sicher
+    - Berechnet Financial Health Score zuletzt
+
+    Args:
+        space_id: Optional - nur diesen Space berechnen
+
+    Returns:
+        Ergebnis der Orchestrierung
+    """
+    async def _orchestrate():
+        from app.db.session import get_async_session
+        from app.services.privat.kpi_orchestrator import get_kpi_orchestration_service
+
+        async with get_async_session() as db:
+            service = get_kpi_orchestration_service()
+
+            if space_id:
+                # Einzelner Space
+                result = await service.recalculate_all_for_space(
+                    db, UUID(space_id)
+                )
+                return {
+                    "space_id": space_id,
+                    "total_calculated": result.total_calculated,
+                    "total_errors": result.total_errors,
+                    "financial_health_score": float(result.financial_health_score) if result.financial_health_score else None,
+                    "calculated_at": result.calculated_at.isoformat(),
+                }
+            else:
+                # Alle Spaces
+                batch_result = await service.recalculate_all_spaces(db)
+                return {
+                    "total_spaces": batch_result.total_spaces,
+                    "spaces_processed": batch_result.spaces_processed,
+                    "spaces_skipped": batch_result.spaces_skipped,
+                    "total_entities_calculated": batch_result.total_entities_calculated,
+                    "properties_calculated": batch_result.properties_calculated,
+                    "vehicles_calculated": batch_result.vehicles_calculated,
+                    "loans_calculated": batch_result.loans_calculated,
+                    "investments_calculated": batch_result.investments_calculated,
+                    "insurances_calculated": batch_result.insurances_calculated,
+                    "average_health_score": float(batch_result.average_health_score) if batch_result.average_health_score else None,
+                    "duration_seconds": batch_result.duration_seconds,
+                    "calculated_at": batch_result.calculated_at.isoformat(),
+                }
+
+    logger.info(
+        "orchestrate_all_kpis_started",
+        task_id=self.request.id,
+        space_id=space_id,
+    )
+
+    try:
+        result = run_async(_orchestrate())
+
+        logger.info(
+            "orchestrate_all_kpis_completed",
+            task_id=self.request.id,
+            space_id=space_id,
+            result=result,
+        )
+
+        return {"status": "success", **result}
+
+    except Exception as e:
+        logger.error(
+            "orchestrate_all_kpis_failed",
+            task_id=self.request.id,
+            space_id=space_id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.recalculate_entity_kpi",
+    max_retries=3,
+    default_retry_delay=60,
+)
+def recalculate_entity_kpi(
+    self,
+    entity_type: str,
+    entity_id: str,
+    recalculate_health: bool = True,
+) -> Dict[str, Any]:
+    """
+    Berechnet KPIs fuer eine einzelne Entity ueber den Orchestrator.
+
+    Nuetzlich nach Datenänderungen an einer Entity.
+
+    Args:
+        entity_type: "property", "vehicle", "loan", "investment"
+        entity_id: Entity-UUID
+        recalculate_health: Ob Financial Health auch neu berechnet werden soll
+
+    Returns:
+        Ergebnis der Berechnung
+    """
+    async def _recalculate():
+        from app.db.session import get_async_session
+        from app.services.privat.kpi_orchestrator import get_kpi_orchestration_service
+
+        async with get_async_session() as db:
+            service = get_kpi_orchestration_service()
+            result = await service.recalculate_single_entity(
+                db, entity_type, UUID(entity_id), recalculate_health
+            )
+            return {
+                "entity_type": result.entity_type,
+                "entity_id": str(result.entity_id),
+                "success": result.success,
+                "calculated_kpis": result.calculated_kpis,
+                "error": result.error,
+            }
+
+    logger.info(
+        "recalculate_entity_kpi_started",
+        task_id=self.request.id,
+        entity_type=entity_type,
+        entity_id=entity_id,
+    )
+
+    try:
+        result = run_async(_recalculate())
+
+        logger.info(
+            "recalculate_entity_kpi_completed",
+            task_id=self.request.id,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            success=result.get("success"),
+        )
+
+        return {"status": "success" if result.get("success") else "failed", **result}
+
+    except Exception as e:
+        logger.error(
+            "recalculate_entity_kpi_failed",
+            task_id=self.request.id,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)
+
+
+# =============================================================================
+# CELERY BEAT SCHEDULE UPDATE NOTIZ
+# =============================================================================
+#
+# Die folgenden Tasks sollten zum Celery Beat Schedule hinzugefuegt werden:
+#
+# CELERY_BEAT_SCHEDULE = {
+#     ...
+#     # ENTERPRISE INTELLIGENCE: Taegliche Neuberechnung
+#     'privat-daily-intelligence-recalculation': {
+#         'task': 'app.workers.tasks.privat_tasks.daily_intelligence_recalculation',
+#         'schedule': crontab(hour=3, minute=0),  # Daily at 03:00
+#     },
+#
+#     # OPTIONAL: Wochentlicher Financial Health Check
+#     'privat-weekly-financial-health': {
+#         'task': 'app.workers.tasks.privat_tasks.calculate_financial_health',
+#         'schedule': crontab(hour=6, minute=0, day_of_week=0),  # Sunday at 06:00
+#     },
+#
+#     # OPTIONAL: Wochentliche Recommendations
+#     'privat-weekly-recommendations': {
+#         'task': 'app.workers.tasks.privat_tasks.generate_smart_recommendations',
+#         'schedule': crontab(hour=6, minute=30, day_of_week=0),  # Sunday at 06:30
+#     },
+# }

@@ -1,0 +1,532 @@
+# -*- coding: utf-8 -*-
+"""
+InsuranceIntelligenceService - Intelligenter Wrapper um InsuranceAnalysisService.
+
+Wrapper-Service der:
+- Einheitliches Interface wie PropertyIntelligenceService bietet
+- An bestehenden InsuranceAnalysisService delegiert
+- Integration mit RecommendationsService hat
+- Batch-Operationen fuer alle Spaces unterstuetzt
+- Event-Publishing fuer Deckungsluecken
+
+Enterprise Feature - Singleton Pattern wie alle Intelligence Services.
+"""
+
+from __future__ import annotations
+
+import threading
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from decimal import Decimal
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
+import structlog
+from prometheus_client import Counter, Gauge, Histogram
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.services.privat.insurance_analysis_service import (
+    InsuranceAnalysisService,
+    InsuranceKPIs,
+    CoverageGapAnalysisResult,
+    CancellationDeadlineResult,
+    InsurancePremiumSummary,
+    get_insurance_analysis_service,
+)
+
+logger = structlog.get_logger(__name__)
+
+
+# =============================================================================
+# Prometheus Metriken
+# =============================================================================
+
+INSURANCE_INTEL_CALCULATIONS = Counter(
+    "insurance_intelligence_calculations_total",
+    "Anzahl der Insurance-Intelligence Berechnungen",
+    ["calculation_type"]
+)
+
+INSURANCE_INTEL_DURATION = Histogram(
+    "insurance_intelligence_duration_seconds",
+    "Dauer der Insurance-Intelligence Berechnung",
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0]
+)
+
+INSURANCE_COVERAGE_SCORE = Gauge(
+    "insurance_coverage_score_average",
+    "Durchschnittlicher Deckungsscore aller Spaces"
+)
+
+INSURANCE_CRITICAL_GAPS = Gauge(
+    "insurance_critical_gaps_total",
+    "Anzahl kritischer Deckungsluecken insgesamt"
+)
+
+
+# =============================================================================
+# Data Classes
+# =============================================================================
+
+@dataclass
+class InsuranceIntelligenceResult:
+    """Vollstaendiges Ergebnis der Insurance Intelligence Analyse."""
+    space_id: UUID
+
+    # Deckungsanalyse
+    coverage_analysis: Optional[CoverageGapAnalysisResult] = None
+    coverage_score: Decimal = Decimal("0")
+
+    # Kuendigungsfristen
+    cancellation_deadlines: List[CancellationDeadlineResult] = field(default_factory=list)
+    urgent_deadlines_count: int = 0
+    approaching_deadlines_count: int = 0
+
+    # Praemien
+    premium_summary: Optional[InsurancePremiumSummary] = None
+    annual_premium_total: Decimal = Decimal("0")
+
+    # Empfehlungen
+    recommendations: List[str] = field(default_factory=list)
+
+    # Health Score (0-100)
+    health_score: Decimal = Decimal("50")
+
+    calculated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+@dataclass
+class BatchInsuranceResult:
+    """Ergebnis der Batch-Berechnung fuer alle Spaces."""
+    total_spaces: int
+    calculated: int
+    skipped: int
+    errors: List[str]
+
+    # Aggregierte Werte
+    average_coverage_score: Decimal = Decimal("0")
+    total_critical_gaps: int = 0
+    total_urgent_deadlines: int = 0
+    total_annual_premiums: Decimal = Decimal("0")
+
+    calculated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# =============================================================================
+# Service
+# =============================================================================
+
+class InsuranceIntelligenceService:
+    """
+    Intelligenter Wrapper um InsuranceAnalysisService.
+
+    Features:
+    - Einheitliches Interface wie PropertyIntelligenceService
+    - Delegation an bestehenden InsuranceAnalysisService
+    - Integration mit RecommendationsService
+    - Batch-Operationen fuer alle Spaces
+    - Event-Publishing bei kritischen Luecken
+    """
+
+    def __init__(self) -> None:
+        """Initialisiert den Service."""
+        self._analysis_service = get_insurance_analysis_service()
+        self._cache: Dict[str, Any] = {}
+
+    # =========================================================================
+    # Vollstaendige Analyse
+    # =========================================================================
+
+    async def get_full_analysis(
+        self,
+        db: AsyncSession,
+        space_id: UUID,
+        persist: bool = True,
+    ) -> InsuranceIntelligenceResult:
+        """
+        Fuehrt vollstaendige Insurance Intelligence Analyse durch.
+
+        Delegiert an InsuranceAnalysisService und reichert mit
+        Empfehlungen und Health Score an.
+
+        Args:
+            db: Datenbank-Session
+            space_id: Space-ID
+            persist: Ob die Werte in der Datenbank gespeichert werden sollen
+
+        Returns:
+            InsuranceIntelligenceResult mit allen berechneten Werten
+        """
+        INSURANCE_INTEL_CALCULATIONS.labels(calculation_type="full_analysis").inc()
+
+        with INSURANCE_INTEL_DURATION.time():
+            # An bestehenden Service delegieren
+            kpis = await self._analysis_service.analyze_all(db, space_id, persist=persist)
+
+            # Result zusammenbauen
+            result = InsuranceIntelligenceResult(
+                space_id=space_id,
+                coverage_analysis=kpis.coverage_analysis,
+                coverage_score=kpis.coverage_analysis.coverage_score if kpis.coverage_analysis else Decimal("0"),
+                cancellation_deadlines=kpis.cancellation_deadlines,
+                premium_summary=kpis.premium_summary,
+            )
+
+            # Dringende Fristen zaehlen
+            result.urgent_deadlines_count = sum(
+                1 for d in kpis.cancellation_deadlines if d.is_urgent
+            )
+            result.approaching_deadlines_count = sum(
+                1 for d in kpis.cancellation_deadlines if d.is_approaching
+            )
+
+            # Jaehrliche Praemien
+            if kpis.premium_summary:
+                result.annual_premium_total = kpis.premium_summary.annual_total
+
+            # Empfehlungen generieren
+            result.recommendations = await self._generate_recommendations(
+                db, space_id, kpis
+            )
+
+            # Health Score berechnen
+            result.health_score = self._calculate_health_score(kpis)
+
+            # Events publizieren bei kritischen Luecken
+            await self._publish_events_if_needed(db, space_id, kpis)
+
+            logger.info(
+                "insurance_intelligence_analysis_completed",
+                space_id=str(space_id),
+                coverage_score=float(result.coverage_score),
+                health_score=float(result.health_score),
+                urgent_deadlines=result.urgent_deadlines_count,
+            )
+
+            return result
+
+    # =========================================================================
+    # Empfehlungen
+    # =========================================================================
+
+    async def _generate_recommendations(
+        self,
+        db: AsyncSession,
+        space_id: UUID,
+        kpis: InsuranceKPIs,
+    ) -> List[str]:
+        """
+        Generiert intelligente Empfehlungen basierend auf Analyse.
+
+        Args:
+            db: Datenbank-Session
+            space_id: Space-ID
+            kpis: Berechnete KPIs
+
+        Returns:
+            Liste von Empfehlungen
+        """
+        recommendations: List[str] = []
+
+        # Deckungsluecken-Empfehlungen
+        if kpis.coverage_analysis:
+            # Fehlende essentielle Versicherungen
+            for missing in kpis.coverage_analysis.missing_essential:
+                recommendations.append(
+                    f"Essentielle Versicherung fehlt: {missing} - "
+                    "Dringend Abschluss empfohlen"
+                )
+
+            # Kritische Luecken
+            for gap in kpis.coverage_analysis.gaps:
+                if gap.severity == "critical":
+                    recommendations.append(
+                        f"Kritische Deckungsluecke bei {gap.insurance_name}: "
+                        f"Nur {float(gap.current_coverage):,.0f} EUR von "
+                        f"{float(gap.recommended_coverage):,.0f} EUR empfohlen"
+                    )
+                elif gap.severity == "high" and gap.is_essential:
+                    recommendations.append(
+                        f"Hohe Deckungsluecke bei {gap.insurance_name}: "
+                        f"Erhoehung auf {float(gap.recommended_coverage):,.0f} EUR pruefen"
+                    )
+
+        # Kuendigungsfristen-Empfehlungen
+        for deadline in kpis.cancellation_deadlines:
+            if deadline.is_urgent:
+                recommendations.append(
+                    f"DRINGEND: Kuendigungsfrist fuer {deadline.insurance_name} "
+                    f"endet in {deadline.days_until_deadline} Tagen - "
+                    "Jetzt pruefen ob Kuendigung oder Verlaengerung gewuenscht!"
+                )
+            elif deadline.is_approaching and deadline.days_until_deadline <= 60:
+                recommendations.append(
+                    f"Kuendigungsfrist fuer {deadline.insurance_name} "
+                    f"in {deadline.days_until_deadline} Tagen - "
+                    "Rechtzeitig Konditionen vergleichen"
+                )
+
+        # Praemien-Empfehlungen
+        if kpis.premium_summary:
+            monthly = kpis.premium_summary.monthly_equivalent
+            if monthly > Decimal("500"):
+                recommendations.append(
+                    f"Monatliche Versicherungskosten von {float(monthly):,.0f} EUR - "
+                    "Potenzial fuer Buendelrabatte oder Tarifwechsel pruefen"
+                )
+
+        # Coverage Score Empfehlung
+        if kpis.coverage_analysis and kpis.coverage_analysis.coverage_score < Decimal("50"):
+            recommendations.append(
+                f"Deckungsscore nur {float(kpis.coverage_analysis.coverage_score):.0f}% - "
+                "Dringende Ueberarbeitung des Versicherungsportfolios empfohlen"
+            )
+
+        return recommendations
+
+    # =========================================================================
+    # Health Score
+    # =========================================================================
+
+    def _calculate_health_score(self, kpis: InsuranceKPIs) -> Decimal:
+        """
+        Berechnet einen Gesundheits-Score (0-100) fuer Versicherungen.
+
+        Args:
+            kpis: Berechnete KPIs
+
+        Returns:
+            Health Score als Decimal
+        """
+        score = Decimal("50")  # Basis
+
+        if kpis.coverage_analysis:
+            # Deckungsscore einbeziehen (max +30 Punkte)
+            coverage_contribution = (kpis.coverage_analysis.coverage_score / 100) * 30
+            score += coverage_contribution
+
+            # Abzuege fuer kritische Luecken
+            score -= Decimal(str(kpis.coverage_analysis.critical_gaps * 10))
+            score -= Decimal(str(kpis.coverage_analysis.high_gaps * 5))
+
+            # Abzug fuer fehlende essentielle Versicherungen
+            score -= Decimal(str(len(kpis.coverage_analysis.missing_essential) * 8))
+
+        # Kuendigungsfristen (max +10 Punkte wenn keine dringend)
+        urgent_count = sum(1 for d in kpis.cancellation_deadlines if d.is_urgent)
+        if urgent_count == 0:
+            score += Decimal("10")
+        else:
+            score -= Decimal(str(urgent_count * 5))
+
+        # Versicherungsanzahl (max +10 Punkte)
+        if kpis.premium_summary:
+            if kpis.premium_summary.insurance_count >= 5:
+                score += Decimal("10")
+            elif kpis.premium_summary.insurance_count >= 3:
+                score += Decimal("5")
+
+        # Sicherstellen 0-100
+        return max(Decimal("0"), min(Decimal("100"), score)).quantize(Decimal("0.01"))
+
+    # =========================================================================
+    # Event Publishing
+    # =========================================================================
+
+    async def _publish_events_if_needed(
+        self,
+        db: AsyncSession,
+        space_id: UUID,
+        kpis: InsuranceKPIs,
+    ) -> None:
+        """
+        Publiziert Events bei kritischen Ereignissen.
+
+        Args:
+            db: Datenbank-Session
+            space_id: Space-ID
+            kpis: Berechnete KPIs
+        """
+        try:
+            from app.services.events.event_bus import get_event_bus, EventType
+
+            event_bus = get_event_bus()
+
+            # Event bei kritischen Deckungsluecken
+            if kpis.coverage_analysis and kpis.coverage_analysis.critical_gaps > 0:
+                await event_bus.publish(
+                    EventType.INSURANCE_GAP_DETECTED,
+                    {
+                        "space_id": str(space_id),
+                        "critical_gaps": kpis.coverage_analysis.critical_gaps,
+                        "high_gaps": kpis.coverage_analysis.high_gaps,
+                        "coverage_score": float(kpis.coverage_analysis.coverage_score),
+                        "missing_essential": kpis.coverage_analysis.missing_essential,
+                    }
+                )
+
+            # Event bei dringenden Kuendigungsfristen
+            urgent_deadlines = [d for d in kpis.cancellation_deadlines if d.is_urgent]
+            for deadline in urgent_deadlines:
+                await event_bus.publish(
+                    EventType.INSURANCE_DEADLINE_APPROACHING,
+                    {
+                        "space_id": str(space_id),
+                        "insurance_id": str(deadline.insurance_id),
+                        "insurance_name": deadline.insurance_name,
+                        "days_until_deadline": deadline.days_until_deadline,
+                        "cancellation_deadline": str(deadline.cancellation_deadline),
+                    }
+                )
+
+        except Exception as e:
+            # Event-Publishing sollte nie die Hauptfunktion blockieren
+            logger.warning(
+                "event_publishing_failed",
+                space_id=str(space_id),
+                error=str(e),
+            )
+
+    # =========================================================================
+    # Batch-Operationen
+    # =========================================================================
+
+    async def recalculate_all_spaces(
+        self,
+        db: AsyncSession,
+        space_ids: Optional[List[UUID]] = None,
+    ) -> BatchInsuranceResult:
+        """
+        Berechnet Insurance Intelligence fuer alle Spaces.
+
+        Args:
+            db: Datenbank-Session
+            space_ids: Optional: Nur diese Spaces berechnen
+
+        Returns:
+            BatchInsuranceResult mit Statistiken
+        """
+        from app.db.models import PrivatSpace
+
+        INSURANCE_INTEL_CALCULATIONS.labels(calculation_type="batch_all").inc()
+
+        # Spaces laden
+        if space_ids:
+            query = select(PrivatSpace).where(PrivatSpace.id.in_(space_ids))
+        else:
+            query = select(PrivatSpace).where(PrivatSpace.deleted_at.is_(None))
+
+        result = await db.execute(query)
+        spaces = result.scalars().all()
+
+        batch_result = BatchInsuranceResult(
+            total_spaces=len(spaces),
+            calculated=0,
+            skipped=0,
+            errors=[],
+        )
+
+        total_coverage_score = Decimal("0")
+
+        for space in spaces:
+            try:
+                analysis = await self.get_full_analysis(db, space.id, persist=True)
+                batch_result.calculated += 1
+
+                # Aggregieren
+                total_coverage_score += analysis.coverage_score
+                batch_result.total_annual_premiums += analysis.annual_premium_total
+                batch_result.total_urgent_deadlines += analysis.urgent_deadlines_count
+
+                if analysis.coverage_analysis:
+                    batch_result.total_critical_gaps += analysis.coverage_analysis.critical_gaps
+
+            except Exception as e:
+                batch_result.skipped += 1
+                batch_result.errors.append(f"{space.id}: {str(e)}")
+                logger.warning(
+                    "insurance_batch_calculation_failed",
+                    space_id=str(space.id),
+                    error=str(e),
+                )
+
+        # Durchschnitt berechnen
+        if batch_result.calculated > 0:
+            batch_result.average_coverage_score = (
+                total_coverage_score / batch_result.calculated
+            ).quantize(Decimal("0.01"))
+
+        # Prometheus Gauges aktualisieren
+        INSURANCE_COVERAGE_SCORE.set(float(batch_result.average_coverage_score))
+        INSURANCE_CRITICAL_GAPS.set(batch_result.total_critical_gaps)
+
+        await db.commit()
+
+        logger.info(
+            "insurance_batch_calculation_completed",
+            total_spaces=batch_result.total_spaces,
+            calculated=batch_result.calculated,
+            skipped=batch_result.skipped,
+            average_score=float(batch_result.average_coverage_score),
+            total_critical_gaps=batch_result.total_critical_gaps,
+        )
+
+        return batch_result
+
+    # =========================================================================
+    # Convenience Methods (Delegation)
+    # =========================================================================
+
+    async def get_coverage_gaps(
+        self,
+        db: AsyncSession,
+        space_id: UUID,
+    ) -> CoverageGapAnalysisResult:
+        """Delegiert an InsuranceAnalysisService.analyze_coverage_gaps()."""
+        return await self._analysis_service.analyze_coverage_gaps(db, space_id)
+
+    async def get_cancellation_deadlines(
+        self,
+        db: AsyncSession,
+        space_id: UUID,
+    ) -> List[CancellationDeadlineResult]:
+        """Delegiert an InsuranceAnalysisService.calculate_cancellation_deadlines()."""
+        return await self._analysis_service.calculate_cancellation_deadlines(db, space_id)
+
+    async def get_premium_summary(
+        self,
+        db: AsyncSession,
+        space_id: UUID,
+    ) -> InsurancePremiumSummary:
+        """Delegiert an InsuranceAnalysisService.calculate_premium_summary()."""
+        return await self._analysis_service.calculate_premium_summary(db, space_id)
+
+    async def analyze_single_insurance(
+        self,
+        db: AsyncSession,
+        insurance_id: UUID,
+        persist: bool = True,
+    ) -> Optional[Dict[str, Any]]:
+        """Delegiert an InsuranceAnalysisService.analyze_single_insurance()."""
+        return await self._analysis_service.analyze_single_insurance(
+            db, insurance_id, persist=persist
+        )
+
+
+# =============================================================================
+# Singleton
+# =============================================================================
+
+_insurance_intelligence_service: Optional[InsuranceIntelligenceService] = None
+_service_lock = threading.Lock()
+
+
+def get_insurance_intelligence_service() -> InsuranceIntelligenceService:
+    """Factory fuer InsuranceIntelligenceService Singleton (Thread-safe)."""
+    global _insurance_intelligence_service
+    if _insurance_intelligence_service is None:
+        with _service_lock:
+            if _insurance_intelligence_service is None:
+                _insurance_intelligence_service = InsuranceIntelligenceService()
+    return _insurance_intelligence_service

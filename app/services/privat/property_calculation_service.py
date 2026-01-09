@@ -536,20 +536,145 @@ class PropertyCalculationService:
         db: AsyncSession,
         property_id: UUID,
     ) -> Optional[Decimal]:
-        """Berechnet die jaehrlichen Kosten einer Immobilie."""
-        # Placeholder: In einer vollstaendigen Implementierung wuerden hier
-        # die tatsaechlichen Kosten aus einer Kostentabelle abgefragt
-        # (Grundsteuer, Versicherung, Instandhaltung, Hausverwaltung, etc.)
-        return Decimal("0")
+        """Berechnet die jaehrlichen Kosten einer Immobilie.
+
+        Kostenquellen:
+        - PrivatUtilityStatement.total_costs (Nebenkostenabrechnungen)
+        - Geschaetzte Grundsteuer (ca. 0.2% des Kaufpreises)
+        - Geschaetzte Versicherung (ca. 0.1% des Kaufpreises)
+        - Instandhaltungsruecklage (ca. 1% des Kaufpreises)
+
+        Returns:
+            Jaehrliche Kosten als Decimal oder None bei Fehler
+        """
+        from app.db.models import PrivatProperty, PrivatUtilityStatement
+
+        try:
+            # Property laden fuer Kaufpreis (fuer Schaetzungen)
+            stmt = select(PrivatProperty).where(
+                PrivatProperty.id == property_id,
+                PrivatProperty.deleted_at.is_(None),
+            )
+            result = await db.execute(stmt)
+            prop = result.scalar_one_or_none()
+
+            if not prop:
+                return None
+
+            # Aktuelles Jahr
+            current_year = date.today().year
+
+            # 1. Nebenkosten aus Utility Statements (aktuelles Jahr)
+            utility_stmt = select(func.sum(PrivatUtilityStatement.total_costs)).where(
+                PrivatUtilityStatement.property_id == property_id,
+                extract('year', PrivatUtilityStatement.period_end) == current_year,
+            )
+            utility_result = await db.execute(utility_stmt)
+            utility_costs = utility_result.scalar_one_or_none() or Decimal("0")
+
+            # 2. Geschaetzte fixe Kosten (wenn Kaufpreis bekannt)
+            estimated_fixed = Decimal("0")
+            if prop.purchase_price:
+                # Grundsteuer ~0.2%, Versicherung ~0.1%, Instandhaltung ~1%
+                estimated_fixed = prop.purchase_price * Decimal("0.013")
+
+            total_annual = Decimal(str(utility_costs)) + estimated_fixed
+
+            logger.debug(
+                "annual_costs_calculated",
+                property_id=str(property_id),
+                utility_costs=float(utility_costs),
+                estimated_fixed=float(estimated_fixed),
+                total=float(total_annual),
+            )
+
+            return total_annual.quantize(Decimal("0.01"))
+
+        except Exception as e:
+            logger.error(
+                "annual_costs_calculation_error",
+                property_id=str(property_id),
+                error=str(e),
+            )
+            return None
 
     async def _calculate_total_costs(
         self,
         db: AsyncSession,
         property_id: UUID,
     ) -> Decimal:
-        """Berechnet die Gesamtkosten einer Immobilie seit Kauf."""
-        # Placeholder: Summe aller historischen Kosten
-        return Decimal("0")
+        """Berechnet die Gesamtkosten einer Immobilie seit Kauf.
+
+        Kostenquellen:
+        - Kaufnebenkosten (Notar, Grunderwerbsteuer)
+        - Alle historischen Utility Statements
+        - Geschaetzte jaehrliche Kosten seit Kaufdatum
+
+        Returns:
+            Gesamtkosten als Decimal
+        """
+        from app.db.models import PrivatProperty, PrivatUtilityStatement
+
+        try:
+            # Property laden
+            stmt = select(PrivatProperty).where(
+                PrivatProperty.id == property_id,
+                PrivatProperty.deleted_at.is_(None),
+            )
+            result = await db.execute(stmt)
+            prop = result.scalar_one_or_none()
+
+            if not prop:
+                return Decimal("0")
+
+            total_costs = Decimal("0")
+
+            # 1. Kaufnebenkosten
+            if prop.notary_costs:
+                total_costs += prop.notary_costs
+            if prop.land_transfer_tax:
+                total_costs += prop.land_transfer_tax
+
+            # 2. Alle historischen Utility Statements
+            utility_stmt = select(func.sum(PrivatUtilityStatement.total_costs)).where(
+                PrivatUtilityStatement.property_id == property_id,
+            )
+            utility_result = await db.execute(utility_stmt)
+            utility_total = utility_result.scalar_one_or_none() or Decimal("0")
+            total_costs += Decimal(str(utility_total))
+
+            # 3. Geschaetzte Kosten fuer Jahre ohne Utility Statements
+            if prop.purchase_date and prop.purchase_price:
+                holding_years = (date.today() - prop.purchase_date).days / Decimal("365.25")
+
+                # Anzahl Jahre mit Utility Statements
+                years_with_utils_stmt = select(
+                    func.count(func.distinct(extract('year', PrivatUtilityStatement.period_end)))
+                ).where(PrivatUtilityStatement.property_id == property_id)
+                years_result = await db.execute(years_with_utils_stmt)
+                years_with_utils = years_result.scalar_one_or_none() or 0
+
+                # Geschaetzte Kosten fuer Jahre ohne Statements (1.3% vom Kaufpreis)
+                missing_years = max(Decimal("0"), Decimal(str(holding_years)) - Decimal(str(years_with_utils)))
+                if missing_years > 0:
+                    estimated_missing = missing_years * prop.purchase_price * Decimal("0.013")
+                    total_costs += estimated_missing
+
+            logger.debug(
+                "total_costs_calculated",
+                property_id=str(property_id),
+                total=float(total_costs),
+            )
+
+            return total_costs.quantize(Decimal("0.01"))
+
+        except Exception as e:
+            logger.error(
+                "total_costs_calculation_error",
+                property_id=str(property_id),
+                error=str(e),
+            )
+            return Decimal("0")
 
 
 # =============================================================================

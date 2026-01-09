@@ -59,6 +59,40 @@ from app.services.privat.finance_analytics_service import (
     get_finance_analytics_service,
 )
 
+# Enterprise Intelligence Services
+from app.services.privat.property_intelligence_service import (
+    PropertyIntelligenceService,
+    get_property_intelligence_service,
+)
+from app.services.privat.vehicle_intelligence_service import (
+    VehicleIntelligenceService,
+    get_vehicle_intelligence_service,
+)
+from app.services.privat.investment_intelligence_service import (
+    InvestmentIntelligenceService,
+    get_investment_intelligence_service,
+)
+from app.services.privat.financial_health_service import (
+    FinancialHealthService,
+    get_financial_health_service,
+)
+from app.services.privat.recommendations_service import (
+    RecommendationsService,
+    get_recommendations_service,
+)
+from app.services.privat.loan_scenario_service import (
+    LoanScenarioService,
+    get_loan_scenario_service,
+)
+from app.services.privat.insurance_intelligence_service import (
+    InsuranceIntelligenceService,
+    get_insurance_intelligence_service,
+)
+from app.services.privat.kpi_orchestrator import (
+    KPIOrchestrationService,
+    get_kpi_orchestration_service,
+)
+
 __all__ = [
     "PrivatSpaceService",
     "PrivatFolderService",
@@ -84,4 +118,23 @@ __all__ = [
     # Enterprise Analytics-Services
     "FinanceAnalyticsService",
     "get_finance_analytics_service",
+    # Enterprise Intelligence Services
+    "PropertyIntelligenceService",
+    "get_property_intelligence_service",
+    "VehicleIntelligenceService",
+    "get_vehicle_intelligence_service",
+    "InvestmentIntelligenceService",
+    "get_investment_intelligence_service",
+    "FinancialHealthService",
+    "get_financial_health_service",
+    "RecommendationsService",
+    "get_recommendations_service",
+    "LoanScenarioService",
+    "get_loan_scenario_service",
+    # Insurance Intelligence Wrapper
+    "InsuranceIntelligenceService",
+    "get_insurance_intelligence_service",
+    # KPI Orchestration
+    "KPIOrchestrationService",
+    "get_kpi_orchestration_service",
 ]
