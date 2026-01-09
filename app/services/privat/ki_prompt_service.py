@@ -292,6 +292,135 @@ class PrivatKIPromptService:
             return {}
 
     # =========================================================================
+    # KONTEXT-LOADER
+    # =========================================================================
+
+    async def _load_space_context(
+        self,
+        db: AsyncSession,
+        space_id: UUID
+    ) -> List[str]:
+        """Laedt Kontext aus dem Space fuer KI-Analysen.
+
+        Sammelt Informationen aus Properties, Vehicles, Investments, Loans
+        und Insurances um der KI relevanten Kontext zu geben.
+
+        Args:
+            db: Database Session
+            space_id: ID des Privat-Space
+
+        Returns:
+            Liste von Kontext-Strings
+        """
+        from app.db.models import (
+            PrivatProperty, PrivatVehicle, PrivatInvestment,
+            PrivatLoan, PrivatInsurance
+        )
+        from decimal import Decimal
+
+        context_parts = []
+
+        try:
+            # 1. Immobilien laden
+            result = await db.execute(
+                select(PrivatProperty).where(
+                    PrivatProperty.space_id == space_id,
+                    PrivatProperty.deleted_at.is_(None),
+                )
+            )
+            properties = result.scalars().all()
+            if properties:
+                prop_summary = []
+                total_value = Decimal("0")
+                for p in properties:
+                    value = getattr(p, "estimated_value", None) or getattr(p, "purchase_price", Decimal("0")) or Decimal("0")
+                    total_value += Decimal(str(value))
+                    prop_type = getattr(p, "property_type", "Immobilie")
+                    prop_summary.append(f"- {p.name}: {prop_type}, Wert ca. {value:,.0f} EUR")
+                context_parts.append(f"IMMOBILIEN ({len(properties)} Objekte, Gesamtwert {total_value:,.0f} EUR):\n" + "\n".join(prop_summary[:5]))
+
+            # 2. Fahrzeuge laden
+            result = await db.execute(
+                select(PrivatVehicle).where(
+                    PrivatVehicle.space_id == space_id,
+                    PrivatVehicle.deleted_at.is_(None),
+                )
+            )
+            vehicles = result.scalars().all()
+            if vehicles:
+                veh_summary = []
+                for v in vehicles:
+                    value = getattr(v, "current_value", None) or Decimal("0")
+                    veh_summary.append(f"- {v.make} {v.model} ({v.year}): Wert ca. {value:,.0f} EUR")
+                context_parts.append(f"FAHRZEUGE ({len(vehicles)}):\n" + "\n".join(veh_summary[:5]))
+
+            # 3. Investments laden
+            result = await db.execute(
+                select(PrivatInvestment).where(
+                    PrivatInvestment.space_id == space_id,
+                    PrivatInvestment.is_active.is_(True),
+                )
+            )
+            investments = result.scalars().all()
+            if investments:
+                inv_by_type: Dict[str, Decimal] = {}
+                total_inv = Decimal("0")
+                for inv in investments:
+                    value = getattr(inv, "current_value", None) or Decimal("0")
+                    total_inv += Decimal(str(value))
+                    inv_type = getattr(inv, "investment_type", "Sonstige")
+                    inv_by_type[inv_type] = inv_by_type.get(inv_type, Decimal("0")) + Decimal(str(value))
+                inv_summary = [f"- {t}: {v:,.0f} EUR" for t, v in sorted(inv_by_type.items(), key=lambda x: -x[1])[:5]]
+                context_parts.append(f"INVESTMENTS (Gesamtwert {total_inv:,.0f} EUR):\n" + "\n".join(inv_summary))
+
+            # 4. Kredite laden (PrivatLoan hat is_active statt deleted_at/status)
+            result = await db.execute(
+                select(PrivatLoan).where(
+                    PrivatLoan.space_id == space_id,
+                    PrivatLoan.is_active.is_(True),
+                )
+            )
+            loans = result.scalars().all()
+            if loans:
+                loan_summary = []
+                total_debt = Decimal("0")
+                for loan in loans:
+                    balance = getattr(loan, "current_balance", None) or Decimal("0")
+                    total_debt += Decimal(str(balance))
+                    rate = getattr(loan, "interest_rate", None) or Decimal("0")
+                    loan_summary.append(f"- {loan.name}: {balance:,.0f} EUR, {rate}% Zins")
+                context_parts.append(f"KREDITE (Gesamtschuld {total_debt:,.0f} EUR):\n" + "\n".join(loan_summary[:5]))
+
+            # 5. Versicherungen laden
+            result = await db.execute(
+                select(PrivatInsurance).where(
+                    PrivatInsurance.space_id == space_id,
+                    PrivatInsurance.deleted_at.is_(None),
+                    PrivatInsurance.is_active.is_(True),
+                )
+            )
+            insurances = result.scalars().all()
+            if insurances:
+                ins_summary = []
+                total_premium = Decimal("0")
+                for ins in insurances:
+                    premium = getattr(ins, "annual_premium", None) or getattr(ins, "premium", Decimal("0")) or Decimal("0")
+                    total_premium += Decimal(str(premium))
+                    ins_summary.append(f"- {ins.insurance_type}: {ins.provider}, {premium:,.0f} EUR/Jahr")
+                context_parts.append(f"VERSICHERUNGEN (Jahrespraemien {total_premium:,.0f} EUR):\n" + "\n".join(ins_summary[:5]))
+
+        except Exception as e:
+            logger.warning(
+                "space_context_load_error",
+                space_id=str(space_id),
+                error=str(e)
+            )
+            # Bei Fehler: Leere Kontext-Liste zurueckgeben
+            return []
+
+        return context_parts
+
+    # =========================================================================
     # ANALYSE-METHODEN
     # =========================================================================
 
@@ -711,8 +840,8 @@ class PrivatKIPromptService:
         # Kontext aus verschiedenen Quellen sammeln
         context_parts = []
 
-        # TODO: Kontext aus DB laden (Properties, Vehicles, etc.)
-        # Fuer jetzt: Einfache Frage beantworten
+        # Kontext aus DB laden (Properties, Vehicles, Investments, Loans, Insurances)
+        context_parts = await self._load_space_context(db, space_id)
 
         prompt = self._render_template(
             "financial_qa.j2",

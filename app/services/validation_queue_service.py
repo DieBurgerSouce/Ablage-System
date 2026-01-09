@@ -12,6 +12,7 @@ Verwendung:
 """
 import uuid
 from datetime import datetime, date, timedelta
+from app.core.datetime_utils import utc_now
 from typing import Optional, List, Dict, Any, Tuple
 import structlog
 
@@ -269,7 +270,7 @@ class ValidationQueueService:
         for key, value in update_dict.items():
             setattr(item, key, value)
 
-        item.updated_at = datetime.utcnow()
+        item.updated_at = utc_now()
         await self.db.commit()
         await self.db.refresh(item)
 
@@ -333,14 +334,14 @@ class ValidationQueueService:
             raise ValueError(f"Editor {editor_id} nicht gefunden")
 
         item.assigned_to_id = editor_id
-        item.assigned_at = datetime.utcnow()
+        item.assigned_at = utc_now()
         item.status = ValidationStatus.IN_PROGRESS.value
-        item.started_at = datetime.utcnow()
+        item.started_at = utc_now()
 
         if priority is not None:
             item.priority = priority
 
-        item.updated_at = datetime.utcnow()
+        item.updated_at = utc_now()
         await self.db.commit()
         await self.db.refresh(item)
 
@@ -369,7 +370,7 @@ class ValidationQueueService:
         item.assigned_at = None
         item.status = ValidationStatus.PENDING.value
         item.started_at = None
-        item.updated_at = datetime.utcnow()
+        item.updated_at = utc_now()
 
         await self.db.commit()
         await self.db.refresh(item)
@@ -401,7 +402,7 @@ class ValidationQueueService:
         if not item:
             return None
 
-        now = datetime.utcnow()
+        now = utc_now()
 
         # Dauer berechnen
         duration = None
@@ -467,7 +468,7 @@ class ValidationQueueService:
         if not item:
             return None
 
-        now = datetime.utcnow()
+        now = utc_now()
 
         # Dauer berechnen
         duration = None

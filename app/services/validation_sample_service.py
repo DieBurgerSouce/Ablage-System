@@ -12,6 +12,7 @@ Verwendung:
 import uuid
 import random
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 from typing import Optional, List, Dict, Any
 import structlog
 
@@ -89,7 +90,7 @@ class ValidationSampleService:
         for key, value in update_dict.items():
             setattr(config, key, value)
 
-        config.updated_at = datetime.utcnow()
+        config.updated_at = utc_now()
         await self.db.commit()
         await self.db.refresh(config)
 
@@ -241,7 +242,7 @@ class ValidationSampleService:
             if self._matches_rule(document, rule):
                 # Statistik aktualisieren
                 rule.documents_matched = (rule.documents_matched or 0) + 1
-                rule.last_triggered_at = datetime.utcnow()
+                rule.last_triggered_at = utc_now()
                 await self.db.commit()
                 return rule
 
@@ -406,7 +407,7 @@ class ValidationSampleService:
         for key, value in update_dict.items():
             setattr(rule, key, value)
 
-        rule.updated_at = datetime.utcnow()
+        rule.updated_at = utc_now()
         await self.db.commit()
         await self.db.refresh(rule)
 

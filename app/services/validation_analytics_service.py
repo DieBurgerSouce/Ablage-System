@@ -11,6 +11,7 @@ Verwendung:
 """
 import uuid
 from datetime import datetime, date, timedelta
+from app.core.datetime_utils import utc_now
 from typing import Optional, List, Dict, Any
 import structlog
 
@@ -578,7 +579,7 @@ class ValidationAnalyticsService:
             (analytics.format_corrections or 0) + (queue_item.format_corrections or 0)
         )
 
-        analytics.updated_at = datetime.utcnow()
+        analytics.updated_at = utc_now()
         await self.db.commit()
 
         logger.debug(

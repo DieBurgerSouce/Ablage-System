@@ -582,3 +582,315 @@ class TestKIPromptInternalMethods:
 
         assert result == {}
         assert isinstance(result, dict)
+
+
+# =============================================================================
+# Space Context Loader Tests
+# =============================================================================
+
+class TestLoadSpaceContext:
+    """Tests fuer _load_space_context Methode."""
+
+    def test_load_space_context_method_exists(self) -> None:
+        """Testet dass _load_space_context Methode existiert."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+
+        service = PrivatKIPromptService()
+        assert hasattr(service, '_load_space_context')
+        assert callable(service._load_space_context)
+
+    def test_load_space_context_signature(self) -> None:
+        """Testet die Signatur von _load_space_context."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+        import inspect
+
+        service = PrivatKIPromptService()
+        sig = inspect.signature(service._load_space_context)
+        params = list(sig.parameters.keys())
+
+        assert 'db' in params
+        assert 'space_id' in params
+
+    @pytest.mark.asyncio
+    async def test_load_space_context_returns_list(self) -> None:
+        """Testet dass _load_space_context eine Liste zurueckgibt."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+        from unittest.mock import AsyncMock, MagicMock
+        from uuid import uuid4
+
+        service = PrivatKIPromptService()
+
+        # Mock DB Session die leere Ergebnisse liefert
+        mock_db = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute.return_value = mock_result
+
+        result = await service._load_space_context(mock_db, uuid4())
+
+        assert isinstance(result, list)
+
+    @pytest.mark.asyncio
+    async def test_load_space_context_empty_space(self) -> None:
+        """Testet dass leerer Space eine leere Liste zurueckgibt."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+        from unittest.mock import AsyncMock, MagicMock
+        from uuid import uuid4
+
+        service = PrivatKIPromptService()
+
+        # Mock DB Session die leere Ergebnisse fuer alle Queries liefert
+        mock_db = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute.return_value = mock_result
+
+        result = await service._load_space_context(mock_db, uuid4())
+
+        assert result == []
+        # 5 Queries sollten ausgefuehrt werden (Properties, Vehicles, Investments, Loans, Insurances)
+        assert mock_db.execute.call_count == 5
+
+    @pytest.mark.asyncio
+    async def test_load_space_context_with_properties(self) -> None:
+        """Testet Kontext-Generierung mit Immobilien."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+        from unittest.mock import AsyncMock, MagicMock
+        from uuid import uuid4
+        from decimal import Decimal
+
+        service = PrivatKIPromptService()
+
+        # Mock Property
+        mock_property = MagicMock()
+        mock_property.name = "Wohnung Schwabing"
+        mock_property.property_type = "Wohnung"
+        mock_property.estimated_value = Decimal("350000")
+        mock_property.purchase_price = Decimal("300000")
+
+        # Mock DB Responses
+        mock_db = AsyncMock(spec=AsyncSession)
+
+        def mock_execute_side_effect(query):
+            mock_result = MagicMock()
+            # Erste Query ist Properties - liefert unseren Mock
+            if mock_db.execute.call_count == 1:
+                mock_result.scalars.return_value.all.return_value = [mock_property]
+            else:
+                mock_result.scalars.return_value.all.return_value = []
+            return mock_result
+
+        mock_db.execute.side_effect = mock_execute_side_effect
+
+        result = await service._load_space_context(mock_db, uuid4())
+
+        assert len(result) == 1
+        assert "IMMOBILIEN" in result[0]
+        assert "Wohnung Schwabing" in result[0]
+        assert "350,000" in result[0] or "350000" in result[0]
+
+    @pytest.mark.asyncio
+    async def test_load_space_context_with_vehicles(self) -> None:
+        """Testet Kontext-Generierung mit Fahrzeugen."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+        from unittest.mock import AsyncMock, MagicMock
+        from uuid import uuid4
+        from decimal import Decimal
+
+        service = PrivatKIPromptService()
+
+        # Mock Vehicle
+        mock_vehicle = MagicMock()
+        mock_vehicle.make = "BMW"
+        mock_vehicle.model = "X3"
+        mock_vehicle.year = 2021
+        mock_vehicle.current_value = Decimal("35000")
+
+        # Mock DB Responses
+        mock_db = AsyncMock(spec=AsyncSession)
+
+        def mock_execute_side_effect(query):
+            mock_result = MagicMock()
+            # Zweite Query ist Vehicles
+            if mock_db.execute.call_count == 2:
+                mock_result.scalars.return_value.all.return_value = [mock_vehicle]
+            else:
+                mock_result.scalars.return_value.all.return_value = []
+            return mock_result
+
+        mock_db.execute.side_effect = mock_execute_side_effect
+
+        result = await service._load_space_context(mock_db, uuid4())
+
+        assert len(result) == 1
+        assert "FAHRZEUGE" in result[0]
+        assert "BMW" in result[0]
+        assert "X3" in result[0]
+        assert "2021" in result[0]
+
+    @pytest.mark.asyncio
+    async def test_load_space_context_with_loans(self) -> None:
+        """Testet Kontext-Generierung mit Krediten."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+        from unittest.mock import AsyncMock, MagicMock
+        from uuid import uuid4
+        from decimal import Decimal
+
+        service = PrivatKIPromptService()
+
+        # Mock Loan
+        mock_loan = MagicMock()
+        mock_loan.name = "Baufinanzierung"
+        mock_loan.current_balance = Decimal("200000")
+        mock_loan.interest_rate = Decimal("3.5")
+
+        # Mock DB Responses
+        mock_db = AsyncMock(spec=AsyncSession)
+
+        def mock_execute_side_effect(query):
+            mock_result = MagicMock()
+            # Vierte Query ist Loans
+            if mock_db.execute.call_count == 4:
+                mock_result.scalars.return_value.all.return_value = [mock_loan]
+            else:
+                mock_result.scalars.return_value.all.return_value = []
+            return mock_result
+
+        mock_db.execute.side_effect = mock_execute_side_effect
+
+        result = await service._load_space_context(mock_db, uuid4())
+
+        assert len(result) == 1
+        assert "KREDITE" in result[0]
+        assert "Baufinanzierung" in result[0]
+        assert "3.5" in result[0]
+
+    @pytest.mark.asyncio
+    async def test_load_space_context_error_handling(self) -> None:
+        """Testet dass bei DB-Fehlern eine leere Liste zurueckgegeben wird."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+        from unittest.mock import AsyncMock
+        from uuid import uuid4
+
+        service = PrivatKIPromptService()
+
+        # Mock DB Session die einen Fehler wirft
+        mock_db = AsyncMock(spec=AsyncSession)
+        mock_db.execute.side_effect = Exception("Database connection failed")
+
+        # Sollte keine Exception werfen, sondern leere Liste zurueckgeben
+        result = await service._load_space_context(mock_db, uuid4())
+
+        assert result == []
+        assert isinstance(result, list)
+
+    @pytest.mark.asyncio
+    async def test_load_space_context_full_space(self) -> None:
+        """Testet Kontext-Generierung mit allen Entity-Typen."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+        from unittest.mock import AsyncMock, MagicMock
+        from uuid import uuid4
+        from decimal import Decimal
+
+        service = PrivatKIPromptService()
+
+        # Mock Entities
+        mock_property = MagicMock(
+            name="Haus",
+            property_type="Einfamilienhaus",
+            estimated_value=Decimal("500000"),
+            purchase_price=Decimal("400000"),
+        )
+        mock_vehicle = MagicMock(
+            make="Mercedes",
+            model="E-Klasse",
+            year=2022,
+            current_value=Decimal("45000"),
+        )
+        mock_investment = MagicMock(
+            investment_type="ETF",
+            current_value=Decimal("50000"),
+        )
+        mock_loan = MagicMock(
+            name="Autokredit",
+            current_balance=Decimal("15000"),
+            interest_rate=Decimal("4.0"),
+        )
+        mock_insurance = MagicMock(
+            insurance_type="Haftpflicht",
+            provider="Allianz",
+            annual_premium=Decimal("120"),
+            premium=Decimal("120"),
+        )
+
+        # Mock DB Responses
+        mock_db = AsyncMock(spec=AsyncSession)
+        call_count = [0]  # Mutable container for counter
+
+        def mock_execute_side_effect(query):
+            call_count[0] += 1
+            mock_result = MagicMock()
+            entities = {
+                1: [mock_property],      # Properties
+                2: [mock_vehicle],       # Vehicles
+                3: [mock_investment],    # Investments
+                4: [mock_loan],          # Loans
+                5: [mock_insurance],     # Insurances
+            }
+            mock_result.scalars.return_value.all.return_value = entities.get(call_count[0], [])
+            return mock_result
+
+        mock_db.execute.side_effect = mock_execute_side_effect
+
+        result = await service._load_space_context(mock_db, uuid4())
+
+        # Sollte 5 Kontext-Teile haben (einen fuer jeden Entity-Typ)
+        assert len(result) == 5
+
+        # Pruefen dass alle Kategorien vorhanden sind
+        full_context = "\n".join(result)
+        assert "IMMOBILIEN" in full_context
+        assert "FAHRZEUGE" in full_context
+        assert "INVESTMENTS" in full_context
+        assert "KREDITE" in full_context
+        assert "VERSICHERUNGEN" in full_context
+
+    @pytest.mark.asyncio
+    async def test_load_space_context_limits_to_five_items(self) -> None:
+        """Testet dass maximal 5 Items pro Kategorie angezeigt werden."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+        from unittest.mock import AsyncMock, MagicMock
+        from uuid import uuid4
+        from decimal import Decimal
+
+        service = PrivatKIPromptService()
+
+        # 10 Mock Properties erstellen
+        mock_properties = []
+        for i in range(10):
+            prop = MagicMock()
+            prop.name = f"Immobilie_{i}"
+            prop.property_type = "Wohnung"
+            prop.estimated_value = Decimal(str(100000 * (i + 1)))
+            prop.purchase_price = Decimal(str(90000 * (i + 1)))
+            mock_properties.append(prop)
+
+        # Mock DB Responses
+        mock_db = AsyncMock(spec=AsyncSession)
+
+        def mock_execute_side_effect(query):
+            mock_result = MagicMock()
+            if mock_db.execute.call_count == 1:
+                mock_result.scalars.return_value.all.return_value = mock_properties
+            else:
+                mock_result.scalars.return_value.all.return_value = []
+            return mock_result
+
+        mock_db.execute.side_effect = mock_execute_side_effect
+
+        result = await service._load_space_context(mock_db, uuid4())
+
+        assert len(result) == 1
+        # Zaehle wie viele "Immobilie_" im Result sind - sollte max 5 sein
+        immobilie_count = result[0].count("Immobilie_")
+        assert immobilie_count == 5, f"Expected 5 properties, got {immobilie_count}"

@@ -514,3 +514,549 @@ class TestConflictRules:
 
         assert len(duplicate_rules) == 1
         assert duplicate_rules[0].conflict_type == ConflictType.DUPLICATE
+
+
+# =============================================================================
+# Advanced Conflict Detection Tests
+# =============================================================================
+
+class TestOpposingGoals:
+    """Tests fuer gegensaetzliche Ziele."""
+
+    def test_detect_saving_vs_investment_conflict(self, engine):
+        """Sparen vs. Investieren wird erkannt."""
+        decision_save = UnifiedDecision(
+            id=uuid4(),
+            title="Mehr sparen",
+            description="Sparrate erhoehen auf 20%",
+            primary_module=ModuleType.FINANCE,
+        )
+        decision_invest = UnifiedDecision(
+            id=uuid4(),
+            title="Investment taetigen",
+            description="In Aktien investieren",
+            primary_module=ModuleType.INVESTMENT,
+        )
+
+        categories_save = engine._extract_categories(decision_save)
+        categories_invest = engine._extract_categories(decision_invest)
+
+        # Beide sollten Kategorien haben
+        assert "sparen" in categories_save
+        assert "investment" in categories_invest or "investition" in categories_invest
+
+    def test_detect_cancel_vs_extend_insurance(self, engine):
+        """Versicherung kuendigen vs. erweitern wird erkannt."""
+        decision_cancel = UnifiedDecision(
+            id=uuid4(),
+            title="Versicherung kuendigen",
+            description="Unnoetige Versicherung kuendigen",
+            primary_module=ModuleType.INSURANCE,
+        )
+        decision_extend = UnifiedDecision(
+            id=uuid4(),
+            title="Versicherung erweitern",
+            description="Deckung erweitern",
+            primary_module=ModuleType.INSURANCE,
+        )
+
+        categories_cancel = engine._extract_categories(decision_cancel)
+        categories_extend = engine._extract_categories(decision_extend)
+
+        assert "kuendigen" in categories_cancel or "versicherung" in categories_cancel
+        assert "erweitern" in categories_extend or "versicherung" in categories_extend
+
+
+class TestResourceConflicts:
+    """Tests fuer Ressourcen-Konflikte."""
+
+    def test_resource_conflict_same_module_high_cost(self, engine):
+        """Ressourcen-Konflikt bei gleichem Modul und hohen Kosten."""
+        decision_a = UnifiedDecision(
+            id=uuid4(),
+            title="Grosser Kauf A",
+            primary_module=ModuleType.FINANCE,
+            impact_score=ImpactScore(financial_impact=Decimal("2000")),
+        )
+        decision_b = UnifiedDecision(
+            id=uuid4(),
+            title="Grosser Kauf B",
+            primary_module=ModuleType.FINANCE,
+            impact_score=ImpactScore(financial_impact=Decimal("1500")),
+        )
+
+        conflict = engine._check_resource_conflict(decision_a, decision_b)
+
+        assert conflict is not None
+        assert "Ressourcen-Konflikt" in conflict
+
+    def test_no_resource_conflict_different_modules(self, engine):
+        """Kein Ressourcen-Konflikt bei verschiedenen Modulen."""
+        decision_a = UnifiedDecision(
+            id=uuid4(),
+            title="Grosser Kauf A",
+            primary_module=ModuleType.FINANCE,
+            impact_score=ImpactScore(financial_impact=Decimal("2000")),
+        )
+        decision_b = UnifiedDecision(
+            id=uuid4(),
+            title="Grosser Kauf B",
+            primary_module=ModuleType.INVESTMENT,
+            impact_score=ImpactScore(financial_impact=Decimal("1500")),
+        )
+
+        conflict = engine._check_resource_conflict(decision_a, decision_b)
+
+        assert conflict is None
+
+    def test_no_resource_conflict_low_cost(self, engine):
+        """Kein Ressourcen-Konflikt bei niedrigen Kosten."""
+        decision_a = UnifiedDecision(
+            id=uuid4(),
+            title="Kleiner Kauf A",
+            primary_module=ModuleType.FINANCE,
+            impact_score=ImpactScore(financial_impact=Decimal("500")),
+        )
+        decision_b = UnifiedDecision(
+            id=uuid4(),
+            title="Kleiner Kauf B",
+            primary_module=ModuleType.FINANCE,
+            impact_score=ImpactScore(financial_impact=Decimal("300")),
+        )
+
+        conflict = engine._check_resource_conflict(decision_a, decision_b)
+
+        assert conflict is None
+
+
+# =============================================================================
+# Decision Approval/Rejection Tests
+# =============================================================================
+
+class TestDecisionApproval:
+    """Tests fuer Entscheidungs-Genehmigung."""
+
+    @pytest.mark.asyncio
+    async def test_approve_existing_decision(self, engine):
+        """Existierende Entscheidung kann genehmigt werden."""
+        decision = UnifiedDecision(
+            id=uuid4(),
+            title="Test-Entscheidung",
+            primary_module=ModuleType.FINANCE,
+        )
+        engine._decision_queue.append(decision)
+
+        result = await engine.approve_decision(decision.id)
+
+        assert result is True
+        assert decision.status == DecisionStatus.APPROVED
+        assert decision.processed_at is not None
+
+    @pytest.mark.asyncio
+    async def test_approve_nonexistent_decision(self, engine):
+        """Nicht existierende Entscheidung gibt False zurueck."""
+        result = await engine.approve_decision(uuid4())
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_reject_existing_decision(self, engine):
+        """Existierende Entscheidung kann abgelehnt werden."""
+        decision = UnifiedDecision(
+            id=uuid4(),
+            title="Test-Entscheidung",
+            primary_module=ModuleType.FINANCE,
+        )
+        engine._decision_queue.append(decision)
+
+        result = await engine.reject_decision(decision.id, reason="Nicht gewuenscht")
+
+        assert result is True
+        assert decision.status == DecisionStatus.REJECTED
+        assert decision.conflict_resolution == "Nicht gewuenscht"
+
+    @pytest.mark.asyncio
+    async def test_reject_nonexistent_decision(self, engine):
+        """Nicht existierende Entscheidung gibt False zurueck."""
+        result = await engine.reject_decision(uuid4())
+
+        assert result is False
+
+
+# =============================================================================
+# Decision Merging Tests
+# =============================================================================
+
+class TestDecisionMerging:
+    """Tests fuer Entscheidungs-Zusammenfuehrung."""
+
+    @pytest.mark.asyncio
+    async def test_merge_decisions_updates_status(self, engine):
+        """Zusammenfuehrung aktualisiert Status."""
+        decision_a = UnifiedDecision(
+            id=uuid4(),
+            title="Entscheidung A",
+            primary_module=ModuleType.FINANCE,
+            impact_score=ImpactScore(financial_impact=Decimal("500")),
+        )
+        decision_b = UnifiedDecision(
+            id=uuid4(),
+            title="Entscheidung B",
+            primary_module=ModuleType.FINANCE,
+            impact_score=ImpactScore(financial_impact=Decimal("300")),
+        )
+
+        await engine._merge_decisions(decision_a, decision_b)
+
+        assert decision_b.status == DecisionStatus.MERGED
+        assert str(decision_a.id) in decision_b.conflict_resolution
+
+    @pytest.mark.asyncio
+    async def test_merge_decisions_combines_actions(self, engine):
+        """Zusammenfuehrung kombiniert Actions."""
+        action_a = OrchestrationAction(
+            action_type=ActionType.CREATE_RECOMMENDATION,
+            action_data={"title": "Action A"},
+        )
+        action_b = OrchestrationAction(
+            action_type=ActionType.CREATE_RECOMMENDATION,
+            action_data={"title": "Action B"},
+        )
+
+        decision_a = UnifiedDecision(
+            id=uuid4(),
+            title="Entscheidung A",
+            primary_module=ModuleType.FINANCE,
+            source_actions=[action_a],
+        )
+        decision_b = UnifiedDecision(
+            id=uuid4(),
+            title="Entscheidung B",
+            primary_module=ModuleType.INVESTMENT,
+            affected_modules=[ModuleType.INVESTMENT],
+            source_actions=[action_b],
+        )
+
+        await engine._merge_decisions(decision_a, decision_b)
+
+        assert len(decision_a.source_actions) == 2
+        assert ModuleType.INVESTMENT in decision_a.affected_modules
+
+    @pytest.mark.asyncio
+    async def test_merge_decisions_combines_impact(self, engine):
+        """Zusammenfuehrung kombiniert Impact (max)."""
+        decision_a = UnifiedDecision(
+            id=uuid4(),
+            title="Entscheidung A",
+            primary_module=ModuleType.FINANCE,
+            impact_score=ImpactScore(
+                financial_impact=Decimal("500"),
+                risk_reduction=30.0,
+            ),
+        )
+        decision_b = UnifiedDecision(
+            id=uuid4(),
+            title="Entscheidung B",
+            primary_module=ModuleType.FINANCE,
+            impact_score=ImpactScore(
+                financial_impact=Decimal("800"),
+                risk_reduction=20.0,
+            ),
+        )
+
+        await engine._merge_decisions(decision_a, decision_b)
+
+        # Max von beiden
+        assert decision_a.impact_score.financial_impact == Decimal("800")
+        assert decision_a.impact_score.risk_reduction == 30.0
+
+
+# =============================================================================
+# Conflict Resolution Strategy Tests
+# =============================================================================
+
+class TestConflictResolutionStrategies:
+    """Tests fuer Konflikt-Loesungsstrategien."""
+
+    @pytest.mark.asyncio
+    async def test_resolve_by_merge(self, engine):
+        """Merge-Strategie fuehrt Duplikate zusammen."""
+        decision_a = UnifiedDecision(
+            id=uuid4(),
+            title="Gleiche Empfehlung",
+            primary_module=ModuleType.FINANCE,
+        )
+        decision_b = UnifiedDecision(
+            id=uuid4(),
+            title="Gleiche Empfehlung",
+            primary_module=ModuleType.FINANCE,
+        )
+
+        conflict = ConflictPair(
+            decision_a=decision_a,
+            decision_b=decision_b,
+            conflict_type=ConflictType.DUPLICATE,
+            reason="Duplikat",
+            resolution_strategy="merge",
+        )
+
+        await engine._resolve_conflict(conflict)
+
+        assert decision_b.status == DecisionStatus.MERGED
+
+    @pytest.mark.asyncio
+    async def test_resolve_by_urgency_a_wins(self, engine):
+        """Urgency-Strategie: A gewinnt bei hoeherer Dringlichkeit."""
+        decision_a = UnifiedDecision(
+            id=uuid4(),
+            title="Dringend",
+            primary_module=ModuleType.FINANCE,
+            impact_score=ImpactScore(compliance_urgency=90.0),
+        )
+        decision_b = UnifiedDecision(
+            id=uuid4(),
+            title="Weniger dringend",
+            primary_module=ModuleType.FINANCE,
+            impact_score=ImpactScore(compliance_urgency=30.0),
+        )
+
+        conflict = ConflictPair(
+            decision_a=decision_a,
+            decision_b=decision_b,
+            conflict_type=ConflictType.RESOURCE_CONFLICT,
+            reason="Ressourcen-Konflikt",
+            resolution_strategy="prioritize_by_urgency",
+        )
+
+        await engine._resolve_conflict(conflict)
+
+        assert decision_a.status == DecisionStatus.PENDING
+        assert decision_b.status == DecisionStatus.DEFERRED
+
+    @pytest.mark.asyncio
+    async def test_resolve_by_urgency_b_wins(self, engine):
+        """Urgency-Strategie: B gewinnt bei hoeherer Dringlichkeit."""
+        decision_a = UnifiedDecision(
+            id=uuid4(),
+            title="Weniger dringend",
+            primary_module=ModuleType.FINANCE,
+            impact_score=ImpactScore(compliance_urgency=20.0),
+        )
+        decision_b = UnifiedDecision(
+            id=uuid4(),
+            title="Dringend",
+            primary_module=ModuleType.FINANCE,
+            impact_score=ImpactScore(compliance_urgency=80.0),
+        )
+
+        conflict = ConflictPair(
+            decision_a=decision_a,
+            decision_b=decision_b,
+            conflict_type=ConflictType.RESOURCE_CONFLICT,
+            reason="Ressourcen-Konflikt",
+            resolution_strategy="prioritize_by_urgency",
+        )
+
+        await engine._resolve_conflict(conflict)
+
+        assert decision_a.status == DecisionStatus.DEFERRED
+        assert decision_b.status == DecisionStatus.PENDING
+
+
+# =============================================================================
+# Impact Score Calculation Tests
+# =============================================================================
+
+class TestImpactScoreCalculation:
+    """Tests fuer Impact-Score Berechnung."""
+
+    @pytest.mark.asyncio
+    async def test_calculate_impact_with_potential_savings(self, engine):
+        """Impact Score beruecksichtigt potential_savings."""
+        action = OrchestrationAction(
+            action_type=ActionType.CREATE_RECOMMENDATION,
+            action_data={"potential_savings": 1500},
+        )
+        decision = UnifiedDecision(title="Test")
+
+        score = await engine._calculate_impact_score(action, decision)
+
+        assert score.financial_impact == Decimal("1500")
+
+    @pytest.mark.asyncio
+    async def test_calculate_impact_with_amount(self, engine):
+        """Impact Score beruecksichtigt amount."""
+        action = OrchestrationAction(
+            action_type=ActionType.CREATE_RECOMMENDATION,
+            action_data={"amount": 750.50},
+        )
+        decision = UnifiedDecision(title="Test")
+
+        score = await engine._calculate_impact_score(action, decision)
+
+        assert score.financial_impact == Decimal("750.50")
+
+    @pytest.mark.asyncio
+    async def test_calculate_impact_with_workflow(self, engine):
+        """Workflow-Actions erhalten Risk Reduction."""
+        action = OrchestrationAction(
+            action_type=ActionType.TRIGGER_WORKFLOW,
+            action_data={},
+        )
+        decision = UnifiedDecision(title="Test")
+
+        score = await engine._calculate_impact_score(action, decision)
+
+        assert score.risk_reduction == 50.0
+
+    @pytest.mark.asyncio
+    async def test_calculate_impact_with_critical_severity(self, engine):
+        """Critical Severity erhoeht Risk Reduction."""
+        action = OrchestrationAction(
+            action_type=ActionType.CREATE_RECOMMENDATION,
+            action_data={"severity": "critical"},
+        )
+        decision = UnifiedDecision(title="Test")
+
+        score = await engine._calculate_impact_score(action, decision)
+
+        assert score.risk_reduction >= 30.0
+
+    @pytest.mark.asyncio
+    async def test_calculate_impact_with_high_severity(self, engine):
+        """High Severity erhoeht Risk Reduction."""
+        action = OrchestrationAction(
+            action_type=ActionType.CREATE_RECOMMENDATION,
+            action_data={"severity": "high"},
+        )
+        decision = UnifiedDecision(title="Test")
+
+        score = await engine._calculate_impact_score(action, decision)
+
+        assert score.risk_reduction >= 20.0
+
+    @pytest.mark.asyncio
+    async def test_calculate_impact_with_deadline(self, engine):
+        """Deadline erhoet Compliance Urgency."""
+        action = OrchestrationAction(
+            action_type=ActionType.CREATE_RECOMMENDATION,
+            action_data={},
+        )
+        decision = UnifiedDecision(
+            title="Test",
+            description="Deadline naht",
+        )
+
+        score = await engine._calculate_impact_score(action, decision)
+
+        assert score.compliance_urgency == 80.0
+
+    @pytest.mark.asyncio
+    async def test_calculate_impact_with_days_remaining_critical(self, engine):
+        """Wenige Tage = hohe Compliance Urgency."""
+        action = OrchestrationAction(
+            action_type=ActionType.CREATE_RECOMMENDATION,
+            action_data={"days_remaining": 5},
+        )
+        decision = UnifiedDecision(title="Test")
+
+        score = await engine._calculate_impact_score(action, decision)
+
+        assert score.compliance_urgency == 100.0
+
+    @pytest.mark.asyncio
+    async def test_calculate_impact_with_days_remaining_medium(self, engine):
+        """Mittlere Tage = mittlere Compliance Urgency."""
+        action = OrchestrationAction(
+            action_type=ActionType.CREATE_RECOMMENDATION,
+            action_data={"days_remaining": 10},
+        )
+        decision = UnifiedDecision(title="Test")
+
+        score = await engine._calculate_impact_score(action, decision)
+
+        assert score.compliance_urgency == 70.0
+
+    @pytest.mark.asyncio
+    async def test_calculate_impact_with_days_remaining_low(self, engine):
+        """Mehr Tage = niedrigere Compliance Urgency."""
+        action = OrchestrationAction(
+            action_type=ActionType.CREATE_RECOMMENDATION,
+            action_data={"days_remaining": 20},
+        )
+        decision = UnifiedDecision(title="Test")
+
+        score = await engine._calculate_impact_score(action, decision)
+
+        assert score.compliance_urgency == 40.0
+
+    @pytest.mark.asyncio
+    async def test_calculate_impact_with_potential_gain(self, engine):
+        """Potential Gain wird zu Opportunity Value."""
+        action = OrchestrationAction(
+            action_type=ActionType.CREATE_RECOMMENDATION,
+            action_data={"potential_gain": 2000},
+        )
+        decision = UnifiedDecision(title="Test")
+
+        score = await engine._calculate_impact_score(action, decision)
+
+        assert score.opportunity_value == Decimal("2000")
+
+    @pytest.mark.asyncio
+    async def test_calculate_impact_with_auto_approve(self, engine):
+        """Auto-Approve erhoet Convenience Gain."""
+        action = OrchestrationAction(
+            action_type=ActionType.AUTO_APPROVE,
+            action_data={},
+        )
+        decision = UnifiedDecision(title="Test")
+
+        score = await engine._calculate_impact_score(action, decision)
+
+        assert score.convenience_gain == 80.0
+
+
+# =============================================================================
+# Category Extraction Tests
+# =============================================================================
+
+class TestCategoryExtraction:
+    """Tests fuer Kategorie-Extraktion."""
+
+    def test_extract_category_from_action_data(self, engine):
+        """Kategorie aus Action-Daten."""
+        action = OrchestrationAction(
+            action_type=ActionType.CREATE_RECOMMENDATION,
+            action_data={"category": "Refinanzierung"},
+        )
+        decision = UnifiedDecision(
+            title="Test",
+            source_actions=[action],
+        )
+
+        categories = engine._extract_categories(decision)
+
+        assert "refinanzierung" in categories
+
+    def test_extract_keywords_from_title(self, engine):
+        """Keywords aus Titel."""
+        decision = UnifiedDecision(
+            title="Mehr Sparen fuer Notgroschen",
+            description="",
+        )
+
+        categories = engine._extract_categories(decision)
+
+        assert "sparen" in categories
+
+    def test_extract_keywords_from_description(self, engine):
+        """Keywords aus Beschreibung."""
+        decision = UnifiedDecision(
+            title="Empfehlung",
+            description="Sie sollten in eine Investition denken",
+        )
+
+        categories = engine._extract_categories(decision)
+
+        assert "investition" in categories

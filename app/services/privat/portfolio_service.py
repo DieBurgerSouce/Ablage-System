@@ -213,8 +213,26 @@ class PortfolioService:
         )
         summary.total_investments = Decimal(str(result.scalar() or 0))
 
-        # TODO: Cash-Konten hinzufuegen wenn Banking-Integration vorhanden
-        # Aktuell: Manuelle Eingabe ueber PrivatSpace-Felder moeglich
+        # Cash-Konten: Investments vom Typ "cash", "savings", "checking", etc.
+        # Diese werden als Bargeld/Bankguthaben gezaehlt
+        cash_types = ["cash", "savings", "savings_account", "checking",
+                      "checking_account", "money_market", "term_deposit",
+                      "festgeld", "tagesgeld", "girokonto"]
+
+        result = await self.db.execute(
+            select(func.coalesce(func.sum(PrivatInvestment.current_value), 0)).where(
+                and_(
+                    PrivatInvestment.space_id == space_id,
+                    PrivatInvestment.deleted_at.is_(None),
+                    PrivatInvestment.is_active.is_(True),
+                    func.lower(PrivatInvestment.investment_type).in_(cash_types),
+                )
+            )
+        )
+        summary.total_cash = Decimal(str(result.scalar() or 0))
+
+        # Cash-Summe von Investments abziehen um Doppelzaehlung zu vermeiden
+        summary.total_investments = summary.total_investments - summary.total_cash
 
         return summary
 

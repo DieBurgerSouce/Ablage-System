@@ -246,6 +246,226 @@ POST /api/v1/training/migration/sqlite  # SQLite migrieren
 
 ---
 
+## Privat-Modul: Enterprise Vermögensverwaltung
+
+**Status**: Production-Ready (seit Dezember 2024)
+**Features**: KI-gestützte Vermögensanalysen, Portfolio-Tracking, automatische Snapshots
+
+### Übersicht
+
+Das Privat-Modul ermöglicht vollautomatische Vermögensverwaltung mit KI-Integration:
+
+- **Portfolio-Tracking**: Immobilien, Fahrzeuge, Anlagen, Kredite
+- **KI-Analysen**: Bewertung, Optimierung, Risikoanalyse
+- **Historische Snapshots**: Monatliche Vermögensentwicklung
+- **Intelligente Insights**: Automatische Trends und Empfehlungen
+
+### Architektur
+
+```
+app/services/privat/
+├── ki_prompt_service.py      # KI-Analysen mit LLM Integration
+├── portfolio_service.py       # Vermögensübersicht und Snapshots
+├── financial_health_service.py # Finanzgesundheits-Analysen
+└── templates/privat/          # Jinja2 Prompt-Templates
+```
+
+### Portfolio Service
+
+**Klasse**: `PortfolioService`
+**Zweck**: Aggregierte Vermögensübersichten und historische Snapshots
+
+#### Features
+- **Echtzeit-Vermögensberechnung**: Assets, Liabilities, Net Worth
+- **Kennzahlen**: Debt-to-Assets Ratio, Liquidity Ratio
+- **Asset Allocation**: Prozentuale Verteilung nach Kategorien
+- **Trend-Analyse**: Vergleich mit Vormonat
+- **Monatliche Snapshots**: Automatische historische Archivierung
+
+#### Datenmodelle
+
+```python
+@dataclass
+class AssetSummary:
+    total_real_estate: Decimal      # Immobilien
+    total_vehicles: Decimal         # Fahrzeuge
+    total_investments: Decimal      # Anlagen
+    total_cash: Decimal             # Bargeld/Konten
+    total_other_assets: Decimal     # Sonstige
+
+@dataclass
+class LiabilitySummary:
+    total_mortgages: Decimal        # Hypotheken
+    total_loans: Decimal            # Kredite
+    total_other_liabilities: Decimal # Sonstige
+
+@dataclass
+class PortfolioAnalysis:
+    assets: AssetSummary
+    liabilities: LiabilitySummary
+    net_worth: Decimal
+    debt_to_assets_ratio: Decimal
+    liquidity_ratio: Decimal
+    asset_allocation: dict[str, float]
+    net_worth_change_absolute: Optional[Decimal]
+    net_worth_change_percent: Optional[Decimal]
+```
+
+### KI-Prompt Service
+
+**Klasse**: `PrivatKIPromptService` (Thread-safe Singleton)
+**Zweck**: Domänenspezifische KI-Analysen mit LLM Integration
+
+#### Features
+- **Immobilien-Bewertung**: Marktwert-Schätzung, Mietpotenzial, ROI
+- **Fahrzeug-Analyse**: Wertverlust, optimaler Verkaufszeitpunkt
+- **Anlage-Beratung**: Risikoprofil, Portfolio-Optimierung, Rebalancing
+- **Versicherungs-Check**: Coverage-Gaps, Optimierungspotenzial
+- **Finanz-Assistent**: Natürlichsprachliche Q&A
+
+#### Technische Details
+- **Template-Engine**: Jinja2 für deutsche Prompts (templates/privat/)
+- **LLM-Integration**: Nutzt `LLMService` (Anthropic/Ollama)
+- **Caching**: In-Memory Cache (24h TTL) mit Thread-safe RLock, deep-copy Pattern
+- **Monitoring**: Prometheus-Metriken für Requests, Duration, Cache-Hits
+- **Thread-Safety**: Double-Checked Locking Pattern in `__new__`
+- **Testing**: Umfassende Unit-Tests inkl. Thread-Safety und Dataclass-Validation
+
+**Wichtige Implementierungsdetails:**
+- Alle Attribute werden in `__new__` initialisiert (nicht in `__init__`)
+- Cache gibt Deep-Copy zurück um Mutation zu verhindern
+- JSON-Response-Parsing mit Markdown-Block-Entfernung
+- SHA256-basierte Cache-Keys für Eindeutigkeit
+
+#### Datenmodelle
+
+```python
+@dataclass
+class PropertyValueAnalysis:
+    property_id: UUID
+    estimated_value_eur: float
+    confidence_percent: int
+    reasoning: str
+    market_comparison: str
+    value_trend: str  # steigend, stabil, fallend
+    rental_potential_eur: Optional[float]
+    roi_estimate_percent: Optional[float]
+
+@dataclass
+class VehicleDepreciationAnalysis:
+    vehicle_id: UUID
+    current_value_eur: float
+    depreciation_percent: float
+    optimal_sell_timeframe: str
+    market_demand: str  # hoch, mittel, gering
+
+@dataclass
+class InvestmentAdvice:
+    space_id: UUID
+    risk_profile: str  # konservativ, ausgewogen, wachstumsorientiert
+    optimization_suggestions: List[str]
+    rebalancing_needed: bool
+    diversification_score: int  # 0-100
+
+@dataclass
+class InsuranceCheckResult:
+    space_id: UUID
+    coverage_assessment: str  # ausreichend, verbesserungswuerdig, unzureichend
+    identified_gaps: List[str]
+    recommendations: List[str]
+    cost_optimization_potential_eur: Optional[float]
+```
+
+#### Prometheus-Metriken
+
+```python
+privat_ki_analysis_requests_total  # Counter: Requests nach Typ + Status
+privat_ki_analysis_duration_seconds # Histogram: Dauer der Analysen
+privat_ki_cache_hits_total          # Counter: Cache-Hits
+privat_ki_cache_misses_total        # Counter: Cache-Misses
+```
+
+### Wichtige Patterns
+
+#### Singleton Pattern (Thread-Safe)
+```python
+class PrivatKIPromptService:
+    _instance: Optional["PrivatKIPromptService"] = None
+    _class_lock: threading.Lock = threading.Lock()
+
+    def __new__(cls) -> "PrivatKIPromptService":
+        # Double-checked locking
+        if cls._instance is None:
+            with cls._class_lock:
+                if cls._instance is None:
+                    instance = super().__new__(cls)
+
+                    # KRITISCH: Alle Attribute hier initialisieren (nicht in __init__)
+                    instance._llm_service = LLMService()
+                    instance._jinja_env = Environment(...)
+                    instance._cache: Dict[str, Any] = {}
+                    instance._cache_lock = threading.RLock()
+                    instance._initialized = True
+
+                    cls._instance = instance
+        return cls._instance
+
+    def __init__(self) -> None:
+        """No-op - Initialisierung erfolgt in __new__."""
+        pass
+```
+
+**Wichtig:** Der Singleton wird über `get_privat_ki_prompt_service()` Factory-Funktion verwendet.
+Unit-Tests validieren Thread-Safety mit 100 parallelen Threads.
+
+#### Caching Strategy
+- **In-Memory Cache**: Dict mit Thread-Lock (RLock) für schnellen Zugriff
+- **TTL**: 24 Stunden für KI-Analysen (automatische Expiration)
+- **Cache-Key**: SHA256 Hash von (analysis_type + entity_id + params)
+- **Deep-Copy Pattern**: Cache gibt `copy.deepcopy()` zurück um Mutation zu verhindern
+- **Thread-Safety**: Alle Cache-Operationen verwenden `with self._cache_lock`
+
+```python
+def _get_from_cache(self, cache_key: str) -> Optional[Any]:
+    """WICHTIG: Gibt Deep-Copy zurück um Cache-Mutation zu verhindern."""
+    import copy
+    with self._cache_lock:
+        if cache_key in self._cache:
+            entry = self._cache[cache_key]
+            if not expired:
+                return copy.deepcopy(entry["data"])  # Kopie!
+    return None
+```
+
+### API Endpoints
+
+```
+GET  /api/v1/privat/spaces/{space_id}/portfolio       # Portfolio-Übersicht
+GET  /api/v1/privat/spaces/{space_id}/portfolio/trend # Historischer Trend
+POST /api/v1/privat/properties/{id}/analyze           # KI-Immobilien-Analyse
+POST /api/v1/privat/vehicles/{id}/analyze             # KI-Fahrzeug-Analyse
+POST /api/v1/privat/spaces/{id}/investment-advice     # KI-Anlage-Beratung
+POST /api/v1/privat/spaces/{id}/insurance-check       # KI-Versicherungs-Check
+POST /api/v1/privat/chat                              # Finanz-Assistent Q&A
+```
+
+### Celery Tasks (geplant)
+
+| Task | Zeitplan | Beschreibung |
+|------|----------|--------------|
+| create_monthly_snapshots | 1. des Monats 01:00 | Portfolio-Snapshots für alle Spaces |
+| analyze_portfolio_trends | Täglich 02:00 | Trend-Analysen und Alerts |
+| update_ki_cache | Täglich 03:00 | Cache-Warm-up für häufige Analysen |
+
+### Sicherheitshinweise
+
+1. **PII-Schutz**: NIEMALS finanzielle Details in Logs
+2. **Cache-Isolation**: User-spezifische Cache-Keys
+3. **Input-Validation**: Pydantic-Schemas für alle API-Eingaben
+4. **Rate-Limiting**: KI-Analysen auf 10/Stunde pro User begrenzt
+
+---
+
 ## Kritische Regeln
 
 1. **Deutsche Texte**: ALLE Fehlermeldungen auf Deutsch

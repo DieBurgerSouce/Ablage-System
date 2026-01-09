@@ -112,6 +112,8 @@ class ProactiveInsight:
     expires_at: Optional[datetime] = None           # Wann Insight verfaellt
     context_source: ContextSource = ContextSource.CHAT_MESSAGE
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    source_rule: Optional[str] = None                # Regel die diesen Insight generiert hat
+    confidence: float = 1.0                          # Konfidenz (angepasst durch Feedback)
 
     def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
@@ -137,6 +139,8 @@ class ProactiveInsight:
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
             "context_source": self.context_source.value,
             "created_at": self.created_at.isoformat(),
+            "source_rule": self.source_rule,
+            "confidence": self.confidence,
         }
 
 
@@ -159,6 +163,58 @@ class EnrichedResponse:
 
 
 @dataclass
+class RuleFeedbackStats:
+    """Statistiken zu User-Feedback fuer eine Regel."""
+    rule_id: str
+    helpful_count: int = 0
+    unhelpful_count: int = 0
+    last_updated: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @property
+    def total_feedback(self) -> int:
+        """Gesamtanzahl Feedback."""
+        return self.helpful_count + self.unhelpful_count
+
+    @property
+    def weight(self) -> float:
+        """
+        Berechnet Gewichtung basierend auf Feedback.
+
+        Formel: Nutzt Wilson Score Interval Lower Bound fuer faire Gewichtung.
+        - 0.3 bei vielen negativen Feedbacks (Regel wird gefiltert)
+        - 1.0 bei neutralem/keinem Feedback (Standard)
+        - 1.5 bei vielen positiven Feedbacks (Regel wird bevorzugt)
+        """
+        if self.total_feedback == 0:
+            return 1.0
+
+        # Positiver Anteil
+        positive_ratio = self.helpful_count / self.total_feedback
+
+        # Wilson Score Lower Bound fuer statistische Signifikanz
+        import math
+        z = 1.96  # 95% Konfidenz
+        n = self.total_feedback
+        p = positive_ratio
+
+        # Wilson Score
+        denominator = 1 + z * z / n
+        centre = (p + z * z / (2 * n)) / denominator
+        spread = z * math.sqrt((p * (1 - p) + z * z / (4 * n)) / n) / denominator
+
+        lower_bound = centre - spread
+
+        # Mapping: [0, 1] -> [0.3, 1.5]
+        # 0.5 = neutral -> 1.0
+        # 0.0 = sehr negativ -> 0.3
+        # 1.0 = sehr positiv -> 1.5
+        weight = 0.3 + (lower_bound * 1.2)
+
+        # Clamp to [0.3, 1.5]
+        return max(0.3, min(1.5, weight))
+
+
+@dataclass
 class UserContext:
     """Aktueller Kontext des Users."""
     user_id: UUID
@@ -167,6 +223,25 @@ class UserContext:
     recent_queries: List[str] = field(default_factory=list)
     recent_entities: List[ExtractedEntity] = field(default_factory=list)
     session_start: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_activity: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+    # Memory Management: Max items pro Liste
+    MAX_RECENT_QUERIES: int = field(default=50, repr=False)
+    MAX_RECENT_ENTITIES: int = field(default=100, repr=False)
+
+    def add_query(self, query: str) -> None:
+        """Fuegt Query hinzu mit automatischem Pruning."""
+        self.recent_queries.append(query)
+        if len(self.recent_queries) > self.MAX_RECENT_QUERIES:
+            self.recent_queries = self.recent_queries[-self.MAX_RECENT_QUERIES:]
+        self.last_activity = datetime.now(timezone.utc)
+
+    def add_entities(self, entities: List[ExtractedEntity]) -> None:
+        """Fuegt Entities hinzu mit automatischem Pruning."""
+        self.recent_entities.extend(entities)
+        if len(self.recent_entities) > self.MAX_RECENT_ENTITIES:
+            self.recent_entities = self.recent_entities[-self.MAX_RECENT_ENTITIES:]
+        self.last_activity = datetime.now(timezone.utc)
 
 
 # =============================================================================
@@ -388,9 +463,21 @@ class InsightRuleEngine:
         self,
         entity: ExtractedEntity,
         context_data: Dict[str, Any],
+        user_rule_weights: Optional[Dict[str, float]] = None,
     ) -> List[ProactiveInsight]:
-        """Evaluiert alle Regeln fuer eine Entity."""
+        """Evaluiert alle Regeln fuer eine Entity.
+
+        Args:
+            entity: Die zu evaluierende Entity.
+            context_data: Kontext-Daten fuer die Regelauswertung.
+            user_rule_weights: Optional User-spezifische Regel-Gewichte (0-2).
+                               1.0 = Standard, <1 = weniger oft zeigen, >1 = bevorzugen.
+
+        Returns:
+            Liste von generierten ProactiveInsights.
+        """
         insights = []
+        user_rule_weights = user_rule_weights or {}
 
         for rule in self._rules:
             if entity.entity_type in rule.entity_types:
@@ -398,7 +485,21 @@ class InsightRuleEngine:
                     if rule.condition(context_data):
                         insight = rule.generate(context_data)
                         insight.related_entities.append(entity)
-                        insights.append(insight)
+                        insight.source_rule = rule.rule_id
+
+                        # User-spezifische Gewichtung anwenden
+                        weight = user_rule_weights.get(rule.rule_id, 1.0)
+                        insight.confidence = insight.confidence * weight
+
+                        # Insights mit zu niedriger Konfidenz filtern
+                        if insight.confidence >= 0.3:
+                            insights.append(insight)
+                        else:
+                            logger.debug(
+                                "insight_filtered_low_confidence",
+                                rule_id=rule.rule_id,
+                                confidence=insight.confidence,
+                            )
                 except Exception as e:
                     logger.warning(
                         "rule_evaluation_failed",
@@ -442,9 +543,93 @@ class ProactiveInsightsService:
         self._user_contexts: Dict[UUID, UserContext] = {}
         self._insight_cache: Dict[str, List[ProactiveInsight]] = {}
         self._cache_lock = asyncio.Lock()
+
+        # Memory Management Limits
+        self._max_user_contexts = 1000  # Max concurrent user contexts
+        self._context_ttl = timedelta(hours=24)  # Context expiry
+        self._max_cache_entries = 500  # Max cache entries
+        self._cache_ttl = timedelta(hours=1)  # Cache expiry
+        self._cache_timestamps: Dict[str, datetime] = {}  # Track cache entry ages
+
+        # Feedback Learning Storage
+        # Structure: {user_id: {rule_id: RuleFeedbackStats}}
+        self._user_feedback: Dict[UUID, Dict[str, "RuleFeedbackStats"]] = {}
+        self._feedback_lock = asyncio.Lock()
+        self._max_feedback_users = 5000  # Max users with feedback
+        self._feedback_ttl = timedelta(days=90)  # Feedback expiry
+        self._feedback_timestamps: Dict[UUID, datetime] = {}  # Track last update
+
+        # Insight cache fuer Feedback-Lookup
+        # Structure: {insight_id_str: (insight, user_id, created_at)}
+        self._generated_insights: Dict[str, Tuple[ProactiveInsight, UUID, datetime]] = {}
+        self._max_generated_insights = 10000  # Max insights to track
+        self._insight_retention = timedelta(hours=48)  # Keep insights for feedback
+
         self._initialized = True
 
         logger.info("proactive_insights_service_initialized")
+
+    async def cleanup_stale_contexts(self) -> int:
+        """
+        Entfernt abgelaufene User-Kontexte und Cache-Eintraege.
+
+        Returns:
+            Anzahl entfernter Eintraege.
+        """
+        async with self._cache_lock:
+            now = datetime.now(timezone.utc)
+            removed = 0
+
+            # Cleanup stale user contexts
+            cutoff = now - self._context_ttl
+            stale_users = [
+                uid for uid, ctx in self._user_contexts.items()
+                if ctx.last_activity < cutoff
+            ]
+            for uid in stale_users:
+                del self._user_contexts[uid]
+                removed += 1
+
+            # Enforce max contexts (LRU-style)
+            if len(self._user_contexts) > self._max_user_contexts:
+                sorted_contexts = sorted(
+                    self._user_contexts.items(),
+                    key=lambda x: x[1].last_activity
+                )
+                excess = len(self._user_contexts) - self._max_user_contexts
+                for uid, _ in sorted_contexts[:excess]:
+                    del self._user_contexts[uid]
+                    removed += 1
+
+            # Cleanup stale cache entries
+            cache_cutoff = now - self._cache_ttl
+            stale_cache_keys = [
+                key for key, ts in self._cache_timestamps.items()
+                if ts < cache_cutoff
+            ]
+            for key in stale_cache_keys:
+                if key in self._insight_cache:
+                    del self._insight_cache[key]
+                del self._cache_timestamps[key]
+                removed += 1
+
+            # Enforce max cache entries (LRU-style)
+            if len(self._insight_cache) > self._max_cache_entries:
+                sorted_cache = sorted(
+                    self._cache_timestamps.items(),
+                    key=lambda x: x[1]
+                )
+                excess = len(self._insight_cache) - self._max_cache_entries
+                for key, _ in sorted_cache[:excess]:
+                    if key in self._insight_cache:
+                        del self._insight_cache[key]
+                    del self._cache_timestamps[key]
+                    removed += 1
+
+            if removed > 0:
+                logger.info("proactive_insights_cleanup", removed=removed)
+
+            return removed
 
     async def enrich_chat_response(
         self,
@@ -476,10 +661,10 @@ class ProactiveInsightsService:
         # Entities aus Frage extrahieren
         entities = await self._extract_entities(user_question)
 
-        # Kontext aktualisieren
+        # Kontext aktualisieren (mit automatischem Pruning)
         context = self._get_or_create_context(user_id, space_id)
-        context.recent_queries.append(user_question)
-        context.recent_entities.extend(entities)
+        context.add_query(user_question)
+        context.add_entities(entities)
 
         # Insights generieren
         insights = await self._generate_insights(
@@ -626,19 +811,188 @@ class ProactiveInsightsService:
 
         Speichert ob ein Insight hilfreich war und passt zukuenftige
         Generierung entsprechend an.
+
+        Args:
+            insight_id: ID des bewerteten Insights.
+            was_helpful: True wenn Insight hilfreich war.
+            user_id: ID des Users der Feedback gibt.
         """
+        insight_id_str = str(insight_id)
+
+        # Insight aus Cache laden
+        insight_data = self._generated_insights.get(insight_id_str)
+        if not insight_data:
+            logger.warning(
+                "insight_feedback_insight_not_found",
+                insight_id=insight_id_str,
+                user_id=str(user_id),
+            )
+            return
+
+        insight, original_user_id, created_at = insight_data
+
+        # Sicherheitscheck: Feedback nur vom gleichen User
+        if original_user_id != user_id:
+            logger.warning(
+                "insight_feedback_user_mismatch",
+                insight_id=insight_id_str,
+                expected_user=str(original_user_id),
+                actual_user=str(user_id),
+            )
+            return
+
+        source_rule = insight.source_rule
+        if not source_rule:
+            logger.warning(
+                "insight_feedback_no_source_rule",
+                insight_id=insight_id_str,
+            )
+            return
+
+        # Feedback speichern
+        async with self._feedback_lock:
+            now = datetime.now(timezone.utc)
+
+            # User-Feedback-Dict initialisieren
+            if user_id not in self._user_feedback:
+                self._user_feedback[user_id] = {}
+
+            # Regel-Stats initialisieren
+            if source_rule not in self._user_feedback[user_id]:
+                self._user_feedback[user_id][source_rule] = RuleFeedbackStats(
+                    rule_id=source_rule
+                )
+
+            # Feedback zaehlen
+            stats = self._user_feedback[user_id][source_rule]
+            if was_helpful:
+                stats.helpful_count += 1
+            else:
+                stats.unhelpful_count += 1
+            stats.last_updated = now
+
+            # User-Timestamp aktualisieren
+            self._feedback_timestamps[user_id] = now
+
+            # Memory Management: Alte Feedbacks entfernen
+            await self._cleanup_stale_feedback()
+
         logger.info(
-            "insight_feedback_received",
-            insight_id=str(insight_id),
+            "insight_feedback_recorded",
+            insight_id=insight_id_str,
             was_helpful=was_helpful,
             user_id=str(user_id),
+            source_rule=source_rule,
+            new_weight=self._user_feedback[user_id][source_rule].weight,
+            total_feedback=self._user_feedback[user_id][source_rule].total_feedback,
         )
 
-        # TODO: Implement feedback learning
-        # - Speichere Feedback in DB
-        # - Passe Regel-Gewichte an
-        # - Personalisiere fuer User
-        pass
+    async def _cleanup_stale_feedback(self) -> int:
+        """
+        Entfernt veraltete Feedback-Daten.
+
+        Returns:
+            Anzahl entfernter User-Feedback-Eintraege.
+        """
+        now = datetime.now(timezone.utc)
+        cutoff = now - self._feedback_ttl
+        removed = 0
+
+        # Veraltete Users entfernen
+        stale_users = [
+            uid for uid, ts in self._feedback_timestamps.items()
+            if ts < cutoff
+        ]
+        for uid in stale_users:
+            del self._user_feedback[uid]
+            del self._feedback_timestamps[uid]
+            removed += 1
+
+        # Max Users enforcem (LRU-style)
+        if len(self._user_feedback) > self._max_feedback_users:
+            sorted_users = sorted(
+                self._feedback_timestamps.items(),
+                key=lambda x: x[1]
+            )
+            excess = len(self._user_feedback) - self._max_feedback_users
+            for uid, _ in sorted_users[:excess]:
+                del self._user_feedback[uid]
+                del self._feedback_timestamps[uid]
+                removed += 1
+
+        # Veraltete generated insights entfernen
+        insight_cutoff = now - self._insight_retention
+        stale_insights = [
+            iid for iid, (_, _, ts) in self._generated_insights.items()
+            if ts < insight_cutoff
+        ]
+        for iid in stale_insights:
+            del self._generated_insights[iid]
+
+        if removed > 0 or stale_insights:
+            logger.debug(
+                "feedback_cleanup_completed",
+                removed_users=removed,
+                removed_insights=len(stale_insights),
+            )
+
+        return removed
+
+    def get_user_rule_weights(self, user_id: UUID) -> Dict[str, float]:
+        """
+        Gibt die personalisierten Regel-Gewichte fuer einen User zurueck.
+
+        Args:
+            user_id: User-ID.
+
+        Returns:
+            Dict von rule_id -> weight (0.3-1.5).
+        """
+        if user_id not in self._user_feedback:
+            return {}
+
+        return {
+            rule_id: stats.weight
+            for rule_id, stats in self._user_feedback[user_id].items()
+        }
+
+    async def get_feedback_summary(self, user_id: UUID) -> Dict[str, Any]:
+        """
+        Gibt eine Zusammenfassung des User-Feedbacks zurueck.
+
+        Args:
+            user_id: User-ID.
+
+        Returns:
+            Zusammenfassung mit Gewichten und Statistiken.
+        """
+        if user_id not in self._user_feedback:
+            return {
+                "user_id": str(user_id),
+                "has_feedback": False,
+                "rules": [],
+            }
+
+        rules = []
+        for rule_id, stats in self._user_feedback[user_id].items():
+            rules.append({
+                "rule_id": rule_id,
+                "helpful_count": stats.helpful_count,
+                "unhelpful_count": stats.unhelpful_count,
+                "total_feedback": stats.total_feedback,
+                "weight": stats.weight,
+                "last_updated": stats.last_updated.isoformat(),
+            })
+
+        # Nach Anzahl Feedback sortieren
+        rules.sort(key=lambda x: x["total_feedback"], reverse=True)
+
+        return {
+            "user_id": str(user_id),
+            "has_feedback": True,
+            "total_rules": len(rules),
+            "rules": rules,
+        }
 
     # =========================================================================
     # Private Helper Methods
@@ -685,6 +1039,9 @@ class ProactiveInsightsService:
         """Generiert Insights basierend auf Entities und Kontext."""
         insights = []
 
+        # User-spezifische Regel-Gewichte laden
+        user_rule_weights = self.get_user_rule_weights(user_context.user_id)
+
         for entity in entities:
             # Kontext-Daten fuer diese Entity zusammenstellen
             context_data = additional_data.copy()
@@ -694,12 +1051,38 @@ class ProactiveInsightsService:
             # Mock-Daten fuer Demo (in Produktion: aus DB laden)
             context_data = self._enrich_with_mock_data(entity, context_data)
 
-            # Regeln evaluieren
-            entity_insights = self._rule_engine.evaluate(entity, context_data)
+            # Regeln evaluieren mit User-Gewichten
+            entity_insights = self._rule_engine.evaluate(
+                entity,
+                context_data,
+                user_rule_weights=user_rule_weights,
+            )
             insights.extend(entity_insights)
 
         # Deduplizieren und priorisieren
-        return self._deduplicate_and_prioritize(insights)
+        final_insights = self._deduplicate_and_prioritize(insights)
+
+        # Insights fuer Feedback-Tracking registrieren
+        now = datetime.now(timezone.utc)
+        for insight in final_insights:
+            self._generated_insights[str(insight.id)] = (
+                insight,
+                user_context.user_id,
+                now,
+            )
+
+        # Max Insights im Cache enforcem
+        if len(self._generated_insights) > self._max_generated_insights:
+            # Aelteste entfernen (FIFO)
+            sorted_insights = sorted(
+                self._generated_insights.items(),
+                key=lambda x: x[1][2]  # Sort by created_at
+            )
+            excess = len(self._generated_insights) - self._max_generated_insights
+            for iid, _ in sorted_insights[:excess]:
+                del self._generated_insights[iid]
+
+        return final_insights
 
     def _enrich_with_mock_data(
         self,

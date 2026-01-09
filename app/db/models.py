@@ -7884,6 +7884,7 @@ class PrivatSpace(Base):
     kpi_history = relationship("PrivatKPIHistory", back_populates="space", cascade="all, delete-orphan")
     projections = relationship("PrivatProjection", back_populates="space", cascade="all, delete-orphan")
     early_warnings = relationship("PrivatEarlyWarning", back_populates="space", cascade="all, delete-orphan")
+    tasks = relationship("PrivatTask", back_populates="space", cascade="all, delete-orphan")
     # Portfolio & Financial Goals (Enterprise Feature)
     portfolio_snapshots = relationship("PortfolioSnapshot", back_populates="space", cascade="all, delete-orphan")
     financial_goals = relationship("FinancialGoal", back_populates="space", cascade="all, delete-orphan")
@@ -11757,6 +11758,111 @@ class PrivatEarlyWarning(Base):
     def is_active(self) -> bool:
         """Prueft ob die Warnung aktiv ist."""
         return not self.is_dismissed and not self.is_resolved
+
+
+class PrivatTask(Base):
+    """Orchestrator-Tasks - Aufgaben aus der Cross-Module-Orchestrierung.
+
+    Generische Tasks die vom CrossModuleOrchestrator erstellt werden,
+    wenn automatische Aktionen Benutzereingriff erfordern oder
+    manuelle Follow-Ups notwendig sind.
+    """
+
+    __tablename__ = "privat_tasks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"),
+                      nullable=False, index=True, comment="Referenz auf privat_spaces")
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+                     nullable=False, index=True, comment="Zugewiesener Benutzer")
+
+    # Task-Identifikation
+    task_type = Column(String(50), nullable=False, index=True,
+                       comment="Typ: review, action, follow_up, reminder, approval")
+    title = Column(String(255), nullable=False,
+                   comment="Kurzer Titel der Aufgabe")
+    description = Column(Text, nullable=True,
+                         comment="Ausfuehrliche Beschreibung")
+    category = Column(String(50), nullable=True, index=True,
+                      comment="Kategorie: financial, insurance, property, loan, general")
+
+    # Prioritaet und Dringlichkeit
+    priority = Column(String(20), nullable=False, default="medium",
+                      comment="Prioritaet: low, medium, high, critical")
+    due_date = Column(DateTime(timezone=True), nullable=True,
+                      comment="Faelligkeitsdatum")
+
+    # Herkunft aus Orchestration
+    source_action_id = Column(UUID(as_uuid=True), nullable=True,
+                              comment="ID der ausloesenden OrchestrationAction")
+    source_reason = Column(Text, nullable=True,
+                           comment="Grund fuer Task-Erstellung")
+    source_module = Column(String(50), nullable=True,
+                           comment="Ausloesendes Modul: financial_health, insurance, loan, etc.")
+
+    # Status-Tracking
+    status = Column(String(30), nullable=False, default="pending",
+                    comment="Status: pending, in_progress, completed, cancelled, snoozed")
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    cancelled_at = Column(DateTime(timezone=True), nullable=True)
+    cancelled_reason = Column(Text, nullable=True)
+
+    # Snooze-Funktion (wie bei MahnTask)
+    snoozed_until = Column(DateTime(timezone=True), nullable=True)
+    snooze_count = Column(Integer, default=0)
+    snooze_reason = Column(String(255), nullable=True)
+
+    # Ergebnis
+    result_notes = Column(Text, nullable=True,
+                          comment="Notizen nach Abschluss")
+    result_action_taken = Column(String(100), nullable=True,
+                                 comment="Getroffene Massnahme")
+
+    # Verknuepfte Entitaeten
+    related_entity_type = Column(String(50), nullable=True,
+                                 comment="Typ der verknuepften Entitaet: property, loan, insurance")
+    related_entity_id = Column(UUID(as_uuid=True), nullable=True,
+                               comment="ID der verknuepften Entitaet")
+
+    # Metadaten
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    extra_data = Column(CrossDBJSON, nullable=True,
+                        comment="Zusaetzliche Metadaten vom Orchestrator")
+
+    # Relationships
+    space = relationship("PrivatSpace", back_populates="tasks")
+    user = relationship("User", backref="privat_tasks")
+
+    __table_args__ = (
+        Index("ix_privat_tasks_pending", "user_id", "status", "priority",
+              postgresql_where=text("status IN ('pending', 'in_progress')")),
+        Index("ix_privat_tasks_due", "due_date",
+              postgresql_where=text("status = 'pending'")),
+        Index("ix_privat_tasks_source", "source_action_id"),
+        CheckConstraint("status IN ('pending', 'in_progress', 'completed', 'cancelled', 'snoozed')",
+                        name="chk_privat_task_status"),
+        CheckConstraint("priority IN ('low', 'medium', 'high', 'critical')",
+                        name="chk_privat_task_priority"),
+        {"comment": "Orchestrator-generierte Tasks fuer Benutzeraktionen"}
+    )
+
+    @property
+    def is_overdue(self) -> bool:
+        """Prueft ob Task ueberfaellig ist."""
+        from datetime import datetime, timezone
+        if self.due_date and self.status in ("pending", "in_progress"):
+            return self.due_date < datetime.now(timezone.utc)
+        return False
+
+    @property
+    def is_snoozed(self) -> bool:
+        """Prueft ob Task zur Zeit snoozt."""
+        from datetime import datetime, timezone
+        if self.snoozed_until and self.status == "snoozed":
+            return self.snoozed_until > datetime.now(timezone.utc)
+        return False
 
 
 # =============================================================================

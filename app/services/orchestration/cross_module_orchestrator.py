@@ -1018,12 +1018,16 @@ class CrossModuleOrchestrator:
         )
 
     async def _execute_create_recommendation(self, action: OrchestrationAction) -> None:
-        """Erstellt eine Empfehlung (wird in RecommendationsService integriert).
+        """Erstellt eine Empfehlung und persistiert sie in AIDecision.
 
-        Hinweis: Hier koennte eine DB-Integration erfolgen um Recommendations zu persistieren.
-        Fuer jetzt loggen wir nur.
+        Nutzt das AIDecision-Model fuer vollstaendigen Audit-Trail.
         """
+        from app.db.session import get_async_session_context
+        from app.db.models import AIDecision
+
         data = action.action_data
+        user_id = data.get("user_id") or action.target_entity_id
+        document_id = data.get("document_id")
 
         logger.info(
             "recommendation_created_by_orchestrator",
@@ -1033,33 +1037,232 @@ class CrossModuleOrchestrator:
             reason=action.reason,
         )
 
-        # TODO: In RecommendationsService oder DB persistieren
+        # Confidence aus Priority ableiten
+        priority_confidence_map = {
+            "critical": 0.95,
+            "high": 0.85,
+            "medium": 0.75,
+            "low": 0.65,
+        }
+        confidence = priority_confidence_map.get(
+            data.get("priority", "medium"),
+            0.75
+        )
+
+        # Confidence Level basierend auf Confidence
+        if confidence >= 0.9:
+            confidence_level = "auto"
+        elif confidence >= 0.7:
+            confidence_level = "suggest"
+        else:
+            confidence_level = "manual"
+
+        try:
+            async with get_async_session_context() as session:
+                ai_decision = AIDecision(
+                    company_id=data.get("company_id"),
+                    document_id=document_id,
+                    decision_type="recommendation",
+                    decision_value={
+                        "category": data.get("category"),
+                        "title": data.get("title"),
+                        "description": data.get("description"),
+                        "priority": data.get("priority"),
+                        "action_url": data.get("action_url"),
+                        "potential_value": (
+                            float(data.get("potential_value", 0))
+                            if data.get("potential_value")
+                            else None
+                        ),
+                        "orchestrator_action_id": str(action.id),
+                        "source_module": (
+                            action.source_module.value
+                            if action.source_module
+                            else None
+                        ),
+                    },
+                    confidence=confidence,
+                    confidence_level=confidence_level,
+                    explanation={
+                        "reason": action.reason,
+                        "source": "cross_module_orchestrator",
+                        "trigger_event": data.get("trigger_event"),
+                    },
+                    auto_applied=False,
+                    requires_review=True,
+                    is_final=False,
+                )
+                session.add(ai_decision)
+                await session.commit()
+
+                logger.info(
+                    "recommendation_persisted",
+                    decision_id=str(ai_decision.id),
+                    category=data.get("category"),
+                    title=data.get("title"),
+                    confidence=confidence,
+                )
+        except Exception as e:
+            logger.error(
+                "recommendation_persistence_failed",
+                error=str(e),
+                category=data.get("category"),
+                title=data.get("title"),
+            )
 
     async def _execute_trigger_workflow(self, action: OrchestrationAction) -> None:
-        """Triggert einen Workflow."""
+        """Triggert einen Workflow.
+
+        Integriert mit WorkflowTriggerService fuer echte Workflow-Ausfuehrung.
+        """
+        from app.db.session import get_async_session_context
+        from app.services.workflow.workflow_trigger_service import WorkflowTriggerService
+        from app.services.workflow.workflow_execution_service import WorkflowExecutionService
+
         data = action.action_data
+        workflow_id = data.get("workflow_id")
+        user_id = data.get("user_id") or action.target_entity_id
 
         logger.info(
             "workflow_triggered_by_orchestrator",
             workflow_type=data.get("workflow_type"),
+            workflow_id=str(workflow_id) if workflow_id else None,
             target_entity_id=str(action.target_entity_id) if action.target_entity_id else None,
             reason=action.reason,
         )
 
-        # TODO: WorkflowTriggerService integrieren
+        if not workflow_id:
+            logger.warning(
+                "workflow_trigger_missing_workflow_id",
+                action_id=str(action.id),
+                reason="workflow_id fehlt in action_data",
+            )
+            return
+
+        if not user_id:
+            logger.warning(
+                "workflow_trigger_missing_user_id",
+                action_id=str(action.id),
+                reason="user_id fehlt in action_data und target_entity_id",
+            )
+            return
+
+        try:
+            async with get_async_session_context() as session:
+                # ExecutionService erstellen
+                execution_service = WorkflowExecutionService(db=session)
+
+                # TriggerService mit ExecutionService erstellen
+                trigger_service = WorkflowTriggerService(
+                    db=session,
+                    execution_service=execution_service,
+                )
+
+                # Workflow manuell triggern
+                execution_id = await trigger_service.trigger_workflow_manually(
+                    workflow_id=workflow_id,
+                    user_id=user_id,
+                    document_id=data.get("document_id"),
+                    variables={
+                        "orchestrator_action_id": str(action.id),
+                        "orchestrator_reason": action.reason,
+                        "source_module": action.source_module.value if action.source_module else None,
+                        **(data.get("variables") or {}),
+                    },
+                )
+
+                if execution_id:
+                    logger.info(
+                        "workflow_execution_started",
+                        workflow_id=str(workflow_id),
+                        execution_id=str(execution_id),
+                        orchestrator_action_id=str(action.id),
+                    )
+                else:
+                    logger.warning(
+                        "workflow_trigger_returned_none",
+                        workflow_id=str(workflow_id),
+                        reason="trigger_workflow_manually gab None zurueck",
+                    )
+
+        except Exception as e:
+            logger.error(
+                "workflow_trigger_failed",
+                workflow_id=str(workflow_id) if workflow_id else None,
+                action_id=str(action.id),
+                error=str(e),
+            )
 
     async def _execute_create_task(self, action: OrchestrationAction) -> None:
-        """Erstellt einen Task."""
+        """Erstellt einen Task und persistiert ihn in der Datenbank.
+
+        Nutzt das PrivatTask-Model um Orchestrator-generierte Aufgaben
+        zu speichern und dem Benutzer im Dashboard anzuzeigen.
+        """
+        from app.db.session import get_async_session_context
+        from app.db.models import PrivatTask
+
         data = action.action_data
 
-        logger.info(
-            "task_created_by_orchestrator",
-            task_type=data.get("task_type"),
-            title=data.get("title"),
-            reason=action.reason,
-        )
+        # Mapping Priority String -> Task Priority
+        priority_map = {
+            "critical": "critical",
+            "high": "high",
+            "medium": "medium",
+            "low": "low",
+        }
+        priority = priority_map.get(data.get("priority", "medium"), "medium")
 
-        # TODO: Task-System integrieren
+        # Due Date berechnen (falls nicht angegeben, 7 Tage default)
+        due_date = data.get("due_date")
+        if due_date is None:
+            due_date = datetime.now(timezone.utc) + timedelta(days=7)
+        elif isinstance(due_date, str):
+            due_date = datetime.fromisoformat(due_date.replace("Z", "+00:00"))
+
+        try:
+            async with get_async_session_context() as session:
+                privat_task = PrivatTask(
+                    space_id=data.get("space_id"),
+                    user_id=data.get("user_id"),
+                    task_type=data.get("task_type", "action"),
+                    title=data.get("title", "Orchestrator Task"),
+                    description=data.get("description"),
+                    category=data.get("category", "general"),
+                    priority=priority,
+                    due_date=due_date,
+                    source_action_id=action.id,
+                    source_reason=action.reason,
+                    source_module=data.get("source_module"),
+                    status="pending",
+                    related_entity_type=data.get("entity_type"),
+                    related_entity_id=data.get("entity_id"),
+                    extra_data={
+                        "action_type": action.action_type.value,
+                        "original_data": data,
+                        "created_by": "cross_module_orchestrator",
+                    },
+                )
+                session.add(privat_task)
+                await session.commit()
+                await session.refresh(privat_task)
+
+                logger.info(
+                    "task_created_by_orchestrator",
+                    task_id=str(privat_task.id),
+                    task_type=privat_task.task_type,
+                    title=privat_task.title,
+                    priority=privat_task.priority,
+                    due_date=due_date.isoformat() if due_date else None,
+                    reason=action.reason,
+                )
+
+        except Exception as e:
+            logger.error(
+                "task_creation_failed",
+                action_id=str(action.id),
+                error=str(e),
+            )
 
     # =========================================================================
     # Conflict Prevention - mit TTL-basiertem Cleanup

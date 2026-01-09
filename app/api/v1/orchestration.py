@@ -19,11 +19,12 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 import re
 
 from app.api.deps import get_current_active_user
+from app.core.rate_limiting import limiter, get_user_identifier
 from app.db.models import User
 from app.services.orchestration import (
     get_cross_module_orchestrator,
@@ -180,6 +181,7 @@ class RejectDecisionRequest(BaseModel):
 # API Endpoints
 # =============================================================================
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/decisions",
     response_model=List[DecisionResponse],
@@ -199,6 +201,7 @@ class RejectDecisionRequest(BaseModel):
     """,
 )
 async def get_prioritized_decisions(
+    request: Request,
     limit: int = Query(default=10, ge=1, le=100, description="Maximale Anzahl"),
     min_score: Optional[float] = Query(default=None, ge=0, description="Mindest-Impact-Score"),
     current_user: User = Depends(get_current_active_user),
@@ -218,12 +221,14 @@ async def get_prioritized_decisions(
     ]
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/decisions/{decision_id}",
     response_model=DecisionResponse,
     summary="Einzelne Entscheidung abrufen",
 )
 async def get_decision(
+    request: Request,
     decision_id: UUID,
     current_user: User = Depends(get_current_active_user),
 ) -> DecisionResponse:
@@ -247,6 +252,7 @@ async def get_decision(
     )
 
 
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @router.post(
     "/decisions/{decision_id}/approve",
     response_model=Dict[str, Any],
@@ -254,6 +260,7 @@ async def get_decision(
     description="Genehmigt eine Entscheidung zur Ausfuehrung.",
 )
 async def approve_decision(
+    request: Request,
     decision_id: UUID,
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, Any]:
@@ -275,6 +282,7 @@ async def approve_decision(
     }
 
 
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @router.post(
     "/decisions/{decision_id}/reject",
     response_model=Dict[str, Any],
@@ -282,6 +290,7 @@ async def approve_decision(
     description="Lehnt eine Entscheidung ab.",
 )
 async def reject_decision(
+    fastapi_request: Request,
     decision_id: UUID,
     request: RejectDecisionRequest,
     current_user: User = Depends(get_current_active_user),
@@ -305,6 +314,7 @@ async def reject_decision(
     }
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/summary",
     response_model=DecisionSummaryResponse,
@@ -321,6 +331,7 @@ async def reject_decision(
     """,
 )
 async def get_decision_summary(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> DecisionSummaryResponse:
     """Gibt Entscheidungs-Zusammenfassung zurueck."""
@@ -331,6 +342,7 @@ async def get_decision_summary(
     return DecisionSummaryResponse(**summary)
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/metrics",
     response_model=CombinedMetricsResponse,
@@ -338,6 +350,7 @@ async def get_decision_summary(
     description="Gibt Metriken des Orchestrators und der Decision Engine zurueck.",
 )
 async def get_orchestration_metrics(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> CombinedMetricsResponse:
     """Gibt Orchestration-Metriken zurueck."""
@@ -353,6 +366,7 @@ async def get_orchestration_metrics(
     )
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/pending-actions",
     response_model=List[ActionResponse],
@@ -360,6 +374,7 @@ async def get_orchestration_metrics(
     description="Gibt alle ausstehenden Orchestrierungs-Aktionen zurueck.",
 )
 async def get_pending_actions(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> List[ActionResponse]:
     """Gibt ausstehende Aktionen zurueck."""
@@ -383,6 +398,7 @@ async def get_pending_actions(
     ]
 
 
+@limiter.limit("5/minute", key_func=get_user_identifier)
 @router.post(
     "/execute-approved",
     response_model=Dict[str, Any],
@@ -390,6 +406,7 @@ async def get_pending_actions(
     description="Fuehrt alle genehmigten Entscheidungen aus. Normalerweise via Celery Beat.",
 )
 async def execute_approved_decisions(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, Any]:
     """Fuehrt genehmigte Entscheidungen aus."""
@@ -404,6 +421,7 @@ async def execute_approved_decisions(
     }
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/decision-history",
     response_model=List[DecisionResponse],
@@ -411,6 +429,7 @@ async def execute_approved_decisions(
     description="Gibt die letzten verarbeiteten Entscheidungen zurueck.",
 )
 async def get_decision_history(
+    request: Request,
     limit: int = Query(default=20, ge=1, le=100, description="Maximale Anzahl"),
     current_user: User = Depends(get_current_active_user),
 ) -> List[DecisionResponse]:
@@ -620,6 +639,7 @@ class EarlyWarningExplainRequest(BaseModel):
 # Explainability Endpoints
 # =============================================================================
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/explain/recommendation/{recommendation_id}",
     response_model=DecisionExplanationResponse,
@@ -638,6 +658,7 @@ class EarlyWarningExplainRequest(BaseModel):
     """,
 )
 async def explain_recommendation(
+    request: Request,
     recommendation_id: UUID,
     current_user: User = Depends(get_current_active_user),
 ) -> DecisionExplanationResponse:
@@ -719,6 +740,7 @@ async def explain_recommendation(
     )
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.post(
     "/explain/early-warning",
     response_model=DecisionExplanationResponse,
@@ -730,6 +752,7 @@ async def explain_recommendation(
     """,
 )
 async def explain_early_warning(
+    fastapi_request: Request,
     request: EarlyWarningExplainRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> DecisionExplanationResponse:
@@ -786,6 +809,7 @@ async def explain_early_warning(
     )
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.post(
     "/explain/health-score",
     response_model=DecisionExplanationResponse,
@@ -800,6 +824,7 @@ async def explain_early_warning(
     """,
 )
 async def explain_health_score(
+    fastapi_request: Request,
     request: HealthScoreBreakdownRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> DecisionExplanationResponse:
@@ -1113,6 +1138,7 @@ class CombineRequest(BaseModel):
 # What-If Simulator Endpoints
 # =============================================================================
 
+@limiter.limit("5/minute", key_func=get_user_identifier)
 @router.post(
     "/simulator/what-if",
     response_model=ScenarioResultResponse,
@@ -1136,6 +1162,7 @@ class CombineRequest(BaseModel):
     """,
 )
 async def simulate_scenario(
+    fastapi_request: Request,
     request: SimulateRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> ScenarioResultResponse:
@@ -1180,6 +1207,7 @@ async def simulate_scenario(
     return _convert_scenario_result(result)
 
 
+@limiter.limit("5/minute", key_func=get_user_identifier)
 @router.post(
     "/simulator/compare",
     response_model=ComparisonResultResponse,
@@ -1196,6 +1224,7 @@ async def simulate_scenario(
     """,
 )
 async def compare_scenarios(
+    fastapi_request: Request,
     request: CompareRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> ComparisonResultResponse:
@@ -1248,6 +1277,7 @@ async def compare_scenarios(
     )
 
 
+@limiter.limit("5/minute", key_func=get_user_identifier)
 @router.post(
     "/simulator/combine",
     response_model=ScenarioResultResponse,
@@ -1263,6 +1293,7 @@ async def compare_scenarios(
     """,
 )
 async def combine_scenarios(
+    fastapi_request: Request,
     request: CombineRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> ScenarioResultResponse:
@@ -1308,6 +1339,7 @@ async def combine_scenarios(
     return _convert_scenario_result(result)
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/simulator/quick-scenarios",
     response_model=List[Dict[str, Any]],
@@ -1322,6 +1354,7 @@ async def combine_scenarios(
     """,
 )
 async def get_quick_scenarios(
+    request: Request,
     health_score: float = Query(default=70.0, description="Aktueller Health Score"),
     dti_ratio: float = Query(default=35.0, description="DTI Ratio"),
     savings_rate: float = Query(default=10.0, description="Sparquote"),
@@ -1516,6 +1549,7 @@ class InsightRuleResponse(BaseModel):
 # Proactive Insights Endpoints
 # =============================================================================
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.post(
     "/insights/enrich-response",
     response_model=EnrichedResponseResponse,
@@ -1535,6 +1569,7 @@ class InsightRuleResponse(BaseModel):
     """
 )
 async def enrich_chat_response(
+    fastapi_request: Request,
     request: EnrichChatRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> EnrichedResponseResponse:
@@ -1593,6 +1628,7 @@ async def enrich_chat_response(
     )
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/insights/dashboard",
     response_model=List[ProactiveInsightResponse],
@@ -1609,6 +1645,7 @@ async def enrich_chat_response(
     """
 )
 async def get_dashboard_insights(
+    request: Request,
     health_score: float = Query(..., ge=0, le=100, description="Aktueller Health Score"),
     dti_ratio: Optional[float] = Query(None, description="Debt-to-Income Ratio"),
     emergency_fund_months: Optional[float] = Query(None, description="Notgroschen in Monaten"),
@@ -1665,6 +1702,7 @@ async def get_dashboard_insights(
     ]
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.post(
     "/insights/contextual",
     response_model=List[ProactiveInsightResponse],
@@ -1682,6 +1720,7 @@ async def get_dashboard_insights(
     """
 )
 async def get_contextual_insights(
+    fastapi_request: Request,
     request: ContextualInsightRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> List[ProactiveInsightResponse]:
@@ -1719,6 +1758,7 @@ async def get_contextual_insights(
     ]
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.post(
     "/insights/feedback",
     response_model=InsightFeedbackResponse,
@@ -1736,6 +1776,7 @@ async def get_contextual_insights(
     """
 )
 async def submit_insight_feedback(
+    fastapi_request: Request,
     request: InsightFeedbackRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> InsightFeedbackResponse:
@@ -1759,6 +1800,7 @@ async def submit_insight_feedback(
     )
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/insights/rules",
     response_model=List[InsightRuleResponse],
@@ -1772,6 +1814,7 @@ async def submit_insight_feedback(
     """
 )
 async def get_insight_rules(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> List[InsightRuleResponse]:
     """Ruft alle Insight-Regeln ab."""
@@ -1794,6 +1837,7 @@ async def get_insight_rules(
     ]
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/insights/stats",
     response_model=Dict[str, Any],
@@ -1807,6 +1851,7 @@ async def get_insight_rules(
     """
 )
 async def get_insight_stats(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, Any]:
     """Ruft Insight-Statistiken ab."""
@@ -1959,6 +2004,7 @@ class ThresholdStatisticsResponse(BaseModel):
 # Personalized Thresholds Endpoints
 # =============================================================================
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/thresholds/definitions",
     response_model=List[ThresholdDefinitionResponse],
@@ -1973,6 +2019,7 @@ class ThresholdStatisticsResponse(BaseModel):
     """
 )
 async def get_threshold_definitions(
+    request: Request,
     category: Optional[str] = Query(None, description="Filter nach Kategorie"),
     current_user: User = Depends(get_current_active_user),
 ) -> List[ThresholdDefinitionResponse]:
@@ -2008,6 +2055,7 @@ async def get_threshold_definitions(
     ]
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/thresholds/profile",
     response_model=UserProfileResponse,
@@ -2022,6 +2070,7 @@ async def get_threshold_definitions(
     """
 )
 async def get_user_profile(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> UserProfileResponse:
     """Ruft das User-Profil ab."""
@@ -2047,6 +2096,7 @@ async def get_user_profile(
     )
 
 
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @router.put(
     "/thresholds/profile",
     response_model=UserProfileResponse,
@@ -2059,6 +2109,7 @@ async def get_user_profile(
     """
 )
 async def update_user_profile(
+    fastapi_request: Request,
     request: UpdateProfileRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> UserProfileResponse:
@@ -2087,6 +2138,7 @@ async def update_user_profile(
     )
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/thresholds",
     response_model=List[UserThresholdResponse],
@@ -2099,6 +2151,7 @@ async def update_user_profile(
     """
 )
 async def get_user_thresholds(
+    request: Request,
     category: Optional[str] = Query(None, description="Filter nach Kategorie"),
     current_user: User = Depends(get_current_active_user),
 ) -> List[UserThresholdResponse]:
@@ -2138,6 +2191,7 @@ async def get_user_thresholds(
     ]
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/thresholds/{threshold_type}",
     response_model=UserThresholdResponse,
@@ -2145,6 +2199,7 @@ async def get_user_thresholds(
     description="Ruft einen einzelnen personalisierten Schwellenwert ab."
 )
 async def get_user_threshold(
+    request: Request,
     threshold_type: str,
     current_user: User = Depends(get_current_active_user),
 ) -> UserThresholdResponse:
@@ -2184,6 +2239,7 @@ async def get_user_threshold(
     )
 
 
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @router.put(
     "/thresholds/{threshold_type}",
     response_model=UserThresholdResponse,
@@ -2196,6 +2252,7 @@ async def get_user_threshold(
     """
 )
 async def set_user_threshold(
+    fastapi_request: Request,
     threshold_type: str,
     request: SetThresholdRequest,
     current_user: User = Depends(get_current_active_user),
@@ -2242,6 +2299,7 @@ async def set_user_threshold(
     )
 
 
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @router.post(
     "/thresholds/{threshold_type}/reset",
     response_model=UserThresholdResponse,
@@ -2253,6 +2311,7 @@ async def set_user_threshold(
     """
 )
 async def reset_user_threshold(
+    request: Request,
     threshold_type: str,
     current_user: User = Depends(get_current_active_user),
 ) -> UserThresholdResponse:
@@ -2287,6 +2346,7 @@ async def reset_user_threshold(
     )
 
 
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @router.post(
     "/thresholds/reset-all",
     response_model=List[UserThresholdResponse],
@@ -2294,6 +2354,7 @@ async def reset_user_threshold(
     description="Setzt alle Schwellenwerte auf Profil-basierte Defaults zurueck."
 )
 async def reset_all_thresholds(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> List[UserThresholdResponse]:
     """Setzt alle Schwellenwerte zurueck."""
@@ -2321,6 +2382,7 @@ async def reset_all_thresholds(
     ]
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/thresholds/recommendations",
     response_model=List[ThresholdRecommendationResponse],
@@ -2335,6 +2397,7 @@ async def reset_all_thresholds(
     """
 )
 async def get_threshold_recommendations(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> List[ThresholdRecommendationResponse]:
     """Ruft Schwellenwert-Empfehlungen ab."""
@@ -2359,6 +2422,7 @@ async def get_threshold_recommendations(
     ]
 
 
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @router.post(
     "/thresholds/recommendations/generate",
     response_model=List[ThresholdRecommendationResponse],
@@ -2370,6 +2434,7 @@ async def get_threshold_recommendations(
     """
 )
 async def generate_threshold_recommendations(
+    request: Request,
     health_score: float = Query(..., ge=0, le=100),
     dti_ratio: Optional[float] = Query(None),
     emergency_fund_months: Optional[float] = Query(None),
@@ -2411,6 +2476,7 @@ async def generate_threshold_recommendations(
     ]
 
 
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @router.post(
     "/thresholds/recommendations/{recommendation_id}/accept",
     response_model=UserThresholdResponse,
@@ -2418,6 +2484,7 @@ async def generate_threshold_recommendations(
     description="Akzeptiert eine Schwellenwert-Empfehlung und wendet sie an."
 )
 async def accept_threshold_recommendation(
+    request: Request,
     recommendation_id: str,
     current_user: User = Depends(get_current_active_user),
 ) -> UserThresholdResponse:
@@ -2457,12 +2524,14 @@ async def accept_threshold_recommendation(
     )
 
 
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @router.post(
     "/thresholds/recommendations/{recommendation_id}/reject",
     summary="Empfehlung ablehnen",
     description="Lehnt eine Schwellenwert-Empfehlung ab."
 )
 async def reject_threshold_recommendation(
+    request: Request,
     recommendation_id: str,
     reason: Optional[str] = Query(None, max_length=500),
     current_user: User = Depends(get_current_active_user),
@@ -2494,6 +2563,7 @@ async def reject_threshold_recommendation(
     }
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/thresholds/history",
     response_model=List[ThresholdAdjustmentResponse],
@@ -2501,6 +2571,7 @@ async def reject_threshold_recommendation(
     description="Ruft die Historie aller Schwellenwert-Anpassungen ab."
 )
 async def get_threshold_history(
+    request: Request,
     limit: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_active_user),
 ) -> List[ThresholdAdjustmentResponse]:
@@ -2525,6 +2596,7 @@ async def get_threshold_history(
     ]
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/thresholds/stats",
     response_model=ThresholdStatisticsResponse,
@@ -2537,6 +2609,7 @@ async def get_threshold_history(
     """
 )
 async def get_threshold_stats(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> ThresholdStatisticsResponse:
     """Ruft Schwellenwert-Statistiken ab."""
@@ -2682,6 +2755,7 @@ class SeasonalityStatisticsResponse(BaseModel):
 # Seasonality API Endpoints
 # ----------------------
 
+@limiter.limit("5/minute", key_func=get_user_identifier)
 @router.post(
     "/seasonality/detect-patterns",
     response_model=List[SeasonalPatternResponse],
@@ -2701,6 +2775,7 @@ class SeasonalityStatisticsResponse(BaseModel):
     """
 )
 async def detect_seasonal_patterns(
+    fastapi_request: Request,
     request: DetectPatternsRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> List[SeasonalPatternResponse]:
@@ -2737,6 +2812,7 @@ async def detect_seasonal_patterns(
     ]
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/seasonality/expectations/{month}",
     response_model=List[MonthlyExpectationResponse],
@@ -2754,6 +2830,7 @@ async def detect_seasonal_patterns(
     """
 )
 async def get_monthly_expectations(
+    request: Request,
     month: int = Path(..., ge=1, le=12, description="Monat (1-12)"),
     year: Optional[int] = Query(None, description="Jahr"),
     categories: Optional[str] = Query(None, description="Kategorien (komma-getrennt)"),
@@ -2802,6 +2879,7 @@ async def get_monthly_expectations(
     ]
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.post(
     "/seasonality/analyze-anomaly",
     response_model=SeasonalAnomalyResponse,
@@ -2822,6 +2900,7 @@ async def get_monthly_expectations(
     """
 )
 async def analyze_seasonal_anomaly(
+    fastapi_request: Request,
     request: SeasonalAnomalyRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> SeasonalAnomalyResponse:
@@ -2866,6 +2945,7 @@ async def analyze_seasonal_anomaly(
     )
 
 
+@limiter.limit("5/minute", key_func=get_user_identifier)
 @router.get(
     "/seasonality/forecast",
     response_model=SeasonalForecastResponse,
@@ -2886,6 +2966,7 @@ async def analyze_seasonal_anomaly(
     """
 )
 async def generate_seasonal_forecast(
+    request: Request,
     horizon_months: int = Query(12, ge=1, le=24, description="Prognose-Horizont in Monaten"),
     current_user: User = Depends(get_current_active_user),
 ) -> SeasonalForecastResponse:
@@ -2935,6 +3016,7 @@ async def generate_seasonal_forecast(
     )
 
 
+@limiter.limit("10/minute", key_func=get_user_identifier)
 @router.post(
     "/seasonality/events",
     response_model=SeasonalEventResponse,
@@ -2952,6 +3034,7 @@ async def generate_seasonal_forecast(
     """
 )
 async def add_custom_event(
+    fastapi_request: Request,
     request: AddCustomEventRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> SeasonalEventResponse:
@@ -2993,6 +3076,7 @@ async def add_custom_event(
     )
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/seasonality/events/{month}",
     response_model=List[SeasonalEventResponse],
@@ -3006,6 +3090,7 @@ async def add_custom_event(
     """
 )
 async def get_events_for_month(
+    request: Request,
     month: int = Path(..., ge=1, le=12, description="Monat (1-12)"),
     current_user: User = Depends(get_current_active_user),
 ) -> List[SeasonalEventResponse]:
@@ -3036,6 +3121,7 @@ async def get_events_for_month(
     ]
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/seasonality/known-patterns",
     response_model=Dict[str, Any],
@@ -3055,6 +3141,7 @@ async def get_events_for_month(
     """
 )
 async def get_known_patterns(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, Any]:
     """Ruft bekannte Saisonmuster ab."""
@@ -3089,6 +3176,7 @@ async def get_known_patterns(
     }
 
 
+@limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/seasonality/stats",
     response_model=SeasonalityStatisticsResponse,
@@ -3102,6 +3190,7 @@ async def get_known_patterns(
     """
 )
 async def get_seasonality_stats(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> SeasonalityStatisticsResponse:
     """Ruft Saisonalitaets-Statistiken ab."""

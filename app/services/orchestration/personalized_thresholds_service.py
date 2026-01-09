@@ -599,8 +599,41 @@ class PersonalizedThresholdsService:
         self._adjustments: List[ThresholdAdjustment] = []
         self._recommendations: Dict[UUID, List[ThresholdRecommendation]] = {}
 
+        # Memory Management Limits
+        self._max_profiles = 10000  # Max cached profiles
+        self._max_adjustments = 50000  # Max adjustment history
+        self._max_recommendations_per_user = 100  # Max recommendations per user
+
         self._initialized = True
         logger.info("PersonalizedThresholdsService initialisiert")
+
+    def cleanup_old_data(self) -> int:
+        """
+        Bereinigt alte Daten um Memory-Leaks zu verhindern.
+
+        Returns:
+            Anzahl entfernter Eintraege.
+        """
+        removed = 0
+
+        # Prune adjustments (keep most recent)
+        if len(self._adjustments) > self._max_adjustments:
+            excess = len(self._adjustments) - self._max_adjustments
+            self._adjustments = self._adjustments[excess:]
+            removed += excess
+
+        # Prune recommendations per user
+        for user_id in self._recommendations:
+            recs = self._recommendations[user_id]
+            if len(recs) > self._max_recommendations_per_user:
+                excess = len(recs) - self._max_recommendations_per_user
+                self._recommendations[user_id] = recs[excess:]
+                removed += excess
+
+        if removed > 0:
+            logger.info("personalized_thresholds_cleanup", removed=removed)
+
+        return removed
 
     # -------------------------------------------------------------------------
     # Profile Management

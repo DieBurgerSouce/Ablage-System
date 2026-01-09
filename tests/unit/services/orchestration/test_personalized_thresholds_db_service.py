@@ -379,10 +379,10 @@ class TestThresholdManagement:
         service._profile_repo.get_by_user_id.return_value = mock_profile
         service._threshold_repo.get_by_user_id.return_value = mock_thresholds
 
-        # Filter by DEBT_MANAGEMENT category
+        # Filter by DEBT category
         thresholds = await service.get_all_thresholds(
             sample_user_id,
-            category=ThresholdCategory.DEBT_MANAGEMENT,
+            category=ThresholdCategory.DEBT,
         )
 
         # Only DTI thresholds should match
@@ -509,6 +509,12 @@ class TestThresholdInitialization:
             user_id=sample_user_id,
             profession_type=ProfessionType.EMPLOYEE,
             risk_tolerance=RiskTolerance.MODERATE,
+            income_stability=0.7,
+            age_group="31-45",
+            household_size=2,
+            has_dependents=False,
+            is_homeowner=False,
+            has_pension_plan=True,
         )
 
         service._threshold_repo.bulk_upsert.return_value = []
@@ -526,6 +532,12 @@ class TestThresholdInitialization:
             user_id=uuid4(),
             profession_type=ProfessionType.CIVIL_SERVANT,
             risk_tolerance=RiskTolerance.MODERATE,
+            income_stability=0.9,
+            age_group="31-45",
+            household_size=2,
+            has_dependents=False,
+            is_homeowner=True,
+            has_pension_plan=True,
         )
 
         # Get DTI definition from registry
@@ -542,11 +554,23 @@ class TestThresholdInitialization:
             user_id=uuid4(),
             profession_type=ProfessionType.EMPLOYEE,
             risk_tolerance=RiskTolerance.CONSERVATIVE,
+            income_stability=0.7,
+            age_group="46-60",
+            household_size=3,
+            has_dependents=True,
+            is_homeowner=True,
+            has_pension_plan=True,
         )
         profile_aggressive = UserProfile(
             user_id=uuid4(),
             profession_type=ProfessionType.EMPLOYEE,
             risk_tolerance=RiskTolerance.AGGRESSIVE,
+            income_stability=0.8,
+            age_group="25-30",
+            household_size=1,
+            has_dependents=False,
+            is_homeowner=False,
+            has_pension_plan=False,
         )
 
         definition = service.registry.get_threshold(ThresholdType.DTI_WARNING)
@@ -890,6 +914,12 @@ class TestRecalculation:
             user_id=sample_user_id,
             profession_type=ProfessionType.EMPLOYEE,
             risk_tolerance=RiskTolerance.MODERATE,
+            income_stability=0.7,
+            age_group="31-45",
+            household_size=2,
+            has_dependents=False,
+            is_homeowner=False,
+            has_pension_plan=True,
         )
 
         service._threshold_repo.get_by_user_id.return_value = []
@@ -906,6 +936,12 @@ class TestRecalculation:
             user_id=sample_user_id,
             profession_type=ProfessionType.CIVIL_SERVANT,
             risk_tolerance=RiskTolerance.CONSERVATIVE,
+            income_stability=0.95,
+            age_group="46-60",
+            household_size=4,
+            has_dependents=True,
+            is_homeowner=True,
+            has_pension_plan=True,
         )
 
         mock_thresholds = [

@@ -220,7 +220,8 @@ class FinancialHealthService:
     ) -> NetWorthSummary:
         """Berechnet das Netto-Vermoegen eines Spaces."""
         from app.db.models import (
-            PrivatProperty, PrivatVehicle, PrivatInvestment, PrivatLoan
+            PrivatProperty, PrivatVehicle, PrivatInvestment, PrivatLoan,
+            PrivatKPIHistory,
         )
 
         HEALTH_SCORE_CALCULATIONS.labels(calculation_type="net_worth").inc()
@@ -308,10 +309,43 @@ class FinancialHealthService:
         total_liabilities = total_loan_debt
         net_worth = total_assets - total_liabilities
 
-        # TODO: Net Worth Trend aus historischen Daten berechnen
-        # Fuer jetzt: None
+        # Net Worth Trend aus historischen Daten berechnen
         net_worth_change_ytd: Optional[Decimal] = None
         net_worth_change_pct: Optional[Decimal] = None
+
+        # Hole Net Worth vom Jahresanfang (oder aeltester verfuegbarer Eintrag)
+        year_start = datetime(datetime.now(timezone.utc).year, 1, 1, tzinfo=timezone.utc)
+
+        # Suche aeltesten Net Worth Eintrag im aktuellen Jahr
+        ytd_result = await db.execute(
+            select(PrivatKPIHistory.kpi_value, PrivatKPIHistory.recorded_at)
+            .where(
+                PrivatKPIHistory.space_id == space_id,
+                PrivatKPIHistory.kpi_name == "net_worth",
+                PrivatKPIHistory.recorded_at >= year_start,
+            )
+            .order_by(PrivatKPIHistory.recorded_at.asc())
+            .limit(1)
+        )
+        oldest_entry = ytd_result.first()
+
+        if oldest_entry and oldest_entry.kpi_value is not None:
+            historical_net_worth = Decimal(str(oldest_entry.kpi_value))
+            net_worth_change_ytd = net_worth - historical_net_worth
+
+            # Prozentuale Aenderung berechnen (Division by Zero vermeiden)
+            if historical_net_worth != 0:
+                net_worth_change_pct = (
+                    (net_worth_change_ytd / abs(historical_net_worth)) * 100
+                ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            else:
+                # Bei historischem Null-Vermoegen: Spezialfall
+                if net_worth > 0:
+                    net_worth_change_pct = Decimal("100.00")  # Positiver Aufbau
+                elif net_worth < 0:
+                    net_worth_change_pct = Decimal("-100.00")  # Schulden aufgebaut
+                else:
+                    net_worth_change_pct = Decimal("0.00")
 
         return NetWorthSummary(
             total_assets=total_assets,
@@ -893,6 +927,11 @@ class FinancialHealthService:
         # Prometheus Metrik setzen
         HEALTH_SCORE_GAUGE.labels(space_id=str(space_id)).set(float(total_score))
 
+        # 7. Benchmark-Perzentil berechnen (anonymisierter Vergleich)
+        benchmark_percentile = await self._calculate_benchmark_percentile(
+            db, space_id, total_score
+        )
+
         duration = time.time() - start_time
         HEALTH_SCORE_DURATION.observe(duration)
 
@@ -901,6 +940,7 @@ class FinancialHealthService:
             space_id=str(space_id),
             total_score=str(total_score),
             rating=rating.value,
+            benchmark_percentile=str(benchmark_percentile) if benchmark_percentile else None,
             duration_seconds=round(duration, 3),
         )
 
@@ -914,7 +954,7 @@ class FinancialHealthService:
             estimated_monthly_expenses=estimated_monthly_expenses,
             monthly_savings_rate=monthly_savings_rate,
             priority_recommendations=priority_recommendations,
-            benchmark_percentile=None,  # TODO: Benchmark-Vergleich implementieren
+            benchmark_percentile=benchmark_percentile,
         )
 
     # =========================================================================
@@ -933,6 +973,94 @@ class FinancialHealthService:
             return HealthRating.NEEDS_ATTENTION
         else:
             return HealthRating.CRITICAL
+
+    async def _calculate_benchmark_percentile(
+        self,
+        db: AsyncSession,
+        space_id: UUID,
+        current_score: Decimal,
+    ) -> Optional[Decimal]:
+        """
+        Berechnet das Benchmark-Perzentil basierend auf anonymisierten Score-Vergleichen.
+
+        Vergleicht den aktuellen Score mit den letzten Health Scores anderer Spaces.
+        Gibt das Perzentil zurueck (0-100), wobei 50 = Durchschnitt bedeutet.
+
+        Datenschutz-Hinweis: Nur aggregierte Statistiken werden verwendet,
+        keine personenbezogenen Daten werden exponiert.
+        """
+        from app.db.models import PrivatKPIHistory
+
+        # Nur Scores der letzten 30 Tage fuer aktuellen Vergleich
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=30)
+
+        try:
+            # Hole den neuesten Score pro Space (exkl. eigener Space)
+            # Subquery: Max(recorded_at) pro space_id
+            subquery = (
+                select(
+                    PrivatKPIHistory.space_id,
+                    func.max(PrivatKPIHistory.recorded_at).label("max_recorded"),
+                )
+                .where(
+                    PrivatKPIHistory.kpi_name == "financial_health_score",
+                    PrivatKPIHistory.recorded_at >= cutoff_date,
+                    PrivatKPIHistory.space_id != space_id,  # Eigener Space ausschliessen
+                )
+                .group_by(PrivatKPIHistory.space_id)
+                .subquery()
+            )
+
+            # Join mit Historie um neueste Werte zu bekommen
+            result = await db.execute(
+                select(PrivatKPIHistory.kpi_value)
+                .join(
+                    subquery,
+                    and_(
+                        PrivatKPIHistory.space_id == subquery.c.space_id,
+                        PrivatKPIHistory.recorded_at == subquery.c.max_recorded,
+                    ),
+                )
+                .where(PrivatKPIHistory.kpi_name == "financial_health_score")
+            )
+
+            other_scores = [Decimal(str(row[0])) for row in result.all() if row[0] is not None]
+
+            if len(other_scores) < 5:
+                # Mindestens 5 Vergleichswerte fuer statistisch sinnvolles Perzentil
+                logger.debug(
+                    "benchmark_insufficient_data",
+                    space_id=str(space_id),
+                    sample_size=len(other_scores),
+                )
+                return None
+
+            # Perzentil berechnen: Wie viele Scores sind kleiner als der aktuelle?
+            scores_below = sum(1 for s in other_scores if s < current_score)
+            total_scores = len(other_scores)
+
+            # Perzentil-Formel: (scores_below / total) * 100
+            percentile = (Decimal(str(scores_below)) / Decimal(str(total_scores)) * 100).quantize(
+                Decimal("0.1"), rounding=ROUND_HALF_UP
+            )
+
+            logger.debug(
+                "benchmark_percentile_calculated",
+                space_id=str(space_id),
+                current_score=str(current_score),
+                percentile=str(percentile),
+                sample_size=total_scores,
+            )
+
+            return percentile
+
+        except Exception as e:
+            logger.warning(
+                "benchmark_calculation_failed",
+                space_id=str(space_id),
+                error=str(e),
+            )
+            return None
 
     # =========================================================================
     # Batch-Operationen fuer Celery

@@ -12,6 +12,7 @@ Verwendung:
 """
 import uuid
 from datetime import datetime
+from app.core.datetime_utils import utc_now
 from typing import Optional, List, Dict, Any
 import structlog
 import re
@@ -222,8 +223,8 @@ class ValidationFieldService:
         field.corrected_value = corrected_value
         field.was_corrected = was_corrected
         field.reviewed_by_id = reviewed_by_id
-        field.reviewed_at = datetime.utcnow()
-        field.updated_at = datetime.utcnow()
+        field.reviewed_at = utc_now()
+        field.updated_at = utc_now()
 
         await self.db.commit()
         await self.db.refresh(field)
@@ -308,7 +309,7 @@ class ValidationFieldService:
         field.umlaut_issues = umlaut_issues
         field.format_issues = format_issues
         field.validation_status = "validated" if not all_errors else "error"
-        field.updated_at = datetime.utcnow()
+        field.updated_at = utc_now()
 
         await self.db.commit()
         await self.db.refresh(field)

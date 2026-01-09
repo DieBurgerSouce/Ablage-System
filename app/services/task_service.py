@@ -10,6 +10,7 @@ Provides high-level interface for:
 
 import structlog
 from datetime import datetime, timezone
+from app.core.datetime_utils import utc_now
 from typing import Dict, Any, List, Optional
 from uuid import UUID
 
@@ -101,7 +102,7 @@ class TaskService:
 
         # Update job with task ID
         job.worker_id = task.id
-        job.started_at = datetime.utcnow()
+        job.started_at = utc_now()
         await session.commit()
 
         logger.info("document_task_submitted", document_id=str(document_id), task_id=task.id, backend=backend, priority=priority)
@@ -112,7 +113,7 @@ class TaskService:
             "document_id": str(document_id),
             "status": "queued",
             "priority": priority,
-            "submitted_at": datetime.utcnow().isoformat(),
+            "submitted_at": utc_now().isoformat(),
         }
 
     async def submit_batch_task(
@@ -157,7 +158,7 @@ class TaskService:
             "document_count": len(document_ids),
             "status": "queued",
             "priority": priority,
-            "submitted_at": datetime.utcnow().isoformat(),
+            "submitted_at": utc_now().isoformat(),
         }
 
     async def verify_task_ownership(
