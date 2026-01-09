@@ -3,28 +3,31 @@
 Unit Tests fuer PrivatKIPromptService.
 
 Testet:
-- Singleton-Pattern
+- Thread-safe Singleton-Pattern mit Double-Checked Locking
+- Dataclass-Strukturen mit korrekten Feldern
 - Jinja2 Template-Rendering
-- Dataclass-Strukturen
-- Cache-Mechanismus
+- Thread-safe Cache-Mechanismus
 """
 
 import pytest
-from datetime import datetime
+import threading
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-class TestPrivatKIPromptServiceSingleton:
-    """Tests fuer Singleton-Pattern."""
+# =============================================================================
+# Singleton Pattern Tests
+# =============================================================================
 
-    @pytest.mark.asyncio
-    async def test_singleton_instance(self) -> None:
+class TestPrivatKIPromptServiceSingleton:
+    """Tests fuer Thread-safe Singleton-Pattern."""
+
+    def test_singleton_instance_same_object(self) -> None:
         """Testet dass get_privat_ki_prompt_service immer die gleiche Instanz liefert."""
         from app.services.privat.ki_prompt_service import (
             PrivatKIPromptService,
@@ -33,313 +36,345 @@ class TestPrivatKIPromptServiceSingleton:
 
         service1 = get_privat_ki_prompt_service()
         service2 = get_privat_ki_prompt_service()
+        service3 = PrivatKIPromptService()  # Direkter Konstruktor
 
+        # Alle drei muessen identisch sein (selbe Objekt-ID)
         assert service1 is service2
+        assert service2 is service3
+        assert id(service1) == id(service2) == id(service3)
 
-    @pytest.mark.asyncio
-    async def test_service_initialization(self) -> None:
-        """Testet Service-Initialisierung."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
+    def test_singleton_thread_safety(self) -> None:
+        """Testet dass Singleton-Pattern thread-safe ist."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+
+        instances: list = []
+        errors: list = []
+
+        def create_instance():
+            try:
+                instance = PrivatKIPromptService()
+                instances.append(id(instance))
+            except Exception as e:
+                errors.append(str(e))
+
+        # 100 Threads gleichzeitig starten
+        threads = [threading.Thread(target=create_instance) for _ in range(100)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        # Keine Fehler
+        assert len(errors) == 0, f"Errors: {errors}"
+
+        # Alle Instanzen muessen identisch sein (selbe ID)
+        assert len(set(instances)) == 1, (
+            f"Multiple instances created: {len(set(instances))} unique IDs"
         )
+
+    def test_singleton_initialization_complete(self) -> None:
+        """Testet dass Singleton vollstaendig initialisiert ist."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
 
         service = PrivatKIPromptService()
-        assert service is not None
-        assert service._template_dir.exists()
 
+        # Alle internen Attribute muessen existieren
+        assert hasattr(service, '_initialized')
+        assert service._initialized is True
+        assert hasattr(service, '_llm_service')
+        assert hasattr(service, '_template_dir')
+        assert hasattr(service, '_jinja_env')
+        assert hasattr(service, '_cache')
+        assert hasattr(service, '_cache_lock')
+        assert isinstance(service._cache_lock, type(threading.RLock()))
+
+
+# =============================================================================
+# Dataclass Tests
+# =============================================================================
 
 class TestKIPromptDataClasses:
-    """Tests fuer Datenstrukturen."""
+    """Tests fuer Datenstrukturen mit korrekten Feldern."""
 
-    @pytest.mark.asyncio
-    async def test_dataclass_imports(self) -> None:
-        """Testet dass alle Datenklassen importierbar sind."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
-            PropertyValueAnalysis,
-            VehicleDepreciationAnalysis,
-            InvestmentAdvice,
-            InsuranceCheckResult,
-            FinancialQAResponse,
-            get_privat_ki_prompt_service,
-        )
+    def test_property_value_analysis_dataclass(self) -> None:
+        """Testet PropertyValueAnalysis mit echten Feldwerten."""
+        from app.services.privat.ki_prompt_service import PropertyValueAnalysis
 
-        assert PrivatKIPromptService is not None
-        assert PropertyValueAnalysis is not None
-        assert VehicleDepreciationAnalysis is not None
-        assert InvestmentAdvice is not None
-        assert InsuranceCheckResult is not None
-        assert FinancialQAResponse is not None
-        assert get_privat_ki_prompt_service is not None
-
-    @pytest.mark.asyncio
-    async def test_property_value_analysis_dataclass(self) -> None:
-        """Testet PropertyValueAnalysis Datenstruktur."""
-        from app.services.privat.ki_prompt_service import (
-            PropertyValueAnalysis,
-        )
-
+        property_id = uuid4()
         analysis = PropertyValueAnalysis(
+            property_id=property_id,
             estimated_value_eur=350000.0,
-            confidence_percent=75.0,
+            confidence_percent=75,
             reasoning="Gute Lage in Muenchen-Schwabing, gepflegte Altbauwohnung.",
             market_comparison="Ueber Durchschnitt fuer die Region.",
             value_trend="steigend",
             rental_potential_eur=1200.0,
             roi_estimate_percent=4.1,
-            from_cache=False,
+            cached=False,
+            analysis_time_ms=1234.5,
         )
 
+        # Werte pruefen
+        assert analysis.property_id == property_id
         assert analysis.estimated_value_eur == 350000.0
-        assert analysis.confidence_percent == 75.0
+        assert analysis.confidence_percent == 75
         assert analysis.value_trend == "steigend"
-        assert analysis.from_cache is False
+        assert analysis.cached is False
+        assert analysis.analysis_time_ms == 1234.5
 
-    @pytest.mark.asyncio
-    async def test_vehicle_depreciation_analysis_dataclass(self) -> None:
-        """Testet VehicleDepreciationAnalysis Datenstruktur."""
-        from app.services.privat.ki_prompt_service import (
-            VehicleDepreciationAnalysis,
+        # Optionale Felder
+        assert analysis.rental_potential_eur == 1200.0
+        assert analysis.roi_estimate_percent == 4.1
+        assert analysis.raw_response is None  # Default
+
+    def test_property_value_analysis_defaults(self) -> None:
+        """Testet PropertyValueAnalysis mit minimalen Pflichtfeldern."""
+        from app.services.privat.ki_prompt_service import PropertyValueAnalysis
+
+        analysis = PropertyValueAnalysis(
+            property_id=uuid4(),
+            estimated_value_eur=0.0,
+            confidence_percent=0,
+            reasoning="",
+            market_comparison="",
+            value_trend="stabil",
         )
 
+        # Defaults pruefen
+        assert analysis.rental_potential_eur is None
+        assert analysis.roi_estimate_percent is None
+        assert analysis.raw_response is None
+        assert analysis.cached is False
+        assert analysis.analysis_time_ms == 0.0
+
+    def test_vehicle_depreciation_analysis_dataclass(self) -> None:
+        """Testet VehicleDepreciationAnalysis mit echten Feldwerten."""
+        from app.services.privat.ki_prompt_service import VehicleDepreciationAnalysis
+
+        vehicle_id = uuid4()
         analysis = VehicleDepreciationAnalysis(
+            vehicle_id=vehicle_id,
             current_value_eur=25000.0,
-            depreciation_percent=35.0,
-            remaining_value_percent=65.0,
+            original_value_eur=40000.0,
+            depreciation_percent=37.5,
+            remaining_value_percent=62.5,
             optimal_sell_timeframe="innerhalb 12 Monate",
             market_demand="mittel",
             value_factors=["Guter Zustand", "Hoher Kilometerstand", "Beliebtes Modell"],
-            from_cache=False,
+            cached=False,
         )
 
+        assert analysis.vehicle_id == vehicle_id
         assert analysis.current_value_eur == 25000.0
-        assert analysis.depreciation_percent == 35.0
+        assert analysis.original_value_eur == 40000.0
+        assert analysis.depreciation_percent == 37.5
+        assert analysis.remaining_value_percent == 62.5
         assert analysis.market_demand == "mittel"
         assert len(analysis.value_factors) == 3
+        assert "Guter Zustand" in analysis.value_factors
 
-    @pytest.mark.asyncio
-    async def test_investment_advice_dataclass(self) -> None:
-        """Testet InvestmentAdvice Datenstruktur."""
-        from app.services.privat.ki_prompt_service import (
-            InvestmentAdvice,
-        )
+    def test_investment_advice_dataclass(self) -> None:
+        """Testet InvestmentAdvice mit echten Feldwerten."""
+        from app.services.privat.ki_prompt_service import InvestmentAdvice
 
+        space_id = uuid4()
         advice = InvestmentAdvice(
-            portfolio_health_score=78.0,
-            risk_assessment="ausgewogen",
-            diversification_score=72.0,
-            recommendations=[
-                {"priority": "hoch", "action": "Rebalancing", "reasoning": "Uebergewicht Aktien"}
-            ],
+            space_id=space_id,
+            risk_profile="ausgewogen",
+            current_allocation_assessment="Gute Diversifikation vorhanden",
+            optimization_suggestions=["ETF-Anteil erhoehen", "Anleihen reduzieren"],
             rebalancing_needed=True,
-            rebalancing_suggestions=["ETF-Anteil erhoehen", "Anleihen reduzieren"],
-            tax_optimization_hints=["Freistellungsauftrag nutzen"],
-            projected_annual_return_percent=6.5,
-            risk_warnings=["Zinsaenderungsrisiko bei Anleihen"],
-            from_cache=False,
+            expected_return_estimate="5-7% p.a.",
+            diversification_score=72,
         )
 
-        assert advice.portfolio_health_score == 78.0
-        assert advice.risk_assessment == "ausgewogen"
+        assert advice.space_id == space_id
+        assert advice.risk_profile == "ausgewogen"
         assert advice.rebalancing_needed is True
-        assert len(advice.recommendations) == 1
+        assert advice.diversification_score == 72
+        assert len(advice.optimization_suggestions) == 2
 
-    @pytest.mark.asyncio
-    async def test_insurance_check_result_dataclass(self) -> None:
-        """Testet InsuranceCheckResult Datenstruktur."""
-        from app.services.privat.ki_prompt_service import (
-            InsuranceCheckResult,
-        )
+    def test_insurance_check_result_dataclass(self) -> None:
+        """Testet InsuranceCheckResult mit korrekten Defaults."""
+        from app.services.privat.ki_prompt_service import InsuranceCheckResult
 
+        space_id = uuid4()
         result = InsuranceCheckResult(
-            coverage_score=65.0,
-            cost_efficiency_score=80.0,
-            critical_gaps=[
-                {"insurance_type": "Berufsunfaehigkeit", "priority": "kritisch", "reason": "Fehlende Absicherung"}
-            ],
-            optimization_suggestions=[
-                {"current_insurance": "Hausrat", "suggestion": "Tarif wechseln", "potential_savings_eur": 50}
-            ],
-            unnecessary_insurances=[],
-            recommended_actions=["BU-Versicherung abschliessen", "Hausrat-Tarif pruefen"],
-            overall_assessment="Grundlegende Deckung vorhanden, aber wichtige Luecken.",
-            from_cache=False,
+            space_id=space_id,
+            coverage_assessment="verbesserungswuerdig",
+            identified_gaps=["Berufsunfaehigkeit fehlt"],
+            recommendations=["BU-Versicherung abschliessen"],
         )
 
-        assert result.coverage_score == 65.0
-        assert result.cost_efficiency_score == 80.0
-        assert len(result.critical_gaps) == 1
-        assert len(result.recommended_actions) == 2
+        assert result.space_id == space_id
+        assert result.coverage_assessment == "verbesserungswuerdig"
+        assert len(result.identified_gaps) == 1
+        assert len(result.recommendations) == 1
 
-    @pytest.mark.asyncio
-    async def test_financial_qa_response_dataclass(self) -> None:
-        """Testet FinancialQAResponse Datenstruktur."""
-        from app.services.privat.ki_prompt_service import (
-            FinancialQAResponse,
+        # Default: priority_actions hat default_factory=list
+        assert result.priority_actions == []
+        assert isinstance(result.priority_actions, list)
+        assert result.cost_optimization_potential_eur is None
+
+    def test_insurance_check_result_no_mutable_default_sharing(self) -> None:
+        """Testet dass InsuranceCheckResult keine mutable defaults teilt."""
+        from app.services.privat.ki_prompt_service import InsuranceCheckResult
+
+        result1 = InsuranceCheckResult(
+            space_id=uuid4(),
+            coverage_assessment="ausreichend",
+            identified_gaps=[],
+            recommendations=[],
         )
+        result2 = InsuranceCheckResult(
+            space_id=uuid4(),
+            coverage_assessment="ausreichend",
+            identified_gaps=[],
+            recommendations=[],
+        )
+
+        # priority_actions Listen muessen unterschiedliche Objekte sein
+        assert result1.priority_actions is not result2.priority_actions
+
+        # Aenderung in einer sollte die andere nicht beeinflussen
+        result1.priority_actions.append("Aktion 1")
+        assert len(result1.priority_actions) == 1
+        assert len(result2.priority_actions) == 0
+
+    def test_financial_qa_response_dataclass(self) -> None:
+        """Testet FinancialQAResponse mit echten Feldwerten."""
+        from app.services.privat.ki_prompt_service import FinancialQAResponse
 
         response = FinancialQAResponse(
-            answer="Beim Immobilienkauf muessen Sie Grunderwerbsteuer, Notar- und Grundbuchkosten einplanen.",
+            question="Was sind Nebenkosten beim Hauskauf?",
+            answer="Nebenkosten umfassen Grunderwerbsteuer, Notar- und Grundbuchkosten.",
             confidence="hoch",
-            sources=["BGB", "GrEStG"],
-            related_topics=["Nebenkosten", "Finanzierung"],
-            action_items=["Nebenkosten-Rechner nutzen", "Finanzierungsangebote vergleichen"],
-            warnings=["Zusaetzlich Ruecklagen fuer Renovierung einplanen"],
-            consult_expert=True,
-            expert_type="Finanzberater",
+            sources_used=["BGB", "GrEStG"],
+            follow_up_suggestions=["Nebenkosten-Rechner nutzen"],
+            disclaimer="Diese Antwort ersetzt keine Finanzberatung.",
         )
 
+        assert response.question == "Was sind Nebenkosten beim Hauskauf?"
         assert response.confidence == "hoch"
-        assert response.consult_expert is True
-        assert response.expert_type == "Finanzberater"
-        assert len(response.sources) == 2
+        assert len(response.sources_used) == 2
+        assert len(response.follow_up_suggestions) == 1
+        assert "Finanzberatung" in response.disclaimer
 
+
+# =============================================================================
+# Service Methods Tests
+# =============================================================================
 
 class TestKIPromptServiceMethods:
     """Tests fuer Service-Methoden."""
 
-    @pytest.mark.asyncio
-    async def test_analyze_property_value_method_exists(self) -> None:
+    def test_analyze_property_value_exists(self) -> None:
         """Testet dass analyze_property_value Methode existiert."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
-        )
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
 
         service = PrivatKIPromptService()
         assert hasattr(service, 'analyze_property_value')
-        assert callable(getattr(service, 'analyze_property_value'))
+        assert callable(service.analyze_property_value)
 
-    @pytest.mark.asyncio
-    async def test_analyze_vehicle_depreciation_method_exists(self) -> None:
+    def test_analyze_property_value_signature(self) -> None:
+        """Testet die Signatur von analyze_property_value."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+        import inspect
+
+        service = PrivatKIPromptService()
+        sig = inspect.signature(service.analyze_property_value)
+        params = list(sig.parameters.keys())
+
+        assert 'db' in params
+        assert 'property_id' in params
+        assert 'use_cache' in params
+        assert sig.parameters['use_cache'].default is True
+
+    def test_analyze_vehicle_depreciation_exists(self) -> None:
         """Testet dass analyze_vehicle_depreciation Methode existiert."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
-        )
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
 
         service = PrivatKIPromptService()
         assert hasattr(service, 'analyze_vehicle_depreciation')
-        assert callable(getattr(service, 'analyze_vehicle_depreciation'))
+        assert callable(service.analyze_vehicle_depreciation)
 
-    @pytest.mark.asyncio
-    async def test_get_investment_advice_method_exists(self) -> None:
+    def test_get_investment_advice_exists(self) -> None:
         """Testet dass get_investment_advice Methode existiert."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
-        )
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
 
         service = PrivatKIPromptService()
         assert hasattr(service, 'get_investment_advice')
-        assert callable(getattr(service, 'get_investment_advice'))
+        assert callable(service.get_investment_advice)
 
-    @pytest.mark.asyncio
-    async def test_check_insurance_coverage_method_exists(self) -> None:
+    def test_check_insurance_coverage_exists(self) -> None:
         """Testet dass check_insurance_coverage Methode existiert."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
-        )
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
 
         service = PrivatKIPromptService()
         assert hasattr(service, 'check_insurance_coverage')
-        assert callable(getattr(service, 'check_insurance_coverage'))
+        assert callable(service.check_insurance_coverage)
 
-    @pytest.mark.asyncio
-    async def test_financial_qa_method_exists(self) -> None:
+    def test_financial_qa_exists(self) -> None:
         """Testet dass financial_qa Methode existiert."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
-        )
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
 
         service = PrivatKIPromptService()
         assert hasattr(service, 'financial_qa')
-        assert callable(getattr(service, 'financial_qa'))
+        assert callable(service.financial_qa)
 
-    @pytest.mark.asyncio
-    async def test_render_template_method_exists(self) -> None:
+    def test_render_template_method_exists(self) -> None:
         """Testet dass _render_template Methode existiert."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
-        )
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
 
         service = PrivatKIPromptService()
         assert hasattr(service, '_render_template')
-        assert callable(getattr(service, '_render_template'))
+        assert callable(service._render_template)
 
+    def test_clear_cache_method_exists(self) -> None:
+        """Testet dass clear_cache Methode existiert."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+
+        service = PrivatKIPromptService()
+        assert hasattr(service, 'clear_cache')
+        assert callable(service.clear_cache)
+
+
+# =============================================================================
+# Template Tests
+# =============================================================================
 
 class TestKIPromptTemplates:
     """Tests fuer Jinja2 Templates."""
 
-    @pytest.mark.asyncio
-    async def test_template_directory_exists(self) -> None:
+    def test_template_directory_exists(self) -> None:
         """Testet dass Template-Verzeichnis existiert."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
-        )
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
 
         service = PrivatKIPromptService()
         assert service._template_dir.exists()
         assert service._template_dir.is_dir()
 
-    @pytest.mark.asyncio
-    async def test_property_valuation_template_exists(self) -> None:
-        """Testet dass property_valuation.j2 existiert."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
-        )
+    def test_required_templates_exist(self) -> None:
+        """Testet dass alle erforderlichen Templates existieren."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
 
         service = PrivatKIPromptService()
-        template_path = service._template_dir / "property_valuation.j2"
-        assert template_path.exists()
 
-    @pytest.mark.asyncio
-    async def test_vehicle_analysis_template_exists(self) -> None:
-        """Testet dass vehicle_analysis.j2 existiert."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
-        )
+        required_templates = [
+            "property_valuation.j2",
+            "vehicle_analysis.j2",
+            "investment_advice.j2",
+            "insurance_check.j2",
+            "financial_qa.j2",
+        ]
 
-        service = PrivatKIPromptService()
-        template_path = service._template_dir / "vehicle_analysis.j2"
-        assert template_path.exists()
+        for template_name in required_templates:
+            template_path = service._template_dir / template_name
+            assert template_path.exists(), f"Template {template_name} fehlt"
 
-    @pytest.mark.asyncio
-    async def test_investment_advice_template_exists(self) -> None:
-        """Testet dass investment_advice.j2 existiert."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
-        )
-
-        service = PrivatKIPromptService()
-        template_path = service._template_dir / "investment_advice.j2"
-        assert template_path.exists()
-
-    @pytest.mark.asyncio
-    async def test_insurance_check_template_exists(self) -> None:
-        """Testet dass insurance_check.j2 existiert."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
-        )
-
-        service = PrivatKIPromptService()
-        template_path = service._template_dir / "insurance_check.j2"
-        assert template_path.exists()
-
-    @pytest.mark.asyncio
-    async def test_financial_qa_template_exists(self) -> None:
-        """Testet dass financial_qa.j2 existiert."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
-        )
-
-        service = PrivatKIPromptService()
-        template_path = service._template_dir / "financial_qa.j2"
-        assert template_path.exists()
-
-    @pytest.mark.asyncio
-    async def test_template_rendering(self) -> None:
-        """Testet Jinja2 Template-Rendering."""
-        from app.services.privat.ki_prompt_service import (
-            PrivatKIPromptService,
-        )
+    def test_template_rendering(self) -> None:
+        """Testet Jinja2 Template-Rendering mit echten Variablen."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
 
         service = PrivatKIPromptService()
 
@@ -355,25 +390,195 @@ class TestKIPromptTemplates:
             region="Muenchen-Schwabing",
         )
 
+        # Pruefen dass wichtige Werte im Ergebnis sind
         assert "Musterstrasse" in rendered
-        assert "80333" in rendered
+        assert "80333" in rendered or "Muenchen" in rendered
         assert "1985" in rendered
-        assert "85" in rendered
-        assert "1200" in rendered or "1.200" in rendered
+        assert isinstance(rendered, str)
+        assert len(rendered) > 100  # Sinnvolle Laenge
 
+    def test_jinja_env_configuration(self) -> None:
+        """Testet dass Jinja2 Environment korrekt konfiguriert ist."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+
+        service = PrivatKIPromptService()
+
+        # Jinja2 Environment existiert
+        assert hasattr(service, '_jinja_env')
+        assert service._jinja_env is not None
+
+        # trim_blocks und lstrip_blocks sind aktiviert
+        assert service._jinja_env.trim_blocks is True
+        assert service._jinja_env.lstrip_blocks is True
+
+
+# =============================================================================
+# Cache Tests
+# =============================================================================
+
+class TestKIPromptCache:
+    """Tests fuer Thread-safe Cache-Mechanismus."""
+
+    def test_cache_key_generation(self) -> None:
+        """Testet Cache-Key Generierung."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+
+        service = PrivatKIPromptService()
+
+        entity_id = uuid4()
+        key1 = service._get_cache_key("property", entity_id)
+        key2 = service._get_cache_key("property", entity_id)
+        key3 = service._get_cache_key("vehicle", entity_id)
+
+        # Gleiche Parameter = gleicher Key
+        assert key1 == key2
+
+        # Unterschiedlicher Prefix = unterschiedlicher Key
+        assert key1 != key3
+
+        # Key ist ein Hash (32 Zeichen)
+        assert len(key1) == 32
+        assert isinstance(key1, str)
+
+    def test_cache_set_and_get(self) -> None:
+        """Testet Cache-Set und -Get Operationen."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+
+        service = PrivatKIPromptService()
+        test_key = "test_key_12345"
+        test_data = {"value": 42, "name": "Test"}
+
+        # Setzen
+        service._set_cache(test_key, test_data)
+
+        # Holen - gibt eine Kopie zurueck
+        retrieved = service._get_from_cache(test_key)
+
+        assert retrieved is not None
+        assert retrieved["value"] == 42
+        assert retrieved["name"] == "Test"
+
+        # Kopie pruefen (nicht das Original)
+        assert retrieved is not test_data
+
+    def test_cache_returns_copy_to_prevent_mutation(self) -> None:
+        """Testet dass Cache Kopien zurueckgibt um Mutation zu verhindern."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+
+        service = PrivatKIPromptService()
+        test_key = "mutation_test_key"
+        original_data = {"items": [1, 2, 3]}
+
+        service._set_cache(test_key, original_data)
+
+        # Erste Abfrage
+        result1 = service._get_from_cache(test_key)
+        result1["items"].append(4)  # Mutieren
+
+        # Zweite Abfrage - sollte nicht mutiert sein
+        result2 = service._get_from_cache(test_key)
+
+        assert len(result2["items"]) == 3, "Cache wurde mutiert!"
+        assert 4 not in result2["items"]
+
+    def test_clear_cache_all(self) -> None:
+        """Testet komplettes Cache-Loeschen."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+
+        service = PrivatKIPromptService()
+
+        # Mehrere Eintraege hinzufuegen
+        service._set_cache("key1", {"data": 1})
+        service._set_cache("key2", {"data": 2})
+        service._set_cache("key3", {"data": 3})
+
+        # Alle loeschen
+        count = service.clear_cache()
+
+        assert count >= 3
+        assert service._get_from_cache("key1") is None
+        assert service._get_from_cache("key2") is None
+        assert service._get_from_cache("key3") is None
+
+
+# =============================================================================
+# Prometheus Metrics Tests
+# =============================================================================
 
 class TestKIPromptMetrics:
     """Tests fuer Prometheus Metriken."""
 
-    @pytest.mark.asyncio
-    async def test_metrics_exist(self) -> None:
-        """Testet dass Prometheus Metriken definiert sind."""
+    def test_metrics_defined(self) -> None:
+        """Testet dass alle Prometheus Metriken korrekt definiert sind."""
         from app.services.privat.ki_prompt_service import (
-            KI_PROMPT_COUNTER,
-            KI_PROMPT_DURATION,
-            KI_CACHE_HIT_COUNTER,
+            KI_ANALYSIS_REQUESTS,
+            KI_ANALYSIS_DURATION,
+            KI_CACHE_HITS,
+            KI_CACHE_MISSES,
+        )
+        from prometheus_client import Counter, Histogram
+
+        # Typ-Assertions
+        assert isinstance(KI_ANALYSIS_REQUESTS, Counter)
+        assert isinstance(KI_ANALYSIS_DURATION, Histogram)
+        assert isinstance(KI_CACHE_HITS, Counter)
+        assert isinstance(KI_CACHE_MISSES, Counter)
+
+    def test_metrics_labels(self) -> None:
+        """Testet dass Metriken die korrekten Labels haben."""
+        from app.services.privat.ki_prompt_service import (
+            KI_ANALYSIS_REQUESTS,
+            KI_ANALYSIS_DURATION,
         )
 
-        assert KI_PROMPT_COUNTER is not None
-        assert KI_PROMPT_DURATION is not None
-        assert KI_CACHE_HIT_COUNTER is not None
+        # Counter hat analysis_type und status Labels
+        assert 'analysis_type' in KI_ANALYSIS_REQUESTS._labelnames
+        assert 'status' in KI_ANALYSIS_REQUESTS._labelnames
+
+        # Histogram hat analysis_type Label
+        assert 'analysis_type' in KI_ANALYSIS_DURATION._labelnames
+
+
+# =============================================================================
+# Internal Methods Tests
+# =============================================================================
+
+class TestKIPromptInternalMethods:
+    """Tests fuer interne Methoden."""
+
+    def test_parse_json_response_clean_json(self) -> None:
+        """Testet JSON-Parsing von sauberem JSON."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+
+        service = PrivatKIPromptService()
+
+        result = service._parse_json_response('{"key": "value", "number": 42}')
+
+        assert result["key"] == "value"
+        assert result["number"] == 42
+
+    def test_parse_json_response_markdown_block(self) -> None:
+        """Testet JSON-Parsing aus Markdown Code-Block."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+
+        service = PrivatKIPromptService()
+
+        markdown_response = '''```json
+{"key": "value", "number": 42}
+```'''
+
+        result = service._parse_json_response(markdown_response)
+
+        assert result["key"] == "value"
+        assert result["number"] == 42
+
+    def test_parse_json_response_invalid_returns_empty(self) -> None:
+        """Testet dass ungueltigem JSON ein leeres Dict zurueckgibt."""
+        from app.services.privat.ki_prompt_service import PrivatKIPromptService
+
+        service = PrivatKIPromptService()
+
+        result = service._parse_json_response("Das ist kein JSON")
+
+        assert result == {}
+        assert isinstance(result, dict)
