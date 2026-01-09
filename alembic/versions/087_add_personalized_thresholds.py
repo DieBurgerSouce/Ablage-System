@@ -24,8 +24,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 # revision identifiers, used by Alembic.
-revision = "087_add_personalized_thresholds"
-down_revision = "086_add_approval_system"
+revision = "087"
+down_revision = "086"
 branch_labels = None
 depends_on = None
 

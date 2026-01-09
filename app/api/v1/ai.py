@@ -16,7 +16,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from app.core.auth import get_current_user
+from app.api.dependencies import get_current_user
 from app.db.models import User
 from app.services.ai.ollama_service import (
     OllamaService,

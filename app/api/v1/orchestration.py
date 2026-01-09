@@ -19,11 +19,11 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 import re
 
-from app.api.deps import get_current_active_user
+from app.api.dependencies import get_current_active_user
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.db.models import User
 from app.services.orchestration import (
