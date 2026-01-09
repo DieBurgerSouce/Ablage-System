@@ -1,10 +1,10 @@
 /**
- * NetWorthChart - Nettovermoegen-Visualisierung
+ * NetWorthChart - Nettovermögen-Visualisierung
  *
- * Zeigt die Vermoegensaufstellung mit:
- * - Gesamtvermoegen (Assets)
+ * Zeigt die Vermögensaufstellung mit:
+ * - Gesamtvermögen (Assets)
  * - Gesamtschulden (Liabilities)
- * - Nettovermoegen
+ * - Nettovermögen
  * - Asset-Allokation als Pie Chart
  */
 

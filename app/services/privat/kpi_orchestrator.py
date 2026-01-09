@@ -128,74 +128,104 @@ class KPIOrchestrationService:
     - Stellt sicher dass Financial Health NACH allen anderen laeuft
     - Publiziert Events bei Aenderungen
     - Bietet Batch-Operationen
+
+    Thread-safe Singleton mit Double-Checked Locking.
     """
 
+    _instance: Optional["KPIOrchestrationService"] = None
+    _class_lock: threading.Lock = threading.Lock()
+
+    def __new__(cls) -> "KPIOrchestrationService":
+        """Thread-safe Singleton mit Double-Checked Locking."""
+        if cls._instance is None:
+            with cls._class_lock:
+                if cls._instance is None:
+                    instance = super().__new__(cls)
+                    # ALLE Attribute hier initialisieren
+                    instance._property_service = None
+                    instance._vehicle_service = None
+                    instance._loan_service = None
+                    instance._investment_service = None
+                    instance._insurance_service = None
+                    instance._financial_health_service = None
+                    instance._service_lock = threading.RLock()  # Lock fuer Lazy Loading
+                    instance._initialized = True
+                    cls._instance = instance
+                    logger.info("kpi_orchestration_service_initialized")
+        return cls._instance
+
     def __init__(self) -> None:
-        """Initialisiert den Orchestrator."""
-        # Lazy Loading - Services werden bei Bedarf geholt
-        self._property_service = None
-        self._vehicle_service = None
-        self._loan_service = None
-        self._investment_service = None
-        self._insurance_service = None
-        self._financial_health_service = None
+        """No-op - Initialisierung erfolgt in __new__."""
+        pass
 
     # =========================================================================
-    # Service Getters (Lazy Loading)
+    # Service Getters (Thread-safe Lazy Loading)
     # =========================================================================
 
     def _get_property_service(self):
-        """Lazy Load PropertyIntelligenceService."""
+        """Lazy Load PropertyIntelligenceService (Thread-safe)."""
         if self._property_service is None:
-            from app.services.privat.property_intelligence_service import (
-                get_property_intelligence_service
-            )
-            self._property_service = get_property_intelligence_service()
+            with self._service_lock:
+                if self._property_service is None:
+                    from app.services.privat.property_intelligence_service import (
+                        get_property_intelligence_service
+                    )
+                    self._property_service = get_property_intelligence_service()
         return self._property_service
 
     def _get_vehicle_service(self):
-        """Lazy Load VehicleIntelligenceService."""
+        """Lazy Load VehicleIntelligenceService (Thread-safe)."""
         if self._vehicle_service is None:
-            from app.services.privat.vehicle_intelligence_service import (
-                get_vehicle_intelligence_service
-            )
-            self._vehicle_service = get_vehicle_intelligence_service()
+            with self._service_lock:
+                if self._vehicle_service is None:
+                    from app.services.privat.vehicle_intelligence_service import (
+                        get_vehicle_intelligence_service
+                    )
+                    self._vehicle_service = get_vehicle_intelligence_service()
         return self._vehicle_service
 
     def _get_loan_service(self):
-        """Lazy Load LoanScenarioService."""
+        """Lazy Load LoanScenarioService (Thread-safe)."""
         if self._loan_service is None:
-            from app.services.privat.loan_scenario_service import (
-                get_loan_scenario_service
-            )
-            self._loan_service = get_loan_scenario_service()
+            with self._service_lock:
+                if self._loan_service is None:
+                    from app.services.privat.loan_scenario_service import (
+                        get_loan_scenario_service
+                    )
+                    self._loan_service = get_loan_scenario_service()
         return self._loan_service
 
     def _get_investment_service(self):
-        """Lazy Load InvestmentIntelligenceService."""
+        """Lazy Load InvestmentIntelligenceService (Thread-safe)."""
         if self._investment_service is None:
-            from app.services.privat.investment_intelligence_service import (
-                get_investment_intelligence_service
-            )
-            self._investment_service = get_investment_intelligence_service()
+            with self._service_lock:
+                if self._investment_service is None:
+                    from app.services.privat.investment_intelligence_service import (
+                        get_investment_intelligence_service
+                    )
+                    self._investment_service = get_investment_intelligence_service()
         return self._investment_service
 
     def _get_insurance_service(self):
-        """Lazy Load InsuranceIntelligenceService."""
+        """Lazy Load InsuranceIntelligenceService (Thread-safe)."""
         if self._insurance_service is None:
-            from app.services.privat.insurance_intelligence_service import (
-                get_insurance_intelligence_service
-            )
-            self._insurance_service = get_insurance_intelligence_service()
+            with self._service_lock:
+                if self._insurance_service is None:
+                    from app.services.privat.insurance_intelligence_service import (
+                        get_insurance_intelligence_service
+                    )
+                    self._insurance_service = get_insurance_intelligence_service()
         return self._insurance_service
 
     def _get_financial_health_service(self):
-        """Lazy Load FinancialHealthService."""
+        """Lazy Load FinancialHealthService (Thread-safe)."""
         if self._financial_health_service is None:
-            from app.services.privat.financial_health_service import (
-                get_financial_health_service
-            )
-            self._financial_health_service = get_financial_health_service()
+            with self._service_lock:
+                if self._financial_health_service is None:
+                    from app.services.privat.financial_health_service import (
+                        get_financial_health_service
+                    )
+                    self._financial_health_service = get_financial_health_service()
         return self._financial_health_service
 
     # =========================================================================
@@ -212,6 +242,7 @@ class KPIOrchestrationService:
         include_investments: bool = True,
         include_insurances: bool = True,
         include_financial_health: bool = True,
+        defer_events: bool = False,
     ) -> SpaceKPIResult:
         """
         Berechnet alle KPIs fuer einen Space in korrekter Reihenfolge.
@@ -228,6 +259,8 @@ class KPIOrchestrationService:
             db: Datenbank-Session
             space_id: Space-ID
             include_*: Welche Entity-Typen berechnet werden sollen
+            defer_events: Wenn True, Events nicht publizieren (fuer Batch-Operationen,
+                         wo Events NACH db.commit() publiziert werden muessen)
 
         Returns:
             SpaceKPIResult mit allen Ergebnissen
@@ -288,8 +321,10 @@ class KPIOrchestrationService:
             result.total_calculated = sum(1 for r in all_results if r.success)
             result.total_errors = sum(1 for r in all_results if not r.success)
 
-            # Events publizieren
-            await self._publish_recalculation_events(db, space_id, result)
+            # Events publizieren (nur wenn nicht deferred)
+            # Bei Batch-Operationen werden Events NACH db.commit() publiziert
+            if not defer_events:
+                await self._publish_recalculation_events(db, space_id, result)
 
             duration = time.time() - start_time
             KPI_ORCHESTRATION_DURATION.labels(operation_type="space").observe(duration)
@@ -619,6 +654,9 @@ class KPIOrchestrationService:
         """
         Berechnet KPIs fuer alle (oder ausgewaehlte) Spaces.
 
+        WICHTIG: Events werden NACH db.commit() publiziert um
+        transaktionale Konsistenz zu gewaehrleisten.
+
         Args:
             db: Datenbank-Session
             space_ids: Optional: Nur diese Spaces berechnen
@@ -644,9 +682,15 @@ class KPIOrchestrationService:
         result = BatchKPIResult(total_spaces=len(spaces))
         total_health_scores: List[Decimal] = []
 
+        # Sammle Events fuer spaetere Publikation (NACH db.commit!)
+        pending_events: List[tuple[UUID, SpaceKPIResult]] = []
+
         for space in spaces:
             try:
-                space_result = await self.recalculate_all_for_space(db, space.id)
+                # defer_events=True: Events werden spaeter publiziert
+                space_result = await self.recalculate_all_for_space(
+                    db, space.id, defer_events=True
+                )
                 result.spaces_processed += 1
                 result.total_entities_calculated += space_result.total_calculated
                 result.total_errors += space_result.total_errors
@@ -660,6 +704,9 @@ class KPIOrchestrationService:
 
                 if space_result.financial_health_score:
                     total_health_scores.append(space_result.financial_health_score)
+
+                # Event fuer spaetere Publikation merken
+                pending_events.append((space.id, space_result))
 
             except Exception as e:
                 result.spaces_skipped += 1
@@ -681,7 +728,13 @@ class KPIOrchestrationService:
         KPI_ORCHESTRATION_DURATION.labels(operation_type="batch").observe(result.duration_seconds)
         KPI_ORCHESTRATION_RUNS.labels(operation_type="batch", status="completed").inc()
 
+        # ERST db.commit() - Daten sind jetzt persistent!
         await db.commit()
+
+        # DANN Events publizieren - NACH erfolgreichem Commit!
+        # So werden nur Events fuer tatsaechlich persistierte Daten gesendet
+        for space_id, space_result in pending_events:
+            await self._publish_recalculation_events(db, space_id, space_result)
 
         logger.info(
             "batch_kpi_orchestration_completed",
@@ -691,6 +744,7 @@ class KPIOrchestrationService:
             total_entities=result.total_entities_calculated,
             average_health_score=float(result.average_health_score) if result.average_health_score else None,
             duration_seconds=result.duration_seconds,
+            events_published=len(pending_events),
         )
 
         return result
@@ -840,18 +894,14 @@ class KPIOrchestrationService:
 
 
 # =============================================================================
-# Singleton
+# Factory Function
 # =============================================================================
-
-_kpi_orchestration_service: Optional[KPIOrchestrationService] = None
-_service_lock = threading.Lock()
 
 
 def get_kpi_orchestration_service() -> KPIOrchestrationService:
-    """Factory fuer KPIOrchestrationService Singleton (Thread-safe)."""
-    global _kpi_orchestration_service
-    if _kpi_orchestration_service is None:
-        with _service_lock:
-            if _kpi_orchestration_service is None:
-                _kpi_orchestration_service = KPIOrchestrationService()
-    return _kpi_orchestration_service
+    """Factory fuer KPIOrchestrationService Singleton.
+
+    Die Klasse selbst implementiert Thread-safe Singleton mit Double-Checked Locking.
+    Diese Factory delegiert einfach an den Konstruktor.
+    """
+    return KPIOrchestrationService()

@@ -99,10 +99,10 @@ class InsuranceIntelligenceResult:
 @dataclass
 class BatchInsuranceResult:
     """Ergebnis der Batch-Berechnung fuer alle Spaces."""
-    total_spaces: int
-    calculated: int
-    skipped: int
-    errors: List[str]
+    total_spaces: int = 0
+    calculated: int = 0
+    skipped: int = 0
+    errors: List[str] = field(default_factory=list)  # FIX: default_factory statt kein Default
 
     # Aggregierte Werte
     average_coverage_score: Decimal = Decimal("0")
@@ -127,12 +127,31 @@ class InsuranceIntelligenceService:
     - Integration mit RecommendationsService
     - Batch-Operationen fuer alle Spaces
     - Event-Publishing bei kritischen Luecken
+
+    Thread-safe Singleton mit Double-Checked Locking.
     """
 
+    _instance: Optional["InsuranceIntelligenceService"] = None
+    _class_lock: threading.Lock = threading.Lock()
+
+    def __new__(cls) -> "InsuranceIntelligenceService":
+        """Thread-safe Singleton mit Double-Checked Locking."""
+        if cls._instance is None:
+            with cls._class_lock:
+                if cls._instance is None:
+                    instance = super().__new__(cls)
+                    # ALLE Attribute hier initialisieren
+                    instance._analysis_service = get_insurance_analysis_service()
+                    instance._cache: Dict[str, Any] = {}
+                    instance._cache_lock = threading.RLock()  # Thread-safe Cache
+                    instance._initialized = True
+                    cls._instance = instance
+                    logger.info("insurance_intelligence_service_initialized")
+        return cls._instance
+
     def __init__(self) -> None:
-        """Initialisiert den Service."""
-        self._analysis_service = get_insurance_analysis_service()
-        self._cache: Dict[str, Any] = {}
+        """No-op - Initialisierung erfolgt in __new__."""
+        pass
 
     # =========================================================================
     # Vollstaendige Analyse
@@ -158,53 +177,19 @@ class InsuranceIntelligenceService:
         Returns:
             InsuranceIntelligenceResult mit allen berechneten Werten
         """
-        INSURANCE_INTEL_CALCULATIONS.labels(calculation_type="full_analysis").inc()
+        result, _ = await self._get_full_analysis_internal(
+            db, space_id, persist=persist, defer_events=False
+        )
 
-        with INSURANCE_INTEL_DURATION.time():
-            # An bestehenden Service delegieren
-            kpis = await self._analysis_service.analyze_all(db, space_id, persist=persist)
+        logger.info(
+            "insurance_intelligence_analysis_completed",
+            space_id=str(space_id),
+            coverage_score=float(result.coverage_score),
+            health_score=float(result.health_score),
+            urgent_deadlines=result.urgent_deadlines_count,
+        )
 
-            # Result zusammenbauen
-            result = InsuranceIntelligenceResult(
-                space_id=space_id,
-                coverage_analysis=kpis.coverage_analysis,
-                coverage_score=kpis.coverage_analysis.coverage_score if kpis.coverage_analysis else Decimal("0"),
-                cancellation_deadlines=kpis.cancellation_deadlines,
-                premium_summary=kpis.premium_summary,
-            )
-
-            # Dringende Fristen zaehlen
-            result.urgent_deadlines_count = sum(
-                1 for d in kpis.cancellation_deadlines if d.is_urgent
-            )
-            result.approaching_deadlines_count = sum(
-                1 for d in kpis.cancellation_deadlines if d.is_approaching
-            )
-
-            # Jaehrliche Praemien
-            if kpis.premium_summary:
-                result.annual_premium_total = kpis.premium_summary.annual_total
-
-            # Empfehlungen generieren
-            result.recommendations = await self._generate_recommendations(
-                db, space_id, kpis
-            )
-
-            # Health Score berechnen
-            result.health_score = self._calculate_health_score(kpis)
-
-            # Events publizieren bei kritischen Luecken
-            await self._publish_events_if_needed(db, space_id, kpis)
-
-            logger.info(
-                "insurance_intelligence_analysis_completed",
-                space_id=str(space_id),
-                coverage_score=float(result.coverage_score),
-                health_score=float(result.health_score),
-                urgent_deadlines=result.urgent_deadlines_count,
-            )
-
-            return result
+        return result
 
     # =========================================================================
     # Empfehlungen
@@ -400,6 +385,9 @@ class InsuranceIntelligenceService:
         """
         Berechnet Insurance Intelligence fuer alle Spaces.
 
+        WICHTIG: Events werden NACH db.commit() publiziert um Transaktions-
+        konsistenz zu gewaehrleisten.
+
         Args:
             db: Datenbank-Session
             space_ids: Optional: Nur diese Spaces berechnen
@@ -420,18 +408,19 @@ class InsuranceIntelligenceService:
         result = await db.execute(query)
         spaces = result.scalars().all()
 
-        batch_result = BatchInsuranceResult(
-            total_spaces=len(spaces),
-            calculated=0,
-            skipped=0,
-            errors=[],
-        )
+        batch_result = BatchInsuranceResult(total_spaces=len(spaces))
 
         total_coverage_score = Decimal("0")
 
+        # Events sammeln fuer spaetere Publikation NACH db.commit()
+        pending_events: List[tuple[UUID, InsuranceKPIs]] = []
+
         for space in spaces:
             try:
-                analysis = await self.get_full_analysis(db, space.id, persist=True)
+                # Analyse ohne Event-Publishing (defer_events=True)
+                analysis, kpis = await self._get_full_analysis_internal(
+                    db, space.id, persist=True, defer_events=True
+                )
                 batch_result.calculated += 1
 
                 # Aggregieren
@@ -441,6 +430,10 @@ class InsuranceIntelligenceService:
 
                 if analysis.coverage_analysis:
                     batch_result.total_critical_gaps += analysis.coverage_analysis.critical_gaps
+
+                # Events fuer spaeter merken
+                if kpis:
+                    pending_events.append((space.id, kpis))
 
             except Exception as e:
                 batch_result.skipped += 1
@@ -461,7 +454,12 @@ class InsuranceIntelligenceService:
         INSURANCE_COVERAGE_SCORE.set(float(batch_result.average_coverage_score))
         INSURANCE_CRITICAL_GAPS.set(batch_result.total_critical_gaps)
 
+        # ERST db.commit() - Daten sind jetzt persistent!
         await db.commit()
+
+        # DANN Events publizieren - NACH erfolgreichem Commit
+        for space_id, kpis in pending_events:
+            await self._publish_events_if_needed(db, space_id, kpis)
 
         logger.info(
             "insurance_batch_calculation_completed",
@@ -470,9 +468,62 @@ class InsuranceIntelligenceService:
             skipped=batch_result.skipped,
             average_score=float(batch_result.average_coverage_score),
             total_critical_gaps=batch_result.total_critical_gaps,
+            events_published=len(pending_events),
         )
 
         return batch_result
+
+    async def _get_full_analysis_internal(
+        self,
+        db: AsyncSession,
+        space_id: UUID,
+        persist: bool = True,
+        defer_events: bool = False,
+    ) -> tuple[InsuranceIntelligenceResult, Optional[InsuranceKPIs]]:
+        """
+        Interne Methode fuer get_full_analysis mit optionalem Event-Defer.
+
+        Args:
+            db: Datenbank-Session
+            space_id: Space-ID
+            persist: Ob die Werte gespeichert werden sollen
+            defer_events: Wenn True, Events nicht publizieren sondern KPIs zurueckgeben
+
+        Returns:
+            Tuple aus Result und optional KPIs (wenn defer_events=True)
+        """
+        INSURANCE_INTEL_CALCULATIONS.labels(calculation_type="full_analysis").inc()
+
+        with INSURANCE_INTEL_DURATION.time():
+            kpis = await self._analysis_service.analyze_all(db, space_id, persist=persist)
+
+            result = InsuranceIntelligenceResult(
+                space_id=space_id,
+                coverage_analysis=kpis.coverage_analysis,
+                coverage_score=kpis.coverage_analysis.coverage_score if kpis.coverage_analysis else Decimal("0"),
+                cancellation_deadlines=kpis.cancellation_deadlines,
+                premium_summary=kpis.premium_summary,
+            )
+
+            result.urgent_deadlines_count = sum(
+                1 for d in kpis.cancellation_deadlines if d.is_urgent
+            )
+            result.approaching_deadlines_count = sum(
+                1 for d in kpis.cancellation_deadlines if d.is_approaching
+            )
+
+            if kpis.premium_summary:
+                result.annual_premium_total = kpis.premium_summary.annual_total
+
+            result.recommendations = await self._generate_recommendations(db, space_id, kpis)
+            result.health_score = self._calculate_health_score(kpis)
+
+            # Events nur publizieren wenn nicht deferred
+            if not defer_events:
+                await self._publish_events_if_needed(db, space_id, kpis)
+                return result, None
+            else:
+                return result, kpis
 
     # =========================================================================
     # Convenience Methods (Delegation)
@@ -515,18 +566,15 @@ class InsuranceIntelligenceService:
 
 
 # =============================================================================
-# Singleton
+# Singleton Factory
 # =============================================================================
-
-_insurance_intelligence_service: Optional[InsuranceIntelligenceService] = None
-_service_lock = threading.Lock()
 
 
 def get_insurance_intelligence_service() -> InsuranceIntelligenceService:
-    """Factory fuer InsuranceIntelligenceService Singleton (Thread-safe)."""
-    global _insurance_intelligence_service
-    if _insurance_intelligence_service is None:
-        with _service_lock:
-            if _insurance_intelligence_service is None:
-                _insurance_intelligence_service = InsuranceIntelligenceService()
-    return _insurance_intelligence_service
+    """Factory fuer InsuranceIntelligenceService Singleton (Thread-safe).
+
+    Note:
+        Thread-safety wird durch das Singleton Pattern in der Klasse garantiert.
+        Keine separate globale Variable noetig.
+    """
+    return InsuranceIntelligenceService()

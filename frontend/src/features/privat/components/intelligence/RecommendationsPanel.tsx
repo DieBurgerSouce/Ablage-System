@@ -2,9 +2,9 @@
  * RecommendationsPanel - Smart Recommendations Anzeige
  *
  * Zeigt intelligente Empfehlungen basierend auf:
- * - Refinancing-Moeglichkeiten
+ * - Refinancing-Möglichkeiten
  * - Rebalancing-Bedarf
- * - Versicherungsluecken
+ * - Versicherungslücken
  * - Notfallfonds-Status
  * - Hohe Kosten-Alerts
  * - Fristen-Warnungen

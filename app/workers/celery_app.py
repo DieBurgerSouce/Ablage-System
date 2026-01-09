@@ -716,9 +716,9 @@ celery_app.conf.update(
             "task": "app.workers.tasks.privat_tasks.calculate_property_kpis",
             "schedule": crontab(hour=2, minute=0),  # Taeglich um 02:00 Uhr
         },
-        # Vehicle KPIs - Taeglich um 02:15 Uhr
-        "privat-vehicle-kpis": {
-            "task": "app.workers.tasks.privat_tasks.calculate_vehicle_kpis",
+        # Vehicle TCO - Taeglich um 02:15 Uhr
+        "privat-vehicle-tco": {
+            "task": "app.workers.tasks.privat_tasks.calculate_vehicle_tco",
             "schedule": crontab(hour=2, minute=15),  # Taeglich um 02:15 Uhr
         },
         # Insurance Coverage Check - Woechentlich Sonntag 04:00
@@ -726,14 +726,14 @@ celery_app.conf.update(
             "task": "app.workers.tasks.privat_tasks.analyze_insurance_coverage",
             "schedule": crontab(day_of_week=0, hour=4, minute=0),  # Sonntag 04:00 Uhr
         },
-        # Loan KPIs - Taeglich um 02:30 Uhr
-        "privat-loan-kpis": {
-            "task": "app.workers.tasks.privat_tasks.recalculate_loan_kpis",
+        # Loan Amortization - Taeglich um 02:30 Uhr
+        "privat-loan-amortization": {
+            "task": "app.workers.tasks.privat_tasks.generate_loan_amortization",
             "schedule": crontab(hour=2, minute=30),  # Taeglich um 02:30 Uhr
         },
         # Financial Health Score - Woechentlich Sonntag 05:00
         "privat-financial-health": {
-            "task": "app.workers.tasks.privat_tasks.calculate_financial_health_scores",
+            "task": "app.workers.tasks.privat_tasks.calculate_financial_health",
             "schedule": crontab(day_of_week=0, hour=5, minute=0),  # Sonntag 05:00 Uhr
         },
         # Recommendations - Woechentlich Montag 06:00

@@ -92,6 +92,15 @@ from app.services.privat.kpi_orchestrator import (
     KPIOrchestrationService,
     get_kpi_orchestration_service,
 )
+from app.services.privat.ki_prompt_service import (
+    PrivatKIPromptService,
+    get_privat_ki_prompt_service,
+    PropertyValueAnalysis,
+    VehicleDepreciationAnalysis,
+    InvestmentAdvice,
+    InsuranceCheckResult,
+    FinancialQAResponse,
+)
 
 __all__ = [
     "PrivatSpaceService",
@@ -137,4 +146,12 @@ __all__ = [
     # KPI Orchestration
     "KPIOrchestrationService",
     "get_kpi_orchestration_service",
+    # KI-Prompt Service
+    "PrivatKIPromptService",
+    "get_privat_ki_prompt_service",
+    "PropertyValueAnalysis",
+    "VehicleDepreciationAnalysis",
+    "InvestmentAdvice",
+    "InsuranceCheckResult",
+    "FinancialQAResponse",
 ]

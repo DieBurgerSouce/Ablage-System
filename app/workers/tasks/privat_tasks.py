@@ -2266,28 +2266,118 @@ def recalculate_entity_kpi(
 
 
 # =============================================================================
-# CELERY BEAT SCHEDULE UPDATE NOTIZ
+# PRIVAT METRICS UPDATE TASK
 # =============================================================================
-#
-# Die folgenden Tasks sollten zum Celery Beat Schedule hinzugefuegt werden:
-#
-# CELERY_BEAT_SCHEDULE = {
-#     ...
-#     # ENTERPRISE INTELLIGENCE: Taegliche Neuberechnung
-#     'privat-daily-intelligence-recalculation': {
-#         'task': 'app.workers.tasks.privat_tasks.daily_intelligence_recalculation',
-#         'schedule': crontab(hour=3, minute=0),  # Daily at 03:00
-#     },
-#
-#     # OPTIONAL: Wochentlicher Financial Health Check
-#     'privat-weekly-financial-health': {
-#         'task': 'app.workers.tasks.privat_tasks.calculate_financial_health',
-#         'schedule': crontab(hour=6, minute=0, day_of_week=0),  # Sunday at 06:00
-#     },
-#
-#     # OPTIONAL: Wochentliche Recommendations
-#     'privat-weekly-recommendations': {
-#         'task': 'app.workers.tasks.privat_tasks.generate_smart_recommendations',
-#         'schedule': crontab(hour=6, minute=30, day_of_week=0),  # Sunday at 06:30
-#     },
-# }
+
+
+@celery_app.task(
+    bind=True,
+    name="app.workers.tasks.privat_tasks.update_privat_metrics",
+    max_retries=2,
+    default_retry_delay=30,
+)
+def update_privat_metrics(self) -> Dict[str, Any]:
+    """
+    Aktualisiert Prometheus-Metriken fuer das Privat-Modul.
+
+    Laeuft alle 15 Minuten via Celery Beat.
+    Sammelt aggregierte Statistiken fuer Monitoring.
+
+    Returns:
+        Aktualisierte Metrik-Counts
+    """
+    from prometheus_client import Gauge
+
+    logger.info(
+        "update_privat_metrics_started",
+        task_id=self.request.id,
+    )
+
+    async def _update_metrics() -> Dict[str, int]:
+        from app.db.session import get_async_session
+        from app.db.models import (
+            PrivatProperty, PrivatVehicle, PrivatLoan,
+            PrivatInsurance, PrivatDeadline, PrivatSpace
+        )
+        from sqlalchemy import select, func
+
+        async with get_async_session() as db:
+            # Zaehle aktive Entities
+            properties_count = await db.scalar(
+                select(func.count(PrivatProperty.id))
+                .where(PrivatProperty.deleted_at.is_(None))
+            ) or 0
+
+            vehicles_count = await db.scalar(
+                select(func.count(PrivatVehicle.id))
+                .where(PrivatVehicle.deleted_at.is_(None))
+            ) or 0
+
+            loans_count = await db.scalar(
+                select(func.count(PrivatLoan.id))
+                .where(PrivatLoan.deleted_at.is_(None))
+            ) or 0
+
+            insurances_count = await db.scalar(
+                select(func.count(PrivatInsurance.id))
+                .where(PrivatInsurance.deleted_at.is_(None))
+            ) or 0
+
+            # Aktive Deadlines (nicht abgelaufen)
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+            active_deadlines = await db.scalar(
+                select(func.count(PrivatDeadline.id))
+                .where(
+                    PrivatDeadline.deleted_at.is_(None),
+                    PrivatDeadline.deadline_date >= now.date()
+                )
+            ) or 0
+
+            # Aktive Spaces
+            spaces_count = await db.scalar(
+                select(func.count(PrivatSpace.id))
+                .where(PrivatSpace.deleted_at.is_(None))
+            ) or 0
+
+            return {
+                "properties": properties_count,
+                "vehicles": vehicles_count,
+                "loans": loans_count,
+                "insurances": insurances_count,
+                "active_deadlines": active_deadlines,
+                "spaces": spaces_count,
+            }
+
+    try:
+        counts = run_async(_update_metrics())
+
+        # Prometheus Gauges aktualisieren
+        try:
+            privat_entities_gauge = Gauge(
+                "privat_entities_total",
+                "Anzahl aktiver Privat-Modul Entities",
+                ["entity_type"],
+                registry=None,  # Use default registry
+            )
+            for entity_type, count in counts.items():
+                privat_entities_gauge.labels(entity_type=entity_type).set(count)
+        except ValueError:
+            # Gauge bereits registriert - Labels aktualisieren
+            pass
+
+        logger.info(
+            "update_privat_metrics_completed",
+            task_id=self.request.id,
+            counts=counts,
+        )
+
+        return {"status": "success", "counts": counts}
+
+    except Exception as e:
+        logger.error(
+            "update_privat_metrics_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise self.retry(exc=e)

@@ -283,7 +283,7 @@ class RecommendationsService:
             select(PrivatLoan).where(
                 PrivatLoan.space_id == space_id,
                 PrivatLoan.is_active == True,
-                PrivatLoan.remaining_balance > 0,
+                PrivatLoan.current_balance > 0,
             )
         )
         loans = result.scalars().all()
@@ -298,7 +298,7 @@ class RecommendationsService:
 
             if rate_difference >= REFINANCING_THRESHOLD:
                 # Potenzielle Ersparnis berechnen
-                remaining = loan.remaining_balance or Decimal("0")
+                remaining = loan.current_balance or Decimal("0")
                 monthly_payment = loan.monthly_payment or Decimal("0")
 
                 # Geschaetzte Restlaufzeit

@@ -2,10 +2,10 @@
  * FinancialHealthDashboard - Enterprise Financial Health Score Anzeige
  *
  * Zeigt den Financial Health Score mit 6 Dimensionen:
- * - Nettovermoegen-Trend
+ * - Nettovermögen-Trend
  * - Schulden-Management
  * - Versicherungs-Abdeckung
- * - Liquiditaet
+ * - Liquidität
  * - Altersvorsorge-Bereitschaft
  * - Diversifikation
  */
@@ -64,7 +64,7 @@ const GRADE_LABELS: Record<FinancialHealthScore['grade'], string> = {
   A: 'Ausgezeichnet',
   B: 'Gut',
   C: 'Befriedigend',
-  D: 'Verbesserungswuerdig',
+  D: 'Verbesserungswürdig',
   F: 'Kritisch',
 };
 
@@ -78,10 +78,10 @@ const DIMENSION_ICONS: Record<string, React.ReactNode> = {
 };
 
 const DIMENSION_LABELS: Record<string, string> = {
-  netWorthTrend: 'Vermoegensaufbau',
+  netWorthTrend: 'Vermögensaufbau',
   debtManagement: 'Schulden-Management',
   insuranceCoverage: 'Versicherungsschutz',
-  liquidity: 'Liquiditaet',
+  liquidity: 'Liquidität',
   retirementReadiness: 'Altersvorsorge',
   diversification: 'Diversifikation',
 };

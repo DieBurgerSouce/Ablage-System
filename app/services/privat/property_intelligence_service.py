@@ -605,7 +605,7 @@ class PropertyIntelligenceService:
 
     def _generate_recommendations(
         self,
-        prop: Any,
+        prop: "PrivatProperty",
         analytics: PropertyAnalytics,
     ) -> List[str]:
         """Generiert intelligente Empfehlungen."""

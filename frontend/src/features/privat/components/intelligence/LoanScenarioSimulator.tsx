@@ -1,7 +1,7 @@
 /**
  * LoanScenarioSimulator - Kredit-Szenario-Simulator
  *
- * Ermoeglicht What-If Analysen fuer Kredite:
+ * Ermöglicht What-If Analysen für Kredite:
  * - Sonderzahlungen simulieren
  * - Umschuldung berechnen
  * - Tilgungsplan anzeigen

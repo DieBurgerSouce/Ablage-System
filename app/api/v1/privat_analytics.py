@@ -2099,3 +2099,382 @@ async def trigger_all_intelligence_calculations(
         status="queued",
         message="Alle Intelligence-Berechnungen gestartet (5 Tasks)",
     )
+
+
+# ==================== KI-Analyse Endpoints ====================
+
+
+# -------------------- Response Models --------------------
+
+
+class PropertyKIAnalysisResponse(BaseModel):
+    """KI-gestuetzte Immobilien-Analyse Response."""
+    property_id: uuid.UUID
+    estimated_value_eur: float
+    confidence_percent: float = Field(..., ge=0, le=100)
+    reasoning: str
+    market_comparison: str
+    value_trend: str  # steigend, stabil, fallend
+    rental_potential_eur: Optional[float] = None
+    roi_estimate_percent: Optional[float] = None
+    from_cache: bool
+    analyzed_at: datetime
+
+
+class VehicleKIAnalysisResponse(BaseModel):
+    """KI-gestuetzte Fahrzeug-Analyse Response."""
+    vehicle_id: uuid.UUID
+    current_value_eur: float
+    depreciation_percent: float
+    remaining_value_percent: float
+    optimal_sell_timeframe: str
+    market_demand: str  # hoch, mittel, gering
+    value_factors: List[str]
+    from_cache: bool
+    analyzed_at: datetime
+
+
+class InvestmentKIAdviceResponse(BaseModel):
+    """KI-gestuetzte Investment-Beratung Response."""
+    space_id: uuid.UUID
+    portfolio_health_score: float = Field(..., ge=0, le=100)
+    risk_assessment: str  # konservativ, ausgewogen, wachstumsorientiert, spekulativ
+    diversification_score: float = Field(..., ge=0, le=100)
+    recommendations: List[dict]
+    rebalancing_needed: bool
+    rebalancing_suggestions: List[str]
+    tax_optimization_hints: List[str]
+    projected_annual_return_percent: float
+    risk_warnings: List[str]
+    from_cache: bool
+    analyzed_at: datetime
+
+
+class InsuranceKICheckResponse(BaseModel):
+    """KI-gestuetzte Versicherungs-Pruefung Response."""
+    space_id: uuid.UUID
+    coverage_score: float = Field(..., ge=0, le=100)
+    cost_efficiency_score: float = Field(..., ge=0, le=100)
+    critical_gaps: List[dict]
+    optimization_suggestions: List[dict]
+    unnecessary_insurances: List[dict]
+    recommended_actions: List[str]
+    overall_assessment: str
+    from_cache: bool
+    analyzed_at: datetime
+
+
+class FinancialQARequest(BaseModel):
+    """Request fuer Financial Q&A."""
+    question: str = Field(..., min_length=10, max_length=1000, description="Finanzfrage in Deutsch")
+
+
+class FinancialQAAnswerResponse(BaseModel):
+    """KI-gestuetzte Finanz-Assistent Response."""
+    space_id: uuid.UUID
+    question: str
+    answer: str
+    confidence: str  # hoch, mittel, niedrig
+    sources: List[str]
+    related_topics: List[str]
+    action_items: List[str]
+    warnings: List[str]
+    consult_expert: bool
+    expert_type: Optional[str] = None  # Steuerberater, Finanzberater, Rechtsanwalt, etc.
+    analyzed_at: datetime
+
+
+# -------------------- Property KI Analysis --------------------
+
+
+@router.post(
+    "/properties/{property_id}/ki-analysis",
+    response_model=PropertyKIAnalysisResponse,
+    summary="KI-gestuetzte Immobilien-Wertanalyse",
+)
+@limiter.limit("5/minute", key_func=get_user_identifier)
+async def get_property_ki_analysis(
+    request: Request,
+    property_id: uuid.UUID,
+    use_cache: bool = Query(True, description="Gecachete Analyse verwenden wenn vorhanden"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PropertyKIAnalysisResponse:
+    """
+    KI-gestuetzte Immobilienbewertung mit Ollama LLM:
+    - Marktwert-Schaetzung
+    - Vergleich mit Region
+    - Mietrendite-Potenzial
+    - Markttrend-Einschaetzung
+
+    Verwendet lokales Ollama Modell (qwen2.5) fuer datenschutzfreundliche Analyse.
+    """
+    from app.services.privat import PrivatPropertyService, get_privat_ki_prompt_service
+
+    property_service = PrivatPropertyService()
+    prop = await property_service.get_by_id(db, property_id)
+
+    if not prop:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Immobilie nicht gefunden",
+        )
+
+    await get_user_space_or_403(db, prop.space_id, current_user, PrivatAccessLevel.READ)
+
+    ki_service = get_privat_ki_prompt_service()
+
+    try:
+        analysis = await ki_service.analyze_property_value(db, property_id, use_cache)
+    except Exception as e:
+        logger.error("ki_property_analysis_failed", property_id=str(property_id), error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="KI-Analyse derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
+        )
+
+    return PropertyKIAnalysisResponse(
+        property_id=property_id,
+        estimated_value_eur=analysis.estimated_value_eur,
+        confidence_percent=analysis.confidence_percent,
+        reasoning=analysis.reasoning,
+        market_comparison=analysis.market_comparison,
+        value_trend=analysis.value_trend,
+        rental_potential_eur=analysis.rental_potential_eur,
+        roi_estimate_percent=analysis.roi_estimate_percent,
+        from_cache=analysis.from_cache,
+        analyzed_at=datetime.utcnow(),
+    )
+
+
+# -------------------- Vehicle KI Analysis --------------------
+
+
+@router.post(
+    "/vehicles/{vehicle_id}/ki-analysis",
+    response_model=VehicleKIAnalysisResponse,
+    summary="KI-gestuetzte Fahrzeug-Wertanalyse",
+)
+@limiter.limit("5/minute", key_func=get_user_identifier)
+async def get_vehicle_ki_analysis(
+    request: Request,
+    vehicle_id: uuid.UUID,
+    use_cache: bool = Query(True, description="Gecachete Analyse verwenden wenn vorhanden"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> VehicleKIAnalysisResponse:
+    """
+    KI-gestuetzte Fahrzeugbewertung mit Ollama LLM:
+    - Aktueller Marktwert
+    - Wertverlust-Analyse
+    - Optimaler Verkaufszeitpunkt
+    - Markttrend und Nachfrage
+
+    Beruecksichtigt deutsche Marktbedingungen und E-Mobilitaets-Trends.
+    """
+    from app.services.privat import PrivatVehicleService, get_privat_ki_prompt_service
+
+    vehicle_service = PrivatVehicleService()
+    vehicle = await vehicle_service.get_by_id(db, vehicle_id)
+
+    if not vehicle:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Fahrzeug nicht gefunden",
+        )
+
+    await get_user_space_or_403(db, vehicle.space_id, current_user, PrivatAccessLevel.READ)
+
+    ki_service = get_privat_ki_prompt_service()
+
+    try:
+        analysis = await ki_service.analyze_vehicle_depreciation(db, vehicle_id, use_cache)
+    except Exception as e:
+        logger.error("ki_vehicle_analysis_failed", vehicle_id=str(vehicle_id), error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="KI-Analyse derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
+        )
+
+    return VehicleKIAnalysisResponse(
+        vehicle_id=vehicle_id,
+        current_value_eur=analysis.current_value_eur,
+        depreciation_percent=analysis.depreciation_percent,
+        remaining_value_percent=analysis.remaining_value_percent,
+        optimal_sell_timeframe=analysis.optimal_sell_timeframe,
+        market_demand=analysis.market_demand,
+        value_factors=analysis.value_factors,
+        from_cache=analysis.from_cache,
+        analyzed_at=datetime.utcnow(),
+    )
+
+
+# -------------------- Investment KI Advice --------------------
+
+
+@router.post(
+    "/spaces/{space_id}/investments/ki-advice",
+    response_model=InvestmentKIAdviceResponse,
+    summary="KI-gestuetzte Anlageberatung",
+)
+@limiter.limit("3/minute", key_func=get_user_identifier)
+async def get_investment_ki_advice(
+    request: Request,
+    space_id: uuid.UUID,
+    use_cache: bool = Query(True, description="Gecachete Analyse verwenden wenn vorhanden"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> InvestmentKIAdviceResponse:
+    """
+    KI-gestuetzte Portfolio-Analyse und Anlageberatung:
+    - Portfolio-Gesundheitscheck
+    - Risikobewertung
+    - Diversifikations-Analyse
+    - Rebalancing-Empfehlungen
+    - Steueroptimierungs-Hinweise (DE)
+
+    HINWEIS: Keine Anlageberatung im rechtlichen Sinne.
+    """
+    await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.READ)
+
+    from app.services.privat import get_privat_ki_prompt_service
+
+    ki_service = get_privat_ki_prompt_service()
+
+    try:
+        advice = await ki_service.get_investment_advice(db, space_id, use_cache)
+    except Exception as e:
+        logger.error("ki_investment_advice_failed", space_id=str(space_id), error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="KI-Analyse derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
+        )
+
+    return InvestmentKIAdviceResponse(
+        space_id=space_id,
+        portfolio_health_score=advice.portfolio_health_score,
+        risk_assessment=advice.risk_assessment,
+        diversification_score=advice.diversification_score,
+        recommendations=advice.recommendations,
+        rebalancing_needed=advice.rebalancing_needed,
+        rebalancing_suggestions=advice.rebalancing_suggestions,
+        tax_optimization_hints=advice.tax_optimization_hints,
+        projected_annual_return_percent=advice.projected_annual_return_percent,
+        risk_warnings=advice.risk_warnings,
+        from_cache=advice.from_cache,
+        analyzed_at=datetime.utcnow(),
+    )
+
+
+# -------------------- Insurance KI Check --------------------
+
+
+@router.post(
+    "/spaces/{space_id}/insurances/ki-check",
+    response_model=InsuranceKICheckResponse,
+    summary="KI-gestuetzte Versicherungs-Pruefung",
+)
+@limiter.limit("3/minute", key_func=get_user_identifier)
+async def get_insurance_ki_check(
+    request: Request,
+    space_id: uuid.UUID,
+    use_cache: bool = Query(True, description="Gecachete Analyse verwenden wenn vorhanden"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> InsuranceKICheckResponse:
+    """
+    KI-gestuetzte Versicherungs-Analyse:
+    - Deckungsluecken identifizieren
+    - Preis-Leistungs-Bewertung
+    - Optimierungsvorschlaege
+    - Unnoetige Versicherungen erkennen
+
+    Basiert auf deutschen Versicherungsstandards und Marktpreisen.
+    """
+    await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.READ)
+
+    from app.services.privat import get_privat_ki_prompt_service
+
+    ki_service = get_privat_ki_prompt_service()
+
+    try:
+        check_result = await ki_service.check_insurance_coverage(db, space_id, use_cache)
+    except Exception as e:
+        logger.error("ki_insurance_check_failed", space_id=str(space_id), error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="KI-Analyse derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
+        )
+
+    return InsuranceKICheckResponse(
+        space_id=space_id,
+        coverage_score=check_result.coverage_score,
+        cost_efficiency_score=check_result.cost_efficiency_score,
+        critical_gaps=check_result.critical_gaps,
+        optimization_suggestions=check_result.optimization_suggestions,
+        unnecessary_insurances=check_result.unnecessary_insurances,
+        recommended_actions=check_result.recommended_actions,
+        overall_assessment=check_result.overall_assessment,
+        from_cache=check_result.from_cache,
+        analyzed_at=datetime.utcnow(),
+    )
+
+
+# -------------------- Financial Q&A Chat --------------------
+
+
+@router.post(
+    "/spaces/{space_id}/financial-qa",
+    response_model=FinancialQAAnswerResponse,
+    summary="KI-gestuetzter Finanz-Assistent",
+)
+@limiter.limit("10/minute", key_func=get_user_identifier)
+async def financial_qa_chat(
+    request: Request,
+    space_id: uuid.UUID,
+    qa_request: FinancialQARequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> FinancialQAAnswerResponse:
+    """
+    KI-gestuetzter Finanz-Assistent fuer Privatfragen:
+    - Beantwortet Finanzfragen basierend auf Nutzerdaten
+    - Beruecksichtigt deutsches Steuer- und Finanzrecht
+    - Gibt Handlungsempfehlungen
+    - Verweist auf Experten bei komplexen Themen
+
+    HINWEIS: Keine Rechts-, Steuer- oder Anlageberatung.
+    """
+    await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.READ)
+
+    from app.services.privat import get_privat_ki_prompt_service
+
+    ki_service = get_privat_ki_prompt_service()
+
+    try:
+        answer = await ki_service.financial_qa(db, space_id, qa_request.question)
+    except Exception as e:
+        logger.error(
+            "ki_financial_qa_failed",
+            space_id=str(space_id),
+            question_length=len(qa_request.question),
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="KI-Assistent derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
+        )
+
+    return FinancialQAAnswerResponse(
+        space_id=space_id,
+        question=qa_request.question,
+        answer=answer.answer,
+        confidence=answer.confidence,
+        sources=answer.sources,
+        related_topics=answer.related_topics,
+        action_items=answer.action_items,
+        warnings=answer.warnings,
+        consult_expert=answer.consult_expert,
+        expert_type=answer.expert_type,
+        analyzed_at=datetime.utcnow(),
+    )
