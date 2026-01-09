@@ -15,6 +15,12 @@ import { InvestmentEditDialog } from '../components/finances/InvestmentEditDialo
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import * as privatApi from '../api/privat-api';
 import { useDefaultSpace } from '../hooks/use-privat-queries';
+import {
+  FinancialHealthDashboard,
+  RecommendationsPanel,
+  NetWorthChart,
+  LoanScenarioSimulator,
+} from '../components/intelligence';
 import type {
   PrivatLoanWithStats,
   PrivatInvestmentWithStats,
@@ -47,7 +53,7 @@ export function FinancesPage({ spaceId: propSpaceId }: FinancesPageProps = {}) {
 
   // Priorität: 1. Props, 2. URL-Params, 3. Query-Param (?space=), 4. Default-Space
   const spaceId = propSpaceId || params.spaceId || search.space || defaultSpaceId;
-  const [activeTab, setActiveTab] = React.useState('loans');
+  const [activeTab, setActiveTab] = React.useState('overview');
 
   // Loans state
   const [loans, setLoans] = React.useState<PrivatLoanWithStats[]>([]);
@@ -263,9 +269,26 @@ export function FinancesPage({ spaceId: propSpaceId }: FinancesPageProps = {}) {
     <div className="p-8">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-6">
+          <TabsTrigger value="overview">Übersicht</TabsTrigger>
           <TabsTrigger value="loans">Kredite</TabsTrigger>
           <TabsTrigger value="investments">Geldanlagen</TabsTrigger>
+          <TabsTrigger value="simulator">Simulator</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="overview">
+          {spaceId && (
+            <div className="space-y-6">
+              {/* Financial Health & Net Worth */}
+              <div className="grid gap-6 lg:grid-cols-2">
+                <FinancialHealthDashboard spaceId={spaceId} />
+                <NetWorthChart spaceId={spaceId} />
+              </div>
+
+              {/* Smart Recommendations */}
+              <RecommendationsPanel spaceId={spaceId} maxItems={10} />
+            </div>
+          )}
+        </TabsContent>
 
         <TabsContent value="loans">
           <LoanList
@@ -307,6 +330,23 @@ export function FinancesPage({ spaceId: propSpaceId }: FinancesPageProps = {}) {
             }}
             searchQuery={investmentsSearch}
           />
+        </TabsContent>
+
+        <TabsContent value="simulator">
+          {loans.length > 0 ? (
+            <LoanScenarioSimulator
+              loanId={loans[0].id}
+              loanName={loans[0].name}
+              currentRate={loans[0].interestRate}
+              currentPayment={loans[0].monthlyPayment}
+              outstandingAmount={loans[0].outstandingAmount ?? loans[0].originalAmount}
+              remainingMonths={loans[0].remainingMonths ?? loans[0].termMonths}
+            />
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <p>Erstellen Sie zuerst einen Kredit, um den Simulator zu nutzen.</p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 

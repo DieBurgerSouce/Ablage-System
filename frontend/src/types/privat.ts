@@ -899,3 +899,273 @@ export interface ApiError {
   detail: string;
   code?: string;
 }
+
+// =============================================================================
+// ENTERPRISE INTELLIGENCE INTERFACES
+// =============================================================================
+
+/** Investment Performance Analytics */
+export interface InvestmentPerformance {
+  investmentId: string;
+  name: string;
+  investmentType: InvestmentType;
+  initialAmount: number;
+  currentValue: number;
+  absoluteReturn: number;
+  percentageReturn: number;
+  annualizedReturn: number;
+  holdingPeriodDays: number;
+  holdingPeriodYears: number;
+  calculatedAt: string;
+}
+
+/** Portfolio Allocation */
+export interface PortfolioAllocation {
+  spaceId: string;
+  totalValue: number;
+  investmentCount: number;
+  allocationByType: Record<string, { value: number; percentage: number; count: number }>;
+  topHoldings: Array<{ name: string; value: number; percentage: number }>;
+  calculatedAt: string;
+}
+
+/** Diversification Score */
+export interface DiversificationScore {
+  spaceId: string;
+  herfindahlIndex: number;
+  diversificationScore: number;
+  interpretation: 'schlecht' | 'mittel' | 'gut' | 'sehr_gut';
+  typeCount: number;
+  dominantType: string;
+  dominantTypePercentage: number;
+  recommendations: string[];
+  calculatedAt: string;
+}
+
+/** Risk Profile */
+export interface RiskProfile {
+  spaceId: string;
+  overallRiskScore: number;
+  riskCategory: 'konservativ' | 'ausgewogen' | 'wachstum' | 'aggressiv';
+  riskByType: Record<string, { allocation: number; riskLevel: number; contribution: number }>;
+  volatilityEstimate: number;
+  recommendations: string[];
+  calculatedAt: string;
+}
+
+/** Rebalancing Suggestion */
+export interface RebalancingSuggestion {
+  spaceId: string;
+  currentAllocation: Record<string, number>;
+  targetAllocation: Record<string, number>;
+  rebalanceActions: Array<{
+    type: string;
+    currentPercentage: number;
+    targetPercentage: number;
+    action: 'kaufen' | 'verkaufen' | 'halten';
+    amountToAdjust: number;
+  }>;
+  totalAdjustmentNeeded: number;
+  calculatedAt: string;
+}
+
+/** Full Investment Analytics */
+export interface InvestmentFullAnalytics {
+  spaceId: string;
+  allocation: PortfolioAllocation;
+  diversification: DiversificationScore;
+  riskProfile: RiskProfile;
+  rebalancing: RebalancingSuggestion;
+  calculatedAt: string;
+}
+
+/** Net Worth Components */
+export interface NetWorthComponents {
+  spaceId: string;
+  totalAssets: number;
+  totalLiabilities: number;
+  netWorth: number;
+  components: {
+    properties: { count: number; value: number };
+    vehicles: { count: number; value: number };
+    investments: { count: number; value: number };
+    loans: { count: number; outstanding: number };
+  };
+  assetAllocation: Record<string, { value: number; percentage: number }>;
+  calculatedAt: string;
+}
+
+/** Financial Health Score Dimension */
+export interface HealthDimension {
+  score: number;
+  weight: number;
+  contribution: number;
+  interpretation: string;
+  recommendations: string[];
+}
+
+/** Financial Health Score */
+export interface FinancialHealthScore {
+  spaceId: string;
+  overallScore: number;
+  grade: 'A' | 'B' | 'C' | 'D' | 'F';
+  dimensions: {
+    netWorthTrend: HealthDimension;
+    debtManagement: HealthDimension;
+    insuranceCoverage: HealthDimension;
+    liquidity: HealthDimension;
+    retirementReadiness: HealthDimension;
+    diversification: HealthDimension;
+  };
+  topStrengths: string[];
+  topWeaknesses: string[];
+  actionItems: string[];
+  calculatedAt: string;
+}
+
+/** Smart Recommendation */
+export interface SmartRecommendation {
+  id: string;
+  category: 'refinancing' | 'rebalancing' | 'insurance_gap' | 'emergency_fund' | 'high_cost' | 'deadline' | 'general';
+  priority: 'niedrig' | 'mittel' | 'hoch' | 'kritisch';
+  title: string;
+  description: string;
+  potentialSavings?: number;
+  potentialGain?: number;
+  relatedEntityType?: string;
+  relatedEntityId?: string;
+  relatedEntityName?: string;
+  actionUrl?: string;
+  createdAt: string;
+}
+
+/** Smart Recommendations List */
+export interface SmartRecommendationsList {
+  spaceId: string;
+  recommendations: SmartRecommendation[];
+  totalCount: number;
+  criticalCount: number;
+  highCount: number;
+  potentialTotalSavings: number;
+  generatedAt: string;
+}
+
+/** Loan Extra Payment Scenario */
+export interface ExtraPaymentScenario {
+  loanId: string;
+  loanName: string;
+  currentBalance: number;
+  currentMonthlyPayment: number;
+  currentRemainingMonths: number;
+  currentTotalInterest: number;
+  extraMonthlyPayment: number;
+  newMonthlyPayment: number;
+  newRemainingMonths: number;
+  newTotalInterest: number;
+  interestSaved: number;
+  monthsSaved: number;
+  newPayoffDate: string;
+  calculatedAt: string;
+}
+
+/** Loan Refinancing Scenario */
+export interface RefinancingScenario {
+  loanId: string;
+  loanName: string;
+  currentBalance: number;
+  currentRate: number;
+  currentMonthlyPayment: number;
+  currentRemainingMonths: number;
+  currentTotalCost: number;
+  newRate: number;
+  estimatedPrepaymentPenalty: number;
+  refinancingCosts: number;
+  newMonthlyPayment: number;
+  newTotalCost: number;
+  totalSavings: number;
+  breakEvenMonths: number;
+  isWorthwhile: boolean;
+  recommendation: string;
+  calculatedAt: string;
+}
+
+/** Amortization Schedule Entry */
+export interface AmortizationEntry {
+  month: number;
+  date: string;
+  payment: number;
+  principal: number;
+  interest: number;
+  balance: number;
+  cumulativeInterest: number;
+  cumulativePrincipal: number;
+}
+
+/** Full Amortization Schedule */
+export interface FullAmortizationSchedule {
+  loanId: string;
+  loanName: string;
+  principalAmount: number;
+  interestRate: number;
+  monthlyPayment: number;
+  totalMonths: number;
+  totalInterest: number;
+  totalCost: number;
+  schedule: AmortizationEntry[];
+  summary: {
+    firstYearInterest: number;
+    lastYearInterest: number;
+    halfwayDate: string;
+    halfwayBalance: number;
+  };
+  calculatedAt: string;
+}
+
+/** Loan Comparison */
+export interface LoanComparison {
+  loanId: string;
+  loanName: string;
+  scenarios: Array<{
+    name: string;
+    monthlyPayment: number;
+    totalMonths: number;
+    totalInterest: number;
+    totalCost: number;
+    payoffDate: string;
+  }>;
+  recommendation: string;
+  calculatedAt: string;
+}
+
+/** Property Intelligence KPIs */
+export interface PropertyIntelligence {
+  propertyId: string;
+  name: string;
+  estimatedValue: number;
+  purchasePrice: number;
+  valueAppreciation: number;
+  valueAppreciationRate: number;
+  grossYield: number;
+  netYield: number;
+  annualRoi: number;
+  totalCostsYtd: number;
+  occupancyRate: number;
+  calculatedAt: string;
+}
+
+/** Vehicle Intelligence KPIs */
+export interface VehicleIntelligence {
+  vehicleId: string;
+  name: string;
+  purchasePrice: number;
+  currentValue: number;
+  totalDepreciation: number;
+  depreciationRate: number;
+  annualDepreciation: number;
+  totalCostOfOwnership: number;
+  costPerKm: number;
+  costPerMonth: number;
+  nextServiceDate?: string;
+  nextServiceEstimatedCost?: number;
+  calculatedAt: string;
+}

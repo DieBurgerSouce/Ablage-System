@@ -31,6 +31,11 @@ import type {
   PrivatDeadlineWithStatus,
 } from '@/types/privat';
 import { cn } from '@/lib/utils';
+import {
+  FinancialHealthDashboard,
+  RecommendationsPanel,
+  NetWorthChart,
+} from './intelligence';
 
 interface PrivatDashboardProps {
   stats?: PrivatDashboardStats;
@@ -265,6 +270,24 @@ export function PrivatDashboard({
           </CardContent>
         </Card>
       </div>
+
+      {/* Enterprise Intelligence Section */}
+      {spaceId && (
+        <div className="space-y-6">
+          {/* Financial Health & Net Worth Row */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <FinancialHealthDashboard spaceId={spaceId} compact />
+            <NetWorthChart spaceId={spaceId} compact />
+          </div>
+
+          {/* Recommendations */}
+          <RecommendationsPanel
+            spaceId={spaceId}
+            maxItems={5}
+            showFilters={false}
+          />
+        </div>
+      )}
 
       {/* Quick Links */}
       <div className="grid gap-4 md:grid-cols-4">
