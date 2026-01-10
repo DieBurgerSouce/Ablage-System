@@ -4,7 +4,7 @@ import { ArrowLeft, FolderOpen, FileText, Upload, Loader2, AlertCircle } from 'l
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CUSTOMER_CATEGORIES, SUPPLIER_CATEGORIES } from '../types'
+import { SUPPLIER_CATEGORIES, getCustomerCategoriesForFolder } from '../types'
 import { fetchEntityFolders, fetchEntityName, type EntityFolder } from '../api/ablage-api'
 
 interface FolderCategoriesViewProps {
@@ -24,7 +24,10 @@ export function FolderCategoriesView({ entityType }: FolderCategoriesViewProps) 
   const entityId = isCustomer ? params.customerId : params.supplierId
   const folderId = params.folderId
 
-  const categories = isCustomer ? CUSTOMER_CATEGORIES : SUPPLIER_CATEGORIES
+  // Für Kunden: Kategorien je nach Ordner (Messer hat "Druckdaten")
+  const categories = isCustomer
+    ? getCustomerCategoriesForFolder(folderId || '')
+    : SUPPLIER_CATEGORIES
   const basePath = isCustomer ? '/kunden' : '/lieferanten'
   const colorClass = isCustomer ? 'text-amber-500' : 'text-blue-500'
   const colorHoverClass = isCustomer ? 'hover:border-amber-500/50' : 'hover:border-blue-500/50'

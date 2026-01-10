@@ -3,15 +3,20 @@
 ## 2026-01-10
 
 ### Backend
+- **feat**: Ordner-spezifische Kategorien für Kunden (commit latest)
+  - `app/api/v1/entities.py` - Keine Backend-Änderung nötig
+  - Kategorien werden im Frontend basierend auf folderId (messer/folie) gefiltert
+  - Messer-Kunden haben zusätzliche "Druckdaten"-Kategorie zwischen Rechnungen und Storno
+- **fix**: Use entity.display_name for fullName in customer API (commit 2de0389a)
+  - `app/api/v1/entities.py` - Changed fullName construction to use `entity.display_name`
+  - Before: `fullName = entity.name` (showed "10006_Peter" - wrong placeholder)
+  - After: `fullName = entity.display_name` (shows "Georg Peter Landwirtschaft und Spargelhof")
+  - DisplayName still constructed from `primary_customer_number + "_" + matchcode` (correct)
+  - Ensures frontend receives real company names for display filtering
 - **feat**: Supplier sorting support in API (commit 1c1c4b7f)
   - `app/api/v1/entities.py` - Added sort_by/sort_order to `/suppliers` endpoint
   - Sortierfelder: name, last_activity (asc/desc)
   - Same pattern as customers endpoint for consistency
-- **fix**: Correct fullName source for customer API (previous commit)
-  - `app/api/v1/entities.py` - Changed `fullName` source from `entity.name` to `entity.display_name`
-  - Before: `fullName` = "10006_Peter" (Kundennummer_Matchcode - wrong!)
-  - After: `fullName` = "Georg Peter Landwirtschaft und Spargelhof" (echter Firmenname)
-  - `displayName` weiterhin konstruiert aus `primary_customer_number + "_" + matchcode`
 - **fix**: Entity displayName construction standardization (previous commit)
   - `app/api/v1/entities.py` - ALWAYS construct displayName from `primary_customer_number + "_" + matchcode`
   - Never trust `entity.display_name` field directly - ensures consistent format "12345_Mueller"
@@ -47,6 +52,24 @@
   - Duplicate detection and merge capabilities
 
 ### Frontend
+- **feat**: Ordner-spezifische Dokument-Kategorien (commit latest)
+  - `types.ts` - Erweiterte Kategorie-Typen mit folder-spezifischer Logik
+    - `getCustomerCategoriesForFolder()` liefert unterschiedliche Kategorien je Ordner
+    - `CUSTOMER_CATEGORIES_MESSER`: Spargelmesser-Kunden mit "Druckdaten" (nach Archiv)
+    - `CUSTOMER_CATEGORIES_BASE`: Folie-Kunden ohne Druckdaten (Standard)
+    - `CATEGORY_TO_DOCUMENT_TYPE`: Mapping für Backend-Kompatibilität (druckdaten → print_data)
+    - Category metadata: shortCode (AG, AB, LS, RG, ST, B, DD), icon, color, isOpenStatus
+  - `FolderCategoriesView.tsx` - Nutzt ordner-spezifische Kategorien via `getCustomerCategoriesForFolder(folderId)`
+  - `CategoryDocumentList.tsx` - Prüft folderId für korrekte Kategorie-Auswahl
+  - `MoveFolderDialog.tsx` - Bulk-Move berücksichtigt ordner-spezifische Kategorien
+  - Lieferanten: Unverändert (haben "Bestellungen", keine ordner-spezifischen Unterschiede)
+  - Type-safety: DocumentCategoryInfo mit icon/color/isOpenStatus für UI-Konsistenz
+- **fix**: Use entity.display_name for real company names in KundenPage (commit 2de0389a)
+  - `KundenPage.tsx` - Fixed fullName source to use actual company name from backend
+  - Backend change: `fullName` now correctly populated from `entity.display_name` (real company name)
+  - Before: `fullName` showed constructed displayName ("12345_Mueller")
+  - After: `fullName` shows real company name ("Georg Peter Landwirtschaft und Spargelhof")
+  - Frontend `isRealCompanyName()` now properly detects real vs placeholder names
 - **feat**: Enhanced customer list with sorting and matchcode comparison (commit 1c1c4b7f)
   - `KundenPage.tsx` - Improved `isRealCompanyName()` helper with matchcode comparison
   - Logic: Extracts matchcode from displayName ("12345_Mueller" → "Mueller")

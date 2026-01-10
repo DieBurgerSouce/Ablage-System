@@ -14,8 +14,8 @@ import { useParams } from '@tanstack/react-router';
 import { type SortingState, type RowSelectionState } from '@tanstack/react-table';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  CUSTOMER_CATEGORIES,
   SUPPLIER_CATEGORIES,
+  getCustomerCategoriesForFolder,
   CATEGORIES_WITH_PAYMENT_STATUS,
   DEFAULT_CATEGORY_FILTER,
   type CategoryDocumentFilter,
@@ -48,8 +48,10 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
   const folderId = params.folderId;
   const category = params.category;
 
-  // Category metadata
-  const categories = isCustomer ? CUSTOMER_CATEGORIES : SUPPLIER_CATEGORIES;
+  // Category metadata - Kunden-Kategorien sind ordner-spezifisch (Messer hat "Druckdaten")
+  const categories = isCustomer
+    ? getCustomerCategoriesForFolder(folderId || '')
+    : SUPPLIER_CATEGORIES;
   const categoryInfo = categories.find((c) => c.id === category);
   const showPaymentStatus = CATEGORIES_WITH_PAYMENT_STATUS.includes(category || '');
 

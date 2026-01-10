@@ -12,7 +12,8 @@ export type CustomerDocumentCategory =
   | 'offene_anfragen'
   | 'reklamation'
   | 'kommunikation'
-  | 'archiv';
+  | 'archiv'
+  | 'druckdaten';  // NUR für Spargelmesser-Kunden!
 
 // Lieferanten haben zusaetzlich "Bestellungen"
 export type SupplierDocumentCategory =
@@ -29,8 +30,8 @@ export interface DocumentCategoryInfo {
   isOpenStatus?: boolean;  // Für "Offene X" Kategorien
 }
 
-// Kunden-Kategorien Definition
-export const CUSTOMER_CATEGORIES: DocumentCategoryInfo[] = [
+// Basis Kunden-Kategorien (für Folie - ohne Druckdaten)
+export const CUSTOMER_CATEGORIES_BASE: DocumentCategoryInfo[] = [
   { id: 'anfragen', label: 'Anfragen', icon: 'HelpCircle' },
   { id: 'angebote', label: 'Angebote', shortCode: 'AG', icon: 'FileText' },
   { id: 'auftragsbestätigung', label: 'Auftragsbestätigung', shortCode: 'AB', icon: 'FileCheck' },
@@ -45,6 +46,24 @@ export const CUSTOMER_CATEGORIES: DocumentCategoryInfo[] = [
   { id: 'kommunikation', label: 'Kommunikation', icon: 'Mail' },
   { id: 'archiv', label: 'Archiv', icon: 'Archive' },
 ];
+
+// Spargelmesser-spezifische Kategorien (mit Druckdaten am Ende, nach Archiv)
+export const CUSTOMER_CATEGORIES_MESSER: DocumentCategoryInfo[] = [
+  ...CUSTOMER_CATEGORIES_BASE,  // Alle Basis-Kategorien inkl. Archiv
+  { id: 'druckdaten', label: 'Druckdaten', shortCode: 'DD', icon: 'Printer' },  // NUR für Messer (nach Archiv)
+];
+
+// Alias für Abwärtskompatibilität (= Folie-Kategorien)
+export const CUSTOMER_CATEGORIES: DocumentCategoryInfo[] = CUSTOMER_CATEGORIES_BASE;
+
+/**
+ * Gibt die passenden Kategorien für einen Kunden-Ordner zurück.
+ * @param folderId - "messer" oder "folie"
+ * @returns Kategorie-Liste (Messer hat zusätzlich "Druckdaten")
+ */
+export function getCustomerCategoriesForFolder(folderId: string): DocumentCategoryInfo[] {
+  return folderId === 'messer' ? CUSTOMER_CATEGORIES_MESSER : CUSTOMER_CATEGORIES_BASE;
+}
 
 // Lieferanten-Kategorien (mit Bestellungen)
 export const SUPPLIER_CATEGORIES: DocumentCategoryInfo[] = [
@@ -265,4 +284,5 @@ export const CATEGORY_TO_DOCUMENT_TYPE: Record<string, string> = {
   reklamation: 'complaint',
   kommunikation: 'communication',
   archiv: 'archive',
+  druckdaten: 'print_data',  // NUR für Spargelmesser-Kunden!
 };

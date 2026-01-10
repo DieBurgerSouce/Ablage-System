@@ -1288,12 +1288,17 @@ async def _count_documents_by_category(
     folder_id: str
 ) -> dict:
     """Zaehlt Dokumente pro Kategorie fuer eine Entity/Firma."""
+    # Basis-Kategorien für alle Ordner
     categories = [
         "anfragen", "angebote", "auftragsbestaetigung", "lieferscheine",
         "rechnungen", "storno", "mahnungen", "offene_rechnungen",
         "offene_angebote", "offene_anfragen", "reklamation",
         "kommunikation", "archiv"
     ]
+
+    # Druckdaten nur für Spargelmesser-Ordner
+    if folder_id == "messer":
+        categories.append("druckdaten")
 
     category_to_doctype = _get_category_to_doctype_mapping()
 
@@ -1320,6 +1325,7 @@ def _get_category_to_doctype_mapping() -> dict:
         "anfragen": "anfrage",
         "angebote": "angebot",
         "auftragsbestaetigung": "auftragsbestaetigung",
+        "auftragsbestätigung": "auftragsbestaetigung",  # Mit Umlaut
         "lieferscheine": "lieferschein",
         "rechnungen": "rechnung",
         "storno": "storno",
@@ -1331,4 +1337,5 @@ def _get_category_to_doctype_mapping() -> dict:
         "kommunikation": "kommunikation",
         "archiv": "archiv",
         "bestellungen": "bestellung",
+        "druckdaten": "druckdaten",  # NUR für Spargelmesser-Kunden!
     }

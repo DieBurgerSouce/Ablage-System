@@ -302,6 +302,53 @@ export function KundenPage() {
 - **Visual sort indicators**: Arrow icons show current sort direction
 
 **Applied to**: `KundenPage.tsx`, `LieferantenPage.tsx` (both use identical pattern)
+
+**Folder-Specific Categories Pattern** (commit latest)
+```typescript
+// types.ts - Categories depend on customer's company folder (messer vs folie)
+export const CUSTOMER_CATEGORIES_BASE: DocumentCategoryInfo[] = [
+  // Anfragen, Angebote, Auftragsbestätigung, Lieferscheine, Rechnungen
+  // Storno, Mahnungen, Offene X, Reklamation, Kommunikation, Archiv
+]
+
+export const CUSTOMER_CATEGORIES_MESSER: DocumentCategoryInfo[] = [
+  ...CUSTOMER_CATEGORIES_BASE.slice(0, 5),  // Anfragen → Rechnungen
+  { id: 'druckdaten', label: 'Druckdaten', shortCode: 'DD', icon: 'Printer' },  // ONLY for Messer!
+  ...CUSTOMER_CATEGORIES_BASE.slice(5),     // Storno → Archiv
+]
+
+export function getCustomerCategoriesForFolder(folderId: string): DocumentCategoryInfo[] {
+  return folderId === 'messer' ? CUSTOMER_CATEGORIES_MESSER : CUSTOMER_CATEGORIES_BASE
+}
+
+// FolderCategoriesView.tsx - Use folder-specific categories
+const categories = isCustomer
+  ? getCustomerCategoriesForFolder(folderId || '')  // "messer" → with Druckdaten
+  : SUPPLIER_CATEGORIES                             // "folie" → standard
+
+// CategoryDocumentList.tsx - Pass folderId to MoveFolderDialog for correct categories
+<MoveFolderDialog
+  entityType={entityType}
+  folderId={folderId}  // Critical: enables folder-specific category filtering
+  currentCategory={category}
+  selectedIds={selectedIds}
+/>
+
+// MoveFolderDialog.tsx - Use folder-specific categories for bulk move
+const categories: DocumentCategoryInfo[] =
+  entityType === 'supplier'
+    ? SUPPLIER_CATEGORIES
+    : getCustomerCategoriesForFolder(folderId)  // Messer customers see Druckdaten option
+```
+
+**Key Features**:
+- **Messer-specific**: "Druckdaten" category only for Spargelmesser customers (inserted after "Rechnungen")
+- **Folie-standard**: Standard categories without Druckdaten
+- **Supplier categories**: Unchanged (have "Bestellungen", no folder-specific differences)
+- **Type-safe**: TypeScript ensures correct category usage across all components
+- **Consistent UI**: All views (FolderCategoriesView, CategoryDocumentList, MoveFolderDialog) use same logic
+
+**Applied to**: `types.ts`, `FolderCategoriesView.tsx`, `CategoryDocumentList.tsx`, `MoveFolderDialog.tsx`
 <!-- /AUTO-MANAGED: frontend-patterns -->
 
 <!-- AUTO-MANAGED: ui-components -->

@@ -25,8 +25,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useBulkMoveCategory } from '../hooks/use-ablage-queries';
 import {
-  CUSTOMER_CATEGORIES,
   SUPPLIER_CATEGORIES,
+  getCustomerCategoriesForFolder,
   type DocumentCategoryInfo,
 } from '../types';
 import * as LucideIcons from 'lucide-react';
@@ -39,6 +39,7 @@ interface MoveFolderDialogProps {
   selectedIds: string[];
   currentCategory: string;
   entityType: 'customer' | 'supplier';
+  folderId?: string;  // Für ordner-spezifische Kategorien (z.B. Messer hat "Druckdaten")
   onSuccess?: () => void;
 }
 
@@ -57,14 +58,17 @@ export function MoveFolderDialog({
   selectedIds,
   currentCategory,
   entityType,
+  folderId = '',
   onSuccess,
 }: MoveFolderDialogProps) {
   const [targetCategory, setTargetCategory] = useState<string>('');
   const bulkMove = useBulkMoveCategory();
 
-  // Get available categories based on entity type
+  // Get available categories based on entity type and folder (Messer hat "Druckdaten")
   const categories: DocumentCategoryInfo[] =
-    entityType === 'supplier' ? SUPPLIER_CATEGORIES : CUSTOMER_CATEGORIES;
+    entityType === 'supplier'
+      ? SUPPLIER_CATEGORIES
+      : getCustomerCategoriesForFolder(folderId);
 
   // Filter out current category and "open" status categories
   const availableCategories = categories.filter(
