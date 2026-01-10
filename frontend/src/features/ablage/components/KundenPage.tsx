@@ -125,6 +125,20 @@ export function KundenPage() {
     )
   }
 
+  // Helper: Prüft ob fullName ein echter Firmenname ist (nicht nur der Matchcode)
+  // displayName = "12345_Mueller", fullName = "Hofgemeinschaft GbR" -> true (zeigen)
+  // displayName = "12345_Mueller", fullName = "Mueller" -> false (redundant, nicht zeigen)
+  // displayName = "12345_Mueller", fullName = "" -> false (leer, nicht zeigen)
+  const isRealCompanyName = (fullName: string, displayName: string): boolean => {
+    if (!fullName || fullName.trim() === '') return false
+    // Matchcode extrahieren (Teil nach dem Underscore in displayName)
+    const matchcode = displayName.includes('_')
+      ? displayName.split('_').slice(1).join('_')
+      : displayName
+    // Nur anzeigen wenn fullName unterschiedlich zum Matchcode ist
+    return fullName.trim().toLowerCase() !== matchcode.trim().toLowerCase()
+  }
+
   // Check if this is the very first load (no data yet)
   const isInitialLoading = isLoading && !data
 
@@ -254,12 +268,9 @@ export function KundenPage() {
                         <h3 className="font-bold text-xl group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                           {customer.displayName}
                         </h3>
-                        {customer.fullName !== customer.displayName && (
+                        {isRealCompanyName(customer.fullName, customer.displayName) && (
                           <p className="text-sm text-muted-foreground">{customer.fullName}</p>
                         )}
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {folderCount} Ablage-Ordner
-                        </p>
                       </div>
                     </div>
 

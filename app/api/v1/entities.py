@@ -230,15 +230,11 @@ async def list_customers_for_frontend(
     # Stats werden erst beim Klick auf einen Kunden geladen (via /{entity_id}/folders)
     customers = []
     for entity in entities:
-        # Display-Name: Nutze entity.display_name wenn vorhanden und gueltig
-        # (nicht "nan" oder leer - das sind ungueltige Altdaten)
-        if entity.display_name and entity.display_name.lower() not in ("nan", "none", ""):
-            display_name = entity.display_name  # Bereits korrekt formatiert (z.B. "12345_Mueller")
-        else:
-            # Fallback: Aus customer_number und matchcode konstruieren
-            customer_number = entity.primary_customer_number or ""
-            matchcode = _extract_matchcode(entity.name)
-            display_name = f"{customer_number}_{matchcode}" if customer_number else matchcode
+        # Display-Name: IMMER als "Kundennummer_Matchcode" konstruieren
+        # (z.B. "10006_Peter", "12345_Mueller")
+        customer_number = entity.primary_customer_number or ""
+        matchcode = _extract_matchcode(entity.name)
+        display_name = f"{customer_number}_{matchcode}" if customer_number else matchcode
 
         # Company presence aus lexware_ids extrahieren
         company_presence = entity.company_presence or []
@@ -252,7 +248,9 @@ async def list_customers_for_frontend(
         customers.append({
             "id": str(entity.id),
             "displayName": display_name,
-            "fullName": entity.name,
+            # fullName = echter Firmenname aus display_name (z.B. "Hofgemeinschaft GbR")
+            # Falls display_name leer ist, bleibt fullName leer
+            "fullName": entity.display_name or "",
             "isActive": entity.is_active,
             "companyPresence": company_presence,
             # folderStats und lastActivityDate werden on-demand geladen

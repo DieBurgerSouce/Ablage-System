@@ -184,9 +184,9 @@ const { data: folders, isLoading, error } = useQuery({
 - Add `useQuery` hooks for data fetching
 - Implement loading/error states
 
-**Auto-Navigation Pattern**: Single-Folder Skip
+**Auto-Navigation Pattern**: Single-Folder Skip (commit 1c1c4b7f)
 ```typescript
-// SupplierFoldersView.tsx - Auto-navigate when only one folder exists
+// SupplierFoldersView.tsx / CustomerFoldersView.tsx - Auto-navigate when only one folder exists
 useEffect(() => {
   if (!isLoading && !error && folders.length === 1) {
     navigate({
@@ -207,14 +207,15 @@ const parentPath = hasOnlyOneFolder
 ```
 
 **Key Benefits**:
-- **UX**: Eliminates unnecessary click when only one folder exists
+- **UX**: Eliminates unnecessary click when only one folder exists (1-click navigation)
 - **Navigation**: Back button always works correctly (auto-skip → list, manual → folder selection)
 - **Consistency**: Same pattern applied to both customer and supplier flows
+- **Performance**: Reduces navigation depth without sacrificing user control
 
-**Performance Pattern**: Infinite Scroll with TanStack Query
+**Performance Pattern**: Infinite Scroll with TanStack Query (commit 1c1c4b7f)
 ```typescript
 // Example: KundenPage.tsx / LieferantenPage.tsx - Entity list with pagination
-const PAGE_SIZE = 100  // Optimized: 100 items per page (reduced API calls)
+const PAGE_SIZE = 100  // Optimized: 100 items per page (reduced API calls, up from 50)
 
 // Separate memoized component prevents focus loss during re-renders
 const SearchInput = memo(function SearchInput({ value, onChange }) {
@@ -631,14 +632,16 @@ r"\b(DE(?:\s*\d){9})\b"
 
 **Display Format**:
 - **Customers**: `"12345_Mueller"` (Kundennummer_Matchcode)
+  - Backend ALWAYS constructs displayName from primary_customer_number + matchcode (never trusts entity.display_name field)
+  - Frontend filters fullName: Only show if real company name (doesn't start with number or contain customer number)
 - **Suppliers**: `"Agrimpex"` (name only, no number - supplier numbers are chaotic)
 
 **API Response Types**:
 ```typescript
 interface CustomerForFrontend {
   id: string;
-  displayName: string;        // "12345_Mueller"
-  fullName: string;           // "Müller GmbH & Co. KG"
+  displayName: string;        // "12345_Mueller" (ALWAYS constructed from customer number + matchcode)
+  fullName: string;           // "Müller GmbH & Co. KG" OR "10006_Peter" (may be fake placeholder)
   isActive: boolean;
   companyPresence: string[];  // ["folie", "messer"]
   folderStats: Record<string, FolderStats>;
@@ -653,11 +656,36 @@ interface EntityFolder {
 }
 ```
 
+**DisplayName Construction** (Backend - `app/api/v1/entities.py`):
+```python
+# NEVER trust entity.display_name - ALWAYS construct from customer number + matchcode
+display_name = f"{primary_customer_number}_{matchcode}"
+# Example: "10006_Peter", "12345_Mueller"
+```
+
+**FullName Validation** (Frontend - `KundenPage.tsx`):
+```typescript
+// Filter out fake fullNames that look like Kundennummer format
+function isRealCompanyName(fullName: string): boolean {
+  if (!fullName || fullName.trim() === '') return false
+  const startsWithNumber = /^\d/.test(fullName)  // "10006_Peter" → true
+  const containsCustomerNumber = /^\d{3,8}_/.test(fullName)  // "12345_Mueller" → true
+  return !startsWithNumber && !containsCustomerNumber
+}
+
+// Only show fullName if it's a real company name
+{isRealCompanyName(customer.fullName) && (
+  <p className="text-sm text-muted-foreground">{customer.fullName}</p>
+)}
+```
+
 **Migration Pattern**: Mock Data → Real API
 - ✅ Removed: `getCustomerById()`, `getCustomerFolder()` mock functions
 - ✅ Added: `fetchEntityFolders()`, `fetchCustomersForFrontend()` API calls
 - ✅ Implemented: Loading states ("Lade Kunden..."), Error states with German messages
 - ✅ Pattern: All views use `useQuery` hooks for data fetching
+- ✅ DisplayName: Backend constructs from customer number + matchcode (not from entity.display_name)
+- ✅ FullName Filter: Frontend only shows real company names (no fake placeholders)
 
 **Folder Selection Pattern**: CustomerFoldersView.tsx
 ```typescript

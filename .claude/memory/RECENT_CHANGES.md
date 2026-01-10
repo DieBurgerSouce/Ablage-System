@@ -3,6 +3,23 @@
 ## 2026-01-10
 
 ### Backend
+- **feat**: Supplier sorting support in API (commit 1c1c4b7f)
+  - `app/api/v1/entities.py` - Added sort_by/sort_order to `/suppliers` endpoint
+  - Sortierfelder: name, last_activity (asc/desc)
+  - Same pattern as customers endpoint for consistency
+- **fix**: Correct fullName source for customer API (previous commit)
+  - `app/api/v1/entities.py` - Changed `fullName` source from `entity.name` to `entity.display_name`
+  - Before: `fullName` = "10006_Peter" (Kundennummer_Matchcode - wrong!)
+  - After: `fullName` = "Georg Peter Landwirtschaft und Spargelhof" (echter Firmenname)
+  - `displayName` weiterhin konstruiert aus `primary_customer_number + "_" + matchcode`
+- **fix**: Entity displayName construction standardization (previous commit)
+  - `app/api/v1/entities.py` - ALWAYS construct displayName from `primary_customer_number + "_" + matchcode`
+  - Never trust `entity.display_name` field directly - ensures consistent format "12345_Mueller"
+  - Prevents edge cases where entity.display_name could be stale or incorrect
+- **feat**: Auto-navigation for single-folder entities (commit 1c1c4b7f)
+  - Smart UX pattern: Auto-skip folder selection when only one company folder exists
+  - Backend support: Entity API returns folder count for client-side logic
+  - Applied to both customer and supplier flows for consistency
 - **perf**: Optimized supplier pagination endpoint (`entities.py`, latest)
   - Added pagination support to `/api/v1/entities/suppliers` endpoint
   - Sorting by name, created_at, document_count with configurable order
@@ -30,7 +47,34 @@
   - Duplicate detection and merge capabilities
 
 ### Frontend
-- **feat**: FolderCategoriesView with auto-navigation (latest - uncommitted)
+- **feat**: Enhanced customer list with sorting and matchcode comparison (commit 1c1c4b7f)
+  - `KundenPage.tsx` - Improved `isRealCompanyName()` helper with matchcode comparison
+  - Logic: Extracts matchcode from displayName ("12345_Mueller" → "Mueller")
+  - Compares `fullName.toLowerCase()` vs `matchcode.toLowerCase()` (case-insensitive)
+  - Shows company name only when different from matchcode (e.g., "Hofgemeinschaft GbR" ≠ "Mueller")
+  - Hides redundant names (e.g., "Mueller" === "Mueller" → don't show)
+  - Added sorting controls: name, customer_number, last_activity with visual arrow indicators
+  - PAGE_SIZE increased 50→100 for better performance
+- **refactor**: KundenPage UI cleanup (previous commit)
+  - Removed "X Ablage-Ordner" line from customer cards (redundant info)
+  - Keeps cards cleaner: displayName + echtem Firmennamen (nur wenn sinnvoll)
+- **feat**: Complete auto-navigation flow for single-folder entities (commit 1c1c4b7f)
+  - **SupplierFoldersView**: Auto-navigate when folders.length === 1
+    - Smart loading state: "Öffne Firma..." vs "Lade Ordner..."
+    - Uses `replace: true` to preserve correct back button behavior
+  - **FolderCategoriesView**: Dynamic back button based on folder count
+    - Single folder: Back → entity list (skip folder selection)
+    - Multiple folders: Back → folder selection screen
+    - Prevents navigation loop from auto-navigation
+  - **German text updates**: "Ablage-Ordner"→"Firma/Firmen" for supplier context
+- **feat**: Supplier list sorting and pagination (commit 1c1c4b7f)
+  - `LieferantenPage.tsx` - Added sorting UI with Select + visual arrows
+  - Sorting options: name, last_activity (asc/desc)
+  - PAGE_SIZE increased 50→100 for both Kunden/LieferantenPage
+  - Memoized SearchInput prevents re-render focus loss
+  - Debounced search (300ms) reduces API calls
+  - Visual sort indicators: ArrowUpNarrowWide/ArrowDownWideNarrow icons
+- **feat**: FolderCategoriesView with unified entity support (previous)
   - Unified category view for both customers and suppliers with `entityType` prop
   - Auto-skip folder selection when only one folder exists (smoother UX)
   - Dynamic back button behavior: Returns to entity list when auto-skipped
@@ -41,25 +85,12 @@
   - Empty state handling ("Ordner nicht gefunden") with back button
   - Quick upload card with dashed border for each folder
   - Performance: Parallel data fetching for entity info and folders
-- **feat**: SupplierFoldersView with auto-navigation pattern (latest - uncommitted)
-  - Auto-navigate to folder categories when only one folder exists (skips folder selection)
-  - TanStack Query integration with `fetchEntityFolders()` API
-  - Smart loading state: "Öffne Firma..." when auto-navigating vs "Lade Ordner..."
-  - German error states with AlertCircle icon and detailed error messages
-  - Card-based UI with hover effects (border-l-4 hover:border-l-blue-500, scale-[1.01])
-  - Folder stats: Total docs, open invoices, last activity per folder
-  - Summary stats at top: Total documents and open invoices across all folders
-  - Responsive layout: Hides last activity on mobile (<md breakpoint)
-  - Breadcrumb navigation with back button to supplier list
-  - Pattern: Exact mirror of CustomerFoldersView for consistency
-  - Replace: true on auto-navigation to preserve back button behavior
-- **perf**: KundenPage + LieferantenPage pagination updates (previous)
-  - **KundenPage**: Increased page size to 100 customers (was 50)
-  - **LieferantenPage**: Increased page size to 100 suppliers (was 50)
-  - Both pages now use identical infinite scroll pattern with TanStack Query
-  - Sorting: KundenPage adds `customer_number` option, LieferantenPage has `name` + `last_activity`
-  - Visual consistency: Both use same card layout, hover effects, stats display
-  - Performance: Fewer API calls with larger page size, same debounced search (300ms)
+- **perf**: KundenPage + LieferantenPage pagination optimization (previous)
+  - Memoized SearchInput component prevents re-render focus loss
+  - Debounced search (300ms) reduces API calls during typing
+  - Both pages use identical infinite scroll pattern with TanStack Query
+  - Visual consistency: Same card layout, hover effects, stats display
+  - Performance: Fewer API calls with larger page size
 - **perf**: LieferantenPage with infinite scroll (2026-01-10)
   - TanStack Query `useInfiniteQuery` with 100 suppliers per page
   - Debounced search (300ms) to reduce API calls during typing
