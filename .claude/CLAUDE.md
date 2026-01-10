@@ -183,6 +183,124 @@ const { data: folders, isLoading, error } = useQuery({
 - Replace with API functions (e.g., `fetchEntityFolders`, `fetchEntityName`)
 - Add `useQuery` hooks for data fetching
 - Implement loading/error states
+
+**Auto-Navigation Pattern**: Single-Folder Skip
+```typescript
+// SupplierFoldersView.tsx - Auto-navigate when only one folder exists
+useEffect(() => {
+  if (!isLoading && !error && folders.length === 1) {
+    navigate({
+      to: '/lieferanten/$supplierId/$folderId',
+      params: { supplierId: supplierId!, folderId: folders[0].id },
+      replace: true, // Preserve back button behavior (back → entity list)
+    })
+  }
+}, [isLoading, error, folders, supplierId, navigate])
+
+// FolderCategoriesView.tsx - Dynamic parent path based on folder count
+const hasOnlyOneFolder = folders.length === 1
+const parentPath = hasOnlyOneFolder
+  ? basePath  // Skip folder selection, go directly to entity list
+  : isCustomer
+    ? `/kunden/$customerId`  // Multiple folders, show folder selection
+    : `/lieferanten/$supplierId`
+```
+
+**Key Benefits**:
+- **UX**: Eliminates unnecessary click when only one folder exists
+- **Navigation**: Back button always works correctly (auto-skip → list, manual → folder selection)
+- **Consistency**: Same pattern applied to both customer and supplier flows
+
+**Performance Pattern**: Infinite Scroll with TanStack Query
+```typescript
+// Example: KundenPage.tsx / LieferantenPage.tsx - Entity list with pagination
+const PAGE_SIZE = 100  // Optimized: 100 items per page (reduced API calls)
+
+// Separate memoized component prevents focus loss during re-renders
+const SearchInput = memo(function SearchInput({ value, onChange }) {
+  return (
+    <div className="relative max-w-md">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <Input placeholder="Suche..." value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  )
+})
+
+export function KundenPage() {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [sortBy, setSortBy] = useState<CustomerSortField>('name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
+  // Stable callback for search input
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value)
+  }, [])
+
+  // Debounce search (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // Infinite query with pagination
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ['customers', debouncedSearch, sortBy, sortOrder],
+    queryFn: ({ pageParam = 1 }) => fetchCustomersForFrontend({
+      page: pageParam,
+      pageSize: PAGE_SIZE,
+      search: debouncedSearch || undefined,
+      sortBy,
+      sortOrder,
+    }),
+    getNextPageParam: (lastPage) =>
+      lastPage.page < lastPage.total_pages ? lastPage.page + 1 : undefined,
+    initialPageParam: 1,
+    placeholderData: (previousData) => previousData, // Prevent flash
+  })
+
+  // Flatten pages with useMemo
+  const customers = useMemo(() => data?.pages.flatMap(p => p.items) ?? [], [data])
+
+  return (
+    <>
+      <SearchInput value={searchQuery} onChange={handleSearchChange} />
+
+      {/* Sorting Controls */}
+      <Select value={sortBy} onValueChange={(value) => setSortBy(value as CustomerSortField)}>
+        <SelectItem value="name">Name</SelectItem>
+        <SelectItem value="customer_number">Kundennummer</SelectItem>
+        <SelectItem value="last_activity">Letzte Aktivität</SelectItem>
+      </Select>
+      <Button onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}>
+        {sortOrder === 'asc' ? <ArrowUpNarrowWide /> : <ArrowDownWideNarrow />}
+      </Button>
+
+      {/* Render customers... */}
+      {hasNextPage && (
+        <Button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+          {isFetchingNextPage ? 'Lade...' : `Mehr laden (${totalCount - customers.length} weitere)`}
+        </Button>
+      )}
+    </>
+  )
+}
+```
+
+**Key Optimizations**:
+- **Page size: 100 items** (reduced API calls vs 50 items)
+- **Debounced search** (300ms) to reduce API calls during typing
+- **Memoized SearchInput** prevents re-render focus loss
+- **Stable callbacks** with `useCallback` for event handlers
+- **placeholderData** prevents flash during search refetch
+- **useMemo** for flattening pages array (performance)
+- **Loading states**: Initial load vs pagination vs search
+- **Sorting support**:
+  - KundenPage: name, customer_number, last_activity (asc/desc)
+  - LieferantenPage: name, last_activity (asc/desc)
+- **Visual sort indicators**: Arrow icons show current sort direction
+
+**Applied to**: `KundenPage.tsx`, `LieferantenPage.tsx` (both use identical pattern)
 <!-- /AUTO-MANAGED: frontend-patterns -->
 
 <!-- AUTO-MANAGED: ui-components -->
@@ -403,9 +521,17 @@ primary_supplier_number: String(50)  # Display number
 |----------|--------|---------|
 | `/api/v1/entities` | GET | List all entities with filters |
 | `/api/v1/entities/{id}` | GET | Get entity details |
-| `/api/v1/entities/customers` | GET | List customers (frontend format) |
-| `/api/v1/entities/suppliers` | GET | List suppliers (frontend format) |
+| `/api/v1/entities/customers` | GET | List customers (frontend format, paginated) |
+| `/api/v1/entities/suppliers` | GET | List suppliers (frontend format, paginated, sortable) |
 | `/api/v1/entities/{id}/folders` | GET | Get entity folders (folie/messer) |
+
+**Pagination Parameters** (customers/suppliers endpoints):
+- `page` (int, default: 1) - Seitennummer
+- `page_size` (int, default: 50, max: 200) - Einträge pro Seite
+- `search` (str, optional) - Suche in Name/Matchcode/Kundennummer
+- `sort_by` (str, default: "name") - Sortierfeld (name, created_at, document_count)
+- `sort_order` (str, default: "asc") - Sortierrichtung (asc, desc)
+- `is_active` (bool, optional) - Nach Aktivstatus filtern
 
 ### Celery Tasks
 
@@ -496,12 +622,12 @@ r"\b(DE(?:\s*\d){9})\b"
 | `/api/v1/entities/{id}/folders` | GET | Get company folders (folie/messer) per entity |
 
 **Frontend Components** (`frontend/src/features/ablage/`):
-- `KundenPage.tsx` - Customer list with TanStack Query
-- `LieferantenPage.tsx` - Supplier list with TanStack Query
-- `CustomerFoldersView.tsx` - Company folder selection (Spargelmesser/Folie)
-- `SupplierFoldersView.tsx` - Supplier folder selection
+- `KundenPage.tsx` - Customer list with infinite scroll (100 items/page)
+- `LieferantenPage.tsx` - Supplier list with infinite scroll (100 items/page)
+- `CustomerFoldersView.tsx` - Company folder selection (Spargelmesser/Folie) for customers
+- `SupplierFoldersView.tsx` - Company folder selection (Spargelmesser/Folie) for suppliers
 - `FolderCategoriesView.tsx` - Document categories per folder
-- `api/ablage-api.ts` - Typed API client functions
+- `api/ablage-api.ts` - Typed API client functions with pagination
 
 **Display Format**:
 - **Customers**: `"12345_Mueller"` (Kundennummer_Matchcode)
@@ -532,6 +658,32 @@ interface EntityFolder {
 - ✅ Added: `fetchEntityFolders()`, `fetchCustomersForFrontend()` API calls
 - ✅ Implemented: Loading states ("Lade Kunden..."), Error states with German messages
 - ✅ Pattern: All views use `useQuery` hooks for data fetching
+
+**Folder Selection Pattern**: CustomerFoldersView.tsx
+```typescript
+// Displays entity folders (Folie/Messer) with stats
+const { data: folders = [], isLoading, error } = useQuery({
+  queryKey: ['entityFolders', customerId],
+  queryFn: () => fetchEntityFolders(customerId!),
+  enabled: !!customerId,
+})
+
+// Navigate to folder categories
+const handleFolderClick = (folderId: string) => {
+  navigate({ to: '/kunden/$customerId/$folderId', params: { customerId, folderId } })
+}
+
+// Calculate total documents across all categories
+const getTotalDocs = (folder: EntityFolder) =>
+  Object.values(folder.documentCounts || {}).reduce((sum, count) => sum + count, 0)
+```
+
+**Key Features**:
+- Card-based UI with hover effects (border highlight, scale animation)
+- Real-time stats: Total docs, open invoices, last activity per folder
+- Breadcrumb navigation with back button to customer list
+- Empty state handling ("Keine Ordner gefunden")
+- Responsive layout (hides last activity on mobile)
 
 ### Integration Points
 

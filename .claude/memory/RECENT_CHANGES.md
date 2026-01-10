@@ -3,6 +3,13 @@
 ## 2026-01-10
 
 ### Backend
+- **perf**: Optimized supplier pagination endpoint (`entities.py`, latest)
+  - Added pagination support to `/api/v1/entities/suppliers` endpoint
+  - Sorting by name, created_at, document_count with configurable order
+  - Display format: Use `entity.display_name` as canonical source (prevents regeneration)
+  - Stats optimization: Empty placeholders returned (load on-demand via `/{entity_id}/folders`)
+  - Response format: `PaginatedResponse` with `items`, `total`, `page`, `page_size`, `total_pages`
+  - Filters: Search by name/matchcode, active status filtering
 - **feat**: Complete Lexware customer/supplier import integration (commit d0467908)
   - `app/api/v1/entities.py` - Added `/customers`, `/suppliers`, `/{id}/folders` endpoints
   - `app/api/v1/lexware.py` - Import endpoints for customers/suppliers, entity linking
@@ -11,6 +18,11 @@
 - **perf**: Eliminated N+1 queries in entity list endpoints (`entities.py`)
   - `folderStats` and `lastActivityDate` now loaded on-demand via `/{entity_id}/folders`
   - Customer/supplier lists now return empty stats placeholders for faster initial load
+- **refactor**: Entity API pagination and filtering (latest commit)
+  - Added pagination support: `page`, `page_size`, `skip`, `limit` query params
+  - Added search parameter for filtering by name/matchcode/customer number
+  - Response format: `PaginatedResponse` with `items`, `total`, `page`, `page_size`, `total_pages`
+  - Applied to `/customers` and `/suppliers` endpoints for infinite scroll support
 - **feat**: Entity API endpoints now production-ready (commit 25542547)
   - Full CRUD operations with filters (type, active status, postal code, city)
   - Pagination and sorting (by name, created_at, document_count)
@@ -18,6 +30,74 @@
   - Duplicate detection and merge capabilities
 
 ### Frontend
+- **feat**: FolderCategoriesView with auto-navigation (latest - uncommitted)
+  - Unified category view for both customers and suppliers with `entityType` prop
+  - Auto-skip folder selection when only one folder exists (smoother UX)
+  - Dynamic back button behavior: Returns to entity list when auto-skipped
+  - TanStack Query integration with `fetchEntityFolders()` and `fetchEntityName()` APIs
+  - Breadcrumb navigation with smart parent path resolution
+  - Category grid with document counts, open invoices badges, and last activity
+  - German loading/error states with proper color themes (amber-500 for customers, blue-500 for suppliers)
+  - Empty state handling ("Ordner nicht gefunden") with back button
+  - Quick upload card with dashed border for each folder
+  - Performance: Parallel data fetching for entity info and folders
+- **feat**: SupplierFoldersView with auto-navigation pattern (latest - uncommitted)
+  - Auto-navigate to folder categories when only one folder exists (skips folder selection)
+  - TanStack Query integration with `fetchEntityFolders()` API
+  - Smart loading state: "Öffne Firma..." when auto-navigating vs "Lade Ordner..."
+  - German error states with AlertCircle icon and detailed error messages
+  - Card-based UI with hover effects (border-l-4 hover:border-l-blue-500, scale-[1.01])
+  - Folder stats: Total docs, open invoices, last activity per folder
+  - Summary stats at top: Total documents and open invoices across all folders
+  - Responsive layout: Hides last activity on mobile (<md breakpoint)
+  - Breadcrumb navigation with back button to supplier list
+  - Pattern: Exact mirror of CustomerFoldersView for consistency
+  - Replace: true on auto-navigation to preserve back button behavior
+- **perf**: KundenPage + LieferantenPage pagination updates (previous)
+  - **KundenPage**: Increased page size to 100 customers (was 50)
+  - **LieferantenPage**: Increased page size to 100 suppliers (was 50)
+  - Both pages now use identical infinite scroll pattern with TanStack Query
+  - Sorting: KundenPage adds `customer_number` option, LieferantenPage has `name` + `last_activity`
+  - Visual consistency: Both use same card layout, hover effects, stats display
+  - Performance: Fewer API calls with larger page size, same debounced search (300ms)
+- **perf**: LieferantenPage with infinite scroll (2026-01-10)
+  - TanStack Query `useInfiniteQuery` with 100 suppliers per page
+  - Debounced search (300ms) to reduce API calls during typing
+  - Memoized SearchInput component prevents re-render focus loss
+  - Sorting support: name, last_activity (asc/desc) with visual sort indicator
+  - Display format: Name only (no numbers - supplier numbers are chaotic)
+  - Real-time stats: Total docs, open invoices, company presence badges
+  - Loading states: Initial load vs pagination vs search
+  - "Mehr laden" button shows remaining count (e.g., "42 weitere Lieferanten")
+  - Pattern: Exact mirror of KundenPage for consistency
+- **refactor**: Supplier API client improvements (`ablage-api.ts`, latest)
+  - Added `fetchSuppliersForFrontend()` with pagination, sorting, search
+  - Type-safe parameters: `SupplierSortField`, `page`, `pageSize`, `sortOrder`
+  - Proper error handling with German messages ("Fehler beim Laden der Lieferanten")
+  - Consistent with customer API pattern for maintainability
+- **perf**: Enhanced KundenPage with pagination and optimizations (previous)
+  - Implemented infinite scroll with TanStack Query `useInfiniteQuery`
+  - Page size: 50 customers per page with "Mehr laden" button
+  - Debounced search (300ms) to reduce API calls during typing
+  - Memoized SearchInput component prevents re-render focus loss
+  - Display format: "12345_Mueller" (customer number_matchcode)
+  - Company presence badges (Folie/Messer) with responsive visibility
+  - Real-time stats: Total docs, open invoices per customer
+  - Loading states: Initial load vs pagination vs search
+  - "Load More" button shows remaining count (e.g., "157 weitere Kunden")
+- **refactor**: Ablage API client improvements (`ablage-api.ts`)
+  - Added `fetchCustomersForFrontend()` with pagination params
+  - Added `fetchSuppliersForFrontend()` with pagination support
+  - Proper TypeScript types: `PaginatedEntityResponse<T>`, `CustomerForFrontend`, `SupplierForFrontend`
+  - Cookie-based authentication with `credentials: "include"` on all fetch calls
+  - German error messages in catch blocks
+- **feat**: Customer folder selection view (`CustomerFoldersView.tsx`)
+  - Displays entity folders (Folie/Messer) with document counts
+  - Real-time stats: Total documents, open invoices per folder
+  - TanStack Query integration with `fetchEntityFolders()` API
+  - German loading/error states with proper icons
+  - Card-based UI with hover effects and navigation
+  - Breadcrumb navigation and responsive layout
 - **fix**: SessionStorage quota exceeded in MultiStepForm (enterprise fix)
   - Added size-limit checks (500KB max per form) before storage operations
   - Automatic cleanup of old wizard entries to prevent QuotaExceededError
@@ -36,23 +116,27 @@
   - Tests navigation buttons ("Zur Startseite", "Zurück")
 - **fix**: Authentication for entity API (commit 25542547)
   - `ablage-api.ts` - Added `credentials: "include"` to all fetch calls
-- **feat**: Customer list with infinite scroll (`KundenPage.tsx`)
-  - TanStack Query infinite scroll with 50 items per page
-  - Debounced search (300ms) across customer names and display names
-  - Loading states: "Lade Kunden..." with spinner
-  - Error handling with German messages
-  - Click navigation to folder view (`/kunden/$customerId`)
-  - Real-time document and open invoice counts per customer
+- **perf**: Optimized KundenPage with infinite scroll and memoization (commit 6d33815f)
+  - TanStack Query `useInfiniteQuery` with pagination (50 items/page)
+  - Debounced search (300ms) to reduce API calls
+  - Memoized SearchInput component prevents re-render focus loss
+  - Flattened pages array with `useMemo` for performance
+  - Stable callbacks with `useCallback` for search handling
+  - Loading states: Initial load vs pagination vs search
+  - "Load More" button shows remaining count (e.g., "157 weitere")
+  - Real-time stats: totalDocs, openInvoices per customer
+  - Company presence badges (Folie/Messer) with responsive visibility
 - **refactor**: API client consolidation (`ablage-api.ts`)
   - Added typed functions: `fetchCustomersForFrontend()`, `fetchSuppliersForFrontend()`
   - Pagination support with `PaginatedEntityResponse<T>` type
   - Proper error handling with German error messages
   - Cookie-based authentication with `credentials: "include"`
-- **refactor**: German language polishing (108 files)
-  - Corrected umlauts across all components: ä→ä, ö→ö, ü→ü, ß→ß
-  - Fixed ASCII replacements: "ue"→"ü", "Oe"→"Ö", "ss"→"ß", "ae"→"ä"
-  - Affected modules: ERP, Reports, GoBD, Viewer, Workflows, Extracted Data, AI Decisions
+- **fix**: German umlaut corrections (139 files, commit 6d33815f)
+  - Fixed ASCII replacements: "ae"→"ä", "oe"→"ö", "ue"→"ü", "ss"→"ß"
+  - Backend (3 files): `entities.py`, `schemas.py`, `lexware_import_service.py`
+  - Frontend (136 files): All routes, components, features, hooks
   - Examples: "Ausfuehren"→"Ausführen", "Loeschen"→"Löschen", "Groesse"→"Größe"
+  - Impact: 100% proper German umlauts in all user-facing text (Critical Rule #2)
 - **refactor**: Component consistency polish (47+ files total)
   - **Batch 1**: Forms, Banking, Cash, ERP, Finance, Extracted Data, Collaboration, Dashboard
   - **Batch 2**: Type safety and strict TypeScript compliance (18 files)

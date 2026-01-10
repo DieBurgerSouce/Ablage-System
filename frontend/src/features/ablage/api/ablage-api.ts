@@ -283,13 +283,38 @@ export interface PaginatedEntityResponse<T> {
 }
 
 /**
- * Filter-Optionen für Kunden/Lieferanten-Liste
+ * Sortieroptionen für Kunden-Liste
+ */
+export type CustomerSortField = 'name' | 'customer_number' | 'last_activity';
+
+/**
+ * Sortieroptionen für Lieferanten-Liste
+ * (KEINE Lieferanten-Nummer - die sind chaotisch)
+ */
+export type SupplierSortField = 'name' | 'last_activity';
+
+/**
+ * Filter-Optionen für Kunden-Liste
  */
 export interface EntityListFilter {
     search?: string;
     isActive?: boolean;
     page?: number;
     pageSize?: number;
+    sortBy?: CustomerSortField;
+    sortOrder?: 'asc' | 'desc';
+}
+
+/**
+ * Filter-Optionen für Lieferanten-Liste
+ */
+export interface SupplierListFilter {
+    search?: string;
+    isActive?: boolean;
+    page?: number;
+    pageSize?: number;
+    sortBy?: SupplierSortField;
+    sortOrder?: 'asc' | 'desc';
 }
 
 /**
@@ -305,6 +330,8 @@ export async function fetchCustomersForFrontend(
     if (options.isActive !== undefined) params.is_active = String(options.isActive);
     if (options.page) params.page = String(options.page);
     if (options.pageSize) params.page_size = String(options.pageSize);
+    if (options.sortBy) params.sort_by = options.sortBy;
+    if (options.sortOrder) params.sort_order = options.sortOrder;
 
     const response = await apiClient.get<PaginatedEntityResponse<CustomerForFrontend>>(
         '/entities/customers',
@@ -318,7 +345,7 @@ export async function fetchCustomersForFrontend(
  * Display-Format: Nur Matchcode (KEINE Nummer!)
  */
 export async function fetchSuppliersForFrontend(
-    options: EntityListFilter = {}
+    options: SupplierListFilter = {}
 ): Promise<PaginatedEntityResponse<SupplierForFrontend>> {
     const params: Record<string, string> = {};
 
@@ -326,6 +353,8 @@ export async function fetchSuppliersForFrontend(
     if (options.isActive !== undefined) params.is_active = String(options.isActive);
     if (options.page) params.page = String(options.page);
     if (options.pageSize) params.page_size = String(options.pageSize);
+    if (options.sortBy) params.sort_by = options.sortBy;
+    if (options.sortOrder) params.sort_order = options.sortOrder;
 
     const response = await apiClient.get<PaginatedEntityResponse<SupplierForFrontend>>(
         '/entities/suppliers',

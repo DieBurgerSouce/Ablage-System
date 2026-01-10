@@ -162,6 +162,8 @@ async def list_customers_for_frontend(
     is_active: Optional[bool] = Query(None, description="Nach Aktivstatus filtern"),
     page: int = Query(1, ge=1, description="Seitennummer"),
     page_size: int = Query(50, ge=10, le=200, description="Eintraege pro Seite"),
+    sort_by: str = Query("name", description="Sortierfeld: name, customer_number, last_activity"),
+    sort_order: str = Query("asc", description="Sortierrichtung: asc oder desc"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -174,6 +176,8 @@ async def list_customers_for_frontend(
     - items: Array von Kunden
     - total: Gesamtanzahl
     - page/page_size: Pagination-Info
+
+    **Sortierung**: name, customer_number, last_activity (asc/desc)
     """
     # Basis-Filter
     base_filter = [
@@ -201,9 +205,22 @@ async def list_customers_for_frontend(
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
-    # Paginierte Query
+    # Paginierte Query mit dynamischer Sortierung
     query = select(BusinessEntity).where(*base_filter)
-    query = query.order_by(BusinessEntity.name)
+
+    # Sortierung anwenden
+    sort_column_map = {
+        "name": BusinessEntity.name,
+        "customer_number": BusinessEntity.primary_customer_number,
+        "last_activity": BusinessEntity.updated_at,
+    }
+    sort_column = sort_column_map.get(sort_by, BusinessEntity.name)
+
+    if sort_order.lower() == "desc":
+        query = query.order_by(sort_column.desc().nulls_last())
+    else:
+        query = query.order_by(sort_column.asc().nulls_last())
+
     query = query.offset((page - 1) * page_size).limit(page_size)
 
     result = await db.execute(query)
@@ -262,6 +279,8 @@ async def list_suppliers_for_frontend(
     is_active: Optional[bool] = Query(None, description="Nach Aktivstatus filtern"),
     page: int = Query(1, ge=1, description="Seitennummer"),
     page_size: int = Query(50, ge=10, le=200, description="Eintraege pro Seite"),
+    sort_by: str = Query("name", description="Sortierfeld: name, last_activity"),
+    sort_order: str = Query("asc", description="Sortierrichtung: asc oder desc"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -298,7 +317,19 @@ async def list_suppliers_for_frontend(
 
     # Paginierte Query
     query = select(BusinessEntity).where(*base_filter)
-    query = query.order_by(BusinessEntity.name)
+
+    # Sortierung anwenden
+    sort_column_map = {
+        "name": BusinessEntity.name,
+        "last_activity": BusinessEntity.updated_at,
+    }
+    sort_column = sort_column_map.get(sort_by, BusinessEntity.name)
+
+    if sort_order.lower() == "desc":
+        query = query.order_by(sort_column.desc().nulls_last())
+    else:
+        query = query.order_by(sort_column.asc().nulls_last())
+
     query = query.offset((page - 1) * page_size).limit(page_size)
 
     result = await db.execute(query)

@@ -129,7 +129,7 @@ export function CustomerFoldersView() {
             <span>/</span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Kunde</h1>
-          <p className="text-muted-foreground">Wähle einen Ablage-Ordner</p>
+          <p className="text-muted-foreground">Wähle eine der Firmen</p>
         </div>
       </div>
 
@@ -149,7 +149,7 @@ export function CustomerFoldersView() {
 
       {/* Folder Selection */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Wähle einen Ablage-Ordner:</h2>
+        <h2 className="text-lg font-semibold mb-4">Wähle eine der Firmen:</h2>
         <div className="space-y-4">
           {folders.map((folder) => {
             const folderDocs = getTotalDocs(folder)

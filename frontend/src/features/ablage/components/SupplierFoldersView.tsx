@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useParams, Link, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, FolderOpen, FileText, ChevronRight, AlertCircle, Loader2 } from 'lucide-react'
@@ -30,6 +31,17 @@ export function SupplierFoldersView() {
     })
   }
 
+  // Auto-Navigation: Wenn nur eine Firma vorhanden ist, direkt dorthin navigieren
+  useEffect(() => {
+    if (!isLoading && !error && folders.length === 1) {
+      navigate({
+        to: '/lieferanten/$supplierId/$folderId',
+        params: { supplierId: supplierId!, folderId: folders[0].id },
+        replace: true, // Ersetzt den History-Eintrag, damit Zurück zur Lieferantenliste führt
+      })
+    }
+  }, [isLoading, error, folders, supplierId, navigate])
+
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-'
     return new Date(dateStr).toLocaleDateString('de-DE', {
@@ -44,13 +56,15 @@ export function SupplierFoldersView() {
     return Object.values(folder.documentCounts || {}).reduce((sum, count) => sum + count, 0)
   }
 
-  // Loading State
-  if (isLoading) {
+  // Loading State (auch während Auto-Navigation bei nur einer Firma)
+  if (isLoading || (!error && folders.length === 1)) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-          <p className="text-muted-foreground">Lade Ordner...</p>
+          <p className="text-muted-foreground">
+            {folders.length === 1 ? 'Öffne Firma...' : 'Lade Ordner...'}
+          </p>
         </div>
       </div>
     )
@@ -129,7 +143,7 @@ export function SupplierFoldersView() {
             <span>/</span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Lieferant</h1>
-          <p className="text-muted-foreground">Wähle einen Ablage-Ordner</p>
+          <p className="text-muted-foreground">Wähle eine der Firmen</p>
         </div>
       </div>
 
@@ -149,7 +163,7 @@ export function SupplierFoldersView() {
 
       {/* Folder Selection */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Wähle einen Ablage-Ordner:</h2>
+        <h2 className="text-lg font-semibold mb-4">Wähle eine der Firmen:</h2>
         <div className="space-y-4">
           {folders.map((folder) => {
             const folderDocs = getTotalDocs(folder)

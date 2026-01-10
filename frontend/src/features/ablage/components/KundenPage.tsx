@@ -1,14 +1,44 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback, memo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { Users, FolderOpen, ChevronRight, FileText, AlertCircle, Loader2, Search, ChevronDown } from 'lucide-react'
+import { Users, FolderOpen, ChevronRight, FileText, AlertCircle, Loader2, Search, ChevronDown, ArrowUpNarrowWide, ArrowDownWideNarrow } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { fetchCustomersForFrontend, type CustomerForFrontend, type PaginatedEntityResponse } from '../api/ablage-api'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { fetchCustomersForFrontend, type CustomerForFrontend, type PaginatedEntityResponse, type CustomerSortField } from '../api/ablage-api'
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 100
+
+/**
+ * Separate SearchInput component to prevent re-renders from query state changes
+ */
+const SearchInput = memo(function SearchInput({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <div className="relative max-w-md">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <Input
+        placeholder="Suche nach Kundennummer oder Name..."
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="pl-10"
+      />
+    </div>
+  )
+})
 
 /**
  * KundenPage - Zeigt Kunden als klickbare Ordner-Cards mit Suche und Pagination
@@ -22,6 +52,13 @@ export function KundenPage() {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [sortBy, setSortBy] = useState<CustomerSortField>('name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
+  // Stable callback for search input
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value)
+  }, [])
 
   // Debounce search input
   useEffect(() => {
@@ -34,17 +71,20 @@ export function KundenPage() {
   const {
     data,
     isLoading,
+    isFetching,
     error,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['customers', debouncedSearch],
+    queryKey: ['customers', debouncedSearch, sortBy, sortOrder],
     queryFn: async ({ pageParam = 1 }) => {
       return fetchCustomersForFrontend({
         page: pageParam,
         pageSize: PAGE_SIZE,
         search: debouncedSearch || undefined,
+        sortBy,
+        sortOrder,
       })
     },
     getNextPageParam: (lastPage: PaginatedEntityResponse<CustomerForFrontend>) => {
@@ -54,6 +94,8 @@ export function KundenPage() {
       return undefined
     },
     initialPageParam: 1,
+    // Keep previous data while fetching new results (prevents flash)
+    placeholderData: (previousData) => previousData,
   })
 
   // Flatten all pages into a single array
@@ -83,36 +125,8 @@ export function KundenPage() {
     )
   }
 
-  // Loading State (initial load)
-  if (isLoading) {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
-          <p className="text-muted-foreground">Lade Kunden...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Error State
-  if (error) {
-    return (
-      <div className="p-8">
-        <Card className="border-destructive">
-          <CardContent className="p-6 flex items-center gap-4">
-            <AlertCircle className="w-8 h-8 text-destructive" />
-            <div>
-              <h3 className="font-semibold">Fehler beim Laden der Kunden</h3>
-              <p className="text-sm text-muted-foreground">
-                {error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten'}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+  // Check if this is the very first load (no data yet)
+  const isInitialLoading = isLoading && !data
 
   return (
     <div className="p-8 space-y-6">
@@ -127,26 +141,79 @@ export function KundenPage() {
         </p>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Suche nach Kundennummer oder Name..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
+      {/* Search + Sorting Controls */}
+      <div className="flex flex-wrap gap-4 items-center">
+        <SearchInput value={searchQuery} onChange={handleSearchChange} />
+
+        {/* Sortierung */}
+        <div className="flex items-center gap-2">
+          <Select value={sortBy} onValueChange={(value) => setSortBy(value as CustomerSortField)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Sortieren nach" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="customer_number">Kundennummer</SelectItem>
+              <SelectItem value="last_activity">Letzte Aktivität</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+            aria-label={sortOrder === 'asc' ? 'Absteigend sortieren' : 'Aufsteigend sortieren'}
+            title={sortOrder === 'asc' ? 'Aufsteigend (A→Z)' : 'Absteigend (Z→A)'}
+          >
+            {sortOrder === 'asc' ? (
+              <ArrowUpNarrowWide className="w-5 h-5" />
+            ) : (
+              <ArrowDownWideNarrow className="w-5 h-5" />
+            )}
+          </Button>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="flex gap-4">
+      {/* Stats with loading indicator */}
+      <div className="flex gap-4 items-center">
         <Badge variant="outline" className="text-sm py-1 px-3">
           {customers.length} von {totalCount.toLocaleString('de-DE')} Kunden
         </Badge>
+        {isFetching && !isFetchingNextPage && (
+          <div className="flex items-center gap-2 text-muted-foreground text-sm">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Suche...</span>
+          </div>
+        )}
       </div>
 
+      {/* Error State */}
+      {error && (
+        <Card className="border-destructive">
+          <CardContent className="p-6 flex items-center gap-4">
+            <AlertCircle className="w-8 h-8 text-destructive" />
+            <div>
+              <h3 className="font-semibold">Fehler beim Laden der Kunden</h3>
+              <p className="text-sm text-muted-foreground">
+                {error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Initial Loading State */}
+      {isInitialLoading && (
+        <div className="flex items-center justify-center min-h-[300px]">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+            <p className="text-muted-foreground">Lade Kunden...</p>
+          </div>
+        </div>
+      )}
+
       {/* Empty State */}
-      {customers.length === 0 && !isLoading && (
+      {customers.length === 0 && !isLoading && !error && (
         <Card>
           <CardContent className="p-8 flex flex-col items-center justify-center text-center">
             <Users className="w-12 h-12 text-muted-foreground mb-4" />
@@ -163,7 +230,7 @@ export function KundenPage() {
       )}
 
       {/* Customer Cards */}
-      {customers.length > 0 && (
+      {customers.length > 0 && !isInitialLoading && (
         <div className="space-y-4">
           {customers.map((customer) => {
             const totalDocs = getTotalDocs(customer)

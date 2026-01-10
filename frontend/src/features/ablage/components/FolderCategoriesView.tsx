@@ -64,13 +64,21 @@ export function FolderCategoriesView({ entityType }: FolderCategoriesViewProps) 
     })
   }
 
-  const parentPath = isCustomer
-    ? `/kunden/$customerId`
-    : `/lieferanten/$supplierId`
+  // Wenn nur ein Ordner existiert, geht der Zurück-Button direkt zur Liste
+  // (weil die Ordner-Auswahl bei nur einem Ordner übersprungen wird)
+  const hasOnlyOneFolder = folders.length === 1
 
-  const parentParams = isCustomer
-    ? { customerId: entityId! }
-    : { supplierId: entityId! }
+  const parentPath = hasOnlyOneFolder
+    ? basePath  // Direkt zur Entity-Liste (Kunden/Lieferanten)
+    : isCustomer
+      ? `/kunden/$customerId`
+      : `/lieferanten/$supplierId`
+
+  const parentParams = hasOnlyOneFolder
+    ? {}  // Keine Params für die Liste
+    : isCustomer
+      ? { customerId: entityId! }
+      : { supplierId: entityId! }
 
   const isLoading = isLoadingEntity || isLoadingFolders
   const error = entityError || foldersError
@@ -144,7 +152,7 @@ export function FolderCategoriesView({ entityType }: FolderCategoriesViewProps) 
       {/* Header with Breadcrumb */}
       <div className="flex items-center gap-4">
         <Link to={parentPath} params={parentParams}>
-          <Button variant="ghost" size="icon" aria-label="Zurück zum Kunden/Lieferanten">
+          <Button variant="ghost" size="icon" aria-label={hasOnlyOneFolder ? `Zurück zur ${isCustomer ? 'Kundenliste' : 'Lieferantenliste'}` : `Zurück zum ${isCustomer ? 'Kunden' : 'Lieferanten'}`}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
         </Link>
