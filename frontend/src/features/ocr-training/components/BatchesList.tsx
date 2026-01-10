@@ -289,12 +289,12 @@ export function BatchesList() {
                         </CardDescription>
                     </div>
                     <div className="flex gap-2">
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}>
                             <SelectTrigger className="w-[150px]">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">Alle</SelectItem>
+                                <SelectItem value="all">Alle</SelectItem>
                                 <SelectItem value="draft">Entwurf</SelectItem>
                                 <SelectItem value="ready">Bereit</SelectItem>
                                 <SelectItem value="in_progress">In Bearbeitung</SelectItem>

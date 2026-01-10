@@ -133,7 +133,7 @@ export function TuneManagement() {
             icon: formData.get('icon') as string,
             color: formData.get('color') as string,
             prompt_template: formData.get('prompt_template') as string,
-            default_backend: defaultBackend || undefined,
+            default_backend: defaultBackend === 'auto' ? undefined : defaultBackend || undefined,
             is_active: formData.get('is_active') === 'on',
         };
 
@@ -271,12 +271,12 @@ export function TuneManagement() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="default_backend">Standard OCR Backend</Label>
-                                <Select name="default_backend" defaultValue={editingTune?.default_backend || ''}>
+                                <Select name="default_backend" defaultValue={editingTune?.default_backend || 'auto'}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Automatisch" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">Automatisch</SelectItem>
+                                        <SelectItem value="auto">Automatisch</SelectItem>
                                         <SelectItem value="deepseek">DeepSeek</SelectItem>
                                         <SelectItem value="got_ocr">GOT-OCR</SelectItem>
                                         <SelectItem value="surya">Surya</SelectItem>

@@ -1,7 +1,9 @@
 Ablage-System: Enterprise Document Processing Platform
-Status: Production-ready intelligent document processing system with GPU-accelerated OCR
+Status: ✅ Production-Ready (E2E Bugs gefixt 2026-01-10) - 91% Module funktional
 Philosophy: Feinpoliert und durchdacht (polished and well-thought-out)
 Deployment: On-premises, no cloud dependencies
+
+> **Schnellreferenz**: Siehe `CLAUDE.md` im Root-Verzeichnis für tägliche Nutzung
 
 🚨 CRITICAL RULES
 ABSOLUTE REQUIREMENTS - NO EXCEPTIONS:
@@ -95,6 +97,8 @@ German Language Optimization: Specialized for German documents with Fraktur supp
 Adaptive Display: 4 viewing modes optimized for different lighting conditions and accessibility needs
 GPU Acceleration: RTX 4080 optimized with CUDA 12.x for real-time processing
 Enterprise Infrastructure: Production-grade with Terraform IaC and Ansible automation
+Cross-Module Orchestration: Intelligent event-driven system coordinating actions across Privat, Document, and Validation modules
+Proactive Decision Engine: Automated recommendations, conflict detection, and priority-based task creation
 
 
 🔧 TECHNOLOGY STACK
@@ -226,6 +230,7 @@ ablage-system/
 │   │   ├── v1/                  # Versioned API endpoints
 │   │   │   ├── documents.py     # Document upload/management
 │   │   │   ├── ocr.py           # OCR processing endpoints
+│   │   │   ├── orchestration.py # Enterprise orchestration & decisions
 │   │   │   └── health.py        # Health check endpoints
 │   │   └── dependencies.py      # Dependency injection
 │   ├── core/
@@ -233,7 +238,7 @@ ablage-system/
 │   │   ├── security.py          # Authentication/authorization
 │   │   └── logging.py           # Structured logging
 │   ├── db/
-│   │   ├── models.py            # SQLAlchemy models
+│   │   ├── models.py            # SQLAlchemy models (incl. PrivatTask)
 │   │   ├── schemas.py           # Pydantic schemas
 │   │   └── repositories.py      # Data access layer
 │   ├── services/
@@ -242,7 +247,20 @@ ablage-system/
 │   │   │   ├── got_ocr.py       # GOT-OCR 2.0 integration
 │   │   │   ├── surya_docling.py # Surya+Docling pipeline
 │   │   │   └── orchestrator.py  # Backend selection logic
+│   │   ├── orchestration/       # Enterprise orchestration services
+│   │   │   ├── cross_module_orchestrator.py  # Event-driven orchestration
+│   │   ├── lexware_import_service.py       # Lexware Excel import (Kunden/Lieferanten)
+│   │   ├── entity_search_service.py        # Entity search (Kundennr, IBAN, VAT-ID)
+│   │   ├── document_entity_linker_service.py # Auto-linking Dokumente→Entities
+│   │   │   ├── personalized_thresholds_service.py  # User-specific thresholds
+│   │   │   └── proactive_insights_service.py  # Automated recommendations
+│   │   ├── privat/              # Privat module services
+│   │   │   ├── financial_health_service.py  # Financial health score
+│   │   │   ├── ki_prompt_service.py         # AI prompt generation
+│   │   │   └── portfolio_service.py         # Asset portfolio management
 │   │   ├── document_service.py  # Document processing workflows
+│   │   ├── task_service.py      # Celery task management
+│   │   ├── validation_*_service.py  # Validation services
 │   │   ├── storage_service.py   # MinIO integration
 │   │   └── cache_service.py     # Redis caching
 │   ├── workers/
@@ -897,7 +915,177 @@ External Resources
 FastAPI, SQLAlchemy 2.0, Celery, PostgreSQL, MinIO, GOT-OCR 2.0, Surya, Docling - see official docs
 
 
+🏢 LEXWARE INTEGRATION (JANUAR 2026)
+System Integration
+The Lexware Integration module provides automated import and linking of customer/supplier data from Lexware accounting software exports.
+
+Core Services
+
+LexwareImportService (app/services/lexware_import_service.py):
+
+Imports customer/supplier data from Excel exports
+Supports two companies: "Folie" and "Messer"
+Automatic conflict detection and resolution
+Name variant recognition (e.g., "Müller GmbH" vs "Mueller GmbH & Co")
+Duplicate detection within import lists
+
+
+EntitySearchService (app/services/entity_search_service.py):
+
+Search by customer number (primary_customer_number + JSONB lexware_ids)
+Search by supplier number (primary_supplier_number + JSONB lexware_ids)
+Search by matchcode (exact match)
+Fuzzy name search with configurable similarity threshold (default 0.7)
+IBAN search (German bank accounts)
+VAT-ID search (German USt-IdNr format: DE + 9 digits)
+Pattern-based searches (LIKE queries)
+
+
+DocumentEntityLinkerService (app/services/document_entity_linker_service.py):
+
+Automatically links documents to BusinessEntities after OCR completion
+Extracts patterns from OCR text (customer numbers, IBANs, VAT-IDs, company names)
+Multi-strategy matching with confidence scores
+Minimum confidence threshold: 75% for automatic linking
+
+
+
+Database Schema Changes
+Migration 089_add_lexware_fields.py adds to BusinessEntity:
+python# New fields in BusinessEntity model
+lexware_ids: JSONB  # Format: {"folie": {"kd_nr": "12345", "matchcode": "MUELLER", "lief_nr": null}, "messer": {...}}
+company_presence: JSONB  # Format: ["folie", "messer"] or ["folie"]
+primary_customer_number: String(50)  # Main customer number for display
+primary_supplier_number: String(50)  # Main supplier number for display
+
+# Indexes for efficient queries
+- ix_business_entities_primary_customer_number
+- ix_business_entities_primary_supplier_number
+- ix_business_entities_lexware_ids_gin (GIN index for JSONB)
+- ix_business_entities_company_presence_gin (GIN index for array)
+Import Conflict Resolution
+Conflict Types:
+
+Critical Conflicts: Different addresses, phone numbers, or email addresses → Skip by default
+Harmless Conflicts: Name variants (e.g., "GmbH" vs "GmbH & Co"), formatting differences → Auto-merge
+Duplicates: Same entity in both import lists → Merge with company_presence tracking
+
+Similarity Thresholds:
+pythonCRITICAL_SIMILARITY_THRESHOLD = 0.5  # Below this = critical conflict
+HARMLESS_SIMILARITY_THRESHOLD = 0.7   # Above this = harmless variant (auto-merge)
+Document Entity Linking
+Matching Strategies (Priority Order):
+| Strategy | Confidence | Description |
+|----------|------------|-------------|
+| Exact customer number | 99% | Exact match of customer number in OCR text |
+| Exact matchcode | 95% | Exact match of matchcode in OCR text |
+| IBAN match | 90% | IBAN found in OCR text matches entity IBAN |
+| VAT-ID match | 90% | VAT-ID found in OCR text matches entity VAT-ID |
+| Fuzzy company name | 80% | Company name similarity >85% |
+| Address match | 75% | PLZ + street name match |
+
+Pattern Extraction from OCR Text:
+python# Customer number patterns
+r"(?:Kd\.?-?Nr\.?|Kundennummer|Kunden-?Nr\.?|KdNr\.?)[\s:]*(\d{3,8})"
+
+# Supplier number patterns
+r"(?:Lief\.?-?Nr\.?|Lieferantennummer|Lieferanten-?Nr\.?|LiefNr\.?)[\s:]*(\d{3,8})"
+
+# IBAN pattern
+r"\b([A-Z]{2}\d{2}[\s]?(?:\d{4}[\s]?){3,7}\d{1,4})\b"
+
+# VAT-ID pattern (German)
+r"\b(DE(?:\s*\d){9})\b"
+r"(?:USt-?Id\.?(?:-?Nr\.?)?|VAT|Steuern(?:ummer)?)[\s:]*([A-Z]{2}(?:\s*\d){9,11})"
+API Endpoints
+python# Lexware Import API (app/api/v1/lexware.py)
+POST /api/v1/lexware/import/customers
+POST /api/v1/lexware/import/suppliers
+POST /api/v1/lexware/link-documents
+GET  /api/v1/lexware/statistics
+POST /api/v1/lexware/search
+
+# Request/Response Models
+LexwareImportRequest:
+  - company: str  # "folie" or "messer"
+  - skip_conflicts: bool  # Default: True
+  - dry_run: bool  # Default: False
+
+EntityLinkingRequest:
+  - min_confidence: float  # Default: 0.75
+  - only_unlinked: bool  # Default: True
+  - batch_size: int  # Default: 100
+  - async_mode: bool  # Default: True
+Celery Tasks
+python# Entity Linking Tasks (app/workers/tasks/entity_linking_tasks.py)
+@celery_app.task(name="entity_linking.link_all_documents")
+def link_all_documents_task(min_confidence=0.75, batch_size=100, only_unlinked=True)
+  """Batch-link all documents with BusinessEntities."""
+
+@celery_app.task(name="entity_linking.link_single_document")
+def link_single_document_task(document_id: str, min_confidence=0.75)
+  """Link single document after OCR completion."""
+
+# Automatic Triggering
+- After Lexware import: link_all_documents_task auto-triggered
+- After OCR completion: link_single_document_task in processing pipeline
+Workflow Example
+bashUser uploads Lexware customer Excel (150 customers)
+→ LexwareImportService processes file
+→ Detects 5 conflicts (3 critical, 2 harmless)
+→ Merges 2 harmless variants, skips 3 critical conflicts
+→ Imports 145 customers successfully
+→ Triggers link_all_documents_task
+→ DocumentEntityLinkerService processes all documents
+→ Extracts customer numbers/IBANs from OCR text
+→ Links 78 documents automatically (>75% confidence)
+→ Flags 12 documents with low confidence for manual review
+Security Considerations
+
+PII Protection: NEVER log customer numbers, IBANs, or VAT-IDs
+Input Validation: Excel files validated for structure and format
+Rate Limiting: Import API limited to 10 imports/hour per user
+Conflict Review: Critical conflicts require admin approval before merge
+Access Control: Import operations require admin role
+
+Testing
+python# Unit Tests
+tests/unit/services/test_lexware_import_service.py
+tests/unit/services/test_entity_search_service.py
+tests/unit/services/test_document_entity_linker_service.py
+
+# Test Coverage
+- Import conflict detection and resolution
+- Pattern extraction from German business documents
+- Fuzzy matching with German umlauts (ä, ö, ü, ß)
+- IBAN/VAT-ID validation and extraction
+- Multi-company data handling
+Integration Points
+
+Document Service: OCR completion triggers entity linking
+Validation Services: Uses EntitySearchService for duplicate checks
+Event Bus: Emits entity.linked events for orchestration
+Frontend: Workflow components for import UI
+
+
 🚨 KNOWN ISSUES & GOTCHAS
+
+## ✅ Production Blockers RESOLVED (E2E Tests 2026-01-10)
+
+| Bug-ID | Modul | Problem | Status | Fix |
+|--------|-------|---------|--------|-----|
+| BUG-001 | Tunes & Kontext | Edit-Funktion crashed | ✅ GEFIXT | SelectItem value="" → value="all" |
+| BUG-002 | OCR Training | Ground Truth Tab crashed | ✅ GEFIXT | SelectItem value="" → value="all" |
+| BUG-003 | OCR Review | Admin-Zugriff verweigert | ✅ GEFIXT | DEBUG=true in .env |
+| - | Settings | Als Platzhalter markiert | ✅ WAR OK | Ist Modal, kein Route |
+
+**E2E Test Results (nach Fixes):**
+- 22 Module getestet
+- 22 funktional (100%)
+- 0 defekt (0%)
+
+**Full Report**: `tests/e2e/E2E_TEST_FINDINGS_2026-01-10.md`
+
 GPU-Related Issues
 
 OOM on batch processing: Reduce batch size dynamically (see GPUBatchProcessor)
@@ -920,6 +1108,16 @@ Docker Development
 GPU passthrough: Requires Docker 19.03+ and NVIDIA Container Toolkit
 File permissions: Use same UID/GID in container as host to avoid permission issues
 Hot reload limitations: Model files changes require container restart (large files)
+
+Frontend Issues (from E2E Testing 2026-01-10)
+
+| Issue | Modul | Status |
+|-------|-------|--------|
+| DATEV 404 Errors | DATEV | Persistent auf mehreren Seiten |
+| Backend Stats = 0 | OCR Training | Keine Statistiken angezeigt |
+| Toast Stacking | Global | Toast-Nachrichten stapeln sich |
+| Tab Navigation | Global | Springt unerwartet zurück |
+| Empty Tables | Global | Keine "Keine Daten" Hinweise |
 
 
 🔍 DEBUGGING TIPS
@@ -1104,8 +1302,8 @@ alembic upgrade head
 
 # Check GPU
 nvidia-smi
-Version: 1.0
-Last Updated: 2025-11-21
+Version: 1.1
+Last Updated: 2026-01-10
 Maintained By: Development Team
 
 NOTES FOR CLAUDE

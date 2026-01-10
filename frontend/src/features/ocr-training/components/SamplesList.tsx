@@ -248,24 +248,24 @@ export function SamplesList() {
                             </CardDescription>
                         </div>
                         <div className="flex gap-2">
-                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}>
                                 <SelectTrigger className="w-[150px]">
                                     <SelectValue placeholder="Status" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">Alle Status</SelectItem>
+                                    <SelectItem value="all">Alle Status</SelectItem>
                                     <SelectItem value="pending">Ausstehend</SelectItem>
                                     <SelectItem value="annotated">Annotiert</SelectItem>
                                     <SelectItem value="verified">Verifiziert</SelectItem>
                                     <SelectItem value="rejected">Abgelehnt</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Select value={languageFilter} onValueChange={setLanguageFilter}>
+                            <Select value={languageFilter || "all"} onValueChange={(v) => setLanguageFilter(v === "all" ? "" : v)}>
                                 <SelectTrigger className="w-[130px]">
                                     <SelectValue placeholder="Sprache" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">Alle Sprachen</SelectItem>
+                                    <SelectItem value="all">Alle Sprachen</SelectItem>
                                     <SelectItem value="de">Deutsch</SelectItem>
                                     <SelectItem value="en">Englisch</SelectItem>
                                     <SelectItem value="nl">Niederländisch</SelectItem>
