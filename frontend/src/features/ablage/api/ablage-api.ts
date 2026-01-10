@@ -191,7 +191,9 @@ export interface FolderInfo {
 }
 
 export async function fetchEntityName(entityId: string): Promise<EntityInfo> {
-    const response = await fetch(`${API_BASE}/entities/${entityId}`);
+    const response = await fetch(`${API_BASE}/entities/${entityId}`, {
+        credentials: 'include',
+    });
     if (!response.ok) {
         throw new Error('Entity nicht gefunden');
     }
@@ -199,7 +201,9 @@ export async function fetchEntityName(entityId: string): Promise<EntityInfo> {
 }
 
 export async function fetchFolderName(folderId: string): Promise<FolderInfo> {
-    const response = await fetch(`${API_BASE}/folders/${folderId}`);
+    const response = await fetch(`${API_BASE}/folders/${folderId}`, {
+        credentials: 'include',
+    });
     if (!response.ok) {
         throw new Error('Ordner nicht gefunden');
     }
@@ -281,7 +285,9 @@ export interface EntityFolder {
  * Display-Format: Kundennummer_Matchcode
  */
 export async function fetchCustomersForFrontend(): Promise<CustomerForFrontend[]> {
-    const response = await fetch(`${API_BASE}/entities/customers`);
+    const response = await fetch(`${API_BASE}/entities/customers`, {
+        credentials: 'include',
+    });
     if (!response.ok) {
         throw new Error('Fehler beim Laden der Kunden');
     }
@@ -293,7 +299,9 @@ export async function fetchCustomersForFrontend(): Promise<CustomerForFrontend[]
  * Display-Format: Nur Matchcode (KEINE Nummer!)
  */
 export async function fetchSuppliersForFrontend(): Promise<SupplierForFrontend[]> {
-    const response = await fetch(`${API_BASE}/entities/suppliers`);
+    const response = await fetch(`${API_BASE}/entities/suppliers`, {
+        credentials: 'include',
+    });
     if (!response.ok) {
         throw new Error('Fehler beim Laden der Lieferanten');
     }
@@ -305,7 +313,9 @@ export async function fetchSuppliersForFrontend(): Promise<SupplierForFrontend[]
  * z.B. Spargelmesser, Folie
  */
 export async function fetchEntityFolders(entityId: string): Promise<EntityFolder[]> {
-    const response = await fetch(`${API_BASE}/entities/${entityId}/folders`);
+    const response = await fetch(`${API_BASE}/entities/${entityId}/folders`, {
+        credentials: 'include',
+    });
     if (!response.ok) {
         throw new Error('Fehler beim Laden der Ordner');
     }
@@ -347,7 +357,9 @@ export async function fetchFolderDocuments(
     if (options.search) params.set('search', options.search);
 
     const url = `${API_BASE}/entities/${entityId}/folders/${folderId}/documents?${params}`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+        credentials: 'include',
+    });
 
     if (!response.ok) {
         throw new Error('Fehler beim Laden der Dokumente');
