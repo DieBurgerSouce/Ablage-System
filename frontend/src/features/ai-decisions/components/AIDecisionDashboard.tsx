@@ -1,8 +1,8 @@
 /**
- * AI Decision Dashboard - Hauptuebersicht
+ * AI Decision Dashboard - Hauptübersicht
  *
  * Zeigt AI/ML Entscheidungen, Drift Status, Experimente
- * und Lernfortschritt in einer kompakten Uebersicht.
+ * und Lernfortschritt in einer kompakten Übersicht.
  */
 
 import { useState } from 'react';
@@ -96,7 +96,7 @@ export function AIDecisionDashboard() {
           <TabsList className="mb-6">
             <TabsTrigger value="overview" className="gap-2">
               <BarChart3 className="w-4 h-4" />
-              Uebersicht
+              Übersicht
             </TabsTrigger>
             <TabsTrigger value="decisions" className="gap-2">
               <Brain className="w-4 h-4" />
@@ -175,7 +175,7 @@ function OverviewTab({
           loading={statsLoading}
         />
         <StatsCard
-          title="Zur Pruefung"
+          title="Zur Prüfung"
           value={stats?.pending_review ?? 0}
           icon={Clock}
           variant={stats?.pending_review ? 'warning' : 'default'}

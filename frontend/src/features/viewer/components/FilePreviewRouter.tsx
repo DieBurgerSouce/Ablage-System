@@ -165,10 +165,10 @@ function UnsupportedTypeFallback({ mimeType, filename, className }: UnsupportedT
                 <FileQuestion className="h-16 w-16" />
                 <div className="space-y-2">
                     <h3 className="text-lg font-medium text-foreground">
-                        Vorschau nicht verfuegbar
+                        Vorschau nicht verfügbar
                     </h3>
                     <p className="text-sm">
-                        Fuer diesen Dateityp ist keine Vorschau verfuegbar.
+                        Für diesen Dateityp ist keine Vorschau verfügbar.
                     </p>
                 </div>
                 <div className="text-xs space-y-1">

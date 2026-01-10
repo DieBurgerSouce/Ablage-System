@@ -1,11 +1,11 @@
 /**
  * SmartSearch Component.
  *
- * Semantische Suche mit KI-Unterstuetzung:
- * - Natuerliche Sprachverarbeitung
+ * Semantische Suche mit KI-Unterstützung:
+ * - Natürliche Sprachverarbeitung
  * - Kontext-basierte Ergebnisse
- * - Such-Vorschlaege
- * - Filter nach Entitaetstyp
+ * - Such-Vorschläge
+ * - Filter nach Entitätstyp
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
@@ -146,7 +146,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
   onSearch,
   onSuggestions,
   onResultClick,
-  placeholder = 'Suchen Sie nach Dokumenten, Vertraegen, Fristen...',
+  placeholder = 'Suchen Sie nach Dokumenten, Verträgen, Fristen...',
   showFilters = true,
   maxResults = 10,
   isSemanticEnabled = true,
@@ -162,7 +162,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 300);
 
-  // Suche ausfuehren
+  // Suche ausführen
   const executeSearch = useCallback(async () => {
     if (!debouncedQuery.trim()) {
       setResults([]);
@@ -188,7 +188,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
     }
   }, [debouncedQuery, activeFilters, onSearch, maxResults]);
 
-  // Vorschlaege laden
+  // Vorschläge laden
   const loadSuggestions = useCallback(async () => {
     if (!onSuggestions || !query.trim() || query.length < 2) {
       setSuggestions([]);
@@ -199,7 +199,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
       const suggestionsData = await onSuggestions(query);
       setSuggestions(suggestionsData);
     } catch (error) {
-      console.error('Fehler beim Laden der Vorschlaege:', error);
+      console.error('Fehler beim Laden der Vorschläge:', error);
       setSuggestions([]);
     }
   }, [query, onSuggestions]);
@@ -268,7 +268,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
               )}
             </CardTitle>
             <CardDescription>
-              Durchsuchen Sie alle Ihre Dokumente und Daten mit natuerlicher Sprache
+              Durchsuchen Sie alle Ihre Dokumente und Daten mit natürlicher Sprache
             </CardDescription>
           </div>
         </div>
@@ -311,9 +311,9 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
               >
                 <Command>
                   <CommandList>
-                    {/* Vorschlaege */}
+                    {/* Vorschläge */}
                     {suggestions.length > 0 && !results.length && (
-                      <CommandGroup heading="Vorschlaege">
+                      <CommandGroup heading="Vorschläge">
                         {suggestions.map((suggestion, index) => (
                           <CommandItem
                             key={index}
@@ -373,7 +373,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
                         <div className="py-6 text-center">
                           <Search className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                           <p className="text-sm text-muted-foreground">
-                            Keine Ergebnisse fuer "{query}"
+                            Keine Ergebnisse für "{query}"
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
                             Versuchen Sie andere Suchbegriffe

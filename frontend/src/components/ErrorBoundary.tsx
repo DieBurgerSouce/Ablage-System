@@ -107,8 +107,8 @@ function ErrorFallback({
                     </AlertTitle>
                     <AlertDescription className="mt-2 text-sm">
                         {errorDescription ||
-                            'Die Anwendung konnte diese Aktion nicht ausfuehren. ' +
-                            'Bitte versuchen Sie es erneut oder kehren Sie zur Startseite zurueck.'}
+                            'Die Anwendung konnte diese Aktion nicht ausführen. ' +
+                            'Bitte versuchen Sie es erneut oder kehren Sie zur Startseite zurück.'}
                     </AlertDescription>
                 </Alert>
 
@@ -117,7 +117,7 @@ function ErrorFallback({
                     <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
                         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                             <Bug className="h-4 w-4" />
-                            <span>Technische Details (nur fuer Entwickler)</span>
+                            <span>Technische Details (nur für Entwickler)</span>
                         </div>
 
                         {/* Error Name and Message */}

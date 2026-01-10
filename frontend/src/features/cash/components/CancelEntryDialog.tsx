@@ -38,8 +38,8 @@ import type { CashEntry } from '@/types/models/cash';
 const cancelSchema = z.object({
   cancellation_reason: z
     .string()
-    .min(10, 'Begruendung muss mindestens 10 Zeichen haben')
-    .max(500, 'Begruendung zu lang'),
+    .min(10, 'Begründung muss mindestens 10 Zeichen haben')
+    .max(500, 'Begründung zu lang'),
 });
 
 type CancelFormData = z.infer<typeof cancelSchema>;

@@ -12,9 +12,9 @@
  * ```tsx
  * <MultiStepForm
  *   steps={[
- *     { id: 'personal', title: 'Persoenliche Daten', component: PersonalStep },
+ *     { id: 'personal', title: 'Persönliche Daten', component: PersonalStep },
  *     { id: 'address', title: 'Adresse', component: AddressStep },
- *     { id: 'confirm', title: 'Bestaetigung', component: ConfirmStep },
+ *     { id: 'confirm', title: 'Bestätigung', component: ConfirmStep },
  *   ]}
  *   onComplete={async (data) => await saveData(data)}
  *   persistKey="employee-wizard"
@@ -132,7 +132,7 @@ export function MultiStepForm<T extends Record<string, unknown>>({
     description,
     onCancel,
     cancelLabel = 'Abbrechen',
-    submitLabel = 'Abschliessen',
+    submitLabel = 'Abschließen',
 }: MultiStepFormProps<T>) {
     const [currentStep, setCurrentStep] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -478,7 +478,7 @@ export function MultiStepForm<T extends Record<string, unknown>>({
                                 disabled={isFirstStep || isSubmitting}
                             >
                                 <ChevronLeft className="w-4 h-4 mr-1" />
-                                Zurueck
+                                Zurück
                             </Button>
 
                             <Button

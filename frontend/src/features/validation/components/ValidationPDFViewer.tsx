@@ -411,7 +411,7 @@ export function ValidationPDFViewer({
     >
       <div className="text-center">
         <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" aria-hidden="true" />
-        <p className="text-lg font-medium">Keine Vorschau verfuegbar</p>
+        <p className="text-lg font-medium">Keine Vorschau verfügbar</p>
         <p className="text-sm">Dokument-ID: {documentId.slice(0, 12)}...</p>
       </div>
     </div>

@@ -347,7 +347,7 @@ export function FinanceMultiFileUpload({
   const handleClose = () => {
     if (isUploading) {
       toast({
-        title: 'Upload laeuft',
+        title: 'Upload läuft',
         description: 'Bitte warten Sie bis der Upload abgeschlossen ist.',
         variant: 'destructive',
       })
@@ -418,7 +418,7 @@ export function FinanceMultiFileUpload({
         return (
           <Badge variant="outline" className="text-xs text-amber-600">
             <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-            OCR laeuft
+            OCR läuft
           </Badge>
         )
       case 'complete':

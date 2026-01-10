@@ -1,12 +1,12 @@
 /**
  * SessionTimeoutWarning - Session Timeout Warnung
  *
- * Zeigt eine modale Warnung an, wenn die Session bald ablaeuft.
- * Der User kann die Session verlaengern oder sich ausloggen.
+ * Zeigt eine modale Warnung an, wenn die Session bald abläuft.
+ * Der User kann die Session verlängern oder sich ausloggen.
  *
  * Features:
  * - Countdown-Anzeige
- * - "Session verlaengern" Button
+ * - "Session verlängern" Button
  * - Auto-Logout bei Ablauf
  */
 
@@ -50,14 +50,14 @@ export function SessionTimeoutWarning() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Zeige Dialog wenn Session bald ablaeuft
+  // Zeige Dialog wenn Session bald abläuft
   useEffect(() => {
     if (sessionExpiringSoon && isAuthenticated) {
       setIsOpen(true);
     }
   }, [sessionExpiringSoon, isAuthenticated]);
 
-  // Session verlaengern
+  // Session verlängern
   const handleExtendSession = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -92,10 +92,10 @@ export function SessionTimeoutWarning() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-amber-500" />
-            Session laeuft ab
+            Session läuft ab
           </DialogTitle>
           <DialogDescription>
-            Ihre Sitzung laeuft bald ab. Moechten Sie angemeldet bleiben?
+            Ihre Sitzung läuft bald ab. Möchten Sie angemeldet bleiben?
           </DialogDescription>
         </DialogHeader>
 
@@ -139,12 +139,12 @@ export function SessionTimeoutWarning() {
             {isRefreshing ? (
               <>
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Verlaengert...
+                Verlängert...
               </>
             ) : (
               <>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Session verlaengern
+                Session verlängern
               </>
             )}
           </Button>

@@ -152,7 +152,7 @@ const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 Minuten
 
 export function FormRegistryProvider({
     children,
-    warningMessage = 'Sie haben ungespeicherte Aenderungen. Moechten Sie die Seite wirklich verlassen?',
+    warningMessage = 'Sie haben ungespeicherte Änderungen. Möchten Sie die Seite wirklich verlassen?',
 }: FormRegistryProviderProps) {
     const [forms, setForms] = useState<Map<string, FormState>>(new Map());
 
@@ -203,7 +203,7 @@ export function FormRegistryProvider({
                 if (next.size >= MAX_FORMS) {
                     console.error(
                         '[FormRegistry] Kann neues Formular nicht registrieren - ' +
-                        'alle bestehenden Formulare haben ungespeicherte Aenderungen.'
+                        'alle bestehenden Formulare haben ungespeicherte Änderungen.'
                     );
                     return prev;
                 }

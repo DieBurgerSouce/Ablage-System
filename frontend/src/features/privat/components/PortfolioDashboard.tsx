@@ -205,7 +205,7 @@ function NetWorthHistoryChart({
     if (data.length < 2) {
         return (
             <div className="h-48 flex items-center justify-center text-muted-foreground">
-                Nicht genuegend historische Daten fuer Trend-Anzeige
+                Nicht genügend historische Daten für Trend-Anzeige
             </div>
         )
     }
@@ -223,8 +223,8 @@ function NetWorthHistoryChart({
                     <Tooltip
                         formatter={(value: number, name: string) => [
                             formatCurrency(value),
-                            name === "netWorth" ? "Nettovermoegen" :
-                            name === "assets" ? "Vermoegen" : "Verbindlichkeiten"
+                            name === "netWorth" ? "Nettovermögen" :
+                            name === "assets" ? "Vermögen" : "Verbindlichkeiten"
                         ]}
                         contentStyle={{
                             backgroundColor: "hsl(var(--background))",
@@ -304,7 +304,7 @@ function FinancialGoalCard({
                         )}>
                             {daysRemaining > 0
                                 ? `${daysRemaining} Tage verbleibend`
-                                : "Faellig"}
+                                : "Fällig"}
                         </span>
                     </div>
                 </div>
@@ -312,7 +312,7 @@ function FinancialGoalCard({
                 {!goal.isOnTrack && goal.monthlySavingsRequired && (
                     <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-950/20 rounded text-xs">
                         <span className="text-yellow-600 dark:text-yellow-400">
-                            {formatCurrency(goal.monthlySavingsRequired)}/Monat benoetigt
+                            {formatCurrency(goal.monthlySavingsRequired)}/Monat benötigt
                         </span>
                     </div>
                 )}
@@ -366,7 +366,7 @@ export function PortfolioDashboard({
         return (
             <Card className="p-8 text-center">
                 <CardDescription>
-                    Keine Portfolio-Daten verfuegbar. Bitte erstellen Sie zuerst einen Snapshot.
+                    Keine Portfolio-Daten verfügbar. Bitte erstellen Sie zuerst einen Snapshot.
                 </CardDescription>
             </Card>
         )
@@ -395,7 +395,7 @@ export function PortfolioDashboard({
             {/* KPI Row */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <KPICard
-                    title="Nettovermoegen"
+                    title="Nettovermögen"
                     value={snapshot.netWorth}
                     prefix="€"
                     decimals={0}
@@ -407,7 +407,7 @@ export function PortfolioDashboard({
                     variant={snapshot.netWorth >= 0 ? "success" : "danger"}
                 />
                 <KPICard
-                    title="Gesamtvermoegen"
+                    title="Gesamtvermögen"
                     value={snapshot.totalAssets}
                     prefix="€"
                     decimals={0}
@@ -436,7 +436,7 @@ export function PortfolioDashboard({
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
-                    <TabsTrigger value="overview">Uebersicht</TabsTrigger>
+                    <TabsTrigger value="overview">Übersicht</TabsTrigger>
                     <TabsTrigger value="goals">
                         Ziele ({activeGoals.length})
                     </TabsTrigger>
@@ -448,9 +448,9 @@ export function PortfolioDashboard({
                         {/* Asset Allocation */}
                         <Card>
                             <CardHeader>
-                                <CardTitle>Vermoegensaufteilung</CardTitle>
+                                <CardTitle>Vermögensaufteilung</CardTitle>
                                 <CardDescription>
-                                    Klicken Sie auf eine Kategorie fuer Details
+                                    Klicken Sie auf eine Kategorie für Details
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -464,12 +464,12 @@ export function PortfolioDashboard({
                         {/* Asset/Liability Breakdown */}
                         <Card>
                             <CardHeader>
-                                <CardTitle>Vermoegen & Verbindlichkeiten</CardTitle>
+                                <CardTitle>Vermögen & Verbindlichkeiten</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
                                     <h4 className="text-sm font-medium text-muted-foreground">
-                                        Vermoegen
+                                        Vermögen
                                     </h4>
                                     {[
                                         { label: "Immobilien", value: snapshot.totalRealEstate, icon: Home, color: ASSET_COLORS.realEstate },
@@ -537,9 +537,9 @@ export function PortfolioDashboard({
                 <TabsContent value="history">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Nettovermoegen-Entwicklung</CardTitle>
+                            <CardTitle>Nettovermögen-Entwicklung</CardTitle>
                             <CardDescription>
-                                Historische Entwicklung Ihres Nettovermoegens
+                                Historische Entwicklung Ihres Nettovermögens
                             </CardDescription>
                         </CardHeader>
                         <CardContent>

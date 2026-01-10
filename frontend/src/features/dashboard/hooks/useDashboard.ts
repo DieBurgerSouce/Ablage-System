@@ -156,11 +156,11 @@ export function useDeleteDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dashboardKeys.list() });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.default() });
-      toast.success('Dashboard geloescht');
+      toast.success('Dashboard gelöscht');
     },
     onError: () => {
       toast.error(
-        'Dashboard konnte nicht geloescht werden. Mindestens ein Dashboard muss existieren.'
+        'Dashboard konnte nicht gelöscht werden. Mindestens ein Dashboard muss existieren.'
       );
     },
   });
@@ -250,10 +250,10 @@ export function useAddWidget(dashboardId: string) {
         queryKey: dashboardKeys.detail(dashboardId),
       });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.default() });
-      toast.success('Widget hinzugefuegt');
+      toast.success('Widget hinzugefügt');
     },
     onError: () => {
-      toast.error('Widget konnte nicht hinzugefuegt werden');
+      toast.error('Widget konnte nicht hinzugefügt werden');
     },
   });
 }

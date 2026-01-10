@@ -36,8 +36,8 @@ interface MatchSuggestionCardProps {
 const MATCH_TYPE_LABELS: Record<string, string> = {
     exact_amount: 'Exakter Betrag',
     reference_match: 'Referenz gefunden',
-    fuzzy_amount: 'Aehnlicher Betrag',
-    date_proximity: 'Zeitliche Naehe',
+    fuzzy_amount: 'Ähnlicher Betrag',
+    date_proximity: 'Zeitliche Nähe',
     combined: 'Kombiniert',
 };
 

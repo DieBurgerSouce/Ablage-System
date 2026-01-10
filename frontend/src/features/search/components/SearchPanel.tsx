@@ -1,7 +1,7 @@
 /**
  * SearchPanel - Controlled Search Component
  *
- * URL-synchronisierte Suchkomponente fuer die Dokumentensuche.
+ * URL-synchronisierte Suchkomponente für die Dokumentensuche.
  * Akzeptiert kontrollierte Props statt internem State.
  *
  * @example
@@ -65,9 +65,9 @@ interface SearchPanelValue {
 interface SearchPanelProps {
     /** Aktuelle Suchwerte (kontrolliert) */
     value: SearchPanelValue;
-    /** Callback wenn sich Werte aendern */
+    /** Callback wenn sich Werte ändern */
     onChange: (updates: Partial<SearchPanelValue>) => void;
-    /** Callback um alle Filter zurueckzusetzen */
+    /** Callback um alle Filter zurückzusetzen */
     onReset?: () => void;
 }
 
@@ -278,7 +278,7 @@ export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
                         onClick={onReset}
                         className="text-muted-foreground hover:text-destructive"
                     >
-                        Filter zuruecksetzen
+                        Filter zurücksetzen
                     </Button>
                 )}
             </MotionDiv>
@@ -289,7 +289,7 @@ export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
                     <DialogHeader>
                         <DialogTitle>Suche speichern</DialogTitle>
                         <DialogDescription>
-                            Speichern Sie diese Suche fuer schnellen Zugriff in der Sidebar.
+                            Speichern Sie diese Suche für schnellen Zugriff in der Sidebar.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">

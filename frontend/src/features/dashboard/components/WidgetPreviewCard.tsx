@@ -85,7 +85,7 @@ export function WidgetPreviewCard({
             ) : (
               <>
                 <Plus className="h-4 w-4 mr-1" />
-                Hinzufuegen
+                Hinzufügen
               </>
             )}
           </Button>

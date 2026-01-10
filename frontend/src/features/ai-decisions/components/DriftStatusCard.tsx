@@ -1,7 +1,7 @@
 /**
  * Drift Status Card - Drift Detection Anzeige
  *
- * Zeigt den aktuellen Drift-Status und ermoeglicht
+ * Zeigt den aktuellen Drift-Status und ermöglicht
  * manuelle Drift-Detection.
  */
 
@@ -76,7 +76,7 @@ export function DriftStatusCard({ driftStatus }: DriftStatusCardProps) {
           </Badge>
         </div>
         <CardDescription>
-          Erkennung von Veraenderungen in den Eingabedaten
+          Erkennung von Veränderungen in den Eingabedaten
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -195,7 +195,7 @@ export function DriftStatusCard({ driftStatus }: DriftStatusCardProps) {
                 runDriftMutation.isPending && 'animate-spin'
               )}
             />
-            {runDriftMutation.isPending ? 'Pruefe...' : 'Drift pruefen'}
+            {runDriftMutation.isPending ? 'Prüfe...' : 'Drift prüfen'}
           </Button>
           <Button
             variant="ghost"
@@ -203,7 +203,7 @@ export function DriftStatusCard({ driftStatus }: DriftStatusCardProps) {
             onClick={() => resetMutation.mutate()}
             disabled={resetMutation.isPending}
           >
-            Referenz zuruecksetzen
+            Referenz zurücksetzen
           </Button>
         </div>
       </CardContent>

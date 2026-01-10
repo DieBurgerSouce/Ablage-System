@@ -61,14 +61,14 @@ interface ReportsListProps {
 const reportTypeLabels: Record<ReportType, string> = {
   document: 'Dokumente',
   finance: 'Finanzen',
-  ocr: 'OCR-Qualitaet',
+  ocr: 'OCR-Qualität',
   custom: 'Benutzerdefiniert',
 };
 
 const dataSourceLabels: Record<DataSource, string> = {
   documents: 'Dokumente',
   invoices: 'Rechnungen',
-  entities: 'Entitaeten',
+  entities: 'Entitäten',
   ocr_results: 'OCR-Ergebnisse',
 };
 
@@ -173,7 +173,7 @@ export function ReportsList({ onEdit, onCreate, onShare, onSchedule }: ReportsLi
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => handleExecute(template)}>
                       <Play className="h-4 w-4 mr-2" />
-                      Ausfuehren
+                      Ausführen
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onEdit?.(template)}>
                       <Pencil className="h-4 w-4 mr-2" />
@@ -198,7 +198,7 @@ export function ReportsList({ onEdit, onCreate, onShare, onSchedule }: ReportsLi
                       className="text-destructive focus:text-destructive"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Loeschen
+                      Löschen
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -213,7 +213,7 @@ export function ReportsList({ onEdit, onCreate, onShare, onSchedule }: ReportsLi
                 {template.is_public && (
                   <Badge variant="outline" className="gap-1">
                     <Users className="h-3 w-3" />
-                    Oeffentlich
+                    Öffentlich
                   </Badge>
                 )}
                 {template.is_scheduled && (
@@ -247,10 +247,10 @@ export function ReportsList({ onEdit, onCreate, onShare, onSchedule }: ReportsLi
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Report-Template loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Report-Template löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie das Template &quot;{templateToDelete?.name}&quot; wirklich loeschen?
-              Diese Aktion kann nicht rueckgaengig gemacht werden.
+              Möchten Sie das Template &quot;{templateToDelete?.name}&quot; wirklich löschen?
+              Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -259,7 +259,7 @@ export function ReportsList({ onEdit, onCreate, onShare, onSchedule }: ReportsLi
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

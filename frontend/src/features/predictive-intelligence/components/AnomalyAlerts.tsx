@@ -2,7 +2,7 @@
  * AnomalyAlerts Component.
  *
  * Zeigt Warnungen bei erkannten Anomalien:
- * - Ungewoehnliche Transaktionen
+ * - Ungewöhnliche Transaktionen
  * - Abweichende Muster
  * - Potenzielle Probleme
  */
@@ -152,9 +152,9 @@ const getStatusLabel = (status: AnomalyStatus): string => {
     case 'new':
       return 'Neu';
     case 'acknowledged':
-      return 'Bestaetigt';
+      return 'Bestätigt';
     case 'resolved':
-      return 'Geloest';
+      return 'Gelöst';
     case 'false_positive':
       return 'Fehlalarm';
     default:
@@ -165,19 +165,19 @@ const getStatusLabel = (status: AnomalyStatus): string => {
 const getTypeLabel = (type: AnomalyType): string => {
   switch (type) {
     case 'unusual_amount':
-      return 'Ungewoehnlicher Betrag';
+      return 'Ungewöhnlicher Betrag';
     case 'unusual_frequency':
-      return 'Ungewoehnliche Haeufigkeit';
+      return 'Ungewöhnliche Häufigkeit';
     case 'unusual_category':
-      return 'Ungewoehnliche Kategorie';
+      return 'Ungewöhnliche Kategorie';
     case 'duplicate_payment':
-      return 'Moegliche Doppelzahlung';
+      return 'Mögliche Doppelzahlung';
     case 'missing_payment':
       return 'Fehlende Zahlung';
     case 'pattern_deviation':
       return 'Musterabweichung';
     case 'budget_exceeded':
-      return 'Budget ueberschritten';
+      return 'Budget überschritten';
     case 'other':
       return 'Sonstiges';
     default:
@@ -247,7 +247,7 @@ const AnomalyDetailDialog: React.FC<{
         )}
 
         <div>
-          <h4 className="text-sm font-medium mb-1">Betroffene Entitaet</h4>
+          <h4 className="text-sm font-medium mb-1">Betroffene Entität</h4>
           <p className="text-sm text-muted-foreground">
             {anomaly.entityType}: {anomaly.entityName}
           </p>
@@ -299,7 +299,7 @@ const AnomalyDetailDialog: React.FC<{
               onClick={() => onResolve?.(anomaly.id)}
             >
               <CheckCircle className="h-4 w-4 mr-1" />
-              Als geloest markieren
+              Als gelöst markieren
             </Button>
           </>
         )}
@@ -309,7 +309,7 @@ const AnomalyDetailDialog: React.FC<{
             onClick={() => onResolve?.(anomaly.id)}
           >
             <CheckCircle className="h-4 w-4 mr-1" />
-            Als geloest markieren
+            Als gelöst markieren
           </Button>
         )}
       </DialogFooter>
@@ -372,7 +372,7 @@ export const AnomalyAlerts: React.FC<AnomalyAlertsProps> = ({
               Anomalie-Warnungen
             </CardTitle>
             <CardDescription>
-              Erkannte Unregelmaeßigkeiten in Ihren Finanzdaten
+              Erkannte Unregelmäßigkeiten in Ihren Finanzdaten
             </CardDescription>
           </div>
           {newAnomalies.length > 0 && (
@@ -434,7 +434,7 @@ export const AnomalyAlerts: React.FC<AnomalyAlertsProps> = ({
               </div>
             )}
 
-            {/* Bestaetigte Anomalien */}
+            {/* Bestätigte Anomalien */}
             {acknowledgedAnomalies.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium mb-3 text-muted-foreground">
@@ -472,13 +472,13 @@ export const AnomalyAlerts: React.FC<AnomalyAlertsProps> = ({
               </div>
             )}
 
-            {/* Geloeste Anomalien (collapsed) */}
+            {/* Gelöste Anomalien (collapsed) */}
             {resolvedAnomalies.length > 0 && (
               <details className="group">
                 <summary className="text-sm font-medium text-muted-foreground cursor-pointer list-none">
                   <div className="flex items-center gap-2">
                     <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
-                    Geloest ({resolvedAnomalies.length})
+                    Gelöst ({resolvedAnomalies.length})
                   </div>
                 </summary>
                 <div className="mt-3 space-y-2">

@@ -28,7 +28,7 @@ const loopIcons: Record<LoopType, React.ElementType> = {
 const loopLabels: Record<LoopType, string> = {
   count: 'Anzahl-Schleife',
   while: 'While-Schleife',
-  for_each: 'Fuer jedes Element',
+  for_each: 'Für jedes Element',
 };
 
 function LoopNode({ data, selected }: NodeProps<LoopNodeData>) {
@@ -42,15 +42,15 @@ function LoopNode({ data, selected }: NodeProps<LoopNodeData>) {
 
     switch (loopType) {
       case 'count':
-        return config.count ? `${config.count} Durchlaeufe` : 'Anzahl festlegen...';
+        return config.count ? `${config.count} Durchläufe` : 'Anzahl festlegen...';
       case 'while':
         return config.max_iterations
           ? `Max. ${config.max_iterations} Iterationen`
           : 'Bedingung festlegen...';
       case 'for_each':
         return config.items_field
-          ? `Ueber: ${config.items_field}`
-          : 'Feld auswaehlen...';
+          ? `Über: ${config.items_field}`
+          : 'Feld auswählen...';
       default:
         return '';
     }

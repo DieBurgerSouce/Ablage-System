@@ -365,7 +365,7 @@ export function EmailViewer({ fileData, className }: EmailViewerProps) {
                     const decoder = new TextDecoder('utf-8');
                     rawText = decoder.decode(fileData);
                 } else {
-                    throw new Error('Ungueltiges Dateiformat');
+                    throw new Error('Ungültiges Dateiformat');
                 }
 
                 if (cancelled) return;
@@ -533,7 +533,7 @@ export function EmailViewer({ fileData, className }: EmailViewerProps) {
                     </pre>
                 ) : (
                     <p className="text-muted-foreground italic">
-                        Kein Inhalt verfuegbar
+                        Kein Inhalt verfügbar
                     </p>
                 )}
             </div>

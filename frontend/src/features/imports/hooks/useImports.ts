@@ -132,10 +132,10 @@ export function useDeleteEmailConfig() {
     mutationFn: (configId: string) => deleteEmailConfig(configId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: importKeys.emailConfigs() });
-      toast.success('E-Mail-Import-Konfiguration geloescht');
+      toast.success('E-Mail-Import-Konfiguration gelöscht');
     },
     onError: (error: Error) => {
-      toast.error(`Fehler beim Loeschen: ${error.message}`);
+      toast.error(`Fehler beim Löschen: ${error.message}`);
     },
   });
 }
@@ -258,10 +258,10 @@ export function useDeleteFolderConfig() {
     mutationFn: (configId: string) => deleteFolderConfig(configId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: importKeys.folderConfigs() });
-      toast.success('Ordner-Import-Konfiguration geloescht');
+      toast.success('Ordner-Import-Konfiguration gelöscht');
     },
     onError: (error: Error) => {
-      toast.error(`Fehler beim Loeschen: ${error.message}`);
+      toast.error(`Fehler beim Löschen: ${error.message}`);
     },
   });
 }
@@ -404,10 +404,10 @@ export function useDeleteImportRule() {
     mutationFn: (ruleId: string) => deleteImportRule(ruleId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: importKeys.rules() });
-      toast.success('Import-Regel geloescht');
+      toast.success('Import-Regel gelöscht');
     },
     onError: (error: Error) => {
-      toast.error(`Fehler beim Loeschen: ${error.message}`);
+      toast.error(`Fehler beim Löschen: ${error.message}`);
     },
   });
 }

@@ -599,7 +599,7 @@ export const privatIntelligenceService = {
         calculatedAt: response.data.calculated_at,
       };
     } catch (error) {
-      handleApiError(error, 'Vollstaendige Investment-Analyse laden');
+      handleApiError(error, 'Vollständige Investment-Analyse laden');
     }
   },
 

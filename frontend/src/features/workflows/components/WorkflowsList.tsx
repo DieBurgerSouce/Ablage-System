@@ -132,7 +132,7 @@ function WorkflowCard({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onExecute(workflow.id)}>
                 <Play className="mr-2 h-4 w-4" />
-                Ausfuehren
+                Ausführen
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => onToggle(workflow.id)}>
@@ -154,7 +154,7 @@ function WorkflowCard({
                 className="text-destructive"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Loeschen
+                Löschen
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -183,7 +183,7 @@ function WorkflowCard({
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1">
             <Play className="h-3 w-3" />
-            {workflow.execution_count} Ausfuehrungen
+            {workflow.execution_count} Ausführungen
           </span>
           <span className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
@@ -384,10 +384,10 @@ export default function WorkflowsList() {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Workflow loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Workflow löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Diese Aktion kann nicht rueckgaengig gemacht werden. Der Workflow und
-              alle zugehoerigen Ausfuehrungen werden dauerhaft geloescht.
+              Diese Aktion kann nicht rückgängig gemacht werden. Der Workflow und
+              alle zugehörigen Ausführungen werden dauerhaft gelöscht.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -396,7 +396,7 @@ export default function WorkflowsList() {
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

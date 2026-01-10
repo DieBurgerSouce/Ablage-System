@@ -53,10 +53,10 @@ function BucketBadge({ bucket }: { bucket: string }) {
     return (
         <Badge
             variant={BUCKET_VARIANTS[bucket] ?? 'outline'}
-            aria-label={isOverdue ? `${label} ueberfaellig` : label}
+            aria-label={isOverdue ? `${label} überfällig` : label}
         >
             {label}
-            {isOverdue && <span className="sr-only"> (ueberfaellig)</span>}
+            {isOverdue && <span className="sr-only"> (überfällig)</span>}
         </Badge>
     );
 }
@@ -148,7 +148,7 @@ export function AgingReportTable({ type }: AgingReportTableProps) {
                                 <TableHead scope="col">Rechnung</TableHead>
                                 <TableHead scope="col">{counterpartyLabel}</TableHead>
                                 <TableHead scope="col" className="text-right">Betrag</TableHead>
-                                <TableHead scope="col">Faelligkeit</TableHead>
+                                <TableHead scope="col">Fälligkeit</TableHead>
                                 <TableHead scope="col">Status</TableHead>
                                 <TableHead scope="col" className="text-right">Tage</TableHead>
                                 <TableHead scope="col" className="w-[50px]">
@@ -181,25 +181,25 @@ export function AgingReportTable({ type }: AgingReportTableProps) {
                                             {item.days_overdue > 0 ? (
                                                 <span
                                                     className="text-destructive font-medium"
-                                                    aria-label={`${item.days_overdue} Tage ueberfaellig`}
+                                                    aria-label={`${item.days_overdue} Tage überfällig`}
                                                 >
                                                     +{item.days_overdue}
-                                                    <span className="sr-only"> Tage ueberfaellig</span>
+                                                    <span className="sr-only"> Tage überfällig</span>
                                                 </span>
                                             ) : (
                                                 <span
                                                     className="text-muted-foreground"
-                                                    aria-label={item.days_overdue === 0 ? 'Heute faellig' : `${Math.abs(item.days_overdue)} Tage bis zur Faelligkeit`}
+                                                    aria-label={item.days_overdue === 0 ? 'Heute fällig' : `${Math.abs(item.days_overdue)} Tage bis zur Fälligkeit`}
                                                 >
                                                     {item.days_overdue}
                                                     <span className="sr-only">
-                                                        {item.days_overdue === 0 ? ' (heute faellig)' : ` Tage bis zur Faelligkeit`}
+                                                        {item.days_overdue === 0 ? ' (heute fällig)' : ` Tage bis zur Fälligkeit`}
                                                     </span>
                                                 </span>
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            <Button variant="ghost" size="icon" asChild aria-label={`Dokument ${item.invoice_number || item.document_id} in neuem Tab oeffnen`}>
+                                            <Button variant="ghost" size="icon" asChild aria-label={`Dokument ${item.invoice_number || item.document_id} in neuem Tab öffnen`}>
                                                 <a href={`/documents/${item.document_id}`} target="_blank" rel="noopener noreferrer">
                                                     <ExternalLink className="h-4 w-4" aria-hidden="true" />
                                                 </a>

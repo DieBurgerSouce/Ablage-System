@@ -1,8 +1,8 @@
 /**
  * DelayNode Component
  *
- * ReactFlow Knoten fuer Zeitverzoegerungen.
- * Unterstuetzt Sekunden-Delays und absolute Zeitpunkte.
+ * ReactFlow Knoten für Zeitverzögerungen.
+ * Unterstützt Sekunden-Delays und absolute Zeitpunkte.
  */
 
 import { memo, useMemo } from 'react';
@@ -64,7 +64,7 @@ function DelayNode({ data, selected }: NodeProps<DelayNodeData>) {
       {/* Header */}
       <div className="flex items-center gap-2 rounded-t-md bg-gray-500 px-3 py-2">
         <Clock className="h-4 w-4 text-white" />
-        <span className="text-sm font-medium text-white">Verzoegerung</span>
+        <span className="text-sm font-medium text-white">Verzögerung</span>
       </div>
 
       {/* Body */}

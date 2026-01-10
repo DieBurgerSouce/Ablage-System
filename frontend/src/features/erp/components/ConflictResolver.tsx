@@ -1,7 +1,7 @@
 /**
  * ERP Conflict Resolver Component
  *
- * UI zur Aufloesung von Sync-Konflikten zwischen lokalem System und ERP.
+ * UI zur Auflösung von Sync-Konflikten zwischen lokalem System und ERP.
  */
 
 import { useState } from 'react';
@@ -76,7 +76,7 @@ function PriorityBadge({ priority }: { priority: 'low' | 'normal' | 'high' | 'cr
 function StatusBadge({ status }: { status: ERPConflictStatus }) {
   const config: Record<ERPConflictStatus, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
     pending: { variant: 'outline', label: 'Offen' },
-    resolved: { variant: 'default', label: 'Aufgeloest' },
+    resolved: { variant: 'default', label: 'Aufgelöst' },
     ignored: { variant: 'secondary', label: 'Ignoriert' },
   };
 
@@ -251,7 +251,7 @@ function ConflictCard({ conflict, onResolve, isResolving }: ConflictCardProps) {
               <Label htmlFor={`notes-${conflict.id}`}>Notizen (optional)</Label>
               <Textarea
                 id={`notes-${conflict.id}`}
-                placeholder="Begruendung fuer die Entscheidung..."
+                placeholder="Begründung für die Entscheidung..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className="mt-1"
@@ -276,22 +276,22 @@ function ConflictCard({ conflict, onResolve, isResolving }: ConflictCardProps) {
                 disabled={isResolving}
               >
                 <ArrowRight className="h-4 w-4 mr-2" />
-                ERP uebernehmen
+                ERP übernehmen
               </Button>
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="secondary" disabled={isResolving}>
                     <Merge className="h-4 w-4 mr-2" />
-                    Zusammenfuehren
+                    Zusammenführen
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Daten zusammenfuehren</AlertDialogTitle>
+                    <AlertDialogTitle>Daten zusammenführen</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Diese Funktion ist noch in Entwicklung. Bitte waehlen Sie
-                      vorerst "Lokal behalten" oder "ERP uebernehmen".
+                      Diese Funktion ist noch in Entwicklung. Bitte wählen Sie
+                      vorerst "Lokal behalten" oder "ERP übernehmen".
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -317,10 +317,10 @@ function ConflictCard({ conflict, onResolve, isResolving }: ConflictCardProps) {
           <div className="flex items-center gap-2 pt-4 border-t text-sm text-muted-foreground">
             <Check className="h-4 w-4" />
             <span>
-              Aufgeloest mit:{' '}
+              Aufgelöst mit:{' '}
               {conflict.resolution === 'local_wins' && 'Lokal behalten'}
-              {conflict.resolution === 'remote_wins' && 'ERP uebernommen'}
-              {conflict.resolution === 'merged' && 'Zusammengefuehrt'}
+              {conflict.resolution === 'remote_wins' && 'ERP übernommen'}
+              {conflict.resolution === 'merged' && 'Zusammengeführt'}
               {conflict.resolution === 'ignored' && 'Ignoriert'}
             </span>
           </div>
@@ -363,10 +363,10 @@ export function ConflictResolver() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Konflikt-Aufloesung</h2>
+          <h2 className="text-xl font-semibold">Konflikt-Auflösung</h2>
           <p className="text-muted-foreground">
             {pendingCount > 0
-              ? `${pendingCount} offene Konflikte warten auf Aufloesung`
+              ? `${pendingCount} offene Konflikte warten auf Auflösung`
               : 'Keine offenen Konflikte'}
           </p>
         </div>
@@ -395,7 +395,7 @@ export function ConflictResolver() {
             <SelectContent>
               <SelectItem value="">Alle Status</SelectItem>
               <SelectItem value="pending">Offen</SelectItem>
-              <SelectItem value="resolved">Aufgeloest</SelectItem>
+              <SelectItem value="resolved">Aufgelöst</SelectItem>
               <SelectItem value="ignored">Ignoriert</SelectItem>
             </SelectContent>
           </Select>
@@ -414,7 +414,7 @@ export function ConflictResolver() {
             <p className="text-lg font-medium">Keine Konflikte gefunden</p>
             <p className="text-sm">
               {statusFilter === 'pending'
-                ? 'Alle Konflikte wurden aufgeloest'
+                ? 'Alle Konflikte wurden aufgelöst'
                 : 'Es gibt keine Konflikte mit diesem Filter'}
             </p>
           </CardContent>

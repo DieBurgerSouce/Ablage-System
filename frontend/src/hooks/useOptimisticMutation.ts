@@ -136,13 +136,13 @@ export function useOptimisticMutation<
       // Dies muss VOR dem isUndoLockedRef Check kommen, da mutationId sich
       // zwischen schnellen Clicks aendern kann waehrend Lock noch nicht gesetzt ist
       if (mutationId !== mutationIdRef.current) {
-        toast.error('Diese Aktion ist nicht mehr verfuegbar');
+        toast.error('Diese Aktion ist nicht mehr verfügbar');
         return;
       }
 
       // Dann weitere Checks: undoFn vorhanden, Daten vorhanden, nicht bereits gelockt
       if (!undoFn || !previousData || isUndoLockedRef.current) {
-        toast.error('Rueckgaengig machen nicht mehr moeglich');
+        toast.error('Rückgängig machen nicht mehr möglich');
         return;
       }
 
@@ -157,10 +157,10 @@ export function useOptimisticMutation<
 
       try {
         await undoFn(variables);
-        toast.success('Rueckgaengig gemacht');
+        toast.success('Rückgängig gemacht');
       } catch {
         // Re-apply the original mutation on undo failure
-        toast.error('Rueckgaengig machen fehlgeschlagen');
+        toast.error('Rückgängig machen fehlgeschlagen');
         queryClient.invalidateQueries({ queryKey });
       } finally {
         // WICHTIG: Ref UND State zuruecksetzen fuer Konsistenz
@@ -222,7 +222,7 @@ export function useOptimisticMutation<
           // Toast with Undo button
           toast.success(message, {
             action: {
-              label: 'Rueckgaengig',
+              label: 'Rückgängig',
               onClick: () => {
                 undoMutate(variables, context.previousData, capturedMutationId);
               },
@@ -287,8 +287,8 @@ export function useOptimisticDelete<TItem extends { id: string }>(options: {
     mutationFn: deleteFn,
     queryKey,
     optimisticUpdate: (cache, id) => cache.filter((item) => item.id !== id),
-    successMessage: `${itemName} geloescht`,
-    errorMessage: `Fehler beim Loeschen`,
+    successMessage: `${itemName} gelöscht`,
+    errorMessage: `Fehler beim Löschen`,
     undoable: !!restoreFn,
     undoFn: restoreFn,
   });

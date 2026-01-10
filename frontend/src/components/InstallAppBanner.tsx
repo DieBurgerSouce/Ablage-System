@@ -60,13 +60,13 @@ export function InstallAppBanner({
           <div>
             <p className="font-medium">App installieren</p>
             <p className="text-sm text-muted-foreground">
-              Fuer schnelleren Zugriff auf Ihrem Geraet
+              Für schnelleren Zugriff auf Ihrem Gerät
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={handleDismiss}>
-            Spaeter
+            Später
           </Button>
           <Button size="sm" onClick={handleInstall}>
             <Download className="h-4 w-4 mr-2" />
@@ -117,7 +117,7 @@ export function InstallAppBanner({
             size="icon"
             onClick={handleDismiss}
             className="h-8 w-8"
-            aria-label="Banner schliessen"
+            aria-label="Banner schließen"
           >
             <X className="h-4 w-4" />
           </Button>

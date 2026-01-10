@@ -80,7 +80,7 @@ export function OfflineIndicator() {
                 aria-live="polite"
             >
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Aenderungen werden synchronisiert...</span>
+                <span>Änderungen werden synchronisiert...</span>
             </div>
         )
     }
@@ -104,7 +104,7 @@ export function OfflineIndicator() {
                     <span>Verbindung wiederhergestellt</span>
                     {pendingCount > 0 && (
                         <span className="ml-1 text-xs opacity-80">
-                            ({pendingCount} Aenderungen synchronisiert)
+                            ({pendingCount} Änderungen synchronisiert)
                         </span>
                     )}
                 </>
@@ -114,9 +114,9 @@ export function OfflineIndicator() {
                     <span>
                         Keine Internetverbindung
                         {pendingCount > 0 ? (
-                            <> - {pendingCount} Aenderung{pendingCount !== 1 ? 'en' : ''} warten auf Synchronisierung</>
+                            <> - {pendingCount} Änderung{pendingCount !== 1 ? 'en' : ''} warten auf Synchronisierung</>
                         ) : (
-                            <> - Einige Funktionen sind moeglicherweise nicht verfuegbar</>
+                            <> - Einige Funktionen sind möglicherweise nicht verfügbar</>
                         )}
                     </span>
                 </>

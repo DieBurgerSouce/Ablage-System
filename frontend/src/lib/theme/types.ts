@@ -103,7 +103,7 @@ export const themePresets: ThemePreset[] = [
   {
     id: 'ocean',
     name: 'Ocean',
-    description: 'Beruhigendes Meerblau mit Tuerkis-Akzent',
+    description: 'Beruhigendes Meerblau mit Türkis-Akzent',
     config: {
       primaryHue: 200,
       accentHue: 175,
@@ -113,7 +113,7 @@ export const themePresets: ThemePreset[] = [
   {
     id: 'forest',
     name: 'Forest',
-    description: 'Natuerliches Gruen mit Amber-Akzent',
+    description: 'Natürliches Grün mit Amber-Akzent',
     config: {
       primaryHue: 145,
       accentHue: 40,
@@ -133,7 +133,7 @@ export const themePresets: ThemePreset[] = [
   {
     id: 'minimal',
     name: 'Minimal',
-    description: 'Gedaempftes Grau mit subtilen Akzenten',
+    description: 'Gedämpftes Grau mit subtilen Akzenten',
     config: {
       primaryHue: 220,
       accentHue: 220,

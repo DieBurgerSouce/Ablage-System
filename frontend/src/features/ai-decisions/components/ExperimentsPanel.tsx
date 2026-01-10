@@ -1,5 +1,5 @@
 /**
- * Experiments Panel - A/B Testing Uebersicht
+ * Experiments Panel - A/B Testing Übersicht
  *
  * Zeigt alle A/B Experimente mit Status,
  * Varianten und Ergebnissen.
@@ -238,7 +238,7 @@ function ExperimentCard({
                     disabled={isConcluding}
                   >
                     <Square className="w-4 h-4 mr-1" />
-                    Abschliessen
+                    Abschließen
                   </Button>
                 )}
                 <CollapsibleTrigger asChild>

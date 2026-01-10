@@ -120,7 +120,7 @@ export function CashEntryList({
           <div>
             <CardTitle>Kassenbuch</CardTitle>
             <CardDescription>
-              {totalCount} {totalCount === 1 ? 'Eintrag' : 'Eintraege'}
+              {totalCount} {totalCount === 1 ? 'Eintrag' : 'Einträge'}
             </CardDescription>
           </div>
           {onCreateEntry && (

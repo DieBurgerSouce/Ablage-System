@@ -137,7 +137,7 @@ export function ExtractedFieldDisplay({
                   <AlertTriangle className="h-4 w-4 text-red-500" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  Niedrige Konfidenz - Pruefung empfohlen
+                  Niedrige Konfidenz - Prüfung empfohlen
                 </TooltipContent>
               </Tooltip>
             )}

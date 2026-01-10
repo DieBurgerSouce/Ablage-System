@@ -406,8 +406,8 @@ class LexwareImportService:
 
         return {
             "entity_type": EntityType.CUSTOMER.value,
-            "name": display_name,
-            "display_name": firma or matchcode or display_name,
+            "name": firma or matchcode,  # Echter Firmenname
+            "display_name": display_name,  # Format: "12345_Matchcode"
             "short_name": matchcode[:50] if matchcode else None,
             "street": strasse,
             "street_number": haus_nr,

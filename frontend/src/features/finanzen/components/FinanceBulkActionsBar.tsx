@@ -97,7 +97,7 @@ export function FinanceBulkActionsBar({
     } catch (error) {
       toast({
         title: 'Fehler',
-        description: 'Bulk-Loeschung fehlgeschlagen',
+        description: 'Bulk-Löschung fehlgeschlagen',
         variant: 'destructive',
       })
     } finally {
@@ -292,7 +292,7 @@ export function FinanceBulkActionsBar({
               {isDeleting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Loesche...
+                  Lösche...
                 </>
               ) : (
                 <>

@@ -106,7 +106,7 @@ export function XlsxViewer({ fileData, className }: XlsxViewerProps) {
                     }
                     arrayBuffer = await response.arrayBuffer();
                 } else {
-                    throw new Error('Ungueltiges Dateiformat');
+                    throw new Error('Ungültiges Dateiformat');
                 }
 
                 // Verify size of loaded buffer

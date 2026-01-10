@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './app/routes/__root'
+import { Route as WorkflowsRouteImport } from './app/routes/workflows'
 import { Route as ValidationQueueRouteImport } from './app/routes/validation-queue'
 import { Route as UploadRouteImport } from './app/routes/upload'
 import { Route as StreckengeschaeftRouteImport } from './app/routes/streckengeschaeft'
@@ -32,6 +33,7 @@ import { Route as AutomationRouteImport } from './app/routes/automation'
 import { Route as AdminRouteImport } from './app/routes/admin'
 import { Route as SplatRouteImport } from './app/routes/$'
 import { Route as IndexRouteImport } from './app/routes/index'
+import { Route as WorkflowsIndexRouteImport } from './app/routes/workflows.index'
 import { Route as StreckengeschaeftIndexRouteImport } from './app/routes/streckengeschaeft.index'
 import { Route as SpesenIndexRouteImport } from './app/routes/spesen.index'
 import { Route as PrivatIndexRouteImport } from './app/routes/privat.index'
@@ -41,6 +43,8 @@ import { Route as KundenIndexRouteImport } from './app/routes/kunden.index'
 import { Route as KasseIndexRouteImport } from './app/routes/kasse.index'
 import { Route as FinanzenIndexRouteImport } from './app/routes/finanzen.index'
 import { Route as AdminIndexRouteImport } from './app/routes/admin.index'
+import { Route as WorkflowsNewRouteImport } from './app/routes/workflows.new'
+import { Route as WorkflowsWorkflowIdRouteImport } from './app/routes/workflows.$workflowId'
 import { Route as ValidationQueueIdRouteImport } from './app/routes/validation-queue.$id'
 import { Route as StreckengeschaeftZmRouteImport } from './app/routes/streckengeschaeft.zm'
 import { Route as StreckengeschaeftWarnungenRouteImport } from './app/routes/streckengeschaeft.warnungen'
@@ -51,6 +55,7 @@ import { Route as StreckengeschaeftClassificationIdRouteImport } from './app/rou
 import { Route as SpesenReportIdRouteImport } from './app/routes/spesen.$reportId'
 import { Route as ResetPasswordTokenRouteImport } from './app/routes/reset-password.$token'
 import { Route as PrivatVersicherungenRouteImport } from './app/routes/privat.versicherungen'
+import { Route as PrivatPortfolioRouteImport } from './app/routes/privat.portfolio'
 import { Route as PrivatNotfallRouteImport } from './app/routes/privat.notfall'
 import { Route as PrivatImmobilienRouteImport } from './app/routes/privat.immobilien'
 import { Route as PrivatFristenRouteImport } from './app/routes/privat.fristen'
@@ -82,6 +87,7 @@ import { Route as AdminMahnungenIndexRouteImport } from './app/routes/admin.mahn
 import { Route as AdminErpIndexRouteImport } from './app/routes/admin.erp.index'
 import { Route as AdminDatevIndexRouteImport } from './app/routes/admin.datev.index'
 import { Route as AdminBankingIndexRouteImport } from './app/routes/admin.banking.index'
+import { Route as WorkflowsWorkflowIdHistoryRouteImport } from './app/routes/workflows.$workflowId.history'
 import { Route as PrivatVersicherungenInsuranceIdRouteImport } from './app/routes/privat.versicherungen.$insuranceId'
 import { Route as PrivatSpacesSpaceIdRouteImport } from './app/routes/privat.spaces.$spaceId'
 import { Route as PrivatImmobilienPropertyIdRouteImport } from './app/routes/privat.immobilien.$propertyId'
@@ -117,6 +123,11 @@ import { Route as LieferantenSupplierIdFolderIdCategoryRouteImport } from './app
 import { Route as KundenCustomerIdFolderIdCategoryRouteImport } from './app/routes/kunden.$customerId.$folderId.$category'
 import { Route as AdminOcrTrainingBatchIdRouteImport } from './app/routes/admin.ocr-training.batch.$id'
 
+const WorkflowsRoute = WorkflowsRouteImport.update({
+  id: '/workflows',
+  path: '/workflows',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ValidationQueueRoute = ValidationQueueRouteImport.update({
   id: '/validation-queue',
   path: '/validation-queue',
@@ -232,6 +243,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WorkflowsIndexRoute = WorkflowsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => WorkflowsRoute,
+} as any)
 const StreckengeschaeftIndexRoute = StreckengeschaeftIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -276,6 +292,16 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const WorkflowsNewRoute = WorkflowsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => WorkflowsRoute,
+} as any)
+const WorkflowsWorkflowIdRoute = WorkflowsWorkflowIdRouteImport.update({
+  id: '/$workflowId',
+  path: '/$workflowId',
+  getParentRoute: () => WorkflowsRoute,
 } as any)
 const ValidationQueueIdRoute = ValidationQueueIdRouteImport.update({
   id: '/$id',
@@ -330,6 +356,11 @@ const ResetPasswordTokenRoute = ResetPasswordTokenRouteImport.update({
 const PrivatVersicherungenRoute = PrivatVersicherungenRouteImport.update({
   id: '/versicherungen',
   path: '/versicherungen',
+  getParentRoute: () => PrivatRoute,
+} as any)
+const PrivatPortfolioRoute = PrivatPortfolioRouteImport.update({
+  id: '/portfolio',
+  path: '/portfolio',
   getParentRoute: () => PrivatRoute,
 } as any)
 const PrivatNotfallRoute = PrivatNotfallRouteImport.update({
@@ -488,6 +519,12 @@ const AdminBankingIndexRoute = AdminBankingIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminBankingRoute,
 } as any)
+const WorkflowsWorkflowIdHistoryRoute =
+  WorkflowsWorkflowIdHistoryRouteImport.update({
+    id: '/history',
+    path: '/history',
+    getParentRoute: () => WorkflowsWorkflowIdRoute,
+  } as any)
 const PrivatVersicherungenInsuranceIdRoute =
   PrivatVersicherungenInsuranceIdRouteImport.update({
     id: '/$insuranceId',
@@ -697,6 +734,7 @@ export interface FileRoutesByFullPath {
   '/streckengeschaeft': typeof StreckengeschaeftRouteWithChildren
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/workflows': typeof WorkflowsRouteWithChildren
   '/admin/ai-decisions': typeof AdminAiDecisionsRoute
   '/admin/banking': typeof AdminBankingRouteWithChildren
   '/admin/datev': typeof AdminDatevRouteWithChildren
@@ -720,6 +758,7 @@ export interface FileRoutesByFullPath {
   '/privat/fristen': typeof PrivatFristenRoute
   '/privat/immobilien': typeof PrivatImmobilienRouteWithChildren
   '/privat/notfall': typeof PrivatNotfallRoute
+  '/privat/portfolio': typeof PrivatPortfolioRoute
   '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
   '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
@@ -730,6 +769,8 @@ export interface FileRoutesByFullPath {
   '/streckengeschaeft/warnungen': typeof StreckengeschaeftWarnungenRoute
   '/streckengeschaeft/zm': typeof StreckengeschaeftZmRoute
   '/validation-queue/$id': typeof ValidationQueueIdRoute
+  '/workflows/$workflowId': typeof WorkflowsWorkflowIdRouteWithChildren
+  '/workflows/new': typeof WorkflowsNewRoute
   '/admin/': typeof AdminIndexRoute
   '/finanzen/': typeof FinanzenIndexRoute
   '/kasse/': typeof KasseIndexRoute
@@ -739,6 +780,7 @@ export interface FileRoutesByFullPath {
   '/privat/': typeof PrivatIndexRoute
   '/spesen/': typeof SpesenIndexRoute
   '/streckengeschaeft/': typeof StreckengeschaeftIndexRoute
+  '/workflows/': typeof WorkflowsIndexRoute
   '/admin/banking/accounts': typeof AdminBankingAccountsRoute
   '/admin/banking/import': typeof AdminBankingImportRoute
   '/admin/banking/payments': typeof AdminBankingPaymentsRoute
@@ -768,6 +810,7 @@ export interface FileRoutesByFullPath {
   '/privat/immobilien/$propertyId': typeof PrivatImmobilienPropertyIdRoute
   '/privat/spaces/$spaceId': typeof PrivatSpacesSpaceIdRoute
   '/privat/versicherungen/$insuranceId': typeof PrivatVersicherungenInsuranceIdRoute
+  '/workflows/$workflowId/history': typeof WorkflowsWorkflowIdHistoryRoute
   '/admin/banking/': typeof AdminBankingIndexRoute
   '/admin/datev/': typeof AdminDatevIndexRoute
   '/admin/erp/': typeof AdminErpIndexRoute
@@ -812,6 +855,7 @@ export interface FileRoutesByTo {
   '/privat/fristen': typeof PrivatFristenRoute
   '/privat/immobilien': typeof PrivatImmobilienRouteWithChildren
   '/privat/notfall': typeof PrivatNotfallRoute
+  '/privat/portfolio': typeof PrivatPortfolioRoute
   '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
   '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
@@ -822,6 +866,8 @@ export interface FileRoutesByTo {
   '/streckengeschaeft/warnungen': typeof StreckengeschaeftWarnungenRoute
   '/streckengeschaeft/zm': typeof StreckengeschaeftZmRoute
   '/validation-queue/$id': typeof ValidationQueueIdRoute
+  '/workflows/$workflowId': typeof WorkflowsWorkflowIdRouteWithChildren
+  '/workflows/new': typeof WorkflowsNewRoute
   '/admin': typeof AdminIndexRoute
   '/finanzen': typeof FinanzenIndexRoute
   '/kasse': typeof KasseIndexRoute
@@ -831,6 +877,7 @@ export interface FileRoutesByTo {
   '/privat': typeof PrivatIndexRoute
   '/spesen': typeof SpesenIndexRoute
   '/streckengeschaeft': typeof StreckengeschaeftIndexRoute
+  '/workflows': typeof WorkflowsIndexRoute
   '/admin/banking/accounts': typeof AdminBankingAccountsRoute
   '/admin/banking/import': typeof AdminBankingImportRoute
   '/admin/banking/payments': typeof AdminBankingPaymentsRoute
@@ -860,6 +907,7 @@ export interface FileRoutesByTo {
   '/privat/immobilien/$propertyId': typeof PrivatImmobilienPropertyIdRoute
   '/privat/spaces/$spaceId': typeof PrivatSpacesSpaceIdRoute
   '/privat/versicherungen/$insuranceId': typeof PrivatVersicherungenInsuranceIdRoute
+  '/workflows/$workflowId/history': typeof WorkflowsWorkflowIdHistoryRoute
   '/admin/banking': typeof AdminBankingIndexRoute
   '/admin/datev': typeof AdminDatevIndexRoute
   '/admin/erp': typeof AdminErpIndexRoute
@@ -899,6 +947,7 @@ export interface FileRoutesById {
   '/streckengeschaeft': typeof StreckengeschaeftRouteWithChildren
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/workflows': typeof WorkflowsRouteWithChildren
   '/admin/ai-decisions': typeof AdminAiDecisionsRoute
   '/admin/banking': typeof AdminBankingRouteWithChildren
   '/admin/datev': typeof AdminDatevRouteWithChildren
@@ -922,6 +971,7 @@ export interface FileRoutesById {
   '/privat/fristen': typeof PrivatFristenRoute
   '/privat/immobilien': typeof PrivatImmobilienRouteWithChildren
   '/privat/notfall': typeof PrivatNotfallRoute
+  '/privat/portfolio': typeof PrivatPortfolioRoute
   '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
   '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
@@ -932,6 +982,8 @@ export interface FileRoutesById {
   '/streckengeschaeft/warnungen': typeof StreckengeschaeftWarnungenRoute
   '/streckengeschaeft/zm': typeof StreckengeschaeftZmRoute
   '/validation-queue/$id': typeof ValidationQueueIdRoute
+  '/workflows/$workflowId': typeof WorkflowsWorkflowIdRouteWithChildren
+  '/workflows/new': typeof WorkflowsNewRoute
   '/admin/': typeof AdminIndexRoute
   '/finanzen/': typeof FinanzenIndexRoute
   '/kasse/': typeof KasseIndexRoute
@@ -941,6 +993,7 @@ export interface FileRoutesById {
   '/privat/': typeof PrivatIndexRoute
   '/spesen/': typeof SpesenIndexRoute
   '/streckengeschaeft/': typeof StreckengeschaeftIndexRoute
+  '/workflows/': typeof WorkflowsIndexRoute
   '/admin/banking/accounts': typeof AdminBankingAccountsRoute
   '/admin/banking/import': typeof AdminBankingImportRoute
   '/admin/banking/payments': typeof AdminBankingPaymentsRoute
@@ -970,6 +1023,7 @@ export interface FileRoutesById {
   '/privat/immobilien/$propertyId': typeof PrivatImmobilienPropertyIdRoute
   '/privat/spaces/$spaceId': typeof PrivatSpacesSpaceIdRoute
   '/privat/versicherungen/$insuranceId': typeof PrivatVersicherungenInsuranceIdRoute
+  '/workflows/$workflowId/history': typeof WorkflowsWorkflowIdHistoryRoute
   '/admin/banking/': typeof AdminBankingIndexRoute
   '/admin/datev/': typeof AdminDatevIndexRoute
   '/admin/erp/': typeof AdminErpIndexRoute
@@ -1010,6 +1064,7 @@ export interface FileRouteTypes {
     | '/streckengeschaeft'
     | '/upload'
     | '/validation-queue'
+    | '/workflows'
     | '/admin/ai-decisions'
     | '/admin/banking'
     | '/admin/datev'
@@ -1033,6 +1088,7 @@ export interface FileRouteTypes {
     | '/privat/fristen'
     | '/privat/immobilien'
     | '/privat/notfall'
+    | '/privat/portfolio'
     | '/privat/versicherungen'
     | '/reset-password/$token'
     | '/spesen/$reportId'
@@ -1043,6 +1099,8 @@ export interface FileRouteTypes {
     | '/streckengeschaeft/warnungen'
     | '/streckengeschaeft/zm'
     | '/validation-queue/$id'
+    | '/workflows/$workflowId'
+    | '/workflows/new'
     | '/admin/'
     | '/finanzen/'
     | '/kasse/'
@@ -1052,6 +1110,7 @@ export interface FileRouteTypes {
     | '/privat/'
     | '/spesen/'
     | '/streckengeschaeft/'
+    | '/workflows/'
     | '/admin/banking/accounts'
     | '/admin/banking/import'
     | '/admin/banking/payments'
@@ -1081,6 +1140,7 @@ export interface FileRouteTypes {
     | '/privat/immobilien/$propertyId'
     | '/privat/spaces/$spaceId'
     | '/privat/versicherungen/$insuranceId'
+    | '/workflows/$workflowId/history'
     | '/admin/banking/'
     | '/admin/datev/'
     | '/admin/erp/'
@@ -1125,6 +1185,7 @@ export interface FileRouteTypes {
     | '/privat/fristen'
     | '/privat/immobilien'
     | '/privat/notfall'
+    | '/privat/portfolio'
     | '/privat/versicherungen'
     | '/reset-password/$token'
     | '/spesen/$reportId'
@@ -1135,6 +1196,8 @@ export interface FileRouteTypes {
     | '/streckengeschaeft/warnungen'
     | '/streckengeschaeft/zm'
     | '/validation-queue/$id'
+    | '/workflows/$workflowId'
+    | '/workflows/new'
     | '/admin'
     | '/finanzen'
     | '/kasse'
@@ -1144,6 +1207,7 @@ export interface FileRouteTypes {
     | '/privat'
     | '/spesen'
     | '/streckengeschaeft'
+    | '/workflows'
     | '/admin/banking/accounts'
     | '/admin/banking/import'
     | '/admin/banking/payments'
@@ -1173,6 +1237,7 @@ export interface FileRouteTypes {
     | '/privat/immobilien/$propertyId'
     | '/privat/spaces/$spaceId'
     | '/privat/versicherungen/$insuranceId'
+    | '/workflows/$workflowId/history'
     | '/admin/banking'
     | '/admin/datev'
     | '/admin/erp'
@@ -1211,6 +1276,7 @@ export interface FileRouteTypes {
     | '/streckengeschaeft'
     | '/upload'
     | '/validation-queue'
+    | '/workflows'
     | '/admin/ai-decisions'
     | '/admin/banking'
     | '/admin/datev'
@@ -1234,6 +1300,7 @@ export interface FileRouteTypes {
     | '/privat/fristen'
     | '/privat/immobilien'
     | '/privat/notfall'
+    | '/privat/portfolio'
     | '/privat/versicherungen'
     | '/reset-password/$token'
     | '/spesen/$reportId'
@@ -1244,6 +1311,8 @@ export interface FileRouteTypes {
     | '/streckengeschaeft/warnungen'
     | '/streckengeschaeft/zm'
     | '/validation-queue/$id'
+    | '/workflows/$workflowId'
+    | '/workflows/new'
     | '/admin/'
     | '/finanzen/'
     | '/kasse/'
@@ -1253,6 +1322,7 @@ export interface FileRouteTypes {
     | '/privat/'
     | '/spesen/'
     | '/streckengeschaeft/'
+    | '/workflows/'
     | '/admin/banking/accounts'
     | '/admin/banking/import'
     | '/admin/banking/payments'
@@ -1282,6 +1352,7 @@ export interface FileRouteTypes {
     | '/privat/immobilien/$propertyId'
     | '/privat/spaces/$spaceId'
     | '/privat/versicherungen/$insuranceId'
+    | '/workflows/$workflowId/history'
     | '/admin/banking/'
     | '/admin/datev/'
     | '/admin/erp/'
@@ -1321,12 +1392,20 @@ export interface RootRouteChildren {
   StreckengeschaeftRoute: typeof StreckengeschaeftRouteWithChildren
   UploadRoute: typeof UploadRoute
   ValidationQueueRoute: typeof ValidationQueueRouteWithChildren
+  WorkflowsRoute: typeof WorkflowsRouteWithChildren
   DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRouteWithChildren
   ResetPasswordTokenRoute: typeof ResetPasswordTokenRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/workflows': {
+      id: '/workflows'
+      path: '/workflows'
+      fullPath: '/workflows'
+      preLoaderRoute: typeof WorkflowsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/validation-queue': {
       id: '/validation-queue'
       path: '/validation-queue'
@@ -1488,6 +1567,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/workflows/': {
+      id: '/workflows/'
+      path: '/'
+      fullPath: '/workflows/'
+      preLoaderRoute: typeof WorkflowsIndexRouteImport
+      parentRoute: typeof WorkflowsRoute
+    }
     '/streckengeschaeft/': {
       id: '/streckengeschaeft/'
       path: '/'
@@ -1550,6 +1636,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/workflows/new': {
+      id: '/workflows/new'
+      path: '/new'
+      fullPath: '/workflows/new'
+      preLoaderRoute: typeof WorkflowsNewRouteImport
+      parentRoute: typeof WorkflowsRoute
+    }
+    '/workflows/$workflowId': {
+      id: '/workflows/$workflowId'
+      path: '/$workflowId'
+      fullPath: '/workflows/$workflowId'
+      preLoaderRoute: typeof WorkflowsWorkflowIdRouteImport
+      parentRoute: typeof WorkflowsRoute
     }
     '/validation-queue/$id': {
       id: '/validation-queue/$id'
@@ -1619,6 +1719,13 @@ declare module '@tanstack/react-router' {
       path: '/versicherungen'
       fullPath: '/privat/versicherungen'
       preLoaderRoute: typeof PrivatVersicherungenRouteImport
+      parentRoute: typeof PrivatRoute
+    }
+    '/privat/portfolio': {
+      id: '/privat/portfolio'
+      path: '/portfolio'
+      fullPath: '/privat/portfolio'
+      preLoaderRoute: typeof PrivatPortfolioRouteImport
       parentRoute: typeof PrivatRoute
     }
     '/privat/notfall': {
@@ -1837,6 +1944,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/banking/'
       preLoaderRoute: typeof AdminBankingIndexRouteImport
       parentRoute: typeof AdminBankingRoute
+    }
+    '/workflows/$workflowId/history': {
+      id: '/workflows/$workflowId/history'
+      path: '/history'
+      fullPath: '/workflows/$workflowId/history'
+      preLoaderRoute: typeof WorkflowsWorkflowIdHistoryRouteImport
+      parentRoute: typeof WorkflowsWorkflowIdRoute
     }
     '/privat/versicherungen/$insuranceId': {
       id: '/privat/versicherungen/$insuranceId'
@@ -2439,6 +2553,7 @@ interface PrivatRouteChildren {
   PrivatFristenRoute: typeof PrivatFristenRoute
   PrivatImmobilienRoute: typeof PrivatImmobilienRouteWithChildren
   PrivatNotfallRoute: typeof PrivatNotfallRoute
+  PrivatPortfolioRoute: typeof PrivatPortfolioRoute
   PrivatVersicherungenRoute: typeof PrivatVersicherungenRouteWithChildren
   PrivatIndexRoute: typeof PrivatIndexRoute
   PrivatSpacesSpaceIdRoute: typeof PrivatSpacesSpaceIdRoute
@@ -2450,6 +2565,7 @@ const PrivatRouteChildren: PrivatRouteChildren = {
   PrivatFristenRoute: PrivatFristenRoute,
   PrivatImmobilienRoute: PrivatImmobilienRouteWithChildren,
   PrivatNotfallRoute: PrivatNotfallRoute,
+  PrivatPortfolioRoute: PrivatPortfolioRoute,
   PrivatVersicherungenRoute: PrivatVersicherungenRouteWithChildren,
   PrivatIndexRoute: PrivatIndexRoute,
   PrivatSpacesSpaceIdRoute: PrivatSpacesSpaceIdRoute,
@@ -2508,6 +2624,33 @@ const ValidationQueueRouteWithChildren = ValidationQueueRoute._addFileChildren(
   ValidationQueueRouteChildren,
 )
 
+interface WorkflowsWorkflowIdRouteChildren {
+  WorkflowsWorkflowIdHistoryRoute: typeof WorkflowsWorkflowIdHistoryRoute
+}
+
+const WorkflowsWorkflowIdRouteChildren: WorkflowsWorkflowIdRouteChildren = {
+  WorkflowsWorkflowIdHistoryRoute: WorkflowsWorkflowIdHistoryRoute,
+}
+
+const WorkflowsWorkflowIdRouteWithChildren =
+  WorkflowsWorkflowIdRoute._addFileChildren(WorkflowsWorkflowIdRouteChildren)
+
+interface WorkflowsRouteChildren {
+  WorkflowsWorkflowIdRoute: typeof WorkflowsWorkflowIdRouteWithChildren
+  WorkflowsNewRoute: typeof WorkflowsNewRoute
+  WorkflowsIndexRoute: typeof WorkflowsIndexRoute
+}
+
+const WorkflowsRouteChildren: WorkflowsRouteChildren = {
+  WorkflowsWorkflowIdRoute: WorkflowsWorkflowIdRouteWithChildren,
+  WorkflowsNewRoute: WorkflowsNewRoute,
+  WorkflowsIndexRoute: WorkflowsIndexRoute,
+}
+
+const WorkflowsRouteWithChildren = WorkflowsRoute._addFileChildren(
+  WorkflowsRouteChildren,
+)
+
 interface DocumentsDocumentIdRouteChildren {
   DocumentsDocumentIdRelationshipsRoute: typeof DocumentsDocumentIdRelationshipsRoute
 }
@@ -2543,6 +2686,7 @@ const rootRouteChildren: RootRouteChildren = {
   StreckengeschaeftRoute: StreckengeschaeftRouteWithChildren,
   UploadRoute: UploadRoute,
   ValidationQueueRoute: ValidationQueueRouteWithChildren,
+  WorkflowsRoute: WorkflowsRouteWithChildren,
   DocumentsDocumentIdRoute: DocumentsDocumentIdRouteWithChildren,
   ResetPasswordTokenRoute: ResetPasswordTokenRoute,
 }

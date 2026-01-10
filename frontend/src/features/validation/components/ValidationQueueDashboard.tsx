@@ -5,7 +5,7 @@
  * Zeigt die Warteschlange mit Filtern, Batch-Operationen und Quick-Stats.
  *
  * Layout:
- * - Stats Cards oben (Ausstehend, Heute geprueft, Kritisch, Approval Rate)
+ * - Stats Cards oben (Ausstehend, Heute geprüft, Kritisch, Approval Rate)
  * - Tabs: Warteschlange | Meine Items | Batch | Regeln | Statistiken
  * - Filter-Panel links, Tabelle rechts
  * - Batch-Actions-Bar unten bei Selektion

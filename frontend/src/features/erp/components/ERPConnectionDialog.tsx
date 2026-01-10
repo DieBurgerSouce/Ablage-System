@@ -49,7 +49,7 @@ import type { ERPConnection, ERPEntityType } from '../types';
 const connectionSchema = z.object({
   name: z.string().min(1, 'Name ist erforderlich').max(100),
   erp_type: z.enum(['odoo', 'lexware', 'sap_b1', 'custom']),
-  url: z.string().url('Gueltige URL erforderlich'),
+  url: z.string().url('Gültige URL erforderlich'),
   database_name: z.string().optional(),
   username: z.string().min(1, 'Benutzername ist erforderlich'),
   api_key: z.string().optional(),
@@ -226,7 +226,7 @@ export function ERPConnectionDialog({
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Waehlen..." />
+                            <SelectValue placeholder="Wählen..." />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -298,14 +298,14 @@ export function ERPConnectionDialog({
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder={isEditing ? '(unveraendert)' : 'Geheimer Schluessel'}
+                        placeholder={isEditing ? '(unverändert)' : 'Geheimer Schlüssel'}
                         {...field}
                       />
                     </FormControl>
                     <FormDescription>
                       {isEditing
                         ? 'Leer lassen, um bestehenden Key zu behalten'
-                        : 'API-Schluessel oder Passwort fuer die Authentifizierung'}
+                        : 'API-Schlüssel oder Passwort für die Authentifizierung'}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -433,7 +433,7 @@ export function ERPConnectionDialog({
                   name="batch_size"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Batch-Groesse</FormLabel>
+                      <FormLabel>Batch-Größe</FormLabel>
                       <FormControl>
                         <Input
                           type="number"

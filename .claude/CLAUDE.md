@@ -195,12 +195,29 @@ const { data: folders, isLoading, error } = useQuery({
 - **Usage**: Document metadata editing, invoice fields, entity properties
 - **Key Props**: `value`, `onSave`, `type`, `schema`, `autoSaveDelay`
 
+**EnterpriseDataTable Component** (`components/ui/data-table/EnterpriseDataTable.tsx`)
+- **Purpose**: Advanced data table with enterprise features
+- **Features**: Sorting, filtering, pagination, grouping, column visibility, export (CSV/Excel), row selection
+- **Built on**: TanStack Table v8 with full type safety
+- **Usage**: All data-heavy dashboards (AI decisions, reports, validation queues)
+- **Key Props**: `columns`, `data`, `enableGrouping`, `enableExport`, `onRowClick`
+
+**MultiStepForm Component** (`components/forms/MultiStepForm.tsx`)
+- **Purpose**: Generic multi-step wizard with validation, persistence, and animations
+- **Features**: Step-by-step navigation, Zod validation per step, SessionStorage persistence (with 500KB limit + auto-cleanup), dirty state warnings, keyboard navigation
+- **Enterprise Fix**: QuotaExceededError prevention with size checks and old-wizard cleanup
+- **Usage**: Employee onboarding, workflow creation, multi-page forms
+- **Key Props**: `steps`, `onComplete`, `persistKey`, `schema`, `initialData`
+
 **Key Components by Feature**:
 
 | Feature | Component | Path | Purpose |
 |---------|-----------|------|---------|
+| **Ablage** | MoveFolderDialog | `ablage/components/MoveFolderDialog.tsx` | Bulk move documents to different categories (WCAG 2.1 AA) |
 | **Banking** | AgingReportTable | `banking/components/AgingReportTable.tsx` | Receivables/payables aging report with filtering |
+| **Banking** | MatchSuggestionCard | `banking/components/reconciliation/MatchSuggestionCard.tsx` | Transaction-invoice match suggestions with confidence scoring |
 | **ERP** | SyncDashboard | `erp/components/SyncDashboard.tsx` | ERP sync status, history, manual sync triggers |
+| **Forms** | MultiStepForm | `components/forms/MultiStepForm.tsx` | Generic wizard with validation, persistence, animations |
 | **GoBD** | ArchiveManagement | `gobd/components/ArchiveManagement.tsx` | Archive management with integrity verification |
 | **Reports** | ReportBuilder | `reports/components/ReportBuilder.tsx` | Visual report builder (data source, columns, filters, charts) |
 | **Search** | SearchPanel | `search/components/SearchPanel.tsx` | Controlled search with URL sync, saved searches |
@@ -543,13 +560,21 @@ DEFAULT_SIMILARITY_THRESHOLD = 0.7  # Fuzzy name matching
 
 ### Critical Bug Fixes (2026-01-10)
 
-**BUG: FastAPI Route Ordering Issue** (`app/api/v1/entities.py`)
+**BUG #1: FastAPI Route Ordering Issue** (`app/api/v1/entities.py`)
 - **Problem**: Static routes `/customers` and `/suppliers` were defined AFTER dynamic route `/{entity_id}`
 - **Symptom**: 403/422 errors when accessing `/api/v1/entities/customers` or `/api/v1/entities/suppliers`
 - **Root Cause**: FastAPI matches routes in definition order. "customers" was incorrectly matched as UUID parameter.
 - **Fix**: Moved static routes (`/customers`, `/suppliers`, `/suggestions`) BEFORE `/{entity_id}` route
 - **Commit**: 665ca1cc
 - **Impact**: Frontend Ablage module now correctly loads customer/supplier lists
+
+**BUG #2: Missing Cookie Credentials in API Calls** (`ablage-api.ts`)
+- **Problem**: Entity API fetch calls not sending httpOnly session cookies
+- **Symptom**: 401 Unauthorized errors on `/api/v1/entities/*` endpoints after successful login
+- **Root Cause**: Fetch API default behavior doesn't include credentials for same-origin requests
+- **Fix**: Added `credentials: "include"` option to all fetch calls in ablage-api.ts
+- **Commit**: 25542547
+- **Impact**: Entity API endpoints now properly authenticated with session cookies
 
 ### Future Enhancements
 

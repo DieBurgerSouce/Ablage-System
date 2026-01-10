@@ -47,14 +47,14 @@ export function ReconciliationPage() {
         try {
             await manualMatch.mutateAsync({ transactionId, documentId });
             toast({
-                title: 'Manuell verknuepft',
-                description: 'Die Transaktion wurde mit dem Dokument verknuepft.',
+                title: 'Manuell verknüpft',
+                description: 'Die Transaktion wurde mit dem Dokument verknüpft.',
             });
             refetch();
         } catch (err) {
             toast({
                 title: 'Fehler',
-                description: 'Verknuepfung fehlgeschlagen.',
+                description: 'Verknüpfung fehlgeschlagen.',
                 variant: 'destructive',
             });
             throw err;
@@ -151,7 +151,7 @@ export function ReconciliationPage() {
                         )}
                     </CardTitle>
                     <CardDescription>
-                        Diese Transaktionen haben noch kein verknuepftes Dokument.
+                        Diese Transaktionen haben noch kein verknüpftes Dokument.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

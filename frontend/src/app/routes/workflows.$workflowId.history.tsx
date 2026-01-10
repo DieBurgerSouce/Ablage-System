@@ -37,7 +37,7 @@ function WorkflowHistoryPage() {
         <AlertDescription>
           Der Workflow konnte nicht geladen werden.
           <Button variant="link" asChild className="ml-2">
-            <Link to="/workflows">Zurueck zur Uebersicht</Link>
+            <Link to="/workflows">Zurück zur Übersicht</Link>
           </Button>
         </AlertDescription>
       </Alert>
@@ -50,15 +50,15 @@ function WorkflowHistoryPage() {
         <Button variant="ghost" size="sm" asChild>
           <Link to="/workflows/$workflowId" params={{ workflowId }}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Zurueck zum Workflow
+            Zurück zum Workflow
           </Link>
         </Button>
       </div>
 
       <div>
-        <h1 className="text-2xl font-bold">Ausfuehrungshistorie</h1>
+        <h1 className="text-2xl font-bold">Ausführungshistorie</h1>
         <p className="text-muted-foreground">
-          {workflow.name} - Alle bisherigen Ausfuehrungen
+          {workflow.name} - Alle bisherigen Ausführungen
         </p>
       </div>
 

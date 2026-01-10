@@ -135,7 +135,7 @@ export function FinanzenYearCategoriesView() {
         </Badge>
         <Badge variant="outline" className="text-sm py-1.5 px-3">
           <Calendar className="w-4 h-4 mr-2" />
-          Letzte Aktivitaet: {formatDate(year.lastDocumentDate)}
+          Letzte Aktivität: {formatDate(year.lastDocumentDate)}
         </Badge>
         {aggregations && aggregations.pendingDeadlines > 0 && (
           <Badge variant="outline" className="text-sm py-1.5 px-3 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800">

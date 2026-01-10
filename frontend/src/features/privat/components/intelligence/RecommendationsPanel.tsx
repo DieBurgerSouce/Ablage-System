@@ -155,7 +155,7 @@ export function RecommendationsPanel({
               Smart Empfehlungen
             </CardTitle>
             <CardDescription>
-              Personalisierte Vorschlaege zur Optimierung
+              Personalisierte Vorschläge zur Optimierung
             </CardDescription>
           </div>
           <Button
@@ -258,7 +258,7 @@ export function RecommendationsPanel({
           </div>
         ) : (
           <p className="text-center py-8 text-muted-foreground">
-            Keine Daten verfuegbar
+            Keine Daten verfügbar
           </p>
         )}
       </CardContent>

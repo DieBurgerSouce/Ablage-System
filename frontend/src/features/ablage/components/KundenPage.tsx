@@ -1,12 +1,17 @@
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import { Users, FolderOpen, ChevronRight, FileText, AlertCircle, Loader2 } from 'lucide-react'
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { Users, FolderOpen, ChevronRight, FileText, AlertCircle, Loader2, Search, ChevronDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { fetchCustomersForFrontend, type CustomerForFrontend } from '../api/ablage-api'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { fetchCustomersForFrontend, type CustomerForFrontend, type PaginatedEntityResponse } from '../api/ablage-api'
+
+const PAGE_SIZE = 50
 
 /**
- * KundenPage - Zeigt alle Kunden als klickbare Ordner-Cards
+ * KundenPage - Zeigt Kunden als klickbare Ordner-Cards mit Suche und Pagination
  *
  * Klick auf einen Kunden navigiert zur Ordner-Auswahl (Spargelmesser/Folie)
  * Display-Format: Kundennummer_Matchcode (z.B. "12345_Mueller")
@@ -15,23 +20,51 @@ import { fetchCustomersForFrontend, type CustomerForFrontend } from '../api/abla
  */
 export function KundenPage() {
   const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
 
-  const { data: customers = [], isLoading, error } = useQuery({
-    queryKey: ['customers'],
-    queryFn: fetchCustomersForFrontend,
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const {
+    data,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['customers', debouncedSearch],
+    queryFn: async ({ pageParam = 1 }) => {
+      return fetchCustomersForFrontend({
+        page: pageParam,
+        pageSize: PAGE_SIZE,
+        search: debouncedSearch || undefined,
+      })
+    },
+    getNextPageParam: (lastPage: PaginatedEntityResponse<CustomerForFrontend>) => {
+      if (lastPage.page < lastPage.total_pages) {
+        return lastPage.page + 1
+      }
+      return undefined
+    },
+    initialPageParam: 1,
   })
+
+  // Flatten all pages into a single array
+  const customers = useMemo(() => {
+    return data?.pages.flatMap(page => page.items) ?? []
+  }, [data])
+
+  const totalCount = data?.pages[0]?.total ?? 0
 
   const handleCardClick = (customerId: string) => {
     navigate({ to: '/kunden/$customerId', params: { customerId } })
-  }
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '-'
-    return new Date(dateStr).toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })
   }
 
   // Helper: Gesamtdokumente pro Kunde berechnen
@@ -50,9 +83,7 @@ export function KundenPage() {
     )
   }
 
-  const totalDocuments = customers.reduce((sum, c) => sum + getTotalDocs(c), 0)
-
-  // Loading State
+  // Loading State (initial load)
   if (isLoading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
@@ -96,24 +127,36 @@ export function KundenPage() {
         </p>
       </div>
 
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Suche nach Kundennummer oder Name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
       {/* Stats */}
       <div className="flex gap-4">
         <Badge variant="outline" className="text-sm py-1 px-3">
-          {customers.length} Kunden
-        </Badge>
-        <Badge variant="outline" className="text-sm py-1 px-3">
-          {totalDocuments.toLocaleString('de-DE')} Dokumente gesamt
+          {customers.length} von {totalCount.toLocaleString('de-DE')} Kunden
         </Badge>
       </div>
 
       {/* Empty State */}
-      {customers.length === 0 && (
+      {customers.length === 0 && !isLoading && (
         <Card>
           <CardContent className="p-8 flex flex-col items-center justify-center text-center">
             <Users className="w-12 h-12 text-muted-foreground mb-4" />
-            <h3 className="font-semibold text-lg">Keine Kunden vorhanden</h3>
+            <h3 className="font-semibold text-lg">
+              {debouncedSearch ? 'Keine Kunden gefunden' : 'Keine Kunden vorhanden'}
+            </h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Importiere Kunden über die Lexware-Schnittstelle
+              {debouncedSearch
+                ? `Keine Ergebnisse für "${debouncedSearch}"`
+                : 'Importiere Kunden über die Lexware-Schnittstelle'}
             </p>
           </CardContent>
         </Card>
@@ -201,6 +244,31 @@ export function KundenPage() {
               </Card>
             )
           })}
+
+          {/* Load More Button */}
+          {hasNextPage && (
+            <div className="flex justify-center pt-4">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="gap-2"
+              >
+                {isFetchingNextPage ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Lade weitere...
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-4 h-4" />
+                    Mehr laden ({totalCount - customers.length} weitere)
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

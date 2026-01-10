@@ -58,8 +58,8 @@ export function WidgetCatalogDrawer({ open, onOpenChange }: WidgetCatalogDrawerP
 
   const handleAddWidget = (type: string) => {
     addWidget(type);
-    toast.success('Widget hinzugefuegt', {
-      description: `${WIDGET_REGISTRY[type]?.label || type} wurde zum Dashboard hinzugefuegt.`,
+    toast.success('Widget hinzugefügt', {
+      description: `${WIDGET_REGISTRY[type]?.label || type} wurde zum Dashboard hinzugefügt.`,
     });
   };
 

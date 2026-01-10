@@ -1,8 +1,8 @@
 /**
  * AI Threshold Settings - Konfidenz-Schwellenwerte
  *
- * Ermoeglicht das Anpassen der Konfidenz-Schwellenwerte
- * fuer verschiedene Quality Decisions.
+ * Ermöglicht das Anpassen der Konfidenz-Schwellenwerte
+ * für verschiedene Quality Decisions.
  */
 
 import { useState, useEffect } from 'react';
@@ -39,7 +39,7 @@ const thresholdConfigs: ThresholdConfig[] = [
   {
     key: 'excellent',
     label: 'Exzellent',
-    description: 'Konfidenz fuer hoechste Qualitaet',
+    description: 'Konfidenz für höchste Qualität',
     color: 'bg-green-500',
     min: 0.9,
     max: 1.0,
@@ -155,7 +155,7 @@ export function AIThresholdSettings() {
               disabled={!hasChanges}
             >
               <RotateCcw className="w-4 h-4 mr-1" />
-              Zuruecksetzen
+              Zurücksetzen
             </Button>
             <Button
               size="sm"
@@ -168,7 +168,7 @@ export function AIThresholdSettings() {
           </div>
         </div>
         <CardDescription>
-          Passen Sie die Schwellenwerte fuer Qualitaetsentscheidungen an
+          Passen Sie die Schwellenwerte für Qualitätsentscheidungen an
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

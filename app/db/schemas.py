@@ -2375,6 +2375,9 @@ class BusinessEntityBase(BaseModel):
         """Validiere deutsche USt-IdNr."""
         if v is None:
             return v
+        # Behandle ungueltige Altdaten ("nan", "none", etc.)
+        if v.lower() in ("nan", "none", "null", ""):
+            return None
         # Entferne Leerzeichen
         v = v.replace(" ", "").upper()
         if not v.startswith("DE") or len(v) != 11:
@@ -2387,10 +2390,23 @@ class BusinessEntityBase(BaseModel):
         """Validiere IBAN-Format."""
         if v is None:
             return v
+        # Behandle ungueltige Altdaten ("nan", "none", etc.)
+        if v.lower() in ("nan", "none", "null", ""):
+            return None
         # Entferne Leerzeichen
         v = v.replace(" ", "").upper()
         if len(v) < 15 or len(v) > 34:
             raise ValueError("IBAN muss zwischen 15 und 34 Zeichen haben")
+        return v
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def validate_email_nan(cls, v: Optional[str]) -> Optional[str]:
+        """Behandle ungueltige Email-Werte aus Altdaten."""
+        if v is None:
+            return v
+        if isinstance(v, str) and v.lower() in ("nan", "none", "null", ""):
+            return None
         return v
 
 
@@ -2826,7 +2842,9 @@ class BusinessEntityDetailResponse(BusinessEntityResponse):
 
     # Audit
     created_by_id: Optional[uuid.UUID] = None
-    verified_by_id: Optional[uuid.UUID] = None
+
+    # Dokumente (optional, wird im Endpoint gesetzt)
+    recent_documents: Optional[List[Dict[str, Any]]] = None
 
 
 class EntityExtractionRequest(BaseModel):

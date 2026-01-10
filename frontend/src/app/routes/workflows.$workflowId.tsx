@@ -38,7 +38,7 @@ function WorkflowDetailPage() {
         <AlertDescription>
           Der Workflow konnte nicht geladen werden.
           <Button variant="link" asChild className="ml-2">
-            <Link to="/workflows">Zurueck zur Uebersicht</Link>
+            <Link to="/workflows">Zurück zur Übersicht</Link>
           </Button>
         </AlertDescription>
       </Alert>
@@ -53,7 +53,7 @@ function WorkflowDetailPage() {
         <AlertDescription>
           Der angeforderte Workflow existiert nicht.
           <Button variant="link" asChild className="ml-2">
-            <Link to="/workflows">Zurueck zur Uebersicht</Link>
+            <Link to="/workflows">Zurück zur Übersicht</Link>
           </Button>
         </AlertDescription>
       </Alert>

@@ -280,7 +280,7 @@ export function ActiveSessionsTab() {
             Aktive Sitzungen
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Verwalten Sie Ihre aktiven Anmeldesitzungen auf verschiedenen Geraeten.
+            Verwalten Sie Ihre aktiven Anmeldesitzungen auf verschiedenen Geräten.
           </p>
         </div>
 
@@ -402,8 +402,8 @@ export function ActiveSessionsTab() {
       <Card className="bg-muted/30">
         <CardContent className="pt-4 pb-4">
           <p className="text-sm text-muted-foreground">
-            Wenn Sie eine verdaechtige Sitzung bemerken, beenden Sie diese sofort und aendern Sie Ihr Passwort.
-            Die aktuelle Sitzung kann nicht beendet werden - nutzen Sie dafuer die Abmelden-Funktion.
+            Wenn Sie eine verdächtige Sitzung bemerken, beenden Sie diese sofort und ändern Sie Ihr Passwort.
+            Die aktuelle Sitzung kann nicht beendet werden - nutzen Sie dafür die Abmelden-Funktion.
           </p>
         </CardContent>
       </Card>
@@ -422,7 +422,7 @@ export function ActiveSessionsTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Sitzung beenden?</AlertDialogTitle>
             <AlertDialogDescription>
-              Diese Sitzung wird sofort beendet. Das Geraet muss sich erneut anmelden.
+              Diese Sitzung wird sofort beendet. Das Gerät muss sich erneut anmelden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -461,7 +461,7 @@ export function ActiveSessionsTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Alle anderen Sitzungen beenden?</AlertDialogTitle>
             <AlertDialogDescription>
-              Alle anderen Geraete werden sofort abgemeldet. Nur diese aktuelle Sitzung bleibt aktiv.
+              Alle anderen Geräte werden sofort abgemeldet. Nur diese aktuelle Sitzung bleibt aktiv.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

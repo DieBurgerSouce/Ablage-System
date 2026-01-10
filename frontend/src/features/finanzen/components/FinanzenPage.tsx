@@ -247,7 +247,7 @@ export function FinanzenPage() {
                           </h3>
                           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
                             <Calendar className="w-4 h-4" />
-                            Letzte Aktivitaet: {formatDate(year.lastDocumentDate)}
+                            Letzte Aktivität: {formatDate(year.lastDocumentDate)}
                           </p>
                         </div>
                       </div>

@@ -29,7 +29,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     {
         id: 'upload',
         title: 'Dokumente hochladen',
-        description: 'Laden Sie Ihre Dokumente per Drag & Drop oder ueber den Upload-Button hoch. Das System unterstuetzt PDF, Bilder und Office-Dokumente.',
+        description: 'Laden Sie Ihre Dokumente per Drag & Drop oder über den Upload-Button hoch. Das System unterstützt PDF, Bilder und Office-Dokumente.',
         icon: <Upload className="w-12 h-12 text-primary" />,
         features: [
             'Drag & Drop Support',
@@ -40,7 +40,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     {
         id: 'ocr',
         title: 'Intelligente Texterkennung',
-        description: 'Unsere KI-gestuetzte OCR-Engine erkennt automatisch Text in Ihren Dokumenten - auch in handschriftlichen oder alten Fraktur-Dokumenten.',
+        description: 'Unsere KI-gestützte OCR-Engine erkennt automatisch Text in Ihren Dokumenten - auch in handschriftlichen oder alten Fraktur-Dokumenten.',
         icon: <Sparkles className="w-12 h-12 text-primary" />,
         features: [
             'GPU-beschleunigte Verarbeitung',
@@ -56,13 +56,13 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
         features: [
             'Volltextsuche im Inhalt',
             'Filter nach Datum, Typ, Status',
-            'KI-gestuetzte Aehnlichkeitssuche',
+            'KI-gestützte Ähnlichkeitssuche',
         ],
     },
     {
         id: 'organize',
         title: 'Organisation & Ablage',
-        description: 'Organisieren Sie Ihre Dokumente nach Kunden, Lieferanten, Jahren oder eigenen Kategorien. Das System schlaegt automatisch passende Ordner vor.',
+        description: 'Organisieren Sie Ihre Dokumente nach Kunden, Lieferanten, Jahren oder eigenen Kategorien. Das System schlägt automatisch passende Ordner vor.',
         icon: <FolderOpen className="w-12 h-12 text-primary" />,
         features: [
             'Automatische Klassifizierung',
@@ -139,7 +139,7 @@ export function WelcomeModal({ forceShow = false, onClose }: WelcomeModalProps) 
                             onClick={handleSkip}
                         >
                             <X className="h-4 w-4" />
-                            <span className="sr-only">Schliessen</span>
+                            <span className="sr-only">Schließen</span>
                         </Button>
                     </div>
                     <DialogDescription>
@@ -231,7 +231,7 @@ export function WelcomeModal({ forceShow = false, onClose }: WelcomeModalProps) 
                             className="flex-1 sm:flex-none"
                         >
                             <ChevronLeft className="w-4 h-4 mr-1" />
-                            Zurueck
+                            Zurück
                         </Button>
                         <Button
                             onClick={handleNext}

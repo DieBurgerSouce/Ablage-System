@@ -50,7 +50,7 @@ function RootComponent() {
     return (
         <ErrorBoundary
             errorTitle="Anwendungsfehler"
-            errorDescription="Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut oder kehren Sie zur Startseite zurueck."
+            errorDescription="Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut oder kehren Sie zur Startseite zurück."
         >
             <GlobalShortcutsProvider>
                 <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 z-50 px-4 py-2 bg-background border rounded-md shadow-lg">

@@ -127,7 +127,7 @@ function ERPStatsPage() {
         <div className="flex items-center gap-4">
           <Select value={selectedConnection} onValueChange={setSelectedConnection}>
             <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Verbindung waehlen" />
+              <SelectValue placeholder="Verbindung wählen" />
             </SelectTrigger>
             <SelectContent>
               {connections?.map((conn) => (
@@ -177,7 +177,7 @@ function ERPStatsPage() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.syncs_last_24h}</div>
               <p className="text-xs text-muted-foreground">
-                Synchronisierungen durchgefuehrt
+                Synchronisierungen durchgeführt
               </p>
             </CardContent>
           </Card>
@@ -191,7 +191,7 @@ function ERPStatsPage() {
                 {stats.pending_conflicts}
               </div>
               <p className="text-xs text-muted-foreground">
-                Warten auf Aufloesung
+                Warten auf Auflösung
               </p>
             </CardContent>
           </Card>
@@ -220,7 +220,7 @@ function ERPStatsPage() {
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Waehlen Sie eine Verbindung aus, um detaillierte Statistiken anzuzeigen</p>
+            <p>Wählen Sie eine Verbindung aus, um detaillierte Statistiken anzuzeigen</p>
           </CardContent>
         </Card>
       ) : historyLoading ? (
@@ -270,7 +270,7 @@ function ERPStatsPage() {
                   {calculatedStats.totalRecords.toLocaleString('de-DE')}
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Datensaetze synchronisiert
+                  Datensätze synchronisiert
                 </p>
                 <div className="flex items-center gap-4 mt-2 text-sm">
                   <span>{calculatedStats.totalSyncs} Syncs</span>
@@ -309,9 +309,9 @@ function ERPStatsPage() {
           {/* Entity Breakdown */}
           <Card>
             <CardHeader>
-              <CardTitle>Entitaeten-Aufschluesselung</CardTitle>
+              <CardTitle>Entitäten-Aufschlüsselung</CardTitle>
               <CardDescription>
-                Synchronisierte Datensaetze nach Entitaetstyp
+                Synchronisierte Datensätze nach Entitätstyp
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -347,7 +347,7 @@ function ERPStatsPage() {
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <BarChart className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Keine Sync-Daten fuer den ausgewaehlten Zeitraum</p>
+            <p>Keine Sync-Daten für den ausgewählten Zeitraum</p>
           </CardContent>
         </Card>
       )}

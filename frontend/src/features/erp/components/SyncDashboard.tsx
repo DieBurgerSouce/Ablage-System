@@ -1,7 +1,7 @@
 /**
  * ERP Sync Dashboard Component
  *
- * Zeigt Sync-Status, Historie und ermoeglicht manuelle Syncs.
+ * Zeigt Sync-Status, Historie und ermöglicht manuelle Syncs.
  */
 
 import { useState } from 'react';
@@ -60,7 +60,7 @@ function SyncStatusBadge({ status }: { status: ERPSyncStatus }) {
     running: {
       variant: 'outline',
       icon: <Loader2 className="h-3 w-3 animate-spin" />,
-      label: 'Laeuft',
+      label: 'Läuft',
     },
     success: {
       variant: 'default',
@@ -143,7 +143,7 @@ function SyncStatsCard({ history }: { history: ERPSyncHistory[] }) {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Synchronisierte Datensaetze</CardTitle>
+          <CardTitle className="text-sm font-medium">Synchronisierte Datensätze</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{totalRecords.toLocaleString('de-DE')}</div>
@@ -174,7 +174,7 @@ function SyncStatsCard({ history }: { history: ERPSyncHistory[] }) {
         <CardContent>
           <div className="text-2xl font-bold">{history.length}</div>
           <p className="text-xs text-muted-foreground mt-1">
-            Synchronisierungen durchgefuehrt
+            Synchronisierungen durchgeführt
           </p>
         </CardContent>
       </Card>
@@ -190,7 +190,7 @@ export function SyncDashboard() {
   const [selectedConnection, setSelectedConnection] = useState<string>('');
 
   const { data: connections } = useERPConnections();
-  // ERROR HANDLING FIX: Error State hinzugefuegt
+  // ERROR HANDLING FIX: Error State hinzugefügt
   const { data: history, isLoading: historyLoading, error: historyError } = useSyncHistory(
     selectedConnection,
     50
@@ -240,13 +240,13 @@ export function SyncDashboard() {
         <div>
           <h2 className="text-xl font-semibold">Sync-Dashboard</h2>
           <p className="text-muted-foreground">
-            Ueberwachen Sie die ERP-Synchronisation
+            Überwachen Sie die ERP-Synchronisation
           </p>
         </div>
         <div className="flex items-center gap-4">
           <Select value={selectedConnection} onValueChange={setSelectedConnection}>
             <SelectTrigger className="w-[250px]">
-              <SelectValue placeholder="Verbindung waehlen..." />
+              <SelectValue placeholder="Verbindung wählen..." />
             </SelectTrigger>
             <SelectContent>
               {connections?.map((conn) => (
@@ -294,14 +294,14 @@ export function SyncDashboard() {
         <CardContent>
           {!selectedConnection ? (
             <div className="text-center py-8 text-muted-foreground">
-              Waehlen Sie eine Verbindung aus, um die Historie anzuzeigen
+              Wählen Sie eine Verbindung aus, um die Historie anzuzeigen
             </div>
           ) : historyLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : historyError ? (
-            // ERROR HANDLING FIX: Error State fuer fehlgeschlagene Queries
+            // ERROR HANDLING FIX: Error State für fehlgeschlagene Queries
             <div className="text-center py-8">
               <AlertTriangle className="h-12 w-12 mx-auto mb-2 text-destructive opacity-70" />
               <p className="text-destructive">Fehler beim Laden der Sync-Historie</p>
@@ -327,10 +327,10 @@ export function SyncDashboard() {
                 <TableRow>
                   <TableHead>Zeitpunkt</TableHead>
                   <TableHead>Typ</TableHead>
-                  <TableHead>Entitaet</TableHead>
+                  <TableHead>Entität</TableHead>
                   <TableHead>Richtung</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Datensaetze</TableHead>
+                  <TableHead className="text-right">Datensätze</TableHead>
                   <TableHead className="text-right">Dauer</TableHead>
                 </TableRow>
               </TableHeader>

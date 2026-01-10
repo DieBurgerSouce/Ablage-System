@@ -1,45 +1,19 @@
 # Known Issues
 
-<!-- AUTO-MANAGED: known-issues -->
-## Critical Issues
+## Active Issues
 
-*Keine kritischen Issues aktuell*
+(None currently tracked)
 
-## High Priority
+## Notes
 
-| ID | Beschreibung | Status | Seit |
-|----|--------------|--------|------|
-| - | Settings page not implemented | Open | 2026-01-10 |
+- **MultiStepForm SessionStorage**: Fix applied for QuotaExceededError in privacy mode/large forms
+- **Banking Reconciliation**: Match suggestion UI ready for backend integration
 
-## Medium Priority
+## Resolved
 
-| ID | Beschreibung | Status | Seit |
-|----|--------------|--------|------|
-| UI-001 | Toast messages stack without dismissal | Open | 2026-01-10 |
-| UI-002 | Tab navigation occasionally unstable | Open | 2026-01-10 |
-| UI-003 | Empty tables lack "no data" messages | Open | 2026-01-10 |
-| DATEV-001 | DATEV persistent 404 errors | Open | 2026-01-10 |
-
-## Low Priority
-
-| ID | Beschreibung | Status | Seit |
-|----|--------------|--------|------|
-| OCR-001 | OCR Training shows 0 backend statistics | Investigating | 2026-01-10 |
-
-## Recently Fixed
-
-| ID | Beschreibung | Fixed | Resolution |
-|----|--------------|-------|------------|
-| BUG-001 | Tunes & Kontext Edit crashes | 2026-01-10 | Application error fixed |
-| BUG-002 | OCR Training Ground Truth tab crashes | 2026-01-10 | Tab loading fixed |
-| BUG-003 | OCR Review denies admin access | 2026-01-10 | Permission check corrected |
-
-<!-- /AUTO-MANAGED: known-issues -->
-
-## Issue Reporting
-
-Neue Issues werden hier dokumentiert mit:
-- Eindeutiger ID (Kategorie-Nummer)
-- Kurze Beschreibung
-- Status: Open, Investigating, In Progress, Fixed
-- Datum der Entdeckung
+| Date | Issue | Fix |
+|------|-------|-----|
+| 2026-01-10 | MultiStepForm SessionStorage QuotaExceededError in privacy mode | Added 500KB limit check, auto-cleanup, and synchronous persistKey tracking in MultiStepForm.tsx |
+| 2026-01-10 | N+1 queries in entity list endpoints causing slow page loads | Removed folder stats calculation from list endpoints, load on-demand via `/{entity_id}/folders` |
+| 2026-01-10 | Entity API authentication failing with 401 errors | Added `credentials: "include"` to all fetch calls in ablage-api.ts (commit 25542547) |
+| 2026-01-10 | FastAPI route ordering causing 403/422 for `/customers`, `/suppliers` | Moved static routes before dynamic `/{entity_id}` route (commit 665ca1cc) |

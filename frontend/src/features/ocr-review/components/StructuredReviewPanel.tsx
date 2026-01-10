@@ -218,7 +218,7 @@ function InvoiceSections({ invoice, corrections, extractedDataReview, disabled }
                 />
             </div>
 
-            {/* Betraege */}
+            {/* Beträge */}
             <AmountsSection
                 invoice={invoice}
                 corrections={corrections}

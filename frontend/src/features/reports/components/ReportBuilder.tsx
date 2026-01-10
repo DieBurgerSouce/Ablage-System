@@ -1,7 +1,7 @@
 /**
  * ReportBuilder Component
  *
- * Visueller Report-Builder mit Tabs fuer Datenquelle, Spalten, Filter, Charts.
+ * Visueller Report-Builder mit Tabs für Datenquelle, Spalten, Filter, Charts.
  */
 
 import { useState, useEffect } from 'react';
@@ -69,7 +69,7 @@ interface ReportBuilderProps {
 const reportTypes: { value: ReportType; label: string }[] = [
   { value: 'document', label: 'Dokument-Report' },
   { value: 'finance', label: 'Finanz-Report' },
-  { value: 'ocr', label: 'OCR-Qualitaets-Report' },
+  { value: 'ocr', label: 'OCR-Qualitäts-Report' },
   { value: 'custom', label: 'Benutzerdefiniert' },
 ];
 
@@ -84,7 +84,7 @@ const dataTypeLabels: Record<DataType, string> = {
   string: 'Text',
   number: 'Zahl',
   date: 'Datum',
-  currency: 'Waehrung',
+  currency: 'Währung',
   boolean: 'Ja/Nein',
 };
 
@@ -191,7 +191,7 @@ export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
         setSelectedFields((prev) => prev.filter((f) => f !== field.path));
       }
     } else {
-      // Spalte hinzufuegen
+      // Spalte hinzufügen
       addColumnMutation.mutate({
         templateId: template.id,
         data: {
@@ -366,9 +366,9 @@ export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Oeffentlich</Label>
+                  <Label>Öffentlich</Label>
                   <p className="text-xs text-muted-foreground">
-                    Oeffentliche Reports sind fuer alle Administratoren sichtbar.
+                    Öffentliche Reports sind für alle Administratoren sichtbar.
                   </p>
                 </div>
                 <Switch
@@ -383,7 +383,7 @@ export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
                 <div className="space-y-0.5">
                   <Label>Aggregationen aktivieren</Label>
                   <p className="text-xs text-muted-foreground">
-                    Ermoeglicht Summen, Durchschnitte und andere Berechnungen.
+                    Ermöglicht Summen, Durchschnitte und andere Berechnungen.
                   </p>
                 </div>
                 <Switch
@@ -398,7 +398,7 @@ export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
             <TabsContent value="columns" className="space-y-4 pr-4">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Verfuegbare Felder</CardTitle>
+                  <CardTitle className="text-sm">Verfügbare Felder</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {groupedFields &&
@@ -444,7 +444,7 @@ export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm">
-                      Ausgewaehlte Spalten ({selectedFields.length})
+                      Ausgewählte Spalten ({selectedFields.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -476,7 +476,7 @@ export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
                     <Filter className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>Filter-Konfiguration kommt bald.</p>
                     <p className="text-sm mt-1">
-                      Hier koennen Sie spaeter Bedingungen fuer die Datenfilterung definieren.
+                      Hier können Sie später Bedingungen für die Datenfilterung definieren.
                     </p>
                   </div>
                 </CardContent>
@@ -535,7 +535,7 @@ export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <BarChart3 className="h-12 w-12 text-muted-foreground mb-4" />
                     <p className="text-muted-foreground">
-                      Keine Vorschau verfuegbar.
+                      Keine Vorschau verfügbar.
                     </p>
                   </CardContent>
                 </Card>

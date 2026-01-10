@@ -123,12 +123,12 @@ export function useVerifyDocument() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: gobdKeys.archiveDetail(result.document_id) })
       if (result.is_valid) {
-        toast.success('Integritaetspruefung bestanden', {
-          description: 'Das Dokument ist unveraendert.',
+        toast.success('Integritätsprüfung bestanden', {
+          description: 'Das Dokument ist unverändert.',
         })
       } else {
-        toast.error('Integritaetspruefung fehlgeschlagen', {
-          description: 'Das Dokument wurde moeglicherweise manipuliert!',
+        toast.error('Integritätsprüfung fehlgeschlagen', {
+          description: 'Das Dokument wurde möglicherweise manipuliert!',
         })
       }
     },
@@ -151,10 +151,10 @@ export function useVerifyAllArchives() {
       queryClient.invalidateQueries({ queryKey: gobdKeys.statistics() })
       if (result.invalid === 0) {
         toast.success('Alle Archive verifiziert', {
-          description: `${result.valid} von ${result.total} Dokumenten erfolgreich geprueft.`,
+          description: `${result.valid} von ${result.total} Dokumenten erfolgreich geprüft.`,
         })
       } else {
-        toast.warning('Integritaetsprobleme gefunden', {
+        toast.warning('Integritätsprobleme gefunden', {
           description: `${result.invalid} von ${result.total} Dokumenten haben Probleme.`,
         })
       }
@@ -209,10 +209,10 @@ export function useResetRetentionSetting() {
     mutationFn: (category: string) => gobdApi.resetRetentionSetting(category),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: gobdKeys.retention() })
-      toast.success('Aufbewahrungsfrist zurueckgesetzt')
+      toast.success('Aufbewahrungsfrist zurückgesetzt')
     },
     onError: () => {
-      toast.error('Zuruecksetzen fehlgeschlagen')
+      toast.error('Zurücksetzen fehlgeschlagen')
     },
   })
 }
@@ -394,7 +394,7 @@ export function useCreateTaxAdvisorInvite() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: gobdKeys.taxAdvisorInvites() })
       toast.success('Einladung gesendet', {
-        description: 'Der Steuerberater erhaelt eine E-Mail mit Zugangsdaten.',
+        description: 'Der Steuerberater erhält eine E-Mail mit Zugangsdaten.',
       })
     },
     onError: () => {
@@ -432,10 +432,10 @@ export function useExtendTaxAdvisorAccess() {
       gobdApi.extendTaxAdvisorAccess(inviteId, additionalDays),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: gobdKeys.taxAdvisorInvites() })
-      toast.success('Zugang verlaengert')
+      toast.success('Zugang verlängert')
     },
     onError: () => {
-      toast.error('Verlaengerung fehlgeschlagen')
+      toast.error('Verlängerung fehlgeschlagen')
     },
   })
 }

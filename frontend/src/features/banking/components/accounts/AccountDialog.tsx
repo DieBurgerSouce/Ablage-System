@@ -214,7 +214,7 @@ export function AccountDialog({ open, onOpenChange, account }: AccountDialogProp
                         <Label htmlFor="bank_name">Bankname</Label>
                         <Input
                             id="bank_name"
-                            placeholder="z.B. Sparkasse Koeln"
+                            placeholder="z.B. Sparkasse Köln"
                             {...register('bank_name')}
                         />
                     </div>
@@ -244,7 +244,7 @@ export function AccountDialog({ open, onOpenChange, account }: AccountDialogProp
                             <SelectContent>
                                 <SelectItem value="checking">Girokonto</SelectItem>
                                 <SelectItem value="savings">Sparkonto</SelectItem>
-                                <SelectItem value="business">Geschaeftskonto</SelectItem>
+                                <SelectItem value="business">Geschäftskonto</SelectItem>
                                 <SelectItem value="credit">Kreditkonto</SelectItem>
                             </SelectContent>
                         </Select>
@@ -253,7 +253,7 @@ export function AccountDialog({ open, onOpenChange, account }: AccountDialogProp
                     {/* Waehrung (nur bei Erstellen) */}
                     {!isEditing && (
                         <div className="space-y-2">
-                            <Label htmlFor="currency">Waehrung</Label>
+                            <Label htmlFor="currency">Währung</Label>
                             <Input
                                 id="currency"
                                 placeholder="EUR"

@@ -31,7 +31,7 @@ const navItems = [
     href: '/admin/erp/conflicts',
     label: 'Konflikte',
     icon: AlertTriangle,
-    description: 'Konflikte aufloesen',
+    description: 'Konflikte auflösen',
     exact: false,
   },
   {

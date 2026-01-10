@@ -15,6 +15,7 @@ Feinpoliert und durchdacht - Deutsche Geschaeftsdokumente.
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime, timezone
+import re
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
@@ -154,36 +155,38 @@ async def list_entities(
 @router.get(
     "/customers",
     summary="Kunden fuer Frontend",
-    description="Kunden-Liste mit displayName = Kundennummer_Matchcode"
+    description="Kunden-Liste mit displayName = Kundennummer_Matchcode (paginiert)"
 )
 async def list_customers_for_frontend(
     search: Optional[str] = Query(None, description="Suche in Name/Matchcode"),
     is_active: Optional[bool] = Query(None, description="Nach Aktivstatus filtern"),
+    page: int = Query(1, ge=1, description="Seitennummer"),
+    page_size: int = Query(50, ge=10, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Kunden-Liste fuer hierarchisches Frontend.
+    Kunden-Liste fuer hierarchisches Frontend (paginiert).
 
     **Display-Format**: Kundennummer_Matchcode (z.B. "12345_Mueller")
 
     Gibt Kunden mit:
-    - displayName: Kundennummer_Matchcode
-    - fullName: Vollstaendiger Firmenname
-    - companyPresence: ["folie", "messer"]
-    - folderStats: Dokument-Zaehler pro Firma
+    - items: Array von Kunden
+    - total: Gesamtanzahl
+    - page/page_size: Pagination-Info
     """
-    query = select(BusinessEntity).where(
+    # Basis-Filter
+    base_filter = [
         BusinessEntity.deleted_at.is_(None),
         or_(
             BusinessEntity.entity_type == "customer",
             BusinessEntity.entity_type == "both",
         )
-    )
+    ]
 
     if search:
         search_term = f"%{search}%"
-        query = query.where(
+        base_filter.append(
             or_(
                 BusinessEntity.name.ilike(search_term),
                 BusinessEntity.primary_customer_number.ilike(search_term),
@@ -191,34 +194,43 @@ async def list_customers_for_frontend(
         )
 
     if is_active is not None:
-        query = query.where(BusinessEntity.is_active == is_active)
+        base_filter.append(BusinessEntity.is_active == is_active)
 
+    # Count-Query fuer Gesamtanzahl
+    count_query = select(func.count(BusinessEntity.id)).where(*base_filter)
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Paginierte Query
+    query = select(BusinessEntity).where(*base_filter)
     query = query.order_by(BusinessEntity.name)
+    query = query.offset((page - 1) * page_size).limit(page_size)
 
     result = await db.execute(query)
     entities = result.scalars().all()
 
+    # OPTIMIERUNG: Keine N+1 Queries mehr!
+    # Stats werden erst beim Klick auf einen Kunden geladen (via /{entity_id}/folders)
     customers = []
     for entity in entities:
-        # Display-Name: Kundennummer_Matchcode (z.B. "12345_Mueller")
-        customer_number = entity.primary_customer_number or ""
-        matchcode = _extract_matchcode(entity.name)
-
-        if customer_number:
-            display_name = f"{customer_number}_{matchcode}"
+        # Display-Name: Nutze entity.display_name wenn vorhanden und gueltig
+        # (nicht "nan" oder leer - das sind ungueltige Altdaten)
+        if entity.display_name and entity.display_name.lower() not in ("nan", "none", ""):
+            display_name = entity.display_name  # Bereits korrekt formatiert (z.B. "12345_Mueller")
         else:
-            display_name = matchcode
+            # Fallback: Aus customer_number und matchcode konstruieren
+            customer_number = entity.primary_customer_number or ""
+            matchcode = _extract_matchcode(entity.name)
+            display_name = f"{customer_number}_{matchcode}" if customer_number else matchcode
 
         # Company presence aus lexware_ids extrahieren
         company_presence = entity.company_presence or []
         if not company_presence and entity.lexware_ids:
             company_presence = list(entity.lexware_ids.keys())
 
-        # Folder Stats berechnen (Dokumente pro Firma)
-        folder_stats = await _calculate_folder_stats(db, entity.id, company_presence)
-
-        # Letzte Aktivitaet ermitteln
-        last_activity = await _get_last_document_date(db, entity.id)
+        # Fallback: Beide Firmen wenn nichts gesetzt
+        if not company_presence:
+            company_presence = ["folie", "messer"]
 
         customers.append({
             "id": str(entity.id),
@@ -226,70 +238,91 @@ async def list_customers_for_frontend(
             "fullName": entity.name,
             "isActive": entity.is_active,
             "companyPresence": company_presence,
-            "folderStats": folder_stats,
-            "lastActivityDate": last_activity.isoformat() if last_activity else None,
+            # folderStats und lastActivityDate werden on-demand geladen
+            "folderStats": {},
+            "lastActivityDate": None,
         })
 
-    return customers
+    return {
+        "items": customers,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size,
+    }
 
 
 @router.get(
     "/suppliers",
     summary="Lieferanten fuer Frontend",
-    description="Lieferanten-Liste mit displayName = Name (ohne Nummer)"
+    description="Lieferanten-Liste mit displayName = Name (ohne Nummer, paginiert)"
 )
 async def list_suppliers_for_frontend(
     search: Optional[str] = Query(None, description="Suche in Name"),
     is_active: Optional[bool] = Query(None, description="Nach Aktivstatus filtern"),
+    page: int = Query(1, ge=1, description="Seitennummer"),
+    page_size: int = Query(50, ge=10, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Lieferanten-Liste fuer hierarchisches Frontend.
+    Lieferanten-Liste fuer hierarchisches Frontend (paginiert).
 
     **Display-Format**: Nur Name (ohne Lieferanten-Nummer, da chaotisch)
 
     Gibt Lieferanten mit:
-    - displayName: Matchcode/Kurzname
-    - fullName: Vollstaendiger Firmenname
-    - companyPresence: ["folie", "messer"]
-    - folderStats: Dokument-Zaehler pro Firma
+    - items: Array von Lieferanten
+    - total: Gesamtanzahl
+    - page/page_size: Pagination-Info
     """
-    query = select(BusinessEntity).where(
+    # Basis-Filter
+    base_filter = [
         BusinessEntity.deleted_at.is_(None),
         or_(
             BusinessEntity.entity_type == "supplier",
             BusinessEntity.entity_type == "both",
         )
-    )
+    ]
 
     if search:
         search_term = f"%{search}%"
-        query = query.where(BusinessEntity.name.ilike(search_term))
+        base_filter.append(BusinessEntity.name.ilike(search_term))
 
     if is_active is not None:
-        query = query.where(BusinessEntity.is_active == is_active)
+        base_filter.append(BusinessEntity.is_active == is_active)
 
+    # Count-Query fuer Gesamtanzahl
+    count_query = select(func.count(BusinessEntity.id)).where(*base_filter)
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Paginierte Query
+    query = select(BusinessEntity).where(*base_filter)
     query = query.order_by(BusinessEntity.name)
+    query = query.offset((page - 1) * page_size).limit(page_size)
 
     result = await db.execute(query)
     entities = result.scalars().all()
 
+    # OPTIMIERUNG: Keine N+1 Queries mehr!
+    # Stats werden erst beim Klick auf einen Lieferanten geladen (via /{entity_id}/folders)
     suppliers = []
     for entity in entities:
-        # Display-Name: Nur der Matchcode (KEINE Lieferanten-Nummer!)
-        display_name = _extract_matchcode(entity.name)
+        # Display-Name: Nutze entity.display_name wenn vorhanden und gueltig
+        # (nicht "nan" oder leer - das sind ungueltige Altdaten)
+        if entity.display_name and entity.display_name.lower() not in ("nan", "none", ""):
+            display_name = entity.display_name
+        else:
+            display_name = _extract_matchcode(entity.name)
 
         # Company presence aus lexware_ids extrahieren
         company_presence = entity.company_presence or []
         if not company_presence and entity.lexware_ids:
             company_presence = list(entity.lexware_ids.keys())
 
-        # Folder Stats berechnen (Dokumente pro Firma)
-        folder_stats = await _calculate_folder_stats(db, entity.id, company_presence)
-
-        # Letzte Aktivitaet ermitteln
-        last_activity = await _get_last_document_date(db, entity.id)
+        # Fallback: Beide Firmen wenn nichts gesetzt
+        if not company_presence:
+            company_presence = ["folie", "messer"]
 
         suppliers.append({
             "id": str(entity.id),
@@ -297,11 +330,18 @@ async def list_suppliers_for_frontend(
             "fullName": entity.name,
             "isActive": entity.is_active,
             "companyPresence": company_presence,
-            "folderStats": folder_stats,
-            "lastActivityDate": last_activity.isoformat() if last_activity else None,
+            # folderStats und lastActivityDate werden on-demand geladen
+            "folderStats": {},
+            "lastActivityDate": None,
         })
 
-    return suppliers
+    return {
+        "items": suppliers,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size,
+    }
 
 
 @router.get(
@@ -1107,9 +1147,15 @@ def _extract_matchcode(name: str) -> str:
     - "Mueller GmbH & Co. KG" -> "Mueller"
     - "Agrimpex International Trading GmbH" -> "Agrimpex"
     - "Hans Meier Spargel- und Erdbeerhof" -> "Meier"
+    - "25223_Agrargenossenschaft Nöbdenitz eG" -> "Agrargenossenschaft" (Altdaten-Format)
     """
     if not name:
         return ""
+
+    # Altdaten-Format: "12345_Firmenname" -> nur Firmenname extrahieren
+    legacy_match = re.match(r"^\d+_(.+)$", name)
+    if legacy_match:
+        name = legacy_match.group(1)
 
     # Rechtsformen entfernen
     legal_forms = [

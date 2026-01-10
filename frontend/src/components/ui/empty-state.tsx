@@ -211,7 +211,7 @@ export const EmptyStatePresets = {
         variant: 'search',
         title: 'Keine Ergebnisse gefunden',
         description: query
-            ? `Keine Dokumente gefunden fuer "${query}". Versuchen Sie andere Suchbegriffe.`
+            ? `Keine Dokumente gefunden für "${query}". Versuchen Sie andere Suchbegriffe.`
             : 'Versuchen Sie andere Suchbegriffe oder Filter.',
     }),
 
@@ -226,9 +226,9 @@ export const EmptyStatePresets = {
     emptyFolder: (onUpload?: () => void): EmptyStateProps => ({
         variant: 'folder',
         title: 'Dieser Ordner ist leer',
-        description: 'Fuegen Sie Dokumente zu diesem Ordner hinzu.',
+        description: 'Fügen Sie Dokumente zu diesem Ordner hinzu.',
         action: onUpload
-            ? { label: 'Dokument hinzufuegen', onClick: onUpload }
+            ? { label: 'Dokument hinzufügen', onClick: onUpload }
             : undefined,
     }),
 

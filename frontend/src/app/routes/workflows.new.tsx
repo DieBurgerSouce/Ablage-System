@@ -19,7 +19,7 @@ function NewWorkflowPage() {
       <div>
         <h1 className="text-2xl font-bold">Neuer Workflow</h1>
         <p className="text-muted-foreground">
-          Erstellen Sie einen neuen Workflow von Grund auf oder waehlen Sie ein Template.
+          Erstellen Sie einen neuen Workflow von Grund auf oder wählen Sie ein Template.
         </p>
       </div>
 

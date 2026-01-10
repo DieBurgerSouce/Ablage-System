@@ -66,8 +66,8 @@ const actionLabels: Record<ActionType, string> = {
   move_folder: 'In Ordner verschieben',
   assign_tags: 'Tags zuweisen',
   assign_document_type: 'Dokumenttyp setzen',
-  update_status: 'Status aendern',
-  delete_document: 'Dokument loeschen',
+  update_status: 'Status ändern',
+  delete_document: 'Dokument löschen',
   send_notification: 'Benachrichtigung',
   send_email: 'E-Mail senden',
   call_webhook: 'Webhook aufrufen',
@@ -75,8 +75,8 @@ const actionLabels: Record<ActionType, string> = {
   start_ocr: 'OCR starten',
   ai_categorization: 'KI-Kategorisierung',
   export_document: 'Exportieren',
-  duplicate_check: 'Duplikat-Pruefung',
-  delay: 'Verzoegerung',
+  duplicate_check: 'Duplikat-Prüfung',
+  delay: 'Verzögerung',
   set_variable: 'Variable setzen',
   log_message: 'Log-Nachricht',
   assign_user: 'Benutzer zuweisen',
@@ -118,19 +118,19 @@ function ActionNode({ data, selected }: NodeProps<ActionNodeData>) {
 
     switch (actionType) {
       case 'move_folder':
-        return config.folder_id ? 'Ordner ausgewaehlt' : 'Ordner waehlen...';
+        return config.folder_id ? 'Ordner ausgewählt' : 'Ordner wählen...';
       case 'assign_tags':
         return config.tag_names?.join(', ') || config.tag_ids?.length
           ? `${(config.tag_names || config.tag_ids)?.length} Tags`
-          : 'Tags waehlen...';
+          : 'Tags wählen...';
       case 'assign_document_type':
-        return config.document_type || 'Typ waehlen...';
+        return config.document_type || 'Typ wählen...';
       case 'update_status':
-        return config.status || 'Status waehlen...';
+        return config.status || 'Status wählen...';
       case 'send_notification':
         return config.title || 'Titel eingeben...';
       case 'send_email':
-        return config.to?.length ? `${config.to.length} Empfaenger` : 'Empfaenger...';
+        return config.to?.length ? `${config.to.length} Empfänger` : 'Empfänger...';
       case 'http_request':
         return config.method && config.url ? `${config.method} ${config.url}` : 'URL eingeben...';
       case 'delay':
@@ -172,7 +172,7 @@ function ActionNode({ data, selected }: NodeProps<ActionNodeData>) {
       {/* Body */}
       <div className="space-y-2 p-3">
         <div className="text-sm font-medium text-foreground">
-          {data.stepName || data.label || 'Aktion ausfuehren'}
+          {data.stepName || data.label || 'Aktion ausführen'}
         </div>
         {configSummary && (
           <div className="text-xs text-muted-foreground">{configSummary}</div>

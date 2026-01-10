@@ -1,7 +1,7 @@
 /**
  * ArchiveManagement Component
  *
- * Verwaltung archivierter Dokumente mit Integritaetspruefung.
+ * Verwaltung archivierter Dokumente mit Integritätsprüfung.
  */
 
 import { useState } from 'react'
@@ -102,7 +102,7 @@ export function ArchiveManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{statistics?.expiring_soon ?? 0}</div>
-            <p className="text-xs text-muted-foreground">In den naechsten 90 Tagen</p>
+            <p className="text-xs text-muted-foreground">In den nächsten 90 Tagen</p>
           </CardContent>
         </Card>
 
@@ -113,7 +113,7 @@ export function ArchiveManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{statistics?.unverified ?? 0}</div>
-            <p className="text-xs text-muted-foreground">Pruefung ausstehend</p>
+            <p className="text-xs text-muted-foreground">Prüfung ausstehend</p>
           </CardContent>
         </Card>
 
@@ -128,7 +128,7 @@ export function ArchiveManagement() {
                 ? `${(statistics.storage_size_bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
                 : '0 GB'}
             </div>
-            <p className="text-xs text-muted-foreground">Archiv-Groesse</p>
+            <p className="text-xs text-muted-foreground">Archiv-Größe</p>
           </CardContent>
         </Card>
       </div>
@@ -142,7 +142,7 @@ export function ArchiveManagement() {
               Aufbewahrungsfristen laufen ab
             </CardTitle>
             <CardDescription>
-              {expiringArchives.length} Dokument(e) erreichen in den naechsten 90 Tagen das Ende
+              {expiringArchives.length} Dokument(e) erreichen in den nächsten 90 Tagen das Ende
               ihrer Aufbewahrungsfrist.
             </CardDescription>
           </CardHeader>
@@ -318,7 +318,7 @@ export function ArchiveManagement() {
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                 >
-                  Zurueck
+                  Zurück
                 </Button>
                 <Button
                   variant="outline"

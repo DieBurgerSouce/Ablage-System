@@ -131,7 +131,7 @@ function SearchPage() {
 
             {isLoading && (
                 <div className="text-center p-8 text-muted-foreground">
-                    Suche laeuft...
+                    Suche läuft...
                 </div>
             )}
 
@@ -154,9 +154,9 @@ function SearchPage() {
                 <EmptyState
                     variant="search"
                     title="Keine Ergebnisse gefunden"
-                    description="Keine Dokumente gefunden fuer Ihre Suche. Versuchen Sie andere Suchbegriffe oder passen Sie die Filter an."
+                    description="Keine Dokumente gefunden für Ihre Suche. Versuchen Sie andere Suchbegriffe oder passen Sie die Filter an."
                     action={{
-                        label: 'Filter zuruecksetzen',
+                        label: 'Filter zurücksetzen',
                         onClick: resetFilters,
                         variant: 'outline',
                     }}

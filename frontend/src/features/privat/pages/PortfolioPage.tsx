@@ -115,10 +115,10 @@ export function PortfolioPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <Wallet className="h-8 w-8" />
-          Portfolio-Uebersicht
+          Portfolio-Übersicht
         </h1>
         <p className="text-muted-foreground mt-1">
-          Vermoegensueberblick, finanzielle Gesundheit und Ziele
+          Vermögensüberblick, finanzielle Gesundheit und Ziele
         </p>
       </div>
 
@@ -127,7 +127,7 @@ export function PortfolioPage() {
         <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
-            Uebersicht
+            Übersicht
           </TabsTrigger>
           <TabsTrigger value="health" className="flex items-center gap-2">
             <HeartPulse className="h-4 w-4" />

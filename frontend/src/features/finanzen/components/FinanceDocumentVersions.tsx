@@ -309,7 +309,7 @@ const DiffView = memo(function DiffView({ compareResult }: DiffViewProps) {
             </div>
 
             <div className="text-center p-2 bg-muted/30 rounded">
-              <p className="text-xs text-muted-foreground">Text-Laenge</p>
+              <p className="text-xs text-muted-foreground">Text-Länge</p>
               <p className={cn(
                 'font-medium',
                 differences.textLengthDelta > 0 && 'text-green-600',

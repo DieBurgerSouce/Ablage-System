@@ -1,7 +1,7 @@
 /**
  * ReportsDashboard Component
  *
- * Haupt-Dashboard fuer den Report-Builder mit Tabs fuer Reports und Historie.
+ * Haupt-Dashboard für den Report-Builder mit Tabs für Reports und Historie.
  */
 
 import { useState } from 'react';
@@ -44,7 +44,7 @@ import { ReportBuilder } from './ReportBuilder';
 
 const statusLabels: Record<ExecutionStatus, string> = {
   pending: 'Wartend',
-  running: 'Laeuft',
+  running: 'Läuft',
   completed: 'Abgeschlossen',
   failed: 'Fehlgeschlagen',
   cancelled: 'Abgebrochen',
@@ -121,13 +121,13 @@ export function ReportsDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Ausfuehrungen</CardTitle>
+            <CardTitle className="text-sm font-medium">Ausführungen</CardTitle>
             <History className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalExecutions}</div>
             <p className="text-xs text-muted-foreground">
-              Letzte 50 Ausfuehrungen
+              Letzte 50 Ausführungen
             </p>
           </CardContent>
         </Card>
@@ -142,7 +142,7 @@ export function ReportsDashboard() {
               {stats.failedExecutions}
             </div>
             <p className="text-xs text-muted-foreground">
-              In den letzten 50 Ausfuehrungen
+              In den letzten 50 Ausführungen
             </p>
           </CardContent>
         </Card>
@@ -175,7 +175,7 @@ export function ReportsDashboard() {
             </TabsTrigger>
             <TabsTrigger value="history" className="gap-2">
               <History className="h-4 w-4" />
-              Ausfuehrungen
+              Ausführungen
             </TabsTrigger>
           </TabsList>
 
@@ -217,12 +217,12 @@ export function ReportsDashboard() {
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
                       {share.can_view && <Badge variant="outline">Ansehen</Badge>}
-                      {share.can_execute && <Badge variant="outline">Ausfuehren</Badge>}
+                      {share.can_execute && <Badge variant="outline">Ausführen</Badge>}
                       {share.can_edit && <Badge variant="outline">Bearbeiten</Badge>}
                     </div>
                     {share.expires_at && (
                       <p className="text-xs text-muted-foreground mt-2">
-                        Laeuft ab: {format(new Date(share.expires_at), 'dd.MM.yyyy', { locale: de })}
+                        Läuft ab: {format(new Date(share.expires_at), 'dd.MM.yyyy', { locale: de })}
                       </p>
                     )}
                   </CardContent>
@@ -246,9 +246,9 @@ export function ReportsDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Ausfuehrungs-Historie</CardTitle>
+                <CardTitle>Ausführungs-Historie</CardTitle>
                 <CardDescription>
-                  Uebersicht ueber alle Report-Ausfuehrungen.
+                  Übersicht über alle Report-Ausführungen.
                 </CardDescription>
               </div>
               <Button variant="outline" size="sm" onClick={() => refetchExecutions()}>
@@ -338,7 +338,7 @@ export function ReportsDashboard() {
               ) : (
                 <div className="text-center text-muted-foreground py-8">
                   <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Keine Ausfuehrungen vorhanden.</p>
+                  <p>Keine Ausführungen vorhanden.</p>
                 </div>
               )}
             </CardContent>

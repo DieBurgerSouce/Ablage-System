@@ -35,7 +35,7 @@ function NotFoundPage() {
 
                     <CardDescription className="text-muted-foreground/80 text-base">
                         Die angeforderte Seite existiert nicht oder wurde verschoben.
-                        Bitte ueberpruefen Sie die URL oder kehren Sie zur Startseite zurueck.
+                        Bitte überprüfen Sie die URL oder kehren Sie zur Startseite zurück.
                     </CardDescription>
                 </CardHeader>
 
@@ -63,7 +63,7 @@ function NotFoundPage() {
                         onClick={() => window.history.back()}
                     >
                         <ArrowLeft className="w-4 h-4 mr-2" />
-                        Zurueck
+                        Zurück
                     </Button>
                 </CardFooter>
             </Card>

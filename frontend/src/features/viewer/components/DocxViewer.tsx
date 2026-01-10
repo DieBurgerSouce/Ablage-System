@@ -106,7 +106,7 @@ export function DocxViewer({ fileData, className }: DocxViewerProps) {
 
                     arrayBuffer = await response.arrayBuffer();
                 } else {
-                    throw new Error('Ungueltiges Dateiformat');
+                    throw new Error('Ungültiges Dateiformat');
                 }
 
                 if (cancelled) return;

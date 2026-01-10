@@ -156,7 +156,7 @@ export function CashFlowChart({ defaultDays = 30, showControls = true }: CashFlo
                 <div
                     className="h-[300px]"
                     role="img"
-                    aria-label={`Liquiditaetsprognose fuer ${days} Tage. Zeigt Einnahmen, Ausgaben und kumulierten Saldo als Flaechendiagramm.`}
+                    aria-label={`Liquiditätsprognose für ${days} Tage. Zeigt Einnahmen, Ausgaben und kumulierten Saldo als Flächendiagramm.`}
                 >
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={chartData}>
@@ -213,7 +213,7 @@ export function CashFlowChart({ defaultDays = 30, showControls = true }: CashFlo
                     </ResponsiveContainer>
                 </div>
                 {/* Screen Reader Only: Data Table Alternative */}
-                <table className="sr-only" aria-label="Liquiditaetsdaten als Tabelle">
+                <table className="sr-only" aria-label="Liquiditätsdaten als Tabelle">
                     <caption>Tagesweise Einnahmen, Ausgaben und kumulierter Saldo</caption>
                     <thead>
                         <tr>

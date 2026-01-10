@@ -1,7 +1,7 @@
 /**
  * EditableField - Click-to-Edit Pattern Component
  *
- * Ermoeglicht inline Bearbeitung von Text-Werten mit:
+ * Ermöglicht inline Bearbeitung von Text-Werten mit:
  * - Click-to-edit Aktivierung
  * - Auto-Save mit Debounce
  * - Visueller Speicher-Indikator
@@ -33,19 +33,19 @@ export type EditableFieldType = 'text' | 'number' | 'date' | 'currency' | 'email
 export interface EditableFieldProps {
   /** Aktueller Wert */
   value: string | number | null | undefined;
-  /** Callback zum Speichern - gibt Promise zurueck */
+  /** Callback zum Speichern - gibt Promise zurück */
   onSave: (value: string) => Promise<void>;
   /** Optionales Label */
   label?: string;
   /** Platzhalter wenn leer */
   placeholder?: string;
-  /** Feldtyp fuer Formatierung */
+  /** Feldtyp für Formatierung */
   type?: EditableFieldType;
   /** Validierungs-Schema (Zod) */
   schema?: z.ZodString | z.ZodNumber;
   /** Ist das Feld editierbar? */
   editable?: boolean;
-  /** Zusaetzliche Klassen */
+  /** Zusätzliche Klassen */
   className?: string;
   /** Auto-Save Debounce Zeit in ms (0 = kein Auto-Save) */
   autoSaveDelay?: number;
@@ -144,7 +144,7 @@ export function EditableField({
       return null;
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return err.errors[0]?.message || 'Ungueltiger Wert';
+        return err.errors[0]?.message || 'Ungültiger Wert';
       }
       return 'Validierungsfehler';
     }

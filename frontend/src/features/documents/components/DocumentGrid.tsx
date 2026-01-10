@@ -109,7 +109,7 @@ export function DocumentGrid({
                 <EmptyState
                     variant="document"
                     title="Keine Dokumente gefunden"
-                    description="In diesem Ordner befinden sich keine Dokumente. Laden Sie Dokumente hoch oder waehlen Sie einen anderen Ordner."
+                    description="In diesem Ordner befinden sich keine Dokumente. Laden Sie Dokumente hoch oder wählen Sie einen anderen Ordner."
                     size="lg"
                 />
             </div>

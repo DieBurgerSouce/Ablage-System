@@ -49,7 +49,7 @@ export function MentionInput({
   value,
   onChange,
   onSubmit,
-  placeholder = 'Kommentar schreiben... (@erwaehnen)',
+  placeholder = 'Kommentar schreiben... (@erwähnen)',
   disabled = false,
   isSubmitting = false,
   mentions,
@@ -215,7 +215,7 @@ export function MentionInput({
           <div className="p-1">
             <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground flex items-center gap-1">
               <AtSign className="h-3 w-3" />
-              Benutzer erwaehnen
+              Benutzer erwähnen
             </div>
             {filteredSuggestions.map((user, index) => (
               <button
@@ -249,9 +249,9 @@ export function MentionInput({
 
       {/* Hint */}
       <div className="flex items-center justify-between mt-1.5 text-xs text-muted-foreground">
-        <span>@ zum Erwaehnen, Ctrl+Enter zum Senden</span>
+        <span>@ zum Erwähnen, Ctrl+Enter zum Senden</span>
         {mentions.length > 0 && (
-          <span>{mentions.length} Erwaehnung{mentions.length > 1 ? 'en' : ''}</span>
+          <span>{mentions.length} Erwähnung{mentions.length > 1 ? 'en' : ''}</span>
         )}
       </div>
     </div>

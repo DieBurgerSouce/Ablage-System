@@ -98,7 +98,7 @@ export function InvoiceDataSection({ data, onFieldEdit }: InvoiceDataSectionProp
 
           {/* Amounts */}
           {renderFieldGroup(
-            'Betraege',
+            'Beträge',
             <Euro className="h-4 w-4" />,
             amountFields
           )}

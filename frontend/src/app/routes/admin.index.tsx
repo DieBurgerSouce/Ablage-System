@@ -62,7 +62,7 @@ function AdminDashboard() {
         ocrJobsToday: dashboard.processing.documents_processed_today,
         storageUsed: `${(dashboard.gpu.total_gb - dashboard.gpu.free_gb).toFixed(1)} GB`,
         systemHealth: dashboard.health.overall === 'healthy' ? 'Gesund' :
-                      dashboard.health.overall === 'degraded' ? 'Eingeschraenkt' : 'Kritisch',
+                      dashboard.health.overall === 'degraded' ? 'Eingeschränkt' : 'Kritisch',
         pendingJobs: dashboard.queue.pending_jobs,
         processingJobs: dashboard.queue.processing_jobs,
         successRate: dashboard.processing.success_rate,
@@ -73,7 +73,7 @@ function AdminDashboard() {
         return (
             <div className="space-y-8">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Admin-Uebersicht</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Admin-Übersicht</h1>
                     <p className="text-muted-foreground">
                         Systemstatus und wichtige Kennzahlen auf einen Blick
                     </p>
@@ -86,7 +86,7 @@ function AdminDashboard() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p>Dashboard-Daten konnten nicht geladen werden. Bitte pruefen Sie die Serververbindung.</p>
+                        <p>Dashboard-Daten konnten nicht geladen werden. Bitte prüfen Sie die Serververbindung.</p>
                     </CardContent>
                 </Card>
             </div>
@@ -96,7 +96,7 @@ function AdminDashboard() {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Admin-Uebersicht</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Admin-Übersicht</h1>
                 <p className="text-muted-foreground">
                     Systemstatus und wichtige Kennzahlen auf einen Blick
                 </p>
@@ -167,7 +167,7 @@ function AdminDashboard() {
                             <div className="text-2xl font-bold">{stats?.storageUsed ?? '-'}</div>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            von {dashboard?.gpu.total_gb.toFixed(0) ?? '16'} GB verfuegbar
+                            von {dashboard?.gpu.total_gb.toFixed(0) ?? '16'} GB verfügbar
                         </p>
                     </CardContent>
                 </Card>
@@ -183,12 +183,12 @@ function AdminDashboard() {
                         ) : (
                             <div className={`text-2xl font-bold ${
                                 stats?.systemHealth === 'Gesund' ? 'text-green-600' :
-                                stats?.systemHealth === 'Eingeschraenkt' ? 'text-yellow-600' : 'text-red-600'
+                                stats?.systemHealth === 'Eingeschränkt' ? 'text-yellow-600' : 'text-red-600'
                             }`}>{stats?.systemHealth ?? '-'}</div>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            {dashboard?.health.overall === 'healthy' ? 'Alle Dienste verfuegbar' :
-                             dashboard?.health.overall === 'degraded' ? 'Einige Dienste eingeschraenkt' : 'Systemprobleme erkannt'}
+                            {dashboard?.health.overall === 'healthy' ? 'Alle Dienste verfügbar' :
+                             dashboard?.health.overall === 'degraded' ? 'Einige Dienste eingeschränkt' : 'Systemprobleme erkannt'}
                         </p>
                     </CardContent>
                 </Card>

@@ -280,7 +280,7 @@ export const PredictiveInsights: React.FC<PredictiveInsightsProps> = ({
           <CardHeader>
             <CardTitle>Cashflow-Prognose</CardTitle>
             <CardDescription>
-              Erwartete Einnahmen und Ausgaben der naechsten Monate
+              Erwartete Einnahmen und Ausgaben der nächsten Monate
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -316,7 +316,7 @@ export const PredictiveInsights: React.FC<PredictiveInsightsProps> = ({
               ))}
               {cashFlowPredictions.length === 0 && (
                 <p className="text-muted-foreground text-center py-4">
-                  Keine Prognosen verfuegbar
+                  Keine Prognosen verfügbar
                 </p>
               )}
             </div>
@@ -463,7 +463,7 @@ export const PredictiveInsights: React.FC<PredictiveInsightsProps> = ({
               ))}
               {costTrends.length === 0 && (
                 <p className="text-muted-foreground text-center py-4">
-                  Keine Kostendaten verfuegbar
+                  Keine Kostendaten verfügbar
                 </p>
               )}
             </div>

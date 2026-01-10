@@ -106,7 +106,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     <SidebarLink to="/finanzen" icon={Landmark} label="Finanzen" onNavigate={onNavigate} />
                     <SidebarLink to="/kasse" icon={Wallet} label="Kassenbuch" onNavigate={onNavigate} />
                     <SidebarLink to="/spesen" icon={Receipt} label="Spesen" onNavigate={onNavigate} />
-                    <SidebarLink to="/streckengeschaeft" icon={GitBranch} label="Streckengeschaeft" onNavigate={onNavigate} />
+                    <SidebarLink to="/streckengeschaeft" icon={GitBranch} label="Streckengeschäft" onNavigate={onNavigate} />
                     <SidebarLink to="/personal" icon={UserCircle} label="Personal" onNavigate={onNavigate} />
                     {permissions.canViewPrivat && (
                         <SidebarLink to="/privat" icon={Lock} label="Privat" onNavigate={onNavigate} />

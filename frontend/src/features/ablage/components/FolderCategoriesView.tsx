@@ -179,7 +179,7 @@ export function FolderCategoriesView({ entityType }: FolderCategoriesViewProps) 
           </Badge>
         )}
         <Badge variant="outline" className="text-sm py-1.5 px-3">
-          Letzte Aktivitaet: {formatDate(folder.lastActivity)}
+          Letzte Aktivität: {formatDate(folder.lastActivity)}
         </Badge>
       </div>
 

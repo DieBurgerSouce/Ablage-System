@@ -120,7 +120,7 @@ export function LoanScenarioSimulator({
           Kredit-Simulator
         </CardTitle>
         <CardDescription>
-          {loanName} - Was-Waere-Wenn Analysen
+          {loanName} - Was-Wäre-Wenn Analysen
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -304,7 +304,7 @@ function ExtraPaymentResult({ result, formatCurrency, formatDate }: ExtraPayment
         <p className="font-medium text-green-800 dark:text-green-300">
           Mit {formatCurrency(result.extraMonthlyPayment)} monatlicher Sonderzahlung
           sparen Sie <strong>{formatCurrency(result.interestSaved)}</strong> an Zinsen
-          und sind <strong>{result.monthsSaved} Monate</strong> frueher schuldenfrei!
+          und sind <strong>{result.monthsSaved} Monate</strong> früher schuldenfrei!
         </p>
       </div>
     </div>
@@ -356,7 +356,7 @@ function RefinancingResult({ result, formatCurrency }: RefinancingResultProps) {
         <ResultItem
           label="Voraussichtliche Kosten"
           value={formatCurrency(result.refinancingCosts + result.estimatedPrepaymentPenalty)}
-          subtext="inkl. Vorfaelligkeitsentschaedigung"
+          subtext="inkl. Vorfälligkeitsentschädigung"
         />
         <ResultItem
           label="Gesamtersparnis"

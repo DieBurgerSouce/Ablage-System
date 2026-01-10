@@ -154,14 +154,14 @@ export function useGlobalShortcuts() {
         // Help
         {
             id: 'show-help',
-            description: 'Tastenkuerzel anzeigen',
+            description: 'Tastenkürzel anzeigen',
             keys: '?',
             category: 'help',
             handler: () => state.setHelpOpen(true),
         },
         {
             id: 'close-modal',
-            description: 'Dialog schliessen',
+            description: 'Dialog schließen',
             keys: 'escape',
             category: 'help',
             handler: () => state.setHelpOpen(false),

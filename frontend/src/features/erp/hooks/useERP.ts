@@ -90,10 +90,10 @@ export function useDeleteConnection() {
     mutationFn: (connectionId: string) => deleteConnection(connectionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: erpKeys.connections() });
-      toast.success('ERP-Verbindung geloescht');
+      toast.success('ERP-Verbindung gelöscht');
     },
     onError: (error: Error) => {
-      toast.error(`Fehler beim Loeschen: ${error.message}`);
+      toast.error(`Fehler beim Löschen: ${error.message}`);
     },
   });
 }
@@ -177,10 +177,10 @@ export function useResolveConflict() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: erpKeys.conflicts() });
       queryClient.invalidateQueries({ queryKey: erpKeys.stats() });
-      toast.success('Konflikt aufgeloest');
+      toast.success('Konflikt aufgelöst');
     },
     onError: (error: Error) => {
-      toast.error(`Fehler beim Aufloesen: ${error.message}`);
+      toast.error(`Fehler beim Auflösen: ${error.message}`);
     },
   });
 }

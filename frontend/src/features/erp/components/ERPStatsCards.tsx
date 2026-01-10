@@ -37,7 +37,7 @@ export function ERPStatsCards({ stats }: ERPStatsCardsProps) {
       title: 'Offene Konflikte',
       value: stats.pending_conflicts,
       icon: AlertTriangle,
-      description: 'Warten auf Aufloesung',
+      description: 'Warten auf Auflösung',
       valueClassName: stats.pending_conflicts > 0
         ? 'text-yellow-600 dark:text-yellow-400'
         : undefined,

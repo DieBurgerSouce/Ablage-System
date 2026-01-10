@@ -113,7 +113,7 @@ export function useDeleteNotification() {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
     onError: (error: Error) => {
-      toast.error('Fehler beim Loeschen der Benachrichtigung', {
+      toast.error('Fehler beim Löschen der Benachrichtigung', {
         description: error.message || 'Bitte versuchen Sie es erneut.',
       });
     },

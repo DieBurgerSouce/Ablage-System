@@ -58,7 +58,7 @@ export function formatEntryType(type: string): string {
     difference_plus: 'Kassendifferenz +',
     difference_minus: 'Kassendifferenz -',
     cancellation: 'Storno',
-    opening: 'Eroeffnung',
+    opening: 'Eröffnung',
   };
   return types[type] ?? type;
 }

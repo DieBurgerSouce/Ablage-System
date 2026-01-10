@@ -40,8 +40,8 @@ export function UnsavedChangesDialog({
     open,
     onConfirm,
     onCancel,
-    title = 'Ungespeicherte Aenderungen',
-    description = 'Sie haben ungespeicherte Aenderungen. Wenn Sie die Seite verlassen, gehen diese verloren.',
+    title = 'Ungespeicherte Änderungen',
+    description = 'Sie haben ungespeicherte Änderungen. Wenn Sie die Seite verlassen, gehen diese verloren.',
 }: UnsavedChangesDialogProps) {
     return (
         <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
@@ -63,7 +63,7 @@ export function UnsavedChangesDialog({
                         onClick={onConfirm}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                        Aenderungen verwerfen
+                        Änderungen verwerfen
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

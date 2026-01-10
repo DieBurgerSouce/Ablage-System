@@ -66,16 +66,16 @@ export function DashboardGrid() {
                             variant="outline"
                             size="sm"
                             onClick={() => setShowCatalog(true)}
-                            aria-label="Neues Widget zum Dashboard hinzufuegen"
+                            aria-label="Neues Widget zum Dashboard hinzufügen"
                         >
                             <Plus className="w-4 h-4 mr-2" aria-hidden="true" />
-                            Widget hinzufuegen
+                            Widget hinzufügen
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={resetToDefault}
-                            aria-label="Dashboard auf Standardansicht zuruecksetzen"
+                            aria-label="Dashboard auf Standardansicht zurücksetzen"
                         >
                             <RotateCcw className="w-4 h-4 mr-2" aria-hidden="true" />
                             Reset

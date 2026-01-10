@@ -59,12 +59,12 @@ function saveToStorage(searches: SavedSearch[]): boolean {
     if (isQuotaError) {
       toast.error('Speicherlimit erreicht', {
         description:
-          'Der lokale Speicher ist voll. Bitte loeschen Sie einige gespeicherte Suchen.',
+          'Der lokale Speicher ist voll. Bitte löschen Sie einige gespeicherte Suchen.',
       });
     } else {
-      toast.error('Speichern nicht moeglich', {
+      toast.error('Speichern nicht möglich', {
         description:
-          'Die Suche konnte nicht gespeichert werden. Moeglicherweise ist der private Modus aktiv.',
+          'Die Suche konnte nicht gespeichert werden. Möglicherweise ist der private Modus aktiv.',
       });
     }
     return false;
@@ -157,7 +157,7 @@ export function useSavedSearches(): UseSavedSearchesReturn {
     // Toast-Nachrichten NACH dem setState basierend auf dem Ergebnis
     if (wasLimitReached) {
       toast.error('Limit erreicht', {
-        description: `Maximal ${MAX_SAVED_SEARCHES} Suchen koennen gespeichert werden.`,
+        description: `Maximal ${MAX_SAVED_SEARCHES} Suchen können gespeichert werden.`,
       });
       throw new Error('Saved searches limit reached');
     }
@@ -176,10 +176,10 @@ export function useSavedSearches(): UseSavedSearchesReturn {
     setSavedSearches((prev) => {
       const search = prev.find((s) => s.id === id);
       if (search) {
-        toast.success('Suche geloescht', {
+        toast.success('Suche gelöscht', {
           description: `"${search.name}" wurde entfernt.`,
           action: {
-            label: 'Rueckgaengig',
+            label: 'Rückgängig',
             onClick: () => {
               setSavedSearches((current) => [search, ...current]);
             },
@@ -256,10 +256,10 @@ export function useSavedSearches(): UseSavedSearchesReturn {
     });
 
     // Toast NACH setState, backup ist jetzt gefuellt
-    toast.success('Alle Suchen geloescht', {
+    toast.success('Alle Suchen gelöscht', {
       description: `${backup.length} Suchen wurden entfernt.`,
       action: {
-        label: 'Rueckgaengig',
+        label: 'Rückgängig',
         onClick: () => {
           // backup ist in dieser Closure stabil - kein savedSearches Dependency noetig
           setSavedSearches(backup);

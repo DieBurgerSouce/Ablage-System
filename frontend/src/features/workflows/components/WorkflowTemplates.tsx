@@ -100,7 +100,7 @@ function TemplateCard({ template, onInstantiate }: TemplateCardProps) {
           <div className="flex-1">
             <CardTitle className="text-lg">{template.name}</CardTitle>
             <CardDescription className="line-clamp-2 mt-1">
-              {template.description || 'Keine Beschreibung verfuegbar'}
+              {template.description || 'Keine Beschreibung verfügbar'}
             </CardDescription>
           </div>
         </div>
@@ -384,7 +384,7 @@ export default function WorkflowTemplates({ showAsGallery = true }: WorkflowTemp
           <p className="text-muted-foreground">
             {search
               ? 'Versuche einen anderen Suchbegriff.'
-              : 'Noch keine Templates verfuegbar.'}
+              : 'Noch keine Templates verfügbar.'}
           </p>
         </Card>
       ) : (

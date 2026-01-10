@@ -93,7 +93,7 @@ export function NetWorthChart({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Wallet className="h-5 w-5 text-red-500" />
-            Nettovermoegen
+            Nettovermögen
           </CardTitle>
           <CardDescription className="text-destructive">
             Fehler beim Laden der Daten
@@ -121,16 +121,16 @@ export function NetWorthChart({
           <div>
             <CardTitle className="flex items-center gap-2">
               <Wallet className="h-5 w-5 text-green-500" />
-              Nettovermoegen
+              Nettovermögen
             </CardTitle>
-            <CardDescription>Ihre Vermoegensposition</CardDescription>
+            <CardDescription>Ihre Vermögensposition</CardDescription>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            aria-label="Nettovermoegen aktualisieren"
+            aria-label="Nettovermögen aktualisieren"
           >
             <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} aria-hidden="true" />
           </Button>
@@ -146,7 +146,7 @@ export function NetWorthChart({
               <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/30">
                 <div className="flex items-center gap-2 mb-2">
                   <ArrowUp className="h-4 w-4 text-green-600" />
-                  <span className="text-sm text-muted-foreground">Vermoegen</span>
+                  <span className="text-sm text-muted-foreground">Vermögen</span>
                 </div>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {formatCurrency(netWorth.totalAssets)}
@@ -190,7 +190,7 @@ export function NetWorthChart({
 
             {/* Asset Breakdown */}
             <div className="space-y-4">
-              <h4 className="font-medium">Vermoegensaufstellung</h4>
+              <h4 className="font-medium">Vermögensaufstellung</h4>
 
               {/* Visual Bar */}
               <div className="h-8 rounded-full overflow-hidden flex">
@@ -276,7 +276,7 @@ export function NetWorthChart({
           </div>
         ) : (
           <p className="text-center py-8 text-muted-foreground">
-            Keine Daten verfuegbar
+            Keine Daten verfügbar
           </p>
         )}
       </CardContent>
@@ -331,7 +331,7 @@ function CompactView({ netWorth, isLoading, formatCurrency, className }: Compact
             )}
           </div>
           <div className="flex-1">
-            <span className="text-sm text-muted-foreground">Nettovermoegen</span>
+            <span className="text-sm text-muted-foreground">Nettovermögen</span>
             <p
               className={cn(
                 'text-xl font-bold',

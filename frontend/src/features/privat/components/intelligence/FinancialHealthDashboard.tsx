@@ -226,7 +226,7 @@ export function FinancialHealthDashboard({
               <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/30">
                 <h4 className="font-medium text-green-700 dark:text-green-400 flex items-center gap-2 mb-3">
                   <CheckCircle2 className="h-4 w-4" />
-                  Staerken
+                  Stärken
                 </h4>
                 <ul className="space-y-2">
                   {healthScore.topStrengths.map((strength, i) => (
@@ -240,7 +240,7 @@ export function FinancialHealthDashboard({
                   ))}
                   {healthScore.topStrengths.length === 0 && (
                     <li className="text-sm text-muted-foreground">
-                      Keine besonderen Staerken identifiziert
+                      Keine besonderen Stärken identifiziert
                     </li>
                   )}
                 </ul>
@@ -264,7 +264,7 @@ export function FinancialHealthDashboard({
                   ))}
                   {healthScore.topWeaknesses.length === 0 && (
                     <li className="text-sm text-muted-foreground">
-                      Keine Schwaechen identifiziert
+                      Keine Schwächen identifiziert
                     </li>
                   )}
                 </ul>
@@ -276,7 +276,7 @@ export function FinancialHealthDashboard({
               <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/30">
                 <h4 className="font-medium text-blue-700 dark:text-blue-400 flex items-center gap-2 mb-3">
                   <Target className="h-4 w-4" />
-                  Empfohlene Massnahmen
+                  Empfohlene Maßnahmen
                 </h4>
                 <ul className="space-y-2">
                   {healthScore.actionItems.map((item, i) => (
@@ -300,7 +300,7 @@ export function FinancialHealthDashboard({
           </div>
         ) : (
           <p className="text-center py-8 text-muted-foreground">
-            Keine Daten verfuegbar
+            Keine Daten verfügbar
           </p>
         )}
       </CardContent>

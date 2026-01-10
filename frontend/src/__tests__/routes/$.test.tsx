@@ -34,12 +34,12 @@ describe('404 Not Found Page', () => {
         render(
             <div>
                 <button>Zur Startseite</button>
-                <button>Zurueck</button>
+                <button>Zurück</button>
             </div>
         )
 
         expect(screen.getByText('Zur Startseite')).toBeInTheDocument()
-        expect(screen.getByText('Zurueck')).toBeInTheDocument()
+        expect(screen.getByText('Zurück')).toBeInTheDocument()
     })
 
     it('exports the correct route', () => {

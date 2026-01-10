@@ -61,10 +61,10 @@ export function KeyboardShortcutsHelp({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Keyboard className="w-5 h-5" />
-                        Tastenkuerzel
+                        Tastenkürzel
                     </DialogTitle>
                     <DialogDescription>
-                        Nutzen Sie diese Tastenkuerzel fuer schnellere Navigation.
+                        Nutzen Sie diese Tastenkürzel für schnellere Navigation.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -106,7 +106,7 @@ export function KeyboardShortcutsHelp({
                 {/* Footer */}
                 <div className="pt-4 border-t border-border">
                     <p className="text-xs text-muted-foreground text-center">
-                        Druecken Sie <ShortcutBadge keys="?" className="mx-1" /> jederzeit, um diese Hilfe anzuzeigen.
+                        Drücken Sie <ShortcutBadge keys="?" className="mx-1" /> jederzeit, um diese Hilfe anzuzeigen.
                     </p>
                 </div>
             </DialogContent>

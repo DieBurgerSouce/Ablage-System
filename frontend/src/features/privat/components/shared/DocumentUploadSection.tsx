@@ -77,7 +77,7 @@ export function DocumentUploadSection({
   relatedEntityType,
   relatedEntityId,
   title = 'Dokumente',
-  description = 'Laden Sie zugehoerige Dokumente hoch',
+  description = 'Laden Sie zugehörige Dokumente hoch',
 }: DocumentUploadSectionProps) {
   const [documents, setDocuments] = React.useState<PrivatDocument[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -213,9 +213,9 @@ export function DocumentUploadSection({
     try {
       await privatApi.deleteDocument(deleteDocument.id);
       setDocuments((prev) => prev.filter((d) => d.id !== deleteDocument.id));
-      toast.success('Dokument geloescht');
+      toast.success('Dokument gelöscht');
     } catch (err) {
-      toast.error('Fehler beim Loeschen');
+      toast.error('Fehler beim Löschen');
     } finally {
       setDeleteDocument(null);
     }
@@ -313,7 +313,7 @@ export function DocumentUploadSection({
                     variant="ghost"
                     size="icon"
                     onClick={() => setDeleteDocument(doc)}
-                    title="Loeschen"
+                    title="Löschen"
                     className="text-destructive hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -416,7 +416,7 @@ export function DocumentUploadSection({
                 onValueChange={(value) => setDocumentType(value as PrivatDocumentType)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Typ auswaehlen" />
+                  <SelectValue placeholder="Typ auswählen" />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, label]) => (
@@ -454,10 +454,10 @@ export function DocumentUploadSection({
       <AlertDialog open={!!deleteDocument} onOpenChange={(open) => !open && setDeleteDocument(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Dokument loeschen</AlertDialogTitle>
+            <AlertDialogTitle>Dokument löschen</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie das Dokument "{deleteDocument?.title}" wirklich loeschen?
-              Diese Aktion kann nicht rueckgaengig gemacht werden.
+              Möchten Sie das Dokument "{deleteDocument?.title}" wirklich löschen?
+              Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -466,7 +466,7 @@ export function DocumentUploadSection({
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

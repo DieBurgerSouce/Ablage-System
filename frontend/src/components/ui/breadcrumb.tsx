@@ -59,7 +59,7 @@ const ROUTE_LABELS: Record<string, string> = {
     '/finanzen': 'Finanzen',
     '/kasse': 'Kasse',
     '/spesen': 'Spesen',
-    '/streckengeschaeft': 'Streckengeschaeft',
+    '/streckengeschaeft': 'Streckengeschäft',
 
     // Personal & Privat
     '/personal': 'Personal',

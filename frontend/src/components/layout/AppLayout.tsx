@@ -42,7 +42,7 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
                         <button
                             onClick={toggle}
                             className="md:hidden p-2 -ml-2 rounded-md hover:bg-accent"
-                            aria-label="Menue oeffnen"
+                            aria-label="Menü öffnen"
                             aria-expanded={isOpen}
                         >
                             <Menu className="h-5 w-5" />

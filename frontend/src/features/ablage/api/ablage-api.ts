@@ -8,6 +8,7 @@ import type {
     DocumentSortField,
     SortOrder,
 } from '../types/ablage-types';
+import { apiClient } from '@/lib/api/client';
 
 const API_BASE = '/api/v1';
 
@@ -191,23 +192,13 @@ export interface FolderInfo {
 }
 
 export async function fetchEntityName(entityId: string): Promise<EntityInfo> {
-    const response = await fetch(`${API_BASE}/entities/${entityId}`, {
-        credentials: 'include',
-    });
-    if (!response.ok) {
-        throw new Error('Entity nicht gefunden');
-    }
-    return response.json();
+    const response = await apiClient.get<EntityInfo>(`/entities/${entityId}`);
+    return response.data;
 }
 
 export async function fetchFolderName(folderId: string): Promise<FolderInfo> {
-    const response = await fetch(`${API_BASE}/folders/${folderId}`, {
-        credentials: 'include',
-    });
-    if (!response.ok) {
-        throw new Error('Ordner nicht gefunden');
-    }
-    return response.json();
+    const response = await apiClient.get<FolderInfo>(`/folders/${folderId}`);
+    return response.data;
 }
 
 // ==================== GPU Status ====================
@@ -281,31 +272,66 @@ export interface EntityFolder {
 }
 
 /**
- * Kunden für Frontend-Liste abrufen
- * Display-Format: Kundennummer_Matchcode
+ * Pagination-Response für Kunden/Lieferanten
  */
-export async function fetchCustomersForFrontend(): Promise<CustomerForFrontend[]> {
-    const response = await fetch(`${API_BASE}/entities/customers`, {
-        credentials: 'include',
-    });
-    if (!response.ok) {
-        throw new Error('Fehler beim Laden der Kunden');
-    }
-    return response.json();
+export interface PaginatedEntityResponse<T> {
+    items: T[];
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
 }
 
 /**
- * Lieferanten für Frontend-Liste abrufen
+ * Filter-Optionen für Kunden/Lieferanten-Liste
+ */
+export interface EntityListFilter {
+    search?: string;
+    isActive?: boolean;
+    page?: number;
+    pageSize?: number;
+}
+
+/**
+ * Kunden für Frontend-Liste abrufen (paginiert)
+ * Display-Format: Kundennummer_Matchcode
+ */
+export async function fetchCustomersForFrontend(
+    options: EntityListFilter = {}
+): Promise<PaginatedEntityResponse<CustomerForFrontend>> {
+    const params: Record<string, string> = {};
+
+    if (options.search) params.search = options.search;
+    if (options.isActive !== undefined) params.is_active = String(options.isActive);
+    if (options.page) params.page = String(options.page);
+    if (options.pageSize) params.page_size = String(options.pageSize);
+
+    const response = await apiClient.get<PaginatedEntityResponse<CustomerForFrontend>>(
+        '/entities/customers',
+        { params }
+    );
+    return response.data;
+}
+
+/**
+ * Lieferanten für Frontend-Liste abrufen (paginiert)
  * Display-Format: Nur Matchcode (KEINE Nummer!)
  */
-export async function fetchSuppliersForFrontend(): Promise<SupplierForFrontend[]> {
-    const response = await fetch(`${API_BASE}/entities/suppliers`, {
-        credentials: 'include',
-    });
-    if (!response.ok) {
-        throw new Error('Fehler beim Laden der Lieferanten');
-    }
-    return response.json();
+export async function fetchSuppliersForFrontend(
+    options: EntityListFilter = {}
+): Promise<PaginatedEntityResponse<SupplierForFrontend>> {
+    const params: Record<string, string> = {};
+
+    if (options.search) params.search = options.search;
+    if (options.isActive !== undefined) params.is_active = String(options.isActive);
+    if (options.page) params.page = String(options.page);
+    if (options.pageSize) params.page_size = String(options.pageSize);
+
+    const response = await apiClient.get<PaginatedEntityResponse<SupplierForFrontend>>(
+        '/entities/suppliers',
+        { params }
+    );
+    return response.data;
 }
 
 /**
@@ -313,13 +339,8 @@ export async function fetchSuppliersForFrontend(): Promise<SupplierForFrontend[]
  * z.B. Spargelmesser, Folie
  */
 export async function fetchEntityFolders(entityId: string): Promise<EntityFolder[]> {
-    const response = await fetch(`${API_BASE}/entities/${entityId}/folders`, {
-        credentials: 'include',
-    });
-    if (!response.ok) {
-        throw new Error('Fehler beim Laden der Ordner');
-    }
-    return response.json();
+    const response = await apiClient.get<EntityFolder[]>(`/entities/${entityId}/folders`);
+    return response.data;
 }
 
 /**
@@ -347,22 +368,18 @@ export async function fetchFolderDocuments(
     folderId: string,
     options: FolderDocumentFilter = {}
 ): Promise<FolderDocumentResponse> {
-    const params = new URLSearchParams();
+    const params: Record<string, string> = {};
 
-    if (options.category) params.set('category', options.category);
-    if (options.page !== undefined) params.set('page', String(options.page));
-    if (options.pageSize) params.set('page_size', String(options.pageSize));
-    if (options.sortBy) params.set('sort_by', options.sortBy);
-    if (options.sortOrder) params.set('sort_order', options.sortOrder);
-    if (options.search) params.set('search', options.search);
+    if (options.category) params.category = options.category;
+    if (options.page !== undefined) params.page = String(options.page);
+    if (options.pageSize) params.page_size = String(options.pageSize);
+    if (options.sortBy) params.sort_by = options.sortBy;
+    if (options.sortOrder) params.sort_order = options.sortOrder;
+    if (options.search) params.search = options.search;
 
-    const url = `${API_BASE}/entities/${entityId}/folders/${folderId}/documents?${params}`;
-    const response = await fetch(url, {
-        credentials: 'include',
-    });
-
-    if (!response.ok) {
-        throw new Error('Fehler beim Laden der Dokumente');
-    }
-    return response.json();
+    const response = await apiClient.get<FolderDocumentResponse>(
+        `/entities/${entityId}/folders/${folderId}/documents`,
+        { params }
+    );
+    return response.data;
 }

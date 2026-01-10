@@ -2,7 +2,7 @@
  * AI Decision List - Entscheidungs-Tabelle
  *
  * Zeigt alle AI/ML Entscheidungen mit Filterung
- * und Review-Funktionalitaet.
+ * und Review-Funktionalität.
  */
 
 import { useState } from 'react';
@@ -105,8 +105,8 @@ export function AIDecisionList() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Alle Entscheidungen</SelectItem>
-                <SelectItem value="true">Zur Pruefung</SelectItem>
-                <SelectItem value="false">Geprueft</SelectItem>
+                <SelectItem value="true">Zur Prüfung</SelectItem>
+                <SelectItem value="false">Geprüft</SelectItem>
               </SelectContent>
             </Select>
 
@@ -188,9 +188,9 @@ export function AIDecisionList() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Entscheidung pruefen</DialogTitle>
+            <DialogTitle>Entscheidung prüfen</DialogTitle>
             <DialogDescription>
-              Pruefen Sie die AI-Entscheidung und waehlen Sie eine Aktion.
+              Prüfen Sie die AI-Entscheidung und wählen Sie eine Aktion.
             </DialogDescription>
           </DialogHeader>
 
@@ -226,7 +226,7 @@ export function AIDecisionList() {
                   onClick={() => setReviewOutcome('approved')}
                 >
                   <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Bestaetigen
+                  Bestätigen
                 </Button>
                 <Button
                   variant={reviewOutcome === 'corrected' ? 'default' : 'outline'}
@@ -299,7 +299,7 @@ function DecisionItem({ decision, onReview }: DecisionItemProps) {
   const qualityDecisionLabels: Record<QualityDecision, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
     accept: { label: 'Akzeptiert', variant: 'default' },
     accept_with_warning: { label: 'Mit Warnung', variant: 'secondary' },
-    request_review: { label: 'Zur Pruefung', variant: 'outline' },
+    request_review: { label: 'Zur Prüfung', variant: 'outline' },
     retry_different_backend: { label: 'Retry', variant: 'secondary' },
     reject: { label: 'Abgelehnt', variant: 'destructive' },
   };
@@ -324,7 +324,7 @@ function DecisionItem({ decision, onReview }: DecisionItemProps) {
           {decision.needs_review && (
             <Badge variant="outline" className="gap-1 text-yellow-600">
               <Clock className="w-3 h-3" />
-              Zur Pruefung
+              Zur Prüfung
             </Badge>
           )}
         </div>
@@ -362,7 +362,7 @@ function DecisionItem({ decision, onReview }: DecisionItemProps) {
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onReview}>
               <Eye className="w-4 h-4 mr-2" />
-              Pruefen
+              Prüfen
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

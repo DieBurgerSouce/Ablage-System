@@ -159,9 +159,9 @@ export function ContractDataSection({ data, onFieldEdit }: ContractDataSectionPr
     if (daysUntilEnd < 0) {
       return { status: 'Abgelaufen', color: 'red' };
     } else if (daysUntilEnd <= 30) {
-      return { status: `Laeuft ab in ${daysUntilEnd} Tagen`, color: 'yellow' };
+      return { status: `Läuft ab in ${daysUntilEnd} Tagen`, color: 'yellow' };
     } else if (daysUntilEnd <= 90) {
-      return { status: `Laeuft ab in ${Math.ceil(daysUntilEnd / 30)} Monaten`, color: 'orange' };
+      return { status: `Läuft ab in ${Math.ceil(daysUntilEnd / 30)} Monaten`, color: 'orange' };
     } else {
       return { status: 'Aktiv', color: 'green' };
     }

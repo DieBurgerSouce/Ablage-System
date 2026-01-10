@@ -8,7 +8,7 @@
  * ```tsx
  * const { executeAction, undo, canUndo, undoStack } = useUndoableAction({
  *   maxStackSize: 10,
- *   onUndo: (action) => console.log('Rueckgaengig:', action.description),
+ *   onUndo: (action) => console.log('Rückgängig:', action.description),
  * });
  *
  * // Eine Aktion ausfuehren
@@ -18,7 +18,7 @@
  *   undo: () => api.restoreDocument(id),
  * });
  *
- * // Rueckgaengig machen
+ * // Rückgängig machen
  * if (canUndo) {
  *   await undo();
  * }
@@ -82,7 +82,7 @@ export interface UseUndoableActionReturn {
   ) => Promise<T>;
   /** Macht die letzte Aktion rueckgaengig */
   undo: () => Promise<void>;
-  /** Ob es Aktionen zum Rueckgaengig machen gibt */
+  /** Ob es Aktionen zum Rückgängig machen gibt */
   canUndo: boolean;
   /** Der aktuelle Undo-Stack */
   undoStack: UndoableAction[];
@@ -157,7 +157,7 @@ export function useUndoableAction(
         if (showToasts) {
           toast.success(action.description, {
             action: {
-              label: 'Rueckgaengig',
+              label: 'Rückgängig',
               onClick: async () => {
                 // ENTERPRISE FIX: Prüfe ob Stack durch andere Ops geändert wurde
                 if (capturedMutationId !== mutationIdRef.current) {
@@ -165,7 +165,7 @@ export function useUndoableAction(
                   // Die Action könnte nicht mehr im erwarteten State sein
                   const stillExists = undoStackRef.current.find((a) => a.id === id);
                   if (!stillExists) {
-                    toast.error('Aktion nicht mehr verfuegbar');
+                    toast.error('Aktion nicht mehr verfügbar');
                     return;
                   }
                   // Warnung ausgeben aber trotzdem versuchen wenn Action noch existiert
@@ -178,7 +178,7 @@ export function useUndoableAction(
                 const actionToUndo = undoStackRef.current.find((a) => a.id === id);
 
                 if (!actionToUndo) {
-                  toast.error('Aktion nicht mehr verfuegbar');
+                  toast.error('Aktion nicht mehr verfügbar');
                   return;
                 }
 
@@ -189,10 +189,10 @@ export function useUndoableAction(
                   // NUR bei Erfolg: Entferne aus Stack und inkrementiere mutation ID
                   mutationIdRef.current++;
                   setUndoStack((prev) => prev.filter((a) => a.id !== id));
-                  toast.success('Rueckgaengig gemacht');
+                  toast.success('Rückgängig gemacht');
                 } catch (err) {
                   // Bei Fehler: Behalte im Stack fuer erneuten Versuch
-                  toast.error('Rueckgaengig machen fehlgeschlagen - erneut versuchen moeglich', {
+                  toast.error('Rückgängig machen fehlgeschlagen - erneut versuchen möglich', {
                     description:
                       err instanceof Error ? err.message : 'Unbekannter Fehler',
                   });
@@ -240,13 +240,13 @@ export function useUndoableAction(
 
       // Toast
       if (showToasts) {
-        toast.success('Rueckgaengig gemacht', {
+        toast.success('Rückgängig gemacht', {
           description: actionToUndo.description,
         });
       }
     } catch (error) {
       // KEEP action in stack on failure - allow retry
-      toast.error('Rueckgaengig machen fehlgeschlagen - erneut versuchen moeglich', {
+      toast.error('Rückgängig machen fehlgeschlagen - erneut versuchen möglich', {
         description:
           error instanceof Error ? error.message : 'Unbekannter Fehler',
       });

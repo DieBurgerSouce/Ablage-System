@@ -37,7 +37,7 @@ export function AILearningStats() {
     return (
       <Card>
         <CardContent className="p-6 text-center text-muted-foreground">
-          Keine Lernstatistiken verfuegbar
+          Keine Lernstatistiken verfügbar
         </CardContent>
       </Card>
     );
@@ -126,7 +126,7 @@ export function AILearningStats() {
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-blue-500" />
-                  Naechstes Training
+                  Nächstes Training
                 </span>
                 <span className="font-mono text-xs">
                   {new Date(stats.next_training_scheduled).toLocaleDateString('de-DE')}

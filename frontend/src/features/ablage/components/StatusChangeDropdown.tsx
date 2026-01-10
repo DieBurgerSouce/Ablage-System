@@ -79,7 +79,7 @@ const STATUS_OPTIONS: StatusOption[] = [
   },
   {
     id: 'ueberfaellig',
-    label: 'Als ueberfaellig markieren',
+    label: 'Als überfällig markieren',
     icon: AlertTriangle,
     className: 'text-red-600',
     action: 'payment',
@@ -171,19 +171,19 @@ export function StatusChangeDropdown({
             variant="outline"
             size="sm"
             disabled={disabled || isLoading || selectedIds.length === 0}
-            aria-label="Status aendern"
+            aria-label="Status ändern"
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
             ) : (
               <Settings2 className="h-4 w-4 mr-2" aria-hidden="true" />
             )}
-            Status aendern
+            Status ändern
             <ChevronDown className="h-4 w-4 ml-2" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>Status aendern</DropdownMenuLabel>
+          <DropdownMenuLabel>Status ändern</DropdownMenuLabel>
           <DropdownMenuSeparator />
 
           {/* Payment Status Options (only for invoice categories) */}

@@ -192,7 +192,7 @@ export function BulkActionsToolbar({
                 size="sm"
                 onClick={() => setTagsDialogOpen(true)}
                 disabled={isLoading}
-                aria-label={`Tags fuer ${selectedIds.length} Dokumente bearbeiten`}
+                aria-label={`Tags für ${selectedIds.length} Dokumente bearbeiten`}
               >
                 <Tags className="h-4 w-4 mr-2" aria-hidden="true" />
                 Tags

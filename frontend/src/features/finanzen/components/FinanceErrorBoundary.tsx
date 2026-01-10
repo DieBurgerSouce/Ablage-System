@@ -81,7 +81,7 @@ export function classifyError(error: unknown): FinanceError {
         type: 'server_error',
         message: 'Serverfehler',
         statusCode: status,
-        details: 'Ein interner Serverfehler ist aufgetreten. Bitte versuchen Sie es spaeter erneut oder kontaktieren Sie den Support.',
+        details: 'Ein interner Serverfehler ist aufgetreten. Bitte versuchen Sie es später erneut oder kontaktieren Sie den Support.',
         retryable: true,
       }
     }

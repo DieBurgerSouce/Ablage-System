@@ -71,7 +71,7 @@ export function useCreateComment() {
       queryClient.invalidateQueries({
         queryKey: ['comments', newComment.documentId],
       });
-      toast.success('Kommentar hinzugefuegt');
+      toast.success('Kommentar hinzugefügt');
     },
     onError: (error: Error) => {
       toast.error('Fehler beim Erstellen des Kommentars', {
@@ -106,10 +106,10 @@ export function useDeleteComment(documentId: string) {
     mutationFn: (commentId: string) => deleteComment(documentId, commentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', documentId] });
-      toast.success('Kommentar geloescht');
+      toast.success('Kommentar gelöscht');
     },
     onError: (error: Error) => {
-      toast.error('Fehler beim Loeschen des Kommentars', {
+      toast.error('Fehler beim Löschen des Kommentars', {
         description: error.message || 'Bitte versuchen Sie es erneut.',
       });
     },

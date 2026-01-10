@@ -143,7 +143,7 @@ export default function WorkflowStats({ workflowId }: WorkflowStatsProps) {
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="Gesamt-Ausfuehrungen"
+            title="Gesamt-Ausführungen"
             value={workflowStats.statistics?.total_executions || 0}
             icon={Play}
           />
@@ -168,7 +168,7 @@ export default function WorkflowStats({ workflowId }: WorkflowStatsProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Durchschnittliche Ausfuehrungsdauer</CardTitle>
+            <CardTitle>Durchschnittliche Ausführungsdauer</CardTitle>
             <CardDescription>
               {workflowStats.statistics?.avg_duration_seconds
                 ? `${workflowStats.statistics.avg_duration_seconds.toFixed(1)} Sekunden`
@@ -185,7 +185,7 @@ export default function WorkflowStats({ workflowId }: WorkflowStatsProps) {
                     : '-'}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Durchschnittlich pro Ausfuehrung
+                  Durchschnittlich pro Ausführung
                 </div>
               </div>
             </div>
@@ -207,12 +207,12 @@ export default function WorkflowStats({ workflowId }: WorkflowStatsProps) {
           icon={Zap}
         />
         <StatCard
-          title="Ausfuehrungen heute"
+          title="Ausführungen heute"
           value={overviewStats?.executions_today || 0}
           icon={Calendar}
         />
         <StatCard
-          title="Gesamt-Ausfuehrungen"
+          title="Gesamt-Ausführungen"
           value={overviewStats?.total_executions || 0}
           icon={Activity}
         />
@@ -228,7 +228,7 @@ export default function WorkflowStats({ workflowId }: WorkflowStatsProps) {
         {/* Execution History Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Ausfuehrungs-Verlauf</CardTitle>
+            <CardTitle>Ausführungs-Verlauf</CardTitle>
             <CardDescription>Letzte 30 Tage</CardDescription>
           </CardHeader>
           <CardContent>
@@ -276,7 +276,7 @@ export default function WorkflowStats({ workflowId }: WorkflowStatsProps) {
         <Card>
           <CardHeader>
             <CardTitle>Erfolgsrate</CardTitle>
-            <CardDescription>Verhaeltnis erfolgreicher Ausfuehrungen</CardDescription>
+            <CardDescription>Verhältnis erfolgreicher Ausführungen</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-64 flex items-center justify-center">
@@ -315,8 +315,8 @@ export default function WorkflowStats({ workflowId }: WorkflowStatsProps) {
       {/* Trend Line Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Ausfuehrungs-Trend</CardTitle>
-          <CardDescription>Taegliche Ausfuehrungen der letzten 30 Tage</CardDescription>
+          <CardTitle>Ausführungs-Trend</CardTitle>
+          <CardDescription>Tägliche Ausführungen der letzten 30 Tage</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-64">

@@ -363,7 +363,7 @@ export function EnterpriseDataTable<TData, TValue>({
                             }}
                             className="h-8 px-2 lg:px-3"
                         >
-                            Zuruecksetzen
+                            Zurücksetzen
                         </Button>
                     )}
                 </div>

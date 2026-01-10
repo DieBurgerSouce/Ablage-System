@@ -101,7 +101,7 @@ export function ChatInterface({
 
     // Handle clear
     const handleClear = useCallback(() => {
-        if (window.confirm('Chat-Verlauf wirklich loeschen?')) {
+        if (window.confirm('Chat-Verlauf wirklich löschen?')) {
             clearHistory();
         }
     }, [clearHistory]);
@@ -207,7 +207,7 @@ export function ChatInterface({
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Verlauf loeschen</TooltipContent>
+                            <TooltipContent>Verlauf löschen</TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
 

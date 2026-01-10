@@ -146,7 +146,7 @@ export function CashBookSummary({ registerId, startDate, endDate, className }: C
       <KPICard
         title="Buchungen"
         value={entryCount}
-        subtitle="Eintraege im Zeitraum"
+        subtitle="Einträge im Zeitraum"
         icon={<Receipt className="h-4 w-4" aria-hidden="true" />}
         isLoading={isLoading}
       />

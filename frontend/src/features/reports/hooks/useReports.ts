@@ -127,10 +127,10 @@ export function useDeleteTemplate() {
     mutationFn: (templateId: string) => deleteTemplate(templateId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: reportKeys.templates() });
-      toast.success('Report-Template geloescht');
+      toast.success('Report-Template gelöscht');
     },
     onError: (error: Error) => {
-      toast.error(`Fehler beim Loeschen: ${error.message}`);
+      toast.error(`Fehler beim Löschen: ${error.message}`);
     },
   });
 }
@@ -181,7 +181,7 @@ export function useAddColumn() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: reportKeys.columns(variables.templateId) });
       queryClient.invalidateQueries({ queryKey: reportKeys.template(variables.templateId) });
-      toast.success('Spalte hinzugefuegt');
+      toast.success('Spalte hinzugefügt');
     },
     onError: (error: Error) => {
       toast.error(`Fehler: ${error.message}`);
@@ -259,7 +259,7 @@ export function useAddFilter() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: reportKeys.filters(variables.templateId) });
       queryClient.invalidateQueries({ queryKey: reportKeys.template(variables.templateId) });
-      toast.success('Filter hinzugefuegt');
+      toast.success('Filter hinzugefügt');
     },
     onError: (error: Error) => {
       toast.error(`Fehler: ${error.message}`);
@@ -302,7 +302,7 @@ export function useAddChart() {
       addChart(templateId, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: reportKeys.template(variables.templateId) });
-      toast.success('Chart hinzugefuegt');
+      toast.success('Chart hinzugefügt');
     },
     onError: (error: Error) => {
       toast.error(`Fehler: ${error.message}`);
@@ -363,7 +363,7 @@ export function useExecuteReport() {
       }
     },
     onError: (error: Error) => {
-      toast.error(`Fehler bei der Ausfuehrung: ${error.message}`);
+      toast.error(`Fehler bei der Ausführung: ${error.message}`);
     },
   });
 }
@@ -407,7 +407,7 @@ export function useCancelExecution() {
     onSuccess: (_, executionId) => {
       queryClient.invalidateQueries({ queryKey: reportKeys.execution(executionId) });
       queryClient.invalidateQueries({ queryKey: reportKeys.executions() });
-      toast.success('Ausfuehrung abgebrochen');
+      toast.success('Ausführung abgebrochen');
     },
     onError: (error: Error) => {
       toast.error(`Fehler beim Abbrechen: ${error.message}`);

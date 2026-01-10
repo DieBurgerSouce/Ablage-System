@@ -286,7 +286,7 @@ export function SearchAutocomplete({
             className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
             onClick={handleClear}
             type="button"
-            aria-label="Suche loeschen"
+            aria-label="Suche löschen"
           >
             <XCircle className="w-4 h-4" />
           </Button>
@@ -303,7 +303,7 @@ export function SearchAutocomplete({
         >
           {isLoading && value.length >= 2 && (
             <div className="px-4 py-3 text-sm text-muted-foreground">
-              Lade Vorschlaege...
+              Lade Vorschläge...
             </div>
           )}
 
@@ -323,7 +323,7 @@ export function SearchAutocomplete({
                 }}
               >
                 <Trash2 className="w-3 h-3 mr-1" />
-                Alle loeschen
+                Alle löschen
               </Button>
             </div>
           )}
@@ -395,7 +395,7 @@ export function SearchAutocomplete({
           {/* Empty State */}
           {!isLoading && dropdownItems.length === 0 && value.length >= 2 && (
             <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-              Keine Vorschlaege gefunden
+              Keine Vorschläge gefunden
             </div>
           )}
         </div>

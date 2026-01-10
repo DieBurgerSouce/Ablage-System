@@ -221,10 +221,10 @@ export function useDeleteWorkflow() {
     mutationFn: (workflowId: string) => workflowsApi.deleteWorkflow(workflowId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: workflowKeys.lists() });
-      toast.success('Workflow erfolgreich geloescht');
+      toast.success('Workflow erfolgreich gelöscht');
     },
     onError: (error: Error) => {
-      toast.error(`Fehler beim Loeschen: ${error.message}`);
+      toast.error(`Fehler beim Löschen: ${error.message}`);
     },
   });
 }
@@ -364,13 +364,13 @@ export function useDeleteStep() {
       });
     },
     onError: (error: Error) => {
-      toast.error(`Fehler beim Loeschen: ${error.message}`);
+      toast.error(`Fehler beim Löschen: ${error.message}`);
     },
   });
 }
 
 /**
- * Hook fuer Step-Neuordnung.
+ * Hook für Step-Neuordnung.
  */
 export function useReorderSteps() {
   const queryClient = useQueryClient();
@@ -504,7 +504,7 @@ export function usePauseExecution() {
       queryClient.invalidateQueries({
         queryKey: workflowKeys.execution(executionId),
       });
-      toast.success('Ausfuehrung pausiert');
+      toast.success('Ausführung pausiert');
     },
     onError: (error: Error) => {
       toast.error(`Fehler beim Pausieren: ${error.message}`);
@@ -525,7 +525,7 @@ export function useResumeExecution() {
       queryClient.invalidateQueries({
         queryKey: workflowKeys.execution(executionId),
       });
-      toast.success('Ausfuehrung fortgesetzt');
+      toast.success('Ausführung fortgesetzt');
     },
     onError: (error: Error) => {
       toast.error(`Fehler beim Fortsetzen: ${error.message}`);
@@ -546,7 +546,7 @@ export function useCancelExecution() {
       queryClient.invalidateQueries({
         queryKey: workflowKeys.execution(executionId),
       });
-      toast.success('Ausfuehrung abgebrochen');
+      toast.success('Ausführung abgebrochen');
     },
     onError: (error: Error) => {
       toast.error(`Fehler beim Abbrechen: ${error.message}`);
@@ -567,7 +567,7 @@ export function useRetryExecution() {
       queryClient.invalidateQueries({
         queryKey: workflowKeys.executions(execution.workflow_id),
       });
-      toast.success('Ausfuehrung wird wiederholt');
+      toast.success('Ausführung wird wiederholt');
     },
     onError: (error: Error) => {
       toast.error(`Fehler beim Wiederholen: ${error.message}`);

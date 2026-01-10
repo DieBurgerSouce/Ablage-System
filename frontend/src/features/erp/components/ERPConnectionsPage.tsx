@@ -236,7 +236,7 @@ export function ERPConnectionsPage() {
                   <TableHead>Typ</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Letzte Sync</TableHead>
-                  <TableHead>Naechste Sync</TableHead>
+                  <TableHead>Nächste Sync</TableHead>
                   <TableHead className="text-right">Aktionen</TableHead>
                 </TableRow>
               </TableHeader>
@@ -289,7 +289,7 @@ export function ERPConnectionsPage() {
                             onClick={() => handleDelete(connection)}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
-                            Loeschen
+                            Löschen
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -313,11 +313,11 @@ export function ERPConnectionsPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Verbindung loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Verbindung löschen?</AlertDialogTitle>
             <AlertDialogDescription>
               Sind Sie sicher, dass Sie die Verbindung "{connectionToDelete?.name}"
-              loeschen moechten? Alle zugehoerigen Sync-Historie und Konflikte werden
-              ebenfalls geloescht.
+              löschen möchten? Alle zugehörigen Sync-Historie und Konflikte werden
+              ebenfalls gelöscht.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -326,7 +326,7 @@ export function ERPConnectionsPage() {
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

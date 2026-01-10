@@ -2,10 +2,10 @@
  * ThemeCustomizer - Live Theme Editor
  *
  * UI-Komponente zum Anpassen des Themes:
- * - Primaerfarbe (Hue Slider)
+ * - Primärfarbe (Hue Slider)
  * - Akzentfarbe (Hue Slider)
  * - Border Radius
- * - Saettigung
+ * - Sättigung
  * - Vorschau-Panel
  * - Presets
  */
@@ -69,7 +69,7 @@ export function ThemeCustomizer() {
                     <CardContent className="pt-4">
                         <p className="text-sm text-muted-foreground">
                             Im Hochkontrastmodus sind Farbanpassungen deaktiviert, um die
-                            Barrierefreiheit zu gewaehrleisten. Nur der Border-Radius kann
+                            Barrierefreiheit zu gewährleisten. Nur der Border-Radius kann
                             angepasst werden.
                         </p>
                     </CardContent>
@@ -127,7 +127,7 @@ export function ThemeCustomizer() {
             {!isHighContrast && (
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                        <Label className="text-sm font-medium">Primaerfarbe</Label>
+                        <Label className="text-sm font-medium">Primärfarbe</Label>
                         <Badge variant="secondary" className="font-mono text-xs">
                             {getHueLabel(primaryHue)} ({primaryHue}°)
                         </Badge>
@@ -188,7 +188,7 @@ export function ThemeCustomizer() {
             {/* Saturation */}
             {!isHighContrast && (
                 <div className="space-y-3">
-                    <Label className="text-sm font-medium">Saettigung</Label>
+                    <Label className="text-sm font-medium">Sättigung</Label>
                     <RadioGroup
                         value={saturation}
                         onValueChange={(value) => {
@@ -200,7 +200,7 @@ export function ThemeCustomizer() {
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="low" id="sat-low" />
                             <Label htmlFor="sat-low" className="font-normal cursor-pointer">
-                                Gedaempft
+                                Gedämpft
                             </Label>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -263,7 +263,7 @@ export function ThemeCustomizer() {
                     </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                    Kompakt-Modus zeigt mehr Inhalt auf dem Bildschirm - ideal fuer Power-User mit grossen Monitoren.
+                    Kompakt-Modus zeigt mehr Inhalt auf dem Bildschirm - ideal für Power-User mit großen Monitoren.
                 </p>
                 <div className="flex gap-2">
                     {densityValues.map((d) => {
@@ -320,9 +320,9 @@ export function ThemeCustomizer() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                     <div className="flex gap-2">
-                        <Button size="sm">Primaer</Button>
+                        <Button size="sm">Primär</Button>
                         <Button size="sm" variant="secondary">
-                            Sekundaer
+                            Sekundär
                         </Button>
                         <Button size="sm" variant="outline">
                             Outline
@@ -333,12 +333,12 @@ export function ThemeCustomizer() {
                     </div>
                     <div className="flex gap-2">
                         <Badge>Badge</Badge>
-                        <Badge variant="secondary">Sekundaer</Badge>
+                        <Badge variant="secondary">Sekundär</Badge>
                         <Badge variant="outline">Outline</Badge>
                     </div>
                     <div className="p-3 bg-muted rounded-md text-sm">
                         <p>
-                            Dies ist ein Beispieltext in einem gedaempften Container mit der
+                            Dies ist ein Beispieltext in einem gedämpften Container mit der
                             aktuellen Theme-Konfiguration.
                         </p>
                     </div>
@@ -353,7 +353,7 @@ export function ThemeCustomizer() {
                     onClick={handleReset}
                 >
                     <RotateCcw className="w-4 h-4 mr-2" />
-                    Auf Standard zuruecksetzen
+                    Auf Standard zurücksetzen
                 </Button>
             )}
         </div>

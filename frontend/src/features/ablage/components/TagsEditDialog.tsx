@@ -1,11 +1,11 @@
 /**
- * TagsEditDialog - Dialog zum Bearbeiten von Tags fuer mehrere Dokumente
+ * TagsEditDialog - Dialog zum Bearbeiten von Tags für mehrere Dokumente
  *
  * Features:
- * - Drei Modi: Hinzufuegen, Entfernen, Ersetzen
+ * - Drei Modi: Hinzufügen, Entfernen, Ersetzen
  * - Tag-Eingabe mit Autocomplete (falls vorhanden)
  * - WCAG 2.1 AA konform
- * - Loading-States waehrend der Operation
+ * - Loading-States während der Operation
  */
 
 import { useState, useCallback } from 'react';
@@ -39,9 +39,9 @@ interface TagsEditDialogProps {
 
 const MODE_CONFIG: Record<TagMode, { label: string; icon: React.ElementType; description: string }> = {
   add: {
-    label: 'Hinzufuegen',
+    label: 'Hinzufügen',
     icon: Plus,
-    description: 'Tags werden zu den bestehenden Tags hinzugefuegt',
+    description: 'Tags werden zu den bestehenden Tags hinzugefügt',
   },
   remove: {
     label: 'Entfernen',
@@ -138,7 +138,7 @@ export function TagsEditDialog({
             Tags bearbeiten
           </DialogTitle>
           <DialogDescription id="tags-dialog-description">
-            Bearbeiten Sie die Tags fuer{' '}
+            Bearbeiten Sie die Tags für{' '}
             <span className="font-semibold">{selectedIds.length} Dokumente</span>.
           </DialogDescription>
         </DialogHeader>
@@ -205,13 +205,13 @@ export function TagsEditDialog({
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onBlur={handleAddTag}
-                placeholder={tags.length === 0 ? 'Tag eingeben und Enter druecken...' : ''}
+                placeholder={tags.length === 0 ? 'Tag eingeben und Enter drücken...' : ''}
                 className="flex-1 min-w-[120px] border-0 shadow-none focus-visible:ring-0 h-7 p-0"
                 aria-describedby="tag-input-help"
               />
             </div>
             <p id="tag-input-help" className="text-xs text-muted-foreground">
-              Druecken Sie Enter oder Tab zum Hinzufuegen eines Tags
+              Drücken Sie Enter oder Tab zum Hinzufügen eines Tags
             </p>
           </div>
         </div>
@@ -227,7 +227,7 @@ export function TagsEditDialog({
           <Button
             onClick={handleSubmit}
             disabled={tags.length === 0 || bulkSetTags.isPending}
-            aria-label={`Tags fuer ${selectedIds.length} Dokumente ${currentModeConfig.label.toLowerCase()}`}
+            aria-label={`Tags für ${selectedIds.length} Dokumente ${currentModeConfig.label.toLowerCase()}`}
           >
             {bulkSetTags.isPending ? (
               <>

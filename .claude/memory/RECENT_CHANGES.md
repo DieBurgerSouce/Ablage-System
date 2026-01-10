@@ -1,76 +1,72 @@
 # Recent Changes
 
-<!-- AUTO-MANAGED: recent-changes -->
 ## 2026-01-10
 
-### Features
-- **Entity API Enhancement**: Added new endpoints for customer/supplier frontend display
-  - `GET /api/v1/entities/customers/for-frontend` - Customer list with folder stats
-  - `GET /api/v1/entities/suppliers/for-frontend` - Supplier list with folder stats
-- **Frontend Ablage Navigation**: Complete Kunden/Lieferanten overview pages
-  - KundenPage.tsx: Customer cards with document counts, folder stats
-  - LieferantenPage.tsx: Supplier cards with document counts, folder stats
-  - Display format: Customer number + matchcode for customers, matchcode-only for suppliers
+### Backend
+- **feat**: Complete Lexware customer/supplier import integration (commit d0467908)
+  - `app/api/v1/entities.py` - Added `/customers`, `/suppliers`, `/{id}/folders` endpoints
+  - `app/api/v1/lexware.py` - Import endpoints for customers/suppliers, entity linking
+  - `app/services/lexware_import_service.py` - Excel import with conflict detection
+- **fix**: FastAPI route ordering - static routes moved before dynamic `/{entity_id}` (commit 665ca1cc)
+- **perf**: Eliminated N+1 queries in entity list endpoints (`entities.py`)
+  - `folderStats` and `lastActivityDate` now loaded on-demand via `/{entity_id}/folders`
+  - Customer/supplier lists now return empty stats placeholders for faster initial load
+- **feat**: Entity API endpoints now production-ready (commit 25542547)
+  - Full CRUD operations with filters (type, active status, postal code, city)
+  - Pagination and sorting (by name, created_at, document_count)
+  - Entity extraction from OCR text (customer numbers, IBANs, VAT-IDs)
+  - Duplicate detection and merge capabilities
 
-### API Changes
-- Entity API (`entities.py`): Added frontend-optimized list endpoints
-- Response includes: displayName, fullName, folderStats, companyPresence
-- Stats per folder: totalDocs, openInvoices aggregated
-
-### Bug Fixes
-- **BUG-001 FIXED**: Tunes & Kontext Edit function restored
-- **BUG-002 FIXED**: OCR Training Ground Truth tab loading corrected
-- **BUG-003 FIXED**: OCR Review permissions bug resolved (admin access working)
-
-### Status Changes
-- Project status changed from "NOT Production-Ready" to "Production-Ready"
-- E2E Test coverage: 22 modules tested, 73% working
-
-### Documentation
-- CLAUDE.md restructured for auto-memory plugin compatibility
-- Created `.claude/memory/` directory for modular documentation
-
-## 2026-01-09
-
-### Features
-- **Lexware Integration**: Complete customer/supplier import from Excel exports
-- **Entity Search Service**: Search by customer number, IBAN, VAT-ID, matchcode
-- **Document Entity Linker**: Automatic document-to-entity linking after OCR
-
-### Database
-- Migration 089: Added lexware_ids, company_presence fields to BusinessEntity
-- Migration 090: Merge migration for lexware and streckengeschaeft
-
-## 2026-01-08
-
-### Features
-- **Enterprise Orchestration PHASE 1**: Cross-module orchestrator implemented
-- **Decision Engine**: Intelligent prioritization and conflict resolution
-- **Financial Health Service**: Health score calculation (0-100)
-- **PrivatTask Model**: Orchestrator-generated task tracking
-
-### API
-- New endpoints: `/api/v1/orchestration/*`
-- Decision approval/rejection workflow
-
-## 2026-01-04
-
-### OCR
-- A/B Testing experiments for DeepSeek vs GOT-OCR
-- Multiple benchmark runs completed
-
-## December 2024
-
-### Major Features
-- Privat-Modul: Enterprise Vermoegensverwaltung (Production-Ready)
-- Backup & Disaster Recovery System
-- OCR Training & Validation System
-
-<!-- /AUTO-MANAGED: recent-changes -->
-
-## Change Log Format
-
-Aenderungen werden dokumentiert mit:
-- Datum (neueste zuerst)
-- Kategorie: Features, Bug Fixes, Database, API, Documentation
-- Kurze Beschreibung der Aenderung
+### Frontend
+- **fix**: SessionStorage quota exceeded in MultiStepForm (enterprise fix)
+  - Added size-limit checks (500KB max per form) before storage operations
+  - Automatic cleanup of old wizard entries to prevent QuotaExceededError
+  - Race condition fix: Synchronous persistKey tracking prevents wrong-key saves
+  - Impacts: All multi-step wizards (employee onboarding, workflow creation, etc.)
+- **feat**: Document category moving dialog (`MoveFolderDialog.tsx`)
+  - Bulk move documents between categories with RadioGroup selection
+  - WCAG 2.1 AA compliant with proper ARIA labels
+  - Filters out current category and "open" status categories
+- **feat**: Banking reconciliation match suggestion card (`MatchSuggestionCard.tsx`)
+  - Visual match suggestions between transactions and invoices
+  - Confidence scoring (>90% green, 70-90% yellow, <70% orange)
+  - Match types: exact_amount, reference_match, fuzzy_amount, date_proximity
+- **test**: Added 404 page test (`$.test.tsx`)
+  - Verifies German error messages ("Seite nicht gefunden")
+  - Tests navigation buttons ("Zur Startseite", "Zurück")
+- **fix**: Authentication for entity API (commit 25542547)
+  - `ablage-api.ts` - Added `credentials: "include"` to all fetch calls
+- **feat**: Customer list with infinite scroll (`KundenPage.tsx`)
+  - TanStack Query infinite scroll with 50 items per page
+  - Debounced search (300ms) across customer names and display names
+  - Loading states: "Lade Kunden..." with spinner
+  - Error handling with German messages
+  - Click navigation to folder view (`/kunden/$customerId`)
+  - Real-time document and open invoice counts per customer
+- **refactor**: API client consolidation (`ablage-api.ts`)
+  - Added typed functions: `fetchCustomersForFrontend()`, `fetchSuppliersForFrontend()`
+  - Pagination support with `PaginatedEntityResponse<T>` type
+  - Proper error handling with German error messages
+  - Cookie-based authentication with `credentials: "include"`
+- **refactor**: German language polishing (108 files)
+  - Corrected umlauts across all components: ä→ä, ö→ö, ü→ü, ß→ß
+  - Fixed ASCII replacements: "ue"→"ü", "Oe"→"Ö", "ss"→"ß", "ae"→"ä"
+  - Affected modules: ERP, Reports, GoBD, Viewer, Workflows, Extracted Data, AI Decisions
+  - Examples: "Ausfuehren"→"Ausführen", "Loeschen"→"Löschen", "Groesse"→"Größe"
+- **refactor**: Component consistency polish (47+ files total)
+  - **Batch 1**: Forms, Banking, Cash, ERP, Finance, Extracted Data, Collaboration, Dashboard
+  - **Batch 2**: Type safety and strict TypeScript compliance (18 files)
+    - `schemas.py` - Backend Pydantic schema updates
+    - `FormRegistryContext.tsx` - Context type safety
+    - `CancelEntryDialog.tsx`, `CashEntryList.tsx` - Cash feature types
+    - `format.ts` - Utility function type safety
+    - `ExpenseWorkflow.tsx` - Expense workflow types
+    - `InvoiceDataSection.tsx`, `extracted-types.ts` - Extracted data types
+    - `finanzen/types.ts` - Finance module types
+    - `RetentionSettings.tsx`, `use-gobd.ts` - GoBD type safety
+    - `LoanScenarioSimulator.tsx`, `DocumentUploadSection.tsx` - Privat feature types
+    - `use-push-notifications.ts` - PWA notification types
+    - `ParallelNode.tsx` - Workflow node types
+    - `useKeyboardShortcuts.ts` - Keyboard shortcut types
+    - `privat-intelligence.ts` - API service types
+    - `theme/types.ts` - Theme type definitions

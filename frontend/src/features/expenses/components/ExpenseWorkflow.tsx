@@ -255,7 +255,7 @@ export function ApproveDialog({ open, onOpenChange, report, onSuccess }: Approve
 // ==================== Reject Dialog ====================
 
 const rejectSchema = z.object({
-  rejection_reason: z.string().min(10, 'Begruendung muss mindestens 10 Zeichen haben').max(500),
+  rejection_reason: z.string().min(10, 'Begründung muss mindestens 10 Zeichen haben').max(500),
 });
 
 type RejectFormData = z.infer<typeof rejectSchema>;

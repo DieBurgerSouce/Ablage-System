@@ -44,7 +44,7 @@ function ParallelNode({ data, selected }: NodeProps<ParallelNodeData>) {
       {/* Body */}
       <div className="space-y-2 p-3">
         <div className="text-sm font-medium text-foreground">
-          {data.stepName || data.label || 'Parallele Ausfuehrung'}
+          {data.stepName || data.label || 'Parallele Ausführung'}
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Layers className="h-3 w-3" />

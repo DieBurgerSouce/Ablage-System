@@ -44,10 +44,10 @@ import type { RetentionSetting } from '../types'
 
 const CATEGORY_LABELS: Record<string, string> = {
   invoice: 'Rechnungen',
-  contract: 'Vertraege',
+  contract: 'Verträge',
   correspondence: 'Korrespondenz',
   tax_document: 'Steuerdokumente',
-  bank_statement: 'Kontoauszuege',
+  bank_statement: 'Kontoauszüge',
   receipt: 'Belege',
   other: 'Sonstige',
 }
@@ -151,7 +151,7 @@ export function RetentionSettings() {
   }
 
   const handleReset = (category: string) => {
-    if (confirm('Aufbewahrungsfrist auf Standardwert zuruecksetzen?')) {
+    if (confirm('Aufbewahrungsfrist auf Standardwert zurücksetzen?')) {
       resetSetting.mutate(category)
     }
   }
@@ -164,8 +164,8 @@ export function RetentionSettings() {
           Aufbewahrungsfristen
         </CardTitle>
         <CardDescription>
-          Konfigurieren Sie die gesetzlichen Aufbewahrungsfristen nach GoBD. Aenderungen gelten nur
-          fuer neu archivierte Dokumente.
+          Konfigurieren Sie die gesetzlichen Aufbewahrungsfristen nach GoBD. Änderungen gelten nur
+          für neu archivierte Dokumente.
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -351,7 +351,7 @@ export function DocumentsTable({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-within:opacity-100 transition-opacity"
-                aria-label={`Aktionen fuer ${row.original.filename}`}
+                aria-label={`Aktionen für ${row.original.filename}`}
                 tabIndex={0}
               >
                 <MoreHorizontal className="w-4 h-4" aria-hidden="true" />

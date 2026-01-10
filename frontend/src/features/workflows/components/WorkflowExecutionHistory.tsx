@@ -1,7 +1,7 @@
 /**
  * WorkflowExecutionHistory Component
  *
- * Zeigt Ausfuehrungs-Historie eines Workflows an.
+ * Zeigt Ausführungs-Historie eines Workflows an.
  */
 
 import { useState } from 'react';
@@ -61,7 +61,7 @@ const statusConfig: Record<
   { icon: React.ElementType; label: string; color: string }
 > = {
   pending: { icon: Clock, label: 'Ausstehend', color: 'text-gray-500' },
-  running: { icon: RefreshCw, label: 'Laeuft', color: 'text-blue-500' },
+  running: { icon: RefreshCw, label: 'Läuft', color: 'text-blue-500' },
   paused: { icon: Pause, label: 'Pausiert', color: 'text-yellow-500' },
   completed: { icon: CheckCircle, label: 'Abgeschlossen', color: 'text-green-500' },
   failed: { icon: XCircle, label: 'Fehlgeschlagen', color: 'text-red-500' },
@@ -168,7 +168,7 @@ function ExecutionRow({
                   className="h-8 w-8"
                   onClick={() => onPause(execution.id)}
                   title="Pausieren"
-                  aria-label="Ausfuehrung pausieren"
+                  aria-label="Ausführung pausieren"
                 >
                   <Pause className="h-4 w-4" />
                 </Button>
@@ -178,7 +178,7 @@ function ExecutionRow({
                   className="h-8 w-8"
                   onClick={() => onCancel(execution.id)}
                   title="Abbrechen"
-                  aria-label="Ausfuehrung abbrechen"
+                  aria-label="Ausführung abbrechen"
                 >
                   <Ban className="h-4 w-4" />
                 </Button>
@@ -192,7 +192,7 @@ function ExecutionRow({
                   className="h-8 w-8"
                   onClick={() => onResume(execution.id)}
                   title="Fortsetzen"
-                  aria-label="Ausfuehrung fortsetzen"
+                  aria-label="Ausführung fortsetzen"
                 >
                   <Play className="h-4 w-4" />
                 </Button>
@@ -202,7 +202,7 @@ function ExecutionRow({
                   className="h-8 w-8"
                   onClick={() => onCancel(execution.id)}
                   title="Abbrechen"
-                  aria-label="Ausfuehrung abbrechen"
+                  aria-label="Ausführung abbrechen"
                 >
                   <Ban className="h-4 w-4" />
                 </Button>
@@ -215,7 +215,7 @@ function ExecutionRow({
                 className="h-8 w-8"
                 onClick={() => onRetry(execution.id)}
                 title="Wiederholen"
-                aria-label="Ausfuehrung wiederholen"
+                aria-label="Ausführung wiederholen"
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
@@ -233,7 +233,7 @@ function ExecutionRow({
               </div>
             )}
 
-            <div className="text-sm font-medium mb-2">Schritt-Ausfuehrungen</div>
+            <div className="text-sm font-medium mb-2">Schritt-Ausführungen</div>
 
             {stepsLoading ? (
               <div className="space-y-2">
@@ -288,7 +288,7 @@ function ExecutionRow({
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Keine Schritt-Ausfuehrungen verfuegbar.
+                Keine Schritt-Ausführungen verfügbar.
               </p>
             )}
 
@@ -331,7 +331,7 @@ export default function WorkflowExecutionHistory({
   const handlePause = async (id: string) => {
     try {
       await pauseExecution.mutateAsync(id);
-      toast.success('Ausfuehrung pausiert');
+      toast.success('Ausführung pausiert');
       refetch();
     } catch (error) {
       toast.error('Fehler beim Pausieren', {
@@ -343,7 +343,7 @@ export default function WorkflowExecutionHistory({
   const handleResume = async (id: string) => {
     try {
       await resumeExecution.mutateAsync(id);
-      toast.success('Ausfuehrung fortgesetzt');
+      toast.success('Ausführung fortgesetzt');
       refetch();
     } catch (error) {
       toast.error('Fehler beim Fortsetzen', {
@@ -355,7 +355,7 @@ export default function WorkflowExecutionHistory({
   const handleCancel = async (id: string) => {
     try {
       await cancelExecution.mutateAsync(id);
-      toast.success('Ausfuehrung abgebrochen');
+      toast.success('Ausführung abgebrochen');
       refetch();
     } catch (error) {
       toast.error('Fehler beim Abbrechen', {
@@ -367,7 +367,7 @@ export default function WorkflowExecutionHistory({
   const handleRetry = async (id: string) => {
     try {
       await retryExecution.mutateAsync(id);
-      toast.success('Ausfuehrung wird wiederholt');
+      toast.success('Ausführung wird wiederholt');
       refetch();
     } catch (error) {
       toast.error('Fehler beim Wiederholen', {
@@ -389,7 +389,7 @@ export default function WorkflowExecutionHistory({
     return (
       <div className="rounded border border-red-200 bg-red-50 p-4 text-red-700">
         <AlertTriangle className="inline-block mr-2 h-5 w-5" />
-        Fehler beim Laden der Ausfuehrungen: {(error as Error).message}
+        Fehler beim Laden der Ausführungen: {(error as Error).message}
       </div>
     );
   }
@@ -397,17 +397,17 @@ export default function WorkflowExecutionHistory({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Ausfuehrungs-Historie</h3>
+        <h3 className="text-lg font-medium">Ausführungs-Historie</h3>
         <div className="flex items-center gap-2">
           {/* A11Y FIX: UI-Library Select mit korrektem aria-Handling */}
           <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as ExecutionStatus | 'all')}>
             <SelectTrigger className="w-[160px]" aria-label="Status filtern">
-              <SelectValue placeholder="Status waehlen" />
+              <SelectValue placeholder="Status wählen" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Alle Status</SelectItem>
               <SelectItem value="pending">Ausstehend</SelectItem>
-              <SelectItem value="running">Laeuft</SelectItem>
+              <SelectItem value="running">Läuft</SelectItem>
               <SelectItem value="paused">Pausiert</SelectItem>
               <SelectItem value="completed">Abgeschlossen</SelectItem>
               <SelectItem value="failed">Fehlgeschlagen</SelectItem>
@@ -424,9 +424,9 @@ export default function WorkflowExecutionHistory({
       {!data?.items.length ? (
         <div className="rounded border p-8 text-center text-muted-foreground">
           <Clock className="mx-auto h-12 w-12 mb-4" />
-          <p>Noch keine Ausfuehrungen vorhanden.</p>
+          <p>Noch keine Ausführungen vorhanden.</p>
           <p className="text-sm">
-            Fuehre den Workflow aus, um die Historie zu sehen.
+            Führe den Workflow aus, um die Historie zu sehen.
           </p>
         </div>
       ) : (
@@ -461,7 +461,7 @@ export default function WorkflowExecutionHistory({
 
       {data && data.total > data.items.length && (
         <p className="text-center text-sm text-muted-foreground">
-          {data.items.length} von {data.total} Ausfuehrungen angezeigt
+          {data.items.length} von {data.total} Ausführungen angezeigt
         </p>
       )}
     </div>

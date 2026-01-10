@@ -163,7 +163,7 @@ export function UploadModal({
                         <div className="flex-1 min-h-0 flex flex-col">
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm font-medium">
-                                    {files.length} Datei{files.length !== 1 ? 'en' : ''} ausgewaehlt
+                                    {files.length} Datei{files.length !== 1 ? 'en' : ''} ausgewählt
                                 </span>
                                 <div className="flex items-center gap-2">
                                     {stats.completed > 0 && (
@@ -249,7 +249,7 @@ export function UploadModal({
                                     {gpuAvailable ? (
                                         <>
                                             <Zap className="h-3 w-3" />
-                                            GPU verfuegbar
+                                            GPU verfügbar
                                         </>
                                     ) : (
                                         'Nur CPU'

@@ -236,10 +236,10 @@ function SessionItem({
                 </AlertDialogTrigger>
                 <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Session loeschen?</AlertDialogTitle>
+                        <AlertDialogTitle>Session löschen?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Diese Aktion kann nicht rueckgaengig gemacht werden.
-                            Der gesamte Chat-Verlauf dieser Session wird geloescht.
+                            Diese Aktion kann nicht rückgängig gemacht werden.
+                            Der gesamte Chat-Verlauf dieser Session wird gelöscht.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -248,7 +248,7 @@ function SessionItem({
                             onClick={onDelete}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                            Loeschen
+                            Löschen
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -162,7 +162,7 @@ export const FINANCE_CATEGORIES: FinanceCategoryInfo[] = [
   },
   {
     id: 'steuererklaerungen',
-    label: 'Steuererklaerungen',
+    label: 'Steuererklärungen',
     shortCode: 'STE',
     icon: 'ClipboardList',
     package: 'steuern'
@@ -198,7 +198,7 @@ export const FINANCE_CATEGORIES: FinanceCategoryInfo[] = [
   },
   {
     id: 'arbeitsvertraege',
-    label: 'Arbeitsvertraege',
+    label: 'Arbeitsverträge',
     shortCode: 'AV',
     icon: 'FileSignature',
     package: 'personal'
@@ -237,21 +237,21 @@ export const FINANCE_CATEGORIES: FinanceCategoryInfo[] = [
   // BANK-PAKET
   {
     id: 'kontoauszuege',
-    label: 'Kontoauszuege',
+    label: 'Kontoauszüge',
     shortCode: 'KA',
     icon: 'CreditCard',
     package: 'bank'
   },
   {
     id: 'kreditvertraege',
-    label: 'Kreditvertraege',
+    label: 'Kreditverträge',
     shortCode: 'KV',
     icon: 'FileText',
     package: 'bank'
   },
   {
     id: 'buergschaften',
-    label: 'Buergschaften',
+    label: 'Bürgschaften',
     shortCode: 'BUE',
     icon: 'Handshake',
     package: 'bank'

@@ -73,7 +73,7 @@ export function CommentsPanel({ documentId, className }: CommentsPanelProps) {
       setNewComment('');
       setMentions([]);
       setReplyingTo(null);
-      toast.success('Kommentar hinzugefuegt');
+      toast.success('Kommentar hinzugefügt');
     } catch (error) {
       toast.error('Fehler', {
         description: 'Kommentar konnte nicht gespeichert werden.',
@@ -91,10 +91,10 @@ export function CommentsPanel({ documentId, className }: CommentsPanelProps) {
     async (commentId: string) => {
       try {
         await deleteMutation.mutateAsync(commentId);
-        toast.success('Kommentar geloescht');
+        toast.success('Kommentar gelöscht');
       } catch (error) {
         toast.error('Fehler', {
-          description: 'Kommentar konnte nicht geloescht werden.',
+          description: 'Kommentar konnte nicht gelöscht werden.',
         });
       }
     },
@@ -179,7 +179,7 @@ export function CommentsPanel({ documentId, className }: CommentsPanelProps) {
             placeholder={
               replyingTo
                 ? 'Antwort schreiben...'
-                : 'Kommentar schreiben... (@erwaehnen)'
+                : 'Kommentar schreiben... (@erwähnen)'
             }
           />
         </div>

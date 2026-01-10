@@ -69,7 +69,7 @@ export function useSubscribeToPush() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pushNotificationKeys.subscriptions() })
       toast.success('Push-Benachrichtigungen aktiviert', {
-        description: 'Sie erhalten jetzt Benachrichtigungen auf diesem Geraet',
+        description: 'Sie erhalten jetzt Benachrichtigungen auf diesem Gerät',
       })
       logger.info('[usePushNotifications] Subscription erfolgreich')
     },

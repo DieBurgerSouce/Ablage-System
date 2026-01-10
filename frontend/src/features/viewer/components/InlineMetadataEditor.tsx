@@ -2,7 +2,7 @@
  * InlineMetadataEditor - Inline Metadata Editing Panel
  *
  * Ersetzt das read-only ExtractedDataPanel mit editierbaren Feldern.
- * Ermoeglicht inline Bearbeitung aller Metadaten mit:
+ * Ermöglicht inline Bearbeitung aller Metadaten mit:
  * - Auto-Save mit Debounce
  * - Optimistic Updates
  * - Undo-Funktion
@@ -57,7 +57,7 @@ interface MetadataField {
   path: string; // Pfad zum Update im Backend
 }
 
-// Lokaler Typ fuer die Extracted Data
+// Lokaler Typ für die Extracted Data
 interface ExtractedData {
   classification?: {
     document_type: string;
@@ -126,7 +126,7 @@ const INVOICE_FIELD_GROUPS: MetadataFieldGroup[] = [
       },
       {
         key: 'due_date',
-        label: 'Faelligkeitsdatum',
+        label: 'Fälligkeitsdatum',
         type: 'date',
         getValue: (d) => d.invoice?.due_date,
         path: 'invoice.due_date',
@@ -141,7 +141,7 @@ const INVOICE_FIELD_GROUPS: MetadataFieldGroup[] = [
     ],
   },
   {
-    title: 'Betraege',
+    title: 'Beträge',
     icon: Euro,
     fields: [
       {
@@ -187,7 +187,7 @@ const INVOICE_FIELD_GROUPS: MetadataFieldGroup[] = [
       },
       {
         key: 'vendor_street',
-        label: 'Strasse',
+        label: 'Straße',
         type: 'text',
         getValue: (d) => d.invoice?.vendor?.street,
         path: 'invoice.vendor.street',
@@ -228,7 +228,7 @@ const INVOICE_FIELD_GROUPS: MetadataFieldGroup[] = [
       },
       {
         key: 'customer_street',
-        label: 'Strasse',
+        label: 'Straße',
         type: 'text',
         getValue: (d) => d.invoice?.customer?.street,
         path: 'invoice.customer.street',
@@ -264,8 +264,8 @@ export function InlineMetadataEditor({
   // Mutation zum Speichern von Metadaten
   const updateMutation = useMutation({
     mutationFn: async ({ path, value }: { path: string; value: string }) => {
-      // TODO: Implementiere Backend-API fuer extracted-data updates
-      // Vorerst simulieren wir eine Verzoegerung
+      // TODO: Implementiere Backend-API für extracted-data updates
+      // Vorerst simulieren wir eine Verzögerung
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       // In Zukunft: API-Call
@@ -320,7 +320,7 @@ export function InlineMetadataEditor({
     current[parts[parts.length - 1]] = value;
   }
 
-  // Save handler fuer EditableField
+  // Save handler für EditableField
   const handleSave = useCallback(
     async (path: string, value: string) => {
       await updateMutation.mutateAsync({ path, value });
@@ -349,7 +349,7 @@ export function InlineMetadataEditor({
         <CardContent className="py-8">
           <div className="text-center text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Keine Metadaten verfuegbar</p>
+            <p>Keine Metadaten verfügbar</p>
             {error && (
               <p className="text-xs text-destructive mt-2">
                 {(error as Error).message}
@@ -390,7 +390,7 @@ export function InlineMetadataEditor({
           >
             <AlertTriangle className="h-4 w-4 text-orange-600" />
             <AlertTitle className="text-orange-800 dark:text-orange-400">
-              Manuelle Pruefung erforderlich
+              Manuelle Prüfung erforderlich
             </AlertTitle>
             {warnings.length > 0 && (
               <AlertDescription className="text-orange-700 dark:text-orange-300">
@@ -405,7 +405,7 @@ export function InlineMetadataEditor({
         )}
 
         <p className="text-xs text-muted-foreground mt-2">
-          Klicken Sie auf ein Feld, um es zu bearbeiten. Aenderungen werden automatisch gespeichert.
+          Klicken Sie auf ein Feld, um es zu bearbeiten. Änderungen werden automatisch gespeichert.
         </p>
       </CardHeader>
 
@@ -435,14 +435,14 @@ export function InlineMetadataEditor({
             </div>
           ))}
 
-        {/* Weitere Entitaeten */}
+        {/* Weitere Entitäten */}
         {((data.ibans?.length ?? 0) > 0 ||
           (data.vat_ids?.length ?? 0) > 0 ||
           (data.companies?.length ?? 0) > 0) && (
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Hash className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-medium">Weitere Entitaeten</h3>
+              <h3 className="text-sm font-medium">Weitere Entitäten</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               {data.ibans && data.ibans.length > 0 && (

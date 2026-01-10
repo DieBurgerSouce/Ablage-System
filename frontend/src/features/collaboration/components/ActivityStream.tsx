@@ -1,11 +1,11 @@
 /**
- * ActivityStream - Aktivitaetsverlauf fuer Dokumente
+ * ActivityStream - Aktivitätsverlauf für Dokumente
  *
- * Zeigt chronologisch alle Aktivitaeten zu einem Dokument:
+ * Zeigt chronologisch alle Aktivitäten zu einem Dokument:
  * - Erstellung, Bearbeitung, Downloads
- * - Statusaenderungen
+ * - Statusänderungen
  * - Kommentare
- * - Tag-Aenderungen
+ * - Tag-Änderungen
  */
 
 import { Loader2, History, FileText, MessageSquare, Tag, Settings, Download, Eye, Share2, CheckCircle, XCircle } from 'lucide-react';
@@ -68,7 +68,7 @@ export function ActivityStream({ documentId, className }: ActivityStreamProps) {
         <CardContent className="py-8">
           <div className="flex items-center justify-center gap-3 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Lade Aktivitaeten...</span>
+            <span>Lade Aktivitäten...</span>
           </div>
         </CardContent>
       </Card>
@@ -81,7 +81,7 @@ export function ActivityStream({ documentId, className }: ActivityStreamProps) {
       <Card className={className}>
         <CardContent className="py-8">
           <div className="text-center text-destructive">
-            <p>Aktivitaeten konnten nicht geladen werden.</p>
+            <p>Aktivitäten konnten nicht geladen werden.</p>
             <p className="text-xs mt-1">{(error as Error)?.message}</p>
           </div>
         </CardContent>
@@ -96,7 +96,7 @@ export function ActivityStream({ documentId, className }: ActivityStreamProps) {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <History className="h-5 w-5" />
-          Aktivitaetsverlauf
+          Aktivitätsverlauf
           {data?.total ? (
             <span className="text-sm font-normal text-muted-foreground">
               ({data.total})
@@ -109,7 +109,7 @@ export function ActivityStream({ documentId, className }: ActivityStreamProps) {
         {activities.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Keine Aktivitaeten vorhanden.</p>
+            <p>Keine Aktivitäten vorhanden.</p>
           </div>
         ) : (
           <div className="relative">

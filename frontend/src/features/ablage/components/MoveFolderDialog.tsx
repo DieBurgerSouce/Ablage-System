@@ -163,7 +163,7 @@ export function MoveFolderDialog({
             onClick={handleMove}
             disabled={!targetCategory || bulkMove.isPending}
             aria-label={`${selectedIds.length} Dokumente in ${
-              categories.find((c) => c.id === targetCategory)?.label || 'ausgewaehlte Kategorie'
+              categories.find((c) => c.id === targetCategory)?.label || 'ausgewählte Kategorie'
             } verschieben`}
           >
             {bulkMove.isPending ? (

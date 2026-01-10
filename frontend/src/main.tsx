@@ -85,7 +85,7 @@ function handleGlobalError(details: ErrorDetails): void {
 const updateSW = registerSW({
   onNeedRefresh() {
     // Show toast to user when new version is available
-    toast.info('Neue Version verfuegbar', {
+    toast.info('Neue Version verfügbar', {
       description: 'Klicken Sie zum Aktualisieren',
       action: {
         label: 'Aktualisieren',
@@ -93,7 +93,7 @@ const updateSW = registerSW({
       },
       duration: Infinity,
     })
-    logger.info('[PWA] Neue Version verfuegbar')
+    logger.info('[PWA] Neue Version verfügbar')
   },
   onOfflineReady() {
     toast.success('Offline-Modus bereit', {

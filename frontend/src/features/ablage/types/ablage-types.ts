@@ -132,8 +132,8 @@ export const OCR_BACKENDS: OCRBackend[] = [
     {
         id: 'deepseek-janus',
         name: 'DeepSeek Janus',
-        description: 'Vision-Language Model fuer komplexe Dokumente',
-        features: ['Kontextverstaendnis', 'Reasoning', 'Fraktur-Schrift'],
+        description: 'Vision-Language Model für komplexe Dokumente',
+        features: ['Kontextverständnis', 'Reasoning', 'Fraktur-Schrift'],
         accuracy: 94,
         languages: 15,
         gpu_required: true,

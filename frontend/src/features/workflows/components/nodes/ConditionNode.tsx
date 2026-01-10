@@ -74,7 +74,7 @@ function ConditionNode({ data, selected }: NodeProps<ConditionNodeData>) {
       {/* Body */}
       <div className="space-y-2 p-3">
         <div className="text-sm font-medium text-foreground">
-          {data.stepName || data.label || 'Pruefung'}
+          {data.stepName || data.label || 'Prüfung'}
         </div>
         <div className="text-xs text-muted-foreground">{summary}</div>
         {ruleCount > 1 && (
