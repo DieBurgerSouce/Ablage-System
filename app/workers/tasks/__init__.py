@@ -38,6 +38,16 @@ from app.workers.tasks.report_tasks import (
     cancel_execution,
     REPORT_BEAT_SCHEDULE,
 )
+from app.workers.tasks.entity_linking_tasks import (
+    link_all_documents_task,
+    link_single_document_task,
+    post_lexware_import_linking_task,
+    generate_linking_statistics_task,
+    reprocess_low_confidence_documents_task,
+    on_ocr_completed_link_entity,
+    on_entity_imported_check_documents,
+    ENTITY_LINKING_BEAT_SCHEDULE,
+)
 
 __all__ = [
     # OCR tasks
@@ -73,4 +83,13 @@ __all__ = [
     "cleanup_expired_downloads",
     "cancel_execution",
     "REPORT_BEAT_SCHEDULE",
+    # Entity Linking tasks
+    "link_all_documents_task",
+    "link_single_document_task",
+    "post_lexware_import_linking_task",
+    "generate_linking_statistics_task",
+    "reprocess_low_confidence_documents_task",
+    "on_ocr_completed_link_entity",
+    "on_entity_imported_check_documents",
+    "ENTITY_LINKING_BEAT_SCHEDULE",
 ]

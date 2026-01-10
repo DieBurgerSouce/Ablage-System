@@ -269,6 +269,7 @@ celery_app = Celery(
         "app.workers.tasks.export_tasks",  # Export Tasks (Batch, Scheduled)
         "app.workers.tasks.privat_tasks",  # Privat-Modul Intelligence Tasks (KPIs, Deadlines, Financial Health)
         "app.workers.tasks.orchestration_tasks",  # Cross-Module Orchestration (Phase 2 - Intelligent Event Routing)
+        "app.workers.tasks.entity_linking_tasks",  # Entity Linking (Lexware Integration - Document-Entity Matching)
     ]
 )
 
@@ -879,6 +880,20 @@ celery_app.conf.update(
             "task": "workflow.generate_report",
             "schedule": crontab(day_of_week=1, hour=7, minute=30),  # Montag 07:30 Uhr
         },
+        # =================================================================
+        # Entity Linking Tasks (Lexware Integration)
+        # =================================================================
+        # Taeglich: Statistiken generieren
+        "entity-linking-daily-stats": {
+            "task": "entity_linking.generate_statistics",
+            "schedule": crontab(hour=1, minute=0),  # Taeglich um 01:00 Uhr
+        },
+        # Woechentlich: Low-Confidence Dokumente erneut verarbeiten
+        "entity-linking-reprocess-low-confidence": {
+            "task": "entity_linking.reprocess_low_confidence",
+            "schedule": crontab(day_of_week=0, hour=4, minute=0),  # Sonntag 04:00 Uhr
+            "kwargs": {"min_confidence": 0.75, "max_confidence": 0.85, "limit": 500},
+        },
     },
 
     # Queue routing
@@ -1020,6 +1035,23 @@ celery_app.conf.update(
         "workflow.on_document_created": {"queue": "metadata", "priority": 7},
         "workflow.on_document_processed": {"queue": "metadata", "priority": 7},
         "workflow.on_document_failed": {"queue": "metadata", "priority": 7},
+        # =================================================================
+        # Entity Linking Tasks (Lexware Integration)
+        # =================================================================
+        # Batch-Verknuepfung aller Dokumente (nach Lexware-Import)
+        "entity_linking.link_all_documents": {"queue": "metadata", "priority": 5},
+        # Einzeldokument-Verknuepfung (bei OCR-Completion)
+        "entity_linking.link_single_document": {"queue": "metadata", "priority": 6},
+        # Post-Import Orchestrierung
+        "entity_linking.post_lexware_import": {"queue": "metadata", "priority": 7},
+        # Statistik-Generierung
+        "entity_linking.generate_statistics": {"queue": "maintenance", "priority": 2},
+        # Low-Confidence Re-Processing
+        "entity_linking.reprocess_low_confidence": {"queue": "metadata", "priority": 3},
+        # Event-Handler (OCR Completion)
+        "entity_linking.on_ocr_completed": {"queue": "metadata", "priority": 6},
+        # Event-Handler (Entity Imported)
+        "entity_linking.on_entity_imported": {"queue": "metadata", "priority": 5},
     },
 
     # Priority settings
