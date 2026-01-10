@@ -147,7 +147,233 @@ async def list_entities(
 
 
 # =============================================================================
-# GET SINGLE
+# FRONTEND INTEGRATION - Kunden/Lieferanten Listen
+# WICHTIG: Diese statischen Routen MUESSEN vor /{entity_id} stehen!
+# =============================================================================
+
+@router.get(
+    "/customers",
+    summary="Kunden fuer Frontend",
+    description="Kunden-Liste mit displayName = Kundennummer_Matchcode"
+)
+async def list_customers_for_frontend(
+    search: Optional[str] = Query(None, description="Suche in Name/Matchcode"),
+    is_active: Optional[bool] = Query(None, description="Nach Aktivstatus filtern"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Kunden-Liste fuer hierarchisches Frontend.
+
+    **Display-Format**: Kundennummer_Matchcode (z.B. "12345_Mueller")
+
+    Gibt Kunden mit:
+    - displayName: Kundennummer_Matchcode
+    - fullName: Vollstaendiger Firmenname
+    - companyPresence: ["folie", "messer"]
+    - folderStats: Dokument-Zaehler pro Firma
+    """
+    query = select(BusinessEntity).where(
+        BusinessEntity.deleted_at.is_(None),
+        or_(
+            BusinessEntity.entity_type == "customer",
+            BusinessEntity.entity_type == "both",
+        )
+    )
+
+    if search:
+        search_term = f"%{search}%"
+        query = query.where(
+            or_(
+                BusinessEntity.name.ilike(search_term),
+                BusinessEntity.primary_customer_number.ilike(search_term),
+            )
+        )
+
+    if is_active is not None:
+        query = query.where(BusinessEntity.is_active == is_active)
+
+    query = query.order_by(BusinessEntity.name)
+
+    result = await db.execute(query)
+    entities = result.scalars().all()
+
+    customers = []
+    for entity in entities:
+        # Display-Name: Kundennummer_Matchcode (z.B. "12345_Mueller")
+        customer_number = entity.primary_customer_number or ""
+        matchcode = _extract_matchcode(entity.name)
+
+        if customer_number:
+            display_name = f"{customer_number}_{matchcode}"
+        else:
+            display_name = matchcode
+
+        # Company presence aus lexware_ids extrahieren
+        company_presence = entity.company_presence or []
+        if not company_presence and entity.lexware_ids:
+            company_presence = list(entity.lexware_ids.keys())
+
+        # Folder Stats berechnen (Dokumente pro Firma)
+        folder_stats = await _calculate_folder_stats(db, entity.id, company_presence)
+
+        # Letzte Aktivitaet ermitteln
+        last_activity = await _get_last_document_date(db, entity.id)
+
+        customers.append({
+            "id": str(entity.id),
+            "displayName": display_name,
+            "fullName": entity.name,
+            "isActive": entity.is_active,
+            "companyPresence": company_presence,
+            "folderStats": folder_stats,
+            "lastActivityDate": last_activity.isoformat() if last_activity else None,
+        })
+
+    return customers
+
+
+@router.get(
+    "/suppliers",
+    summary="Lieferanten fuer Frontend",
+    description="Lieferanten-Liste mit displayName = Name (ohne Nummer)"
+)
+async def list_suppliers_for_frontend(
+    search: Optional[str] = Query(None, description="Suche in Name"),
+    is_active: Optional[bool] = Query(None, description="Nach Aktivstatus filtern"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Lieferanten-Liste fuer hierarchisches Frontend.
+
+    **Display-Format**: Nur Name (ohne Lieferanten-Nummer, da chaotisch)
+
+    Gibt Lieferanten mit:
+    - displayName: Matchcode/Kurzname
+    - fullName: Vollstaendiger Firmenname
+    - companyPresence: ["folie", "messer"]
+    - folderStats: Dokument-Zaehler pro Firma
+    """
+    query = select(BusinessEntity).where(
+        BusinessEntity.deleted_at.is_(None),
+        or_(
+            BusinessEntity.entity_type == "supplier",
+            BusinessEntity.entity_type == "both",
+        )
+    )
+
+    if search:
+        search_term = f"%{search}%"
+        query = query.where(BusinessEntity.name.ilike(search_term))
+
+    if is_active is not None:
+        query = query.where(BusinessEntity.is_active == is_active)
+
+    query = query.order_by(BusinessEntity.name)
+
+    result = await db.execute(query)
+    entities = result.scalars().all()
+
+    suppliers = []
+    for entity in entities:
+        # Display-Name: Nur der Matchcode (KEINE Lieferanten-Nummer!)
+        display_name = _extract_matchcode(entity.name)
+
+        # Company presence aus lexware_ids extrahieren
+        company_presence = entity.company_presence or []
+        if not company_presence and entity.lexware_ids:
+            company_presence = list(entity.lexware_ids.keys())
+
+        # Folder Stats berechnen (Dokumente pro Firma)
+        folder_stats = await _calculate_folder_stats(db, entity.id, company_presence)
+
+        # Letzte Aktivitaet ermitteln
+        last_activity = await _get_last_document_date(db, entity.id)
+
+        suppliers.append({
+            "id": str(entity.id),
+            "displayName": display_name,
+            "fullName": entity.name,
+            "isActive": entity.is_active,
+            "companyPresence": company_presence,
+            "folderStats": folder_stats,
+            "lastActivityDate": last_activity.isoformat() if last_activity else None,
+        })
+
+    return suppliers
+
+
+@router.get(
+    "/suggestions",
+    summary="Entity-Vorschlaege",
+    description="Gibt Vorschlaege fuer neue Entities basierend auf unverknuepften Dokumenten"
+)
+async def get_entity_suggestions(
+    limit: int = Query(10, ge=1, le=50),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Gibt Vorschlaege fuer neue Geschaeftspartner basierend auf:
+    - Dokumenten ohne Entity-Verknuepfung
+    - Extrahierten aber nicht zugeordneten Identifiern
+
+    Nuetzlich fuer das schrittweise Aufbauen der Entity-Datenbank.
+    """
+    # Dokumente ohne Entity-Verknuepfung mit extracted_data
+    query = (
+        select(Document)
+        .where(
+            Document.business_entity_id.is_(None),
+            Document.extracted_text.isnot(None),
+            Document.deleted_at.is_(None),
+            Document.owner_id == current_user.id,
+        )
+        .order_by(Document.created_at.desc())
+        .limit(limit * 2)  # Mehr laden fuer bessere Auswahl
+    )
+
+    result = await db.execute(query)
+    documents = result.scalars().all()
+
+    suggestions = []
+    service = EntityExtractionService(db)
+
+    for doc in documents:
+        if not doc.extracted_text:
+            continue
+
+        extraction = await service.extract_entities(doc.extracted_text, doc.id)
+
+        # Nur Dokumente mit hoher Konfidenz vorschlagen
+        if extraction.overall_confidence >= 0.70:
+            suggestion = {
+                "document_id": str(doc.id),
+                "document_filename": doc.original_filename,
+                "extraction": {
+                    "vat_ids": [i.normalized_value for i in extraction.identifiers if i.identifier_type == "vat_id"],
+                    "ibans": [i.normalized_value for i in extraction.identifiers if i.identifier_type == "iban"],
+                    "company_names": [c.name for c in extraction.company_names],
+                    "addresses": [
+                        f"{a.postal_code} {a.city}" for a in extraction.addresses if a.postal_code
+                    ],
+                },
+                "confidence": extraction.overall_confidence,
+            }
+            suggestions.append(suggestion)
+
+            if len(suggestions) >= limit:
+                break
+
+    return {
+        "suggestions": suggestions,
+        "total_unlinked_documents": len(documents),
+    }
+
+
+# =============================================================================
+# GET SINGLE (dynamische Route - MUSS nach statischen Routen stehen!)
 # =============================================================================
 
 @router.get(
@@ -566,74 +792,6 @@ async def extract_entities(
     return response
 
 
-@router.get(
-    "/suggestions",
-    summary="Entity-Vorschlaege",
-    description="Gibt Vorschlaege fuer neue Entities basierend auf unverknuepften Dokumenten"
-)
-async def get_entity_suggestions(
-    limit: int = Query(10, ge=1, le=50),
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Gibt Vorschlaege fuer neue Geschaeftspartner basierend auf:
-    - Dokumenten ohne Entity-Verknuepfung
-    - Extrahierten aber nicht zugeordneten Identifiern
-
-    Nuetzlich fuer das schrittweise Aufbauen der Entity-Datenbank.
-    """
-    # Dokumente ohne Entity-Verknuepfung mit extracted_data
-    query = (
-        select(Document)
-        .where(
-            Document.business_entity_id.is_(None),
-            Document.extracted_text.isnot(None),
-            Document.deleted_at.is_(None),
-            Document.owner_id == current_user.id,
-        )
-        .order_by(Document.created_at.desc())
-        .limit(limit * 2)  # Mehr laden fuer bessere Auswahl
-    )
-
-    result = await db.execute(query)
-    documents = result.scalars().all()
-
-    suggestions = []
-    service = EntityExtractionService(db)
-
-    for doc in documents:
-        if not doc.extracted_text:
-            continue
-
-        extraction = await service.extract_entities(doc.extracted_text, doc.id)
-
-        # Nur Dokumente mit hoher Konfidenz vorschlagen
-        if extraction.overall_confidence >= 0.70:
-            suggestion = {
-                "document_id": str(doc.id),
-                "document_filename": doc.original_filename,
-                "extraction": {
-                    "vat_ids": [i.normalized_value for i in extraction.identifiers if i.identifier_type == "vat_id"],
-                    "ibans": [i.normalized_value for i in extraction.identifiers if i.identifier_type == "iban"],
-                    "company_names": [c.name for c in extraction.company_names],
-                    "addresses": [
-                        f"{a.postal_code} {a.city}" for a in extraction.addresses if a.postal_code
-                    ],
-                },
-                "confidence": extraction.overall_confidence,
-            }
-            suggestions.append(suggestion)
-
-            if len(suggestions) >= limit:
-                break
-
-    return {
-        "suggestions": suggestions,
-        "total_unlinked_documents": len(documents),
-    }
-
-
 # =============================================================================
 # MERGE DUPLICATES
 # =============================================================================
@@ -778,161 +936,8 @@ async def verify_entity(
 
 
 # =============================================================================
-# FRONTEND INTEGRATION - Kunden/Lieferanten Listen
+# FOLDER VIEWS (dynamische Routen)
 # =============================================================================
-
-@router.get(
-    "/customers",
-    summary="Kunden fuer Frontend",
-    description="Kunden-Liste mit displayName = Kundennummer_Matchcode"
-)
-async def list_customers_for_frontend(
-    search: Optional[str] = Query(None, description="Suche in Name/Matchcode"),
-    is_active: Optional[bool] = Query(None, description="Nach Aktivstatus filtern"),
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Kunden-Liste fuer hierarchisches Frontend.
-
-    **Display-Format**: Kundennummer_Matchcode (z.B. "12345_Mueller")
-
-    Gibt Kunden mit:
-    - displayName: Kundennummer_Matchcode
-    - fullName: Vollstaendiger Firmenname
-    - companyPresence: ["folie", "messer"]
-    - folderStats: Dokument-Zaehler pro Firma
-    """
-    query = select(BusinessEntity).where(
-        BusinessEntity.deleted_at.is_(None),
-        or_(
-            BusinessEntity.entity_type == "customer",
-            BusinessEntity.entity_type == "both",
-        )
-    )
-
-    if search:
-        search_term = f"%{search}%"
-        query = query.where(
-            or_(
-                BusinessEntity.name.ilike(search_term),
-                BusinessEntity.primary_customer_number.ilike(search_term),
-            )
-        )
-
-    if is_active is not None:
-        query = query.where(BusinessEntity.is_active == is_active)
-
-    query = query.order_by(BusinessEntity.name)
-
-    result = await db.execute(query)
-    entities = result.scalars().all()
-
-    customers = []
-    for entity in entities:
-        # Display-Name: Kundennummer_Matchcode (z.B. "12345_Mueller")
-        customer_number = entity.primary_customer_number or ""
-        matchcode = _extract_matchcode(entity.name)
-
-        if customer_number:
-            display_name = f"{customer_number}_{matchcode}"
-        else:
-            display_name = matchcode
-
-        # Company presence aus lexware_ids extrahieren
-        company_presence = entity.company_presence or []
-        if not company_presence and entity.lexware_ids:
-            company_presence = list(entity.lexware_ids.keys())
-
-        # Folder Stats berechnen (Dokumente pro Firma)
-        folder_stats = await _calculate_folder_stats(db, entity.id, company_presence)
-
-        # Letzte Aktivitaet ermitteln
-        last_activity = await _get_last_document_date(db, entity.id)
-
-        customers.append({
-            "id": str(entity.id),
-            "displayName": display_name,
-            "fullName": entity.name,
-            "isActive": entity.is_active,
-            "companyPresence": company_presence,
-            "folderStats": folder_stats,
-            "lastActivityDate": last_activity.isoformat() if last_activity else None,
-        })
-
-    return customers
-
-
-@router.get(
-    "/suppliers",
-    summary="Lieferanten fuer Frontend",
-    description="Lieferanten-Liste mit displayName = Name (ohne Nummer)"
-)
-async def list_suppliers_for_frontend(
-    search: Optional[str] = Query(None, description="Suche in Name"),
-    is_active: Optional[bool] = Query(None, description="Nach Aktivstatus filtern"),
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Lieferanten-Liste fuer hierarchisches Frontend.
-
-    **Display-Format**: Nur Name (ohne Lieferanten-Nummer, da chaotisch)
-
-    Gibt Lieferanten mit:
-    - displayName: Matchcode/Kurzname
-    - fullName: Vollstaendiger Firmenname
-    - companyPresence: ["folie", "messer"]
-    - folderStats: Dokument-Zaehler pro Firma
-    """
-    query = select(BusinessEntity).where(
-        BusinessEntity.deleted_at.is_(None),
-        or_(
-            BusinessEntity.entity_type == "supplier",
-            BusinessEntity.entity_type == "both",
-        )
-    )
-
-    if search:
-        search_term = f"%{search}%"
-        query = query.where(BusinessEntity.name.ilike(search_term))
-
-    if is_active is not None:
-        query = query.where(BusinessEntity.is_active == is_active)
-
-    query = query.order_by(BusinessEntity.name)
-
-    result = await db.execute(query)
-    entities = result.scalars().all()
-
-    suppliers = []
-    for entity in entities:
-        # Display-Name: Nur der Matchcode (KEINE Lieferanten-Nummer!)
-        display_name = _extract_matchcode(entity.name)
-
-        # Company presence aus lexware_ids extrahieren
-        company_presence = entity.company_presence or []
-        if not company_presence and entity.lexware_ids:
-            company_presence = list(entity.lexware_ids.keys())
-
-        # Folder Stats berechnen (Dokumente pro Firma)
-        folder_stats = await _calculate_folder_stats(db, entity.id, company_presence)
-
-        # Letzte Aktivitaet ermitteln
-        last_activity = await _get_last_document_date(db, entity.id)
-
-        suppliers.append({
-            "id": str(entity.id),
-            "displayName": display_name,
-            "fullName": entity.name,
-            "isActive": entity.is_active,
-            "companyPresence": company_presence,
-            "folderStats": folder_stats,
-            "lastActivityDate": last_activity.isoformat() if last_activity else None,
-        })
-
-    return suppliers
-
 
 @router.get(
     "/{entity_id}/folders",

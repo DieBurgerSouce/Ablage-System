@@ -15,6 +15,7 @@ from typing import Optional, List
 from uuid import UUID
 from datetime import datetime, timezone
 from pathlib import Path
+import tempfile
 
 import structlog
 from fastapi import (
@@ -254,11 +255,16 @@ async def import_customers(
     - Harmlose Varianten (gleiche Daten) werden zusammengefuehrt
     """
     # Check admin permission
-    if not current_user.is_admin:
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren koennen Lexware-Daten importieren"
         )
+
+    # WICHTIG: User-ID sofort erfassen, BEVOR DB-Operationen stattfinden!
+    # Nach db.commit() kann der Zugriff auf current_user.id einen Lazy-Load
+    # ausloesen, der MissingGreenlet verursacht.
+    user_id_str = str(current_user.id)
 
     # Validate file types
     for file in [folie_file, messer_file]:
@@ -274,23 +280,31 @@ async def import_customers(
         get_lexware_import_service,
     )
 
+    # Temp-Dateien für Excel-Uploads
+    folie_path: Optional[Path] = None
+    messer_path: Optional[Path] = None
+
     try:
         service = get_lexware_import_service(db)
 
-        # Read file contents
-        folie_content = await folie_file.read()
-        messer_content = await messer_file.read()
+        # Schreibe Upload-Bytes in temp-Dateien (Service erwartet Path)
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
+            f.write(await folie_file.read())
+            folie_path = Path(f.name)
 
-        # Import customers
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
+            f.write(await messer_file.read())
+            messer_path = Path(f.name)
+
+        # Import customers (Service erwartet Path-Objekte)
         result = await service.import_customers(
-            folie_data=folie_content,
-            messer_data=messer_content,
+            folie_file=folie_path,
+            messer_file=messer_path,
             skip_conflicts=skip_conflicts,
-            dry_run=dry_run,
         )
 
-        # Trigger entity linking in background if not dry run
-        if not dry_run and result.imported_count > 0:
+        # Trigger entity linking in background (dry_run wird ignoriert)
+        if result.imported_count > 0:
             from app.workers.tasks.entity_linking_tasks import (
                 post_lexware_import_linking_task
             )
@@ -302,24 +316,23 @@ async def import_customers(
         logger.info(
             "lexware_customer_import_completed",
             imported=result.imported_count,
-            updated=result.updated_count,
+            merged=result.merged_count,
             skipped=result.skipped_count,
             errors=result.error_count,
-            user_id=str(current_user.id),
-            dry_run=dry_run,
+            user_id=user_id_str,
         )
 
         return LexwareImportResponse(
             success=True,
             imported_count=result.imported_count,
-            updated_count=result.updated_count,
+            updated_count=result.merged_count,  # merged_count = updated_count
             skipped_count=result.skipped_count,
             error_count=result.error_count,
             conflicts=[
                 ConflictInfo(**c) for c in result.conflicts
             ] if hasattr(result, 'conflicts') else [],
-            message=f"Import {'simuliert' if dry_run else 'abgeschlossen'}: "
-                    f"{result.imported_count} importiert, {result.updated_count} aktualisiert, "
+            message=f"Import abgeschlossen: "
+                    f"{result.imported_count} importiert, {result.merged_count} gemerged, "
                     f"{result.skipped_count} uebersprungen",
             task_id=task_id,
         )
@@ -328,12 +341,19 @@ async def import_customers(
         logger.exception(
             "lexware_customer_import_failed",
             error=str(e),
-            user_id=str(current_user.id),
+            user_id=user_id_str,
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Fehler beim Import: {str(e)}"
         )
+
+    finally:
+        # Cleanup temp files
+        if folie_path and folie_path.exists():
+            folie_path.unlink(missing_ok=True)
+        if messer_path and messer_path.exists():
+            messer_path.unlink(missing_ok=True)
 
 
 @router.post(
@@ -377,11 +397,16 @@ async def import_suppliers(
     - lexware_ids = {folie: {lief_nr, matchcode}, messer: {...}}
     """
     # Check admin permission
-    if not current_user.is_admin:
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren koennen Lexware-Daten importieren"
         )
+
+    # WICHTIG: User-ID sofort erfassen, BEVOR DB-Operationen stattfinden!
+    # Nach db.commit() kann der Zugriff auf current_user.id einen Lazy-Load
+    # ausloesen, der MissingGreenlet verursacht.
+    user_id_str = str(current_user.id)
 
     # Validate file types
     for file in [folie_file, messer_file]:
@@ -397,23 +422,31 @@ async def import_suppliers(
         get_lexware_import_service,
     )
 
+    # Temp-Dateien für Excel-Uploads
+    folie_path: Optional[Path] = None
+    messer_path: Optional[Path] = None
+
     try:
         service = get_lexware_import_service(db)
 
-        # Read file contents
-        folie_content = await folie_file.read()
-        messer_content = await messer_file.read()
+        # Schreibe Upload-Bytes in temp-Dateien (Service erwartet Path)
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
+            f.write(await folie_file.read())
+            folie_path = Path(f.name)
 
-        # Import suppliers
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
+            f.write(await messer_file.read())
+            messer_path = Path(f.name)
+
+        # Import suppliers (Service erwartet Path-Objekte)
         result = await service.import_suppliers(
-            folie_data=folie_content,
-            messer_data=messer_content,
+            folie_file=folie_path,
+            messer_file=messer_path,
             skip_conflicts=skip_conflicts,
-            dry_run=dry_run,
         )
 
-        # Trigger entity linking in background if not dry run
-        if not dry_run and result.imported_count > 0:
+        # Trigger entity linking in background
+        if result.imported_count > 0:
             from app.workers.tasks.entity_linking_tasks import (
                 post_lexware_import_linking_task
             )
@@ -425,24 +458,23 @@ async def import_suppliers(
         logger.info(
             "lexware_supplier_import_completed",
             imported=result.imported_count,
-            updated=result.updated_count,
+            merged=result.merged_count,
             skipped=result.skipped_count,
             errors=result.error_count,
-            user_id=str(current_user.id),
-            dry_run=dry_run,
+            user_id=user_id_str,
         )
 
         return LexwareImportResponse(
             success=True,
             imported_count=result.imported_count,
-            updated_count=result.updated_count,
+            updated_count=result.merged_count,  # merged_count = updated_count
             skipped_count=result.skipped_count,
             error_count=result.error_count,
             conflicts=[
                 ConflictInfo(**c) for c in result.conflicts
             ] if hasattr(result, 'conflicts') else [],
-            message=f"Import {'simuliert' if dry_run else 'abgeschlossen'}: "
-                    f"{result.imported_count} importiert, {result.updated_count} aktualisiert, "
+            message=f"Import abgeschlossen: "
+                    f"{result.imported_count} importiert, {result.merged_count} gemerged, "
                     f"{result.skipped_count} uebersprungen",
             task_id=task_id,
         )
@@ -451,12 +483,19 @@ async def import_suppliers(
         logger.exception(
             "lexware_supplier_import_failed",
             error=str(e),
-            user_id=str(current_user.id),
+            user_id=user_id_str,
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Fehler beim Import: {str(e)}"
         )
+
+    finally:
+        # Cleanup temp files
+        if folie_path and folie_path.exists():
+            folie_path.unlink(missing_ok=True)
+        if messer_path and messer_path.exists():
+            messer_path.unlink(missing_ok=True)
 
 
 # =============================================================================
@@ -491,7 +530,7 @@ async def link_documents(
     - async_mode=False: Synchrone Verarbeitung (nur kleine Mengen)
     """
     # Check admin permission
-    if not current_user.is_admin:
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nur Administratoren koennen Entity-Linking durchfuehren"

@@ -185,6 +185,56 @@ const { data: folders, isLoading, error } = useQuery({
 - Implement loading/error states
 <!-- /AUTO-MANAGED: frontend-patterns -->
 
+<!-- AUTO-MANAGED: ui-components -->
+#### Reusable UI Components
+
+**EditableField Component** (`components/ui/editable-field.tsx`)
+- **Purpose**: Click-to-edit pattern for inline metadata editing
+- **Features**: Auto-save with debounce, keyboard navigation, Zod validation, visual save indicators
+- **Types**: text, number, date, currency, email
+- **Usage**: Document metadata editing, invoice fields, entity properties
+- **Key Props**: `value`, `onSave`, `type`, `schema`, `autoSaveDelay`
+
+**Key Components by Feature**:
+
+| Feature | Component | Path | Purpose |
+|---------|-----------|------|---------|
+| **Banking** | AgingReportTable | `banking/components/AgingReportTable.tsx` | Receivables/payables aging report with filtering |
+| **ERP** | SyncDashboard | `erp/components/SyncDashboard.tsx` | ERP sync status, history, manual sync triggers |
+| **GoBD** | ArchiveManagement | `gobd/components/ArchiveManagement.tsx` | Archive management with integrity verification |
+| **Reports** | ReportBuilder | `reports/components/ReportBuilder.tsx` | Visual report builder (data source, columns, filters, charts) |
+| **Search** | SearchPanel | `search/components/SearchPanel.tsx` | Controlled search with URL sync, saved searches |
+| **Search** | SearchAutocomplete | `search/components/SearchAutocomplete.tsx` | Query suggestions and recent searches |
+| **Viewer** | InlineMetadataEditor | `viewer/components/InlineMetadataEditor.tsx` | Document metadata editing panel with EditableField |
+| **Workflows** | DelayNode | `workflows/components/nodes/DelayNode.tsx` | ReactFlow node for time delays |
+
+**Pattern: Controlled Components**
+```typescript
+// SearchPanel uses controlled props (value/onChange)
+<SearchPanel
+  value={{ query, mode, filters }}
+  onChange={(updates) => updateURL(updates)}
+  onReset={() => clearURL()}
+/>
+
+// EditableField provides async save with error handling
+<EditableField
+  value={document.invoiceNumber}
+  onSave={async (value) => await updateDocument({ invoiceNumber: value })}
+  label="Rechnungsnummer"
+  type="text"
+/>
+```
+
+**Accessibility Standards**:
+- All tables use semantic `<table>`, `<thead>`, `<tbody>` with `scope` attributes
+- ARIA labels for screen readers (e.g., `aria-label="Dokumentensuche"`)
+- Keyboard navigation support (Enter=Save, Escape=Cancel)
+- High contrast support across all 4 display modes
+- German loading states: `<Loader2 /> "Lade Daten..."`
+- German error states: `<AlertCircle /> "Ein Fehler ist aufgetreten"`
+<!-- /AUTO-MANAGED: ui-components -->
+
 ---
 
 ## Development Commands
@@ -322,6 +372,7 @@ primary_supplier_number: String(50)  # Display number
 
 ### API Endpoints
 
+**Lexware Import** (`/api/v1/lexware`):
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/v1/lexware/import/customers` | POST | Import customers from Excel |
@@ -329,6 +380,15 @@ primary_supplier_number: String(50)  # Display number
 | `/api/v1/lexware/link-documents` | POST | Trigger entity linking |
 | `/api/v1/lexware/statistics` | GET | Import/linking stats |
 | `/api/v1/lexware/search` | POST | Smart entity search |
+
+**Entity Management** (`/api/v1/entities`):
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/v1/entities` | GET | List all entities with filters |
+| `/api/v1/entities/{id}` | GET | Get entity details |
+| `/api/v1/entities/customers` | GET | List customers (frontend format) |
+| `/api/v1/entities/suppliers` | GET | List suppliers (frontend format) |
+| `/api/v1/entities/{id}/folders` | GET | Get entity folders (folie/messer) |
 
 ### Celery Tasks
 
@@ -409,6 +469,53 @@ r"\b(DE(?:\s*\d){9})\b"
 - IBAN/VAT-ID validation and extraction
 - Multi-company data handling
 
+### Frontend Integration
+
+**API Endpoints** (`app/api/v1/entities.py`):
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/v1/entities/customers` | GET | List customers for frontend (displayName format) |
+| `/api/v1/entities/suppliers` | GET | List suppliers for frontend (name only) |
+| `/api/v1/entities/{id}/folders` | GET | Get company folders (folie/messer) per entity |
+
+**Frontend Components** (`frontend/src/features/ablage/`):
+- `KundenPage.tsx` - Customer list with TanStack Query
+- `LieferantenPage.tsx` - Supplier list with TanStack Query
+- `CustomerFoldersView.tsx` - Company folder selection (Spargelmesser/Folie)
+- `SupplierFoldersView.tsx` - Supplier folder selection
+- `FolderCategoriesView.tsx` - Document categories per folder
+- `api/ablage-api.ts` - Typed API client functions
+
+**Display Format**:
+- **Customers**: `"12345_Mueller"` (Kundennummer_Matchcode)
+- **Suppliers**: `"Agrimpex"` (name only, no number - supplier numbers are chaotic)
+
+**API Response Types**:
+```typescript
+interface CustomerForFrontend {
+  id: string;
+  displayName: string;        // "12345_Mueller"
+  fullName: string;           // "Müller GmbH & Co. KG"
+  isActive: boolean;
+  companyPresence: string[];  // ["folie", "messer"]
+  folderStats: Record<string, FolderStats>;
+}
+
+interface EntityFolder {
+  id: string;                 // "folie" or "messer"
+  name: string;               // "Folie" or "Spargelmesser"
+  documentCounts: Record<string, number>;
+  openInvoices: number;
+  lastActivity: string | null;
+}
+```
+
+**Migration Pattern**: Mock Data → Real API
+- ✅ Removed: `getCustomerById()`, `getCustomerFolder()` mock functions
+- ✅ Added: `fetchEntityFolders()`, `fetchCustomersForFrontend()` API calls
+- ✅ Implemented: Loading states ("Lade Kunden..."), Error states with German messages
+- ✅ Pattern: All views use `useQuery` hooks for data fetching
+
 ### Integration Points
 
 | Module | Integration |
@@ -416,7 +523,7 @@ r"\b(DE(?:\s*\d){9})\b"
 | Document Service | OCR completion → triggers entity linking |
 | Validation Services | Uses EntitySearchService for duplicate checks |
 | Event Bus | Emits `entity.linked` events for orchestration |
-| Frontend | Workflow components for import UI |
+| Frontend Ablage | Customer/supplier lists, folder navigation, real-time stats |
 
 ### Configuration
 
@@ -433,6 +540,16 @@ DEFAULT_SIMILARITY_THRESHOLD = 0.7  # Fuzzy name matching
 - ❌ Only supports German company formats (GmbH, AG, KG, etc.)
 - ⚠️ Fuzzy matching may need manual review for edge cases
 - ⚠️ Multi-company entities require careful conflict handling
+
+### Critical Bug Fixes (2026-01-10)
+
+**BUG: FastAPI Route Ordering Issue** (`app/api/v1/entities.py`)
+- **Problem**: Static routes `/customers` and `/suppliers` were defined AFTER dynamic route `/{entity_id}`
+- **Symptom**: 403/422 errors when accessing `/api/v1/entities/customers` or `/api/v1/entities/suppliers`
+- **Root Cause**: FastAPI matches routes in definition order. "customers" was incorrectly matched as UUID parameter.
+- **Fix**: Moved static routes (`/customers`, `/suppliers`, `/suggestions`) BEFORE `/{entity_id}` route
+- **Commit**: 665ca1cc
+- **Impact**: Frontend Ablage module now correctly loads customer/supplier lists
 
 ### Future Enhancements
 
