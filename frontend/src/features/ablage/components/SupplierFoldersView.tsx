@@ -1,13 +1,14 @@
 import { useParams, Link, useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, FolderOpen, FileText, ChevronRight, AlertCircle } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { ArrowLeft, FolderOpen, FileText, ChevronRight, AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { getSupplierById, getSupplierTotalDocuments, getSupplierOpenInvoices } from '../mockData'
+import { fetchEntityFolders, type EntityFolder } from '../api/ablage-api'
 
 /**
- * SupplierFoldersView - Zeigt die 2 Ablage-Ordner eines Lieferanten:
- * - Spargelmesser1
+ * SupplierFoldersView - Zeigt die Ablage-Ordner eines Lieferanten:
+ * - Spargelmesser
  * - Folie
  *
  * Route: /lieferanten/$supplierId
@@ -16,16 +17,88 @@ export function SupplierFoldersView() {
   const { supplierId } = useParams({ strict: false })
   const navigate = useNavigate()
 
-  const supplier = supplierId ? getSupplierById(supplierId) : null
+  const { data: folders = [], isLoading, error } = useQuery({
+    queryKey: ['entityFolders', supplierId],
+    queryFn: () => fetchEntityFolders(supplierId!),
+    enabled: !!supplierId,
+  })
 
-  if (!supplier) {
+  const handleFolderClick = (folderId: string) => {
+    navigate({
+      to: '/lieferanten/$supplierId/$folderId',
+      params: { supplierId: supplierId!, folderId },
+    })
+  }
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return '-'
+    return new Date(dateStr).toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+  }
+
+  // Helper: Berechne Gesamtdokumente über alle Ordner
+  const getTotalDocs = (folder: EntityFolder): number => {
+    return Object.values(folder.documentCounts || {}).reduce((sum, count) => sum + count, 0)
+  }
+
+  // Loading State
+  if (isLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          <p className="text-muted-foreground">Lade Ordner...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error State
+  if (error) {
     return (
       <div className="p-8">
+        <div className="flex items-center gap-4 mb-6">
+          <Link to="/lieferanten">
+            <Button variant="ghost" size="icon" aria-label="Zurück zur Lieferantenliste">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          </Link>
+          <h1 className="text-3xl font-bold tracking-tight">Fehler</h1>
+        </div>
+        <Card className="border-destructive">
+          <CardContent className="p-6 flex items-center gap-4">
+            <AlertCircle className="w-8 h-8 text-destructive" />
+            <div>
+              <h3 className="font-semibold">Fehler beim Laden der Ordner</h3>
+              <p className="text-sm text-muted-foreground">
+                {error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // No folders found
+  if (folders.length === 0) {
+    return (
+      <div className="p-8">
+        <div className="flex items-center gap-4 mb-6">
+          <Link to="/lieferanten">
+            <Button variant="ghost" size="icon" aria-label="Zurück zur Lieferantenliste">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          </Link>
+        </div>
         <div className="text-center py-12">
           <FolderOpen className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <h2 className="text-xl font-semibold mb-2">Lieferant nicht gefunden</h2>
+          <h2 className="text-xl font-semibold mb-2">Keine Ordner gefunden</h2>
           <p className="text-muted-foreground mb-4">
-            Der gesuchte Lieferant existiert nicht.
+            Dieser Lieferant hat noch keine Ablage-Ordner.
           </p>
           <Link to="/lieferanten">
             <Button variant="outline">Zurück zur Lieferantenliste</Button>
@@ -35,23 +108,9 @@ export function SupplierFoldersView() {
     )
   }
 
-  const totalDocs = getSupplierTotalDocuments(supplier)
-  const totalOpen = getSupplierOpenInvoices(supplier)
-
-  const handleFolderClick = (folderId: string) => {
-    navigate({
-      to: '/lieferanten/$supplierId/$folderId',
-      params: { supplierId: supplierId!, folderId },
-    })
-  }
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })
-  }
+  // Calculate totals
+  const totalDocs = folders.reduce((sum, f) => sum + getTotalDocs(f), 0)
+  const totalOpen = folders.reduce((sum, f) => sum + (f.openInvoices || 0), 0)
 
   return (
     <div className="p-8 space-y-6">
@@ -69,14 +128,12 @@ export function SupplierFoldersView() {
             </Link>
             <span>/</span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">{supplier.displayName}</h1>
-          {supplier.name !== supplier.displayName && (
-            <p className="text-muted-foreground">{supplier.name}</p>
-          )}
+          <h1 className="text-3xl font-bold tracking-tight">Lieferant</h1>
+          <p className="text-muted-foreground">Wähle einen Ablage-Ordner</p>
         </div>
       </div>
 
-      {/* Supplier Stats */}
+      {/* Stats */}
       <div className="flex flex-wrap gap-4">
         <Badge variant="secondary" className="text-sm py-1.5 px-3">
           <FileText className="w-4 h-4 mr-2" />
@@ -88,26 +145,16 @@ export function SupplierFoldersView() {
             {totalOpen} offene Rechnungen
           </Badge>
         )}
-        <Badge variant="outline" className="text-sm py-1.5 px-3">
-          Letzte Aktivitaet: {formatDate(supplier.lastActivityDate)}
-        </Badge>
-        {supplier.isActive ? (
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-sm py-1.5 px-3">
-            Aktiv
-          </Badge>
-        ) : (
-          <Badge variant="secondary" className="text-sm py-1.5 px-3">
-            Inaktiv
-          </Badge>
-        )}
       </div>
 
       {/* Folder Selection */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Wähle einen Ablage-Ordner:</h2>
         <div className="space-y-4">
-          {supplier.folders.map((folder) => {
-            const openCount = folder.documentCounts.offene_rechnungen ?? 0
+          {folders.map((folder) => {
+            const folderDocs = getTotalDocs(folder)
+            const openCount = folder.openInvoices || 0
+
             return (
               <Card
                 key={folder.id}
@@ -126,7 +173,7 @@ export function SupplierFoldersView() {
                           {folder.name}
                         </h3>
                         <p className="text-sm text-muted-foreground mt-1">
-                          {folder.totalDocuments} Dokumente in diesem Ordner
+                          {folderDocs} Dokumente in diesem Ordner
                         </p>
                       </div>
                     </div>
@@ -136,7 +183,7 @@ export function SupplierFoldersView() {
                       {/* Document Count */}
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <FileText className="w-5 h-5" />
-                        <span className="font-medium">{folder.totalDocuments}</span>
+                        <span className="font-medium">{folderDocs}</span>
                       </div>
 
                       {/* Open Invoices */}
@@ -153,7 +200,7 @@ export function SupplierFoldersView() {
 
                       {/* Last Activity */}
                       <span className="text-sm text-muted-foreground hidden md:block min-w-[90px]">
-                        {formatDate(folder.lastDocumentDate)}
+                        {formatDate(folder.lastActivity)}
                       </span>
 
                       {/* Arrow */}

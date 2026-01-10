@@ -228,3 +228,129 @@ export async function fetchGPUStatus(): Promise<GPUStatus> {
         return { available: false };
     }
 }
+
+// ==================== Kunden/Lieferanten API (Lexware Frontend) ====================
+
+/**
+ * Folder-Statistiken pro Firma (Folie/Messer)
+ */
+export interface FolderStats {
+    totalDocs: number;
+    openInvoices: number;
+}
+
+/**
+ * Kunde für Frontend-Liste
+ * Display: Kundennummer_Matchcode (z.B. "12345_Mueller")
+ */
+export interface CustomerForFrontend {
+    id: string;
+    displayName: string;        // Format: "12345_Mueller"
+    fullName: string;           // Original: "Müller GmbH & Co. KG"
+    isActive: boolean;
+    companyPresence: string[];  // ["folie", "messer"]
+    folderStats: Record<string, FolderStats>;
+}
+
+/**
+ * Lieferant für Frontend-Liste
+ * Display: Nur Matchcode (KEINE Nummer - weil Nummern chaotisch)
+ */
+export interface SupplierForFrontend {
+    id: string;
+    displayName: string;        // Format: "Agrimpex" (NUR Name!)
+    fullName: string;           // Original: "Agrimpex International Trading GmbH"
+    isActive: boolean;
+    companyPresence: string[];  // ["folie", "messer"]
+    folderStats: Record<string, FolderStats>;
+}
+
+/**
+ * Ordner (Firma) einer Entity
+ */
+export interface EntityFolder {
+    id: string;                 // "folie" oder "messer"
+    name: string;               // "Folie" oder "Spargelmesser"
+    documentCounts: Record<string, number>;  // {"angebote": 12, "rechnungen": 8, ...}
+    openInvoices: number;
+    lastActivity: string | null;
+}
+
+/**
+ * Kunden für Frontend-Liste abrufen
+ * Display-Format: Kundennummer_Matchcode
+ */
+export async function fetchCustomersForFrontend(): Promise<CustomerForFrontend[]> {
+    const response = await fetch(`${API_BASE}/entities/customers`);
+    if (!response.ok) {
+        throw new Error('Fehler beim Laden der Kunden');
+    }
+    return response.json();
+}
+
+/**
+ * Lieferanten für Frontend-Liste abrufen
+ * Display-Format: Nur Matchcode (KEINE Nummer!)
+ */
+export async function fetchSuppliersForFrontend(): Promise<SupplierForFrontend[]> {
+    const response = await fetch(`${API_BASE}/entities/suppliers`);
+    if (!response.ok) {
+        throw new Error('Fehler beim Laden der Lieferanten');
+    }
+    return response.json();
+}
+
+/**
+ * Ordner (Firmen) einer Entity abrufen
+ * z.B. Spargelmesser, Folie
+ */
+export async function fetchEntityFolders(entityId: string): Promise<EntityFolder[]> {
+    const response = await fetch(`${API_BASE}/entities/${entityId}/folders`);
+    if (!response.ok) {
+        throw new Error('Fehler beim Laden der Ordner');
+    }
+    return response.json();
+}
+
+/**
+ * Dokumente in einem Ordner/Kategorie abrufen
+ */
+export interface FolderDocumentFilter {
+    category?: string;
+    page?: number;
+    pageSize?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    search?: string;
+}
+
+export interface FolderDocumentResponse {
+    items: DocumentSummary[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+}
+
+export async function fetchFolderDocuments(
+    entityId: string,
+    folderId: string,
+    options: FolderDocumentFilter = {}
+): Promise<FolderDocumentResponse> {
+    const params = new URLSearchParams();
+
+    if (options.category) params.set('category', options.category);
+    if (options.page !== undefined) params.set('page', String(options.page));
+    if (options.pageSize) params.set('page_size', String(options.pageSize));
+    if (options.sortBy) params.set('sort_by', options.sortBy);
+    if (options.sortOrder) params.set('sort_order', options.sortOrder);
+    if (options.search) params.set('search', options.search);
+
+    const url = `${API_BASE}/entities/${entityId}/folders/${folderId}/documents?${params}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error('Fehler beim Laden der Dokumente');
+    }
+    return response.json();
+}

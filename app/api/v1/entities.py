@@ -775,3 +775,480 @@ async def verify_entity(
     )
 
     return BusinessEntityResponse.model_validate(entity)
+
+
+# =============================================================================
+# FRONTEND INTEGRATION - Kunden/Lieferanten Listen
+# =============================================================================
+
+@router.get(
+    "/customers",
+    summary="Kunden fuer Frontend",
+    description="Kunden-Liste mit displayName = Kundennummer_Matchcode"
+)
+async def list_customers_for_frontend(
+    search: Optional[str] = Query(None, description="Suche in Name/Matchcode"),
+    is_active: Optional[bool] = Query(None, description="Nach Aktivstatus filtern"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Kunden-Liste fuer hierarchisches Frontend.
+
+    **Display-Format**: Kundennummer_Matchcode (z.B. "12345_Mueller")
+
+    Gibt Kunden mit:
+    - displayName: Kundennummer_Matchcode
+    - fullName: Vollstaendiger Firmenname
+    - companyPresence: ["folie", "messer"]
+    - folderStats: Dokument-Zaehler pro Firma
+    """
+    query = select(BusinessEntity).where(
+        BusinessEntity.deleted_at.is_(None),
+        or_(
+            BusinessEntity.entity_type == "customer",
+            BusinessEntity.entity_type == "both",
+        )
+    )
+
+    if search:
+        search_term = f"%{search}%"
+        query = query.where(
+            or_(
+                BusinessEntity.name.ilike(search_term),
+                BusinessEntity.primary_customer_number.ilike(search_term),
+            )
+        )
+
+    if is_active is not None:
+        query = query.where(BusinessEntity.is_active == is_active)
+
+    query = query.order_by(BusinessEntity.name)
+
+    result = await db.execute(query)
+    entities = result.scalars().all()
+
+    customers = []
+    for entity in entities:
+        # Display-Name: Kundennummer_Matchcode (z.B. "12345_Mueller")
+        customer_number = entity.primary_customer_number or ""
+        matchcode = _extract_matchcode(entity.name)
+
+        if customer_number:
+            display_name = f"{customer_number}_{matchcode}"
+        else:
+            display_name = matchcode
+
+        # Company presence aus lexware_ids extrahieren
+        company_presence = entity.company_presence or []
+        if not company_presence and entity.lexware_ids:
+            company_presence = list(entity.lexware_ids.keys())
+
+        # Folder Stats berechnen (Dokumente pro Firma)
+        folder_stats = await _calculate_folder_stats(db, entity.id, company_presence)
+
+        # Letzte Aktivitaet ermitteln
+        last_activity = await _get_last_document_date(db, entity.id)
+
+        customers.append({
+            "id": str(entity.id),
+            "displayName": display_name,
+            "fullName": entity.name,
+            "isActive": entity.is_active,
+            "companyPresence": company_presence,
+            "folderStats": folder_stats,
+            "lastActivityDate": last_activity.isoformat() if last_activity else None,
+        })
+
+    return customers
+
+
+@router.get(
+    "/suppliers",
+    summary="Lieferanten fuer Frontend",
+    description="Lieferanten-Liste mit displayName = Name (ohne Nummer)"
+)
+async def list_suppliers_for_frontend(
+    search: Optional[str] = Query(None, description="Suche in Name"),
+    is_active: Optional[bool] = Query(None, description="Nach Aktivstatus filtern"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Lieferanten-Liste fuer hierarchisches Frontend.
+
+    **Display-Format**: Nur Name (ohne Lieferanten-Nummer, da chaotisch)
+
+    Gibt Lieferanten mit:
+    - displayName: Matchcode/Kurzname
+    - fullName: Vollstaendiger Firmenname
+    - companyPresence: ["folie", "messer"]
+    - folderStats: Dokument-Zaehler pro Firma
+    """
+    query = select(BusinessEntity).where(
+        BusinessEntity.deleted_at.is_(None),
+        or_(
+            BusinessEntity.entity_type == "supplier",
+            BusinessEntity.entity_type == "both",
+        )
+    )
+
+    if search:
+        search_term = f"%{search}%"
+        query = query.where(BusinessEntity.name.ilike(search_term))
+
+    if is_active is not None:
+        query = query.where(BusinessEntity.is_active == is_active)
+
+    query = query.order_by(BusinessEntity.name)
+
+    result = await db.execute(query)
+    entities = result.scalars().all()
+
+    suppliers = []
+    for entity in entities:
+        # Display-Name: Nur der Matchcode (KEINE Lieferanten-Nummer!)
+        display_name = _extract_matchcode(entity.name)
+
+        # Company presence aus lexware_ids extrahieren
+        company_presence = entity.company_presence or []
+        if not company_presence and entity.lexware_ids:
+            company_presence = list(entity.lexware_ids.keys())
+
+        # Folder Stats berechnen (Dokumente pro Firma)
+        folder_stats = await _calculate_folder_stats(db, entity.id, company_presence)
+
+        # Letzte Aktivitaet ermitteln
+        last_activity = await _get_last_document_date(db, entity.id)
+
+        suppliers.append({
+            "id": str(entity.id),
+            "displayName": display_name,
+            "fullName": entity.name,
+            "isActive": entity.is_active,
+            "companyPresence": company_presence,
+            "folderStats": folder_stats,
+            "lastActivityDate": last_activity.isoformat() if last_activity else None,
+        })
+
+    return suppliers
+
+
+@router.get(
+    "/{entity_id}/folders",
+    summary="Ordner (Firmen) einer Entity",
+    description="Gibt die Firmen-Ordner (Folie, Spargelmesser) zurueck"
+)
+async def get_entity_folders_view(
+    entity_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Ordner (= Firmen) einer Entity mit Dokument-Statistiken.
+
+    Response:
+    - id: "folie" oder "messer"
+    - name: "Folie" oder "Spargelmesser"
+    - documentCounts: Zaehler pro Kategorie
+    - totalDocuments: Gesamt
+    - lastActivity: Letztes Dokument-Datum
+    """
+    result = await db.execute(
+        select(BusinessEntity).where(
+            BusinessEntity.id == entity_id,
+            BusinessEntity.deleted_at.is_(None)
+        )
+    )
+    entity = result.scalar_one_or_none()
+
+    if not entity:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Geschaeftspartner nicht gefunden"
+        )
+
+    # Company presence aus Entity oder lexware_ids
+    company_presence = entity.company_presence or []
+    if not company_presence and entity.lexware_ids:
+        company_presence = list(entity.lexware_ids.keys())
+
+    # Falls leer, default beide Firmen
+    if not company_presence:
+        company_presence = ["folie", "messer"]
+
+    folders = []
+    folder_names = {
+        "folie": "Folie",
+        "messer": "Spargelmesser",
+        "spargelmesser": "Spargelmesser",
+    }
+
+    for company_id in company_presence:
+        # Normalize ID
+        normalized_id = company_id.lower()
+        if normalized_id == "spargelmesser":
+            normalized_id = "messer"
+
+        # Dokumente fuer diese Entity + Firma zaehlen
+        doc_counts = await _count_documents_by_category(db, entity_id, normalized_id)
+
+        # Letztes Dokument-Datum
+        last_doc = await _get_last_document_date_for_folder(db, entity_id, normalized_id)
+
+        total_docs = sum(doc_counts.values())
+
+        folders.append({
+            "id": normalized_id,
+            "name": folder_names.get(normalized_id, company_id.title()),
+            "documentCounts": doc_counts,
+            "totalDocuments": total_docs,
+            "openInvoices": doc_counts.get("offene_rechnungen", 0),
+            "lastActivity": last_doc.isoformat() if last_doc else None,
+        })
+
+    return folders
+
+
+@router.get(
+    "/{entity_id}/folders/{folder_id}/documents",
+    summary="Dokumente in Ordner/Kategorie",
+    description="Dokumente einer Entity in spezifischer Firma und Kategorie"
+)
+async def get_folder_documents(
+    entity_id: UUID,
+    folder_id: str,
+    category: Optional[str] = Query(None, description="Kategorie (angebote, rechnungen, etc.)"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Dokumente in einem Firmen-Ordner, optional nach Kategorie gefiltert.
+
+    **folder_id**: "folie" oder "messer"
+    **category**: z.B. "angebote", "rechnungen", "lieferscheine"
+    """
+    # Entity pruefen
+    entity_result = await db.execute(
+        select(BusinessEntity).where(
+            BusinessEntity.id == entity_id,
+            BusinessEntity.deleted_at.is_(None)
+        )
+    )
+    if not entity_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Geschaeftspartner nicht gefunden"
+        )
+
+    # Normalize folder_id
+    normalized_folder = folder_id.lower()
+    if normalized_folder == "spargelmesser":
+        normalized_folder = "messer"
+
+    # Query aufbauen
+    query = select(Document).where(
+        Document.business_entity_id == entity_id,
+        Document.deleted_at.is_(None),
+    )
+
+    # Kategorie-Filter
+    if category:
+        category_mapping = _get_category_to_doctype_mapping()
+        doc_type = category_mapping.get(category.lower())
+        if doc_type:
+            query = query.where(Document.document_type == doc_type)
+
+    # Count
+    count_query = select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_query)).scalar() or 0
+
+    # Pagination + Sorting
+    offset = (page - 1) * per_page
+    query = query.order_by(Document.created_at.desc()).offset(offset).limit(per_page)
+
+    result = await db.execute(query)
+    documents = result.scalars().all()
+
+    return {
+        "items": [
+            {
+                "id": str(doc.id),
+                "filename": doc.original_filename,
+                "documentType": doc.document_type,
+                "createdAt": doc.created_at.isoformat() if doc.created_at else None,
+                "status": doc.status,
+            }
+            for doc in documents
+        ],
+        "total": total,
+        "page": page,
+        "perPage": per_page,
+        "totalPages": (total + per_page - 1) // per_page if total > 0 else 0,
+    }
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def _extract_matchcode(name: str) -> str:
+    """
+    Extrahiert einen Matchcode aus dem Firmennamen.
+
+    Beispiele:
+    - "Mueller GmbH & Co. KG" -> "Mueller"
+    - "Agrimpex International Trading GmbH" -> "Agrimpex"
+    - "Hans Meier Spargel- und Erdbeerhof" -> "Meier"
+    """
+    if not name:
+        return ""
+
+    # Rechtsformen entfernen
+    legal_forms = [
+        " GmbH & Co. KG", " GmbH & Co. KGaA", " GmbH & Co.",
+        " GmbH", " AG", " KG", " OHG", " e.K.", " e.V.",
+        " Spargel- und Erdbeerhof", " Spargelvermarktung",
+        " International Trading", " Trading", " Handel",
+    ]
+
+    result = name
+    for form in legal_forms:
+        result = result.replace(form, "")
+        result = result.replace(form.lower(), "")
+
+    # Bereinigen
+    result = result.strip()
+
+    # Bei mehreren Woertern, erstes sinnvolles nehmen
+    words = result.split()
+    if len(words) >= 2:
+        # Wenn erstes Wort ein Vorname sein koennte, zweites nehmen
+        first_word = words[0]
+        if len(first_word) < 5 and first_word.lower() in ["hans", "franz", "karl", "maria", "anna"]:
+            result = words[1]
+        else:
+            result = words[0]
+    elif words:
+        result = words[0]
+
+    return result or name[:20]
+
+
+async def _calculate_folder_stats(
+    db: AsyncSession,
+    entity_id: UUID,
+    company_presence: List[str]
+) -> dict:
+    """Berechnet Dokument-Statistiken pro Firma."""
+    stats = {}
+
+    for company_id in company_presence:
+        normalized_id = company_id.lower()
+        if normalized_id == "spargelmesser":
+            normalized_id = "messer"
+
+        # Gesamtzahl Dokumente fuer diese Entity
+        doc_count_query = select(func.count()).select_from(
+            select(Document).where(
+                Document.business_entity_id == entity_id,
+                Document.deleted_at.is_(None),
+            ).subquery()
+        )
+        total = (await db.execute(doc_count_query)).scalar() or 0
+
+        # Offene Rechnungen (document_type = 'rechnung')
+        open_inv_query = select(func.count()).select_from(
+            select(Document).where(
+                Document.business_entity_id == entity_id,
+                Document.document_type == "rechnung",
+                Document.deleted_at.is_(None),
+            ).subquery()
+        )
+        open_invoices = (await db.execute(open_inv_query)).scalar() or 0
+
+        stats[normalized_id] = {
+            "totalDocs": total // len(company_presence) if company_presence else total,
+            "openInvoices": open_invoices // len(company_presence) if company_presence else open_invoices,
+        }
+
+    return stats
+
+
+async def _get_last_document_date(db: AsyncSession, entity_id: UUID):
+    """Ermittelt das Datum des letzten Dokuments."""
+    query = (
+        select(Document.created_at)
+        .where(
+            Document.business_entity_id == entity_id,
+            Document.deleted_at.is_(None),
+        )
+        .order_by(Document.created_at.desc())
+        .limit(1)
+    )
+    result = await db.execute(query)
+    row = result.first()
+    return row[0] if row else None
+
+
+async def _get_last_document_date_for_folder(
+    db: AsyncSession,
+    entity_id: UUID,
+    folder_id: str
+):
+    """Ermittelt das Datum des letzten Dokuments in einem Ordner."""
+    return await _get_last_document_date(db, entity_id)
+
+
+async def _count_documents_by_category(
+    db: AsyncSession,
+    entity_id: UUID,
+    folder_id: str
+) -> dict:
+    """Zaehlt Dokumente pro Kategorie fuer eine Entity/Firma."""
+    categories = [
+        "anfragen", "angebote", "auftragsbestaetigung", "lieferscheine",
+        "rechnungen", "storno", "mahnungen", "offene_rechnungen",
+        "offene_angebote", "offene_anfragen", "reklamation",
+        "kommunikation", "archiv"
+    ]
+
+    category_to_doctype = _get_category_to_doctype_mapping()
+
+    result = {}
+    for cat in categories:
+        doc_type = category_to_doctype.get(cat, cat)
+
+        count_query = select(func.count()).select_from(
+            select(Document).where(
+                Document.business_entity_id == entity_id,
+                Document.document_type == doc_type,
+                Document.deleted_at.is_(None),
+            ).subquery()
+        )
+        count = (await db.execute(count_query)).scalar() or 0
+        result[cat] = count
+
+    return result
+
+
+def _get_category_to_doctype_mapping() -> dict:
+    """Mapping von Frontend-Kategorien zu Document.document_type."""
+    return {
+        "anfragen": "anfrage",
+        "angebote": "angebot",
+        "auftragsbestaetigung": "auftragsbestaetigung",
+        "lieferscheine": "lieferschein",
+        "rechnungen": "rechnung",
+        "storno": "storno",
+        "mahnungen": "mahnung",
+        "offene_rechnungen": "rechnung",
+        "offene_angebote": "angebot",
+        "offene_anfragen": "anfrage",
+        "reklamation": "reklamation",
+        "kommunikation": "kommunikation",
+        "archiv": "archiv",
+        "bestellungen": "bestellung",
+    }

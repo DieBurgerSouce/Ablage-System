@@ -120,6 +120,48 @@ celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=s
 
 ---
 
+<!-- AUTO-MANAGED: enterprise-features -->
+## Enterprise Features
+
+### Lexware Integration (Januar 2026)
+
+**Status**: Production-Ready | **Migration**: 089, 090
+
+| Service | Beschreibung |
+|---------|--------------|
+| `LexwareImportService` | Excel-Import Kunden/Lieferanten (Folie & Messer) |
+| `EntitySearchService` | Suche nach Kundennr, IBAN, VAT-ID, Matchcode |
+| `DocumentEntityLinkerService` | Auto-Linking Dokumente → Entities (75%+ Confidence) |
+
+**API Endpoints:**
+- `POST /api/v1/lexware/import/customers`
+- `POST /api/v1/lexware/import/suppliers`
+- `POST /api/v1/lexware/link-documents`
+- `GET /api/v1/lexware/statistics`
+
+**Celery Tasks:**
+- `entity_linking.link_all_documents` - Batch-Linking nach Import
+- `entity_linking.link_single_document` - Nach OCR-Completion
+
+**Key Features:**
+- Intelligentes Konflikt-Handling (kritisch vs harmlos)
+- Namensvarianten-Erkennung (Müller GmbH vs Mueller GmbH)
+- Multi-Strategie Matching: Kundennr (99%), Matchcode (95%), IBAN/VAT (90%), Fuzzy-Name (80%), Adresse (75%)
+- Pattern-Extraktion aus OCR-Text
+
+**Datenmodell (BusinessEntity):**
+```python
+lexware_ids: JSONB  # {"folie": {"kd_nr": "12345", "matchcode": "MUELLER"}, ...}
+company_presence: JSONB  # ["folie", "messer"]
+primary_customer_number: str  # Hauptkundennummer
+primary_supplier_number: str  # Hauptlieferantennummer
+```
+
+**Details**: Siehe `.claude/Docs/Integrations/Lexware.md`
+<!-- /AUTO-MANAGED: enterprise-features -->
+
+---
+
 <!-- AUTO-MANAGED: critical-rules -->
 ## Kritische Regeln
 
@@ -130,6 +172,7 @@ celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=s
 5. **Tests**: Muessen vor Commit bestehen
 6. **Multi-Model Orchestration**: IMMER befolgen
 7. **shadcn/ui Select**: NIEMALS `value=""` nutzen (Crashes!) → `value="auto"` oder `value="all"`
+8. **Lexware PII**: NIEMALS Kundennummern, IBANs, VAT-IDs in Logs
 <!-- /AUTO-MANAGED: critical-rules -->
 
 ---

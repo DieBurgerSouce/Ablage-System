@@ -1,8 +1,8 @@
 // Types and constants
 export * from './types'
 
-// Mock Data
-export * from './mockData'
+// API
+export * from './api/ablage-api'
 
 // Hooks
 export * from './hooks/use-ablage-queries'
