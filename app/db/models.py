@@ -2299,6 +2299,30 @@ class BusinessEntity(Base):
     confidence_score = Column(Float, default=0.0)  # 0.0-1.0
     auto_detected = Column(Boolean, default=False)  # Automatisch erkannt
 
+    # Lexware Integration
+    lexware_ids = Column(
+        CrossDBJSON,
+        default=dict,
+        comment="Lexware IDs per company: {folie: {kd_nr, matchcode, lief_nr}, messer: {...}}"
+    )
+    company_presence = Column(
+        CrossDBJSON,
+        default=list,
+        comment="List of company short_names where entity exists: ['folie', 'messer']"
+    )
+    primary_customer_number = Column(
+        String(50),
+        nullable=True,
+        index=True,
+        comment="Primary customer number for display (e.g., 12345)"
+    )
+    primary_supplier_number = Column(
+        String(50),
+        nullable=True,
+        index=True,
+        comment="Primary supplier number for display"
+    )
+
     # Metadata & Audit
     notes = Column(Text, nullable=True)
     custom_fields = Column(CrossDBJSON, default=dict)  # Flexible Zusatzfelder
