@@ -4,25 +4,34 @@
  * Export aller ReactFlow Knoten fuer den WorkflowBuilder.
  */
 
-export { default as TriggerNode } from './TriggerNode';
-export { default as ConditionNode } from './ConditionNode';
-export { default as ActionNode } from './ActionNode';
-export { default as BranchNode } from './BranchNode';
-export { default as DelayNode } from './DelayNode';
-export { default as ParallelNode } from './ParallelNode';
-export { default as LoopNode } from './LoopNode';
+import TriggerNodeComponent from './TriggerNode';
+import ConditionNodeComponent from './ConditionNode';
+import ActionNodeComponent from './ActionNode';
+import BranchNodeComponent from './BranchNode';
+import DelayNodeComponent from './DelayNode';
+import ParallelNodeComponent from './ParallelNode';
+import LoopNodeComponent from './LoopNode';
+
+// Re-export components
+export const TriggerNode = TriggerNodeComponent;
+export const ConditionNode = ConditionNodeComponent;
+export const ActionNode = ActionNodeComponent;
+export const BranchNode = BranchNodeComponent;
+export const DelayNode = DelayNodeComponent;
+export const ParallelNode = ParallelNodeComponent;
+export const LoopNode = LoopNodeComponent;
 
 /**
  * Node Types Map fuer ReactFlow
  */
 export const nodeTypes = {
-  trigger: TriggerNode,
-  condition: ConditionNode,
-  action: ActionNode,
-  branch: BranchNode,
-  delay: DelayNode,
-  parallel: ParallelNode,
-  loop: LoopNode,
+  trigger: TriggerNodeComponent,
+  condition: ConditionNodeComponent,
+  action: ActionNodeComponent,
+  branch: BranchNodeComponent,
+  delay: DelayNodeComponent,
+  parallel: ParallelNodeComponent,
+  loop: LoopNodeComponent,
 } as const;
 
 export type NodeType = keyof typeof nodeTypes;

@@ -4,7 +4,7 @@
  * TypeScript API Client fuer Workflow-Automation.
  */
 
-import { apiClient } from '@/lib/api-client';
+import { apiClient } from '@/lib/api/client';
 import type {
   Workflow,
   WorkflowCreate,
