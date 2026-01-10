@@ -1,58 +1,57 @@
 # Ablage-System OCR - Claude Code Schnellreferenz
 
-> **Detaillierte Dokumentation**: `.claude/CLAUDE.md` (2000+ Zeilen)
+> **Detaillierte Dokumentation**: `.claude/CLAUDE.md`
+> **Memory-Dateien**: `.claude/memory/` (Auto-Managed)
 > **Letzte Aktualisierung**: 2026-01-10
 
 ---
 
+<!-- AUTO-MANAGED: project-status -->
 ## Projekt-Status
 
 | Feld | Wert |
 |------|------|
-| **Status** | ✅ Production-Ready (E2E Bugs gefixt 2026-01-10) |
+| **Status** | Production-Ready |
+| **Version** | 1.1 |
 | **Hardware** | RTX 4080 16GB VRAM |
 | **Sprache** | Deutsch-First (100% Umlaut-Genauigkeit) |
-| **Philosophie** | "Feinpoliert und durchdacht" |
 
-### ✅ E2E BUGS GEFIXT (2026-01-10)
-
-| Bug | Problem | Status |
-|-----|---------|--------|
-| BUG-001 | Tunes & Kontext Edit Modal | ✅ Gefixt |
-| BUG-002 | OCR Training Ground Truth Tab | ✅ Gefixt (SelectItem value) |
-| BUG-003 | OCR Review Permissions | ✅ Gefixt (DEBUG=true) |
-| Settings | Falsch als Placeholder markiert | ✅ War bereits implementiert (Modal) |
-
-**E2E Report**: `tests/e2e/E2E_TEST_FINDINGS_2026-01-10.md`
-**Modul-Score**: 22/22 working (100%)
+**Aktuelle Issues**: Siehe `.claude/memory/KNOWN_ISSUES.md`
+**Aenderungen**: Siehe `.claude/memory/RECENT_CHANGES.md`
+<!-- /AUTO-MANAGED: project-status -->
 
 ---
 
-## `.claude/` Verzeichnis - NUTZEN!
+## `.claude/` Verzeichnis
 
 ```
 .claude/
-├── CLAUDE.md              # Detaillierte Dokumentation
+├── CLAUDE.md              # Core Reference (~500 Zeilen)
+├── memory/                # AUTO-MANAGED Dateien
+│   ├── PROJECT_STATUS.md  # Service Health, Deployments
+│   ├── KNOWN_ISSUES.md    # Bugs, Issues
+│   ├── RECENT_CHANGES.md  # Changelog
+│   └── DEPENDENCIES.md    # Tech Stack
 ├── commands/              # Slash Commands
 ├── hooks/                 # Pre/Post Hooks
-├── agents/                # Subagents (plan-breakdown)
-└── Docs/                  # Themen-Dokumentation
+├── agents/                # Subagents
+└── Docs/                  # Themen-Dokumentation (114 Dateien)
 ```
 
 ### Slash Commands
 
 | Situation | Command |
 |-----------|---------|
-| System prüfen | `/check-system` |
+| System pruefen | `/check-system` |
 | Deutsche Texte | `/validate-german` |
 | Dokument verarbeiten | `/process-doc <pfad>` |
 | GPU-Probleme | `/debug-gpu` |
-| OCR-Qualität | `/ocr-benchmark` |
-| Tests ausführen | `/quick-test` |
+| OCR-Qualitaet | `/ocr-benchmark` |
+| Tests ausfuehren | `/quick-test` |
 | Code reviewen | `/review-pr` |
 | **WebApp testen** | **`/test-webapp`** |
 
-### Verfügbare Skills
+### Verfuegbare Skills
 
 | Situation | Skill |
 |-----------|-------|
@@ -112,29 +111,32 @@ celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=s
 
 ## OCR Backends
 
-| Backend | VRAM | GPU | Stärken |
-|---------|------|-----|---------|
-| DeepSeek-Janus-Pro | 12GB | ✓ | Beste Umlaut-Genauigkeit, Fraktur |
-| GOT-OCR 2.0 | 10GB | - | Tabellen, Formeln, schnell |
-| Surya + Docling | 0GB | - | CPU-Fallback, Layout |
-| Surya GPU | 4GB | ✓ | Schnelle GPU-Variante |
+| Backend | VRAM | GPU | Staerken |
+|---------|------|-----|----------|
+| DeepSeek-Janus-Pro | 12GB | Ja | Beste Umlaut-Genauigkeit, Fraktur |
+| GOT-OCR 2.0 | 10GB | Nein | Tabellen, Formeln, schnell |
+| Surya + Docling | 0GB | Nein | CPU-Fallback, Layout |
+| Surya GPU | 4GB | Ja | Schnelle GPU-Variante |
 
 ---
 
+<!-- AUTO-MANAGED: critical-rules -->
 ## Kritische Regeln
 
 1. **Deutsche Texte**: ALLE Fehlermeldungen auf Deutsch
 2. **GPU-Management**: VRAM unter 85% halten (max 13.6GB)
-3. **Typ-Annotationen**: Pflicht für alle Python-Funktionen
+3. **Typ-Annotationen**: Pflicht fuer alle Python-Funktionen
 4. **Sicherheit**: Keine Secrets im Code, keine PII in Logs
-5. **Tests**: Müssen vor Commit bestehen
+5. **Tests**: Muessen vor Commit bestehen
 6. **Multi-Model Orchestration**: IMMER befolgen
+7. **shadcn/ui Select**: NIEMALS `value=""` nutzen (Crashes!) → `value="auto"` oder `value="all"`
+<!-- /AUTO-MANAGED: critical-rules -->
 
 ---
 
 ## Multi-Model Orchestration
 
-Bei jedem Prompt erhältst du einen `ORCHESTRATION ROUTING` Kontext. **BEFOLGEN!**
+Bei jedem Prompt erhaeltst du einen `ORCHESTRATION ROUTING` Kontext. **BEFOLGEN!**
 
 | Routing-Empfehlung | Aktion |
 |--------------------|--------|
@@ -142,21 +144,9 @@ Bei jedem Prompt erhältst du einen `ORCHESTRATION ROUTING` Kontext. **BEFOLGEN!
 | `SONNET` | `Task(subagent_type="sonnet-implementation", model="sonnet", ...)` |
 | `OPUS` | Selbst machen |
 
-**MCP Server nutzen:**
+**MCP Server:**
 - `mcp__orchestration__route_task` - Optimalen Agent
 - `mcp__orchestration__list_agents` - 15 Agenten anzeigen
-
----
-
-## Plan-Breakdown Subagent
-
-**Automatisch delegieren nach ExitPlanMode!**
-
-```
-Task(subagent_type="plan-breakdown", prompt="Analyze plan and generate feature specs...")
-```
-
-Generiert automatisch Feature-Dateien in `.claude/plans/[name]/`
 
 ---
 
@@ -171,93 +161,38 @@ Generiert automatisch Feature-Dateien in `.claude/plans/[name]/`
 
 ---
 
-## Module-Übersicht
+## Dokumentations-Index
 
-| Modul | Status | Details |
-|-------|--------|---------|
-| OCR Training | ✓ | `.claude/CLAUDE.md` → OCR Training |
-| Privat-Modul | ✓ | Portfolio, KI-Analysen |
-| Orchestration | ✓ | Cross-Module, Decision Engine |
-| Lexware | ✓ | Import, Entity-Linking |
-| Backup | ✓ | PostgreSQL, Redis, MinIO |
-| Qdrant A/B | ✓ | Phase 1: 10% Traffic |
-
----
-
-## Service-Architektur
-
-### Kanonische Services (Document)
-
-| Service | Pfad |
-|---------|------|
-| GDPR | `document_services/gdpr_service.py` |
-| Export | `document_services/export_service.py` |
-| Batch | `document_services/batch_service.py` |
-| CRUD | `document_services/crud_service.py` |
-| Filter | `document_services/filter_service.py` |
-
-### Deprecated Wrapper (Rückwärtskompatibilität)
-
-- `document_gdpr_service.py` → nutze `document_services/gdpr_service.py`
-- `document_export_service.py` → nutze `document_services/export_service.py`
-- `document_batch_service.py` → nutze `document_services/batch_service.py`
-
----
-
-## Projektstruktur
-
-```
-Ablage_System/
-├── CLAUDE.md                 # ← DU BIST HIER (Schnellreferenz)
-├── .claude/
-│   ├── CLAUDE.md             # Detaillierte Dokumentation
-│   ├── commands/             # Slash Commands
-│   ├── hooks/                # Pre/Post Hooks
-│   └── Docs/                 # Themen-Dokumentation
-├── app/
-│   ├── main.py               # FastAPI Entry Point
-│   ├── agents/ocr/           # OCR Backends
-│   ├── api/v1/               # API Endpoints
-│   ├── core/                 # Config, Security, Logging
-│   ├── db/                   # SQLAlchemy Models
-│   ├── services/             # Business Logic
-│   └── workers/              # Celery Tasks
-├── frontend/                 # React + TypeScript
-├── infrastructure/           # Terraform, Ansible, Grafana
-├── tests/                    # Unit + Integration
-└── docker-compose.yml
-```
-
----
-
-## Wichtige Konfigurationen
-
-| Einstellung | Wert | Grund |
-|-------------|------|-------|
-| GPU_LOCK_TIMEOUT | 180s | Lange OCR-Tasks |
-| LLM MAX_RETRIES | 3 | Ollama-Abbrüche |
-| File-IDs | UUID | Race Conditions |
-
----
-
-## Referenzen
-
-| Thema | Dokument |
-|-------|----------|
-| Detaillierte Doku | `.claude/CLAUDE.md` |
-| API Dokumentation | `.claude/Docs/API/` |
-| Architektur | `.claude/Docs/Architecture/` |
+| Thema | Pfad |
+|-------|------|
+| Core Reference | `.claude/CLAUDE.md` |
+| Project Status | `.claude/memory/PROJECT_STATUS.md` |
+| Known Issues | `.claude/memory/KNOWN_ISSUES.md` |
+| Recent Changes | `.claude/memory/RECENT_CHANGES.md` |
+| Dependencies | `.claude/memory/DEPENDENCIES.md` |
+| API Docs | `.claude/Docs/API/` |
+| Architecture | `.claude/Docs/Architecture/` |
 | Testing | `.claude/Docs/Testing/` |
 | Operations | `.claude/Docs/Operations/` |
 | OCR Backends | `.claude/Docs/OCR-Backends/` |
-| Qdrant A/B | `.claude/Docs/QDRANT_AB_TESTING_GUIDE.md` |
-| Backup API | `.claude/Docs/API/Backup_API.md` |
 
 ---
 
-## Bei Änderungen
+## CLAUDE.md Maintenance
 
-1. **`.claude/CLAUDE.md`** - Bei Architekturänderungen
-2. **`.claude/commands/`** - Bei neuen Workflows
-3. **`.claude/hooks/`** - Bei neuen Validierungen
-4. **`tests/`** - Immer Tests aktualisieren
+Claude SOLL diese Dateien automatisch pflegen:
+
+1. **AUTO-MANAGED Sektionen**: Werden bei relevanten Aenderungen aktualisiert
+2. **Memory-Dateien**: `.claude/memory/*.md` fuer dynamische Infos
+3. **Wann aktualisieren**:
+   - Nach Migrationen (alembic)
+   - Nach neuen Features/Services
+   - Nach Bug-Fixes
+   - Nach Konfigurations-Aenderungen
+
+**Format der AUTO-MANAGED Marker:**
+```html
+<!-- AUTO-MANAGED: section-name -->
+Inhalt...
+<!-- /AUTO-MANAGED: section-name -->
+```

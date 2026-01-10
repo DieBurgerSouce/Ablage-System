@@ -382,8 +382,8 @@ def main() -> int:
         needs_breakdown, plan_name = check_plan_needs_breakdown()
 
         if needs_breakdown:
-            print(f"⚠️  Plan '{plan_name}' braucht detaillierte Feature-Specs!")
-            print(f"💡 Starte: Task(subagent_type='plan-breakdown', prompt='Expandiere {plan_name}')")
+            print(f"[!] Plan '{plan_name}' braucht detaillierte Feature-Specs!")
+            print(f"[*] Starte: Task(subagent_type='plan-breakdown', prompt='Expandiere {plan_name}')")
             return 1
         else:
             logger.info("Kein Breakdown noetig")
