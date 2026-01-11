@@ -538,6 +538,79 @@ class DocumentUploadResponse(BaseModel):
     message: str = "Dokument erfolgreich hochgeladen"
 
 
+class UploadCompleteRequest(BaseModel):
+    """Request fuer finales Speichern nach OCR-Review.
+
+    Wird vom Frontend gesendet, nachdem der User das OCR-Ergebnis
+    im Review-Modal bestaetigt hat.
+    """
+    temp_file_id: str = Field(..., description="ID der temporaeren Datei aus /ocr/process")
+    final_filename: str = Field(..., min_length=1, max_length=255, description="Finaler Dateiname (nach Umbenennung)")
+    document_type: str = Field(..., description="Dokumenttyp (z.B. 'invoice', 'offer')")
+
+    # Metadaten (optional, aus Quick Classification)
+    document_number: Optional[str] = Field(None, max_length=100, description="Belegnummer (z.B. 'RG-2024-001')")
+    document_date: Optional[date_type] = Field(None, description="Dokumentdatum")
+    total_amount: Optional[Decimal] = Field(None, description="Gesamtbetrag")
+    currency: str = Field(default="EUR", max_length=3, description="Waehrung (ISO-Code)")
+    due_date: Optional[date_type] = Field(None, description="Faelligkeitsdatum (bei Rechnungen)")
+
+    # Entity-Linking (aus Quick Classification oder manuell)
+    business_entity_id: Optional[uuid.UUID] = Field(None, description="Verknuepfte Business Entity (Kunde/Lieferant)")
+    folder_id: str = Field(..., description="Zielordner ('folie' oder 'messer')")
+    category: str = Field(..., description="Kategorie (z.B. 'rechnungen', 'angebote')")
+    entity_type: str = Field(..., description="Entity-Typ ('customer' oder 'supplier')")
+
+    # Zusaetzliche Daten
+    tags: List[str] = Field(default_factory=list, description="Tags fuer das Dokument")
+    ocr_text: Optional[str] = Field(None, description="OCR-Text (falls Speicherung gewuenscht)")
+    ocr_confidence: Optional[float] = Field(None, ge=0, le=100, description="OCR-Konfidenz")
+
+    @field_validator("final_filename")
+    @classmethod
+    def validate_filename(cls, v: str) -> str:
+        """Validate and sanitize filename."""
+        # Prevent path traversal
+        if ".." in v or "/" in v or "\\" in v:
+            raise ValueError("Ungueltiger Dateiname - Pfad-Traversal nicht erlaubt")
+
+        # Sanitize filename
+        v = v.strip()
+        if not v:
+            raise ValueError("Dateiname darf nicht leer sein")
+
+        return v
+
+    @field_validator("entity_type")
+    @classmethod
+    def validate_entity_type(cls, v: str) -> str:
+        """Validate entity type."""
+        if v not in ("customer", "supplier"):
+            raise ValueError("entity_type muss 'customer' oder 'supplier' sein")
+        return v
+
+    @field_validator("folder_id")
+    @classmethod
+    def validate_folder_id(cls, v: str) -> str:
+        """Validate folder ID."""
+        allowed_folders = ("folie", "messer")
+        if v not in allowed_folders:
+            raise ValueError(f"folder_id muss einer von {allowed_folders} sein")
+        return v
+
+
+class UploadCompleteResponse(BaseModel):
+    """Response nach erfolgreichem Upload-Abschluss."""
+    success: bool = True
+    document_id: uuid.UUID
+    filename: str
+    storage_path: str
+    file_size: int
+    entity_linked: bool = False
+    entity_name: Optional[str] = None
+    message: str = "Dokument erfolgreich abgelegt"
+
+
 class DocumentDownloadResponse(BaseModel):
     """Document download response schema (for metadata, not actual file)."""
     filename: str

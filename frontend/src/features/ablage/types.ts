@@ -407,3 +407,234 @@ export const DEFAULT_TRANSACTION_FILTER: Omit<TransactionFilter, 'entityId' | 'f
   page: 0,
   pageSize: 20,
 };
+
+// ==================== OCR REVIEW WORKFLOW TYPES ====================
+
+/**
+ * Invoice Direction (Eingang vs Ausgang)
+ */
+export type InvoiceDirection = 'incoming' | 'outgoing' | null;
+
+/**
+ * Quick Classification Ergebnis vom Backend
+ * Wird von /ocr/process nach OCR automatisch ausgeführt
+ */
+export interface QuickClassificationResult {
+  direction: InvoiceDirection;
+  confidence: number;
+  matchedEntityId: string | null;
+  matchedEntityName: string | null;
+  matchedEntityType: 'customer' | 'supplier' | null;
+  matchedEntityConfidence: number;
+  suggestedDocumentType: string;
+  suggestedTags: string[];
+  extractedData: {
+    documentNumber: string | null;
+    documentDate: string | null;
+    totalAmount: number | null;
+    currency: string;
+    dueDate: string | null;
+    ibanFound: string | null;
+    vatIdFound: string | null;
+  };
+}
+
+/**
+ * Rename-Vorschlag vom Backend
+ * Format: {SupplierName}_{InvoiceNumber}.pdf
+ */
+export interface RenameSuggestion {
+  suggestedFilename: string;
+  confidence: number;
+  parts: {
+    entityName: string | null;
+    documentNumber: string | null;
+  };
+}
+
+/**
+ * Erweitertes OCR-Ergebnis von /ocr/process
+ * Enthält OCR-Text + Quick Classification + Rename-Vorschlag
+ */
+export interface OCRProcessResult {
+  success: boolean;
+  text: string;
+  confidence: number;
+  pageCount: number;
+  processingTimeMs: number;
+  backend: string;
+
+  // Neu: Quick Classification
+  quickClassification: QuickClassificationResult | null;
+
+  // Neu: Rename-Vorschlag
+  renameSuggestion: RenameSuggestion | null;
+
+  // Neu: Temp-File-ID für späteres Speichern
+  tempFileId: string;
+}
+
+/**
+ * Request zum finalen Speichern nach OCR-Review
+ * Wird an POST /api/v1/documents/upload-complete gesendet
+ */
+export interface UploadCompleteRequest {
+  tempFileId: string;
+  finalFilename: string;
+  documentType: string;
+
+  // Metadaten (aus Quick Classification oder manuell)
+  documentNumber?: string;
+  documentDate?: string;  // ISO Date String
+  totalAmount?: number;
+  currency?: string;
+  dueDate?: string;
+
+  // Entity-Linking
+  businessEntityId?: string;
+  folderId: string;
+  category: string;
+  entityType: 'customer' | 'supplier';
+
+  // Tags
+  tags?: string[];
+
+  // OCR-Daten (optional, zur Speicherung)
+  ocrText?: string;
+  ocrConfidence?: number;
+}
+
+/**
+ * Response von /api/v1/documents/upload-complete
+ */
+export interface UploadCompleteResponse {
+  success: boolean;
+  documentId: string;
+  filename: string;
+  storagePath: string;
+  fileSize: number;
+  entityLinked: boolean;
+  entityName?: string;
+  message: string;
+}
+
+/**
+ * Status des Upload-Workflows
+ */
+export type UploadWorkflowStatus =
+  | 'idle'           // Kein Upload aktiv
+  | 'uploading'      // Datei wird hochgeladen
+  | 'processing'     // OCR läuft
+  | 'classifying'    // Quick Classification läuft
+  | 'review'         // Warten auf User-Review
+  | 'saving'         // Wird gespeichert
+  | 'completed'      // Erfolgreich abgeschlossen
+  | 'error';         // Fehler aufgetreten
+
+/**
+ * State für den Upload-Workflow Hook
+ */
+export interface UploadWorkflowState {
+  status: UploadWorkflowStatus;
+  progress: number;
+  file: File | null;
+  fileUrl: string | null;
+  tempFileId: string | null;
+  ocrResult: {
+    text: string;
+    confidence: number;
+  } | null;
+  quickClassification: QuickClassificationResult | null;
+  renameSuggestion: RenameSuggestion | null;
+  error: string | null;
+}
+
+/**
+ * Optionen für den Upload-Workflow Hook
+ */
+export interface UseDocumentUploadOptions {
+  entityId: string;
+  entityType: 'customer' | 'supplier';
+  folderId: string;
+  category: string;
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}
+
+/**
+ * Entity-Match Badge Konfiguration
+ */
+export const ENTITY_MATCH_CONFIDENCE_LEVELS = {
+  high: { threshold: 0.9, label: 'Sehr sicher', color: 'bg-green-100 text-green-800' },
+  medium: { threshold: 0.75, label: 'Wahrscheinlich', color: 'bg-yellow-100 text-yellow-800' },
+  low: { threshold: 0.5, label: 'Möglich', color: 'bg-orange-100 text-orange-800' },
+  none: { threshold: 0, label: 'Nicht erkannt', color: 'bg-gray-100 text-gray-800' },
+} as const;
+
+/**
+ * Ermittelt das Confidence-Level für ein Entity-Match
+ */
+export function getEntityMatchLevel(confidence: number): keyof typeof ENTITY_MATCH_CONFIDENCE_LEVELS {
+  if (confidence >= ENTITY_MATCH_CONFIDENCE_LEVELS.high.threshold) return 'high';
+  if (confidence >= ENTITY_MATCH_CONFIDENCE_LEVELS.medium.threshold) return 'medium';
+  if (confidence >= ENTITY_MATCH_CONFIDENCE_LEVELS.low.threshold) return 'low';
+  return 'none';
+}
+
+// ==================== DOCUMENT TYPE OPTIONS ====================
+
+/**
+ * Dokumenttyp-Option fuer Select-Dropdown
+ */
+export interface DocumentTypeOption {
+  value: string;
+  label: string;
+}
+
+/**
+ * Dokumenttypen fuer Kunden (Ausgangsbelege)
+ */
+export const CUSTOMER_DOCUMENT_TYPES: DocumentTypeOption[] = [
+  { value: 'offer', label: 'Angebot' },
+  { value: 'order_confirmation', label: 'Auftragsbestätigung' },
+  { value: 'delivery_note', label: 'Lieferschein' },
+  { value: 'invoice', label: 'Rechnung' },
+  { value: 'credit_note', label: 'Gutschrift' },
+  { value: 'reminder', label: 'Mahnung' },
+  { value: 'complaint', label: 'Reklamation' },
+  { value: 'correspondence', label: 'Korrespondenz' },
+  { value: 'contract', label: 'Vertrag' },
+  { value: 'document', label: 'Sonstiges Dokument' },
+];
+
+/**
+ * Dokumenttypen fuer Lieferanten (Eingangsbelege)
+ */
+export const SUPPLIER_DOCUMENT_TYPES: DocumentTypeOption[] = [
+  { value: 'inquiry', label: 'Anfrage' },
+  { value: 'order', label: 'Bestellung' },
+  { value: 'order_confirmation', label: 'Auftragsbestätigung' },
+  { value: 'delivery_note', label: 'Lieferschein' },
+  { value: 'invoice', label: 'Eingangsrechnung' },
+  { value: 'credit_note', label: 'Gutschrift' },
+  { value: 'complaint', label: 'Reklamation' },
+  { value: 'correspondence', label: 'Korrespondenz' },
+  { value: 'contract', label: 'Vertrag' },
+  { value: 'certificate', label: 'Zertifikat/Zeugnis' },
+  { value: 'document', label: 'Sonstiges Dokument' },
+];
+
+// ==================== RE-EXPORTS FROM ABLAGE-TYPES ====================
+// Upload-bezogene Types und Utilities fuer DocumentUploadDialog
+
+export {
+  type UploadFile,
+  type UploadStatus,
+  type UploadRequest,
+  type UploadResponse,
+  type OCRBackend,
+  OCR_BACKENDS,
+  formatFileSize,
+  getStatusColor,
+  getStatusLabel,
+} from './types/ablage-types';

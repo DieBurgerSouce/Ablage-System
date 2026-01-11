@@ -258,9 +258,9 @@ class AblageService(DocumentServiceBase):
         if doc_type:
             base_conditions.append(Document.document_type == doc_type.value)
 
-        # Business-Entity und Folder aus metadata filtern
+        # Business-Entity direkt aus Document-Spalte filtern
         base_conditions.append(
-            jsonb_text("document_metadata", "business_entity_id") == str(business_entity_id)
+            Document.business_entity_id == business_entity_id
         )
         base_conditions.append(
             jsonb_text("document_metadata", "folder_id") == folder_id
@@ -917,10 +917,9 @@ class AblageService(DocumentServiceBase):
         if doc_type:
             conditions.append(Document.document_type == doc_type.value)
 
-        # Business-Entity und Folder aus metadata
+        # Business-Entity direkt aus Document-Spalte filtern
         conditions.append(
-            jsonb_text("document_metadata", "business_entity_id")
-            == str(filter_params.business_entity_id)
+            Document.business_entity_id == filter_params.business_entity_id
         )
         conditions.append(
             jsonb_text("document_metadata", "folder_id") == filter_params.folder_id

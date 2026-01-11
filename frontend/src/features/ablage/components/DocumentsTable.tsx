@@ -68,6 +68,7 @@ interface DocumentsTableProps {
 interface DocumentsEmptyStateProps {
   hasFilters?: boolean;
   onUploadClick?: () => void;
+  categoryLabel?: string;
 }
 
 // ==================== Format Helpers ====================
@@ -143,24 +144,44 @@ export function DocumentsTableSkeleton({
 export function DocumentsEmptyState({
   hasFilters = false,
   onUploadClick,
+  categoryLabel,
 }: DocumentsEmptyStateProps) {
+  const title = categoryLabel
+    ? `Keine ${categoryLabel}`
+    : 'Keine Dokumente';
+
   return (
     <div
-      className="text-center py-16 text-muted-foreground"
+      className="flex flex-col items-center justify-center py-20 px-8 text-center"
       role="status"
-      aria-label="Keine Dokumente gefunden"
+      aria-label={title}
     >
-      <FolderOpen className="w-16 h-16 mx-auto mb-4 opacity-30" aria-hidden="true" />
-      <p className="text-lg font-medium">Keine Dokumente gefunden</p>
-      <p className="text-sm mt-2">
+      {/* Large Folder Icon */}
+      <div className="w-24 h-24 rounded-2xl bg-muted/50 flex items-center justify-center mb-6">
+        <FolderOpen className="w-12 h-12 text-muted-foreground/50" aria-hidden="true" />
+      </div>
+
+      {/* Title */}
+      <h3 className="text-xl font-semibold text-foreground mb-2">
+        {title}
+      </h3>
+
+      {/* Description */}
+      <p className="text-muted-foreground max-w-sm mb-8">
         {hasFilters
-          ? 'Passen Sie die Filterkriterien an'
-          : 'Laden Sie Dokumente in diese Kategorie hoch'}
+          ? 'Mit den aktuellen Filtern wurden keine Dokumente gefunden. Passen Sie die Filterkriterien an.'
+          : 'In dieser Kategorie befinden sich noch keine Dokumente.'}
       </p>
+
+      {/* Large Upload CTA - Only when no filters and upload handler provided */}
       {!hasFilters && onUploadClick && (
-        <Button className="mt-4 gap-2" onClick={onUploadClick}>
-          <Upload className="w-4 h-4" aria-hidden="true" />
-          Erstes Dokument hochladen
+        <Button
+          size="lg"
+          onClick={onUploadClick}
+          className="gap-2 px-8 py-6 text-base font-medium shadow-lg hover:shadow-xl transition-shadow"
+        >
+          <Upload className="w-5 h-5" aria-hidden="true" />
+          Dokument hochladen
         </Button>
       )}
     </div>

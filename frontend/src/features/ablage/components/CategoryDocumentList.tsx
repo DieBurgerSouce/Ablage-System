@@ -1,15 +1,16 @@
 /**
- * CategoryDocumentList - Hauptkomponente für Kategorie-Dokumente
+ * CategoryDocumentList - Hauptkomponente fuer Kategorie-Dokumente
  *
  * Orchestriert die Unterkomponenten:
  * - ProactiveInsightsBanner (KI-Insights, ganz oben)
  * - CategoryHeader (Breadcrumb, Titel)
- * - QuickActionsBar (Primaere + Kontext-Aktionen)
+ * - QuickActionsBar (NUR: Upload + Export)
  * - InvoiceTrackingBanner (Zahlungsstatus, nur bei Rechnungen)
- * - CategoryAggregations (Summen-Karten)
- * - DocumentFilterBar (Filter)
- * - DocumentsTable (Tabelle)
- * - BulkActionsToolbar (Bulk-Aktionen, fixiert unten)
+ * - CategoryAggregations (Summen-Karten, NUR wenn documents > 0)
+ * - DocumentFilterBar (Filter, NUR wenn documents > 0)
+ * - DocumentsTable ODER DocumentsEmptyState (grosser Upload-CTA)
+ * - BulkActionsToolbar (EINZIGE Quelle fuer Bulk-Aktionen)
+ * - DocumentUploadDialog (Modaler Upload)
  */
 
 import { useState, useMemo, useCallback } from 'react';
@@ -25,8 +26,8 @@ import {
 } from '../types';
 import {
   useCategoryPage,
-  useBulkMarkAsPaid,
-  useBulkDelete,
+  useBulkExportCsv,
+  useBulkDownloadZip,
 } from '../hooks/use-ablage-queries';
 import { useEntityName } from '../hooks/useAblage';
 import { CategoryBreadcrumb, CategoryTitle } from './CategoryHeader';
@@ -41,8 +42,7 @@ import { BulkActionsToolbar } from './BulkActionsToolbar';
 import { InvoiceTrackingBanner } from './InvoiceTrackingBanner';
 import { ProactiveInsightsBanner } from './ProactiveInsightsBanner';
 import { QuickActionsBar } from './QuickActionsBar';
-import { MoveFolderDialog } from './MoveFolderDialog';
-import { TagsEditDialog } from './TagsEditDialog';
+import { DocumentUploadDialog } from './DocumentUploadDialog';
 
 // ==================== Types ====================
 
@@ -94,14 +94,13 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  // Dialog states
-  const [showMoveDialog, setShowMoveDialog] = useState(false);
-  const [showTagsDialog, setShowTagsDialog] = useState(false);
+  // Upload Dialog State
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
 
   // ==================== Mutations ====================
 
-  const markAsPaidMutation = useBulkMarkAsPaid();
-  const deleteMutation = useBulkDelete();
+  const exportCsv = useBulkExportCsv();
+  const downloadZip = useBulkDownloadZip();
 
   // ==================== Data Query ====================
 
@@ -112,6 +111,7 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
     isLoadingAggregations,
     isError,
     error,
+    refetch,
   } = useCategoryPage(
     {
       businessEntityId: entityId || '',
@@ -155,6 +155,9 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
     [filter]
   );
 
+  // Check if we have documents (for conditional rendering of stats/filters)
+  const hasDocuments = !isLoading && documentList.length > 0;
+
   // ==================== Handlers ====================
 
   const handlePageChange = useCallback((newPage: number) => {
@@ -174,34 +177,33 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
     setRowSelection({});
   }, []);
 
+  // Upload handler - opens the dialog
   const handleUploadClick = useCallback(() => {
-    // TODO: Implement upload modal/drawer
-    console.log('Upload clicked');
+    setShowUploadDialog(true);
   }, []);
 
-  // Bulk action handlers
-  const handleMarkAsPaid = useCallback(async () => {
-    if (selectedIds.length === 0) return;
-    await markAsPaidMutation.mutateAsync({ documentIds: selectedIds });
-    setRowSelection({});
-  }, [selectedIds, markAsPaidMutation]);
+  // Export handlers for QuickActionsBar
+  const handleExportCsv = useCallback(async () => {
+    await exportCsv.mutateAsync({
+      filter: {
+        businessEntityId: entityId || '',
+        folderId: folderId || '',
+        category: category || '',
+        ...filter,
+      },
+    });
+  }, [entityId, folderId, category, filter, exportCsv]);
 
-  const handleMoveCategory = useCallback(() => {
-    if (selectedIds.length === 0) return;
-    setShowMoveDialog(true);
-  }, [selectedIds]);
-
-  const handleSetTags = useCallback(() => {
-    if (selectedIds.length === 0) return;
-    setShowTagsDialog(true);
-  }, [selectedIds]);
-
-  const handleDelete = useCallback(async () => {
-    if (selectedIds.length === 0) return;
-    if (!confirm(`Moechten Sie ${selectedIds.length} Dokument(e) wirklich loeschen?`)) return;
-    await deleteMutation.mutateAsync({ documentIds: selectedIds });
-    setRowSelection({});
-  }, [selectedIds, deleteMutation]);
+  const handleDownloadZip = useCallback(async () => {
+    await downloadZip.mutateAsync({
+      filter: {
+        businessEntityId: entityId || '',
+        folderId: folderId || '',
+        category: category || '',
+        ...filter,
+      },
+    });
+  }, [entityId, folderId, category, filter, downloadZip]);
 
   // Filter handlers for banners
   const handleFilterOverdue = useCallback(() => {
@@ -225,7 +227,7 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
         <Card>
           <CardContent className="py-8">
             <p className="text-center text-muted-foreground">
-              Ungültige Parameter. Bitte wählen Sie eine Kategorie aus.
+              Ungueltige Parameter. Bitte waehlen Sie eine Kategorie aus.
             </p>
           </CardContent>
         </Card>
@@ -245,43 +247,38 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
         categoryInfo={categoryInfo}
       />
 
-      {/* KI-Insights Banner */}
-      {showPaymentStatus && (
+      {/* KI-Insights Banner - Nur bei Rechnungen und wenn Dokumente vorhanden */}
+      {showPaymentStatus && hasDocuments && (
         <ProactiveInsightsBanner
           aggregations={aggregations}
           documents={documentList}
           category={category}
           isLoading={isLoadingAggregations}
-          onMarkAsPaid={handleMarkAsPaid}
           onFilterDocuments={(f) => handleFilterChange({ paymentStatus: f.paymentStatus as string[] | undefined })}
         />
       )}
 
-      {/* Seitentitel mit Back-Button und Upload */}
+      {/* Seitentitel mit Back-Button (OHNE Upload-Button) */}
       <CategoryTitle
         entityType={entityType}
         entityId={entityId}
         folderId={folderId}
         categoryInfo={categoryInfo}
-        onUploadClick={handleUploadClick}
       />
 
-      {/* Quick Actions Bar - Unter Header */}
+      {/* Quick Actions Bar - NUR Upload + Export */}
       <QuickActionsBar
         category={category}
         entityType={entityType}
-        selectedIds={selectedIds}
         totalCount={totalCount}
+        isLoading={isLoading}
         onUploadClick={handleUploadClick}
-        onMoveCategory={handleMoveCategory}
-        onSetTags={handleSetTags}
-        onMarkAsPaid={showPaymentStatus ? handleMarkAsPaid : undefined}
-        onDelete={handleDelete}
-        onClearSelection={handleClearSelection}
+        onExportCsv={handleExportCsv}
+        onDownloadZip={handleDownloadZip}
       />
 
-      {/* Invoice Tracking Banner - Nur bei Rechnungen */}
-      {showPaymentStatus && (
+      {/* Invoice Tracking Banner - Nur bei Rechnungen und wenn Dokumente vorhanden */}
+      {showPaymentStatus && hasDocuments && (
         <InvoiceTrackingBanner
           aggregations={aggregations}
           documents={documentList}
@@ -292,20 +289,24 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
         />
       )}
 
-      {/* Aggregations */}
-      <CategoryAggregations
-        aggregations={aggregations}
-        isLoading={isLoadingAggregations}
-        showPaymentInfo={showPaymentStatus}
-      />
+      {/* Aggregations - NUR wenn Dokumente vorhanden */}
+      {hasDocuments && (
+        <CategoryAggregations
+          aggregations={aggregations}
+          isLoading={isLoadingAggregations}
+          showPaymentInfo={showPaymentStatus}
+        />
+      )}
 
-      {/* Filter Bar */}
-      <DocumentFilterBar
-        category={category}
-        filter={filter}
-        onChange={handleFilterChange}
-        totalCount={totalCount}
-      />
+      {/* Filter Bar - NUR wenn Dokumente vorhanden */}
+      {hasDocuments && (
+        <DocumentFilterBar
+          category={category}
+          filter={filter}
+          onChange={handleFilterChange}
+          totalCount={totalCount}
+        />
+      )}
 
       {/* Error State */}
       {isError && (
@@ -321,11 +322,12 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
       {/* Content */}
       {!isError && (
         <>
-          {/* Empty State */}
+          {/* Empty State - Grosser Upload-CTA */}
           {!isLoading && documentList.length === 0 && (
             <DocumentsEmptyState
               hasFilters={hasActiveFilters}
               onUploadClick={handleUploadClick}
+              categoryLabel={categoryInfo?.label}
             />
           )}
 
@@ -354,30 +356,27 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
         </>
       )}
 
-      {/* Bulk Actions Toolbar - Fixiert unten */}
+      {/* Bulk Actions Toolbar - EINZIGE Quelle fuer Bulk-Aktionen */}
       <BulkActionsToolbar
         selectedIds={selectedIds}
         category={category}
         entityType={entityType}
+        folderId={folderId}
         onClearSelection={handleClearSelection}
       />
 
-      {/* Dialogs */}
-      <MoveFolderDialog
-        open={showMoveDialog}
-        onOpenChange={setShowMoveDialog}
+      {/* Document Upload Dialog */}
+      <DocumentUploadDialog
+        open={showUploadDialog}
+        onOpenChange={setShowUploadDialog}
+        entityId={entityId || ''}
+        entityName={entityInfo?.display_name || ''}
         entityType={entityType}
-        folderId={folderId}
-        currentCategory={category}
-        selectedIds={selectedIds}
-        onSuccess={() => setRowSelection({})}
-      />
-
-      <TagsEditDialog
-        open={showTagsDialog}
-        onOpenChange={setShowTagsDialog}
-        selectedIds={selectedIds}
-        onSuccess={() => setRowSelection({})}
+        folderId={folderId || ''}
+        folderName={folderDisplayName}
+        category={category || ''}
+        categoryName={categoryInfo?.label}
+        onUploadComplete={() => refetch()}
       />
     </div>
   );

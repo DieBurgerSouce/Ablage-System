@@ -56,6 +56,7 @@ interface BulkActionsToolbarProps {
   selectedIds: string[];
   category: string;
   entityType: 'customer' | 'supplier';
+  folderId: string;
   onClearSelection: () => void;
   className?: string;
 }
@@ -66,6 +67,7 @@ export function BulkActionsToolbar({
   selectedIds,
   category,
   entityType,
+  folderId,
   onClearSelection,
   className,
 }: BulkActionsToolbarProps) {
@@ -342,6 +344,7 @@ export function BulkActionsToolbar({
         selectedIds={selectedIds}
         currentCategory={category}
         entityType={entityType}
+        folderId={folderId}
         onSuccess={onClearSelection}
       />
 

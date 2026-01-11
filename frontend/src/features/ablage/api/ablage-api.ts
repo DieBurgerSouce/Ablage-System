@@ -12,6 +12,24 @@ import { apiClient } from '@/lib/api/client';
 
 const API_BASE = '/api/v1';
 
+// ==================== CSRF Token Helper ====================
+
+/**
+ * Liest das CSRF-Token aus dem Cookie.
+ * Das Cookie ist nicht httpOnly, also kann JS es lesen.
+ */
+function getCsrfToken(): string | null {
+    const name = 'csrf_token=';
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+        const c = cookie.trim();
+        if (c.startsWith(name)) {
+            return c.substring(name.length);
+        }
+    }
+    return null;
+}
+
 // ==================== Category API ====================
 
 export interface CategoryListResponse {
@@ -142,7 +160,21 @@ export async function uploadDocument(
             reject(new Error('Upload abgebrochen'));
         });
 
-        xhr.open('POST', `${API_BASE}/ocr/process`);
+        xhr.open('POST', '/ocr/process');  // OCR routes sind NICHT unter /api/v1
+        xhr.withCredentials = true;  // Session-Cookies mitsenden
+
+        // CSRF-Token aus Cookie lesen und im Header senden (Double-Submit-Cookie-Pattern)
+        const csrfToken = getCsrfToken();
+        if (csrfToken) {
+            xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+        }
+
+        // JWT-Token aus sessionStorage lesen und im Header senden (wie apiClient)
+        const authToken = sessionStorage.getItem('auth_token');
+        if (authToken) {
+            xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+        }
+
         xhr.send(formData);
     });
 }
@@ -411,4 +443,169 @@ export async function fetchFolderDocuments(
         { params }
     );
     return response.data;
+}
+
+// ==================== OCR Upload Workflow API ====================
+
+import type {
+    OCRProcessResult,
+    UploadCompleteRequest,
+    UploadCompleteResponse,
+} from '../types';
+
+/**
+ * OCR-Verarbeitung mit Quick Classification und Temp Storage.
+ * Gibt OCR-Ergebnis, Klassifizierung und Rename-Vorschlag zurueck.
+ * Datei wird temporaer gespeichert (1h TTL) bis upload-complete aufgerufen wird.
+ */
+export async function processDocumentOCR(
+    file: File,
+    ocrBackend: string = 'deepseek',
+    onProgress?: (progress: number) => void
+): Promise<OCRProcessResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('backend', ocrBackend);  // Backend erwartet 'backend', nicht 'ocr_backend'
+    formData.append('run_quick_classification', 'true');  // FastAPI Form() konvertiert String zu Bool
+
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable && onProgress) {
+                const progress = Math.round((event.loaded / event.total) * 100);
+                onProgress(progress);
+            }
+        });
+
+        xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const raw = JSON.parse(xhr.responseText);
+
+                    // Map snake_case (Python) to camelCase (TypeScript)
+                    const mappedResult: OCRProcessResult = {
+                        success: raw.success,
+                        text: raw.text,
+                        confidence: raw.confidence,
+                        pageCount: raw.page_count,
+                        processingTimeMs: raw.processing_time_ms,
+                        backend: raw.backend,
+                        tempFileId: raw.temp_file_id,
+
+                        // Quick Classification (nested object mapping)
+                        quickClassification: raw.quick_classification ? {
+                            direction: raw.quick_classification.direction,
+                            confidence: raw.quick_classification.confidence,
+                            matchedEntityId: raw.quick_classification.matched_entity_id,
+                            matchedEntityName: raw.quick_classification.matched_entity_name,
+                            matchedEntityType: raw.quick_classification.matched_entity_type,
+                            matchedEntityConfidence: raw.quick_classification.matched_entity_confidence,
+                            suggestedDocumentType: raw.quick_classification.suggested_document_type,
+                            suggestedTags: raw.quick_classification.suggested_tags || [],
+                            extractedData: {
+                                documentNumber: raw.quick_classification.extracted_data?.document_number ?? null,
+                                documentDate: raw.quick_classification.extracted_data?.document_date ?? null,
+                                totalAmount: raw.quick_classification.extracted_data?.total_amount ?? null,
+                                currency: raw.quick_classification.extracted_data?.currency ?? 'EUR',
+                                dueDate: raw.quick_classification.extracted_data?.due_date ?? null,
+                                ibanFound: raw.quick_classification.extracted_data?.iban_found ?? null,
+                                vatIdFound: raw.quick_classification.extracted_data?.vat_id_found ?? null,
+                            },
+                        } : null,
+
+                        // Rename-Vorschlag (nested object mapping)
+                        renameSuggestion: raw.rename_suggestion ? {
+                            suggestedFilename: raw.rename_suggestion.suggested_filename,
+                            confidence: raw.rename_suggestion.confidence,
+                            parts: {
+                                entityName: raw.rename_suggestion.parts?.entity_name ?? null,
+                                documentNumber: raw.rename_suggestion.parts?.document_number ?? null,
+                            },
+                        } : null,
+                    };
+
+                    resolve(mappedResult);
+                } catch {
+                    reject(new Error('Fehler beim Parsen der OCR-Antwort'));
+                }
+            } else {
+                try {
+                    const error = JSON.parse(xhr.responseText);
+                    reject(new Error(error.detail || 'OCR-Verarbeitung fehlgeschlagen'));
+                } catch {
+                    reject(new Error(`OCR-Verarbeitung fehlgeschlagen (${xhr.status})`));
+                }
+            }
+        });
+
+        xhr.addEventListener('error', () => {
+            reject(new Error('Netzwerkfehler bei der OCR-Verarbeitung'));
+        });
+
+        xhr.addEventListener('abort', () => {
+            reject(new Error('OCR-Verarbeitung abgebrochen'));
+        });
+
+        xhr.open('POST', '/ocr/process');
+        xhr.withCredentials = true;
+
+        const csrfToken = getCsrfToken();
+        if (csrfToken) {
+            xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+        }
+
+        const authToken = sessionStorage.getItem('auth_token');
+        if (authToken) {
+            xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+        }
+
+        xhr.send(formData);
+    });
+}
+
+/**
+ * Speichert Dokument endgueltig nach OCR-Review.
+ * Datei wird von Temp-Storage nach MinIO verschoben.
+ */
+export async function uploadComplete(
+    request: UploadCompleteRequest
+): Promise<UploadCompleteResponse> {
+    // Map camelCase (TypeScript) to snake_case (Python)
+    const snakeCaseRequest = {
+        temp_file_id: request.tempFileId,
+        final_filename: request.finalFilename,
+        document_type: request.documentType,
+        document_number: request.documentNumber,
+        document_date: request.documentDate,
+        total_amount: request.totalAmount,
+        currency: request.currency || 'EUR',
+        due_date: request.dueDate,
+        business_entity_id: request.businessEntityId,
+        folder_id: request.folderId,
+        category: request.category,
+        entity_type: request.entityType,
+        tags: request.tags || [],
+    };
+
+    const response = await apiClient.post<UploadCompleteResponse>(
+        '/documents/upload-complete',
+        snakeCaseRequest
+    );
+    return response.data;
+}
+
+/**
+ * Verlaengert TTL einer temporaeren Datei.
+ * Nuetzlich wenn User laenger im Review-Dialog bleibt.
+ */
+export async function extendTempFileTTL(tempFileId: string): Promise<boolean> {
+    try {
+        const response = await apiClient.post<{ success: boolean }>(
+            `/documents/temp/${tempFileId}/extend-ttl`
+        );
+        return response.data.success;
+    } catch {
+        return false;
+    }
 }

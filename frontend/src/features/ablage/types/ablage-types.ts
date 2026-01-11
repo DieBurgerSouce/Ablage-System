@@ -106,10 +106,11 @@ export interface CategoryDocumentListState {
     view_mode: 'grid' | 'list';
 }
 
-// Available backends
+// Available backends - IDs muessen mit Backend-Endpunkt uebereinstimmen
+// Backend akzeptiert: auto, surya, got_ocr, deepseek, surya_gpu
 export const OCR_BACKENDS: OCRBackend[] = [
     {
-        id: 'got-ocr',
+        id: 'got_ocr',  // Backend: got_ocr
         name: 'GOT-OCR 2.0',
         description: 'State-of-the-art unified OCR mit Layout-Erkennung',
         features: ['LaTeX-Formeln', 'Tabellen', 'Bounding Boxes', 'Deutsche Texte'],
@@ -120,7 +121,7 @@ export const OCR_BACKENDS: OCRBackend[] = [
         available: true,
     },
     {
-        id: 'surya-docling',
+        id: 'surya',  // Backend: surya (mit Docling)
         name: 'Surya + Docling',
         description: 'Multilingual OCR mit Document Understanding',
         features: ['90+ Sprachen', 'Tabellen-Extraktion', 'Layout-Analyse'],
@@ -130,7 +131,7 @@ export const OCR_BACKENDS: OCRBackend[] = [
         available: true,
     },
     {
-        id: 'deepseek-janus',
+        id: 'deepseek',  // Backend: deepseek
         name: 'DeepSeek Janus',
         description: 'Vision-Language Model für komplexe Dokumente',
         features: ['Kontextverständnis', 'Reasoning', 'Fraktur-Schrift'],
@@ -140,7 +141,7 @@ export const OCR_BACKENDS: OCRBackend[] = [
         available: true,
     },
     {
-        id: 'cpu-fallback',
+        id: 'auto',  // Backend: auto (waehlt bestes verfuegbares Backend)
         name: 'CPU OCR (Tesseract)',
         description: 'Fallback ohne GPU-Anforderung',
         features: ['Keine GPU erforderlich', 'Langsamer'],

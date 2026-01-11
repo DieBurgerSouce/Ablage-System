@@ -6,6 +6,8 @@ export * from './api/ablage-api'
 
 // Hooks
 export * from './hooks/use-ablage-queries'
+export { useDocumentUpload } from './hooks/use-document-upload'
+export type { UseDocumentUploadReturn } from './hooks/use-document-upload'
 
 // Components
 export { KundenPage } from './components/KundenPage'
@@ -29,3 +31,5 @@ export { TransactionsView } from './components/TransactionsView'
 // Dialogs
 export { MoveFolderDialog } from './components/MoveFolderDialog'
 export { TagsEditDialog } from './components/TagsEditDialog'
+export { DocumentUploadDialog } from './components/DocumentUploadDialog'
+export { OCRReviewModal } from './components/OCRReviewModal'

@@ -7,7 +7,7 @@
  */
 
 import { Link } from '@tanstack/react-router';
-import { ArrowLeft, FolderOpen, Upload, Home, ChevronRight } from 'lucide-react';
+import { ArrowLeft, FolderOpen, Home, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { DocumentCategoryInfo } from '../types';
 
@@ -18,7 +18,6 @@ interface CategoryHeaderProps {
   folderId: string;
   folderName: string;
   categoryInfo: DocumentCategoryInfo | undefined;
-  onUploadClick?: () => void;
 }
 
 /**
@@ -35,7 +34,6 @@ export function CategoryBreadcrumb({
 }: Omit<CategoryHeaderProps, 'onUploadClick'>) {
   const isCustomer = entityType === 'customer';
   const basePath = isCustomer ? '/kunden' : '/lieferanten';
-  const colorClass = isCustomer ? 'text-amber-500' : 'text-blue-500';
 
   // Pfade für Breadcrumb
   const folderPath = isCustomer
@@ -86,15 +84,15 @@ export function CategoryBreadcrumb({
 }
 
 /**
- * CategoryTitle - Seitentitel mit Back-Button und Upload
+ * CategoryTitle - Seitentitel mit Back-Button
+ * (Upload-Button ist jetzt in QuickActionsBar)
  */
 export function CategoryTitle({
   entityType,
   entityId,
   folderId,
   categoryInfo,
-  onUploadClick,
-}: Pick<CategoryHeaderProps, 'entityType' | 'entityId' | 'folderId' | 'categoryInfo' | 'onUploadClick'>) {
+}: Pick<CategoryHeaderProps, 'entityType' | 'entityId' | 'folderId' | 'categoryInfo'>) {
   const isCustomer = entityType === 'customer';
   const colorClass = isCustomer ? 'text-amber-500' : 'text-blue-500';
 
@@ -108,7 +106,7 @@ export function CategoryTitle({
   return (
     <div className="flex items-center gap-4">
       <Link to={folderPath} params={folderParams}>
-        <Button variant="ghost" size="icon" aria-label="Zurück zur Ordner-Übersicht">
+        <Button variant="ghost" size="icon" aria-label="Zurueck zur Ordner-Uebersicht">
           <ArrowLeft className="w-5 h-5" />
         </Button>
       </Link>
@@ -121,14 +119,6 @@ export function CategoryTitle({
           </span>
         )}
       </h1>
-      {onUploadClick && (
-        <div className="ml-auto">
-          <Button className="gap-2" onClick={onUploadClick}>
-            <Upload className="w-4 h-4" aria-hidden="true" />
-            Dokument hochladen
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

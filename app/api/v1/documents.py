@@ -116,6 +116,7 @@ from app.services.search_service import get_search_service
 from app.services.document_service import get_document_service
 from app.services.archive_service import archive_service
 from app.core.exceptions import ImmutabilityViolationError
+from app.services.document_services.ablage_service import CATEGORY_TO_DOCTYPE
 
 logger = structlog.get_logger(__name__)
 
@@ -460,6 +461,246 @@ async def upload_document(
         created_at=new_document.created_at,
         processing_job_id=processing_job_id,
         message="Dokument erfolgreich hochgeladen" + (" - OCR-Verarbeitung gestartet" if start_ocr else "")
+    )
+
+
+# ==================== Upload Complete (OCR-Review Workflow) ====================
+
+from app.db.schemas import UploadCompleteRequest, UploadCompleteResponse
+from app.services.temp_file_storage import get_temp_file_storage
+
+
+@router.post("/upload-complete", response_model=UploadCompleteResponse, status_code=201)
+async def upload_complete(
+    request: UploadCompleteRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
+):
+    """Dokument nach OCR-Review endgueltig speichern.
+
+    Dieser Endpoint wird aufgerufen, nachdem der User im OCR-Review-Modal
+    die extrahierten Daten geprueft und bestaetigt hat. Er:
+
+    1. Holt die Datei aus dem temporaeren Redis-Speicher
+    2. Speichert sie permanent in MinIO mit dem finalen Dateinamen
+    3. Erstellt den Document-Eintrag in der Datenbank
+    4. Verknuepft das Dokument mit der Business Entity (falls angegeben)
+    5. Loescht die temporaere Datei
+
+    **Workflow:**
+    ```
+    /ocr/process → OCR + Quick Classification → temp_file_id
+                         ↓
+    OCR-Review-Modal (User prueft/korrigiert)
+                         ↓
+    /documents/upload-complete → Dokument permanent gespeichert
+    ```
+
+    **Beispiel:**
+    ```json
+    {
+      "temp_file_id": "abc123-...",
+      "final_filename": "Mueller_RG-2024-001.pdf",
+      "document_type": "invoice",
+      "document_number": "RG-2024-001",
+      "folder_id": "folie",
+      "category": "rechnungen",
+      "entity_type": "supplier",
+      "business_entity_id": "uuid-...",
+      "tags": ["Rechnung", "Mueller"]
+    }
+    ```
+    """
+    import hashlib
+    from uuid import uuid4
+    from app.services.storage_service import get_storage_service
+    from app.db.models import Document, BusinessEntity
+
+    # 1. Temporaere Datei aus Redis holen
+    temp_storage = get_temp_file_storage()
+    temp_file = await temp_storage.get(request.temp_file_id)
+
+    if not temp_file:
+        raise HTTPException(
+            status_code=404,
+            detail="Temporaere Datei nicht gefunden oder abgelaufen. "
+                   "Bitte laden Sie das Dokument erneut hoch."
+        )
+
+    # Sicherheits-Check: User muss der sein, der die Datei hochgeladen hat
+    if temp_file.user_id != str(current_user.id):
+        logger.warning(
+            "upload_complete_user_mismatch",
+            temp_file_user_id=temp_file.user_id[:8],
+            request_user_id=str(current_user.id)[:8]
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Keine Berechtigung fuer diese Datei"
+        )
+
+    # 2. Checksum berechnen
+    file_hash = hashlib.sha256(temp_file.content).hexdigest()
+
+    # 3. Storage-Pfad bestimmen (Entity-basiert)
+    # Format: entities/{entity_id}/{folder_id}/{category}/{filename}
+    if request.business_entity_id:
+        storage_base = f"entities/{request.business_entity_id}/{request.folder_id}/{request.category}"
+    else:
+        # Fallback: User-basierter Pfad
+        storage_base = f"users/{current_user.id}/{request.folder_id}/{request.category}"
+
+    storage_path = f"{storage_base}/{request.final_filename}"
+
+    # 4. In MinIO hochladen
+    storage = get_storage_service()
+
+    try:
+        upload_result = await storage.upload_document(
+            file_data=temp_file.content,
+            filename=request.final_filename,
+            content_type=temp_file.mime_type,
+            user_id=str(current_user.id),
+            metadata={
+                "document_type": request.document_type,
+                "original_filename": temp_file.original_filename,
+                "category": request.category,
+                "folder_id": request.folder_id,
+                "entity_type": request.entity_type,
+                "entity_id": str(request.business_entity_id) if request.business_entity_id else None,
+            }
+        )
+    except Exception as e:
+        error_type = type(e).__name__
+        logger.error(
+            "upload_complete_storage_failed",
+            error_type=error_type,
+            filename=request.final_filename[:50]
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Speichern fehlgeschlagen. Bitte versuchen Sie es erneut."
+        )
+
+    # 5. Business Entity laden (fuer Namen und Verknuepfung)
+    entity_name = None
+    if request.business_entity_id:
+        from sqlalchemy import select
+        entity = await db.scalar(
+            select(BusinessEntity).where(BusinessEntity.id == request.business_entity_id)
+        )
+        if entity:
+            entity_name = entity.display_name or entity.name
+
+    # 6. Document-Eintrag erstellen
+    doc_id = uuid4()
+
+    # Metadaten zusammenstellen
+    document_metadata = {
+        "category": request.category,
+        "folder_id": request.folder_id,
+        "entity_type": request.entity_type,
+        "tags": request.tags,
+        "document_number": request.document_number,
+        "document_date": request.document_date.isoformat() if request.document_date else None,
+        "total_amount": float(request.total_amount) if request.total_amount else None,
+        "currency": request.currency,
+        "due_date": request.due_date.isoformat() if request.due_date else None,
+    }
+
+    # 6.1 Korrekten document_type basierend auf Kategorie bestimmen
+    # Kategorie (z.B. "rechnungen") → DocumentType (z.B. "invoice")
+    # Verhindert Mismatch zwischen Kategorie-Filter und document_type
+    category_doctype = CATEGORY_TO_DOCTYPE.get(request.category.lower())
+    final_document_type = category_doctype.value if category_doctype else request.document_type
+
+    new_document = Document(
+        id=doc_id,
+        filename=request.final_filename,
+        original_filename=temp_file.original_filename,
+        file_path=upload_result["storage_path"],
+        file_size=temp_file.file_size,
+        mime_type=temp_file.mime_type,
+        checksum=file_hash,
+        document_type=final_document_type,
+        status="completed",  # Bereits OCR-verarbeitet
+        owner_id=current_user.id,
+        company_id=company.id,
+        business_entity_id=request.business_entity_id,
+        document_metadata=document_metadata,
+    )
+
+    # OCR-Text speichern falls vorhanden
+    if request.ocr_text:
+        new_document.ocr_text = request.ocr_text
+    if request.ocr_confidence is not None:
+        new_document.ocr_confidence = request.ocr_confidence
+
+    db.add(new_document)
+
+    try:
+        await db.commit()
+        await db.refresh(new_document)
+    except Exception as e:
+        await db.rollback()
+        logger.error(
+            "upload_complete_db_failed",
+            error_type=type(e).__name__,
+            document_id=str(doc_id)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Datenbank-Fehler. Bitte versuchen Sie es erneut."
+        )
+
+    # 7. Temporaere Datei loeschen
+    try:
+        await temp_storage.delete(request.temp_file_id)
+    except Exception as e:
+        # Nicht kritisch - TTL raeaumt spaeter auf
+        logger.warning(
+            "upload_complete_temp_delete_failed",
+            temp_file_id=request.temp_file_id[:8],
+            error_type=type(e).__name__
+        )
+
+    # 8. Logging
+    logger.info(
+        "document_upload_complete",
+        document_id=str(doc_id),
+        user_id=str(current_user.id),
+        filename=request.final_filename[:50],
+        category=request.category,
+        folder_id=request.folder_id,
+        entity_linked=bool(request.business_entity_id),
+        file_size_mb=round(temp_file.file_size / (1024 * 1024), 2)
+    )
+
+    # 9. Workflow-Trigger: Document Created Event
+    try:
+        from app.workers.tasks.workflow_tasks import on_document_created
+        on_document_created.delay(
+            document_id=str(doc_id),
+            user_id=str(current_user.id)
+        )
+    except Exception as e:
+        # Workflow-Trigger sollte Upload nicht blockieren
+        logger.warning(
+            "workflow_trigger_failed",
+            document_id=str(doc_id),
+            error=str(e)
+        )
+
+    return UploadCompleteResponse(
+        success=True,
+        document_id=doc_id,
+        filename=request.final_filename,
+        storage_path=upload_result["storage_path"],
+        file_size=temp_file.file_size,
+        entity_linked=bool(request.business_entity_id),
+        entity_name=entity_name,
+        message=f"Dokument '{request.final_filename}' erfolgreich in '{request.category}' abgelegt"
     )
 
 

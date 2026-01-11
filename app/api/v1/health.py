@@ -1374,6 +1374,81 @@ async def slo_health() -> SLOHealthResponse:
 # =============================================================================
 
 
+class GPUStatusResponse(BaseModel):
+    """GPU Verfuegbarkeitsstatus fuer Frontend."""
+
+    available: bool = Field(..., description="GPU verfuegbar fuer OCR")
+    name: Optional[str] = Field(None, description="GPU-Gerätename")
+    memory_total_gb: Optional[float] = Field(None, description="Gesamt VRAM in GB")
+    memory_used_gb: Optional[float] = Field(None, description="Belegter VRAM in GB")
+    memory_free_gb: Optional[float] = Field(None, description="Freier VRAM in GB")
+    utilization_percent: Optional[float] = Field(None, description="VRAM Nutzung in Prozent")
+
+
+@router.get(
+    "/gpu",
+    response_model=GPUStatusResponse,
+    summary="GPU Verfuegbarkeitsstatus",
+    description="Prueft ob GPU fuer OCR-Verarbeitung verfuegbar ist.",
+)
+async def gpu_status() -> GPUStatusResponse:
+    """
+    GPU-Verfuegbarkeitsstatus fuer Upload-Dialog.
+
+    Gibt zurueck:
+    - available: true wenn CUDA-GPU vorhanden und nutzbar
+    - name: GPU-Gerätename (z.B. 'NVIDIA RTX 4080')
+    - memory_*: VRAM-Statistiken
+    """
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            device_name = torch.cuda.get_device_name(0)
+            memory_total = torch.cuda.get_device_properties(0).total_memory
+            memory_allocated = torch.cuda.memory_allocated(0)
+            memory_free = memory_total - memory_allocated
+            memory_percent = (memory_allocated / memory_total) * 100
+
+            return GPUStatusResponse(
+                available=True,
+                name=device_name,
+                memory_total_gb=round(memory_total / 1024**3, 2),
+                memory_used_gb=round(memory_allocated / 1024**3, 2),
+                memory_free_gb=round(memory_free / 1024**3, 2),
+                utilization_percent=round(memory_percent, 1),
+            )
+        else:
+            return GPUStatusResponse(
+                available=False,
+                name=None,
+                memory_total_gb=None,
+                memory_used_gb=None,
+                memory_free_gb=None,
+                utilization_percent=None,
+            )
+    except ImportError:
+        # PyTorch nicht installiert
+        return GPUStatusResponse(
+            available=False,
+            name=None,
+            memory_total_gb=None,
+            memory_used_gb=None,
+            memory_free_gb=None,
+            utilization_percent=None,
+        )
+    except Exception as e:
+        logger.error("gpu_status_check_failed", error=str(e))
+        return GPUStatusResponse(
+            available=False,
+            name=None,
+            memory_total_gb=None,
+            memory_used_gb=None,
+            memory_free_gb=None,
+            utilization_percent=None,
+        )
+
+
 class MemoryGuardHealthResponse(BaseModel):
     """GPU Memory Guard Status."""
 

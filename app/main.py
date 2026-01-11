@@ -56,8 +56,9 @@ from app.core.backpressure import (
     add_backpressure_headers,
     BackpressureStatus,
 )
-from app.api.dependencies import get_current_active_user, get_current_superuser
+from app.api.dependencies import get_current_active_user, get_current_superuser, get_db
 from app.db.models import User
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger(__name__)
 
@@ -947,23 +948,37 @@ async def process_document(
     backend: Optional[str] = Form("auto"),
     language: Optional[str] = Form("de"),
     detect_layout: Optional[bool] = Form(True),
+    run_quick_classification: Optional[bool] = Form(True),  # NEU: Quick Classification aktivieren
     cached_response: Optional[Dict[str, Any]] = Depends(check_idempotency),
     backpressure: Dict[str, Any] = Depends(backpressure_dependency),
-    current_user: User = Depends(get_current_active_user)  # CC.1 SECURITY FIX: Auth required
+    current_user: User = Depends(get_current_active_user),  # CC.1 SECURITY FIX: Auth required
+    db: AsyncSession = Depends(get_db),  # NEU: DB Session fuer Quick Classification
 ):
     """
-    Process a document with OCR
+    Process a document with OCR and optional Quick Classification.
+
+    NEU: Enterprise Upload Workflow mit Quick Classification + Temp Storage.
+    Nach erfolgreichem OCR wird automatisch Quick Classification ausgefuehrt:
+    - Dokumenttyp erkennen (Eingangs-/Ausgangsrechnung)
+    - Entity-Matching (Lieferant/Kunde)
+    - Rename-Vorschlag generieren
+    - Datei temporaer speichern fuer Review-Modal
 
     Args:
         file: Document file (PDF, PNG, JPG, etc.)
         backend: OCR backend to use (auto, surya, got_ocr, deepseek)
         language: Target language (de, en)
         detect_layout: Whether to detect document layout
+        run_quick_classification: Quick Classification + Temp Storage aktivieren (default: True)
         cached_response: Gecachte Antwort bei Idempotency-Key (automatisch geprüft)
         backpressure: Queue-Backpressure-Status (automatisch geprüft)
 
     Returns:
-        OCR processing result with extracted text
+        OCR processing result with:
+        - text: Extrahierter Text
+        - quick_classification: Direction, Entity-Match, Tags (wenn aktiviert)
+        - rename_suggestion: Vorgeschlagener Dateiname (wenn aktiviert)
+        - temp_file_id: ID fuer temporaere Datei (wenn aktiviert)
 
     Headers:
         Idempotency-Key: Optional. Bei Wiederholung wird gecachtes Ergebnis zurückgegeben.
@@ -1139,6 +1154,107 @@ async def process_document(
                 result=result,
                 language=language or "de"
             )
+
+        # ========================================================================
+        # NEU: Enterprise Upload Workflow - Quick Classification + Temp Storage
+        # ========================================================================
+        # DEBUG: Log condition values
+        logger.info(
+            "quick_classification_condition_check",
+            run_quick_classification=run_quick_classification,
+            run_quick_classification_type=type(run_quick_classification).__name__,
+            result_success=result.get("success"),
+            result_text_length=len(result.get("text", "") or ""),
+            result_keys=list(result.keys()) if result else [],
+        )
+        if run_quick_classification and result.get("success") and result.get("text"):
+            try:
+                import uuid as uuid_module
+                from app.services.quick_classification_service import QuickClassificationService
+                from app.services.temp_file_storage import get_temp_file_storage
+
+                ocr_text = result.get("text", "")
+                temp_doc_id = uuid_module.uuid4()  # Temporaere ID fuer Classification
+
+                # 1. Quick Classification ausfuehren
+                logger.info("quick_classification_starting", filename=file.filename)
+                quick_service = QuickClassificationService()
+                classification_result = await quick_service.classify_document(
+                    document_id=temp_doc_id,
+                    ocr_text=ocr_text,
+                    db=db,
+                    auto_assign_tag=False  # Kein Tag zuweisen - nur klassifizieren
+                )
+
+                # 2. Ergebnis in Response einbauen
+                result["quick_classification"] = {
+                    "direction": classification_result.direction.value if classification_result.direction else None,
+                    "confidence": classification_result.confidence,
+                    "reason": classification_result.reason,
+                    "extracted_vat_ids": classification_result.extracted_vat_ids,
+                    "extracted_ibans": classification_result.extracted_ibans,
+                    "matched_entity_id": str(classification_result.matched_entity_id) if classification_result.matched_entity_id else None,
+                    "matched_entity_name": classification_result.matched_entity_name,
+                    "matched_entity_type": classification_result.matched_entity_type,
+                    "entity_match_method": classification_result.entity_match_method,
+                    "entity_confidence": classification_result.entity_confidence,
+                }
+
+                # 3. Rename-Vorschlag (bereits in classification_result enthalten)
+                result["rename_suggestion"] = classification_result.rename_suggestion
+
+                # 4. Datei temporaer speichern (fuer spaeteres Ablegen)
+                temp_storage = get_temp_file_storage()
+
+                # MIME-Type aus Dateiendung
+                file_ext = Path(file.filename).suffix.lower() if file.filename else ""
+                mime_map = {
+                    ".pdf": "application/pdf",
+                    ".png": "image/png",
+                    ".jpg": "image/jpeg",
+                    ".jpeg": "image/jpeg",
+                    ".tiff": "image/tiff",
+                    ".tif": "image/tiff",
+                    ".bmp": "image/bmp",
+                }
+                detected_mime = mime_map.get(file_ext, "application/octet-stream")
+
+                temp_file_info = await temp_storage.store(
+                    file_content=file_content,
+                    original_filename=file.filename or "unknown",
+                    mime_type=detected_mime,
+                    user_id=str(current_user.id),
+                    metadata={
+                        "ocr_backend": actual_backend,
+                        "language": language,
+                        "quick_classification": result["quick_classification"],
+                    }
+                )
+
+                result["temp_file_id"] = temp_file_info.temp_file_id
+                result["temp_file_expires_in_seconds"] = 3600  # 1 Stunde
+
+                logger.info(
+                    "quick_classification_completed",
+                    filename=file.filename,
+                    direction=classification_result.direction.value if classification_result.direction else None,
+                    confidence=classification_result.confidence,
+                    matched_entity=classification_result.matched_entity_name,
+                    rename_suggestion=classification_result.rename_suggestion.get("suggested_filename") if classification_result.rename_suggestion else None,
+                    temp_file_id=temp_file_info.temp_file_id
+                )
+
+            except Exception as qc_error:
+                # Quick Classification Fehler sollen OCR nicht abbrechen
+                logger.warning(
+                    "quick_classification_failed",
+                    filename=file.filename,
+                    error=str(qc_error)
+                )
+                result["quick_classification"] = None
+                result["quick_classification_error"] = str(qc_error)
+                result["rename_suggestion"] = None
+                result["temp_file_id"] = None
 
         # Cache result if Idempotency-Key was provided
         idempotency_key = getattr(request.state, "idempotency_key", None)
