@@ -484,11 +484,12 @@ export async function processDocumentOCR(
                     const raw = JSON.parse(xhr.responseText);
 
                     // Map snake_case (Python) to camelCase (TypeScript)
+                    // Note: page_count comes from metadata.page_count (OCRResult.to_dict())
                     const mappedResult: OCRProcessResult = {
                         success: raw.success,
                         text: raw.text,
                         confidence: raw.confidence,
-                        pageCount: raw.page_count,
+                        pageCount: raw.metadata?.page_count || raw.page_count || 1,
                         processingTimeMs: raw.processing_time_ms,
                         backend: raw.backend,
                         tempFileId: raw.temp_file_id,
@@ -509,8 +510,9 @@ export async function processDocumentOCR(
                                 totalAmount: raw.quick_classification.extracted_data?.total_amount ?? null,
                                 currency: raw.quick_classification.extracted_data?.currency ?? 'EUR',
                                 dueDate: raw.quick_classification.extracted_data?.due_date ?? null,
-                                ibanFound: raw.quick_classification.extracted_data?.iban_found ?? null,
-                                vatIdFound: raw.quick_classification.extracted_data?.vat_id_found ?? null,
+                                // IBAN/VAT-ID: Backend liefert als Liste auf Top-Level, nicht in extracted_data
+                                ibanFound: raw.quick_classification.extracted_ibans?.[0] ?? null,
+                                vatIdFound: raw.quick_classification.extracted_vat_ids?.[0] ?? null,
                             },
                         } : null,
 
