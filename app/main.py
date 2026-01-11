@@ -1147,12 +1147,29 @@ async def process_document(
             result["german_validation"] = validation
 
         # Cache OCR result for identical file uploads (24h TTL)
-        if result.get("success"):
+        # Only cache results with sufficient quality (confidence > 10% and text extracted)
+        # This prevents caching of failed/empty OCR results
+        ocr_confidence = result.get("confidence", 0.0)
+        ocr_text = result.get("text", "")
+        should_cache = (
+            result.get("success")
+            and ocr_confidence >= 0.1  # Minimum 10% confidence
+            and len(ocr_text.strip()) > 10  # Minimum 10 characters
+        )
+        if should_cache:
             await cache_ocr_result(
                 content=file_content,
                 backend=actual_backend,
                 result=result,
                 language=language or "de"
+            )
+        elif result.get("success") and not should_cache:
+            logger.info(
+                "ocr_result_not_cached_low_quality",
+                confidence=ocr_confidence,
+                text_length=len(ocr_text),
+                backend=actual_backend,
+                filename=file.filename
             )
 
         # ========================================================================
@@ -1199,6 +1216,65 @@ async def process_document(
                     "entity_match_method": classification_result.entity_match_method,
                     "entity_confidence": classification_result.entity_confidence,
                 }
+
+                # 2b. Structured Extraction fuer Datum, Betrag, Belegnummer
+                # Nutzt StructuredExtractionService fuer vollstaendige Datenextraktion
+                extracted_data = None
+                if ocr_text and len(ocr_text) > 50:
+                    try:
+                        from app.services.structured_extraction_service import (
+                            StructuredExtractionService,
+                            get_structured_extraction_service,
+                        )
+                        extraction_service = get_structured_extraction_service()
+                        extraction_result = await extraction_service.extract(
+                            text=ocr_text,
+                            document_id=None,  # Temp file, kein Document noch
+                            tables=None,
+                            detected_language=language,
+                            db=db,
+                        )
+                        if extraction_result:
+                            # Invoice-Daten extrahieren falls vorhanden
+                            invoice = extraction_result.invoice
+                            if invoice:
+                                extracted_data = {
+                                    "document_number": invoice.invoice_number,
+                                    "document_date": invoice.invoice_date.isoformat() if invoice.invoice_date else None,
+                                    "total_amount": float(invoice.gross_amount) if invoice.gross_amount else None,
+                                    "currency": invoice.currency.value if hasattr(invoice.currency, 'value') else str(invoice.currency),
+                                    "due_date": invoice.due_date.isoformat() if invoice.due_date else None,
+                                    "vendor_name": invoice.sender.company if invoice.sender and invoice.sender.company else None,
+                                    "extraction_confidence": extraction_result.overall_confidence,
+                                }
+                            else:
+                                # Fallback: Allgemeine Daten aus classification
+                                extracted_data = {
+                                    "document_number": None,
+                                    "document_date": None,
+                                    "total_amount": float(extraction_result.amounts[0]) if extraction_result.amounts else None,
+                                    "currency": "EUR",
+                                    "due_date": None,
+                                    "vendor_name": extraction_result.companies[0] if extraction_result.companies else None,
+                                    "extraction_confidence": extraction_result.overall_confidence,
+                                }
+                        logger.info(
+                            "structured_extraction_completed",
+                            filename=file.filename,
+                            has_invoice_data=extracted_data is not None and extracted_data.get("document_number") is not None,
+                            extraction_confidence=extracted_data.get("extraction_confidence") if extracted_data else 0,
+                        )
+                    except Exception as se_error:
+                        # Structured Extraction Fehler sollen OCR nicht abbrechen
+                        logger.warning(
+                            "structured_extraction_failed",
+                            filename=file.filename,
+                            error=str(se_error)
+                        )
+                        extracted_data = None
+
+                # Extracted data zum quick_classification hinzufuegen
+                result["quick_classification"]["extracted_data"] = extracted_data
 
                 # 3. Rename-Vorschlag (bereits in classification_result enthalten)
                 result["rename_suggestion"] = classification_result.rename_suggestion
